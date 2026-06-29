@@ -74,6 +74,12 @@ import {
   rewriteSystemFieldsInCondition,
 } from "../services/items/permission-rewrite";
 import {
+  type KeysetPart,
+  decodeCursor,
+  encodeCursor,
+  keysetWhere,
+} from "../services/items/keyset";
+import {
   ItemBody,
   ItemRow,
   ListMeta,
@@ -263,7 +269,14 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
               schema: z.object({
                 data: z.array(ItemRow),
                 limit: z.number().int().nonnegative(),
-                offset: z.number().int().nonnegative(),
+                // Present in classic offset mode; omitted in keyset mode.
+                offset: z.number().int().nonnegative().optional(),
+                // `true` when a further page exists (derived from a +1
+                // over-fetch, so no extra COUNT round-trip).
+                has_more: z.boolean().optional(),
+                // Opaque keyset cursor for the next page; only in cursor mode,
+                // null when this is the last page.
+                next_cursor: z.string().nullable().optional(),
                 meta: ListMeta.optional(),
               }),
             },
@@ -851,33 +864,88 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         ? sql`${baseSelectCols}, ${sql.join(expandSelects, sql`, `)}`
         : baseSelectCols;
 
-      const orderClause = sql.join(
-        q.sort.map((s) => {
-          // Nested sort routes through the same `rel_<chain>` alias the
-          // filter JOINs added. parseQuery already validated the head is
-          // a relation field; items.ts above walked the chain, resolved
-          // each target, and recorded an entry in joinMap under the full
-          // chain prefix. Multi-hop sort sees the deepest join alias
-          // (`rel_customer_id__address_id`) and references its leaf
-          // column directly.
-          if (s.field.includes(".")) {
-            const segs = s.field.split(".");
-            const leaf = segs[segs.length - 1]!;
-            const chainKey = segs.slice(0, -1).join(".");
-            const j = joinMap.get(chainKey);
-            const ref = j
-              ? sql`${sql.identifier(j.alias)}.${sql.identifier(leaf)}`
-              : sql`${sql.identifier(s.field)}`;
-            return sql`${ref} ${sql.raw(s.dir.toUpperCase())}`;
-          }
-          const physical = rewriteSortField(s.field, collection);
-          const ref = hasJoins
-            ? sql`${baseTblId}.${sql.identifier(physical)}`
-            : sql`${sql.identifier(physical)}`;
-          return sql`${ref} ${sql.raw(s.dir.toUpperCase())}`;
-        }),
-        sql`, `,
-      );
+      // Resolve the SQL column reference for one sort clause. Shared by the
+      // ORDER BY and the keyset boundary so they reference the EXACT same
+      // expression — a cursor minted against one sort axis must seek on that
+      // same axis or it would skip/duplicate rows.
+      const sortRefOf = (s: { field: string; dir: "asc" | "desc" }): SQL => {
+        // Nested sort routes through the same `rel_<chain>` alias the filter
+        // JOINs added (joinMap keyed by full chain prefix; multi-hop sees the
+        // deepest alias like `rel_customer_id__address_id`).
+        if (s.field.includes(".")) {
+          const segs = s.field.split(".");
+          const leaf = segs[segs.length - 1]!;
+          const chainKey = segs.slice(0, -1).join(".");
+          const j = joinMap.get(chainKey);
+          return j
+            ? sql`${sql.identifier(j.alias)}.${sql.identifier(leaf)}`
+            : sql`${sql.identifier(s.field)}`;
+        }
+        const physical = rewriteSortField(s.field, collection);
+        return hasJoins
+          ? sql`${baseTblId}.${sql.identifier(physical)}`
+          : sql`${sql.identifier(physical)}`;
+      };
+
+      // Keyset (cursor) pagination is opt-in via `?cursor` (q.cursor !== null).
+      // It appends a guaranteed-unique `id` tiebreaker so the ORDER BY is a
+      // TOTAL order, then seeks past the previous page's boundary tuple instead
+      // of OFFSET-scanning. Classic offset paging is byte-for-byte untouched
+      // when `?cursor` is absent (orderClause built from q.sort exactly as
+      // before, no tiebreaker, no synthetic columns).
+      const cursorMode = q.cursor !== null;
+      const pkRef: SQL = hasJoins
+        ? sql`${baseTblId}.${sql.identifier(collection.pkColumn)}`
+        : sql`${sql.identifier(collection.pkColumn)}`;
+      const lastSort = q.sort[q.sort.length - 1];
+      const lastIsPk =
+        !!lastSort &&
+        !lastSort.field.includes(".") &&
+        rewriteSortField(lastSort.field, collection) === collection.pkColumn;
+      const tieDir: "asc" | "desc" = lastSort?.dir ?? "desc";
+      // ksParts mirrors the effective ORDER BY 1:1 (sort clauses, then the pk
+      // tiebreaker unless the last sort already IS the pk). Unused in offset
+      // mode.
+      const ksParts: KeysetPart[] = q.sort.map((s) => ({
+        ref: sortRefOf(s),
+        dir: s.dir,
+      }));
+      if (!lastIsPk) ksParts.push({ ref: pkRef, dir: tieDir });
+
+      const orderClause = cursorMode
+        ? sql.join(
+            ksParts.map((p) => sql`${p.ref} ${sql.raw(p.dir.toUpperCase())}`),
+            sql`, `,
+          )
+        : sql.join(
+            q.sort.map(
+              (s) => sql`${sortRefOf(s)} ${sql.raw(s.dir.toUpperCase())}`,
+            ),
+            sql`, `,
+          );
+
+      // Seek predicate for an incoming boundary. Empty cursor ("" — first page
+      // in cursor mode) has no boundary, so the page starts at the head.
+      const keysetBoundary: SQL | null =
+        cursorMode && q.cursor
+          ? keysetWhere(ksParts, decodeCursor(q.cursor))
+          : null;
+      // Boundary ANDs into the PAGE query only — the COUNT(*) below still
+      // counts the whole filtered set (filter_count must not shrink page by
+      // page).
+      const pageWhere: SQL = keysetBoundary
+        ? wheres.length
+          ? sql`WHERE ${sql.join([...wheres, keysetBoundary], sql` AND `)}`
+          : sql`WHERE ${keysetBoundary}`
+        : whereClause;
+      // Surface the boundary tuple under deterministic aliases so next_cursor
+      // reads the raw DB values regardless of adopted-table column aliasing.
+      const keysetSelects: SQL[] = cursorMode
+        ? ksParts.map((p, i) => sql`${p.ref} AS ${sql.identifier(`__ks_${i}`)}`)
+        : [];
+      const selectColsFinal: SQL = keysetSelects.length
+        ? sql`${selectCols}, ${sql.join(keysetSelects, sql`, `)}`
+        : selectCols;
 
       const fromClause: SQL = hasJoins
         ? sql`${fromOf(collection)} ${sql.join(extraJoins, sql` `)}`
@@ -888,9 +956,16 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       // one extra round-trip per requested meta — `?meta=*` was 3 sequential
       // round-trips (data + filter_count + total_count). With Promise.all the
       // COUNT round-trips overlap the data fetch; wall time ≈ the slowest one.
+      // Over-fetch one row past the page size: if it comes back, there's a
+      // further page (`has_more`) and, in cursor mode, a `next_cursor` — all
+      // without a COUNT round-trip. OFFSET is emitted only in classic mode;
+      // keyset seeks via the boundary in `pageWhere` instead.
+      const fetchLimit = q.limit + 1;
       const rowsPromise = queryAll<Record<string, unknown>>(
         ctx,
-        sql`SELECT ${selectCols} FROM ${fromClause} ${whereClause} ORDER BY ${orderClause} LIMIT ${q.limit} OFFSET ${q.offset}`,
+        cursorMode
+          ? sql`SELECT ${selectColsFinal} FROM ${fromClause} ${pageWhere} ORDER BY ${orderClause} LIMIT ${fetchLimit}`
+          : sql`SELECT ${selectColsFinal} FROM ${fromClause} ${whereClause} ORDER BY ${orderClause} LIMIT ${fetchLimit} OFFSET ${q.offset}`,
       );
 
       type CountRow = { count: number | string | bigint };
@@ -934,6 +1009,24 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         if (totalCountRows) metaOut.total_count = Number(totalCountRows[0]?.count ?? 0);
       }
 
+      // The +1 over-fetch row, if present, signals a further page; trim it off
+      // the page and (in cursor mode) mint next_cursor from the last KEPT row's
+      // boundary tuple before stripping the synthetic `__ks_*` columns.
+      const hasMore = rows.length > q.limit;
+      const pageRows = hasMore ? rows.slice(0, q.limit) : rows;
+      let nextCursor: string | null = null;
+      if (cursorMode && hasMore && pageRows.length > 0) {
+        const boundary = pageRows[pageRows.length - 1]!;
+        nextCursor = encodeCursor(
+          ksParts.map((_, i) => boundary[`__ks_${i}`] ?? null),
+        );
+      }
+      if (cursorMode) {
+        for (const r of pageRows) {
+          for (let i = 0; i < ksParts.length; i++) delete r[`__ks_${i}`];
+        }
+      }
+
       const locale = c.req.query("locale") ?? null;
       const defaultLocale =
         locale && locale !== "*" && hasI18nField(collection.fields)
@@ -950,10 +1043,10 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
           limit: q.limit,
           offset: q.offset,
         },
-        count: rows.length,
-        ids: rows.slice(0, 50).map((r) => r[collection.pkColumn] ?? null),
+        count: pageRows.length,
+        ids: pageRows.slice(0, 50).map((r) => r[collection.pkColumn] ?? null),
       });
-      const data = rows.map((r) => {
+      const data = pageRows.map((r) => {
         const out = localizeRow(
           deserializeRow(
             r,
@@ -985,7 +1078,11 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       return c.json({
         data,
         limit: q.limit,
-        offset: q.offset,
+        // Keyset mode replaces offset with next_cursor; offset stays for the
+        // classic path so existing clients see the same envelope.
+        ...(cursorMode
+          ? { has_more: hasMore, next_cursor: nextCursor }
+          : { offset: q.offset, has_more: hasMore }),
         ...(metaOut ? { meta: metaOut } : {}),
       });
     },

@@ -31,6 +31,14 @@ export interface ParsedQuery {
   expandSubs: Map<string, Set<string>>;
   limit: number;
   offset: number;
+  /**
+   * Keyset-pagination cursor. `null` = caller did not opt in (classic offset
+   * paging, unchanged). `""` = cursor mode requested with no boundary yet
+   * (first page — the handler appends an `id` tiebreaker, emits `next_cursor`).
+   * A non-empty value is the opaque base64url boundary tuple of the previous
+   * page's last row (see services/items/keyset.ts).
+   */
+  cursor: string | null;
   meta: { filterCount: boolean; totalCount: boolean };
   /**
    * Raw `?q=` needle when the collection has full-text search active — the
@@ -402,6 +410,9 @@ export const parseQuery = (
     Math.max(1, Number(params.get("limit") ?? 50) || 50),
   );
   const offset = Math.max(0, Number(params.get("offset") ?? 0) || 0);
+  // `?cursor` present (even empty) switches the list handler into keyset mode;
+  // `params.get` returns "" for `?cursor=` and null when the key is absent.
+  const cursor = params.has("cursor") ? (params.get("cursor") ?? "") : null;
 
   const metaRaw = params.get("meta") ?? "";
   const metaParts = new Set(metaRaw.split(",").map((s) => s.trim()));
@@ -410,7 +421,7 @@ export const parseQuery = (
     totalCount: metaParts.has("total_count") || metaParts.has("*"),
   };
 
-  return { filter, sort, fields: fieldsList, expand, expandSubs, limit, offset, meta, search };
+  return { filter, sort, fields: fieldsList, expand, expandSubs, limit, offset, cursor, meta, search };
 };
 
 /**

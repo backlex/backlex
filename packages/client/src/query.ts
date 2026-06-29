@@ -140,6 +140,7 @@ export class QueryBuilder<T extends Record<string, unknown>> {
   private _expand: string[] = [];
   private _limit?: number;
   private _offset?: number;
+  private _cursor?: string;
   private _meta?: "filter_count" | "total_count" | "*";
   private _locale?: string;
   private _q?: string;
@@ -191,6 +192,12 @@ export class QueryBuilder<T extends Record<string, unknown>> {
     this._offset = n;
     return this;
   }
+  /** Keyset (seek) pagination — pass `""` for the first page, then echo each
+   *  response's `next_cursor`. Flat latency at any depth; supersedes `offset`. */
+  cursor(c: string): this {
+    this._cursor = c;
+    return this;
+  }
   /** Ask the server for a count alongside the page (`filter_count` / `total_count`). */
   withMeta(m: "filter_count" | "total_count" | "*"): this {
     this._meta = m;
@@ -205,6 +212,7 @@ export class QueryBuilder<T extends Record<string, unknown>> {
     if (this._expand.length) q.expand = this._expand;
     if (this._limit !== undefined) q.limit = this._limit;
     if (this._offset !== undefined) q.offset = this._offset;
+    if (this._cursor !== undefined) q.cursor = this._cursor;
     if (this._meta) q.meta = this._meta;
     if (this._locale) q.locale = this._locale;
     if (this._q) q.q = this._q;

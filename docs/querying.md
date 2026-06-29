@@ -180,16 +180,50 @@ automatically.
 
 ## Pagination
 
-`limit` is clamped to `[1, 200]` (default `50`); `offset` is non-negative
-(default `0`). The hard cap is server-side — `limit=1000` silently
-becomes `200`.
+Two modes. `limit` is clamped to `[1, 200]` (default `50`) in both — the hard
+cap is server-side, so `limit=1000` silently becomes `200`.
+
+**Offset (default).** `offset` is non-negative (default `0`). Simple and
+random-access (jump to any page), but O(offset): the engine walks and discards
+every skipped row before the page window, so deep pages get linearly slower,
+and a concurrent insert can shift rows across page boundaries (a row seen twice
+or skipped). Fine for shallow, human-paged admin lists.
+
+**Keyset / cursor (`cursor`).** Opt in by sending the `cursor` param — pass an
+empty value (`?cursor=`) for the first page, then echo back each response's
+`next_cursor` to page forward. The server appends a unique `id` tiebreaker to
+your `sort` and *seeks* straight past the previous page's last row instead of
+counting from zero, so every page is O(page size) regardless of depth and is
+stable under concurrent inserts. This is the right mode for feeds, infinite
+scroll, and exporting a whole collection. When `cursor` is present `offset` is
+ignored, and the response carries `next_cursor` (null on the last page) instead
+of `offset`.
+
+```jsonc
+// page 1
+GET /api/items/orders?sort=-created_at&limit=50&cursor=
+// → { "data": [...], "limit": 50, "has_more": true, "next_cursor": "eyJ2Ijp…" }
+
+// page 2 — echo the cursor back
+GET /api/items/orders?sort=-created_at&limit=50&cursor=eyJ2Ijp…
+```
+
+`has_more` is returned in **both** modes (`true` when a further page exists). It
+costs no extra query: the handler fetches `limit + 1` rows and reports whether
+the spare row showed up. The cursor is opaque base64url — don't parse it; it is
+only valid for the exact `sort` it was minted under, and a stale/edited cursor
+is a `422`, not a `500`. Keyset assumes the leading sort columns are non-null
+(the default `created_at` + `id` tiebreaker always are); sorting a cursor page
+on a nullable column is the caller's risk.
 
 ## Metadata (`meta`)
 
 `meta=filter_count` adds `meta.filter_count` (rows matching `filter` +
 permission + tenant scope). `meta=total_count` adds `meta.total_count`
 (rows matching permission + tenant scope only — the caller's full
-slice). `meta=*` gives both. Each count is one extra `SELECT COUNT(*)`.
+slice). `meta=*` gives both. Each count is one extra `SELECT COUNT(*)`, only
+run when requested — prefer `has_more` (free) when you just need "is there
+another page?" rather than an exact total.
 
 ## Localized fields (`locale`)
 

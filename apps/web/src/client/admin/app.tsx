@@ -520,7 +520,6 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pushToast]);
 
   // Realtime page selection lifted here so the subscription can follow whichever

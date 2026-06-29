@@ -184,7 +184,6 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
       .catch(() => { /* leave cache empty; sub dropdown will say "Target unavailable" */ })
       .finally(() => { if (!cancelled) setTargetLoading(false); });
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [field, needsTargetDrill, fieldDef.to]);
 
   // Leaf field — the one that actually drives op list + value parsing.
@@ -196,7 +195,7 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
   const [op, setOp] = useState(ops[0]);
   const [val, setVal] = useState("");
 
-  useEffect(() => { setOp(ops[0]); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [field, nestedSub]);
+  useEffect(() => { setOp(ops[0]); }, [field, nestedSub]);
 
   const canSubmit = !needsTargetDrill || !!nestedSub;
 

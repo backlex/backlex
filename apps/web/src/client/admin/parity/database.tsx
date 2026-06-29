@@ -373,7 +373,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
       pushToast?.((e as Error).message);
     }
   };
-  useEffect(() => { void reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { void reload(); }, []);
   const backupNow = async () => {
     try {
       await dbAdminApi.backupNow();

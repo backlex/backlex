@@ -23,10 +23,13 @@ import { mountSpa } from "../lib/spa";
 // `setInterval`-based scheduler (self-host) + the single idempotent tick the
 // managed `Deno.cron` path reuses.
 import { cronTick, startBunScheduler } from "../services/scheduler";
-import type { Env } from "../env";
+import { type Env, envFromSource } from "../env";
 
 type DenoGlobal = {
-  env: { get(key: string): string | undefined };
+  env: {
+    get(key: string): string | undefined;
+    toObject(): Record<string, string>;
+  };
   serve: (opts: { port: number }, handler: (req: Request) => Response | Promise<Response>) => unknown;
   cron?: (
     name: string,
@@ -40,36 +43,9 @@ if (!deno) throw new Error("deno.ts entry must run on Deno");
 const e = (key: string): string | undefined => deno.env.get(key);
 
 const env: Env = {
+  ...envFromSource(deno.env.toObject()),
   APP_URL: e("APP_URL") ?? "http://localhost:5173",
   AUTH_SECRET: e("AUTH_SECRET") ?? "dev-secret-change-me",
-  DATABASE_URL: e("DATABASE_URL"),
-  DATABASE_DRIVER: e("DATABASE_DRIVER") as Env["DATABASE_DRIVER"],
-  LIBSQL_URL: e("LIBSQL_URL"),
-  LIBSQL_AUTH_TOKEN: e("LIBSQL_AUTH_TOKEN"),
-  OPENAI_API_KEY: e("OPENAI_API_KEY"),
-  RESEND_API_KEY: e("RESEND_API_KEY"),
-  EMAIL_FROM: e("EMAIL_FROM"),
-  OAUTH_GOOGLE_CLIENT_ID: e("OAUTH_GOOGLE_CLIENT_ID"),
-  OAUTH_GOOGLE_CLIENT_SECRET: e("OAUTH_GOOGLE_CLIENT_SECRET"),
-  OAUTH_GITHUB_CLIENT_ID: e("OAUTH_GITHUB_CLIENT_ID"),
-  OAUTH_GITHUB_CLIENT_SECRET: e("OAUTH_GITHUB_CLIENT_SECRET"),
-  OAUTH_APPLE_CLIENT_ID: e("OAUTH_APPLE_CLIENT_ID"),
-  OAUTH_APPLE_CLIENT_SECRET: e("OAUTH_APPLE_CLIENT_SECRET"),
-  AUTH_PLUGINS: e("AUTH_PLUGINS"),
-  EXTRA_TRUSTED_ORIGINS: e("EXTRA_TRUSTED_ORIGINS"),
-  FUNCTIONS_FETCH_ALLOW: e("FUNCTIONS_FETCH_ALLOW"),
-  FUNCTIONS_EXEC_URL: e("FUNCTIONS_EXEC_URL"),
-  SANDBOX_RPC_TOKEN: e("SANDBOX_RPC_TOKEN"),
-  SELF_URL: e("SELF_URL"),
-  CRON_SECRET: e("CRON_SECRET"),
-  S3_BUCKET: e("S3_BUCKET"),
-  S3_REGION: e("S3_REGION"),
-  S3_ENDPOINT: e("S3_ENDPOINT"),
-  S3_ACCESS_KEY_ID: e("S3_ACCESS_KEY_ID"),
-  S3_SECRET_ACCESS_KEY: e("S3_SECRET_ACCESS_KEY"),
-  UPSTASH_REDIS_REST_URL: e("UPSTASH_REDIS_REST_URL"),
-  UPSTASH_REDIS_REST_TOKEN: e("UPSTASH_REDIS_REST_TOKEN"),
-  R2_PUBLIC_BASE: e("R2_PUBLIC_BASE"),
 };
 
 const app = createApp(env);

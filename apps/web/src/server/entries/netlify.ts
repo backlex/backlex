@@ -28,47 +28,29 @@
 import { timingSafeEqual } from "../lib/timing";
 import { createApp } from "../app";
 import { cronTick } from "../services/scheduler";
-import type { Env } from "../env";
+import { type Env, envFromSource } from "../env";
 
 const denoEnv = (key: string): string | undefined => {
   const d = (globalThis as { Deno?: { env: { get(k: string): string | undefined } } }).Deno;
   return d?.env.get(key) ?? (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.[key];
 };
 
+// Merge whichever env source this isolate exposes (Netlify Node functions use
+// process.env; the experimental Deno path uses Deno.env) into one record the
+// shared mapper can read.
+const envSource = (): Record<string, string | undefined> => {
+  const d = (globalThis as { Deno?: { env: { toObject(): Record<string, string> } } }).Deno;
+  const p = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+  return d ? { ...p, ...d.env.toObject() } : p;
+};
+
 const buildEnv = (): Env => ({
+  ...envFromSource(envSource()),
   APP_URL: denoEnv("APP_URL") ?? "http://localhost:5173",
   AUTH_SECRET: denoEnv("AUTH_SECRET") ?? "dev-secret-change-me",
-  DATABASE_URL: denoEnv("DATABASE_URL"),
-  DATABASE_DRIVER: denoEnv("DATABASE_DRIVER") as Env["DATABASE_DRIVER"],
-  LIBSQL_URL: denoEnv("LIBSQL_URL"),
-  LIBSQL_AUTH_TOKEN: denoEnv("LIBSQL_AUTH_TOKEN"),
-  CRON_SECRET: denoEnv("CRON_SECRET"),
-  OPENAI_API_KEY: denoEnv("OPENAI_API_KEY"),
-  RESEND_API_KEY: denoEnv("RESEND_API_KEY"),
-  EMAIL_FROM: denoEnv("EMAIL_FROM"),
-  OAUTH_GOOGLE_CLIENT_ID: denoEnv("OAUTH_GOOGLE_CLIENT_ID"),
-  OAUTH_GOOGLE_CLIENT_SECRET: denoEnv("OAUTH_GOOGLE_CLIENT_SECRET"),
-  OAUTH_GITHUB_CLIENT_ID: denoEnv("OAUTH_GITHUB_CLIENT_ID"),
-  OAUTH_GITHUB_CLIENT_SECRET: denoEnv("OAUTH_GITHUB_CLIENT_SECRET"),
-  OAUTH_APPLE_CLIENT_ID: denoEnv("OAUTH_APPLE_CLIENT_ID"),
-  OAUTH_APPLE_CLIENT_SECRET: denoEnv("OAUTH_APPLE_CLIENT_SECRET"),
-  AUTH_PLUGINS: denoEnv("AUTH_PLUGINS"),
-  FUNCTIONS_FETCH_ALLOW: denoEnv("FUNCTIONS_FETCH_ALLOW"),
-  FUNCTIONS_EXEC_URL: denoEnv("FUNCTIONS_EXEC_URL"),
-  SANDBOX_RPC_TOKEN: denoEnv("SANDBOX_RPC_TOKEN"),
+  // Netlify injects the site URL as `URL`; fall back to it for the executor
+  // RPC callback origin.
   SELF_URL: denoEnv("SELF_URL") ?? denoEnv("URL"),
-  S3_BUCKET: denoEnv("S3_BUCKET"),
-  S3_REGION: denoEnv("S3_REGION"),
-  S3_ENDPOINT: denoEnv("S3_ENDPOINT"),
-  S3_ACCESS_KEY_ID: denoEnv("S3_ACCESS_KEY_ID"),
-  S3_SECRET_ACCESS_KEY: denoEnv("S3_SECRET_ACCESS_KEY"),
-  UPSTASH_REDIS_REST_URL: denoEnv("UPSTASH_REDIS_REST_URL"),
-  UPSTASH_REDIS_REST_TOKEN: denoEnv("UPSTASH_REDIS_REST_TOKEN"),
-  R2_PUBLIC_BASE: denoEnv("R2_PUBLIC_BASE"),
-  LOG_LEVEL: denoEnv("LOG_LEVEL"),
-  API_RATE_LIMIT_MAX: denoEnv("API_RATE_LIMIT_MAX"),
-  API_RATE_LIMIT_WINDOW_MS: denoEnv("API_RATE_LIMIT_WINDOW_MS"),
-  API_RATE_LIMIT_DISABLED: denoEnv("API_RATE_LIMIT_DISABLED"),
 });
 
 const app = createApp(buildEnv());

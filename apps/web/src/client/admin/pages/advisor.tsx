@@ -179,7 +179,7 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
           </div>
         </div>
         <div className="flex flex-col gap-3.5">
-          <div className="grid grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
             <SummaryCard
               counts={counts.security}
               active={tab === "security"}
@@ -277,7 +277,7 @@ function SummaryCard({
         <IconComp size={15} />
         <span className="text-[13px] font-medium">{label}</span>
       </div>
-      <div className="flex gap-4">
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
         <span className="flex items-center gap-1.5 text-xs">
           <span className="inline-block size-2 rounded-full bg-destructive" />
           <span className="font-mono tabular-nums">{counts.error}</span>

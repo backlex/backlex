@@ -9073,6 +9073,10 @@ msgid "SP URLs <0>(paste into the IdP console)</0>"
 msgstr "SP URL'leri <0>(IdP konsoluna yapıştırın)</0>"
 
 #: src/client/admin/pages/traces.tsx
+msgid "span"
+msgstr "span"
+
+#: src/client/admin/pages/traces.tsx
 msgid "Spans"
 msgstr "Span’ler"
 

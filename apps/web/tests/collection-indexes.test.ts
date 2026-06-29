@@ -77,4 +77,58 @@ describe("collection field indexes", () => {
     expect(names).toContain(`${table}_country_idx`);
     expect(names).toContain(`${table}_email_idx`); // still there, no error
   });
+
+  test("collection gets a (tenant_id, created_at, id) keyset composite index", () => {
+    // Backs the default `-created_at` ordering and keyset seeks so deep pages
+    // stay index-only instead of full-scanning.
+    expect(indexNames()).toContain(`${table}_keyset_idx`);
+  });
+});
+
+describe("relation FK auto-indexing", () => {
+  let h: TestHarness;
+  const target = `cat_${Date.now()}`;
+  const slug = `prod_${Date.now()}`;
+  let table = "";
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ slug: target, fields: [{ name: "name", type: "text" }] }),
+    });
+    const res = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        slug,
+        fields: [
+          { name: "title", type: "text" },
+          // to-one relation — NOT flagged `indexed`; it should still be indexed
+          // because the FK column is what every expand/nested-filter JOINs on.
+          { name: "category", type: "relation", to: target },
+        ],
+      }),
+    });
+    expect(res.status).toBe(201);
+    table = ((await res.json()) as { data: { physicalTable: string } }).data.physicalTable;
+  });
+  afterAll(() => h.cleanup());
+
+  test("to-one relation FK is indexed even without indexed:true", () => {
+    const db = new Database(h.env.SQLITE_PATH!, { readonly: true });
+    try {
+      const names = db
+        .query<{ name: string }, [string]>(
+          "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name = ?",
+        )
+        .all(table)
+        .map((r) => r.name);
+      expect(names).toContain(`${table}_category_idx`);
+    } finally {
+      db.close();
+    }
+  });
 });

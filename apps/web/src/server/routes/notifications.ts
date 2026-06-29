@@ -11,6 +11,15 @@ import { sendPushToUsers } from "../services/push";
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.notifications : sqlite.schema.notifications;
 
+/** Notifications — including broadcasts (`user_id NULL`) — are workspace-scoped.
+ *  Every read/update pins `tenant_id` so a broadcast created in tenant A is not
+ *  visible to (or markable by) a user acting in tenant B. */
+const requireTenant = (c: { get: (k: string) => any }): string => {
+  const tenantId = c.get("auth")?.tenantId ?? null;
+  if (!tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
+  return tenantId;
+};
+
 const NotificationInput = z
   .object({
     title: z.string().min(1),
@@ -76,12 +85,16 @@ export const notificationsRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
+      const tenantId = requireTenant(c);
       const t = tableFor(ctx.dialect);
       const onlyUnread = c.req.query("unread") === "1";
       const limit = Math.min(200, Number(c.req.query("limit") ?? "50"));
-      const myConds = auth.userId
-        ? or(eq(t.userId, auth.userId), isNull(t.userId))
-        : isNull(t.userId);
+      const myConds = and(
+        eq(t.tenantId, tenantId),
+        auth.userId
+          ? or(eq(t.userId, auth.userId), isNull(t.userId))
+          : isNull(t.userId),
+      );
       const where = onlyUnread ? and(myConds, isNull(t.readAt)) : myConds;
       const rows = await (ctx.db as any)
         .select()
@@ -117,8 +130,10 @@ export const notificationsRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
+      const tenantId = requireTenant(c);
       const t = tableFor(ctx.dialect);
       const where = and(
+        eq(t.tenantId, tenantId),
         auth.userId
           ? or(eq(t.userId, auth.userId), isNull(t.userId))
           : isNull(t.userId),
@@ -162,6 +177,7 @@ export const notificationsRoutes = new OpenAPIHono<AppBindings>()
       // Admin-only ad-hoc post — anyone signed in can write only to themselves.
       const ctx = c.get("ctx");
       const auth = c.get("auth");
+      const tenantId = requireTenant(c);
       const body = c.req.valid("json");
       const isAdmin = auth.roles.includes("admin");
       if (!isAdmin && body.userId && body.userId !== auth.userId) {
@@ -175,6 +191,7 @@ export const notificationsRoutes = new OpenAPIHono<AppBindings>()
       const now = ctx.dialect === "pg" ? new Date() : Date.now();
       await (ctx.db as any).insert(t).values({
         id,
+        tenantId,
         userId: body.userId ?? auth.userId ?? null,
         title: body.title,
         body: body.body ?? null,
@@ -216,6 +233,7 @@ export const notificationsRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
+      const tenantId = requireTenant(c);
       const t = tableFor(ctx.dialect);
       const { id } = c.req.valid("param");
       const now = ctx.dialect === "pg" ? new Date() : Date.now();
@@ -225,6 +243,7 @@ export const notificationsRoutes = new OpenAPIHono<AppBindings>()
         .where(
           and(
             eq(t.id, id),
+            eq(t.tenantId, tenantId),
             auth.userId
               ? or(eq(t.userId, auth.userId), isNull(t.userId))
               : isNull(t.userId),
@@ -249,6 +268,7 @@ export const notificationsRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
+      const tenantId = requireTenant(c);
       const t = tableFor(ctx.dialect);
       const now = ctx.dialect === "pg" ? new Date() : Date.now();
       await (ctx.db as any)
@@ -256,6 +276,7 @@ export const notificationsRoutes = new OpenAPIHono<AppBindings>()
         .set({ readAt: now })
         .where(
           and(
+            eq(t.tenantId, tenantId),
             auth.userId
               ? or(eq(t.userId, auth.userId), isNull(t.userId))
               : isNull(t.userId),

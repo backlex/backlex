@@ -22,6 +22,21 @@ export const requireAdminMw: MiddlewareHandler<AppBindings> = async (c, next) =>
   await next();
 };
 
+/** Reject workspace end-users (plane = "app"). Operator/control-plane actions —
+ *  schema DDL, template apply, admin config — must never be reachable by a
+ *  tenant's own customers, even though their bearer token passes `requireUser`
+ *  and `tenantMiddleware` pins them to a workspace. Run before `requireAdminMw`
+ *  so an app-plane caller is denied on the plane, not on the (empty) role set. */
+export const requirePlatformMw: MiddlewareHandler<AppBindings> = async (
+  c,
+  next,
+) => {
+  if (c.get("auth")?.plane !== "platform") {
+    throw new AppError("FORBIDDEN", "Operator access required");
+  }
+  await next();
+};
+
 /** Gate user-targeted routes on workspace membership: a tenant admin can
  *  only suspend / activate / revoke / remove users who belong to the
  *  active workspace, even though `users` and `sessions` are global. */

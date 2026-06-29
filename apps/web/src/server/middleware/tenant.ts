@@ -1,6 +1,6 @@
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, ne, or } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
@@ -114,9 +114,10 @@ const isMember = async (
   tenantId: string,
   userId: string,
 ): Promise<boolean> => {
-  // Existence-only check (status changes like suspend don't flip it), so it's
-  // safe to cache per isolate; invalidated on membership add/remove via
-  // invalidateTenantMembership.
+  // "Active member" check: a `suspended` membership is treated as NON-member so
+  // suspension actually revokes workspace access on the request path (re-login
+  // no longer restores it). Cached per isolate; the suspend/activate handlers
+  // call invalidateTenantMembership so a status flip is felt immediately.
   const cacheKey = { tenantId, userId };
   const cached = getCachedMembership(cacheKey);
   if (cached !== undefined) return cached;
@@ -124,11 +125,43 @@ const isMember = async (
   const rows = (await (db as any)
     .select({ id: m.id })
     .from(m)
-    .where(and(eq(m.tenantId, tenantId), eq(m.userId, userId)))
+    .where(
+      and(
+        eq(m.tenantId, tenantId),
+        eq(m.userId, userId),
+        ne(m.status, "suspended"),
+      ),
+    )
     .limit(1)) as { id: string }[];
   const result = rows.length > 0;
   setCachedMembership(cacheKey, result);
   return result;
+};
+
+/** Does this user hold a *suspended* membership row in this tenant? Used only on
+ *  the membership-failure path to deny the cross-tenant super-admin shortcut to
+ *  a banned member (a non-member viewing a foreign workspace has no row at all,
+ *  status 'none', and must keep the shortcut). Uncached — the failure path is
+ *  rare, so a fresh read is cheap and always reflects the live status. */
+const isSuspendedMember = async (
+  db: unknown,
+  dialect: "pg" | "sqlite",
+  tenantId: string,
+  userId: string,
+): Promise<boolean> => {
+  const m = tablesFor(dialect).members;
+  const rows = (await (db as any)
+    .select({ id: m.id })
+    .from(m)
+    .where(
+      and(
+        eq(m.tenantId, tenantId),
+        eq(m.userId, userId),
+        eq(m.status, "suspended"),
+      ),
+    )
+    .limit(1)) as { id: string }[];
+  return rows.length > 0;
 };
 
 /** Lightweight existence check for a tenant id. Used only by the cross-tenant
@@ -154,10 +187,13 @@ const firstUserTenant = async (
   userId: string,
 ): Promise<string | null> => {
   const m = tablesFor(dialect).members;
+  // Skip suspended memberships so a suspended user isn't auto-routed back into
+  // the workspace they were just removed from (they fall through to the default
+  // tenant / denial instead).
   const rows = (await (db as any)
     .select({ tenantId: m.tenantId })
     .from(m)
-    .where(eq(m.userId, userId))
+    .where(and(eq(m.userId, userId), ne(m.status, "suspended")))
     .limit(1)) as { tenantId: string }[];
   return rows[0]?.tenantId ?? null;
 };
@@ -327,15 +363,24 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
         // request (the resolver would still deny on permissions, but audit
         // logs / route handlers that trust `auth.tenantId` would see a bogus
         // id). For non-admins membership already failed → tenantId nulled.
-        const [globalRoles, exists] = await Promise.all([
+        const [globalRoles, exists, suspendedHere] = await Promise.all([
           loadUnfilteredRoleNames(
             { db, dialect },
             auth.userId,
             auth.apiKeyRoleId ?? null,
           ),
           tenantExists(db, dialect, tenantId),
+          isSuspendedMember(db, dialect, tenantId, auth.userId),
         ]);
-        if (globalRoles.includes("admin") && exists && !auth.apiKeyId) {
+        // A suspended member is denied even if they hold an admin role: the
+        // super-admin shortcut is only for genuine non-members (status 'none')
+        // viewing a foreign workspace, never for someone banned from this one.
+        if (
+          globalRoles.includes("admin") &&
+          exists &&
+          !auth.apiKeyId &&
+          !suspendedHere
+        ) {
           // API keys never get the cross-tenant super-admin bypass: an
           // admin-owned key is confined to workspaces the key is actually
           // scoped to (its home tenant), not every workspace the owner can

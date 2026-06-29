@@ -1037,12 +1037,25 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         throw new AppError("UNAUTHORIZED", "Active tenant required");
       }
       const body = c.req.valid("json");
+      // Match list/get/search visibility: always hide soft-deleted rows, and
+      // hide drafts unless the caller can see them (admin or holds publish/
+      // update). Without this, a non-privileged caller could use COUNT/MIN/MAX
+      // as an oracle over rows they can't read.
+      const canSeeDrafts =
+        Boolean(perm.isAdmin) ||
+        (await resolvePermission(ctx, auth, slug, "publish")).allowed ||
+        (await resolvePermission(ctx, auth, slug, "update")).allowed;
       const data = await runItemsAggregate(
         ctx,
         auth,
         auth.tenantId,
         { collection: slug, ...body },
-        { permWhere: perm.whereSql, allowedFields: perm.fields },
+        {
+          permWhere: perm.whereSql,
+          allowedFields: perm.fields,
+          excludeSoftDeleted: true,
+          excludeDrafts: !canSeeDrafts,
+        },
       );
       return c.json({ data });
     },

@@ -198,7 +198,6 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
       if (!cancelled) setLoaded(true);
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pushToast]);
 
   const removeSamlProvider = (id: string) => {

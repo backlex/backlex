@@ -117,7 +117,6 @@ export function DisplayTemplateEditor({
   // Refresh) — but not for our own edits, which already match `value`.
   useEffect(() => {
     if (value !== serializeSegments(segments)) setSegments(seed(value));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   useEffect(() => {

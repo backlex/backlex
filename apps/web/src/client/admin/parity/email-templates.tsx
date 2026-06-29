@@ -60,7 +60,6 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onSelect = async (t: Tpl) => {

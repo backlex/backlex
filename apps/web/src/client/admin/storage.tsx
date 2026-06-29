@@ -220,7 +220,6 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folder, debouncedSearch, selectedFolderId]);
 
   /** Append the next page in place. Triggered by the "Load more" button. */
@@ -579,7 +578,6 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folder]);
 
   const openNewFolder = () => {
@@ -1352,7 +1350,6 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
     // f.key is the row identity; we only resync when the *file* changes,
     // not on every metadata update from the optimistic patch (otherwise
     // typing into the description would get wiped by our own save).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [f.key]);
   const metaDirty =
     (fileMeta.name ?? "") !== metaName ||

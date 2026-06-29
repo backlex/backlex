@@ -58,7 +58,6 @@ export function useLiveQuery<T extends Record<string, unknown> = Record<string, 
     );
     return unsub;
     // `key` captures slug+opts; `client` is the only other dep.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, key]);
 
   return { data, loading, error };

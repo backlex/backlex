@@ -465,7 +465,6 @@ function ErdCanvas({
         },
       };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collections, layout, validSlugs, handleOpen, handleAddField, handleEditField, handleDropField]);
 
   const buildEdges = useCallback((): Edge[] => {

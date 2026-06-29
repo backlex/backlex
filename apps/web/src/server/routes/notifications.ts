@@ -5,6 +5,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { parsePagination } from "../lib/pagination";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { sendPushToUsers } from "../services/push";
 
@@ -88,7 +89,7 @@ export const notificationsRoutes = new OpenAPIHono<AppBindings>()
       const tenantId = requireTenant(c);
       const t = tableFor(ctx.dialect);
       const onlyUnread = c.req.query("unread") === "1";
-      const limit = Math.min(200, Number(c.req.query("limit") ?? "50"));
+      const { limit } = parsePagination(c);
       const myConds = and(
         eq(t.tenantId, tenantId),
         auth.userId

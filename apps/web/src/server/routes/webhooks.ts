@@ -8,6 +8,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { fireDelivery, listDeliveries, retryDelivery } from "../services/webhooks";
 import { logActivity } from "../services/activity";
+import { parsePagination } from "../lib/pagination";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -189,7 +190,7 @@ export const webhooksRoutes = new OpenAPIHono<AppBindings>()
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c);
       const webhookId = c.req.query("webhookId") || undefined;
-      const limit = Number(c.req.query("limit") ?? "50");
+      const { limit } = parsePagination(c);
       const data = await listDeliveries(ctx, { webhookId, limit, tenantId });
       return c.json({ data });
     },

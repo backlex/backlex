@@ -2,6 +2,7 @@ import { Hono, type MiddlewareHandler } from "hono";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
+import { parsePagination } from "../lib/pagination";
 import {
   guardLogicalKey,
   physicalKey,
@@ -172,12 +173,8 @@ export const uploadsRoutes = new Hono<AppBindings>()
     const ctx = c.get("ctx");
     const tenantId = requireTenantId(c.get("auth"));
     const status = c.req.query("status") as UploadStatus | undefined;
-    const limit = Number(c.req.query("limit") ?? "100");
-    const rows = await listUploads(ctx, {
-      tenantId,
-      status,
-      limit: Number.isFinite(limit) ? limit : 100,
-    });
+    const { limit } = parsePagination(c, { defaultLimit: 100 });
+    const rows = await listUploads(ctx, { tenantId, status, limit });
     return c.json({ uploads: rows.map(toView) });
   })
   // HEAD = TUS offset probe (clients HEAD before resuming); GET = JSON

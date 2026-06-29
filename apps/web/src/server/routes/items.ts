@@ -12,6 +12,7 @@ import {
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
 import { parseQuery, resolveProjection } from "../lib/query";
+import { ifNoneMatch, weakETag } from "../lib/etag";
 import { resolvePermission } from "../services/permissions";
 import { publishEvent } from "../services/events";
 import { elapsedMs, keepAlive, recordActivity, requestMeta } from "../services/activity";
@@ -1741,6 +1742,7 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
             "application/json": { schema: z.object({ data: ItemRow }) },
           },
         },
+        304: { description: "Not Modified (If-None-Match matched the ETag)" },
         ...errorResponses,
       },
     }),
@@ -1890,6 +1892,34 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         sql`SELECT ${selectCols} FROM ${fromClause} ${whereOf(pkWhere, perm.whereSql, tenantWhere, deletedWhere, draftWhere)} LIMIT 1`,
       );
       if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
+      // Conditional GET. The weak ETag keys on the row's version (`updated_at`)
+      // plus everything that changes the body — the query params and the
+      // caller's field allow-list — so a different locale/expand/role can't
+      // collide on the same validator. We only emit it when `updated_at` is
+      // present: without a version column a stable ETag would 304 even after
+      // the row changed (a staleness bug), so those reads just skip caching.
+      // `private` + `no-cache` (always revalidate) keeps it per-user and never
+      // lets a shared cache serve it; `Vary` nails the auth dimension.
+      const version = rows[0]["updated_at"];
+      if (version != null) {
+        const etag = weakETag([
+          "item",
+          collection.slug,
+          rows[0][collection.pkColumn] as string | undefined,
+          version as string | number,
+          c.req.query("locale") ?? "",
+          c.req.query("expand") ?? "",
+          c.req.query("status") ?? "",
+          perm.fields ? [...perm.fields].sort().join(",") : "*",
+        ]);
+        c.header("ETag", etag);
+        c.header("Cache-Control", "private, no-cache");
+        c.header("Vary", "Authorization, Cookie");
+        if (ifNoneMatch(c.req.header("if-none-match"), etag)) {
+          // Client already holds this version — skip expand + serialization.
+          return c.body(null, 304);
+        }
+      }
       const locale = c.req.query("locale") ?? null;
       const defaultLocale =
         locale && locale !== "*" && hasI18nField(collection.fields)

@@ -5,7 +5,7 @@
 // records a span per request, and functions re-emit the header — so a request
 // that calls back into the API shows up as a multi-span trace. Click a row to
 // open the waterfall (GET /api/admin/traces/:traceId).
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, EmptyState, PageHeader } from "../ui";
@@ -58,6 +58,9 @@ export function TracesPage({
   const [errorsOnly, setErrorsOnly] = useState(false);
   const [live, setLive] = useState(false);
   const [openTrace, setOpenTrace] = useState<ApiTraceSummary | null>(null);
+  // Touch scrolling can fire a click on a row; only open the detail when the
+  // pointer barely moved between down and up (an intentional tap, not a drag).
+  const pointerDown = useRef<{ x: number; y: number } | null>(null);
 
   const filters = useMemo(
     () => ({ path: path.trim() || undefined, minStatus: errorsOnly ? 400 : undefined, limit: 100 }),
@@ -153,7 +156,12 @@ export function TracesPage({
             {traces.map((tr) => (
               <TableRow
                 key={tr.traceId}
-                onClick={() => setOpenTrace(tr)}
+                onPointerDown={(e) => { pointerDown.current = { x: e.clientX, y: e.clientY }; }}
+                onClick={(e) => {
+                  const d = pointerDown.current;
+                  if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10) return;
+                  setOpenTrace(tr);
+                }}
                 className="cursor-pointer"
               >
                 <TableCell className="whitespace-nowrap text-muted-foreground">
@@ -202,7 +210,7 @@ function TraceDetail({
   // the "root" badge so the endpoint isn't printed twice.
   return (
     <Dialog open={!!trace} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-w-2xl flex-col overflow-hidden">
+      <DialogContent className="flex flex-col overflow-hidden [&>*]:min-w-0 sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="break-all font-mono text-[13px]">
             {trace?.name ?? <Trans>Trace</Trans>}
@@ -224,9 +232,21 @@ function TraceDetail({
                 <Trans>No spans recorded for this trace.</Trans>
               </p>
             ) : (
-              spans.map((s) => (
-                <SpanBar key={s.id} span={s} min={min} total={total} />
-              ))
+              <>
+                {/* Time axis over the bar column so the colored bars read as a
+                    timeline (length = duration, offset = when it ran). */}
+                <div className="grid grid-cols-[minmax(0,1fr)_2fr_auto] items-center gap-2 px-1 text-[10px] text-muted-foreground">
+                  <span><Trans>span</Trans></span>
+                  <div className="flex justify-between font-mono tabular-nums">
+                    <span>0ms</span>
+                    <span>{total}ms</span>
+                  </div>
+                  <span className="w-12" />
+                </div>
+                {spans.map((s) => (
+                  <SpanBar key={s.id} span={s} min={min} total={total} />
+                ))}
+              </>
             )}
           </div>
         </ScrollArea>

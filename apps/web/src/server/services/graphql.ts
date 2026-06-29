@@ -104,6 +104,18 @@ interface GqlCtx {
    *  REST route does. Absent on schema builds that never run an agent. */
   app?: Hono;
   rawRequest?: Request;
+  /** Per-request batch loaders for to-one `relation` field resolution, keyed
+   *  by TARGET collection slug. Coalesces the per-row `WHERE id = ?` lookups a
+   *  list of N parents would otherwise fire (the classic GraphQL N+1) into one
+   *  `WHERE id IN (…)` per target. MUST be per-request — never module-global —
+   *  or one tenant's loader could serve another's rows. Lazily created. */
+  relationLoaders?: Map<string, RelationLoader>;
+}
+
+/** A minimal DataLoader: `load(id)` queues the id, a microtask flushes the
+ *  whole queue as one batched fetch, and same-id loads in a request dedupe. */
+interface RelationLoader {
+  load(id: string): Promise<unknown>;
 }
 
 const JSONScalar = new GraphQLScalarType({
@@ -192,15 +204,16 @@ const buildCollectionType = (
           const target = registry.get(f.to);
           const targetCollection = collections.find((c) => c.slug === f.to);
           if (target && targetCollection) {
-            // Resolve the related row on demand. N+1 in v1 — DataLoader
-            // batching moves to v2.
+            // Resolve the related row through the per-request batch loader so
+            // a list of N parents fires ONE `WHERE id IN (…)` for this target
+            // instead of N single-row lookups (the GraphQL N+1).
             const fieldKey = camel(f.name);
             fields[fieldKey] = {
               type: f.required ? new GraphQLNonNull(target) : target,
-              resolve: async (parent, _args, gqlCtx) => {
+              resolve: (parent, _args, gqlCtx) => {
                 const idValue = (parent as Record<string, unknown>)[fieldKey];
                 if (!idValue || typeof idValue !== "string") return null;
-                return getResolver(gqlCtx, targetCollection, idValue);
+                return getRelationLoader(gqlCtx, targetCollection).load(idValue);
               },
             };
             continue;
@@ -485,6 +498,109 @@ const listResolver = async (
       perm.fields,
     ),
   );
+};
+
+/**
+ * Build a per-request batch loader for one target collection. Every `.load(id)`
+ * call within the same microtask is coalesced into a single
+ * `SELECT * … WHERE id IN (…)`, applying the EXACT same gates as {@link
+ * getResolver} (read permission, tenant scope, row-level `perm.whereSql`,
+ * soft-delete, draft visibility, field projection) — only the round-trip count
+ * changes. This kills the N+1 a query like `{ posts { author { name } } }`
+ * would otherwise cause (one author lookup per post).
+ */
+const makeRelationLoader = (
+  gqlCtx: GqlCtx,
+  collection: CollectionRow,
+): RelationLoader => {
+  type Pending = {
+    id: string;
+    resolve: (v: unknown) => void;
+    reject: (e: unknown) => void;
+  };
+  let queue: Pending[] = [];
+  let scheduled = false;
+  // Dedupe identical ids within a request: the promise is cached so the same
+  // FK referenced by many parents resolves once.
+  const cache = new Map<string, Promise<unknown>>();
+
+  const flush = async () => {
+    const batch = queue;
+    queue = [];
+    scheduled = false;
+    try {
+      const { ctx, auth, permCache } = gqlCtx;
+      const perm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
+      if (!perm.allowed) denyOrThrow(auth, collection.slug); // always throws
+      const ids = [...new Set(batch.map((b) => b.id))];
+      const table = collection.physicalTable;
+      const wheres: SQL[] = [
+        sql`${sql.identifier("id")} IN (${sql.join(
+          ids.map((i) => sql`${i}`),
+          sql`, `,
+        )})`,
+      ];
+      const tenantWhere = gqlTenantWhere(collection, auth);
+      if (tenantWhere) wheres.push(tenantWhere);
+      if (perm.whereSql) wheres.push(perm.whereSql);
+      if (collection.softDelete) wheres.push(sql`${sql.identifier("deleted_at")} IS NULL`);
+      const draftWhere = await gqlDraftWhere(gqlCtx, collection, perm);
+      if (draftWhere) wheres.push(draftWhere);
+      const rows = await queryAll<Record<string, unknown>>(
+        ctx,
+        sql`SELECT * FROM ${sql.identifier(table)} WHERE ${sql.join(wheres, sql` AND `)}`,
+      );
+      const byId = new Map<string, unknown>();
+      for (const r of rows) {
+        byId.set(
+          String(r.id),
+          renderRow(
+            r,
+            collection.fields,
+            ctx.dialect,
+            !!collection.ownerScoped,
+            collection.hasCreatedAt,
+            collection.hasUpdatedAt,
+            perm.fields,
+          ),
+        );
+      }
+      // A row filtered out by permission/tenant/draft simply isn't in the map →
+      // null, exactly as the single-row getResolver would return.
+      for (const item of batch) item.resolve(byId.get(item.id) ?? null);
+    } catch (e) {
+      for (const item of batch) item.reject(e);
+    }
+  };
+
+  return {
+    load: (id: string) => {
+      const hit = cache.get(id);
+      if (hit) return hit;
+      const p = new Promise<unknown>((resolve, reject) => {
+        queue.push({ id, resolve, reject });
+        if (!scheduled) {
+          scheduled = true;
+          queueMicrotask(flush);
+        }
+      });
+      cache.set(id, p);
+      return p;
+    },
+  };
+};
+
+const getRelationLoader = (
+  gqlCtx: GqlCtx,
+  collection: CollectionRow,
+): RelationLoader => {
+  const loaders = (gqlCtx.relationLoaders ??= new Map());
+  let loader = loaders.get(collection.slug);
+  if (!loader) {
+    loader = makeRelationLoader(gqlCtx, collection);
+    loaders.set(collection.slug, loader);
+  }
+  return loader;
 };
 
 const getResolver = async (

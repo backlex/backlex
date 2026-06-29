@@ -166,6 +166,9 @@ const buildSearch = (q: ListQuery | undefined): string => {
   }
   if (q.limit !== undefined) params.set("limit", String(q.limit));
   if (q.offset !== undefined) params.set("offset", String(q.offset));
+  // `!== undefined` (not truthy): an empty cursor is meaningful — it requests
+  // keyset mode's first page (server keys on the param's PRESENCE).
+  if (q.cursor !== undefined) params.set("cursor", q.cursor);
   if (q.meta) params.set("meta", q.meta);
   if (q.locale) params.set("locale", q.locale);
   if (q.q) params.set("q", q.q);

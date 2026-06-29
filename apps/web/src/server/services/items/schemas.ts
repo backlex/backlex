@@ -29,6 +29,10 @@ export const ListQuery = z.object({
   }),
   limit: z.coerce.number().int().min(1).max(200).optional(),
   offset: z.coerce.number().int().min(0).optional(),
+  cursor: z.string().optional().openapi({
+    description:
+      "Keyset (seek) pagination. Pass an empty value to start; echo back the `next_cursor` from each response to page forward. O(1) per page regardless of depth and stable under concurrent inserts — unlike `offset`. When present, `offset` is ignored.",
+  }),
   meta: z.string().optional().openapi({
     description: "`filter_count`, `total_count`, or `*`.",
   }),

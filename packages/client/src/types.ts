@@ -11,7 +11,14 @@ import type { Condition } from "./condition";
 export interface ListResponse<T> {
   data: T[];
   limit: number;
-  offset: number;
+  /** Present in classic offset paging; omitted when paging by `cursor`. */
+  offset?: number;
+  /** `true` when a further page exists (server derives it from a +1
+   *  over-fetch, so it costs no extra COUNT round-trip). */
+  has_more?: boolean;
+  /** Opaque keyset cursor for the next page — only when paging by `cursor`,
+   *  `null` on the final page. Echo it back as {@link ListQuery.cursor}. */
+  next_cursor?: string | null;
   meta?: { filter_count?: number; total_count?: number };
 }
 
@@ -29,6 +36,10 @@ export interface ListQuery {
   expand?: string | string[];
   limit?: number;
   offset?: number;
+  /** Keyset (seek) pagination. Pass `""` to start, then echo back each
+   *  response's `next_cursor`. O(1) per page at any depth and stable under
+   *  concurrent inserts — unlike `offset`. When set, `offset` is ignored. */
+  cursor?: string;
   meta?: "filter_count" | "total_count" | "*";
   /** Collapse `i18n_text` fields to one locale, or `"*"` for the full map. */
   locale?: string;

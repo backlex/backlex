@@ -464,7 +464,7 @@ export const OpenApiExportPage = () => {
                               <MethodBadge key={m} method={m} />
                             ))}
                           </div>
-                          <code className="truncate font-mono text-xs text-foreground/90">
+                          <code className="min-w-0 flex-1 truncate font-mono text-xs text-foreground/90">
                             {row.path}
                           </code>
                         </div>
@@ -489,7 +489,9 @@ export const OpenApiExportPage = () => {
 
       {/* Curl-preview dialog -------------------------------------------- */}
       <Dialog open={curlOpen} onOpenChange={setCurlOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        {/* [&>*]:min-w-0 keeps the grid column from sizing to the curl line's
+            max-content and overflowing the dialog on mobile. */}
+        <DialogContent className="sm:max-w-2xl [&>*]:min-w-0">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <I.Code size={16} />
@@ -502,7 +504,7 @@ export const OpenApiExportPage = () => {
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="rounded-md" viewportClassName="max-h-[40vh]">
-            <pre className="rounded-md border bg-muted/30 p-3 font-mono text-xs">
+            <pre className="whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-3 font-mono text-xs">
               {curlText}
             </pre>
           </ScrollArea>

@@ -677,6 +677,9 @@ function PanelEditorDialog({
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewBusy, setPreviewBusy] = useState(false);
+  // Gate inline "Required." messages until the user actually attempts to create —
+  // otherwise the Collection field screams red the instant the dialog opens.
+  const [triedSubmit, setTriedSubmit] = useState(false);
 
   const trimmedName = name.trim();
   const otherNames = mode === "edit" && panel ? existing.filter((n) => n !== panel.name) : existing;
@@ -818,6 +821,7 @@ function PanelEditorDialog({
   };
 
   const submit = async () => {
+    setTriedSubmit(true);
     if (!valid || busy) return;
     setBusy(true);
     setServerErrors({});
@@ -985,7 +989,7 @@ function PanelEditorDialog({
                     placeholder={collections.length === 0 ? t`No collections` : t`Pick a collection…`}
                     options={collections.map((c) => ({ value: c.slug, label: c.slug, hint: t`${c.fields.length} fields` }))}
                   />
-                  {aggError.collection && collections.length > 0 && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{aggError.collection}</div>}
+                  {aggError.collection && (triedSubmit || trimmedName.length > 0) && collections.length > 0 && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{aggError.collection}</div>}
                   {collectionsLoaded && collections.length === 0 && (
                     <span className="text-[11.5px] text-muted-foreground"><Trans>No collections in this workspace yet — create one first, or switch <strong>Kind</strong> to <span className="font-mono">sql</span>.</Trans></span>
                   )}

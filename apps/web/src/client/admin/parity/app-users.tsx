@@ -122,12 +122,13 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
           <I.Users size={13} />
           <span className="text-[13px] font-medium"><Trans>End-users</Trans></span>
           <span className="font-mono text-[11.5px] text-muted-foreground">{rows.length}</span>
-          <div className="flex-1" />
+          {/* Spacer only on desktop so the filter can use the full row width on mobile. */}
+          <div className="hidden flex-1 sm:block" />
           <Input
             placeholder={t`Filter by email / name…`}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="min-w-0 flex-1 max-w-[240px]"
+            className="min-w-0 flex-1 sm:max-w-[240px]"
           />
         </div>
         <Table className="[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">

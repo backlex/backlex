@@ -8766,9 +8766,18 @@ msgstr "{0} tane daha göster…"
 msgid "Show active collections"
 msgstr "Etkin koleksiyonları göster"
 
+#. placeholder {0}: sessions.length
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Show all {0} sessions"
+msgstr "Tüm {0} oturumu göster"
+
 #: src/client/admin/collections-index.tsx
 msgid "Show archived collections"
 msgstr "Arşivlenmiş koleksiyonları göster"
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Show fewer"
+msgstr "Daha az göster"
 
 #. placeholder {0}: Object.keys(result.headers).length
 #: src/client/pages/rest-explorer.tsx

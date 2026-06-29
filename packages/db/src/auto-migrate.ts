@@ -38,6 +38,15 @@ interface Applier {
   db: AutoMigrateDb;
 }
 
+/** Outcome of an auto-migrate run. `failed` is non-empty when a migration hit
+ *  an error the idempotency tolerance did NOT recognise — i.e. a genuine
+ *  failure. The runner still resolves (boot continues), but the caller can
+ *  surface `failed` loudly / report it instead of it being a buried warning. */
+export interface MigrationOutcome {
+  applied: string[];
+  failed: Array<{ name: string; error: string }>;
+}
+
 const runStatement = async (a: Applier, query: SQL): Promise<void> => {
   if (a.dialect === "pg") {
     if (!a.db.execute) throw new Error("pg db handle missing execute()");
@@ -63,7 +72,7 @@ const selectRows = async <T>(a: Applier, query: SQL): Promise<T[]> => {
  *  isolate dedupe but a fresh isolate (or a fresh test harness) runs the
  *  apply path. Promises live forever once stored — re-running migrations
  *  on the same handle is a no-op anyway. */
-const applied = new WeakMap<object, Promise<void>>();
+const applied = new WeakMap<object, Promise<MigrationOutcome>>();
 
 /** Split a migration's SQL by the drizzle-kit `--> statement-breakpoint`
  *  separator. Each statement runs in its own round-trip so a single
@@ -124,18 +133,16 @@ const fetchApplied = async (a: Applier): Promise<Set<string>> => {
  *   - `duplicate type`              — CREATE TYPE
  *   - `multiple primary keys`       — DROP CONSTRAINT IF EXISTS missed a
  *                                     system-named PK; ADD PK now conflicts
- *   - `cannot be cast automatically`— ALTER COLUMN TYPE on data that's
- *                                     already in the target shape
- *   - `column ".+" of relation ".+" contains null values` — ALTER COLUMN
- *                                     SET NOT NULL on data already cleaned
- *                                     by a prior run (this is the
- *                                     edge-case interpretation; usually
- *                                     it's a real data bug, but in the
- *                                     re-apply-during-boot path we trust
- *                                     the prior apply did the cleanup)
+ *
+ * Deliberately NOT tolerated (these can hide real schema/data corruption and
+ * are surfaced as genuine failures instead):
+ *   - `cannot be cast automatically` — a failed `ALTER COLUMN TYPE`; treating
+ *     it as a no-op masks a column left in the wrong type.
+ *   - `column ... contains null values` — a failed `SET NOT NULL`; almost
+ *     always a real data bug, not an idempotent re-apply.
  */
 const ALREADY_EXISTS_RE =
-  /already exists|duplicate column|duplicate object|duplicate type|multiple primary keys|cannot be cast automatically/i;
+  /already exists|duplicate column|duplicate object|duplicate type|multiple primary keys/i;
 
 /** Walks the Error.cause chain — drizzle wraps driver errors, so the
  *  "table X already exists" string lives one or two levels deep. Match
@@ -168,10 +175,11 @@ const deepestMessage = (e: unknown): string => {
   return deepest;
 };
 
-const apply = async (a: Applier): Promise<void> => {
+const apply = async (a: Applier): Promise<MigrationOutcome> => {
   await ensureTable(a);
   const seen = await fetchApplied(a);
   const migrations = a.dialect === "pg" ? PG_MIGRATIONS : SQLITE_MIGRATIONS;
+  const outcome: MigrationOutcome = { applied: [], failed: [] };
 
   for (const m of migrations) {
     if (seen.has(m.name)) continue;
@@ -209,28 +217,36 @@ const apply = async (a: Applier): Promise<void> => {
         a,
         sql`INSERT INTO __backlex_migrations (name) VALUES (${m.name})`,
       );
+      outcome.applied.push(m.name);
     } catch (e) {
-      // Surface the deepest cause-chain message so the operator sees the
-      // actual driver/DB error, not just the drizzle wrapper template.
-      console.warn(
-        `[auto-migrate] migration "${m.name}" skipped: ${deepestMessage(e)}`,
-      );
+      // A genuine failure — the idempotency tolerance did NOT recognise this
+      // error. Surface the deepest cause-chain message (drizzle wraps the real
+      // driver/DB error in a useless "Failed query" template). The ledger row
+      // is NOT inserted, so the next cold start retries this migration in
+      // isolation; meanwhile it's recorded in `failed` so the caller can alert
+      // instead of it being a buried warning that boots green on a bad schema.
+      const error = deepestMessage(e);
+      console.warn(`[auto-migrate] migration "${m.name}" FAILED: ${error}`);
+      outcome.failed.push({ name: m.name, error });
     }
   }
+  return outcome;
 };
 
 /** Apply every migration the bundle carries that hasn't already been
  *  recorded in `__backlex_migrations`. Safe to call concurrently; the
  *  per-isolate WeakMap ensures only one apply runs at a time per handle.
  *
- *  Throws if the database is unreachable or any statement fails. The
- *  caller (context.ts) catches and downgrades to a warning so a single
- *  bad migration can't take the whole app down — the next request retries.
+ *  Resolves with a {@link MigrationOutcome}. It throws only if the database is
+ *  unreachable or the ledger table can't be created; a single bad *migration*
+ *  is captured in `outcome.failed` (boot continues) so the caller can alert
+ *  loudly instead of every endpoint 500ing. The caller (context.ts) inspects
+ *  `failed` and reports it.
  */
 export const ensureMigrations = (
   db: AutoMigrateDb,
   dialect: "pg" | "sqlite",
-): Promise<void> => {
+): Promise<MigrationOutcome> => {
   let promise = applied.get(db as unknown as object);
   if (promise) return promise;
   promise = apply({ db, dialect });

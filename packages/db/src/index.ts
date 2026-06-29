@@ -10,4 +10,4 @@ export * from "./field-types";
 export * from "./schema-applier";
 export * from "./permission";
 export * from "./migrations-manifest.generated";
-export { ensureMigrations } from "./auto-migrate";
+export { ensureMigrations, type MigrationOutcome } from "./auto-migrate";

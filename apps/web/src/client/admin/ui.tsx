@@ -353,7 +353,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
   const settings = NAV_SETTINGS;
   const developers = NAV_DEVELOPERS;
   const { t, i18n } = useLingui();
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { isMobile, openMobile, setOpenMobile } = useSidebar();
   const branding = useWorkspaceBranding();
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -377,6 +377,27 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
   useEffect(() => {
     void reloadTenants();
   }, [reloadTenants]);
+
+  // The mobile drawer is a Radix Sheet that remounts its content on every open,
+  // so the nav list's scroll resets to the top — on a long list the active
+  // page's item ends up below the fold and the user has to scroll back down to
+  // it each time. Bring it into view once the freshly-opened content is in the
+  // DOM (two rAFs: one for the React commit, one for Radix's portal mount).
+  useEffect(() => {
+    if (!isMobile || !openMobile) return;
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLElement>('[data-mobile="true"] [data-active="true"]')
+          ?.scrollIntoView({ block: "center" });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [isMobile, openMobile, activeNav]);
 
   const switchTenant = async (id: string) => {
     try {

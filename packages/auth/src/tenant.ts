@@ -122,7 +122,6 @@ export const createTenantAuth = (
     basePath: `/api/t/${config.tenantSlug}/auth`,
     secret: config.secret,
     trustedOrigins: config.trustedOrigins,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     database: withTenantScope(baseAdapter as any, config.tenantId) as any,
     emailAndPassword: {
       enabled: config.emailAndPasswordEnabled ?? true,
@@ -183,7 +182,6 @@ export const createTenantAuth = (
             const userId = session.userId;
             if (userId) {
               const appUsers = appAuthSchemaFor(provider).user;
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const rows = (await (db as any)
                 .select({ status: appUsers.status })
                 .from(appUsers)
@@ -197,7 +195,6 @@ export const createTenantAuth = (
       },
     },
     socialProviders: config.socialProviders,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     plugins: buildPlugins(config) as any,
   });
 };

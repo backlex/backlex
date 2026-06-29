@@ -199,7 +199,6 @@ export function useItemForm({
     setDraft(base);
     setErrors({});
     setTouched({});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, initial, schema?.slug]);
 
   const updateField = (name: string, value: unknown) => {

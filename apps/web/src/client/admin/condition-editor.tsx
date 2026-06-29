@@ -254,12 +254,10 @@ export function ConditionEditor({ role, action, collection, pushToast, available
     const out: Record<string, { read: boolean; write: boolean }> = {};
     fields.forEach((f) => { out[f] = { read: true, write: f !== "id" && f !== "created_at" }; });
     setFieldPerms(out);
-    /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [action, role, collection]);
 
   useEffect(() => {
     if (mode === "json") setJsonDraft(objToPretty(ruleTreeToObj(tree)));
-    /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [mode]);
 
   const compiledObj = useMemo(() => ruleTreeToObj(tree), [tree]);

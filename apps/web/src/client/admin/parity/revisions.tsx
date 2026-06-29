@@ -135,7 +135,6 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
   useEffect(() => {
     void loadTimeline(collectionSlug, activeId);
     setShowFull(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collectionSlug, activeId]);
 
   const entries = useMemo<Entry[]>(() => {

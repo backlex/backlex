@@ -1,6 +1,6 @@
 import { AppError } from "@backlex/core";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import type { AppBindings } from "../app";
 import { errorResponses, OkSchema, SECURITY } from "../lib/openapi";
 import { requireUser } from "../middleware/session";
@@ -714,6 +714,23 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
           ),
         );
       await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.userId, id));
+      // Suspension is only effective if the per-isolate auth caches drop the
+      // user's now-stale membership + role bundle; otherwise re-login would
+      // resolve their old roles for up to the cache TTL.
+      invalidateTenantMembership(tenantId);
+      invalidateUserRoles(tenantId, id);
+      // Personal API keys carry the owner's identity; cascade-revoke them so a
+      // suspended user can't keep authenticating with a machine key.
+      await (ctx.db as any)
+        .update(t.apiKeys)
+        .set({ revokedAt: ctx.dialect === "pg" ? new Date() : Date.now() })
+        .where(
+          and(
+            eq(t.apiKeys.tenantId, tenantId),
+            eq(t.apiKeys.userId, id),
+            isNull(t.apiKeys.revokedAt),
+          ),
+        );
       return c.json({ ok: true });
     },
   )
@@ -754,6 +771,11 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
             eq(t.tenantMembers.userId, id),
           ),
         );
+      // Mirror the suspend path: drop the stale "suspended → no roles" cache
+      // entries so the reactivated user regains access without waiting out the
+      // TTL. (Their API keys stay revoked — re-issue is a deliberate step.)
+      invalidateTenantMembership(tenantId);
+      invalidateUserRoles(tenantId, id);
       return c.json({ ok: true });
     },
   )

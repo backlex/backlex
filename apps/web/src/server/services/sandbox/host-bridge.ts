@@ -9,6 +9,7 @@ import {
 import type { Condition } from "@backlex/core";
 import { resolvePermission } from "../permissions";
 import { sendPushToUsers } from "../push";
+import { fetchOutbound } from "../storage/hosts";
 import type { Ctx } from "../../context";
 import type { RpcOp, SandboxBindings } from "./types";
 
@@ -134,7 +135,13 @@ export const dispatchRpc = async (
       if (!h.has("traceparent")) h.set("traceparent", bindings.traceparent);
       fetchInit.headers = h;
     }
-    const res = await fetch(url, fetchInit);
+    // Route through the SSRF guard: when enabled (managed cloud /
+    // BLOCK_PRIVATE_FETCH_HOSTS) this follows redirects MANUALLY and re-checks
+    // the host on every hop, so an allow-listed external host can't 30x-redirect
+    // into 169.254.169.254 / localhost / RFC1918. On self-host (guard off) it's
+    // a plain fetch, preserving the prior behavior. The host allow-list above
+    // still bounds the initial target.
+    const res = await fetchOutbound(bindings.ctx.env, url, fetchInit);
     const text = await res.text();
     return { status: res.status, ok: res.ok, text };
   }

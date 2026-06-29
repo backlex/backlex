@@ -42,6 +42,7 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
         permissions: pg.schema.permissions,
         users: pg.schema.users,
         appUsers: pg.schema.appUsers,
+        tenantMembers: pg.schema.tenantMembers,
       }
     : {
         roles: sqlite.schema.roles,
@@ -50,7 +51,33 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
         permissions: sqlite.schema.permissions,
         users: sqlite.schema.users,
         appUsers: sqlite.schema.appUsers,
+        tenantMembers: sqlite.schema.tenantMembers,
       };
+
+/** True when the control-plane user holds a `suspended` membership row in this
+ *  tenant. A suspended member must resolve to zero roles so route permission
+ *  checks deny them — suspension is otherwise invisible to the data-plane
+ *  resolver (it never consulted membership status). Genuine non-members
+ *  (super-admins viewing a foreign workspace) have no row and are unaffected. */
+const isMembershipSuspended = async (
+  ctx: DbCtx,
+  tenantId: string,
+  userId: string,
+): Promise<boolean> => {
+  const t = tablesFor(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select({ id: t.tenantMembers.id })
+    .from(t.tenantMembers)
+    .where(
+      and(
+        eq(t.tenantMembers.tenantId, tenantId),
+        eq(t.tenantMembers.userId, userId),
+        eq(t.tenantMembers.status, "suspended"),
+      ),
+    )
+    .limit(1)) as { id: string }[];
+  return rows.length > 0;
+};
 
 export const loadRolesForUser = async (
   ctx: DbCtx,
@@ -69,6 +96,17 @@ export const loadRolesForUser = async (
   const cacheKey = { plane, tenantId, userId, apiKeyRoleId };
   const cached = getCachedRoles(cacheKey);
   if (cached) return cached;
+  // Suspension gate (control-plane only — app-plane end-users have no
+  // tenant_members row). A suspended member resolves to zero roles here, which
+  // is the authoritative deny for every REST/GraphQL/realtime permission check
+  // and for any API key the suspended user owns. Cached + invalidated on
+  // suspend/activate via invalidateUserRoles.
+  if (userId && plane === "platform") {
+    if (await isMembershipSuspended(ctx, tenantId, userId)) {
+      setCachedRoles(cacheKey, []);
+      return [];
+    }
+  }
   const t = tablesFor(ctx.dialect);
   // Role-scoped API key: the effective role set is exactly the bound role —
   // no implicit `authenticated`, no other roles the owner happens to have —

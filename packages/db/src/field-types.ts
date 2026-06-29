@@ -270,6 +270,66 @@ export const isReservedField = (name: string): boolean => RESERVED.has(name);
 // for our own system columns (`_status`, `_published_at`).
 const USER_FIELD_NAME = /^[a-z][a-z0-9_]*$/;
 
+/**
+ * Generated-column expressions are spliced RAW into DDL by `columnDefSql`
+ * (`GENERATED ALWAYS AS (<formula>) STORED`), so a hostile formula could close
+ * the parenthesis early and append arbitrary statements. The public create/
+ * patch routes strip `computed` (it isn't in their zod schema), so the only
+ * reachable path today is admin-gated backup-restore — but validate defensively
+ * in the central field validator so no future surface (MCP / CLI / import) can
+ * turn a formula into a DDL-injection sink. These checks only block break-out;
+ * the expression's semantics stay the admin's responsibility.
+ */
+const validateComputedFormula = (name: string, raw: unknown): void => {
+  if (typeof raw !== "string") {
+    throw new Error(`Field "${name}": computed.formula must be a string`);
+  }
+  const f = raw.trim();
+  if (!f) throw new Error(`Field "${name}": computed.formula cannot be empty`);
+  if (f.length > 500) {
+    throw new Error(`Field "${name}": computed.formula is too long (max 500 chars)`);
+  }
+  if (f.includes(";")) {
+    throw new Error(`Field "${name}": computed.formula may not contain ";"`);
+  }
+  if (/--|\/\*|\*\/|#/.test(f)) {
+    throw new Error(`Field "${name}": computed.formula may not contain SQL comments`);
+  }
+  // Balanced parentheses, never closing more than opened — the canonical
+  // break-out (`0) STORED); DROP …`) closes the GENERATED-AS paren early.
+  let depth = 0;
+  for (const ch of f) {
+    if (ch === "(") depth += 1;
+    else if (ch === ")") {
+      depth -= 1;
+      if (depth < 0) {
+        throw new Error(`Field "${name}": unbalanced ")" in computed.formula`);
+      }
+    }
+  }
+  if (depth !== 0) {
+    throw new Error(`Field "${name}": unbalanced parentheses in computed.formula`);
+  }
+  // Conservative character allow-list: identifiers, numbers, string literals,
+  // arithmetic / concat / comparison operators, and grouping. Nothing that
+  // could start a new statement or a comment survives the checks above anyway.
+  if (!/^[A-Za-z0-9_\s+\-*/%(),.'"|<>=!:]+$/.test(f)) {
+    throw new Error(
+      `Field "${name}": computed.formula contains disallowed characters`,
+    );
+  }
+  // A generated expression never needs DDL/DML keywords.
+  if (
+    /\b(DROP|DELETE|INSERT|UPDATE|ALTER|CREATE|GRANT|REVOKE|ATTACH|DETACH|PRAGMA|UNION|SELECT|VACUUM)\b/i.test(
+      f,
+    )
+  ) {
+    throw new Error(
+      `Field "${name}": computed.formula may not contain SQL statement keywords`,
+    );
+  }
+};
+
 export const validateFields = (fields: FieldDef[]): void => {
   const seen = new Set<string>();
   const names = new Set(fields.map((f) => f.name));
@@ -293,6 +353,9 @@ export const validateFields = (fields: FieldDef[]): void => {
         );
       }
       assertIdent(f.to);
+    }
+    if (f.computed) {
+      validateComputedFormula(f.name, (f.computed as { formula?: unknown }).formula);
     }
     if (f.interface === "dropdown" && getChoiceValues(f).length === 0) {
       throw new Error(

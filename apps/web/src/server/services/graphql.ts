@@ -329,12 +329,19 @@ const renderRow = (
   ownerScoped: boolean,
   hasCreatedAt = true,
   hasUpdatedAt = true,
+  /** Read field allow-list from the caller's permission grant. When non-null,
+   *  only these field names are rendered — mirrors REST's `projectFields` so the
+   *  GraphQL read path enforces the same field-level ACL (system keys id/
+   *  createdAt/updatedAt/ownerId are always kept). A dropped relation FK also
+   *  makes its nested resolver return null, since the parent loses that key. */
+  allowedFields: Set<string> | null = null,
 ): Record<string, unknown> => {
   const out: Record<string, unknown> = { id: row.id };
   if (hasCreatedAt) out.createdAt = deserialize(row.created_at, "timestamp", dialect);
   if (hasUpdatedAt) out.updatedAt = deserialize(row.updated_at, "timestamp", dialect);
   if (ownerScoped) out.ownerId = row.owner_id ?? null;
   for (const f of fields) {
+    if (allowedFields && !allowedFields.has(f.name)) continue;
     out[camel(f.name)] = deserialize(row[f.name], f.type, dialect);
   }
   return out;
@@ -475,6 +482,7 @@ const listResolver = async (
       !!collection.ownerScoped,
       collection.hasCreatedAt,
       collection.hasUpdatedAt,
+      perm.fields,
     ),
   );
 };
@@ -508,6 +516,7 @@ const getResolver = async (
     !!collection.ownerScoped,
     collection.hasCreatedAt,
     collection.hasUpdatedAt,
+    perm.fields,
   );
 };
 
@@ -665,6 +674,8 @@ const updateResolver = async (
     ctx,
     sql`SELECT * FROM ${sql.identifier(table)} WHERE ${sql.identifier("id")} = ${args.id} LIMIT 1`,
   );
+  // Full (unprojected) row feeds the realtime event — the event renderer
+  // re-projects per subscriber's own read allow-list downstream.
   const refreshedRow = renderRow(
     refreshed[0]!,
     collection.fields,
@@ -679,7 +690,19 @@ const updateResolver = async (
     { event: "updated", data: refreshedRow },
     { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
   );
-  return refreshedRow;
+  // The value returned to the mutating caller must respect their READ field
+  // allow-list (the `update` grant may permit writing fields they can't read).
+  // Mirrors REST, which renders mutation responses through the read projection.
+  const readPerm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
+  return renderRow(
+    refreshed[0]!,
+    collection.fields,
+    ctx.dialect,
+    !!collection.ownerScoped,
+    collection.hasCreatedAt,
+    collection.hasUpdatedAt,
+    readPerm.allowed ? readPerm.fields : new Set<string>(),
+  );
 };
 
 const deleteResolver = async (

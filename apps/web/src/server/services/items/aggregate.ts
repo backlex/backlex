@@ -45,6 +45,17 @@ export interface AggregateOpts {
   /** Readable field allow-list (null = all). When set, the agg `field` and
    *  `groupBy` must be inside it (or a system column) — else FORBIDDEN. */
   allowedFields?: Set<string> | null;
+  /** Exclude soft-deleted rows (`deleted_at IS NULL`). Set by permission-scoped
+   *  read callers (REST endpoint / MCP) so a non-privileged user can't infer the
+   *  count / min / max of rows they can't otherwise see. Left unset by the
+   *  admin dashboard-panel path, which intentionally aggregates over the managed
+   *  lifecycle columns (e.g. count grouped by `deleted_at`). No-op when the
+   *  collection has no soft-delete column. */
+  excludeSoftDeleted?: boolean;
+  /** Exclude unpublished drafts (`_status = 'published'`). Set by read callers
+   *  who can't see drafts (no publish/update grant), mirroring the list/get/
+   *  search draft filter. No-op for non-versioned collections. */
+  excludeDrafts?: boolean;
 }
 
 /**
@@ -172,6 +183,15 @@ export const runItemsAggregate = async (
     );
   }
   if (opts.permWhere) wheres.push(opts.permWhere);
+  // Lifecycle filters for permission-scoped read callers — match the row
+  // visibility of list/get/search so aggregates can't be used as an oracle to
+  // infer values of soft-deleted or draft rows the caller can't read directly.
+  if (opts.excludeSoftDeleted && (cRow.softDelete ?? cRow.soft_delete)) {
+    wheres.push(sql`${sql.identifier("deleted_at")} IS NULL`);
+  }
+  if (opts.excludeDrafts && (cRow.versioned ?? cRow.is_versioned)) {
+    wheres.push(sql`${sql.identifier("_status")} = 'published'`);
+  }
   const whereClause: SQL = wheres.length === 0 ? sql`` : sql` WHERE ${sql.join(wheres, sql` AND `)}`;
 
   let q: SQL;

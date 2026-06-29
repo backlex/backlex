@@ -39,7 +39,7 @@ import {
 import { pgvectorAdapter } from "./adapters/vector.pg";
 import { libsqlVectorAdapter } from "./adapters/vector.libsql";
 import type { Env } from "./env";
-import { cloudConfigured } from "./lib/cloud-report";
+import { cloudConfigured, reportToCloud } from "./lib/cloud-report";
 import { buildEmailAdapter, selectEmailSpec } from "./lib/email-select";
 import { buildPushAdapter, selectPushSpec } from "./lib/push-select";
 import { buildSmsAdapter, selectSmsSpec } from "./lib/sms-select";
@@ -311,7 +311,27 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   // the operator sees the same warning in the deploy logs.
   if (!env.D1) {
     try {
-      await ensureMigrations(db as Parameters<typeof ensureMigrations>[0], dialect);
+      const outcome = await ensureMigrations(
+        db as Parameters<typeof ensureMigrations>[0],
+        dialect,
+      );
+      // A migration that hit an *unrecognised* error (not the idempotent
+      // "already exists" cases) leaves the schema partially applied while the
+      // app still boots green. That used to be a buried console.warn; surface
+      // it loudly and report it to the control plane so a managed deploy isn't
+      // silently running on a broken schema.
+      if (outcome.failed.length > 0) {
+        const summary = outcome.failed
+          .map((f) => `${f.name}: ${f.error}`)
+          .join("; ");
+        console.error(
+          `[auto-migrate] ${outcome.failed.length} migration(s) FAILED — schema may be incomplete. Run \`bun run db:migrate:${dialect}\` against the production DB. Failures: ${summary}`,
+        );
+        void reportToCloud(env, {
+          kind: "error",
+          message: `auto-migrate: ${outcome.failed.length} migration(s) failed — ${summary}`,
+        });
+      }
     } catch (e) {
       // Walk the Error.cause chain so the deepest driver/DB error surfaces.
       // Drizzle wraps every failure with a useless "Failed query: ..."

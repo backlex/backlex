@@ -104,7 +104,6 @@ describe("auto-migrate: idempotency classifier covers PG-specific failure shapes
     ['type "email_status" already exists', "CREATE TYPE enum re-run"],
     ['column "mcp_tools" of relation "api_keys" already exists', "ADD COLUMN re-run"],
     ['multiple primary keys for table "collections" are not allowed', "PR #166 regression: system-named PK"],
-    ['cannot be cast automatically to type text', "ALTER COLUMN TYPE idempotent"],
     ['duplicate column name: mcp_tools', "SQLite ADD COLUMN re-run"],
     ['duplicate object', "PG constraint duplicate"],
   ];
@@ -135,12 +134,13 @@ describe("auto-migrate: idempotency classifier covers PG-specific failure shapes
     });
   }
 
-  test("non-idempotent error: per-migration catch keeps the loop alive", async () => {
+  test("non-idempotent error: loop survives + the failure is reported, not swallowed", async () => {
     // A syntax error has NO match in the idempotency regex. The
-    // per-statement layer rethrows; the per-migration catch logs and
-    // continues. ensureMigrations still resolves.
+    // per-statement layer rethrows; the per-migration catch records it in
+    // `outcome.failed` and continues. ensureMigrations still resolves, but the
+    // failure is now visible to the caller (it used to be a buried warning).
     let thrown = false;
-    const { db } = makeMockApplier({
+    const { db, ledgerInserts } = makeMockApplier({
       throwOn: (text) => {
         if (/__backlex_migrations/.test(text)) return null;
         if (!thrown) {
@@ -151,12 +151,42 @@ describe("auto-migrate: idempotency classifier covers PG-specific failure shapes
       },
     });
     let bubbled = false;
+    let outcome;
     try {
-      await ensureMigrations(db, "pg");
+      outcome = await ensureMigrations(db, "pg");
     } catch {
       bubbled = true;
     }
     expect(bubbled).toBe(false);
+    expect(outcome?.failed.length).toBe(1);
+    expect(outcome?.failed[0]?.error).toContain("banana");
+    // The failed migration's name must NOT be in the ledger — so a cold start
+    // retries it rather than treating the partial schema as complete.
+    const failedName = outcome?.failed[0]?.name;
+    expect(failedName).toBeDefined();
+    expect(ledgerInserts).not.toContain(failedName);
+  });
+
+  test("ALTER COLUMN TYPE that can't cast is a genuine failure (no longer masked)", async () => {
+    // `cannot be cast automatically` used to be tolerated as "already in the
+    // target shape" — that masked a column left in the wrong type. It must now
+    // surface as a real failure.
+    let thrown = false;
+    const { db } = makeMockApplier({
+      throwOn: (text) => {
+        if (/__backlex_migrations/.test(text)) return null;
+        if (!thrown) {
+          thrown = true;
+          return drizzleErr(
+            'column "amount" cannot be cast automatically to type integer',
+          );
+        }
+        return null;
+      },
+    });
+    const outcome = await ensureMigrations(db, "pg");
+    expect(outcome.failed.length).toBe(1);
+    expect(outcome.failed[0]?.error).toContain("cannot be cast");
   });
 
   test("every migration in the PG bundle gets attempted (no early abort)", async () => {

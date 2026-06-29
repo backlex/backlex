@@ -144,7 +144,14 @@ bucket_name = "workeros-files"
 [ai]
 binding = "AI"
 
-# Optional: Hyperdrive proxy in front of Postgres for PG-on-edge.
+# Optional: Hyperdrive proxy in front of Postgres for PG-on-edge. Pools
+# connections (no per-request TCP+TLS handshake to a distant PG) and edge-caches
+# read-only SELECTs. backlex auto-uses HYPERDRIVE.connectionString when bound and
+# already runs postgres-js with prepare:false (required behind a transaction
+# pooler). Caveat: Hyperdrive's query cache (default max_age 60s) can serve a
+# stale read just after a write — if you need strict read-your-writes, create the
+# config with caching disabled, or read through a second caching-off binding.
+# Add a read replica the same way via a HYPERDRIVE_REPLICA binding.
 # [[hyperdrive]]
 # binding = "HYPERDRIVE"
 # id = "REPLACE_WITH_HYPERDRIVE_ID"

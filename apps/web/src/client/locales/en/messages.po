@@ -8758,9 +8758,18 @@ msgstr "Show {0} more…"
 msgid "Show active collections"
 msgstr "Show active collections"
 
+#. placeholder {0}: sessions.length
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Show all {0} sessions"
+msgstr "Show all {0} sessions"
+
 #: src/client/admin/collections-index.tsx
 msgid "Show archived collections"
 msgstr "Show archived collections"
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Show fewer"
+msgstr "Show fewer"
 
 #. placeholder {0}: Object.keys(result.headers).length
 #: src/client/pages/rest-explorer.tsx

@@ -103,6 +103,10 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
   const [redirectText, setRedirectText] = useState("");
   const redirectSavedRef = useRef("");
   const [sessions, setSessions] = useState<{ id: string; user: string; device: string; ip: string; loc: string; created: string; last: string; current: boolean }[]>([]);
+  // Sessions can run into the hundreds; cap the table and expand on demand so the
+  // page doesn't scroll forever (especially on mobile).
+  const SESSIONS_PAGE = 8;
+  const [showAllSessions, setShowAllSessions] = useState(false);
   const [configuring, setConfiguring] = useState<AuthProviderRow | null>(null);
   const [adding, setAdding] = useState(false);
   const [workspace, setWorkspace] = useState<ApiTenant | null>(null);
@@ -556,7 +560,7 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
           <TableHeader><TableRow><TableHead><Trans>User</Trans></TableHead><TableHead><Trans>Device</Trans></TableHead><TableHead><Trans>Location</Trans></TableHead><TableHead>IP</TableHead><TableHead><Trans>Created</Trans></TableHead><TableHead><Trans>Last seen</Trans></TableHead><TableHead className="sticky right-0 w-11 border-l border-border bg-card shadow-[-8px_0_12px_-8px_oklch(0_0_0/0.18)]" /></TableRow></TableHeader>
           <TableBody>
             {sessions.length === 0 && <TableRow><TableCell colSpan={7} className="text-muted-foreground"><Trans>No active sessions.</Trans></TableCell></TableRow>}
-            {sessions.map((s) => (
+            {(showAllSessions ? sessions : sessions.slice(0, SESSIONS_PAGE)).map((s) => (
               <TableRow key={s.id}>
                 <TableCell>{s.user}{s.current && <Badge variant="default" className="ml-1.5"><Trans>current</Trans></Badge>}</TableCell>
                 <TableCell className="font-mono text-[11.5px]">{s.device}</TableCell>
@@ -569,6 +573,15 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
             ))}
           </TableBody>
         </Table>
+        {sessions.length > SESSIONS_PAGE && (
+          <div className="flex justify-center border-t border-border px-4 py-2.5">
+            <Button size="sm" variant="ghost" onClick={() => setShowAllSessions((v) => !v)}>
+              {showAllSessions
+                ? <Trans>Show fewer</Trans>
+                : <Trans>Show all {sessions.length} sessions</Trans>}
+            </Button>
+          </div>
+        )}
       </Card>
 
       {configuring && (

@@ -198,16 +198,24 @@ function TraceDetail({
     return { min: lo, total: Math.max(1, hi - lo) };
   }, [spans]);
 
+  // The method+path lives in the title; the waterfall's root row carries only
+  // the "root" badge so the endpoint isn't printed twice.
   return (
     <Dialog open={!!trace} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex max-w-2xl flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="font-mono text-[13px]">
+          <DialogTitle className="break-all font-mono text-[13px]">
             {trace?.name ?? <Trans>Trace</Trans>}
           </DialogTitle>
         </DialogHeader>
-        <div className="font-mono text-[11px] text-muted-foreground">
-          {trace?.traceId}
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-muted-foreground">
+          {trace && (
+            <Badge variant={trace.hasError ? "destructive" : "secondary"} mono>
+              {trace.rootStatus ?? "—"}
+            </Badge>
+          )}
+          {trace && <span className="font-mono tabular-nums text-foreground">{trace.durationMs}ms</span>}
+          <span className="break-all font-mono">{trace?.traceId}</span>
         </div>
         <ScrollArea className="min-h-0" viewportClassName="max-h-[calc(85vh-10rem)] max-[640px]:max-h-[calc(85vh-15rem)]">
           <div className="flex flex-col gap-1.5 py-1">
@@ -232,25 +240,27 @@ function SpanBar({ span, min, total }: { span: ApiSpan; min: number; total: numb
   const left = ((span.startedAt - min) / total) * 100;
   const width = Math.max(1.5, (dur / total) * 100);
   const isError = (span.status ?? 0) >= 400;
+  const isRoot = span.parentSpanId === null;
   return (
-    <div className="grid grid-cols-[1fr_2fr] items-center gap-2 px-1">
+    <div className="grid grid-cols-[minmax(0,1fr)_2fr_auto] items-center gap-2 px-1">
       <div className="flex min-w-0 items-center gap-2">
-        {span.parentSpanId === null && (
+        {isRoot ? (
           <Badge variant="outline" className="shrink-0 text-[10px]">
             <Trans>root</Trans>
           </Badge>
+        ) : (
+          <span className="truncate font-mono text-[11.5px]">{span.name}</span>
         )}
-        <span className="truncate font-mono text-[11.5px]">{span.name}</span>
       </div>
       <div className="relative h-5 rounded bg-muted">
         <div
           className={`absolute top-0 h-5 rounded ${isError ? "bg-destructive" : "bg-primary"}`}
           style={{ left: `${left}%`, width: `${width}%` }}
         />
-        <span className="absolute right-1 top-0 flex h-5 items-center font-mono text-[10.5px] text-muted-foreground">
-          {dur}ms
-        </span>
       </div>
+      <span className="w-12 shrink-0 text-right font-mono text-[11px] tabular-nums text-foreground">
+        {dur}ms
+      </span>
     </div>
   );
 }

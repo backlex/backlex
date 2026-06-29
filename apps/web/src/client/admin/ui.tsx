@@ -8,7 +8,6 @@ import {
   useState,
   type ButtonHTMLAttributes,
   type CSSProperties,
-  type MouseEvent,
   type ReactNode,
 } from "react";
 import { useNavigate } from "react-router";
@@ -209,19 +208,18 @@ export function Button({
   );
 }
 
-export interface IconButtonProps {
+export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "size"> {
   icon: IconComponent;
-  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   size?: "sm" | "md";
   variant?: ButtonVariant;
-  title?: string;
-  className?: string;
-  disabled?: boolean;
 }
 
-export function IconButton({ icon: IconComp, onClick, title, className, disabled, variant = "ghost" }: IconButtonProps) {
+// `...rest` must reach ShadcnButton so that `<DropdownMenuTrigger asChild><IconButton/></DropdownMenuTrigger>`
+// (and any other Radix `asChild` slot) can forward its handlers/ref/aria-* onto the underlying button —
+// without it the trigger never wires up and the menu won't open. Mirrors the text `Button` above.
+export function IconButton({ icon: IconComp, onClick, title, className, disabled, variant = "ghost", size: _size, type = "button", ...rest }: IconButtonProps) {
   return (
-    <ShadcnButton variant={mapButtonVariant(variant)} size="icon-sm" type="button" onClick={onClick} title={title} disabled={disabled} className={className}>
+    <ShadcnButton variant={mapButtonVariant(variant)} size="icon-sm" type={type} onClick={onClick} title={title} disabled={disabled} className={className} {...rest}>
       <IconComp size={14} />
     </ShadcnButton>
   );

@@ -18,8 +18,9 @@
  * reconciles the exact window.
  *
  * This lives entirely in the client: the server stays a stateless event
- * publisher, so live queries work across every backlex runtime (Bun, Workers,
- * Vercel, Netlify) with no per-subscription server state.
+ * publisher, so live queries work on any backlex deployment — the realtime
+ * transport adapts per runtime (in-process SSE, Durable Objects on Cloudflare,
+ * or Redis Streams on stateless serverless) — with no per-subscription state.
  */
 import type { Condition, ComparisonObj } from "./condition";
 import type { ItemEvent, ListQuery, ListResponse } from "./types";

@@ -156,7 +156,7 @@ limit + current boundary) and, on a removal, run one keyset query
 **Why it's deferred (design complete, not built):**
 - It requires **stateful, per-subscription server state** (the boundary), which
   backlex deliberately avoids — the realtime publisher is stateless so live
-  queries work identically across all four runtimes.
+  queries work identically across every supported runtime and deploy target.
 - It's **Workers/DO-only**: the Durable Object can hold that state
   (`realtime-room.ts` already persists per-socket attachments + an event log);
   the stateless Redis/serverless transport structurally can't, so it would stay

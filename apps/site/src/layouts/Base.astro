@@ -63,6 +63,25 @@ const canonical = new URL(cleanPath || "/", Astro.site).href;
     </script>
     <!-- Smooth cross-page morphs (fade/slide) on client-side navigation. -->
     <ClientRouter />
+    <script is:inline>
+      // The Starlight docs at /docs are a SEPARATE Astro app. If ClientRouter
+      // client-side-swaps them in, their init scripts (Pagefind search, theme,
+      // etc.) never run, so e.g. the docs search modal opens empty until a
+      // manual refresh. Force a full browser navigation for every /docs link so
+      // the docs app always loads cleanly. (Marketing-internal links keep the
+      // smooth view transitions.) The listener lives on the persistent
+      // document, so it re-stamps after every client-side navigation too.
+      (function () {
+        function markDocsLinks() {
+          document
+            .querySelectorAll('a[href^="/docs"]:not([data-astro-reload])')
+            .forEach(function (a) {
+              a.setAttribute("data-astro-reload", "");
+            });
+        }
+        document.addEventListener("astro:page-load", markDocsLinks);
+      })();
+    </script>
   </head>
   <body class={`bg-background text-foreground font-sans antialiased leading-relaxed ${bodyClass}`}>
     {showBeams && <BeamsBackground />}

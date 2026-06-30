@@ -71,6 +71,20 @@ Most changes need **zero extra round-trips**. The client-side matcher mirrors th
 [permission DSL](/permissions) operators, so "matches the filter" means the same
 thing it does server-side.
 
+### Server-side narrowing + transitions
+
+When the filter has no nested (`a.b`) keys, the SDK also forwards it to the
+realtime subscription (`?filter=`). The server then delivers **only** the events
+whose row matches — so the stream carries less, not the whole collection — and
+annotates each with a membership `transition` (`enter` / `leave` / `update`) it
+computed by evaluating the filter against the row before AND after the write.
+The decisive one is **`leave`**: an update that pushes a row out of the result
+set is still delivered (the after-row no longer matches) so the client can drop
+it. The client trusts the `transition` when present, which is also what lets the
+server's resolution of `$user.*` / `$now` drive membership — the client can't
+evaluate those in JS. (The server validates the forwarded filter: it must
+reference readable, non-relation fields, or the subscription is rejected.)
+
 ### Limit windows
 
 With a `limit`, the incremental apply is **optimistic** (instant UI) and a

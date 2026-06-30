@@ -1,5 +1,9 @@
 import type { AuthSubject, Condition, EmailAdapter } from "@backlex/core";
-import { rowPasses } from "./realtime-filter";
+import {
+  type IncomingItemEvent,
+  renderItemEvent,
+  stripBefore,
+} from "./realtime-filter";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { Ctx } from "../context";
@@ -13,6 +17,10 @@ import { redisPublish, redisRealtimeEnabled } from "./realtime-redis";
 export interface ItemEventPayload {
   event: "created" | "updated" | "deleted";
   data: Record<string, unknown>;
+  /** Pre-write row, set only on `updated` events. SERVER-ONLY — the emit
+   *  chokepoint uses it to compute each filtered subscriber's membership
+   *  transition (reactive Stage 2), then strips it; it never reaches a client. */
+  before?: Record<string, unknown>;
 }
 
 export interface SubscriptionMeta {
@@ -34,53 +42,27 @@ export interface Subscriber {
   meta?: SubscriptionMeta;
 }
 
-const SYSTEM_FIELDS = new Set([
-  "id",
-  "createdAt",
-  "updatedAt",
-  "ownerId",
-]);
-
-export const projectEventData = (
-  data: Record<string, unknown>,
-  fields: string[],
-): Record<string, unknown> => {
-  const allow = new Set(fields);
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(data)) {
-    if (SYSTEM_FIELDS.has(k) || allow.has(k)) out[k] = v;
-  }
-  return out;
-};
-
 const isItemPayload = (payload: unknown): payload is ItemEventPayload =>
   typeof payload === "object" &&
   payload !== null &&
   "event" in payload &&
   "data" in payload;
 
-const passesFilter = (
-  data: Record<string, unknown>,
-  meta: SubscriptionMeta,
-): boolean => rowPasses(data, meta);
-
-/** Serialize `payload` for a single subscriber, applying the permission filter
- *  + field projection for ItemEvent-shaped payloads. Returns `null` when the
- *  subscriber must not see this event. */
+/** Serialize `payload` for a single subscriber. For ItemEvent-shaped payloads
+ *  with subscriber meta, this delegates to the shared `renderItemEvent`
+ *  (permission gate + field projection + Stage-2 membership transitions); the
+ *  server-only `before` is always stripped. Returns `null` to drop. */
 const renderFor = (
   sub: Subscriber,
   payload: unknown,
   isItem: boolean,
 ): string | null => {
   if (sub.meta && isItem) {
-    const p = payload as ItemEventPayload;
-    if (!passesFilter(p.data, sub.meta)) return null;
-    const out = sub.meta.fields
-      ? { ...p, data: projectEventData(p.data, sub.meta.fields) }
-      : p;
-    return JSON.stringify(out);
+    const out = renderItemEvent(payload as IncomingItemEvent, sub.meta);
+    return out === null ? null : JSON.stringify(out);
   }
-  return JSON.stringify(payload);
+  // No meta (raw channel) — strip `before` defensively before forwarding.
+  return JSON.stringify(isItem ? stripBefore(payload) : payload);
 };
 
 /**

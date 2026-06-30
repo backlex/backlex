@@ -35,6 +35,8 @@ export interface LiveQueryDeps<T> {
     channel: string,
     onEvent: (e: ItemEvent<T>) => void,
     onError?: (err: unknown) => void,
+    /** Raw query string appended to the subscribe URL (e.g. `filter=…`). */
+    query?: string,
   ) => () => void;
 }
 
@@ -153,6 +155,17 @@ const conditionSafe = (cond: Condition): boolean => {
   return true;
 };
 
+/** Whether a condition is free of nested (`a.b`) relation keys. Such a filter
+ *  can be sent to the server for narrowing even if it carries `$now`/`$user`
+ *  (the server resolves those) — unlike {@link conditionSafe}, which is about
+ *  what the CLIENT can evaluate in JS. */
+const noNestedKeys = (cond: Condition): boolean => {
+  if (isAnd(cond)) return cond.$and.every(noNestedKeys);
+  if (isOr(cond)) return cond.$or.every(noNestedKeys);
+  if (isNot(cond)) return noNestedKeys(cond.$not);
+  return Object.keys(cond as Record<string, unknown>).every((k) => !k.includes("."));
+};
+
 /** Whether the engine can maintain this query incrementally. Anything that
  *  needs server-computed shape (expand, `q` search, nested sort/filter,
  *  relative/var filter values) routes to refetch mode instead. */
@@ -180,6 +193,22 @@ export const createLiveQuery = <T extends Record<string, unknown>>(
   const limit = opts.limit;
   const sortClauses = parseSort(opts.sort);
   const cond = opts.filter ?? null;
+  const sortHasNested = sortClauses.some((s) => s.field.includes("."));
+  // When the filter has no nested keys we can hand it to the server, which
+  // narrows the stream AND emits membership transitions (reactive Stage 2). We
+  // then TRUST those transitions instead of re-evaluating the filter in JS —
+  // which is what lets `$now`/`$user` filters maintain incrementally (the
+  // client can't resolve those, but the server can).
+  const serverFilter =
+    cond && noNestedKeys(cond) && !opts.expand && !opts.q && !sortHasNested
+      ? cond
+      : null;
+  // `incremental` stays conservative (isIncrementalSafe): we only force the
+  // in-JS path for filters the client could maintain anyway. Sending
+  // serverFilter is an orthogonal bandwidth optimisation — it narrows the
+  // stream in BOTH incremental and refetch modes. Trusting the server's
+  // `$user`/`$now` transitions to make those incremental would require knowing
+  // the server implements Stage 2; that capability negotiation is deferred.
   const incremental = isIncrementalSafe(opts);
   // Top-level field projection (matches the simple-query constraints — `fields`
   // with relation dot-paths would have forced refetch mode via `expand`).
@@ -264,9 +293,17 @@ export const createLiveQuery = <T extends Record<string, unknown>>(
       return;
     }
 
-    // created / updated
-    const matches = cond ? matchesRow(row, cond) : true;
-    if (!matches) {
+    // created / updated — decide membership. Trust the server's transition
+    // when it sent one (it already evaluated the filter, incl. $user/$now):
+    // anything but `leave` is a member. With no transition (older / Stage-1
+    // server, or an unfiltered subscription) fall back to the local filter.
+    const member =
+      ev.transition !== undefined
+        ? ev.transition !== "leave"
+        : cond
+          ? matchesRow(row, cond)
+          : true;
+    if (!member) {
       if (idx >= 0) {
         removeAt(idx);
         emit();
@@ -302,7 +339,10 @@ export const createLiveQuery = <T extends Record<string, unknown>>(
     }
   })();
 
-  const unsub = deps.subscribe(`items:${slug}`, applyEvent, onError);
+  const filterQuery = serverFilter
+    ? `filter=${encodeURIComponent(JSON.stringify(serverFilter))}`
+    : undefined;
+  const unsub = deps.subscribe(`items:${slug}`, applyEvent, onError, filterQuery);
   return () => {
     closed = true;
     if (timer) clearTimeout(timer);

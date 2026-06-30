@@ -12,8 +12,11 @@ relevant change. No manual event wiring, no stale data, no hand-written
 It builds on [realtime](/realtime): backlex already streams permission-filtered
 per-row events over `items:<slug>` SSE. A reactive query layers query-level
 maintenance on top of that stream — entirely in the client, so the server stays
-a stateless event publisher and live queries work on **every runtime** (Bun,
-Workers, Vercel, Netlify) with no per-subscription server state.
+a stateless event publisher and live queries ride on **whatever realtime
+transport the deployment provides** (in-process SSE on Bun / Node / Deno,
+Durable Objects on Cloudflare, or Redis Streams on stateless serverless), with
+no per-subscription server state — so they work on any of backlex's supported
+[deploy targets](/deployment).
 
 ## SDK
 

@@ -1,0 +1,640 @@
+/**
+ * Schema versions — migration diffing / schema branching (#9).
+ *
+ * backlex's schema is dynamic: a collection is a metadata row + a physical
+ * table the additive applier (`applyCollection`) maintains. This service adds
+ * GitOps-for-schema on top of that model:
+ *
+ *   - **snapshot** — capture the schema-relevant subset of the live `collections`
+ *     rows (`SchemaCollection[]`) as an immutable, content-hashed row.
+ *   - **branch** — a named, mutable pointer (`head`) into snapshot history with a
+ *     `base` fork point; lets an admin stage schema changes off to the side.
+ *   - **diff** — compare any two refs (live / snapshot / branch) into a
+ *     categorized change list (additive / destructive / metadata) via the pure
+ *     `diffSchema` engine in `@backlex/db`.
+ *   - **apply** — reconcile the live schema to a target ref: additive changes go
+ *     through the idempotent applier, destructive ones (drop column/table, type
+ *     change) only run behind an explicit `confirmDestructive`, and a safety
+ *     snapshot is captured first so an apply is always reversible.
+ *
+ * All DDL stays behind the same `applyCollection` / `dropField` / `dropCollection`
+ * primitives the unified create endpoint uses — this service never emits raw DDL.
+ */
+import { AppError } from "@backlex/core";
+import {
+  applyCollection,
+  canonicalizeSnapshot,
+  derivePhysicalTable,
+  diffSchema,
+  dropCollection,
+  dropField,
+  type FieldDef,
+  type SchemaCollection,
+  type SchemaDiff,
+  type SchemaSnapshot,
+  validateFields,
+} from "@backlex/db";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import { and, desc, eq } from "drizzle-orm";
+import { invalidateTenantCollections } from "./collections-cache";
+import { invalidateTenantPermissions } from "./permissions-cache";
+import { seedOwnerScopedPermissions } from "./seed";
+
+type Dialect = "pg" | "sqlite";
+// The Pg/Sqlite Drizzle union has no shared typed surface — the whole codebase
+// casts to `any` at these call sites (see routes/items.ts, routes/collections.ts).
+type AnyDb = any;
+
+export interface SchemaVersionsCtx {
+  db: AnyDb;
+  dialect: Dialect;
+}
+
+/** Where a schema state comes from: the live workspace schema, a stored
+ *  snapshot, or a branch head. The single ref shape every op resolves. */
+export type SchemaRef =
+  | { kind: "live" }
+  | { kind: "snapshot"; id: string }
+  | { kind: "branch"; id: string };
+
+export interface SnapshotSummary {
+  id: string;
+  name: string;
+  note: string | null;
+  hash: string;
+  kind: string;
+  branchId: string | null;
+  parentSnapshotId: string | null;
+  createdBy: string | null;
+  createdAt: unknown;
+  collectionCount: number;
+}
+
+export interface SnapshotRecord extends SnapshotSummary {
+  snapshot: SchemaSnapshot;
+}
+
+export interface BranchRecord {
+  id: string;
+  name: string;
+  note: string | null;
+  headSnapshotId: string | null;
+  baseSnapshotId: string | null;
+  createdBy: string | null;
+  createdAt: unknown;
+  updatedAt: unknown;
+}
+
+export interface ApplyResult {
+  diff: SchemaDiff;
+  /** Change summaries that were applied (empty on a no-op). */
+  applied: string[];
+  /** Id of the auto safety snapshot taken before applying (null on a no-op). */
+  safetySnapshotId: string | null;
+  noop: boolean;
+}
+
+const collectionsTable = (d: Dialect) =>
+  d === "pg" ? pg.schema.collections : sqlite.schema.collections;
+const snapshotsTable = (d: Dialect) =>
+  d === "pg" ? pg.schema.schemaSnapshots : sqlite.schema.schemaSnapshots;
+const branchesTable = (d: Dialect) =>
+  d === "pg" ? pg.schema.schemaBranches : sqlite.schema.schemaBranches;
+
+/** Project a `collections` row onto the schema-relevant subset we snapshot.
+ *  Runtime/lifecycle columns (id, status, timestamps, vectorize model) are
+ *  intentionally dropped — they don't define the *shape* of the schema. */
+const rowToSchemaCollection = (r: Record<string, unknown>): SchemaCollection => ({
+  slug: String(r.slug),
+  physicalTable: r.physicalTable ? String(r.physicalTable) : undefined,
+  adopted: Boolean(r.adopted),
+  ownerScoped: Boolean(r.ownerScoped),
+  tenantScoped: r.tenantScoped !== false,
+  versioned: Boolean(r.versioned),
+  softDelete: Boolean(r.softDelete),
+  fts: Boolean(r.fts),
+  singleton: Boolean(r.singleton),
+  fields: (Array.isArray(r.fields) ? r.fields : []) as FieldDef[],
+  singular: (r.singular as string | null) ?? null,
+  plural: (r.plural as string | null) ?? null,
+  note: (r.note as string | null) ?? null,
+  displayTemplate: (r.displayTemplate as string | null) ?? null,
+  defaultSort: (r.defaultSort as string | null) ?? null,
+});
+
+/** Canonicalize a collection the same way `rowToSchemaCollection` does, so an
+ *  authored/imported snapshot diffs cleanly against the live schema instead of
+ *  tripping on implicit flag defaults (notably `tenantScoped`, which is true by
+ *  default — an omitted flag must not read as a "disable" change). */
+const normalizeCollection = (c: SchemaCollection): SchemaCollection => ({
+  slug: c.slug,
+  physicalTable: c.physicalTable,
+  adopted: Boolean(c.adopted),
+  ownerScoped: Boolean(c.ownerScoped),
+  tenantScoped: c.tenantScoped !== false,
+  versioned: Boolean(c.versioned),
+  softDelete: Boolean(c.softDelete),
+  fts: Boolean(c.fts),
+  singleton: Boolean(c.singleton),
+  fields: Array.isArray(c.fields) ? c.fields : [],
+  singular: c.singular ?? null,
+  plural: c.plural ?? null,
+  note: c.note ?? null,
+  displayTemplate: c.displayTemplate ?? null,
+  defaultSort: c.defaultSort ?? null,
+});
+
+const normalizeSnapshot = (snap: SchemaSnapshot): SchemaSnapshot => snap.map(normalizeCollection);
+
+/** The live schema of a workspace — its active collections, normalized. */
+export const loadLiveSchema = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+): Promise<SchemaSnapshot> => {
+  const t = collectionsTable(ctx.dialect);
+  const rows = (await ctx.db
+    .select()
+    .from(t)
+    .where(and(eq(t.tenantId, tenantId), eq(t.status, "active")))) as Record<string, unknown>[];
+  return rows.map(rowToSchemaCollection);
+};
+
+const sha256Hex = async (text: string): Promise<string> => {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+};
+
+const toSummary = (r: Record<string, unknown>): SnapshotSummary => ({
+  id: String(r.id),
+  name: String(r.name),
+  note: (r.note as string | null) ?? null,
+  hash: String(r.hash),
+  kind: String(r.kind),
+  branchId: (r.branchId as string | null) ?? null,
+  parentSnapshotId: (r.parentSnapshotId as string | null) ?? null,
+  createdBy: (r.createdBy as string | null) ?? null,
+  createdAt: r.createdAt,
+  collectionCount: Array.isArray(r.snapshot) ? r.snapshot.length : 0,
+});
+
+// ── Snapshots ──────────────────────────────────────────────────────────────
+
+export const captureSnapshot = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  opts: {
+    name: string;
+    note?: string | null;
+    createdBy?: string | null;
+    kind?: "manual" | "branch" | "auto";
+    branchId?: string | null;
+    parentSnapshotId?: string | null;
+    /** Pre-resolved schema to store; defaults to the live schema. */
+    data?: SchemaSnapshot;
+  },
+): Promise<SnapshotRecord> => {
+  const snapshot = opts.data ?? (await loadLiveSchema(ctx, tenantId));
+  const hash = await sha256Hex(canonicalizeSnapshot(snapshot));
+  const id = crypto.randomUUID();
+  const t = snapshotsTable(ctx.dialect);
+  await ctx.db.insert(t).values({
+    id,
+    tenantId,
+    name: opts.name,
+    note: opts.note ?? null,
+    snapshot,
+    hash,
+    kind: opts.kind ?? "manual",
+    branchId: opts.branchId ?? null,
+    parentSnapshotId: opts.parentSnapshotId ?? null,
+    createdBy: opts.createdBy ?? null,
+  });
+  const row = await getSnapshotRow(ctx, tenantId, id);
+  if (!row) throw new AppError("INTERNAL", "Snapshot insert did not persist");
+  return { ...toSummary(row), snapshot: (row.snapshot as SchemaSnapshot) ?? [] };
+};
+
+/** Slug rule mirrors the collections create route (snake_case, leading letter). */
+const SLUG_RE = /^[a-z][a-z0-9_]*$/;
+
+/** Store an externally-authored schema as a snapshot — the GitOps entry point.
+ *  An admin can export the schema JSON, edit it (in git, by hand, in another
+ *  workspace), and import it back as a target to diff/apply. Validates each
+ *  collection's slug + fields so a malformed import can't reach `applySchema`. */
+export const importSnapshot = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  opts: { name: string; snapshot: SchemaSnapshot; note?: string | null; createdBy?: string | null },
+): Promise<SnapshotRecord> => {
+  if (!Array.isArray(opts.snapshot)) {
+    throw new AppError("VALIDATION", "snapshot must be an array of collections");
+  }
+  const seen = new Set<string>();
+  for (const c of opts.snapshot) {
+    if (!c || typeof c.slug !== "string" || !SLUG_RE.test(c.slug)) {
+      throw new AppError("VALIDATION", `Invalid collection slug: ${JSON.stringify(c?.slug)}`);
+    }
+    if (seen.has(c.slug)) throw new AppError("VALIDATION", `Duplicate collection slug: ${c.slug}`);
+    seen.add(c.slug);
+    if (!Array.isArray(c.fields)) {
+      throw new AppError("VALIDATION", `${c.slug}: fields must be an array`);
+    }
+    try {
+      validateFields(c.fields);
+    } catch (e) {
+      throw new AppError("VALIDATION", `${c.slug}: ${(e as Error).message}`);
+    }
+  }
+  return captureSnapshot(ctx, tenantId, {
+    name: opts.name,
+    note: opts.note,
+    createdBy: opts.createdBy,
+    kind: "manual",
+    data: normalizeSnapshot(opts.snapshot),
+  });
+};
+
+export const listSnapshots = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+): Promise<SnapshotSummary[]> => {
+  const t = snapshotsTable(ctx.dialect);
+  const rows = (await ctx.db
+    .select()
+    .from(t)
+    .where(eq(t.tenantId, tenantId))
+    .orderBy(desc(t.createdAt))) as Record<string, unknown>[];
+  return rows.map(toSummary);
+};
+
+const getSnapshotRow = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  id: string,
+): Promise<Record<string, unknown> | undefined> => {
+  const t = snapshotsTable(ctx.dialect);
+  const rows = (await ctx.db
+    .select()
+    .from(t)
+    .where(and(eq(t.tenantId, tenantId), eq(t.id, id)))
+    .limit(1)) as Record<string, unknown>[];
+  return rows[0];
+};
+
+export const getSnapshot = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  id: string,
+): Promise<SnapshotRecord> => {
+  const row = await getSnapshotRow(ctx, tenantId, id);
+  if (!row) throw new AppError("NOT_FOUND", "Snapshot not found");
+  return { ...toSummary(row), snapshot: (row.snapshot as SchemaSnapshot) ?? [] };
+};
+
+export const deleteSnapshot = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  id: string,
+): Promise<void> => {
+  const t = snapshotsTable(ctx.dialect);
+  const branches = branchesTable(ctx.dialect);
+  // Refuse to delete a snapshot that is a branch head — it would orphan the
+  // branch. The admin must delete the branch first.
+  const ref = (await ctx.db
+    .select({ id: branches.id })
+    .from(branches)
+    .where(and(eq(branches.tenantId, tenantId), eq(branches.headSnapshotId, id)))
+    .limit(1)) as { id: string }[];
+  if (ref[0]) {
+    throw new AppError("CONFLICT", "Snapshot is a branch head — delete the branch first");
+  }
+  await ctx.db.delete(t).where(and(eq(t.tenantId, tenantId), eq(t.id, id)));
+};
+
+// ── Branches ───────────────────────────────────────────────────────────────
+
+const BRANCH_NAME = /^[a-z0-9][a-z0-9._/-]{0,63}$/i;
+
+const toBranch = (r: Record<string, unknown>): BranchRecord => ({
+  id: String(r.id),
+  name: String(r.name),
+  note: (r.note as string | null) ?? null,
+  headSnapshotId: (r.headSnapshotId as string | null) ?? null,
+  baseSnapshotId: (r.baseSnapshotId as string | null) ?? null,
+  createdBy: (r.createdBy as string | null) ?? null,
+  createdAt: r.createdAt,
+  updatedAt: r.updatedAt,
+});
+
+export const createBranch = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  opts: { name: string; note?: string | null; createdBy?: string | null; fromSnapshotId?: string | null },
+): Promise<BranchRecord> => {
+  if (!BRANCH_NAME.test(opts.name)) {
+    throw new AppError("VALIDATION", "Branch name must be 1–64 chars: letters, digits, . _ / -");
+  }
+  const branches = branchesTable(ctx.dialect);
+  const dup = (await ctx.db
+    .select({ id: branches.id })
+    .from(branches)
+    .where(and(eq(branches.tenantId, tenantId), eq(branches.name, opts.name)))
+    .limit(1)) as { id: string }[];
+  if (dup[0]) throw new AppError("CONFLICT", `Branch "${opts.name}" already exists`);
+
+  // Seed the branch head from a snapshot or from the live schema.
+  const data = opts.fromSnapshotId
+    ? (await getSnapshot(ctx, tenantId, opts.fromSnapshotId)).snapshot
+    : await loadLiveSchema(ctx, tenantId);
+  const head = await captureSnapshot(ctx, tenantId, {
+    name: `${opts.name} (branch base)`,
+    kind: "branch",
+    data,
+    createdBy: opts.createdBy,
+  });
+
+  const id = crypto.randomUUID();
+  await ctx.db.insert(branches).values({
+    id,
+    tenantId,
+    name: opts.name,
+    note: opts.note ?? null,
+    headSnapshotId: head.id,
+    baseSnapshotId: head.id,
+    createdBy: opts.createdBy ?? null,
+  });
+  // Back-link the head snapshot to its branch.
+  const snaps = snapshotsTable(ctx.dialect);
+  await ctx.db.update(snaps).set({ branchId: id }).where(eq(snaps.id, head.id));
+  return getBranch(ctx, tenantId, id);
+};
+
+export const listBranches = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+): Promise<BranchRecord[]> => {
+  const t = branchesTable(ctx.dialect);
+  const rows = (await ctx.db
+    .select()
+    .from(t)
+    .where(eq(t.tenantId, tenantId))
+    .orderBy(desc(t.createdAt))) as Record<string, unknown>[];
+  return rows.map(toBranch);
+};
+
+export const getBranch = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  id: string,
+): Promise<BranchRecord> => {
+  const t = branchesTable(ctx.dialect);
+  const rows = (await ctx.db
+    .select()
+    .from(t)
+    .where(and(eq(t.tenantId, tenantId), eq(t.id, id)))
+    .limit(1)) as Record<string, unknown>[];
+  if (!rows[0]) throw new AppError("NOT_FOUND", "Branch not found");
+  return toBranch(rows[0]);
+};
+
+/** Move a branch's head to a new snapshot built from `data` (an authored
+ *  schema), a source snapshot, or the current live schema. This is how an
+ *  admin stages changes on a branch before diffing/applying it. The new head
+ *  is parented to the old one so the branch keeps a linear history. */
+export const updateBranchHead = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  id: string,
+  opts: { data?: SchemaSnapshot; fromSnapshotId?: string | null; createdBy?: string | null; name?: string },
+): Promise<BranchRecord> => {
+  const branch = await getBranch(ctx, tenantId, id);
+  let data: SchemaSnapshot;
+  if (opts.data) data = normalizeSnapshot(opts.data);
+  else if (opts.fromSnapshotId) data = (await getSnapshot(ctx, tenantId, opts.fromSnapshotId)).snapshot;
+  else data = await loadLiveSchema(ctx, tenantId);
+
+  const head = await captureSnapshot(ctx, tenantId, {
+    name: opts.name ?? `${branch.name} (head)`,
+    kind: "branch",
+    data,
+    branchId: id,
+    parentSnapshotId: branch.headSnapshotId,
+    createdBy: opts.createdBy,
+  });
+  const branches = branchesTable(ctx.dialect);
+  await ctx.db
+    .update(branches)
+    .set({ headSnapshotId: head.id, updatedAt: new Date() })
+    .where(and(eq(branches.tenantId, tenantId), eq(branches.id, id)));
+  return getBranch(ctx, tenantId, id);
+};
+
+export const deleteBranch = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  id: string,
+): Promise<void> => {
+  const branch = await getBranch(ctx, tenantId, id);
+  const branches = branchesTable(ctx.dialect);
+  await ctx.db.delete(branches).where(and(eq(branches.tenantId, tenantId), eq(branches.id, id)));
+  // Drop the branch-owned snapshots (heads tagged with this branch id).
+  const snaps = snapshotsTable(ctx.dialect);
+  await ctx.db.delete(snaps).where(and(eq(snaps.tenantId, tenantId), eq(snaps.branchId, id)));
+  void branch;
+};
+
+// ── Resolve / diff ───────────────────────────────────────────────────────────
+
+export const resolveRef = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  ref: SchemaRef,
+): Promise<{ data: SchemaSnapshot; label: string }> => {
+  if (ref.kind === "snapshot") {
+    const s = await getSnapshot(ctx, tenantId, ref.id);
+    return { data: s.snapshot, label: `snapshot:${s.name}` };
+  }
+  if (ref.kind === "branch") {
+    const b = await getBranch(ctx, tenantId, ref.id);
+    if (!b.headSnapshotId) return { data: [], label: `branch:${b.name}` };
+    const s = await getSnapshot(ctx, tenantId, b.headSnapshotId);
+    return { data: s.snapshot, label: `branch:${b.name}` };
+  }
+  return { data: await loadLiveSchema(ctx, tenantId), label: "live" };
+};
+
+export const diff = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  from: SchemaRef,
+  to: SchemaRef,
+): Promise<{ from: string; to: string; diff: SchemaDiff }> => {
+  const a = await resolveRef(ctx, tenantId, from);
+  const b = await resolveRef(ctx, tenantId, to);
+  return { from: a.label, to: b.label, diff: diffSchema(a.data, b.data) };
+};
+
+// ── Apply ────────────────────────────────────────────────────────────────────
+
+const upsertMetadata = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  tc: SchemaCollection,
+  existing: SchemaCollection | undefined,
+): Promise<{ physicalTable: string; isNew: boolean }> => {
+  const t = collectionsTable(ctx.dialect);
+  const managed = !tc.adopted;
+  const physicalTable =
+    (managed ? existing?.physicalTable : tc.physicalTable ?? existing?.physicalTable) ??
+    derivePhysicalTable(tenantId, tc.slug);
+  // Soft-delete needs a physical column → managed-only (mirrors create).
+  const softDelete = managed ? Boolean(tc.softDelete) : false;
+  const common = {
+    singular: tc.singular ?? null,
+    plural: tc.plural ?? null,
+    note: tc.note ?? null,
+    displayTemplate: tc.displayTemplate ?? null,
+    fields: tc.fields,
+    ownerScoped: Boolean(tc.ownerScoped),
+    tenantScoped: tc.tenantScoped !== false,
+    versioned: Boolean(tc.versioned),
+    softDelete,
+    singleton: Boolean(tc.singleton),
+    fts: Boolean(tc.fts),
+    defaultSort: tc.defaultSort ?? null,
+  };
+  if (existing) {
+    await ctx.db
+      .update(t)
+      .set({ ...common, updatedAt: new Date() })
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, tc.slug)));
+    return { physicalTable, isNew: false };
+  }
+  await ctx.db.insert(t).values({
+    id: crypto.randomUUID(),
+    slug: tc.slug,
+    tenantId,
+    physicalTable,
+    ...common,
+    adopted: Boolean(tc.adopted),
+    auditReads: false,
+    vectorize: false,
+    vectorizeModel: null,
+    pkColumn: "id",
+    hasCreatedAt: true,
+    hasUpdatedAt: true,
+    createdAtColumn: null,
+    updatedAtColumn: null,
+    ownerIdColumn: null,
+    status: "active",
+  });
+  return { physicalTable, isNew: true };
+};
+
+/** Reconcile the live schema to `targetData`. Caller has already gated
+ *  destructive changes; this runs the DDL + metadata writes in safe order:
+ *  destructive drops → metadata upsert + additive apply → drop orphaned rows. */
+const executeDiff = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  live: SchemaSnapshot,
+  targetData: SchemaSnapshot,
+  d: SchemaDiff,
+): Promise<void> => {
+  const liveMap = new Map(live.map((c) => [c.slug, c]));
+  const targetMap = new Map(targetData.map((c) => [c.slug, c]));
+  const t = collectionsTable(ctx.dialect);
+
+  // 1. Destructive drops first (managed only — adopted tables are never DDL'd).
+  for (const ch of d.changes) {
+    if (ch.severity !== "destructive") continue;
+    const lc = liveMap.get(ch.collection);
+    if (!lc || lc.adopted) continue;
+    const table = lc.physicalTable ?? derivePhysicalTable(tenantId, ch.collection);
+    if (ch.kind === "field.drop" && ch.field) {
+      await dropField(ctx.db, ctx.dialect, table, ch.field);
+    } else if (ch.kind === "field.type" && ch.field) {
+      // Drop the old column; the additive apply below re-adds it with the new
+      // type (the data in that column is lost — the diff summary warned).
+      await dropField(ctx.db, ctx.dialect, table, ch.field);
+    } else if (ch.kind === "collection.drop") {
+      await dropCollection(ctx.db, ctx.dialect, table, { adopted: false });
+    }
+  }
+
+  // 2. Upsert metadata + run the additive applier for every target collection.
+  for (const tc of targetData) {
+    try {
+      validateFields(tc.fields);
+    } catch (e) {
+      throw new AppError("VALIDATION", `${tc.slug}: ${(e as Error).message}`);
+    }
+    const existing = liveMap.get(tc.slug);
+    const { physicalTable, isNew } = await upsertMetadata(ctx, tenantId, tc, existing);
+    if (!tc.adopted) {
+      await applyCollection(ctx.db, ctx.dialect, {
+        table: physicalTable,
+        fields: tc.fields,
+        ownerScoped: Boolean(tc.ownerScoped),
+        tenantScoped: tc.tenantScoped !== false,
+        versioned: Boolean(tc.versioned),
+        softDelete: Boolean(tc.softDelete),
+        fts: Boolean(tc.fts),
+        hasCreatedAt: true,
+        hasUpdatedAt: true,
+        adopted: false,
+      });
+      if (isNew && tc.ownerScoped) {
+        await seedOwnerScopedPermissions({ db: ctx.db, dialect: ctx.dialect }, tenantId, tc.slug);
+        invalidateTenantPermissions(tenantId);
+      }
+    }
+  }
+
+  // 3. Drop metadata rows for collections that vanished from the target.
+  for (const lc of live) {
+    if (targetMap.has(lc.slug)) continue;
+    await ctx.db.delete(t).where(and(eq(t.tenantId, tenantId), eq(t.slug, lc.slug)));
+  }
+};
+
+export const applySchema = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  opts: { target: SchemaRef; confirmDestructive?: boolean; createdBy?: string | null },
+): Promise<ApplyResult> => {
+  const live = await loadLiveSchema(ctx, tenantId);
+  const { data: targetData } = await resolveRef(ctx, tenantId, opts.target);
+  const d = diffSchema(live, targetData);
+
+  if (d.counts.total === 0) {
+    return { diff: d, applied: [], safetySnapshotId: null, noop: true };
+  }
+  if (d.hasDestructive && !opts.confirmDestructive) {
+    throw new AppError(
+      "VALIDATION",
+      "This apply includes destructive changes. Re-send with confirmDestructive: true to proceed.",
+      { destructive: d.changes.filter((c) => c.severity === "destructive") },
+    );
+  }
+
+  // Safety net: capture the current live schema before mutating it, so a bad
+  // apply can be rolled back by applying the safety snapshot.
+  const safety = await captureSnapshot(ctx, tenantId, {
+    name: "Pre-apply safety snapshot",
+    kind: "auto",
+    data: live,
+    createdBy: opts.createdBy,
+  });
+
+  await executeDiff(ctx, tenantId, live, targetData, d);
+  invalidateTenantCollections(tenantId);
+
+  return {
+    diff: d,
+    applied: d.changes.map((c) => c.summary),
+    safetySnapshotId: safety.id,
+    noop: false,
+  };
+};

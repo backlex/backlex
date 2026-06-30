@@ -209,6 +209,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | SSO (SAML / LDAP) | `docs/sso.md` |
 | API keys, access tokens, email & OAuth | `docs/api-keys-and-email.md` |
 | Adopting existing tables | `docs/adopting-tables.md` |
+| Schema versions (migration diffing / branching) | `docs/schema-versions.md` |
 | Locale + timezone | `docs/locale-timezone.md` |
 | Admin SPA i18n (Lingui) | `docs/admin-i18n.md` |
 | CLI + SDK | `docs/sdk-and-cli.md` |

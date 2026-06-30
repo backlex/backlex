@@ -761,6 +761,53 @@ export const revisions = sqliteTable(
   ],
 );
 
+/** Immutable schema snapshot — the full schema-relevant subset of a workspace's
+ *  `collections` rows (`SchemaCollection[]`), captured for migration diffing /
+ *  branching (#9). `hash` is the sha256 of the canonical snapshot for identity;
+ *  `parent_snapshot_id` links lineage; `branch_id` ties a snapshot to the branch
+ *  it was taken on (null = taken off the live schema). See the pg/schema.ts twin. */
+export const schemaSnapshots = sqliteTable(
+  "schema_snapshots",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    note: text("note"),
+    snapshot: text("snapshot", { mode: "json" }).$type<unknown[]>().notNull(),
+    hash: text("hash").notNull(),
+    /** `manual` (admin-captured) | `branch` (a branch head) | `auto` (pre-apply
+     *  safety capture taken automatically before a destructive apply). */
+    kind: text("kind").notNull().default("manual"),
+    branchId: text("branch_id"),
+    parentSnapshotId: text("parent_snapshot_id"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    index("schema_snapshots_tenant_idx").on(t.tenantId, t.createdAt),
+    index("schema_snapshots_branch_idx").on(t.branchId),
+  ],
+);
+
+/** Named, mutable pointer into the snapshot history — a "schema branch". `head_
+ *  snapshot_id` is the working schema; `base_snapshot_id` is the fork point
+ *  (the merge base used when diffing the branch against live). See the twin. */
+export const schemaBranches = sqliteTable(
+  "schema_branches",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    note: text("note"),
+    headSnapshotId: text("head_snapshot_id"),
+    baseSnapshotId: text("base_snapshot_id"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [uniqueIndex("schema_branches_tenant_name_idx").on(t.tenantId, t.name)],
+);
+
 export const activity = sqliteTable(
   "activity",
   {

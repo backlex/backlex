@@ -139,7 +139,11 @@ scales with *affected* subscriptions, not total.
 
 **Why deferred:** highest-effort item by far — a new subscription/read-set engine
 and a transaction-log overlap check. backlex is unusually well-positioned (the
-permission DSL already compiles filters to a structured `SQL` descriptor that
-could double as the read-set), but this is a multi-week project, not an
-increment. **Plan:** prototype the read-set descriptor + overlap check against
-the changefeed before touching the SSE transport.
+in-memory `matchesCondition` evaluator already IS the overlap primitive, and the
+keyset cursor is the window boundary), but this is a multi-week project, not an
+increment. **Plan:** a staged design — Stage 1 (server-side query filter) and
+Stage 2 (server-computed enter/leave/update transitions) are the 80/20, reuse
+`matchesCondition` + the existing emit chokepoint, and are fully testable in the
+bun harness; Stage 3 hardens windowed queries on the keyset boundary; Stage 4 is
+the full registry engine. Full write-up:
+[Reactive invalidation — design plan](/reactive-invalidation-plan/).

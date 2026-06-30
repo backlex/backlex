@@ -64,6 +64,9 @@ const SettingsInput = z
         message: "Too many collections in erdLayout",
       })
       .optional(),
+    /** Automatic schema-snapshot cadence + retention (#9). */
+    schemaSnapshotSchedule: z.enum(["off", "daily", "weekly"]).optional(),
+    schemaSnapshotKeepLast: z.number().int().min(1).max(50).optional(),
   })
   .strict()
   .refine(

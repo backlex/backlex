@@ -28,6 +28,7 @@ import { publishDueItems } from "./items/scheduled-publish";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 import { pruneOldSpans } from "./traces";
 import { maybeRunScheduledBackups } from "./backup";
+import { runScheduledSnapshots } from "./schema-versions";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
@@ -56,6 +57,10 @@ const ACTIVITY_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
  *  weekly window. */
 let lastBackupSweepAt: number = 0;
 const BACKUP_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
+// Scheduled schema snapshots (#9) — throttled like backups; the sweep itself
+// re-checks each workspace's daily/weekly interval so this only bounds cost.
+let lastSchemaSnapshotSweepAt: number = 0;
+const SCHEMA_SNAPSHOT_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
 const DEFAULT_ACTIVITY_RETENTION_DAYS = 90;
 const DEFAULT_TRACES_RETENTION_DAYS = 7;
 // Sensitive-read audit rows (`access.*`) are opt-in but higher-volume, so they
@@ -211,6 +216,18 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
       await maybeRunScheduledBackups(ctx, now);
     } catch (e) {
       console.error("[scheduled-backup] sweep failed", e);
+    }
+  }
+
+  // Scheduled schema snapshots: capture a `kind:"scheduled"` snapshot per
+  // workspace whose cadence is due, then prune to keepLast. Same throttle +
+  // interval-recheck posture as backups above.
+  if (now.getTime() - lastSchemaSnapshotSweepAt >= SCHEMA_SNAPSHOT_SWEEP_INTERVAL_MS) {
+    lastSchemaSnapshotSweepAt = now.getTime();
+    try {
+      await runScheduledSnapshots({ db: ctx.db, dialect: ctx.dialect }, now);
+    } catch (e) {
+      console.error("[schema-auto-snapshot] sweep failed", e);
     }
   }
 

@@ -279,10 +279,12 @@ export const createLiveQuery = <T extends Record<string, unknown>>(
     const idx = rows.findIndex((r) => (r as Record<string, unknown>).id === id);
 
     const removeAt = (i: number) => {
+      const wasFull = limit != null && rows.length >= limit;
       rows.splice(i, 1);
-      // A removal from a full limited window leaves room for an off-window row
-      // we don't have cached — pull the exact window back.
-      if (limit != null) scheduleRefetch();
+      // A removal from a FULL window opens a slot an off-window row (we don't
+      // have cached) should slide into — reconcile. A removal from a non-full
+      // window leaves no gap to fill, so no refetch (Stage 3).
+      if (wasFull) scheduleRefetch();
     };
 
     if (ev.event === "deleted") {
@@ -311,16 +313,52 @@ export const createLiveQuery = <T extends Record<string, unknown>>(
       return;
     }
     const projected = project(ev.data);
-    if (idx >= 0) rows[idx] = projected;
-    else rows.push(projected);
-    if (sortClauses.length) {
-      rows.sort((a, b) => compareRows(a as Record<string, unknown>, b as Record<string, unknown>, sortClauses));
+    const sort = () => {
+      if (sortClauses.length) {
+        rows.sort((a, b) =>
+          compareRows(a as Record<string, unknown>, b as Record<string, unknown>, sortClauses),
+        );
+      }
+    };
+
+    // ── Update of a row already in the window ──────────────────────────────
+    if (idx >= 0) {
+      const old = rows[idx] as Record<string, unknown>;
+      const moved = sortClauses.length > 0 && compareRows(old, row, sortClauses) !== 0;
+      rows[idx] = projected;
+      if (moved) sort();
+      // A move within a FULL window can push this row toward the edge, where an
+      // off-window row (uncached) might now outrank it — reconcile. A move in a
+      // non-full window, or an update that didn't change the sort key, needs no
+      // refetch (Stage 3).
+      if (moved && limit != null && rows.length >= limit) scheduleRefetch();
+      emit();
+      return;
     }
+
+    // ── New row entering the window ────────────────────────────────────────
+    const full = limit != null && rows.length >= limit;
+    if (full && sortClauses.length) {
+      // Compare to the boundary (last visible row). Strictly after it → the new
+      // row is off-window: drop it with NO refetch (Stage 3). Otherwise it's
+      // in-window: insert, sort, and evict the overflow row — which is now
+      // off-window and correctly hidden, so still NO refetch.
+      const boundary = rows[rows.length - 1] as Record<string, unknown>;
+      if (compareRows(row, boundary, sortClauses) > 0) return;
+      rows.push(projected);
+      sort();
+      rows = rows.slice(0, limit!);
+      emit();
+      return;
+    }
+
+    // Non-full window (or no sort to reason about the boundary): plain insert.
+    rows.push(projected);
+    sort();
     if (limit != null && rows.length > limit) {
+      // Only reachable without a sort order (can't tell which row is off-window)
+      // — keep the conservative slice + reconcile.
       rows = rows.slice(0, limit);
-      // The displaced row leaving the window is correct; but an update that
-      // pushes a row down OUT of the window should pull the next one in — we
-      // can't know without the server, so reconcile.
       scheduleRefetch();
     }
     emit();

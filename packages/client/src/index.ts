@@ -944,8 +944,9 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     channel: string,
     onEvent: (e: ItemEvent<T>) => void,
     onError?: (err: unknown) => void,
+    query?: string,
   ): (() => void) => {
-    const url = `${opts.url}/api/realtime/${channel}/subscribe`;
+    const url = `${opts.url}/api/realtime/${channel}/subscribe${query ? `?${query}` : ""}`;
     const es = new EventSource(url, { withCredentials: true });
     es.addEventListener("message", (ev: MessageEvent<string>) => {
       try {

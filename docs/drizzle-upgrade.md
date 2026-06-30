@@ -49,9 +49,9 @@ source, no build step) will mix incompatible runtime + types.
 5. **Test both dialects** — `bun run test` (SQLite in-process + `pg-smoke` via
    pglite). The migration applier (`packages/db/src/auto-migrate.ts`) and
    `schema-applier.ts` are the highest-risk surfaces.
-6. **Build all four runtimes** — `bun run build:targets` (Bun / CF / Vercel /
-   Netlify). Driver behaviour (postgres-js vs neon-http) can shift across ORM
-   versions.
+6. **Build the runtime targets** — `bun run build:targets` (CF Workers / Vercel /
+   Netlify / Node, plus the shared SPA). Driver behaviour (postgres-js vs
+   neon-http) can shift across ORM versions.
 7. **Smoke the live deploy** after merge per the standard workflow — exercise a
    create/read/update path on each dialect you run in production.
 

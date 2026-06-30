@@ -13,7 +13,7 @@ Admin UI · Typed SDK · CLI · Type generation
 
 | Layer       | Tech                                                                  |
 |-------------|-----------------------------------------------------------------------|
-| API         | [Hono](https://hono.dev) (Bun + Workers + Vercel + Netlify edge)      |
+| API         | [Hono](https://hono.dev) — one app on Bun / Node / Deno + Workers, Vercel, Netlify, Lambda, GCP, Azure |
 | ORM         | [Drizzle](https://orm.drizzle.team) v1 beta — PG + SQLite/D1          |
 | Auth        | [better-auth](https://better-auth.com) — email, OAuth (Google/GitHub/Apple), magic-link, OTP, passkey, SAML 2.0 SSO, LDAP/AD |
 | Storage     | local FS (Bun dev) / Cloudflare R2 (Workers) / S3-compatible (any runtime: AWS, R2, B2, MinIO, Spaces, Wasabi) |
@@ -203,7 +203,7 @@ POST   /api/_internal/sandbox-rpc   internal — Bearer-auth, used by the remote
 ## Documentation
 
 - [Getting started](docs/getting-started.md) — first user, first collection, first item
-- [Deployment](docs/deployment.md) — Bun / Workers / Vercel / Netlify side by side
+- [Deployment](docs/deployment.md) — self-host (Bun / Node / Deno) or deploy to Cloudflare, Vercel, Netlify, Deno Deploy, AWS Lambda, Google Cloud & Azure
 - [Permissions DSL](docs/permissions.md) — operators, variables, examples
 - [Querying items](docs/querying.md) — filter / sort / projection / expand / locale / meta
 - [Adopting tables](docs/adopting-tables.md) — wrap an existing table without DDL

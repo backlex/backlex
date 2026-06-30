@@ -1,13 +1,16 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { streamSSE } from "hono/streaming";
 import type { SSEStreamingApi } from "hono/streaming";
-import { AppError, SYSTEM_ROLES, type Condition } from "@backlex/core";
+import { AppError, SYSTEM_ROLES, type Condition, normalizeCondition } from "@backlex/core";
 import type { AppBindings } from "../app";
 import type { Ctx } from "../context";
 import type { Env } from "../env";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { resolvePermission } from "../services/permissions";
-import { loadCollection } from "../services/items/collection-loader";
+import {
+  loadCollection,
+  type CollectionRow,
+} from "../services/items/collection-loader";
 import {
   currentSeq,
   joinPresence,
@@ -67,11 +70,89 @@ const clientIp = (c: { req: { header: (n: string) => string | undefined } }): st
   c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
   "local";
 
+/** System columns a realtime filter may always reference (they're always
+ *  projected to the subscriber, so filtering on them leaks nothing). */
+const SYSTEM_FILTER_FIELDS = new Set([
+  "id",
+  "created_at",
+  "updated_at",
+  "owner_id",
+  "_status",
+  "_published_at",
+  "_publish_at",
+]);
+
+/** Collect the (possibly dotted) leaf field names a normalized Condition
+ *  references, so we can validate them against the caller's read allow-list. */
+const collectConditionFields = (cond: Condition, out: Set<string>): void => {
+  const c = cond as Record<string, unknown>;
+  if (Array.isArray(c.$and)) {
+    for (const x of c.$and) collectConditionFields(x as Condition, out);
+    return;
+  }
+  if (Array.isArray(c.$or)) {
+    for (const x of c.$or) collectConditionFields(x as Condition, out);
+    return;
+  }
+  if (c.$not !== undefined) {
+    collectConditionFields(c.$not as Condition, out);
+    return;
+  }
+  for (const k of Object.keys(c)) out.add(k);
+};
+
+/**
+ * Parse + validate a live-query `filter` for a realtime subscription. The
+ * filter is evaluated IN-MEMORY against each event's flat row, so:
+ *  - nested/relation (dotted) paths are rejected — there's no joined row to
+ *    walk at emit time (the client refetches those, as today);
+ *  - every referenced field must exist AND be readable by the caller —
+ *    otherwise a subscriber could probe an unreadable column's value by
+ *    observing which events its filter lets through.
+ */
+const parseRealtimeFilter = (
+  filterRaw: string,
+  collection: CollectionRow,
+  permFields: Set<string> | null,
+): Condition => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(filterRaw);
+  } catch {
+    throw new AppError("VALIDATION", "Invalid realtime `filter` JSON");
+  }
+  const relationFields = new Set(
+    collection.fields
+      .filter((f) => f.type === "relation" || f.type === "relation_many")
+      .map((f) => f.name),
+  );
+  const cond = normalizeCondition(parsed, { relationFields });
+  const refs = new Set<string>();
+  collectConditionFields(cond, refs);
+  const known = new Set(collection.fields.map((f) => f.name));
+  for (const field of refs) {
+    if (field.includes(".")) {
+      throw new AppError(
+        "VALIDATION",
+        `Realtime filter can't use the nested path "${field}" — events carry a flat row; filter client-side for relations`,
+      );
+    }
+    if (!known.has(field) && !SYSTEM_FILTER_FIELDS.has(field)) {
+      throw new AppError("VALIDATION", `Unknown field in realtime filter: ${field}`);
+    }
+    if (permFields && !permFields.has(field) && !SYSTEM_FILTER_FIELDS.has(field)) {
+      throw new AppError("FORBIDDEN", `No permission to filter on field: ${field}`);
+    }
+  }
+  return cond;
+};
+
 const gateForChannel = async (
   ctx: Ctx,
   auth: { userId: string | null; email: string | null; roles: string[]; tenantId?: string | null },
   channel: string,
   isPublish: boolean,
+  filterRaw?: string,
 ): Promise<Gate> => {
   if (channel.startsWith(ITEMS_PREFIX)) {
     const slug = channel.slice(ITEMS_PREFIX.length);
@@ -91,34 +172,46 @@ const gateForChannel = async (
       );
     }
     let conditions: Condition[] | null = perm.isAdmin ? null : perm.conditions;
+    // Load the collection once if we need it — for the versioned draft gate
+    // (non-admin) and/or to validate a live-query filter.
+    let collection: CollectionRow | null = null;
+    if (auth.tenantId && (filterRaw || !perm.isAdmin)) {
+      try {
+        collection = await loadCollection(ctx, auth.tenantId, slug);
+      } catch {
+        collection = null;
+      }
+    }
     // Versioned collections: a subscriber without publish/update sees only
     // published items, so AND a `_status='published'` clause into every
     // permission condition (matched in-memory against each event's payload).
-    if (!perm.isAdmin && auth.tenantId) {
-      try {
-        const collection = await loadCollection(ctx, auth.tenantId, slug);
-        if (collection.versioned) {
-          const canSeeDrafts =
-            (await resolvePermission(ctx, auth, slug, "publish")).allowed ||
-            (await resolvePermission(ctx, auth, slug, "update")).allowed;
-          if (!canSeeDrafts) {
-            const pub: Condition = { _status: { _eq: "published" } } as Condition;
-            conditions =
-              conditions && conditions.length
-                ? conditions.map((c) => ({ _and: [c, pub] }) as Condition)
-                : [pub];
-          }
-        }
-      } catch {
-        // Collection metadata unavailable — leave conditions as the read perm
-        // resolved them (no extra draft gate).
+    if (!perm.isAdmin && collection?.versioned) {
+      const canSeeDrafts =
+        (await resolvePermission(ctx, auth, slug, "publish")).allowed ||
+        (await resolvePermission(ctx, auth, slug, "update")).allowed;
+      if (!canSeeDrafts) {
+        const pub: Condition = { _status: { _eq: "published" } } as Condition;
+        conditions =
+          conditions && conditions.length
+            ? conditions.map((c) => ({ _and: [c, pub] }) as Condition)
+            : [pub];
       }
+    }
+    // Live-query filter (reactive Stage 1) — AND'd on top of the permission
+    // conditions, narrowing what this subscriber receives.
+    let queryFilter: Condition | null = null;
+    if (filterRaw) {
+      if (!collection) {
+        throw new AppError("VALIDATION", "Realtime filter requires an active workspace");
+      }
+      queryFilter = parseRealtimeFilter(filterRaw, collection, perm.fields ?? null);
     }
     return {
       meta: {
         authSubject: auth,
         conditions,
         fields: perm.fields ? [...perm.fields] : null,
+        queryFilter,
       },
     };
   }
@@ -372,7 +465,10 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
     // flush when the function ends — frames never reach the client live. This
     // header tells the proxy to pass bytes through as they're written.
     c.header("X-Accel-Buffering", "no");
-    const gate = await gateForChannel(ctx, auth, channel, false);
+    // `?filter=<json>` opts a subscription into server-side narrowing: only
+    // events whose row matches the filter (AND the caller's permission) are
+    // delivered (reactive invalidation Stage 1).
+    const gate = await gateForChannel(ctx, auth, channel, false, c.req.query("filter"));
     const since = parseSince(c.req.header("Last-Event-ID"));
 
     // Workers: bridge a hibernatable WebSocket from the RealtimeRoom DO into an

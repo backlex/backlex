@@ -132,6 +132,7 @@ export default defineConfig({
           items: [
             { slug: "design" },
             { slug: "service-map" },
+            { slug: "performance" },
           ],
         },
       ],

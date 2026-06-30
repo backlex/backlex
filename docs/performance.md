@@ -137,12 +137,17 @@ each live query's read set (row ids + index ranges) and, on a write, recompute
 only the subscriptions whose read set the write overlaps. Invalidation cost
 scales with *affected* subscriptions, not total.
 
-**Status: Stages 1 & 2 shipped.** Stage 1 (server-side live-query filter — the
-subscription narrows the stream to only matching events) and Stage 2
-(server-computed `enter`/`leave`/`update` transitions, so an update that pushes
-a row out of the result set is still delivered) are live and wired into the SDK
-`liveQuery`. They reuse the in-memory `matchesCondition` evaluator (the overlap
-primitive) at the existing emit chokepoint, shared across both transports.
-**Still planned:** Stage 3 hardens `limit`-windowed queries on the keyset
-boundary; Stage 4 is the full per-DO registry + transaction-log overlap engine.
-Full write-up: [Reactive invalidation — design plan](/reactive-invalidation-plan/).
+**Status: Stages 1–3 shipped; Stage 4 designed + deferred.** Stage 1 (server-side
+live-query filter — the subscription narrows the stream to only matching
+events), Stage 2 (server-computed `enter`/`leave`/`update` transitions, so an
+update that pushes a row out of the result set is still delivered), and Stage 3
+(windowed live queries skip the reconcile refetch on inserts) are live and wired
+into the SDK `liveQuery`. They reuse the in-memory `matchesCondition` evaluator
+(the overlap primitive) at the existing emit chokepoint, shared across both
+transports. Building them revealed that a separate Stage-4 registry/transaction-
+log engine is largely **subsumed** by backlex's per-event per-subscription model
+(each event already triggers exactly the per-subscription overlap check a
+registry would schedule); the one genuine remainder — server-pushed window
+backfill to retire the last refetch — is stateful + Workers-only + needs live DO
+verification, so it's designed but not built. Full write-up:
+[Reactive invalidation — design plan](/reactive-invalidation-plan/).

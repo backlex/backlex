@@ -19,7 +19,7 @@ Every app-plane sign-in issues a token *pair*:
   **access token** — 15-minute TTL hardcoded as `ACCESS_TOKEN_TTL_SECONDS`
   in that file (not env-configurable; edit the constant if you need a
   different window). HS256 JWT keyed off `AUTH_SECRET`, hand-rolled on
-  Web Crypto (no dependency, works on all four runtimes), verified
+  Web Crypto (no dependency, works on every runtime), verified
   statelessly (no DB hit) in `middleware/session.ts`.
 
 Sign-in responses carry:

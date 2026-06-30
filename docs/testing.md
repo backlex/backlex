@@ -3,10 +3,12 @@ title: Testing
 description: Three-layer test pyramid that gates every change against business logic, build artifacts, and real-runtime behavior.
 ---
 
-backlex ships to four runtimes from one source tree (Bun, Cloudflare
-Workers, Vercel Functions, Netlify Functions). To keep that promise
-honest, the test setup runs at three layers, each catching what the
-layer above can't see.
+backlex builds the same source tree into bundles for every deploy target —
+Bun and Node self-host, Cloudflare Workers, Vercel, Netlify, and the serverless
+clouds (see [Deployment](/deployment)). The `build:targets` CI gate compiles the
+Workers / Vercel / Netlify / Node bundles on every run. To keep that
+multi-runtime promise honest, the test setup runs at three layers, each catching
+what the layer above can't see.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

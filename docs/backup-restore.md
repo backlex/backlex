@@ -5,7 +5,7 @@ description: Logical JSONL backups (manual + scheduled) with additive restore, p
 
 backlex ships a **logical** backup system: every backup is a portable JSONL
 dump of your data, written through the storage adapter (R2/S3/filesystem). It
-works identically on all four runtimes and both dialects — unlike a
+works identically on every runtime and both dialects — unlike a
 Cloudflare-D1 point-in-time snapshot, a logical dump moves cleanly between
 Postgres and SQLite/D1.
 

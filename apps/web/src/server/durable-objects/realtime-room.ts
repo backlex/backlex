@@ -1,10 +1,13 @@
-import { matchesCondition } from "@backlex/db";
 import type { AuthSubject, Condition } from "@backlex/core";
+import { rowPasses } from "../services/realtime-filter";
 
 interface Meta {
   authSubject: AuthSubject;
   conditions: Condition[] | null;
   fields: string[] | null;
+  /** Live-query filter, AND'd on top of `conditions` (reactive Stage 1). Rides
+   *  along in the base64 `meta=` attachment from the Worker subscribe handler. */
+  queryFilter?: Condition | null;
 }
 
 interface PresenceIdentity {
@@ -233,15 +236,7 @@ export class RealtimeRoom {
     }
     let outText: string;
     if (meta && isItemPayload(payload)) {
-      const passes =
-        meta.conditions === null
-          ? true
-          : meta.conditions.length === 0
-            ? false
-            : meta.conditions.some((c) =>
-                matchesCondition(payload.data, c, meta.authSubject),
-              );
-      if (!passes) return;
+      if (!rowPasses(payload.data, meta)) return;
       const out = meta.fields
         ? { event: payload.event, data: project(payload.data, meta.fields) }
         : payload;

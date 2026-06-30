@@ -1,5 +1,5 @@
-import { matchesCondition } from "@backlex/db";
 import type { AuthSubject, Condition, EmailAdapter } from "@backlex/core";
+import { rowPasses } from "./realtime-filter";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { Ctx } from "../context";
@@ -21,6 +21,10 @@ export interface SubscriptionMeta {
   conditions: Condition[] | null;
   /** null = all fields readable. */
   fields: string[] | null;
+  /** Optional live-query filter (reactive invalidation Stage 1) — AND'd on top
+   *  of the permission conditions so a filtered subscriber receives only the
+   *  events whose row matches its query, evaluated server-side. */
+  queryFilter?: Condition | null;
 }
 
 export interface Subscriber {
@@ -58,11 +62,7 @@ const isItemPayload = (payload: unknown): payload is ItemEventPayload =>
 const passesFilter = (
   data: Record<string, unknown>,
   meta: SubscriptionMeta,
-): boolean => {
-  if (meta.conditions === null) return true;
-  if (meta.conditions.length === 0) return false;
-  return meta.conditions.some((c) => matchesCondition(data, c, meta.authSubject));
-};
+): boolean => rowPasses(data, meta);
 
 /** Serialize `payload` for a single subscriber, applying the permission filter
  *  + field projection for ItemEvent-shaped payloads. Returns `null` when the

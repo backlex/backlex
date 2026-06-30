@@ -436,6 +436,20 @@ function SchemaGraphSkeletonImpl() {
   );
 }
 
+/** Schema versions — header, a tab strip, then the snapshots/branches table. */
+function SchemaVersionsSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-6">
+      <HeaderSkeleton actions={2} />
+      <div className="flex items-center gap-4 border-b pb-2">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="h-5 w-24" />
+      </div>
+      <TableCardSkeleton rows={5} cols={4} />
+    </div>
+  );
+}
+
 /** Insights — header, then a dashboard grid of panel tiles. */
 function InsightsSkeletonImpl() {
   return (
@@ -775,6 +789,7 @@ export const WebhooksSkeleton = withSkeletonDelay(WebhooksSkeletonImpl);
 export const RealtimeSkeleton = withSkeletonDelay(RealtimeSkeletonImpl);
 export const AdvisorSkeleton = withSkeletonDelay(AdvisorSkeletonImpl);
 export const SchemaGraphSkeleton = withSkeletonDelay(SchemaGraphSkeletonImpl);
+export const SchemaVersionsSkeleton = withSkeletonDelay(SchemaVersionsSkeletonImpl);
 export const InsightsSkeleton = withSkeletonDelay(InsightsSkeletonImpl);
 export const RevisionsSkeleton = withSkeletonDelay(RevisionsSkeletonImpl);
 export const TranslationsSkeleton = withSkeletonDelay(TranslationsSkeletonImpl);
@@ -836,6 +851,8 @@ export function PageSkeleton({ nav }: { nav: string }) {
       return <AdvisorSkeleton />;
     case "schema-graph":
       return <SchemaGraphSkeleton />;
+    case "schema-versions":
+      return <SchemaVersionsSkeleton />;
     case "insights":
       return <InsightsSkeleton />;
     case "revisions":

@@ -63,6 +63,7 @@ import m56 from "../../drizzle/sqlite/20260621000000_ai_config/migration.sql" wi
 import m57 from "../../drizzle/sqlite/20260627000000_ai_agents/migration.sql" with { type: "text" };
 import m58 from "../../drizzle/sqlite/20260628000000_request_spans/migration.sql" with { type: "text" };
 import m59 from "../../drizzle/sqlite/20260628100000_dashboards/migration.sql" with { type: "text" };
+import m60 from "../../drizzle/sqlite/20260630120000_schema_versions/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -130,4 +131,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260627000000_ai_agents", sql: m57 },
   { name: "20260628000000_request_spans", sql: m58 },
   { name: "20260628100000_dashboards", sql: m59 },
+  { name: "20260630120000_schema_versions", sql: m60 },
 ];

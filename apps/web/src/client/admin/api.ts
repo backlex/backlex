@@ -665,6 +665,107 @@ export const jobsApi = {
     api<{ ok: true }>(`/api/jobs/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
 
+// ── Schema versions (migration diffing / schema branching, #9) ──────────────
+export interface ApiSchemaSnapshotCollection {
+  slug: string;
+  fields: { name: string; type: string; [k: string]: unknown }[];
+  [k: string]: unknown;
+}
+export interface ApiSchemaSnapshot {
+  id: string;
+  name: string;
+  note: string | null;
+  hash: string;
+  kind: string;
+  branchId: string | null;
+  parentSnapshotId: string | null;
+  createdBy: string | null;
+  createdAt: number | string | null;
+  collectionCount: number;
+}
+export interface ApiSchemaSnapshotFull extends ApiSchemaSnapshot {
+  snapshot: ApiSchemaSnapshotCollection[];
+}
+export interface ApiSchemaBranch {
+  id: string;
+  name: string;
+  note: string | null;
+  headSnapshotId: string | null;
+  baseSnapshotId: string | null;
+  createdBy: string | null;
+  createdAt: number | string | null;
+  updatedAt: number | string | null;
+}
+export interface ApiSchemaChange {
+  kind: string;
+  severity: "additive" | "destructive" | "metadata";
+  collection: string;
+  field?: string;
+  summary: string;
+  before?: unknown;
+  after?: unknown;
+  ddl?: { pg: string[]; sqlite: string[] };
+}
+export interface ApiSchemaDiff {
+  changes: ApiSchemaChange[];
+  counts: { additive: number; destructive: number; metadata: number; total: number };
+  hasDestructive: boolean;
+}
+export type ApiSchemaRef =
+  | { kind: "live" }
+  | { kind: "snapshot"; id: string }
+  | { kind: "branch"; id: string };
+export interface ApiSchemaApplyResult {
+  diff: ApiSchemaDiff;
+  applied: string[];
+  safetySnapshotId: string | null;
+  noop: boolean;
+}
+
+export const schemaVersionsApi = {
+  listSnapshots: () => api<Envelope<ApiSchemaSnapshot[]>>(`/api/admin/schema/snapshots`),
+  getSnapshot: (id: string) =>
+    api<Envelope<ApiSchemaSnapshotFull>>(`/api/admin/schema/snapshots/${encodeURIComponent(id)}`),
+  capture: (name: string, note?: string | null) =>
+    api<Envelope<ApiSchemaSnapshotFull>>(`/api/admin/schema/snapshots`, {
+      method: "POST",
+      body: JSON.stringify({ name, note: note ?? null }),
+    }),
+  importSnapshot: (name: string, snapshot: ApiSchemaSnapshotCollection[], note?: string | null) =>
+    api<Envelope<ApiSchemaSnapshotFull>>(`/api/admin/schema/snapshots/import`, {
+      method: "POST",
+      body: JSON.stringify({ name, snapshot, note: note ?? null }),
+    }),
+  deleteSnapshot: (id: string) =>
+    api<{ ok: true }>(`/api/admin/schema/snapshots/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  listBranches: () => api<Envelope<ApiSchemaBranch[]>>(`/api/admin/schema/branches`),
+  createBranch: (name: string, opts?: { note?: string | null; fromSnapshotId?: string | null }) =>
+    api<Envelope<ApiSchemaBranch>>(`/api/admin/schema/branches`, {
+      method: "POST",
+      body: JSON.stringify({ name, ...opts }),
+    }),
+  setBranchHead: (
+    id: string,
+    body: { data?: ApiSchemaSnapshotCollection[]; fromSnapshotId?: string | null; name?: string },
+  ) =>
+    api<Envelope<ApiSchemaBranch>>(`/api/admin/schema/branches/${encodeURIComponent(id)}/head`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteBranch: (id: string) =>
+    api<{ ok: true }>(`/api/admin/schema/branches/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  diff: (from: ApiSchemaRef, to: ApiSchemaRef) =>
+    api<Envelope<{ from: string; to: string; diff: ApiSchemaDiff }>>(`/api/admin/schema/diff`, {
+      method: "POST",
+      body: JSON.stringify({ from, to }),
+    }),
+  apply: (target: ApiSchemaRef, confirmDestructive?: boolean) =>
+    api<Envelope<ApiSchemaApplyResult>>(`/api/admin/schema/apply`, {
+      method: "POST",
+      body: JSON.stringify({ target, confirmDestructive }),
+    }),
+};
+
 export const emailTemplatesApi = {
   list: () => api<Envelope<ApiEmailTemplate[]>>(`/api/admin/email-templates`),
   get: (id: string) => api<Envelope<ApiEmailTemplate>>(`/api/admin/email-templates/${id}`),

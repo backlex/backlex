@@ -1,5 +1,6 @@
 import { BacklexError } from "backlex";
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { useLiveQuery } from "backlex/react";
+import { type FormEvent, useEffect, useState } from "react";
 import { backlex, persistToken, type Todo, todos } from "./backlex";
 import { SetupCheck } from "./SetupCheck";
 
@@ -126,46 +127,35 @@ function AuthForm({ onAuthed }: { onAuthed: (u: User) => void }) {
 
 // ── Todos ─────────────────────────────────────────────────────────────────
 function Todos({ user, onSignOut }: { user: User; onSignOut: () => void }) {
-  const [items, setItems] = useState<Todo[]>([]);
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [activeOnly, setActiveOnly] = useState(false);
 
-  const refresh = useCallback(async () => {
-    try {
-      const res = await todos.list({ sort: ["-created_at"], limit: 100 });
-      setItems(res.data);
-    } catch (err) {
-      setError(err instanceof BacklexError ? err.message : String(err));
-    }
-  }, []);
+  // ONE reactive query replaces the manual list() + subscribe() + reducer the
+  // old version hand-rolled. `useLiveQuery` runs the initial page, then keeps
+  // `items` consistent as rows change — from this tab, another tab, another
+  // client, the SDK, or a flow — pushing a fresh array on every change.
+  //
+  // Flip `activeOnly` to add a server-side `filter: { done: false }`. The
+  // subscription then receives ONLY matching events plus enter/leave
+  // transitions, so checking a todo off makes it slide out of the list live
+  // (the server tells us it left the result set) with no extra fetch. Toggling
+  // it back rebuilds the query (the deep-equal opts key changes).
+  const { data: items, loading } = useLiveQuery<Todo>(backlex, "todos", {
+    sort: ["-created_at"],
+    limit: 100,
+    ...(activeOnly ? { filter: { done: { _eq: false } } } : {}),
+  });
 
-  useEffect(() => {
-    refresh();
-    // Realtime: stay live across tabs/clients. The SSE stream replays the same
-    // create/update/delete events the server applies. (EventSource can't send a
-    // bearer header, so this delivers only when the `todos` channel is readable
-    // by the request's cookie/anon scope — direct responses keep the UI correct
-    // either way.)
-    const off = backlex.subscribe<Todo>("items:todos", (e) => {
-      setItems((cur) => {
-        if (e.event === "deleted") return cur.filter((t) => t.id !== e.data.id);
-        const next = cur.filter((t) => t.id !== e.data.id);
-        return e.event === "created" || e.event === "updated"
-          ? [e.data, ...next]
-          : next;
-      });
-    });
-    return off;
-  }, [refresh]);
-
+  // Mutations just call the API — no local state juggling. The live query
+  // reflects each change when its event arrives over the realtime stream.
   async function add(e: FormEvent) {
     e.preventDefault();
     const text = title.trim();
     if (!text) return;
     setTitle("");
     try {
-      const res = await todos.create({ title: text, done: false });
-      setItems((cur) => [res.data, ...cur.filter((t) => t.id !== res.data.id)]);
+      await todos.create({ title: text, done: false });
     } catch (err) {
       setError(err instanceof BacklexError ? err.message : String(err));
     }
@@ -173,8 +163,7 @@ function Todos({ user, onSignOut }: { user: User; onSignOut: () => void }) {
 
   async function toggle(t: Todo) {
     try {
-      const res = await todos.update(t.id, { done: !t.done });
-      setItems((cur) => cur.map((x) => (x.id === t.id ? res.data : x)));
+      await todos.update(t.id, { done: !t.done });
     } catch (err) {
       setError(err instanceof BacklexError ? err.message : String(err));
     }
@@ -183,7 +172,6 @@ function Todos({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   async function remove(t: Todo) {
     try {
       await todos.delete(t.id);
-      setItems((cur) => cur.filter((x) => x.id !== t.id));
     } catch (err) {
       setError(err instanceof BacklexError ? err.message : String(err));
     }
@@ -226,9 +214,30 @@ function Todos({ user, onSignOut }: { user: User; onSignOut: () => void }) {
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
+        <div className="flex items-center justify-between text-sm">
+          <label className="flex items-center gap-2 text-neutral-600">
+            <input
+              type="checkbox"
+              checked={activeOnly}
+              onChange={(e) => setActiveOnly(e.target.checked)}
+              className="size-4"
+            />
+            Active only
+          </label>
+          <span className="text-neutral-400">
+            {items.length} {items.length === 1 ? "todo" : "todos"}
+          </span>
+        </div>
+
         <ul className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white">
-          {items.length === 0 && (
-            <li className="p-4 text-sm text-neutral-400">No todos yet.</li>
+          {loading ? (
+            <li className="p-4 text-sm text-neutral-400">Loading…</li>
+          ) : (
+            items.length === 0 && (
+              <li className="p-4 text-sm text-neutral-400">
+                {activeOnly ? "Nothing active — all done!" : "No todos yet."}
+              </li>
+            )
           )}
           {items.map((t) => (
             <li key={t.id} className="flex items-center gap-3 p-3">

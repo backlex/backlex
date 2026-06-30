@@ -6,7 +6,13 @@ A ~200-line app that shows the three things every backlex app needs:
    (the app-plane pool, separate from the admin dashboard). The session token is
    persisted to `localStorage` and replayed as a bearer.
 2. **CRUD** — `client.from<Todo>("todos")` for list / create / update / delete.
-3. **Realtime** — `client.subscribe("items:todos", …)` keeps the list live.
+3. **Reactive query** — `useLiveQuery(client, "todos", { … })` (from
+   `backlex/react`) keeps the list live with zero reducer code: it runs the
+   initial page, then maintains the array as rows change. Flip **Active only**
+   to send a server-side `filter: { done: false }` — the subscription then gets
+   only matching events plus enter/leave transitions, so checking a todo off
+   makes it slide out of the list live (no refetch). Mutations just call the
+   API; the live query reflects them.
 
 It's intentionally dependency-light: React 19 + Vite + Tailwind, and `backlex`.
 
@@ -66,7 +72,7 @@ it, delete it. Open a second tab to watch realtime propagate.
 | `src/env.ts` + `src/SetupCheck.tsx` | declarative env spec + a gate that validates it and pings the backend before the app renders |
 | `src/backlex.ts` | `createClient({ url, workspace, token })` + token persistence |
 | `src/App.tsx` (`AuthForm`) | `auth.signUp` / `auth.signIn` / `auth.getSession` / `auth.signOut` |
-| `src/App.tsx` (`Todos`) | `from("todos").list/create/update/delete` + `subscribe("items:todos")` |
+| `src/App.tsx` (`Todos`) | `from("todos").create/update/delete` + `useLiveQuery(client, "todos", …)` for the live, filterable list |
 
 ## Notes
 

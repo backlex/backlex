@@ -120,13 +120,18 @@ export function SchemaVersionsPage({
           schemaSnapshotSchedule: merged.schedule,
           schemaSnapshotKeepLast: merged.keepLast,
         });
+        pushToast(
+          merged.schedule === "off"
+            ? t`Auto-snapshot turned off.`
+            : t`Auto-snapshot set to ${merged.schedule}, keeping ${merged.keepLast}.`,
+        );
       } catch (e) {
         setSchedule(prev.schedule);
         setKeepLast(prev.keepLast);
         pushToast((e as Error).message, "error");
       }
     },
-    [schedule, keepLast, pushToast],
+    [schedule, keepLast, pushToast, t],
   );
 
   useEffect(() => {
@@ -184,18 +189,21 @@ export function SchemaVersionsPage({
           </Trans>
         }
         actions={
+          // Stable keys per action so React never reuses the green primary
+          // button's DOM node as the outline Import button when the tab flips —
+          // reusing it animates the background green→transparent (a green flash).
           <div className="flex flex-wrap items-center justify-end gap-2">
             {tab === "snapshots" ? (
               <>
-                <Button variant="outline" icon={I.Upload} onClick={() => setImportOpen(true)}>
+                <Button key="import" variant="outline" icon={I.Upload} onClick={() => setImportOpen(true)}>
                   <Trans>Import</Trans>
                 </Button>
-                <Button variant="primary" icon={I.Plus} onClick={() => setCaptureOpen(true)}>
+                <Button key="capture" variant="primary" icon={I.Plus} onClick={() => setCaptureOpen(true)}>
                   <Trans>Capture snapshot</Trans>
                 </Button>
               </>
             ) : (
-              <Button variant="primary" icon={I.Plus} onClick={() => setBranchOpen(true)}>
+              <Button key="new-branch" variant="primary" icon={I.Plus} onClick={() => setBranchOpen(true)}>
                 <Trans>New branch</Trans>
               </Button>
             )}

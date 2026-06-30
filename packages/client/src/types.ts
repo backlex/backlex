@@ -113,6 +113,12 @@ export interface ImportSummary {
 export interface ItemEvent<T = Record<string, unknown>> {
   event: "created" | "updated" | "deleted";
   data: T;
+  /** Set only on a subscription that sent a `?filter=` (reactive Stage 2): the
+   *  server-computed membership change relative to that filter — `enter`
+   *  (newly matches), `leave` (no longer matches; drop it), or `update`
+   *  (still matches). Lets a client trust the server instead of re-evaluating
+   *  the filter locally (so `$user.*` / `$now` filters work incrementally). */
+  transition?: "enter" | "leave" | "update";
 }
 
 /** One operation in a `batch(...)` request. */

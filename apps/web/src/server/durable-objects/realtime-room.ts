@@ -1,5 +1,5 @@
 import type { AuthSubject, Condition } from "@backlex/core";
-import { rowPasses } from "../services/realtime-filter";
+import { renderItemEvent, stripBefore } from "../services/realtime-filter";
 
 interface Meta {
   authSubject: AuthSubject;
@@ -27,29 +27,10 @@ interface StoredEvent {
   text: string;
 }
 
-const SYSTEM_FIELDS = new Set([
-  "id",
-  "createdAt",
-  "updatedAt",
-  "ownerId",
-]);
-
 /** How many recent events to retain for `?since=` replay on reconnect. */
 const REPLAY_LIMIT = 50;
 /** Presence roster frames carry seq 0 — never replayed, never an SSE id. */
 const PRESENCE_SEQ = 0;
-
-const project = (
-  data: Record<string, unknown>,
-  fields: string[],
-): Record<string, unknown> => {
-  const allow = new Set(fields);
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(data)) {
-    if (SYSTEM_FIELDS.has(k) || allow.has(k)) out[k] = v;
-  }
-  return out;
-};
 
 const isItemPayload = (
   payload: unknown,
@@ -236,13 +217,15 @@ export class RealtimeRoom {
     }
     let outText: string;
     if (meta && isItemPayload(payload)) {
-      if (!rowPasses(payload.data, meta)) return;
-      const out = meta.fields
-        ? { event: payload.event, data: project(payload.data, meta.fields) }
-        : payload;
-      outText = JSON.stringify(out);
+      const rendered = renderItemEvent(
+        payload as Parameters<typeof renderItemEvent>[0],
+        meta,
+      );
+      if (rendered === null) return;
+      outText = JSON.stringify(rendered);
     } else {
-      outText = ev.text;
+      // No meta — strip the server-only `before` before forwarding raw.
+      outText = isItemPayload(payload) ? JSON.stringify(stripBefore(payload)) : ev.text;
     }
     try {
       ws.send(frame(ev.seq, outText));

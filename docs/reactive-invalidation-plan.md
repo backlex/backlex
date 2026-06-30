@@ -3,10 +3,11 @@ title: Reactive invalidation — design plan
 description: Staged plan to upgrade realtime from broadcast-and-filter to read-set-tracked recompute. Design proposal, not shipped behavior.
 ---
 
-> **Status: design proposal.** This is the implementation plan for the deferred
-> "read-set-tracked reactive invalidation" item in [Performance](/performance/).
-> Nothing here is live yet. It exists so the work can start from a grounded
-> design instead of a blank page.
+> **Status: Stages 1 & 2 shipped; 3 & 4 planned.** This is the staged plan for
+> the "read-set-tracked reactive invalidation" item in [Performance](/performance/).
+> The server-side query filter (Stage 1) and the server-computed membership
+> transitions (Stage 2) are live and wired into the SDK `liveQuery`; Stages 3–4
+> remain design.
 
 ## The idea (Convex, adapted)
 
@@ -55,7 +56,7 @@ What's missing: the query filter isn't attached to the subscription
 *transition* (it ships the raw row, the client re-derives), and there's no
 window-boundary tracking. Those are the four stages below.
 
-## Stage 1 — attach the query filter to the subscription (server-side narrowing)
+## Stage 1 — attach the query filter to the subscription (server-side narrowing) ✅ shipped
 
 **Goal:** a filtered subscriber receives only events whose row matches its
 filter, evaluated server-side with the existing predicate. Pure fan-out
@@ -78,7 +79,7 @@ get less noise). Both transports, one chokepoint each. Fully unit-testable
 against `matchesCondition` with no D1/Redis. **Win:** most of the bandwidth +
 client-CPU savings, immediately.
 
-## Stage 2 — server-computed membership transitions (enter / leave / update)
+## Stage 2 — server-computed membership transitions (enter / leave / update) ✅ shipped
 
 **Goal:** for an `updated` event, the server tells the client *what changed
 about membership* instead of shipping a raw row the client must re-classify:

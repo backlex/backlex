@@ -137,13 +137,12 @@ each live query's read set (row ids + index ranges) and, on a write, recompute
 only the subscriptions whose read set the write overlaps. Invalidation cost
 scales with *affected* subscriptions, not total.
 
-**Why deferred:** highest-effort item by far — a new subscription/read-set engine
-and a transaction-log overlap check. backlex is unusually well-positioned (the
-in-memory `matchesCondition` evaluator already IS the overlap primitive, and the
-keyset cursor is the window boundary), but this is a multi-week project, not an
-increment. **Plan:** a staged design — Stage 1 (server-side query filter) and
-Stage 2 (server-computed enter/leave/update transitions) are the 80/20, reuse
-`matchesCondition` + the existing emit chokepoint, and are fully testable in the
-bun harness; Stage 3 hardens windowed queries on the keyset boundary; Stage 4 is
-the full registry engine. Full write-up:
-[Reactive invalidation — design plan](/reactive-invalidation-plan/).
+**Status: Stages 1 & 2 shipped.** Stage 1 (server-side live-query filter — the
+subscription narrows the stream to only matching events) and Stage 2
+(server-computed `enter`/`leave`/`update` transitions, so an update that pushes
+a row out of the result set is still delivered) are live and wired into the SDK
+`liveQuery`. They reuse the in-memory `matchesCondition` evaluator (the overlap
+primitive) at the existing emit chokepoint, shared across both transports.
+**Still planned:** Stage 3 hardens `limit`-windowed queries on the keyset
+boundary; Stage 4 is the full per-DO registry + transaction-log overlap engine.
+Full write-up: [Reactive invalidation — design plan](/reactive-invalidation-plan/).

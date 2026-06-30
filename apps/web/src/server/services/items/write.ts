@@ -255,7 +255,10 @@ export const performUpdate = async (
       publishEvent(
         ctx.env,
         `items:${collection.slug}`,
-        { event: "updated", data: refreshedRow },
+        // `before` is server-only (reactive Stage 2): the emit chokepoint uses
+        // it to compute each filtered subscriber's membership transition, then
+        // strips it — it never reaches a client.
+        { event: "updated", data: refreshedRow, before: beforeRow },
         { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: env.tenantId ?? null },
       ),
     () =>

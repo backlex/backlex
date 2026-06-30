@@ -1,12 +1,22 @@
 # backlex
 
-Self-hostable Supabase + Directus alternative. **One codebase, four deploy
-targets**: Bun (long-running), Cloudflare Workers, Vercel Edge, Netlify Edge.
+Open-source ([Apache-2.0](#license)) **AI-native backend** you can self-host or
+run at the edge. One codebase on Bun / Node / Deno that also deploys to
+Cloudflare Workers, Vercel, Netlify, Deno Deploy, AWS Lambda, Google Cloud and
+Azure — on PostgreSQL or SQLite / D1.
+
+An open-source alternative to Supabase, Firebase, Directus, Appwrite, Strapi and
+AWS Amplify: every feature lives in the Apache-2.0 core — no Enterprise tier for
+SSO, audit logs, or permissions. Agents reach your data through a built-in MCP
+server, scoped by the same permissions DSL as everything else.
 
 ```
-Dynamic schema · Permissions DSL · REST + GraphQL · Realtime · Edge functions
-Storage + folders · Webhooks · Flows · Cron · Activity + revisions · Passkey
-Admin UI · Typed SDK · CLI · Type generation
+Dynamic schema · Adopt existing tables · Permissions DSL · REST + GraphQL
+Realtime (SSE) · Reactive live queries · Offline-first sync · Full-text + vector search
+AI agents · Built-in MCP server · Edge functions (sandbox) · Flows · Durable jobs · Cron
+Storage + folders + image transforms · Resumable uploads · Draft/publish · Feature flags
+Push + SMS messaging · Webhooks · Embedded BI dashboards · Audit logs · Tracing · Backup/restore
+Multi-tenant workspaces · SSO (SAML/LDAP) · Passkey · Advisor · Admin UI · Typed SDK · CLI · Type gen
 ```
 
 ## Stack
@@ -208,7 +218,10 @@ POST   /api/_internal/sandbox-rpc   internal — Bearer-auth, used by the remote
 - [Querying items](docs/querying.md) — filter / sort / projection / expand / locale / meta
 - [Adopting tables](docs/adopting-tables.md) — wrap an existing table without DDL
 - [Functions / sandbox](docs/functions.md) — three providers, RPC bridge, security
-- [SDK + CLI](docs/sdk-and-cli.md) — `@backlex/client` + `backlex` commands
+- [SDK + CLI](docs/sdk-and-cli.md) — the `backlex` TypeScript SDK + the `backlex` CLI
+- [MCP server](docs/mcp.md) — expose a workspace to Claude / Cursor / agents, scoped per key
+- [AI agents](docs/agents.md) — reason→act loop, DSL-scoped tools, per-thread vector memory
+- [Vector + full-text search](docs/vector-search.md) — pgvector / Vectorize, auto-embed on write
 - [GraphQL](docs/graphql.md) — auto-schema, relations, mutations
 - [Realtime](docs/realtime.md) — channels, permission filtering, hosting
 - [Storage](docs/storage.md) — adapters, image transforms, signed URLs

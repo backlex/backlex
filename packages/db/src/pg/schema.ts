@@ -871,6 +871,51 @@ export const revisions = pgTable(
   ],
 );
 
+/** Immutable schema snapshot — the schema-relevant subset of a workspace's
+ *  `collections` rows (`SchemaCollection[]`), captured for migration diffing /
+ *  branching (#9). `hash` is the sha256 of the canonical snapshot; `parent_
+ *  snapshot_id` links lineage; `branch_id` ties it to its branch (null = live).
+ *  See the sqlite/schema.ts twin. */
+export const schemaSnapshots = pgTable(
+  "schema_snapshots",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    note: text("note"),
+    snapshot: jsonb("snapshot").$type<unknown[]>().notNull(),
+    hash: text("hash").notNull(),
+    kind: text("kind").notNull().default("manual"),
+    branchId: text("branch_id"),
+    parentSnapshotId: text("parent_snapshot_id"),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("schema_snapshots_tenant_idx").on(t.tenantId, t.createdAt),
+    index("schema_snapshots_branch_idx").on(t.branchId),
+  ],
+);
+
+/** Named, mutable pointer into the snapshot history — a "schema branch".
+ *  `head_snapshot_id` is the working schema; `base_snapshot_id` is the fork
+ *  point used as the merge base when diffing against live. See the twin. */
+export const schemaBranches = pgTable(
+  "schema_branches",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    note: text("note"),
+    headSnapshotId: text("head_snapshot_id"),
+    baseSnapshotId: text("base_snapshot_id"),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("schema_branches_tenant_name_idx").on(t.tenantId, t.name)],
+);
+
 export const activity = pgTable(
   "activity",
   {

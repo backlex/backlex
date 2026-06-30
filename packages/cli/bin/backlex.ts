@@ -11,6 +11,7 @@ import { runPermissions } from "../src/permissions";
 import { runFunctions } from "../src/functions";
 import { runFlows } from "../src/flows";
 import { runDashboards } from "../src/dashboards";
+import { runSchema } from "../src/schema";
 import { runAgents } from "../src/agents";
 import { runTemplates } from "../src/templates";
 import { runWebhooks } from "../src/webhooks";
@@ -83,6 +84,10 @@ Usage:
 
   backlex dashboards <list|get|run|create|delete|share|revoke>
       Embedded BI dashboards. \`share <id>\` mints a public embed token.
+
+  backlex schema <snapshots|capture|import|branches|create-branch|diff|apply|…>
+      Migration diffing / schema branching. \`diff\`/\`apply\` take refs:
+      live, snapshot:<id>, branch:<id>. \`apply --confirm-destructive\` for drops.
 
   backlex agents <list|get|create|update|delete|threads|run>
       AI agents. \`run <id> --message "…"\` runs a turn and prints the answer.
@@ -204,6 +209,9 @@ const run = async () => {
     case "dashboards":
     case "dashboard":
       await runDashboards(rest);
+      return;
+    case "schema":
+      await runSchema(rest);
       return;
     case "agents":
     case "agent":

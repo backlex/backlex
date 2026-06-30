@@ -60,6 +60,7 @@ import { jobsRoutes } from "./routes/jobs";
 import { openapiRoutes } from "./routes/openapi";
 import { panelsRoutes } from "./routes/panels";
 import { dashboardsRoutes } from "./routes/dashboards";
+import { schemaVersionsRoutes } from "./routes/schema-versions";
 import { dashboardsPublicRoutes } from "./routes/dashboards-public";
 import { realtimeRoutes } from "./routes/realtime";
 import { realtimeAdminRoutes } from "./routes/realtime-admin";
@@ -659,6 +660,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/adopt", adoptRoutes);
   app.route("/api/admin/panels", panelsRoutes);
   app.route("/api/admin/dashboards", dashboardsRoutes);
+  app.route("/api/admin/schema", schemaVersionsRoutes);
   app.route("/api/admin/i18n", i18nRoutes);
   app.route("/api/i18n", i18nPublicRoutes);
   app.route("/api/admin/settings", settingsRoutes);

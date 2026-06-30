@@ -414,6 +414,11 @@ msgstr "{0} gösteriliyor · {1} yüklendi"
 msgid "{0} signs users in without asking for their authenticator code — it bypasses TOTP two-factor for anyone who has it enabled. Their account is then only as secure as their email inbox. Enable it anyway?"
 msgstr "{0} kullanıcıları doğrulayıcı kodunu sormadan oturum açtırır — etkinleştirmiş olan herkes için TOTP iki adımlı doğrulamayı atlar. Hesapları o zaman yalnızca e-posta kutuları kadar güvenli olur. Yine de etkinleştirilsin mi?"
 
+#. placeholder {0}: snapshots.length
+#: src/client/admin/pages/schema-versions.tsx
+msgid "{0} snapshot(s) available to fork from."
+msgstr "Çatallamak için {0} anlık görüntü mevcut."
+
 #. placeholder {0}: u.email
 #: src/client/admin/pages/users.tsx
 msgid "{0} suspended."
@@ -1031,6 +1036,10 @@ msgstr "{0} eklendi"
 msgid "Added provider \"{id}\"."
 msgstr "\"{id}\" sağlayıcısı eklendi."
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "additive"
+msgstr "ekleyici"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Adds <0>_status</0> + <1>_published_at</1>. Independent of the user-defined \"status\" field."
 msgstr "<0>_status</0> + <1>_published_at</1> ekler. Kullanıcı tanımlı \"status\" alanından bağımsızdır."
@@ -1243,6 +1252,10 @@ msgstr "zaten mevcut"
 msgid "Already have an account?"
 msgstr "Zaten bir hesabınız var mı?"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Already in sync — no changes."
+msgstr "Zaten eşitlenmiş — değişiklik yok."
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "already set"
 msgstr "zaten ayarlandı"
@@ -1312,6 +1325,11 @@ msgstr "Görünüm"
 msgid "applied"
 msgstr "uygulandı"
 
+#. placeholder {0}: res.applied.length
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Applied {0} change(s)."
+msgstr "{0} değişiklik uygulandı."
+
 #: src/client/admin/parity/database.tsx
 msgid "Applied at"
 msgstr "Uygulanma tarihi"
@@ -1333,12 +1351,17 @@ msgstr "Uygula"
 msgid "Apply template"
 msgstr "Şablonu uygula"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Apply to live schema"
+msgstr "Canlı şemaya uygula"
+
 #: src/client/admin/pages/users.tsx
 msgid "Apply to selection:"
 msgstr "Seçime uygula:"
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/bulk-edit.tsx
+#: src/client/admin/pages/schema-versions.tsx
 msgid "Applying…"
 msgstr "Uygulanıyor…"
 
@@ -1709,6 +1732,22 @@ msgstr "İçerik (HTML)"
 msgid "Body (text)"
 msgstr "İçerik (metin)"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Branch created."
+msgstr "Dal oluşturuldu."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Branch deleted."
+msgstr "Dal silindi."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Branch name (e.g. add-orders)"
+msgstr "Dal adı (örn. add-orders)"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Branches"
+msgstr "Dallar"
+
 #: src/client/admin/pages/settings.tsx
 msgid "Branding saved."
 msgstr "Marka ayarları kaydedildi."
@@ -1777,6 +1816,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/schema-graph.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -1823,9 +1863,25 @@ msgstr "Kaydedilemedi: {0}"
 msgid "Caps the number of grouped rows returned (default 50, max 200)."
 msgstr "Döndürülen gruplanmış satır sayısını sınırlar (varsayılan 50, maksimum 200)."
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Capture"
+msgstr "Yakala"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Capture a snapshot to checkpoint the current schema."
+msgstr "Mevcut şemayı denetim noktası olarak işaretlemek için bir anlık görüntü yakalayın."
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Capture data events as PostHog analytics events."
 msgstr "Veri olaylarını PostHog analitik olayları olarak yakala."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Capture snapshot"
+msgstr "Anlık görüntü al"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Capturing…"
+msgstr "Yakalanıyor…"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Cardinality"
@@ -1859,6 +1915,10 @@ msgstr "Değerin öğe formunda nasıl düzenlendiğini değiştirir. Seçim ara
 #: src/client/admin/parity/revisions.tsx
 msgid "Changes only"
 msgstr "Yalnızca değişiklikler"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Changes the live schema would receive if you apply this version."
+msgstr "Bu sürümü uygularsanız canlı şemanın alacağı değişiklikler."
 
 #: src/client/admin/extras.tsx
 msgid "Channel"
@@ -2071,6 +2131,7 @@ msgstr "koleksiyonlar"
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/ui.tsx
 msgid "Collections"
 msgstr "Koleksiyonlar"
@@ -2189,6 +2250,10 @@ msgstr "bileşik — desteklenmiyor"
 #: src/client/admin/adopt-wizard.tsx
 msgid "Composite (multi-column) FKs cannot be adopted as a backlex relation"
 msgstr "Bileşik (çok sütunlu) FK'lar backlex ilişkisi olarak benimsenemez"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Computing diff…"
+msgstr "Fark hesaplanıyor…"
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Condition (permission DSL JSON, optional)"
@@ -2521,6 +2586,10 @@ msgstr "Hesap oluştur"
 msgid "Create an account"
 msgstr "Hesap oluşturun"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Create branch"
+msgstr "Dal oluştur"
+
 #: src/client/admin/collections-index.tsx
 msgid "Create collection"
 msgstr "Koleksiyon oluştur"
@@ -2633,6 +2702,7 @@ msgstr "Anahtar oluşturuluyor"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/storage.tsx
@@ -2842,6 +2912,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -2983,6 +3054,10 @@ msgstr "Açıklama"
 #: src/client/admin/parity/database.tsx
 #~ msgid "Destination"
 #~ msgstr "Hedef"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "destructive"
+msgstr "yıkıcı"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Details"
@@ -4075,6 +4150,14 @@ msgstr "Yabancı anahtarlar tespit edildi"
 msgid "Forgot?"
 msgstr "Unuttunuz mu?"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Fork a branch from the current live schema. Stage changes, then apply."
+msgstr "Mevcut canlı şemadan bir dal çatallayın. Değişiklikleri hazırlayın, sonra uygulayın."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Fork a branch to stage schema changes off to the side."
+msgstr "Şema değişikliklerini ayrı tutmak için bir dal çatallayın."
+
 #: src/client/admin/storage.tsx
 msgid "Format"
 msgstr "Biçim"
@@ -4292,6 +4375,10 @@ msgstr "argon2id ile hashlendi · <0>users.password_hash</0> alanında saklanır
 msgid "Have an account?"
 msgstr "Hesabınız var mı?"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Head"
+msgstr "Uç"
+
 #: src/client/admin/pages/settings.tsx
 msgid "Headline"
 msgstr "Başlık"
@@ -4373,6 +4460,10 @@ msgstr "http · olay · cron"
 msgid "I agree to the <0>Terms</0> and <1>Privacy</1>."
 msgstr "<0>Şartlar</0>'ı ve <1>Gizlilik Politikası</1>'nı kabul ediyorum."
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "I understand this drops columns/tables or changes types and will lose data."
+msgstr "Bunun sütun/tablo düşüreceğini veya tür değiştireceğini ve veri kaybına yol açacağını anlıyorum."
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "id"
 msgstr "id"
@@ -4430,6 +4521,7 @@ msgstr "{displayEmail} bir hesapla eşleşiyorsa, giriş bağlantısı yola çı
 #~ msgstr "<0>{0}</0> bir hesapla eşleşiyorsa giriş bağlantısı gönderildi. 15 dakika içinde sona erer."
 
 #: src/client/admin/app.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/storage.tsx
 msgid "Import"
 msgstr "İçe aktar"
@@ -4441,6 +4533,10 @@ msgstr "URL'den içe aktar"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Import metadata"
 msgstr "Metadata içe aktar"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Import schema"
+msgstr "Şema içe aktar"
 
 #: src/client/admin/storage.tsx
 msgid "Import URL"
@@ -4464,6 +4560,7 @@ msgstr "{0} satır içe aktarıldı — {1} yeni, {2} güncellendi."
 msgid "Imported {0}."
 msgstr "{0} içe aktarıldı."
 
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/storage.tsx
 msgid "Importing…"
 msgstr "İçe aktarılıyor…"
@@ -4829,6 +4926,7 @@ msgstr "anahtarlar"
 msgid "kind"
 msgstr "tür"
 
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/parity/insights.tsx
@@ -5102,6 +5200,10 @@ msgstr "/api altındaki her uç nokta için canlı tarayıcı. Çalışma alanı
 #: src/client/admin/pages/schema-graph.tsx
 #~ msgid "Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
 #~ msgstr "Dinamik koleksiyonların canlı ERD'si. Yabancı anahtarlar alan türünden türetilir · aşağıdaki ilişkiler paneli REST + GraphQL tarafından kullanılan birleştirme şeklini gösterir."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Live schema already matches this version."
+msgstr "Canlı şema zaten bu sürümle eşleşiyor."
 
 #: src/client/admin/extras.tsx
 msgid "Live tail"
@@ -5386,6 +5488,10 @@ msgstr "Hafıza"
 msgid "Message"
 msgstr "İleti"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "metadata"
+msgstr "meta veri"
+
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/storage.tsx
 msgid "Metadata"
@@ -5532,6 +5638,7 @@ msgstr "Temam"
 #: src/client/admin/add-field.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -5624,6 +5731,10 @@ msgstr "Yeni API anahtarı"
 #: src/client/admin/account-page.tsx
 msgid "New backup codes generated. Old codes no longer work."
 msgstr "Yeni yedek kodlar oluşturuldu. Eski kodlar artık çalışmıyor."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "New branch"
+msgstr "Yeni dal"
 
 #: src/client/admin/pages/agents.tsx
 msgid "New chat"
@@ -5789,6 +5900,10 @@ msgstr "Henüz API anahtarı yok"
 #: src/client/admin/collections-index.tsx
 msgid "No archived collections"
 msgstr "Arşivlenmiş koleksiyon yok"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "No branches yet"
+msgstr "Henüz dal yok"
 
 #: src/client/admin/bulk-edit.tsx
 msgid "No bulk-editable fields on this collection."
@@ -6141,6 +6256,10 @@ msgstr "Şema yok."
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "No signing cert stored — login will fail."
 msgstr "İmza sertifikası saklanmamış — giriş başarısız olacak."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "No snapshots yet"
+msgstr "Henüz anlık görüntü yok"
 
 #: src/client/admin/account-page.tsx
 msgid "No social providers are enabled for this workspace."
@@ -6655,6 +6774,10 @@ msgstr "Parolalar eşleşmiyor"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Paste a base64 SAMLResponse"
 msgstr "Base64 SAMLResponse yapıştırın"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Paste an authored schema (a JSON array of collections, e.g. from <0>backlex collections export-schema</0>) to store as a snapshot you can diff and apply."
+msgstr "Fark alıp uygulayabileceğiniz bir anlık görüntü olarak saklamak için hazırlanmış bir şemayı (koleksiyonların JSON dizisi, örn. <0>backlex collections export-schema</0> çıktısı) yapıştırın."
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "paste from the provider"
@@ -7874,6 +7997,15 @@ msgstr "Geri alınıyor…"
 msgid "Review"
 msgstr "İnceleme"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Review & apply"
+msgstr "İncele ve uygula"
+
+#. placeholder {0}: target?.label ?? ""
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Review & apply — {0}"
+msgstr "İncele ve uygula — {0}"
+
 #. placeholder {0}: e.v
 #: src/client/admin/parity/revisions.tsx
 msgid "Revision v{0}"
@@ -8228,6 +8360,10 @@ msgstr "Meta verileri kaydet"
 msgid "Save sort"
 msgstr "Sıralamayı kaydet"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Save the current live schema as an immutable checkpoint."
+msgstr "Mevcut canlı şemayı değiştirilemez bir denetim noktası olarak kaydedin."
+
 #: src/client/admin/parity/email-templates.tsx
 msgid "Save the template before sending a test."
 msgstr "Test göndermeden önce şablonu kaydedin."
@@ -8316,6 +8452,23 @@ msgstr "Şema dışa aktarıldı · schema.json"
 #: src/client/admin/ui.tsx
 msgid "Schema graph"
 msgstr "Şema grafiği"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Schema imported as snapshot."
+msgstr "Şema anlık görüntü olarak içe aktarıldı."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Schema JSON is not valid JSON."
+msgstr "Şema JSON metni geçerli JSON değil."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Schema must be a JSON array of collections."
+msgstr "Şema, koleksiyonların bir JSON dizisi olmalıdır."
+
+#: src/client/admin/pages/schema-versions.tsx
+#: src/client/admin/ui.tsx
+msgid "Schema versions"
+msgstr "Şema sürümleri"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Schemas"
@@ -9038,6 +9191,26 @@ msgstr "<0>Bu çalışma alanı</0> için SMS taşıyıcısı. Çözümleme sır
 #: src/client/admin/item-editor.tsx
 msgid "Snapshot"
 msgstr "Anlık görüntü"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Snapshot and branch your schema, diff any version against the live one, and apply a target to migrate — destructive changes stay behind a confirm."
+msgstr "Şemanızı anlık görüntüleyip dallandırın, herhangi bir sürümü canlı olanla karşılaştırın ve geçiş için bir hedef uygulayın — yıkıcı değişiklikler bir onayın arkasında kalır."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Snapshot captured."
+msgstr "Anlık görüntü alındı."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Snapshot deleted."
+msgstr "Anlık görüntü silindi."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Snapshot name"
+msgstr "Anlık görüntü adı"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Snapshots"
+msgstr "Anlık görüntüler"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Snippet copied"

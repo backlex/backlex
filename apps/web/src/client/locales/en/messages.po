@@ -414,6 +414,11 @@ msgstr "{0} shown · {1} loaded"
 msgid "{0} signs users in without asking for their authenticator code — it bypasses TOTP two-factor for anyone who has it enabled. Their account is then only as secure as their email inbox. Enable it anyway?"
 msgstr "{0} signs users in without asking for their authenticator code — it bypasses TOTP two-factor for anyone who has it enabled. Their account is then only as secure as their email inbox. Enable it anyway?"
 
+#. placeholder {0}: snapshots.length
+#: src/client/admin/pages/schema-versions.tsx
+msgid "{0} snapshot(s) available to fork from."
+msgstr "{0} snapshot(s) available to fork from."
+
 #. placeholder {0}: u.email
 #: src/client/admin/pages/users.tsx
 msgid "{0} suspended."
@@ -1031,6 +1036,10 @@ msgstr "Added {0}"
 msgid "Added provider \"{id}\"."
 msgstr "Added provider \"{id}\"."
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "additive"
+msgstr "additive"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Adds <0>_status</0> + <1>_published_at</1>. Independent of the user-defined \"status\" field."
 msgstr "Adds <0>_status</0> + <1>_published_at</1>. Independent of the user-defined \"status\" field."
@@ -1243,6 +1252,10 @@ msgstr "already exists"
 msgid "Already have an account?"
 msgstr "Already have an account?"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Already in sync — no changes."
+msgstr "Already in sync — no changes."
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "already set"
 msgstr "already set"
@@ -1312,6 +1325,11 @@ msgstr "Appearance"
 msgid "applied"
 msgstr "applied"
 
+#. placeholder {0}: res.applied.length
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Applied {0} change(s)."
+msgstr "Applied {0} change(s)."
+
 #: src/client/admin/parity/database.tsx
 msgid "Applied at"
 msgstr "Applied at"
@@ -1333,12 +1351,17 @@ msgstr "Apply"
 msgid "Apply template"
 msgstr "Apply template"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Apply to live schema"
+msgstr "Apply to live schema"
+
 #: src/client/admin/pages/users.tsx
 msgid "Apply to selection:"
 msgstr "Apply to selection:"
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/bulk-edit.tsx
+#: src/client/admin/pages/schema-versions.tsx
 msgid "Applying…"
 msgstr "Applying…"
 
@@ -1709,6 +1732,22 @@ msgstr "Body (HTML)"
 msgid "Body (text)"
 msgstr "Body (text)"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Branch created."
+msgstr "Branch created."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Branch deleted."
+msgstr "Branch deleted."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Branch name (e.g. add-orders)"
+msgstr "Branch name (e.g. add-orders)"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Branches"
+msgstr "Branches"
+
 #: src/client/admin/pages/settings.tsx
 msgid "Branding saved."
 msgstr "Branding saved."
@@ -1777,6 +1816,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/schema-graph.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -1823,9 +1863,25 @@ msgstr "Cannot save: {0}"
 msgid "Caps the number of grouped rows returned (default 50, max 200)."
 msgstr "Caps the number of grouped rows returned (default 50, max 200)."
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Capture"
+msgstr "Capture"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Capture a snapshot to checkpoint the current schema."
+msgstr "Capture a snapshot to checkpoint the current schema."
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Capture data events as PostHog analytics events."
 msgstr "Capture data events as PostHog analytics events."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Capture snapshot"
+msgstr "Capture snapshot"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Capturing…"
+msgstr "Capturing…"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Cardinality"
@@ -1859,6 +1915,10 @@ msgstr "Changes how the value is edited in the item form. Selection interfaces (
 #: src/client/admin/parity/revisions.tsx
 msgid "Changes only"
 msgstr "Changes only"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Changes the live schema would receive if you apply this version."
+msgstr "Changes the live schema would receive if you apply this version."
 
 #: src/client/admin/extras.tsx
 msgid "Channel"
@@ -2071,6 +2131,7 @@ msgstr "collections"
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/ui.tsx
 msgid "Collections"
 msgstr "Collections"
@@ -2189,6 +2250,10 @@ msgstr "composite — not supported"
 #: src/client/admin/adopt-wizard.tsx
 msgid "Composite (multi-column) FKs cannot be adopted as a backlex relation"
 msgstr "Composite (multi-column) FKs cannot be adopted as a backlex relation"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Computing diff…"
+msgstr "Computing diff…"
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Condition (permission DSL JSON, optional)"
@@ -2521,6 +2586,10 @@ msgstr "Create account"
 msgid "Create an account"
 msgstr "Create an account"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Create branch"
+msgstr "Create branch"
+
 #: src/client/admin/collections-index.tsx
 msgid "Create collection"
 msgstr "Create collection"
@@ -2633,6 +2702,7 @@ msgstr "Creating key"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/storage.tsx
@@ -2842,6 +2912,7 @@ msgstr "Defaults to the URL's filename"
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -2983,6 +3054,10 @@ msgstr "Description"
 #: src/client/admin/parity/database.tsx
 #~ msgid "Destination"
 #~ msgstr "Destination"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "destructive"
+msgstr "destructive"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Details"
@@ -4075,6 +4150,14 @@ msgstr "Foreign keys detected"
 msgid "Forgot?"
 msgstr "Forgot?"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Fork a branch from the current live schema. Stage changes, then apply."
+msgstr "Fork a branch from the current live schema. Stage changes, then apply."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Fork a branch to stage schema changes off to the side."
+msgstr "Fork a branch to stage schema changes off to the side."
+
 #: src/client/admin/storage.tsx
 msgid "Format"
 msgstr "Format"
@@ -4292,6 +4375,10 @@ msgstr "Hashed with argon2id · stored in <0>users.password_hash</0>."
 msgid "Have an account?"
 msgstr "Have an account?"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Head"
+msgstr "Head"
+
 #: src/client/admin/pages/settings.tsx
 msgid "Headline"
 msgstr "Headline"
@@ -4373,6 +4460,10 @@ msgstr "http · event · cron"
 msgid "I agree to the <0>Terms</0> and <1>Privacy</1>."
 msgstr "I agree to the <0>Terms</0> and <1>Privacy</1>."
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "I understand this drops columns/tables or changes types and will lose data."
+msgstr "I understand this drops columns/tables or changes types and will lose data."
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "id"
 msgstr "id"
@@ -4430,6 +4521,7 @@ msgstr "If {displayEmail} matches an account, a sign-in link is on its way. It e
 #~ msgstr "If <0>{0}</0> matches an account, a sign-in link is on its way. It expires in 15 minutes."
 
 #: src/client/admin/app.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/storage.tsx
 msgid "Import"
 msgstr "Import"
@@ -4441,6 +4533,10 @@ msgstr "Import from URL"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Import metadata"
 msgstr "Import metadata"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Import schema"
+msgstr "Import schema"
 
 #: src/client/admin/storage.tsx
 msgid "Import URL"
@@ -4464,6 +4560,7 @@ msgstr "Imported {0} rows — {1} new, {2} updated."
 msgid "Imported {0}."
 msgstr "Imported {0}."
 
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/storage.tsx
 msgid "Importing…"
 msgstr "Importing…"
@@ -4829,6 +4926,7 @@ msgstr "keys"
 msgid "kind"
 msgstr "kind"
 
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/parity/insights.tsx
@@ -5102,6 +5200,10 @@ msgstr "Live browser for every endpoint under /api. Built from the OpenAPI doc y
 #: src/client/admin/pages/schema-graph.tsx
 #~ msgid "Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
 #~ msgstr "Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Live schema already matches this version."
+msgstr "Live schema already matches this version."
 
 #: src/client/admin/extras.tsx
 msgid "Live tail"
@@ -5386,6 +5488,10 @@ msgstr "Memory"
 msgid "Message"
 msgstr "Message"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "metadata"
+msgstr "metadata"
+
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/storage.tsx
 msgid "Metadata"
@@ -5532,6 +5638,7 @@ msgstr "My theme"
 #: src/client/admin/add-field.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -5624,6 +5731,10 @@ msgstr "New API key"
 #: src/client/admin/account-page.tsx
 msgid "New backup codes generated. Old codes no longer work."
 msgstr "New backup codes generated. Old codes no longer work."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "New branch"
+msgstr "New branch"
 
 #: src/client/admin/pages/agents.tsx
 msgid "New chat"
@@ -5789,6 +5900,10 @@ msgstr "No API keys yet"
 #: src/client/admin/collections-index.tsx
 msgid "No archived collections"
 msgstr "No archived collections"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "No branches yet"
+msgstr "No branches yet"
 
 #: src/client/admin/bulk-edit.tsx
 msgid "No bulk-editable fields on this collection."
@@ -6141,6 +6256,10 @@ msgstr "No schema."
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "No signing cert stored — login will fail."
 msgstr "No signing cert stored — login will fail."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "No snapshots yet"
+msgstr "No snapshots yet"
 
 #: src/client/admin/account-page.tsx
 msgid "No social providers are enabled for this workspace."
@@ -6647,6 +6766,10 @@ msgstr "Passwords do not match"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Paste a base64 SAMLResponse"
 msgstr "Paste a base64 SAMLResponse"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Paste an authored schema (a JSON array of collections, e.g. from <0>backlex collections export-schema</0>) to store as a snapshot you can diff and apply."
+msgstr "Paste an authored schema (a JSON array of collections, e.g. from <0>backlex collections export-schema</0>) to store as a snapshot you can diff and apply."
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "paste from the provider"
@@ -7866,6 +7989,15 @@ msgstr "Reverting…"
 msgid "Review"
 msgstr "Review"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Review & apply"
+msgstr "Review & apply"
+
+#. placeholder {0}: target?.label ?? ""
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Review & apply — {0}"
+msgstr "Review & apply — {0}"
+
 #. placeholder {0}: e.v
 #: src/client/admin/parity/revisions.tsx
 msgid "Revision v{0}"
@@ -8220,6 +8352,10 @@ msgstr "Save metadata"
 msgid "Save sort"
 msgstr "Save sort"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Save the current live schema as an immutable checkpoint."
+msgstr "Save the current live schema as an immutable checkpoint."
+
 #: src/client/admin/parity/email-templates.tsx
 msgid "Save the template before sending a test."
 msgstr "Save the template before sending a test."
@@ -8308,6 +8444,23 @@ msgstr "Schema exported · schema.json"
 #: src/client/admin/ui.tsx
 msgid "Schema graph"
 msgstr "Schema graph"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Schema imported as snapshot."
+msgstr "Schema imported as snapshot."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Schema JSON is not valid JSON."
+msgstr "Schema JSON is not valid JSON."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Schema must be a JSON array of collections."
+msgstr "Schema must be a JSON array of collections."
+
+#: src/client/admin/pages/schema-versions.tsx
+#: src/client/admin/ui.tsx
+msgid "Schema versions"
+msgstr "Schema versions"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Schemas"
@@ -9030,6 +9183,26 @@ msgstr "SMS transport for <0>this workspace</0>. Resolution order: this config �
 #: src/client/admin/item-editor.tsx
 msgid "Snapshot"
 msgstr "Snapshot"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Snapshot and branch your schema, diff any version against the live one, and apply a target to migrate — destructive changes stay behind a confirm."
+msgstr "Snapshot and branch your schema, diff any version against the live one, and apply a target to migrate — destructive changes stay behind a confirm."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Snapshot captured."
+msgstr "Snapshot captured."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Snapshot deleted."
+msgstr "Snapshot deleted."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Snapshot name"
+msgstr "Snapshot name"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Snapshots"
+msgstr "Snapshots"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Snippet copied"

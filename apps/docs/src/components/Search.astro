@@ -1,0 +1,65 @@
+---
+// Starlight `Search` override.
+//
+// Starlight initialises its Pagefind search UI inside a `DOMContentLoaded`
+// handler (see @astrojs/starlight/components/Search.astro). That event fires
+// only on a full page load — never on Astro `<ClientRouter />` view-transition
+// navigations (our Head.astro adds the ClientRouter for smooth doc-to-doc
+// morphs). So once a visitor moves between pages client-side, the search modal
+// opens completely empty: the PagefindUI markup is never injected.
+//
+// We render the stock Search component unchanged, then re-initialise PagefindUI
+// on `astro:after-swap`, which fires only on client-side navigations (never on
+// the first load, which Starlight's own DOMContentLoaded path handles).
+// Guarded on an empty container so we never double-mount.
+import Default from "@astrojs/starlight/components/Search.astro";
+---
+
+<Default><slot /></Default>
+
+<script>
+  const stripTrailingSlash = (path: string) => path.replace(/(.)\/(#.*)?$/, "$1$2");
+
+  // `astro:after-swap` fires only on `<ClientRouter />` view-transition
+  // navigations — never on the initial page load — so it cleanly targets the
+  // exact case Starlight's DOMContentLoaded init misses, with no race against
+  // that first-load mount.
+  document.addEventListener("astro:after-swap", () => {
+    if (import.meta.env.DEV) return;
+
+    const container = document.querySelector("#starlight__search");
+    // Already mounted on this page → nothing to do.
+    if (!container || container.childElementCount > 0) return;
+
+    // Mirror Starlight's own per-instance config read from the <site-search>
+    // element so search behaviour stays identical after a navigation.
+    const siteSearch = document.querySelector("site-search") as HTMLElement | null;
+    let translations = {};
+    try {
+      translations = JSON.parse(siteSearch?.dataset.translations || "{}");
+    } catch {}
+    const shouldStrip = siteSearch?.dataset.stripTrailingSlash !== undefined;
+    const formatURL = shouldStrip ? stripTrailingSlash : (path: string) => path;
+
+    const onIdle = window.requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1));
+    onIdle(async () => {
+      // @ts-expect-error — Missing types for @pagefind/default-ui package.
+      const { PagefindUI } = await import("@pagefind/default-ui");
+      new PagefindUI({
+        element: "#starlight__search",
+        baseUrl: import.meta.env.BASE_URL,
+        bundlePath: import.meta.env.BASE_URL.replace(/\/$/, "") + "/pagefind/",
+        showImages: false,
+        translations,
+        showSubResults: true,
+        processResult: (result: { url: string; sub_results: Array<{ url: string }> }) => {
+          result.url = formatURL(result.url);
+          result.sub_results = result.sub_results.map((sub_result) => {
+            sub_result.url = formatURL(sub_result.url);
+            return sub_result;
+          });
+        },
+      });
+    });
+  });
+</script>

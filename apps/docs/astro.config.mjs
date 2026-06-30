@@ -31,6 +31,11 @@ export default defineConfig({
         // Override Head to inject Astro's ClientRouter — Starlight has no
         // built-in view transitions, so this adds smooth cross-page morphs.
         Head: "./src/components/Head.astro",
+        // Override Search to re-init Pagefind after view-transition navigations.
+        // Starlight only mounts PagefindUI on DOMContentLoaded, which never
+        // re-fires under <ClientRouter />, so search opened empty after any
+        // client-side navigation. See Search.astro for the full rationale.
+        Search: "./src/components/Search.astro",
       },
       head: [
         {

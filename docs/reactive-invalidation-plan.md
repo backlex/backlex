@@ -3,11 +3,14 @@ title: Reactive invalidation — design plan
 description: Staged plan to upgrade realtime from broadcast-and-filter to read-set-tracked recompute. Design proposal, not shipped behavior.
 ---
 
-> **Status: Stages 1 & 2 shipped; 3 & 4 planned.** This is the staged plan for
-> the "read-set-tracked reactive invalidation" item in [Performance](/performance/).
-> The server-side query filter (Stage 1) and the server-computed membership
-> transitions (Stage 2) are live and wired into the SDK `liveQuery`; Stages 3–4
-> remain design.
+> **Status: Stages 1–3 shipped; Stage 4 designed + deferred.** This is the
+> staged plan for the "read-set-tracked reactive invalidation" item in
+> [Performance](/performance/). Server-side query filtering (1), server-computed
+> membership transitions (2), and refetch-free windowed maintenance (3) are live
+> and wired into the SDK `liveQuery`. Stage 4 turned out to be mostly subsumed by
+> the per-event per-subscription model; its one genuine remaining piece
+> (server-pushed window backfill) is stateful + Workers-only + needs live
+> verification, so it's designed but not built.
 
 ## The idea (Convex, adapted)
 
@@ -108,68 +111,84 @@ conditions, queryFilter)`. Today `publishEvent` ships only the AFTER row.
 (strip before any client write; the projection/permission gate still runs on the
 sent row). Testable end-to-end against the in-process transport.
 
-## Stage 3 — windowed correctness via the keyset boundary
+## Stage 3 — windowed correctness via the keyset boundary ✅ shipped
 
 **Goal:** make `limit`-windowed live queries exact without a refetch on the
-common path. A window is `filter + sort + limit`; the open question on any
-insert/enter is "does this row belong *inside* the current window, and does that
-evict the last row?".
+common insert path. A window is `filter + sort + limit`; the question on any
+insert is "does this row belong *inside* the current window, and does that evict
+the last row?".
 
-**Changes:**
-- Each windowed subscription tracks its **boundary tuple** — the `(sort…, id)`
-  value of the last row currently in the window. This is exactly the keyset
-  cursor from `services/items/keyset.ts`; reuse `keysetWhere`'s comparison logic
-  in-memory (a small `compareBySort(row, boundary, sort)` helper).
-- On an `enter`/`update` whose sort key is **beyond** the boundary → ignore (it's
-  off-window). **Inside** the boundary → admit + emit an `evict(boundaryId)` so
-  the client drops the row that fell off the end; advance the boundary.
-- Only fall back to a debounced refetch when the boundary itself is the row that
-  left (the new last-row is unknown) — bounded and rare.
+**Shipped (client-side, `live.ts`):** the engine tracks the boundary implicitly
+as the last visible row and compares an incoming row to it via the existing
+`compareRows`:
+- new row sorts **after** the boundary → off-window → dropped, **no refetch**;
+- new row sorts **in-window** → inserted + the overflow row evicted (now
+  off-window, correctly hidden), **no refetch**;
+- insert into a non-full window → inserted, no refetch.
 
-**Effort:** M–L. **Risk:** medium — off-by-one window math; needs property tests
-(walk a stream of random inserts/updates/deletes, assert the live window always
-equals a fresh query). The keyset infra + its tests are the safety net.
+Still reconciles (an uncached off-window row may need to slide in): a **removal**
+from a full window, and an **update that moves** a visible row toward a full
+window's edge. An update that doesn't change the sort key no longer refetches.
+Result: the common insert path on an infinite-scroll / top-N view goes from one
+refetch per event to zero.
 
-## Stage 4 — full read-set registry + transaction-log overlap (true Convex model)
+## Stage 4 — read-set registry + server-pushed window backfill
 
-**Goal:** the general engine — a per-isolate/DO **query registry** of active
-`LiveQuerySpec`s, and on each commit walk the change set once and check overlap,
-recomputing only affected specs. Subsumes Stages 1–3 and adds cross-field /
-index-range precision.
+**Implementation finding (after building 1–3):** for backlex's **per-event**
+architecture, "recompute only affected subscriptions" is *already what Stages
+1–2 do*. Every event is matched against each subscription's read-set
+(`conditions` + `queryFilter`) at the single emit chokepoint (`renderItemEvent`),
+and only overlapping subscriptions receive it. The Durable Object's set of
+sockets-with-meta **is** the query registry; `matchesCondition` **is** the
+overlap check. There is no batch transaction log to walk — each event already
+triggers exactly the per-subscription overlap evaluation a registry engine would
+schedule. So a separate "registry + transaction-log overlap" engine would be
+largely **redundant** here (it's the right model for Convex's batched-commit
+core, not for a per-event publisher).
 
-**Changes:**
-- `LiveQuerySpec = { collection, filter, sort, limit, offset, authSubject }` —
-  the read-set descriptor (reuse `ParsedQuery`).
-- **Workers:** the Durable Object already holds per-socket meta + a recent-event
-  log (`realtime-room.ts:4`); promote that to the registry and run overlap there
-  (co-located compute + state, single-threaded — ideal).
-- **Serverless (Redis):** stateless, so the registry can't live in memory across
-  requests; the overlap check stays per-connection (Stage 1–3 already do this at
-  the SSE read loop). Stage 4's registry is a **Workers-only** enhancement; the
-  Redis path tops out at Stage 3, which is acceptable (the audit already treats
-  serverless realtime as the lower-tier transport).
-- Tap the **changefeed** (`(updated_at, id)` log) as the commit source so the
-  overlap walk is dialect-agnostic and replayable on reconnect.
+**The one genuine remaining capability:** eliminate the *last* refetch — when a
+row leaves a full window, Stage 3 still refetches to pull the next off-window
+row, because the client doesn't cache it. A true Stage 4 would have the **server
+push that next row**: it must hold each subscription's window state (sort +
+limit + current boundary) and, on a removal, run one keyset query
+(`WHERE (sort…, id) > boundary LIMIT 1`) and emit a `backfill` delta.
 
-**Effort:** L (multi-week). **Risk:** high — new engine, OCC-style overlap
-semantics, registry lifecycle/GC. Only justified once Stages 1–3 are in
-production and profiling shows the per-connection re-evaluation is the
-bottleneck.
+**Why it's deferred (design complete, not built):**
+- It requires **stateful, per-subscription server state** (the boundary), which
+  backlex deliberately avoids — the realtime publisher is stateless so live
+  queries work identically across all four runtimes.
+- It's **Workers/DO-only**: the Durable Object can hold that state
+  (`realtime-room.ts` already persists per-socket attachments + an event log);
+  the stateless Redis/serverless transport structurally can't, so it would stay
+  at Stage 3 there.
+- It's **not exercisable in the bun harness** (no DO), so it would ship to the
+  cloud fleet unverified — the same constraint that defers D1 Sessions (see
+  [Performance](/performance/)). It must be verified on a live Worker before
+  merge.
+
+**Sketch:** on subscribe the DO records `{ sort, limit, boundary }` per socket
+(boundary seeded from the client's first page or a `?boundary=` cursor); on a
+`leave`/`delete` that empties a window slot, the DO runs the keyset backfill
+query (it already has `ctx`-less access via a fetch to the API, or a passed-in
+binding) and sends a `backfill` event the SDK splices in — retiring the Stage 3
+remove-refetch.
 
 ## Sequencing & payoff
 
-| Stage | Effort | Win | Transports | Locally testable |
+| Stage | Status | Win | Transports | Locally testable |
 |---|---|---|---|---|
-| 1 — server filter | S | fan-out ↓ (most of it) | both | yes (matchesCondition) |
-| 2 — transitions | M | exact deltas, no client re-match | both | yes (in-process) |
-| 3 — window boundary | M–L | windowed exactness, few refetches | both | yes (property tests) |
-| 4 — registry engine | L | general precision at scale | Workers only | partial |
+| 1 — server filter | ✅ shipped | fan-out ↓ (most of it) | both | yes (matchesCondition) |
+| 2 — transitions | ✅ shipped | exact deltas, no client re-match | both | yes (in-process) |
+| 3 — window boundary | ✅ shipped | windowed exactness, no insert refetch | both | yes |
+| 4 — window backfill | design complete, deferred | retire the last (remove) refetch | Workers only | needs live DO |
 
-Stages 1–2 are the 80/20: they deliver the bulk of the value by reusing
-`matchesCondition` + the existing emit chokepoint, are fully testable in the bun
-harness, and ship on both transports. 3 hardens windowed queries on the back of
-the keyset work. 4 is the genuine Convex engine — defer until 1–3 are proven and
-profiled.
+Stages 1–3 are shipped and deliver the bulk of the value, reusing
+`matchesCondition` + the existing emit chokepoint, fully tested in the bun
+harness, on both transports. Stage 4's separate "engine" turned out to be mostly
+subsumed by the per-event per-subscription model; its one real remaining piece
+(server-pushed window backfill) is stateful + Workers-only + needs live
+verification, so it's designed but deferred — matching how D1 Sessions is
+handled.
 
 **Invariant to hold throughout:** the combined predicate is always
 `AND(permission conditions, query filter)`, evaluated with the subscriber's own

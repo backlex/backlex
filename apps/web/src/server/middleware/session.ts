@@ -76,6 +76,32 @@ const stampOnce = (
   }
 };
 
+// last_used_at feeds the "last used N ago" column in the API-keys panel —
+// minute-level precision is plenty. Without a debounce every API-key request
+// pays a DB write just to re-bump the timestamp; remember the last bump per
+// key id per isolate and skip writes inside the window. Capped like
+// stampedSessions so a long-lived isolate can't grow it without bound.
+const lastUsedWrite = new Map<string, number>();
+const LAST_USED_DEBOUNCE_MS = 5 * 60_000;
+const LAST_USED_CAP = 10_000;
+
+const touchLastUsedDebounced = (
+  c: { executionCtx: { waitUntil(p: Promise<unknown>): void } },
+  ctx: Parameters<typeof touchLastUsed>[0],
+  keyId: string,
+): void => {
+  const now = Date.now();
+  if (now - (lastUsedWrite.get(keyId) ?? 0) < LAST_USED_DEBOUNCE_MS) return;
+  if (lastUsedWrite.size >= LAST_USED_CAP) lastUsedWrite.clear();
+  lastUsedWrite.set(keyId, now);
+  const p = touchLastUsed(ctx, keyId).catch(() => {});
+  try {
+    c.executionCtx.waitUntil(p);
+  } catch {
+    /* no ExecutionContext — the promise still runs to completion */
+  }
+};
+
 /**
  * Cross-tenant role names (unfiltered union). Only consulted by tenantMiddleware
  * when the caller isn't a member of the requested workspace — to decide whether
@@ -233,8 +259,8 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
         apiKeyId = key.id;
         apiKeyMcpTools = key.mcpTools ?? null;
         apiKeyMcpReadOnly = Boolean(key.mcpReadOnly);
-        // fire-and-forget last-used update
-        void touchLastUsed(ctx, key.id);
+        // best-effort last-used bump, debounced to one write per key per 5 min
+        touchLastUsedDebounced(c, ctx, key.id);
       }
     } else if (authHeader.toLowerCase().startsWith("bearer ")) {
       // Any non-`pak_` bearer is a workspace end-user token. Two accepted

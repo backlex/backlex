@@ -9,6 +9,7 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { isCloudflareWorkers, isDenoDeploy, isNetlify } from "../lib/runtime";
 import {
+  invalidateSettingsCache,
   loadAppSettings,
   loadSignInBranding,
   SIGN_IN_BRANDING_KEYS,
@@ -228,6 +229,7 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>()
           }
         }
       }
+      invalidateSettingsCache(ctx.db);
       return c.json({ ok: true });
     },
   )

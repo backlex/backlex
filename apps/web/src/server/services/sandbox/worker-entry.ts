@@ -105,7 +105,10 @@ self.addEventListener("message", async (event: MessageEvent<unknown>) => {
 
   const run = msg as WorkerRunMessage;
 
-  // Strip dangerous globals (best-effort).
+  // Strip dangerous globals (best-effort). Some don't actually delete under
+  // Bun (`Bun` itself survives the delete), so they're ALSO shadowed as
+  // undefined parameters on the user function below — direct identifier
+  // references resolve to the shadow, not the global.
   const drop = ["fetch", "process", "Bun", "require", "module", "WebSocket"];
   for (const k of drop) {
     try {
@@ -121,14 +124,19 @@ self.addEventListener("message", async (event: MessageEvent<unknown>) => {
   try {
     // The user body sees `ctx`, `console` as parameters — we use `new Function`
     // so the source is parsed in a controlled env (no closure capture from
-    // this entry's scope).
+    // this entry's scope). The trailing parameters shadow the globals the
+    // delete-loop above can't remove; they're invoked as undefined. This stays
+    // a SOFT sandbox (globalThis.* escapes remain) — hard isolation is the
+    // remote-http provider's job.
     const fn = new Function(
       "ctx",
       "console",
+      ...drop,
       `return (async () => {\n${run.code}\n})()`,
     ) as (
       c: ReturnType<typeof buildCtx>,
       log: ReturnType<typeof buildConsole>,
+      ...shadowed: undefined[]
     ) => Promise<unknown>;
     const value = await fn(ctx, console);
     post({ kind: "result", ok: true, value } satisfies WorkerResultMessage);

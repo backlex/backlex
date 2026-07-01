@@ -41,6 +41,7 @@ import {
 } from "../api";
 import { I } from "../icons";
 import { SchemaVersionsSkeleton } from "../page-skeletons";
+import { ConfirmDialog } from "../sheet";
 import { Badge, Button, EmptyState, IconButton, PageHeader } from "../ui";
 
 const ADMIN_TABLE_CLS =
@@ -76,6 +77,10 @@ export function SchemaVersionsPage({
   const [importOpen, setImportOpen] = useState(false);
   const [branchOpen, setBranchOpen] = useState(false);
   const [diffTarget, setDiffTarget] = useState<RefTarget | null>(null);
+  // Pending delete — gated behind a confirm so a click never destroys silently.
+  const [pendingDelete, setPendingDelete] = useState<
+    { type: "snapshot"; item: ApiSchemaSnapshot } | { type: "branch"; item: ApiSchemaBranch } | null
+  >(null);
 
   const reload = useCallback(async () => {
     try {
@@ -114,17 +119,22 @@ export function SchemaVersionsPage({
 
   const deleteBranch = useCallback(
     async (branch: ApiSchemaBranch) => {
-      const prev = branches;
+      const prevBranches = branches;
+      const prevSnaps = snapshots;
       setBranches((cur) => cur.filter((b) => b.id !== branch.id));
+      // Deleting a branch also drops its branch-owned snapshots server-side —
+      // reflect that in the snapshots tab immediately so no orphan lingers.
+      setSnapshots((cur) => cur.filter((s) => s.branchId !== branch.id));
       try {
         await schemaVersionsApi.deleteBranch(branch.id);
         pushToast(t`Branch deleted.`);
       } catch (e) {
-        setBranches(prev);
+        setBranches(prevBranches);
+        setSnapshots(prevSnaps);
         pushToast((e as Error).message, "error");
       }
     },
-    [branches, pushToast, t],
+    [branches, snapshots, pushToast, t],
   );
 
   const isEmpty = tab === "snapshots" ? snapshots.length === 0 : branches.length === 0;
@@ -143,12 +153,20 @@ export function SchemaVersionsPage({
         }
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button variant="outline" icon={I.Upload} onClick={() => setImportOpen(true)}>
-              <Trans>Import</Trans>
-            </Button>
-            <Button variant="primary" icon={I.Plus} onClick={() => setCaptureOpen(true)}>
-              <Trans>Capture snapshot</Trans>
-            </Button>
+            {tab === "snapshots" ? (
+              <>
+                <Button variant="outline" icon={I.Upload} onClick={() => setImportOpen(true)}>
+                  <Trans>Import</Trans>
+                </Button>
+                <Button variant="primary" icon={I.Plus} onClick={() => setCaptureOpen(true)}>
+                  <Trans>Capture snapshot</Trans>
+                </Button>
+              </>
+            ) : (
+              <Button variant="primary" icon={I.Plus} onClick={() => setBranchOpen(true)}>
+                <Trans>New branch</Trans>
+              </Button>
+            )}
           </div>
         }
       />
@@ -173,18 +191,24 @@ export function SchemaVersionsPage({
             </span>
           </button>
         ))}
-        {tab === "branches" && (
-          <Button
-            variant="outline"
-            size="sm"
-            icon={I.Plus}
-            className="ml-auto"
-            onClick={() => setBranchOpen(true)}
-          >
-            <Trans>New branch</Trans>
-          </Button>
-        )}
       </div>
+
+      {/* Per-tab helper — makes the snapshot vs branch distinction explicit. */}
+      <p className="-mt-3 text-sm text-muted-foreground">
+        {tab === "snapshots" ? (
+          <Trans>
+            <strong className="font-medium text-foreground">Snapshots</strong> are immutable
+            checkpoints of your schema. Capture the live schema or import an authored one, then diff
+            or apply it.
+          </Trans>
+        ) : (
+          <Trans>
+            <strong className="font-medium text-foreground">Branches</strong> are named working
+            copies forked from the live schema — stage changes on a branch, then apply it to live. A
+            branch keeps its own history; a snapshot is a single frozen point.
+          </Trans>
+        )}
+      </p>
 
       <Card className="overflow-hidden">
         {isEmpty ? (
@@ -235,7 +259,7 @@ export function SchemaVersionsPage({
                       <IconButton
                         icon={I.Trash}
                         title={t`Delete`}
-                        onClick={() => deleteSnapshot(s)}
+                        onClick={() => setPendingDelete({ type: "snapshot", item: s })}
                       />
                     </div>
                   </TableCell>
@@ -274,7 +298,11 @@ export function SchemaVersionsPage({
                       >
                         <Trans>Review & apply</Trans>
                       </Button>
-                      <IconButton icon={I.Trash} title={t`Delete`} onClick={() => deleteBranch(b)} />
+                      <IconButton
+                        icon={I.Trash}
+                        title={t`Delete`}
+                        onClick={() => setPendingDelete({ type: "branch", item: b })}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -323,6 +351,26 @@ export function SchemaVersionsPage({
           void reload();
         }}
         pushToast={pushToast}
+      />
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        destructive
+        title={pendingDelete?.type === "branch" ? t`Delete branch?` : t`Delete snapshot?`}
+        description={
+          pendingDelete?.type === "branch"
+            ? t`Delete "${pendingDelete.item.name}" and its branch-owned snapshots? This can't be undone.`
+            : pendingDelete
+              ? t`Delete snapshot "${pendingDelete.item.name}"? This can't be undone.`
+              : ""
+        }
+        actionLabel={t`Delete`}
+        onConfirm={() => {
+          const p = pendingDelete;
+          setPendingDelete(null);
+          if (p?.type === "snapshot") void deleteSnapshot(p.item);
+          else if (p?.type === "branch") void deleteBranch(p.item);
+        }}
+        onCancel={() => setPendingDelete(null)}
       />
     </div>
   );

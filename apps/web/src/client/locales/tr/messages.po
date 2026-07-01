@@ -622,9 +622,17 @@ msgstr "<0>{{username}}</0> gönderilen kullanıcı adıyla değiştirilir (RFC-
 msgid "<0>{fieldsCount}</0> fields registered."
 msgstr "<0>{fieldsCount}</0> alan kaydedildi."
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "<0>Branches</0> are named working copies forked from the live schema — stage changes on a branch, then apply it to live. A branch keeps its own history; a snapshot is a single frozen point."
+msgstr "<0>Dallar</0>, canlı şemadan çatallanmış adlandırılmış çalışma kopyalarıdır — bir dalda değişiklikleri hazırlayın, sonra canlıya uygulayın. Bir dal kendi geçmişini tutar; anlık görüntü ise tek bir donmuş noktadır."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "<0>resources/subscribe</0> for live tail"
 msgstr "Canlı akış için <0>resources/subscribe</0>"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "<0>Snapshots</0> are immutable checkpoints of your schema. Capture the live schema or import an authored one, then diff or apply it."
+msgstr "<0>Anlık görüntüler</0>, şemanızın değiştirilemez denetim noktalarıdır. Canlı şemayı yakalayın veya hazırlanmış bir şemayı içe aktarın, sonra fark alın ya da uygulayın."
 
 #. placeholder {0}: testResult.ms
 #: src/client/admin/condition-editor.tsx
@@ -2922,6 +2930,11 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 msgid "Delete"
 msgstr "Sil"
 
+#. placeholder {0}: pendingDelete.item.name
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Delete \"{0}\" and its branch-owned snapshots? This can't be undone."
+msgstr "\"{0}\" ve ona ait dal anlık görüntüleri silinsin mi? Bu geri alınamaz."
+
 #. placeholder {0}: confirmDelete.name
 #: src/client/admin/parity/insights.tsx
 msgid "Delete \"{0}\"?"
@@ -2931,6 +2944,10 @@ msgstr "\"{0}\" silinsin mi?"
 #: src/client/admin/app.tsx
 msgid "Delete {0} posts?"
 msgstr "{0} gönderi silinsin mi?"
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Delete branch?"
+msgstr "Dal silinsin mi?"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/collection-settings.tsx
@@ -2975,6 +2992,15 @@ msgstr "Paneli sil"
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Delete SAML provider?"
 msgstr "SAML sağlayıcısı silinsin mi?"
+
+#. placeholder {0}: pendingDelete.item.name
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Delete snapshot \"{0}\"? This can't be undone."
+msgstr "\"{0}\" anlık görüntüsü silinsin mi? Bu geri alınamaz."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Delete snapshot?"
+msgstr "Anlık görüntü silinsin mi?"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Delete this collection"

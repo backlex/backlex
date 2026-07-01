@@ -107,9 +107,11 @@ export default defineConfig({
             { slug: "flows" },
             { slug: "agents" },
             { slug: "feature-flags" },
+            { slug: "embedded-dashboards" },
             { slug: "backup-restore" },
             { slug: "advisor" },
             { slug: "tracing" },
+            { slug: "audit-logs" },
           ],
         },
         {

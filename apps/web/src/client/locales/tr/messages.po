@@ -1566,6 +1566,16 @@ msgstr "okumaları otomatik çalıştır"
 msgid "Auto-snapshot"
 msgstr "Otomatik anlık görüntü"
 
+#. placeholder {0}: merged.schedule
+#. placeholder {1}: merged.keepLast
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Auto-snapshot set to {0}, keeping {1}."
+msgstr "Otomatik anlık görüntü {0} olarak ayarlandı, {1} tutuluyor."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Auto-snapshot turned off."
+msgstr "Otomatik anlık görüntü kapatıldı."
+
 #: src/client/admin/parity/translations.tsx
 msgid "Auto-translate"
 msgstr "Otomatik çeviri"
@@ -2535,6 +2545,10 @@ msgstr "Yorum gönderilemedi."
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not revoke share link."
 msgstr "Paylaşım bağlantısı iptal edilemedi."
+
+#: src/client/admin/pages/schema-versions.tsx
+#~ msgid "Couldn't compute the diff. Close and try again."
+#~ msgstr ""
 
 #: src/client/admin/account-page.tsx
 msgid "Couldn't copy — select and copy them manually."

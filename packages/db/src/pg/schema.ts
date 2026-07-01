@@ -134,6 +134,7 @@ export const sessions = pgTable(
   (t) => [
     uniqueIndex("sessions_token_idx").on(t.token),
     index("sessions_user_idx").on(t.userId),
+    index("sessions_created_idx").on(t.createdAt),
   ],
 );
 

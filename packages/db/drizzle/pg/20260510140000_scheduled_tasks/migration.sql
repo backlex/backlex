@@ -14,8 +14,9 @@ CREATE TABLE IF NOT EXISTS "scheduled_tasks" (
   "claimed_at" timestamptz,
   "created_at" timestamptz NOT NULL DEFAULT now()
 );
-
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "scheduled_tasks_run_idx"
   ON "scheduled_tasks" ("run_at", "claimed_at");
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "scheduled_tasks_flow_idx"
   ON "scheduled_tasks" ("flow_id");

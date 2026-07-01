@@ -240,38 +240,52 @@ export const appSessions = sqliteTable(
   ],
 );
 
-export const appAccounts = sqliteTable("app_accounts", {
-  id: text("id").primaryKey(),
-  tenantId: text("tenant_id")
-    .notNull()
-    .references(() => tenants.id, { onDelete: "cascade" }),
-  userId: text("user_id")
-    .notNull()
-    .references(() => appUsers.id, { onDelete: "cascade" }),
-  providerId: text("provider_id").notNull(),
-  accountId: text("account_id").notNull(),
-  password: text("password"),
-  accessToken: text("access_token"),
-  refreshToken: text("refresh_token"),
-  idToken: text("id_token"),
-  accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp_ms" }),
-  refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp_ms" }),
-  scope: text("scope"),
-  createdAt: ts("created_at"),
-  updatedAt: ts("updated_at"),
-});
+export const appAccounts = sqliteTable(
+  "app_accounts",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    providerId: text("provider_id").notNull(),
+    accountId: text("account_id").notNull(),
+    password: text("password"),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp_ms" }),
+    refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp_ms" }),
+    scope: text("scope"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("app_accounts_user_idx").on(t.userId),
+    index("app_accounts_tenant_idx").on(t.tenantId),
+  ],
+);
 
-export const appVerifications = sqliteTable("app_verifications", {
-  id: text("id").primaryKey(),
-  tenantId: text("tenant_id")
-    .notNull()
-    .references(() => tenants.id, { onDelete: "cascade" }),
-  identifier: text("identifier").notNull(),
-  value: text("value").notNull(),
-  expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-  createdAt: ts("created_at"),
-  updatedAt: ts("updated_at"),
-});
+export const appVerifications = sqliteTable(
+  "app_verifications",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("app_verifications_tenant_idx").on(t.tenantId),
+    index("app_verifications_identifier_idx").on(t.identifier),
+  ],
+);
 
 export const roles = sqliteTable(
   "roles",

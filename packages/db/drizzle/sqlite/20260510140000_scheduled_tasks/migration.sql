@@ -10,8 +10,9 @@ CREATE TABLE IF NOT EXISTS "scheduled_tasks" (
   "claimed_at" integer,
   "created_at" integer NOT NULL
 );
-
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "scheduled_tasks_run_idx"
   ON "scheduled_tasks" ("run_at", "claimed_at");
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "scheduled_tasks_flow_idx"
   ON "scheduled_tasks" ("flow_id");

@@ -1566,6 +1566,16 @@ msgstr "auto-run reads"
 msgid "Auto-snapshot"
 msgstr "Auto-snapshot"
 
+#. placeholder {0}: merged.schedule
+#. placeholder {1}: merged.keepLast
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Auto-snapshot set to {0}, keeping {1}."
+msgstr "Auto-snapshot set to {0}, keeping {1}."
+
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Auto-snapshot turned off."
+msgstr "Auto-snapshot turned off."
+
 #: src/client/admin/parity/translations.tsx
 msgid "Auto-translate"
 msgstr "Auto-translate"
@@ -2535,6 +2545,10 @@ msgstr "Could not post comment."
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not revoke share link."
 msgstr "Could not revoke share link."
+
+#: src/client/admin/pages/schema-versions.tsx
+#~ msgid "Couldn't compute the diff. Close and try again."
+#~ msgstr "Couldn't compute the diff. Close and try again."
 
 #: src/client/admin/account-page.tsx
 msgid "Couldn't copy — select and copy them manually."

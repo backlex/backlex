@@ -941,6 +941,9 @@ export const activity = pgTable(
     index("activity_user_idx").on(t.userId),
     index("activity_created_idx").on(t.createdAt),
     index("activity_tenant_idx").on(t.tenantId),
+    // Time-range activity listings filter by tenant AND created_at together;
+    // the single-column indexes force a scan on one side or the other.
+    index("activity_tenant_created_idx").on(t.tenantId, t.createdAt),
   ],
 );
 

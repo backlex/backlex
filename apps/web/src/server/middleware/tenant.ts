@@ -460,6 +460,10 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
       sameSite: "Lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 30,
+      // No credentials in here, but on HTTPS deploys keep it off plaintext
+      // channels anyway — a tampered value silently reroutes workspace
+      // requests. Conditional so local http dev keeps working.
+      secure: c.req.url.startsWith("https:"),
     });
   } else if (!pinTenantCookie) {
     // Cross-tenant admin pass-through: actively clear any leaked cookie so

@@ -225,6 +225,14 @@ export const updateApiKeyMcpGuards = async (
     .where(and(eq(t.tenantId, tenantId), eq(t.id, id)));
 };
 
+/** Length-independent constant-time-ish string compare (avoids early-exit timing). */
+const timingSafeEqual = (a: string, b: string): boolean => {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+};
+
 export const findApiKey = async (
   ctx: DbCtx,
   raw: string,
@@ -243,7 +251,7 @@ export const findApiKey = async (
     .limit(1)) as ApiKeyRow[];
   const row = rows[0];
   if (!row) return null;
-  if (row.prefix !== prefix) return null;
+  if (!timingSafeEqual(row.prefix, prefix)) return null;
   if (row.revokedAt) return null;
   if (row.expiresAt) {
     const exp =

@@ -6,6 +6,7 @@ import { applyCollection, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
 import { publishEvent } from "./events";
 import { recordActivity } from "./activity";
+import { invalidateSettingsCache } from "./settings";
 
 /**
  * The set of system tables we always include. Dynamic c_* tables are
@@ -471,6 +472,9 @@ export const restoreBackup = async (
     if (wrote) tableCount += 1;
     if (tableFailed) skipped += 1;
   }
+
+  // The dump may have re-inserted app_settings rows — drop any cached reads.
+  invalidateSettingsCache(ctx.db);
 
   return { tableCount, rowCount, skipped };
 };

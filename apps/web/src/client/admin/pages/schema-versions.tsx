@@ -21,6 +21,7 @@ import {
 } from "@backlex/ui/components/dialog";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -38,9 +39,11 @@ import {
   type ApiSchemaRef,
   type ApiSchemaSnapshot,
   schemaVersionsApi,
+  settingsApi,
 } from "../api";
 import { I } from "../icons";
 import { SchemaVersionsSkeleton } from "../page-skeletons";
+import { Select } from "../select";
 import { ConfirmDialog } from "../sheet";
 import { Badge, Button, EmptyState, IconButton, PageHeader } from "../ui";
 
@@ -71,6 +74,9 @@ export function SchemaVersionsPage({
   const [loading, setLoading] = useState(true);
   const [snapshots, setSnapshots] = useState<ApiSchemaSnapshot[]>([]);
   const [branches, setBranches] = useState<ApiSchemaBranch[]>([]);
+  // Auto-snapshot schedule (workspace setting).
+  const [schedule, setSchedule] = useState<"off" | "daily" | "weekly">("off");
+  const [keepLast, setKeepLast] = useState(7);
 
   // Dialog state.
   const [captureOpen, setCaptureOpen] = useState(false);
@@ -84,18 +90,44 @@ export function SchemaVersionsPage({
 
   const reload = useCallback(async () => {
     try {
-      const [s, b] = await Promise.all([
+      const [s, b, settings] = await Promise.all([
         schemaVersionsApi.listSnapshots(),
         schemaVersionsApi.listBranches(),
+        settingsApi.load(),
       ]);
       setSnapshots(s.data);
       setBranches(b.data);
+      const cfg = settings.data;
+      const sched = cfg.schemaSnapshotSchedule;
+      if (sched === "daily" || sched === "weekly" || sched === "off") setSchedule(sched);
+      if (typeof cfg.schemaSnapshotKeepLast === "number") setKeepLast(cfg.schemaSnapshotKeepLast);
     } catch (e) {
       pushToast((e as Error).message, "error");
     } finally {
       setLoading(false);
     }
   }, [pushToast]);
+
+  // Persist a schedule change optimistically (snapshot → set → patch → rollback).
+  const saveSchedule = useCallback(
+    async (next: { schedule?: "off" | "daily" | "weekly"; keepLast?: number }) => {
+      const prev = { schedule, keepLast };
+      const merged = { schedule: next.schedule ?? schedule, keepLast: next.keepLast ?? keepLast };
+      setSchedule(merged.schedule);
+      setKeepLast(merged.keepLast);
+      try {
+        await settingsApi.patch({
+          schemaSnapshotSchedule: merged.schedule,
+          schemaSnapshotKeepLast: merged.keepLast,
+        });
+      } catch (e) {
+        setSchedule(prev.schedule);
+        setKeepLast(prev.keepLast);
+        pushToast((e as Error).message, "error");
+      }
+    },
+    [schedule, keepLast, pushToast],
+  );
 
   useEffect(() => {
     void reload();
@@ -210,6 +242,44 @@ export function SchemaVersionsPage({
         )}
       </p>
 
+      {/* Auto-snapshot cadence — a scheduled capture + retention, per workspace. */}
+      {tab === "snapshots" && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-sm">
+          <I.Clock size={14} className="shrink-0 text-muted-foreground" />
+          <span className="text-muted-foreground">
+            <Trans>Auto-snapshot</Trans>
+          </span>
+          <Select
+            size="sm"
+            className="w-28"
+            value={schedule}
+            onChange={(v) => saveSchedule({ schedule: v as "off" | "daily" | "weekly" })}
+            options={[
+              { value: "off", label: t`Off` },
+              { value: "daily", label: t`Daily` },
+              { value: "weekly", label: t`Weekly` },
+            ]}
+          />
+          {schedule !== "off" && (
+            <>
+              <span className="text-muted-foreground">
+                <Trans>· keep last</Trans>
+              </span>
+              <Select
+                size="sm"
+                className="w-16"
+                value={String(keepLast)}
+                onChange={(v) => saveSchedule({ keepLast: Number(v) })}
+                options={["3", "5", "7", "14", "30"]}
+              />
+              <span className="text-muted-foreground">
+                <Trans>snapshots — older ones are pruned automatically.</Trans>
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
       <Card className="overflow-hidden">
         {isEmpty ? (
           <EmptyState
@@ -239,7 +309,9 @@ export function SchemaVersionsPage({
                     {s.note && <div className="text-xs text-muted-foreground">{s.note}</div>}
                   </TableCell>
                   <TableCell>
-                    <ShadcnBadge variant={s.kind === "auto" ? "secondary" : "outline"}>
+                    <ShadcnBadge
+                      variant={s.kind === "auto" || s.kind === "scheduled" ? "secondary" : "outline"}
+                    >
                       {s.kind}
                     </ShadcnBadge>
                   </TableCell>
@@ -663,7 +735,18 @@ function DiffApplyDialog({
 
         <ScrollArea viewportClassName="max-h-[calc(85vh-13rem)] max-[640px]:max-h-[calc(85vh-16rem)]">
           <div className="flex flex-col gap-2 px-0.5">
-            {loading && <div className="text-sm text-muted-foreground">{t`Computing diff…`}</div>}
+            {loading && (
+              <div className="flex flex-col gap-2" aria-busy="true" aria-label={t`Computing diff`}>
+                <div className="flex gap-2">
+                  <Skeleton className="h-5 w-24 rounded-full" />
+                  <Skeleton className="h-5 w-24 rounded-full" />
+                  <Skeleton className="h-5 w-24 rounded-full" />
+                </div>
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-8 w-full rounded-md" />
+                ))}
+              </div>
+            )}
             {noChanges && (
               <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
                 <Trans>Live schema already matches this version.</Trans>

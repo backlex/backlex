@@ -8,6 +8,8 @@
 import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { tableExists } from "@backlex/db";
+import * as sqlite from "@backlex/db/sqlite";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import {
   applySchema,
@@ -18,6 +20,8 @@ import {
   listBranches,
   listSnapshots,
   loadLiveSchema,
+  pruneScheduledSnapshots,
+  runScheduledSnapshots,
   updateBranchHead,
 } from "../src/server/services/schema-versions";
 import { makeHarness, type TestHarness } from "./setup";
@@ -167,5 +171,56 @@ describe("schema-versions — snapshots + branches", () => {
     expect((await loadLiveSchema(ctx, T))[0]?.fields).toHaveLength(2);
     await applySchema(ctx, T, { target: { kind: "branch", id: branch.id } });
     expect((await loadLiveSchema(ctx, T))[0]?.fields).toHaveLength(3);
+  });
+});
+
+describe("schema-versions — scheduled auto-snapshots", () => {
+  const setSchedule = async (schedule: string, keepLast?: number) => {
+    const t = sqlite.schema.appSettings;
+    await ctx.db.insert(t).values({ id: crypto.randomUUID(), tenantId: T, key: "schemaSnapshotSchedule", value: schedule });
+    if (keepLast != null) {
+      await ctx.db.insert(t).values({ id: crypto.randomUUID(), tenantId: T, key: "schemaSnapshotKeepLast", value: keepLast });
+    }
+  };
+
+  test("captures a scheduled snapshot when due, skips within the interval", async () => {
+    await setSchedule("daily");
+    // First tick — no prior scheduled snapshot → captures.
+    const first = await runScheduledSnapshots(ctx);
+    expect(first.captured).toHaveLength(1);
+
+    // Immediate second tick — within the daily window → no capture.
+    const soon = await runScheduledSnapshots(ctx);
+    expect(soon.captured).toHaveLength(0);
+
+    // Backdate the scheduled snapshot to 25h ago → next tick is due again.
+    // (captureSnapshot stamps createdAt with the real clock, so we age it here
+    // rather than passing a logical `now`.)
+    const snaps = sqlite.schema.schemaSnapshots;
+    await ctx.db
+      .update(snaps)
+      .set({ createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000) })
+      .where(and(eq(snaps.tenantId, T), eq(snaps.kind, "scheduled")));
+    const next = await runScheduledSnapshots(ctx);
+    expect(next.captured).toHaveLength(1);
+
+    const scheduled = (await listSnapshots(ctx, T)).filter((s) => s.kind === "scheduled");
+    expect(scheduled.length).toBe(2);
+  });
+
+  test("off schedule captures nothing", async () => {
+    await setSchedule("off");
+    const r = await runScheduledSnapshots(ctx, new Date("2026-07-01T00:00:00Z"));
+    expect(r.captured).toHaveLength(0);
+  });
+
+  test("retention prunes scheduled snapshots beyond keepLast", async () => {
+    for (let i = 0; i < 5; i++) {
+      await captureSnapshot(ctx, T, { name: `sched-${i}`, kind: "scheduled" });
+    }
+    const pruned = await pruneScheduledSnapshots(ctx, T, 2);
+    expect(pruned).toBe(3);
+    const scheduled = (await listSnapshots(ctx, T)).filter((s) => s.kind === "scheduled");
+    expect(scheduled.length).toBe(2);
   });
 });

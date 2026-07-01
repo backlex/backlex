@@ -40,6 +40,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { invalidateTenantCollections } from "./collections-cache";
 import { invalidateTenantPermissions } from "./permissions-cache";
 import { seedOwnerScopedPermissions } from "./seed";
+import { loadAppSettings } from "./settings";
 
 type Dialect = "pg" | "sqlite";
 // The Pg/Sqlite Drizzle union has no shared typed surface — the whole codebase
@@ -187,7 +188,7 @@ export const captureSnapshot = async (
     name: string;
     note?: string | null;
     createdBy?: string | null;
-    kind?: "manual" | "branch" | "auto";
+    kind?: "manual" | "branch" | "auto" | "scheduled";
     branchId?: string | null;
     parentSnapshotId?: string | null;
     /** Pre-resolved schema to store; defaults to the live schema. */
@@ -637,4 +638,94 @@ export const applySchema = async (
     safetySnapshotId: safety.id,
     noop: false,
   };
+};
+
+// ── Scheduled auto-snapshots (cron) ──────────────────────────────────────────
+
+const toMs = (v: unknown): number => {
+  if (typeof v === "number") return v;
+  if (v instanceof Date) return v.getTime();
+  const n = new Date(v as string).getTime();
+  return Number.isFinite(n) ? n : 0;
+};
+
+const INTERVAL_MS: Record<"daily" | "weekly", number> = {
+  daily: 24 * 60 * 60 * 1000,
+  weekly: 7 * 24 * 60 * 60 * 1000,
+};
+
+/** Delete `scheduled`-kind snapshots for a tenant beyond the newest `keepLast`.
+ *  Never touches manual/branch/auto snapshots. */
+export const pruneScheduledSnapshots = async (
+  ctx: SchemaVersionsCtx,
+  tenantId: string,
+  keepLast: number,
+): Promise<number> => {
+  const t = snapshotsTable(ctx.dialect);
+  const rows = (await ctx.db
+    .select({ id: t.id, createdAt: t.createdAt })
+    .from(t)
+    .where(and(eq(t.tenantId, tenantId), eq(t.kind, "scheduled")))
+    .orderBy(desc(t.createdAt))) as { id: string; createdAt: unknown }[];
+  const stale = rows.slice(Math.max(0, keepLast));
+  for (const s of stale) {
+    await ctx.db.delete(t).where(and(eq(t.tenantId, tenantId), eq(t.id, s.id)));
+  }
+  return stale.length;
+};
+
+/**
+ * Cron entry point — capture a `scheduled` schema snapshot for every workspace
+ * whose `schemaSnapshotSchedule` is `daily`/`weekly` and whose last scheduled
+ * snapshot is older than the interval (or has none), then prune to `keepLast`.
+ * Idempotent within an interval: a second tick inside the same day/week is a
+ * no-op because the freshly-written snapshot is now within the window.
+ */
+export const runScheduledSnapshots = async (
+  ctx: SchemaVersionsCtx,
+  now: Date = new Date(),
+): Promise<{ captured: string[]; pruned: number }> => {
+  const settingsTbl = ctx.dialect === "pg" ? pg.schema.appSettings : sqlite.schema.appSettings;
+  const captured: string[] = [];
+  let pruned = 0;
+
+  // Every workspace that has opted into a cadence. The value is validated again
+  // via loadAppSettings below (this query just narrows the tenant set).
+  const rows = (await ctx.db
+    .select({ tenantId: settingsTbl.tenantId, value: settingsTbl.value })
+    .from(settingsTbl)
+    .where(eq(settingsTbl.key, "schemaSnapshotSchedule"))) as {
+    tenantId: string | null;
+    value: unknown;
+  }[];
+
+  for (const row of rows) {
+    if (!row.tenantId || (row.value !== "daily" && row.value !== "weekly")) continue;
+    const tenantId = row.tenantId;
+    try {
+      const settings = await loadAppSettings(ctx.db, ctx.dialect, tenantId);
+      if (settings.schemaSnapshotSchedule === "off") continue;
+      const interval = INTERVAL_MS[settings.schemaSnapshotSchedule];
+
+      const snaps = snapshotsTable(ctx.dialect);
+      const last = (await ctx.db
+        .select({ createdAt: snaps.createdAt })
+        .from(snaps)
+        .where(and(eq(snaps.tenantId, tenantId), eq(snaps.kind, "scheduled")))
+        .orderBy(desc(snaps.createdAt))
+        .limit(1)) as { createdAt: unknown }[];
+      const dueSince = last[0] ? now.getTime() - toMs(last[0].createdAt) >= interval : true;
+      if (!dueSince) continue;
+
+      const snap = await captureSnapshot(ctx, tenantId, {
+        name: `Auto (${settings.schemaSnapshotSchedule}) ${now.toISOString().slice(0, 10)}`,
+        kind: "scheduled",
+      });
+      captured.push(snap.id);
+      pruned += await pruneScheduledSnapshots(ctx, tenantId, settings.schemaSnapshotKeepLast);
+    } catch (e) {
+      console.error(`[schema-auto-snapshot:${tenantId}] failed`, e);
+    }
+  }
+  return { captured, pruned };
 };

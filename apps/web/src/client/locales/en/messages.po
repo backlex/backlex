@@ -87,6 +87,10 @@ msgstr "… and {0} more"
 msgid "…or a custom code (e.g. zh-Hant)"
 msgstr "…or a custom code (e.g. zh-Hant)"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "· keep last"
+msgstr "· keep last"
+
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/translations.tsx
 msgid "· optional"
@@ -1558,6 +1562,10 @@ msgstr "auto-disabled"
 msgid "auto-run reads"
 msgstr "auto-run reads"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Auto-snapshot"
+msgstr "Auto-snapshot"
+
 #: src/client/admin/parity/translations.tsx
 msgid "Auto-translate"
 msgstr "Auto-translate"
@@ -2260,8 +2268,12 @@ msgid "Composite (multi-column) FKs cannot be adopted as a backlex relation"
 msgstr "Composite (multi-column) FKs cannot be adopted as a backlex relation"
 
 #: src/client/admin/pages/schema-versions.tsx
-msgid "Computing diff…"
-msgstr "Computing diff…"
+msgid "Computing diff"
+msgstr "Computing diff"
+
+#: src/client/admin/pages/schema-versions.tsx
+#~ msgid "Computing diff…"
+#~ msgstr "Computing diff…"
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Condition (permission DSL JSON, optional)"
@@ -2790,6 +2802,7 @@ msgstr "Custom…"
 msgid "Customize…"
 msgstr "Customize…"
 
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Daily"
 msgstr "Daily"
@@ -6474,6 +6487,7 @@ msgid "off"
 msgstr "off"
 
 #: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Off"
 msgstr "Off"
@@ -9230,6 +9244,10 @@ msgstr "Snapshot name"
 msgid "Snapshots"
 msgstr "Snapshots"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "snapshots — older ones are pruned automatically."
+msgstr "snapshots — older ones are pruned automatically."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Snippet copied"
 msgstr "Snippet copied"
@@ -10589,6 +10607,7 @@ msgstr "Webhooks"
 msgid "Wed"
 msgstr "Wed"
 
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Weekly"
 msgstr "Weekly"

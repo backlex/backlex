@@ -87,6 +87,10 @@ msgstr "… ve {0} tane daha"
 msgid "…or a custom code (e.g. zh-Hant)"
 msgstr "…ya da özel bir kod (örn. zh-Hant)"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "· keep last"
+msgstr "· son"
+
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/translations.tsx
 msgid "· optional"
@@ -1558,6 +1562,10 @@ msgstr "otomatik kapatıldı"
 msgid "auto-run reads"
 msgstr "okumaları otomatik çalıştır"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "Auto-snapshot"
+msgstr "Otomatik anlık görüntü"
+
 #: src/client/admin/parity/translations.tsx
 msgid "Auto-translate"
 msgstr "Otomatik çeviri"
@@ -2260,8 +2268,12 @@ msgid "Composite (multi-column) FKs cannot be adopted as a backlex relation"
 msgstr "Bileşik (çok sütunlu) FK'lar backlex ilişkisi olarak benimsenemez"
 
 #: src/client/admin/pages/schema-versions.tsx
-msgid "Computing diff…"
-msgstr "Fark hesaplanıyor…"
+msgid "Computing diff"
+msgstr "Fark hesaplanıyor"
+
+#: src/client/admin/pages/schema-versions.tsx
+#~ msgid "Computing diff…"
+#~ msgstr "Fark hesaplanıyor…"
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Condition (permission DSL JSON, optional)"
@@ -2790,6 +2802,7 @@ msgstr "Özel…"
 msgid "Customize…"
 msgstr "Özelleştir…"
 
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Daily"
 msgstr "Günlük"
@@ -6474,6 +6487,7 @@ msgid "off"
 msgstr "kapalı"
 
 #: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Off"
 msgstr "Kapalı"
@@ -9238,6 +9252,10 @@ msgstr "Anlık görüntü adı"
 msgid "Snapshots"
 msgstr "Anlık görüntüler"
 
+#: src/client/admin/pages/schema-versions.tsx
+msgid "snapshots — older ones are pruned automatically."
+msgstr "anlık görüntü tutulur — eskiler otomatik olarak budanır."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Snippet copied"
 msgstr "Parça kopyalandı"
@@ -10597,6 +10615,7 @@ msgstr "Webhook'lar"
 msgid "Wed"
 msgstr "Çar"
 
+#: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Weekly"
 msgstr "Haftalık"

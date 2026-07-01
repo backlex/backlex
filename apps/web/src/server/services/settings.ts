@@ -26,6 +26,12 @@ export interface AppSettings {
    *  collection slug. Admin-UI-only convenience state — never read by the
    *  query engine. Empty object = fall back to the deterministic auto-layout. */
   erdLayout: Record<string, { x: number; y: number }>;
+  /** Automatic schema-snapshot cadence (#9). `off` disables it; `daily`/`weekly`
+   *  make the cron tick capture a `kind:"scheduled"` schema snapshot when due. */
+  schemaSnapshotSchedule: "off" | "daily" | "weekly";
+  /** How many `scheduled` snapshots to retain — older ones are pruned by the
+   *  same tick. Manual/branch/auto snapshots are never pruned. */
+  schemaSnapshotKeepLast: number;
 }
 
 export const APP_SETTINGS_DEFAULTS: AppSettings = {
@@ -33,6 +39,8 @@ export const APP_SETTINGS_DEFAULTS: AppSettings = {
   i18nDefaultLocale: "en",
   timezone: DEFAULT_TIMEZONE,
   erdLayout: {},
+  schemaSnapshotSchedule: "off",
+  schemaSnapshotKeepLast: 7,
 };
 
 const isStringArray = (v: unknown): v is string[] =>
@@ -79,6 +87,17 @@ export const loadAppSettings = async (
         out.timezone = r.value;
       else if (r.key === "erdLayout" && isErdLayout(r.value))
         out.erdLayout = r.value;
+      else if (
+        r.key === "schemaSnapshotSchedule" &&
+        (r.value === "off" || r.value === "daily" || r.value === "weekly")
+      )
+        out.schemaSnapshotSchedule = r.value;
+      else if (
+        r.key === "schemaSnapshotKeepLast" &&
+        typeof r.value === "number" &&
+        Number.isFinite(r.value)
+      )
+        out.schemaSnapshotKeepLast = Math.min(50, Math.max(1, Math.floor(r.value)));
     }
     if (!out.i18nLocales.includes(out.i18nDefaultLocale)) {
       out.i18nDefaultLocale = out.i18nLocales[0] ?? "en";

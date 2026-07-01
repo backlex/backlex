@@ -199,33 +199,33 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>()
         const scopeTenantId = globalKeys.has(key)
           ? null
           : (auth.tenantId ?? null);
-        const existing = (await (ctx.db as any)
-          .select({ id: t.id })
-          .from(t)
-          .where(
-            and(
-              eq(t.key, key),
-              scopeTenantId
-                ? eq(t.tenantId, scopeTenantId)
-                : isNull(t.tenantId),
-            ),
-          )
-          .limit(1)) as { id: string }[];
-        if (existing[0]) {
+        const updatedAt = ctx.dialect === "pg" ? new Date() : Date.now();
+        if (scopeTenantId !== null) {
+          // Tenant-scoped keys go through an ATOMIC upsert keyed on the
+          // `(tenant_id, key)` unique index. The old select-then-insert/update
+          // was a check-then-act race: two concurrent PATCHes for a not-yet-
+          // existing key both saw "no row" and both INSERTed, and the loser hit
+          // `UNIQUE constraint failed: app_settings.tenant_id, app_settings.key`
+          // → a 500 (confirmed via a concurrent-write load test). ON CONFLICT
+          // collapses that to a single write with no window.
           await (ctx.db as any)
-            .update(t)
-            .set({
-              value,
-              updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
-            })
-            .where(eq(t.id, existing[0].id));
+            .insert(t)
+            .values({ id: crypto.randomUUID(), tenantId: scopeTenantId, key, value })
+            .onConflictDoUpdate({ target: [t.tenantId, t.key], set: { value, updatedAt } });
         } else {
-          await (ctx.db as any).insert(t).values({
-            id: crypto.randomUUID(),
-            tenantId: scopeTenantId,
-            key,
-            value,
-          });
+          // Global (branding) keys carry a NULL tenant_id. SQLite/D1 treat NULLs
+          // as DISTINCT in a unique index, so ON CONFLICT can't dedupe them —
+          // keep select-then-update here. These aren't a concurrent-write path.
+          const existing = (await (ctx.db as any)
+            .select({ id: t.id })
+            .from(t)
+            .where(and(eq(t.key, key), isNull(t.tenantId)))
+            .limit(1)) as { id: string }[];
+          if (existing[0]) {
+            await (ctx.db as any).update(t).set({ value, updatedAt }).where(eq(t.id, existing[0].id));
+          } else {
+            await (ctx.db as any).insert(t).values({ id: crypto.randomUUID(), tenantId: null, key, value });
+          }
         }
       }
       return c.json({ ok: true });

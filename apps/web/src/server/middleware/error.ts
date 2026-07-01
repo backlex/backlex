@@ -131,12 +131,19 @@ export const errorHandler = (err: Error, c: Context) => {
   }
   // Unhandled exception — log the full error (with stack) under the requestId
   // (the access log's single line carries status/code; this adds the stack),
-  // but never leak internals to the client.
+  // but never leak internals to the client. Drizzle wraps driver failures as
+  // "Failed query: <sql>" and hides the real driver error (e.g. a transient D1
+  // "Network connection lost") on `err.cause` — surface it so intermittent 5xx
+  // are diagnosable instead of an opaque "Failed query".
   markError(c, "INTERNAL");
+  const cause = (err as { cause?: unknown })?.cause;
   log.error("unhandled", {
     requestId,
     message: err?.message ?? String(err),
     stack: err?.stack,
+    ...(cause !== undefined
+      ? { cause: cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause) }
+      : {}),
   });
   logServerError(c, 500, "INTERNAL", err?.message ?? "Internal server error");
   return c.json(

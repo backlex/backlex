@@ -8,3 +8,22 @@ import { ClientRouter } from "astro:transitions";
 
 <Default><slot /></Default>
 <ClientRouter />
+
+<script>
+  // Preserve the Starlight sidebar's scroll position across <ClientRouter />
+  // view-transition navigations. Starlight only persists the sidebar scroll on
+  // `pageHide` / `visibilitychange` (full page unloads), which never fire under
+  // client-side navigation — so the sidebar snapped back to the top on every
+  // doc-to-doc click. We snapshot the scroller before the swap and restore it
+  // after, independent of Starlight's sessionStorage/inline-restore internals.
+  let sidebarScroll = 0;
+  const sidebarScroller = () => document.getElementById("starlight__sidebar");
+
+  document.addEventListener("astro:before-swap", () => {
+    sidebarScroll = sidebarScroller()?.scrollTop ?? 0;
+  });
+  document.addEventListener("astro:after-swap", () => {
+    const scroller = sidebarScroller();
+    if (scroller && sidebarScroll) scroller.scrollTop = sidebarScroll;
+  });
+</script>

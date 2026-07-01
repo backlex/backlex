@@ -16,6 +16,7 @@ import { runAgents } from "../src/agents";
 import { runTemplates } from "../src/templates";
 import { runWebhooks } from "../src/webhooks";
 import { runJobs } from "../src/jobs";
+import { runMessaging } from "../src/messaging";
 import { runAdvisor } from "../src/advisor";
 import { runTraces } from "../src/traces";
 import { runGenOpenapi } from "../src/gen-openapi";
@@ -100,6 +101,9 @@ Usage:
 
   backlex jobs <list|get|retry|cancel|remove|enqueue>
       Durable background job queue.
+
+  backlex messaging <send-push|send-sms|devices|phones>
+      Direct push/SMS dispatch + the caller's device/phone registrations.
 
   backlex advisor [--kind …] [--fail-on error|warn]
       Run security/performance checks. \`--fail-on\` makes it a CI gate.
@@ -228,6 +232,10 @@ const run = async () => {
     case "jobs":
     case "job":
       await runJobs(rest);
+      return;
+    case "messaging":
+    case "msg":
+      await runMessaging(rest);
       return;
     case "advisor":
       await runAdvisor(rest);

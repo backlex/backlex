@@ -361,6 +361,22 @@ export interface MessagingClient {
   unregisterPhone(id: string): Promise<{ ok: boolean }>;
   /** List the caller's registered phone numbers. */
   listPhones(): Promise<{ data: PhoneNumber[] }>;
+  /** Send a push notification to a user's registered devices (dispatch-only —
+   *  no in-app notification row). Admins may target any user; non-admins only
+   *  themselves. */
+  sendPush(input: {
+    userId: string;
+    title: string;
+    body: string;
+    url?: string;
+    data?: Record<string, string>;
+  }): Promise<{ ok: boolean; sent: number; failed: number }>;
+  /** Send an SMS to a user's registered phone numbers. Admins may target any
+   *  user; non-admins only themselves. */
+  sendSms(input: {
+    userId: string;
+    body: string;
+  }): Promise<{ ok: boolean; sent: number; failed: number }>;
 }
 
 /** Durable background job queue (admin-scoped). See `createClient`. */
@@ -1389,6 +1405,28 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<{ ok: boolean }>("DELETE", `/api/phone-numbers/${encodeURIComponent(id)}`),
     /** List the caller's registered phone numbers. */
     listPhones: () => request<{ data: PhoneNumber[] }>("GET", "/api/phone-numbers"),
+    /** Send a push to a user's registered devices — dispatch-only, no in-app
+     *  row. Admins may target any user; non-admins only themselves. */
+    sendPush: (input: {
+      userId: string;
+      title: string;
+      body: string;
+      url?: string;
+      data?: Record<string, string>;
+    }) =>
+      request<{ ok: boolean; sent: number; failed: number }>(
+        "POST",
+        "/api/messaging/push",
+        input,
+      ),
+    /** Send an SMS to a user's registered phone numbers. Admins may target any
+     *  user; non-admins only themselves. */
+    sendSms: (input: { userId: string; body: string }) =>
+      request<{ ok: boolean; sent: number; failed: number }>(
+        "POST",
+        "/api/messaging/sms",
+        input,
+      ),
   };
 
   const jobs: JobsClient = {

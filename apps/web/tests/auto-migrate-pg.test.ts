@@ -206,20 +206,20 @@ describe("auto-migrate: idempotency classifier covers PG-specific failure shapes
 let pgliteWorks = false;
 let setupErr: Error | undefined;
 
-// Layer 2 — live pglite replay of the real PG migration bundle. Two hard-won
-// details keep it from flaking under bun-test (it used to fail spuriously on
-// machines where the drizzle path couldn't load pgvector — breaking the
-// pre-push hook for unrelated changes):
-//   • Load pgvector via pglite's own `pg.exec("CREATE EXTENSION …")`, NOT
-//     drizzle's `db.execute(sql.raw(…))`. Under bun-test the drizzle execute
-//     path reports `extension "vector" is not available` (and leaks an async
-//     WASM rejection that bun-test turns into a suite failure); `pg.exec`
-//     loads the extension reliably.
-//   • Assert forward progress, NOT an exact ledger count: pglite isn't 100%
-//     Postgres, so a few statements in the real bundle no-op under it and
-//     `ensureMigrations`' per-migration tolerance absorbs them. "Every
-//     migration applied" is guaranteed by Layer 1 + the production Neon
-//     deploy, not by pglite.
+// Layer 2 — live pglite replay of the real PG migration bundle.
+//
+// History: this used to fail spuriously with `extension "vector" is not
+// available` on the drizzle execute path. Root cause (found 2026-07): the
+// positional `drizzle(pg)` call — the beta-22 pglite driver destructures its
+// first argument as a config object, so a bare instance fell through to
+// `new PGlite(undefined)` and drizzle ran against a hidden empty database
+// with no pgvector. Fixed by passing `{ client: pg }`.
+//
+// Assert forward progress, NOT an exact ledger count: pglite isn't 100%
+// Postgres, so a statement in the real bundle may no-op under it and
+// `ensureMigrations`' per-migration tolerance absorbs it. "Every migration
+// applied" is guaranteed by Layer 1 + the production Neon deploy, not by
+// pglite.
 beforeAll(async () => {
   try {
     const { PGlite } = await import("@electric-sql/pglite");
@@ -248,9 +248,12 @@ describe("auto-migrate (pg) — end-to-end pglite", () => {
     const { drizzle } = await import("drizzle-orm/pglite");
     const pg = new PGlite({ extensions: { vector } });
     await pg.waitReady;
-    // Load pgvector via pglite directly — drizzle's execute path can't (see note above).
     await pg.exec("CREATE EXTENSION IF NOT EXISTS vector");
-    const db = drizzle(pg);
+    // `{ client: pg }`, NOT positional `drizzle(pg)` — the beta-22 driver
+    // destructures its first arg as config, so a bare instance silently
+    // constructs a fresh EMPTY PGlite (no pgvector!) and every vector-typed
+    // migration "tolerantly" failed against it. See setup-pg.ts.
+    const db = drizzle({ client: pg });
     try {
       // The real value: ensureMigrations replays the full PG bundle against a
       // real Postgres parser without throwing (its per-migration tolerance

@@ -13,12 +13,12 @@
 import { PGlite } from "@electric-sql/pglite";
 import { vector } from "@electric-sql/pglite/vector";
 import { drizzle } from "drizzle-orm/pglite";
-import { sql } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { schema } from "@backlex/db/pg";
 import { createApp } from "../src/server/app";
 import { __setDbOverrideForTests } from "../src/server/context";
+import { invalidateAllPermissions } from "../src/server/services/permissions-cache";
 import type { Env } from "../src/server/env";
 
 const ROOT = resolve(import.meta.dir, "..", "..", "..");
@@ -36,17 +36,20 @@ const DEFAULT_APP_URL = "http://localhost:5173";
 
 /** Apply every migration file under `MIGRATIONS` to the pglite instance, in
  *  ascending directory order. We bypass drizzle-kit's migrator because it
- *  wants a real connection string; pglite's `exec` runs raw SQL fine. */
-const applyPgMigrations = async (
-  db: ReturnType<typeof drizzle>,
-  pg: PGlite,
-): Promise<void> => {
+ *  wants a real connection string; pglite's `exec` runs raw SQL fine.
+ *
+ *  Raw `pg.exec` (simple protocol) instead of drizzle `db.execute` (extended
+ *  protocol) throughout: the extended protocol's prepared-statement path races
+ *  the vector extension's lazy VFS load — `CREATE EXTENSION vector` failed
+ *  deterministically on macOS with "extension is not available" while the
+ *  same statement through `pg.exec` succeeds. */
+const applyPgMigrations = async (pg: PGlite): Promise<void> => {
   // Wait for the WASM postgres + extension bundles (vector.tar.gz) to finish
   // unpacking before issuing the first CREATE EXTENSION — otherwise the
   // control file lookup races the extension loader.
   await pg.waitReady;
   // Enable pgvector so the `vector(N)` column types in later migrations parse.
-  await db.execute(sql.raw("CREATE EXTENSION IF NOT EXISTS vector"));
+  await pg.exec("CREATE EXTENSION IF NOT EXISTS vector");
 
   const dirs = readdirSync(MIGRATIONS, { withFileTypes: true })
     .filter((d) => d.isDirectory())
@@ -56,15 +59,14 @@ const applyPgMigrations = async (
   for (const dir of dirs) {
     const file = resolve(MIGRATIONS, dir, "migration.sql");
     const body = readFileSync(file, "utf8");
-    // drizzle-kit emits statement-breakpoint markers; split on them so each
-    // statement runs as a single `exec` call (pglite doesn't accept some
-    // multi-statement bundles).
+    // drizzle-kit emits statement-breakpoint markers; split on them so a
+    // failing statement points at the right SQL.
     const statements = body
       .split(/-->\s*statement-breakpoint\s*/i)
       .map((s) => s.trim())
       .filter(Boolean);
     for (const stmt of statements) {
-      await db.execute(sql.raw(stmt));
+      await pg.exec(stmt);
     }
   }
 };
@@ -72,10 +74,20 @@ const applyPgMigrations = async (
 export const makeHarnessPg = async (
   overrides: Partial<Env> = {},
 ): Promise<PgTestHarness> => {
+  // `{ client: pg }`, NOT positional `drizzle(pg, …)`: the beta-22 pglite
+  // driver destructures its first argument as a config object, so a bare
+  // instance falls through to `construct(new PGlite(undefined))` — drizzle
+  // silently runs against a fresh EMPTY database (no vector extension, no
+  // migrated tables) while raw `pg.*` calls hit ours. That's why this harness
+  // "failed to load pgvector" everywhere and pg-smoke silently skipped.
   const pg = new PGlite({ extensions: { vector } });
-  const db = drizzle(pg, { schema });
+  const db = drizzle({ client: pg, schema });
+  // Same reset the sqlite harness does (setup.ts): the permission/tenant
+  // caches are module-global, so a previous spec's DEFAULT-tenant id would
+  // otherwise leak into this fresh database and FK-violate on sign-up.
+  invalidateAllPermissions();
   try {
-    await applyPgMigrations(db, pg);
+    await applyPgMigrations(pg);
   } catch (err) {
     // Close the WASM instance so the bun test runner doesn't see a lingering
     // open handle (which it counts as an "unfinished" run → exit 100 even on

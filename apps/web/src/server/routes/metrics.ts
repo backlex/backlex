@@ -228,8 +228,10 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>()
       const now = Date.now();
       const start = now - windowMs;
 
-      // Pull recent activity rows once, then bucket client-side. The set is
-      // small for live workspaces; if it grows we can group in SQL.
+      // Pull the window's activity rows, then bucket client-side. The `created_at
+      // >= start` bound is applied in SQL so we read only the range window (uses
+      // `activity_created_idx`) instead of the newest 5000 rows regardless of range;
+      // the LIMIT stays as a safety cap for very busy windows.
       const rows = await queryAll<{
         action: string;
         created_at: number | string;
@@ -242,8 +244,8 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>()
       }>(
         { db: ctx.db, dialect: ctx.dialect },
         sql.raw(
-          `SELECT action, created_at, tenant_id, duration_ms, collection, item_id, user_id, payload FROM activity ${
-            auth.tenantId ? `WHERE tenant_id = '${auth.tenantId.replace(/'/g, "''")}' OR tenant_id IS NULL` : ""
+          `SELECT action, created_at, tenant_id, duration_ms, collection, item_id, user_id, payload FROM activity WHERE created_at >= ${start}${
+            auth.tenantId ? ` AND (tenant_id = '${auth.tenantId.replace(/'/g, "''")}' OR tenant_id IS NULL)` : ""
           } ORDER BY created_at DESC LIMIT 5000`,
         ),
       );
@@ -283,12 +285,14 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>()
       }
 
       // Active users in the window — distinct sessions whose createdAt fell
-      // inside the range. Cheap on small DBs.
+      // inside the range. The `created_at >= start` bound is applied in SQL
+      // (uses `sessions_created_idx`) so we read only the window instead of
+      // full-scanning + sorting the whole sessions table on every load.
       try {
         const sessRows = await queryAll<{ user_id: string; created_at: number | string }>(
           { db: ctx.db, dialect: ctx.dialect },
           sql.raw(
-            `SELECT user_id, created_at FROM sessions ORDER BY created_at DESC LIMIT 2000`,
+            `SELECT user_id, created_at FROM sessions WHERE created_at >= ${start} ORDER BY created_at DESC LIMIT 2000`,
           ),
         );
         for (const s of sessRows) {

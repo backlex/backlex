@@ -294,6 +294,7 @@ export function DatabaseImportPage({ pushToast }: PageProps) {
           </div>
         ) : sources.length === 0 ? (
           <EmptyState
+            bare
             size="md"
             icon={I.Database}
             title={<Trans>No sources yet</Trans>}
@@ -351,6 +352,7 @@ export function DatabaseImportPage({ pushToast }: PageProps) {
           </div>
         ) : runs.length === 0 ? (
           <EmptyState
+            bare
             size="md"
             icon={I.Download}
             title={<Trans>No migrations yet</Trans>}

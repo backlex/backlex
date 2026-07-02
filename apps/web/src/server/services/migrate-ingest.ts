@@ -38,13 +38,19 @@ export interface IngestResult {
   /** Rows that landed (measured as the tenant-scoped count delta — exact
    *  on both dialects without relying on driver-specific change counts). */
   inserted: number;
-  /** Rows that hit ON CONFLICT (already present — typical on resume). */
+  /** insert mode: rows that hit ON CONFLICT (already present — typical on
+   *  resume). Always 0 in upsert mode (conflicts update instead). */
   skipped: number;
+  /** upsert mode: rows that matched an existing PK and were overwritten.
+   *  Always 0 in insert mode. */
+  updated: number;
   failed: IngestFailure[];
   /** Tenant-scoped row count in the target table after this call — the
    *  CLI's verify step compares it against the source COUNT(*). */
   total: number;
 }
+
+export type IngestMode = "insert" | "upsert";
 
 /** Max rows per HTTP call — the CLI chunks larger copies client-side. */
 export const INGEST_MAX_ROWS = 2000;
@@ -119,7 +125,9 @@ export const ingestRows = async (
   collection: CollectionRow,
   tenantId: string,
   rows: Record<string, unknown>[],
+  opts: { mode?: IngestMode } = {},
 ): Promise<IngestResult> => {
+  const mode: IngestMode = opts.mode ?? "insert";
   if (collection.adopted) {
     throw new AppError(
       "VALIDATION",
@@ -272,6 +280,28 @@ export const ingestRows = async (
     plan.map((p) => sql.identifier(p.column)),
     sql`, `,
   );
+  // Upsert (`--since` delta re-sync): PK conflicts overwrite instead of
+  // skip. `created_at` and `tenant_id` keep their original values — a delta
+  // pass must not re-stamp creation time or move a row across tenants.
+  // (Both dialects support `excluded`; a conflict on a NON-pk unique field
+  // still errors and fails its chunk, same as insert mode.)
+  const updatableCols = plan
+    .map((p) => p.column)
+    .filter(
+      (c) =>
+        c !== pk &&
+        c !== "tenant_id" &&
+        c !== (collection.createdAtColumn ?? "created_at"),
+    );
+  const conflictSql =
+    mode === "upsert" && updatableCols.length > 0
+      ? sql`ON CONFLICT (${sql.identifier(pk)}) DO UPDATE SET ${sql.join(
+          updatableCols.map(
+            (c) => sql`${sql.identifier(c)} = excluded.${sql.identifier(c)}`,
+          ),
+          sql`, `,
+        )}`
+      : sql`ON CONFLICT DO NOTHING`;
   const rowsPerStmt = Math.max(1, Math.floor(PARAM_BUDGET / plan.length));
   let attempted = 0;
   for (let i = 0; i < good.length; i += rowsPerStmt) {
@@ -285,7 +315,7 @@ export const ingestRows = async (
     try {
       await execute(
         ctx,
-        sql`INSERT INTO ${sql.identifier(table)} (${colSql}) VALUES ${valuesSql} ON CONFLICT DO NOTHING`,
+        sql`INSERT INTO ${sql.identifier(table)} (${colSql}) VALUES ${valuesSql} ${conflictSql}`,
       );
       attempted += chunk.length;
     } catch (e) {
@@ -299,10 +329,12 @@ export const ingestRows = async (
 
   const total = await countTarget();
   const inserted = Math.max(0, total - before);
+  const conflicted = Math.max(0, attempted - inserted);
   return {
     received: rows.length,
     inserted,
-    skipped: Math.max(0, attempted - inserted),
+    skipped: mode === "upsert" ? 0 : conflicted,
+    updated: mode === "upsert" ? conflicted : 0,
     failed: failed.sort((a, b) => a.index - b.index),
     total,
   };

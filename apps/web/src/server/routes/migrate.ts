@@ -44,6 +44,10 @@ const IngestInput = z.object({
     .array(z.record(z.string(), z.unknown()))
     .min(1)
     .max(INGEST_MAX_ROWS),
+  /** `upsert` (the `--since` delta path) overwrites rows whose PK already
+   *  exists — created_at/tenant_id keep their original values. Default
+   *  `insert` skips conflicts (idempotent first copy / resume). */
+  mode: z.enum(["insert", "upsert"]).optional().default("insert"),
 });
 
 const SourceInput = z.object({
@@ -168,14 +172,17 @@ export const migrateRoutes = new Hono<AppBindings>()
     const slug = c.req.param("slug");
     const body = IngestInput.parse(await c.req.json());
     const collection = await loadCollection(ctx, auth.tenantId, slug);
-    const result = await ingestRows(ctx, collection, auth.tenantId!, body.rows);
+    const result = await ingestRows(ctx, collection, auth.tenantId!, body.rows, {
+      mode: body.mode,
+    });
     await logActivity(c, {
       action: "migrate.ingest",
       collection: slug,
-      payload: { received: result.received },
+      payload: { received: result.received, mode: body.mode },
       response: {
         inserted: result.inserted,
         skipped: result.skipped,
+        updated: result.updated,
         failed: result.failed.length,
         total: result.total,
       },

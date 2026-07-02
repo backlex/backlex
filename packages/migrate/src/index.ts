@@ -18,6 +18,8 @@ export {
   type PlanTable,
 } from "./plan";
 export { createPgSource } from "./pg-source";
+export { createMysqlSource, parseEnumLabels } from "./mysql-source";
+export { createSqliteFileSource } from "./sqlite-source";
 export { topoSort } from "./topo";
 export type {
   ReadBatchOptions,

@@ -32,6 +32,17 @@ Target connection resolves like every other CLI command (`--url` / `--key` /
 `--tenant` / saved profile); the key needs the admin role. The source URL can
 also come from `BACKLEX_IMPORT_SOURCE`.
 
+Three source engines, picked from the URL:
+
+| Source | URL shape | Notes |
+|---|---|---|
+| Postgres | `postgres://user:pass@host/db` | also the only server-side engine |
+| MySQL / MariaDB | `mysql://user:pass@host/db` | CLI-only (mysql2) |
+| SQLite file | `sqlite:./legacy.db` or `*.sqlite`/`*.db` path | CLI-only, needs Bun |
+
+MySQL idioms map automatically: `tinyint(1)` → boolean, `enum(…)` → text +
+dropdown choices, `mediumtext`/`longtext` → longtext, `set` → text (warning).
+
 ## Primary keys are preserved
 
 This is the load-bearing design decision. Every copied row keeps its source
@@ -133,6 +144,33 @@ Response:
 `total` is the target's row count after the call — the CLI's verify compares
 it against the source.
 
+## The pre-cutover delta pass (`--since`)
+
+A live source keeps changing while you migrate. The cutover recipe:
+
+1. **Full copy** while the source stays live: `import-db run migration.json …`
+2. Stop (or pause writes on) the source.
+3. **Delta pass** for everything that changed since the full copy started:
+
+```bash
+backlex import-db run migration.json --source … --since 2026-07-03T09:00:00Z
+```
+
+`--since` reads only rows whose detected `updated_at` (falling back to
+`created_at`) is `>=` the watermark and sends them in **upsert** mode: PK
+conflicts overwrite in place — `created_at` and the workspace are preserved,
+`updated_at` moves forward. Tables with neither timestamp column are copied
+in full (with a warning), still upserted. The summary reports
+`copied`/`updated` per table instead of comparing counts (a delta is by
+design smaller than the table). Delta passes keep their own
+`<plan>.since.state.json`, so a finished full copy's cursors don't
+short-circuit them; `--resume` works the same way.
+
+4. Verify, then point your application at backlex.
+
+There is deliberately no continuous CDC — the watermark pass is repeatable,
+so run it as many times as you like until the diff window is minutes wide.
+
 ## Server-side runs (the admin wizard)
 
 When the source database is reachable **from the backlex server** (Supabase,
@@ -180,14 +218,13 @@ listed) with their final per-table verify state.
 
 ## Limits & scope
 
-- **Postgres sources only.** Supabase/Neon/RDS/Heroku are all Postgres, so
-  they work today. MySQL and SQLite-file sources are planned (CLI first).
-- **One-shot copy**, not sync. There's no change-data-capture; for a live
-  cutover, stop writes to the source, run (or `--resume`) once more, verify,
-  then switch. An `--since` incremental re-copy is on the roadmap.
+- **Server-side runs are Postgres-only.** MySQL and SQLite-file sources go
+  through the CLI (their drivers don't belong in the Worker bundle).
+- **No continuous CDC.** The `--since` delta pass covers cutover; a streaming
+  replication mode is out of scope.
 - **Composite PKs** can't key a collection — those tables are excluded with a
   reason (add a surrogate key upstream, or copy manually).
-- Binary columns (`bytea`) don't ride along — move blobs to storage
+- Binary columns (`bytea`/`blob`) don't ride along — move blobs to storage
   separately.
 
 ## Worked example

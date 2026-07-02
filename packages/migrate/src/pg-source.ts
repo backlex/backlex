@@ -159,12 +159,20 @@ export const createPgSource = (query: SourceQuery): SourceConnector => {
   ): Promise<Record<string, unknown>[]> => {
     const t = quoteIdent(table);
     const pk = quoteIdent(pkColumn);
-    if (opts.after === undefined) {
-      return query(`SELECT * FROM ${t} ORDER BY ${pk} LIMIT $1`, [opts.limit]);
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (opts.after !== undefined) {
+      params.push(opts.after);
+      where.push(`${pk} > $${params.length}`);
     }
+    if (opts.since) {
+      params.push(opts.since.value);
+      where.push(`${quoteIdent(opts.since.column)} >= $${params.length}`);
+    }
+    params.push(opts.limit);
     return query(
-      `SELECT * FROM ${t} WHERE ${pk} > $1 ORDER BY ${pk} LIMIT $2`,
-      [opts.after, opts.limit],
+      `SELECT * FROM ${t}${where.length ? ` WHERE ${where.join(" AND ")}` : ""} ORDER BY ${pk} LIMIT $${params.length}`,
+      params,
     );
   };
 

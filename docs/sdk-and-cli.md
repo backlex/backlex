@@ -252,7 +252,8 @@ backlex advisor [--kind …] [--fail-on error|warn]   security/perf checks (CI g
 backlex init [dir] [--force]                     scaffold a TypeScript consumer starter
 backlex sdk [lang]                               discover the official native client SDKs
 backlex migrate [db-path]                        apply SQLite migrations
-backlex import-db <inspect|plan|run>             migrate an external Postgres INTO backlex (docs/migrating-in.md)
+backlex import-db <inspect|plan|run|sources|start|status|...>
+                                                 migrate an external DB (Postgres/MySQL/SQLite) INTO backlex (docs/migrating-in.md)
 backlex gen-types <api-url> [--out <file>] [--key <pak_...>] [--sdk]
                                                  generate TS types (+ typed client with --sdk)
 backlex gen-openapi [--out <file>]               fetch the live OpenAPI spec

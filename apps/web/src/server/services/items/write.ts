@@ -90,12 +90,17 @@ export const performCreate = async (
   const { ctx, collection } = env;
   const table = collection.physicalTable;
   let id: string;
-  if (collection.adopted) {
+  // Integer-keyed managed collections (external-DB migration creates these)
+  // share the adopted contract: backlex never invents numeric keys, so the
+  // body must carry the PK. uuid/text PKs keep auto-generating a UUID.
+  if (collection.adopted || collection.pkType === "integer") {
     const pkVal = data[collection.pkColumn];
     if (pkVal === undefined || pkVal === null || pkVal === "") {
       throw new AppError(
         "VALIDATION",
-        `Primary key "${collection.pkColumn}" is required in the body for adopted collections`,
+        `Primary key "${collection.pkColumn}" is required in the body for ${
+          collection.adopted ? "adopted" : "integer-keyed"
+        } collections`,
       );
     }
     id = String(pkVal);

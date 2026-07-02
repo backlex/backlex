@@ -1,0 +1,311 @@
+/**
+ * Migration-plan model + builder.
+ *
+ * `buildPlan` turns a set of source-table inspections into an editable JSON
+ * document: which tables to copy, what each becomes (slug, pk, fields,
+ * relations), and in what order (FK parents first). The CLI writes it to
+ * disk so a human can prune/rename before `import-db run` executes it —
+ * same review-then-apply philosophy as the schema-versions GitOps loop.
+ *
+ * Everything lossy or skipped lands in `warnings` / `reason`; a plan never
+ * silently drops data.
+ */
+import { mapColumn, mapPkType, SYSTEM_COLUMN_PATTERNS, type PlanFieldType } from "./mapping";
+import { topoSort } from "./topo";
+import type { SourceInspection, SourceTable } from "./types";
+
+export interface PlanField {
+  /** Column on the source table (read key during copy). */
+  column: string;
+  /** Field name on the target collection (write key). Differs from
+   *  `column` when the source name is reserved or not snake_case. */
+  name: string;
+  type: PlanFieldType;
+  required?: boolean;
+  /** Relation target collection slug (type === "relation"). */
+  to?: string;
+  /** Dropdown choices (source enum labels). */
+  choices?: string[];
+}
+
+export interface PlanTable {
+  table: string;
+  slug: string;
+  /** Copy this table? Editable; the builder sets false + `reason` for
+   *  tables it can't key (composite/missing/unsupported PK). */
+  include: boolean;
+  reason?: string;
+  pkColumn: string;
+  pkType: "uuid" | "text" | "integer";
+  /** Source column whose values are copied into the target's system
+   *  `created_at` / `updated_at` (detected by naming pattern + type). */
+  createdAtColumn: string | null;
+  updatedAtColumn: string | null;
+  fields: PlanField[];
+  warnings: string[];
+  approxRows: number | null;
+}
+
+export interface MigrationPlan {
+  version: 1;
+  source: { kind: "postgres" };
+  /** Copy order over the included tables — FK parents first. */
+  order: string[];
+  tables: PlanTable[];
+}
+
+const FIELD_NAME = /^[a-z][a-z0-9_]*$/;
+const RESERVED = new Set(["id", "owner_id", "created_at", "updated_at"]);
+
+/** snake_case a source identifier into a valid field/slug name. */
+export const sanitizeName = (raw: string): string => {
+  let s = raw
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/^_+/, "")
+    .replace(/_+$/, "")
+    .replace(/__+/g, "_");
+  if (!s || !/^[a-z]/.test(s)) s = `t_${s}`;
+  return s;
+};
+
+const uniqueName = (base: string, taken: Set<string>): string => {
+  let name = base;
+  let i = 2;
+  while (taken.has(name)) name = `${base}_${i++}`;
+  taken.add(name);
+  return name;
+};
+
+const TIMESTAMPish = (type: PlanFieldType): boolean =>
+  type === "timestamp" || type === "integer";
+
+export const buildPlan = (
+  inspections: SourceInspection[],
+  tableMeta: Map<string, SourceTable> = new Map(),
+): MigrationPlan => {
+  const slugTaken = new Set<string>();
+  const slugByTable = new Map<string, string>();
+  for (const ins of inspections) {
+    slugByTable.set(ins.table, uniqueName(sanitizeName(ins.table), slugTaken));
+  }
+
+  // First pass — decide inclusion (PK viability) so the relation pass knows
+  // which targets exist.
+  const pkInfo = new Map<
+    string,
+    { column: string; pkType: "uuid" | "text" | "integer" } | { reason: string }
+  >();
+  for (const ins of inspections) {
+    if (!ins.pk) {
+      const composite =
+        ins.foreignKeys.length >= 0 &&
+        ins.columns.length > 0 &&
+        // pg-source returns null for both "no PK" and "composite PK";
+        // there's no way to distinguish here, so say both.
+        true;
+      pkInfo.set(ins.table, {
+        reason: composite
+          ? "no single-column primary key (missing or composite) — add a surrogate key or copy manually"
+          : "no primary key",
+      });
+      continue;
+    }
+    const pkType = mapPkType(ins.pk.dbType);
+    if (!pkType) {
+      pkInfo.set(ins.table, {
+        reason: `primary key "${ins.pk.column}" has unsupported type ${ins.pk.dbType}`,
+      });
+      continue;
+    }
+    pkInfo.set(ins.table, { column: ins.pk.column, pkType });
+  }
+  const included = new Set(
+    inspections
+      .filter((ins) => "column" in (pkInfo.get(ins.table) ?? {}))
+      .map((ins) => ins.table),
+  );
+
+  const tables: PlanTable[] = inspections.map((ins) => {
+    const slug = slugByTable.get(ins.table)!;
+    const meta = tableMeta.get(ins.table);
+    const pk = pkInfo.get(ins.table)!;
+    if (!("column" in pk)) {
+      return {
+        table: ins.table,
+        slug,
+        include: false,
+        reason: pk.reason,
+        pkColumn: ins.pk?.column ?? "id",
+        pkType: "text",
+        createdAtColumn: null,
+        updatedAtColumn: null,
+        fields: [],
+        warnings: [],
+        approxRows: meta?.approxRows ?? null,
+      };
+    }
+
+    const warnings: string[] = [];
+    const byName = new Map(ins.columns.map((c) => [c.name, c] as const));
+    const fkByColumn = new Map(
+      ins.foreignKeys.filter((fk) => !fk.composite).map((fk) => [fk.column, fk] as const),
+    );
+    for (const fk of ins.foreignKeys.filter((f) => f.composite)) {
+      warnings.push(
+        `composite foreign key on "${fk.column}" → ${fk.referencesTable} — backlex relations are single-column; copied as scalar`,
+      );
+    }
+
+    // System-column detection: the first pattern-named, timestamp-typed
+    // column feeds created_at / updated_at and leaves the field list.
+    const pickSystem = (patterns: readonly string[]): string | null => {
+      for (const name of patterns) {
+        const col = byName.get(name);
+        if (!col || col.name === pk.column) continue;
+        const mapped = mapColumn(col);
+        if (mapped && TIMESTAMPish(mapped.type)) return col.name;
+      }
+      return null;
+    };
+    const createdAtColumn = pickSystem(SYSTEM_COLUMN_PATTERNS.createdAt);
+    const updatedAtColumn = pickSystem(SYSTEM_COLUMN_PATTERNS.updatedAt);
+
+    const fieldTaken = new Set<string>();
+    const fields: PlanField[] = [];
+    for (const col of ins.columns) {
+      if (col.name === pk.column) continue;
+      if (col.name === createdAtColumn || col.name === updatedAtColumn) continue;
+
+      const fk = fkByColumn.get(col.name);
+      if (fk) {
+        if (included.has(fk.referencesTable)) {
+          const name = uniqueName(
+            RESERVED.has(sanitizeName(col.name))
+              ? `${sanitizeName(col.name)}_src`
+              : sanitizeName(col.name),
+            fieldTaken,
+          );
+          fields.push({
+            column: col.name,
+            name,
+            type: "relation",
+            to: slugByTable.get(fk.referencesTable)!,
+            ...(col.nullable ? {} : { required: true }),
+          });
+          continue;
+        }
+        warnings.push(
+          `foreign key "${col.name}" → ${fk.referencesTable}: target table is not in the plan; copied as scalar`,
+        );
+      }
+
+      const mapped = mapColumn(col);
+      if (!mapped) {
+        warnings.push(
+          `column "${col.name}" (${col.dbType}) has no copy target — excluded`,
+        );
+        continue;
+      }
+      if (mapped.warning) warnings.push(mapped.warning);
+
+      let base = sanitizeName(col.name);
+      if (RESERVED.has(base)) {
+        base = `${base}_src`;
+        warnings.push(
+          `column "${col.name}" collides with a reserved system column — copied as field "${base}"`,
+        );
+      }
+      const name = uniqueName(base, fieldTaken);
+      fields.push({
+        column: col.name,
+        name,
+        type: mapped.type,
+        ...(col.nullable ? {} : { required: true }),
+        ...(mapped.choices ? { choices: mapped.choices } : {}),
+      });
+    }
+
+    return {
+      table: ins.table,
+      slug,
+      include: true,
+      pkColumn: pk.column,
+      pkType: pk.pkType,
+      createdAtColumn,
+      updatedAtColumn,
+      fields,
+      warnings,
+      approxRows: meta?.approxRows ?? null,
+    };
+  });
+
+  // Copy order: FK parents first, over included tables only.
+  const edges: [string, string][] = [];
+  for (const ins of inspections) {
+    if (!included.has(ins.table)) continue;
+    for (const fk of ins.foreignKeys) {
+      if (fk.composite || fk.referencesTable === ins.table) continue;
+      if (included.has(fk.referencesTable)) edges.push([fk.referencesTable, ins.table]);
+    }
+  }
+  const { order, cyclic } = topoSort([...included], edges);
+  if (cyclic.length > 0) {
+    for (const t of tables) {
+      if (cyclic.includes(t.table)) {
+        t.warnings.push(
+          "part of a foreign-key cycle — copy order is best-effort; the verify step (not per-row checks) validates relation integrity",
+        );
+      }
+    }
+  }
+
+  return { version: 1, source: { kind: "postgres" }, order, tables };
+};
+
+/** Validate a (possibly hand-edited) plan document. Throws with a readable
+ *  message on structural problems; returns the typed plan. */
+export const parsePlan = (raw: unknown): MigrationPlan => {
+  const p = raw as MigrationPlan;
+  if (!p || typeof p !== "object") throw new Error("Plan must be a JSON object");
+  if (p.version !== 1) throw new Error(`Unsupported plan version: ${String(p.version)}`);
+  if (!Array.isArray(p.tables)) throw new Error("Plan is missing `tables`");
+  if (!Array.isArray(p.order)) throw new Error("Plan is missing `order`");
+  const slugs = new Set<string>();
+  for (const t of p.tables) {
+    if (!t.table || typeof t.table !== "string") throw new Error("Every table entry needs `table`");
+    if (!t.include) continue;
+    if (!t.slug || !FIELD_NAME.test(t.slug)) {
+      throw new Error(`Table "${t.table}": slug "${t.slug}" must be snake_case starting with a letter`);
+    }
+    if (slugs.has(t.slug)) throw new Error(`Duplicate slug "${t.slug}" in plan`);
+    slugs.add(t.slug);
+    if (!t.pkColumn) throw new Error(`Table "${t.table}": pkColumn is required`);
+    if (!["uuid", "text", "integer"].includes(t.pkType)) {
+      throw new Error(`Table "${t.table}": pkType must be uuid | text | integer`);
+    }
+    if (!Array.isArray(t.fields)) throw new Error(`Table "${t.table}": fields must be an array`);
+    for (const f of t.fields) {
+      if (!f.column || !f.name) throw new Error(`Table "${t.table}": every field needs column + name`);
+      if (!FIELD_NAME.test(f.name)) {
+        throw new Error(`Table "${t.table}": field name "${f.name}" must be snake_case starting with a letter`);
+      }
+      if (f.type === "relation" && !f.to) {
+        throw new Error(`Table "${t.table}": relation field "${f.name}" needs \`to\``);
+      }
+    }
+  }
+  const included = new Set(p.tables.filter((t) => t.include).map((t) => t.table));
+  for (const name of p.order) {
+    if (!included.has(name)) {
+      throw new Error(`order references "${name}" which is not an included table`);
+    }
+  }
+  for (const name of included) {
+    if (!p.order.includes(name)) {
+      throw new Error(`included table "${name}" is missing from order`);
+    }
+  }
+  return p;
+};

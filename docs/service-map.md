@@ -154,6 +154,12 @@ guides; this list is everything else.
   `services/items/csv.ts`) — `GET /:slug/export?format=json|csv` (reuses the
   list read-filter stack) and `POST /:slug/import` (per-row `performCreate`,
   system columns stripped, errors captured). SDK `exportItems`/`importItems`.
+- **External-DB migration ingest** (`routes/migrate.ts` +
+  `services/migrate-ingest.ts`) — `POST /api/admin/migrate/ingest/:slug`:
+  bulk, PK-preserving, idempotent (`ON CONFLICT DO NOTHING`), side-effect-free
+  row copy into managed collections; D1 param-budget chunking. Driven by the
+  `backlex import-db` CLI (introspection + plan live in `packages/migrate`).
+  See `docs/migrating-in.md`.
 
 ## Cross-cutting helpers worth knowing
 

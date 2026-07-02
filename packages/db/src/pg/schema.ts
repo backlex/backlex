@@ -1097,6 +1097,13 @@ export const collections = pgTable(
      *  every collection we create; adoption surfaces this for source
      *  tables that use a different PK name (e.g. `sku`, `uuid_v7`). */
     pkColumn: text("pk_column").notNull().default("id"),
+    /** Storage type of the PK column (`uuid` | `text` | `integer`). Managed
+     *  collections default to `uuid` (the historical shape); external-DB
+     *  migration creates `text`/`integer`-keyed collections so source PKs can
+     *  be preserved verbatim (FK values keep working without a remap table).
+     *  Non-`uuid` integer PKs are never auto-generated — POST requires the
+     *  key in the body, same contract as adopted tables. */
+    pkType: text("pk_type").notNull().default("uuid"),
     /** True when the physical table has a `created_at` column. Always true
      *  for managed collections; flexible for adopted ones. Affects whether
      *  POST sets it, whether the projection includes it, and the default

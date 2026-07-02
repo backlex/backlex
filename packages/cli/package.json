@@ -37,9 +37,11 @@
     "build": "tsup"
   },
   "dependencies": {
-    "drizzle-orm": "1.0.0-beta.22"
+    "drizzle-orm": "1.0.0-beta.22",
+    "postgres": "^3.4.5"
   },
   "devDependencies": {
+    "@backlex/migrate": "workspace:*",
     "@types/bun": "latest",
     "backlex": "workspace:*",
     "tsup": "^8.3.5",

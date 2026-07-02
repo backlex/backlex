@@ -980,6 +980,9 @@ export const collections = sqliteTable(
      *  pg/schema.ts twin for the full contract. */
     adopted: integer("adopted", { mode: "boolean" }).notNull().default(false),
     pkColumn: text("pk_column").notNull().default("id"),
+    /** Storage type of the PK column (`uuid` | `text` | `integer`). See the
+     *  pg/schema.ts twin for the full contract. */
+    pkType: text("pk_type").notNull().default("uuid"),
     hasCreatedAt: integer("has_created_at", { mode: "boolean" }).notNull().default(true),
     hasUpdatedAt: integer("has_updated_at", { mode: "boolean" }).notNull().default(true),
     /** Source-table column names backing the system fields. Null = use the

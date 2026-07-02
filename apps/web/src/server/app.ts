@@ -739,6 +739,11 @@ export const createApp = (env: Env) => {
   app.all("/api/graphql", (c) =>
     import("./routes/graphql").then((m) => m.handleGraphql(c, app as unknown as Hono)),
   );
+  // GraphQL subscriptions over SSE (graphql-sse distinct-connections mode) —
+  // delegates to the realtime layer's transports; same lazy-load rationale.
+  app.all("/api/graphql/stream", (c) =>
+    import("./routes/graphql").then((m) => m.handleGraphqlStream(c)),
+  );
   app.route("/api", openapiRoutes);
   app.route("/api/_internal/sandbox-rpc", sandboxRpcRoutes);
   // MCP (Model Context Protocol) — must mount after the routes its tools

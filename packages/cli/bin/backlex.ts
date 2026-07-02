@@ -22,6 +22,7 @@ import { runTraces } from "../src/traces";
 import { runGenOpenapi } from "../src/gen-openapi";
 import { runInit } from "../src/init";
 import { runSdk } from "../src/sdk";
+import { runImportDb } from "../src/import-db";
 
 const HELP = `backlex — self-hostable backend platform CLI
 
@@ -120,6 +121,12 @@ Usage:
   backlex migrate [db-path]
       Apply SQLite migrations to db-path (default: ./.data/backlex.sqlite,
       or $DATABASE_PATH if set).
+
+  backlex import-db <inspect|plan|run>
+      Migrate an external database INTO backlex: introspect the source
+      (Postgres), emit an editable migration plan, then copy the rows —
+      PK-preserving, resumable, verified. Run \`backlex import-db\` for
+      the per-command flags.
 
   backlex gen-types <api-url> [--out <file>] [--key <pak_…>] [--sdk]
       Fetch /api/collections and emit a TypeScript module describing every
@@ -259,6 +266,9 @@ const run = async () => {
       await runMigrate(dbPath);
       return;
     }
+    case "import-db":
+      await runImportDb(rest);
+      return;
     case "gen-types": {
       const url = rest[0];
       if (!url) {

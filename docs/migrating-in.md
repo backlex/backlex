@@ -1,0 +1,170 @@
+---
+title: Migrating an external database in
+description: Copy an existing Postgres database into backlex — introspect, plan, run, verify — with primary keys preserved.
+---
+
+`backlex import-db` moves data **into** backlex from a database you already
+have. It's the complement of [adoption](/adopting-tables/): adoption wraps a
+table that lives in the *same* database backlex runs on; import-db **copies**
+rows from an *external* source — a legacy Postgres, a Supabase project, a
+Heroku add-on — into managed collections. Cloud workspaces run on D1, so for
+them copying is the only way in.
+
+The pump runs client-side in the CLI, on purpose: your source database is
+usually firewalled away from the internet, but the machine you run the CLI on
+can reach both it and your backlex instance. The server side is one endpoint —
+a bulk, idempotent, PK-preserving ingest.
+
+## The three steps
+
+```bash
+# 1. See what's there
+backlex import-db inspect --source postgres://user:pass@host/db
+
+# 2. Emit an editable plan
+backlex import-db plan --source postgres://… --out migration.json
+
+# 3. Review migration.json, then copy + verify
+backlex import-db run migration.json --source postgres://…
+```
+
+Target connection resolves like every other CLI command (`--url` / `--key` /
+`--tenant` / saved profile); the key needs the admin role. The source URL can
+also come from `BACKLEX_IMPORT_SOURCE`.
+
+## Primary keys are preserved
+
+This is the load-bearing design decision. Every copied row keeps its source
+primary key, so every foreign-key value in the source stays valid in the
+target — `orders.customer_id = 42` still points at customer 42. No remap
+table, no fixups.
+
+To make that possible, managed collections gained a **`pkType`**
+(`uuid` | `text` | `integer`, on `POST /api/collections`). The plan sets it
+from the source PK's type, and the physical `id` column is created to match
+(`bigint` PKs land in a `bigint`/`INTEGER` column, not a `uuid` one).
+
+One behavioral consequence: an **integer-keyed** collection never
+auto-generates ids — `POST /api/items/<slug>` requires the key in the body,
+the same contract adopted tables have. `uuid`/`text` collections keep
+auto-generating UUIDs.
+
+## The plan file
+
+`plan` introspects every table (or `--tables a,b,…`) and writes a JSON
+document you're meant to edit before running:
+
+- **`order`** — copy order, FK parents first (topologically sorted).
+- **`tables[].include`** — tables without a usable single-column PK come out
+  `include: false` with a `reason`; flip tables you don't want to `false`.
+- **`tables[].slug` / `fields[].name`** — rename freely (source column names
+  are `snake_case`d automatically; reserved names like `owner_id` get a
+  `_src` suffix).
+- **`fields[].type`** — the mapped backlex type. Migration is more permissive
+  than adoption because it copies into columns *we* create:
+
+| Source | Becomes | Notes |
+|---|---|---|
+| enum | `text` + dropdown choices | labels introspected from `pg_enum` |
+| array (`text[]`, …) | `json` | element type not preserved |
+| `numeric` / `decimal` | `number` | double precision — exactness warning |
+| single-column FK | `relation` | when the target table is in the plan |
+| `bytea` / geometry / unknown | *excluded* | listed in `warnings` |
+
+- **`createdAtColumn` / `updatedAtColumn`** — pattern-detected source columns
+  (`created_at`, `inserted_at`, …) whose values are copied into the target's
+  system timestamps instead of becoming regular fields.
+
+Nothing is dropped silently: every lossy mapping, excluded column, skipped
+table, and FK cycle lands in `warnings` / `reason`.
+
+## What `run` does
+
+For each included table, in plan order:
+
+1. **Ensure the collection** — `GET /api/collections/<slug>`; 404 →
+   `POST /api/collections` with the plan's fields + `pkType`. Existing
+   collections are reused (that's the resume path).
+2. **Copy** — keyset-paged reads from the source (`WHERE pk > cursor ORDER BY
+   pk LIMIT n`, never OFFSET), transformed (column→field renames, system
+   timestamp hoisting), and POSTed to
+   `POST /api/admin/migrate/ingest/<slug>` in batches (`--batch`, default
+   1000, max 2000).
+3. **Verify** — source `COUNT(*)` vs the target's tenant-scoped count; the
+   summary prints ✓/✗ per table and the process exits non-zero on mismatch.
+
+Progress (per-table PK cursor) persists in `<plan>.state.json` after every
+batch. If anything dies mid-copy, re-run with `--resume` — the ingest is
+idempotent, so overlap is harmless. `--dry-run` prints what would happen.
+
+## The ingest endpoint
+
+`POST /api/admin/migrate/ingest/:slug` — admin + platform plane + active
+workspace, managed collections only (an adopted table already owns its data).
+Body: `{ "rows": [ … ] }`, ≤ 2000 rows.
+
+Deliberate differences from the normal create path:
+
+- **PKs and timestamps are preserved**, not stripped — `id`, `created_at`,
+  `updated_at` (and `_status` / `deleted_at` where the collection has them)
+  are honored from the row. Versioned collections default migrated rows to
+  `published` (a `draft` default would make the whole dataset invisible).
+- **`INSERT … ON CONFLICT DO NOTHING`** — existing rows are never
+  overwritten; re-sending a batch skips them (`skipped` in the response).
+- **No per-row side-effects** — no revisions, realtime events, webhooks, FTS
+  or vector indexing. A million-row copy can't afford them. Backfill search
+  indexes afterwards with the existing `POST /api/items/<slug>/fts-reindex` /
+  vectorize endpoints if the collection uses them.
+- **Structural validation only** — unknown columns, missing PKs, and NULLs in
+  required fields fail *their row* (reported in `failed[]`), not the batch.
+  Soft validation rules and per-row relation checks are skipped; the verify
+  step owns integrity (this is also what makes FK cycles copyable).
+- Statements are **chunked** to stay under D1's ~100 bound-parameter cap;
+  there's no transaction envelope (D1 can't), idempotency covers retries.
+
+Response:
+
+```json
+{ "data": { "received": 500, "inserted": 498, "skipped": 0,
+            "failed": [{ "index": 7, "error": "Unknown column \"totl\"" }],
+            "total": 10498 } }
+```
+
+`total` is the target's row count after the call — the CLI's verify compares
+it against the source.
+
+## Limits & scope (Phase 1)
+
+- **Postgres sources only.** Supabase/Neon/RDS/Heroku are all Postgres, so
+  they work today. MySQL and SQLite-file sources are planned.
+- **One-shot copy**, not sync. There's no change-data-capture; for a live
+  cutover, stop writes to the source, run (or `--resume`) once more, verify,
+  then switch. An `--since` incremental re-copy is on the roadmap.
+- **Composite PKs** can't key a collection — those tables are excluded with a
+  reason (add a surrogate key upstream, or copy manually).
+- Binary columns (`bytea`) don't ride along — move blobs to storage
+  separately.
+- A server-side connector + admin wizard (for sources reachable from the
+  server) is the planned Phase 2; this page will grow with it.
+
+## Worked example
+
+```bash
+$ backlex import-db plan --source postgres://app:…@db.internal/shop --out migration.json
+✓ plan → migration.json (7/9 tables included)
+  ⚠ orders: decimal column "total" copied as double-precision number — …
+  ⚠ products: enum column "status" copied as text with dropdown choices (3 values) — …
+  ✗ audit_log excluded: no single-column primary key …
+
+$ backlex import-db run migration.json --source postgres://… --url https://api.example.com --key pak_…
+✓ created collection customers
+  customers: 41250 copied
+✓ created collection orders
+  orders: 187301 copied
+
+Migration summary
+  ✓ customers → customers: source=41250 target=41250 copied=41250
+  ✓ orders → orders: source=187301 target=187301 copied=187301
+
+All tables verified. You can delete migration.json.state.json now.
+```

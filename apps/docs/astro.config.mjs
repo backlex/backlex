@@ -82,6 +82,7 @@ export default defineConfig({
             { slug: "querying" },
             { slug: "permissions" },
             { slug: "adopting-tables" },
+            { slug: "migrating-in" },
             { slug: "schema-versions" },
             { slug: "database-providers" },
             { slug: "sqlite-providers" },

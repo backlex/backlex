@@ -61,6 +61,7 @@ import m54 from "../../drizzle/pg/20260630120000_schema_versions/migration.sql" 
 import m55 from "../../drizzle/pg/20260701120000_sessions_created_idx/migration.sql" with { type: "text" };
 import m56 from "../../drizzle/pg/20260702120000_activity_tenant_created_idx/migration.sql" with { type: "text" };
 import m57 from "../../drizzle/pg/20260702130000_embeddings_per_model/migration.sql" with { type: "text" };
+import m58 from "../../drizzle/pg/20260702150000_collection_pk_type/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -126,4 +127,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260701120000_sessions_created_idx", sql: m55 },
   { name: "20260702120000_activity_tenant_created_idx", sql: m56 },
   { name: "20260702130000_embeddings_per_model", sql: m57 },
+  { name: "20260702150000_collection_pk_type", sql: m58 },
 ];

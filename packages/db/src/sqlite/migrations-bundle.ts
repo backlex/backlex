@@ -66,6 +66,7 @@ import m59 from "../../drizzle/sqlite/20260628100000_dashboards/migration.sql" w
 import m60 from "../../drizzle/sqlite/20260630120000_schema_versions/migration.sql" with { type: "text" };
 import m61 from "../../drizzle/sqlite/20260701120000_sessions_created_idx/migration.sql" with { type: "text" };
 import m62 from "../../drizzle/sqlite/20260702120000_activity_tenant_created_idx/migration.sql" with { type: "text" };
+import m63 from "../../drizzle/sqlite/20260702150000_collection_pk_type/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -136,4 +137,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260630120000_schema_versions", sql: m60 },
   { name: "20260701120000_sessions_created_idx", sql: m61 },
   { name: "20260702120000_activity_tenant_created_idx", sql: m62 },
+  { name: "20260702150000_collection_pk_type", sql: m63 },
 ];

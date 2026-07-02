@@ -55,6 +55,12 @@ export interface CollectionRow {
   /** Primary-key column name on the physical table. Default `id`; adoption
    *  surfaces this for source tables with a different PK name. */
   pkColumn: string;
+  /** PK storage type (`uuid` | `text` | `integer`). `uuid`/`text` PKs are
+   *  auto-generated on POST (a UUID string fits both); `integer` PKs must be
+   *  supplied in the body — backlex never invents numeric keys (no sequence
+   *  to lean on across dialects). External-DB migration is what creates
+   *  non-uuid managed collections. */
+  pkType: "uuid" | "text" | "integer";
   /** Whether the physical table has these columns. Always true for managed
    *  collections; flexible for adopted ones. Used by POST/PATCH writes,
    *  projection, and the `parseQuery` default-sort fallback. */
@@ -125,6 +131,11 @@ export const loadCollection = async (
     defaultSort: ((r.defaultSort ?? r.default_sort) as string | null | undefined) ?? null,
     adopted: Boolean(r.adopted),
     pkColumn: ((r.pkColumn ?? r.pk_column) as string | undefined) ?? "id",
+    pkType:
+      (((r.pkType ?? r.pk_type) as string | undefined) ?? "uuid") as
+        | "uuid"
+        | "text"
+        | "integer",
     hasCreatedAt: (r.hasCreatedAt ?? r.has_created_at) === false ? false : true,
     hasUpdatedAt: (r.hasUpdatedAt ?? r.has_updated_at) === false ? false : true,
     createdAtColumn: ((r.createdAtColumn ?? r.created_at_column) as string | null | undefined) ?? null,

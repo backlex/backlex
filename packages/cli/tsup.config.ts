@@ -12,6 +12,9 @@ export default defineConfig({
   target: "es2022",
   clean: true,
   treeshake: true,
+  // `@backlex/migrate` is a workspace-source package (not published) — inline
+  // it into the bundle. `postgres` stays external like the other declared deps.
+  noExternal: ["@backlex/migrate"],
   // The `#!/usr/bin/env node` shebang on bin/backlex.ts carries through to the
   // bundle, so the output is directly executable (`./dist/backlex.js` / npx).
 });

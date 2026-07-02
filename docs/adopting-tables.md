@@ -9,6 +9,11 @@ a table you already have and backlex wraps it with permissions, the
 items API, realtime, and the admin UI — without writing a single DDL
 statement against your data.
 
+> Adoption wraps a table in the **same** database backlex runs on. If your
+> data lives in a *different* database (a legacy Postgres, Supabase, …), you
+> want [`backlex import-db`](/migrating-in/) instead — it copies the rows in,
+> primary keys preserved.
+
 ## When to adopt vs create
 
 Adopt when another app already writes to the table, when you want

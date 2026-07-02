@@ -1,9 +1,12 @@
 import { AppError } from "@backlex/core";
 import { createYoga } from "graphql-yoga";
+import { Kind, parse, valueFromASTUntyped, type FieldNode, type OperationDefinitionNode } from "graphql";
 import type { Context, Hono } from "hono";
 import type { AppBindings } from "../app";
 import { getRequestPermCache } from "../middleware/permission";
 import { getSchema } from "../services/graphql";
+import { loadCollection } from "../services/items/collection-loader";
+import { openRealtimeSubscribe } from "./realtime";
 
 /**
  * GraphQL request handler. app.ts mounts this via a **dynamic import** so the
@@ -40,5 +43,202 @@ export const handleGraphql = async (
   return new Response(body, {
     status: res.status,
     headers: res.headers,
+  });
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GraphQL subscriptions over SSE (graphql-sse "distinct connections" mode).
+//
+// `subscription { items(collection: "posts", filter: {...}) { event data } }`
+// opens one SSE stream per operation. Rather than reimplementing streaming,
+// the handler maps the operation onto the realtime layer's `items:<slug>`
+// channel and delegates to `openRealtimeSubscribe` — so the permission gate,
+// the live-query `filter` validation, AND all three transports (Workers DO
+// bridge / Redis long-poll / in-process bus) are exactly the ones
+// `/api/realtime` ships. The upstream SSE frames are then reframed into the
+// graphql-sse protocol: `event: next` + `{ data: { items: <event> } }`
+// envelopes, ids passed through for Last-Event-ID resume, heartbeats kept.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ParsedSubscription {
+  collection: string;
+  filter: unknown;
+  alias: string;
+  /** Top-level fields selected on the payload (empty = all). */
+  selected: string[];
+}
+
+const parseSubscription = (
+  query: string,
+  variables: Record<string, unknown>,
+): ParsedSubscription => {
+  let doc;
+  try {
+    doc = parse(query);
+  } catch (e) {
+    throw new AppError("VALIDATION", `Invalid GraphQL document: ${(e as Error).message}`);
+  }
+  const op = doc.definitions.find(
+    (d): d is OperationDefinitionNode =>
+      d.kind === Kind.OPERATION_DEFINITION && d.operation === "subscription",
+  );
+  if (!op) {
+    throw new AppError("VALIDATION", "Document must contain a subscription operation");
+  }
+  const fields = op.selectionSet.selections.filter(
+    (s): s is FieldNode => s.kind === Kind.FIELD,
+  );
+  const field = fields[0];
+  if (!field || fields.length !== 1 || field.name.value !== "items") {
+    throw new AppError(
+      "VALIDATION",
+      'Subscriptions support exactly one root field: items(collection: "<slug>", filter: <json>)',
+    );
+  }
+  let collection: unknown;
+  let filter: unknown;
+  for (const arg of field.arguments ?? []) {
+    const value = valueFromASTUntyped(arg.value, variables);
+    if (arg.name.value === "collection") collection = value;
+    else if (arg.name.value === "filter") filter = value;
+  }
+  if (typeof collection !== "string" || collection.length === 0) {
+    throw new AppError("VALIDATION", "items(collection: …) is required");
+  }
+  return {
+    collection,
+    filter,
+    alias: field.alias?.value ?? "items",
+    selected: (field.selectionSet?.selections ?? [])
+      .filter((s): s is FieldNode => s.kind === Kind.FIELD)
+      .map((s) => s.name.value),
+  };
+};
+
+/** Reframe one upstream realtime SSE frame into graphql-sse protocol text.
+ *  Returns "" to drop the frame. */
+const reframe = (frame: string, sub: ParsedSubscription): string => {
+  if (frame.startsWith(":")) return `${frame}\n\n`; // heartbeat comment
+  let event = "message";
+  let id: string | undefined;
+  let retry: string | undefined;
+  const dataLines: string[] = [];
+  for (const line of frame.split("\n")) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
+    else if (line.startsWith("id:")) id = line.slice(3).trim();
+    else if (line.startsWith("retry:")) retry = line.slice(6).trim();
+  }
+  if (event === "ready") {
+    // Not part of graphql-sse — surface as a comment (+ keep the retry hint).
+    return `${retry ? `retry: ${retry}\n` : ""}: ready\n\n`;
+  }
+  if (event !== "message" || dataLines.length === 0) return "";
+  let payload: unknown;
+  try {
+    payload = JSON.parse(dataLines.join("\n"));
+  } catch {
+    return "";
+  }
+  if (
+    sub.selected.length > 0 &&
+    payload !== null &&
+    typeof payload === "object" &&
+    !Array.isArray(payload)
+  ) {
+    const projected: Record<string, unknown> = {};
+    for (const k of sub.selected) {
+      if (k in (payload as Record<string, unknown>)) {
+        projected[k] = (payload as Record<string, unknown>)[k];
+      }
+    }
+    payload = projected;
+  }
+  const envelope = JSON.stringify({ data: { [sub.alias]: payload } });
+  return `event: next\n${id ? `id: ${id}\n` : ""}data: ${envelope}\n\n`;
+};
+
+/**
+ * GraphQL-subscription endpoint (`/api/graphql/stream`). Accepts the operation
+ * as POST JSON (`{ query, variables }`) or GET `?query=…&variables=…` — both
+ * shapes the graphql-sse client emits in distinct-connections mode.
+ */
+export const handleGraphqlStream = async (
+  c: Context<AppBindings>,
+): Promise<Response> => {
+  const auth = c.get("auth");
+  if (!auth.tenantId) {
+    throw new AppError("UNAUTHORIZED", "Active tenant required");
+  }
+  let query: string | undefined;
+  let variables: Record<string, unknown> = {};
+  if (c.req.method === "POST") {
+    const body = (await c.req.json().catch(() => ({}))) as {
+      query?: string;
+      variables?: Record<string, unknown>;
+    };
+    query = body.query;
+    variables = body.variables ?? {};
+  } else {
+    query = c.req.query("query");
+    const rawVars = c.req.query("variables");
+    if (rawVars) {
+      try {
+        variables = JSON.parse(rawVars) as Record<string, unknown>;
+      } catch {
+        throw new AppError("VALIDATION", "variables must be JSON");
+      }
+    }
+  }
+  if (!query) throw new AppError("VALIDATION", "query is required");
+  const sub = parseSubscription(query, variables);
+
+  // Friendlier than the realtime channel's admin behavior (silent empty
+  // stream): a subscription on a collection that doesn't exist is a 404.
+  const collection = await loadCollection(c.get("ctx"), auth.tenantId, sub.collection).catch(
+    () => null,
+  );
+  if (!collection) {
+    throw new AppError("NOT_FOUND", `Collection "${sub.collection}" not found`);
+  }
+
+  const upstream = await openRealtimeSubscribe(
+    c,
+    `items:${sub.collection}`,
+    sub.filter === undefined ? undefined : JSON.stringify(sub.filter),
+  );
+  if (!upstream.body) return upstream;
+
+  // Reframe the realtime SSE stream into graphql-sse frames on the fly.
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+  let buffer = "";
+  const transform = new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      buffer += decoder.decode(chunk, { stream: true });
+      let idx = buffer.indexOf("\n\n");
+      while (idx >= 0) {
+        const frame = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        const out = reframe(frame, sub);
+        if (out) controller.enqueue(encoder.encode(out));
+        idx = buffer.indexOf("\n\n");
+      }
+    },
+    flush(controller) {
+      // graphql-sse: tell the client the operation is over (it may reconnect
+      // with Last-Event-ID to resume — the serverless long-poll path closes
+      // after each delivered batch by design).
+      controller.enqueue(encoder.encode("event: complete\ndata:\n\n"));
+    },
+  });
+
+  const headers = new Headers(upstream.headers);
+  headers.set("Content-Type", "text/event-stream; charset=utf-8");
+  headers.set("Cache-Control", "no-cache");
+  headers.set("X-Accel-Buffering", "no");
+  return new Response(upstream.body.pipeThrough(transform), {
+    status: upstream.status,
+    headers,
   });
 };

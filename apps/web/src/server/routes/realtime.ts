@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { streamSSE } from "hono/streaming";
 import type { SSEStreamingApi } from "hono/streaming";
+import type { Context as HonoContext } from "hono";
 import { AppError, SYSTEM_ROLES, type Condition, normalizeCondition } from "@backlex/core";
 import type { AppBindings } from "../app";
 import type { Ctx } from "../context";
@@ -456,10 +457,24 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
   // long-lived `text/event-stream`, not a JSON body suitable for OpenAPI
   // validation. The OpenAPI doc for this endpoint is registered separately by
   // `lib/openapi.ts` consumers if needed.
-  .get("/:channel/subscribe", async (c) => {
+  .get("/:channel/subscribe", (c) =>
+    openRealtimeSubscribe(c, c.req.param("channel"), c.req.query("filter")),
+  );
+
+/**
+ * Open a permission-gated SSE subscription on `channel` for the calling
+ * request, picking the right transport for the runtime (Workers DO bridge /
+ * Redis-Stream long-poll / in-process bus). Exported so other streaming
+ * surfaces (the GraphQL `/api/graphql/stream` subscription endpoint) reuse
+ * the exact same gate + transports instead of reimplementing them.
+ */
+export const openRealtimeSubscribe = async (
+  c: HonoContext<AppBindings>,
+  channel: string,
+  filterRaw: string | undefined,
+): Promise<Response> => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
-    const channel = c.req.param("channel");
     // Disable proxy buffering for the SSE stream. Without this, Vercel/Netlify
     // (and nginx-style proxies) buffer `text/event-stream` responses and only
     // flush when the function ends — frames never reach the client live. This
@@ -468,7 +483,7 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
     // `?filter=<json>` opts a subscription into server-side narrowing: only
     // events whose row matches the filter (AND the caller's permission) are
     // delivered (reactive invalidation Stage 1).
-    const gate = await gateForChannel(ctx, auth, channel, false, c.req.query("filter"));
+    const gate = await gateForChannel(ctx, auth, channel, false, filterRaw);
     const since = parseSince(c.req.header("Last-Event-ID"));
 
     // Workers: bridge a hibernatable WebSocket from the RealtimeRoom DO into an
@@ -693,4 +708,4 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
         unsub();
       }
     });
-  });
+};

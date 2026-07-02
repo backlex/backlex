@@ -166,6 +166,14 @@ const CollectionInput = z.object({
   /** PK column name. Ignored for managed creates (always `"id"`); for
    *  adopted creates, must match the introspected primary key. */
   pkColumn: z.string().min(1).max(120).optional(),
+  /** PK storage type for MANAGED creates. Default `uuid` (the historical
+   *  shape). `text` / `integer` exist so external-DB migration can copy
+   *  source primary keys verbatim — preserved PKs are what keep the
+   *  source's FK values valid without an id-remap. Integer-keyed
+   *  collections never auto-generate ids; item POST requires the key in
+   *  the body (same contract as adopted tables). Ignored for adopted
+   *  creates — there it's derived from the introspected PK column. */
+  pkType: z.enum(["uuid", "text", "integer"]).optional(),
   /** Adopted-only flags asserting the source table has the conventional
    *  system column. Ignored for managed creates (always true). */
   hasCreatedAt: z.boolean().optional(),
@@ -357,6 +365,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
 
     let physicalTable: string;
     let pkColumn = "id";
+    let pkType: "uuid" | "text" | "integer" = "uuid";
     let hasCreatedAt = true;
     let hasUpdatedAt = true;
     let createdAtColumn: string | null = null;
@@ -400,6 +409,15 @@ export const collectionsRoutes = new Hono<AppBindings>()
           `pkColumn "${pkColumn}" does not match the table's primary key column "${inspection.pk.column}"`,
         );
       }
+      // Record what the source PK actually is (informational for adopted
+      // tables — no DDL runs — but keeps gen-types/SDK metadata honest).
+      const inspectedPk = inspection.columns.find((col) => col.name === pkColumn);
+      pkType =
+        inspectedPk?.suggested === "integer"
+          ? "integer"
+          : inspectedPk?.suggested === "uuid"
+            ? "uuid"
+            : "text";
       const colNames = new Set(inspection.columns.map((col) => col.name));
       for (const f of body.fields) {
         if (!colNames.has(f.name)) {
@@ -513,6 +531,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       // gate on these flags (same plumbing adopted tables already use).
       hasCreatedAt = body.hasCreatedAt ?? true;
       hasUpdatedAt = body.hasUpdatedAt ?? true;
+      pkType = body.pkType ?? "uuid";
       if (body.physicalTable) {
         try {
           assertIdent(body.physicalTable);
@@ -575,6 +594,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       defaultSort: body.defaultSort ?? null,
       adopted: body.adopted,
       pkColumn,
+      pkType,
       hasCreatedAt,
       hasUpdatedAt,
       createdAtColumn,
@@ -585,6 +605,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
     await applyCollection(db, dialect, {
       table: physicalTable,
       fields: body.fields,
+      pkType,
       ownerScoped: body.ownerScoped,
       tenantScoped: body.tenantScoped,
       versioned: body.versioned,
@@ -620,6 +641,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       defaultSort: body.defaultSort ?? null,
       adopted: body.adopted,
       pkColumn,
+      pkType,
       hasCreatedAt,
       hasUpdatedAt,
       createdAtColumn,

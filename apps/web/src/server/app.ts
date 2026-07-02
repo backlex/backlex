@@ -23,6 +23,7 @@ import { accountRoutes } from "./routes/account";
 import { activityRoutes } from "./routes/activity";
 import { tracesRoutes } from "./routes/traces";
 import { adoptRoutes } from "./routes/adopt";
+import { migrateRoutes } from "./routes/migrate";
 import { advisorRoutes } from "./routes/advisor";
 import { aiAskRoutes } from "./routes/ai-ask";
 import { agentsRoutes } from "./routes/agents";
@@ -658,6 +659,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/platform-saml", platformSamlAdminRoutes);
   app.route("/api/admin/platform-ldap-config", platformLdapAdminRoutes);
   app.route("/api/admin/adopt", adoptRoutes);
+  app.route("/api/admin/migrate", migrateRoutes);
   app.route("/api/admin/panels", panelsRoutes);
   app.route("/api/admin/dashboards", dashboardsRoutes);
   app.route("/api/admin/schema", schemaVersionsRoutes);

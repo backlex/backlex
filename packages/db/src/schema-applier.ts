@@ -35,11 +35,20 @@ const all = async <T>(db: AnyDb, dialect: Dialect, raw: string): Promise<T[]> =>
   return (await (db as { all: (s: typeof q) => Promise<T[]> }).all(q)) as T[];
 };
 
+/** Storage type of the `id` column on a managed table. `uuid` is the
+ *  historical default; `text`/`integer` exist so external-DB migration can
+ *  preserve source primary keys verbatim (a bigint PK can't live in a PG
+ *  `uuid` column). Only consulted at CREATE TABLE time — the applier never
+ *  alters an existing PK column. */
+export type PkType = "uuid" | "text" | "integer";
+
 interface CollectionShape {
   /** Physical table name (e.g. `c_<tenantPrefix>_<slug>`). Caller is
    *  responsible for deriving and passing it; the applier never recomputes. */
   table: string;
   fields: FieldDef[];
+  /** PK column storage type. Default `uuid`. See {@link PkType}. */
+  pkType?: PkType;
   ownerScoped?: boolean;
   /** When true (default), the physical table gets a `tenant_id` column and
    *  reads/writes are scoped to the active tenant via the items router. */
@@ -119,10 +128,11 @@ const systemColumns = (
   hasCreatedAt: boolean = true,
   hasUpdatedAt: boolean = true,
   softDelete: boolean = false,
+  pkType: PkType = "uuid",
 ): string[] => {
   const ts = sqlTypeFor("timestamp", dialect);
   const cols = [
-    `${quote("id")} ${sqlTypeFor("uuid", dialect)} PRIMARY KEY`,
+    `${quote("id")} ${sqlTypeFor(pkType, dialect)} PRIMARY KEY`,
     ...(tenantScoped ? [`${quote("tenant_id")} ${sqlTypeFor("text", dialect)}`] : []),
     ...(ownerScoped ? [`${quote("owner_id")} ${sqlTypeFor("text", dialect)}`] : []),
     ...(hasCreatedAt ? [`${quote("created_at")} ${ts} NOT NULL`] : []),
@@ -275,6 +285,7 @@ export const applyCollection = async (
         hasCreatedAt,
         hasUpdatedAt,
         softDelete,
+        def.pkType ?? "uuid",
       ),
       ...def.fields.map((f) => columnDefSql(f, dialect)),
     ];

@@ -1,11 +1,8 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
-import { enforceIpRateLimit } from "../lib/auth-rate-limit";
-import { sendSmsToUsers } from "../services/sms";
-import { sendPushToUsers } from "../services/push";
+import { dispatchPush, dispatchSms } from "../services/messaging";
 
 const SendSmsInput = z
   .object({
@@ -32,22 +29,12 @@ const DispatchResult = z.object({
 
 const TAGS = ["messaging"];
 
-/** Admins may target any user; non-admins may only message themselves. */
-const assertMayTarget = (
-  auth: { roles: string[]; userId: string | null },
-  targetUserId: string,
-): void => {
-  if (!auth.roles.includes("admin") && targetUserId !== auth.userId) {
-    throw new AppError("FORBIDDEN", "Non-admins can only message themselves");
-  }
-};
-
 /**
  * Direct messaging dispatch (push + SMS). Unlike `/api/notifications` this does
  * NOT drop an in-app row — it only fans out to the target user's registered
- * devices / phone numbers via the workspace transports. Admins may target any
- * user; non-admins may only message themselves. A user with no registered
- * device/number is a silent no-op.
+ * devices / phone numbers via the workspace transports. The abuse guard,
+ * validation, and admin-or-self target gate all live in `services/messaging`
+ * so the GraphQL mutations stay in lockstep.
  */
 export const messagingRoutes = new OpenAPIHono<AppBindings>()
   .openapi(
@@ -70,16 +57,8 @@ export const messagingRoutes = new OpenAPIHono<AppBindings>()
       },
     }),
     async (c) => {
-      await enforceIpRateLimit(c, "sms-send", 30);
-      const ctx = c.get("ctx");
-      const auth = c.get("auth");
-      const body = c.req.valid("json");
-      assertMayTarget(auth, body.userId);
-      const result = await sendSmsToUsers(ctx, auth.tenantId ?? null, {
-        userIds: [body.userId],
-        body: body.body,
-      });
-      return c.json({ ok: true, sent: result.sent, failed: result.failed });
+      const result = await dispatchSms(c, c.get("ctx"), c.get("auth"), c.req.valid("json"));
+      return c.json(result);
     },
   )
   .openapi(
@@ -104,18 +83,7 @@ export const messagingRoutes = new OpenAPIHono<AppBindings>()
       },
     }),
     async (c) => {
-      await enforceIpRateLimit(c, "push-send", 60);
-      const ctx = c.get("ctx");
-      const auth = c.get("auth");
-      const body = c.req.valid("json");
-      assertMayTarget(auth, body.userId);
-      const result = await sendPushToUsers(ctx, auth.tenantId ?? null, {
-        userIds: [body.userId],
-        title: body.title,
-        body: body.body,
-        url: body.url,
-        data: body.data,
-      });
-      return c.json({ ok: true, sent: result.sent, failed: result.failed });
+      const result = await dispatchPush(c, c.get("ctx"), c.get("auth"), c.req.valid("json"));
+      return c.json(result);
     },
   );

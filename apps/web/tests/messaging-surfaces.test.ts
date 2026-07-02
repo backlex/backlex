@@ -134,6 +134,23 @@ describe("messaging — GraphQL surface", () => {
     expect(res.data?.sendSms).toEqual({ ok: true, sent: 1, failed: 0 });
   });
 
+  test("sendPush accepts the `data` arg (REST parity) and enforces caps", async () => {
+    // `data` exists on this surface (it's part of the REST/SDK contract).
+    const ok = await gql(
+      `mutation($u:ID!,$d:JSON){ sendPush(userId:$u, title:"t", body:"b", data:$d){ sent } }`,
+      { u: adminId, d: { kind: "promo" } },
+    );
+    expect(ok.errors).toBeUndefined();
+    expect(ok.data?.sendPush.sent).toBe(1);
+    // …and the same length cap REST enforces (body <= 2000) rejects here too,
+    // rather than silently dispatching an oversized payload.
+    const tooLong = await gql(
+      `mutation($u:ID!,$b:String!){ sendPush(userId:$u, title:"t", body:$b){ sent } }`,
+      { u: adminId, b: "x".repeat(2001) },
+    );
+    expect(tooLong.errors?.[0]?.extensions?.code).toBe("VALIDATION");
+  });
+
   test("non-admins are FORBIDDEN from targeting other users", async () => {
     const member = await makeMember(h);
     const res = (await (

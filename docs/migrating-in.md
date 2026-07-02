@@ -40,29 +40,53 @@ Three source engines, picked from the URL:
 | MySQL / MariaDB | `mysql://user:pass@host/db` | CLI-only (mysql2) |
 | SQLite file | `sqlite:./legacy.db` or `*.sqlite`/`*.db` path | CLI-only, needs Bun |
 | MongoDB | `mongodb://host:27017/db` (or `mongodb+srv://`) | CLI-only; schema inferred by sampling |
+| Firestore | `firestore://<project-id>` | CLI-only; driver installed separately |
+| DynamoDB | `dynamodb://<region>[?endpoint=…]` | CLI-only; driver installed separately |
 
 MySQL idioms map automatically: `tinyint(1)` → boolean, `enum(…)` → text +
 dropdown choices, `mediumtext`/`longtext` → longtext, `set` → text (warning).
 
-### Schemaless sources (MongoDB)
+### Schemaless sources (MongoDB / Firestore / DynamoDB)
 
-MongoDB has no schema catalog, so `plan` **infers** one by sampling documents
-(default 500 per collection, `--sample-size <n>` to widen):
+Document stores have no schema catalog, so `plan` **infers** one by sampling
+documents (default 500 per collection, `--sample-size <n>` to widen):
 
 - Field union across the sample; per-field majority typing (string → text /
   longtext by length, int vs float, boolean, `Date` → timestamp). Nested
   objects/arrays — and any field whose sampled types disagree — become
   `json`. Fields missing from part of the sample are nullable.
-- **`_id` is the preserved primary key**: hex ObjectIds copy as 24-hex text
-  (`pkType: text`), numeric ids as `integer`. Resume cursors round-trip
-  through the plan state file transparently.
+- **The document key is the preserved primary key**, surfaced as `_id`:
+  Mongo's `_id` (hex ObjectIds as 24-hex text), Firestore's document id, or
+  Dynamo's partition-key value (numeric keys → `integer` pk). Resume cursors
+  round-trip through the plan state file transparently.
 - The caveat rides in the plan itself, per table: *keys outside the sampled
   set are not copied* — widen the sample or add the field to the plan by
   hand. There are no foreign keys to introspect, so no `relation` fields are
   auto-wired; because ids are preserved, you can flip a field to
   `{"type": "relation", "to": "<slug>"}` in the plan file and it will resolve.
 - `--since` works the same as SQL sources (the detected `updatedAt` /
-  `createdAt` field, compared as dates).
+  `createdAt` field, compared as dates). On Firestore the filter is applied
+  client-side while scanning (no composite index needed); on Dynamo it's a
+  scan `FilterExpression` compared against the attribute's stored
+  representation.
+
+Store-specific notes:
+
+- **Firestore** — auth via the standard Google chain
+  (`GOOGLE_APPLICATION_CREDENTIALS`); **root collections only**
+  (subcollections don't surface — flatten them upstream or copy per-path
+  later). `Timestamp` → timestamp, `DocumentReference` → its path string,
+  `GeoPoint` → `{latitude, longitude}` json.
+- **DynamoDB** — auth/region via the standard AWS chain; `?endpoint=` targets
+  DynamoDB Local. Only **partition-key-only** tables are copyable —
+  HASH+RANGE tables are excluded with the composite-key reason (the surfaced
+  key wouldn't be unique). Verify uses exact `Select=COUNT` scans (the
+  table's `ItemCount` lags hours). String sets/number sets → arrays; binary
+  attributes are dropped like SQL `bytea`.
+- The Firestore/Dynamo drivers are **not** bundled with the CLI (a Postgres
+  user shouldn't download the AWS SDK) — on first use it tells you what to
+  install: `@google-cloud/firestore`, or `@aws-sdk/client-dynamodb` +
+  `@aws-sdk/util-dynamodb`.
 
 ## Primary keys are preserved
 

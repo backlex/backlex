@@ -21,12 +21,18 @@ export { createPgSource } from "./pg-source";
 export { createMysqlSource, parseEnumLabels } from "./mysql-source";
 export { createSqliteFileSource } from "./sqlite-source";
 export {
+  createDocumentSource,
   createMongoSource,
   inferColumns,
   looksLikeObjectIdHex,
   MONGO_DEFAULT_SAMPLE,
   type DocumentSource,
+  type DocumentStoreKind,
 } from "./mongo-source";
+export {
+  normalizeDynamoItem,
+  normalizeFirestoreDoc,
+} from "./document-normalize";
 export { topoSort } from "./topo";
 export type {
   ReadBatchOptions,

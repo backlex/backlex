@@ -125,6 +125,7 @@ releases — migrations apply automatically on redeploy.
 
 ## What next
 
+- [Migrating an external database in](/docs/migrating-in/) — copy your Postgres/MySQL/Mongo/… into backlex, PKs preserved
 - [Permissions DSL](/docs/permissions/) — granular role + condition rules
 - [Auth planes](/docs/auth-planes/) — admin pool vs workspace end-user pool
 - [Sandbox functions](/docs/sandbox/) — JavaScript code that runs in a sandbox

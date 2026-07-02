@@ -22,12 +22,14 @@ import {
   buildPlan,
   collectionPayloadFor,
   collectionShapeMismatch,
-  createMongoSource,
+  createDocumentSource,
   createMysqlSource,
   createPgSource,
   createSqliteFileSource,
   looksLikeObjectIdHex,
   MONGO_DEFAULT_SAMPLE,
+  normalizeDynamoItem,
+  normalizeFirestoreDoc,
   parsePlan,
   transformRow,
   type DocumentSource,
@@ -65,8 +67,11 @@ const HELP = `backlex import-db <command> — migrate an external database into 
       watermark, UPSERTING in place — the pre-cutover delta pass.
 
   Sources: postgres://…  ·  mysql://…  ·  mongodb[+srv]://…/db  ·  sqlite:<path>
-      (MySQL/Mongo/SQLite are CLI-only; the sqlite file source needs Bun.
-       Mongo plans infer the schema from a sample — see --sample-size on plan.)
+           firestore://<project-id>  ·  dynamodb://<region>[?endpoint=…]
+      (Everything but Postgres is CLI-only; the sqlite file source needs Bun.
+       Document stores infer the schema from a sample — see --sample-size on
+       plan. Firestore/Dynamo drivers install separately when first needed;
+       auth uses GOOGLE_APPLICATION_CREDENTIALS / the standard AWS chain.)
 
   Server-side runs (the source must be reachable FROM the backlex server —
   see docs/migrating-in.md; private hosts need MIGRATE_ALLOW_PRIVATE_SOURCES):
@@ -194,8 +199,179 @@ const openMongo = async (url: string, opts: { sampleSize?: number } = {}) => {
     },
   };
   return {
-    connector: createMongoSource(client, opts),
+    connector: createDocumentSource("mongodb", client, opts),
     close: () => mongo.close(),
+  };
+};
+
+/** Watermark for client-side `since` filtering on document stores whose
+ *  query planner can't combine a range filter with id-keyset paging. */
+const sinceMs = (value: string | number): number =>
+  typeof value === "number" ? value : Date.parse(value);
+
+const docTimeMs = (v: unknown): number =>
+  v instanceof Date ? v.getTime() : Date.parse(String(v ?? ""));
+
+/** Firestore-backed DocumentSource (lazy import; the driver is NOT a
+ *  declared dependency — install it next to the CLI when needed). Auth is
+ *  the standard Google chain (GOOGLE_APPLICATION_CREDENTIALS). Root
+ *  collections only — subcollections don't surface (documented). `since`
+ *  filters client-side: Firestore can't combine a range filter with
+ *  documentId() keyset paging without composite indexes, so batches keep
+ *  scanning internally until filled or exhausted. */
+const openFirestore = async (url: string, opts: { sampleSize?: number } = {}) => {
+  let mod: typeof import("@google-cloud/firestore");
+  try {
+    mod = await import("@google-cloud/firestore");
+  } catch {
+    die(
+      'Firestore sources need the driver: install "@google-cloud/firestore" next to the CLI\n' +
+        "(e.g. npm i -g @google-cloud/firestore). Auth: set GOOGLE_APPLICATION_CREDENTIALS.",
+    );
+    throw new Error("unreachable");
+  }
+  const projectId = new URL(url).hostname;
+  if (!projectId) die("Use firestore://<project-id> (auth via GOOGLE_APPLICATION_CREDENTIALS)");
+  const fs = new mod.Firestore({ projectId });
+  const docId = mod.FieldPath.documentId();
+  const client: DocumentSource = {
+    listCollections: async () => (await fs.listCollections()).map((c) => c.id),
+    count: async (c) => (await fs.collection(c).count().get()).data().count,
+    sample: async (c, n) =>
+      (await fs.collection(c).limit(n).get()).docs.map((d) =>
+        normalizeFirestoreDoc(d.id, d.data()),
+      ),
+    findBatch: async (c, o) => {
+      const collected: Record<string, unknown>[] = [];
+      const wm = o.since ? sinceMs(o.since.value) : null;
+      let cursor = o.after as string | undefined;
+      for (;;) {
+        let q = fs.collection(c).orderBy(docId).limit(o.limit);
+        if (cursor !== undefined) q = q.startAfter(cursor);
+        const snap = await q.get();
+        if (snap.empty) return collected;
+        for (const d of snap.docs) {
+          const row = normalizeFirestoreDoc(d.id, d.data());
+          if (wm !== null && !(docTimeMs(row[o.since!.column]) >= wm)) continue;
+          collected.push(row);
+          if (collected.length >= o.limit) return collected;
+        }
+        cursor = snap.docs[snap.docs.length - 1]!.id;
+        if (snap.docs.length < o.limit) return collected; // exhausted
+      }
+    },
+  };
+  return {
+    connector: createDocumentSource("firestore", client, opts),
+    close: () => fs.terminate(),
+  };
+};
+
+/** DynamoDB-backed DocumentSource (lazy import; drivers NOT declared deps).
+ *  Auth/region via the standard AWS chain; `dynamodb://<region>` with an
+ *  optional `?endpoint=` override for DynamoDB Local. Only simple
+ *  (partition-key-only) tables are copyable — HASH+RANGE tables surface as
+ *  the standard composite-key exclusion. Iteration reconstructs
+ *  ExclusiveStartKey from the last delivered `_id`, so scans resume across
+ *  interruptions; `since` uses a FilterExpression (compared against the
+ *  attribute's stored representation). Exact counts use Select=COUNT scans. */
+const openDynamo = async (url: string, opts: { sampleSize?: number } = {}) => {
+  let ddb: typeof import("@aws-sdk/client-dynamodb");
+  let udb: typeof import("@aws-sdk/util-dynamodb");
+  try {
+    ddb = await import("@aws-sdk/client-dynamodb");
+    udb = await import("@aws-sdk/util-dynamodb");
+  } catch {
+    die(
+      'DynamoDB sources need the drivers: install "@aws-sdk/client-dynamodb" and "@aws-sdk/util-dynamodb"\n' +
+        "next to the CLI. Auth/credentials come from the standard AWS chain.",
+    );
+    throw new Error("unreachable");
+  }
+  const u = new URL(url);
+  const region = u.hostname;
+  if (!region) die("Use dynamodb://<region>[?endpoint=http://localhost:8000]");
+  const endpoint = u.searchParams.get("endpoint") ?? undefined;
+  const dyn = new ddb.DynamoDBClient({ region, ...(endpoint ? { endpoint } : {}) });
+
+  const keyCache = new Map<string, { pk: string; composite: boolean }>();
+  const keyInfo = async (table: string) => {
+    const hit = keyCache.get(table);
+    if (hit) return hit;
+    const d = await dyn.send(new ddb.DescribeTableCommand({ TableName: table }));
+    const schema = d.Table?.KeySchema ?? [];
+    const pk = schema.find((k) => k.KeyType === "HASH")?.AttributeName ?? "id";
+    const info = { pk, composite: schema.length > 1 };
+    keyCache.set(table, info);
+    return info;
+  };
+
+  const client: DocumentSource = {
+    listCollections: async () => {
+      const names: string[] = [];
+      let start: string | undefined;
+      do {
+        const r = await dyn.send(new ddb.ListTablesCommand({ ExclusiveStartTableName: start }));
+        names.push(...(r.TableNames ?? []));
+        start = r.LastEvaluatedTableName;
+      } while (start);
+      return names;
+    },
+    hasCompositeKey: async (table) => (await keyInfo(table)).composite,
+    count: async (table) => {
+      // Exact (the table's ItemCount lags ~6h — useless for verify).
+      let n = 0;
+      let startKey: Record<string, unknown> | undefined;
+      do {
+        const r = await dyn.send(
+          new ddb.ScanCommand({
+            TableName: table,
+            Select: "COUNT",
+            ExclusiveStartKey: startKey as never,
+          }),
+        );
+        n += r.Count ?? 0;
+        startKey = r.LastEvaluatedKey as Record<string, unknown> | undefined;
+      } while (startKey);
+      return n;
+    },
+    sample: async (table, limit) => {
+      const { pk } = await keyInfo(table);
+      const r = await dyn.send(new ddb.ScanCommand({ TableName: table, Limit: limit }));
+      return (r.Items ?? []).map((it) => normalizeDynamoItem(udb.unmarshall(it), pk));
+    },
+    findBatch: async (table, o) => {
+      const { pk } = await keyInfo(table);
+      const collected: Record<string, unknown>[] = [];
+      let startKey =
+        o.after !== undefined ? udb.marshall({ [pk]: o.after }) : undefined;
+      for (;;) {
+        const r = await dyn.send(
+          new ddb.ScanCommand({
+            TableName: table,
+            Limit: o.limit,
+            ExclusiveStartKey: startKey as never,
+            ...(o.since
+              ? {
+                  FilterExpression: "#s >= :v",
+                  ExpressionAttributeNames: { "#s": o.since.column },
+                  ExpressionAttributeValues: udb.marshall({ ":v": o.since.value }) as never,
+                }
+              : {}),
+          }),
+        );
+        for (const it of r.Items ?? []) {
+          collected.push(normalizeDynamoItem(udb.unmarshall(it), pk));
+          if (collected.length >= o.limit) return collected;
+        }
+        startKey = r.LastEvaluatedKey as never;
+        if (!startKey) return collected; // exhausted (short batch = done)
+      }
+    },
+  };
+  return {
+    connector: createDocumentSource("dynamodb", client, opts),
+    close: async () => dyn.destroy(),
   };
 };
 
@@ -205,6 +381,8 @@ const openMongo = async (url: string, opts: { sampleSize?: number } = {}) => {
 const openSource = (url: string, opts: { sampleSize?: number } = {}) => {
   if (/^(mysql|mariadb):\/\//i.test(url)) return openMysql(url);
   if (/^mongodb(\+srv)?:\/\//i.test(url)) return openMongo(url, opts);
+  if (/^firestore:\/\//i.test(url)) return openFirestore(url, opts);
+  if (/^dynamodb:\/\//i.test(url)) return openDynamo(url, opts);
   if (/^sqlite:/i.test(url)) return openSqliteFile(url.replace(/^sqlite:/i, ""));
   if (/\.(sqlite3?|db)$/i.test(url) && !url.includes("://")) return openSqliteFile(url);
   return openPostgres(url);
@@ -289,13 +467,13 @@ const runPlan = async (args: string[], deps: ImportDbDeps): Promise<void> => {
     const inspections = [];
     for (const t of picked) inspections.push(await connector.inspect(t.name));
     const plan = buildPlan(inspections, new Map(picked.map((t) => [t.name, t])), connector.kind);
-    if (connector.kind === "mongodb") {
+    if (["mongodb", "firestore", "dynamodb"].includes(connector.kind)) {
       // Schemaless source: the field model is a sample-based inference, and
       // that caveat belongs IN the reviewable plan, not just on stderr.
       for (const t of plan.tables) {
         if (!t.include) continue;
         t.warnings.push(
-          `fields inferred from a sample of up to ${opts.sampleSize} documents — keys outside the sample are NOT copied (re-plan with --sample-size to widen); MongoDB has no foreign keys, so no relations were auto-wired (edit a field to type "relation" by hand if needed)`,
+          `fields inferred from a sample of up to ${opts.sampleSize} documents — keys outside the sample are NOT copied (re-plan with --sample-size to widen); document stores have no foreign keys, so no relations were auto-wired (edit a field to type "relation" by hand if needed)`,
         );
       }
     }

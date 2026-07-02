@@ -253,7 +253,7 @@ backlex init [dir] [--force]                     scaffold a TypeScript consumer 
 backlex sdk [lang]                               discover the official native client SDKs
 backlex migrate [db-path]                        apply SQLite migrations
 backlex import-db <inspect|plan|run|sources|start|status|...>
-                                                 migrate an external DB (Postgres/MySQL/MongoDB/SQLite) INTO backlex (docs/migrating-in.md)
+                                                 migrate an external DB (Postgres/MySQL/MongoDB/Firestore/DynamoDB/SQLite) INTO backlex (docs/migrating-in.md)
 backlex gen-types <api-url> [--out <file>] [--key <pak_...>] [--sdk]
                                                  generate TS types (+ typed client with --sdk)
 backlex gen-openapi [--out <file>]               fetch the live OpenAPI spec

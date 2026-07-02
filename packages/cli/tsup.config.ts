@@ -15,6 +15,10 @@ export default defineConfig({
   // `@backlex/migrate` is a workspace-source package (not published) — inline
   // it into the bundle. `postgres` stays external like the other declared deps.
   noExternal: ["@backlex/migrate"],
+  // Optional heavy drivers: lazily imported with an install hint, NOT
+  // declared dependencies (a Postgres user shouldn't download the AWS SDK).
+  // External keeps tsup from trying to inline them into the bundle.
+  external: ["@google-cloud/firestore", "@aws-sdk/client-dynamodb", "@aws-sdk/util-dynamodb"],
   // The `#!/usr/bin/env node` shebang on bin/backlex.ts carries through to the
   // bundle, so the output is directly executable (`./dist/backlex.js` / npx).
 });

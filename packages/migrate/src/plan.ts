@@ -48,7 +48,7 @@ export interface PlanTable {
 
 export interface MigrationPlan {
   version: 1;
-  source: { kind: "postgres" | "mysql" | "sqlite-file" | "mongodb" };
+  source: { kind: "postgres" | "mysql" | "sqlite-file" | "mongodb" | "firestore" | "dynamodb" };
   /** Copy order over the included tables — FK parents first. */
   order: string[];
   tables: PlanTable[];
@@ -100,16 +100,12 @@ export const buildPlan = (
   >();
   for (const ins of inspections) {
     if (!ins.pk) {
-      const composite =
-        ins.foreignKeys.length >= 0 &&
-        ins.columns.length > 0 &&
-        // pg-source returns null for both "no PK" and "composite PK";
-        // there's no way to distinguish here, so say both.
-        true;
+      // Connectors return a null pk for both "no PK" and "composite PK"
+      // (pg-source can't distinguish; Dynamo's HASH+RANGE lands here too) —
+      // one honest message covers both.
       pkInfo.set(ins.table, {
-        reason: composite
-          ? "no single-column primary key (missing or composite) — add a surrogate key or copy manually"
-          : "no primary key",
+        reason:
+          "no single-column primary key (missing or composite) — add a surrogate key or copy manually",
       });
       continue;
     }

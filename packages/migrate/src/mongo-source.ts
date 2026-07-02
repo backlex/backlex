@@ -1,19 +1,26 @@
 /**
- * MongoDB source connector (CLI-side). MongoDB has no schema catalog, so
- * `inspect` INFERS one by sampling documents: field union across the sample,
- * majority-vote typing, sparse fields nullable. The inference emits the same
- * synthetic dbType tokens the shared mapper already understands, so the rest
- * of the pipeline (plan → collections → ingest) is unchanged.
+ * Document-store source connectors (CLI-side): MongoDB, Firestore, DynamoDB.
+ * None of them has a schema catalog, so `inspect` INFERS one by sampling
+ * documents: field union across the sample, majority-vote typing, sparse
+ * fields nullable. The inference emits the same synthetic dbType tokens the
+ * shared mapper already understands, so the rest of the pipeline
+ * (plan → collections → ingest) is unchanged.
  *
  * Driver-agnosticism: instead of a SQL executor, the connector wraps a
- * {@link DocumentSource} — the CLI backs it with the `mongodb` driver, tests
+ * {@link DocumentSource} — the CLI backs it with the store's driver
+ * (`mongodb`, `@google-cloud/firestore`, `@aws-sdk/client-dynamodb`), tests
  * with an in-memory fake. Driver-specific concerns (ObjectId↔hex cursor
- * round-trips, Date coercion for `since`) live in the CLI's implementation.
+ * round-trips, Firestore Timestamp / Dynamo Set normalization, `since`
+ * coercion, filtered-page continuation) live in those implementations.
  *
- * What doesn't exist here, by nature of the source:
- *   - foreign keys — Mongo has none, so no relation auto-wiring. Values are
- *     copied verbatim; preserved PKs mean a field can be flipped to
- *     `relation` in the plan file by hand and still resolve.
+ * The normalized row contract: every document surfaces its key as `_id`
+ * (Mongo `_id`, Firestore document id, Dynamo partition-key value) — one pk
+ * name keeps the plan/copy/cursor machinery identical across stores.
+ *
+ * What doesn't exist here, by nature of the sources:
+ *   - foreign keys — document stores have none, so no relation auto-wiring.
+ *     Values are copied verbatim; preserved PKs mean a field can be flipped
+ *     to `relation` in the plan file by hand and still resolve.
  *   - fields outside the sample — documents are free-form; keys never seen
  *     in the sampled set aren't copied. The CLI surfaces this as a per-table
  *     plan warning (tune with --sample-size).
@@ -27,9 +34,14 @@ import type {
 } from "./types";
 
 /** Minimal document-store surface the connector needs. Implementations must
- *  return JSON-safe rows: ObjectId values as hex strings, Date values may
- *  stay Date instances (they serialize to ISO). `findBatch` must order by
- *  `_id` ascending and treat `afterId` as an exclusive lower bound. */
+ *  return JSON-safe rows with the document key surfaced as `_id` (hex string
+ *  for ObjectIds; Date values may stay Date instances — they serialize to
+ *  ISO). `findBatch` must be a STABLE, RESUMABLE iteration where
+ *  `opts.after` identifies the last delivered document (exclusive): ordered
+ *  `_id` keyset for Mongo/Firestore, `ExclusiveStartKey` reconstruction for
+ *  Dynamo scans. When a `since` filter drops documents, implementations keep
+ *  fetching internally until `limit` rows are collected or the collection is
+ *  exhausted — returning a short batch means "done" to the copy loop. */
 export interface DocumentSource {
   listCollections(): Promise<string[]>;
   count(collection: string): Promise<number>;
@@ -39,6 +51,10 @@ export interface DocumentSource {
     collection: string,
     opts: ReadBatchOptions,
   ): Promise<Record<string, unknown>[]>;
+  /** DynamoDB: partition+sort tables can't key a collection (the surfaced
+   *  `_id` wouldn't be unique). Returning true excludes the table from the
+   *  plan with the standard composite-key reason. */
+  hasCompositeKey?(collection: string): Promise<boolean>;
 }
 
 export const MONGO_DEFAULT_SAMPLE = 500;
@@ -128,7 +144,10 @@ export const inferColumns = (
   return { columns, idDbType };
 };
 
-export const createMongoSource = (
+export type DocumentStoreKind = "mongodb" | "firestore" | "dynamodb";
+
+export const createDocumentSource = (
+  kind: DocumentStoreKind,
   client: DocumentSource,
   opts: { sampleSize?: number } = {},
 ): SourceConnector => {
@@ -146,6 +165,10 @@ export const createMongoSource = (
   };
 
   const inspect = async (table: string): Promise<SourceInspection> => {
+    if (client.hasCompositeKey && (await client.hasCompositeKey(table))) {
+      // Surfaces as the standard "no single-column primary key" exclusion.
+      return { table, columns: [], pk: null, foreignKeys: [] };
+    }
     const docs = await client.sample(table, sampleSize);
     const { columns, idDbType } = inferColumns(docs);
     return {
@@ -162,19 +185,25 @@ export const createMongoSource = (
     batchOpts: ReadBatchOptions,
   ): Promise<Record<string, unknown>[]> => {
     if (pkColumn !== "_id") {
-      throw new Error(`MongoDB sources page by "_id" (got "${pkColumn}")`);
+      throw new Error(`document-store sources page by "_id" (got "${pkColumn}")`);
     }
     return client.findBatch(table, batchOpts);
   };
 
   return {
-    kind: "mongodb",
+    kind,
     listTables,
     inspect,
     readBatch,
     count: (table) => client.count(table),
   };
 };
+
+/** Back-compat name for the first document store. */
+export const createMongoSource = (
+  client: DocumentSource,
+  opts: { sampleSize?: number } = {},
+): SourceConnector => createDocumentSource("mongodb", client, opts);
 
 /** Is this value a hex ObjectId string? (Driver impls use it to decide
  *  whether a resume cursor needs re-wrapping into an ObjectId.) */

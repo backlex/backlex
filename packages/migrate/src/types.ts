@@ -57,10 +57,14 @@ export interface ReadBatchOptions {
    *  batch. Keyset paging (never OFFSET) so million-row tables stay O(batch). */
   after?: unknown;
   limit: number;
+  /** Incremental re-sync filter (`--since`): only rows whose `column` is
+   *  `>= value`. Keyset paging still orders by PK — the filter just narrows
+   *  the set, so a delta pass over a huge table reads only the tail. */
+  since?: { column: string; value: string | number };
 }
 
 export interface SourceConnector {
-  kind: "postgres";
+  kind: "postgres" | "mysql" | "sqlite-file";
   listTables(): Promise<SourceTable[]>;
   inspect(table: string): Promise<SourceInspection>;
   /** One keyset page, ordered by `pkColumn` ascending. */

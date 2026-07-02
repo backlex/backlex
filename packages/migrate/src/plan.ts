@@ -48,7 +48,7 @@ export interface PlanTable {
 
 export interface MigrationPlan {
   version: 1;
-  source: { kind: "postgres" };
+  source: { kind: "postgres" | "mysql" | "sqlite-file" };
   /** Copy order over the included tables — FK parents first. */
   order: string[];
   tables: PlanTable[];
@@ -84,6 +84,7 @@ const TIMESTAMPish = (type: PlanFieldType): boolean =>
 export const buildPlan = (
   inspections: SourceInspection[],
   tableMeta: Map<string, SourceTable> = new Map(),
+  sourceKind: MigrationPlan["source"]["kind"] = "postgres",
 ): MigrationPlan => {
   const slugTaken = new Set<string>();
   const slugByTable = new Map<string, string>();
@@ -261,7 +262,7 @@ export const buildPlan = (
     }
   }
 
-  return { version: 1, source: { kind: "postgres" }, order, tables };
+  return { version: 1, source: { kind: sourceKind }, order, tables };
 };
 
 /** Reshape one source row into the ingest body shape: rename columns to

@@ -22,7 +22,9 @@ import {
   buildPlan,
   collectionPayloadFor,
   collectionShapeMismatch,
+  createMysqlSource,
   createPgSource,
+  createSqliteFileSource,
   parsePlan,
   transformRow,
   type MigrationPlan,
@@ -34,10 +36,9 @@ import { flag, has, resolveContext, type Context } from "./client";
 /** Injectable source factory — tests swap in a pglite-backed connector
  *  (pglite has no TCP listener for postgres.js to dial). */
 export interface ImportDbDeps {
-  openSource?: (url: string) => {
-    connector: SourceConnector;
-    close: () => Promise<unknown>;
-  };
+  openSource?: (url: string) =>
+    | { connector: SourceConnector; close: () => Promise<unknown> }
+    | Promise<{ connector: SourceConnector; close: () => Promise<unknown> }>;
 }
 
 const HELP = `backlex import-db <command> — migrate an external database into backlex
@@ -49,10 +50,15 @@ const HELP = `backlex import-db <command> — migrate an external database into 
       Introspect and emit an editable migration plan (JSON). Review it —
       prune tables, rename slugs/fields — then feed it to \`run\`.
 
-  run <plan.json> --source <postgres-url> [--batch <n>] [--resume] [--dry-run]
+  run <plan.json> --source <url> [--batch <n>] [--resume] [--dry-run] [--since <ISO|epoch>]
       Execute the plan: create the target collections (PK type preserved),
       copy rows in FK-dependency order, verify counts. Progress persists in
       <plan>.state.json; re-run with --resume after an interruption.
+      --since re-copies only rows whose updated_at/created_at >= the
+      watermark, UPSERTING in place — the pre-cutover delta pass.
+
+  Sources: postgres://…  ·  mysql://…  ·  sqlite:<path> / <path>.sqlite|.db
+      (MySQL/SQLite are CLI-only; the sqlite file source needs Bun.)
 
   Server-side runs (the source must be reachable FROM the backlex server —
   see docs/migrating-in.md; private hosts need MIGRATE_ALLOW_PRIVATE_SOURCES):
@@ -82,7 +88,7 @@ const sourceUrl = (args: string[]): string =>
 
 /** postgres.js-backed SourceQuery. `prepare:false` keeps PgBouncer-style
  *  transaction poolers happy; 2 connections is plenty for a linear pump. */
-const openSource = (url: string) => {
+const openPostgres = (url: string) => {
   const sql = postgres(url, { max: 2, prepare: false });
   const query: SourceQuery = async (text, params) =>
     (await sql.unsafe(text, (params ?? []) as never[])) as unknown as Record<
@@ -90,6 +96,49 @@ const openSource = (url: string) => {
       unknown
     >[];
   return { connector: createPgSource(query), close: () => sql.end() };
+};
+
+/** mysql2-backed SourceQuery (lazy import — most invocations never need
+ *  the MySQL driver). The mysql connector emits `?` placeholders. */
+const openMysql = async (url: string) => {
+  const mysql = await import("mysql2/promise");
+  const conn = await mysql.createConnection(url);
+  const query: SourceQuery = async (text, params) => {
+    const [rows] = await conn.query(text, params ?? []);
+    return rows as Record<string, unknown>[];
+  };
+  return { connector: createMysqlSource(query), close: () => conn.end() };
+};
+
+/** bun:sqlite-backed SourceQuery over a local database FILE. Bun-only —
+ *  same posture as `backlex migrate` (every remote command works under
+ *  Node; the two commands that open a local SQLite need Bun). */
+const openSqliteFile = async (path: string) => {
+  let Database: typeof import("bun:sqlite").Database;
+  try {
+    ({ Database } = await import("bun:sqlite"));
+  } catch {
+    die(
+      "sqlite sources require Bun (bun:sqlite). Run with `bun backlex import-db …`.",
+    );
+    throw new Error("unreachable");
+  }
+  const db = new Database(path, { readonly: true });
+  const query: SourceQuery = async (text, params) =>
+    db.query(text).all(...((params ?? []) as never[])) as Record<
+      string,
+      unknown
+    >[];
+  return { connector: createSqliteFileSource(query), close: async () => db.close() };
+};
+
+/** Pick the driver from the source URL: `mysql://…` → mysql2,
+ *  `sqlite:<path>` / `*.sqlite` / `*.db` → bun:sqlite file, else postgres. */
+const openSource = (url: string) => {
+  if (/^(mysql|mariadb):\/\//i.test(url)) return openMysql(url);
+  if (/^sqlite:/i.test(url)) return openSqliteFile(url.replace(/^sqlite:/i, ""));
+  if (/\.(sqlite3?|db)$/i.test(url) && !url.includes("://")) return openSqliteFile(url);
+  return openPostgres(url);
 };
 
 /** Authenticated JSON fetch against the TARGET backlex instance. */
@@ -116,7 +165,7 @@ const api = async (
 
 const runInspect = async (args: string[], deps: ImportDbDeps): Promise<void> => {
   const ctx = resolveContext(args);
-  const { connector, close } = (deps.openSource ?? openSource)(sourceUrl(args));
+  const { connector, close } = await (deps.openSource ?? openSource)(sourceUrl(args));
   try {
     const tables = await connector.listTables();
     const detailed = [];
@@ -147,7 +196,7 @@ const runInspect = async (args: string[], deps: ImportDbDeps): Promise<void> => 
 // ── plan ──────────────────────────────────────────────────────────────────
 
 const runPlan = async (args: string[], deps: ImportDbDeps): Promise<void> => {
-  const { connector, close } = (deps.openSource ?? openSource)(sourceUrl(args));
+  const { connector, close } = await (deps.openSource ?? openSource)(sourceUrl(args));
   try {
     const only = flag(args, "--tables")
       ?.split(",")
@@ -162,7 +211,7 @@ const runPlan = async (args: string[], deps: ImportDbDeps): Promise<void> => {
     }
     const inspections = [];
     for (const t of picked) inspections.push(await connector.inspect(t.name));
-    const plan = buildPlan(inspections, new Map(picked.map((t) => [t.name, t])));
+    const plan = buildPlan(inspections, new Map(picked.map((t) => [t.name, t])), connector.kind);
     const out = flag(args, "--out");
     const text = `${JSON.stringify(plan, null, 2)}\n`;
     if (out) {
@@ -189,6 +238,8 @@ interface TableState {
   created: boolean;
   cursor: unknown;
   copied: number;
+  /** upsert (`--since`) mode: rows overwritten in place. */
+  updated?: number;
   failed: number;
   done: boolean;
 }
@@ -221,16 +272,33 @@ const runRun = async (args: string[], deps: ImportDbDeps): Promise<void> => {
   const ctx = resolveContext(args);
   const batch = Math.min(2000, Math.max(1, Number(flag(args, "--batch") ?? 1000)));
   const dryRun = has(args, "--dry-run");
-  const statePath = `${planPath}.state.json`;
+  // `--since <ISO|epoch>`: incremental re-sync — only rows whose detected
+  // updated_at/created_at column is >= the watermark, upserted in place
+  // (PK conflicts overwrite; created_at is preserved server-side). Delta
+  // passes keep their own state file so a finished full copy's cursors
+  // don't short-circuit them.
+  const sinceRaw = flag(args, "--since");
+  const since = sinceRaw === undefined
+    ? undefined
+    : /^\d+$/.test(sinceRaw)
+      ? Number(sinceRaw)
+      : (() => {
+          if (Number.isNaN(Date.parse(sinceRaw))) {
+            die(`--since must be an ISO date or epoch number (got "${sinceRaw}")`);
+          }
+          return sinceRaw;
+        })();
+  const statePath = since ? `${planPath}.since.state.json` : `${planPath}.state.json`;
   const state = loadState(statePath, has(args, "--resume"));
   const saveState = () => writeFileSync(statePath, JSON.stringify(state, null, 2));
 
   const byName = new Map(plan.tables.map((t) => [t.table, t] as const));
-  const { connector, close } = (deps.openSource ?? openSource)(sourceUrl(args));
+  const { connector, close } = await (deps.openSource ?? openSource)(sourceUrl(args));
   const summary: {
     table: string;
     slug: string;
     copied: number;
+    updated: number;
     failed: number;
     source: number;
     target: number | null;
@@ -289,11 +357,20 @@ const runRun = async (args: string[], deps: ImportDbDeps): Promise<void> => {
       }
 
       // 2. Copy rows, keyset-paged from the source, idempotent on the target.
+      const sinceCol = t.updatedAtColumn ?? t.createdAtColumn;
+      if (since !== undefined && !sinceCol && !st.done && st.copied === 0) {
+        process.stderr.write(
+          `  ⚠ ${t.slug}: no updated_at/created_at column detected — --since can't filter; copying the full table (upsert)\n`,
+        );
+      }
       let lastTotal: number | null = null;
       while (!st.done) {
         const rows = await connector.readBatch(name, t.pkColumn, {
           after: st.cursor,
           limit: batch,
+          ...(since !== undefined && sinceCol
+            ? { since: { column: sinceCol, value: since } }
+            : {}),
         });
         if (rows.length === 0) {
           st.done = true;
@@ -303,6 +380,7 @@ const runRun = async (args: string[], deps: ImportDbDeps): Promise<void> => {
         const payload = rows.map((r) => transformRow(t, r));
         const res = await api(ctx, "POST", `/api/admin/migrate/ingest/${t.slug}`, {
           rows: payload,
+          mode: since !== undefined ? "upsert" : "insert",
         });
         if (res.status !== 200) {
           die(
@@ -313,10 +391,12 @@ const runRun = async (args: string[], deps: ImportDbDeps): Promise<void> => {
         const data = res.json.data as {
           inserted: number;
           skipped: number;
+          updated: number;
           failed: { index: number; error: string }[];
           total: number;
         };
         st.copied += data.inserted;
+        st.updated = (st.updated ?? 0) + (data.updated ?? 0);
         st.failed += data.failed.length;
         lastTotal = data.total;
         for (const f of data.failed.slice(0, 5)) {
@@ -329,7 +409,7 @@ const runRun = async (args: string[], deps: ImportDbDeps): Promise<void> => {
         st.done = rows.length < batch;
         saveState();
         process.stderr.write(
-          `  ${t.slug}: ${st.copied} copied${st.failed ? `, ${st.failed} failed` : ""}\r`,
+          `  ${t.slug}: ${st.copied} copied${st.updated ? `, ${st.updated} updated` : ""}${st.failed ? `, ${st.failed} failed` : ""}\r`,
         );
       }
       process.stderr.write("\n");
@@ -351,20 +431,30 @@ const runRun = async (args: string[], deps: ImportDbDeps): Promise<void> => {
         table: name,
         slug: t.slug,
         copied: st.copied,
+        updated: st.updated ?? 0,
         failed: st.failed,
         source: sourceCount,
         target: lastTotal,
       });
     }
 
-    // Final report.
+    // Final report. In `--since` delta mode the copied subset is by design
+    // smaller than the table, so source/target counts aren't compared —
+    // only row failures fail the pass.
     let allOk = true;
-    process.stdout.write("\nMigration summary\n");
+    process.stdout.write(since !== undefined ? "\nDelta re-sync summary\n" : "\nMigration summary\n");
     for (const s of summary) {
-      const ok = s.target !== null && s.target >= s.source && s.failed === 0;
+      const ok =
+        since !== undefined
+          ? s.failed === 0
+          : s.target !== null && s.target >= s.source && s.failed === 0;
       if (!ok) allOk = false;
       process.stdout.write(
-        `  ${ok ? "✓" : "✗"} ${s.table} → ${s.slug}: source=${s.source} target=${s.target ?? "?"} copied=${s.copied}${s.failed ? ` FAILED=${s.failed}` : ""}\n`,
+        `  ${ok ? "✓" : "✗"} ${s.table} → ${s.slug}: ${
+          since !== undefined
+            ? `copied=${s.copied} updated=${s.updated}`
+            : `source=${s.source} target=${s.target ?? "?"} copied=${s.copied}`
+        }${s.failed ? ` FAILED=${s.failed}` : ""}\n`,
       );
     }
     if (allOk) {

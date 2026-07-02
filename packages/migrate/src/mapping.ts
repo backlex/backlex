@@ -63,12 +63,27 @@ export const mapColumn = (col: SourceColumn): MappedColumn | null => {
     t === "text" ||
     t === "citext" ||
     t === "nvarchar" ||
-    t === "nchar"
+    t === "nchar" ||
+    // MySQL text family
+    t === "tinytext" ||
+    t === "mediumtext" ||
+    t === "longtext"
   ) {
-    if (t === "text" || t === "citext") return { type: "longtext" };
-    if (size !== null && size > 255) return { type: "longtext" };
-    return { type: "text" };
+    if (t === "varchar" || t === "character varying" || t === "char" || t === "character" || t === "nvarchar" || t === "nchar") {
+      if (size !== null && size > 255) return { type: "longtext" };
+      return { type: "text" };
+    }
+    return { type: "longtext" };
   }
+  // MySQL SET — a comma-joined multi-value string; the value round-trips as
+  // text but the closed value set does not survive.
+  if (t === "set") {
+    return {
+      type: "text",
+      warning: `set column "${col.name}" copied as text — multi-value semantics are not preserved`,
+    };
+  }
+  if (t === "year") return { type: "integer" };
   if (
     t === "int" ||
     t === "int2" ||

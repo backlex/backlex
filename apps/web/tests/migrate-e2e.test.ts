@@ -47,7 +47,8 @@ describe("import-db end-to-end (pglite source → harness target)", () => {
         "fullName" varchar(120) NOT NULL,
         email text,
         tags text[],
-        created_at timestamptz
+        created_at timestamptz,
+        updated_at timestamptz
       );
       CREATE TABLE orders (
         id bigint PRIMARY KEY,
@@ -56,10 +57,10 @@ describe("import-db end-to-end (pglite source → harness target)", () => {
         total numeric(10,2),
         created_at timestamptz
       );
-      INSERT INTO customers (id, "fullName", email, tags, created_at) VALUES
-        (1, 'Ada Lovelace', 'ada@example.test', '{vip,eu}', '2020-01-01T00:00:00Z'),
-        (2, 'Grace Hopper', 'grace@example.test', NULL,      '2020-06-15T12:00:00Z'),
-        (3, 'Alan Turing',  NULL,                '{eu}',     '2021-03-03T03:03:03Z');
+      INSERT INTO customers (id, "fullName", email, tags, created_at, updated_at) VALUES
+        (1, 'Ada Lovelace', 'ada@example.test', '{vip,eu}', '2020-01-01T00:00:00Z', '2020-01-01T00:00:00Z'),
+        (2, 'Grace Hopper', 'grace@example.test', NULL,      '2020-06-15T12:00:00Z', '2020-06-15T12:00:00Z'),
+        (3, 'Alan Turing',  NULL,                '{eu}',     '2021-03-03T03:03:03Z', '2021-03-03T03:03:03Z');
       INSERT INTO orders (id, customer_id, status, total, created_at) VALUES
         (10, 1, 'pending', 12.50,  '2022-01-01T00:00:00Z'),
         (11, 1, 'shipped', 99.99,  '2022-02-02T00:00:00Z'),
@@ -85,7 +86,7 @@ describe("import-db end-to-end (pglite source → harness target)", () => {
   afterAll(async () => {
     server?.stop(true);
     await pg?.close();
-    for (const p of [planPath, statePath]) {
+    for (const p of [planPath, statePath, `${planPath}.since.state.json`]) {
       try {
         rmSync(p, { force: true });
       } catch {
@@ -106,6 +107,7 @@ describe("import-db end-to-end (pglite source → harness target)", () => {
     const customers = plan.tables.find((t: any) => t.table === "customers");
     expect(customers.pkType).toBe("integer");
     expect(customers.createdAtColumn).toBe("created_at");
+    expect(customers.updatedAtColumn).toBe("updated_at");
     const fullName = customers.fields.find((f: any) => f.column === "fullName");
     expect(fullName.name).toBe("full_name");
     expect(fullName.required).toBe(true);
@@ -183,6 +185,52 @@ describe("import-db end-to-end (pglite source → harness target)", () => {
     ]);
   });
 
+  test("run --since delta re-sync upserts changed rows without duplicating", async () => {
+    // Mutate the source AFTER the full copy: one update, one brand-new row.
+    await pg.exec(`
+      UPDATE customers SET "fullName" = 'Ada Lovelace (Countess)', updated_at = '2031-01-01T00:00:00Z' WHERE id = 1;
+      INSERT INTO customers (id, "fullName", email, created_at, updated_at) VALUES
+        (4, 'Edsger Dijkstra', 'ewd@example.test', '2031-01-02T00:00:00Z', '2031-01-02T00:00:00Z');
+    `);
+    const exitBefore = process.exitCode;
+    await runImportDb(
+      [
+        "run", planPath,
+        "--source", "pglite://in-memory",
+        "--url", url,
+        "--key", pak,
+        "--since", "2030-06-01T00:00:00Z",
+      ],
+      deps,
+    );
+    expect(process.exitCode).toBe(exitBefore);
+
+    const auth = { authorization: `Bearer ${pak}` };
+    const count = (await (
+      await fetch(`${url}/api/items/customers?limit=1&meta=filter_count`, { headers: auth })
+    ).json()) as { meta: { filter_count: number } };
+    expect(count.meta.filter_count).toBe(4); // 3 + 1 new, no dupes
+
+    const ada = (await (
+      await fetch(`${url}/api/items/customers/1`, { headers: auth })
+    ).json()) as { data: any };
+    expect(ada.data.full_name).toBe("Ada Lovelace (Countess)"); // overwritten
+    // created_at preserved through the upsert; updated_at moved forward.
+    expect(new Date(ada.data.createdAt).toISOString()).toBe("2020-01-01T00:00:00.000Z");
+    expect(new Date(ada.data.updatedAt).toISOString()).toBe("2031-01-01T00:00:00.000Z");
+
+    const ewd = (await (
+      await fetch(`${url}/api/items/customers/4`, { headers: auth })
+    ).json()) as { data: any };
+    expect(ewd.data.full_name).toBe("Edsger Dijkstra");
+
+    // Untouched rows stayed untouched.
+    const grace = (await (
+      await fetch(`${url}/api/items/customers/2`, { headers: auth })
+    ).json()) as { data: any };
+    expect(grace.data.full_name).toBe("Grace Hopper");
+  });
+
   test("run --resume is a no-op on an already-complete migration", async () => {
     expect(existsSync(statePath)).toBe(true);
     const exitBefore = process.exitCode;
@@ -195,6 +243,6 @@ describe("import-db end-to-end (pglite source → harness target)", () => {
     const cust = (await (
       await fetch(`${url}/api/items/customers?limit=1&meta=filter_count`, { headers: auth })
     ).json()) as { meta: { filter_count: number } };
-    expect(cust.meta.filter_count).toBe(3); // still 3 — no dupes
+    expect(cust.meta.filter_count).toBe(4); // 3 original + 1 from the delta test — no dupes
   });
 });

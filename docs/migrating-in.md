@@ -39,9 +39,30 @@ Three source engines, picked from the URL:
 | Postgres | `postgres://user:pass@host/db` | also the only server-side engine |
 | MySQL / MariaDB | `mysql://user:pass@host/db` | CLI-only (mysql2) |
 | SQLite file | `sqlite:./legacy.db` or `*.sqlite`/`*.db` path | CLI-only, needs Bun |
+| MongoDB | `mongodb://host:27017/db` (or `mongodb+srv://`) | CLI-only; schema inferred by sampling |
 
 MySQL idioms map automatically: `tinyint(1)` → boolean, `enum(…)` → text +
 dropdown choices, `mediumtext`/`longtext` → longtext, `set` → text (warning).
+
+### Schemaless sources (MongoDB)
+
+MongoDB has no schema catalog, so `plan` **infers** one by sampling documents
+(default 500 per collection, `--sample-size <n>` to widen):
+
+- Field union across the sample; per-field majority typing (string → text /
+  longtext by length, int vs float, boolean, `Date` → timestamp). Nested
+  objects/arrays — and any field whose sampled types disagree — become
+  `json`. Fields missing from part of the sample are nullable.
+- **`_id` is the preserved primary key**: hex ObjectIds copy as 24-hex text
+  (`pkType: text`), numeric ids as `integer`. Resume cursors round-trip
+  through the plan state file transparently.
+- The caveat rides in the plan itself, per table: *keys outside the sampled
+  set are not copied* — widen the sample or add the field to the plan by
+  hand. There are no foreign keys to introspect, so no `relation` fields are
+  auto-wired; because ids are preserved, you can flip a field to
+  `{"type": "relation", "to": "<slug>"}` in the plan file and it will resolve.
+- `--since` works the same as SQL sources (the detected `updatedAt` /
+  `createdAt` field, compared as dates).
 
 ## Primary keys are preserved
 

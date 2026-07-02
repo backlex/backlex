@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
+import { timingSafeEqual } from "../lib/timing";
 import type { DbCtx } from "./seed";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -223,14 +224,6 @@ export const updateApiKeyMcpGuards = async (
     .update(t)
     .set(set)
     .where(and(eq(t.tenantId, tenantId), eq(t.id, id)));
-};
-
-/** Length-independent constant-time-ish string compare (avoids early-exit timing). */
-const timingSafeEqual = (a: string, b: string): boolean => {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 };
 
 export const findApiKey = async (

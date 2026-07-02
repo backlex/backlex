@@ -843,9 +843,8 @@ export const activity = sqliteTable(
     index("activity_collection_item_idx").on(t.collection, t.itemId),
     index("activity_user_idx").on(t.userId),
     index("activity_created_idx").on(t.createdAt),
-    index("activity_tenant_idx").on(t.tenantId),
-    // Time-range activity listings filter by tenant AND created_at together;
-    // the single-column indexes force a scan on one side or the other.
+    // Tenant filtering + time-range listings both ride this composite; a
+    // single-column (tenant_id) index would be a redundant leftmost prefix.
     index("activity_tenant_created_idx").on(t.tenantId, t.createdAt),
   ],
 );

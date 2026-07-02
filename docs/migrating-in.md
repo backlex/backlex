@@ -1,19 +1,25 @@
 ---
 title: Migrating an external database in
-description: Copy an existing Postgres database into backlex — introspect, plan, run, verify — with primary keys preserved.
+description: Copy an existing database into backlex — Postgres, MySQL, SQLite, MongoDB, Firestore, or DynamoDB — introspect, plan, run, verify, with primary keys preserved.
 ---
 
 `backlex import-db` moves data **into** backlex from a database you already
 have. It's the complement of [adoption](/adopting-tables/): adoption wraps a
 table that lives in the *same* database backlex runs on; import-db **copies**
-rows from an *external* source — a legacy Postgres, a Supabase project, a
-Heroku add-on — into managed collections. Cloud workspaces run on D1, so for
-them copying is the only way in.
+rows from an *external* source — a legacy Postgres or MySQL, a Supabase
+project, a Heroku add-on, a MongoDB/Firestore/DynamoDB app — into managed
+collections. Cloud workspaces run on D1, so for them copying is the only way
+in.
 
-The pump runs client-side in the CLI, on purpose: your source database is
-usually firewalled away from the internet, but the machine you run the CLI on
-can reach both it and your backlex instance. The server side is one endpoint —
-a bulk, idempotent, PK-preserving ingest.
+Two ways to run the copy:
+
+- **CLI pump** (this page's main flow) — the CLI connects to the source and
+  pushes rows up through a bulk, idempotent, PK-preserving ingest endpoint.
+  Works for every engine, and for databases firewalled away from the
+  internet: the machine you run the CLI on only needs to reach both sides.
+- **Server-side runs** — for Postgres sources the *server* can reach, the
+  admin's **Data → Database import** wizard drives the same engine with no
+  CLI at all ([details below](#server-side-runs-the-admin-wizard)).
 
 ## The three steps
 
@@ -32,7 +38,7 @@ Target connection resolves like every other CLI command (`--url` / `--key` /
 `--tenant` / saved profile); the key needs the admin role. The source URL can
 also come from `BACKLEX_IMPORT_SOURCE`.
 
-Three source engines, picked from the URL:
+Six source engines, picked from the URL:
 
 | Source | URL shape | Notes |
 |---|---|---|
@@ -263,8 +269,9 @@ listed) with their final per-table verify state.
 
 ## Limits & scope
 
-- **Server-side runs are Postgres-only.** MySQL and SQLite-file sources go
-  through the CLI (their drivers don't belong in the Worker bundle).
+- **Server-side runs are Postgres-only.** MySQL, SQLite-file, and the
+  document stores (MongoDB / Firestore / DynamoDB) go through the CLI —
+  their drivers don't belong in the Worker bundle.
 - **No continuous CDC.** The `--since` delta pass covers cutover; a streaming
   replication mode is out of scope.
 - **Composite PKs** can't key a collection — those tables are excluded with a

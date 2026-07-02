@@ -823,6 +823,57 @@ export const schemaBranches = sqliteTable(
   (t) => [uniqueIndex("schema_branches_tenant_name_idx").on(t.tenantId, t.name)],
 );
 
+/** Saved external-database connections for server-side migration (the admin
+ *  "Database import" wizard). `url` is encrypted at rest with AUTH_SECRET
+ *  (same envelope as integration configs) and always masked on the API.
+ *  See the pg/schema.ts twin + docs/migrating-in.md. */
+export const externalSources = sqliteTable(
+  "external_sources",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    name: text("name").notNull(),
+    kind: text("kind").notNull().default("postgres"),
+    /** Encrypted connection string (lib/crypto envelope). */
+    url: text("url").notNull(),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [uniqueIndex("external_sources_tenant_name_idx").on(t.tenantId, t.name)],
+);
+
+/** One server-side migration execution. The scheduler tick claims runs and
+ *  copies in bounded slices; `state` carries per-table keyset cursors +
+ *  counters so a run survives isolate death and resumes where it left off
+ *  (the ingest path is idempotent). See the pg/schema.ts twin. */
+export const migrationRuns = sqliteTable(
+  "migration_runs",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => externalSources.id, { onDelete: "cascade" }),
+    /** The validated MigrationPlan document (packages/migrate parsePlan). */
+    plan: text("plan", { mode: "json" }).$type<unknown>().notNull(),
+    /** Per-table progress: `{ [slug]: { cursor, copied, failed, done, … } }`. */
+    state: text("state", { mode: "json" }).$type<unknown>().notNull(),
+    /** pending | running | done | failed | cancelled */
+    status: text("status").notNull().default("pending"),
+    error: text("error"),
+    /** Lease heartbeat — a `running` run whose lease expired is reclaimable
+     *  by any isolate's tick (same stale-lease model as the job queue). */
+    leaseUntil: integer("lease_until", { mode: "timestamp_ms" }),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }),
+    finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [index("migration_runs_tenant_idx").on(t.tenantId, t.createdAt)],
+);
+
 export const activity = sqliteTable(
   "activity",
   {

@@ -784,6 +784,70 @@ export interface SchemaApplyResult {
   noop: boolean;
 }
 
+export interface MigrateSource {
+  id: string;
+  name: string;
+  kind: string;
+  /** Redacted URL — scheme + host + database only, credentials stripped. */
+  urlMasked: string;
+  createdAt: unknown;
+  updatedAt: unknown;
+}
+
+export interface MigrateRunTableState {
+  table: string;
+  cursor?: unknown;
+  copied: number;
+  failed: number;
+  done: boolean;
+  sourceCount?: number;
+  targetTotal?: number;
+}
+
+export interface MigrateRun {
+  id: string;
+  sourceId: string;
+  status: "pending" | "running" | "done" | "failed" | "cancelled";
+  error: string | null;
+  /** The MigrationPlan document driving the run. */
+  plan: unknown;
+  state: { tables: Record<string, MigrateRunTableState> };
+  startedAt: unknown;
+  finishedAt: unknown;
+  createdAt: unknown;
+  updatedAt: unknown;
+}
+
+/** External-DB migration (admin-scoped). Mirrors `/api/admin/migrate`:
+ *  saved source connections (URL encrypted at rest, masked on read),
+ *  introspection + plan building, and durable server-side copy runs
+ *  (advanced by the scheduler tick; cancel/resume-able). See
+ *  docs/migrating-in.md — the `backlex import-db` CLI is the client-side
+ *  twin for sources the server can't reach. */
+export interface MigrateClient {
+  /** List saved source connections (URLs masked). */
+  sources(): Promise<{ data: MigrateSource[] }>;
+  /** Save a source connection. The URL is encrypted at rest. */
+  createSource(name: string, url: string): Promise<{ data: MigrateSource }>;
+  /** Delete a source (refused while one of its runs is in flight). */
+  deleteSource(id: string): Promise<{ ok: boolean }>;
+  /** Connectivity check — opens the source and counts its tables. */
+  testSource(id: string): Promise<{ data: { ok: boolean; tables?: number; error?: string } }>;
+  /** List the source's tables (name + planner row estimate). */
+  sourceTables(id: string): Promise<{ data: { name: string; approxRows: number | null }[] }>;
+  /** Introspect and build an editable migration plan. */
+  plan(id: string, tables?: string[]): Promise<{ data: unknown }>;
+  /** Queue a server-side copy run for a (possibly edited) plan. */
+  startRun(sourceId: string, plan: unknown): Promise<{ data: MigrateRun }>;
+  /** List runs, newest first. */
+  runs(): Promise<{ data: MigrateRun[] }>;
+  /** One run — poll this for live progress. */
+  run(id: string): Promise<{ data: MigrateRun }>;
+  cancelRun(id: string): Promise<{ data: MigrateRun }>;
+  /** Re-queue a failed/cancelled run; cursors resume where it stopped. */
+  resumeRun(id: string): Promise<{ data: MigrateRun }>;
+}
+
 /** Schema versions — migration diffing / schema branching (admin-scoped).
  *  Mirrors `/api/admin/schema`. Diff any two refs, snapshot/branch the live
  *  schema, and apply a target to reconcile live (destructive changes gated). */
@@ -871,6 +935,8 @@ export interface BacklexClient {
   templates: TemplatesClient;
   /** Schema versions — migration diffing / schema branching. */
   schema: SchemaClient;
+  /** External-DB migration (sources + server-side copy runs). */
+  migrate: MigrateClient;
   /** Feature flags / remote config. */
   flags: FlagsClient;
   /** Offline-first sync controller for one collection. */
@@ -1612,6 +1678,40 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       }),
   };
 
+  // External-DB migration over `/api/admin/migrate` — saved sources +
+  // durable server-side copy runs (docs/migrating-in.md).
+  const migrateBase = "/api/admin/migrate";
+  const migrate: MigrateClient = {
+    sources: () => request<{ data: MigrateSource[] }>("GET", `${migrateBase}/sources`),
+    createSource: (name: string, url: string) =>
+      request<{ data: MigrateSource }>("POST", `${migrateBase}/sources`, { name, url }),
+    deleteSource: (id: string) =>
+      request<{ ok: boolean }>("DELETE", `${migrateBase}/sources/${encodeURIComponent(id)}`),
+    testSource: (id: string) =>
+      request<{ data: { ok: boolean; tables?: number; error?: string } }>(
+        "POST",
+        `${migrateBase}/sources/${encodeURIComponent(id)}/test`,
+      ),
+    sourceTables: (id: string) =>
+      request<{ data: { name: string; approxRows: number | null }[] }>(
+        "GET",
+        `${migrateBase}/sources/${encodeURIComponent(id)}/tables`,
+      ),
+    plan: (id: string, tables?: string[]) =>
+      request<{ data: unknown }>("POST", `${migrateBase}/sources/${encodeURIComponent(id)}/plan`, {
+        tables,
+      }),
+    startRun: (sourceId: string, plan: unknown) =>
+      request<{ data: MigrateRun }>("POST", `${migrateBase}/runs`, { sourceId, plan }),
+    runs: () => request<{ data: MigrateRun[] }>("GET", `${migrateBase}/runs`),
+    run: (id: string) =>
+      request<{ data: MigrateRun }>("GET", `${migrateBase}/runs/${encodeURIComponent(id)}`),
+    cancelRun: (id: string) =>
+      request<{ data: MigrateRun }>("POST", `${migrateBase}/runs/${encodeURIComponent(id)}/cancel`),
+    resumeRun: (id: string) =>
+      request<{ data: MigrateRun }>("POST", `${migrateBase}/runs/${encodeURIComponent(id)}/resume`),
+  };
+
   // Schema templates. Admin-scoped catalog + apply over `/api/admin/templates`;
   // `apply` is idempotent and seeds sample data for newly-created collections.
   const templates: TemplatesClient = {
@@ -1682,6 +1782,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     permissions,
     templates,
     schema,
+    migrate,
     flags,
     sync,
     /** Raw escape hatch — issues a request with auth headers applied. */

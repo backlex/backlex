@@ -544,6 +544,11 @@ msgstr "{changedCount} field(s) will change."
 msgid "{count} selected"
 msgstr "{count} selected"
 
+#. placeholder {0}: tablesState.length
+#: src/client/admin/pages/database-import.tsx
+msgid "{doneTables}/{0} tables · {copied} rows"
+msgstr "{doneTables}/{0} tables · {copied} rows"
+
 #: src/client/admin/members-panel.tsx
 msgid "{email} is already a member."
 msgstr "{email} is already a member."
@@ -744,6 +749,10 @@ msgstr "A key with this name already exists."
 #: src/client/admin/parity/insights.tsx
 msgid "A panel with that name already exists."
 msgstr "A panel with that name already exists."
+
+#: src/client/admin/pages/database-import.tsx
+msgid "A Postgres connection the server can reach. The URL is encrypted at rest and only ever shown masked."
+msgstr "A Postgres connection the server can reach. The URL is encrypted at rest and only ever shown masked."
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "A provider with id \"{id}\" already exists."
@@ -1018,6 +1027,10 @@ msgstr "Add SAML provider"
 #: src/client/admin/collection-settings.tsx
 msgid "Add sort"
 msgstr "Add sort"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Add source"
+msgstr "Add source"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Add step"
@@ -1622,6 +1635,7 @@ msgstr "B-tree index — speeds up filter/sort by this column."
 #: src/client/admin/display-template-editor.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/item-editor.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Back"
 msgstr "Back"
@@ -1786,6 +1800,10 @@ msgstr "Breadcrumb"
 #~ msgid "Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
 #~ msgstr "Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Build plan"
+msgstr "Build plan"
+
 #: src/client/admin/condition-editor.tsx
 msgid "Builder"
 msgstr "Builder"
@@ -1837,6 +1855,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/integrations.tsx
@@ -1872,6 +1891,7 @@ msgstr "Cancel schedule"
 msgid "Cancel upload"
 msgstr "Cancel upload"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Cancelled"
 msgstr "Cancelled"
@@ -2402,6 +2422,14 @@ msgstr "Connected"
 msgid "Connecting…"
 msgstr "Connecting…"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Connection failed."
+msgstr "Connection failed."
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Connection URL"
+msgstr "Connection URL"
+
 #: src/client/admin/pages/overview.tsx
 msgid "console (dev)"
 msgstr "console (dev)"
@@ -2473,6 +2501,10 @@ msgstr "copy"
 msgid "Copy"
 msgstr "Copy"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Copy an external Postgres database into collections — primary keys preserved, relations intact, resumable. For databases the server can't reach, use the backlex import-db CLI."
+msgstr "Copy an external Postgres database into collections — primary keys preserved, relations intact, resumable. For databases the server can't reach, use the backlex import-db CLI."
+
 #. placeholder {0}: row.path
 #: src/client/pages/openapi-export.tsx
 msgid "Copy curl example for {0}"
@@ -2489,6 +2521,10 @@ msgstr "Copy id"
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Copy JSON"
 msgstr "Copy JSON"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Copy order:"
+msgstr "Copy order:"
 
 #: src/client/admin/storage.tsx
 msgid "Copy URL"
@@ -2862,6 +2898,11 @@ msgstr "Data scope"
 msgid "Database"
 msgstr "Database"
 
+#: src/client/admin/pages/database-import.tsx
+#: src/client/admin/ui.tsx
+msgid "Database import"
+msgstr "Database import"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "DB type"
 msgstr "DB type"
@@ -2944,6 +2985,7 @@ msgstr "Defaults to the URL's filename"
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
@@ -2966,6 +3008,11 @@ msgstr "Delete \"{0}\" and its branch-owned snapshots? This can't be undone."
 #: src/client/admin/parity/insights.tsx
 msgid "Delete \"{0}\"?"
 msgstr "Delete \"{0}\"?"
+
+#. placeholder {0}: pendingDelete.name
+#: src/client/admin/pages/database-import.tsx
+msgid "Delete \"{0}\"? Its saved connection string is destroyed; past runs are removed with it. Copied data stays."
+msgstr "Delete \"{0}\"? Its saved connection string is destroyed; past runs are removed with it. Copied data stays."
 
 #. placeholder {0}: selected.size
 #: src/client/admin/app.tsx
@@ -3028,6 +3075,14 @@ msgstr "Delete snapshot \"{0}\"? This can't be undone."
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Delete snapshot?"
 msgstr "Delete snapshot?"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Delete source"
+msgstr "Delete source"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Delete source?"
+msgstr "Delete source?"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Delete this collection"
@@ -3249,6 +3304,7 @@ msgstr "Docs"
 msgid "Don't have an account?"
 msgstr "Don't have an account?"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Done"
 msgstr "Done"
@@ -3806,6 +3862,10 @@ msgstr "everyone"
 msgid "Examples: items:posts:created, items:posts:*, items:*:*"
 msgstr "Examples: items:posts:created, items:posts:*, items:*:*"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Excluded"
+msgstr "Excluded"
+
 #: src/client/pages/graphql.tsx
 msgid "Execute"
 msgstr "Execute"
@@ -3888,11 +3948,13 @@ msgstr "External identity rows are kept as an audit trail."
 msgid "Fail flow"
 msgstr "Fail flow"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/storage.tsx
 msgid "failed"
 msgstr "failed"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Failed"
 msgstr "Failed"
@@ -3999,6 +4061,7 @@ msgid "field…"
 msgstr "field…"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/schema-graph.tsx
 msgid "fields"
 msgstr "fields"
@@ -4701,6 +4764,10 @@ msgstr "Insights"
 msgid "Inspect failed: {inspectError}"
 msgstr "Inspect failed: {inspectError}"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Inspecting…"
+msgstr "Inspecting…"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Integer between 1 and 200."
 msgstr "Integer between 1 and 200."
@@ -5185,6 +5252,10 @@ msgstr "Leave empty to run on the next tick."
 msgid "Leave to user"
 msgstr "Leave to user"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "legacy production"
+msgstr "legacy production"
+
 #: src/client/admin/pages/settings.tsx
 msgid "License"
 msgstr "License"
@@ -5574,6 +5645,14 @@ msgstr "Metadata XML"
 msgid "Method"
 msgstr "Method"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Migrate"
+msgstr "Migrate"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Migration queued — it advances on the scheduler tick."
+msgstr "Migration queued — it advances on the scheduler tick."
+
 #: src/client/admin/parity/database.tsx
 msgid "Migrations"
 msgstr "Migrations"
@@ -5690,6 +5769,7 @@ msgstr "My theme"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/add-field.tsx
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/settings.tsx
@@ -5832,6 +5912,10 @@ msgstr "New insight panel"
 #: src/client/pages/api-keys.tsx
 msgid "New key"
 msgstr "New key"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "New migration"
+msgstr "New migration"
 
 #: src/client/admin/parity/insights.tsx
 msgid "New panel"
@@ -6217,6 +6301,10 @@ msgstr "No members yet."
 msgid "No migrations applied yet."
 msgstr "No migrations applied yet."
 
+#: src/client/admin/pages/database-import.tsx
+msgid "No migrations yet"
+msgstr "No migrations yet"
+
 #: src/client/admin/pages/logs.tsx
 msgid "No more rows"
 msgstr "No more rows"
@@ -6318,9 +6406,17 @@ msgstr "No snapshots yet"
 msgid "No social providers are enabled for this workspace."
 msgstr "No social providers are enabled for this workspace."
 
+#: src/client/admin/pages/database-import.tsx
+msgid "No sources yet"
+msgstr "No sources yet"
+
 #: src/client/admin/pages/traces.tsx
 msgid "No spans recorded for this trace."
 msgstr "No spans recorded for this trace."
+
+#: src/client/admin/pages/database-import.tsx
+msgid "No tables found in this source."
+msgstr "No tables found in this source."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "No tables found that can be adopted."
@@ -6862,6 +6958,7 @@ msgstr "Payload (JSON)"
 msgid "pending"
 msgstr "pending"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Pending"
 msgstr "Pending"
@@ -7017,6 +7114,10 @@ msgstr "Pick a row from <0>c_{target}</0>"
 msgid "Pick a row to select it"
 msgstr "Pick a row to select it"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Pick a source"
+msgstr "Pick a source"
+
 #: src/client/admin/item-form.tsx
 msgid "Pick a status…"
 msgstr "Pick a status…"
@@ -7115,6 +7216,10 @@ msgstr "Pick row"
 #: src/client/admin/add-field.tsx
 msgid "Pick the collection this relation points to."
 msgstr "Pick the collection this relation points to."
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Pick the source tables to copy. Every table becomes a collection."
+msgstr "Pick the source tables to copy. Every table becomes a collection."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Pick type…"
@@ -7500,6 +7605,11 @@ msgstr "Re-run all"
 msgid "Re-running…"
 msgstr "Re-running…"
 
+#. placeholder {0}: r.data.tables ?? 0
+#: src/client/admin/pages/database-import.tsx
+msgid "Reachable — {0} tables found."
+msgstr "Reachable — {0} tables found."
+
 #: src/client/admin/parity/app-users.tsx
 msgid "Reactivate end-user"
 msgstr "Reactivate end-user"
@@ -7614,6 +7724,7 @@ msgstr "Refetch /api/openapi.json"
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/overview.tsx
@@ -7980,6 +8091,7 @@ msgstr "resumable"
 msgid "Resumable SSE on <0>GET /mcp</0>"
 msgstr "Resumable SSE on <0>GET /mcp</0>"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Resume"
@@ -8051,6 +8163,10 @@ msgstr "Review & apply"
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Review & apply — {0}"
 msgstr "Review & apply — {0}"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Review the plan — copy order follows foreign keys, primary keys are preserved verbatim."
+msgstr "Review the plan — copy order follows foreign keys, primary keys are preserved verbatim."
 
 #. placeholder {0}: e.v
 #: src/client/admin/parity/revisions.tsx
@@ -8242,6 +8358,10 @@ msgstr "Run at"
 msgid "Run at (optional)"
 msgstr "Run at (optional)"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Run cancelled. Progress is kept — resume any time."
+msgstr "Run cancelled. Progress is kept — resume any time."
+
 #: src/client/admin/pages/flows.tsx
 msgid "Run now"
 msgstr "Run now"
@@ -8250,10 +8370,18 @@ msgstr "Run now"
 msgid "Run preview"
 msgstr "Run preview"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Run re-queued — the copy continues where it stopped."
+msgstr "Run re-queued — the copy continues where it stopped."
+
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Run test"
 msgstr "Run test"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Running"
+msgstr "Running"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/ask-ai.tsx
@@ -8269,6 +8397,7 @@ msgid "runs"
 msgstr "runs"
 
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/database-import.tsx
 msgid "Runs"
 msgstr "Runs"
 
@@ -8356,6 +8485,10 @@ msgstr "Sat"
 msgid "Save"
 msgstr "Save"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Save a Postgres connection string to migrate its data in. Credentials are encrypted at rest and never shown again."
+msgstr "Save a Postgres connection string to migrate its data in. Credentials are encrypted at rest and never shown again."
+
 #: src/client/admin/item-editor.tsx
 msgid "Save and close"
 msgstr "Save and close"
@@ -8406,6 +8539,10 @@ msgstr "Save metadata"
 msgid "Save sort"
 msgstr "Save sort"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Save source"
+msgstr "Save source"
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Save the current live schema as an immutable checkpoint."
 msgstr "Save the current live schema as an immutable checkpoint."
@@ -8443,6 +8580,7 @@ msgstr "Saving MCP guards"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -9283,9 +9421,21 @@ msgstr "Social sign-in plugin not enabled"
 msgid "Soft delete"
 msgstr "Soft delete"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Source deleted."
+msgstr "Source deleted."
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Source saved. The connection string is encrypted at rest."
+msgstr "Source saved. The connection string is encrypted at rest."
+
 #: src/client/admin/storage.tsx
 msgid "Source URL"
 msgstr "Source URL"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Sources"
+msgstr "Sources"
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "SP entity ID"
@@ -9327,11 +9477,21 @@ msgstr "Start blank"
 msgid "Start from"
 msgstr "Start from"
 
+#. placeholder {0}: includedTables.length
+#: src/client/admin/pages/database-import.tsx
+msgid "Start migration ({0} tables)"
+msgstr "Start migration ({0} tables)"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Start one with “New migration” — pick tables, review the plan, and the server copies the rows in the background."
+msgstr "Start one with “New migration” — pick tables, review the plan, and the server copies the rows in the background."
+
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Start with a template"
 msgstr "Start with a template"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/database-import.tsx
 msgid "Starting…"
 msgstr "Starting…"
 
@@ -9482,6 +9642,10 @@ msgstr "Summary"
 msgid "Sun"
 msgstr "Sun"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Supabase, Neon, RDS, Heroku — anything Postgres. If the database is on a private network, run the copy from your side with the backlex import-db CLI instead."
+msgstr "Supabase, Neon, RDS, Heroku — anything Postgres. If the database is on a private network, run the copy from your side with the backlex import-db CLI instead."
+
 #: src/client/admin/pages/agents.tsx
 msgid "Support agent"
 msgstr "Support agent"
@@ -9622,6 +9786,7 @@ msgid "Terms of Service URL"
 msgstr "Terms of Service URL"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/database-import.tsx
 msgid "Test"
 msgstr "Test"
 
@@ -9694,6 +9859,7 @@ msgstr "Test whether a concrete row passes the combined condition."
 msgid "Tester"
 msgstr "Tester"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/settings.tsx
 msgid "Testing…"
 msgstr "Testing…"

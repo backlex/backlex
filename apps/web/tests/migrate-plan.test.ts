@@ -5,6 +5,8 @@
 import { describe, expect, test } from "bun:test";
 import {
   buildPlan,
+  collectionShapeMismatch,
+  dedupeSlugsAgainst,
   mapColumn,
   mapPkType,
   parsePlan,
@@ -172,5 +174,49 @@ describe("parsePlan", () => {
     const missingOrder = JSON.parse(JSON.stringify(plan));
     missingOrder.order = [];
     expect(() => parsePlan(missingOrder)).toThrow(/missing from order/);
+  });
+});
+
+describe("collision handling (existing collections)", () => {
+  const plan = () => buildPlan([orders, customers]);
+  const incompatible = { pkType: "uuid", adopted: false, fields: [{ name: "title" }] };
+  const compatibleFor = (slug: string) => {
+    const t = plan().tables.find((x) => x.slug === slug)!;
+    return { pkType: t.pkType, adopted: false, fields: t.fields.map((f) => ({ name: f.name })) };
+  };
+  test("mismatch: adopted / pkType / missing fields are all named", () => {
+    const t = plan().tables.find((x) => x.slug === "customers")!;
+    expect(collectionShapeMismatch(t, { ...incompatible, adopted: true })).toContain("adopted");
+    expect(collectionShapeMismatch(t, incompatible)).toContain('pkType "uuid"');
+    expect(
+      collectionShapeMismatch(t, { pkType: "integer", adopted: false, fields: [] }),
+    ).toContain("missing");
+    expect(collectionShapeMismatch(t, compatibleFor("customers"))).toBeNull();
+  });
+
+  test("dedupe renames incompatible collisions and rewires relations", () => {
+    const p = dedupeSlugsAgainst(plan(), new Map([["customers", incompatible]]));
+    const cust = p.tables.find((t) => t.table === "customers")!;
+    expect(cust.slug).toBe("customers_2");
+    expect(cust.warnings.some((w) => w.includes('importing as "customers_2"'))).toBe(true);
+    // The orders→customers relation follows the rename.
+    const rel = p.tables.find((t) => t.table === "orders")!.fields.find((f) => f.type === "relation");
+    expect(rel?.to).toBe("customers_2");
+  });
+
+  test("dedupe leaves compatible collisions alone (the resume path)", () => {
+    const p = dedupeSlugsAgainst(plan(), new Map([["customers", compatibleFor("customers")]]));
+    expect(p.tables.find((t) => t.table === "customers")!.slug).toBe("customers");
+  });
+
+  test("dedupe skips names other plan tables or collections already take", () => {
+    const p = dedupeSlugsAgainst(
+      plan(),
+      new Map([
+        ["customers", incompatible],
+        ["customers_2", incompatible],
+      ]),
+    );
+    expect(p.tables.find((t) => t.table === "customers")!.slug).toBe("customers_3");
   });
 });

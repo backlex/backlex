@@ -154,12 +154,16 @@ guides; this list is everything else.
   `services/items/csv.ts`) — `GET /:slug/export?format=json|csv` (reuses the
   list read-filter stack) and `POST /:slug/import` (per-row `performCreate`,
   system columns stripped, errors captured). SDK `exportItems`/`importItems`.
-- **External-DB migration ingest** (`routes/migrate.ts` +
-  `services/migrate-ingest.ts`) — `POST /api/admin/migrate/ingest/:slug`:
-  bulk, PK-preserving, idempotent (`ON CONFLICT DO NOTHING`), side-effect-free
-  row copy into managed collections; D1 param-budget chunking. Driven by the
-  `backlex import-db` CLI (introspection + plan live in `packages/migrate`).
-  See `docs/migrating-in.md`.
+- **External-DB migration** (`routes/migrate.ts` + `services/migrate.ts` +
+  `services/migrate-ingest.ts`) — `POST /api/admin/migrate/ingest/:slug`
+  (bulk, PK-preserving, idempotent, side-effect-free row copy; D1
+  param-budget chunking; the CLI pump's write path) + the server-side
+  connector: `/sources` CRUD (URL encrypted at rest + SSRF guard),
+  `/sources/:id/tables|plan`, `/runs` lifecycle. Runs advance on the
+  scheduler tick in lease-reclaimed, cursor-resumable slices. Full parity:
+  SDK `client.migrate.*`, GraphQL `migrate*`, MCP `migrate.*`, CLI
+  `backlex import-db`, admin **Data → Database import**. See
+  `docs/migrating-in.md`.
 
 ## Cross-cutting helpers worth knowing
 

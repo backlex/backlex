@@ -320,6 +320,15 @@ export default defineConfig({
           ) {
             return undefined;
           }
+          // Worker: the postgres.js wire driver is reached ONLY through the
+          // dynamically-imported `#postgres-driver` (services/migrate.ts —
+          // server-side external-DB migration). D1-only instances never load
+          // it; keep it unpinned so it lands in its own lazy chunk instead of
+          // the eager `vendor` chunk (the static `postgres` specifier is
+          // stubbed separately via resolve.alias above).
+          if (id.includes("/node_modules/postgres/")) {
+            return undefined;
+          }
           // Worker: the SAML subsystem (samlify + its X.509/ASN.1/RSA graph) is
           // reached only through the dynamically-imported samlify adapter
           // (lib/auth-select → adapters/saml.samlify), used on-demand when a

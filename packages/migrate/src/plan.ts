@@ -264,6 +264,107 @@ export const buildPlan = (
   return { version: 1, source: { kind: "postgres" }, order, tables };
 };
 
+/** Reshape one source row into the ingest body shape: rename columns to
+ *  field names, hoist the PK to `id` and the detected system columns to
+ *  `created_at` / `updated_at`. Shared by the CLI pump and the server-side
+ *  run executor so both copy paths stay byte-identical. */
+export const transformRow = (
+  t: PlanTable,
+  row: Record<string, unknown>,
+): Record<string, unknown> => {
+  const out: Record<string, unknown> = { id: row[t.pkColumn] };
+  if (t.createdAtColumn && row[t.createdAtColumn] !== undefined) {
+    out.created_at = row[t.createdAtColumn];
+  }
+  if (t.updatedAtColumn && row[t.updatedAtColumn] !== undefined) {
+    out.updated_at = row[t.updatedAtColumn];
+  }
+  for (const f of t.fields) {
+    const v = row[f.column];
+    if (v !== undefined) out[f.name] = v;
+  }
+  return out;
+};
+
+/** Build the `POST /api/collections` payload for a plan table — the one
+ *  place the plan's field model maps onto the collections API shape. */
+export const collectionPayloadFor = (t: PlanTable) => ({
+  slug: t.slug,
+  pkType: t.pkType,
+  fields: t.fields.map((f) => ({
+    name: f.name,
+    type: f.type,
+    ...(f.required ? { required: true } : {}),
+    ...(f.to ? { to: f.to } : {}),
+    ...(f.choices
+      ? {
+          interface: "dropdown",
+          options: { choices: f.choices.map((value) => ({ value })) },
+        }
+      : {}),
+  })),
+});
+
+/** Can this plan table safely copy into an EXISTING collection with the
+ *  same slug? Non-null = human-readable reason it can't. Compatible reuse is
+ *  the resume path (the collection was created by an earlier attempt of the
+ *  same plan); anything else — an adopted table, a different PK shape, or a
+ *  collection missing plan fields — would fail every row confusingly, so
+ *  callers reject (or rename) upfront instead. */
+export const collectionShapeMismatch = (
+  t: PlanTable,
+  existing: { pkType?: string | null; adopted?: boolean; fields: { name: string }[] },
+): string | null => {
+  if (existing.adopted) {
+    return `collection "${t.slug}" wraps an adopted table — pick a different slug`;
+  }
+  if (existing.pkType && existing.pkType !== t.pkType) {
+    return `collection "${t.slug}" already exists with pkType "${existing.pkType}" (plan needs "${t.pkType}") — rename the plan slug`;
+  }
+  const have = new Set(existing.fields.map((f) => f.name));
+  const missing = t.fields.filter((f) => !have.has(f.name)).map((f) => f.name);
+  if (missing.length > 0) {
+    return `collection "${t.slug}" already exists with a different shape (missing: ${missing.join(", ")}) — rename the plan slug`;
+  }
+  return null;
+};
+
+/** Rename plan slugs that collide with existing collections the plan can't
+ *  copy into, keeping relation `to` references consistent. `existing` maps
+ *  slug → collection shape; compatible collisions are left alone (resume). */
+export const dedupeSlugsAgainst = (
+  plan: MigrationPlan,
+  existing: Map<string, { pkType?: string | null; adopted?: boolean; fields: { name: string }[] }>,
+): MigrationPlan => {
+  const taken = new Set<string>([
+    ...existing.keys(),
+    ...plan.tables.map((t) => t.slug),
+  ]);
+  const renames = new Map<string, string>();
+  for (const t of plan.tables) {
+    if (!t.include) continue;
+    const hit = existing.get(t.slug);
+    if (!hit) continue;
+    const reason = collectionShapeMismatch(t, hit);
+    if (!reason) continue; // compatible — resume into it
+    let i = 2;
+    let next = `${t.slug}_${i}`;
+    while (taken.has(next)) next = `${t.slug}_${++i}`;
+    taken.add(next);
+    renames.set(t.slug, next);
+    t.warnings.push(`${reason.split(" — ")[0]} — importing as "${next}" instead`);
+    t.slug = next;
+  }
+  if (renames.size > 0) {
+    for (const t of plan.tables) {
+      for (const f of t.fields) {
+        if (f.to && renames.has(f.to)) f.to = renames.get(f.to)!;
+      }
+    }
+  }
+  return plan;
+};
+
 /** Validate a (possibly hand-edited) plan document. Throws with a readable
  *  message on structural problems; returns the typed plan. */
 export const parsePlan = (raw: unknown): MigrationPlan => {

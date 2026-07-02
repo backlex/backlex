@@ -29,6 +29,7 @@ import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 import { pruneOldSpans } from "./traces";
 import { maybeRunScheduledBackups } from "./backup";
 import { runScheduledSnapshots } from "./schema-versions";
+import { processMigrationRuns } from "./migrate";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
@@ -229,6 +230,16 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     } catch (e) {
       console.error("[schema-auto-snapshot] sweep failed", e);
     }
+  }
+
+  // External-DB migration runs: advance at most one due run by one bounded
+  // slice per tick (lease-reclaimed, cursor-resumable — services/migrate.ts).
+  // NOT throttled beyond the tick itself: a user is actively watching the
+  // progress panel, and an idle sweep is a single indexed SELECT.
+  try {
+    await processMigrationRuns(ctx, { now });
+  } catch (e) {
+    console.error("[migrate-run] sweep failed", e);
   }
 
   if (now.getTime() - lastActivityPruneAt >= ACTIVITY_PRUNE_INTERVAL_MS) {

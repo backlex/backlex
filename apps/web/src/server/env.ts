@@ -343,6 +343,13 @@ export interface Env {
    *  the global retention. Pruned by the same daily cron tick. Defaults to 30.
    *  Set to `0` to disable (rows then fall back to ACTIVITY_RETENTION_DAYS). */
   ACCESS_AUDIT_RETENTION_DAYS?: string;
+  /** Set to `"true"` to let the server-side migration connector dial
+   *  private/internal addresses (localhost, RFC1918, link-local, ULA). Off
+   *  by default — a hosted admin must not be able to use the server as a
+   *  proxy into the platform's own network (SSRF). Self-hosters whose
+   *  source DB lives next to backlex opt in; the `backlex import-db` CLI
+   *  is unaffected (it runs on the user's machine). */
+  MIGRATE_ALLOW_PRIVATE_SOURCES?: string;
 }
 
 /**
@@ -462,6 +469,7 @@ export const STRING_ENV_KEYS = [
   "S3_SECRET_ACCESS_KEY",
   "ACTIVITY_RETENTION_DAYS",
   "ACCESS_AUDIT_RETENTION_DAYS",
+  "MIGRATE_ALLOW_PRIVATE_SOURCES",
 ] as const satisfies readonly (keyof Env)[];
 
 /**

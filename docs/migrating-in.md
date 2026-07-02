@@ -133,10 +133,55 @@ Response:
 `total` is the target's row count after the call — the CLI's verify compares
 it against the source.
 
-## Limits & scope (Phase 1)
+## Server-side runs (the admin wizard)
+
+When the source database is reachable **from the backlex server** (Supabase,
+Neon, RDS with a public endpoint, …), you don't need the CLI at all — the
+admin's **Data → Database import** page drives the same engine server-side:
+
+1. **Save a source** — name + `postgres://` URL. The connection string is
+   encrypted at rest with `AUTH_SECRET` (same envelope as integration
+   secrets) and only ever returned masked (`postgres://host:5432/db`).
+2. **New migration** — pick tables, review the generated plan (same
+   `packages/migrate` plan builder as the CLI: warnings, exclusions, copy
+   order), and start. Slugs that collide with an existing collection of a
+   **different shape** (template-seeded workspaces usually already have
+   `customers`, `orders`, …) are auto-renamed (`customers_2`) with a warning;
+   compatible collisions are reused — that's the resume path. `startRun`
+   hard-rejects hand-edited plans that reintroduce an incompatible collision,
+   and the CLI's `run` does the same check before copying.
+3. **Watch it run.** The run executes on the scheduler tick in bounded
+   slices: per-table keyset cursors persist in the `migration_runs` row after
+   every batch, a stale lease is reclaimed by any isolate, and the write path
+   is the same idempotent ingest — so an isolate death mid-copy costs
+   nothing. Cancel any time; resume continues from the cursors.
+
+The equivalent API surface exists everywhere (multi-surface parity):
+REST `/api/admin/migrate/sources|runs`, SDK `client.migrate.*`, GraphQL
+`migrateSources/migratePlan/migrateStartRun/…`, MCP `migrate.*`, and CLI
+`backlex import-db sources|server-plan|start|status|cancel|resume`
+(`status --watch` polls until the run settles).
+
+### SSRF guard
+
+A hosted admin must not be able to use the server as a proxy into private
+infrastructure, so source URLs pointing at private/internal addresses
+(localhost, RFC1918, link-local — including cloud metadata endpoints — ULA,
+`.local`/`.internal`) are **rejected by default**. Self-hosters whose source
+DB legitimately lives next to backlex opt in with
+`MIGRATE_ALLOW_PRIVATE_SOURCES=true`. The CLI pump has no such restriction —
+it runs on your machine, inside your network.
+
+### One run at a time
+
+A workspace can have one `pending`/`running` migration at a time, and a
+source can't be deleted while its run is in flight. Runs are kept (newest 50
+listed) with their final per-table verify state.
+
+## Limits & scope
 
 - **Postgres sources only.** Supabase/Neon/RDS/Heroku are all Postgres, so
-  they work today. MySQL and SQLite-file sources are planned.
+  they work today. MySQL and SQLite-file sources are planned (CLI first).
 - **One-shot copy**, not sync. There's no change-data-capture; for a live
   cutover, stop writes to the source, run (or `--resume`) once more, verify,
   then switch. An `--since` incremental re-copy is on the roadmap.
@@ -144,8 +189,6 @@ it against the source.
   reason (add a surrogate key upstream, or copy manually).
 - Binary columns (`bytea`) don't ride along — move blobs to storage
   separately.
-- A server-side connector + admin wizard (for sources reachable from the
-  server) is the planned Phase 2; this page will grow with it.
 
 ## Worked example
 

@@ -21,6 +21,7 @@ import { flowQueryFields, flowMutationFields } from "./flows";
 import { messagingMutationFields } from "./messaging";
 import { dashboardQueryFields, dashboardMutationFields } from "./dashboards";
 import { schemaVersionQueryFields, schemaVersionMutationFields } from "./schema-versions";
+import { migrateQueryFields, migrateMutationFields } from "./migrate";
 import { agentQueryFields, agentMutationFields } from "./agents";
 import { permissionQueryFields } from "./permission-sim";
 import { templateQueryFields, templateMutationFields } from "./templates";
@@ -59,6 +60,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...flowQueryFields,
           ...dashboardQueryFields,
           ...schemaVersionQueryFields,
+          ...migrateQueryFields,
           ...agentQueryFields,
           ...permissionQueryFields,
           ...templateQueryFields,
@@ -70,6 +72,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...flowMutationFields,
           ...dashboardMutationFields,
           ...schemaVersionMutationFields,
+          ...migrateMutationFields,
           ...agentMutationFields,
           ...templateMutationFields,
           ...messagingMutationFields,
@@ -82,6 +85,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...flowQueryFields,
     ...dashboardQueryFields,
     ...schemaVersionQueryFields,
+    ...migrateQueryFields,
     ...agentQueryFields,
     ...permissionQueryFields,
     ...templateQueryFields,
@@ -90,6 +94,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...flowMutationFields,
     ...dashboardMutationFields,
     ...schemaVersionMutationFields,
+    ...migrateMutationFields,
     ...agentMutationFields,
     ...templateMutationFields,
     ...messagingMutationFields,

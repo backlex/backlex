@@ -67,6 +67,7 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "ec4962fbae2129c44b644ae598c0dbc68f8c253a2481da01015edb47792262fc": "20260701120000_sessions_created_idx",
   "3ad4213ff5caa7be21501276cc28d34f9f8ca23a6341e7a40a7840c7c5e89118": "20260702120000_activity_tenant_created_idx",
   "b60aa2e5c717f49ee8fd05541422a8800254c56a9574f05d1ea4bdc291875712": "20260702150000_collection_pk_type",
+  "2a68dcb1d2d24a7e62d729ee23df58eb63905320651787df512fd7d02bc63510": "20260703090000_external_migration",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -129,4 +130,5 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "03417533d9c114c3dddea3aaefb03cb202a61999ff713a5887075e5ce0b2cc6c": "20260702120000_activity_tenant_created_idx",
   "535504c207ae370555ea14368d4fd23083ebed34b307823588d7fed07083ee75": "20260702130000_embeddings_per_model",
   "4aeaa3de4be3e12f6dd64e5171a16aa3415c7b44703c5a7d87559af0cbf9fd9b": "20260702150000_collection_pk_type",
+  "5fb0e5dedf583c9e4a189684fd86f3a6905015158ed1269b66f9904966e41536": "20260703090000_external_migration",
 };

@@ -242,6 +242,32 @@ describe("external-DB migration: pkType + ingest", () => {
     expect(r.status).toBe(422);
   });
 
+  test("upsert mode overwrites in place, preserving created_at", async () => {
+    const first = await ingest([
+      { id: 7000, title: "original", amount: 1, created_at: "2020-05-05T05:05:05.000Z" },
+    ]);
+    expect(((await first.json()) as { data: any }).data.inserted).toBe(1);
+
+    const res = await h.fetch(`/api/admin/migrate/ingest/${slug}`, {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({
+        rows: [{ id: 7000, title: "overwritten", amount: 2 }],
+        mode: "upsert",
+      }),
+    });
+    expect(res.status).toBe(200);
+    const { data } = (await res.json()) as { data: any };
+    expect(data).toMatchObject({ inserted: 0, updated: 1, skipped: 0 });
+
+    const got = await h.fetch(`/api/items/${slug}/7000`);
+    const row = ((await got.json()) as { data: any }).data;
+    expect(row.title).toBe("overwritten");
+    expect(row.amount).toBe(2);
+    // The delta pass must not re-stamp creation time.
+    expect(new Date(row.createdAt).toISOString()).toBe("2020-05-05T05:05:05.000Z");
+  });
+
   test("oversized batches are rejected with a clear error", async () => {
     const rows = Array.from({ length: 2001 }, (_, i) => ({ id: i, title: "x" }));
     const res = await ingest(rows);

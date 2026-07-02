@@ -22,11 +22,15 @@ import {
   buildPlan,
   collectionPayloadFor,
   collectionShapeMismatch,
+  createMongoSource,
   createMysqlSource,
   createPgSource,
   createSqliteFileSource,
+  looksLikeObjectIdHex,
+  MONGO_DEFAULT_SAMPLE,
   parsePlan,
   transformRow,
+  type DocumentSource,
   type MigrationPlan,
   type SourceConnector,
   type SourceQuery,
@@ -36,7 +40,10 @@ import { flag, has, resolveContext, type Context } from "./client";
 /** Injectable source factory — tests swap in a pglite-backed connector
  *  (pglite has no TCP listener for postgres.js to dial). */
 export interface ImportDbDeps {
-  openSource?: (url: string) =>
+  openSource?: (
+    url: string,
+    opts?: { sampleSize?: number },
+  ) =>
     | { connector: SourceConnector; close: () => Promise<unknown> }
     | Promise<{ connector: SourceConnector; close: () => Promise<unknown> }>;
 }
@@ -46,7 +53,7 @@ const HELP = `backlex import-db <command> — migrate an external database into 
   inspect --source <postgres-url> [--json]
       List the source's tables (name, ~rows, PK, warnings).
 
-  plan --source <postgres-url> [--tables a,b,…] [--out <file>]
+  plan --source <url> [--tables a,b,…] [--out <file>] [--sample-size <n>]
       Introspect and emit an editable migration plan (JSON). Review it —
       prune tables, rename slugs/fields — then feed it to \`run\`.
 
@@ -57,8 +64,9 @@ const HELP = `backlex import-db <command> — migrate an external database into 
       --since re-copies only rows whose updated_at/created_at >= the
       watermark, UPSERTING in place — the pre-cutover delta pass.
 
-  Sources: postgres://…  ·  mysql://…  ·  sqlite:<path> / <path>.sqlite|.db
-      (MySQL/SQLite are CLI-only; the sqlite file source needs Bun.)
+  Sources: postgres://…  ·  mysql://…  ·  mongodb[+srv]://…/db  ·  sqlite:<path>
+      (MySQL/Mongo/SQLite are CLI-only; the sqlite file source needs Bun.
+       Mongo plans infer the schema from a sample — see --sample-size on plan.)
 
   Server-side runs (the source must be reachable FROM the backlex server —
   see docs/migrating-in.md; private hosts need MIGRATE_ALLOW_PRIVATE_SOURCES):
@@ -132,10 +140,71 @@ const openSqliteFile = async (path: string) => {
   return { connector: createSqliteFileSource(query), close: async () => db.close() };
 };
 
+/** mongodb-driver-backed DocumentSource (lazy import). Schema is inferred
+ *  from a sample; ObjectIds normalize to hex strings on the way out and the
+ *  keyset cursor re-wraps 24-hex strings into ObjectIds on the way back in
+ *  (resume state is plain JSON). The database must be in the URL path. */
+const openMongo = async (url: string, opts: { sampleSize?: number } = {}) => {
+  const { MongoClient, ObjectId } = await import("mongodb");
+  const mongo = new MongoClient(url);
+  await mongo.connect();
+  const db = mongo.db();
+  if (!db.databaseName || db.databaseName === "test") {
+    // driver defaults to "test" when the URL has no path — almost always a
+    // mistake for a migration; require it explicitly.
+    if (!new URL(url).pathname.replace(/^\//, "")) {
+      await mongo.close();
+      die("Include the database in the URL: mongodb://host:27017/<database>");
+    }
+  }
+  const toId = (v: unknown) => (looksLikeObjectIdHex(v) ? new ObjectId(v) : v);
+  const normalize = (doc: Record<string, unknown>): Record<string, unknown> => {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(doc)) {
+      out[k] = v instanceof ObjectId ? v.toHexString() : v;
+    }
+    return out;
+  };
+  const client: DocumentSource = {
+    listCollections: async () =>
+      (await db.listCollections({}, { nameOnly: true }).toArray()).map((c) => c.name),
+    count: (collection) => db.collection(collection).countDocuments(),
+    sample: async (collection, limit) =>
+      (await db.collection(collection).find({}).limit(limit).toArray()).map(normalize),
+    findBatch: async (collection, o) => {
+      const filter: Record<string, unknown> = {};
+      if (o.after !== undefined) filter._id = { $gt: toId(o.after) };
+      if (o.since) {
+        // Mongo dates are Date instances — coerce the watermark to match.
+        const v =
+          typeof o.since.value === "number"
+            ? new Date(o.since.value)
+            : Number.isNaN(Date.parse(o.since.value))
+              ? o.since.value
+              : new Date(o.since.value);
+        filter[o.since.column] = { $gte: v };
+      }
+      const docs = await db
+        .collection(collection)
+        .find(filter)
+        .sort({ _id: 1 })
+        .limit(o.limit)
+        .toArray();
+      return docs.map(normalize);
+    },
+  };
+  return {
+    connector: createMongoSource(client, opts),
+    close: () => mongo.close(),
+  };
+};
+
 /** Pick the driver from the source URL: `mysql://…` → mysql2,
- *  `sqlite:<path>` / `*.sqlite` / `*.db` → bun:sqlite file, else postgres. */
-const openSource = (url: string) => {
+ *  `mongodb://…` → mongodb, `sqlite:<path>` / `*.sqlite` / `*.db` →
+ *  bun:sqlite file, else postgres. */
+const openSource = (url: string, opts: { sampleSize?: number } = {}) => {
   if (/^(mysql|mariadb):\/\//i.test(url)) return openMysql(url);
+  if (/^mongodb(\+srv)?:\/\//i.test(url)) return openMongo(url, opts);
   if (/^sqlite:/i.test(url)) return openSqliteFile(url.replace(/^sqlite:/i, ""));
   if (/\.(sqlite3?|db)$/i.test(url) && !url.includes("://")) return openSqliteFile(url);
   return openPostgres(url);
@@ -163,9 +232,16 @@ const api = async (
 
 // ── inspect ───────────────────────────────────────────────────────────────
 
+const sampleOpts = (args: string[]) => {
+  const raw = flag(args, "--sample-size");
+  const n = raw === undefined ? MONGO_DEFAULT_SAMPLE : Number(raw);
+  if (!Number.isInteger(n) || n < 1) die(`--sample-size must be a positive integer (got "${raw}")`);
+  return { sampleSize: n };
+};
+
 const runInspect = async (args: string[], deps: ImportDbDeps): Promise<void> => {
   const ctx = resolveContext(args);
-  const { connector, close } = await (deps.openSource ?? openSource)(sourceUrl(args));
+  const { connector, close } = await (deps.openSource ?? openSource)(sourceUrl(args), sampleOpts(args));
   try {
     const tables = await connector.listTables();
     const detailed = [];
@@ -196,7 +272,8 @@ const runInspect = async (args: string[], deps: ImportDbDeps): Promise<void> => 
 // ── plan ──────────────────────────────────────────────────────────────────
 
 const runPlan = async (args: string[], deps: ImportDbDeps): Promise<void> => {
-  const { connector, close } = await (deps.openSource ?? openSource)(sourceUrl(args));
+  const opts = sampleOpts(args);
+  const { connector, close } = await (deps.openSource ?? openSource)(sourceUrl(args), opts);
   try {
     const only = flag(args, "--tables")
       ?.split(",")
@@ -212,6 +289,16 @@ const runPlan = async (args: string[], deps: ImportDbDeps): Promise<void> => {
     const inspections = [];
     for (const t of picked) inspections.push(await connector.inspect(t.name));
     const plan = buildPlan(inspections, new Map(picked.map((t) => [t.name, t])), connector.kind);
+    if (connector.kind === "mongodb") {
+      // Schemaless source: the field model is a sample-based inference, and
+      // that caveat belongs IN the reviewable plan, not just on stderr.
+      for (const t of plan.tables) {
+        if (!t.include) continue;
+        t.warnings.push(
+          `fields inferred from a sample of up to ${opts.sampleSize} documents — keys outside the sample are NOT copied (re-plan with --sample-size to widen); MongoDB has no foreign keys, so no relations were auto-wired (edit a field to type "relation" by hand if needed)`,
+        );
+      }
+    }
     const out = flag(args, "--out");
     const text = `${JSON.stringify(plan, null, 2)}\n`;
     if (out) {

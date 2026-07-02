@@ -20,6 +20,13 @@ export {
 export { createPgSource } from "./pg-source";
 export { createMysqlSource, parseEnumLabels } from "./mysql-source";
 export { createSqliteFileSource } from "./sqlite-source";
+export {
+  createMongoSource,
+  inferColumns,
+  looksLikeObjectIdHex,
+  MONGO_DEFAULT_SAMPLE,
+  type DocumentSource,
+} from "./mongo-source";
 export { topoSort } from "./topo";
 export type {
   ReadBatchOptions,

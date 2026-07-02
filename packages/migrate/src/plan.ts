@@ -48,7 +48,7 @@ export interface PlanTable {
 
 export interface MigrationPlan {
   version: 1;
-  source: { kind: "postgres" | "mysql" | "sqlite-file" };
+  source: { kind: "postgres" | "mysql" | "sqlite-file" | "mongodb" };
   /** Copy order over the included tables — FK parents first. */
   order: string[];
   tables: PlanTable[];

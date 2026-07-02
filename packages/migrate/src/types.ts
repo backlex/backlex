@@ -64,7 +64,7 @@ export interface ReadBatchOptions {
 }
 
 export interface SourceConnector {
-  kind: "postgres" | "mysql" | "sqlite-file";
+  kind: "postgres" | "mysql" | "sqlite-file" | "mongodb";
   listTables(): Promise<SourceTable[]>;
   inspect(table: string): Promise<SourceInspection>;
   /** One keyset page, ordered by `pkColumn` ascending. */

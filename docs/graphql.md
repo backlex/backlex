@@ -255,6 +255,35 @@ mutation Publish($id: ID!) {
 
 Mutations publish realtime + webhook + flow events the same way REST does.
 
+## Subscriptions (SSE)
+
+`POST /api/graphql/stream` (or GET with `?query=…&variables=…`) opens a
+[graphql-sse](https://github.com/enisdenjo/graphql-sse)
+distinct-connections-mode stream — one SSE connection per operation:
+
+```graphql
+subscription {
+  items(collection: "posts", filter: { published: { _eq: true } }) {
+    event  # created | updated | deleted
+    data   # the row, projected to your read allow-list
+  }
+}
+```
+
+Events arrive as `event: next` frames with `{ "data": { "items": … } }`
+envelopes; the stream ends with `event: complete`. Aliases work
+(`subscription { posts: items(...) { event } }`), field selection projects
+the payload, and `filter` is the same live-query condition DSL the realtime
+`?filter=` accepts (validated against your readable fields).
+
+Under the hood the operation maps onto the realtime layer's
+`items:<slug>` channel, so permissions, draft gating, transports
+(Workers Durable Object / Redis long-poll on serverless / in-process on
+Bun) and `Last-Event-ID` resume behave exactly like
+[`/api/realtime`](realtime.md). On the serverless long-poll transport the
+stream closes after each delivered batch — reconnect with the last seen
+`id` to resume, which graphql-sse clients do automatically.
+
 ## Permissions
 
 Resolvers go through the same `resolvePermission` REST does:
@@ -274,8 +303,8 @@ GraphQL uses the same session middleware as REST: cookie session
 
 ## What's not in the schema
 
-- **Subscriptions** — use `/api/realtime/items:<slug>/subscribe` (SSE/WS)
-  for the change feed. GraphQL subscriptions over WS are on the v3 list.
+- **Subscriptions over WebSocket** — subscriptions ship over SSE (see
+  above); a WS transport is not planned while SSE covers all runtimes.
 - **Aggregates** — count is via REST `meta=filter_count`. GraphQL-side
   aggregations defer to v2.
 - **Custom scalars beyond `JSON`** — timestamps are ISO strings in `String`.

@@ -450,6 +450,17 @@ function SchemaVersionsSkeletonImpl() {
   );
 }
 
+/** Database import — header, then the two stacked cards (sources + runs). */
+function DatabaseImportSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-4.5">
+      <HeaderSkeleton actions={3} />
+      <TableCardSkeleton rows={2} cols={3} />
+      <TableCardSkeleton rows={3} cols={4} />
+    </div>
+  );
+}
+
 /** Insights — header, then a dashboard grid of panel tiles. */
 function InsightsSkeletonImpl() {
   return (
@@ -790,6 +801,7 @@ export const RealtimeSkeleton = withSkeletonDelay(RealtimeSkeletonImpl);
 export const AdvisorSkeleton = withSkeletonDelay(AdvisorSkeletonImpl);
 export const SchemaGraphSkeleton = withSkeletonDelay(SchemaGraphSkeletonImpl);
 export const SchemaVersionsSkeleton = withSkeletonDelay(SchemaVersionsSkeletonImpl);
+export const DatabaseImportSkeleton = withSkeletonDelay(DatabaseImportSkeletonImpl);
 export const InsightsSkeleton = withSkeletonDelay(InsightsSkeletonImpl);
 export const RevisionsSkeleton = withSkeletonDelay(RevisionsSkeletonImpl);
 export const TranslationsSkeleton = withSkeletonDelay(TranslationsSkeletonImpl);
@@ -853,6 +865,8 @@ export function PageSkeleton({ nav }: { nav: string }) {
       return <SchemaGraphSkeleton />;
     case "schema-versions":
       return <SchemaVersionsSkeleton />;
+    case "database-import":
+      return <DatabaseImportSkeleton />;
     case "insights":
       return <InsightsSkeleton />;
     case "revisions":

@@ -544,6 +544,11 @@ msgstr "{changedCount} alan değişecek."
 msgid "{count} selected"
 msgstr "{count} seçildi"
 
+#. placeholder {0}: tablesState.length
+#: src/client/admin/pages/database-import.tsx
+msgid "{doneTables}/{0} tables · {copied} rows"
+msgstr "{doneTables}/{0} tablo · {copied} satır"
+
 #: src/client/admin/members-panel.tsx
 msgid "{email} is already a member."
 msgstr "{email} zaten üye."
@@ -744,6 +749,10 @@ msgstr "Bu isimde bir anahtar zaten mevcut."
 #: src/client/admin/parity/insights.tsx
 msgid "A panel with that name already exists."
 msgstr "Bu isimde bir panel zaten mevcut."
+
+#: src/client/admin/pages/database-import.tsx
+msgid "A Postgres connection the server can reach. The URL is encrypted at rest and only ever shown masked."
+msgstr "Sunucunun erişebildiği bir Postgres bağlantısı. URL bekleme durumunda şifrelenir ve yalnızca maskelenmiş gösterilir."
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "A provider with id \"{id}\" already exists."
@@ -1018,6 +1027,10 @@ msgstr "SAML sağlayıcı ekle"
 #: src/client/admin/collection-settings.tsx
 msgid "Add sort"
 msgstr "Sıralama ekle"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Add source"
+msgstr "Kaynak ekle"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Add step"
@@ -1622,6 +1635,7 @@ msgstr "B-tree indeksi — bu sütuna göre filtreleme/sıralamayı hızlandır�
 #: src/client/admin/display-template-editor.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/item-editor.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Back"
 msgstr "Geri"
@@ -1786,6 +1800,10 @@ msgstr "Yer imi"
 #~ msgid "Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
 #~ msgstr "Bir koleksiyondan (say / topla / ortalama …) veya kaydedilmiş bir SQL sorgusundan panel oluşturun. Panoyu düzenlemek için panelleri sürükleyin."
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Build plan"
+msgstr "Plan oluştur"
+
 #: src/client/admin/condition-editor.tsx
 msgid "Builder"
 msgstr "Oluşturucu"
@@ -1837,6 +1855,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/integrations.tsx
@@ -1872,6 +1891,7 @@ msgstr "Zamanlamayı iptal et"
 msgid "Cancel upload"
 msgstr "Yüklemeyi iptal et"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Cancelled"
 msgstr "İptal edildi"
@@ -2402,6 +2422,14 @@ msgstr "Bağlı"
 msgid "Connecting…"
 msgstr "Bağlanıyor…"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Connection failed."
+msgstr "Bağlantı başarısız."
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Connection URL"
+msgstr "Bağlantı URL'i"
+
 #: src/client/admin/pages/overview.tsx
 msgid "console (dev)"
 msgstr "konsol (geliştirme)"
@@ -2473,6 +2501,10 @@ msgstr "kopyala"
 msgid "Copy"
 msgstr "Kopyala"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Copy an external Postgres database into collections — primary keys preserved, relations intact, resumable. For databases the server can't reach, use the backlex import-db CLI."
+msgstr "Harici bir Postgres veritabanını koleksiyonlara kopyalayın — birincil anahtarlar korunur, ilişkiler bozulmaz, kaldığı yerden devam edebilir. Sunucunun erişemediği veritabanları için backlex import-db CLI'ını kullanın."
+
 #. placeholder {0}: row.path
 #: src/client/pages/openapi-export.tsx
 msgid "Copy curl example for {0}"
@@ -2489,6 +2521,10 @@ msgstr "ID'yi kopyala"
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Copy JSON"
 msgstr "JSON'u kopyala"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Copy order:"
+msgstr "Kopyalama sırası:"
 
 #: src/client/admin/storage.tsx
 msgid "Copy URL"
@@ -2862,6 +2898,11 @@ msgstr "Veri kapsamı"
 msgid "Database"
 msgstr "Veritabanı"
 
+#: src/client/admin/pages/database-import.tsx
+#: src/client/admin/ui.tsx
+msgid "Database import"
+msgstr "Veritabanı içe aktarma"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "DB type"
 msgstr "Veritabanı türü"
@@ -2944,6 +2985,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
@@ -2966,6 +3008,11 @@ msgstr "\"{0}\" ve ona ait dal anlık görüntüleri silinsin mi? Bu geri alına
 #: src/client/admin/parity/insights.tsx
 msgid "Delete \"{0}\"?"
 msgstr "\"{0}\" silinsin mi?"
+
+#. placeholder {0}: pendingDelete.name
+#: src/client/admin/pages/database-import.tsx
+msgid "Delete \"{0}\"? Its saved connection string is destroyed; past runs are removed with it. Copied data stays."
+msgstr "\"{0}\" silinsin mi? Kayıtlı bağlantı dizesi yok edilir; geçmiş çalıştırmalar da onunla birlikte kaldırılır. Kopyalanan veriler kalır."
 
 #. placeholder {0}: selected.size
 #: src/client/admin/app.tsx
@@ -3028,6 +3075,14 @@ msgstr "\"{0}\" anlık görüntüsü silinsin mi? Bu geri alınamaz."
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Delete snapshot?"
 msgstr "Anlık görüntü silinsin mi?"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Delete source"
+msgstr "Kaynağı sil"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Delete source?"
+msgstr "Kaynak silinsin mi?"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Delete this collection"
@@ -3249,6 +3304,7 @@ msgstr "Belgeler"
 msgid "Don't have an account?"
 msgstr "Hesabınız yok mu?"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Done"
 msgstr "Tamam"
@@ -3806,6 +3862,10 @@ msgstr "herkes"
 msgid "Examples: items:posts:created, items:posts:*, items:*:*"
 msgstr "Örnekler: items:posts:created, items:posts:*, items:*:*"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Excluded"
+msgstr "Hariç tutuldu"
+
 #: src/client/pages/graphql.tsx
 msgid "Execute"
 msgstr "Çalıştır"
@@ -3888,11 +3948,13 @@ msgstr "Harici kimlik satırları denetim kaydı olarak tutulur."
 msgid "Fail flow"
 msgstr "Akışı hata ile sonlandır"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/storage.tsx
 msgid "failed"
 msgstr "başarısız"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Failed"
 msgstr "Başarısız"
@@ -3999,6 +4061,7 @@ msgid "field…"
 msgstr "alan…"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/schema-graph.tsx
 msgid "fields"
 msgstr "alanlar"
@@ -4701,6 +4764,10 @@ msgstr "İçgörüler"
 msgid "Inspect failed: {inspectError}"
 msgstr "İnceleme başarısız: {inspectError}"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Inspecting…"
+msgstr "İnceleniyor…"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Integer between 1 and 200."
 msgstr "1 ile 200 arasında tam sayı."
@@ -5185,6 +5252,10 @@ msgstr "Bir sonraki tıklamada çalışması için boş bırakın."
 msgid "Leave to user"
 msgstr "Kullanıcıya bırak"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "legacy production"
+msgstr "eski üretim"
+
 #: src/client/admin/pages/settings.tsx
 msgid "License"
 msgstr "Lisans"
@@ -5574,6 +5645,14 @@ msgstr "Metadata XML"
 msgid "Method"
 msgstr "Yöntem"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Migrate"
+msgstr "Taşı"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Migration queued — it advances on the scheduler tick."
+msgstr "Taşıma kuyruğa alındı — zamanlayıcı tikinde ilerler."
+
 #: src/client/admin/parity/database.tsx
 msgid "Migrations"
 msgstr "Migrasyonlar"
@@ -5690,6 +5769,7 @@ msgstr "Temam"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/add-field.tsx
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/settings.tsx
@@ -5832,6 +5912,10 @@ msgstr "Yeni içgörü paneli"
 #: src/client/pages/api-keys.tsx
 msgid "New key"
 msgstr "Yeni anahtar"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "New migration"
+msgstr "Yeni taşıma"
 
 #: src/client/admin/parity/insights.tsx
 msgid "New panel"
@@ -6217,6 +6301,10 @@ msgstr "Henüz üye yok."
 msgid "No migrations applied yet."
 msgstr "Henüz migrasyon uygulanmadı."
 
+#: src/client/admin/pages/database-import.tsx
+msgid "No migrations yet"
+msgstr "Henüz taşıma yok"
+
 #: src/client/admin/pages/logs.tsx
 msgid "No more rows"
 msgstr "Daha fazla satır yok"
@@ -6318,9 +6406,17 @@ msgstr "Henüz anlık görüntü yok"
 msgid "No social providers are enabled for this workspace."
 msgstr "Bu çalışma alanı için sosyal sağlayıcı etkin değil."
 
+#: src/client/admin/pages/database-import.tsx
+msgid "No sources yet"
+msgstr "Henüz kaynak yok"
+
 #: src/client/admin/pages/traces.tsx
 msgid "No spans recorded for this trace."
 msgstr "Bu iz için kayıtlı span yok."
+
+#: src/client/admin/pages/database-import.tsx
+msgid "No tables found in this source."
+msgstr "Bu kaynakta tablo bulunamadı."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "No tables found that can be adopted."
@@ -6870,6 +6966,7 @@ msgstr "Yük (JSON)"
 msgid "pending"
 msgstr "beklemede"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Pending"
 msgstr "Bekliyor"
@@ -7025,6 +7122,10 @@ msgstr "<0>c_{target}</0> tablosundan satır seçin"
 msgid "Pick a row to select it"
 msgstr "Seçmek için bir satıra tıklayın"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Pick a source"
+msgstr "Bir kaynak seçin"
+
 #: src/client/admin/item-form.tsx
 msgid "Pick a status…"
 msgstr "Durum seçin…"
@@ -7123,6 +7224,10 @@ msgstr "Satır seç"
 #: src/client/admin/add-field.tsx
 msgid "Pick the collection this relation points to."
 msgstr "Bu ilişkinin işaret ettiği koleksiyonu seçin."
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Pick the source tables to copy. Every table becomes a collection."
+msgstr "Kopyalanacak kaynak tabloları seçin. Her tablo bir koleksiyona dönüşür."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Pick type…"
@@ -7508,6 +7613,11 @@ msgstr "Tümünü yeniden çalıştır"
 msgid "Re-running…"
 msgstr "Yeniden çalıştırılıyor…"
 
+#. placeholder {0}: r.data.tables ?? 0
+#: src/client/admin/pages/database-import.tsx
+msgid "Reachable — {0} tables found."
+msgstr "Erişilebilir — {0} tablo bulundu."
+
 #: src/client/admin/parity/app-users.tsx
 msgid "Reactivate end-user"
 msgstr "Son kullanıcıyı yeniden etkinleştir"
@@ -7622,6 +7732,7 @@ msgstr "/api/openapi.json yeniden çek"
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/overview.tsx
@@ -7988,6 +8099,7 @@ msgstr "sürdürülebilir"
 msgid "Resumable SSE on <0>GET /mcp</0>"
 msgstr "<0>GET /mcp</0> üzerinde sürdürülebilir SSE"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Resume"
@@ -8059,6 +8171,10 @@ msgstr "İncele ve uygula"
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Review & apply — {0}"
 msgstr "İncele ve uygula — {0}"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Review the plan — copy order follows foreign keys, primary keys are preserved verbatim."
+msgstr "Planı gözden geçirin — kopyalama sırası yabancı anahtarları izler, birincil anahtarlar birebir korunur."
 
 #. placeholder {0}: e.v
 #: src/client/admin/parity/revisions.tsx
@@ -8250,6 +8366,10 @@ msgstr "Çalışma zamanı"
 msgid "Run at (optional)"
 msgstr "Çalışma zamanı (isteğe bağlı)"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Run cancelled. Progress is kept — resume any time."
+msgstr "Çalıştırma iptal edildi. İlerleme korunur — istediğiniz zaman devam edin."
+
 #: src/client/admin/pages/flows.tsx
 msgid "Run now"
 msgstr "Şimdi çalıştır"
@@ -8258,10 +8378,18 @@ msgstr "Şimdi çalıştır"
 msgid "Run preview"
 msgstr "Önizleme çalıştır"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Run re-queued — the copy continues where it stopped."
+msgstr "Çalıştırma yeniden kuyruğa alındı — kopyalama kaldığı yerden sürer."
+
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Run test"
 msgstr "Test çalıştır"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Running"
+msgstr "Çalışıyor"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/ask-ai.tsx
@@ -8277,6 +8405,7 @@ msgid "runs"
 msgstr "çalışmalar"
 
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/database-import.tsx
 msgid "Runs"
 msgstr "Çalışmalar"
 
@@ -8364,6 +8493,10 @@ msgstr "Cmt"
 msgid "Save"
 msgstr "Kaydet"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Save a Postgres connection string to migrate its data in. Credentials are encrypted at rest and never shown again."
+msgstr "Verisini içeri taşımak için bir Postgres bağlantı dizesi kaydedin. Kimlik bilgileri bekleme durumunda şifrelenir ve bir daha asla gösterilmez."
+
 #: src/client/admin/item-editor.tsx
 msgid "Save and close"
 msgstr "Kaydet ve kapat"
@@ -8414,6 +8547,10 @@ msgstr "Meta verileri kaydet"
 msgid "Save sort"
 msgstr "Sıralamayı kaydet"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Save source"
+msgstr "Kaynağı kaydet"
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Save the current live schema as an immutable checkpoint."
 msgstr "Mevcut canlı şemayı değiştirilemez bir denetim noktası olarak kaydedin."
@@ -8451,6 +8588,7 @@ msgstr "MCP korumaları kaydediliyor"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -9291,9 +9429,21 @@ msgstr "Sosyal giriş eklentisi etkin değil"
 msgid "Soft delete"
 msgstr "Geçici silme"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Source deleted."
+msgstr "Kaynak silindi."
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Source saved. The connection string is encrypted at rest."
+msgstr "Kaynak kaydedildi. Bağlantı dizesi bekleme durumunda şifrelenir."
+
 #: src/client/admin/storage.tsx
 msgid "Source URL"
 msgstr "Kaynak URL"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Sources"
+msgstr "Kaynaklar"
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "SP entity ID"
@@ -9335,11 +9485,21 @@ msgstr "Boş başla"
 msgid "Start from"
 msgstr "Başlangıç noktası"
 
+#. placeholder {0}: includedTables.length
+#: src/client/admin/pages/database-import.tsx
+msgid "Start migration ({0} tables)"
+msgstr "Taşımayı başlat ({0} tablo)"
+
+#: src/client/admin/pages/database-import.tsx
+msgid "Start one with “New migration” — pick tables, review the plan, and the server copies the rows in the background."
+msgstr "“Yeni taşıma” ile bir tane başlatın — tabloları seçin, planı gözden geçirin; sunucu satırları arka planda kopyalar."
+
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Start with a template"
 msgstr "Bir şablonla başla"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/database-import.tsx
 msgid "Starting…"
 msgstr "Başlatılıyor…"
 
@@ -9490,6 +9650,10 @@ msgstr "Özet"
 msgid "Sun"
 msgstr "Paz"
 
+#: src/client/admin/pages/database-import.tsx
+msgid "Supabase, Neon, RDS, Heroku — anything Postgres. If the database is on a private network, run the copy from your side with the backlex import-db CLI instead."
+msgstr "Supabase, Neon, RDS, Heroku — Postgres olan her şey. Veritabanı özel bir ağdaysa kopyalamayı kendi tarafınızdan backlex import-db CLI ile çalıştırın."
+
 #: src/client/admin/pages/agents.tsx
 msgid "Support agent"
 msgstr "Destek ajanı"
@@ -9630,6 +9794,7 @@ msgid "Terms of Service URL"
 msgstr "Hizmet Şartları URL'si"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/database-import.tsx
 msgid "Test"
 msgstr "Test"
 
@@ -9702,6 +9867,7 @@ msgstr "Somut bir satırın birleşik koşuldan geçip geçmediğini test edin."
 msgid "Tester"
 msgstr "Test aracı"
 
+#: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/settings.tsx
 msgid "Testing…"
 msgstr "Test ediliyor…"

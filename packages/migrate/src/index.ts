@@ -7,8 +7,12 @@ export {
 } from "./mapping";
 export {
   buildPlan,
+  collectionPayloadFor,
+  collectionShapeMismatch,
+  dedupeSlugsAgainst,
   parsePlan,
   sanitizeName,
+  transformRow,
   type MigrationPlan,
   type PlanField,
   type PlanTable,

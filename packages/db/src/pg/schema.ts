@@ -917,6 +917,58 @@ export const schemaBranches = pgTable(
   (t) => [uniqueIndex("schema_branches_tenant_name_idx").on(t.tenantId, t.name)],
 );
 
+/** Saved external-database connections for server-side migration (the admin
+ *  "Database import" wizard). `url` is encrypted at rest with AUTH_SECRET
+ *  (same envelope as integration configs — services/integrations.ts) and is
+ *  always masked on the API; only the copy executor decrypts it. Deleting a
+ *  source cascades to its runs (history is meaningless without the source). */
+export const externalSources = pgTable(
+  "external_sources",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    name: text("name").notNull(),
+    kind: text("kind").notNull().default("postgres"),
+    /** Encrypted connection string (lib/crypto envelope). */
+    url: text("url").notNull(),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("external_sources_tenant_name_idx").on(t.tenantId, t.name)],
+);
+
+/** One server-side migration execution. The scheduler tick claims runs and
+ *  copies in bounded slices; `state` carries per-table keyset cursors +
+ *  counters so a run survives isolate death and resumes where it left off
+ *  (the ingest path is idempotent — re-copying an overlap never dupes). */
+export const migrationRuns = pgTable(
+  "migration_runs",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id").notNull(),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => externalSources.id, { onDelete: "cascade" }),
+    /** The validated MigrationPlan document (packages/migrate parsePlan). */
+    plan: jsonb("plan").$type<unknown>().notNull(),
+    /** Per-table progress: `{ [slug]: { cursor, copied, failed, done, … } }`. */
+    state: jsonb("state").$type<unknown>().notNull(),
+    /** pending | running | done | failed | cancelled */
+    status: text("status").notNull().default("pending"),
+    error: text("error"),
+    /** Lease heartbeat — a `running` run whose lease expired is reclaimable
+     *  by any isolate's tick (same stale-lease model as the job queue). */
+    leaseUntil: timestamp("lease_until", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("migration_runs_tenant_idx").on(t.tenantId, t.createdAt)],
+);
+
 export const activity = pgTable(
   "activity",
   {

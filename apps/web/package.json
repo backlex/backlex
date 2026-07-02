@@ -23,6 +23,7 @@
     "@backlex/core": "workspace:*",
     "@backlex/db": "workspace:*",
     "@backlex/integrations": "workspace:*",
+    "@backlex/migrate": "workspace:*",
     "@backlex/ui": "workspace:*",
     "@cf-wasm/photon": "^0.3.6",
     "@cf-wasm/quickjs": "^0.2.5",
@@ -53,6 +54,7 @@
     "ldapts": "^8.1.7",
     "lucide-react": "^1.14.0",
     "nodemailer": "^6.9.16",
+    "postgres": "^3.4.5",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router": "^8.0.1",
@@ -91,5 +93,8 @@
     "vite": "8.0.13",
     "wrangler": "4.93.0",
     "xml-crypto": "^6.1.2"
+  },
+  "imports": {
+    "#postgres-driver": "postgres"
   }
 }

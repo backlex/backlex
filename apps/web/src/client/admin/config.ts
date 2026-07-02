@@ -116,6 +116,7 @@ export const NAV_DATA: NavItem[] = [
   { id: "storage", icon: "Folder" },
   { id: "schema-graph", icon: "Network" },
   { id: "schema-versions", icon: "Layers" },
+  { id: "database-import", icon: "Download" },
 ];
 
 // Automation — logic that runs on top of the data.

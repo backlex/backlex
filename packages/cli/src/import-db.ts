@@ -20,10 +20,12 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import postgres from "postgres";
 import {
   buildPlan,
+  collectionPayloadFor,
+  collectionShapeMismatch,
   createPgSource,
   parsePlan,
+  transformRow,
   type MigrationPlan,
-  type PlanTable,
   type SourceConnector,
   type SourceQuery,
 } from "@backlex/migrate";
@@ -51,6 +53,18 @@ const HELP = `backlex import-db <command> — migrate an external database into 
       Execute the plan: create the target collections (PK type preserved),
       copy rows in FK-dependency order, verify counts. Progress persists in
       <plan>.state.json; re-run with --resume after an interruption.
+
+  Server-side runs (the source must be reachable FROM the backlex server —
+  see docs/migrating-in.md; private hosts need MIGRATE_ALLOW_PRIVATE_SOURCES):
+    sources                         list saved sources (URLs masked)
+    sources add <name> --source-url <postgres-url>
+    sources rm <id>                 delete a source
+    sources test <id>               connectivity check
+    server-plan --source-id <id> [--tables a,b] [--out <file>]
+    start --source-id <id> --plan <file>   queue a server-side copy run
+    runs                            list runs (newest first)
+    status <runId> [--watch]        one run's progress (--watch polls)
+    cancel <runId> | resume <runId>
 
   Target connection: --url/--key/--tenant/--profile as usual (the key needs
   the admin role). Source: --source or BACKLEX_IMPORT_SOURCE.
@@ -195,44 +209,6 @@ const loadState = (path: string, resume: boolean): RunState => {
   return { tables: {} };
 };
 
-/** Build the POST /api/collections payload for a plan table. */
-const collectionPayload = (t: PlanTable) => ({
-  slug: t.slug,
-  pkType: t.pkType,
-  fields: t.fields.map((f) => ({
-    name: f.name,
-    type: f.type,
-    ...(f.required ? { required: true } : {}),
-    ...(f.to ? { to: f.to } : {}),
-    ...(f.choices
-      ? {
-          interface: "dropdown",
-          options: { choices: f.choices.map((value) => ({ value })) },
-        }
-      : {}),
-  })),
-});
-
-/** Reshape one source row into the ingest body shape (rename columns to
- *  field names, hoist PK + system timestamps). */
-const transformRow = (
-  t: PlanTable,
-  row: Record<string, unknown>,
-): Record<string, unknown> => {
-  const out: Record<string, unknown> = { id: row[t.pkColumn] };
-  if (t.createdAtColumn && row[t.createdAtColumn] !== undefined) {
-    out.created_at = row[t.createdAtColumn];
-  }
-  if (t.updatedAtColumn && row[t.updatedAtColumn] !== undefined) {
-    out.updated_at = row[t.updatedAtColumn];
-  }
-  for (const f of t.fields) {
-    const v = row[f.column];
-    if (v !== undefined) out[f.name] = v;
-  }
-  return out;
-};
-
 const runRun = async (args: string[], deps: ImportDbDeps): Promise<void> => {
   const planPath = args[0] && !args[0].startsWith("-") ? args[0] : undefined;
   if (!planPath) die("usage: backlex import-db run <plan.json> --source <url>");
@@ -289,7 +265,7 @@ const runRun = async (args: string[], deps: ImportDbDeps): Promise<void> => {
       if (!st.created) {
         const existing = await api(ctx, "GET", `/api/collections/${t.slug}`);
         if (existing.status === 404) {
-          const created = await api(ctx, "POST", "/api/collections", collectionPayload(t));
+          const created = await api(ctx, "POST", "/api/collections", collectionPayloadFor(t));
           if (created.status !== 201) {
             die(
               `Failed to create collection "${t.slug}": ${created.status} ${JSON.stringify(created.json?.error ?? created.json)}`,
@@ -297,6 +273,13 @@ const runRun = async (args: string[], deps: ImportDbDeps): Promise<void> => {
           }
           process.stderr.write(`✓ created collection ${t.slug}\n`);
         } else if (existing.status === 200) {
+          // Reuse is only safe when the shapes agree (the resume path). A
+          // pre-existing collection of a different shape would fail every
+          // row with "Unknown column" — bail with the fix instead.
+          const mismatch = collectionShapeMismatch(t, existing.json.data);
+          if (mismatch) {
+            die(`${mismatch}\nEdit ${planPath} (the table's "slug") and re-run.`);
+          }
           process.stderr.write(`· collection ${t.slug} already exists — resuming into it\n`);
         } else {
           die(`Failed to check collection "${t.slug}": ${existing.status}`);
@@ -398,6 +381,138 @@ const runRun = async (args: string[], deps: ImportDbDeps): Promise<void> => {
   }
 };
 
+// ── Server-side runs (wrap /api/admin/migrate — services/migrate.ts) ──────
+
+const fail = (what: string, res: { status: number; json: any }): never =>
+  die(`${what}: ${res.status} ${JSON.stringify(res.json?.error ?? res.json)}`);
+
+const runStateLine = (run: {
+  status: string;
+  error?: string | null;
+  state?: { tables?: Record<string, { table: string; copied: number; failed: number; done: boolean; sourceCount?: number; targetTotal?: number }> };
+}): string => {
+  const tables = Object.entries(run.state?.tables ?? {});
+  const parts = tables.map(
+    ([slug, t]) =>
+      `${slug}=${t.copied}${t.failed ? `(+${t.failed}!)` : ""}${t.done ? "✓" : "…"}`,
+  );
+  return `${run.status}${run.error ? ` (${run.error})` : ""}  ${parts.join(" ")}`;
+};
+
+const runSources = async (args: string[]): Promise<void> => {
+  const ctx = resolveContext(args);
+  const sub = args[0];
+  if (sub === "add") {
+    const name = args[1] && !args[1].startsWith("-") ? args[1] : undefined;
+    const url = flag(args, "--source-url");
+    if (!name || !url) die("usage: backlex import-db sources add <name> --source-url <postgres-url>");
+    const res = await api(ctx, "POST", "/api/admin/migrate/sources", { name, url });
+    if (res.status !== 201) fail("create source", res);
+    process.stdout.write(`✓ source ${res.json.data.id} (${res.json.data.urlMasked})\n`);
+    return;
+  }
+  if (sub === "rm") {
+    const id = args[1] ?? die("usage: backlex import-db sources rm <id>");
+    const res = await api(ctx, "DELETE", `/api/admin/migrate/sources/${encodeURIComponent(id!)}`);
+    if (res.status !== 200) fail("delete source", res);
+    process.stdout.write("✓ deleted\n");
+    return;
+  }
+  if (sub === "test") {
+    const id = args[1] ?? die("usage: backlex import-db sources test <id>");
+    const res = await api(ctx, "POST", `/api/admin/migrate/sources/${encodeURIComponent(id!)}/test`);
+    if (res.status !== 200) fail("test source", res);
+    const d = res.json.data as { ok: boolean; tables?: number; error?: string };
+    process.stdout.write(d.ok ? `✓ reachable (${d.tables} tables)\n` : `✗ ${d.error}\n`);
+    if (!d.ok) process.exitCode = 1;
+    return;
+  }
+  const res = await api(ctx, "GET", "/api/admin/migrate/sources");
+  if (res.status !== 200) fail("list sources", res);
+  if (ctx.json) {
+    process.stdout.write(`${JSON.stringify(res.json.data, null, 2)}\n`);
+    return;
+  }
+  for (const s of res.json.data as { id: string; name: string; urlMasked: string }[]) {
+    process.stdout.write(`${s.id}  ${s.name.padEnd(24)} ${s.urlMasked}\n`);
+  }
+};
+
+const runServerPlan = async (args: string[]): Promise<void> => {
+  const ctx = resolveContext(args);
+  const sourceId = flag(args, "--source-id") ?? die("--source-id <id> is required");
+  const tables = flag(args, "--tables")?.split(",").map((s) => s.trim()).filter(Boolean);
+  const res = await api(
+    ctx,
+    "POST",
+    `/api/admin/migrate/sources/${encodeURIComponent(sourceId!)}/plan`,
+    { tables },
+  );
+  if (res.status !== 200) fail("build plan", res);
+  const text = `${JSON.stringify(res.json.data, null, 2)}\n`;
+  const out = flag(args, "--out");
+  if (out) {
+    writeFileSync(out, text);
+    process.stderr.write(`✓ plan → ${out}\n`);
+  } else {
+    process.stdout.write(text);
+  }
+};
+
+const runStart = async (args: string[]): Promise<void> => {
+  const ctx = resolveContext(args);
+  const sourceId = flag(args, "--source-id") ?? die("--source-id <id> is required");
+  const planPath = flag(args, "--plan") ?? die("--plan <file> is required");
+  const plan = JSON.parse(readFileSync(planPath!, "utf8"));
+  const res = await api(ctx, "POST", "/api/admin/migrate/runs", { sourceId, plan });
+  if (res.status !== 201) fail("start run", res);
+  process.stdout.write(
+    `✓ run ${res.json.data.id} queued — follow with: backlex import-db status ${res.json.data.id} --watch\n`,
+  );
+};
+
+const runStatus = async (args: string[]): Promise<void> => {
+  const ctx = resolveContext(args);
+  const id = args[0] && !args[0].startsWith("-") ? args[0] : die("usage: backlex import-db status <runId>");
+  const watch = has(args, "--watch");
+  for (;;) {
+    const res = await api(ctx, "GET", `/api/admin/migrate/runs/${encodeURIComponent(id!)}`);
+    if (res.status !== 200) fail("get run", res);
+    const run = res.json.data;
+    if (ctx.json && !watch) {
+      process.stdout.write(`${JSON.stringify(run, null, 2)}\n`);
+      return;
+    }
+    process.stdout.write(`${runStateLine(run)}\n`);
+    if (!watch || ["done", "failed", "cancelled"].includes(run.status)) {
+      if (run.status === "failed") process.exitCode = 1;
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+};
+
+const runRunOp = async (args: string[], op: "cancel" | "resume"): Promise<void> => {
+  const ctx = resolveContext(args);
+  const id = args[0] ?? die(`usage: backlex import-db ${op} <runId>`);
+  const res = await api(ctx, "POST", `/api/admin/migrate/runs/${encodeURIComponent(id!)}/${op}`);
+  if (res.status !== 200) fail(op, res);
+  process.stdout.write(`✓ ${res.json.data.status}\n`);
+};
+
+const runRunsList = async (args: string[]): Promise<void> => {
+  const ctx = resolveContext(args);
+  const res = await api(ctx, "GET", "/api/admin/migrate/runs");
+  if (res.status !== 200) fail("list runs", res);
+  if (ctx.json) {
+    process.stdout.write(`${JSON.stringify(res.json.data, null, 2)}\n`);
+    return;
+  }
+  for (const run of res.json.data as { id: string; status: string; createdAt: unknown }[]) {
+    process.stdout.write(`${run.id}  ${String(run.status).padEnd(10)} ${String(run.createdAt)}\n`);
+  }
+};
+
 export const runImportDb = async (
   args: string[],
   deps: ImportDbDeps = {},
@@ -413,6 +528,27 @@ export const runImportDb = async (
       return;
     case "run":
       await runRun(rest, deps);
+      return;
+    case "sources":
+      await runSources(rest);
+      return;
+    case "server-plan":
+      await runServerPlan(rest);
+      return;
+    case "start":
+      await runStart(rest);
+      return;
+    case "runs":
+      await runRunsList(rest);
+      return;
+    case "status":
+      await runStatus(rest);
+      return;
+    case "cancel":
+      await runRunOp(rest, "cancel");
+      return;
+    case "resume":
+      await runRunOp(rest, "resume");
       return;
     default:
       process.stdout.write(HELP);

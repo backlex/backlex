@@ -63,38 +63,11 @@ const isErdLayout = (
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.appSettings : sqlite.schema.appSettings;
 
-/**
- * Per-isolate read cache. Settings change rarely (admin PATCH, backup restore)
- * but are read on hot paths (public i18n endpoint, item i18n serialization),
- * each read costing a DB round-trip on D1. Keyed on the live `db` instance via
- * WeakMap so a different database (tests spin a fresh one per spec) can never
- * serve another's rows — the global `tenant_id IS NULL` branding row would
- * otherwise collide across databases. Writers must call
- * {@link invalidateSettingsCache}; the TTL only bounds cross-isolate staleness.
- */
-const SETTINGS_CACHE_TTL_MS = 60_000;
-const settingsCache = new WeakMap<
-  object,
-  Map<string, { value: AppSettings; expires: number }>
->();
-const brandingCache = new WeakMap<
-  object,
-  { value: SignInBranding; expires: number }
->();
-
-export const invalidateSettingsCache = (db: unknown): void => {
-  settingsCache.delete(db as object);
-  brandingCache.delete(db as object);
-};
-
 export const loadAppSettings = async (
   db: PgDb | SqliteDb,
   dialect: "pg" | "sqlite",
   tenantId: string | null,
 ): Promise<AppSettings> => {
-  const cacheKey = tenantId ?? "__global__";
-  const cached = settingsCache.get(db)?.get(cacheKey);
-  if (cached && cached.expires > Date.now()) return { ...cached.value };
   const t = tableFor(dialect);
   try {
     const rows = (await (db as any)
@@ -129,18 +102,10 @@ export const loadAppSettings = async (
     if (!out.i18nLocales.includes(out.i18nDefaultLocale)) {
       out.i18nDefaultLocale = out.i18nLocales[0] ?? "en";
     }
-    // Cache a copy so a caller mutating its result can't poison later reads.
-    const byDb = settingsCache.get(db) ?? new Map();
-    settingsCache.set(db, byDb);
-    byDb.set(cacheKey, {
-      value: { ...out },
-      expires: Date.now() + SETTINGS_CACHE_TTL_MS,
-    });
     return out;
   } catch {
     // Pre-migration deploy (table missing) or transient error — fall back to
-    // permissive defaults rather than blocking auth. Deliberately not cached:
-    // the table appearing a moment later should heal on the next read.
+    // permissive defaults rather than blocking auth.
     return { ...APP_SETTINGS_DEFAULTS };
   }
 };
@@ -185,8 +150,6 @@ export const loadSignInBranding = async (
   db: PgDb | SqliteDb,
   dialect: "pg" | "sqlite",
 ): Promise<SignInBranding> => {
-  const cached = brandingCache.get(db);
-  if (cached && cached.expires > Date.now()) return { ...cached.value };
   const t = tableFor(dialect);
   const out: SignInBranding = { ...SIGN_IN_BRANDING_DEFAULTS };
   try {
@@ -204,13 +167,8 @@ export const loadSignInBranding = async (
       else if (r.key === "privacyUrl" && typeof r.value === "string")
         out.privacyUrl = r.value;
     }
-    brandingCache.set(db, {
-      value: { ...out },
-      expires: Date.now() + SETTINGS_CACHE_TTL_MS,
-    });
   } catch {
-    // Pre-migration deploy (table missing) — fall back to empty defaults,
-    // uncached so the table appearing later heals on the next read.
+    // Pre-migration deploy (table missing) — fall back to empty defaults.
   }
   return out;
 };

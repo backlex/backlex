@@ -1,4 +1,4 @@
-import { type GqlCtx } from "./core";
+import { JSONScalar, type GqlCtx } from "./core";
 import {
   GraphQLBoolean,
   GraphQLError,
@@ -9,17 +9,19 @@ import {
   GraphQLString,
   type GraphQLFieldConfig,
 } from "graphql";
+import { AppError } from "@backlex/core";
 import {
-  SYSTEM_ROLES,
-} from "@backlex/core";
-import { sendPushToUsers } from "../push";
-import { sendSmsToUsers } from "../sms";
+  dispatchPush,
+  dispatchSms,
+  rateLimitCtxFrom,
+  type DispatchResult,
+} from "../messaging";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Messaging (push + SMS dispatch) — mirrors POST /api/messaging/{push,sms}:
-// dispatch-only (no in-app notification row), admins may target any user,
-// non-admins only themselves. A recipient with no registered device/number
-// resolves to sent=0 rather than erroring.
+// Messaging (push + SMS dispatch) — thin wrappers over services/messaging so
+// this surface shares the REST route's abuse guard, validation caps, and
+// admin-or-self target gate (no drift). Dispatch-only (no in-app row); a
+// recipient with no registered device/number resolves to sent=0.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DispatchResultType = new GraphQLObjectType({
@@ -31,17 +33,19 @@ const DispatchResultType = new GraphQLObjectType({
   },
 });
 
-const requireMessagingTarget = (gqlCtx: GqlCtx, targetUserId: string): string => {
-  const { auth } = gqlCtx;
-  if (!auth.tenantId) {
-    throw new GraphQLError("Active tenant required", { extensions: { code: "UNAUTHORIZED" } });
+/** Surface an AppError from the shared service as a GraphQLError that keeps its
+ *  code (so clients see FORBIDDEN / VALIDATION / RATE_LIMITED, matching REST). */
+const runDispatch = async (
+  fn: () => Promise<DispatchResult>,
+): Promise<DispatchResult> => {
+  try {
+    return await fn();
+  } catch (e) {
+    if (e instanceof AppError) {
+      throw new GraphQLError(e.message, { extensions: { code: e.code } });
+    }
+    throw e;
   }
-  if (!auth.roles.includes(SYSTEM_ROLES.admin) && targetUserId !== auth.userId) {
-    throw new GraphQLError("Non-admins can only message themselves", {
-      extensions: { code: "FORBIDDEN" },
-    });
-  }
-  return auth.tenantId;
 };
 
 export const messagingMutationFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
@@ -54,23 +58,17 @@ export const messagingMutationFields: Record<string, GraphQLFieldConfig<unknown,
       title: { type: new GraphQLNonNull(GraphQLString) },
       body: { type: new GraphQLNonNull(GraphQLString) },
       url: { type: GraphQLString },
+      data: { type: JSONScalar },
     },
-    resolve: async (_src, args, gqlCtx) => {
-      const a = args as { userId: string; title: string; body: string; url?: string };
-      if (!a.title || !a.body) {
-        throw new GraphQLError("title and body are required", {
-          extensions: { code: "VALIDATION" },
-        });
-      }
-      const tenantId = requireMessagingTarget(gqlCtx, a.userId);
-      const r = await sendPushToUsers(gqlCtx.ctx, tenantId, {
-        userIds: [a.userId],
-        title: a.title,
-        body: a.body,
-        url: a.url,
-      });
-      return { ok: true, sent: r.sent, failed: r.failed };
-    },
+    resolve: (_src, args, gqlCtx) =>
+      runDispatch(() =>
+        dispatchPush(
+          rateLimitCtxFrom(gqlCtx.rawRequest, gqlCtx.ctx),
+          gqlCtx.ctx,
+          gqlCtx.auth,
+          args,
+        ),
+      ),
   },
   sendSms: {
     type: new GraphQLNonNull(DispatchResultType),
@@ -80,20 +78,14 @@ export const messagingMutationFields: Record<string, GraphQLFieldConfig<unknown,
       userId: { type: new GraphQLNonNull(GraphQLID) },
       body: { type: new GraphQLNonNull(GraphQLString) },
     },
-    resolve: async (_src, args, gqlCtx) => {
-      const a = args as { userId: string; body: string };
-      if (!a.body || a.body.length > 1600) {
-        throw new GraphQLError("body is required (max 1600 chars)", {
-          extensions: { code: "VALIDATION" },
-        });
-      }
-      const tenantId = requireMessagingTarget(gqlCtx, a.userId);
-      const r = await sendSmsToUsers(gqlCtx.ctx, tenantId, {
-        userIds: [a.userId],
-        body: a.body,
-      });
-      return { ok: true, sent: r.sent, failed: r.failed };
-    },
+    resolve: (_src, args, gqlCtx) =>
+      runDispatch(() =>
+        dispatchSms(
+          rateLimitCtxFrom(gqlCtx.rawRequest, gqlCtx.ctx),
+          gqlCtx.ctx,
+          gqlCtx.auth,
+          args,
+        ),
+      ),
   },
 };
-

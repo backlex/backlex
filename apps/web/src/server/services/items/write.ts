@@ -8,7 +8,12 @@ import { embedAndUpsert, deleteVector } from "../vectorize";
 import { indexFts, deleteFts } from "../fts";
 import { type CollectionRow, hasI18nField } from "./collection-loader";
 import { serialize, deserialize, deserializeRow, projectFields } from "./serialize";
-import { enforceFieldConditions, validateBody, validateRelations } from "./validate";
+import {
+  enforceFieldConditions,
+  enforceValidationRules,
+  validateBody,
+  validateRelations,
+} from "./validate";
 import { hashIncomingFields, scrubHashFields } from "./hash-fields";
 import { mergeI18nPatch } from "./i18n";
 import {
@@ -125,6 +130,8 @@ export const performCreate = async (
   // Enforce conditional `required` effects against the proposed row (runs before
   // hashing so a rule sees the plaintext the user typed).
   enforceFieldConditions(data, collection.fields, authSubjectOf(env));
+  // Cross-field validation rules run on the same plaintext proposed row.
+  enforceValidationRules(data, collection.fields, authSubjectOf(env));
   // Replace any `hash` field's plaintext with its scrypt digest before the row
   // is built. Empty values are dropped (see hashIncomingFields).
   await hashIncomingFields(data, collection.fields);
@@ -253,6 +260,7 @@ export const performUpdate = async (
     if (patch[f.name] !== undefined) mergedForConditions[f.name] = patch[f.name];
   }
   enforceFieldConditions(mergedForConditions, collection.fields, authSubjectOf(env));
+  enforceValidationRules(mergedForConditions, collection.fields, authSubjectOf(env));
 
   if (hasI18nField(collection.fields)) {
     mergeI18nPatch(patch, beforeRow, collection.fields, env.locale);

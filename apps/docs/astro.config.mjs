@@ -82,6 +82,8 @@ export default defineConfig({
             { slug: "querying" },
             { slug: "permissions" },
             { slug: "hashed-fields" },
+            { slug: "field-conditions" },
+            { slug: "field-validation" },
             { slug: "adopting-tables" },
             { slug: "migrating-in" },
             { slug: "schema-versions" },

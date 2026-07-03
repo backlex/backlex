@@ -211,6 +211,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Adopting existing tables | `docs/adopting-tables.md` |
 | Hashed fields (passwords/secrets) | `docs/hashed-fields.md` |
 | Field conditions (required/readonly/hidden) | `docs/field-conditions.md` |
+| Field validation (per-field constraints + cross-field rules) | `docs/field-validation.md` |
 | Migrating an external DB in (`backlex import-db`) | `docs/migrating-in.md` |
 | Schema versions (migration diffing / branching) | `docs/schema-versions.md` |
 | Locale + timezone | `docs/locale-timezone.md` |

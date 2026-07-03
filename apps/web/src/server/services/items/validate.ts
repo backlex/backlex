@@ -69,7 +69,9 @@ export const validateBody = (
   fieldAllow: Set<string> | null,
 ): void => {
   for (const f of fields) {
-    if (f.computed) continue; // never required from the caller
+    // Computed + auto-filled columns are system-managed — never required from,
+    // nor writable by, the caller.
+    if (f.computed || f.onCreate || f.onUpdate) continue;
     if (f.required && !partial && (data[f.name] === undefined || data[f.name] === null)) {
       throw new AppError("VALIDATION", `Field "${f.name}" is required`);
     }
@@ -83,6 +85,12 @@ export const validateBody = (
       throw new AppError(
         "VALIDATION",
         `Field "${k}" is computed (read-only) — drop it from your payload`,
+      );
+    }
+    if (def.onCreate || def.onUpdate) {
+      throw new AppError(
+        "VALIDATION",
+        `Field "${k}" is auto-filled (read-only) — drop it from your payload`,
       );
     }
     if (fieldAllow && !fieldAllow.has(k)) {

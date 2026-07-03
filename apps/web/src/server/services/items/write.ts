@@ -1,4 +1,5 @@
 import { sql, type SQL } from "drizzle-orm";
+import { resolveAutoFill } from "@backlex/db";
 import { AppError, type AuthSubject } from "@backlex/core";
 import type { Ctx } from "../../context";
 import { publishEvent } from "../events";
@@ -175,8 +176,21 @@ export const performCreate = async (
     cols.push("tenant_id");
     vals.push(env.tenantId);
   }
+  // Auto-filled columns are computed + written server-side (client input was
+  // rejected by validateBody), so they can't be spoofed.
   for (const f of collection.fields) {
-    if (data[f.name] === undefined) continue;
+    if (!f.onCreate) continue;
+    const v = resolveAutoFill(f.onCreate, { now, userId: env.userId, tenantId: env.tenantId });
+    if (v === undefined) continue;
+    const stored = serialize(v, f.type, ctx.dialect);
+    cols.push(f.name);
+    vals.push(stored);
+    // Feed the response / event / index the read-form value (e.g. an ISO
+    // timestamp) so it matches what a subsequent GET returns.
+    data[f.name] = deserialize(stored, f.type, ctx.dialect);
+  }
+  for (const f of collection.fields) {
+    if (data[f.name] === undefined || f.onCreate) continue;
     cols.push(f.name);
     vals.push(serialize(data[f.name], f.type, ctx.dialect));
   }
@@ -275,6 +289,17 @@ export const performUpdate = async (
   for (const f of collection.fields) {
     if (patch[f.name] === undefined) continue;
     sets.push(sql`${sql.identifier(f.name)} = ${serialize(patch[f.name], f.type, ctx.dialect)}`);
+  }
+  // Auto-filled-on-update columns are computed + written server-side (client
+  // input was rejected by validateBody). Fold the value into `patch` so the
+  // SET below emits it and the refreshed-row merge reflects it.
+  for (const f of collection.fields) {
+    if (!f.onUpdate) continue;
+    const v = resolveAutoFill(f.onUpdate, { now, userId: env.userId, tenantId: env.tenantId });
+    if (v === undefined) continue;
+    const stored = serialize(v, f.type, ctx.dialect);
+    sets.push(sql`${sql.identifier(f.name)} = ${stored}`);
+    patch[f.name] = deserialize(stored, f.type, ctx.dialect);
   }
   if (sets.length > 0) {
     await emit(

@@ -2836,6 +2836,11 @@ msgstr "current"
 msgid "Current"
 msgstr "Current"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Current date/time"
+msgstr "Current date/time"
+
 #: src/client/admin/account-page.tsx
 msgid "Current password"
 msgstr "Current password"
@@ -2843,6 +2848,16 @@ msgstr "Current password"
 #: src/client/admin/parity/revisions.tsx
 msgid "Current state"
 msgstr "Current state"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Current tenant"
+msgstr "Current tenant"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Current user"
+msgstr "Current user"
 
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
@@ -3329,6 +3344,11 @@ msgstr "Distinct users with a session in the last 24h"
 #: src/client/admin/pages/traces.tsx
 msgid "Distributed request traces. Every SDK/API call carries a W3C traceparent; a span is recorded per request and functions propagate it, so one operation stitches together across hops."
 msgstr "Distributed request traces. Every SDK/API call carries a W3C traceparent; a span is recorded per request and functions propagate it, so one operation stitches together across hops."
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Do nothing"
+msgstr "Do nothing"
 
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/ui.tsx
@@ -6739,9 +6759,19 @@ msgstr "on"
 msgid "On"
 msgstr "On"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "On create"
+msgstr "On create"
+
 #: src/client/admin/flow-builder.tsx
 msgid "On error"
 msgstr "On error"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "On update"
+msgstr "On update"
 
 #: src/client/pages/api-keys.tsx
 #~ msgid "Once you leave this page, the secret can’t be retrieved — only revoked."
@@ -9058,9 +9088,19 @@ msgstr "September"
 msgid "Server fetches the URL and stores it in this workspace. http/https only — private/internal hosts are rejected."
 msgstr "Server fetches the URL and stores it in this workspace. http/https only — private/internal hosts are rejected."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Server fills this on insert; the field becomes read-only."
+msgstr "Server fills this on insert; the field becomes read-only."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Server log line. Use <0>{dataInterpolationExample}</0> for interpolation."
 msgstr "Server log line. Use <0>{dataInterpolationExample}</0> for interpolation."
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Server refreshes this on every update."
+msgstr "Server refreshes this on every update."
 
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Server URL"

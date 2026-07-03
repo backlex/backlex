@@ -186,6 +186,11 @@ const FieldSchema = z
     /** Private / internal column — stored + writable but stripped from every
      *  API read surface (REST + GraphQL + CSV + changefeed). */
     private: z.boolean().optional(),
+    /** Server-side auto-fill on insert (uuid/now/user/tenant). Read-only for
+     *  writes; validateFields checks type-appropriateness. */
+    onCreate: z.enum(["uuid", "now", "user", "tenant"]).optional(),
+    /** Server-side auto-fill on every update (now/user/tenant). */
+    onUpdate: z.enum(["now", "user", "tenant"]).optional(),
   })
   .refine((f) => (f.type !== "relation" && f.type !== "relation_many") || !!f.to, {
     message: "relation / relation_many field must specify `to` (target collection slug)",

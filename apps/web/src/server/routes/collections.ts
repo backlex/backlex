@@ -196,6 +196,19 @@ const FieldSchema = z
     onUpdate: z.enum(["now", "user", "tenant"]).optional(),
     /** App-layer ON DELETE action for a relation FK (set_null/cascade/no_action). */
     onDelete: z.enum(["set_null", "cascade", "no_action"]).optional(),
+    /** Display-only formatting hint (number/date/currency) — never affects
+     *  storage, the API, sorting or filtering. */
+    format: z
+      .object({
+        style: z.enum(["plain", "decimal", "currency", "percent"]).optional(),
+        precision: z.number().int().min(0).max(10).optional(),
+        currency: z.string().max(8).optional(),
+        thousandSeparator: z.boolean().optional(),
+        dateStyle: z.enum(["relative", "date", "datetime", "time"]).optional(),
+        prefix: z.string().max(16).optional(),
+        suffix: z.string().max(16).optional(),
+      })
+      .optional(),
   })
   .refine((f) => (f.type !== "relation" && f.type !== "relation_many") || !!f.to, {
     message: "relation / relation_many field must specify `to` (target collection slug)",

@@ -39,6 +39,12 @@ import {
   type ValDraft,
   validationToDraft,
 } from "./field-validation-editor";
+import {
+  cleanFormat,
+  FieldFormatEditor,
+  type FieldFormatDraft,
+  formatToDraft,
+} from "./field-format-editor";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -76,6 +82,8 @@ interface FieldDraft {
   onUpdate?: "now" | "user" | "tenant";
   /** App-layer ON DELETE action for a relation FK. */
   onDelete?: "set_null" | "cascade" | "no_action";
+  /** Display formatting hint. */
+  format?: Record<string, unknown>;
   options?: { choices?: FieldChoice[]; values?: string[] };
   conditions?: {
     name?: string;
@@ -100,6 +108,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
   const [draft, setDraft] = useState<FieldDraft | null>(field);
   const [conds, setConds] = useState<CondDraft[]>([]);
   const [valDraft, setValDraft] = useState<ValDraft>(emptyValDraft());
+  const [formatDraft, setFormatDraft] = useState<FieldFormatDraft>({});
   const [tab, setTab] = useState("schema");
 
   // Re-seed every time the dialog opens with a new target field.
@@ -132,6 +141,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
       })),
     );
     setValDraft(validationToDraft((field as { validation?: unknown }).validation));
+    setFormatDraft(formatToDraft((field as { format?: unknown }).format));
   }, [open, field]);
 
   const addCond = () =>
@@ -228,6 +238,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
       interface: draft.interface || undefined,
       conditions: conditions.length ? (conditions as never) : undefined,
       validation: (validation ?? undefined) as never,
+      format: (cleanFormat(formatDraft, draft.type) ?? undefined) as never,
     };
     onSave(cleaned);
   };
@@ -432,7 +443,9 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
                 </div>
               )}
 
-              {!wantsChoices && (
+              <FieldFormatEditor type={draft.type} value={formatDraft} onChange={setFormatDraft} />
+
+              {!wantsChoices && draft.type !== "integer" && draft.type !== "number" && draft.type !== "timestamp" && (
                 <div className="rounded-xl bg-muted p-3 text-[12.5px] text-muted-foreground">
                   <Trans>This interface has no extra options. Selection interfaces (dropdown, radio…) show a choices editor here.</Trans>
                 </div>

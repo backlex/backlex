@@ -2835,6 +2835,10 @@ msgstr "curl"
 msgid "curl example"
 msgstr "curl example"
 
+#: src/client/admin/field-format-editor.tsx
+msgid "Currency"
+msgstr "Currency"
+
 #: src/client/admin/account-page.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/revisions.tsx
@@ -2964,6 +2968,18 @@ msgstr "Database"
 msgid "Database import"
 msgstr "Database import"
 
+#: src/client/admin/field-format-editor.tsx
+msgid "Date & time"
+msgstr "Date & time"
+
+#: src/client/admin/field-format-editor.tsx
+msgid "Date only"
+msgstr "Date only"
+
+#: src/client/admin/field-format-editor.tsx
+msgid "Date style"
+msgstr "Date style"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "DB type"
 msgstr "DB type"
@@ -2979,6 +2995,14 @@ msgstr "Dead-letter"
 #: src/client/admin/item-views.tsx
 msgid "December"
 msgstr "December"
+
+#: src/client/admin/field-format-editor.tsx
+msgid "Decimal (1,234.5)"
+msgstr "Decimal (1,234.5)"
+
+#: src/client/admin/field-format-editor.tsx
+msgid "Decimal places"
+msgstr "Decimal places"
 
 #: src/client/admin/pages/settings.tsx
 #~ msgid "default"
@@ -3331,6 +3355,10 @@ msgstr "Dismissed \"{title}\"."
 #: src/client/admin/collection-settings.tsx
 msgid "display"
 msgstr "display"
+
+#: src/client/admin/field-format-editor.tsx
+msgid "Display format"
+msgstr "Display format"
 
 #. placeholder {0}: f.key
 #: src/client/admin/storage.tsx
@@ -4563,6 +4591,10 @@ msgstr "Group panels into dashboards, build them from a collection (count / sum 
 #: src/client/admin/parity/insights.tsx
 msgid "Group panels under a named dashboard you can publish to a public embed URL."
 msgstr "Group panels under a named dashboard you can publish to a public embed URL."
+
+#: src/client/admin/field-format-editor.tsx
+msgid "Group thousands (1,234)"
+msgstr "Group thousands (1,234)"
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Groups"
@@ -7161,6 +7193,10 @@ msgstr "People viewing this record"
 msgid "Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role."
 msgstr "Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role."
 
+#: src/client/admin/field-format-editor.tsx
+msgid "Percent"
+msgstr "Percent"
+
 #: src/client/admin/pages/advisor.tsx
 msgid "Performance"
 msgstr "Performance"
@@ -7415,6 +7451,10 @@ msgstr "Pipe collection events to Slack, your API, or any HTTPS endpoint."
 msgid "plain"
 msgstr "plain"
 
+#: src/client/admin/field-format-editor.tsx
+msgid "Plain"
+msgstr "Plain"
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Plan"
 msgstr "Plan"
@@ -7515,6 +7555,10 @@ msgstr "Preferences"
 msgid "Preferences saved."
 msgstr "Preferences saved."
 
+#: src/client/admin/field-format-editor.tsx
+msgid "Prefix"
+msgstr "Prefix"
+
 #: src/client/admin/condition-editor.tsx
 msgid "Presets"
 msgstr "Presets"
@@ -7543,6 +7587,7 @@ msgid "Preview error"
 msgstr "Preview error"
 
 #: src/client/admin/display-template-editor.tsx
+#: src/client/admin/field-format-editor.tsx
 msgid "Preview:"
 msgstr "Preview:"
 
@@ -8008,6 +8053,10 @@ msgstr "relations"
 msgid "Relationship"
 msgstr "Relationship"
 
+#: src/client/admin/field-format-editor.tsx
+msgid "Relative (3d ago)"
+msgstr "Relative (3d ago)"
+
 #: src/client/admin/pages/settings.tsx
 msgid "Released"
 msgstr "Released"
@@ -8093,6 +8142,10 @@ msgstr "Renamed to c_{nextSlug}{0}."
 #: src/client/admin/pages/functions.tsx
 msgid "Renaming…"
 msgstr "Renaming…"
+
+#: src/client/admin/field-format-editor.tsx
+msgid "rendering only — never affects storage or sorting"
+msgstr "rendering only — never affects storage or sorting"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/settings.tsx
@@ -9825,6 +9878,10 @@ msgstr "Stream"
 msgid "strong reasoning · 1M context · low cost"
 msgstr "strong reasoning · 1M context · low cost"
 
+#: src/client/admin/field-format-editor.tsx
+msgid "Style"
+msgstr "Style"
+
 #: src/client/admin/pages/realtime.tsx
 msgid "sub"
 msgstr "sub"
@@ -9855,6 +9912,10 @@ msgstr "Success"
 #: src/client/admin/pages/flows.tsx
 msgid "Success rate"
 msgstr "Success rate"
+
+#: src/client/admin/field-format-editor.tsx
+msgid "Suffix"
+msgstr "Suffix"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "suggested fix"
@@ -10297,6 +10358,10 @@ msgstr "Thu"
 #: src/client/components/date-picker.tsx
 msgid "Time"
 msgstr "Time"
+
+#: src/client/admin/field-format-editor.tsx
+msgid "Time only"
+msgstr "Time only"
 
 #: src/client/admin/account-page.tsx
 msgid "Time zone"

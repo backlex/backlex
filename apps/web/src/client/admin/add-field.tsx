@@ -43,6 +43,11 @@ import {
   FieldValidationEditor,
   type ValDraft,
 } from "./field-validation-editor";
+import {
+  cleanFormat,
+  FieldFormatEditor,
+  type FieldFormatDraft,
+} from "./field-format-editor";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -92,6 +97,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [autoCreate, setAutoCreate] = useState("");
   const [autoUpdate, setAutoUpdate] = useState("");
   const [onDelete, setOnDelete] = useState("no_action");
+  const [formatDraft, setFormatDraft] = useState<FieldFormatDraft>({});
   const [step, setStep] = useState(1);
   const [tab, setTab] = useState("schema");
   const [conds, setConds] = useState<CondDraft[]>([]);
@@ -117,6 +123,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setAutoCreate("");
       setAutoUpdate("");
       setOnDelete("no_action");
+      setFormatDraft({});
       setConds([]);
       setValDraft(emptyValDraft());
     }
@@ -250,6 +257,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(def.type === "relation" && onDelete !== "no_action" ? { onDelete } : {}),
       ...(conditions.length ? { conditions } : {}),
       ...(validation ? { validation } : {}),
+      ...(cleanFormat(formatDraft, def.type) ? { format: cleanFormat(formatDraft, def.type) } : {}),
     });
   };
 
@@ -509,7 +517,9 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   </div>
                 )}
 
-                {!def.hasChoices && (
+                <FieldFormatEditor type={def.type} value={formatDraft} onChange={setFormatDraft} />
+
+                {!def.hasChoices && def.type !== "integer" && def.type !== "number" && def.type !== "timestamp" && (
                   <div className="rounded-xl bg-muted p-3 text-[12.5px] text-muted-foreground">
                     <Trans>This interface has no extra options. Selection interfaces (dropdown, radio…) show a choices editor here.</Trans>
                   </div>

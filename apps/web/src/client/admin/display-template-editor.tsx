@@ -3,7 +3,7 @@
 // (`{{ title }} — {{ status }}`) used for row labels in relation pickers and
 // references. Field placeholders render as removable shadcn Badges; literal text
 // stays editable inline. An "Insert field" popover (shadcn Command) lists this
-// collection's fields with Directus-style drill-down into relation targets, so
+// collection's fields with drill-down into relation targets, so
 // you can build `{{ author.name }}` without typing braces. A raw-mode toggle
 // drops to a plain input for power users / mid-string surgery.
 import { useEffect, useMemo, useRef, useState } from "react";

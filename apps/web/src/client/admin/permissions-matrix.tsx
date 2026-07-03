@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Directus-parity permission matrix
+// No-code permission matrix
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";

@@ -1,5 +1,5 @@
 /**
- * Directus-style per-field conditions — the server-enforced `required` effect.
+ * Per-field conditions — the server-enforced `required` effect.
  *
  * A field carries `conditions: [{ rule, required }]`; when the rule matches the
  * (merged) row and the value is empty, create/update is rejected 422. Applies to

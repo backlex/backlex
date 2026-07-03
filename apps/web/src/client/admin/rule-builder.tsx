@@ -1,6 +1,6 @@
 // Shared visual filter/condition builder (AND/OR groups + leaf comparisons).
 // Extracted from the permission editor so the collection field editor's
-// Directus-style "Conditions" panel reuses the exact same builder + DSL codec.
+// field "Conditions" panel reuses the exact same builder + DSL codec.
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
 import { I } from "./icons";

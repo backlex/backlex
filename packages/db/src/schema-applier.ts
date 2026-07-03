@@ -433,7 +433,7 @@ export const dropCollection = async (
   // Refuse to drop an adopted (user-owned) table. The adopt flow's
   // headline guarantee is that we never touch the underlying table; the
   // `collections` metadata + permissions + revisions are cleared by the
-  // caller, the physical table stays put. (Directus' #24411 — closed
+  // caller, the physical table stays put. (a known upstream issue — closed
   // "not planned" — is exactly the footgun we won't reproduce.)
   if (options.adopted) return;
   await exec(db, dialect, `DROP TABLE IF EXISTS ${quote(table)}`);

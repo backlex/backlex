@@ -252,7 +252,7 @@ function generateSnippet(
   };
 
   // Include all required args; for mutations also include any obvious "input"
-  // optional arg (Directus-style create/update mutations often take `input`).
+  // optional arg (no-code create/update mutations often take `input`).
   for (const a of required) buildArgVar(a, false);
   for (const a of optional) {
     if (a.name === "input" || a.name === "data" || a.name === "values") {

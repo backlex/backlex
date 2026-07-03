@@ -780,7 +780,7 @@ export function AskAiPage({
         }
         description={
           <Trans>
-            Translate natural language into Directus-shaped queries, draft schemas,
+            Translate natural language into operator-style queries, draft schemas,
             and dispatch any MCP tool — scoped to your role and the per-key
             allowlist. The same surface Claude Desktop sees.
           </Trans>

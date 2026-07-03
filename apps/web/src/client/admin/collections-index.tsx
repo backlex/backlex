@@ -391,8 +391,8 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
   const slugClean = slug.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/^_+|_+$/g, "");
   const slugError = !slugClean ? null : existingSlugs.includes(slugClean) ? t`${slugClean} already exists` : !/^[a-z][a-z0-9_]*$/.test(slugClean) ? t`must start with a letter` : null;
 
-  // Default status choices when the wizard injects a status field — Directus-
-  // shaped (value/label/color). Keep these aligned with the badge palette in
+  // Default status choices when the wizard injects a status field —
+  // value/label/color shaped (value/label/color). Keep these aligned with the badge palette in
   // admin/items.tsx so the table cell colors match the editor swatches.
   const DEFAULT_STATUS_CHOICES = [
     { value: "draft", label: "Draft", color: "#A1A6B8" },

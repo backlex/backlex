@@ -104,7 +104,7 @@ const FieldSchema = z
         value: z.unknown(),
       })
       .optional(),
-    // Directus-style per-field conditions: a rule (filter over the row) plus
+    // Per-field conditions: a rule (filter over the row) plus
     // effects. `required` is enforced server-side (validateFields checks the
     // rule's field refs; the write path enforces the effect); `readonly` /
     // `hidden` are honoured by the item form. `rule` is an opaque Condition.

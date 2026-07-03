@@ -41,7 +41,7 @@ export interface FieldValidation {
 
 /**
  * Optional UI hint that picks the editor for a field — purely cosmetic, the
- * storage type is what actually matters. The admin ships a Directus-style
+ * storage type is what actually matters. The admin ships a conventional
  * catalog of these in `apps/web/src/client/admin/interfaces.ts` (`input`,
  * `markdown`, `richtext`, `dropdown`, `toggle`, `datetime`, `color`,
  * `relation`, …); the server treats the value as an opaque string and only
@@ -51,7 +51,7 @@ export interface FieldValidation {
 export type FieldInterface = string;
 
 /**
- * One option in a dropdown — Directus-shaped. `value` is what the column
+ * One option in a dropdown. `value` is what the column
  * stores and what filters compare against. `label` is the human label
  * (defaults to value). `color` is a CSS color string applied to the badge
  * in lists. `icon` is a lucide icon name (UI-only).
@@ -70,7 +70,7 @@ export interface FieldOptions {
    * coerces either shape to a string list.
    */
   values?: string[];
-  /** Per-choice metadata for `interface: dropdown` (Directus-shaped). */
+  /** Per-choice metadata for `interface: dropdown`. */
   choices?: FieldChoice[];
 }
 
@@ -105,7 +105,7 @@ export interface FieldVisibility {
 }
 
 /**
- * Directus-style per-field condition. When `rule` (a filter over the whole row,
+ * Per-field condition. When `rule` (a filter over the whole row,
  * same DSL as permission conditions) matches, the effects below apply to the
  * field. `required` is enforced server-side on create/update (a matching rule
  * with an empty value ⇒ 422); `readonly` / `hidden` are UI-only, honoured by
@@ -150,7 +150,7 @@ export interface FieldDef {
   /** Conditional visibility in the form. Pure UI — no DB or API effect.
    *  Superseded by `conditions` with a `hidden` effect; kept for back-compat. */
   visibleWhen?: FieldVisibility;
-  /** Directus-style conditional rules — `required` is enforced server-side,
+  /** Conditional rules — `required` is enforced server-side,
    *  `readonly` / `hidden` are honoured by the item form. See {@link FieldCondition}. */
   conditions?: FieldCondition[];
   /** Group label for form section rendering. UI only. */

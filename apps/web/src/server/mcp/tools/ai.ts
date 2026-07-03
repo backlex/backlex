@@ -2,7 +2,7 @@
  * AI-native MCP tools. Each delegates to Claude (via `callClaude`) and
  * then wires the structured reply back into backlex sub-fetches:
  *
- *   ai.query           — NL question → Directus `filter` JSON → executed
+ *   ai.query           — NL question → an operator-style `filter` JSON → executed
  *                        against `/api/items/<collection>`.
  *   ai.suggest_schema  — Prose description → proposed `fields` array
  *                        (the agent reviews + chooses whether to apply via
@@ -72,7 +72,7 @@ export const aiQuery: McpTool = {
   kind: "read",
   description:
     "Translate a natural-language question about a collection into a " +
-    "Directus-shaped `filter` (with optional `sort` and `limit`) and run " +
+    "operator-style `filter` (with optional `sort` and `limit`) and run " +
     "it. Returns the executed query plan + the result rows. Use this when " +
     "the agent has a fuzzy intent (`top customers last month`) and needs " +
     "the structured query an analyst would write by hand.",
@@ -107,7 +107,7 @@ export const aiQuery: McpTool = {
       "collection into a JSON query object. Output EXACTLY one fenced " +
       "JSON block (```json ... ```). The JSON has shape: " +
       "{filter?: object, sort?: string, limit?: number}. The `filter` uses " +
-      "Directus operators: _eq, _neq, _in, _nin, _lt, _gt, _lte, _gte, " +
+      "Filter operators: _eq, _neq, _in, _nin, _lt, _gt, _lte, _gte, " +
       "_contains, _starts_with, _ends_with, _and, _or, _not, and the " +
       "variables $user.id, $user.email, $user.roles, $tenant.id, $now. " +
       "Sort is comma-separated, `-` prefix for DESC. Use only fields that " +

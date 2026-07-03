@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Shared utilities used across the directus/supabase parity pages.
+// Shared utilities used across the the no-code parity pages.
 
 /** Origin the API is served from — same-origin on CF deploys; falls back to
  *  VITE_API_URL for cross-origin dev setups. */

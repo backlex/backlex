@@ -53,6 +53,8 @@ export const enforceValidationRules = (
   for (const f of fields) {
     const rule = f.validation?.rule;
     if (!rule) continue;
+    // Advisory rules don't block — see collectFieldWarnings.
+    if (f.validation?.severity && f.validation.severity !== "error") continue;
     if (!matchesCondition(row, rule, subject)) {
       throw new AppError(
         "VALIDATION",
@@ -60,6 +62,48 @@ export const enforceValidationRules = (
       );
     }
   }
+};
+
+export interface FieldWarning {
+  field: string;
+  severity: "warning" | "info";
+  message: string;
+}
+
+/**
+ * Gather advisory (warning/info) validation failures for a fully-resolved row.
+ * Reuses the exact per-value ({@link validateValue}) and cross-field
+ * (`validation.rule`) checks by forcing them to run, catching the throw, and
+ * recording the message instead of rejecting. The write path attaches the
+ * result to the response so a client can surface soft hints without blocking.
+ */
+export const collectFieldWarnings = (
+  row: Record<string, unknown>,
+  fields: FieldDef[],
+  subject: AuthSubject,
+): FieldWarning[] => {
+  const warnings: FieldWarning[] = [];
+  for (const f of fields) {
+    const sev = f.validation?.severity;
+    if (sev !== "warning" && sev !== "info") continue;
+    // Per-value checks: run them as if they were errors, then downgrade.
+    const forced = { ...f, validation: { ...f.validation, severity: "error" as const } };
+    try {
+      validateValue(forced, row[f.name]);
+    } catch (e) {
+      warnings.push({ field: f.name, severity: sev, message: (e as Error).message });
+      continue; // one hint per field is enough
+    }
+    const rule = f.validation?.rule;
+    if (rule && !matchesCondition(row, rule, subject)) {
+      warnings.push({
+        field: f.name,
+        severity: sev,
+        message: f.validation?.message ?? `Field "${f.name}" failed its validation rule`,
+      });
+    }
+  }
+  return warnings;
 };
 
 export const validateBody = (

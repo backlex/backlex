@@ -10,8 +10,10 @@ import { indexFts, deleteFts } from "../fts";
 import { type CollectionRow, hasI18nField } from "./collection-loader";
 import { serialize, deserialize, deserializeRow, projectFields } from "./serialize";
 import {
+  collectFieldWarnings,
   enforceFieldConditions,
   enforceValidationRules,
+  type FieldWarning,
   validateBody,
   validateRelations,
 } from "./validate";
@@ -88,6 +90,8 @@ export interface WriteResult {
   id: string;
   /** The projected row (create/update) or the deleted row (delete). */
   data?: Record<string, unknown>;
+  /** Advisory (warning/info) validation hints — non-blocking. */
+  warnings?: FieldWarning[];
   sideEffects: SideEffect[];
 }
 
@@ -134,6 +138,7 @@ export const performCreate = async (
   enforceFieldConditions(data, collection.fields, authSubjectOf(env));
   // Cross-field validation rules run on the same plaintext proposed row.
   enforceValidationRules(data, collection.fields, authSubjectOf(env));
+  const warnings = collectFieldWarnings(data, collection.fields, authSubjectOf(env));
   // Replace any `hash` field's plaintext with its scrypt digest before the row
   // is built. Empty values are dropped (see hashIncomingFields).
   await hashIncomingFields(data, collection.fields);
@@ -243,7 +248,7 @@ export const performCreate = async (
         },
       ),
   ];
-  return { id, data: projected, sideEffects };
+  return { id, data: projected, warnings: warnings.length ? warnings : undefined, sideEffects };
 };
 
 export const performUpdate = async (
@@ -277,6 +282,7 @@ export const performUpdate = async (
   }
   enforceFieldConditions(mergedForConditions, collection.fields, authSubjectOf(env));
   enforceValidationRules(mergedForConditions, collection.fields, authSubjectOf(env));
+  const warnings = collectFieldWarnings(mergedForConditions, collection.fields, authSubjectOf(env));
 
   if (hasI18nField(collection.fields)) {
     mergeI18nPatch(patch, beforeRow, collection.fields, env.locale);
@@ -366,7 +372,7 @@ export const performUpdate = async (
         },
       ),
   ];
-  return { id, data: projected, sideEffects };
+  return { id, data: projected, warnings: warnings.length ? warnings : undefined, sideEffects };
 };
 
 export const performDelete = async (

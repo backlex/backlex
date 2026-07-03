@@ -56,3 +56,22 @@ export const scrubHashFields = (
     if (key in data) data[key] = null;
   }
 };
+
+/**
+ * Delete every `private` field from the write payload in place, right after the
+ * row is persisted. A private column is stored + writable but must never leave
+ * through an API surface — dropping it here keeps it out of the write response,
+ * the realtime event, the audit-log payload, and embed/FTS text. Mirrors the
+ * read-path omission in `deserializeRow` / the GraphQL row builder. Unlike hash
+ * (masked to `null`) the key is removed entirely, so the field is simply absent.
+ */
+export const scrubPrivateFields = (
+  data: Record<string, unknown>,
+  fields: FieldDef[],
+  keyOf: (f: FieldDef) => string = (f) => f.name,
+): void => {
+  for (const f of fields) {
+    if (!f.private) continue;
+    delete data[keyOf(f)];
+  }
+};

@@ -74,6 +74,8 @@ interface FieldDraft {
   /** Server-side auto-fill on insert / update. */
   onCreate?: "uuid" | "now" | "user" | "tenant";
   onUpdate?: "now" | "user" | "tenant";
+  /** App-layer ON DELETE action for a relation FK. */
+  onDelete?: "set_null" | "cascade" | "no_action";
   options?: { choices?: FieldChoice[]; values?: string[] };
   conditions?: {
     name?: string;
@@ -311,13 +313,30 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
           )}
 
           {activeTab === "relationship" && isRelation && (
-            <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>References collection</Trans></label>
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2">
-                <I.Database size={14} className="text-muted-foreground" />
-                <span className="font-mono text-[13px] text-foreground">{draft.to || "—"}</span>
+            <div className="flex flex-col gap-3.5">
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>References collection</Trans></label>
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2">
+                  <I.Database size={14} className="text-muted-foreground" />
+                  <span className="font-mono text-[13px] text-foreground">{draft.to || "—"}</span>
+                </div>
+                <span className="text-[11.5px] text-muted-foreground"><Trans>Stores the target row's <span className="font-mono">id</span>. The target is immutable — drop &amp; re-add to change it.</Trans></span>
               </div>
-              <span className="text-[11.5px] text-muted-foreground"><Trans>Stores the target row's <span className="font-mono">id</span>. The target is immutable — drop &amp; re-add to change it.</Trans></span>
+              {draft.type === "relation" && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>When the referenced item is deleted</Trans></label>
+                  <Select
+                    value={draft.onDelete ?? "no_action"}
+                    onChange={(v) => setDraft((d) => d ? { ...d, onDelete: v as never } : d)}
+                    options={[
+                      { value: "no_action", label: t`Do nothing` },
+                      { value: "set_null", label: t`Set this field to NULL` },
+                      { value: "cascade", label: t`Delete this row too (cascade)` },
+                    ]}
+                  />
+                  <span className="text-[11.5px] text-muted-foreground"><Trans>App-layer trigger — backlex has no DB foreign keys, so it's enforced on delete.</Trans></span>
+                </div>
+              )}
             </div>
           )}
 

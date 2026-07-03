@@ -1361,6 +1361,11 @@ msgstr "app (workspace end-users)"
 #~ msgid "App users"
 #~ msgstr "App users"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "App-layer trigger — backlex has no DB foreign keys, so it's enforced on delete."
+msgstr "App-layer trigger — backlex has no DB foreign keys, so it's enforced on delete."
+
 #: src/client/admin/pages/settings.tsx
 msgid "Appearance"
 msgstr "Appearance"
@@ -3139,6 +3144,11 @@ msgstr "Delete this collection"
 #: src/client/admin/item-editor.tsx
 msgid "Delete this item?"
 msgstr "Delete this item?"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Delete this row too (cascade)"
+msgstr "Delete this row too (cascade)"
 
 #: src/client/admin/pages/users.tsx
 msgid "Delete user"
@@ -9197,6 +9207,11 @@ msgstr "Set the config object via the API once the panel exists."
 msgid "Set them in <0>wrangler.toml [vars]</0> / <1>wrangler secret put</1> (or <2>apps/web/.env</2> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser."
 msgstr "Set them in <0>wrangler.toml [vars]</0> / <1>wrangler secret put</1> (or <2>apps/web/.env</2> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Set this field to NULL"
+msgstr "Set this field to NULL"
+
 #: src/client/admin/account-page.tsx
 msgid "Set up"
 msgstr "Set up"
@@ -11060,6 +11075,11 @@ msgstr "When set, body is rendered from the stored template at run time. Otherwi
 #: src/client/pages/api-keys.tsx
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "When the referenced item is deleted"
+msgstr "When the referenced item is deleted"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx

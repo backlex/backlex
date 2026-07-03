@@ -35,6 +35,33 @@ export const enforceFieldConditions = (
   }
 };
 
+/**
+ * Enforce per-field cross-field `validation.rule`s against a fully-resolved row
+ * (create: the proposed body; update: the merged before+patch row). A rule is a
+ * filter over the whole row — the row is valid only when it matches. Sibling
+ * values are referenced with `"$field.<name>"` on the comparison side, e.g.
+ * `{ end_date: { _gte: "$field.start_date" } }`. On failure we throw the field's
+ * `validation.message` when set, else a generated message. `$user.*` resolves
+ * via `subject`. Per-value checks live in `validateValue`; this handles only the
+ * rules that need to see other fields.
+ */
+export const enforceValidationRules = (
+  row: Record<string, unknown>,
+  fields: FieldDef[],
+  subject: AuthSubject,
+): void => {
+  for (const f of fields) {
+    const rule = f.validation?.rule;
+    if (!rule) continue;
+    if (!matchesCondition(row, rule, subject)) {
+      throw new AppError(
+        "VALIDATION",
+        f.validation?.message ?? `Field "${f.name}" failed its validation rule`,
+      );
+    }
+  }
+};
+
 export const validateBody = (
   data: Record<string, unknown>,
   fields: FieldDef[],

@@ -790,6 +790,10 @@ msgstr "About"
 msgid "Accept invite"
 msgstr "Accept invite"
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Accepts an ISO date, epoch-ms, or <0>$now</0>."
+msgstr "Accepts an ISO date, epoch-ms, or <0>$now</0>."
+
 #: src/client/admin/ui.tsx
 msgid "Access"
 msgstr "Access"
@@ -839,6 +843,7 @@ msgstr "Actions"
 msgid "Activate"
 msgstr "Activate"
 
+#: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
@@ -1118,6 +1123,10 @@ msgstr "Adopt existing table"
 #: src/client/admin/collections-index.tsx
 msgid "Adopted \"{slug}\". Reloading…"
 msgstr "Adopted \"{slug}\". Reloading…"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Advanced — cross-field rule"
+msgstr "Advanced — cross-field rule"
 
 #: src/client/admin/pages/advisor.tsx
 #: src/client/admin/ui.tsx
@@ -2843,6 +2852,10 @@ msgstr "Custom CA PEM (optional)"
 msgid "Custom date…"
 msgstr "Custom date…"
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Custom error message (optional)"
+msgstr "Custom error message (optional)"
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "Custom headers"
 msgstr "Custom headers"
@@ -3469,6 +3482,10 @@ msgstr "Each collection is a physical table created at runtime. Drag fields, set
 msgid "Each row gets an <0>owner_id</0>; the<1> authenticated</1> role can only read/update its own rows. Toggling on auto-seeds owner-scoped permissions; toggling off does not remove existing rows or rules."
 msgstr "Each row gets an <0>owner_id</0>; the<1> authenticated</1> role can only read/update its own rows. Toggling on auto-seeds owner-scoped permissions; toggling off does not remove existing rows or rules."
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Earliest"
+msgstr "Earliest"
+
 #: src/client/admin/parity/revisions.tsx
 msgid "edit"
 msgstr "edit"
@@ -3566,6 +3583,7 @@ msgid "Editor"
 msgstr "Editor"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/pages/users.tsx
@@ -3706,6 +3724,10 @@ msgstr "Endpoint URL"
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Endpoints"
 msgstr "Endpoints"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "enforced on save (422)"
+msgstr "enforced on save (422)"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Enqueue"
@@ -4294,6 +4316,7 @@ msgstr "Fork a branch from the current live schema. Stage changes, then apply."
 msgid "Fork a branch to stage schema changes off to the side."
 msgstr "Fork a branch to stage schema changes off to the side."
 
+#: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/storage.tsx
 msgid "Format"
 msgstr "Format"
@@ -4901,6 +4924,10 @@ msgstr "is not null"
 msgid "is null"
 msgstr "is null"
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "ISO or $now"
+msgstr "ISO or $now"
+
 #: src/client/admin/storage.tsx
 msgid "Istanbul, Turkey"
 msgstr "Istanbul, Turkey"
@@ -5189,6 +5216,10 @@ msgstr "latency"
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Latency"
 msgstr "Latency"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Latest"
+msgstr "Latest"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Layout reset to auto-arrange."
@@ -5560,6 +5591,10 @@ msgstr "match {0} of the following"
 msgid "Matched rules"
 msgstr "Matched rules"
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Max"
+msgstr "Max"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Max 120 characters."
 msgstr "Max 120 characters."
@@ -5575,6 +5610,14 @@ msgstr "Max 80 characters."
 #: src/client/admin/pages/jobs.tsx
 msgid "Max attempts"
 msgstr "Max attempts"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Max length"
+msgstr "Max length"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Max selected"
+msgstr "Max selected"
 
 #: src/client/admin/pages/agents.tsx
 msgid "Max steps"
@@ -5685,6 +5728,18 @@ msgstr "Migrations"
 #: src/client/admin/parity/database.tsx
 msgid "Migrations are applied via <0>bun run db:migrate:<dialect></0> at deploy time. Drizzle tracks them by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead."
 msgstr "Migrations are applied via <0>bun run db:migrate:<dialect></0> at deploy time. Drizzle tracks them by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead."
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Min"
+msgstr "Min"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Min length"
+msgstr "Min length"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Min selected"
+msgstr "Min selected"
 
 #: src/client/admin/item-collaboration.tsx
 msgid "Mint a public link that shows this record read-only — no sign-in required to view it."
@@ -6509,6 +6564,10 @@ msgstr "No webhooks yet"
 msgid "none"
 msgstr "none"
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "None"
+msgstr "None"
+
 #: src/client/pages/rest-explorer.tsx
 msgid "none (public)"
 msgstr "none (public)"
@@ -6962,6 +7021,10 @@ msgstr "Paste IdP metadata XML (optional — prefills the fields below)"
 #: src/client/pages/openapi-export.tsx
 msgid "Paths"
 msgstr "Paths"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Pattern (regex)"
+msgstr "Pattern (regex)"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Pause"
@@ -9213,6 +9276,10 @@ msgstr "Shown in author bylines and the header dropdown."
 msgid "Shown in the sidebar and the browser title."
 msgstr "Shown in the sidebar and the browser title."
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Shown instead of the default message"
+msgstr "Shown instead of the default message"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Side-table (item_ownership)"
 msgstr "Side-table (item_ownership)"
@@ -9968,6 +10035,10 @@ msgstr "The public embed is live. The link was shown once when it was created �
 msgid "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
 msgstr "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "The row is rejected unless this matches. Reference another field's value with <0>$field.name</0> (e.g. <1>end_date ≥ $field.start_date</1>)."
+msgstr "The row is rejected unless this matches. Reference another field's value with <0>$field.name</0> (e.g. <1>end_date ≥ $field.start_date</1>)."
+
 #: src/client/pages/shared-record.tsx
 msgid "The share link may have been revoked, or the record it pointed to was removed."
 msgstr "The share link may have been revoked, or the record it pointed to was removed."
@@ -10524,6 +10595,7 @@ msgstr "Uploading…"
 msgid "Uploads"
 msgstr "Uploads"
 
+#: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/flow-builder.tsx
 msgid "URL"
 msgstr "URL"
@@ -10654,6 +10726,7 @@ msgid "Users enrol a passkey after signing in once with another method."
 msgstr "Users enrol a passkey after signing in once with another method."
 
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/field-validation-editor.tsx
 msgid "Validation"
 msgstr "Validation"
 
@@ -10683,6 +10756,10 @@ msgstr "Value (JSON, optional)"
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Value must be valid JSON."
 msgstr "Value must be valid JSON."
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "value of {f}"
+msgstr "value of {f}"
 
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/rule-builder.tsx
@@ -10894,6 +10971,10 @@ msgstr "When the rule matches the row, apply the effects. <0>Required</0> is enf
 #: src/client/admin/pages/settings.tsx
 msgid "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
 msgstr "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Whole numbers only (no decimals)"
+msgstr "Whole numbers only (no decimals)"
 
 #: src/client/admin/storage.tsx
 msgid "Width"

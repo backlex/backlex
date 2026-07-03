@@ -34,6 +34,12 @@ import {
   ruleTreeToObj,
   treeHasRule,
 } from "./rule-builder";
+import {
+  compileValidation,
+  emptyValDraft,
+  FieldValidationEditor,
+  type ValDraft,
+} from "./field-validation-editor";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -75,6 +81,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [searchable, setSearchable] = useState(false);
   const [step, setStep] = useState(1);
   const [conds, setConds] = useState<CondDraft[]>([]);
+  const [valDraft, setValDraft] = useState<ValDraft>(emptyValDraft());
 
   useEffect(() => {
     if (open) {
@@ -90,6 +97,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setIndexed(false);
       setSearchable(false);
       setConds([]);
+      setValDraft(emptyValDraft());
     }
   }, [open]);
 
@@ -172,6 +180,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         ...(c.readonly ? { readonly: true } : {}),
         ...(c.hidden ? { hidden: true } : {}),
       }));
+    const validation = compileValidation(valDraft, def.type);
     onCreate({
       name: safeName,
       type: def.type,
@@ -184,6 +193,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(def.hasChoices && cleanChoices.length ? { options: { choices: cleanChoices } } : {}),
       ...(def.hasRelation ? { to: relationTarget } : {}),
       ...(conditions.length ? { conditions } : {}),
+      ...(validation ? { validation } : {}),
     });
   };
 
@@ -403,6 +413,13 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   </div>
                 ))}
               </div>
+
+              <FieldValidationEditor
+                type={def.type}
+                fields={availableFields}
+                value={valDraft}
+                onChange={setValDraft}
+              />
 
               <div className="mt-1.5">
                 <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>DDL preview</Trans></div>

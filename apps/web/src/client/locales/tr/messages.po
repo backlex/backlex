@@ -790,6 +790,10 @@ msgstr "Hakkında"
 msgid "Accept invite"
 msgstr "Daveti kabul et"
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Accepts an ISO date, epoch-ms, or <0>$now</0>."
+msgstr "ISO tarih, epoch-ms veya <0>$now</0> kabul eder."
+
 #: src/client/admin/ui.tsx
 msgid "Access"
 msgstr "Erişim"
@@ -839,6 +843,7 @@ msgstr "İşlemler"
 msgid "Activate"
 msgstr "Etkinleştir"
 
+#: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
@@ -1118,6 +1123,10 @@ msgstr "Mevcut tabloyu benimse"
 #: src/client/admin/collections-index.tsx
 msgid "Adopted \"{slug}\". Reloading…"
 msgstr "\"{slug}\" benimsendi. Yeniden yükleniyor…"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Advanced — cross-field rule"
+msgstr "Gelişmiş — alanlar arası kural"
 
 #: src/client/admin/pages/advisor.tsx
 #: src/client/admin/ui.tsx
@@ -2843,6 +2852,10 @@ msgstr "Özel CA PEM (isteğe bağlı)"
 msgid "Custom date…"
 msgstr "Özel tarih…"
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Custom error message (optional)"
+msgstr "Özel hata mesajı (opsiyonel)"
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "Custom headers"
 msgstr "Özel başlıklar"
@@ -3469,6 +3482,10 @@ msgstr "Her koleksiyon, çalışma zamanında oluşturulan fiziksel bir tablodur
 msgid "Each row gets an <0>owner_id</0>; the<1> authenticated</1> role can only read/update its own rows. Toggling on auto-seeds owner-scoped permissions; toggling off does not remove existing rows or rules."
 msgstr "Her satıra bir <0>owner_id</0> atanır; <1>authenticated</1> rolü yalnızca kendi satırlarını okuyabilir/güncelleyebilir. Açmak sahip kapsamlı izinleri otomatik ekler; kapatmak mevcut satırları veya kuralları kaldırmaz."
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Earliest"
+msgstr "En erken"
+
 #: src/client/admin/parity/revisions.tsx
 msgid "edit"
 msgstr "düzenle"
@@ -3566,6 +3583,7 @@ msgid "Editor"
 msgstr "Editör"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/pages/users.tsx
@@ -3706,6 +3724,10 @@ msgstr "Uç nokta URL'si"
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Endpoints"
 msgstr "Uç noktalar"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "enforced on save (422)"
+msgstr "kayıtta uygulanır (422)"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Enqueue"
@@ -4294,6 +4316,7 @@ msgstr "Mevcut canlı şemadan bir dal çatallayın. Değişiklikleri hazırlay�
 msgid "Fork a branch to stage schema changes off to the side."
 msgstr "Şema değişikliklerini ayrı tutmak için bir dal çatallayın."
 
+#: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/storage.tsx
 msgid "Format"
 msgstr "Biçim"
@@ -4901,6 +4924,10 @@ msgstr "null değil"
 msgid "is null"
 msgstr "null"
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "ISO or $now"
+msgstr "ISO veya $now"
+
 #: src/client/admin/storage.tsx
 msgid "Istanbul, Turkey"
 msgstr "İstanbul, Türkiye"
@@ -5189,6 +5216,10 @@ msgstr "gecikme"
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Latency"
 msgstr "Gecikme"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Latest"
+msgstr "En geç"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Layout reset to auto-arrange."
@@ -5560,6 +5591,10 @@ msgstr "aşağıdakilerin {0} ile eşleş"
 msgid "Matched rules"
 msgstr "Eşleşen kurallar"
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Max"
+msgstr "Maks"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Max 120 characters."
 msgstr "En fazla 120 karakter."
@@ -5575,6 +5610,14 @@ msgstr "En fazla 80 karakter."
 #: src/client/admin/pages/jobs.tsx
 msgid "Max attempts"
 msgstr "Maksimum deneme"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Max length"
+msgstr "Maks uzunluk"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Max selected"
+msgstr "Maks seçili"
 
 #: src/client/admin/pages/agents.tsx
 msgid "Max steps"
@@ -5685,6 +5728,18 @@ msgstr "Migrasyonlar"
 #: src/client/admin/parity/database.tsx
 msgid "Migrations are applied via <0>bun run db:migrate:<dialect></0> at deploy time. Drizzle tracks them by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead."
 msgstr "Migrasyonlar dağıtım sırasında <0>bun run db:migrate:<dialect></0> ile uygulanır. Drizzle bunları içerik hash'iyle izler; klasör etiketi derleme zamanı manifestinden gelir. Geri alma desteklenmez — bunun yerine ileri migrasyon yazın."
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Min"
+msgstr "Min"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Min length"
+msgstr "Min uzunluk"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Min selected"
+msgstr "Min seçili"
 
 #: src/client/admin/item-collaboration.tsx
 msgid "Mint a public link that shows this record read-only — no sign-in required to view it."
@@ -6509,6 +6564,10 @@ msgstr "Henüz webhook yok"
 msgid "none"
 msgstr "yok"
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "None"
+msgstr "Yok"
+
 #: src/client/pages/rest-explorer.tsx
 msgid "none (public)"
 msgstr "yok (herkese açık)"
@@ -6970,6 +7029,10 @@ msgstr "IdP metadata XML yapıştırın (isteğe bağlı — aşağıdaki alanla
 #: src/client/pages/openapi-export.tsx
 msgid "Paths"
 msgstr "Yollar"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Pattern (regex)"
+msgstr "Desen (regex)"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Pause"
@@ -9221,6 +9284,10 @@ msgstr "Yazar satırlarında ve üst bilgi açılır menüsünde gösterilir."
 msgid "Shown in the sidebar and the browser title."
 msgstr "Kenar çubuğunda ve tarayıcı başlığında gösterilir."
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Shown instead of the default message"
+msgstr "Varsayılan mesaj yerine gösterilir"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Side-table (item_ownership)"
 msgstr "Yan tablo (item_ownership)"
@@ -9976,6 +10043,10 @@ msgstr "Herkese açık gömme aktif. Bağlantı oluşturulduğunda yalnızca bir
 msgid "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
 msgstr "Sorgu aynen çalıştırılır. Yukarıdaki görselleştirme ipucu, sütunların grafikle nasıl eşleştiğini açıklar."
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "The row is rejected unless this matches. Reference another field's value with <0>$field.name</0> (e.g. <1>end_date ≥ $field.start_date</1>)."
+msgstr "Bu eşleşmedikçe satır reddedilir. Başka bir alanın değerine <0>$field.name</0> ile referans verin (örn. <1>end_date ≥ $field.start_date</1>)."
+
 #: src/client/pages/shared-record.tsx
 msgid "The share link may have been revoked, or the record it pointed to was removed."
 msgstr "Paylaşım bağlantısı iptal edilmiş olabilir ya da işaret ettiği kayıt kaldırılmış olabilir."
@@ -10532,6 +10603,7 @@ msgstr "Yükleniyor…"
 msgid "Uploads"
 msgstr "Yüklemeler"
 
+#: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/flow-builder.tsx
 msgid "URL"
 msgstr "URL"
@@ -10662,6 +10734,7 @@ msgid "Users enrol a passkey after signing in once with another method."
 msgstr "Kullanıcılar başka bir yöntemle bir kez giriş yaptıktan sonra passkey kaydeder."
 
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/field-validation-editor.tsx
 msgid "Validation"
 msgstr "Doğrulama"
 
@@ -10691,6 +10764,10 @@ msgstr "Değer (JSON, opsiyonel)"
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Value must be valid JSON."
 msgstr "Değer geçerli JSON olmalı."
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "value of {f}"
+msgstr "{f} değeri"
 
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/rule-builder.tsx
@@ -10906,6 +10983,10 @@ msgstr "Kural satırla eşleştiğinde efektler uygulanır. <0>Zorunlu</0> kayı
 #: src/client/admin/pages/settings.tsx
 msgid "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
 msgstr "“Test SMS gönder” işleminin nereye iletileceği. Hesabınızın kayıtlı numaralarını kullanmak için boş bırakın."
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Whole numbers only (no decimals)"
+msgstr "Yalnızca tam sayılar (ondalık yok)"
 
 #: src/client/admin/storage.tsx
 msgid "Width"

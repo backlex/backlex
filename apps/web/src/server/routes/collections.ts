@@ -36,6 +36,30 @@ import { seedOwnerScopedPermissions } from "../services/seed";
 import { embedAndUpsertBatch, isVectorizable } from "../services/vectorize";
 import { indexFtsBatch, isSearchable } from "../services/fts";
 
+const DurationPartsSchema = z
+  .object({
+    years: z.number().optional(),
+    months: z.number().optional(),
+    weeks: z.number().optional(),
+    days: z.number().optional(),
+    hours: z.number().optional(),
+    minutes: z.number().optional(),
+    seconds: z.number().optional(),
+  })
+  .strict();
+
+/** A datetime bound accepted by `validation.minDate` / `maxDate`. */
+const DateBoundSchema = z.union([
+  z.number(),
+  z.string(),
+  z.object({
+    $now: z.object({
+      add: DurationPartsSchema.optional(),
+      sub: DurationPartsSchema.optional(),
+    }),
+  }),
+]);
+
 const FieldSchema = z
   .object({
     name: z.string().min(1).regex(/^[a-z][a-z0-9_]*$/, "snake_case"),
@@ -95,6 +119,27 @@ const FieldSchema = z
         max: z.number().optional(),
         minLength: z.number().int().nonnegative().optional(),
         maxLength: z.number().int().nonnegative().optional(),
+        // Built-in format for text-ish fields — canonical email/url patterns.
+        format: z.enum(["email", "url"]).optional(),
+        // Whole-number constraint for integer/number.
+        integer: z.boolean().optional(),
+        // Datetime bounds (timestamp): epoch-ms, ISO string, "$now", or a
+        // relative-now object `{ $now: { sub: { days: 1 } } }`.
+        minDate: DateBoundSchema.optional(),
+        maxDate: DateBoundSchema.optional(),
+        // Cardinality bounds for relation_many (array length).
+        minSelect: z.number().int().nonnegative().optional(),
+        maxSelect: z.number().int().nonnegative().optional(),
+        // Cross-field escape hatch — opaque Condition; validateFields checks
+        // its field refs. Sibling values via `"$field.<name>"`.
+        rule: z
+          .custom<Condition>(
+            (v) => typeof v === "object" && v !== null && !Array.isArray(v),
+            "rule must be a condition object",
+          )
+          .optional(),
+        // Custom message shown on any failure for this field.
+        message: z.string().max(300).optional(),
       })
       .optional(),
     visibleWhen: z

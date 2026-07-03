@@ -412,7 +412,10 @@ export function SchemaView({
   );
 }
 
-export function AlterPreview({ pendingField }: { pendingField?: Partial<SchemaField> | null }) {
+export function AlterPreview({
+  pendingField,
+  table = "c_collection",
+}: { pendingField?: Partial<SchemaField> | null; table?: string }) {
   if (!pendingField) return null;
   const sqlType =
     pendingField.type === "integer" ? "INTEGER" :
@@ -426,7 +429,7 @@ export function AlterPreview({ pendingField }: { pendingField?: Partial<SchemaFi
   return (
     <div className="whitespace-pre-wrap rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-xs leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)] [word-break:break-word]">
       <span className={comment}>-- runtime DDL preview · sqlite dialect</span>{"\n"}
-      <span className={kw}>ALTER TABLE</span> <span className={ident}>"c_posts"</span>{"\n"}
+      <span className={kw}>ALTER TABLE</span> <span className={ident}>"{table}"</span>{"\n"}
       {"  "}<span className={kw}>ADD COLUMN</span> <span className={ident}>"{pendingField.name || "new_field"}"</span> {sqlType}
       {!pendingField.nullable ? <> <span className={kw}>NOT NULL</span></> : null}
       {pendingField.default ? <> <span className={kw}>DEFAULT</span> <span className="text-[oklch(from_var(--primary)_0.85_0.13_h)]">{pendingField.default}</span></> : null};{"\n"}

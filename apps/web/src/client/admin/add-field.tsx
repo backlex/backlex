@@ -406,7 +406,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
 
               <div className="mt-1.5">
                 <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>DDL preview</Trans></div>
-                <AlterPreview pendingField={{ name: safeName || "new_field", type: def.type as never, nullable, default: defaultValue }} />
+                <AlterPreview table={`c_${schema?.slug || "collection"}`} pendingField={{ name: safeName || "new_field", type: def.type as never, nullable, default: defaultValue }} />
               </div>
             </div>
             </div>

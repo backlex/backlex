@@ -114,6 +114,8 @@ export const deserializeRow = (
         : null;
   }
   for (const f of fields) {
+    // Private / internal columns never leave through an API read surface.
+    if (f.private) continue;
     if (includeAll || sel.has(f.name)) {
       out[f.name] = deserialize(row[f.name], f.type, dialect);
     }

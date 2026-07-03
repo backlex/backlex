@@ -183,6 +183,9 @@ const FieldSchema = z
     label: z.string().max(200).optional(),
     /** Inline help text shown beneath the field in the admin editor. UI only. */
     description: z.string().max(1000).optional(),
+    /** Private / internal column — stored + writable but stripped from every
+     *  API read surface (REST + GraphQL + CSV + changefeed). */
+    private: z.boolean().optional(),
   })
   .refine((f) => (f.type !== "relation" && f.type !== "relation_many") || !!f.to, {
     message: "relation / relation_many field must specify `to` (target collection slug)",

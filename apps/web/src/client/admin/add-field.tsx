@@ -88,6 +88,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [searchable, setSearchable] = useState(false);
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
   const [step, setStep] = useState(1);
   const [tab, setTab] = useState("schema");
   const [conds, setConds] = useState<CondDraft[]>([]);
@@ -109,6 +110,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setSearchable(false);
       setLabel("");
       setDescription("");
+      setIsPrivate(false);
       setConds([]);
       setValDraft(emptyValDraft());
     }
@@ -217,6 +219,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(defVal !== undefined ? { default: defVal } : {}),
       ...(label.trim() ? { label: label.trim() } : {}),
       ...(description.trim() ? { description: description.trim() } : {}),
+      ...(isPrivate ? { private: true } : {}),
       ...(searchable && (def.type === "text" || def.type === "longtext") ? { searchable: true } : {}),
       ...(def.hasChoices && cleanChoices.length ? { options: { choices: cleanChoices } } : {}),
       ...(def.hasRelation ? { to: relationTarget } : {}),
@@ -395,6 +398,13 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Note <span className="text-muted-foreground">(optional)</span></Trans></label>
                   <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder={t`Add a helpful note for editors…`} />
                   <span className="text-[11.5px] text-muted-foreground"><Trans>Inline help text shown beneath the field.</Trans></span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Private</Trans></div>
+                    <div className="text-[11.5px] text-muted-foreground"><Trans>Internal column — stored and writable, but never returned by the API (REST, GraphQL, CSV, changefeed).</Trans></div>
+                  </div>
+                  <Switch checked={isPrivate} onChange={setIsPrivate} />
                 </div>
               </div>
             )}

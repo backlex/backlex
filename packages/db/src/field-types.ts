@@ -265,6 +265,27 @@ export interface FieldDef {
    * Emulated in `enforceOnDeleteTriggers` since backlex keeps no DB-level FKs.
    */
   onDelete?: "set_null" | "cascade" | "no_action";
+  /**
+   * Display formatting hint — purely how the admin RENDERS the value in lists /
+   * detail views. Never touches storage, the API, sorting or filtering (those
+   * always use the raw value). Number options apply to `integer` / `number`;
+   * `dateStyle` to `timestamp`; `prefix` / `suffix` to any.
+   */
+  format?: {
+    /** integer/number: plain (raw), decimal (grouped), currency, percent. */
+    style?: "plain" | "decimal" | "currency" | "percent";
+    /** Fixed number of fraction digits. */
+    precision?: number;
+    /** ISO 4217 code (e.g. "USD", "TRY") — only for style: "currency". */
+    currency?: string;
+    /** Group thousands (1,234) for decimal style. */
+    thousandSeparator?: boolean;
+    /** timestamp: relative ("3d ago"), or a fixed date/time rendering. */
+    dateStyle?: "relative" | "date" | "datetime" | "time";
+    /** Wrap the rendered value (e.g. prefix "≈", suffix " kg"). */
+    prefix?: string;
+    suffix?: string;
+  };
 }
 
 /** Resolve an auto-fill token to a concrete value for the write path. `now`

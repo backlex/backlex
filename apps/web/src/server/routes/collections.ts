@@ -175,6 +175,14 @@ const FieldSchema = z
     /** Fold this field into the full-text-search index when the collection
      *  has `fts: true`. Only meaningful on text/longtext fields. */
     searchable: z.boolean().optional(),
+    /** Column-level DEFAULT (scalar types only). Emitted into the DDL by
+     *  `columnDefSql`; ignored for relation/json/timestamp/computed. */
+    default: z.union([z.string(), z.number(), z.boolean()]).optional(),
+    /** Human display name for the field in the admin editor. UI only —
+     *  the storage column is still keyed by `name`. */
+    label: z.string().max(200).optional(),
+    /** Inline help text shown beneath the field in the admin editor. UI only. */
+    description: z.string().max(1000).optional(),
   })
   .refine((f) => (f.type !== "relation" && f.type !== "relation_many") || !!f.to, {
     message: "relation / relation_many field must specify `to` (target collection slug)",

@@ -611,11 +611,11 @@ msgstr "•••••••• (stored — leave blank to keep)"
 msgid "← Back to sign in"
 msgstr "← Back to sign in"
 
-#: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "+ condition"
 msgstr "+ condition"
 
-#: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "+ group"
 msgstr "+ group"
 
@@ -778,7 +778,7 @@ msgstr "A template with key \"{trimmedKey}\" already exists."
 msgid "A value is stored. Type a new one to replace it, or leave blank to keep it."
 msgstr "A value is stored. Type a new one to replace it, or leave blank to keep it."
 
-#: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "a, b, c"
 msgstr "a, b, c"
 
@@ -978,6 +978,10 @@ msgstr "Add choice"
 #: src/client/admin/add-field.tsx
 msgid "Add column"
 msgstr "Add column"
+
+#: src/client/admin/edit-field.tsx
+msgid "Add condition"
+msgstr "Add condition"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/schema-graph.tsx
@@ -2313,9 +2317,17 @@ msgstr "Condition (permission DSL JSON, optional)"
 msgid "Condition must be valid JSON."
 msgstr "Condition must be valid JSON."
 
+#: src/client/admin/edit-field.tsx
+msgid "Condition name (optional)"
+msgstr "Condition name (optional)"
+
 #: src/client/admin/permissions-matrix.tsx
 msgid "conditional access"
 msgstr "conditional access"
+
+#: src/client/admin/edit-field.tsx
+msgid "Conditions"
+msgstr "Conditions"
 
 #: src/client/admin/parity/insights.tsx
 msgid "config-only panel rendered from props"
@@ -4061,6 +4073,7 @@ msgid "Field type"
 msgstr "Field type"
 
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "field…"
 msgstr "field…"
 
@@ -4530,6 +4543,10 @@ msgstr "healthy"
 #: src/client/admin/storage.tsx
 msgid "Height"
 msgstr "Height"
+
+#: src/client/admin/edit-field.tsx
+msgid "Hidden"
+msgstr "Hidden"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Hide"
@@ -5531,7 +5548,7 @@ msgid "Mark all read"
 msgstr "Mark all read"
 
 #. placeholder {0}: node.op === "and" ? "all" : "any"
-#: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "match {0} of the following"
 msgstr "match {0} of the following"
 
@@ -6106,9 +6123,13 @@ msgstr "No comments yet — start the thread below."
 msgid "no condition; everyone in role"
 msgstr "no condition; everyone in role"
 
-#: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "No conditions — this rule matches everything."
 msgstr "No conditions — this rule matches everything."
+
+#: src/client/admin/edit-field.tsx
+msgid "No conditions. Click \"Add condition\" to make this field required/readonly/hidden based on other fields."
+msgstr "No conditions. Click \"Add condition\" to make this field required/readonly/hidden based on other fields."
 
 #: src/client/pages/rest-explorer.tsx
 msgid "No content schema."
@@ -7649,6 +7670,10 @@ msgstr "Read-only mode"
 msgid "read-only SELECT against the workspace database"
 msgstr "read-only SELECT against the workspace database"
 
+#: src/client/admin/edit-field.tsx
+msgid "Readonly"
+msgstr "Readonly"
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Ready to create."
 msgstr "Ready to create."
@@ -7830,6 +7855,7 @@ msgstr "Reload schema"
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/settings.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "Remove"
 msgstr "Remove"
 
@@ -7855,11 +7881,15 @@ msgstr "Remove {tag}"
 msgid "Remove choice"
 msgstr "Remove choice"
 
+#: src/client/admin/edit-field.tsx
+msgid "Remove condition"
+msgstr "Remove condition"
+
 #: src/client/admin/pages/settings.tsx
 msgid "Remove device"
 msgstr "Remove device"
 
-#: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "Remove group"
 msgstr "Remove group"
 
@@ -10648,6 +10678,7 @@ msgid "Value must be valid JSON."
 msgstr "Value must be valid JSON."
 
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "value or $user.id"
 msgstr "value or $user.id"
 
@@ -10847,6 +10878,10 @@ msgstr "When set, body is rendered from the stored template at run time. Otherwi
 #: src/client/pages/api-keys.tsx
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
+
+#: src/client/admin/edit-field.tsx
+msgid "When the rule matches the row, apply the effects. <0>Required</0> is enforced on save (422); Readonly/Hidden affect the item form."
+msgstr "When the rule matches the row, apply the effects. <0>Required</0> is enforced on save (422); Readonly/Hidden affect the item form."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."

@@ -611,11 +611,11 @@ msgstr "•••••••• (saklandı — korumak için boş bırakın)"
 msgid "← Back to sign in"
 msgstr "← Giriş yap sayfasına dön"
 
-#: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "+ condition"
 msgstr "+ koşul"
 
-#: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "+ group"
 msgstr "+ grup"
 
@@ -778,7 +778,7 @@ msgstr "\"{trimmedKey}\" anahtarlı bir şablon zaten mevcut."
 msgid "A value is stored. Type a new one to replace it, or leave blank to keep it."
 msgstr "Bir değer saklandı. Değiştirmek için yeni bir değer yazın ya da korumak için boş bırakın."
 
-#: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "a, b, c"
 msgstr "a, b, c"
 
@@ -978,6 +978,10 @@ msgstr "Seçenek ekle"
 #: src/client/admin/add-field.tsx
 msgid "Add column"
 msgstr "Sütun ekle"
+
+#: src/client/admin/edit-field.tsx
+msgid "Add condition"
+msgstr "Koşul ekle"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/schema-graph.tsx
@@ -2313,9 +2317,17 @@ msgstr "Koşul (izin DSL JSON, opsiyonel)"
 msgid "Condition must be valid JSON."
 msgstr "Koşul geçerli JSON olmalı."
 
+#: src/client/admin/edit-field.tsx
+msgid "Condition name (optional)"
+msgstr "Koşul adı (opsiyonel)"
+
 #: src/client/admin/permissions-matrix.tsx
 msgid "conditional access"
 msgstr "koşullu erişim"
+
+#: src/client/admin/edit-field.tsx
+msgid "Conditions"
+msgstr "Koşullar"
 
 #: src/client/admin/parity/insights.tsx
 msgid "config-only panel rendered from props"
@@ -4061,6 +4073,7 @@ msgid "Field type"
 msgstr "Alan türü"
 
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "field…"
 msgstr "alan…"
 
@@ -4530,6 +4543,10 @@ msgstr "sağlıklı"
 #: src/client/admin/storage.tsx
 msgid "Height"
 msgstr "Yükseklik"
+
+#: src/client/admin/edit-field.tsx
+msgid "Hidden"
+msgstr "Gizli"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Hide"
@@ -5531,7 +5548,7 @@ msgid "Mark all read"
 msgstr "Tümünü okundu işaretle"
 
 #. placeholder {0}: node.op === "and" ? "all" : "any"
-#: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "match {0} of the following"
 msgstr "aşağıdakilerin {0} ile eşleş"
 
@@ -6106,9 +6123,13 @@ msgstr "Henüz yorum yok — aşağıdan konuşmayı başlatın."
 msgid "no condition; everyone in role"
 msgstr "koşul yok; roldeki herkes"
 
-#: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "No conditions — this rule matches everything."
 msgstr "Koşul yok — bu kural her şeyle eşleşir."
+
+#: src/client/admin/edit-field.tsx
+msgid "No conditions. Click \"Add condition\" to make this field required/readonly/hidden based on other fields."
+msgstr "Koşul yok. Bu alanı diğer alanlara göre zorunlu/salt okunur/gizli yapmak için \"Koşul ekle\"ye tıklayın."
 
 #: src/client/pages/rest-explorer.tsx
 msgid "No content schema."
@@ -7657,6 +7678,10 @@ msgstr "Salt-okunur mod"
 msgid "read-only SELECT against the workspace database"
 msgstr "çalışma alanı veritabanına karşı salt okunur SELECT"
 
+#: src/client/admin/edit-field.tsx
+msgid "Readonly"
+msgstr "Salt okunur"
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Ready to create."
 msgstr "Oluşturmaya hazır."
@@ -7838,6 +7863,7 @@ msgstr "Şemayı yeniden yükle"
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/settings.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "Remove"
 msgstr "Kaldır"
 
@@ -7863,11 +7889,15 @@ msgstr "{tag} etiketini kaldır"
 msgid "Remove choice"
 msgstr "Seçeneği kaldır"
 
+#: src/client/admin/edit-field.tsx
+msgid "Remove condition"
+msgstr "Koşulu kaldır"
+
 #: src/client/admin/pages/settings.tsx
 msgid "Remove device"
 msgstr "Cihazı kaldır"
 
-#: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "Remove group"
 msgstr "Grubu kaldır"
 
@@ -10656,6 +10686,7 @@ msgid "Value must be valid JSON."
 msgstr "Değer geçerli JSON olmalı."
 
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/rule-builder.tsx
 msgid "value or $user.id"
 msgstr "değer veya $user.id"
 
@@ -10859,6 +10890,10 @@ msgstr "Ayarlandığında, gövde çalışma zamanında depolanan şablondan iş
 #: src/client/pages/api-keys.tsx
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "Ayarlandığında, bu anahtarla yapılan istekler yalnızca bu rolün izinlerini alır — ve yalnızca sahip bu role hâlâ sahip olduğu sürece."
+
+#: src/client/admin/edit-field.tsx
+msgid "When the rule matches the row, apply the effects. <0>Required</0> is enforced on save (422); Readonly/Hidden affect the item form."
+msgstr "Kural satırla eşleştiğinde efektler uygulanır. <0>Zorunlu</0> kayıtta zorlanır (422); Salt okunur/Gizli öğe formunu etkiler."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."

@@ -1,4 +1,9 @@
-import { AppError, EMBEDDING_MODEL_NAMES, type EmbeddingModel } from "@backlex/core";
+import {
+  AppError,
+  type Condition,
+  EMBEDDING_MODEL_NAMES,
+  type EmbeddingModel,
+} from "@backlex/core";
 import {
   applyCollection,
   assertIdent,
@@ -98,6 +103,25 @@ const FieldSchema = z
         op: z.enum(["_eq", "_neq", "_in"]),
         value: z.unknown(),
       })
+      .optional(),
+    // Directus-style per-field conditions: a rule (filter over the row) plus
+    // effects. `required` is enforced server-side (validateFields checks the
+    // rule's field refs; the write path enforces the effect); `readonly` /
+    // `hidden` are honoured by the item form. `rule` is an opaque Condition.
+    conditions: z
+      .array(
+        z.object({
+          name: z.string().optional(),
+          // Opaque Condition object — validateFields checks its field refs.
+          rule: z.custom<Condition>(
+            (v) => typeof v === "object" && v !== null && !Array.isArray(v),
+            "rule must be a condition object",
+          ),
+          required: z.boolean().optional(),
+          readonly: z.boolean().optional(),
+          hidden: z.boolean().optional(),
+        }),
+      )
       .optional(),
     group: z.string().optional(),
     /** Include this field in the embed text when the collection has

@@ -21,6 +21,7 @@ import {
   compileCondition,
   type FieldDef,
   type FieldType,
+  resolveAutoFill,
 } from "@backlex/db";
 import {
   AppError,
@@ -213,6 +214,8 @@ export const buildInputType = (collection: CollectionRow): GraphQLInputObjectTyp
     fields: () => {
       const fields: Record<string, { type: GraphQLInputType }> = {};
       for (const f of collection.fields) {
+        // Auto-filled columns are read-only — not part of the write input.
+        if (f.onCreate || f.onUpdate) continue;
         // All fields optional in input — server-side validates required-ness.
         fields[camel(f.name)] = { type: fieldScalar(f.type) };
       }
@@ -264,6 +267,8 @@ const validateInput = (
   partial: boolean,
 ): void => {
   for (const f of collection.fields) {
+    // Auto-filled columns are system-managed — never required from the caller.
+    if (f.onCreate || f.onUpdate) continue;
     if (
       f.required &&
       !partial &&
@@ -279,6 +284,11 @@ const validateInput = (
     const f = fieldByCamel(collection, k);
     if (!f) {
       throw new GraphQLError(`Unknown field: ${k}`, {
+        extensions: { code: "VALIDATION" },
+      });
+    }
+    if (f.onCreate || f.onUpdate) {
+      throw new GraphQLError(`Field "${f.name}" is auto-filled (read-only)`, {
         extensions: { code: "VALIDATION" },
       });
     }
@@ -694,10 +704,22 @@ export const createResolver = async (
     vals.push(auth.tenantId);
   }
   for (const f of collection.fields) {
+    if (f.onCreate) continue; // system-managed, injected below
     const v = args.data[camel(f.name)];
     if (v === undefined) continue;
     cols.push(f.name);
     vals.push(serialize(v, f.type, ctx.dialect));
+  }
+  // Auto-filled columns are computed + written server-side (client input was
+  // rejected by validateInput) — mirrors the REST write path.
+  for (const f of collection.fields) {
+    if (!f.onCreate) continue;
+    const v = resolveAutoFill(f.onCreate, { now, userId: auth.userId, tenantId: auth.tenantId });
+    if (v === undefined) continue;
+    const stored = serialize(v, f.type, ctx.dialect);
+    cols.push(f.name);
+    vals.push(stored);
+    args.data[camel(f.name)] = deserialize(stored, f.type, ctx.dialect);
   }
   const colSql = sql.join(cols.map((n) => sql.identifier(n)), sql`, `);
   const valSql = sql.join(vals.map((v) => sql`${v}`), sql`, `);
@@ -771,7 +793,16 @@ export const updateResolver = async (
     ? [sql`${sql.identifier("updated_at")} = ${now}`]
     : [];
   for (const f of collection.fields) {
+    if (f.onUpdate) continue; // system-managed, injected below
     const v = args.data[camel(f.name)];
+    if (v === undefined) continue;
+    sets.push(sql`${sql.identifier(f.name)} = ${serialize(v, f.type, ctx.dialect)}`);
+  }
+  // Auto-filled-on-update columns — computed + written server-side. The re-
+  // SELECT below reflects them in the response, so no args.data mutation.
+  for (const f of collection.fields) {
+    if (!f.onUpdate) continue;
+    const v = resolveAutoFill(f.onUpdate, { now, userId: auth.userId, tenantId: auth.tenantId });
     if (v === undefined) continue;
     sets.push(sql`${sql.identifier(f.name)} = ${serialize(v, f.type, ctx.dialect)}`);
   }

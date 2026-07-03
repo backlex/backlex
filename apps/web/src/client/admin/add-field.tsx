@@ -89,6 +89,8 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
+  const [autoCreate, setAutoCreate] = useState("");
+  const [autoUpdate, setAutoUpdate] = useState("");
   const [step, setStep] = useState(1);
   const [tab, setTab] = useState("schema");
   const [conds, setConds] = useState<CondDraft[]>([]);
@@ -111,6 +113,8 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setLabel("");
       setDescription("");
       setIsPrivate(false);
+      setAutoCreate("");
+      setAutoUpdate("");
       setConds([]);
       setValDraft(emptyValDraft());
     }
@@ -135,6 +139,22 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const def = getInterface(interfaceId) ?? FIELD_INTERFACES[0];
   const Icon = (I as Record<string, IconComponent>)[def.icon as IconKey] || I.Code;
   const defaultable = DEFAULTABLE_TYPES.has(def.type);
+
+  // Server-side auto-fill options valid for this column's storage type.
+  const autoFillOpts = (withUuid: boolean) => {
+    const o: Array<{ value: string; label: string }> = [{ value: "", label: t`Do nothing` }];
+    if (withUuid && (def.type === "uuid" || def.type === "text")) o.push({ value: "uuid", label: "UUID" });
+    if (def.type === "timestamp") o.push({ value: "now", label: t`Current date/time` });
+    if (def.type === "text" || def.type === "uuid") {
+      o.push({ value: "user", label: t`Current user` });
+      o.push({ value: "tenant", label: t`Current tenant` });
+    }
+    return o;
+  };
+  const createOpts = autoFillOpts(true);
+  const updateOpts = autoFillOpts(false);
+  const validCreate = createOpts.some((o) => o.value === autoCreate) ? autoCreate : "";
+  const validUpdate = updateOpts.some((o) => o.value === autoUpdate) ? autoUpdate : "";
 
   const relationOptions = useMemo(() => {
     const list = collections ?? [];
@@ -220,6 +240,8 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(label.trim() ? { label: label.trim() } : {}),
       ...(description.trim() ? { description: description.trim() } : {}),
       ...(isPrivate ? { private: true } : {}),
+      ...(validCreate ? { onCreate: validCreate } : {}),
+      ...(validUpdate ? { onUpdate: validUpdate } : {}),
       ...(searchable && (def.type === "text" || def.type === "longtext") ? { searchable: true } : {}),
       ...(def.hasChoices && cleanChoices.length ? { options: { choices: cleanChoices } } : {}),
       ...(def.hasRelation ? { to: relationTarget } : {}),
@@ -368,6 +390,25 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                     </div>
                   )}
                 </div>
+
+                {(createOpts.length > 1 || updateOpts.length > 1) && (
+                  <div className="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
+                    {createOpts.length > 1 && (
+                      <div className="flex min-w-0 flex-col gap-1.5">
+                        <label className="text-[12.5px] font-medium text-foreground"><Trans>On create</Trans></label>
+                        <Select value={validCreate} onChange={setAutoCreate} options={createOpts} />
+                        <span className="text-[11.5px] text-muted-foreground"><Trans>Server fills this on insert; the field becomes read-only.</Trans></span>
+                      </div>
+                    )}
+                    {updateOpts.length > 1 && (
+                      <div className="flex min-w-0 flex-col gap-1.5">
+                        <label className="text-[12.5px] font-medium text-foreground"><Trans>On update</Trans></label>
+                        <Select value={validUpdate} onChange={setAutoUpdate} options={updateOpts} />
+                        <span className="text-[11.5px] text-muted-foreground"><Trans>Server refreshes this on every update.</Trans></span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="mt-1.5">
                   <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>DDL preview</Trans></div>

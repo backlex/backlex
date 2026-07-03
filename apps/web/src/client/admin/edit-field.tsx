@@ -71,6 +71,9 @@ interface FieldDraft {
   description?: string;
   /** Internal column — never returned by the API. */
   private?: boolean;
+  /** Server-side auto-fill on insert / update. */
+  onCreate?: "uuid" | "now" | "user" | "tenant";
+  onUpdate?: "now" | "user" | "tenant";
   options?: { choices?: FieldChoice[]; values?: string[] };
   conditions?: {
     name?: string;
@@ -159,6 +162,18 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
   }, [draft?.type, draft?.interface]);
 
   const isRelation = draft?.type === "relation" || draft?.type === "relation_many";
+
+  // Server-side auto-fill options valid for this column's storage type.
+  const autoFillOpts = (type: string, withUuid: boolean) => {
+    const o: Array<{ value: string; label: string }> = [{ value: "", label: t`Do nothing` }];
+    if (withUuid && (type === "uuid" || type === "text")) o.push({ value: "uuid", label: "UUID" });
+    if (type === "timestamp") o.push({ value: "now", label: t`Current date/time` });
+    if (type === "text" || type === "uuid") {
+      o.push({ value: "user", label: t`Current user` });
+      o.push({ value: "tenant", label: t`Current tenant` });
+    }
+    return o;
+  };
 
   if (!open || !draft) return null;
 
@@ -268,6 +283,30 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
                   <Switch checked={!!draft.searchable} onChange={(v) => setDraft((d) => d ? { ...d, searchable: v } : d)} />
                 </div>
               )}
+
+              {(() => {
+                const createOpts = autoFillOpts(draft.type, true);
+                const updateOpts = autoFillOpts(draft.type, false);
+                if (createOpts.length <= 1 && updateOpts.length <= 1) return null;
+                return (
+                  <div className="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
+                    {createOpts.length > 1 && (
+                      <div className="flex min-w-0 flex-col gap-1.5">
+                        <label className="text-[12.5px] font-medium text-foreground"><Trans>On create</Trans></label>
+                        <Select value={draft.onCreate ?? ""} onChange={(v) => setDraft((d) => d ? { ...d, onCreate: (v || undefined) as never } : d)} options={createOpts} />
+                        <span className="text-[11.5px] text-muted-foreground"><Trans>Server fills this on insert; the field becomes read-only.</Trans></span>
+                      </div>
+                    )}
+                    {updateOpts.length > 1 && (
+                      <div className="flex min-w-0 flex-col gap-1.5">
+                        <label className="text-[12.5px] font-medium text-foreground"><Trans>On update</Trans></label>
+                        <Select value={draft.onUpdate ?? ""} onChange={(v) => setDraft((d) => d ? { ...d, onUpdate: (v || undefined) as never } : d)} options={updateOpts} />
+                        <span className="text-[11.5px] text-muted-foreground"><Trans>Server refreshes this on every update.</Trans></span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
 

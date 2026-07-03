@@ -1,5 +1,5 @@
 import { sql, type SQL } from "drizzle-orm";
-import { AppError } from "@backlex/core";
+import { AppError, type AuthSubject } from "@backlex/core";
 import type { Ctx } from "../../context";
 import { publishEvent } from "../events";
 import { recordActivity } from "../activity";
@@ -8,7 +8,7 @@ import { embedAndUpsert, deleteVector } from "../vectorize";
 import { indexFts, deleteFts } from "../fts";
 import { type CollectionRow, hasI18nField } from "./collection-loader";
 import { serialize, deserialize, deserializeRow, projectFields } from "./serialize";
-import { validateBody, validateRelations } from "./validate";
+import { enforceFieldConditions, validateBody, validateRelations } from "./validate";
 import { hashIncomingFields, scrubHashFields } from "./hash-fields";
 import { mergeI18nPatch } from "./i18n";
 import {
@@ -47,6 +47,9 @@ export interface WriteEnv {
   userId: string | null;
   tenantId: string | null | undefined;
   roles: string[];
+  /** Caller email, when known — lets a field condition rule resolve
+   *  `$user.email`. Optional; omitted ⇒ null. */
+  email?: string | null;
   /** requestMeta(c.req.raw) — ip/ua/etc. for the activity row. */
   meta: Record<string, unknown>;
   durationMs: () => number;
@@ -83,6 +86,14 @@ export interface WriteResult {
 
 const authOf = (env: WriteEnv) => ({ tenantId: env.tenantId ?? null, roles: env.roles });
 
+/** Full auth subject for the DSL evaluator (field-condition rule matching). */
+const authSubjectOf = (env: WriteEnv): AuthSubject => ({
+  userId: env.userId,
+  email: env.email ?? null,
+  roles: env.roles,
+  tenantId: env.tenantId ?? null,
+});
+
 export const performCreate = async (
   env: WriteEnv,
   data: Record<string, unknown>,
@@ -111,6 +122,9 @@ export const performCreate = async (
   }
   validateBody(data, collection.fields, false, perm.fields);
   await validateRelations(data, collection.fields, ctx, env.tenantId);
+  // Enforce conditional `required` effects against the proposed row (runs before
+  // hashing so a rule sees the plaintext the user typed).
+  enforceFieldConditions(data, collection.fields, authSubjectOf(env));
   // Replace any `hash` field's plaintext with its scrypt digest before the row
   // is built. Empty values are dropped (see hashIncomingFields).
   await hashIncomingFields(data, collection.fields);
@@ -231,6 +245,14 @@ export const performUpdate = async (
   );
   if (!existing[0]) throw new AppError("NOT_FOUND", "Item not found");
   const beforeRow = deserializeRow(existing[0], collection.fields, ctx.dialect, collection.ownerScoped);
+
+  // Enforce conditional `required` against the POST-patch row: a rule that
+  // references fields the PATCH omits is still judged against the merged result.
+  const mergedForConditions: Record<string, unknown> = { ...beforeRow };
+  for (const f of collection.fields) {
+    if (patch[f.name] !== undefined) mergedForConditions[f.name] = patch[f.name];
+  }
+  enforceFieldConditions(mergedForConditions, collection.fields, authSubjectOf(env));
 
   if (hasI18nField(collection.fields)) {
     mergeI18nPatch(patch, beforeRow, collection.fields, env.locale);

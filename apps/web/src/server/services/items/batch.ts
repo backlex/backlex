@@ -74,6 +74,7 @@ export const runBatch = async (params: RunBatchParams): Promise<BatchRunResult> 
     userId: auth.userId,
     tenantId: auth.tenantId,
     roles: auth.roles,
+    email: auth.email,
     meta: params.meta,
     durationMs: params.durationMs,
     locale: params.locale,

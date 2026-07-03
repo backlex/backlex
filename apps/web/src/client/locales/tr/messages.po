@@ -1142,6 +1142,10 @@ msgstr "Danışman"
 msgid "Advisor re-ran."
 msgstr "Danışman yeniden çalıştırıldı."
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "advisory — returned as a warning, not blocking"
+msgstr "tavsiye niteliğinde — engellemez, uyarı olarak döner"
+
 #: src/client/admin/parity/revisions.tsx
 msgid "after"
 msgstr "sonra"
@@ -2878,12 +2882,16 @@ msgid "Custom date…"
 msgstr "Özel tarih…"
 
 #: src/client/admin/field-validation-editor.tsx
-msgid "Custom error message (optional)"
-msgstr "Özel hata mesajı (opsiyonel)"
+#~ msgid "Custom error message (optional)"
+#~ msgstr "Özel hata mesajı (opsiyonel)"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Custom headers"
 msgstr "Özel başlıklar"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Custom message (optional)"
+msgstr "Özel mesaj (isteğe bağlı)"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Custom OpenID Connect provider."
@@ -3876,6 +3884,10 @@ msgstr "hata"
 msgid "Error"
 msgstr "Hata"
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Error (blocks)"
+msgstr "Hata (engeller)"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Error handling"
 msgstr "Hata işleme"
@@ -4812,6 +4824,10 @@ msgstr "İndeksli"
 #: src/client/admin/pages/advisor.tsx
 msgid "info"
 msgstr "bilgi"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Info"
+msgstr "Bilgi"
 
 #: src/client/admin/parity/revisions.tsx
 msgid "initial"
@@ -9259,6 +9275,10 @@ msgstr "Ayarlar → MCP → Ekle. Claude Desktop ile aynı JSON şeklini kullan�
 #~ msgid "Settings saved."
 #~ msgstr "Ayarlar kaydedildi."
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Severity"
+msgstr "Önem düzeyi"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Share"
 msgstr "Paylaş"
@@ -10998,6 +11018,10 @@ msgstr "İmzalı onaylar isteniyor"
 #: src/client/admin/pages/advisor.tsx
 msgid "warn"
 msgstr "uyarı"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Warning"
+msgstr "Uyarı"
 
 #: src/client/pages/sign-up.tsx
 msgid "We sent a verification link to {email}. Click it to finish creating your account."

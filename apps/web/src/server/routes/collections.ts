@@ -140,6 +140,9 @@ const FieldSchema = z
           .optional(),
         // Custom message shown on any failure for this field.
         message: z.string().max(300).optional(),
+        // error (default) blocks the write; warning/info are advisory and
+        // surfaced in the response `warnings` array instead.
+        severity: z.enum(["error", "warning", "info"]).optional(),
       })
       .optional(),
     visibleWhen: z

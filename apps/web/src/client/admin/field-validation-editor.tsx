@@ -33,6 +33,7 @@ export interface ValDraft {
   minSelect: string;
   maxSelect: string;
   message: string;
+  severity: string; // "error" | "warning" | "info"
   ruleTree: GroupNode;
 }
 
@@ -49,6 +50,7 @@ export const emptyValDraft = (): ValDraft => ({
   minSelect: "",
   maxSelect: "",
   message: "",
+  severity: "error",
   ruleTree: newGroup("and"),
 });
 
@@ -70,6 +72,7 @@ export const validationToDraft = (v: unknown): ValDraft => {
   d.minSelect = s(o.minSelect);
   d.maxSelect = s(o.maxSelect);
   d.message = s(o.message);
+  d.severity = typeof o.severity === "string" ? o.severity : "error";
   d.ruleTree = o.rule ? objToTree(o.rule) : newGroup("and");
   return d;
 };
@@ -126,6 +129,8 @@ export const compileValidation = (
   }
   if (treeHasRule(d.ruleTree)) out.rule = ruleTreeToObj(d.ruleTree);
   if (d.message.trim()) out.message = d.message.trim();
+  // Severity only matters alongside at least one actual check.
+  if (d.severity && d.severity !== "error" && Object.keys(out).length) out.severity = d.severity;
   return Object.keys(out).length ? out : undefined;
 };
 
@@ -163,7 +168,9 @@ export function FieldValidationEditor({
           <I.Shield size={13} /> <Trans>Validation</Trans>
         </span>
         <span className="text-[11.5px] text-muted-foreground">
-          <Trans>enforced on save (422)</Trans>
+          {value.severity === "error"
+            ? <Trans>enforced on save (422)</Trans>
+            : <Trans>advisory — returned as a warning, not blocking</Trans>}
         </span>
       </div>
 
@@ -245,9 +252,24 @@ export function FieldValidationEditor({
         </div>
       )}
 
-      <div className="flex flex-col gap-1">
-        <FieldLabel><Trans>Custom error message (optional)</Trans></FieldLabel>
-        <Input className="h-8" placeholder={t`Shown instead of the default message`} value={value.message} onChange={(e) => set({ message: e.target.value })} />
+      <div className="grid grid-cols-[1fr_9rem] gap-2 max-[520px]:grid-cols-1">
+        <div className="flex flex-col gap-1">
+          <FieldLabel><Trans>Custom message (optional)</Trans></FieldLabel>
+          <Input className="h-8" placeholder={t`Shown instead of the default message`} value={value.message} onChange={(e) => set({ message: e.target.value })} />
+        </div>
+        <div className="flex min-w-0 flex-col gap-1">
+          <FieldLabel><Trans>Severity</Trans></FieldLabel>
+          <Select
+            value={value.severity}
+            onChange={(v) => set({ severity: v })}
+            options={[
+              { value: "error", label: t`Error (blocks)` },
+              { value: "warning", label: t`Warning` },
+              { value: "info", label: t`Info` },
+            ]}
+            size="sm"
+          />
+        </div>
       </div>
 
       <div className="border-t border-border pt-2">

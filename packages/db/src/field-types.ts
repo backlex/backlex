@@ -70,6 +70,14 @@ export interface FieldValidation {
    * check OR the cross-field `rule`). Falls back to a generated message.
    */
   message?: string;
+  /**
+   * How a failure is treated. `error` (default) rejects the write (422).
+   * `warning` / `info` are advisory: the write is NOT blocked — the message is
+   * surfaced in the write response's `warnings` array instead, so a client can
+   * show a soft hint. Applies to both the per-value checks and the cross-field
+   * `rule`. Dropdown choice-membership is always enforced regardless.
+   */
+  severity?: "error" | "warning" | "info";
 }
 
 /**
@@ -764,6 +772,9 @@ export const validateValue = (
   }
 
   if (!v) return;
+  // Advisory validation is not enforced here — the write path collects it into
+  // the response `warnings` instead (see collectFieldWarnings).
+  if (v.severity && v.severity !== "error") return;
 
   if (
     // `hash` validates the *plaintext* here — this runs in `validateBody`

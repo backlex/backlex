@@ -1142,6 +1142,10 @@ msgstr "Advisor"
 msgid "Advisor re-ran."
 msgstr "Advisor re-ran."
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "advisory — returned as a warning, not blocking"
+msgstr "advisory — returned as a warning, not blocking"
+
 #: src/client/admin/parity/revisions.tsx
 msgid "after"
 msgstr "after"
@@ -2878,12 +2882,16 @@ msgid "Custom date…"
 msgstr "Custom date…"
 
 #: src/client/admin/field-validation-editor.tsx
-msgid "Custom error message (optional)"
-msgstr "Custom error message (optional)"
+#~ msgid "Custom error message (optional)"
+#~ msgstr "Custom error message (optional)"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Custom headers"
 msgstr "Custom headers"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Custom message (optional)"
+msgstr "Custom message (optional)"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Custom OpenID Connect provider."
@@ -3876,6 +3884,10 @@ msgstr "err"
 msgid "Error"
 msgstr "Error"
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Error (blocks)"
+msgstr "Error (blocks)"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Error handling"
 msgstr "Error handling"
@@ -4812,6 +4824,10 @@ msgstr "Indexed"
 #: src/client/admin/pages/advisor.tsx
 msgid "info"
 msgstr "info"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Info"
+msgstr "Info"
 
 #: src/client/admin/parity/revisions.tsx
 msgid "initial"
@@ -9251,6 +9267,10 @@ msgstr "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
 #~ msgid "Settings saved."
 #~ msgstr "Settings saved."
 
+#: src/client/admin/field-validation-editor.tsx
+msgid "Severity"
+msgstr "Severity"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Share"
 msgstr "Share"
@@ -10990,6 +11010,10 @@ msgstr "Want signed assertions"
 #: src/client/admin/pages/advisor.tsx
 msgid "warn"
 msgstr "warn"
+
+#: src/client/admin/field-validation-editor.tsx
+msgid "Warning"
+msgstr "Warning"
 
 #: src/client/pages/sign-up.tsx
 msgid "We sent a verification link to {email}. Click it to finish creating your account."

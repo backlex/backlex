@@ -87,7 +87,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>()
         fields: perm.fields,
       });
       for (const fx of res.sideEffects) await fx();
-      return c.json({ data: res.data ?? {} }, 201);
+      return c.json({ data: res.data ?? {}, ...(res.warnings ? { warnings: res.warnings } : {}) }, 201);
     },
   )
   .openapi(
@@ -141,7 +141,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>()
         fields: perm.fields,
       });
       for (const fx of res.sideEffects) await fx();
-      return c.json({ data: res.data ?? {} });
+      return c.json({ data: res.data ?? {}, ...(res.warnings ? { warnings: res.warnings } : {}) });
     },
   )
   .openapi(

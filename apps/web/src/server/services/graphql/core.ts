@@ -179,6 +179,8 @@ export const buildCollectionType = (
         fields.ownerId = { type: GraphQLString };
       }
       for (const f of collection.fields) {
+        // Private / internal columns are never exposed on the read type.
+        if (f.private) continue;
         if (f.type === "relation" && f.to) {
           const target = registry.get(f.to);
           const targetCollection = collections.find((c) => c.slug === f.to);
@@ -336,6 +338,7 @@ const renderRow = (
   if (hasUpdatedAt) out.updatedAt = deserialize(row.updated_at, "timestamp", dialect);
   if (ownerScoped) out.ownerId = row.owner_id ?? null;
   for (const f of fields) {
+    if (f.private) continue;
     if (allowedFields && !allowedFields.has(f.name)) continue;
     out[camel(f.name)] = deserialize(row[f.name], f.type, dialect);
   }
@@ -715,6 +718,7 @@ export const createResolver = async (
   if (collection.hasUpdatedAt) out.updatedAt = nowIso;
   if (collection.ownerScoped) out.ownerId = auth.userId;
   for (const f of collection.fields) {
+    if (f.private) continue;
     const v = args.data[camel(f.name)];
     out[camel(f.name)] = v ?? null;
   }

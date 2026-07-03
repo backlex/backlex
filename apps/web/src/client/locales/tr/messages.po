@@ -4848,6 +4848,11 @@ msgstr "Dinamik koleksiyonların etkileşimli ERD'si. Düzenlemek için düğüm
 msgid "Interface"
 msgstr "Arayüz"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Internal column — stored and writable, but never returned by the API (REST, GraphQL, CSV, changefeed)."
+msgstr "Dahili sütun — saklanır ve yazılabilir, ancak API tarafından asla döndürülmez (REST, GraphQL, CSV, changefeed)."
+
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
 msgid "Internal description for teammates."
@@ -7530,6 +7535,8 @@ msgstr "Öncelik"
 msgid "Privacy Policy URL"
 msgstr "Gizlilik Politikası URL'si"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/storage.tsx
 msgid "Private"
 msgstr "Özel"

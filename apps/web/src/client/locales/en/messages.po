@@ -4848,6 +4848,11 @@ msgstr "Interactive ERD of dynamic collections. Drag nodes to arrange · drag fr
 msgid "Interface"
 msgstr "Interface"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Internal column — stored and writable, but never returned by the API (REST, GraphQL, CSV, changefeed)."
+msgstr "Internal column — stored and writable, but never returned by the API (REST, GraphQL, CSV, changefeed)."
+
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
 msgid "Internal description for teammates."
@@ -7522,6 +7527,8 @@ msgstr "Priority"
 msgid "Privacy Policy URL"
 msgstr "Privacy Policy URL"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/storage.tsx
 msgid "Private"
 msgstr "Private"

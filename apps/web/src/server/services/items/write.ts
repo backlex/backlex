@@ -14,7 +14,7 @@ import {
   validateBody,
   validateRelations,
 } from "./validate";
-import { hashIncomingFields, scrubHashFields } from "./hash-fields";
+import { hashIncomingFields, scrubHashFields, scrubPrivateFields } from "./hash-fields";
 import { mergeI18nPatch } from "./i18n";
 import {
   deletedFilter,
@@ -195,6 +195,7 @@ export const performCreate = async (
   // Digest is persisted — scrub it from the payload before it feeds the
   // response, event, audit and embed/FTS side-effects.
   scrubHashFields(data, collection.fields);
+  scrubPrivateFields(data, collection.fields);
   const out: Record<string, unknown> = { id, ...data };
   if (collection.hasCreatedAt) out.createdAt = deserialize(now, "timestamp", ctx.dialect);
   if (collection.hasUpdatedAt) out.updatedAt = deserialize(now, "timestamp", ctx.dialect);
@@ -285,6 +286,9 @@ export const performUpdate = async (
   // Digest is persisted — scrub it from the patch so the merge below, the
   // response, event and audit payload never carry it.
   scrubHashFields(patch, collection.fields);
+  // Private columns must not re-enter the merged row below (beforeRow already
+  // omits them via deserializeRow) so the response/event/index stay clean.
+  scrubPrivateFields(patch, collection.fields);
   // Refreshed row: in-memory merge of the before-row + applied patch (the only
   // columns that changed are updated_at + the patched fields). Avoids a
   // post-write SELECT so the same code path works inside an atomic batch where

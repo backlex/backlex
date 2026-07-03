@@ -222,6 +222,15 @@ export interface FieldDef {
   label?: string;
   /** Inline help text shown beneath the field in the admin editor. UI only. */
   description?: string;
+  /**
+   * Private / internal column. When true, the field is stored + writable as
+   * normal but NEVER returned through the API read surfaces (REST list/get/CSV/
+   * changefeed + GraphQL) — `deserializeRow` and the GraphQL row builder omit
+   * it, and it's dropped from the GraphQL output type. Use for internal
+   * bookkeeping columns that clients should never see. Unlike `hash` (write +
+   * verify only) the value is plain, so a raw backup still round-trips it.
+   */
+  private?: boolean;
 }
 
 /** Field types that accept a literal column `DEFAULT`. */

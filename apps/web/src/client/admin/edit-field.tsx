@@ -69,6 +69,8 @@ interface FieldDraft {
   label?: string;
   /** Inline help text. */
   description?: string;
+  /** Internal column — never returned by the API. */
+  private?: boolean;
   options?: { choices?: FieldChoice[]; values?: string[] };
   conditions?: {
     name?: string;
@@ -291,6 +293,13 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Note <span className="text-muted-foreground">(optional)</span></Trans></label>
                 <Textarea value={draft.description ?? ""} onChange={(e) => setDraft((d) => d ? { ...d, description: e.target.value } : d)} rows={3} placeholder={t`Add a helpful note for editors…`} />
                 <span className="text-[11.5px] text-muted-foreground"><Trans>Inline help text shown beneath the field.</Trans></span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Private</Trans></div>
+                  <div className="text-[11.5px] text-muted-foreground"><Trans>Internal column — stored and writable, but never returned by the API (REST, GraphQL, CSV, changefeed).</Trans></div>
+                </div>
+                <Switch checked={!!draft.private} onChange={(v) => setDraft((d) => d ? { ...d, private: v } : d)} />
               </div>
             </div>
           )}

@@ -27,6 +27,7 @@ const ITEMS_HELP = `backlex items <cmd> <slug> [args]
   create <slug>   --data <json|@file|->
   update <slug> <id> --data <json|@file|->
   delete <slug> <id>
+  verify <slug> <id> --field <name> --value <plaintext>
   export <slug>   [--format json|csv] [--out <file>]
   import <slug>   <file|@file|->  [--format json|csv]
   search <slug>   -q <text> [--mode fts|vector|hybrid] [--limit N] [--locale xx]
@@ -125,6 +126,24 @@ export const runItems = async (args: string[]): Promise<void> => {
         const res = await client.from(slug).delete(id);
         if (json) printJson(res);
         else process.stdout.write(res.ok ? "deleted\n" : "not deleted\n");
+        return;
+      }
+      case "verify": {
+        const slug = requireSlug(rest, "items verify <slug> <id> --field <name> --value <plaintext>");
+        const id = rest[1];
+        if (!id || id.startsWith("-")) {
+          process.stderr.write("items verify <slug> <id> --field <name> --value <plaintext>\n");
+          process.exit(1);
+        }
+        const field = flag(rest, "--field");
+        const value = flag(rest, "--value");
+        if (!field || value == null) {
+          process.stderr.write("items verify requires --field and --value\n");
+          process.exit(1);
+        }
+        const res = await client.from(slug).verify(id, field, value);
+        if (json) printJson(res);
+        else process.stdout.write(res.valid ? "valid\n" : "invalid\n");
         return;
       }
       case "export": {

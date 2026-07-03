@@ -209,6 +209,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | SSO (SAML / LDAP) | `docs/sso.md` |
 | API keys, access tokens, email & OAuth | `docs/api-keys-and-email.md` |
 | Adopting existing tables | `docs/adopting-tables.md` |
+| Hashed fields (passwords/secrets) | `docs/hashed-fields.md` |
 | Migrating an external DB in (`backlex import-db`) | `docs/migrating-in.md` |
 | Schema versions (migration diffing / branching) | `docs/schema-versions.md` |
 | Locale + timezone | `docs/locale-timezone.md` |

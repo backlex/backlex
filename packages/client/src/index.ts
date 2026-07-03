@@ -248,6 +248,10 @@ export interface CollectionClient<T extends Record<string, unknown>> {
   publish(id: string): Promise<ItemResponse<T>>;
   unpublish(id: string): Promise<ItemResponse<T>>;
   schedulePublish(id: string, at: Date | string | null): Promise<ItemResponse<T>>;
+  /** Check a plaintext against the stored digest of a `hash` field on the row.
+   *  The digest never leaves the server; this returns only `{ valid }`.
+   *  Requires read permission on the item; the server throttles attempts. */
+  verify(id: string, field: string, value: string): Promise<{ valid: boolean }>;
 }
 
 /** Auth surface for a workspace's end-users (and the admin pool). See `createClient`. */
@@ -1138,6 +1142,9 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish`, {
           publishAt: at == null ? null : at instanceof Date ? at.toISOString() : at,
         }),
+      /** Verify a plaintext against a `hash` field's stored digest. */
+      verify: (id: string, field: string, value: string): Promise<{ valid: boolean }> =>
+        request<{ valid: boolean }>("POST", `/api/items/${slug}/${id}/verify`, { field, value }),
     };
   };
 

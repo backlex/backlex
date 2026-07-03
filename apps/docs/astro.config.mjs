@@ -81,6 +81,7 @@ export default defineConfig({
           items: [
             { slug: "querying" },
             { slug: "permissions" },
+            { slug: "hashed-fields" },
             { slug: "adopting-tables" },
             { slug: "migrating-in" },
             { slug: "schema-versions" },

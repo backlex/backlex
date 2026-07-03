@@ -100,8 +100,44 @@ export const schedulePublishItemTool: McpTool = {
   },
 };
 
+export const verifyItemTool: McpTool = {
+  name: "items.verify",
+  description:
+    "Check a plaintext against the stored digest of a `hash` field on a row. " +
+    "The digest never leaves the server; returns only `{ valid }`. Requires the " +
+    "`read` permission; attempts are throttled and audit-logged.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      collection: { type: "string", description: "Collection slug." },
+      id: { type: "string", description: "Item id." },
+      field: { type: "string", description: "The `hash` field name to check against." },
+      value: { type: "string", description: "The plaintext to verify." },
+    },
+    required: ["collection", "id", "field", "value"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const { collection, id } = reqIds(args);
+    const field = String(args.field ?? "");
+    const value = String(args.value ?? "");
+    if (!field) throw new Error("VALIDATION: field is required");
+    if (!value) throw new Error("VALIDATION: value is required");
+    const res = await ctx.fetchInternal(
+      `/api/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/verify`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ field, value }),
+      },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const itemsPublishTools: McpTool[] = [
   publishItemTool,
   unpublishItemTool,
   schedulePublishItemTool,
+  verifyItemTool,
 ];

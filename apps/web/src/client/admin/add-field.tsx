@@ -91,6 +91,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [isPrivate, setIsPrivate] = useState(false);
   const [autoCreate, setAutoCreate] = useState("");
   const [autoUpdate, setAutoUpdate] = useState("");
+  const [onDelete, setOnDelete] = useState("no_action");
   const [step, setStep] = useState(1);
   const [tab, setTab] = useState("schema");
   const [conds, setConds] = useState<CondDraft[]>([]);
@@ -115,6 +116,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setIsPrivate(false);
       setAutoCreate("");
       setAutoUpdate("");
+      setOnDelete("no_action");
       setConds([]);
       setValDraft(emptyValDraft());
     }
@@ -245,6 +247,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(searchable && (def.type === "text" || def.type === "longtext") ? { searchable: true } : {}),
       ...(def.hasChoices && cleanChoices.length ? { options: { choices: cleanChoices } } : {}),
       ...(def.hasRelation ? { to: relationTarget } : {}),
+      ...(def.type === "relation" && onDelete !== "no_action" ? { onDelete } : {}),
       ...(conditions.length ? { conditions } : {}),
       ...(validation ? { validation } : {}),
     });
@@ -418,13 +421,30 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
             )}
 
             {activeTab === "relationship" && def.hasRelation && (
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>References collection</Trans></label>
-                <Select value={relationTarget} onChange={setRelationTarget} options={relationOptions} placeholder={t`Pick a collection…`} />
-                <span className="text-[11.5px] text-muted-foreground">
-                  <Trans>Stores the target row's <span className="font-mono">id</span>.</Trans>
-                  {missingRelation && <span className="text-destructive"><Trans> Required.</Trans></span>}
-                </span>
+              <div className="flex flex-col gap-3.5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>References collection</Trans></label>
+                  <Select value={relationTarget} onChange={setRelationTarget} options={relationOptions} placeholder={t`Pick a collection…`} />
+                  <span className="text-[11.5px] text-muted-foreground">
+                    <Trans>Stores the target row's <span className="font-mono">id</span>.</Trans>
+                    {missingRelation && <span className="text-destructive"><Trans> Required.</Trans></span>}
+                  </span>
+                </div>
+                {def.type === "relation" && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>When the referenced item is deleted</Trans></label>
+                    <Select
+                      value={onDelete}
+                      onChange={setOnDelete}
+                      options={[
+                        { value: "no_action", label: t`Do nothing` },
+                        { value: "set_null", label: t`Set this field to NULL` },
+                        { value: "cascade", label: t`Delete this row too (cascade)` },
+                      ]}
+                    />
+                    <span className="text-[11.5px] text-muted-foreground"><Trans>App-layer trigger — backlex has no DB foreign keys, so it's enforced on delete.</Trans></span>
+                  </div>
+                )}
               </div>
             )}
 

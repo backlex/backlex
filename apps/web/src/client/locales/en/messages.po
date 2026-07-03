@@ -952,6 +952,11 @@ msgstr "Add a Client ID and secret below first."
 msgid "Add a Client ID and secret first"
 msgstr "Add a Client ID and secret first"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Add a helpful note for editors…"
+msgstr "Add a helpful note for editors…"
+
 #: src/client/admin/pages/settings.tsx
 msgid "Add a language"
 msgstr "Add a language"
@@ -3306,6 +3311,8 @@ msgstr "Display label. The storage key stays <0>{0}</0>."
 msgid "Display name"
 msgstr "Display name"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Display name <0>(optional)</0>"
@@ -4073,7 +4080,9 @@ msgstr "Fetching…"
 msgid "field"
 msgstr "field"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Field"
@@ -4782,6 +4791,11 @@ msgstr "initial"
 msgid "Initial revision — the first recorded state of this item."
 msgstr "Initial revision — the first recorded state of this item."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Inline help text shown beneath the field."
+msgstr "Inline help text shown beneath the field."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Input"
 msgstr "Input"
@@ -5109,6 +5123,11 @@ msgstr "Kind"
 #: src/client/admin/edit-field.tsx
 msgid "label (optional)"
 msgstr "label (optional)"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Label shown in the item form. Falls back to the column name."
+msgstr "Label shown in the item form. Falls back to the column name."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Lands in {pending}"
@@ -6610,6 +6629,11 @@ msgstr "Not used"
 msgid "Note"
 msgstr "Note"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Note <0>(optional)</0>"
+msgstr "Note <0>(optional)</0>"
+
 #: src/client/admin/pages/logs.tsx
 msgid "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
 msgstr "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
@@ -7739,6 +7763,10 @@ msgid "read-only SELECT against the workspace database"
 msgstr "read-only SELECT against the workspace database"
 
 #: src/client/admin/add-field.tsx
+msgid "Reading time"
+msgstr "Reading time"
+
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Readonly"
 msgstr "Readonly"
@@ -7811,6 +7839,7 @@ msgid "Redirecting…"
 msgstr "Redirecting…"
 
 #: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 msgid "References collection"
 msgstr "References collection"
 
@@ -7910,6 +7939,11 @@ msgstr "relation_many"
 #: src/client/admin/pages/schema-graph.tsx
 msgid "relations"
 msgstr "relations"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Relationship"
+msgstr "Relationship"
 
 #: src/client/admin/pages/settings.tsx
 msgid "Released"
@@ -8726,8 +8760,10 @@ msgstr "Scheduled backups run from the cron tick and keep the newest {retain} au
 msgid "scheduled by <0>published_at</0>"
 msgstr "scheduled by <0>published_at</0>"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/app.tsx
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/pages/graphql.tsx
 msgid "Schema"
 msgstr "Schema"
@@ -9695,6 +9731,10 @@ msgstr "Stores the storage key. Upload new files on the <0>Storage</0> page."
 msgid "Stores the target row's <0>id</0>."
 msgstr "Stores the target row's <0>id</0>."
 
+#: src/client/admin/edit-field.tsx
+msgid "Stores the target row's <0>id</0>. The target is immutable — drop & re-add to change it."
+msgstr "Stores the target row's <0>id</0>. The target is immutable — drop & re-add to change it."
+
 #: src/client/admin/pages/logs.tsx
 msgid "Stream"
 msgstr "Stream"
@@ -10090,6 +10130,11 @@ msgstr "This database has no tables."
 #: src/client/admin/parity/insights.tsx
 msgid "This deletes the dashboard and disables its public embed. Its panels are <0>not</0> deleted — they become ungrouped. This action can't be undone."
 msgstr "This deletes the dashboard and disables its public embed. Its panels are <0>not</0> deleted — they become ungrouped. This action can't be undone."
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "This interface has no extra options. Selection interfaces (dropdown, radio…) show a choices editor here."
+msgstr "This interface has no extra options. Selection interfaces (dropdown, radio…) show a choices editor here."
 
 #: src/client/pages/invite.tsx
 msgid "This invite link is invalid or has already been used."
@@ -10689,6 +10734,10 @@ msgstr "Used for default sort, audit, and the created_at projection."
 msgid "Used in the ACS / metadata URLs below."
 msgstr "Used in the ACS / metadata URLs below."
 
+#: src/client/admin/add-field.tsx
+msgid "Used when an insert omits this column. Written into the DDL as a column DEFAULT."
+msgstr "Used when an insert omits this column. Written into the DDL as a column DEFAULT."
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "user"
 msgstr "user"
@@ -10725,7 +10774,9 @@ msgstr "Users"
 msgid "Users enrol a passkey after signing in once with another method."
 msgstr "Users enrol a passkey after signing in once with another method."
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/field-validation-editor.tsx
 msgid "Validation"
 msgstr "Validation"

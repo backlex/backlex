@@ -309,7 +309,7 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
       {(() => {
         const cfg = resolveStatusField(schema as any);
         // Skip the tabs row entirely when the collection has no status field
-        // — Directus parity: don't surface status UI on schemas that don't
+        // — parity: don't surface status UI on schemas that don't
         // declare it.
         if (!cfg) return null;
         const tabs = [

@@ -979,6 +979,7 @@ msgstr "Add choice"
 msgid "Add column"
 msgstr "Add column"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Add condition"
 msgstr "Add condition"
@@ -2317,6 +2318,7 @@ msgstr "Condition (permission DSL JSON, optional)"
 msgid "Condition must be valid JSON."
 msgstr "Condition must be valid JSON."
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Condition name (optional)"
 msgstr "Condition name (optional)"
@@ -2325,6 +2327,7 @@ msgstr "Condition name (optional)"
 msgid "conditional access"
 msgstr "conditional access"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Conditions"
 msgstr "Conditions"
@@ -4544,6 +4547,7 @@ msgstr "healthy"
 msgid "Height"
 msgstr "Height"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Hidden"
 msgstr "Hidden"
@@ -6127,6 +6131,7 @@ msgstr "no condition; everyone in role"
 msgid "No conditions — this rule matches everything."
 msgstr "No conditions — this rule matches everything."
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "No conditions. Click \"Add condition\" to make this field required/readonly/hidden based on other fields."
 msgstr "No conditions. Click \"Add condition\" to make this field required/readonly/hidden based on other fields."
@@ -7670,6 +7675,7 @@ msgstr "Read-only mode"
 msgid "read-only SELECT against the workspace database"
 msgstr "read-only SELECT against the workspace database"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Readonly"
 msgstr "Readonly"
@@ -7881,6 +7887,7 @@ msgstr "Remove {tag}"
 msgid "Remove choice"
 msgstr "Remove choice"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Remove condition"
 msgstr "Remove condition"
@@ -10257,8 +10264,8 @@ msgid "Translate"
 msgstr "Translate"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "Translate natural language into Directus-shaped queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
-msgstr "Translate natural language into Directus-shaped queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
+msgid "Translate natural language into operator-style queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
+msgstr "Translate natural language into operator-style queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
 
 #: src/client/admin/parity/translations.tsx
 msgid "Translate UI strings using Claude. Requires <0>ANTHROPIC_API_KEY</0> on the server."
@@ -10879,6 +10886,7 @@ msgstr "When set, body is rendered from the stored template at run time. Otherwi
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "When the rule matches the row, apply the effects. <0>Required</0> is enforced on save (422); Readonly/Hidden affect the item form."
 msgstr "When the rule matches the row, apply the effects. <0>Required</0> is enforced on save (422); Readonly/Hidden affect the item form."

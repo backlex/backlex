@@ -176,7 +176,7 @@ describe("multi-hop nested filter + sort", () => {
   });
 
   test("normalize: nested-object relation filter == dotted-path result", async () => {
-    // Directus/PostgREST-style nested form should flatten to customer_id.name.
+    // PostgREST-style nested form should flatten to customer_id.name.
     const nested = { customer_id: { name: { _eq: "Alice" } } };
     const res = await h.fetch(
       `/api/items/orders?filter=${encodeURIComponent(JSON.stringify(nested))}`,

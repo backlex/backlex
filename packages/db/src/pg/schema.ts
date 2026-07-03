@@ -1078,7 +1078,7 @@ export const apiKeys = pgTable(
 );
 
 /**
- * `collections` is the directus-like meta table. Each row defines a dynamic
+ * `collections` is the metadata table. Each row defines a dynamic
  * collection whose actual data lives in a physical table whose name is
  * stored in `physical_table` and created at runtime via the schema applier
  * (packages/db/src/schema-applier.ts). Each collection belongs to exactly
@@ -1135,7 +1135,7 @@ export const collections = pgTable(
      *  bulk `POST /:slug/fts-reindex` backfill route. */
     fts: boolean("fts").notNull().default(false),
     /** Default sort applied by `parseQuery` when the request omits `?sort=`.
-     *  Comma-separated field list, `-` prefix = DESC (Directus-style).
+     *  Comma-separated field list, `-` prefix = DESC (`-` prefix = DESC).
      *  e.g. `"-published_at,name"`. Null falls back to `-created_at` if the
      *  collection has that column, otherwise the PK. */
     defaultSort: text("default_sort"),

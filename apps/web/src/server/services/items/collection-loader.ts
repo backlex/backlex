@@ -44,7 +44,7 @@ export interface CollectionRow {
    *  (text/longtext only). Powers the `?q=` precision filter and the
    *  `POST /:slug/search` endpoint. */
   fts: boolean;
-  /** Comma-separated default sort (Directus shape, `-` prefix = DESC). Null
+  /** Comma-separated default sort (`-` prefix = DESC). Null
    *  falls back to `-created_at` in `parseQuery`. */
   defaultSort: string | null;
   /** True when this collection was adopted from an existing physical table

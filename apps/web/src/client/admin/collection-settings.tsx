@@ -39,7 +39,7 @@ interface SchemaLike {
    *  collections hard-DROP the underlying `c_<slug>` table on delete. */
   adopted?: boolean;
   fields?: FieldLike[];
-  /** Comma-separated default sort, Directus shape (`-field,name`). */
+  /** Comma-separated default sort, `-field,name` shape. */
   defaultSort?: string | null;
 }
 

@@ -15,7 +15,7 @@ export const ListMeta = z
 
 export const ListQuery = z.object({
   filter: z.string().optional().openapi({
-    description: "JSON-encoded filter DSL (Directus-style).",
+    description: "JSON-encoded filter DSL.",
   }),
   sort: z.string().optional().openapi({
     description: "Comma-separated field list; prefix `-` for DESC.",

@@ -61,7 +61,7 @@ export type Condition =
  *     live in the `users` table and may hold the global `admin` role.
  *   - `"app"` — workspace end-users: people who authenticate against a single
  *     workspace's own auth service (the "auth as a service" surface, modelled
- *     on Supabase/Directus). They live in a tenant-scoped `app_users` table
+ *     on comparable BaaS platforms). They live in a tenant-scoped `app_users` table
  *     and can never be platform admins.
  *
  * Defaults to `"platform"` everywhere until the tenant-auth surface ships, so

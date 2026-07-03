@@ -2,7 +2,7 @@
 // Edit-field dialog: change a user-defined column's settings without
 // renaming or retyping it (those need DDL changes the backend doesn't yet
 // support). Covers required/unique flags, the interface override (drawn from
-// the Directus-style catalog, filtered to interfaces compatible with this
+// the interface catalog, filtered to interfaces compatible with this
 // column's storage type), and the per-choice metadata used by selection
 // interfaces — same shape that admin/sheet.tsx and admin/items.tsx consume to
 // render Selects + badges.

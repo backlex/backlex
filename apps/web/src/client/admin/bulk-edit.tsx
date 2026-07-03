@@ -2,7 +2,7 @@
 //
 // Reuses the exact per-interface inputs from `item-form.tsx` (ItemFields +
 // useItemForm) so there is one copy of the field-editing logic. The "only the
-// fields you touch get written" semantics (Directus-style) fall straight out of
+// fields you touch get written" semantics fall straight out of
 // the form's `touched` map — on apply we send just the touched fields, leaving
 // every other column on every selected row untouched.
 import { useMemo, useState } from "react";
@@ -59,7 +59,7 @@ export function BulkEditDialog({ open, count, schema, onClose, onApply }: BulkEd
   const form = useItemForm({ schema: bulkSchema, initial: null, active: open });
 
   // Only the fields the user actually edited are written. buildPayload covers
-  // every field; we keep just the touched ones (Directus "leave untouched" rule).
+  // every field; we keep just the touched ones ("leave untouched" rule).
   const full = form.buildPayload() as Record<string, unknown>;
   const changedKeys = Object.keys(full).filter((k) => form.touched[k]);
   const changedCount = changedKeys.length;

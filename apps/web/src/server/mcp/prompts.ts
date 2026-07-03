@@ -43,7 +43,7 @@ const PROMPTS: McpPromptDescriptor[] = [
   {
     name: "generate_queries",
     description:
-      "Given a collection's schema, propose 3-5 useful Directus-shaped " +
+      "Given a collection's schema, propose 3-5 useful operator-style " +
       "`filter` queries an analyst might run, with a one-line rationale each.",
     arguments: [
       { name: "collection", description: "Collection slug.", required: true },
@@ -197,7 +197,7 @@ export const getPrompt = async (
       const text =
         `${context}\n\n` +
         `Propose 3-5 useful queries against \`${slug}\`. Format each as JSON ` +
-        `(Directus-shaped \`filter\` + optional \`sort\` / \`limit\`) in a ` +
+        `(operator-style \`filter\` + optional \`sort\` / \`limit\`) in a ` +
         `fenced code block, followed by a one-line rationale. Don't invent ` +
         `field names — use only the fields above.${intentLine}`;
       return {

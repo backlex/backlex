@@ -231,7 +231,45 @@ export interface FieldDef {
    * verify only) the value is plain, so a raw backup still round-trips it.
    */
   private?: boolean;
+  /**
+   * Auto-fill this column on INSERT, server-side. The value is computed and
+   * written directly (like `tenant_id` / `created_at`) — any client-supplied
+   * value is ignored, so it can't be spoofed. Options:
+   *  - `uuid`   → a fresh UUID (uuid / text columns)
+   *  - `now`    → the insert timestamp (timestamp columns)
+   *  - `user`   → the authenticated user's id (text / uuid columns)
+   *  - `tenant` → the active tenant's id (text / uuid columns)
+   * The field is treated as read-only for writes (see validateBody).
+   */
+  onCreate?: "uuid" | "now" | "user" | "tenant";
+  /**
+   * Auto-fill this column on every UPDATE, server-side (same rules as
+   * {@link onCreate} minus `uuid`, which only makes sense on insert). Use for
+   * `date_updated` / `user_updated` style bookkeeping columns.
+   */
+  onUpdate?: "now" | "user" | "tenant";
 }
+
+/** Resolve an auto-fill token to a concrete value for the write path. `now`
+ *  should be the caller's canonical insert/update timestamp so a `now` column
+ *  matches `created_at`/`updated_at`; a Date instance serializes cleanly on
+ *  both dialects. Returns `undefined` when the needed context is absent (e.g.
+ *  `user` with no authenticated user) so the column falls back to its default. */
+export const resolveAutoFill = (
+  kind: "uuid" | "now" | "user" | "tenant",
+  ctx: { now: unknown; userId?: string | null; tenantId?: string | null },
+): unknown => {
+  switch (kind) {
+    case "uuid":
+      return crypto.randomUUID();
+    case "now":
+      return ctx.now;
+    case "user":
+      return ctx.userId ?? undefined;
+    case "tenant":
+      return ctx.tenantId ?? undefined;
+  }
+};
 
 /** Field types that accept a literal column `DEFAULT`. */
 const DEFAULTABLE: Set<FieldType> = new Set([
@@ -501,6 +539,29 @@ export const validateFields = (fields: FieldDef[]): void => {
     }
     if (f.computed) {
       validateComputedFormula(f.name, (f.computed as { formula?: unknown }).formula);
+    }
+    // Auto-fill tokens (onCreate/onUpdate) must suit the column's storage type,
+    // and can't sit on a generated column (a computed column takes no writes).
+    for (const [prop, kind] of [
+      ["onCreate", f.onCreate],
+      ["onUpdate", f.onUpdate],
+    ] as const) {
+      if (!kind) continue;
+      if (f.computed) {
+        throw new Error(`Field "${f.name}": "${prop}" is not allowed on a computed column`);
+      }
+      if (f.type === "hash") {
+        throw new Error(`Field "${f.name}": "${prop}" is not allowed on a hash field`);
+      }
+      if (kind === "now" && f.type !== "timestamp") {
+        throw new Error(`Field "${f.name}": "${prop}: now" requires a timestamp field`);
+      }
+      if (kind === "uuid" && f.type !== "uuid" && f.type !== "text") {
+        throw new Error(`Field "${f.name}": "${prop}: uuid" requires a uuid or text field`);
+      }
+      if ((kind === "user" || kind === "tenant") && f.type !== "text" && f.type !== "uuid") {
+        throw new Error(`Field "${f.name}": "${prop}: ${kind}" requires a text or uuid field`);
+      }
     }
     if (f.interface === "dropdown" && getChoiceValues(f).length === 0) {
       throw new Error(

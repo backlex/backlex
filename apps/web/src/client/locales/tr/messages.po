@@ -2836,6 +2836,11 @@ msgstr "mevcut"
 msgid "Current"
 msgstr "Mevcut"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Current date/time"
+msgstr "Şu anki tarih/saat"
+
 #: src/client/admin/account-page.tsx
 msgid "Current password"
 msgstr "Mevcut parola"
@@ -2843,6 +2848,16 @@ msgstr "Mevcut parola"
 #: src/client/admin/parity/revisions.tsx
 msgid "Current state"
 msgstr "Mevcut durum"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Current tenant"
+msgstr "Geçerli çalışma alanı"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Current user"
+msgstr "Geçerli kullanıcı"
 
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
@@ -3329,6 +3344,11 @@ msgstr "Son 24 saatte oturumu olan benzersiz kullanıcılar"
 #: src/client/admin/pages/traces.tsx
 msgid "Distributed request traces. Every SDK/API call carries a W3C traceparent; a span is recorded per request and functions propagate it, so one operation stitches together across hops."
 msgstr "Dağıtık istek izleri. Her SDK/API çağrısı bir W3C traceparent taşır; her istek için bir span kaydedilir ve fonksiyonlar bunu iletir, böylece tek bir işlem tüm adımlar boyunca birbirine bağlanır."
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Do nothing"
+msgstr "Hiçbir şey yapma"
 
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/ui.tsx
@@ -6739,9 +6759,19 @@ msgstr "açık"
 msgid "On"
 msgstr "Açık"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "On create"
+msgstr "Oluşturulduğunda"
+
 #: src/client/admin/flow-builder.tsx
 msgid "On error"
 msgstr "Hata durumunda"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "On update"
+msgstr "Güncellendiğinde"
 
 #: src/client/pages/api-keys.tsx
 #~ msgid "Once you leave this page, the secret can't be retrieved — only revoked."
@@ -9066,9 +9096,19 @@ msgstr "Eylül"
 msgid "Server fetches the URL and stores it in this workspace. http/https only — private/internal hosts are rejected."
 msgstr "Sunucu URL'yi getirir ve bu çalışma alanında depolar. Yalnızca http/https — özel/dahili hostlar reddedilir."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Server fills this on insert; the field becomes read-only."
+msgstr "Sunucu bunu eklemede doldurur; alan salt-okunur olur."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Server log line. Use <0>{dataInterpolationExample}</0> for interpolation."
 msgstr "Sunucu günlük satırı. İçleme için <0>{dataInterpolationExample}</0> kullanın."
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Server refreshes this on every update."
+msgstr "Sunucu bunu her güncellemede yeniler."
 
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Server URL"

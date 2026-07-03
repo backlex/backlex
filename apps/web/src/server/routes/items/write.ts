@@ -19,6 +19,7 @@ import {
   performDelete,
   type WriteEnv,
 } from "../../services/items/write";
+import { verifyHashField } from "../../services/items/verify";
 import {
   execute,
   fromOf,
@@ -270,5 +271,57 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>()
         { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
       );
       return c.json({ data: after });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{slug}/{id}/verify",
+      tags: TAGS,
+      summary: "Verify a hashed-field value",
+      description:
+        "Checks a plaintext against the stored digest of a `hash` field on the row without ever returning the digest. Body: `{ field, value }`. Requires read permission on the item; throttled per (collection, item, field) to blunt brute-force; every attempt is audit-logged.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "read")],
+      request: {
+        params: z.object({ slug: z.string(), id: z.string() }),
+        body: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: z.object({ field: z.string().min(1), value: z.string().min(1) }),
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: "Verification result",
+          content: {
+            "application/json": { schema: z.object({ valid: z.boolean() }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const id = c.req.param("id");
+      const { field, value } = (await c.req.json()) as { field?: string; value?: string };
+      if (!field) throw new AppError("VALIDATION", "`field` is required");
+      const valid = await verifyHashField(
+        ctx,
+        collection,
+        { userId: auth.userId, tenantId: auth.tenantId, roles: auth.roles },
+        { whereSql: perm.whereSql, fields: perm.fields },
+        id,
+        field,
+        value,
+        requestMeta(c.req.raw),
+      );
+      return c.json({ valid });
     },
   );

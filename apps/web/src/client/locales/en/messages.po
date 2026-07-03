@@ -3733,6 +3733,10 @@ msgstr "Enter a slug to continue."
 msgid "Enter a valid email."
 msgstr "Enter a valid email."
 
+#: src/client/admin/item-form.tsx
+msgid "Enter a value…"
+msgstr "Enter a value…"
+
 #: src/client/pages/sign-in.tsx
 msgid "Enter the 6-digit code from your authenticator app to finish signing in."
 msgstr "Enter the 6-digit code from your authenticator app to finish signing in."
@@ -9545,6 +9549,10 @@ msgstr "Steps"
 #: src/client/admin/ui.tsx
 msgid "Storage"
 msgstr "Storage"
+
+#: src/client/admin/item-form.tsx
+msgid "Stored as a one-way hash — it's never shown again. Leave blank to keep the current value."
+msgstr "Stored as a one-way hash — it's never shown again. Leave blank to keep the current value."
 
 #: src/client/admin/item-form.tsx
 msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup, then hit Preview."

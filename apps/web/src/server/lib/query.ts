@@ -139,6 +139,12 @@ const validateFilterFields = (
     if (!valid.has(k)) {
       throw new AppError("VALIDATION", `Cannot filter on field: ${k}`);
     }
+    // A hash field's stored value is a salted digest and reads back as null —
+    // allowing filters on it would turn the list endpoint into a verification
+    // oracle (probe by trying `_eq`/`_contains` against the digest). Reject.
+    if (fieldsByName.get(k)?.type === "hash") {
+      throw new AppError("VALIDATION", `Cannot filter on hashed field: ${k}`);
+    }
   }
 };
 
@@ -287,6 +293,11 @@ export const parseQuery = (
       }
       if (!allowedForUser.has(field)) {
         throw new AppError("VALIDATION", `Cannot sort on field: ${field}`);
+      }
+      // Sorting on a hash digest is meaningless (salted → random order) and is
+      // a probing surface — reject it like filtering.
+      if (sortFieldsByName.get(field)?.type === "hash") {
+        throw new AppError("VALIDATION", `Cannot sort on hashed field: ${field}`);
       }
       return { field, dir };
     });

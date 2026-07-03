@@ -3733,6 +3733,10 @@ msgstr "Devam etmek için bir slug girin."
 msgid "Enter a valid email."
 msgstr "Geçerli bir e-posta girin."
 
+#: src/client/admin/item-form.tsx
+msgid "Enter a value…"
+msgstr "Bir değer girin…"
+
 #: src/client/pages/sign-in.tsx
 msgid "Enter the 6-digit code from your authenticator app to finish signing in."
 msgstr "Oturum açmayı tamamlamak için doğrulayıcı uygulamanızdaki 6 haneli kodu girin."
@@ -9553,6 +9557,10 @@ msgstr "Adımlar"
 #: src/client/admin/ui.tsx
 msgid "Storage"
 msgstr "Depolama"
+
+#: src/client/admin/item-form.tsx
+msgid "Stored as a one-way hash — it's never shown again. Leave blank to keep the current value."
+msgstr "Tek yönlü hash olarak saklanır — bir daha asla gösterilmez. Mevcut değeri korumak için boş bırakın."
 
 #: src/client/admin/item-form.tsx
 msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup, then hit Preview."

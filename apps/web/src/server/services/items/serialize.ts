@@ -43,6 +43,11 @@ export const deserialize = (
   type: FieldType,
   dialect: "pg" | "sqlite",
 ): unknown => {
+  // A hashed secret never leaves the DB through the API — the digest reads
+  // back as null on every surface (list / get / changefeed / CSV / GraphQL).
+  // Raw backups bypass this (they SELECT * without deserializing), so restore
+  // still round-trips the digest.
+  if (type === "hash") return null;
   if (value === null || value === undefined) return value;
   if (dialect === "sqlite") {
     if (type === "i18n_text") {

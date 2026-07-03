@@ -292,3 +292,4 @@ export type Auth = Awaited<ReturnType<typeof createAuth>>;
 
 export { createTenantAuth, type TenantAuth, type TenantAuthConfig } from "./tenant";
 export { withTenantScope } from "./tenant-adapter";
+export { hashSecret, verifySecret, isSecretHash } from "./secret-hash";

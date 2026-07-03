@@ -22,6 +22,23 @@ import {
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Select } from "./select";
 import { getInterface, interfacesForType } from "./interfaces";
+import {
+  type GroupNode,
+  newGroup,
+  objToTree,
+  RuleBuilder,
+  ruleTreeToObj,
+  treeHasRule,
+} from "./rule-builder";
+
+/** One editable condition row: a rule tree + the effects it toggles. */
+interface CondDraft {
+  name: string;
+  tree: GroupNode;
+  required: boolean;
+  readonly: boolean;
+  hidden: boolean;
+}
 
 interface FieldChoice {
   value: string;
@@ -38,18 +55,28 @@ interface FieldDraft {
   searchable?: boolean;
   interface?: string;
   options?: { choices?: FieldChoice[]; values?: string[] };
+  conditions?: {
+    name?: string;
+    rule: unknown;
+    required?: boolean;
+    readonly?: boolean;
+    hidden?: boolean;
+  }[];
 }
 
 export interface EditFieldDialogProps {
   open: boolean;
   field: FieldDraft | null;
+  /** Sibling field names, for the condition rule builder's field picker. */
+  availableFields?: string[];
   onClose: () => void;
   onSave: (next: FieldDraft) => void;
 }
 
-export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialogProps) {
+export function EditFieldDialog({ open, field, availableFields = [], onClose, onSave }: EditFieldDialogProps) {
   const { t } = useLingui();
   const [draft, setDraft] = useState<FieldDraft | null>(field);
+  const [conds, setConds] = useState<CondDraft[]>([]);
 
   // Re-seed every time the dialog opens with a new target field.
   useEffect(() => {
@@ -69,7 +96,26 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
           : field.options,
     };
     setDraft(seeded);
+    // Seed the condition rows from the stored `conditions` (rule object → tree).
+    setConds(
+      ((field as { conditions?: any[] }).conditions ?? []).map((c) => ({
+        name: c.name ?? "",
+        tree: objToTree(c.rule),
+        required: !!c.required,
+        readonly: !!c.readonly,
+        hidden: !!c.hidden,
+      })),
+    );
   }, [open, field]);
+
+  const addCond = () =>
+    setConds((cs) => [
+      ...cs,
+      { name: "", tree: newGroup("and"), required: true, readonly: false, hidden: false },
+    ]);
+  const patchCond = (i: number, patch: Partial<CondDraft>) =>
+    setConds((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  const removeCond = (i: number) => setConds((cs) => cs.filter((_, j) => j !== i));
 
   // Interface-override options: "Default (auto)" plus every catalog interface
   // whose storage type matches this column. Always keep the field's current
@@ -121,12 +167,24 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
     // Strip empty-value choices on save so a half-typed row doesn't fail the
     // server validator; drop options entirely for interfaces that don't use
     // choices.
+    // Only persist conditions that carry a real rule; compile each tree back to
+    // the canonical Condition object the server stores + enforces.
+    const conditions = conds
+      .filter((c) => treeHasRule(c.tree))
+      .map((c) => ({
+        ...(c.name.trim() ? { name: c.name.trim() } : {}),
+        rule: ruleTreeToObj(c.tree),
+        ...(c.required ? { required: true } : {}),
+        ...(c.readonly ? { readonly: true } : {}),
+        ...(c.hidden ? { hidden: true } : {}),
+      }));
     const cleaned: FieldDraft = {
       ...draft,
       options: wantsChoices
         ? { choices: (draft.options?.choices ?? []).filter((c) => c.value.trim()) }
         : undefined,
       interface: draft.interface || undefined,
+      conditions: conditions.length ? (conditions as never) : undefined,
     };
     onSave(cleaned);
   };
@@ -239,6 +297,56 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
               </div>
             </div>
           )}
+
+          <div className="flex flex-col gap-2 rounded-xl bg-muted p-3">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Conditions</Trans></span>
+              <div className="flex-1" />
+              <Button size="xs" variant="outline" icon={I.Plus} onClick={addCond}><Trans>Add condition</Trans></Button>
+            </div>
+            <div className="text-[11.5px] text-muted-foreground">
+              <Trans>When the rule matches the row, apply the effects. <span className="font-medium text-foreground">Required</span> is enforced on save (422); Readonly/Hidden affect the item form.</Trans>
+            </div>
+
+            {conds.length === 0 && (
+              <div className="p-2 text-xs text-muted-foreground">
+                <Trans>No conditions. Click "Add condition" to make this field required/readonly/hidden based on other fields.</Trans>
+              </div>
+            )}
+
+            {conds.map((c, i) => (
+              <div key={i} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2.5">
+                <div className="flex items-center gap-2">
+                  <Input
+                    className="h-8 flex-1"
+                    placeholder={t`Condition name (optional)`}
+                    value={c.name}
+                    onChange={(e) => patchCond(i, { name: e.target.value })}
+                  />
+                  <IconButton icon={I.Trash} title={t`Remove condition`} onClick={() => removeCond(i)} />
+                </div>
+                <RuleBuilder
+                  tree={c.tree}
+                  onChange={(tree) => patchCond(i, { tree })}
+                  fields={availableFields}
+                />
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-0.5">
+                  <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground">
+                    <Switch checked={c.required} onChange={(v) => patchCond(i, { required: v })} />
+                    <Trans>Required</Trans>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground">
+                    <Switch checked={c.readonly} onChange={(v) => patchCond(i, { readonly: v })} />
+                    <Trans>Readonly</Trans>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground">
+                    <Switch checked={c.hidden} onChange={(v) => patchCond(i, { hidden: v })} />
+                    <Trans>Hidden</Trans>
+                  </label>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
         </ScrollArea>
 

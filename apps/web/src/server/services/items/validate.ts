@@ -1,9 +1,39 @@
 import { sql } from "drizzle-orm";
-import { AppError } from "@backlex/core";
-import { validateValue, type FieldDef } from "@backlex/db";
+import { AppError, type AuthSubject } from "@backlex/core";
+import { matchesCondition, validateValue, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../../context";
 import { loadCollection, type CollectionRow } from "./collection-loader";
 import { queryAll } from "./sql-helpers";
+
+/** Treat undefined / null / "" as "no value" for a conditional-required check. */
+const isEmpty = (v: unknown): boolean => v === undefined || v === null || v === "";
+
+/**
+ * Enforce the server-side effects of per-field {@link FieldCondition}s against a
+ * fully-resolved row (create: the proposed body; update: the merged before+patch
+ * row). Today that's the `required` effect: when a condition's `rule` matches the
+ * row and the field is empty, reject with 422. `readonly` / `hidden` are UI-only
+ * and intentionally not gated here. `$user.*` in a rule resolves via `subject`.
+ */
+export const enforceFieldConditions = (
+  row: Record<string, unknown>,
+  fields: FieldDef[],
+  subject: AuthSubject,
+): void => {
+  for (const f of fields) {
+    if (!f.conditions?.length) continue;
+    for (const cond of f.conditions) {
+      if (!cond.required) continue;
+      if (matchesCondition(row, cond.rule, subject) && isEmpty(row[f.name])) {
+        const why = cond.name ? ` (${cond.name})` : "";
+        throw new AppError(
+          "VALIDATION",
+          `Field "${f.name}" is required when its condition matches${why}`,
+        );
+      }
+    }
+  }
+};
 
 export const validateBody = (
   data: Record<string, unknown>,

@@ -586,6 +586,9 @@ function ErdCanvas({
       <EditFieldDialog
         open={editField !== null}
         field={(editFieldDef ?? null) as never}
+        availableFields={(editSrc?.fields ?? [])
+          .map((f) => f.name)
+          .filter((n): n is string => !!n && n !== editField?.name)}
         onClose={() => setEditField(null)}
         onSave={async (next) => {
           if (!editSrc || !editField) return;

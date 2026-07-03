@@ -1,3 +1,5 @@
+import type { Condition } from "@backlex/core";
+
 type Dialect = "pg" | "sqlite";
 
 export type FieldType =
@@ -102,6 +104,27 @@ export interface FieldVisibility {
   value?: unknown;
 }
 
+/**
+ * Directus-style per-field condition. When `rule` (a filter over the whole row,
+ * same DSL as permission conditions) matches, the effects below apply to the
+ * field. `required` is enforced server-side on create/update (a matching rule
+ * with an empty value ⇒ 422); `readonly` / `hidden` are UI-only, honoured by
+ * the item form (`hidden` subsumes the older `visibleWhen`). A field may carry
+ * several conditions; the first matching `required` that fails wins.
+ */
+export interface FieldCondition {
+  /** Optional label — shown in the editor and the 422 message. */
+  name?: string;
+  /** Filter over the row. Empty object = always matches. */
+  rule: Condition;
+  /** Server-enforced: value must be non-empty when the rule matches. */
+  required?: boolean;
+  /** UI-only: disable the input when the rule matches. */
+  readonly?: boolean;
+  /** UI-only: hide the field when the rule matches. */
+  hidden?: boolean;
+}
+
 export interface FieldDef {
   name: string;
   type: FieldType;
@@ -124,8 +147,12 @@ export interface FieldDef {
   options?: FieldOptions;
   /** Soft validation rules applied on item POST/PATCH. */
   validation?: FieldValidation;
-  /** Conditional visibility in the form. Pure UI — no DB or API effect. */
+  /** Conditional visibility in the form. Pure UI — no DB or API effect.
+   *  Superseded by `conditions` with a `hidden` effect; kept for back-compat. */
   visibleWhen?: FieldVisibility;
+  /** Directus-style conditional rules — `required` is enforced server-side,
+   *  `readonly` / `hidden` are honoured by the item form. See {@link FieldCondition}. */
+  conditions?: FieldCondition[];
   /** Group label for form section rendering. UI only. */
   group?: string;
   /**
@@ -340,6 +367,30 @@ const validateComputedFormula = (name: string, raw: unknown): void => {
   }
 };
 
+/** Walk a Condition and collect the field keys it references (relation
+ *  dot-paths contribute their head segment). Used to validate that a field
+ *  condition's rule only names real columns. */
+const collectConditionFields = (cond: unknown, out: Set<string>): void => {
+  if (!cond || typeof cond !== "object") return;
+  const c = cond as Record<string, unknown>;
+  if (Array.isArray(c.$and)) {
+    for (const s of c.$and) collectConditionFields(s, out);
+    return;
+  }
+  if (Array.isArray(c.$or)) {
+    for (const s of c.$or) collectConditionFields(s, out);
+    return;
+  }
+  if (c.$not !== undefined) {
+    collectConditionFields(c.$not, out);
+    return;
+  }
+  for (const k of Object.keys(c)) {
+    if (k.startsWith("$")) continue;
+    out.add(k.split(".")[0]!);
+  }
+};
+
 export const validateFields = (fields: FieldDef[]): void => {
   const seen = new Set<string>();
   const names = new Set(fields.map((f) => f.name));
@@ -405,6 +456,25 @@ export const validateFields = (fields: FieldDef[]): void => {
         throw new Error(
           `Field "${f.name}": visibleWhen cannot reference itself`,
         );
+      }
+    }
+    if (f.conditions !== undefined) {
+      if (!Array.isArray(f.conditions)) {
+        throw new Error(`Field "${f.name}": conditions must be an array`);
+      }
+      for (const cond of f.conditions) {
+        if (!cond || typeof cond !== "object" || typeof cond.rule !== "object" || cond.rule === null) {
+          throw new Error(`Field "${f.name}": each condition needs a "rule" object`);
+        }
+        const refs = new Set<string>();
+        collectConditionFields(cond.rule, refs);
+        for (const r of refs) {
+          if (!names.has(r) && !isReservedField(r)) {
+            throw new Error(
+              `Field "${f.name}": condition rule references unknown field "${r}"`,
+            );
+          }
+        }
       }
     }
   }

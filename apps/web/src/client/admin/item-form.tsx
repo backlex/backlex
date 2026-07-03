@@ -39,6 +39,75 @@ export type SchemaField = {
     group?: string;
   };
   to?: string;
+  /** Directus-style conditions: when `rule` matches the current draft, apply the
+   *  effects. `required` also enforced server-side; `readonly` / `hidden` are the
+   *  live item-form effects. */
+  conditions?: Array<{
+    name?: string;
+    rule: unknown;
+    required?: boolean;
+    readonly?: boolean;
+    hidden?: boolean;
+  }>;
+};
+
+// --- Client-side condition evaluation (item-form live effects) -------------
+// Compact evaluator for the operators the rule builder emits. Mirrors the
+// server's `matchesCondition` semantics but stays drizzle-free so it can run in
+// the browser bundle. `$user.*` values aren't resolved client-side (rare in
+// field conditions); the server remains the source of truth for `required`.
+
+const evalLeaf = (left: unknown, cmp: Record<string, unknown>): boolean => {
+  const s = (v: unknown) => String(v ?? "");
+  for (const [op, r] of Object.entries(cmp)) {
+    switch (op) {
+      case "_eq": if (s(left) !== s(r)) return false; break;
+      case "_neq": if (s(left) === s(r)) return false; break;
+      case "_in": if (!(Array.isArray(r) ? r : [r]).map(s).includes(s(left))) return false; break;
+      case "_nin": if ((Array.isArray(r) ? r : [r]).map(s).includes(s(left))) return false; break;
+      case "_gt": if (!(Number(left) > Number(r))) return false; break;
+      case "_gte": if (!(Number(left) >= Number(r))) return false; break;
+      case "_lt": if (!(Number(left) < Number(r))) return false; break;
+      case "_lte": if (!(Number(left) <= Number(r))) return false; break;
+      case "_contains": if (!s(left).includes(s(r))) return false; break;
+      case "_starts_with": if (!s(left).startsWith(s(r))) return false; break;
+      case "_null": if ((left == null || left === "") !== (r === true)) return false; break;
+      default: break; // unknown / unsupported op → ignore (never a false block)
+    }
+  }
+  return true;
+};
+
+const evalRule = (rule: unknown, values: Record<string, unknown>): boolean => {
+  if (!rule || typeof rule !== "object") return true;
+  const r = rule as Record<string, unknown>;
+  if (Array.isArray(r.$and)) return r.$and.every((c) => evalRule(c, values));
+  if (Array.isArray(r.$or)) return r.$or.some((c) => evalRule(c, values));
+  if (r.$not !== undefined) return !evalRule(r.$not, values);
+  for (const [field, cmp] of Object.entries(r)) {
+    if (field.startsWith("$")) continue;
+    if (cmp && typeof cmp === "object" && !evalLeaf(values[field], cmp as Record<string, unknown>)) {
+      return false;
+    }
+  }
+  return true;
+};
+
+/** Resolve the active hidden/readonly/required effects for a field given the
+ *  current draft values. Effects OR across a field's matching conditions. */
+export const fieldEffects = (
+  f: SchemaField,
+  values: Record<string, unknown>,
+): { hidden: boolean; readonly: boolean; required: boolean } => {
+  const eff = { hidden: false, readonly: false, required: false };
+  for (const c of f.conditions ?? []) {
+    if (evalRule(c.rule, values)) {
+      if (c.hidden) eff.hidden = true;
+      if (c.readonly) eff.readonly = true;
+      if (c.required) eff.required = true;
+    }
+  }
+  return eff;
 };
 
 export const SYSTEM_FIELDS = new Set([
@@ -341,7 +410,7 @@ export function ItemFields({ form }: { form: ItemForm }) {
     return Array.isArray(raw) && raw.length ? (raw as string[]) : ["en"];
   }, [settings.data]);
 
-  const renderField = (f: SchemaField): ReactNode => {
+  const renderField = (f: SchemaField, forceRequired = false): ReactNode => {
     const val = draft[f.name];
     const err = errors[f.name];
     const iface = f.interface;
@@ -357,7 +426,7 @@ export function ItemFields({ form }: { form: ItemForm }) {
     ) : null;
     const typeLabel = (iface ?? f.type ?? "text") + (f.unique ? " · unique" : "");
     const reqMark =
-      f.required || f.nullable === false ? (
+      f.required || f.nullable === false || forceRequired ? (
         <span style={{ color: "var(--destructive)" }}>*</span>
       ) : null;
     const previewable = !!iface && PREVIEWABLE.has(iface);
@@ -1181,6 +1250,21 @@ export function ItemFields({ form }: { form: ItemForm }) {
     );
   };
 
+  // Apply live field conditions: hidden ⇒ skip, readonly ⇒ non-interactive
+  // wrapper, required ⇒ force the `*` marker. Effects recompute on every draft
+  // change (renders inside the form).
+  const renderFieldWrapped = (f: SchemaField): ReactNode => {
+    const eff = fieldEffects(f, draft);
+    if (eff.hidden) return null;
+    const node = renderField(f, eff.required);
+    if (!node || !eff.readonly) return node;
+    return (
+      <div key={f.name} aria-disabled className="pointer-events-none select-none opacity-60">
+        {node}
+      </div>
+    );
+  };
+
   if (fields.length === 0) {
     return (
       <div className="rounded-xl bg-muted p-3 text-[13px] text-muted-foreground">
@@ -1194,7 +1278,7 @@ export function ItemFields({ form }: { form: ItemForm }) {
   // Group fields only when at least one declares a group; otherwise flat.
   const grouped = fields.some((f) => groupOf(f));
   if (!grouped) {
-    return <div className="flex flex-col gap-8">{fields.map(renderField)}</div>;
+    return <div className="flex flex-col gap-8">{fields.map(renderFieldWrapped)}</div>;
   }
   const groups = new Map<string, SchemaField[]>();
   for (const f of fields) {
@@ -1210,7 +1294,7 @@ export function ItemFields({ form }: { form: ItemForm }) {
           <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             {g}
           </div>
-          {gf.map(renderField)}
+          {gf.map(renderFieldWrapped)}
         </section>
       ))}
     </div>

@@ -15,7 +15,15 @@ export type FieldType =
   /** Many-to-many — JSON array of foreign ids. Stored as TEXT/JSONB. */
   | "relation_many"
   /** Localized text — JSON `{en, tr, …}`. Resolver swaps by `?locale=xx`. */
-  | "i18n_text";
+  | "i18n_text"
+  /**
+   * One-way hashed secret (password / PIN / API secret). The API hashes the
+   * incoming plaintext (scrypt) on write and stores only the digest; reads
+   * always return `null` (the digest never leaves the DB except in a raw
+   * backup). Filtering/sorting/FTS/vector are rejected — the only way to test
+   * a value is the `POST /:slug/:id/verify` endpoint. Stored as TEXT.
+   */
+  | "hash";
 
 /** Soft validation rules — enforced at the API layer, not at the DB. */
 export interface FieldValidation {
@@ -189,6 +197,7 @@ const PG_TYPES: Record<FieldType, string> = {
   file: "text",
   relation_many: "jsonb",
   i18n_text: "jsonb",
+  hash: "text",
 };
 
 const SQLITE_TYPES: Record<FieldType, string> = {
@@ -204,6 +213,7 @@ const SQLITE_TYPES: Record<FieldType, string> = {
   file: "TEXT",
   relation_many: "TEXT",
   i18n_text: "TEXT",
+  hash: "TEXT",
 };
 
 export const sqlTypeFor = (type: FieldType, dialect: Dialect): string =>
@@ -354,6 +364,29 @@ export const validateFields = (fields: FieldDef[]): void => {
       }
       assertIdent(f.to);
     }
+    if (f.type === "hash") {
+      // A hashed secret is one-way and salted, so most column flags are
+      // meaningless or actively unsafe on it:
+      //  - unique/indexed: a salted digest differs every write, so a UNIQUE
+      //    constraint never collides and a plain index only helps a query
+      //    path we deliberately reject (see below) — it's a probing surface.
+      //  - searchable/vectorize: would fold the digest into an FTS/embedding
+      //    index that leaks it back out.
+      //  - default: a literal default hash is nonsensical.
+      //  - computed: a generated digest can't take a plaintext write.
+      for (const [flag, on] of [
+        ["unique", f.unique],
+        ["indexed", f.indexed],
+        ["searchable", f.searchable],
+        ["vectorize", f.vectorize],
+        ["default", f.default !== undefined],
+        ["computed", !!f.computed],
+      ] as const) {
+        if (on) {
+          throw new Error(`Field "${f.name}": "${flag}" is not allowed on a hash field`);
+        }
+      }
+    }
     if (f.computed) {
       validateComputedFormula(f.name, (f.computed as { formula?: unknown }).formula);
     }
@@ -400,7 +433,10 @@ export const validateValue = (field: FieldDef, value: unknown): void => {
   if (!v) return;
 
   if (
-    (field.type === "text" || field.type === "longtext") &&
+    // `hash` validates the *plaintext* here — this runs in `validateBody`
+    // before the API replaces the value with its digest, so length/pattern
+    // rules (password policy) apply to what the user actually typed.
+    (field.type === "text" || field.type === "longtext" || field.type === "hash") &&
     typeof value === "string"
   ) {
     if (v.minLength !== undefined && value.length < v.minLength) {

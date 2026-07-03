@@ -36,6 +36,8 @@ import { publishEvent } from "../events";
 import { loadCollection } from "../items/collection-loader";
 import { runBatch, type BatchOp } from "../items/batch";
 import { runBulkUpdate } from "../items/bulk";
+import { hashIncomingFields, scrubHashFields } from "../items/hash-fields";
+import { verifyHashField } from "../items/verify";
 import type { Hono } from "hono";
 import type { Ctx } from "../../context";
 
@@ -138,11 +140,19 @@ const fieldScalar = (
       // {locale: value} map exposed verbatim. Locale-aware projection
       // happens at the REST resolver via `?locale=`.
       return JSONScalar;
+    case "hash":
+      // Write-only secret: accepted as a String on input, always resolves to
+      // null on output (the digest never leaves the DB).
+      return GraphQLString;
   }
 };
 
 const fieldGqlType = (f: FieldDef): GraphQLOutputType => {
   const t = fieldScalar(f.type);
+  // A hash field always resolves to null on read (write-only), so it must stay
+  // nullable on OUTPUT even when `required` — a NonNull wrapper would make every
+  // row error. Required-ness is still enforced on the input side at write time.
+  if (f.type === "hash") return t;
   return f.required ? new GraphQLNonNull(t) : t;
 };
 
@@ -293,6 +303,9 @@ const deserialize = (
   type: FieldType,
   dialect: "pg" | "sqlite",
 ): unknown => {
+  // Hashed secrets never leave the DB — the digest reads back as null (mirrors
+  // the REST deserialize).
+  if (type === "hash") return null;
   if (value == null) return value;
   if (dialect === "sqlite") {
     if (type === "json") {
@@ -619,6 +632,9 @@ export const createResolver = async (
     );
   }
   validateInput(args.data, collection, perm, false);
+  // Hash `hash`-typed fields (keyed by the camelCase GraphQL input name) before
+  // they hit the INSERT — same shared transform the REST write path uses.
+  await hashIncomingFields(args.data, collection.fields, (f) => camel(f.name));
 
   const table = collection.physicalTable;
 
@@ -686,6 +702,9 @@ export const createResolver = async (
     ctx,
     sql`INSERT INTO ${sql.identifier(table)} (${colSql}) VALUES (${valSql})`,
   );
+  // Digest persisted — scrub it from the input before it feeds the hand-built
+  // response `out` and the realtime event.
+  scrubHashFields(args.data, collection.fields, (f) => camel(f.name));
 
   const nowIso =
     ctx.dialect === "pg"
@@ -722,6 +741,10 @@ export const updateResolver = async (
     );
   }
   validateInput(args.data, collection, perm, true);
+  // Hash `hash`-typed fields; empty/omitted values are dropped so the existing
+  // digest survives. The re-SELECT + renderRow below re-reads from the DB and
+  // masks hash columns to null, so no explicit scrub of the response is needed.
+  await hashIncomingFields(args.data, collection.fields, (f) => camel(f.name));
 
   const table = collection.physicalTable;
   const wheres: SQL[] = [sql`${sql.identifier("id")} = ${args.id}`];
@@ -845,6 +868,41 @@ export const deleteResolver = async (
     { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
   );
   return true;
+};
+
+export const verifyResolver = async (
+  gqlCtx: GqlCtx,
+  collection: CollectionRow,
+  args: { id: string; field: string; value: string },
+): Promise<boolean> => {
+  const { ctx, auth, permCache } = gqlCtx;
+  const perm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
+  if (!perm.allowed) {
+    throw new GraphQLError(
+      auth.userId ? `No read permission for ${collection.slug}` : "Sign in required",
+      { extensions: { code: auth.userId ? "FORBIDDEN" : "UNAUTHORIZED" } },
+    );
+  }
+  // Reuse the ONE shared verify service (rate-limit + audit live there). It
+  // works on the items `CollectionRow`, so re-load the collection through the
+  // items loader rather than passing GraphQL's structurally-different row.
+  const loaded = await loadCollection(ctx, auth.tenantId ?? undefined, collection.slug);
+  try {
+    return await verifyHashField(
+      ctx,
+      loaded,
+      { userId: auth.userId, tenantId: auth.tenantId ?? null, roles: auth.roles },
+      { whereSql: perm.whereSql, fields: perm.fields },
+      args.id,
+      args.field,
+      args.value,
+    );
+  } catch (e) {
+    if (e instanceof AppError) {
+      throw new GraphQLError(e.message, { extensions: { code: e.code } });
+    }
+    throw e;
+  }
 };
 
 /** Shared result type for `batch<Collection>` mutations. `results` entries are

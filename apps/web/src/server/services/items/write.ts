@@ -9,6 +9,7 @@ import { indexFts, deleteFts } from "../fts";
 import { type CollectionRow, hasI18nField } from "./collection-loader";
 import { serialize, deserialize, deserializeRow, projectFields } from "./serialize";
 import { validateBody, validateRelations } from "./validate";
+import { hashIncomingFields, scrubHashFields } from "./hash-fields";
 import { mergeI18nPatch } from "./i18n";
 import {
   deletedFilter,
@@ -110,6 +111,9 @@ export const performCreate = async (
   }
   validateBody(data, collection.fields, false, perm.fields);
   await validateRelations(data, collection.fields, ctx, env.tenantId);
+  // Replace any `hash` field's plaintext with its scrypt digest before the row
+  // is built. Empty values are dropped (see hashIncomingFields).
+  await hashIncomingFields(data, collection.fields);
 
   if (collection.singleton) {
     const existingOne = await queryAll<{ one: number }>(
@@ -167,6 +171,9 @@ export const performCreate = async (
     );
   }
 
+  // Digest is persisted — scrub it from the payload before it feeds the
+  // response, event, audit and embed/FTS side-effects.
+  scrubHashFields(data, collection.fields);
   const out: Record<string, unknown> = { id, ...data };
   if (collection.hasCreatedAt) out.createdAt = deserialize(now, "timestamp", ctx.dialect);
   if (collection.hasUpdatedAt) out.updatedAt = deserialize(now, "timestamp", ctx.dialect);
@@ -212,6 +219,9 @@ export const performUpdate = async (
   const table = collection.physicalTable;
   validateBody(patch, collection.fields, true, perm.fields);
   await validateRelations(patch, collection.fields, ctx, env.tenantId);
+  // Hash `hash`-typed fields; an empty/omitted value is dropped so the existing
+  // digest is left untouched ("leave blank to keep").
+  await hashIncomingFields(patch, collection.fields);
 
   const tenantWhere = tenantFilter(collection, authOf(env));
   const existing = await queryAll<Record<string, unknown>>(
@@ -242,6 +252,9 @@ export const performUpdate = async (
     );
   }
 
+  // Digest is persisted — scrub it from the patch so the merge below, the
+  // response, event and audit payload never carry it.
+  scrubHashFields(patch, collection.fields);
   // Refreshed row: in-memory merge of the before-row + applied patch (the only
   // columns that changed are updated_at + the patched fields). Avoids a
   // post-write SELECT so the same code path works inside an atomic batch where

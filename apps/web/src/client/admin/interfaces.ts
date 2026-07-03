@@ -20,7 +20,8 @@ export type StorageType =
   | "uuid"
   | "relation"
   | "relation_many"
-  | "i18n_text";
+  | "i18n_text"
+  | "hash";
 
 export type InterfaceGroup =
   | "Text & Numbers"
@@ -93,6 +94,7 @@ export const FIELD_INTERFACES: FieldInterfaceDef[] = [
   { id: "url", label: "URL", sub: "Link to a web address", group: "Presentation & Other", icon: "ExternalLink", type: "text", keywords: ["link", "href", "website"] },
   { id: "email", label: "Email", sub: "Email address", group: "Presentation & Other", icon: "Mail", type: "text", keywords: ["mail", "contact"] },
   { id: "uuid", label: "UUID", sub: "Universally-unique identifier", group: "Presentation & Other", icon: "Shield", type: "uuid", keywords: ["id", "guid"] },
+  { id: "hash", label: "Hash", sub: "One-way hashed secret — stored as a digest, never shown again", group: "Presentation & Other", icon: "Shield", type: "hash", keywords: ["password", "secret", "pin", "credential", "scrypt", "token"] },
 ];
 
 const BY_ID = new Map(FIELD_INTERFACES.map((i) => [i.id, i]));

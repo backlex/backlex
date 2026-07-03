@@ -13,6 +13,7 @@ import {
   listResolver,
   pascal,
   updateResolver,
+  verifyResolver,
   JSONScalar,
   type CollectionRow,
   type GqlCtx,
@@ -192,6 +193,22 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
       resolve: async (_src, rawArgs, gqlCtx) =>
         bulkUpdateResolver(gqlCtx, c, rawArgs as { keys: unknown; data: unknown }),
     };
+
+    // `verify<Collection>` — only emitted when the collection has a `hash`
+    // field. Checks a plaintext against the stored digest without returning it.
+    // Mirrors REST `POST /:slug/:id/verify` and reuses the same shared service.
+    if (c.fields.some((f) => f.type === "hash")) {
+      mutationFields[`verify${Pascal}`] = {
+        type: new GraphQLNonNull(GraphQLBoolean),
+        args: {
+          id: { type: new GraphQLNonNull(GraphQLID) },
+          field: { type: new GraphQLNonNull(GraphQLString) },
+          value: { type: new GraphQLNonNull(GraphQLString) },
+        },
+        resolve: async (_src, rawArgs, gqlCtx) =>
+          verifyResolver(gqlCtx, c, rawArgs as { id: string; field: string; value: string }),
+      };
+    }
   }
 
   return new GraphQLSchema({

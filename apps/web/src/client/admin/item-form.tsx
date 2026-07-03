@@ -228,6 +228,10 @@ export function useItemForm({
     const e: Record<string, string> = {};
     for (const f of fields) {
       if (!(f.required || f.nullable === false)) continue;
+      // A hash field on EDIT reads back blank (the digest is never returned);
+      // a blank means "keep the current secret", so don't flag it as missing.
+      // On create (`initial` null) it's still enforced.
+      if (f.type === "hash" && initial) continue;
       const v = draft[f.name];
       const empty =
         v === undefined ||
@@ -294,6 +298,11 @@ export function useItemForm({
         payload[f.name] = raw || null;
       } else if (f.type === "boolean") {
         payload[f.name] = !!raw;
+      } else if (f.type === "hash") {
+        // Only send a hash field when the user typed something — a blank value
+        // must not be sent (it would clobber the stored digest to null on the
+        // server's "empty = skip" path is a no-op, but omitting is clearer).
+        if (typeof raw === "string" && raw !== "") payload[f.name] = raw;
       } else {
         payload[f.name] = raw;
       }
@@ -1081,6 +1090,29 @@ export function ItemFields({ form }: { form: ItemForm }) {
             onChange={(e) => setField(e.target.value)}
             autoComplete="off"
           />
+          {errBlock}
+        </div>
+      );
+    }
+
+    // ── Hashed secret (password / PIN / token) — write-only, never read back ──
+    if (iface === "hash" || f.type === "hash") {
+      return (
+        <div key={f.name} className="flex flex-col gap-1.5">
+          {label}
+          <Input
+            type="password"
+            value={String(val ?? "")}
+            placeholder={t`Enter a value…`}
+            aria-invalid={!!err || undefined}
+            onChange={(e) => setField(e.target.value)}
+            autoComplete="new-password"
+          />
+          <div className="text-[11.5px] text-muted-foreground">
+            <Trans>
+              Stored as a one-way hash — it's never shown again. Leave blank to keep the current value.
+            </Trans>
+          </div>
           {errBlock}
         </div>
       );

@@ -50,6 +50,10 @@ const FieldSchema = z
       // TEXT/jsonb; items.ts localizes/merges); this enum just lets a collection
       // declare the field. Keep in sync with `FieldType` in @backlex/db.
       "i18n_text",
+      // One-way hashed secret. The write path scrypt-hashes the plaintext and
+      // stores only the digest; reads return null; verification is via
+      // `POST /:slug/:id/verify`. Keep in sync with `FieldType` in @backlex/db.
+      "hash",
     ]),
     required: z.boolean().optional(),
     unique: z.boolean().optional(),

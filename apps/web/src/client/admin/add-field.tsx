@@ -2,14 +2,16 @@
 // Add Field dialog — schema editor for a new column.
 // Step 1 picks a UI *interface* from a categorized catalog (interfaces.ts);
 // each interface maps to one of the physical storage types the backend
-// supports. Step 2 captures the column name + interface-specific options
-// (dropdown choices, relation target) and the NOT NULL / UNIQUE flags.
+// supports. Step 2 is a Directus-style tabbed editor (Schema · Relationship ·
+// Field · Interface · Validation · Conditions) capturing the column name,
+// interface-specific options, constraints, help text, validation + conditions.
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { type CollectionSchema } from "./config";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@backlex/ui/components/input-group";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
@@ -21,6 +23,7 @@ import {
 } from "@backlex/ui/components/dialog";
 import { Select } from "./select";
 import { AlterPreview } from "./extras";
+import { FieldTabLayout, type FieldTabItem } from "./field-editor-tabs";
 import {
   FIELD_INTERFACES,
   INTERFACE_GROUPS,
@@ -53,6 +56,10 @@ interface CondDraft {
 // Kept for back-compat with anything that imported the old flat list.
 export const FIELD_TYPES = FIELD_INTERFACES;
 
+/** Storage types that accept a literal column DEFAULT (mirrors DEFAULTABLE in
+ *  @backlex/db). Others hide the default input — the value wouldn't persist. */
+const DEFAULTABLE_TYPES = new Set(["text", "longtext", "integer", "number", "boolean"]);
+
 const DEFAULT_CHOICES = [
   { value: "option_a", label: "Option A", color: "#A1A6B8" },
   { value: "option_b", label: "Option B", color: "#2ECDA7" },
@@ -79,7 +86,10 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [relationTarget, setRelationTarget] = useState("");
   const [indexed, setIndexed] = useState(false);
   const [searchable, setSearchable] = useState(false);
+  const [label, setLabel] = useState("");
+  const [description, setDescription] = useState("");
   const [step, setStep] = useState(1);
+  const [tab, setTab] = useState("schema");
   const [conds, setConds] = useState<CondDraft[]>([]);
   const [valDraft, setValDraft] = useState<ValDraft>(emptyValDraft());
 
@@ -94,8 +104,11 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setChoices(DEFAULT_CHOICES);
       setRelationTarget("");
       setStep(1);
+      setTab("schema");
       setIndexed(false);
       setSearchable(false);
+      setLabel("");
+      setDescription("");
       setConds([]);
       setValDraft(emptyValDraft());
     }
@@ -119,6 +132,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
 
   const def = getInterface(interfaceId) ?? FIELD_INTERFACES[0];
   const Icon = (I as Record<string, IconComponent>)[def.icon as IconKey] || I.Code;
+  const defaultable = DEFAULTABLE_TYPES.has(def.type);
 
   const relationOptions = useMemo(() => {
     const list = collections ?? [];
@@ -145,8 +159,8 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   // one choice; relation needs a target collection.
   const missingChoices = def.id === "dropdown" && cleanChoices.length === 0;
   const missingRelation = !!def.hasRelation && !relationTarget;
-  const valid =
-    !!safeName && !nameTaken && safeName.length >= 2 && !missingChoices && !missingRelation;
+  const nameInvalid = !safeName || nameTaken || safeName.length < 2;
+  const valid = !nameInvalid && !missingChoices && !missingRelation;
 
   const groups = useMemo(() => {
     const filtered = FIELD_INTERFACES.filter((i) => matchesInterfaceQuery(i, query));
@@ -169,6 +183,17 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
 
   if (!open) return null;
 
+  const coerceDefault = (): string | number | boolean | undefined => {
+    const s = defaultValue.trim();
+    if (!s) return undefined;
+    if (def.type === "integer" || def.type === "number") {
+      const n = Number(s);
+      return Number.isFinite(n) ? n : undefined;
+    }
+    if (def.type === "boolean") return s === "true" || s === "1";
+    return s;
+  };
+
   const submit = () => {
     if (!valid) return;
     const conditions = conds
@@ -181,14 +206,17 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         ...(c.hidden ? { hidden: true } : {}),
       }));
     const validation = compileValidation(valDraft, def.type);
+    const defVal = defaultable ? coerceDefault() : undefined;
     onCreate({
       name: safeName,
       type: def.type,
       interface: def.id,
       required: !nullable,
       unique,
-      default: defaultValue || null,
       indexed,
+      ...(defVal !== undefined ? { default: defVal } : {}),
+      ...(label.trim() ? { label: label.trim() } : {}),
+      ...(description.trim() ? { description: description.trim() } : {}),
       ...(searchable && (def.type === "text" || def.type === "longtext") ? { searchable: true } : {}),
       ...(def.hasChoices && cleanChoices.length ? { options: { choices: cleanChoices } } : {}),
       ...(def.hasRelation ? { to: relationTarget } : {}),
@@ -197,9 +225,22 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
     });
   };
 
+  const tabs: FieldTabItem[] = [
+    { key: "schema", label: t`Schema`, icon: "Database", invalid: nameInvalid },
+    ...(def.hasRelation
+      ? [{ key: "relationship", label: t`Relationship`, icon: "Share", invalid: missingRelation } as FieldTabItem]
+      : []),
+    { key: "field", label: t`Field`, icon: "Pencil" },
+    { key: "interface", label: t`Interface`, icon: "Eye", invalid: missingChoices },
+    { key: "validation", label: t`Validation`, icon: "Check" },
+    { key: "conditions", label: t`Conditions`, icon: "Filter" },
+  ];
+  const activeTab = tabs.some((x) => x.key === tab) ? tab : "schema";
+  const vp = "max-h-[calc(92vh-13rem)] max-[640px]:max-h-[calc(92vh-19rem)]";
+
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[92vh] w-[94vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[760px]">
+      <DialogContent className="flex max-h-[92vh] w-[94vw] flex-col gap-0 overflow-hidden p-0 [&>*]:min-w-0 sm:max-w-[820px]">
         <DialogHeader className="shrink-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
             <Trans>Add field to <span className="font-mono">c_{schema?.slug || "posts"}</span></Trans>
@@ -242,21 +283,21 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   <div className="ml-1 h-px flex-1 bg-border" />
                 </div>
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(184px,1fr))] gap-2">
-                  {items.map((t) => {
-                    const Ic = (I as Record<string, IconComponent>)[t.icon as IconKey] || I.Code;
-                    const on = interfaceId === t.id;
+                  {items.map((it) => {
+                    const Ic = (I as Record<string, IconComponent>)[it.icon as IconKey] || I.Code;
+                    const on = interfaceId === it.id;
                     return (
                       <button
-                        key={t.id}
+                        key={it.id}
                         type="button"
                         className={`grid cursor-pointer grid-cols-[28px_1fr_auto] grid-rows-[auto_auto] items-center gap-x-2.5 rounded-xl border p-3 text-left text-foreground transition-colors ${on ? "border-[color-mix(in_oklch,var(--primary)_60%,var(--border))] bg-selected-surface" : "border-border bg-card hover:bg-accent"}`}
-                        onClick={() => pickInterface(t.id)}
-                        title={t.sub}
+                        onClick={() => pickInterface(it.id)}
+                        title={it.sub}
                       >
                         <span className={`row-span-2 grid size-7 place-items-center self-center rounded-[8px] text-foreground ${on ? "bg-icon-surface" : "bg-muted"}`}><Ic size={14} /></span>
-                        <span className="text-[13px] font-medium">{t.label}</span>
-                        <span className="col-start-2 text-[11.5px] text-muted-foreground">{t.sub}</span>
-                        <span className="row-span-2 self-center rounded-[6px] bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">{t.type}</span>
+                        <span className="text-[13px] font-medium">{it.label}</span>
+                        <span className="col-start-2 text-[11.5px] text-muted-foreground">{it.sub}</span>
+                        <span className="row-span-2 self-center rounded-[6px] bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">{it.type}</span>
                       </button>
                     );
                   })}
@@ -268,108 +309,148 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         )}
 
         {step === 2 && (
-          <ScrollArea viewportClassName="max-h-[calc(92vh-13rem)] max-[640px]:max-h-[calc(92vh-16.5rem)]">
-            <div className="grid grid-cols-2 gap-3 px-5 py-[18px] max-[640px]:grid-cols-1">
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
-                <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="reading_time_minutes" />
-                <span className="font-mono text-[11px] text-muted-foreground">
-                  <Trans>column: <span className={nameTaken ? "text-destructive" : "text-foreground"}>{safeName || "—"}</span></Trans>
-                  {nameTaken && <span className="text-destructive"><Trans> · already exists</Trans></span>}
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Interface</Trans></label>
-                <div className="flex items-center gap-2 rounded-3xl border border-border bg-card px-3 py-2">
-                  <Icon size={14} />
-                  <span className="text-[13px] font-medium">{def.label}</span>
-                  <Badge variant="outline" mono>{def.type}</Badge>
-                  <span className="text-xs text-muted-foreground">· {def.sub}</span>
-                  <div className="flex-1" />
-                  <Button variant="ghost" size="sm" onClick={() => setStep(1)}><Trans>Change</Trans></Button>
-                </div>
-              </div>
-
-              {def.hasChoices && (
-                <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Choices</Trans></span>
-                    <span className="text-[11.5px] text-muted-foreground"><Trans>value · label · color</Trans></span>
-                    <div className="flex-1" />
-                    <Button size="xs" variant="outline" icon={I.Plus} onClick={addChoice}><Trans>Add</Trans></Button>
-                  </div>
-                  {choices.length === 0 && (
-                    <div className="p-2 text-xs text-muted-foreground"><Trans>No choices yet — click "Add". The value is what the column stores.</Trans></div>
-                  )}
-                  <div className="flex flex-col gap-1.5">
-                    {choices.map((c, i) => (
-                      <div key={i} className="flex flex-wrap items-center gap-1.5">
-                        <Input className="min-w-[7.5rem] flex-1" placeholder={t`value`} value={c.value} onChange={(e) => setChoice(i, { value: e.target.value })} />
-                        <Input className="min-w-[7.5rem] flex-1" placeholder={t`label (optional)`} value={c.label ?? ""} onChange={(e) => setChoice(i, { label: e.target.value })} />
-                        <input type="color" value={c.color ?? "#A1A6B8"} onChange={(e) => setChoice(i, { color: e.target.value })} className="h-[30px] w-16 shrink-0 cursor-pointer rounded-[6px] border border-border bg-card" />
-                        <IconButton icon={I.Trash} title={t`Remove choice`} onClick={() => removeChoice(i)} />
-                      </div>
-                    ))}
-                  </div>
-                  {missingChoices && <span className="text-[11.5px] text-destructive"><Trans>A dropdown needs at least one choice.</Trans></span>}
-                </div>
-              )}
-
-              {def.hasRelation && (
+          <FieldTabLayout tabs={tabs} active={activeTab} onSelect={setTab} viewportClassName={vp}>
+            {activeTab === "schema" && (
+              <div className="flex flex-col gap-3.5">
                 <div className="flex flex-col gap-1.5">
-                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>References collection</Trans></label>
-                  <Select value={relationTarget} onChange={setRelationTarget} options={relationOptions} placeholder={t`Pick a collection…`} />
-                  <span className="text-[11.5px] text-muted-foreground">
-                    <Trans>Stores the target row's <span className="font-mono">id</span>.</Trans>
-                    {missingRelation && <span className="text-destructive"><Trans> Required.</Trans></span>}
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
+                  <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="reading_time_minutes" />
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    <Trans>column: <span className={nameTaken ? "text-destructive" : "text-foreground"}>{safeName || "—"}</span></Trans>
+                    {nameTaken && <span className="text-destructive"><Trans> · already exists</Trans></span>}
                   </span>
                 </div>
-              )}
 
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Default value <span className="text-muted-foreground">(optional)</span></Trans></label>
-                <Input
-                  value={defaultValue}
-                  onChange={(e) => setDefaultValue(e.target.value)}
-                  placeholder={def.type === "integer" || def.type === "number" ? "0" : def.type === "boolean" ? "false" : def.type === "timestamp" ? "now()" : ""}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Required</Trans></div>
-                  <div className="text-[11.5px] text-muted-foreground"><Trans>NOT NULL — adding to a table that already has rows needs a default.</Trans></div>
-                </div>
-                <Switch checked={!nullable} onChange={(v) => setNullable(!v)} />
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Unique</Trans></div>
-                  <div className="text-[11.5px] text-muted-foreground"><Trans>UNIQUE constraint at the column level.</Trans></div>
-                </div>
-                <Switch checked={unique} onChange={setUnique} />
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Indexed</Trans></div>
-                  <div className="text-[11.5px] text-muted-foreground"><Trans>B-tree index — speeds up filter/sort by this column.</Trans></div>
-                </div>
-                <Switch checked={indexed} onChange={setIndexed} />
-              </div>
-              {(def.type === "text" || def.type === "longtext") && (
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Searchable</Trans></div>
-                    <div className="text-[11.5px] text-muted-foreground"><Trans>Fold this field into the collection's full-text-search index (when FTS is enabled).</Trans></div>
+                {defaultable && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Default value <span className="text-muted-foreground">(optional)</span></Trans></label>
+                    <Input
+                      value={defaultValue}
+                      onChange={(e) => setDefaultValue(e.target.value)}
+                      placeholder={def.type === "integer" || def.type === "number" ? "0" : def.type === "boolean" ? "false" : ""}
+                    />
+                    <span className="text-[11.5px] text-muted-foreground"><Trans>Used when an insert omits this column. Written into the DDL as a column DEFAULT.</Trans></span>
                   </div>
-                  <Switch checked={searchable} onChange={setSearchable} />
-                </div>
-              )}
+                )}
 
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Required</Trans></div>
+                      <div className="text-[11.5px] text-muted-foreground"><Trans>NOT NULL — adding to a table that already has rows needs a default.</Trans></div>
+                    </div>
+                    <Switch checked={!nullable} onChange={(v) => setNullable(!v)} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Unique</Trans></div>
+                      <div className="text-[11.5px] text-muted-foreground"><Trans>UNIQUE constraint at the column level.</Trans></div>
+                    </div>
+                    <Switch checked={unique} onChange={setUnique} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Indexed</Trans></div>
+                      <div className="text-[11.5px] text-muted-foreground"><Trans>B-tree index — speeds up filter/sort by this column.</Trans></div>
+                    </div>
+                    <Switch checked={indexed} onChange={setIndexed} />
+                  </div>
+                  {(def.type === "text" || def.type === "longtext") && (
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Searchable</Trans></div>
+                        <div className="text-[11.5px] text-muted-foreground"><Trans>Fold this field into the collection's full-text-search index (when FTS is enabled).</Trans></div>
+                      </div>
+                      <Switch checked={searchable} onChange={setSearchable} />
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-1.5">
+                  <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>DDL preview</Trans></div>
+                  <AlterPreview table={`c_${schema?.slug || "collection"}`} pendingField={{ name: safeName || "new_field", type: def.type as never, nullable, default: defaultValue }} />
+                </div>
+              </div>
+            )}
+
+            {activeTab === "relationship" && def.hasRelation && (
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>References collection</Trans></label>
+                <Select value={relationTarget} onChange={setRelationTarget} options={relationOptions} placeholder={t`Pick a collection…`} />
+                <span className="text-[11.5px] text-muted-foreground">
+                  <Trans>Stores the target row's <span className="font-mono">id</span>.</Trans>
+                  {missingRelation && <span className="text-destructive"><Trans> Required.</Trans></span>}
+                </span>
+              </div>
+            )}
+
+            {activeTab === "field" && (
+              <div className="flex flex-col gap-3.5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Display name <span className="text-muted-foreground">(optional)</span></Trans></label>
+                  <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={safeName || t`Reading time`} />
+                  <span className="text-[11.5px] text-muted-foreground"><Trans>Label shown in the item form. Falls back to the column name.</Trans></span>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Note <span className="text-muted-foreground">(optional)</span></Trans></label>
+                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder={t`Add a helpful note for editors…`} />
+                  <span className="text-[11.5px] text-muted-foreground"><Trans>Inline help text shown beneath the field.</Trans></span>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "interface" && (
+              <div className="flex flex-col gap-3.5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Interface</Trans></label>
+                  <div className="flex flex-wrap items-center gap-2 rounded-3xl border border-border bg-card px-3 py-2">
+                    <Icon size={14} />
+                    <span className="text-[13px] font-medium">{def.label}</span>
+                    <Badge variant="outline" mono>{def.type}</Badge>
+                    <span className="text-xs text-muted-foreground">· {def.sub}</span>
+                    <div className="flex-1" />
+                    <Button variant="ghost" size="sm" onClick={() => setStep(1)}><Trans>Change</Trans></Button>
+                  </div>
+                </div>
+
+                {def.hasChoices && (
+                  <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Choices</Trans></span>
+                      <span className="text-[11.5px] text-muted-foreground"><Trans>value · label · color</Trans></span>
+                      <div className="flex-1" />
+                      <Button size="xs" variant="outline" icon={I.Plus} onClick={addChoice}><Trans>Add</Trans></Button>
+                    </div>
+                    {choices.length === 0 && (
+                      <div className="p-2 text-xs text-muted-foreground"><Trans>No choices yet — click "Add". The value is what the column stores.</Trans></div>
+                    )}
+                    <div className="flex flex-col gap-1.5">
+                      {choices.map((c, i) => (
+                        <div key={i} className="flex flex-wrap items-center gap-1.5">
+                          <Input className="min-w-[7.5rem] flex-1" placeholder={t`value`} value={c.value} onChange={(e) => setChoice(i, { value: e.target.value })} />
+                          <Input className="min-w-[7.5rem] flex-1" placeholder={t`label (optional)`} value={c.label ?? ""} onChange={(e) => setChoice(i, { label: e.target.value })} />
+                          <input type="color" value={c.color ?? "#A1A6B8"} onChange={(e) => setChoice(i, { color: e.target.value })} className="h-[30px] w-16 shrink-0 cursor-pointer rounded-[6px] border border-border bg-card" />
+                          <IconButton icon={I.Trash} title={t`Remove choice`} onClick={() => removeChoice(i)} />
+                        </div>
+                      ))}
+                    </div>
+                    {missingChoices && <span className="text-[11.5px] text-destructive"><Trans>A dropdown needs at least one choice.</Trans></span>}
+                  </div>
+                )}
+
+                {!def.hasChoices && (
+                  <div className="rounded-xl bg-muted p-3 text-[12.5px] text-muted-foreground">
+                    <Trans>This interface has no extra options. Selection interfaces (dropdown, radio…) show a choices editor here.</Trans>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "validation" && (
+              <FieldValidationEditor type={def.type} fields={availableFields} value={valDraft} onChange={setValDraft} />
+            )}
+
+            {activeTab === "conditions" && (
               <div className="flex flex-col gap-2 rounded-xl bg-muted p-3">
                 <div className="flex items-center gap-2">
                   <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Conditions</Trans></span>
@@ -413,21 +494,8 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   </div>
                 ))}
               </div>
-
-              <FieldValidationEditor
-                type={def.type}
-                fields={availableFields}
-                value={valDraft}
-                onChange={setValDraft}
-              />
-
-              <div className="mt-1.5">
-                <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>DDL preview</Trans></div>
-                <AlterPreview table={`c_${schema?.slug || "collection"}`} pendingField={{ name: safeName || "new_field", type: def.type as never, nullable, default: defaultValue }} />
-              </div>
-            </div>
-            </div>
-          </ScrollArea>
+            )}
+          </FieldTabLayout>
         )}
 
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
@@ -448,7 +516,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
           {step === 2 && <Button variant="ghost" size="sm" onClick={() => setStep(1)} icon={I.ChevronLeft}><Trans>Back</Trans></Button>}
           <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
           {step === 1 ? (
-            <Button variant="primary" size="sm" iconRight={I.ChevronRight} onClick={() => setStep(2)}><Trans>Next</Trans></Button>
+            <Button variant="primary" size="sm" iconRight={I.ChevronRight} onClick={() => { setStep(2); setTab("schema"); }}><Trans>Next</Trans></Button>
           ) : (
             <Button variant="primary" size="sm" icon={I.Check} disabled={!valid} onClick={submit}><Trans>Add column</Trans></Button>
           )}

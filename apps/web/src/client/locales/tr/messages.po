@@ -952,6 +952,11 @@ msgstr "Önce aşağıya bir Client ID ve gizli anahtar ekleyin."
 msgid "Add a Client ID and secret first"
 msgstr "Önce bir Client ID ve gizli anahtar ekleyin"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Add a helpful note for editors…"
+msgstr "Editörler için yardımcı bir not ekleyin…"
+
 #: src/client/admin/pages/settings.tsx
 msgid "Add a language"
 msgstr "Dil ekle"
@@ -3306,6 +3311,8 @@ msgstr "Görüntü etiketi. Depolama anahtarı <0>{0}</0> olarak kalır."
 msgid "Display name"
 msgstr "Görünen ad"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Display name <0>(optional)</0>"
@@ -4073,7 +4080,9 @@ msgstr "Getiriliyor…"
 msgid "field"
 msgstr "alan"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Field"
@@ -4782,6 +4791,11 @@ msgstr "ilk"
 msgid "Initial revision — the first recorded state of this item."
 msgstr "İlk revizyon — bu öğenin kaydedilen ilk durumu."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Inline help text shown beneath the field."
+msgstr "Alanın altında gösterilen satır içi yardım metni."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Input"
 msgstr "Girdi"
@@ -5109,6 +5123,11 @@ msgstr "Tür"
 #: src/client/admin/edit-field.tsx
 msgid "label (optional)"
 msgstr "etiket (isteğe bağlı)"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Label shown in the item form. Falls back to the column name."
+msgstr "Öğe formunda gösterilen etiket. Ayarlanmazsa sütun adına döner."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Lands in {pending}"
@@ -6610,6 +6629,11 @@ msgstr "Kullanılmıyor"
 msgid "Note"
 msgstr "Not"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Note <0>(optional)</0>"
+msgstr "Not <0>(isteğe bağlı)</0>"
+
 #: src/client/admin/pages/logs.tsx
 msgid "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
 msgstr "Son {range} içinde hiçbir şey gelmedi. Aralığı genişletin veya isteklerin, öğe yazmalarının ve otomasyon çalıştırmalarının akmasını bekleyin."
@@ -7747,6 +7771,10 @@ msgid "read-only SELECT against the workspace database"
 msgstr "çalışma alanı veritabanına karşı salt okunur SELECT"
 
 #: src/client/admin/add-field.tsx
+msgid "Reading time"
+msgstr "Okuma süresi"
+
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Readonly"
 msgstr "Salt okunur"
@@ -7819,6 +7847,7 @@ msgid "Redirecting…"
 msgstr "Yönlendiriliyor…"
 
 #: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 msgid "References collection"
 msgstr "Koleksiyona başvurur"
 
@@ -7918,6 +7947,11 @@ msgstr "çoklu ilişki"
 #: src/client/admin/pages/schema-graph.tsx
 msgid "relations"
 msgstr "ilişkiler"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Relationship"
+msgstr "İlişki"
 
 #: src/client/admin/pages/settings.tsx
 msgid "Released"
@@ -8734,8 +8768,10 @@ msgstr "Zamanlanmış yedekler cron tetiklemesiyle çalışır ve en yeni {retai
 msgid "scheduled by <0>published_at</0>"
 msgstr "<0>published_at</0> ile zamanlandı"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/app.tsx
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/pages/graphql.tsx
 msgid "Schema"
 msgstr "Şema"
@@ -9703,6 +9739,10 @@ msgstr "Depolama anahtarını saklar. Yeni dosyaları <0>Depolama</0> sayfasınd
 msgid "Stores the target row's <0>id</0>."
 msgstr "Hedef satırın <0>id</0>'sini saklar."
 
+#: src/client/admin/edit-field.tsx
+msgid "Stores the target row's <0>id</0>. The target is immutable — drop & re-add to change it."
+msgstr "Hedef satırın <0>id</0> değerini saklar. Hedef değiştirilemez — değiştirmek için alanı silip yeniden ekleyin."
+
 #: src/client/admin/pages/logs.tsx
 msgid "Stream"
 msgstr "Akış"
@@ -10098,6 +10138,11 @@ msgstr "Bu veritabanında hiç tablo yok."
 #: src/client/admin/parity/insights.tsx
 msgid "This deletes the dashboard and disables its public embed. Its panels are <0>not</0> deleted — they become ungrouped. This action can't be undone."
 msgstr "Bu, panoyu siler ve herkese açık gömmesini kapatır. Panelleri <0>silinmez</0> — gruplanmamış hale gelir. Bu işlem geri alınamaz."
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "This interface has no extra options. Selection interfaces (dropdown, radio…) show a choices editor here."
+msgstr "Bu arayüzün ek seçeneği yok. Seçim arayüzleri (açılır liste, radyo…) burada bir seçenek düzenleyicisi gösterir."
 
 #: src/client/pages/invite.tsx
 msgid "This invite link is invalid or has already been used."
@@ -10697,6 +10742,10 @@ msgstr "Varsayılan sıralama, denetim ve created_at projeksiyonu için kullanı
 msgid "Used in the ACS / metadata URLs below."
 msgstr "Aşağıdaki ACS / meta veri URL'lerinde kullanılır."
 
+#: src/client/admin/add-field.tsx
+msgid "Used when an insert omits this column. Written into the DDL as a column DEFAULT."
+msgstr "Bir kayıt eklenirken bu sütun belirtilmezse kullanılır. DDL'e sütun DEFAULT değeri olarak yazılır."
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "user"
 msgstr "kullanıcı"
@@ -10733,7 +10782,9 @@ msgstr "Kullanıcılar"
 msgid "Users enrol a passkey after signing in once with another method."
 msgstr "Kullanıcılar başka bir yöntemle bir kez giriş yaptıktan sonra passkey kaydeder."
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/field-validation-editor.tsx
 msgid "Validation"
 msgstr "Doğrulama"

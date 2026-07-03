@@ -1,16 +1,18 @@
 // @ts-nocheck
 // Edit-field dialog: change a user-defined column's settings without
 // renaming or retyping it (those need DDL changes the backend doesn't yet
-// support). Covers required/unique flags, the interface override (drawn from
-// the interface catalog, filtered to interfaces compatible with this
-// column's storage type), and the per-choice metadata used by selection
-// interfaces — same shape that admin/sheet.tsx and admin/items.tsx consume to
-// render Selects + badges.
+// support). Directus-style tabbed editor (Schema · Relationship · Field ·
+// Interface · Validation · Conditions). Covers required/unique flags, the
+// interface override (drawn from the interface catalog, filtered to interfaces
+// compatible with this column's storage type), display name / note, and the
+// per-choice metadata used by selection interfaces — same shape that
+// admin/sheet.tsx and admin/items.tsx consume to render Selects + badges.
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +21,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@backlex/ui/components/dialog";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Select } from "./select";
+import { FieldTabLayout, type FieldTabItem } from "./field-editor-tabs";
 import { getInterface, interfacesForType } from "./interfaces";
 import {
   type GroupNode,
@@ -61,6 +63,12 @@ interface FieldDraft {
   /** Fold into the collection's full-text index (text/longtext only). */
   searchable?: boolean;
   interface?: string;
+  /** Target collection slug (relation / relation_many). Immutable here. */
+  to?: string;
+  /** Human display name shown in the item form. */
+  label?: string;
+  /** Inline help text. */
+  description?: string;
   options?: { choices?: FieldChoice[]; values?: string[] };
   conditions?: {
     name?: string;
@@ -85,6 +93,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
   const [draft, setDraft] = useState<FieldDraft | null>(field);
   const [conds, setConds] = useState<CondDraft[]>([]);
   const [valDraft, setValDraft] = useState<ValDraft>(emptyValDraft());
+  const [tab, setTab] = useState("schema");
 
   // Re-seed every time the dialog opens with a new target field.
   useEffect(() => {
@@ -93,6 +102,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
       setDraft(null);
       return;
     }
+    setTab("schema");
     // Coerce legacy options.values into the choices shape so the editor
     // doesn't lose data when re-saving an old field.
     const seeded: FieldDraft = {
@@ -146,6 +156,8 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
     ];
   }, [draft?.type, draft?.interface]);
 
+  const isRelation = draft?.type === "relation" || draft?.type === "relation_many";
+
   if (!open || !draft) return null;
 
   const wantsChoices = !!getInterface(draft.interface)?.hasChoices;
@@ -175,9 +187,8 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
     if (!draft) return;
     // Strip empty-value choices on save so a half-typed row doesn't fail the
     // server validator; drop options entirely for interfaces that don't use
-    // choices.
-    // Only persist conditions that carry a real rule; compile each tree back to
-    // the canonical Condition object the server stores + enforces.
+    // choices. Only persist conditions that carry a real rule; compile each
+    // tree back to the canonical Condition object the server stores + enforces.
     const conditions = conds
       .filter((c) => treeHasRule(c.tree))
       .map((c) => ({
@@ -190,6 +201,8 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
     const validation = compileValidation(valDraft, draft.type);
     const cleaned: FieldDraft = {
       ...draft,
+      label: draft.label?.trim() ? draft.label.trim() : undefined,
+      description: draft.description?.trim() ? draft.description.trim() : undefined,
       options: wantsChoices
         ? { choices: (draft.options?.choices ?? []).filter((c) => c.value.trim()) }
         : undefined,
@@ -200,10 +213,22 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
     onSave(cleaned);
   };
 
+  const tabs: FieldTabItem[] = [
+    { key: "schema", label: t`Schema`, icon: "Database" },
+    ...(isRelation ? [{ key: "relationship", label: t`Relationship`, icon: "Share" } as FieldTabItem] : []),
+    { key: "field", label: t`Field`, icon: "Pencil" },
+    { key: "interface", label: t`Interface`, icon: "Eye" },
+    { key: "validation", label: t`Validation`, icon: "Check" },
+    { key: "conditions", label: t`Conditions`, icon: "Filter" },
+  ];
+  const activeTab = tabs.some((x) => x.key === tab) ? tab : "schema";
+  // Literal class strings — Tailwind's JIT can't see interpolated class names.
+  const vp = "max-h-[calc(min(86vh,720px)-9rem)] max-[640px]:max-h-[calc(min(86vh,720px)-16rem)]";
+
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[640px]">
-        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 [&>*]:min-w-0 sm:max-w-[720px]">
+        <DialogHeader className="shrink-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
             <Trans>Edit <span className="font-mono">{draft.name}</span>{" "}
             <Badge variant="outline" mono>{draft.type}</Badge></Trans>
@@ -213,162 +238,204 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
-        <div className="flex flex-col gap-3.5 p-[18px]">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Required</Trans></div>
-              <div className="text-[11.5px] text-muted-foreground"><Trans>Reject inserts/updates that omit this column.</Trans></div>
-            </div>
-            <Switch checked={!!draft.required} onChange={(v) => setDraft((d) => d ? { ...d, required: v } : d)} />
-          </div>
-
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Unique</Trans></div>
-              <div className="text-[11.5px] text-muted-foreground"><Trans>No two rows can hold the same value (case-sensitive).</Trans></div>
-            </div>
-            <Switch checked={!!draft.unique} onChange={(v) => setDraft((d) => d ? { ...d, unique: v } : d)} />
-          </div>
-
-          {(draft.type === "text" || draft.type === "longtext") && (
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Searchable</Trans></div>
-                <div className="text-[11.5px] text-muted-foreground"><Trans>Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing.</Trans></div>
+        <FieldTabLayout tabs={tabs} active={activeTab} onSelect={setTab} viewportClassName={vp}>
+          {activeTab === "schema" && (
+            <div className="flex flex-col gap-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Required</Trans></div>
+                  <div className="text-[11.5px] text-muted-foreground"><Trans>Reject inserts/updates that omit this column.</Trans></div>
+                </div>
+                <Switch checked={!!draft.required} onChange={(v) => setDraft((d) => d ? { ...d, required: v } : d)} />
               </div>
-              <Switch checked={!!draft.searchable} onChange={(v) => setDraft((d) => d ? { ...d, searchable: v } : d)} />
+
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Unique</Trans></div>
+                  <div className="text-[11.5px] text-muted-foreground"><Trans>No two rows can hold the same value (case-sensitive).</Trans></div>
+                </div>
+                <Switch checked={!!draft.unique} onChange={(v) => setDraft((d) => d ? { ...d, unique: v } : d)} />
+              </div>
+
+              {(draft.type === "text" || draft.type === "longtext") && (
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Searchable</Trans></div>
+                    <div className="text-[11.5px] text-muted-foreground"><Trans>Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing.</Trans></div>
+                  </div>
+                  <Switch checked={!!draft.searchable} onChange={(v) => setDraft((d) => d ? { ...d, searchable: v } : d)} />
+                </div>
+              )}
             </div>
           )}
 
-          <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Interface</Trans></label>
-            <Select
-              value={draft.interface ?? ""}
-              onChange={(v) => setDraft((d) => d ? { ...d, interface: (v || undefined) } : d)}
-              options={interfaceOpts}
-              searchable
-            />
-            <span className="text-[11.5px] text-muted-foreground">
-              <Trans>Changes how the value is edited in the item form. Selection interfaces (dropdown, radio, checkboxes…) also enforce their choices server-side.</Trans>
-            </span>
-          </div>
+          {activeTab === "relationship" && isRelation && (
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>References collection</Trans></label>
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2">
+                <I.Database size={14} className="text-muted-foreground" />
+                <span className="font-mono text-[13px] text-foreground">{draft.to || "—"}</span>
+              </div>
+              <span className="text-[11.5px] text-muted-foreground"><Trans>Stores the target row's <span className="font-mono">id</span>. The target is immutable — drop &amp; re-add to change it.</Trans></span>
+            </div>
+          )}
 
-          {wantsChoices && (
-            <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
-              <div className="mb-2 flex items-center gap-2">
-                <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Choices</Trans></span>
+          {activeTab === "field" && (
+            <div className="flex flex-col gap-3.5">
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Display name <span className="text-muted-foreground">(optional)</span></Trans></label>
+                <Input value={draft.label ?? ""} onChange={(e) => setDraft((d) => d ? { ...d, label: e.target.value } : d)} placeholder={draft.name} />
+                <span className="text-[11.5px] text-muted-foreground"><Trans>Label shown in the item form. Falls back to the column name.</Trans></span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Note <span className="text-muted-foreground">(optional)</span></Trans></label>
+                <Textarea value={draft.description ?? ""} onChange={(e) => setDraft((d) => d ? { ...d, description: e.target.value } : d)} rows={3} placeholder={t`Add a helpful note for editors…`} />
+                <span className="text-[11.5px] text-muted-foreground"><Trans>Inline help text shown beneath the field.</Trans></span>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "interface" && (
+            <div className="flex flex-col gap-3.5">
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Interface</Trans></label>
+                <Select
+                  value={draft.interface ?? ""}
+                  onChange={(v) => setDraft((d) => d ? { ...d, interface: (v || undefined) } : d)}
+                  options={interfaceOpts}
+                  searchable
+                />
                 <span className="text-[11.5px] text-muted-foreground">
-                  <Trans>value · label · color (CSS)</Trans>
+                  <Trans>Changes how the value is edited in the item form. Selection interfaces (dropdown, radio, checkboxes…) also enforce their choices server-side.</Trans>
                 </span>
-                <div className="flex-1" />
-                <Button size="xs" variant="outline" icon={I.Plus} onClick={addChoice}><Trans>Add choice</Trans></Button>
               </div>
 
-              {choices.length === 0 && (
-                <div className="p-2 text-xs text-muted-foreground">
-                  <Trans>No choices yet. Click "Add choice" — value is what the column stores.</Trans>
+              {wantsChoices && (
+                <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Choices</Trans></span>
+                    <span className="text-[11.5px] text-muted-foreground">
+                      <Trans>value · label · color (CSS)</Trans>
+                    </span>
+                    <div className="flex-1" />
+                    <Button size="xs" variant="outline" icon={I.Plus} onClick={addChoice}><Trans>Add choice</Trans></Button>
+                  </div>
+
+                  {choices.length === 0 && (
+                    <div className="p-2 text-xs text-muted-foreground">
+                      <Trans>No choices yet. Click "Add choice" — value is what the column stores.</Trans>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-1.5">
+                    {choices.map((c, i) => (
+                      <div key={i} className="flex flex-wrap items-center gap-1.5">
+                        <Input
+                          className="min-w-[7.5rem] flex-1"
+                          placeholder={t`value`}
+                          value={c.value}
+                          onChange={(e) => setChoice(i, { value: e.target.value })}
+                        />
+                        <Input
+                          className="min-w-[7.5rem] flex-1"
+                          placeholder={t`label (optional)`}
+                          value={c.label ?? ""}
+                          onChange={(e) => setChoice(i, { label: e.target.value })}
+                        />
+                        {/* Clean design-system swatch — the native color input is
+                            overlaid invisibly so the control matches the other
+                            inputs instead of the browser's chunky default swatch. */}
+                        <label
+                          className="relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-border ring-offset-background focus-within:ring-2 focus-within:ring-ring/50"
+                          title={t`Choice color`}
+                          style={{ backgroundColor: c.color ?? "#A1A6B8" }}
+                        >
+                          <input
+                            type="color"
+                            value={c.color ?? "#A1A6B8"}
+                            onChange={(e) => setChoice(i, { color: e.target.value })}
+                            className="absolute inset-0 size-full cursor-pointer opacity-0"
+                            aria-label={t`Choice color`}
+                          />
+                        </label>
+                        <IconButton icon={I.Trash} title={t`Remove choice`} onClick={() => removeChoice(i)} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              <div className="flex flex-col gap-1.5">
-                {choices.map((c, i) => (
-                  <div key={i} className="flex flex-wrap items-center gap-1.5">
-                    <Input
-                      className="min-w-[7.5rem] flex-1"
-                      placeholder={t`value`}
-                      value={c.value}
-                      onChange={(e) => setChoice(i, { value: e.target.value })}
-                    />
-                    <Input
-                      className="min-w-[7.5rem] flex-1"
-                      placeholder={t`label (optional)`}
-                      value={c.label ?? ""}
-                      onChange={(e) => setChoice(i, { label: e.target.value })}
-                    />
-                    {/* Clean design-system swatch — the native color input is
-                        overlaid invisibly so the control matches the other
-                        inputs instead of the browser's chunky default swatch. */}
-                    <label
-                      className="relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-border ring-offset-background focus-within:ring-2 focus-within:ring-ring/50"
-                      title={t`Choice color`}
-                      style={{ backgroundColor: c.color ?? "#A1A6B8" }}
-                    >
-                      <input
-                        type="color"
-                        value={c.color ?? "#A1A6B8"}
-                        onChange={(e) => setChoice(i, { color: e.target.value })}
-                        className="absolute inset-0 size-full cursor-pointer opacity-0"
-                        aria-label={t`Choice color`}
-                      />
-                    </label>
-                    <IconButton icon={I.Trash} title={t`Remove choice`} onClick={() => removeChoice(i)} />
-                  </div>
-                ))}
-              </div>
+              {!wantsChoices && (
+                <div className="rounded-xl bg-muted p-3 text-[12.5px] text-muted-foreground">
+                  <Trans>This interface has no extra options. Selection interfaces (dropdown, radio…) show a choices editor here.</Trans>
+                </div>
+              )}
             </div>
           )}
 
-          <div className="flex flex-col gap-2 rounded-xl bg-muted p-3">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Conditions</Trans></span>
-              <div className="flex-1" />
-              <Button size="xs" variant="outline" icon={I.Plus} onClick={addCond}><Trans>Add condition</Trans></Button>
-            </div>
-            <div className="text-[11.5px] text-muted-foreground">
-              <Trans>When the rule matches the row, apply the effects. <span className="font-medium text-foreground">Required</span> is enforced on save (422); Readonly/Hidden affect the item form.</Trans>
-            </div>
+          {activeTab === "validation" && (
+            <FieldValidationEditor
+              type={draft.type}
+              fields={availableFields}
+              value={valDraft}
+              onChange={setValDraft}
+            />
+          )}
 
-            {conds.length === 0 && (
-              <div className="p-2 text-xs text-muted-foreground">
-                <Trans>No conditions. Click "Add condition" to make this field required/readonly/hidden based on other fields.</Trans>
+          {activeTab === "conditions" && (
+            <div className="flex flex-col gap-2 rounded-xl bg-muted p-3">
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Conditions</Trans></span>
+                <div className="flex-1" />
+                <Button size="xs" variant="outline" icon={I.Plus} onClick={addCond}><Trans>Add condition</Trans></Button>
               </div>
-            )}
+              <div className="text-[11.5px] text-muted-foreground">
+                <Trans>When the rule matches the row, apply the effects. <span className="font-medium text-foreground">Required</span> is enforced on save (422); Readonly/Hidden affect the item form.</Trans>
+              </div>
 
-            {conds.map((c, i) => (
-              <div key={i} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2.5">
-                <div className="flex items-center gap-2">
-                  <Input
-                    className="h-8 flex-1"
-                    placeholder={t`Condition name (optional)`}
-                    value={c.name}
-                    onChange={(e) => patchCond(i, { name: e.target.value })}
+              {conds.length === 0 && (
+                <div className="p-2 text-xs text-muted-foreground">
+                  <Trans>No conditions. Click "Add condition" to make this field required/readonly/hidden based on other fields.</Trans>
+                </div>
+              )}
+
+              {conds.map((c, i) => (
+                <div key={i} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2.5">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      className="h-8 flex-1"
+                      placeholder={t`Condition name (optional)`}
+                      value={c.name}
+                      onChange={(e) => patchCond(i, { name: e.target.value })}
+                    />
+                    <IconButton icon={I.Trash} title={t`Remove condition`} onClick={() => removeCond(i)} />
+                  </div>
+                  <RuleBuilder
+                    tree={c.tree}
+                    onChange={(tree) => patchCond(i, { tree })}
+                    fields={availableFields}
                   />
-                  <IconButton icon={I.Trash} title={t`Remove condition`} onClick={() => removeCond(i)} />
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-0.5">
+                    <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground">
+                      <Switch checked={c.required} onChange={(v) => patchCond(i, { required: v })} />
+                      <Trans>Required</Trans>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground">
+                      <Switch checked={c.readonly} onChange={(v) => patchCond(i, { readonly: v })} />
+                      <Trans>Readonly</Trans>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground">
+                      <Switch checked={c.hidden} onChange={(v) => patchCond(i, { hidden: v })} />
+                      <Trans>Hidden</Trans>
+                    </label>
+                  </div>
                 </div>
-                <RuleBuilder
-                  tree={c.tree}
-                  onChange={(tree) => patchCond(i, { tree })}
-                  fields={availableFields}
-                />
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-0.5">
-                  <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground">
-                    <Switch checked={c.required} onChange={(v) => patchCond(i, { required: v })} />
-                    <Trans>Required</Trans>
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground">
-                    <Switch checked={c.readonly} onChange={(v) => patchCond(i, { readonly: v })} />
-                    <Trans>Readonly</Trans>
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground">
-                    <Switch checked={c.hidden} onChange={(v) => patchCond(i, { hidden: v })} />
-                    <Trans>Hidden</Trans>
-                  </label>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+        </FieldTabLayout>
 
-          <FieldValidationEditor
-            type={draft.type}
-            fields={availableFields}
-            value={valDraft}
-            onChange={setValDraft}
-          />
-        </div>
-        </ScrollArea>
-
-        <DialogFooter className="border-t border-border px-[18px] py-3">
+        <DialogFooter className="shrink-0 border-t border-border px-[18px] py-3">
           <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
           <Button variant="primary" size="sm" onClick={submit}><Trans>Save field</Trans></Button>
         </DialogFooter>

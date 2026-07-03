@@ -191,6 +191,8 @@ const FieldSchema = z
     onCreate: z.enum(["uuid", "now", "user", "tenant"]).optional(),
     /** Server-side auto-fill on every update (now/user/tenant). */
     onUpdate: z.enum(["now", "user", "tenant"]).optional(),
+    /** App-layer ON DELETE action for a relation FK (set_null/cascade/no_action). */
+    onDelete: z.enum(["set_null", "cascade", "no_action"]).optional(),
   })
   .refine((f) => (f.type !== "relation" && f.type !== "relation_many") || !!f.to, {
     message: "relation / relation_many field must specify `to` (target collection slug)",

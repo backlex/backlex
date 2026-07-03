@@ -16,6 +16,7 @@ import {
   validateRelations,
 } from "./validate";
 import { hashIncomingFields, scrubHashFields, scrubPrivateFields } from "./hash-fields";
+import { enforceOnDeleteTriggers } from "./on-delete";
 import { mergeI18nPatch } from "./i18n";
 import {
   deletedFilter,
@@ -412,6 +413,13 @@ export const performDelete = async (
       );
     }
   }
+
+  // App-layer ON DELETE relational triggers: null-out or cascade rows in other
+  // collections that reference this one (no DB-level FKs in v1). Runs on both
+  // hard and soft delete so a soft-deleted target still detaches its children.
+  await enforceOnDeleteTriggers(ctx, env.tenantId, collection.slug, id, (stmt) =>
+    emit(env, stmt),
+  );
 
   const sideEffects: SideEffect[] = [
     () => deleteVector(ctx, collection, env.tenantId ?? null, id),

@@ -38,6 +38,7 @@ import { loadCollection } from "../items/collection-loader";
 import { runBatch, type BatchOp } from "../items/batch";
 import { runBulkUpdate } from "../items/bulk";
 import { hashIncomingFields, scrubHashFields } from "../items/hash-fields";
+import { enforceOnDeleteTriggers } from "../items/on-delete";
 import { verifyHashField } from "../items/verify";
 import type { Hono } from "hono";
 import type { Ctx } from "../../context";
@@ -896,6 +897,10 @@ export const deleteResolver = async (
       sql`DELETE FROM ${sql.identifier(table)} WHERE ${sql.join(wheres, sql` AND `)}`,
     );
   }
+  // App-layer ON DELETE relational triggers — mirrors the REST delete path.
+  await enforceOnDeleteTriggers(ctx, auth.tenantId, collection.slug, args.id, (stmt) =>
+    execute(ctx, stmt).then(() => undefined),
+  );
   await publishEvent(
     ctx.env,
     `items:${collection.slug}`,

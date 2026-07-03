@@ -30,6 +30,13 @@ import {
   ruleTreeToObj,
   treeHasRule,
 } from "./rule-builder";
+import {
+  compileValidation,
+  emptyValDraft,
+  FieldValidationEditor,
+  type ValDraft,
+  validationToDraft,
+} from "./field-validation-editor";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -77,6 +84,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
   const { t } = useLingui();
   const [draft, setDraft] = useState<FieldDraft | null>(field);
   const [conds, setConds] = useState<CondDraft[]>([]);
+  const [valDraft, setValDraft] = useState<ValDraft>(emptyValDraft());
 
   // Re-seed every time the dialog opens with a new target field.
   useEffect(() => {
@@ -106,6 +114,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
         hidden: !!c.hidden,
       })),
     );
+    setValDraft(validationToDraft((field as { validation?: unknown }).validation));
   }, [open, field]);
 
   const addCond = () =>
@@ -178,6 +187,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
         ...(c.readonly ? { readonly: true } : {}),
         ...(c.hidden ? { hidden: true } : {}),
       }));
+    const validation = compileValidation(valDraft, draft.type);
     const cleaned: FieldDraft = {
       ...draft,
       options: wantsChoices
@@ -185,6 +195,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
         : undefined,
       interface: draft.interface || undefined,
       conditions: conditions.length ? (conditions as never) : undefined,
+      validation: (validation ?? undefined) as never,
     };
     onSave(cleaned);
   };
@@ -347,6 +358,13 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
               </div>
             ))}
           </div>
+
+          <FieldValidationEditor
+            type={draft.type}
+            fields={availableFields}
+            value={valDraft}
+            onChange={setValDraft}
+          />
         </div>
         </ScrollArea>
 

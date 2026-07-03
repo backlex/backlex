@@ -292,8 +292,27 @@ const matchesInner = (
   if (isOr(cond)) return cond.$or.some((c) => matchesInner(row, c, ctx, now));
   if (isNot(cond)) return !matchesInner(row, cond.$not, ctx, now);
   // JS predicate is dialect-agnostic: relative dates resolve to epoch-ms so the
-  // numeric comparisons below stay comparable.
-  const r = (v: unknown) => resolve(v, ctx, now, undefined);
+  // numeric comparisons below stay comparable. A comparison value of the form
+  // `"$field.<name>"` resolves to a sibling row value — this is what powers
+  // cross-field validation rules (`{ end_date: { _gte: "$field.start_date" } }`).
+  const r = (v: unknown): unknown => {
+    if (typeof v === "string" && v.startsWith("$field.")) {
+      return lookup(row, v.slice("$field.".length));
+    }
+    return resolve(v, ctx, now, undefined);
+  };
+  // Numeric coercion with a date fallback so ordered comparisons on ISO-string
+  // timestamps (incl. cross-field date rules) sort by instant instead of
+  // NaN-failing. Non-date strings keep `Number()`'s existing behaviour.
+  const num = (x: unknown): number => {
+    const n = Number(x);
+    if (!Number.isNaN(n)) return n;
+    if (typeof x === "string") {
+      const t = Date.parse(x);
+      if (!Number.isNaN(t)) return t;
+    }
+    return Number.NaN;
+  };
   for (const [field, cmp] of Object.entries(cond as Record<string, ComparisonObj>)) {
     const left = lookup(row, field);
     if (cmp._eq !== undefined && left !== r(cmp._eq)) return false;
@@ -306,14 +325,14 @@ const matchesInner = (
       const arr = (cmp._nin as unknown[]).map(r);
       if (arr.includes(left)) return false;
     }
-    if (cmp._gt !== undefined && !(Number(left) > Number(r(cmp._gt)))) return false;
-    if (cmp._gte !== undefined && !(Number(left) >= Number(r(cmp._gte)))) return false;
-    if (cmp._lt !== undefined && !(Number(left) < Number(r(cmp._lt)))) return false;
-    if (cmp._lte !== undefined && !(Number(left) <= Number(r(cmp._lte)))) return false;
+    if (cmp._gt !== undefined && !(num(left) > num(r(cmp._gt)))) return false;
+    if (cmp._gte !== undefined && !(num(left) >= num(r(cmp._gte)))) return false;
+    if (cmp._lt !== undefined && !(num(left) < num(r(cmp._lt)))) return false;
+    if (cmp._lte !== undefined && !(num(left) <= num(r(cmp._lte)))) return false;
     if (cmp._between !== undefined) {
-      const lo = Number(r(cmp._between[0]));
-      const hi = Number(r(cmp._between[1]));
-      const n = Number(left);
+      const lo = num(r(cmp._between[0]));
+      const hi = num(r(cmp._between[1]));
+      const n = num(left);
       if (!(n >= lo && n <= hi)) return false;
     }
     if (cmp._null === true && left != null) return false;

@@ -1,4 +1,4 @@
-import type { Condition } from "@backlex/core";
+import type { Condition, DurationParts, RelativeNow } from "@backlex/core";
 
 type Dialect = "pg" | "sqlite";
 
@@ -29,14 +29,47 @@ export type FieldType =
 
 /** Soft validation rules — enforced at the API layer, not at the DB. */
 export interface FieldValidation {
-  /** Regex pattern (string-form, ECMA syntax). Applied to text/longtext. */
+  /** Regex pattern (string-form, ECMA syntax). Applied to text/longtext/hash. */
   regex?: string;
   /** Inclusive bounds for integer/number. */
   min?: number;
   max?: number;
-  /** Length bounds for text/longtext. */
+  /** Length bounds for text/longtext/hash. */
   minLength?: number;
   maxLength?: number;
+  /**
+   * Built-in format check for text/longtext/hash — applies a canonical regex.
+   * `email` and `url` save admins from hand-writing (and getting wrong) the
+   * pattern. Combined with `regex`, both must pass.
+   */
+  format?: "email" | "url";
+  /** Require a whole number (no fractional part). Only for `integer`/`number`. */
+  integer?: boolean;
+  /**
+   * Inclusive datetime bounds for `timestamp` fields. Each accepts an epoch-ms
+   * number, an ISO-8601 string, the literal `"$now"`, or a relative-now object
+   * (`{ $now: { sub: { days: 1 } } }`) — the same dynamic-date vocabulary the
+   * permission/filter DSL uses. The incoming value is parsed to epoch-ms before
+   * comparison.
+   */
+  minDate?: string | number | RelativeNow;
+  maxDate?: string | number | RelativeNow;
+  /** Cardinality bounds for `relation_many` (JSON array length). */
+  minSelect?: number;
+  maxSelect?: number;
+  /**
+   * Cross-field escape hatch — a filter over the WHOLE row (same DSL as
+   * permission conditions) that must match for the row to be valid. Sibling
+   * field values are referenced with `"$field.<name>"` on the comparison side,
+   * e.g. `{ end_date: { _gte: "$field.start_date" } }`. Evaluated server-side
+   * in JS on every create/update; the SQL path is untouched.
+   */
+  rule?: Condition;
+  /**
+   * Custom message shown on ANY validation failure for this field (a per-value
+   * check OR the cross-field `rule`). Falls back to a generated message.
+   */
+  message?: string;
 }
 
 /**
@@ -391,6 +424,25 @@ const collectConditionFields = (cond: unknown, out: Set<string>): void => {
   }
 };
 
+/** Collect `$field.<name>` references appearing as comparison *values* in a
+ *  rule (head segment for dotted paths). Complements `collectConditionFields`,
+ *  which only sees the left-hand field keys. */
+const collectFieldVarRefs = (node: unknown, out: Set<string>): void => {
+  if (typeof node === "string") {
+    if (node.startsWith("$field.")) {
+      out.add(node.slice("$field.".length).split(".")[0]!);
+    }
+    return;
+  }
+  if (Array.isArray(node)) {
+    for (const x of node) collectFieldVarRefs(x, out);
+    return;
+  }
+  if (node && typeof node === "object") {
+    for (const x of Object.values(node)) collectFieldVarRefs(x, out);
+  }
+};
+
 export const validateFields = (fields: FieldDef[]): void => {
   const seen = new Set<string>();
   const names = new Set(fields.map((f) => f.name));
@@ -477,29 +529,157 @@ export const validateFields = (fields: FieldDef[]): void => {
         }
       }
     }
+    if (f.validation) {
+      const val = f.validation;
+      const textish =
+        f.type === "text" || f.type === "longtext" || f.type === "hash";
+      if (val.format && !textish) {
+        throw new Error(
+          `Field "${f.name}": validation.format only applies to text fields`,
+        );
+      }
+      if (val.integer && f.type !== "integer" && f.type !== "number") {
+        throw new Error(
+          `Field "${f.name}": validation.integer only applies to number fields`,
+        );
+      }
+      if (
+        (val.minDate !== undefined || val.maxDate !== undefined) &&
+        f.type !== "timestamp"
+      ) {
+        throw new Error(
+          `Field "${f.name}": validation.minDate/maxDate only apply to timestamp fields`,
+        );
+      }
+      if (
+        (val.minSelect !== undefined || val.maxSelect !== undefined) &&
+        f.type !== "relation_many"
+      ) {
+        throw new Error(
+          `Field "${f.name}": validation.minSelect/maxSelect only apply to relation_many fields`,
+        );
+      }
+      if (val.min !== undefined && val.max !== undefined && val.min > val.max) {
+        throw new Error(`Field "${f.name}": validation.min must be ≤ max`);
+      }
+      if (
+        val.minLength !== undefined &&
+        val.maxLength !== undefined &&
+        val.minLength > val.maxLength
+      ) {
+        throw new Error(`Field "${f.name}": validation.minLength must be ≤ maxLength`);
+      }
+      if (
+        val.minSelect !== undefined &&
+        val.maxSelect !== undefined &&
+        val.minSelect > val.maxSelect
+      ) {
+        throw new Error(`Field "${f.name}": validation.minSelect must be ≤ maxSelect`);
+      }
+      if (val.regex !== undefined) {
+        try {
+          new RegExp(val.regex);
+        } catch {
+          throw new Error(
+            `Field "${f.name}": validation.regex is not a valid regular expression`,
+          );
+        }
+      }
+      if (val.rule !== undefined) {
+        if (
+          typeof val.rule !== "object" ||
+          val.rule === null ||
+          Array.isArray(val.rule)
+        ) {
+          throw new Error(
+            `Field "${f.name}": validation.rule must be a condition object`,
+          );
+        }
+        const refs = new Set<string>();
+        collectConditionFields(val.rule, refs);
+        collectFieldVarRefs(val.rule, refs);
+        for (const r of refs) {
+          if (!names.has(r) && !isReservedField(r)) {
+            throw new Error(
+              `Field "${f.name}": validation.rule references unknown field "${r}"`,
+            );
+          }
+        }
+      }
+    }
   }
+};
+
+/** Canonical built-in format patterns for `validation.format`. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const URL_RE = /^https?:\/\/[^\s/$.?#][^\s]*$/i;
+
+/** Shift `base` (epoch-ms) by a duration. Calendar-aware for years/months so
+ *  `$now - 1 month` lands on the right day-of-month. */
+const shiftByDuration = (base: number, parts: DurationParts, sign: 1 | -1): number => {
+  const d = new Date(base);
+  if (parts.years) d.setUTCFullYear(d.getUTCFullYear() + sign * parts.years);
+  if (parts.months) d.setUTCMonth(d.getUTCMonth() + sign * parts.months);
+  if (parts.weeks) d.setUTCDate(d.getUTCDate() + sign * parts.weeks * 7);
+  if (parts.days) d.setUTCDate(d.getUTCDate() + sign * parts.days);
+  if (parts.hours) d.setUTCHours(d.getUTCHours() + sign * parts.hours);
+  if (parts.minutes) d.setUTCMinutes(d.getUTCMinutes() + sign * parts.minutes);
+  if (parts.seconds) d.setUTCSeconds(d.getUTCSeconds() + sign * parts.seconds);
+  return d.getTime();
+};
+
+/** Coerce a date-ish value (epoch-ms number, ISO string, `"$now"`, or a
+ *  relative-now object) to epoch-ms. Returns null when it can't be parsed. */
+const toEpochMs = (v: unknown, now: number): number | null => {
+  if (v === null || v === undefined || v === "") return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string") {
+    if (v === "$now") return now;
+    const t = Date.parse(v);
+    return Number.isNaN(t) ? null : t;
+  }
+  if (typeof v === "object") {
+    const rn = (v as RelativeNow).$now;
+    if (rn) {
+      let t = now;
+      if (rn.add) t = shiftByDuration(t, rn.add, 1);
+      if (rn.sub) t = shiftByDuration(t, rn.sub, -1);
+      return t;
+    }
+  }
+  return null;
 };
 
 /**
  * Validates an incoming item value against the field's soft rules. Throws
  * a string-message Error on the first violation; route handlers map to 422.
- * Skips null/undefined unless `required` (caller checks separately).
+ * Skips null/undefined/"" unless `required` (caller checks separately). A
+ * `validation.message` overrides the generated text for every failure on the
+ * field. Cross-field rules are NOT checked here (they need the whole row) —
+ * see `enforceValidationRules` in the items service. `now` is injectable for
+ * deterministic date-bound tests.
  */
-export const validateValue = (field: FieldDef, value: unknown): void => {
+export const validateValue = (
+  field: FieldDef,
+  value: unknown,
+  now: number = Date.now(),
+): void => {
   if (value === null || value === undefined || value === "") return;
+
+  const v = field.validation;
+  const fail = (msg: string): never => {
+    throw new Error(v?.message ?? msg);
+  };
 
   // Dropdown choice membership is enforced for any field with the interface
   // set, even when no `validation` block is configured.
   if (field.interface === "dropdown") {
     const allowed = getChoiceValues(field);
     if (allowed.length && !allowed.includes(String(value))) {
-      throw new Error(
-        `${field.name}: must be one of ${allowed.join(", ")}`,
-      );
+      fail(`${field.name}: must be one of ${allowed.join(", ")}`);
     }
   }
 
-  const v = field.validation;
   if (!v) return;
 
   if (
@@ -510,20 +690,27 @@ export const validateValue = (field: FieldDef, value: unknown): void => {
     typeof value === "string"
   ) {
     if (v.minLength !== undefined && value.length < v.minLength) {
-      throw new Error(`${field.name}: must be at least ${v.minLength} characters`);
+      fail(`${field.name}: must be at least ${v.minLength} characters`);
     }
     if (v.maxLength !== undefined && value.length > v.maxLength) {
-      throw new Error(`${field.name}: must be at most ${v.maxLength} characters`);
+      fail(`${field.name}: must be at most ${v.maxLength} characters`);
+    }
+    if (v.format === "email" && !EMAIL_RE.test(value)) {
+      fail(`${field.name}: must be a valid email address`);
+    }
+    if (v.format === "url" && !URL_RE.test(value)) {
+      fail(`${field.name}: must be a valid URL`);
     }
     if (v.regex) {
+      let re: RegExp;
       try {
-        const re = new RegExp(v.regex);
-        if (!re.test(value)) {
-          throw new Error(`${field.name}: doesn't match the required pattern`);
-        }
-      } catch (e) {
-        if ((e as Error).message.startsWith(field.name)) throw e;
+        re = new RegExp(v.regex);
+      } catch {
+        // Admin-config error, not a user-value error — never masked by `message`.
         throw new Error(`${field.name}: invalid validation regex`);
+      }
+      if (!re.test(value)) {
+        fail(`${field.name}: doesn't match the required pattern`);
       }
     }
   }
@@ -532,11 +719,31 @@ export const validateValue = (field: FieldDef, value: unknown): void => {
     (field.type === "integer" || field.type === "number") &&
     typeof value === "number"
   ) {
-    if (v.min !== undefined && value < v.min) {
-      throw new Error(`${field.name}: must be ≥ ${v.min}`);
+    if (v.min !== undefined && value < v.min) fail(`${field.name}: must be ≥ ${v.min}`);
+    if (v.max !== undefined && value > v.max) fail(`${field.name}: must be ≤ ${v.max}`);
+    if (v.integer && !Number.isInteger(value)) {
+      fail(`${field.name}: must be a whole number`);
     }
-    if (v.max !== undefined && value > v.max) {
-      throw new Error(`${field.name}: must be ≤ ${v.max}`);
+  }
+
+  if (field.type === "timestamp" && (v.minDate !== undefined || v.maxDate !== undefined)) {
+    const t = toEpochMs(value, now);
+    if (t === null) {
+      fail(`${field.name}: is not a valid date`);
+    } else {
+      const lo = toEpochMs(v.minDate, now);
+      const hi = toEpochMs(v.maxDate, now);
+      if (lo !== null && t < lo) fail(`${field.name}: is before the earliest allowed date`);
+      if (hi !== null && t > hi) fail(`${field.name}: is after the latest allowed date`);
+    }
+  }
+
+  if (field.type === "relation_many" && Array.isArray(value)) {
+    if (v.minSelect !== undefined && value.length < v.minSelect) {
+      fail(`${field.name}: select at least ${v.minSelect}`);
+    }
+    if (v.maxSelect !== undefined && value.length > v.maxSelect) {
+      fail(`${field.name}: select at most ${v.maxSelect}`);
     }
   }
 };

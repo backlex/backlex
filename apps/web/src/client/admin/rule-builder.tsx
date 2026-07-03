@@ -107,7 +107,19 @@ export const RB_TOGGLE = "inline-flex overflow-hidden rounded-md border border-b
 export const RB_INPUT_COND = "h-7 w-full min-w-[120px] border-0 bg-transparent px-2 text-[12.5px] text-foreground outline-none";
 export const RB_INPUT_FULL = "h-[30px] min-w-[120px] flex-1 rounded-md border border-border bg-card px-2.5 text-[12.5px] text-foreground outline-none focus:border-ring focus:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_30%,transparent)]";
 
-export function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t: GroupNode) => void; fields: string[] }) {
+export function RuleBuilder({
+  tree,
+  onChange,
+  fields,
+  extraVars = [],
+}: {
+  tree: GroupNode;
+  onChange: (t: GroupNode) => void;
+  fields: string[];
+  /** Extra value-side autocomplete entries (e.g. `$field.<name>` for
+   *  cross-field validation rules). Appended to CE_DYNAMIC_VARS. */
+  extraVars?: { v: string; desc: string }[];
+}) {
   const { t } = useLingui();
   const update = (path: number[], mut: (n: any) => void) => {
     const next: GroupNode = JSON.parse(JSON.stringify(tree));
@@ -193,7 +205,7 @@ export function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onCha
               list={`rb-vars-${path.join("-")}`}
             />
             <datalist id={`rb-vars-${path.join("-")}`}>
-              {CE_DYNAMIC_VARS.map((v) => <option key={v.v} value={v.v}>{v.desc}</option>)}
+              {[...CE_DYNAMIC_VARS, ...extraVars].map((v) => <option key={v.v} value={v.v}>{v.desc}</option>)}
             </datalist>
           </div>
         )}

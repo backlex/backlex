@@ -43,7 +43,7 @@ const buildListQuery = (args: Record<string, unknown>): URLSearchParams => {
 export const listItems: McpTool = {
   name: "collections.list",
   description:
-    "List items from a collection with Directus-style filters, sort, and " +
+    "List items from a collection with operator-style filters, sort, and " +
     "field selection. Returns `{ data, limit, offset, meta? }`. Permission " +
     "DSL filters are applied automatically by the caller's identity.",
   inputSchema: {
@@ -53,7 +53,7 @@ export const listItems: McpTool = {
       filter: {
         type: "object",
         description:
-          "Directus-shaped filter (`{field: {_eq: ...}}`, `_and`, `_or`, etc.). " +
+          "operator-style filter (`{field: {_eq: ...}}`, `_and`, `_or`, etc.). " +
           "Omit for an unfiltered listing (still subject to permission DSL).",
       },
       sort: {

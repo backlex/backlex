@@ -130,7 +130,7 @@ export const buildDynamicCollectionPaths = async (
             name: "filter",
             in: "query",
             description:
-              "Directus-style filter JSON (e.g. `{\"status\":{\"_eq\":\"published\"}}`).",
+              "operator-style filter JSON (e.g. `{\"status\":{\"_eq\":\"published\"}}`).",
             schema: { type: "string" },
           },
           {

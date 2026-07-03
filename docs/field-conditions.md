@@ -2,12 +2,11 @@
 title: Field conditions
 ---
 
-Directus-style **per-field conditions**: attach rules to a field so that, when a
-rule matches the row, the field becomes **required**, **readonly**, or **hidden**.
-Unlike Directus — where field conditions are Studio-only and not enforced by the
-API — backlex enforces the **`required`** effect server-side on every write
-surface (REST, GraphQL, SDK, MCP). `readonly` / `hidden` are live item-form
-effects.
+**Per-field conditions**: attach rules to a field so that, when a rule matches
+the row, the field becomes **required**, **readonly**, or **hidden**. The
+**`required`** effect is enforced server-side on every write surface (REST,
+GraphQL, SDK, MCP) — not just in the admin UI — while `readonly` / `hidden` are
+live item-form effects.
 
 Conditions live in the collection schema (the `collections.fields` JSON), so
 there is **no migration** and no permission/role wiring — they apply to every

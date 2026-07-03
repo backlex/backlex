@@ -1,4 +1,4 @@
-// Directus-parity permission editor.
+// No-code permission editor.
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";

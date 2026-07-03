@@ -68,7 +68,7 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>()
       tags: TAGS,
       summary: "List items",
       description:
-        "Generic list endpoint for any collection. Supports Directus-shaped `filter`, `sort`, `fields`, `limit`, `offset`, `meta`. Item shape comes from the collection's field definitions; see the dynamic per-collection paths for typed schemas.",
+        "Generic list endpoint for any collection. Supports operator-style `filter`, `sort`, `fields`, `limit`, `offset`, `meta`. Item shape comes from the collection's field definitions; see the dynamic per-collection paths for typed schemas.",
       security: SECURITY,
       middleware: [requirePermission(collectionFromParam, "read")],
       request: {

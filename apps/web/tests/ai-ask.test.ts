@@ -171,7 +171,7 @@ describe("Ask AI — dryRunListQuery (planner self-correction guard)", () => {
   });
 
   test("normalized input (nested-object relation, _and) validates", async () => {
-    // Phase-1 normalization means the model may emit Directus-style nesting;
+    // Phase-1 normalization means the model may emit operator-style nesting;
     // dry-run should accept what the real endpoint accepts.
     const err = await dryRunListQuery(fetchInternal, {
       collection: slug,

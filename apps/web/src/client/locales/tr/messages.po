@@ -979,6 +979,7 @@ msgstr "Seçenek ekle"
 msgid "Add column"
 msgstr "Sütun ekle"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Add condition"
 msgstr "Koşul ekle"
@@ -2317,6 +2318,7 @@ msgstr "Koşul (izin DSL JSON, opsiyonel)"
 msgid "Condition must be valid JSON."
 msgstr "Koşul geçerli JSON olmalı."
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Condition name (optional)"
 msgstr "Koşul adı (opsiyonel)"
@@ -2325,6 +2327,7 @@ msgstr "Koşul adı (opsiyonel)"
 msgid "conditional access"
 msgstr "koşullu erişim"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Conditions"
 msgstr "Koşullar"
@@ -4544,6 +4547,7 @@ msgstr "sağlıklı"
 msgid "Height"
 msgstr "Yükseklik"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Hidden"
 msgstr "Gizli"
@@ -6127,6 +6131,7 @@ msgstr "koşul yok; roldeki herkes"
 msgid "No conditions — this rule matches everything."
 msgstr "Koşul yok — bu kural her şeyle eşleşir."
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "No conditions. Click \"Add condition\" to make this field required/readonly/hidden based on other fields."
 msgstr "Koşul yok. Bu alanı diğer alanlara göre zorunlu/salt okunur/gizli yapmak için \"Koşul ekle\"ye tıklayın."
@@ -7678,6 +7683,7 @@ msgstr "Salt-okunur mod"
 msgid "read-only SELECT against the workspace database"
 msgstr "çalışma alanı veritabanına karşı salt okunur SELECT"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Readonly"
 msgstr "Salt okunur"
@@ -7889,6 +7895,7 @@ msgstr "{tag} etiketini kaldır"
 msgid "Remove choice"
 msgstr "Seçeneği kaldır"
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Remove condition"
 msgstr "Koşulu kaldır"
@@ -10265,8 +10272,8 @@ msgid "Translate"
 msgstr "Çevir"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "Translate natural language into Directus-shaped queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
-msgstr "Doğal dili Directus formatındaki sorgulara dönüştür, şema taslakları çıkar ve istediğin MCP aracını çalıştır — rolüne ve anahtar bazlı izin listene göre sınırlı. Claude Desktop'ın gördüğü yüzeyle aynı."
+msgid "Translate natural language into operator-style queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
+msgstr "Doğal dili operatör-tabanlı sorgulara dönüştür, şema taslakları çıkar ve istediğin MCP aracını çalıştır — rolüne ve anahtar bazlı izin listene göre sınırlı. Claude Desktop'ın gördüğü yüzeyle aynı."
 
 #: src/client/admin/parity/translations.tsx
 msgid "Translate UI strings using Claude. Requires <0>ANTHROPIC_API_KEY</0> on the server."
@@ -10891,6 +10898,7 @@ msgstr "Ayarlandığında, gövde çalışma zamanında depolanan şablondan iş
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "Ayarlandığında, bu anahtarla yapılan istekler yalnızca bu rolün izinlerini alır — ve yalnızca sahip bu role hâlâ sahip olduğu sürece."
 
+#: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "When the rule matches the row, apply the effects. <0>Required</0> is enforced on save (422); Readonly/Hidden affect the item form."
 msgstr "Kural satırla eşleştiğinde efektler uygulanır. <0>Zorunlu</0> kayıtta zorlanır (422); Salt okunur/Gizli öğe formunu etkiler."

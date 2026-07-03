@@ -39,7 +39,7 @@ export type SchemaField = {
     group?: string;
   };
   to?: string;
-  /** Directus-style conditions: when `rule` matches the current draft, apply the
+  /** Field conditions: when `rule` matches the current draft, apply the
    *  effects. `required` also enforced server-side; `readonly` / `hidden` are the
    *  live item-form effects. */
   conditions?: Array<{

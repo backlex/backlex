@@ -1024,7 +1024,7 @@ export const collections = sqliteTable(
      *  `searchable: true`. See the pg/schema.ts twin for the full contract. */
     fts: integer("fts", { mode: "boolean" }).notNull().default(false),
     /** Default sort applied by `parseQuery` when the request omits `?sort=`.
-     *  Comma-separated field list, `-` prefix = DESC (Directus-style).
+     *  Comma-separated field list, `-` prefix = DESC (`-` prefix = DESC).
      *  e.g. `"-published_at,name"`. */
     defaultSort: text("default_sort"),
     /** Adopted (existing table) vs managed (we created the table). See the

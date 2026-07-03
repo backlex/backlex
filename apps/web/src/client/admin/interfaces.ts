@@ -1,4 +1,4 @@
-// Directus-style interface catalog.
+// interface catalog.
 //
 // Each entry pairs a friendly UI "interface" (how a value is edited) with the
 // physical storage type the backend supports. The Add Field dialog renders

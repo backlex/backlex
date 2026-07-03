@@ -180,7 +180,7 @@ export const parseQuery = (
     }
   }
 
-  // Relation heads — let the normalizer flatten the Directus/PostgREST-style
+  // Relation heads — let the normalizer flatten the PostgREST-style
   // nested-object filter form (`{ customer: { name: { _eq } } }`) into the
   // canonical dotted-key form without mistaking a `json` column for a relation.
   const relationFields = new Set(

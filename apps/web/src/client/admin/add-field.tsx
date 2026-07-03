@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Add Field dialog — Directus-style schema editor for a new column.
+// Add Field dialog — schema editor for a new column.
 // Step 1 picks a UI *interface* from a categorized catalog (interfaces.ts);
 // each interface maps to one of the physical storage types the backend
 // supports. Step 2 captures the column name + interface-specific options
@@ -27,6 +27,22 @@ import {
   getInterface,
   matchesInterfaceQuery,
 } from "./interfaces";
+import {
+  type GroupNode,
+  newGroup,
+  RuleBuilder,
+  ruleTreeToObj,
+  treeHasRule,
+} from "./rule-builder";
+
+/** One editable condition row: a rule tree + the effects it toggles. */
+interface CondDraft {
+  name: string;
+  tree: GroupNode;
+  required: boolean;
+  readonly: boolean;
+  hidden: boolean;
+}
 
 // Kept for back-compat with anything that imported the old flat list.
 export const FIELD_TYPES = FIELD_INTERFACES;
@@ -58,6 +74,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [indexed, setIndexed] = useState(false);
   const [searchable, setSearchable] = useState(false);
   const [step, setStep] = useState(1);
+  const [conds, setConds] = useState<CondDraft[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -72,8 +89,19 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setStep(1);
       setIndexed(false);
       setSearchable(false);
+      setConds([]);
     }
   }, [open]);
+
+  const availableFields = useMemo(
+    () => (schema?.fields ?? []).map((f) => (f as { name?: string }).name).filter((n): n is string => !!n),
+    [schema],
+  );
+  const addCond = () =>
+    setConds((cs) => [...cs, { name: "", tree: newGroup("and"), required: true, readonly: false, hidden: false }]);
+  const patchCond = (i: number, patch: Partial<CondDraft>) =>
+    setConds((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  const removeCond = (i: number) => setConds((cs) => cs.filter((_, j) => j !== i));
 
   const safeName = useMemo(
     () => name.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, ""),
@@ -135,6 +163,15 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
 
   const submit = () => {
     if (!valid) return;
+    const conditions = conds
+      .filter((c) => treeHasRule(c.tree))
+      .map((c) => ({
+        ...(c.name.trim() ? { name: c.name.trim() } : {}),
+        rule: ruleTreeToObj(c.tree),
+        ...(c.required ? { required: true } : {}),
+        ...(c.readonly ? { readonly: true } : {}),
+        ...(c.hidden ? { hidden: true } : {}),
+      }));
     onCreate({
       name: safeName,
       type: def.type,
@@ -146,6 +183,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(searchable && (def.type === "text" || def.type === "longtext") ? { searchable: true } : {}),
       ...(def.hasChoices && cleanChoices.length ? { options: { choices: cleanChoices } } : {}),
       ...(def.hasRelation ? { to: relationTarget } : {}),
+      ...(conditions.length ? { conditions } : {}),
     });
   };
 
@@ -321,6 +359,50 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   <Switch checked={searchable} onChange={setSearchable} />
                 </div>
               )}
+
+              <div className="flex flex-col gap-2 rounded-xl bg-muted p-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Conditions</Trans></span>
+                  <div className="flex-1" />
+                  <Button size="xs" variant="outline" icon={I.Plus} onClick={addCond}><Trans>Add condition</Trans></Button>
+                </div>
+                <div className="text-[11.5px] text-muted-foreground">
+                  <Trans>When the rule matches the row, apply the effects. <span className="font-medium text-foreground">Required</span> is enforced on save (422); Readonly/Hidden affect the item form.</Trans>
+                </div>
+                {conds.length === 0 && (
+                  <div className="p-2 text-xs text-muted-foreground">
+                    <Trans>No conditions. Click "Add condition" to make this field required/readonly/hidden based on other fields.</Trans>
+                  </div>
+                )}
+                {conds.map((c, i) => (
+                  <div key={i} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2.5">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        className="h-8 flex-1"
+                        placeholder={t`Condition name (optional)`}
+                        value={c.name}
+                        onChange={(e) => patchCond(i, { name: e.target.value })}
+                      />
+                      <IconButton icon={I.Trash} title={t`Remove condition`} onClick={() => removeCond(i)} />
+                    </div>
+                    <RuleBuilder tree={c.tree} onChange={(tree) => patchCond(i, { tree })} fields={availableFields} />
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-0.5">
+                      <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground">
+                        <Switch checked={c.required} onChange={(v) => patchCond(i, { required: v })} />
+                        <Trans>Required</Trans>
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground">
+                        <Switch checked={c.readonly} onChange={(v) => patchCond(i, { readonly: v })} />
+                        <Trans>Readonly</Trans>
+                      </label>
+                      <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-foreground">
+                        <Switch checked={c.hidden} onChange={(v) => patchCond(i, { hidden: v })} />
+                        <Trans>Hidden</Trans>
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
               <div className="mt-1.5">
                 <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>DDL preview</Trans></div>

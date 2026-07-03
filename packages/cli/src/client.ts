@@ -87,7 +87,7 @@ const csv = (v: string | undefined): string[] | undefined =>
 
 /**
  * Build a `ListQuery` from CLI flags. `--filter` takes a JSON object (the same
- * Directus-style operators the REST API accepts); the rest mirror the query
+ * no-code operators the REST API accepts); the rest mirror the query
  * string the SDK already serializes.
  */
 export const buildListQuery = (args: string[]): ListQuery => {

@@ -65,7 +65,7 @@ const PLAN_TOOL_WHITELIST = [
 const PLAN_TOOL_DESCRIPTIONS: Record<(typeof PLAN_TOOL_WHITELIST)[number], string> =
   {
     "collections.list":
-      "{collection: string, filter?: object, sort?: string|string[], limit?: number, fields?: string[]} — list items with a Directus-shaped filter.",
+      "{collection: string, filter?: object, sort?: string|string[], limit?: number, fields?: string[]} — list items with a operator-style filter.",
     "collections.read":
       "{collection: string, id: string, fields?: string[]} — read one item by id.",
     "collections.aggregate":
@@ -84,9 +84,9 @@ const PLAN_TOOL_DESCRIPTIONS: Record<(typeof PLAN_TOOL_WHITELIST)[number], strin
       `semantic search: embeds free-text \`text\` with \`model\` and returns nearest neighbors. ` +
       `\`model\` MUST be one of: ${EMBEDDING_MODEL_NAMES.join(", ")} (default bge-m3). ` +
       `\`topK\` is camelCase (1-100, default 10). \`namespace\` (NOT \`collection\`) scopes the search. ` +
-      `\`filter\` is a provider-specific metadata map — NOT a Directus filter, and it is NOT used for ` +
+      `\`filter\` is a provider-specific metadata map — NOT a query filter, and it is NOT used for ` +
       `date ranges or field comparisons. For structured queries (date ranges, field filters, "last month", ` +
-      `counts) use \`collections.list\` with a Directus filter instead — \`text\` is for meaning, not predicates.`,
+      `counts) use \`collections.list\` with an operator-style filter instead — \`text\` is for meaning, not predicates.`,
     "schema.list_collections":
       "{} — every collection visible to the workspace, with field counts.",
     "schema.describe_collection":

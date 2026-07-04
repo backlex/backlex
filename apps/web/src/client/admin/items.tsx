@@ -489,27 +489,62 @@ function CellEditor({ field, value, choices, onCommit, onCancel }: {
   // Guards the Esc→blur double-fire: cancelling unmounts the input, whose
   // blur would otherwise commit the value straight back.
   const done = useRef(false);
+  const doneRef = useRef<(fn: () => void) => void>(() => {});
   const finish = (fn: () => void) => {
     if (done.current) return;
     done.current = true;
     fn();
   };
+  doneRef.current = finish;
+  // Select/boolean editors have no blur-to-close of their own — dismiss them
+  // (cancel) when the user clicks anywhere outside the editor. The input's
+  // own blur commit races this harmlessly: `finish` is idempotent. Radix
+  // portals the Select listbox to <body>, so clicks inside it count as
+  // inside the editor.
+  const rootRef = useRef<HTMLSpanElement | null>(null);
+  const cancelRef = useRef(onCancel);
+  cancelRef.current = onCancel;
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      if (rootRef.current?.contains(t)) return;
+      if (t.closest('[data-slot="select-content"]')) return;
+      doneRef.current(() => cancelRef.current());
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, []);
 
   if (choices?.length) {
     return (
-      <Select
-        value={value == null ? undefined : String(value)}
-        onChange={(v) => finish(() => onCommit(v))}
-        options={choices.map((c) => ({ value: c.value, label: c.label ?? c.value }))}
-        size="sm"
-        className="min-w-[110px]"
-      />
+      <span
+        ref={rootRef}
+        className="contents"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") finish(onCancel);
+        }}
+      >
+        <Select
+          value={value == null ? undefined : String(value)}
+          onChange={(v) => finish(() => onCommit(v))}
+          options={choices.map((c) => ({ value: c.value, label: c.label ?? c.value }))}
+          size="sm"
+          className="min-w-[110px]"
+        />
+      </span>
     );
   }
   if (field.type === "boolean") {
     const on = value === true || value === 1 || value === "1" || value === "true";
     return (
-      <span className="inline-flex items-center py-1">
+      <span
+        ref={rootRef}
+        className="inline-flex items-center py-1"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") finish(onCancel);
+        }}
+      >
         <Checkbox checked={on} onChange={() => finish(() => onCommit(!on))} />
       </span>
     );

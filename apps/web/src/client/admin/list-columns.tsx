@@ -5,7 +5,9 @@
 // (currency / percent / date style) takes effect in the list.
 import { useState } from "react";
 import { Trans } from "@lingui/react/macro";
+import { i18n } from "@lingui/core";
 import { useQueryClient } from "@tanstack/react-query";
+import { fieldLabel } from "./format-value";
 import { Popover, PopoverContent, PopoverTrigger } from "@backlex/ui/components/popover";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Button, Checkbox } from "./ui";
@@ -47,6 +49,7 @@ interface SchemaField {
   label?: string;
   system?: boolean;
   type?: string;
+  translations?: Record<string, string>;
 }
 
 /** Toolbar popover to pick which fields appear as list columns. */
@@ -93,7 +96,7 @@ export function ColumnPicker({
             {pickable.map((f) => (
               <label key={f.name} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-foreground hover:bg-accent">
                 <Checkbox checked={columns.includes(f.name)} onChange={() => toggle(f.name)} />
-                <span className="min-w-0 flex-1 truncate">{f.label || f.name}</span>
+                <span className="min-w-0 flex-1 truncate">{fieldLabel(f, i18n.locale)}</span>
                 {f.type && <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground">{f.type}</span>}
               </label>
             ))}

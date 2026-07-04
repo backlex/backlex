@@ -4176,6 +4176,10 @@ msgstr "\"{0}\" alanı güncellendi."
 msgid "Field name"
 msgstr "Alan adı"
 
+#: src/client/admin/field-translations-editor.tsx
+msgid "Field name translations <0>(optional)</0>"
+msgstr "Alan adı çevirileri <0>(isteğe bağlı)</0>"
+
 #: src/client/admin/condition-editor.tsx
 msgid "Field permissions"
 msgstr "Alan izinleri"
@@ -5214,6 +5218,10 @@ msgstr "Tür"
 #: src/client/admin/edit-field.tsx
 msgid "label (optional)"
 msgstr "etiket (isteğe bağlı)"
+
+#: src/client/admin/field-translations-editor.tsx
+msgid "Label in {loc}"
+msgstr "{loc} dilinde etiket"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -6673,6 +6681,10 @@ msgstr "Eşleşen kullanıcı yok"
 #: src/client/admin/pages/webhooks.tsx
 msgid "No webhooks yet"
 msgstr "Henüz webhook yok"
+
+#: src/client/admin/field-translations-editor.tsx
+msgid "No workspace locales configured — add them under Settings → Localization."
+msgstr "Çalışma alanı dili yapılandırılmamış — Ayarlar → Yerelleştirme'den ekleyin."
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/permission-tester.tsx
@@ -9472,6 +9484,10 @@ msgstr "Kenar çubuğunda ve tarayıcı başlığında gösterilir."
 #: src/client/admin/field-validation-editor.tsx
 msgid "Shown instead of the default message"
 msgstr "Varsayılan mesaj yerine gösterilir"
+
+#: src/client/admin/field-translations-editor.tsx
+msgid "Shown instead of the label when the admin UI is in that language."
+msgstr "Admin arayüzü o dildeyken etiket yerine gösterilir."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Side-table (item_ownership)"

@@ -876,7 +876,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       className="h-svh"
       data-density={tweaks.density}
     >
-      <Sidebar activeNav={activeNav} setActiveNav={navTo} pushToast={pushToast} collectionsCount={collections.length} activeCollection={activeCollection} />
+      <Sidebar activeNav={activeNav} setActiveNav={navTo} pushToast={pushToast} collectionsCount={collections.length} activeCollection={activeCollection} isAdmin={me ? me.isAdmin : null} />
 
       <SidebarInset className="min-h-0 min-w-0">
         <Topbar
@@ -938,6 +938,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
               <CollectionsIndex
                 collections={collections}
                 collectionGroups={collectionGroups}
+                canManage={me ? me.isAdmin : true}
                 showArchived={showArchived}
                 onToggleArchived={(next) => setShowArchived(next)}
                 onOpen={(slug) => { setActiveCollection(slug); setActiveTab("items"); }}
@@ -1263,7 +1264,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       </SidebarInset>
 
       <ItemSheet open={sheetOpen} mode={sheetMode} initial={sheetItem} schema={schemaState} onClose={() => setSheetOpen(false)} onSave={onSave} versioned={schemaState.versioned} canPublish onPublish={onPublish} />
-      <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={onPaletteSelect} items={posts} collections={collections} />
+      <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={onPaletteSelect} items={posts} collections={collections} isAdmin={me ? me.isAdmin : null} />
       <BulkEditDialog
         open={bulkEditOpen}
         count={selected.size}

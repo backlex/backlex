@@ -64,10 +64,13 @@ const NODE_PALETTE = [
 ];
 
 const NODE_W = 248;
-const GRID_COLS = 3;
 const GRID_COL_GAP = 130;
-const GRID_ROW_GAP = 280;
+const GRID_ROW_GAP = 90;
 const GRID_ORIGIN = 40;
+// Target width/height ratio of the auto-arranged layout. The canvas is a wide
+// strip (full width × ≤640px), so spreading nodes toward this aspect lets
+// fitView use the horizontal space instead of zooming out on a narrow column.
+const AUTO_LAYOUT_ASPECT = 2.6;
 
 type Pos = { x: number; y: number };
 type ErdLayout = Record<string, Pos>;
@@ -111,13 +114,32 @@ const TYPE_ABBR: Record<string, string> = {
   i18n_text: "i18n",
 };
 
-function gridPos(index: number): Pos {
-  const col = index % GRID_COLS;
-  const row = Math.floor(index / GRID_COLS);
-  return {
-    x: GRID_ORIGIN + col * (NODE_W + GRID_COL_GAP),
-    y: GRID_ORIGIN + row * GRID_ROW_GAP,
-  };
+// Rendered card height ≈ header (38px) + one 29px row per field.
+function estimateNodeHeight(c: ApiCollection): number {
+  return 38 + Math.max(c.fields?.length ?? 0, 1) * 29;
+}
+
+// Deterministic auto-arrange for nodes without a saved position: pick a column
+// count that shapes the whole grid close to AUTO_LAYOUT_ASPECT, then pack
+// row-major with per-column y offsets so tall cards don't force giant rows.
+function autoLayout(collections: ApiCollection[]): ErdLayout {
+  const n = collections.length;
+  if (n === 0) return {};
+  const cellW = NODE_W + GRID_COL_GAP;
+  const avgH =
+    collections.reduce((sum, c) => sum + estimateNodeHeight(c) + GRID_ROW_GAP, 0) / n;
+  const cols = Math.min(
+    n,
+    Math.max(1, Math.round(Math.sqrt((n * AUTO_LAYOUT_ASPECT * avgH) / cellW))),
+  );
+  const colY: number[] = Array.from({ length: cols }, () => GRID_ORIGIN);
+  const out: ErdLayout = {};
+  collections.forEach((c, i) => {
+    const col = i % cols;
+    out[c.slug] = { x: GRID_ORIGIN + col * cellW, y: colY[col] ?? GRID_ORIGIN };
+    colY[col] = (colY[col] ?? GRID_ORIGIN) + estimateNodeHeight(c) + GRID_ROW_GAP;
+  });
+  return out;
 }
 
 function toFieldRows(c: ApiCollection): FieldRow[] {
@@ -445,8 +467,9 @@ function ErdCanvas({
   const handleDropField = useCallback((slug: string, name: string) => setDropTarget({ slug, name }), []);
 
   const buildNodes = useCallback((): CollectionNode[] => {
+    const auto = autoLayout(collections);
     return collections.map((c, i) => {
-      const saved = positionsRef.current[c.slug] ?? layout[c.slug] ?? gridPos(i);
+      const saved = positionsRef.current[c.slug] ?? layout[c.slug] ?? auto[c.slug] ?? { x: GRID_ORIGIN, y: GRID_ORIGIN };
       positionsRef.current[c.slug] = saved;
       return {
         id: c.slug,

@@ -259,7 +259,9 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
   ];
   const activeTab = tabs.some((x) => x.key === tab) ? tab : "schema";
   // Literal class strings — Tailwind's JIT can't see interpolated class names.
-  const vp = "max-h-[calc(min(86vh,720px)-9rem)] max-[640px]:max-h-[calc(min(86vh,720px)-16rem)]";
+  // Fixed height (not max-h): the centered dialog re-centers when the active
+  // tab changes its content height, so the modal jumps on every rail click.
+  const vp = "h-[calc(min(86vh,720px)-9rem)] max-[640px]:h-[calc(min(86vh,720px)-16rem)]";
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>

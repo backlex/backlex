@@ -21,7 +21,9 @@ export interface FieldTabLayoutProps {
   tabs: FieldTabItem[];
   active: string;
   onSelect: (key: string) => void;
-  /** max-h cap for the scroll viewport, e.g. `max-h-[calc(92vh-13rem)]`. */
+  /** Fixed height for the scroll viewport, e.g. `h-[calc(92vh-13rem)]` — a
+   *  constant (not max-h) height keeps the centered dialog from jumping when
+   *  tabs with different content heights are selected. */
   viewportClassName: string;
   children: ReactNode;
 }

@@ -276,7 +276,10 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
     { key: "conditions", label: t`Conditions`, icon: "Filter" },
   ];
   const activeTab = tabs.some((x) => x.key === tab) ? tab : "schema";
-  const vp = "max-h-[calc(92vh-13rem)] max-[640px]:max-h-[calc(92vh-19rem)]";
+  // Fixed height (not max-h): the dialog is vertically centered, so a viewport
+  // that grows/shrinks with the active tab makes the whole modal jump on every
+  // rail click. Constant height per step keeps it anchored.
+  const vp = "h-[calc(92vh-13rem)] max-[640px]:h-[calc(92vh-19rem)]";
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -301,7 +304,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         </div>
 
         {step === 1 && (
-          <ScrollArea viewportClassName="max-h-[calc(92vh-13rem)] max-[640px]:max-h-[calc(92vh-16.5rem)]">
+          <ScrollArea viewportClassName="h-[calc(92vh-13rem)] max-[640px]:h-[calc(92vh-14.75rem)]">
             <div className="px-5 py-[18px]">
             <InputGroup className="mb-3.5">
               <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
@@ -330,14 +333,16 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                       <button
                         key={it.id}
                         type="button"
-                        className={`grid cursor-pointer grid-cols-[28px_1fr_auto] grid-rows-[auto_auto] items-center gap-x-2.5 rounded-xl border p-3 text-left text-foreground transition-colors ${on ? "border-[color-mix(in_oklch,var(--primary)_60%,var(--border))] bg-selected-surface" : "border-border bg-card hover:bg-accent"}`}
+                        className={`flex min-w-0 cursor-pointer flex-col gap-1.5 rounded-xl border p-3 text-left text-foreground transition-colors ${on ? "border-[color-mix(in_oklch,var(--primary)_60%,var(--border))] bg-selected-surface" : "border-border bg-card hover:bg-accent"}`}
                         onClick={() => pickInterface(it.id)}
                         title={it.sub}
                       >
-                        <span className={`row-span-2 grid size-7 place-items-center self-center rounded-[8px] text-foreground ${on ? "bg-icon-surface" : "bg-muted"}`}><Ic size={14} /></span>
-                        <span className="text-[13px] font-medium">{it.label}</span>
-                        <span className="col-start-2 text-[11.5px] text-muted-foreground">{it.sub}</span>
-                        <span className="row-span-2 self-center rounded-[6px] bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">{it.type}</span>
+                        <span className="flex w-full min-w-0 items-center gap-2.5">
+                          <span className={`grid size-7 shrink-0 place-items-center rounded-[8px] text-foreground ${on ? "bg-icon-surface" : "bg-muted"}`}><Ic size={14} /></span>
+                          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{it.label}</span>
+                        </span>
+                        <span className="line-clamp-2 text-[11.5px] leading-snug text-muted-foreground">{it.sub}</span>
+                        <span className="mt-auto max-w-full self-start truncate rounded-[6px] bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">{it.type}</span>
                       </button>
                     );
                   })}

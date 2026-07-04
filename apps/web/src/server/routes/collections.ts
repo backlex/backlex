@@ -209,6 +209,8 @@ const FieldSchema = z
         suffix: z.string().max(16).optional(),
       })
       .optional(),
+    /** Per-locale display label overrides (locale → label). UI-only. */
+    translations: z.record(z.string(), z.string().max(200)).optional(),
   })
   .refine((f) => (f.type !== "relation" && f.type !== "relation_many") || !!f.to, {
     message: "relation / relation_many field must specify `to` (target collection slug)",

@@ -286,6 +286,12 @@ export interface FieldDef {
     prefix?: string;
     suffix?: string;
   };
+  /**
+   * Per-locale display label overrides, keyed by locale code (e.g.
+   * `{ tr: "Fiyat", de: "Preis" }`). The admin resolves the label as
+   * `translations[activeLocale] ?? label ?? name`. UI-only.
+   */
+  translations?: Record<string, string>;
 }
 
 /** Resolve an auto-fill token to a concrete value for the write path. `now`

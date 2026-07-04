@@ -48,6 +48,7 @@ import {
   FieldFormatEditor,
   type FieldFormatDraft,
 } from "./field-format-editor";
+import { cleanTranslations, FieldTranslationsEditor } from "./field-translations-editor";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -98,6 +99,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [autoUpdate, setAutoUpdate] = useState("");
   const [onDelete, setOnDelete] = useState("no_action");
   const [formatDraft, setFormatDraft] = useState<FieldFormatDraft>({});
+  const [translations, setTranslations] = useState<Record<string, string>>({});
   const [step, setStep] = useState(1);
   const [tab, setTab] = useState("schema");
   const [conds, setConds] = useState<CondDraft[]>([]);
@@ -124,6 +126,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setAutoUpdate("");
       setOnDelete("no_action");
       setFormatDraft({});
+      setTranslations({});
       setConds([]);
       setValDraft(emptyValDraft());
     }
@@ -258,6 +261,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(conditions.length ? { conditions } : {}),
       ...(validation ? { validation } : {}),
       ...(cleanFormat(formatDraft, def.type) ? { format: cleanFormat(formatDraft, def.type) } : {}),
+      ...(cleanTranslations(translations) ? { translations: cleanTranslations(translations) } : {}),
     });
   };
 
@@ -475,6 +479,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   </div>
                   <Switch checked={isPrivate} onChange={setIsPrivate} />
                 </div>
+                <FieldTranslationsEditor value={translations} onChange={setTranslations} />
               </div>
             )}
 

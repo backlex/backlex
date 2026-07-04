@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { getAuthors, subscribeAuthors } from "./authors-cache";
 import { i18n } from "@lingui/core";
-import { formatFieldValue } from "./format-value";
+import { fieldLabel, formatFieldValue } from "./format-value";
 import { useListColumns } from "./list-columns";
 
 const ADMIN_TABLE_CLS =
@@ -450,7 +450,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   const { columns: colNames } = useListColumns(schema?.slug ?? "");
   const dynFields = colNames
     .map((n) => (schema?.fields ?? []).find((f) => (f as { name?: string }).name === n))
-    .filter(Boolean) as Array<{ name: string; label?: string; type?: string }>;
+    .filter(Boolean) as Array<{ name: string; label?: string; type?: string; translations?: Record<string, string> }>;
   const useDynamic = dynFields.length > 0;
   const isNumF = (ty?: string) => ty === "integer" || ty === "number";
 
@@ -463,7 +463,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
           </TableHead>
           <SortHead id="title" label={t`Title`} />
           {useDynamic ? (
-            dynFields.map((f) => <SortHead key={f.name} id={f.name} label={f.label || f.name} num={isNumF(f.type)} />)
+            dynFields.map((f) => <SortHead key={f.name} id={f.name} label={fieldLabel(f, i18n.locale)} num={isNumF(f.type)} />)
           ) : (
             <>
               {has.status && <SortHead id={statusField!.name} label={t`Status`} />}

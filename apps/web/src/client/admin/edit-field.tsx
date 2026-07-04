@@ -45,6 +45,7 @@ import {
   type FieldFormatDraft,
   formatToDraft,
 } from "./field-format-editor";
+import { cleanTranslations, FieldTranslationsEditor } from "./field-translations-editor";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -84,6 +85,8 @@ interface FieldDraft {
   onDelete?: "set_null" | "cascade" | "no_action";
   /** Display formatting hint. */
   format?: Record<string, unknown>;
+  /** Per-locale label overrides. */
+  translations?: Record<string, string>;
   options?: { choices?: FieldChoice[]; values?: string[] };
   conditions?: {
     name?: string;
@@ -109,6 +112,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
   const [conds, setConds] = useState<CondDraft[]>([]);
   const [valDraft, setValDraft] = useState<ValDraft>(emptyValDraft());
   const [formatDraft, setFormatDraft] = useState<FieldFormatDraft>({});
+  const [translations, setTranslations] = useState<Record<string, string>>({});
   const [tab, setTab] = useState("schema");
 
   // Re-seed every time the dialog opens with a new target field.
@@ -142,6 +146,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
     );
     setValDraft(validationToDraft((field as { validation?: unknown }).validation));
     setFormatDraft(formatToDraft((field as { format?: unknown }).format));
+    setTranslations(((field as { translations?: Record<string, string> }).translations) ?? {});
   }, [open, field]);
 
   const addCond = () =>
@@ -239,6 +244,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
       conditions: conditions.length ? (conditions as never) : undefined,
       validation: (validation ?? undefined) as never,
       format: (cleanFormat(formatDraft, draft.type) ?? undefined) as never,
+      translations: (cleanTranslations(translations) ?? undefined) as never,
     };
     onSave(cleaned);
   };
@@ -370,6 +376,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
                 </div>
                 <Switch checked={!!draft.private} onChange={(v) => setDraft((d) => d ? { ...d, private: v } : d)} />
               </div>
+              <FieldTranslationsEditor value={translations} onChange={setTranslations} />
             </div>
           )}
 

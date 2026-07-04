@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatFieldValue } from "../src/client/admin/format-value";
+import { fieldLabel, formatFieldValue } from "../src/client/admin/format-value";
 
 const NOW = 1_700_000_000_000;
 
@@ -47,5 +47,15 @@ describe("formatFieldValue", () => {
   test("no format hint → raw string", () => {
     expect(formatFieldValue(42, { type: "integer" }, "en")).toBe("42");
     expect(formatFieldValue("plain", { type: "text" }, "en")).toBe("plain");
+  });
+});
+
+describe("fieldLabel", () => {
+  test("prefers the locale translation, then label, then name", () => {
+    const f = { name: "price", label: "Price", translations: { tr: "Fiyat", de: "Preis" } };
+    expect(fieldLabel(f, "tr")).toBe("Fiyat");
+    expect(fieldLabel(f, "de")).toBe("Preis");
+    expect(fieldLabel(f, "en")).toBe("Price"); // no en translation → label
+    expect(fieldLabel({ name: "price" }, "tr")).toBe("price"); // no label/translations → name
   });
 });

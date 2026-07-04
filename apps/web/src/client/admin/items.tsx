@@ -692,10 +692,15 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
     <Table className={ADMIN_TABLE_CLS}>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[38px] bg-card sm:sticky sm:left-0 sm:z-[2]">
+          {/* The checkbox column needs min-w, not just w — with many columns
+              the auto table layout compresses it below 38px, opening a seam
+              between it and the Title cell pinned at a fixed offset (scrolled
+              content showed through). Title pins 1px early so the two sticky
+              cells always overlap instead of under-lapping. */}
+          <TableHead className="w-[38px] min-w-[38px] bg-card sm:sticky sm:left-0 sm:z-[2]">
             <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} />
           </TableHead>
-          <SortHead id="title" label={t`Title`} sort={sort} setSort={setSort} className="bg-card sm:sticky sm:left-[38px] sm:z-[2]" />
+          <SortHead id="title" label={t`Title`} sort={sort} setSort={setSort} className="bg-card sm:sticky sm:left-[37px] sm:z-[2]" />
           {useDynamic ? (
             dynFields.map((f) => (
               <SortHead key={f.name} id={f.name} label={fieldLabel(f, i18n.locale)} num={isNumF(f.type)} sort={sort} setSort={setSort} dragCtx={dragCtx} />
@@ -730,10 +735,10 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
           const choice = displayStatus ? choiceByValue.get(displayStatus) : null;
           return (
             <TableRow key={r.id} data-selected={selected.has(r.id)} onClick={() => onEdit(r)} className="group/row cursor-pointer data-[selected=true]:bg-selected-surface">
-              <TableCell onClick={(e) => e.stopPropagation()} className={`sm:left-0 ${STICKY_BOX}`}>
+              <TableCell onClick={(e) => e.stopPropagation()} className={`min-w-[38px] sm:left-0 ${STICKY_BOX}`}>
                 <Checkbox checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
               </TableCell>
-              <TableCell className={`sm:left-[38px] sm:max-w-[320px] ${STICKY_BOX}`}>
+              <TableCell className={`sm:left-[37px] sm:max-w-[320px] ${STICKY_BOX}`}>
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate font-medium text-foreground">{cellText(displayTitle)}</span>
                   {displaySlug && <span className="truncate font-mono text-[11px] text-muted-foreground">/{String(displaySlug).slice(0, 24)}</span>}

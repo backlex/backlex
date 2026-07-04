@@ -111,7 +111,7 @@ export function ColumnPicker({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-64 p-0">
+      <PopoverContent align="end" collisionPadding={12} className="w-64 p-0">
         <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
           <span className="text-[12.5px] font-medium text-foreground"><Trans>List columns</Trans></span>
           {columns.length > 0 && (
@@ -120,7 +120,12 @@ export function ColumnPicker({
             </button>
           )}
         </div>
-        <ScrollArea viewportClassName="max-h-[280px]">
+        {/* Cap the list to the popover's available viewport space (Radix
+            exposes it as a CSS var) so a long column list can't push the
+            footer hints off-screen — the list scrolls instead. 10rem covers
+            the header + the two footer bars (~152px measured, plus slack for
+            longer translated footer copy). */}
+        <ScrollArea viewportClassName="max-h-[min(280px,calc(var(--radix-popover-content-available-height)-10rem))]">
           <div className="flex flex-col gap-0.5 p-1.5">
             {pickable.length === 0 && (
               <div className="px-2 py-3 text-[12px] text-muted-foreground"><Trans>No user fields yet.</Trans></div>

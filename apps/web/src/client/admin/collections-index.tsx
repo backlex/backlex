@@ -43,10 +43,12 @@ export interface CollectionsIndexProps {
   /** Jump to the REST Explorer. With a slug, deep-links to that
    *  collection's `/api/items/<slug>` endpoint group. */
   onOpenApi?: (slug?: string) => void;
+  /** Jump to the Schema graph (ERD) page. */
+  onOpenSchema?: () => void;
   pushToast: (msg: string) => void;
 }
 
-export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew, onDelete, showArchived, onToggleArchived, onRestore, onOpenApi, pushToast }: CollectionsIndexProps) {
+export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew, onDelete, showArchived, onToggleArchived, onRestore, onOpenApi, onOpenSchema, pushToast }: CollectionsIndexProps) {
   const { t } = useLingui();
   const [search, setSearch] = useUrlState("q", "");
   const [view, setView] = useState<"grid" | "table">("grid");
@@ -234,7 +236,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
                 {editing ? <Trans>Done</Trans> : <Trans>Edit layout</Trans>}
               </Button>
             )}
-            <Button variant="outline" icon={I.Code}><Trans>Schema</Trans></Button>
+            <Button variant="outline" icon={I.Code} onClick={() => onOpenSchema?.()}><Trans>Schema</Trans></Button>
             <Button variant="outline" icon={I.ExternalLink} onClick={() => onOpenApi?.()}><Trans>API docs</Trans></Button>
             <Button variant="primary" icon={I.Plus} onClick={() => setChooserOpen(true)}><Trans>New collection</Trans></Button>
           </>}
@@ -409,12 +411,13 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
                       if (dragSlug && dragSlug !== c.slug) moveCard(dragSlug, { group: g, beforeSlug: c.slug });
                       clearDrag();
                     } : undefined}
-                    className={editing ? `cursor-grab rounded-4xl ${dropHint === `card:${c.slug}` ? "ring-2 ring-primary" : ""} ${dragSlug === c.slug ? "opacity-50" : ""}` : "contents"}
+                    className={editing ? `cursor-grab ${dragSlug === c.slug ? "opacity-50" : ""}` : "contents"}
                   >
                     <CollectionCard
                       c={c}
                       archived={!!showArchived}
                       editing={editing}
+                      dropTarget={editing && dropHint === `card:${c.slug}`}
                       onOpen={() => onOpen(c.slug)}
                       onOpenApi={onOpenApi ? () => onOpenApi(c.slug) : undefined}
                       onRestore={onRestore ? () => onRestore(c.slug) : undefined}
@@ -422,7 +425,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
                   </div>
                 ))}
                 {editing && list.length === 0 && (
-                  <div className="grid min-h-[80px] place-items-center rounded-4xl border border-dashed border-border text-[12px] text-muted-foreground">
+                  <div className="grid min-h-[80px] place-items-center rounded-2xl border border-dashed border-border text-[12px] text-muted-foreground">
                     <Trans>Drag collections here</Trans>
                   </div>
                 )}
@@ -528,12 +531,15 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
   );
 }
 
-function CollectionCard({ c, onOpen, archived, editing, onRestore, onOpenApi }: { c: CollectionListItem; onOpen: () => void; archived?: boolean; editing?: boolean; onRestore?: () => void; onOpenApi?: () => void }) {
+function CollectionCard({ c, onOpen, archived, editing, dropTarget, onRestore, onOpenApi }: { c: CollectionListItem; onOpen: () => void; archived?: boolean; editing?: boolean; dropTarget?: boolean; onRestore?: () => void; onOpenApi?: () => void }) {
   const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
   return (
     <Card
       interactive={!editing}
-      className={`h-full gap-3 p-4 transition-colors ${archived ? "opacity-90" : ""} ${editing ? "select-none" : ""}`}
+      // Drop-target highlight lives on the Card itself so it follows the
+      // card's own rounded-2xl border — a ring on the drag wrapper drew at a
+      // mismatched radius and spilled outside the corners.
+      className={`h-full gap-3 p-4 transition-colors ${archived ? "opacity-90" : ""} ${editing ? "select-none" : ""} ${dropTarget ? "border-primary ring-2 ring-primary/50" : ""}`}
       onClick={editing ? undefined : onOpen}
     >
       <div className="flex items-center gap-2.5">

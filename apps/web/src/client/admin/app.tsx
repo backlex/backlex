@@ -942,6 +942,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                 onToggleArchived={(next) => setShowArchived(next)}
                 onOpen={(slug) => { setActiveCollection(slug); setActiveTab("items"); }}
                 onOpenApi={(slug) => navigate(slug ? `/rest-explorer?slug=${encodeURIComponent(slug)}` : "/rest-explorer")}
+                onOpenSchema={() => navigate("/schema-graph")}
                 onNew={() => setNewCollectionOpen(true)}
                 onDelete={(slug) => {
                   // Branch by adopted flag — adopted collections soft-delete

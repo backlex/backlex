@@ -30,10 +30,10 @@ describe("buildItemsParams", () => {
     expect(p.filter).toBeUndefined();
   });
 
-  test("empty sort falls back to -updated_at", () => {
-    expect(buildItemsParams({ sort: "", q: "", filters: [], statusTab: "all", statusFieldName: null }).sort).toBe(
-      "-updated_at",
-    );
+  test("empty sort is omitted — the server applies defaultSort/-created_at", () => {
+    expect(
+      buildItemsParams({ sort: "", q: "", filters: [], statusTab: "all", statusFieldName: null }).sort,
+    ).toBeUndefined();
   });
 
   test("trims the search term and only sets q when non-empty", () => {

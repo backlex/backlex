@@ -11,7 +11,10 @@ import type { FilterCondition } from "./items";
  *  pre-serialised `filter` JSON string (chips + the status quick-filter). */
 export interface ItemsQueryParams {
   limit: number;
-  sort: string;
+  /** Omitted when the user hasn't sorted — the server then applies the
+   *  collection's `defaultSort` (falling back to `-created_at`), so newly
+   *  created rows stay put instead of jumping on every edit. */
+  sort?: string;
   q?: string;
   filter?: string;
   /** Comma-joined relation heads to inline (`expand=author,category`) —
@@ -35,7 +38,8 @@ export function buildItemsParams(input: {
   expandHeads?: string[];
 }): ItemsQueryParams {
   const { sort, q, filters, statusTab, statusFieldName, expandHeads } = input;
-  const params: ItemsQueryParams = { limit: 50, sort: sort || "-updated_at" };
+  const params: ItemsQueryParams = { limit: 50 };
+  if (sort) params.sort = sort;
   if (expandHeads?.length) params.expand = expandHeads.join(",");
   if (q.trim()) params.q = q.trim();
   // Each chip is its own `$and` clause so duplicate field+op pairs survive.

@@ -237,7 +237,10 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   const [search, setSearch] = useUrlState("q", "");
   const [filters, setFilters] = useUrlStateJson<FilterCondition[]>("filter", []);
   const [statusTab, setStatusTab] = useState("all");
-  const [sort, setSort] = useUrlState("sort", "-updated_at");
+  // Empty = don't send a sort; the server then applies the collection's
+  // `defaultSort` setting, falling back to `-created_at` (stable — rows don't
+  // reshuffle every time someone edits one, unlike the old `-updated_at`).
+  const [sort, setSort] = useUrlState("sort", "");
   // Per-collection visualisation. Kanban auto-hides when the schema has no
   // status-shaped column (see ItemsViewToggle); the resolved `viewMode` is
   // derived below once schemaState is known.

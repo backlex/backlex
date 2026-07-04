@@ -2,6 +2,7 @@ import * as React from "react"
 import { Popover as PopoverPrimitive } from "radix-ui"
 
 import { cn } from "@backlex/ui/lib/utils"
+import { ScrollArea } from "@backlex/ui/components/scroll-area"
 
 function Popover({
   ...props
@@ -76,12 +77,45 @@ function PopoverDescription({
   )
 }
 
+/**
+ * Scrollable body for a `p-0` popover with pinned header/footer bars.
+ *
+ * Radix's ScrollArea viewport can't flex-fill inside a max-height container
+ * (its percentage height doesn't resolve against a `flex-1` parent in
+ * Chromium — same limitation the dialog body-scroll pattern works around),
+ * so the viewport must be capped explicitly. This bakes the cap in once:
+ * the body tops out at `maxHeight`, shrinking to the popover's available
+ * screen space (Radix's `--radix-popover-content-available-height`) minus
+ * `reserve` — the combined height of the pinned chrome around it — so the
+ * pinned bars always stay on screen and the body scrolls instead.
+ */
+function PopoverScrollBody({
+  maxHeight = 280,
+  reserve = 120,
+  ...props
+}: React.ComponentProps<typeof ScrollArea> & {
+  /** Tallest the body may grow when screen space allows, in px. */
+  maxHeight?: number
+  /** Combined height of the pinned header/footer bars around it, in px. */
+  reserve?: number
+}) {
+  return (
+    <ScrollArea
+      viewportStyle={{
+        maxHeight: `min(${maxHeight}px, calc(var(--radix-popover-content-available-height) - ${reserve}px))`,
+      }}
+      {...props}
+    />
+  )
+}
+
 export {
   Popover,
   PopoverAnchor,
   PopoverContent,
   PopoverDescription,
   PopoverHeader,
+  PopoverScrollBody,
   PopoverTitle,
   PopoverTrigger,
 }

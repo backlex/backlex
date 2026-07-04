@@ -192,11 +192,35 @@ export const NON_ADMIN_NAV_IDS: ReadonlySet<string> = new Set([
   "rest-explorer",
 ]);
 
+/** Per-permission nav grants computed server-side by `GET /api/me` — which
+ *  of the permission-gated non-admin pages this user can actually use.
+ *  `collections`/`revisions` = at least one readable collection; `storage` =
+ *  a read grant on the system files collection. */
+export interface MeNav {
+  collections: boolean;
+  storage: boolean;
+  revisions: boolean;
+}
+
 /** Sidebar/palette visibility for a nav id. `isAdmin` is tri-state: while
  *  `/api/me` is still loading (`null`/`undefined`) everything stays visible
- *  so admins don't watch their menu pop in. */
-export const isNavVisible = (id: string, isAdmin: boolean | null | undefined): boolean =>
-  isAdmin !== false || NON_ADMIN_NAV_IDS.has(id);
+ *  so admins don't watch their menu pop in. For non-admins the static
+ *  allow-list is further narrowed by the per-permission `nav` grants from
+ *  `/api/me` (missing grants object — older server — keeps the allow-list
+ *  behaviour). Hiding is cosmetic; every endpoint stays gated server-side. */
+export const isNavVisible = (
+  id: string,
+  isAdmin: boolean | null | undefined,
+  nav?: MeNav | null,
+): boolean => {
+  if (isAdmin !== false) return true;
+  if (!NON_ADMIN_NAV_IDS.has(id)) return false;
+  if (!nav) return true;
+  if (id === "collections") return nav.collections;
+  if (id === "storage") return nav.storage;
+  if (id === "revisions") return nav.revisions;
+  return true; // logs (own activity) + rest-explorer stay available
+};
 
 export const ADAPTER_PROFILES: Record<AdapterId, AdapterProfile> = {
   bun: { db: "sqlite", storage: "fs", realtime: "in-proc + SSE" },

@@ -5,6 +5,8 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { SECURITY, errorResponses } from "../lib/openapi";
+import { listReadableCollections } from "../services/permissions";
+import { FILES_COLLECTION } from "./storage";
 
 const MeRow = z
   .object({
@@ -15,6 +17,11 @@ const MeRow = z
     roles: z.array(z.string()),
     isAdmin: z.boolean(),
     tenantId: z.string().nullable(),
+    nav: z.object({
+      collections: z.boolean(),
+      storage: z.boolean(),
+      revisions: z.boolean(),
+    }),
   })
   .openapi("Me");
 
@@ -60,6 +67,27 @@ export const meRoutes = new OpenAPIHono<AppBindings>().openapi(
       .limit(1)) as { id: string; email: string; name: string | null; image: string | null }[];
     const user = rows[0];
     if (!user) throw new AppError("NOT_FOUND", "User not found");
+    const isAdmin = auth.roles.includes(SYSTEM_ROLES.admin);
+    // Per-permission nav visibility for the SPA sidebar/palette. One bulk
+    // read-grant query answers all three: `storage` needs a read grant on the
+    // system files collection, `collections`/`revisions` need at least one
+    // readable non-system collection (revisions is gated per-collection-read,
+    // so zero readable collections ⇒ every revisions call would 403).
+    // Cosmetic — every endpoint stays gated server-side regardless.
+    let nav = { collections: true, storage: true, revisions: true };
+    if (!isAdmin) {
+      const readable = await listReadableCollections(ctx, auth);
+      if (readable === "*") {
+        nav = { collections: true, storage: true, revisions: true };
+      } else {
+        const anyCollection = [...readable].some((s) => s !== FILES_COLLECTION);
+        nav = {
+          collections: anyCollection,
+          storage: readable.has(FILES_COLLECTION),
+          revisions: anyCollection,
+        };
+      }
+    }
     return c.json({
       data: {
         id: user.id,
@@ -67,8 +95,9 @@ export const meRoutes = new OpenAPIHono<AppBindings>().openapi(
         name: user.name,
         image: user.image,
         roles: auth.roles,
-        isAdmin: auth.roles.includes(SYSTEM_ROLES.admin),
+        isAdmin,
         tenantId: auth.tenantId ?? null,
+        nav,
       },
     });
   },

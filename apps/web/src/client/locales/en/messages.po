@@ -8134,6 +8134,11 @@ msgstr "Remove device"
 msgid "Remove group"
 msgstr "Remove group"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Remove it from the list"
+msgstr "Remove it from the list"
+
 #: src/client/admin/storage.tsx
 msgid "Remove tag"
 msgstr "Remove tag"

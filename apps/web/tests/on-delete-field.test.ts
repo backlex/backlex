@@ -99,3 +99,74 @@ describe("ON DELETE relational triggers", () => {
     expect(row.body.data.maker_id).toBe(m.id); // dangling but untouched
   });
 });
+
+// relation_many + cascade chaining (v2 edges).
+describe("ON DELETE: relation_many + chaining", () => {
+  let h: TestHarness;
+  const json = (body: unknown): RequestInit => ({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const create = async (slug: string, body: unknown) => {
+    const r = await h.fetch(`/api/items/${slug}`, json(body));
+    return { status: r.status, body: (await r.json()) as any };
+  };
+  const get = async (slug: string, id: string) =>
+    (await h.fetch(`/api/items/${slug}/${id}`)).status;
+  const getBody = async (slug: string, id: string) =>
+    (await (await h.fetch(`/api/items/${slug}/${id}`)).json()).data as any;
+  const del = async (slug: string, id: string) =>
+    (await h.fetch(`/api/items/${slug}/${id}`, { method: "DELETE" })).status;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    await h.fetch("/api/collections", json({ slug: "tags", fields: [{ name: "name", type: "text" }] }));
+    // posts.tag_ids (M2M) → tags, remove-from-list on delete
+    await h.fetch("/api/collections", json({
+      slug: "posts2",
+      fields: [
+        { name: "title", type: "text" },
+        { name: "tag_ids", type: "relation_many", to: "tags", onDelete: "set_null" },
+      ],
+    }));
+    // baskets.tag_ids (M2M) → tags, cascade
+    await h.fetch("/api/collections", json({
+      slug: "baskets",
+      fields: [{ name: "tag_ids", type: "relation_many", to: "tags", onDelete: "cascade" }],
+    }));
+    // chain: a → b → c (single relations, cascade)
+    await h.fetch("/api/collections", json({ slug: "a_root", fields: [{ name: "name", type: "text" }] }));
+    await h.fetch("/api/collections", json({ slug: "b_mid", fields: [{ name: "a_id", type: "relation", to: "a_root", onDelete: "cascade" }] }));
+    await h.fetch("/api/collections", json({ slug: "c_leaf", fields: [{ name: "b_id", type: "relation", to: "b_mid", onDelete: "cascade" }] }));
+  });
+  afterAll(() => h.cleanup());
+
+  test("relation_many set_null removes the deleted id from the array", async () => {
+    const t1 = (await create("tags", { name: "t1" })).body.data;
+    const t2 = (await create("tags", { name: "t2" })).body.data;
+    const p = (await create("posts2", { title: "p", tag_ids: [t1.id, t2.id] })).body.data;
+
+    expect(await del("tags", t1.id)).toBe(200);
+    const row = await getBody("posts2", p.id);
+    expect(row.tag_ids).toEqual([t2.id]);
+  });
+
+  test("relation_many cascade deletes rows referencing the id", async () => {
+    const t = (await create("tags", { name: "tc" })).body.data;
+    const b = (await create("baskets", { tag_ids: [t.id] })).body.data;
+    expect(await del("tags", t.id)).toBe(200);
+    expect(await get("baskets", b.id)).toBe(404);
+  });
+
+  test("cascade chains through multiple levels", async () => {
+    const a = (await create("a_root", { name: "a" })).body.data;
+    const b = (await create("b_mid", { a_id: a.id })).body.data;
+    const c = (await create("c_leaf", { b_id: b.id })).body.data;
+
+    expect(await del("a_root", a.id)).toBe(200);
+    expect(await get("b_mid", b.id)).toBe(404); // cascaded
+    expect(await get("c_leaf", c.id)).toBe(404); // chained
+  });
+});

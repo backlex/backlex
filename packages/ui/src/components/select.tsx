@@ -17,7 +17,7 @@ function SelectGroup({
   return (
     <SelectPrimitive.Group
       data-slot="select-group"
-      className={cn("scroll-my-1.5 p-1.5", className)}
+      className={cn(className)}
       {...props}
     />
   )
@@ -73,10 +73,13 @@ function SelectContent({
         {...props}
       >
         <SelectScrollUpButton />
+        {/* Padding lives on the viewport, not on SelectGroup — most callers
+            render bare SelectItems with no group, which used to leave the
+            first/last options flush against the rounded corners. */}
         <SelectPrimitive.Viewport
           data-position={position}
           className={cn(
-            "data-[position=popper]:h-(--radix-select-trigger-height) data-[position=popper]:w-full data-[position=popper]:min-w-(--radix-select-trigger-width)",
+            "scroll-my-1.5 p-1.5 data-[position=popper]:h-(--radix-select-trigger-height) data-[position=popper]:w-full data-[position=popper]:min-w-(--radix-select-trigger-width)",
             position === "popper" && ""
           )}
         >

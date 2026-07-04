@@ -165,12 +165,6 @@ msgstr "(isimsiz)"
 msgid "(use the configured default)"
 msgstr "(yapılandırılmış varsayılanı kullan)"
 
-#. placeholder {0}: mcpReadOnly ? "Read-only" : "Read & write"
-#. placeholder {1}: mcpAllowlist ? `${mcpAllowlist.size} tool(s)` : "all tools"
-#: src/client/pages/api-keys.tsx
-#~ msgid "{0} · {1}"
-#~ msgstr ""
-
 #. placeholder {0}: s.ip
 #. placeholder {1}: s.last
 #: src/client/admin/pages/users.tsx
@@ -351,21 +345,10 @@ msgstr "{1} sütunun {0} tanesi eşlendi"
 msgid "{0} of {1} tools allowed. Choose Allow all to remove the allowlist."
 msgstr "{1} araçtan {0} tanesine izin verildi. Listeyi kaldırmak için Tümüne izin ver'i seçin."
 
-#. placeholder {0}: allowlist.size
-#. placeholder {1}: tools?.length ?? 0
-#: src/client/components/mcp-key-modal.tsx
-#~ msgid "{0} of {1} tools allowed. Uncheck all to remove the allowlist."
-#~ msgstr "{1} araçtan {0} tanesi izinli. Tümünü kaldırmak için işaretleri kaldırın."
-
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} posts deleted."
 msgstr "{0} gönderi silindi."
-
-#. placeholder {0}: selected.size
-#: src/client/admin/app.tsx
-#~ msgid "{0} posts published."
-#~ msgstr "{0} gönderi yayınlandı."
 
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
@@ -564,14 +547,6 @@ msgstr "{key} → {next}."
 #: src/client/admin/storage.tsx
 msgid "{key} deleted."
 msgstr "{key} silindi."
-
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "{name} ok"
-#~ msgstr "{name} başarılı"
-
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "{name} ok — {n} rows"
-#~ msgstr "{name} başarılı — {n} satır"
 
 #: src/client/components/social-buttons.tsx
 msgid "{provider} sign-in"
@@ -1360,11 +1335,6 @@ msgstr "API Anahtarları"
 msgid "app (workspace end-users)"
 msgstr "app (çalışma alanı son kullanıcıları)"
 
-#: src/client/admin/parity/app-users.tsx
-#: src/client/admin/ui.tsx
-#~ msgid "App users"
-#~ msgstr "Uygulama kullanıcıları"
-
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "App-layer trigger — backlex has no DB foreign keys, so it's enforced on delete."
@@ -1579,10 +1549,6 @@ msgstr "<0>owner_id</0> otomatik ekle; <1>authenticated</1> rolü yalnızca kend
 msgid "Auto-add <0>tenant_id</0>; data is isolated per workspace at the app layer — every read/write gets <1>tenant_id = $user.tenant_id</1> injected."
 msgstr "<0>tenant_id</0> otomatik eklenir; veriler uygulama katmanında her çalışma alanı için izole edilir — her okuma/yazmaya <1>tenant_id = $user.tenant_id</1> enjekte edilir."
 
-#: src/client/admin/collections-index.tsx
-#~ msgid "Auto-add <0>tenant_id</0>; row-level security isolates data per workspace. All read/write rules get <1>tenant_id = $user.tenant_id</1> injected."
-#~ msgstr "<0>tenant_id</0> otomatik ekle; satır düzeyinde güvenlik veriyi çalışma alanı bazında yalıtır. Tüm okuma/yazma kurallarına <1>tenant_id = $user.tenant_id</1> eklenir."
-
 #: src/client/admin/pages/overview.tsx
 msgid "auto-creates c_<slug> table"
 msgstr "c_<slug> tablosunu otomatik oluşturur"
@@ -1772,10 +1738,6 @@ msgstr "Boş"
 msgid "Block all"
 msgstr "Tümünü engelle"
 
-#: src/client/pages/api-keys.tsx
-#~ msgid "Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation."
-#~ msgstr "Bu anahtar MCP sunucusu üzerinden kullanıldığında her yazma aracını engeller (insert / update / delete / invoke / …). REST yetkilendirmesi etkilenmez. İzin listesi oluşturulduktan sonra anahtar bazında ayarlanabilir."
-
 #: src/client/admin/pages/ask-ai.tsx
 msgid "blocked"
 msgstr "engellendi"
@@ -1823,10 +1785,6 @@ msgstr "Marka ayarları kaydedildi."
 #: src/client/components/page-header.tsx
 msgid "Breadcrumb"
 msgstr "Yer imi"
-
-#: src/client/admin/parity/insights.tsx
-#~ msgid "Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
-#~ msgstr "Bir koleksiyondan (say / topla / ortalama …) veya kaydedilmiş bir SQL sorgusundan panel oluşturun. Panoyu düzenlemek için panelleri sürükleyin."
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Build plan"
@@ -2096,10 +2054,6 @@ msgstr "Durum belirlemek için herhangi bir hücreye tıklayın. Özel, kural ol
 msgid "Click any step to edit its configuration. Drag to rearrange. Click <0>+</0> on a step to add the next."
 msgstr "Yapılandırmasını düzenlemek için herhangi bir adıma tıklayın. Yeniden düzenlemek için sürükleyin. Bir sonrakini eklemek için bir adımdaki <0>+</0> simgesine tıklayın."
 
-#: src/client/admin/storage.tsx
-#~ msgid "Click anywhere to set the crop pivot for <0>fit=cover</0>."
-#~ msgstr "<0>fit=cover</0> için kırpma eksenini belirlemek amacıyla herhangi bir yere tıklayın."
-
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Click for full payload"
@@ -2233,12 +2187,6 @@ msgstr "\"{0}\" sütunu c_{1} koleksiyonuna eklendi."
 msgid "Column \"{0}\" added to c_{slug}."
 msgstr "\"{0}\" sütunu c_{slug} koleksiyonuna eklendi."
 
-#. placeholder {0}: dropTarget.name
-#. placeholder {1}: dropTarget.slug
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "Column \"{0}\" dropped from c_{1}."
-#~ msgstr "\"{0}\" sütunu c_{1} koleksiyonundan kaldırıldı."
-
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Column \"{name}\" dropped from c_{slug}."
 msgstr "\"{name}\" sütunu c_{slug} tablosundan kaldırıldı."
@@ -2272,10 +2220,6 @@ msgstr "sütun: <0>{0}</0>"
 #: src/client/admin/list-columns.tsx
 msgid "Columns"
 msgstr "Kolonlar"
-
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Coming soon"
-#~ msgstr "Yakında"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
@@ -2332,10 +2276,6 @@ msgstr "Bileşik (çok sütunlu) FK'lar backlex ilişkisi olarak benimsenemez"
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Computing diff"
 msgstr "Fark hesaplanıyor"
-
-#: src/client/admin/pages/schema-versions.tsx
-#~ msgid "Computing diff…"
-#~ msgstr "Fark hesaplanıyor…"
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Condition (permission DSL JSON, optional)"
@@ -2394,10 +2334,6 @@ msgstr "Etkinleştirmeden önce bu sağlayıcıyı yapılandırın (Client ID ek
 msgid "Configured via <0>AI_GATEWAY_API_KEY</0> on the backlex deployment (or legacy <1>ANTHROPIC_API_KEY</1>)."
 msgstr "Backlex dağıtımında <0>AI_GATEWAY_API_KEY</0> üzerinden (veya eski <1>ANTHROPIC_API_KEY</1> ile) yapılandırılır."
 
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Configured via <0>ANTHROPIC_API_KEY</0> on the backlex deployment."
-#~ msgstr "Backlex dağıtımında <0>ANTHROPIC_API_KEY</0> üzerinden yapılandırılır."
-
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/components/confirm-action.tsx
@@ -2428,11 +2364,6 @@ msgstr "Başlamak için şifrenizi onaylayın"
 #: src/client/admin/pages/integrations.tsx
 msgid "Connect"
 msgstr "Bağlantı"
-
-#. placeholder {0}: dialog ? (LABELS[dialog.kind] ?? dialog.kind) : ""
-#: src/client/admin/pages/integrations.tsx
-#~ msgid "Connect {0}"
-#~ msgstr "{0} bağla"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Connect {name}"
@@ -2623,10 +2554,6 @@ msgstr "Yorum gönderilemedi."
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not revoke share link."
 msgstr "Paylaşım bağlantısı iptal edilemedi."
-
-#: src/client/admin/pages/schema-versions.tsx
-#~ msgid "Couldn't compute the diff. Close and try again."
-#~ msgstr ""
 
 #: src/client/admin/account-page.tsx
 msgid "Couldn't copy — select and copy them manually."
@@ -2889,10 +2816,6 @@ msgstr "Özel CA PEM (isteğe bağlı)"
 msgid "Custom date…"
 msgstr "Özel tarih…"
 
-#: src/client/admin/field-validation-editor.tsx
-#~ msgid "Custom error message (optional)"
-#~ msgstr "Özel hata mesajı (opsiyonel)"
-
 #: src/client/admin/pages/webhooks.tsx
 msgid "Custom headers"
 msgstr "Özel başlıklar"
@@ -2925,10 +2848,6 @@ msgstr "Özelleştir…"
 #: src/client/admin/parity/database.tsx
 msgid "Daily"
 msgstr "Günlük"
-
-#: src/client/admin/parity/database.tsx
-#~ msgid "Daily 03:00 UTC"
-#~ msgstr "Günlük 03:00 UTC"
 
 #: src/client/admin/collection-settings.tsx
 msgid "danger zone"
@@ -3007,10 +2926,6 @@ msgstr "Ondalık (1.234,5)"
 #: src/client/admin/field-format-editor.tsx
 msgid "Decimal places"
 msgstr "Ondalık basamak"
-
-#: src/client/admin/pages/settings.tsx
-#~ msgid "default"
-#~ msgstr "varsayılan"
 
 #: src/client/admin/edit-field.tsx
 msgid "Default (auto)"
@@ -3257,10 +3172,6 @@ msgstr "Azalan"
 msgid "Description"
 msgstr "Açıklama"
 
-#: src/client/admin/parity/database.tsx
-#~ msgid "Destination"
-#~ msgstr "Hedef"
-
 #: src/client/admin/pages/schema-versions.tsx
 msgid "destructive"
 msgstr "yıkıcı"
@@ -3336,11 +3247,6 @@ msgstr "Kaydedilmemiş değişiklikler atılsın mı?"
 #: src/client/admin/pages/integrations.tsx
 msgid "Disconnect"
 msgstr "Bağlantıyı kes"
-
-#. placeholder {0}: LABELS[it.kind] ?? it.kind
-#: src/client/admin/pages/integrations.tsx
-#~ msgid "Disconnect {0}?"
-#~ msgstr "{0} bağlantısı kesilsin mi?"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Disconnecting…"
@@ -3475,10 +3381,6 @@ msgstr "İlişki oluşturmak için başka bir koleksiyona sürükleyin"
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to move"
 msgstr "Taşımak için sürükleyin"
-
-#: src/client/admin/list-columns.tsx
-msgid "Drag to reorder — the table follows this order."
-msgstr "Sıralamak için sürükleyin — tablo bu sırayı izler."
 
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to resize"
@@ -3801,10 +3703,6 @@ msgid "End-users of the app built on this workspace sign in here — separate fr
 msgstr "Bu çalışma alanı üzerinde oluşturulan uygulamanın son kullanıcıları buradan giriş yapar — admin girişinden ayrıdır. Yukarıdan sağlayıcıları yapılandırın."
 
 #: src/client/admin/parity/app-users.tsx
-#~ msgid "End-users of the application built on this workspace — a pool separate from the admin/control-plane <0>users</0>. They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
-#~ msgstr "Bu çalışma alanı üzerinde oluşturulan uygulamanın son kullanıcıları — admin/kontrol düzlemi <0>kullanıcılarından</0> ayrı bir havuz. Bu çalışma alanının kendi auth uç noktası üzerinden kayıt olurlar (bkz. <1>Kimlik Doğrulama → Çalışma Alanı auth API</1>)."
-
-#: src/client/admin/parity/app-users.tsx
 msgid "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
 msgstr "Bu workspace üstüne kurulan uygulamanın son kullanıcıları — panel <0>Ekip</0>'inden (admin/kontrol-düzlemi operatörleri) ayrı bir havuz. Bu workspace'in kendi auth uç noktasından kaydolurlar (bkz. <1>Authentication → Workspace auth API</1>)."
 
@@ -3986,10 +3884,6 @@ msgstr "Olaylar"
 msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 msgstr "İzinlere bağlı olarak her MCP aracı çağrılabilir. Bu anahtarı bir izin listesiyle daraltmak için aşağıdan bir araç işaretleyin."
 
-#: src/client/components/mcp-key-modal.tsx
-#~ msgid "Every MCP tool is callable, subject to permissions. Toggle a tool below to switch to allowlist mode."
-#~ msgstr "Her MCP aracı izinler dahilinde çağrılabilir. Aşağıdan bir aracı kapatarak izin listesi moduna geç."
-
 #: src/client/admin/parity/revisions.tsx
 msgid "Every write is versioned. Inspect, diff, or revert any prior state."
 msgstr "Her yazma işlemi sürümlenir. Önceki herhangi bir durumu inceleyin, karşılaştırın veya geri alın."
@@ -4018,17 +3912,9 @@ msgstr "Sonuçları görmek için bir sorgu çalıştırın."
 msgid "Existing user"
 msgstr "Mevcut kullanıcı"
 
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "expansion"
-#~ msgstr "genişletme"
-
 #: src/client/admin/pages/jobs.tsx
 msgid "Expects"
 msgstr "Beklenen"
-
-#: src/client/admin/pages/jobs.tsx
-#~ msgid "Expects { webhookId, channel, event, body }."
-#~ msgstr "{ webhookId, channel, event, body } bekler."
 
 #: src/client/pages/api-keys.tsx
 msgid "expired"
@@ -4126,10 +4012,6 @@ msgstr "Başarısızlıklar (24s)"
 #: src/client/admin/pages/integrations.tsx
 msgid "Fan record events out to chat, alerting, analytics, search, and automation tools. Secrets are encrypted at rest."
 msgstr "Kayıt olaylarını sohbet, uyarı, analitik, arama ve otomasyon araçlarına dağıt. Gizli bilgiler şifrelenerek saklanır."
-
-#: src/client/admin/pages/integrations.tsx
-#~ msgid "Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest."
-#~ msgstr "Kayıt olaylarını Slack, Discord, Datadog veya GitHub'a dağıtın. Sırlar beklemede şifrelenir."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "fast · cheap · routine reads"
@@ -4325,10 +4207,6 @@ msgstr "Düzeltme panoya kopyalandı."
 msgid "Fix the highlighted fields before saving."
 msgstr "Kaydetmeden önce işaretli alanları düzeltin."
 
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "fk"
-#~ msgstr "fk"
-
 #. placeholder {0}: fkColumnConflicts.map((c) => c.column).join(", ")
 #: src/client/admin/adopt-wizard.tsx
 msgid "FK conflict on {0}"
@@ -4362,10 +4240,6 @@ msgstr "Akış devam ettirildi."
 #: src/client/admin/ui.tsx
 msgid "Flows"
 msgstr "Akışlar"
-
-#: src/client/admin/storage.tsx
-#~ msgid "Focal point"
-#~ msgstr "Odak noktası"
 
 #: src/client/admin/add-field.tsx
 msgid "Fold this field into the collection's full-text-search index (when FTS is enabled)."
@@ -4672,14 +4546,6 @@ msgid "Headline"
 msgstr "Başlık"
 
 #: src/client/admin/pages/settings.tsx
-#~ msgid "Headline and tagline shown on the public sign-in screen. Leave a field blank to use the built-in default copy."
-#~ msgstr "Genel giriş ekranında gösterilen başlık ve slogan. Yerleşik varsayılan metni kullanmak için bir alanı boş bırakın."
-
-#: src/client/admin/pages/settings.tsx
-#~ msgid "Headline and tagline shown on the public sign-in screen. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default copy."
-#~ msgstr "Genel giriş ekranında gösterilen başlık ve slogan. Bu ayar tüm instance genelinde geçerlidir — giriş sayfası herhangi bir workspace seçilmeden önce açılır. Yerleşik varsayılan metni kullanmak için bir alanı boş bırakın."
-
-#: src/client/admin/pages/settings.tsx
 msgid "Headline, tagline, and the Terms/Privacy links shown on the public sign-in and sign-up screens. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default (or, for the URLs, to show plain text with no link)."
 msgstr "Genel giriş ve kayıt ekranlarında gösterilen başlık, slogan ve Şartlar/Gizlilik bağlantıları. Bu ayar tüm instance genelinde geçerlidir — giriş sayfası herhangi bir workspace seçilmeden önce açılır. Yerleşik varsayılanı kullanmak (veya URL'lerde bağlantısız düz metin göstermek) için bir alanı boş bırakın."
 
@@ -4761,11 +4627,6 @@ msgstr "Bunun sütun/tablo düşüreceğini veya tür değiştireceğini ve veri
 msgid "id"
 msgstr "id"
 
-#. placeholder {0}: (initial as { id?: string })?.id
-#: src/client/admin/sheet.tsx
-#~ msgid "id <0>{0}</0>"
-#~ msgstr "id <0>{0}</0>"
-
 #: src/client/admin/sheet.tsx
 msgid "id <0>{itemId}</0>"
 msgstr "id <0>{itemId}</0>"
@@ -4808,11 +4669,6 @@ msgstr "IdP SSO URL'si"
 msgid "If {displayEmail} matches an account, a sign-in link is on its way. It expires in 15 minutes."
 msgstr "{displayEmail} bir hesapla eşleşiyorsa, giriş bağlantısı yola çıktı. 15 dakika içinde geçerliliğini yitirir."
 
-#. placeholder {0}: email || t`your address`
-#: src/client/pages/magic-link.tsx
-#~ msgid "If <0>{0}</0> matches an account, a sign-in link is on its way. It expires in 15 minutes."
-#~ msgstr "<0>{0}</0> bir hesapla eşleşiyorsa giriş bağlantısı gönderildi. 15 dakika içinde sona erer."
-
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/storage.tsx
@@ -4834,12 +4690,6 @@ msgstr "Şema içe aktar"
 #: src/client/admin/storage.tsx
 msgid "Import URL"
 msgstr "İçe aktarma URL'si"
-
-#. placeholder {0}: r.data.inserted
-#. placeholder {1}: r.data.total
-#: src/client/admin/app.tsx
-#~ msgid "Imported {0} of {1} rows."
-#~ msgstr "{1} satırın {0} tanesi içe aktarıldı."
 
 #. placeholder {0}: r.data.total
 #. placeholder {1}: r.data.inserted
@@ -5533,10 +5383,6 @@ msgstr "canlı · güncellendi {0}"
 msgid "Live browser for every endpoint under /api. Built from the OpenAPI doc your workspace exposes at /api/openapi.json — including the dynamic /api/items/{slug} routes for your collections."
 msgstr "/api altındaki her uç nokta için canlı tarayıcı. Çalışma alanınızın /api/openapi.json'da sunduğu OpenAPI dokümanından oluşturulmuştur — koleksiyonlarınız için dinamik /api/items/{slug} rotaları dahil."
 
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
-#~ msgstr "Dinamik koleksiyonların canlı ERD'si. Yabancı anahtarlar alan türünden türetilir · aşağıdaki ilişkiler paneli REST + GraphQL tarafından kullanılan birleştirme şeklini gösterir."
-
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Live schema already matches this version."
 msgstr "Canlı şema zaten bu sürümle eşleşiyor."
@@ -5562,10 +5408,6 @@ msgstr "Daha fazla yükle"
 msgid "Loading API keys"
 msgstr "API anahtarları yükleniyor"
 
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Loading keys…"
-#~ msgstr "Anahtarlar yükleniyor…"
-
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Loading MCP tools"
 msgstr "MCP araçları yükleniyor"
@@ -5573,15 +5415,6 @@ msgstr "MCP araçları yükleniyor"
 #: src/client/pages/api-keys.tsx
 msgid "Loading role MCP defaults"
 msgstr "Rol MCP varsayılanları yükleniyor"
-
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Loading runs…"
-#~ msgstr "Çalıştırmalar yükleniyor…"
-
-#: src/client/admin/pages/ask-ai.tsx
-#: src/client/components/mcp-guards-fields.tsx
-#~ msgid "Loading tool catalog…"
-#~ msgstr "Araç kataloğu yükleniyor…"
 
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
@@ -5670,10 +5503,6 @@ msgstr "Küçük harf, rakam, <0>_</0> veya <1>-</1>. Daha sonra yeniden adland�
 #: src/client/admin/role-editor.tsx
 msgid "lowercase, snake_case"
 msgstr "küçük harf, snake_case"
-
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "m2m"
-#~ msgstr "m2m"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Machine-readable spec for every /api endpoint in this workspace — including dynamic /api/items/{slug} entries for your collections. Import into Postman, Insomnia, Swagger UI, or any code-gen tool."
@@ -5798,10 +5627,6 @@ msgstr "MCP uç nokta URL'i"
 #: src/client/pages/api-keys.tsx
 msgid "MCP read-only"
 msgstr "MCP salt-okunur"
-
-#: src/client/pages/api-keys.tsx
-#~ msgid "MCP read-only mode"
-#~ msgstr "MCP salt-okunur modu"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "MCP tool catalog"
@@ -6079,11 +5904,6 @@ msgstr "Yeni {0}"
 #: src/client/admin/item-views.tsx
 msgid "New {0} item"
 msgstr "Yeni {0} öğesi"
-
-#. placeholder {0}: KANBAN_LABELS[c.id] ?? c.label
-#: src/client/admin/item-views.tsx
-#~ msgid "New {0} post"
-#~ msgstr "Yeni {0} gönderisi"
 
 #: src/client/admin/item-editor.tsx
 msgid "New {slug}"
@@ -6432,17 +6252,9 @@ msgstr "Henüz dosya yüklenmedi — başlamak için yukarıya bir dosya bırak�
 msgid "No files yet"
 msgstr "Henüz dosya yok"
 
-#: src/client/admin/storage.tsx
-#~ msgid "No files. Drop files anywhere on this page or use Upload."
-#~ msgstr "Dosya yok. Bu sayfanın herhangi bir yerine dosya bırakın veya Yükle'yi kullanın."
-
 #: src/client/admin/pages/flows.tsx
 msgid "No flow selected"
 msgstr "Akış seçilmedi"
-
-#: src/client/admin/pages/flows.tsx
-#~ msgid "No flow selected. Click <0>+ New flow</0> to create your first one."
-#~ msgstr "Akış seçilmedi. İlkini oluşturmak için <0>+ Yeni akış</0>'a tıklayın."
 
 #: src/client/admin/pages/flows.tsx
 msgid "No flows yet — click + New flow."
@@ -6463,10 +6275,6 @@ msgstr "Henüz klasör yok. <0>Bir tane oluşturun</0>."
 #: src/client/admin/pages/functions.tsx
 msgid "No function selected"
 msgstr "Fonksiyon seçilmedi"
-
-#: src/client/admin/pages/functions.tsx
-#~ msgid "No function selected. Click <0>+ New function</0> to create one."
-#~ msgstr "Fonksiyon seçilmedi. Bir tane oluşturmak için <0>+ Yeni fonksiyon</0>'a tıklayın."
 
 #: src/client/admin/pages/jobs.tsx
 msgid "No functions defined yet. Create a function before enqueuing a function job."
@@ -6903,14 +6711,6 @@ msgid "On update"
 msgstr "Güncellendiğinde"
 
 #: src/client/pages/api-keys.tsx
-#~ msgid "Once you leave this page, the secret can't be retrieved — only revoked."
-#~ msgstr "Bu sayfadan ayrıldığınızda gizli anahtar geri alınamaz — yalnızca iptal edilebilir."
-
-#: src/client/pages/api-keys.tsx
-#~ msgid "Once you leave this page, the secret can’t be retrieved — only revoked."
-#~ msgstr "Bu sayfadan ayrıldığınızda gizli anahtar bir daha alınamaz — yalnızca iptal edilebilir."
-
-#: src/client/pages/api-keys.tsx
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 msgstr "Bu sayfadan ayrıldığınızda gizli anahtar bir daha alınamaz — yalnızca iptal edilebilir. MCP erişimini istediğiniz zaman anahtarın Connect MCP panelinden ayarlayabilirsiniz."
 
@@ -6973,16 +6773,8 @@ msgid "Open resource"
 msgstr "Kaynağı aç"
 
 #: src/client/admin/pages/settings.tsx
-#~ msgid "Open sign-up"
-#~ msgstr "Açık kayıt"
-
-#: src/client/admin/pages/settings.tsx
 msgid "Open-source · Apache-2.0 licensed"
 msgstr "Açık kaynak · Apache-2.0 lisanslı"
-
-#: src/client/admin/pages/settings.tsx
-#~ msgid "Open-source · MIT licensed"
-#~ msgstr "Açık kaynak · MIT lisanslı"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "OpenAI flagship; comparable to Opus"
@@ -7050,10 +6842,6 @@ msgstr "Duruma göre siparişler"
 msgid "Original"
 msgstr "Orijinal"
 
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Orphan storage files"
-#~ msgstr "Sahipsiz depolama dosyaları"
-
 #: src/client/admin/parity/translations.tsx
 msgid "Other locales stay empty until filled in the matrix."
 msgstr "Diğer yerel ayarlar matriste doldurulana kadar boş kalır."
@@ -7093,10 +6881,6 @@ msgstr "sahip kapsamlı"
 #: src/client/admin/collections-index.tsx
 msgid "Owner-scoped"
 msgstr "Sahip kapsamlı"
-
-#: src/client/pages/api-keys.tsx
-#~ msgid "Owner's full access (no restriction)"
-#~ msgstr "Sahibin tam erişimi (kısıtlama yok)"
 
 #: src/client/pages/api-keys.tsx
 msgid "Owner’s full access (no restriction)"
@@ -7592,10 +7376,6 @@ msgstr "PNG, JPG veya WebP. Başlıkta ve yazar görünümlerinde gösterilir."
 msgid "PNG, JPG, SVG or WebP — square images display best. Replaces any previous upload."
 msgstr "PNG, JPG, SVG veya WebP — kare görseller en iyi görüntülenir. Önceki yüklemeyi değiştirir."
 
-#: src/client/admin/pages/settings.tsx
-#~ msgid "PNG, JPG, SVG or WebP. Replaces any previous upload."
-#~ msgstr "PNG, JPG, SVG veya WebP. Önceki yüklemeyi değiştirir."
-
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Policy"
 msgstr "Politika"
@@ -7617,10 +7397,6 @@ msgstr "Veri olaylarını bir Microsoft Teams kanalına gönder."
 #: src/client/admin/pages/integrations.tsx
 msgid "Post data events to a Slack channel."
 msgstr "Veri olaylarını bir Slack kanalına gönderir."
-
-#: src/client/admin/pages/integrations.tsx
-#~ msgid "POST data events to any HTTPS endpoint, optionally HMAC-signed."
-#~ msgstr "Veri olaylarını herhangi bir HTTPS uç noktasına POST et (isteğe bağlı HMAC imzalı)."
 
 #: src/client/admin/app.tsx
 msgid "Post saved."
@@ -8077,10 +7853,6 @@ msgstr "Yenilendi."
 msgid "Refreshing…"
 msgstr "Yenileniyor…"
 
-#: src/client/components/mcp-key-modal.tsx
-#~ msgid "Refuses every write tool through MCP for this key — agent can read everything its permissions allow but cannot mutate."
-#~ msgstr "Bu anahtar üzerinden MCP'deki her yazma aracını reddeder — ajan izinlerinin tüm okumalarını yapabilir, ama mutasyon yapamaz."
-
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
 msgstr "Bu anahtar için MCP üzerinden her yazma aracını reddeder — ajan izinlerinin izin verdiği her şeyi okuyabilir, ama değişiklik yapamaz."
@@ -8356,10 +8128,6 @@ msgstr "<0>Parolanızı</0> sıfırlayın."
 msgid "Reset your password"
 msgstr "Parolanızı sıfırlayın"
 
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "Reset zoom"
-#~ msgstr "Yakınlaştırmayı sıfırla"
-
 #: src/client/pages/reset-password.tsx
 msgid "Resetting password"
 msgstr "Parola sıfırlanıyor"
@@ -8419,11 +8187,6 @@ msgstr "Bu anlık görüntüyü geri yükle"
 msgid "Restored {0} rows across {1} tables."
 msgstr "{1} tabloda {0} satır geri yüklendi."
 
-#. placeholder {0}: b.id
-#: src/client/admin/parity/database.tsx
-#~ msgid "Restored from {0} (dry-run)."
-#~ msgstr "{0} kaynağından geri yüklendi (kuru çalışma)."
-
 #: src/client/admin/adopt-wizard.tsx
 msgid "Restricts the authenticated role to its own rows. Pick where ownership lives — a side table, the conventional <0>owner_id</0> column, or an aliased column."
 msgstr "Kimliği doğrulanmış rolü yalnızca kendi satırlarıyla sınırlar. Sahipliğin nerede olduğunu seçin — yan tablo, alışılmış <0>owner_id</0> sütunu veya takma adlı bir sütun."
@@ -8459,10 +8222,6 @@ msgstr "devam ettirildi"
 #: src/client/admin/parity/database.tsx
 msgid "Retain (auto)"
 msgstr "Sakla (otomatik)"
-
-#: src/client/admin/parity/database.tsx
-#~ msgid "Retention"
-#~ msgstr "Saklama"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/jobs.tsx
@@ -8957,11 +8716,6 @@ msgstr "Zamanlama"
 
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
-#~ msgid "Schedule publish time"
-#~ msgstr "Yayın zamanını planla"
-
-#: src/client/admin/item-editor.tsx
-#: src/client/admin/sheet.tsx
 msgid "Scheduled"
 msgstr "Zamanlandı"
 
@@ -9114,10 +8868,6 @@ msgstr "Güvenlik"
 msgid "Seed a ready-made set of collections — with sample data — for your use case. You can edit or add more anytime."
 msgstr "Kullanım senaryonuz için hazır bir koleksiyon setini — örnek verilerle — yükleyin. İstediğiniz zaman düzenleyebilir veya yenisini ekleyebilirsiniz."
 
-#: src/client/admin/pages/template-onboarding.tsx
-#~ msgid "Seed a ready-made set of collections for your use case. You can edit or add more anytime."
-#~ msgstr "Kullanım senaryonuz için hazır bir koleksiyon seti oluşturun. İstediğiniz zaman düzenleyebilir veya yenilerini ekleyebilirsiniz."
-
 #: src/client/admin/adopt-wizard.tsx
 msgid "Select"
 msgstr "Seç"
@@ -9256,10 +9006,6 @@ msgstr "Gönderiliyor…"
 msgid "Sends a one-time sign-in link by email — requires a configured email adapter (set RESEND_API_KEY + EMAIL_FROM)."
 msgstr "E-posta ile tek kullanımlık giriş bağlantısı gönderir — yapılandırılmış bir e-posta bağdaştırıcısı gerektirir (RESEND_API_KEY + EMAIL_FROM ayarlayın)."
 
-#: src/client/admin/pages/webhooks.tsx
-#~ msgid "Sent as <0>X-Backlex-Signature: sha256=…</0>. Verify on the receiver."
-#~ msgstr "<0>X-Backlex-Signature: sha256=…</0> olarak gönderilir. Alıcı tarafında doğrulayın."
-
 #: src/client/admin/item-views.tsx
 msgid "September"
 msgstr "Eylül"
@@ -9394,10 +9140,6 @@ msgstr "Yönetici panelinin görüntü dilini ve tarihler ile sayıların nasıl
 msgid "Sets the attribute map to that IdP's defaults — you can still tweak later."
 msgstr "Özellik haritasını o IdP'nin varsayılanlarına ayarlar — daha sonra yine de düzenleyebilirsiniz."
 
-#: src/client/admin/account-page.tsx
-#~ msgid "Sets the locale used to format dates and numbers across the admin. Choose \"Workspace default\" to follow the workspace language."
-#~ msgstr "Yönetici panelinde tarihleri ve sayıları biçimlendirmek için kullanılan yerel ayarı belirler. Çalışma alanı dilini takip etmek için \"Çalışma alanı varsayılanı\" seçin."
-
 #: src/client/pages/sign-up.tsx
 msgid "Setting up passkey…"
 msgstr "Passkey ayarlanıyor…"
@@ -9416,10 +9158,6 @@ msgstr "Ayarlar → MCP → Yeni MCP sunucusu ekle → JSON'u yapıştır."
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
 msgstr "Ayarlar → MCP → Ekle. Claude Desktop ile aynı JSON şeklini kullanır."
-
-#: src/client/admin/pages/settings.tsx
-#~ msgid "Settings saved."
-#~ msgstr "Ayarlar kaydedildi."
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Severity"
@@ -9667,10 +9405,6 @@ msgstr "Giriş yapılıyor…"
 #: src/client/admin/pages/webhooks.tsx
 msgid "Signing secret"
 msgstr "İmzalama gizli anahtarı"
-
-#: src/client/admin/pages/webhooks.tsx
-#~ msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>{timestamp}.{body}</2> with <3>X-Backlex-Timestamp</3> for replay protection."
-#~ msgstr "Her teslimatı imzalar: <0>X-Backlex-Signature</0> (gövdenin HMAC'i) artı tekrar saldırısı korumasi için <3>X-Backlex-Timestamp</3> ile birlikte <2>{timestamp}.{body}</2> üzerinden <1>X-Backlex-Signature-V2</1>."
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>timestamp.body</2> with <3>X-Backlex-Timestamp</3> for replay protection."
@@ -9937,10 +9671,6 @@ msgstr "Tek yönlü hash olarak saklanır — bir daha asla gösterilmez. Mevcut
 #: src/client/admin/item-form.tsx
 msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup, then hit Preview."
 msgstr "HTML olarak saklanır. Tam WYSIWYG düzenleyici henüz bağlı değil — önceden biçimlendirilmiş HTML veya temel işaretleme yapıştırın, ardından Önizle'ye basın."
-
-#: src/client/admin/sheet.tsx
-#~ msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup."
-#~ msgstr "HTML olarak saklanır. Tam WYSIWYG editörü henüz bağlı değil — önceden biçimlendirilmiş HTML veya temel işaretleme yapıştırın."
 
 #: src/client/admin/pages/overview.tsx
 msgid "stored objects"
@@ -10290,10 +10020,6 @@ msgstr "Gömme bağlantısı iptal edilmiş ya da pano kaldırılmış olabilir.
 msgid "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
 msgstr "Yeni bir örneğin ilk hesabı otomatik olarak <0>admin</0> olarak sağlanır. Daha sonra kendinizi düşürebilirsiniz."
 
-#: src/client/admin/pages/users.tsx
-#~ msgid "The first user to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
-#~ msgstr "Kayıt olan ilk kullanıcı admin olur; diğer herkes authenticated rolüne düşer. Oturumlar, sağlayıcılar ve 2FA hesap başına takip edilir."
-
 #: src/client/pages/api-keys.tsx
 msgid "The full secret is shown once after creation — copy it somewhere safe."
 msgstr "Tam gizli anahtar oluşturulduktan sonra yalnızca bir kez gösterilir — güvenli bir yere kopyalayın."
@@ -10582,17 +10308,9 @@ msgstr "En çok kullanılan koleksiyonlar"
 msgid "Top customers by spend"
 msgstr "Harcamaya göre en iyi müşteriler"
 
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Top customers last month"
-#~ msgstr "Geçen ay en iyi müşteriler"
-
 #: src/client/admin/pages/users.tsx
 msgid "Total members"
 msgstr "Toplam üye"
-
-#: src/client/admin/pages/users.tsx
-#~ msgid "Total users"
-#~ msgstr "Toplam kullanıcı"
 
 #: src/client/admin/pages/traces.tsx
 msgid "Trace"
@@ -11259,10 +10977,6 @@ msgstr "Koşul (filtre DSL)"
 msgid "When off, existing translations in the target locale are overwritten."
 msgstr "Kapalıyken, hedef yerel ayardaki mevcut çeviriler üzerine yazılır."
 
-#: src/client/admin/pages/settings.tsx
-#~ msgid "When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin."
-#~ msgstr "Kapalıyken, her yolda (e-posta/parola, sosyal, sihirli bağlantı) yeni hesap oluşturma reddedilir. İlk kullanıcıya her zaman izin verilir, böylece yeni bir örnek kendi yöneticisini oluşturabilir."
-
 #: src/client/admin/pages/functions.tsx
 msgid "When paused, triggers stop firing and HTTP invokes are rejected."
 msgstr "Duraklatıldığında tetikleyiciler tetiklemeyi durdurur ve HTTP çağrıları reddedilir."
@@ -11270,10 +10984,6 @@ msgstr "Duraklatıldığında tetikleyiciler tetiklemeyi durdurur ve HTTP çağr
 #: src/client/admin/flow-builder.tsx
 msgid "When set, body is rendered from the stored template at run time. Otherwise the literal Subject + Body fields below are used."
 msgstr "Ayarlandığında, gövde çalışma zamanında depolanan şablondan işlenir. Aksi takdirde aşağıdaki Konu + Gövde alanları kullanılır."
-
-#: src/client/pages/api-keys.tsx
-#~ msgid "When set, requests made with this key get only this role's permissions — and only while the owner still holds it."
-#~ msgstr "Ayarlandığında, bu anahtarla yapılan istekler yalnızca bu rolün izinlerini alır — ve yalnızca sahibi rolü tuttuğu sürece."
 
 #: src/client/pages/api-keys.tsx
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
@@ -11516,11 +11226,3 @@ msgstr "Kişisel profiliniz, tercihleriniz, parolanız, oturumlarınız ve bağl
 #: src/client/admin/pages/settings.tsx
 msgid "Your registered devices"
 msgstr "Kayıtlı cihazlarınız"
-
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "Zoom in"
-#~ msgstr "Yakınlaştır"
-
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "Zoom out"
-#~ msgstr "Uzaklaştır"

@@ -129,11 +129,13 @@ export function ColumnPicker({
         </div>
         {/* Cap the list to the popover's available viewport space (Radix
             exposes it as a CSS var) so a long column list can't push the
-            footer hints off-screen — the list scrolls instead. 12rem covers
-            the header + the two footer bars, with slack for longer
-            translated footer copy. */}
-        <ScrollArea viewportClassName="max-h-[min(280px,calc(var(--radix-popover-content-available-height)-12rem))]">
-          <div className="flex flex-col gap-0.5 p-2">
+            footer hint off-screen — the list scrolls instead. 9rem covers
+            the header + the footer bar, with slack for longer translated
+            footer copy. 266px = the py-3 top inset + exactly 8 rows (30px row
+            + 2px gap), so at the initial scroll position the cap cuts on a
+            row boundary instead of slicing a row in half. */}
+        <ScrollArea viewportClassName="max-h-[min(266px,calc(var(--radix-popover-content-available-height)-9rem))]">
+          <div className="flex flex-col gap-0.5 px-2 py-3">
             {pickable.length === 0 && (
               <div className="px-2 py-3 text-[12px] text-muted-foreground"><Trans>No user fields yet.</Trans></div>
             )}
@@ -195,11 +197,6 @@ export function ColumnPicker({
             ))}
           </div>
         </ScrollArea>
-        {selected.length > 1 && (
-          <div className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
-            <Trans>Drag to reorder — the table follows this order.</Trans>
-          </div>
-        )}
         <div className="border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground">
           <Trans>Empty = the default columns. Formatting comes from each field's Interface tab.</Trans>
         </div>

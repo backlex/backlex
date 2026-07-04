@@ -2269,6 +2269,10 @@ msgstr "Sütun:"
 msgid "column: <0>{0}</0>"
 msgstr "sütun: <0>{0}</0>"
 
+#: src/client/admin/list-columns.tsx
+msgid "Columns"
+msgstr "Kolonlar"
+
 #: src/client/admin/pages/ask-ai.tsx
 #~ msgid "Coming soon"
 #~ msgstr "Yakında"
@@ -3734,6 +3738,10 @@ msgstr "Gömme URL’si — şimdi kopyalayın"
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Empty"
 msgstr "Boş"
+
+#: src/client/admin/list-columns.tsx
+msgid "Empty = the default columns. Formatting comes from each field's Interface tab."
+msgstr "Boş = varsayılan kolonlar. Biçimlendirme her alanın Arayüz sekmesinden gelir."
 
 #: src/client/admin/collections-index.tsx
 msgid "Empty or template"
@@ -5459,6 +5467,10 @@ msgstr "Liste"
 msgid "list & sort"
 msgstr "listele ve sırala"
 
+#: src/client/admin/list-columns.tsx
+msgid "List columns"
+msgstr "Liste kolonları"
+
 #: src/client/admin/parity/revisions.tsx
 #: src/client/admin/ui.tsx
 msgid "live"
@@ -6649,6 +6661,7 @@ msgstr "İki satır aynı değeri tutamaz (büyük/küçük harfe duyarlı)."
 msgid "No types."
 msgstr "Tür yok."
 
+#: src/client/admin/list-columns.tsx
 #: src/client/admin/pages/schema-graph.tsx
 msgid "No user fields yet."
 msgstr "Henüz kullanıcı alanı yok."
@@ -8213,6 +8226,7 @@ msgstr "İmzalı URL veya kimlik doğrulama çerezi gerektirir."
 msgid "Resend verification email"
 msgstr "Doğrulama e-postasını yeniden gönder"
 
+#: src/client/admin/list-columns.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/storage.tsx
 msgid "Reset"

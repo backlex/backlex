@@ -64,6 +64,14 @@ const SettingsInput = z
         message: "Too many collections in erdLayout",
       })
       .optional(),
+    /** Per-collection list-view columns (slug → ordered field names). Admin-UI
+     *  convenience state; capped to keep the settings row small. */
+    listColumns: z
+      .record(z.string(), z.array(z.string()).max(60))
+      .refine((v) => Object.keys(v).length <= 500, {
+        message: "Too many collections in listColumns",
+      })
+      .optional(),
     /** Automatic schema-snapshot cadence + retention (#9). */
     schemaSnapshotSchedule: z.enum(["off", "daily", "weekly"]).optional(),
     schemaSnapshotKeepLast: z.number().int().min(1).max(50).optional(),

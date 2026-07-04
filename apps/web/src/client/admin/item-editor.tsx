@@ -12,6 +12,7 @@ import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, IconButton, Switch, relativeTime } from "./ui";
 import { authorById } from "./items";
 import { Card } from "@backlex/ui/components/card";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import {
   DropdownMenu,
@@ -475,6 +476,7 @@ export function ItemEditorPage({
             <RevisionHistory
               slug={slug}
               itemId={item.id}
+              current={item as unknown as Record<string, unknown>}
               refreshKey={revisionsKey}
               pushToast={pushToast}
               onReverted={async () => {
@@ -615,15 +617,31 @@ function PublishControls({
   );
 }
 
+/** Keys never shown in the revert diff — system/bookkeeping columns. */
+const REVISION_DIFF_SKIP = new Set([
+  "id", "created_at", "updated_at", "createdAt", "updatedAt",
+  "owner_id", "ownerId", "tenant_id", "tenantId", "_status",
+]);
+
+const fmtRevVal = (v: unknown): string => {
+  if (v == null || v === "") return "—";
+  const s = typeof v === "object" ? JSON.stringify(v) : String(v);
+  return s.length > 26 ? s.slice(0, 24) + "…" : s;
+};
+
 function RevisionHistory({
   slug,
   itemId,
+  current,
   refreshKey,
   pushToast,
   onReverted,
 }: {
   slug: string;
   itemId: string;
+  /** The live row — diffed against a revision's snapshot so the confirm
+   *  step can show exactly which fields a revert would change. */
+  current: Record<string, unknown>;
   /** Changes whenever the parent writes the row, forcing a reload. */
   refreshKey: number;
   pushToast: (m: string, type?: "success" | "error") => void;
@@ -635,6 +653,23 @@ function RevisionHistory({
   const [revisions, setRevisions] = useState<ApiRevision[]>([]);
   const [loading, setLoading] = useState(true);
   const [reverting, setReverting] = useState<string | null>(null);
+  // Two-step revert: the first click expands a field-level preview of what
+  // would change; only the confirm button inside actually reverts.
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const diffFor = (rev: ApiRevision): { k: string; from: unknown; to: unknown }[] => {
+    const snap = rev.snapshot ?? {};
+    const keys = new Set(
+      [...Object.keys(snap), ...Object.keys(current ?? {})].filter((k) => !REVISION_DIFF_SKIP.has(k)),
+    );
+    const out: { k: string; from: unknown; to: unknown }[] = [];
+    for (const k of keys) {
+      const a = (current ?? {})[k];
+      const b = (snap as Record<string, unknown>)[k];
+      if (JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)) out.push({ k, from: a, to: b });
+    }
+    return out;
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -657,6 +692,7 @@ function RevisionHistory({
     try {
       await revisionsApi.revert(rev.id);
       pushToast(t`Reverted to earlier revision.`);
+      setExpanded(null);
       await onReverted();
       await load();
     } catch (e) {
@@ -675,50 +711,91 @@ function RevisionHistory({
           <span className="font-mono text-[11px] text-muted-foreground">{revisions.length}</span>
         )}
       </div>
-      <div className="flex flex-col gap-2 p-3.5">
-        {loading ? (
-          <div className="flex flex-col gap-2.5 py-1">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-2">
-                <Skeleton className="size-6 rounded-full" />
-                <Skeleton className="h-3 flex-1" />
-              </div>
-            ))}
-          </div>
-        ) : revisions.length === 0 ? (
-          <div className="py-2 text-[12.5px] text-muted-foreground">
-            <Trans>No revisions recorded yet.</Trans>
-          </div>
-        ) : (
-          revisions.map((rev) => {
-            // Author is secondary and only shown when resolvable — avoids a
-            // bare "—" placeholder on snapshots with no recorded user.
-            const author = rev.userId ? authorById(rev.userId) : null;
-            return (
-              <div
-                key={rev.id}
-                className="flex items-center gap-2 border-b border-border pb-2 last:border-b-0 last:pb-0"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="text-[12.5px]">{relativeTime(rev.createdAt) || t`Snapshot`}</div>
-                  {author && (
-                    <div className="text-[10.5px] text-muted-foreground">{author.name}</div>
+      {loading ? (
+        <div className="flex flex-col gap-2.5 p-3.5 py-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Skeleton className="size-6 rounded-full" />
+              <Skeleton className="h-3 flex-1" />
+            </div>
+          ))}
+        </div>
+      ) : revisions.length === 0 ? (
+        <div className="p-3.5 py-4 text-[12.5px] text-muted-foreground">
+          <Trans>No revisions recorded yet.</Trans>
+        </div>
+      ) : (
+        <ScrollArea viewportClassName="max-h-[320px]">
+          <div className="flex flex-col gap-2 p-3.5">
+            {revisions.map((rev) => {
+              // Author is secondary and only shown when resolvable — avoids a
+              // bare "—" placeholder on snapshots with no recorded user.
+              const author = rev.userId ? authorById(rev.userId) : null;
+              const isOpen = expanded === rev.id;
+              const diff = isOpen ? diffFor(rev) : [];
+              return (
+                <div key={rev.id} className="border-b border-border pb-2 last:border-b-0 last:pb-0">
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[12.5px]">{relativeTime(rev.createdAt) || t`Snapshot`}</div>
+                      {author && (
+                        <div className="text-[10.5px] text-muted-foreground">{author.name}</div>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={I.RotateCcw}
+                      disabled={reverting === rev.id}
+                      onClick={() => setExpanded(isOpen ? null : rev.id)}
+                    >
+                      <Trans>Revert</Trans>
+                    </Button>
+                  </div>
+                  {isOpen && (
+                    <div className="mt-2 rounded-lg border border-border bg-muted/40 p-2.5 text-[11.5px]">
+                      {diff.length === 0 ? (
+                        <div className="text-muted-foreground"><Trans>Same as the current values — nothing to revert.</Trans></div>
+                      ) : (
+                        <>
+                          <div className="mb-1.5 text-muted-foreground"><Trans>Reverting changes these fields:</Trans></div>
+                          <div className="flex flex-col gap-1">
+                            {diff.slice(0, 6).map((d) => (
+                              <div key={d.k} className="flex min-w-0 items-baseline gap-1.5">
+                                <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground">{d.k}</span>
+                                <span className="min-w-0 truncate line-through opacity-60">{fmtRevVal(d.from)}</span>
+                                <span className="shrink-0 text-muted-foreground">→</span>
+                                <span className="min-w-0 truncate">{fmtRevVal(d.to)}</span>
+                              </div>
+                            ))}
+                            {diff.length > 6 && (
+                              <span className="text-muted-foreground">+{diff.length - 6}</span>
+                            )}
+                          </div>
+                        </>
+                      )}
+                      <div className="mt-2 flex justify-end gap-1.5">
+                        <Button variant="ghost" size="sm" onClick={() => setExpanded(null)}>
+                          <Trans>Cancel</Trans>
+                        </Button>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          icon={I.RotateCcw}
+                          disabled={reverting === rev.id || diff.length === 0}
+                          onClick={() => void revert(rev)}
+                        >
+                          {reverting === rev.id ? <Trans>Reverting…</Trans> : <Trans>Revert</Trans>}
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon={I.RotateCcw}
-                  disabled={reverting === rev.id}
-                  onClick={() => void revert(rev)}
-                >
-                  {reverting === rev.id ? <Trans>Reverting…</Trans> : <Trans>Revert</Trans>}
-                </Button>
-              </div>
-            );
-          })
-        )}
-      </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+      )}
     </Card>
   );
 }

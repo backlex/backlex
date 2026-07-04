@@ -26,6 +26,10 @@ export interface AppSettings {
    *  collection slug. Admin-UI-only convenience state — never read by the
    *  query engine. Empty object = fall back to the deterministic auto-layout. */
   erdLayout: Record<string, { x: number; y: number }>;
+  /** Per-collection list-view columns, keyed by collection slug → ordered field
+   *  names shown as table columns. Admin-UI-only (rendering); the query engine
+   *  never reads it. Empty / missing slug = the curated default columns. */
+  listColumns: Record<string, string[]>;
   /** Automatic schema-snapshot cadence (#9). `off` disables it; `daily`/`weekly`
    *  make the cron tick capture a `kind:"scheduled"` schema snapshot when due. */
   schemaSnapshotSchedule: "off" | "daily" | "weekly";
@@ -39,6 +43,7 @@ export const APP_SETTINGS_DEFAULTS: AppSettings = {
   i18nDefaultLocale: "en",
   timezone: DEFAULT_TIMEZONE,
   erdLayout: {},
+  listColumns: {},
   schemaSnapshotSchedule: "off",
   schemaSnapshotKeepLast: 7,
 };
@@ -59,6 +64,12 @@ const isErdLayout = (
       typeof (p as { x?: unknown }).x === "number" &&
       typeof (p as { y?: unknown }).y === "number",
   );
+
+const isListColumns = (v: unknown): v is Record<string, string[]> =>
+  !!v &&
+  typeof v === "object" &&
+  !Array.isArray(v) &&
+  Object.values(v as Record<string, unknown>).every(isStringArray);
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.appSettings : sqlite.schema.appSettings;
@@ -87,6 +98,8 @@ export const loadAppSettings = async (
         out.timezone = r.value;
       else if (r.key === "erdLayout" && isErdLayout(r.value))
         out.erdLayout = r.value;
+      else if (r.key === "listColumns" && isListColumns(r.value))
+        out.listColumns = r.value;
       else if (
         r.key === "schemaSnapshotSchedule" &&
         (r.value === "off" || r.value === "daily" || r.value === "weekly")

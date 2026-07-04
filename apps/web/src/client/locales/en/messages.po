@@ -2269,6 +2269,10 @@ msgstr "Column:"
 msgid "column: <0>{0}</0>"
 msgstr "column: <0>{0}</0>"
 
+#: src/client/admin/list-columns.tsx
+msgid "Columns"
+msgstr "Columns"
+
 #: src/client/admin/pages/ask-ai.tsx
 #~ msgid "Coming soon"
 #~ msgstr "Coming soon"
@@ -3734,6 +3738,10 @@ msgstr "Embed URL — copy it now"
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Empty"
 msgstr "Empty"
+
+#: src/client/admin/list-columns.tsx
+msgid "Empty = the default columns. Formatting comes from each field's Interface tab."
+msgstr "Empty = the default columns. Formatting comes from each field's Interface tab."
 
 #: src/client/admin/collections-index.tsx
 msgid "Empty or template"
@@ -5459,6 +5467,10 @@ msgstr "List"
 msgid "list & sort"
 msgstr "list & sort"
 
+#: src/client/admin/list-columns.tsx
+msgid "List columns"
+msgstr "List columns"
+
 #: src/client/admin/parity/revisions.tsx
 #: src/client/admin/ui.tsx
 msgid "live"
@@ -6649,6 +6661,7 @@ msgstr "No two rows can hold the same value (case-sensitive)."
 msgid "No types."
 msgstr "No types."
 
+#: src/client/admin/list-columns.tsx
 #: src/client/admin/pages/schema-graph.tsx
 msgid "No user fields yet."
 msgstr "No user fields yet."
@@ -8205,6 +8218,7 @@ msgstr "Requires a signed URL or auth cookie."
 msgid "Resend verification email"
 msgstr "Resend verification email"
 
+#: src/client/admin/list-columns.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/storage.tsx
 msgid "Reset"

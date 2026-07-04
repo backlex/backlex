@@ -44,6 +44,7 @@ import { ConfirmDialog, ItemSheet } from "./sheet";
 import { BulkEditDialog } from "./bulk-edit";
 import { ItemEditorPage } from "./item-editor";
 import { CalendarView, GalleryGrid, ItemsViewToggle, KanbanBoard, type ItemsViewMode } from "./item-views";
+import { ColumnPicker } from "./list-columns";
 import { EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
 import { AddFieldDialog } from "./add-field";
 import { loadAuthors } from "./authors-cache";
@@ -1069,6 +1070,12 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                           setMode={(m) => setView(m)}
                           hasStatus={!!resolveStatusField(schemaState as unknown as { fields?: Array<Record<string, unknown>> } | null)}
                         />
+                        {viewMode === "table" && schemaState.slug && (
+                          <>
+                            <div className="flex-1" />
+                            <ColumnPicker slug={schemaState.slug} fields={schemaState.fields as never} />
+                          </>
+                        )}
                       </div>
                       <FilterDSLPreview filters={filters} sort={sort} />
                       {viewMode === "table" && (

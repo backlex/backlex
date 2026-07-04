@@ -72,6 +72,10 @@ const SettingsInput = z
         message: "Too many collections in listColumns",
       })
       .optional(),
+    /** Ordered group-header names for the Collections page + sidebar tree.
+     *  Names not in this list append alphabetically; ungrouped renders last.
+     *  Usually written by `POST /api/collections/layout`, not this route. */
+    collectionGroups: z.array(z.string().min(1).max(60)).max(200).optional(),
     /** Automatic schema-snapshot cadence + retention (#9). */
     schemaSnapshotSchedule: z.enum(["off", "daily", "weekly"]).optional(),
     schemaSnapshotKeepLast: z.number().int().min(1).max(50).optional(),

@@ -682,12 +682,12 @@ function StorageSkeletonImpl() {
   );
 }
 
-/** Collections index — header (up to 4 actions), a full-width search bar,
- *  then a grid of collection cards. */
+/** Collections index — header (up to 5 actions: archived toggle, edit layout,
+ *  schema, API docs, new), a full-width search bar, then a grid of cards. */
 function CollectionsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
-      <HeaderSkeleton actions={4} />
+      <HeaderSkeleton actions={5} />
       <Skeleton className="h-9 w-full" />
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
         {Array.from({ length: 6 }).map((_, i) => (

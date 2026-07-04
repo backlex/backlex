@@ -66,7 +66,10 @@ export interface CollectionListItem {
   writes24h: number;
   lastWrite: string;
   singleton: boolean;
-  group: string;
+  /** Admin grouping section header. Null = ungrouped (rendered last). */
+  group: string | null;
+  /** Manual position within the group. Null sorts after ordered rows. */
+  sortOrder?: number | null;
 }
 
 // Nav display labels are NOT stored here: `config.ts` has no JSX, so the

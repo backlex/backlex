@@ -27,8 +27,10 @@ import { inspectTable, RESERVED_NAMES } from "../services/adopt";
 import { cascadeSlugRename } from "../services/collection-rename";
 import {
   getCachedCollections,
+  getCachedGroupOrder,
   invalidateTenantCollections,
   setCachedCollections,
+  setCachedGroupOrder,
 } from "../services/collections-cache";
 import { invalidateTenantPermissions } from "../services/permissions-cache";
 import { ifNoneMatch, weakETag } from "../lib/etag";
@@ -262,6 +264,12 @@ const CollectionInput = z.object({
     .regex(/^[-+]?[a-z_][a-z0-9_]*(,[-+]?[a-z_][a-z0-9_]*)*$/)
     .nullable()
     .optional(),
+  /** Admin grouping: section header on the Collections page + sidebar tree.
+   *  Null = ungrouped (rendered last). Header order lives in the
+   *  `collectionGroups` app_settings key, written by `POST /layout`. */
+  group: z.string().min(1).max(60).nullable().optional(),
+  /** Manual position within the group. Null sorts after ordered rows. */
+  sortOrder: z.number().int().min(0).max(100_000).nullable().optional(),
   /** Physical table name. Optional for managed creates (defaults to
    *  `derivePhysicalTable(tenantId, slug)`); required when `adopted=true`.
    *  Custom names are allowed for managed collections too — useful when a
@@ -299,8 +307,51 @@ const CollectionInput = z.object({
   ownerIdColumn: z.string().min(1).max(120).nullable().optional(),
 });
 
+/** Full-layout write for the Collections page "Edit layout" mode: every
+ *  collection's `{group, sortOrder}` plus the ordered group-header list, in
+ *  one request with a single cache invalidation (per-row PATCH would also
+ *  re-run DDL via `applyCollection` N times). */
+const LayoutInput = z.object({
+  groups: z.array(z.string().min(1).max(60)).max(200),
+  items: z
+    .array(
+      z.object({
+        slug: z.string().min(1),
+        group: z.string().min(1).max(60).nullable(),
+        sortOrder: z.number().int().min(0).max(100_000).nullable(),
+      }),
+    )
+    .max(500),
+});
+
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
+
+const settingsTableFor = (dialect: "pg" | "sqlite") =>
+  dialect === "pg" ? pg.schema.appSettings : sqlite.schema.appSettings;
+
+/** Ordered group-header names for the Collections page + sidebar tree —
+ *  the tenant's `collectionGroups` app_settings row, behind the same
+ *  per-isolate cache/invalidation as the collection rows themselves. */
+const loadGroupOrder = async (
+  db: unknown,
+  dialect: "pg" | "sqlite",
+  tenantId: string,
+): Promise<string[]> => {
+  const cached = getCachedGroupOrder(tenantId);
+  if (cached) return cached;
+  const st = settingsTableFor(dialect);
+  const rows = (await (db as any)
+    .select({ value: st.value })
+    .from(st)
+    .where(and(eq(st.tenantId, tenantId), eq(st.key, "collectionGroups")))
+    .limit(1)) as { value: unknown }[];
+  const v = rows[0]?.value;
+  const groups =
+    Array.isArray(v) && v.every((x) => typeof x === "string") ? v : [];
+  setCachedGroupOrder(tenantId, groups);
+  return groups;
+};
 
 /** Pull the active tenant from the request, throwing if it isn't set.
  *  Collections are workspace-scoped — every route here needs one. */
@@ -362,17 +413,26 @@ export const collectionsRoutes = new Hono<AppBindings>()
         );
       setCachedCollections({ tenantId, includeArchived }, rows!);
     }
+    const groups = await loadGroupOrder(db, dialect, tenantId);
     // Cheap revalidation on top of the per-isolate cache: a warm client that
     // already has the current schema gets an empty 304 instead of the full
-    // (often large) collection-list payload.
+    // (often large) collection-list payload. Layout state is digested by
+    // VALUE, not via updatedAt: the header order changes no collection row,
+    // and two rapid layout writes can land in the same millisecond — either
+    // way an updatedAt-only digest would hand a stale 304 to the client.
+    const layoutDigest = (rows as { group?: unknown; sortOrder?: unknown }[])
+      .map((r) => `${String(r.group ?? "")}.${String(r.sortOrder ?? "")}`)
+      .join(",");
     const r304 = schemaEtag304(c, [
       "collections",
       tenantId,
       includeArchived ? 1 : 0,
       schemaDigest(rows!),
+      layoutDigest,
+      groups.join("|"),
     ]);
     if (r304) return r304;
-    return c.json({ data: rows });
+    return c.json({ data: rows, meta: { groups } });
   })
   .get("/:slug", requireUser, async (c) => {
     const { db, dialect } = c.get("ctx");
@@ -701,6 +761,8 @@ export const collectionsRoutes = new Hono<AppBindings>()
       vectorizeModel: body.vectorizeModel ?? null,
       fts: body.fts,
       defaultSort: body.defaultSort ?? null,
+      group: body.group ?? null,
+      sortOrder: body.sortOrder ?? null,
       adopted: body.adopted,
       pkColumn,
       pkType,
@@ -748,6 +810,8 @@ export const collectionsRoutes = new Hono<AppBindings>()
       vectorizeModel: body.vectorizeModel ?? null,
       fts: body.fts,
       defaultSort: body.defaultSort ?? null,
+      group: body.group ?? null,
+      sortOrder: body.sortOrder ?? null,
       adopted: body.adopted,
       pkColumn,
       pkType,
@@ -765,6 +829,61 @@ export const collectionsRoutes = new Hono<AppBindings>()
       response: { data: created },
     });
     return c.json({ data: created }, 201);
+  })
+  .post("/layout", ...DDL_GATE, async (c) => {
+    const body = LayoutInput.parse(await c.req.json());
+    const { db, dialect } = c.get("ctx");
+    const tenantId = requireTenant(c);
+    const t = tableFor(dialect);
+    const existing = (await (db as any)
+      .select({ slug: t.slug, group: t.group, sortOrder: t.sortOrder })
+      .from(t)
+      .where(eq(t.tenantId, tenantId))) as {
+      slug: string;
+      group: string | null;
+      sortOrder: number | null;
+    }[];
+    const bySlug = new Map(existing.map((r) => [r.slug, r]));
+    let changed = 0;
+    for (const it of body.items) {
+      const cur = bySlug.get(it.slug);
+      // Unknown slugs are skipped, not 404s: the client computes the layout
+      // from a snapshot that may race a concurrent delete/rename.
+      if (!cur) continue;
+      if (cur.group === it.group && cur.sortOrder === it.sortOrder) continue;
+      await (db as any)
+        .update(t)
+        // updatedAt bump = ETag digest bust (schemaDigest is id:updatedAt).
+        .set({ group: it.group, sortOrder: it.sortOrder, updatedAt: new Date() })
+        .where(and(eq(t.tenantId, tenantId), eq(t.slug, it.slug)));
+      changed++;
+    }
+    // Group-header order → app_settings, via the same atomic upsert the
+    // settings route uses (check-then-insert raced under concurrent writes).
+    const st = settingsTableFor(dialect);
+    const settingsUpdatedAt = dialect === "pg" ? new Date() : Date.now();
+    await (db as any)
+      .insert(st)
+      .values({
+        id: crypto.randomUUID(),
+        tenantId,
+        key: "collectionGroups",
+        value: body.groups,
+      })
+      .onConflictDoUpdate({
+        target: [st.tenantId, st.key],
+        set: { value: body.groups, updatedAt: settingsUpdatedAt },
+      });
+    invalidateTenantCollections(tenantId);
+    const response = { ok: true, changed };
+    await logActivity(c, {
+      action: "update",
+      collection: "system_collections",
+      itemId: "__layout__",
+      payload: { groups: body.groups.length, items: body.items.length },
+      response,
+    });
+    return c.json(response);
   })
   .patch("/:slug", ...DDL_GATE, async (c) => {
     const slug = c.req.param("slug");
@@ -830,6 +949,10 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ...(body.fts !== undefined ? { fts: body.fts } : {}),
       ...(body.defaultSort !== undefined
         ? { defaultSort: body.defaultSort ?? null }
+        : {}),
+      ...(body.group !== undefined ? { group: body.group ?? null } : {}),
+      ...(body.sortOrder !== undefined
+        ? { sortOrder: body.sortOrder ?? null }
         : {}),
       updatedAt: new Date(),
     };

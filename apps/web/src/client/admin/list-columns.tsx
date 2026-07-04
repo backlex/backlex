@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverScrollBody, PopoverTrigger } from "@bac
 import { Button, Checkbox } from "./ui";
 import { I } from "./icons";
 import { accountApi } from "./api";
-import { queryKeys, useMyListColumns, useSettings } from "./queries";
+import { queryKeys, useCollections, useMyListColumns, useSettings } from "./queries";
 
 type ColumnsMap = Record<string, string[]>;
 
@@ -60,6 +60,8 @@ interface SchemaField {
   label?: string;
   system?: boolean;
   type?: string;
+  /** Relation target collection slug. */
+  to?: string;
   translations?: Record<string, string>;
 }
 
@@ -75,9 +77,32 @@ export function ColumnPicker({
   const { columns, setColumns } = useListColumns(slug);
   // Offer user-defined fields (system columns like id/created_at stay implicit).
   const pickable = fields.filter((f) => !f.system);
+  // Relation fields expand to the target collection's fields as dot-notation
+  // columns (`author.first_name`) — resolved from the cached collections list.
+  const { data: colsData } = useCollections();
+  const allCollections = colsData?.data;
+  const [expandedRel, setExpandedRel] = useState<Record<string, boolean>>({});
+  const targetFields = (f: SchemaField): SchemaField[] =>
+    f.type === "relation" && f.to
+      ? (((allCollections?.find((c) => c.slug === f.to)?.fields ?? []) as SchemaField[]).filter((tf) => !tf.system))
+      : [];
+  /** Resolve a saved column name — plain field or `head.sub` — to a display
+   *  descriptor for the selected (draggable) list. */
+  const resolveName = (n: string): SchemaField | null => {
+    const direct = pickable.find((f) => f.name === n);
+    if (direct) return direct;
+    if (!n.includes(".")) return null;
+    const [head, sub] = n.split(".");
+    const rel = pickable.find((f) => f.name === head && f.type === "relation");
+    const tf = rel ? targetFields(rel).find((x) => x.name === sub) : undefined;
+    if (!rel || !tf) return null;
+    // Drop the target field's own translations so the composed
+    // "relation › field" label isn't overridden by them in fieldLabel.
+    return { ...tf, translations: undefined, name: n, label: `${fieldLabel(rel, i18n.locale)} › ${fieldLabel(tf, i18n.locale)}` };
+  };
   // Split into the saved (ordered, draggable) columns and the rest.
   const selected = columns
-    .map((n) => pickable.find((f) => f.name === n))
+    .map((n) => resolveName(n))
     .filter(Boolean) as SchemaField[];
   const unselected = pickable.filter((f) => !columns.includes(f.name));
 
@@ -181,13 +206,43 @@ export function ColumnPicker({
               );
             })}
             {selected.length > 0 && unselected.length > 0 && <div className="mx-2 my-1 border-t border-border" />}
-            {unselected.map((f) => (
-              <label key={f.name} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-foreground hover:bg-accent">
-                <Checkbox checked={false} onChange={() => toggle(f.name)} />
-                <span className="min-w-0 flex-1 truncate">{fieldLabel(f, i18n.locale)}</span>
-                {f.type && <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground">{f.type}</span>}
-              </label>
-            ))}
+            {unselected.map((f) => {
+              const subs = targetFields(f);
+              const isOpen = !!expandedRel[f.name];
+              return (
+                <div key={f.name} className="flex flex-col">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-foreground hover:bg-accent">
+                    <Checkbox checked={false} onChange={() => toggle(f.name)} />
+                    <span className="min-w-0 flex-1 truncate">{fieldLabel(f, i18n.locale)}</span>
+                    {f.type && <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground">{f.type}</span>}
+                    {subs.length > 0 && (
+                      <button
+                        type="button"
+                        className="shrink-0 cursor-pointer rounded-sm p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                        onClick={(e) => {
+                          // preventDefault keeps the wrapping label from
+                          // activating the checkbox.
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setExpandedRel((m) => ({ ...m, [f.name]: !isOpen }));
+                        }}
+                      >
+                        {isOpen ? <I.ChevronDown size={13} /> : <I.ChevronRight size={13} />}
+                      </button>
+                    )}
+                  </label>
+                  {isOpen && subs
+                    .filter((tf) => !columns.includes(`${f.name}.${tf.name}`))
+                    .map((tf) => (
+                      <label key={tf.name} className="ml-6 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-foreground hover:bg-accent">
+                        <Checkbox checked={false} onChange={() => toggle(`${f.name}.${tf.name}`)} />
+                        <span className="min-w-0 flex-1 truncate">{fieldLabel(tf, i18n.locale)}</span>
+                        {tf.type && <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground">{tf.type}</span>}
+                      </label>
+                    ))}
+                </div>
+              );
+            })}
           </div>
         </PopoverScrollBody>
         <div className="border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground">

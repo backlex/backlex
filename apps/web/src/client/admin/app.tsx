@@ -46,7 +46,7 @@ import { ConfirmDialog, ItemSheet } from "./sheet";
 import { BulkEditDialog } from "./bulk-edit";
 import { ItemEditorPage } from "./item-editor";
 import { CalendarView, GalleryGrid, ItemsViewToggle, KanbanBoard, type ItemsViewMode } from "./item-views";
-import { ColumnPicker } from "./list-columns";
+import { ColumnPicker, useListColumns } from "./list-columns";
 import { EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
 import { AddFieldDialog } from "./add-field";
 import { loadAuthors } from "./authors-cache";
@@ -379,6 +379,26 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     return () => clearTimeout(t);
   }, [search, debouncedSearch]);
 
+  // Dot-notation list columns (`author.first_name`) need their relation head
+  // inlined by the server — collect the heads that are real relation fields
+  // so the list request carries `expand=`.
+  const { columns: savedListCols } = useListColumns(activeCollection ?? "");
+  const expandHeads = useMemo(() => {
+    const rels = new Set(
+      (schemaState.fields ?? [])
+        .filter((f) => (f as { type?: string }).type === "relation")
+        .map((f) => f.name),
+    );
+    return [
+      ...new Set(
+        savedListCols
+          .filter((c) => c.includes("."))
+          .map((c) => c.split(".")[0] as string)
+          .filter((h) => rels.has(h)),
+      ),
+    ].sort();
+  }, [savedListCols, schemaState.fields]);
+
   // Items list via React Query. The params memo bakes the resolved status-field
   // name into the `filter` string, so the query key (and refetch) changes
   // exactly when the result set should — without keying on the whole schema.
@@ -390,8 +410,9 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
         filters,
         statusTab,
         statusFieldName: kanbanStatusField?.name ?? null,
+        expandHeads,
       }),
-    [sort, debouncedSearch, filters, statusTab, kanbanStatusField],
+    [sort, debouncedSearch, filters, statusTab, kanbanStatusField, expandHeads],
   );
   const itemsQuery = useItems(activeCollection, itemsParams);
   // Reactive list: subscribe to the collection's realtime feed and refresh on

@@ -14,6 +14,9 @@ export interface ItemsQueryParams {
   sort: string;
   q?: string;
   filter?: string;
+  /** Comma-joined relation heads to inline (`expand=author,category`) —
+   *  driven by dot-notation list columns like `author.first_name`. */
+  expand?: string;
 }
 
 /**
@@ -28,9 +31,12 @@ export function buildItemsParams(input: {
   filters: FilterCondition[];
   statusTab: string;
   statusFieldName: string | null;
+  /** Relation heads needed by dot-notation list columns (deduped, sorted). */
+  expandHeads?: string[];
 }): ItemsQueryParams {
-  const { sort, q, filters, statusTab, statusFieldName } = input;
+  const { sort, q, filters, statusTab, statusFieldName, expandHeads } = input;
   const params: ItemsQueryParams = { limit: 50, sort: sort || "-updated_at" };
+  if (expandHeads?.length) params.expand = expandHeads.join(",");
   if (q.trim()) params.q = q.trim();
   // Each chip is its own `$and` clause so duplicate field+op pairs survive.
   const clauses: Record<string, Record<string, unknown>>[] = filters.map((f) => ({

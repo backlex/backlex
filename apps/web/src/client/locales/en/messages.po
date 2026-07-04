@@ -8269,6 +8269,10 @@ msgid "Reverted to earlier revision."
 msgstr "Reverted to earlier revision."
 
 #: src/client/admin/item-editor.tsx
+msgid "Reverting changes these fields:"
+msgstr "Reverting changes these fields:"
+
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/parity/revisions.tsx
 msgid "Reverting…"
 msgstr "Reverting…"
@@ -8530,6 +8534,10 @@ msgstr "runs daily at 09:00 UTC"
 #: src/client/admin/pages/settings.tsx
 msgid "Runtime"
 msgstr "Runtime"
+
+#: src/client/admin/item-editor.tsx
+msgid "Same as the current values — nothing to revert."
+msgstr "Same as the current values — nothing to revert."
 
 #: src/client/admin/parity/insights.tsx
 msgid "Same DSL as roles & permissions. Operators: <0>_eq</0>, <1>_in</1>, <2>_gte</2>, … Variables: <3>$user.id</3>, <4>$now</4>, …"

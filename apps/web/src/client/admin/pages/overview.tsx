@@ -316,20 +316,24 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               <div className="flex-1" />
               <Button variant="ghost" size="sm" onClick={() => setActiveNav("collections")} iconRight={I.ChevronRight}><Trans>Manage</Trans></Button>
             </div>
-            <Table className={ADMIN_TABLE_CLS}>
-              <TableHeader><TableRow><TableHead><Trans>Slug</Trans></TableHead><TableHead className="w-[80px] text-right"><Trans>Rows</Trans></TableHead><TableHead className="w-[90px] text-right"><Trans>Size</Trans></TableHead><TableHead className="w-[110px] text-right"><Trans>Writes (1h)</Trans></TableHead><TableHead className="w-[100px]"><Trans>Last write</Trans></TableHead></TableRow></TableHeader>
-              <TableBody>
-                {collections.map((c) => (
-                  <TableRow key={c.slug} className="cursor-pointer" onClick={() => setActiveNav("collections")}>
-                    <TableCell><span className="font-mono text-[12.5px]">c_{c.slug}</span></TableCell>
-                    <TableCell className="text-right tabular-nums">{c.rows}</TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{c.size}</TableCell>
-                    <TableCell className="text-right tabular-nums">{c.writes}</TableCell>
-                    <TableCell className="font-mono text-[11.5px] text-muted-foreground">{c.last}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {/* Every collection renders here — cap the card and scroll, with
+                the header row pinned while the body scrolls under it. */}
+            <ScrollArea viewportClassName="max-h-[420px]">
+              <Table className={`${ADMIN_TABLE_CLS} [&_th]:sticky [&_th]:top-0 [&_th]:z-[1] [&_th]:bg-card`}>
+                <TableHeader><TableRow><TableHead><Trans>Slug</Trans></TableHead><TableHead className="w-[80px] text-right"><Trans>Rows</Trans></TableHead><TableHead className="w-[90px] text-right"><Trans>Size</Trans></TableHead><TableHead className="w-[110px] text-right"><Trans>Writes (1h)</Trans></TableHead><TableHead className="w-[100px]"><Trans>Last write</Trans></TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {collections.map((c) => (
+                    <TableRow key={c.slug} className="cursor-pointer" onClick={() => setActiveNav("collections")}>
+                      <TableCell><span className="font-mono text-[12.5px]">c_{c.slug}</span></TableCell>
+                      <TableCell className="text-right tabular-nums">{c.rows}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{c.size}</TableCell>
+                      <TableCell className="text-right tabular-nums">{c.writes}</TableCell>
+                      <TableCell className="font-mono text-[11.5px] text-muted-foreground">{c.last}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
           </Card>
 
           <Card className="gap-0 py-0">

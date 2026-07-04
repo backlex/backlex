@@ -17,6 +17,7 @@ import { i18n } from "@lingui/core";
 import { fieldLabel, formatFieldValue } from "./format-value";
 import { useListColumns } from "./list-columns";
 import { useRelationLabels } from "./relation-labels";
+import { shortId } from "./row-label";
 import { useCollections } from "./queries";
 
 const ADMIN_TABLE_CLS =
@@ -760,10 +761,6 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
     dynFields.filter((f) => f.type === "relation" && f.to && !f.dot),
     rows as Array<Record<string, unknown>>,
   );
-  const shortId = (v: unknown) => {
-    const s = String(v);
-    return s.length > 10 ? s.slice(0, 8) + "…" : s;
-  };
   // Sticky classes for the identity slot (title column, or the first data
   // column when the collection has no identity).
   const IDENTITY_TH = "bg-card sm:sticky sm:left-[37px] sm:z-[2]";

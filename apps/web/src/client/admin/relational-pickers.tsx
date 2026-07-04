@@ -33,11 +33,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@backlex/ui/components/dialog";
-import { renderTemplate } from "@backlex/core";
 import { api } from "@/lib/api";
 import { itemsApi } from "./api";
 import { useCollections } from "./queries";
 import { expandParam } from "./display-template";
+import { makeLabelFor, type LabelFn } from "./row-label";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared bits
@@ -50,14 +50,6 @@ interface StorageFile {
   uploadedAt: string;
 }
 
-const LABEL_FIELDS = ["title", "name", "label", "slug", "subject", "email", "username"];
-export function pickRelationLabel(row: Record<string, unknown>): string | null {
-  for (const k of LABEL_FIELDS) {
-    const v = row[k];
-    if (typeof v === "string" && v.trim()) return v;
-  }
-  return null;
-}
 
 /** Resolve a target collection's display config (mustache template + fields)
  *  from the cached collections list so pickers can render rich row labels. */
@@ -70,19 +62,6 @@ function useTargetMeta(target: string) {
       fields: col?.fields ?? [],
     };
   }, [data, target]);
-}
-
-type LabelFn = (row: Record<string, unknown>) => string | null;
-
-/** Build a row-labeller: prefer the collection's display template (rendered
- *  against the — optionally expanded — row), falling back to the heuristic
- *  field scan when there's no template or it renders empty. */
-export function makeLabelFor(displayTemplate: string | null): LabelFn {
-  if (!displayTemplate) return pickRelationLabel;
-  return (row) => {
-    const rendered = renderTemplate(displayTemplate, row).trim();
-    return rendered || pickRelationLabel(row);
-  };
 }
 
 function fmtSize(n: number): string {

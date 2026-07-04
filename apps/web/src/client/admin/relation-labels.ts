@@ -6,7 +6,7 @@
 import { useQueries } from "@tanstack/react-query";
 import { itemsApi } from "./api";
 import { useCollections } from "./queries";
-import { makeLabelFor } from "./relational-pickers";
+import { makeLabelFor } from "./row-label";
 
 export interface RelationColumn {
   name: string;

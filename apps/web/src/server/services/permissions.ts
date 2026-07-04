@@ -378,6 +378,47 @@ export const resolvePermission = async (
   return remember({ allowed: true, isAdmin: false, whereSql, conditions, fields });
 };
 
+/**
+ * Bulk visibility check: which collections may this subject `read` at all?
+ * Backs the permission-filtered `GET /api/collections` (list + sidebar tree +
+ * palette + CLI/MCP schema reads) — presence of ANY read grant makes a
+ * collection visible; row-level conditions still apply on the items reads.
+ *
+ * Returns `"*"` for admins and wildcard grants (see everything), otherwise
+ * the set of collection slugs with at least one read permission row. Roles
+ * ride the L2 cache; the single DISTINCT-ish permissions SELECT per call is
+ * cheap and stays uncached so grants/revokes are felt immediately.
+ */
+export const listReadableCollections = async (
+  ctx: DbCtx,
+  auth: AuthSubject,
+): Promise<"*" | Set<string>> => {
+  const roles = await loadRolesForUser(
+    ctx,
+    auth.userId,
+    auth.tenantId ?? null,
+    auth.apiKeyRoleId ?? null,
+    auth.plane ?? "platform",
+  );
+  if (roles.some((r) => r.admin)) return "*";
+  if (roles.length === 0) return new Set();
+  const t = tablesFor(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select({ collection: t.permissions.collection })
+    .from(t.permissions)
+    .where(
+      and(
+        inArray(
+          t.permissions.roleId,
+          roles.map((r) => r.id),
+        ),
+        eq(t.permissions.action, "read"),
+      ),
+    )) as { collection: string }[];
+  const set = new Set(rows.map((r) => r.collection));
+  return set.has("*") ? "*" : set;
+};
+
 // ---------------------------------------------------------------------------
 // Permission simulator ("tester")
 //

@@ -172,6 +172,32 @@ export const NAV_SETTINGS: NavItem[] = [
   { id: "settings", icon: "Settings" },
 ];
 
+/**
+ * Nav ids whose pages a NON-admin can actually use — everything else is
+ * backed exclusively by admin-gated endpoints (requireAdminMw and friends)
+ * and would render as a wall of 403s. The sidebar and command palette hide
+ * the rest once `/api/me` resolves `isAdmin: false`; hiding is cosmetic —
+ * every endpoint stays gated server-side regardless.
+ *
+ *  - collections / logs: plain `requireUser` reads (collections list is
+ *    additionally permission-filtered server-side)
+ *  - storage / revisions: `requirePermission(…, "read")`-based
+ *  - rest-explorer: static client-side explorer over the user's own access
+ */
+export const NON_ADMIN_NAV_IDS: ReadonlySet<string> = new Set([
+  "collections",
+  "storage",
+  "logs",
+  "revisions",
+  "rest-explorer",
+]);
+
+/** Sidebar/palette visibility for a nav id. `isAdmin` is tri-state: while
+ *  `/api/me` is still loading (`null`/`undefined`) everything stays visible
+ *  so admins don't watch their menu pop in. */
+export const isNavVisible = (id: string, isAdmin: boolean | null | undefined): boolean =>
+  isAdmin !== false || NON_ADMIN_NAV_IDS.has(id);
+
 export const ADAPTER_PROFILES: Record<AdapterId, AdapterProfile> = {
   bun: { db: "sqlite", storage: "fs", realtime: "in-proc + SSE" },
   node: { db: "pg", storage: "fs / s3", realtime: "in-proc + SSE" },

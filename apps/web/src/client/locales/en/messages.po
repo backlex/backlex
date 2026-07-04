@@ -165,12 +165,6 @@ msgstr "(unnamed)"
 msgid "(use the configured default)"
 msgstr "(use the configured default)"
 
-#. placeholder {0}: mcpReadOnly ? "Read-only" : "Read & write"
-#. placeholder {1}: mcpAllowlist ? `${mcpAllowlist.size} tool(s)` : "all tools"
-#: src/client/pages/api-keys.tsx
-#~ msgid "{0} · {1}"
-#~ msgstr "{0} · {1}"
-
 #. placeholder {0}: s.ip
 #. placeholder {1}: s.last
 #: src/client/admin/pages/users.tsx
@@ -351,21 +345,10 @@ msgstr "{0} of {1} columns mapped"
 msgid "{0} of {1} tools allowed. Choose Allow all to remove the allowlist."
 msgstr "{0} of {1} tools allowed. Choose Allow all to remove the allowlist."
 
-#. placeholder {0}: allowlist.size
-#. placeholder {1}: tools?.length ?? 0
-#: src/client/components/mcp-key-modal.tsx
-#~ msgid "{0} of {1} tools allowed. Uncheck all to remove the allowlist."
-#~ msgstr "{0} of {1} tools allowed. Uncheck all to remove the allowlist."
-
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} posts deleted."
 msgstr "{0} posts deleted."
-
-#. placeholder {0}: selected.size
-#: src/client/admin/app.tsx
-#~ msgid "{0} posts published."
-#~ msgstr "{0} posts published."
 
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
@@ -564,14 +547,6 @@ msgstr "{key} → {next}."
 #: src/client/admin/storage.tsx
 msgid "{key} deleted."
 msgstr "{key} deleted."
-
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "{name} ok"
-#~ msgstr "{name} ok"
-
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "{name} ok — {n} rows"
-#~ msgstr "{name} ok — {n} rows"
 
 #: src/client/components/social-buttons.tsx
 msgid "{provider} sign-in"
@@ -1360,11 +1335,6 @@ msgstr "API Keys"
 msgid "app (workspace end-users)"
 msgstr "app (workspace end-users)"
 
-#: src/client/admin/parity/app-users.tsx
-#: src/client/admin/ui.tsx
-#~ msgid "App users"
-#~ msgstr "App users"
-
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "App-layer trigger — backlex has no DB foreign keys, so it's enforced on delete."
@@ -1579,10 +1549,6 @@ msgstr "Auto-add <0>owner_id</0>; the <1>authenticated</1> role can only read/up
 msgid "Auto-add <0>tenant_id</0>; data is isolated per workspace at the app layer — every read/write gets <1>tenant_id = $user.tenant_id</1> injected."
 msgstr "Auto-add <0>tenant_id</0>; data is isolated per workspace at the app layer — every read/write gets <1>tenant_id = $user.tenant_id</1> injected."
 
-#: src/client/admin/collections-index.tsx
-#~ msgid "Auto-add <0>tenant_id</0>; row-level security isolates data per workspace. All read/write rules get <1>tenant_id = $user.tenant_id</1> injected."
-#~ msgstr "Auto-add <0>tenant_id</0>; row-level security isolates data per workspace. All read/write rules get <1>tenant_id = $user.tenant_id</1> injected."
-
 #: src/client/admin/pages/overview.tsx
 msgid "auto-creates c_<slug> table"
 msgstr "auto-creates c_<slug> table"
@@ -1772,10 +1738,6 @@ msgstr "Blank"
 msgid "Block all"
 msgstr "Block all"
 
-#: src/client/pages/api-keys.tsx
-#~ msgid "Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation."
-#~ msgstr "Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation."
-
 #: src/client/admin/pages/ask-ai.tsx
 msgid "blocked"
 msgstr "blocked"
@@ -1823,10 +1785,6 @@ msgstr "Branding saved."
 #: src/client/components/page-header.tsx
 msgid "Breadcrumb"
 msgstr "Breadcrumb"
-
-#: src/client/admin/parity/insights.tsx
-#~ msgid "Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
-#~ msgstr "Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Build plan"
@@ -2096,10 +2054,6 @@ msgstr "Click any cell to set state. Custom opens the rule builder in a dialog."
 msgid "Click any step to edit its configuration. Drag to rearrange. Click <0>+</0> on a step to add the next."
 msgstr "Click any step to edit its configuration. Drag to rearrange. Click <0>+</0> on a step to add the next."
 
-#: src/client/admin/storage.tsx
-#~ msgid "Click anywhere to set the crop pivot for <0>fit=cover</0>."
-#~ msgstr "Click anywhere to set the crop pivot for <0>fit=cover</0>."
-
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Click for full payload"
@@ -2233,12 +2187,6 @@ msgstr "Column \"{0}\" added to c_{1}."
 msgid "Column \"{0}\" added to c_{slug}."
 msgstr "Column \"{0}\" added to c_{slug}."
 
-#. placeholder {0}: dropTarget.name
-#. placeholder {1}: dropTarget.slug
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "Column \"{0}\" dropped from c_{1}."
-#~ msgstr "Column \"{0}\" dropped from c_{1}."
-
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Column \"{name}\" dropped from c_{slug}."
 msgstr "Column \"{name}\" dropped from c_{slug}."
@@ -2272,10 +2220,6 @@ msgstr "column: <0>{0}</0>"
 #: src/client/admin/list-columns.tsx
 msgid "Columns"
 msgstr "Columns"
-
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Coming soon"
-#~ msgstr "Coming soon"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
@@ -2332,10 +2276,6 @@ msgstr "Composite (multi-column) FKs cannot be adopted as a backlex relation"
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Computing diff"
 msgstr "Computing diff"
-
-#: src/client/admin/pages/schema-versions.tsx
-#~ msgid "Computing diff…"
-#~ msgstr "Computing diff…"
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Condition (permission DSL JSON, optional)"
@@ -2394,10 +2334,6 @@ msgstr "Configure this provider (add a Client ID) before enabling it"
 msgid "Configured via <0>AI_GATEWAY_API_KEY</0> on the backlex deployment (or legacy <1>ANTHROPIC_API_KEY</1>)."
 msgstr "Configured via <0>AI_GATEWAY_API_KEY</0> on the backlex deployment (or legacy <1>ANTHROPIC_API_KEY</1>)."
 
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Configured via <0>ANTHROPIC_API_KEY</0> on the backlex deployment."
-#~ msgstr "Configured via <0>ANTHROPIC_API_KEY</0> on the backlex deployment."
-
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/components/confirm-action.tsx
@@ -2428,11 +2364,6 @@ msgstr "Confirm your password to begin"
 #: src/client/admin/pages/integrations.tsx
 msgid "Connect"
 msgstr "Connect"
-
-#. placeholder {0}: dialog ? (LABELS[dialog.kind] ?? dialog.kind) : ""
-#: src/client/admin/pages/integrations.tsx
-#~ msgid "Connect {0}"
-#~ msgstr "Connect {0}"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Connect {name}"
@@ -2623,10 +2554,6 @@ msgstr "Could not post comment."
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not revoke share link."
 msgstr "Could not revoke share link."
-
-#: src/client/admin/pages/schema-versions.tsx
-#~ msgid "Couldn't compute the diff. Close and try again."
-#~ msgstr "Couldn't compute the diff. Close and try again."
 
 #: src/client/admin/account-page.tsx
 msgid "Couldn't copy — select and copy them manually."
@@ -2889,10 +2816,6 @@ msgstr "Custom CA PEM (optional)"
 msgid "Custom date…"
 msgstr "Custom date…"
 
-#: src/client/admin/field-validation-editor.tsx
-#~ msgid "Custom error message (optional)"
-#~ msgstr "Custom error message (optional)"
-
 #: src/client/admin/pages/webhooks.tsx
 msgid "Custom headers"
 msgstr "Custom headers"
@@ -2925,10 +2848,6 @@ msgstr "Customize…"
 #: src/client/admin/parity/database.tsx
 msgid "Daily"
 msgstr "Daily"
-
-#: src/client/admin/parity/database.tsx
-#~ msgid "Daily 03:00 UTC"
-#~ msgstr "Daily 03:00 UTC"
 
 #: src/client/admin/collection-settings.tsx
 msgid "danger zone"
@@ -3007,10 +2926,6 @@ msgstr "Decimal (1,234.5)"
 #: src/client/admin/field-format-editor.tsx
 msgid "Decimal places"
 msgstr "Decimal places"
-
-#: src/client/admin/pages/settings.tsx
-#~ msgid "default"
-#~ msgstr "default"
 
 #: src/client/admin/edit-field.tsx
 msgid "Default (auto)"
@@ -3257,10 +3172,6 @@ msgstr "Descending"
 msgid "Description"
 msgstr "Description"
 
-#: src/client/admin/parity/database.tsx
-#~ msgid "Destination"
-#~ msgstr "Destination"
-
 #: src/client/admin/pages/schema-versions.tsx
 msgid "destructive"
 msgstr "destructive"
@@ -3336,11 +3247,6 @@ msgstr "Discard unsaved changes?"
 #: src/client/admin/pages/integrations.tsx
 msgid "Disconnect"
 msgstr "Disconnect"
-
-#. placeholder {0}: LABELS[it.kind] ?? it.kind
-#: src/client/admin/pages/integrations.tsx
-#~ msgid "Disconnect {0}?"
-#~ msgstr "Disconnect {0}?"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Disconnecting…"
@@ -3475,10 +3381,6 @@ msgstr "Drag to another collection to create a relation"
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to move"
 msgstr "Drag to move"
-
-#: src/client/admin/list-columns.tsx
-msgid "Drag to reorder — the table follows this order."
-msgstr "Drag to reorder — the table follows this order."
 
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to resize"
@@ -3801,10 +3703,6 @@ msgid "End-users of the app built on this workspace sign in here — separate fr
 msgstr "End-users of the app built on this workspace sign in here — separate from the admin login. Configure providers above."
 
 #: src/client/admin/parity/app-users.tsx
-#~ msgid "End-users of the application built on this workspace — a pool separate from the admin/control-plane <0>users</0>. They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
-#~ msgstr "End-users of the application built on this workspace — a pool separate from the admin/control-plane <0>users</0>. They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
-
-#: src/client/admin/parity/app-users.tsx
 msgid "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
 msgstr "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
 
@@ -3986,10 +3884,6 @@ msgstr "Events"
 msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 msgstr "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 
-#: src/client/components/mcp-key-modal.tsx
-#~ msgid "Every MCP tool is callable, subject to permissions. Toggle a tool below to switch to allowlist mode."
-#~ msgstr "Every MCP tool is callable, subject to permissions. Toggle a tool below to switch to allowlist mode."
-
 #: src/client/admin/parity/revisions.tsx
 msgid "Every write is versioned. Inspect, diff, or revert any prior state."
 msgstr "Every write is versioned. Inspect, diff, or revert any prior state."
@@ -4018,17 +3912,9 @@ msgstr "Execute a query to see results here."
 msgid "Existing user"
 msgstr "Existing user"
 
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "expansion"
-#~ msgstr "expansion"
-
 #: src/client/admin/pages/jobs.tsx
 msgid "Expects"
 msgstr "Expects"
-
-#: src/client/admin/pages/jobs.tsx
-#~ msgid "Expects { webhookId, channel, event, body }."
-#~ msgstr "Expects { webhookId, channel, event, body }."
 
 #: src/client/pages/api-keys.tsx
 msgid "expired"
@@ -4126,10 +4012,6 @@ msgstr "Failures (24h)"
 #: src/client/admin/pages/integrations.tsx
 msgid "Fan record events out to chat, alerting, analytics, search, and automation tools. Secrets are encrypted at rest."
 msgstr "Fan record events out to chat, alerting, analytics, search, and automation tools. Secrets are encrypted at rest."
-
-#: src/client/admin/pages/integrations.tsx
-#~ msgid "Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest."
-#~ msgstr "Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "fast · cheap · routine reads"
@@ -4325,10 +4207,6 @@ msgstr "Fix copied to clipboard."
 msgid "Fix the highlighted fields before saving."
 msgstr "Fix the highlighted fields before saving."
 
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "fk"
-#~ msgstr "fk"
-
 #. placeholder {0}: fkColumnConflicts.map((c) => c.column).join(", ")
 #: src/client/admin/adopt-wizard.tsx
 msgid "FK conflict on {0}"
@@ -4362,10 +4240,6 @@ msgstr "Flow resumed."
 #: src/client/admin/ui.tsx
 msgid "Flows"
 msgstr "Flows"
-
-#: src/client/admin/storage.tsx
-#~ msgid "Focal point"
-#~ msgstr "Focal point"
 
 #: src/client/admin/add-field.tsx
 msgid "Fold this field into the collection's full-text-search index (when FTS is enabled)."
@@ -4672,14 +4546,6 @@ msgid "Headline"
 msgstr "Headline"
 
 #: src/client/admin/pages/settings.tsx
-#~ msgid "Headline and tagline shown on the public sign-in screen. Leave a field blank to use the built-in default copy."
-#~ msgstr "Headline and tagline shown on the public sign-in screen. Leave a field blank to use the built-in default copy."
-
-#: src/client/admin/pages/settings.tsx
-#~ msgid "Headline and tagline shown on the public sign-in screen. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default copy."
-#~ msgstr "Headline and tagline shown on the public sign-in screen. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default copy."
-
-#: src/client/admin/pages/settings.tsx
 msgid "Headline, tagline, and the Terms/Privacy links shown on the public sign-in and sign-up screens. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default (or, for the URLs, to show plain text with no link)."
 msgstr "Headline, tagline, and the Terms/Privacy links shown on the public sign-in and sign-up screens. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default (or, for the URLs, to show plain text with no link)."
 
@@ -4761,11 +4627,6 @@ msgstr "I understand this drops columns/tables or changes types and will lose da
 msgid "id"
 msgstr "id"
 
-#. placeholder {0}: (initial as { id?: string })?.id
-#: src/client/admin/sheet.tsx
-#~ msgid "id <0>{0}</0>"
-#~ msgstr "id <0>{0}</0>"
-
 #: src/client/admin/sheet.tsx
 msgid "id <0>{itemId}</0>"
 msgstr "id <0>{itemId}</0>"
@@ -4808,11 +4669,6 @@ msgstr "IdP SSO URL"
 msgid "If {displayEmail} matches an account, a sign-in link is on its way. It expires in 15 minutes."
 msgstr "If {displayEmail} matches an account, a sign-in link is on its way. It expires in 15 minutes."
 
-#. placeholder {0}: email || t`your address`
-#: src/client/pages/magic-link.tsx
-#~ msgid "If <0>{0}</0> matches an account, a sign-in link is on its way. It expires in 15 minutes."
-#~ msgstr "If <0>{0}</0> matches an account, a sign-in link is on its way. It expires in 15 minutes."
-
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/storage.tsx
@@ -4834,12 +4690,6 @@ msgstr "Import schema"
 #: src/client/admin/storage.tsx
 msgid "Import URL"
 msgstr "Import URL"
-
-#. placeholder {0}: r.data.inserted
-#. placeholder {1}: r.data.total
-#: src/client/admin/app.tsx
-#~ msgid "Imported {0} of {1} rows."
-#~ msgstr "Imported {0} of {1} rows."
 
 #. placeholder {0}: r.data.total
 #. placeholder {1}: r.data.inserted
@@ -5533,10 +5383,6 @@ msgstr "live · updated {0}"
 msgid "Live browser for every endpoint under /api. Built from the OpenAPI doc your workspace exposes at /api/openapi.json — including the dynamic /api/items/{slug} routes for your collections."
 msgstr "Live browser for every endpoint under /api. Built from the OpenAPI doc your workspace exposes at /api/openapi.json — including the dynamic /api/items/{slug} routes for your collections."
 
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
-#~ msgstr "Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
-
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Live schema already matches this version."
 msgstr "Live schema already matches this version."
@@ -5562,10 +5408,6 @@ msgstr "Load more"
 msgid "Loading API keys"
 msgstr "Loading API keys"
 
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Loading keys…"
-#~ msgstr "Loading keys…"
-
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Loading MCP tools"
 msgstr "Loading MCP tools"
@@ -5573,15 +5415,6 @@ msgstr "Loading MCP tools"
 #: src/client/pages/api-keys.tsx
 msgid "Loading role MCP defaults"
 msgstr "Loading role MCP defaults"
-
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Loading runs…"
-#~ msgstr "Loading runs…"
-
-#: src/client/admin/pages/ask-ai.tsx
-#: src/client/components/mcp-guards-fields.tsx
-#~ msgid "Loading tool catalog…"
-#~ msgstr "Loading tool catalog…"
 
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
@@ -5670,10 +5503,6 @@ msgstr "Lowercase, digits, <0>_</0> or <1>-</1>. You can rename it later."
 #: src/client/admin/role-editor.tsx
 msgid "lowercase, snake_case"
 msgstr "lowercase, snake_case"
-
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "m2m"
-#~ msgstr "m2m"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Machine-readable spec for every /api endpoint in this workspace — including dynamic /api/items/{slug} entries for your collections. Import into Postman, Insomnia, Swagger UI, or any code-gen tool."
@@ -5798,10 +5627,6 @@ msgstr "MCP endpoint URL"
 #: src/client/pages/api-keys.tsx
 msgid "MCP read-only"
 msgstr "MCP read-only"
-
-#: src/client/pages/api-keys.tsx
-#~ msgid "MCP read-only mode"
-#~ msgstr "MCP read-only mode"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "MCP tool catalog"
@@ -6079,11 +5904,6 @@ msgstr "New {0}"
 #: src/client/admin/item-views.tsx
 msgid "New {0} item"
 msgstr "New {0} item"
-
-#. placeholder {0}: KANBAN_LABELS[c.id] ?? c.label
-#: src/client/admin/item-views.tsx
-#~ msgid "New {0} post"
-#~ msgstr "New {0} post"
 
 #: src/client/admin/item-editor.tsx
 msgid "New {slug}"
@@ -6432,17 +6252,9 @@ msgstr "No files uploaded yet — drop one above to get started."
 msgid "No files yet"
 msgstr "No files yet"
 
-#: src/client/admin/storage.tsx
-#~ msgid "No files. Drop files anywhere on this page or use Upload."
-#~ msgstr "No files. Drop files anywhere on this page or use Upload."
-
 #: src/client/admin/pages/flows.tsx
 msgid "No flow selected"
 msgstr "No flow selected"
-
-#: src/client/admin/pages/flows.tsx
-#~ msgid "No flow selected. Click <0>+ New flow</0> to create your first one."
-#~ msgstr "No flow selected. Click <0>+ New flow</0> to create your first one."
 
 #: src/client/admin/pages/flows.tsx
 msgid "No flows yet — click + New flow."
@@ -6463,10 +6275,6 @@ msgstr "No folders yet. <0>Create one</0>."
 #: src/client/admin/pages/functions.tsx
 msgid "No function selected"
 msgstr "No function selected"
-
-#: src/client/admin/pages/functions.tsx
-#~ msgid "No function selected. Click <0>+ New function</0> to create one."
-#~ msgstr "No function selected. Click <0>+ New function</0> to create one."
 
 #: src/client/admin/pages/jobs.tsx
 msgid "No functions defined yet. Create a function before enqueuing a function job."
@@ -6903,10 +6711,6 @@ msgid "On update"
 msgstr "On update"
 
 #: src/client/pages/api-keys.tsx
-#~ msgid "Once you leave this page, the secret can’t be retrieved — only revoked."
-#~ msgstr "Once you leave this page, the secret can’t be retrieved — only revoked."
-
-#: src/client/pages/api-keys.tsx
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 msgstr "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 
@@ -6969,16 +6773,8 @@ msgid "Open resource"
 msgstr "Open resource"
 
 #: src/client/admin/pages/settings.tsx
-#~ msgid "Open sign-up"
-#~ msgstr "Open sign-up"
-
-#: src/client/admin/pages/settings.tsx
 msgid "Open-source · Apache-2.0 licensed"
 msgstr "Open-source · Apache-2.0 licensed"
-
-#: src/client/admin/pages/settings.tsx
-#~ msgid "Open-source · MIT licensed"
-#~ msgstr "Open-source · MIT licensed"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "OpenAI flagship; comparable to Opus"
@@ -7045,10 +6841,6 @@ msgstr "Orders by status"
 #: src/client/admin/storage.tsx
 msgid "Original"
 msgstr "Original"
-
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Orphan storage files"
-#~ msgstr "Orphan storage files"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Other locales stay empty until filled in the matrix."
@@ -7584,10 +7376,6 @@ msgstr "PNG, JPG or WebP. Shown in the header and on any author display."
 msgid "PNG, JPG, SVG or WebP — square images display best. Replaces any previous upload."
 msgstr "PNG, JPG, SVG or WebP — square images display best. Replaces any previous upload."
 
-#: src/client/admin/pages/settings.tsx
-#~ msgid "PNG, JPG, SVG or WebP. Replaces any previous upload."
-#~ msgstr "PNG, JPG, SVG or WebP. Replaces any previous upload."
-
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Policy"
 msgstr "Policy"
@@ -7609,10 +7397,6 @@ msgstr "Post data events to a Microsoft Teams channel."
 #: src/client/admin/pages/integrations.tsx
 msgid "Post data events to a Slack channel."
 msgstr "Post data events to a Slack channel."
-
-#: src/client/admin/pages/integrations.tsx
-#~ msgid "POST data events to any HTTPS endpoint, optionally HMAC-signed."
-#~ msgstr "POST data events to any HTTPS endpoint, optionally HMAC-signed."
 
 #: src/client/admin/app.tsx
 msgid "Post saved."
@@ -8069,10 +7853,6 @@ msgstr "Refreshed."
 msgid "Refreshing…"
 msgstr "Refreshing…"
 
-#: src/client/components/mcp-key-modal.tsx
-#~ msgid "Refuses every write tool through MCP for this key — agent can read everything its permissions allow but cannot mutate."
-#~ msgstr "Refuses every write tool through MCP for this key — agent can read everything its permissions allow but cannot mutate."
-
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
 msgstr "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
@@ -8348,10 +8128,6 @@ msgstr "Reset your <0>password</0>."
 msgid "Reset your password"
 msgstr "Reset your password"
 
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "Reset zoom"
-#~ msgstr "Reset zoom"
-
 #: src/client/pages/reset-password.tsx
 msgid "Resetting password"
 msgstr "Resetting password"
@@ -8411,11 +8187,6 @@ msgstr "Restore this snapshot"
 msgid "Restored {0} rows across {1} tables."
 msgstr "Restored {0} rows across {1} tables."
 
-#. placeholder {0}: b.id
-#: src/client/admin/parity/database.tsx
-#~ msgid "Restored from {0} (dry-run)."
-#~ msgstr "Restored from {0} (dry-run)."
-
 #: src/client/admin/adopt-wizard.tsx
 msgid "Restricts the authenticated role to its own rows. Pick where ownership lives — a side table, the conventional <0>owner_id</0> column, or an aliased column."
 msgstr "Restricts the authenticated role to its own rows. Pick where ownership lives — a side table, the conventional <0>owner_id</0> column, or an aliased column."
@@ -8451,10 +8222,6 @@ msgstr "resumed"
 #: src/client/admin/parity/database.tsx
 msgid "Retain (auto)"
 msgstr "Retain (auto)"
-
-#: src/client/admin/parity/database.tsx
-#~ msgid "Retention"
-#~ msgstr "Retention"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/jobs.tsx
@@ -8949,11 +8716,6 @@ msgstr "Schedule"
 
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
-#~ msgid "Schedule publish time"
-#~ msgstr "Schedule publish time"
-
-#: src/client/admin/item-editor.tsx
-#: src/client/admin/sheet.tsx
 msgid "Scheduled"
 msgstr "Scheduled"
 
@@ -9106,10 +8868,6 @@ msgstr "Security"
 msgid "Seed a ready-made set of collections — with sample data — for your use case. You can edit or add more anytime."
 msgstr "Seed a ready-made set of collections — with sample data — for your use case. You can edit or add more anytime."
 
-#: src/client/admin/pages/template-onboarding.tsx
-#~ msgid "Seed a ready-made set of collections for your use case. You can edit or add more anytime."
-#~ msgstr "Seed a ready-made set of collections for your use case. You can edit or add more anytime."
-
 #: src/client/admin/adopt-wizard.tsx
 msgid "Select"
 msgstr "Select"
@@ -9248,10 +9006,6 @@ msgstr "Sending…"
 msgid "Sends a one-time sign-in link by email — requires a configured email adapter (set RESEND_API_KEY + EMAIL_FROM)."
 msgstr "Sends a one-time sign-in link by email — requires a configured email adapter (set RESEND_API_KEY + EMAIL_FROM)."
 
-#: src/client/admin/pages/webhooks.tsx
-#~ msgid "Sent as <0>X-Backlex-Signature: sha256=…</0>. Verify on the receiver."
-#~ msgstr "Sent as <0>X-Backlex-Signature: sha256=…</0>. Verify on the receiver."
-
 #: src/client/admin/item-views.tsx
 msgid "September"
 msgstr "September"
@@ -9386,10 +9140,6 @@ msgstr "Sets the admin display language and how dates and numbers are formatted.
 msgid "Sets the attribute map to that IdP's defaults — you can still tweak later."
 msgstr "Sets the attribute map to that IdP's defaults — you can still tweak later."
 
-#: src/client/admin/account-page.tsx
-#~ msgid "Sets the locale used to format dates and numbers across the admin. Choose \"Workspace default\" to follow the workspace language."
-#~ msgstr "Sets the locale used to format dates and numbers across the admin. Choose \"Workspace default\" to follow the workspace language."
-
 #: src/client/pages/sign-up.tsx
 msgid "Setting up passkey…"
 msgstr "Setting up passkey…"
@@ -9408,10 +9158,6 @@ msgstr "Settings → MCP → Add new MCP server → paste the JSON."
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
 msgstr "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
-
-#: src/client/admin/pages/settings.tsx
-#~ msgid "Settings saved."
-#~ msgstr "Settings saved."
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Severity"
@@ -9659,10 +9405,6 @@ msgstr "Signing in…"
 #: src/client/admin/pages/webhooks.tsx
 msgid "Signing secret"
 msgstr "Signing secret"
-
-#: src/client/admin/pages/webhooks.tsx
-#~ msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>{timestamp}.{body}</2> with <3>X-Backlex-Timestamp</3> for replay protection."
-#~ msgstr "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>{timestamp}.{body}</2> with <3>X-Backlex-Timestamp</3> for replay protection."
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>timestamp.body</2> with <3>X-Backlex-Timestamp</3> for replay protection."
@@ -9929,10 +9671,6 @@ msgstr "Stored as a one-way hash — it's never shown again. Leave blank to keep
 #: src/client/admin/item-form.tsx
 msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup, then hit Preview."
 msgstr "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup, then hit Preview."
-
-#: src/client/admin/sheet.tsx
-#~ msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup."
-#~ msgstr "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup."
 
 #: src/client/admin/pages/overview.tsx
 msgid "stored objects"
@@ -10282,10 +10020,6 @@ msgstr "The embed link may have been revoked, or the dashboard was removed."
 msgid "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
 msgstr "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
 
-#: src/client/admin/pages/users.tsx
-#~ msgid "The first user to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
-#~ msgstr "The first user to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
-
 #: src/client/pages/api-keys.tsx
 msgid "The full secret is shown once after creation — copy it somewhere safe."
 msgstr "The full secret is shown once after creation — copy it somewhere safe."
@@ -10574,17 +10308,9 @@ msgstr "Top collections"
 msgid "Top customers by spend"
 msgstr "Top customers by spend"
 
-#: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Top customers last month"
-#~ msgstr "Top customers last month"
-
 #: src/client/admin/pages/users.tsx
 msgid "Total members"
 msgstr "Total members"
-
-#: src/client/admin/pages/users.tsx
-#~ msgid "Total users"
-#~ msgstr "Total users"
 
 #: src/client/admin/pages/traces.tsx
 msgid "Trace"
@@ -11251,10 +10977,6 @@ msgstr "When (filter DSL)"
 msgid "When off, existing translations in the target locale are overwritten."
 msgstr "When off, existing translations in the target locale are overwritten."
 
-#: src/client/admin/pages/settings.tsx
-#~ msgid "When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin."
-#~ msgstr "When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin."
-
 #: src/client/admin/pages/functions.tsx
 msgid "When paused, triggers stop firing and HTTP invokes are rejected."
 msgstr "When paused, triggers stop firing and HTTP invokes are rejected."
@@ -11504,11 +11226,3 @@ msgstr "Your personal profile, preferences, password, sessions, and connected cr
 #: src/client/admin/pages/settings.tsx
 msgid "Your registered devices"
 msgstr "Your registered devices"
-
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "Zoom in"
-#~ msgstr "Zoom in"
-
-#: src/client/admin/pages/schema-graph.tsx
-#~ msgid "Zoom out"
-#~ msgstr "Zoom out"

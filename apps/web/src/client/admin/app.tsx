@@ -1021,7 +1021,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
               <CollectionItemsSkeleton />
             )}
             {activeNav === "collections" && activeCollection && !activeItem && !((collectionLoading && schemaState.slug !== activeCollection) || !itemsLoaded) && <>
-              <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => setActiveCollection(null)}><Trans>All collections</Trans></Button>
+              <Button variant="ghost" size="sm" icon={I.ChevronLeft} className="self-start" onClick={() => setActiveCollection(null)}><Trans>All collections</Trans></Button>
               <PageHeader
                 slug={activeCollection}
                 description={<Trans>Dynamic schema. Each collection becomes a physical <span className="font-mono">c_&lt;slug&gt;</span> table at runtime; drop or alter via this UI.</Trans>}

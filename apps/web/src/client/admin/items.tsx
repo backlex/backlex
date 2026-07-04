@@ -715,7 +715,10 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   // title column would swallow most of the viewport), actions stay pinned
   // right. Sticky cells need an opaque background plus row-state variants,
   // since the row's own hover/selected tint can't show through them.
-  const STICKY_BG = "bg-card group-hover/row:bg-[color-mix(in_oklab,var(--muted)_50%,var(--card))] group-data-[selected=true]/row:bg-selected-surface";
+  // transition-colors matches the row's own hover fade (TableRow has it),
+  // otherwise the pinned cells snap to the hover tint a beat before the rest
+  // of the row finishes fading in.
+  const STICKY_BG = "bg-card transition-colors group-hover/row:bg-[color-mix(in_oklab,var(--muted)_50%,var(--card))] group-data-[selected=true]/row:bg-selected-surface";
   const STICKY_BOX = "sm:sticky sm:z-[1] " + STICKY_BG;
   // Resolve column names to field descriptors. Dot-notation names
   // (`author.first_name`) synthesize one from the relation's target field —

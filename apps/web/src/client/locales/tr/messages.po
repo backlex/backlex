@@ -8142,6 +8142,11 @@ msgstr "Cihazı kaldır"
 msgid "Remove group"
 msgstr "Grubu kaldır"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Remove it from the list"
+msgstr "Listeden çıkar"
+
 #: src/client/admin/storage.tsx
 msgid "Remove tag"
 msgstr "Etiketi kaldır"

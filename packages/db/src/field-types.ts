@@ -257,10 +257,13 @@ export interface FieldDef {
    */
   onUpdate?: "now" | "user" | "tenant";
   /**
-   * App-layer ON DELETE referential action for a `relation` field. When a row
-   * in the target collection (`to`) is deleted, referencing rows are fixed up:
-   *  - `set_null`  → this FK column is set NULL on the referencing rows
-   *  - `cascade`   → the referencing rows are deleted (one level)
+   * App-layer ON DELETE referential action for a `relation` / `relation_many`
+   * field. When a row in the target collection (`to`) is deleted, referencing
+   * rows are fixed up:
+   *  - `set_null`  → the FK is set NULL (`relation`) or the id is removed from
+   *    the JSON array (`relation_many`)
+   *  - `cascade`   → the referencing rows are deleted, chaining through their
+   *    own `onDelete` triggers (cycle-guarded)
    *  - `no_action` → nothing (default)
    * Emulated in `enforceOnDeleteTriggers` since backlex keeps no DB-level FKs.
    */
@@ -607,8 +610,13 @@ export const validateFields = (fields: FieldDef[]): void => {
         throw new Error(`Field "${f.name}": "${prop}: ${kind}" requires a text or uuid field`);
       }
     }
-    // ON DELETE actions only make sense on a single `relation` FK.
-    if (f.onDelete && f.onDelete !== "no_action" && f.type !== "relation") {
+    // ON DELETE actions apply to relation / relation_many FKs.
+    if (
+      f.onDelete &&
+      f.onDelete !== "no_action" &&
+      f.type !== "relation" &&
+      f.type !== "relation_many"
+    ) {
       throw new Error(`Field "${f.name}": "onDelete" only applies to a relation field`);
     }
     if (f.interface === "dropdown" && getChoiceValues(f).length === 0) {

@@ -257,7 +257,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(searchable && (def.type === "text" || def.type === "longtext") ? { searchable: true } : {}),
       ...(def.hasChoices && cleanChoices.length ? { options: { choices: cleanChoices } } : {}),
       ...(def.hasRelation ? { to: relationTarget } : {}),
-      ...(def.type === "relation" && onDelete !== "no_action" ? { onDelete } : {}),
+      ...(def.hasRelation && onDelete !== "no_action" ? { onDelete } : {}),
       ...(conditions.length ? { conditions } : {}),
       ...(validation ? { validation } : {}),
       ...(cleanFormat(formatDraft, def.type) ? { format: cleanFormat(formatDraft, def.type) } : {}),
@@ -442,7 +442,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                     {missingRelation && <span className="text-destructive"><Trans> Required.</Trans></span>}
                   </span>
                 </div>
-                {def.type === "relation" && (
+                {def.hasRelation && (
                   <div className="flex flex-col gap-1.5">
                     <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>When the referenced item is deleted</Trans></label>
                     <Select
@@ -450,7 +450,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                       onChange={setOnDelete}
                       options={[
                         { value: "no_action", label: t`Do nothing` },
-                        { value: "set_null", label: t`Set this field to NULL` },
+                        { value: "set_null", label: def.type === "relation_many" ? t`Remove it from the list` : t`Set this field to NULL` },
                         { value: "cascade", label: t`Delete this row too (cascade)` },
                       ]}
                     />

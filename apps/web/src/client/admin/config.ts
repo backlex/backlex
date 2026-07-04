@@ -183,6 +183,9 @@ export const NAV_SETTINGS: NavItem[] = [
  *    additionally permission-filtered server-side)
  *  - storage / revisions: `requirePermission(…, "read")`-based
  *  - rest-explorer: static client-side explorer over the user's own access
+ *  - account: the user's own profile (avatar dropdown, never in the sidebar
+ *    itself) — listed so the landing redirect in `AdminApp` doesn't bounce a
+ *    non-admin off their own settings page
  */
 export const NON_ADMIN_NAV_IDS: ReadonlySet<string> = new Set([
   "collections",
@@ -190,6 +193,7 @@ export const NON_ADMIN_NAV_IDS: ReadonlySet<string> = new Set([
   "logs",
   "revisions",
   "rest-explorer",
+  "account",
 ]);
 
 /** Per-permission nav grants computed server-side by `GET /api/me` — which

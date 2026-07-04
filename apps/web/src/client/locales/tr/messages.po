@@ -3147,6 +3147,10 @@ msgstr "Fonksiyonu sil"
 msgid "Delete function?"
 msgstr "Fonksiyon silinsin mi?"
 
+#: src/client/admin/collections-index.tsx
+msgid "Delete group (collections become ungrouped)"
+msgstr "Grubu sil (koleksiyonlar gruplanmamış olur)"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Delete panel"
 msgstr "Paneli sil"
@@ -3409,6 +3413,7 @@ msgstr "Belgeler"
 msgid "Don't have an account?"
 msgstr "Hesabınız yok mu?"
 
+#: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Done"
@@ -3458,6 +3463,10 @@ msgstr "support_tickets şeması taslağı"
 #: src/client/admin/storage.tsx
 msgid "drafts"
 msgstr "taslaklar"
+
+#: src/client/admin/collections-index.tsx
+msgid "Drag collections here"
+msgstr "Koleksiyonları buraya sürükleyin"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Drag to another collection to create a relation"
@@ -3622,6 +3631,7 @@ msgstr "Bayrağı düzenle"
 msgid "Edit flow"
 msgstr "Akışı düzenle"
 
+#: src/client/admin/collections-index.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Edit layout"
 msgstr "Düzeni düzenle"
@@ -4275,6 +4285,10 @@ msgstr "Araçları filtrele"
 msgid "Filter tools…"
 msgstr "Araçları filtrele…"
 
+#: src/client/admin/collections-index.tsx
+msgid "Finish arranging collections"
+msgstr "Koleksiyonları düzenlemeyi bitir"
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Fire a repository_dispatch on data events."
 msgstr "Veri olaylarında bir repository_dispatch tetikler."
@@ -4592,9 +4606,17 @@ msgstr "Izgara"
 msgid "Group"
 msgstr "Grup"
 
+#: src/client/admin/collections-index.tsx
+msgid "Group and reorder collections"
+msgstr "Koleksiyonları grupla ve yeniden sırala"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Group by"
 msgstr "Grupla"
+
+#: src/client/admin/collections-index.tsx
+msgid "Group name…"
+msgstr "Grup adı…"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Group panels into dashboards, build them from a collection (count / sum / average …) or a saved SQL query, then publish a dashboard to a public embed URL."
@@ -4611,6 +4633,10 @@ msgstr "Binlik ayır (1.234)"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Groups"
 msgstr "Gruplar"
+
+#: src/client/admin/collections-index.tsx
+msgid "Groups organize the Collections page and the sidebar. Rearrange them anytime with Edit layout."
+msgstr "Gruplar, Koleksiyonlar sayfasını ve kenar çubuğunu düzenler. Düzeni düzenle ile istediğiniz zaman yeniden düzenleyebilirsiniz."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Guards updated"
@@ -6106,6 +6132,10 @@ msgstr "Yeni klasör"
 msgid "New function"
 msgstr "Yeni fonksiyon"
 
+#: src/client/admin/collections-index.tsx
+msgid "New group"
+msgstr "Yeni grup"
+
 #: src/client/admin/parity/insights.tsx
 msgid "New insight panel"
 msgstr "Yeni içgörü paneli"
@@ -6433,6 +6463,10 @@ msgstr "Henüz tanımlı fonksiyon yok. Fonksiyon işi sıraya almadan önce bir
 #: src/client/admin/pages/functions.tsx
 msgid "No functions yet — click + New function."
 msgstr "Henüz fonksiyon yok — + Yeni fonksiyon'a tıklayın."
+
+#: src/client/admin/collections-index.tsx
+msgid "No group"
+msgstr "Grupsuz"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "No image selected"
@@ -6986,6 +7020,10 @@ msgstr "İsteğe bağlı — anahtar bu sürenin ardından çalışmayı durduru
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "or"
 msgstr "veya"
+
+#: src/client/admin/collections-index.tsx
+msgid "Or type a new group name…"
+msgstr "Veya yeni bir grup adı yazın…"
 
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -8171,6 +8209,10 @@ msgstr "Koleksiyonu yeniden adlandır"
 #: src/client/admin/pages/functions.tsx
 msgid "Rename function"
 msgstr "Fonksiyonu yeniden adlandır"
+
+#: src/client/admin/collections-index.tsx
+msgid "Rename group"
+msgstr "Grubu yeniden adlandır"
 
 #. placeholder {0}: totals ? ` (${totals} updated)` : ""
 #: src/client/admin/app.tsx
@@ -10695,6 +10737,7 @@ msgstr "bağlanmamış"
 msgid "unchanged"
 msgstr "değişmedi"
 
+#: src/client/admin/collections-index.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Ungrouped"
 msgstr "Gruplanmamış"

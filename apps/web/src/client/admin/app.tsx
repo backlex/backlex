@@ -330,10 +330,17 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           writes24h: stats?.writes24h ?? 0,
           lastWrite: fmtAgo(stats?.lastWrite ?? null),
           singleton: false,
-          group: "Content",
+          group: c.group ?? null,
+          sortOrder: c.sortOrder ?? null,
         } as CollectionListItem;
       });
   }, [collectionsQuery.data, metricsQuery.data, showArchived]);
+  // Saved group-header order (Edit layout mode). Memoized so the empty
+  // fallback doesn't churn CollectionsIndex/Sidebar renders.
+  const collectionGroups = useMemo(
+    () => collectionsQuery.data?.meta?.groups ?? [],
+    [collectionsQuery.data],
+  );
   const activeCollection = activeNav === "collections" && segs[1] ? segs[1] : null;
   const setActiveCollection = useCallback(
     (slug: string | null) => { vNav(slug ? "/collections/" + slug : "/collections", slug ? "forward" : "back"); },
@@ -869,7 +876,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       className="h-svh"
       data-density={tweaks.density}
     >
-      <Sidebar activeNav={activeNav} setActiveNav={navTo} pushToast={pushToast} collectionsCount={collections.length} />
+      <Sidebar activeNav={activeNav} setActiveNav={navTo} pushToast={pushToast} collectionsCount={collections.length} activeCollection={activeCollection} />
 
       <SidebarInset className="min-h-0 min-w-0">
         <Topbar
@@ -930,6 +937,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "collections" && !activeCollection && (
               <CollectionsIndex
                 collections={collections}
+                collectionGroups={collectionGroups}
                 showArchived={showArchived}
                 onToggleArchived={(next) => setShowArchived(next)}
                 onOpen={(slug) => { setActiveCollection(slug); setActiveTab("items"); }}
@@ -1267,6 +1275,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
         open={newCollectionOpen}
         onClose={() => setNewCollectionOpen(false)}
         existingSlugs={collections.map((c) => c.slug)}
+        groups={collectionGroups}
         onCreate={async (c) => {
           // The wizard now passes `templateFields` derived from the chosen
           // preset (Blank → [], Content → title+slug+status+body+published_at,
@@ -1285,6 +1294,8 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             await collectionsApi.create({
               slug: c.slug,
               fields: tplFields,
+              // Wizard's group pick — persists now that the API accepts it.
+              group: c.group || null,
               ownerScoped: c.ownerScoped,
               tenantScoped: wiz.tenantScoped,
               softDelete: wiz.softDelete,

@@ -134,9 +134,43 @@ export const setCachedCollection = (
   }
 };
 
-/** Drop both list variants (archived + active) AND every single-collection
- *  entry for a tenant. Call from every route that mutates the `collections`
- *  table: create, rename, archive, restore, delete, add/drop field. */
+// --- Group-order cache ------------------------------------------------------
+//
+// The ordered group-header names for the Collections page + sidebar tree
+// (the `collectionGroups` app_settings row). Read alongside every list GET,
+// so it shares the list cache's isolate/TTL model and is cleared by the same
+// invalidation call — `POST /collections/layout` rewrites both rows and order.
+
+interface GroupOrderEntry {
+  value: string[];
+  expiresAt: number;
+}
+
+const groupOrderCache = new Map<string, GroupOrderEntry>();
+
+/** Cached group-header order for a tenant, or `undefined` on miss/expiry. */
+export const getCachedGroupOrder = (tenantId: string): string[] | undefined => {
+  const entry = groupOrderCache.get(tenantId);
+  if (!entry) return undefined;
+  if (entry.expiresAt < Date.now()) {
+    groupOrderCache.delete(tenantId);
+    return undefined;
+  }
+  return entry.value;
+};
+
+export const setCachedGroupOrder = (tenantId: string, groups: string[]): void => {
+  groupOrderCache.set(tenantId, { value: groups, expiresAt: Date.now() + TTL_MS });
+  if (groupOrderCache.size > MAX_ENTRIES) {
+    const oldest = groupOrderCache.keys().next().value;
+    if (oldest !== undefined) groupOrderCache.delete(oldest);
+  }
+};
+
+/** Drop both list variants (archived + active), every single-collection
+ *  entry, and the group-header order for a tenant. Call from every route
+ *  that mutates the `collections` table: create, rename, archive, restore,
+ *  delete, add/drop field, layout. */
 export const invalidateTenantCollections = (tenantId: string): void => {
   for (const [sk, entry] of cache) {
     if (entry.tenantId === tenantId) cache.delete(sk);
@@ -144,8 +178,9 @@ export const invalidateTenantCollections = (tenantId: string): void => {
   for (const [sk, entry] of singleCache) {
     if (entry.tenantId === tenantId) singleCache.delete(sk);
   }
+  groupOrderCache.delete(tenantId);
 };
 
-/** Test-only — current entry count (list + single). */
+/** Test-only — current entry count (list + single + group-order). */
 export const __collectionsCacheSize = (): number =>
-  cache.size + singleCache.size;
+  cache.size + singleCache.size + groupOrderCache.size;

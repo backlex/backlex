@@ -51,7 +51,7 @@ interface StorageFile {
 }
 
 const LABEL_FIELDS = ["title", "name", "label", "slug", "subject", "email", "username"];
-function pickRelationLabel(row: Record<string, unknown>): string | null {
+export function pickRelationLabel(row: Record<string, unknown>): string | null {
   for (const k of LABEL_FIELDS) {
     const v = row[k];
     if (typeof v === "string" && v.trim()) return v;
@@ -77,7 +77,7 @@ type LabelFn = (row: Record<string, unknown>) => string | null;
 /** Build a row-labeller: prefer the collection's display template (rendered
  *  against the — optionally expanded — row), falling back to the heuristic
  *  field scan when there's no template or it renders empty. */
-function makeLabelFor(displayTemplate: string | null): LabelFn {
+export function makeLabelFor(displayTemplate: string | null): LabelFn {
   if (!displayTemplate) return pickRelationLabel;
   return (row) => {
     const rendered = renderTemplate(displayTemplate, row).trim();

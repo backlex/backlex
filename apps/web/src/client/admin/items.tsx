@@ -16,6 +16,7 @@ import { getAuthors, subscribeAuthors } from "./authors-cache";
 import { i18n } from "@lingui/core";
 import { fieldLabel, formatFieldValue } from "./format-value";
 import { useListColumns } from "./list-columns";
+import { useRelationLabels } from "./relation-labels";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -640,26 +641,58 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
     status: !!statusField,
   };
 
-  // Configurable columns: when the workspace has saved a column list for this
-  // collection, render those user fields (formatted per their `format`) instead
-  // of the curated author/words/views set. Empty = keep the curated default.
+  // Identity (leading, sticky) column. NOT a schema field: it renders the
+  // collection's display template when one is set, else the first title-ish
+  // field. Collections with neither get no synthetic column at all — the
+  // table then shows exactly the picked fields (with the first one pinned),
+  // instead of pretending a raw UUID is a "Title".
+  const identity = useMemo(() => {
+    const fields = (schema?.fields ?? []) as Array<{ name: string; system?: boolean; label?: string; translations?: Record<string, string> }>;
+    const tmpl = schema?.displayTemplate?.trim();
+    if (tmpl) {
+      const label = schema?.singular?.trim() || schema?.slug || "";
+      return { label, sortId: null as string | null, template: tmpl };
+    }
+    const f = fields.find((x) => (x.name === "title" || x.name === "name") && !x.system);
+    if (f) return { label: fieldLabel(f, i18n.locale), sortId: f.name, template: null as string | null };
+    return null;
+  }, [schema]);
+  // The `/slug` sub-line only when the collection really has a slug field —
+  // falling back to the id just repeated the UUID twice.
+  const hasSlugField = (schema?.fields ?? []).some((f) => (f as { name?: string }).name === "slug");
+
+  // Configurable columns: when the user (or the workspace default) has saved a
+  // column list for this collection, render those user fields (formatted per
+  // their `format`) instead of the curated author/words/views set. Empty =
+  // keep the curated default — unless the collection has no identity column,
+  // where the first few fields make a far better default than a UUID.
   const { columns: colNames, setColumns } = useListColumns(schema?.slug ?? "");
+  const autoCols = useMemo(() => {
+    if (identity || colNames.length) return [];
+    return (schema?.fields ?? [])
+      .filter((f) => !(f as { system?: boolean }).system)
+      .slice(0, 3)
+      .map((f) => (f as { name: string }).name);
+  }, [schema, identity, colNames.length]);
+  const baseCols = colNames.length ? colNames : autoCols;
   // Drag state for reordering saved columns by dragging the table headers.
   // Tracked by field name (not index) so stale names in the saved list —
   // e.g. a since-dropped field — can't skew the splice positions.
   const [dragCol, setDragCol] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
+  // Works off baseCols (copy-on-write): reordering the auto-default columns
+  // persists them as the user's saved list.
   const moveColumn = (from: string, to: string) => {
-    const fromIdx = colNames.indexOf(from);
-    const toIdx = colNames.indexOf(to);
+    const fromIdx = baseCols.indexOf(from);
+    const toIdx = baseCols.indexOf(to);
     if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
-    const next = [...colNames];
+    const next = [...baseCols];
     const moved = next.splice(fromIdx, 1)[0];
     if (moved === undefined) return;
     next.splice(toIdx, 0, moved);
     setColumns(next);
   };
-  const dragCtx: HeaderDragCtx = { dragCol, overCol, setDragCol, setOverCol, order: colNames, move: moveColumn };
+  const dragCtx: HeaderDragCtx = { dragCol, overCol, setDragCol, setOverCol, order: baseCols, move: moveColumn };
 
   // Inline cell editing — one cell at a time; optimistic PATCH through the
   // shared items cache (rollback + onCellError toast on failure).
@@ -682,11 +715,25 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   // since the row's own hover/selected tint can't show through them.
   const STICKY_BG = "bg-card group-hover/row:bg-[color-mix(in_oklab,var(--muted)_50%,var(--card))] group-data-[selected=true]/row:bg-selected-surface";
   const STICKY_BOX = "sm:sticky sm:z-[1] " + STICKY_BG;
-  const dynFields = colNames
+  const dynFields = baseCols
     .map((n) => (schema?.fields ?? []).find((f) => (f as { name?: string }).name === n))
-    .filter(Boolean) as Array<{ name: string; label?: string; type?: string; translations?: Record<string, string> }>;
+    .filter(Boolean) as Array<{ name: string; label?: string; type?: string; to?: string; translations?: Record<string, string> }>;
   const useDynamic = dynFields.length > 0;
   const isNumF = (ty?: string) => ty === "integer" || ty === "number";
+
+  // Relation columns render the target row's display-template label instead
+  // of the raw FK id (one `_in` fetch per relation column per page).
+  const relLabels = useRelationLabels(
+    dynFields.filter((f) => f.type === "relation" && f.to),
+    rows as Array<Record<string, unknown>>,
+  );
+  const shortId = (v: unknown) => {
+    const s = String(v);
+    return s.length > 10 ? s.slice(0, 8) + "…" : s;
+  };
+  // Sticky classes for the identity slot (title column, or the first data
+  // column when the collection has no identity).
+  const IDENTITY_TH = "bg-card sm:sticky sm:left-[37px] sm:z-[2]";
 
   return (
     <Table className={ADMIN_TABLE_CLS}>
@@ -700,10 +747,24 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
           <TableHead className="w-[38px] min-w-[38px] bg-card sm:sticky sm:left-0 sm:z-[2]">
             <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} />
           </TableHead>
-          <SortHead id="title" label={t`Title`} sort={sort} setSort={setSort} className="bg-card sm:sticky sm:left-[37px] sm:z-[2]" />
+          {identity && (identity.sortId ? (
+            <SortHead id={identity.sortId} label={identity.label} sort={sort} setSort={setSort} className={IDENTITY_TH} />
+          ) : (
+            // Display-template identity — computed per row, so not sortable.
+            <TableHead className={IDENTITY_TH}>{identity.label}</TableHead>
+          ))}
           {useDynamic ? (
-            dynFields.map((f) => (
-              <SortHead key={f.name} id={f.name} label={fieldLabel(f, i18n.locale)} num={isNumF(f.type)} sort={sort} setSort={setSort} dragCtx={dragCtx} />
+            dynFields.map((f, idx) => (
+              <SortHead
+                key={f.name}
+                id={f.name}
+                label={fieldLabel(f, i18n.locale)}
+                num={isNumF(f.type)}
+                sort={sort}
+                setSort={setSort}
+                dragCtx={dragCtx}
+                className={!identity && idx === 0 ? IDENTITY_TH : undefined}
+              />
             ))
           ) : (
             <>
@@ -720,16 +781,16 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
       <TableBody>
         {rows.map((r) => {
           const a = authorById(r.author);
-          // Prefer the collection's display template (e.g. `{{ city }}`) so
-          // the list matches what the Settings tab promises ("how this
-          // collection shows up in nav and lists"). Fall back to
-          // title/name/slug/id when there's no template or it renders empty,
-          // so collections without a `title` column still render readable rows.
-          const rendered = schema?.displayTemplate
-            ? renderTemplate(schema.displayTemplate, r).trim()
+          // Identity cell text: the display template (e.g. `{{ city }}`) when
+          // set — matching what the Settings tab promises — else the resolved
+          // title-ish field. No identity ⇒ no cell (the first picked column
+          // is the row's anchor instead).
+          const displayTitle = identity
+            ? identity.template
+              ? renderTemplate(identity.template, r).trim() || (r.title ?? r.name ?? r.slug ?? r.id ?? "—")
+              : String((r as Record<string, unknown>)[identity.sortId!] ?? "—")
             : "";
-          const displayTitle = rendered || (r.title ?? r.name ?? r.slug ?? r.id ?? "—");
-          const displaySlug = r.slug ?? r.id ?? "";
+          const displaySlug = hasSlugField ? (r.slug ?? "") : "";
           const rawStatus = statusField ? (r as Record<string, unknown>)[statusField.name] : null;
           const displayStatus = rawStatus != null ? String(rawStatus) : null;
           const choice = displayStatus ? choiceByValue.get(displayStatus) : null;
@@ -738,17 +799,20 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
               <TableCell onClick={(e) => e.stopPropagation()} className={`min-w-[38px] sm:left-0 ${STICKY_BOX}`}>
                 <Checkbox checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
               </TableCell>
-              <TableCell className={`sm:left-[37px] sm:max-w-[320px] ${STICKY_BOX}`}>
-                <div className="flex min-w-0 flex-col">
-                  <span className="truncate font-medium text-foreground">{cellText(displayTitle)}</span>
-                  {displaySlug && <span className="truncate font-mono text-[11px] text-muted-foreground">/{String(displaySlug).slice(0, 24)}</span>}
-                </div>
-              </TableCell>
+              {identity && (
+                <TableCell className={`sm:left-[37px] sm:max-w-[320px] ${STICKY_BOX}`}>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate font-medium text-foreground">{cellText(displayTitle)}</span>
+                    {displaySlug && <span className="truncate font-mono text-[11px] text-muted-foreground">/{String(displaySlug).slice(0, 24)}</span>}
+                  </div>
+                </TableCell>
+              )}
               {useDynamic ? (
-                dynFields.map((f) => {
+                dynFields.map((f, idx) => {
                   // Preserve the status badge when the status field is a column;
                   // everything else renders through the display formatter.
                   const rawV = (r as Record<string, unknown>)[f.name];
+                  const anchorCls = !identity && idx === 0 ? `sm:left-[37px] ${STICKY_BOX}` : "";
                   if (statusField && f.name === statusField.name) {
                     const svStr = rawV != null ? String(rawV) : null;
                     const ch = svStr ? choiceByValue.get(svStr) : null;
@@ -757,6 +821,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                         key={f.name}
                         editable
                         editing={isEditing(r.id, f.name)}
+                        className={anchorCls}
                         field={f}
                         value={rawV}
                         choices={statusField.choices}
@@ -774,7 +839,14 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                       />
                     );
                   }
-                  const txt = formatFieldValue(rawV, f, i18n.locale);
+                  // Relation columns: show the target row's resolved label
+                  // (display template / title-ish scan) instead of the FK id.
+                  const isRel = f.type === "relation";
+                  const txt = isRel
+                    ? rawV == null || rawV === ""
+                      ? ""
+                      : (relLabels[f.name]?.[String(rawV)] ?? shortId(rawV))
+                    : formatFieldValue(rawV, f, i18n.locale);
                   const choices = fieldChoices(f);
                   return (
                     <EditCell
@@ -782,7 +854,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                       editable={!!choices || INLINE_TYPES.has(f.type ?? "")}
                       editing={isEditing(r.id, f.name)}
                       num={isNumF(f.type)}
-                      className={isNumF(f.type) ? "" : "max-w-[280px]"}
+                      className={`${isNumF(f.type) ? "" : "max-w-[280px]"} ${anchorCls}`}
                       field={f}
                       value={rawV}
                       choices={choices}

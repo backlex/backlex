@@ -10216,7 +10216,6 @@ msgid "Timestamps across the admin render in this zone."
 msgstr "Timestamps across the admin render in this zone."
 
 #: src/client/admin/flow-builder.tsx
-#: src/client/admin/items.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Title"
 msgstr "Title"

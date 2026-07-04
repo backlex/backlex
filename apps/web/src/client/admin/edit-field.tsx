@@ -339,7 +339,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
                 </div>
                 <span className="text-[11.5px] text-muted-foreground"><Trans>Stores the target row's <span className="font-mono">id</span>. The target is immutable — drop &amp; re-add to change it.</Trans></span>
               </div>
-              {draft.type === "relation" && (
+              {isRelation && (
                 <div className="flex flex-col gap-1.5">
                   <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>When the referenced item is deleted</Trans></label>
                   <Select
@@ -347,7 +347,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
                     onChange={(v) => setDraft((d) => d ? { ...d, onDelete: v as never } : d)}
                     options={[
                       { value: "no_action", label: t`Do nothing` },
-                      { value: "set_null", label: t`Set this field to NULL` },
+                      { value: "set_null", label: draft.type === "relation_many" ? t`Remove it from the list` : t`Set this field to NULL` },
                       { value: "cascade", label: t`Delete this row too (cascade)` },
                     ]}
                   />

@@ -3476,6 +3476,10 @@ msgstr "Drag to another collection to create a relation"
 msgid "Drag to move"
 msgstr "Drag to move"
 
+#: src/client/admin/list-columns.tsx
+msgid "Drag to reorder — the table follows this order."
+msgstr "Drag to reorder — the table follows this order."
+
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to resize"
 msgstr "Drag to resize"

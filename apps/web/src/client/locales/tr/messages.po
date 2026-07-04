@@ -8269,6 +8269,10 @@ msgid "Reverted to earlier revision."
 msgstr "Önceki revizyona geri alındı."
 
 #: src/client/admin/item-editor.tsx
+msgid "Reverting changes these fields:"
+msgstr "Geri alma şu alanları değiştirecek:"
+
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/parity/revisions.tsx
 msgid "Reverting…"
 msgstr "Geri alınıyor…"
@@ -8530,6 +8534,10 @@ msgstr "her gün 09:00 UTC'de çalışır"
 #: src/client/admin/pages/settings.tsx
 msgid "Runtime"
 msgstr "Çalışma zamanı"
+
+#: src/client/admin/item-editor.tsx
+msgid "Same as the current values — nothing to revert."
+msgstr "Mevcut değerlerle aynı — geri alınacak bir şey yok."
 
 #: src/client/admin/parity/insights.tsx
 msgid "Same DSL as roles & permissions. Operators: <0>_eq</0>, <1>_in</1>, <2>_gte</2>, … Variables: <3>$user.id</3>, <4>$now</4>, …"

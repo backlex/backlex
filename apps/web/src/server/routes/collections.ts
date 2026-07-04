@@ -22,6 +22,7 @@ import { z } from "zod";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { requireAdminMw, requirePlatformMw } from "../services/roles/guards";
+import { listReadableCollections } from "../services/permissions";
 import { logActivity } from "../services/activity";
 import { inspectTable, RESERVED_NAMES } from "../services/adopt";
 import { cascadeSlugRename } from "../services/collection-rename";
@@ -413,6 +414,15 @@ export const collectionsRoutes = new Hono<AppBindings>()
         );
       setCachedCollections({ tenantId, includeArchived }, rows!);
     }
+    // Permission-aware visibility: non-admins only see collections they hold
+    // at least one `read` grant for (wildcard grant = all). The per-isolate
+    // cache stays tenant-keyed with the FULL row set; the filter runs per
+    // request so one cache entry serves every caller.
+    const readable = await listReadableCollections(c.get("ctx"), c.get("auth"));
+    const visible =
+      readable === "*"
+        ? rows!
+        : rows!.filter((r) => readable.has((r as { slug: string }).slug));
     const groups = await loadGroupOrder(db, dialect, tenantId);
     // Cheap revalidation on top of the per-isolate cache: a warm client that
     // already has the current schema gets an empty 304 instead of the full
@@ -420,19 +430,21 @@ export const collectionsRoutes = new Hono<AppBindings>()
     // VALUE, not via updatedAt: the header order changes no collection row,
     // and two rapid layout writes can land in the same millisecond — either
     // way an updatedAt-only digest would hand a stale 304 to the client.
-    const layoutDigest = (rows as { group?: unknown; sortOrder?: unknown }[])
+    // Digesting the VISIBLE rows also busts the validator when a permission
+    // grant/revoke changes what this caller may see.
+    const layoutDigest = (visible as { group?: unknown; sortOrder?: unknown }[])
       .map((r) => `${String(r.group ?? "")}.${String(r.sortOrder ?? "")}`)
       .join(",");
     const r304 = schemaEtag304(c, [
       "collections",
       tenantId,
       includeArchived ? 1 : 0,
-      schemaDigest(rows!),
+      schemaDigest(visible),
       layoutDigest,
       groups.join("|"),
     ]);
     if (r304) return r304;
-    return c.json({ data: rows, meta: { groups } });
+    return c.json({ data: visible, meta: { groups } });
   })
   .get("/:slug", requireUser, async (c) => {
     const { db, dialect } = c.get("ctx");
@@ -446,6 +458,12 @@ export const collectionsRoutes = new Hono<AppBindings>()
       .limit(1);
     if (!row[0]) throw new AppError("NOT_FOUND", "Collection not found");
     if (!includeArchived && (row[0].status ?? "active") !== "active") {
+      throw new AppError("NOT_FOUND", "Collection not found");
+    }
+    // Same visibility rule as the list: no read grant → the collection's
+    // metadata (field names etc.) doesn't exist for this caller.
+    const readable = await listReadableCollections(c.get("ctx"), c.get("auth"));
+    if (readable !== "*" && !readable.has(c.req.param("slug"))) {
       throw new AppError("NOT_FOUND", "Collection not found");
     }
     const r304 = schemaEtag304(c, [

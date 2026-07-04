@@ -45,10 +45,14 @@ export interface CollectionsIndexProps {
   onOpenApi?: (slug?: string) => void;
   /** Jump to the Schema graph (ERD) page. */
   onOpenSchema?: () => void;
+  /** False for non-admins: hides Edit layout / New collection / delete /
+   *  restore (all backed by admin-gated DDL endpoints). Default true so the
+   *  UI doesn't flash while `/api/me` loads. Cosmetic — the API stays gated. */
+  canManage?: boolean;
   pushToast: (msg: string) => void;
 }
 
-export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew, onDelete, showArchived, onToggleArchived, onRestore, onOpenApi, onOpenSchema, pushToast }: CollectionsIndexProps) {
+export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew, onDelete, showArchived, onToggleArchived, onRestore, onOpenApi, onOpenSchema, canManage = true, pushToast }: CollectionsIndexProps) {
   const { t } = useLingui();
   const [search, setSearch] = useUrlState("q", "");
   const [view, setView] = useState<"grid" | "table">("grid");
@@ -218,7 +222,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
             </Button>
           )}
           {!showArchived && <>
-            {!isMobile && (
+            {!isMobile && canManage && (
               <Button
                 variant={editing ? "primary" : "outline"}
                 icon={editing ? I.Check : I.Pencil}
@@ -238,7 +242,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
             )}
             <Button variant="outline" icon={I.Code} onClick={() => onOpenSchema?.()}><Trans>Schema</Trans></Button>
             <Button variant="outline" icon={I.ExternalLink} onClick={() => onOpenApi?.()}><Trans>API docs</Trans></Button>
-            <Button variant="primary" icon={I.Plus} onClick={() => setChooserOpen(true)}><Trans>New collection</Trans></Button>
+            {canManage && <Button variant="primary" icon={I.Plus} onClick={() => setChooserOpen(true)}><Trans>New collection</Trans></Button>}
           </>}
         </>}
       />
@@ -298,7 +302,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
             )
           }
           action={
-            !showArchived && collections.length === 0 ? (
+            !showArchived && collections.length === 0 && canManage ? (
               <Button variant="primary" icon={I.Plus} onClick={() => setChooserOpen(true)}>
                 <Trans>New collection</Trans>
               </Button>
@@ -420,7 +424,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
                       dropTarget={editing && dropHint === `card:${c.slug}`}
                       onOpen={() => onOpen(c.slug)}
                       onOpenApi={onOpenApi ? () => onOpenApi(c.slug) : undefined}
-                      onRestore={onRestore ? () => onRestore(c.slug) : undefined}
+                      onRestore={canManage && onRestore ? () => onRestore(c.slug) : undefined}
                     />
                   </div>
                 ))}
@@ -454,7 +458,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
               )}
             </div>
           )}
-          {!showArchived && !editing && !loading && (
+          {!showArchived && !editing && !loading && canManage && (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
               <Card asChild variant="dashed" interactive className="min-h-[138px] items-center justify-center gap-2 rounded-4xl p-5 text-muted-foreground hover:text-foreground">
                 <button onClick={onNew}>
@@ -513,10 +517,10 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
                     </TableCell>
                     <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
                       {showArchived
-                        ? onRestore && (
+                        ? canManage && onRestore && (
                             <IconButton icon={I.RotateCcw} title={t`Restore collection`} onClick={() => onRestore(c.slug)} />
                           )
-                        : onDelete && (
+                        : canManage && onDelete && (
                             <IconButton icon={I.Trash} title={t`Delete collection`} onClick={() => onDelete(c.slug)} />
                           )}
                     </TableCell>

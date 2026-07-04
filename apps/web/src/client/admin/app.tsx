@@ -47,6 +47,7 @@ import { BulkEditDialog } from "./bulk-edit";
 import { ItemEditorPage } from "./item-editor";
 import { CalendarView, GalleryGrid, ItemsViewToggle, KanbanBoard, type ItemsViewMode } from "./item-views";
 import { ColumnPicker, useListColumns } from "./list-columns";
+import { needsDisplayTemplate } from "./row-label";
 import { EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
 import { AddFieldDialog } from "./add-field";
 import { loadAuthors } from "./authors-cache";
@@ -1111,6 +1112,20 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                       status={statusTab} setStatus={setStatusTab}
                       total={tweaks.populated ? posts.length : 0}
                     />
+                    {/* Card labels are running on the composed/short-id
+                        fallback — nudge toward the permanent fix (a display
+                        template) where the big label is what you look at. */}
+                    {schemaReady && viewMode !== "table" && needsDisplayTemplate(schemaState) && (
+                      <div className="flex items-center gap-2.5 rounded-xl border border-border bg-muted/50 px-3.5 py-2 text-[12px] text-muted-foreground">
+                        <I.Info size={13} className="shrink-0" />
+                        <span className="min-w-0 flex-1">
+                          <Trans>No display template set — cards label rows from their first text fields. Define a template in Settings for proper labels.</Trans>
+                        </span>
+                        <Button variant="outline" size="sm" onClick={() => setActiveTab("settings")}>
+                          <Trans>Open settings</Trans>
+                        </Button>
+                      </div>
+                    )}
                     <Card className="py-0 gap-0">
                       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
                         <ItemsViewToggle
@@ -1146,18 +1161,18 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         itemsForView.length === 0 ? (
                           <EmptyItems onCreate={openCreate} slug={activeCollection ?? undefined} />
                         ) : (
-                          <KanbanBoard rows={itemsForView} onEdit={openEdit} displayTemplate={schemaState.displayTemplate} statusField={kanbanStatusField} onChangeStatus={changeItemStatus} onCreate={openCreate} />
+                          <KanbanBoard rows={itemsForView} onEdit={openEdit} displayTemplate={schemaState.displayTemplate} fields={schemaState.fields as never} statusField={kanbanStatusField} onChangeStatus={changeItemStatus} onCreate={openCreate} />
                         )
                       )}
                       {viewMode === "gallery" && (
                         itemsForView.length === 0 ? (
                           <EmptyItems onCreate={openCreate} slug={activeCollection ?? undefined} />
                         ) : (
-                          <GalleryGrid rows={itemsForView} onEdit={openEdit} displayTemplate={schemaState.displayTemplate} />
+                          <GalleryGrid rows={itemsForView} onEdit={openEdit} displayTemplate={schemaState.displayTemplate} fields={schemaState.fields as never} />
                         )
                       )}
                       {viewMode === "calendar" && (
-                        <CalendarView rows={itemsForView} onEdit={openEdit} displayTemplate={schemaState.displayTemplate} />
+                        <CalendarView rows={itemsForView} onEdit={openEdit} displayTemplate={schemaState.displayTemplate} fields={schemaState.fields as never} />
                       )}
                       {viewMode === "table" && pageRows.length > 0 && (
                         <div className="flex items-center gap-2 border-t border-border bg-card px-3.5 py-2.5 text-[12.5px] text-muted-foreground">

@@ -6199,6 +6199,10 @@ msgstr "Varsayılan sıralama yapılandırılmamış — liste yanıtları<0> -c
 msgid "No deliveries yet"
 msgstr "Henüz teslimat yok"
 
+#: src/client/admin/app.tsx
+msgid "No display template set — cards label rows from their first text fields. Define a template in Settings for proper labels."
+msgstr "Görünüm şablonu tanımlı değil — kartlar kayıtları ilk metin alanlarıyla etiketliyor. Düzgün etiketler için Ayarlar'dan bir şablon tanımlayın."
+
 #: src/client/admin/parity/revisions.tsx
 msgid "No earlier revisions — showing the current field values."
 msgstr "Önceki revizyon yok — mevcut alan değerleri gösteriliyor."
@@ -6771,6 +6775,10 @@ msgstr "Koleksiyonu aç"
 #: src/client/admin/pages/advisor.tsx
 msgid "Open resource"
 msgstr "Kaynağı aç"
+
+#: src/client/admin/app.tsx
+msgid "Open settings"
+msgstr "Ayarları aç"
 
 #: src/client/admin/pages/settings.tsx
 msgid "Open-source · Apache-2.0 licensed"

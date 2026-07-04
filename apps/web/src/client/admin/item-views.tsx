@@ -8,11 +8,11 @@
 // arrow nav (the prototype hardcoded May 2026; that wouldn't age well).
 import { useMemo, useState, type CSSProperties } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { renderTemplate } from "@backlex/core";
 import { I, type IconComponent } from "./icons";
 import { Badge, Button, IconButton } from "./ui";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { authorById } from "./items";
+import { rowLabel as sharedRowLabel, shortId, type LabelSchemaField } from "./row-label";
 import type { Post } from "./config";
 
 export type ItemsViewMode = "table" | "kanban" | "gallery" | "calendar";
@@ -20,23 +20,12 @@ export type ItemsViewMode = "table" | "kanban" | "gallery" | "calendar";
 // Rows come from arbitrary user collections, not the design's `posts` mock —
 // any field beyond `id` may be missing. These readers degrade instead of
 // throwing (e.g. `r.word_count.toLocaleString()` on a column-less collection).
-// Row display label. When the collection defines a `displayTemplate` (a
-// mustache string like `{{ city }}`), render it against the row — same helper
-// the relation pickers use — and fall back to the conventional fields when the
-// template is absent or renders empty. Keeps Kanban/Gallery/Calendar in step
-// with the Table view and the pickers.
-const rowLabel = (r: Post, displayTemplate?: string | null): string => {
-  if (displayTemplate) {
-    const rendered = renderTemplate(displayTemplate, r as unknown as Record<string, unknown>).trim();
-    if (rendered) return rendered;
-  }
-  // Match the Table view's fallback chain (items.tsx) — crucially include
-  // `name`, else collections whose primary field is `name` (no `title` column)
-  // fall through to the slug/id and Gallery/Calendar show a raw UUID. `name`
-  // isn't on the Post type, so read it off the row record.
-  const name = (r as unknown as Record<string, unknown>).name;
-  return r.title || (typeof name === "string" && name) || r.slug || r.id;
-};
+// Row display label — the shared chain (display template → title-ish scan →
+// first two filled text fields → shortened id) so Kanban/Gallery/Calendar
+// never surface a full UUID. `fields` powers the composed-text fallback for
+// collections like `addresses` with no title-ish field at all.
+const rowLabel = (r: Post, displayTemplate?: string | null, fields?: LabelSchemaField[]): string =>
+  sharedRowLabel(r as unknown as Record<string, unknown>, { displayTemplate, fields });
 const rowNumber = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
 interface ToggleOption {
@@ -100,6 +89,7 @@ export function KanbanBoard({
   rows,
   onEdit,
   displayTemplate,
+  fields,
   statusField,
   onChangeStatus,
   onCreate,
@@ -107,6 +97,7 @@ export function KanbanBoard({
   rows: Post[];
   onEdit: (it: Post) => void;
   displayTemplate?: string | null;
+  fields?: LabelSchemaField[];
   // The collection's resolved status field. When present, columns come from its
   // choices (so any status set lights up); otherwise the default lifecycle cols.
   statusField?: { name: string; choices: { value: string; label?: string }[] } | null;
@@ -176,7 +167,7 @@ export function KanbanBoard({
                       className={`flex cursor-grab flex-col gap-1.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left transition-opacity hover:border-chip-border active:cursor-grabbing ${dragId === r.id ? "opacity-40" : ""}`}
                       onClick={() => onEdit(r)}
                     >
-                      <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r, displayTemplate)}</div>
+                      <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r, displayTemplate, fields)}</div>
                       {r.slug && (
                         <div className="text-[11px] text-muted-foreground">
                           <span className="font-mono">{r.slug}</span>
@@ -230,7 +221,7 @@ const statusBadgeVariant = (s: Post["status"]): "default" | "secondary" | "outli
   return "outline";
 };
 
-export function GalleryGrid({ rows, onEdit, displayTemplate }: { rows: Post[]; onEdit: (it: Post) => void; displayTemplate?: string | null }) {
+export function GalleryGrid({ rows, onEdit, displayTemplate, fields }: { rows: Post[]; onEdit: (it: Post) => void; displayTemplate?: string | null; fields?: LabelSchemaField[] }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3.5 p-3.5">
       {rows.map((r) => {
@@ -240,10 +231,10 @@ export function GalleryGrid({ rows, onEdit, displayTemplate }: { rows: Post[]; o
         return (
           <button key={r.id} type="button" className="cursor-pointer overflow-hidden rounded-xl border border-border bg-card text-left text-foreground hover:border-chip-border" onClick={() => onEdit(r)}>
             <div className="relative grid aspect-[16/10] p-2.5 [place-items:end_start]" style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}>
-              <span className="rounded-md bg-[color-mix(in_oklch,var(--background)_65%,transparent)] px-2 py-0.5 font-mono text-[10.5px] text-foreground backdrop-blur-[4px]">{r.slug || r.id}</span>
+              <span className="rounded-md bg-[color-mix(in_oklch,var(--background)_65%,transparent)] px-2 py-0.5 font-mono text-[10.5px] text-foreground backdrop-blur-[4px]">{r.slug || shortId(r.id)}</span>
             </div>
             <div className="flex flex-col gap-1.5 px-3 pb-3 pt-2.5">
-              <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r, displayTemplate)}</div>
+              <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r, displayTemplate, fields)}</div>
               <div className="flex items-center gap-2">
                 {r.status && <Badge variant={statusBadgeVariant(r.status)}>{r.status}</Badge>}
                 {words != null && (
@@ -264,7 +255,7 @@ export function GalleryGrid({ rows, onEdit, displayTemplate }: { rows: Post[]; o
 // Calendar
 // ─────────────────────────────────────────────────────────────────
 
-export function CalendarView({ rows, onEdit, displayTemplate }: { rows: Post[]; onEdit: (it: Post) => void; displayTemplate?: string | null }) {
+export function CalendarView({ rows, onEdit, displayTemplate, fields }: { rows: Post[]; onEdit: (it: Post) => void; displayTemplate?: string | null; fields?: LabelSchemaField[] }) {
   const { t } = useLingui();
   const MONTH_LABELS = [
     t`January`, t`February`, t`March`, t`April`, t`May`, t`June`,
@@ -358,7 +349,7 @@ export function CalendarView({ rows, onEdit, displayTemplate }: { rows: Post[]; 
                       type="button"
                       className="flex cursor-pointer items-center gap-[5px] overflow-hidden rounded-sm border-0 bg-muted px-1.5 py-[3px] text-left text-[10.5px] text-foreground hover:bg-accent"
                       onClick={() => onEdit(r)}
-                      title={rowLabel(r, displayTemplate)}
+                      title={rowLabel(r, displayTemplate, fields)}
                     >
                       <span
                         className={`size-[5px] shrink-0 rounded-full ${
@@ -369,7 +360,7 @@ export function CalendarView({ rows, onEdit, displayTemplate }: { rows: Post[]; 
                               : "bg-muted-foreground"
                         }`}
                       />
-                      <span className="truncate">{rowLabel(r, displayTemplate)}</span>
+                      <span className="truncate">{rowLabel(r, displayTemplate, fields)}</span>
                     </button>
                   ))}
                   {(byDay[d] || []).length > 3 && (

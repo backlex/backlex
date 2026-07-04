@@ -12,6 +12,9 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { getAuthors, subscribeAuthors } from "./authors-cache";
+import { i18n } from "@lingui/core";
+import { formatFieldValue } from "./format-value";
+import { useListColumns } from "./list-columns";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -441,6 +444,16 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
     status: !!statusField,
   };
 
+  // Configurable columns: when the workspace has saved a column list for this
+  // collection, render those user fields (formatted per their `format`) instead
+  // of the curated author/words/views set. Empty = keep the curated default.
+  const { columns: colNames } = useListColumns(schema?.slug ?? "");
+  const dynFields = colNames
+    .map((n) => (schema?.fields ?? []).find((f) => (f as { name?: string }).name === n))
+    .filter(Boolean) as Array<{ name: string; label?: string; type?: string }>;
+  const useDynamic = dynFields.length > 0;
+  const isNumF = (ty?: string) => ty === "integer" || ty === "number";
+
   return (
     <Table className={ADMIN_TABLE_CLS}>
       <TableHeader>
@@ -449,10 +462,16 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
             <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} />
           </TableHead>
           <SortHead id="title" label={t`Title`} />
-          {has.status && <SortHead id={statusField!.name} label={t`Status`} />}
-          {has.author && <TableHead className="w-[110px]"><Trans>Author</Trans></TableHead>}
-          {has.words && <SortHead id="word_count" label={t`Words`} num />}
-          {has.views && <SortHead id="view_count" label={t`Views`} num />}
+          {useDynamic ? (
+            dynFields.map((f) => <SortHead key={f.name} id={f.name} label={f.label || f.name} num={isNumF(f.type)} />)
+          ) : (
+            <>
+              {has.status && <SortHead id={statusField!.name} label={t`Status`} />}
+              {has.author && <TableHead className="w-[110px]"><Trans>Author</Trans></TableHead>}
+              {has.words && <SortHead id="word_count" label={t`Words`} num />}
+              {has.views && <SortHead id="view_count" label={t`Views`} num />}
+            </>
+          )}
           <SortHead id="updated_at" label={t`Updated`} />
           <TableHead className="sticky right-0 w-[60px] bg-card text-right" />
         </TableRow>
@@ -484,36 +503,68 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                   {displaySlug && <span className="font-mono text-[11px] text-muted-foreground">/{String(displaySlug).slice(0, 24)}</span>}
                 </div>
               </TableCell>
-              {has.status && (
-                <TableCell>
-                  {displayStatus ? (
-                    <Badge variant={choice?.color ? "outline" : statusVariant(displayStatus)}>
-                      {choice?.color && (
-                        <span
-                          className="mr-1 inline-block size-1.5 rounded-full"
-                          style={{ background: choice.color }}
-                        />
+              {useDynamic ? (
+                dynFields.map((f) => {
+                  // Preserve the status badge when the status field is a column;
+                  // everything else renders through the display formatter.
+                  if (statusField && f.name === statusField.name) {
+                    const sv = (r as Record<string, unknown>)[f.name];
+                    const svStr = sv != null ? String(sv) : null;
+                    const ch = svStr ? choiceByValue.get(svStr) : null;
+                    return (
+                      <TableCell key={f.name}>
+                        {svStr ? (
+                          <Badge variant={ch?.color ? "outline" : statusVariant(svStr)}>
+                            {ch?.color && <span className="mr-1 inline-block size-1.5 rounded-full" style={{ background: ch.color }} />}
+                            {ch?.label ?? svStr}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    );
+                  }
+                  const txt = formatFieldValue((r as Record<string, unknown>)[f.name], f, i18n.locale);
+                  return (
+                    <TableCell key={f.name} className={isNumF(f.type) ? "text-right tabular-nums" : "max-w-[280px] truncate"}>
+                      {txt || <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                  );
+                })
+              ) : (
+                <>
+                  {has.status && (
+                    <TableCell>
+                      {displayStatus ? (
+                        <Badge variant={choice?.color ? "outline" : statusVariant(displayStatus)}>
+                          {choice?.color && (
+                            <span
+                              className="mr-1 inline-block size-1.5 rounded-full"
+                              style={{ background: choice.color }}
+                            />
+                          )}
+                          {choice?.label ?? displayStatus}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
                       )}
-                      {choice?.label ?? displayStatus}
-                    </Badge>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
+                    </TableCell>
                   )}
-                </TableCell>
-              )}
-              {has.author && (
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="grid size-[22px] place-items-center rounded-full bg-[linear-gradient(135deg,oklch(from_var(--primary)_0.78_0.18_h),oklch(from_var(--primary)_0.55_0.18_calc(h+15)))] text-[10px] font-semibold text-[oklch(from_var(--primary)_0.18_0.05_h)]">{a.initials}</div>
-                    <span className="font-mono text-xs">{a.name}</span>
-                  </div>
-                </TableCell>
-              )}
-              {has.words && (
-                <TableCell className="text-right tabular-nums">{r.word_count ?? "—"}</TableCell>
-              )}
-              {has.views && (
-                <TableCell className={`text-right tabular-nums ${r.view_count ? "text-foreground" : "text-muted-foreground"}`}>{r.view_count ? Number(r.view_count).toLocaleString() : "—"}</TableCell>
+                  {has.author && (
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="grid size-[22px] place-items-center rounded-full bg-[linear-gradient(135deg,oklch(from_var(--primary)_0.78_0.18_h),oklch(from_var(--primary)_0.55_0.18_calc(h+15)))] text-[10px] font-semibold text-[oklch(from_var(--primary)_0.18_0.05_h)]">{a.initials}</div>
+                        <span className="font-mono text-xs">{a.name}</span>
+                      </div>
+                    </TableCell>
+                  )}
+                  {has.words && (
+                    <TableCell className="text-right tabular-nums">{r.word_count ?? "—"}</TableCell>
+                  )}
+                  {has.views && (
+                    <TableCell className={`text-right tabular-nums ${r.view_count ? "text-foreground" : "text-muted-foreground"}`}>{r.view_count ? Number(r.view_count).toLocaleString() : "—"}</TableCell>
+                  )}
+                </>
               )}
               <TableCell className="font-mono tabular-nums text-muted-foreground">{fmtDate(r.updated_at ?? r.updatedAt)}</TableCell>
               <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>

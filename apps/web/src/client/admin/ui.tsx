@@ -319,21 +319,37 @@ export interface SidebarProps {
 /** Collapsed-state of sidebar collection groups. Per-device UI state —
  *  localStorage, not the server (a chevron click shouldn't be a write). */
 const COLLAPSED_GROUPS_LS = "backlex.sidebar.collection-groups.collapsed";
+/** Pinned collection slugs shown at the top of the sidebar tree. Same
+ *  per-device posture as the collapse state. */
+const PINNED_COLLECTIONS_LS = "backlex.sidebar.collections.pinned";
+/** Show the filter input only once the list is long enough to need it. */
+const TREE_FILTER_MIN = 8;
 
 /**
- * Grouped collections tree under the "Collections" nav item: groups as
- * collapsible headers in the saved `meta.groups` order, collections beneath
- * in their saved manual order, ungrouped rows at the end. Reads the same
- * `["collections", {includeArchived:false}]` query the app shell already
- * holds — React Query dedupes, so this adds no network call.
+ * Grouped collections tree under the "Collections" nav item: pinned rows
+ * first, then groups as collapsible headers in the saved `meta.groups`
+ * order, collections beneath in their saved manual order, ungrouped rows at
+ * the end. Long lists get a filter input (flat match list while typing).
+ * Reads the same `["collections", {includeArchived:false}]` query the app
+ * shell already holds — React Query dedupes, so this adds no network call.
  */
 function CollectionsTree({ activeCollection, onOpen }: { activeCollection?: string | null; onOpen: (slug: string) => void }) {
+  const { t } = useLingui();
   const { data, isLoading } = useCollections(false);
+  const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     try {
       return JSON.parse(localStorage.getItem(COLLAPSED_GROUPS_LS) ?? "{}") as Record<string, boolean>;
     } catch {
       return {};
+    }
+  });
+  const [pinned, setPinned] = useState<string[]>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(PINNED_COLLECTIONS_LS) ?? "[]");
+      return Array.isArray(v) ? v.filter((s): s is string => typeof s === "string") : [];
+    } catch {
+      return [];
     }
   });
   const toggleGroup = (g: string) => {
@@ -347,15 +363,29 @@ function CollectionsTree({ activeCollection, onOpen }: { activeCollection?: stri
       return next;
     });
   };
+  const togglePin = (slug: string) => {
+    setPinned((prev) => {
+      const next = prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug];
+      try {
+        localStorage.setItem(PINNED_COLLECTIONS_LS, JSON.stringify(next));
+      } catch {
+        // Same as above — persistence only.
+      }
+      return next;
+    });
+  };
 
-  const sections = useMemo(() => {
-    const rows = (data?.data ?? []).filter(
-      (c) => ((c as { status?: string }).status ?? "active") === "active",
-    );
-    return orderCollections(rows, data?.meta?.groups ?? []).filter(
-      ([, list]) => list.length > 0,
-    );
-  }, [data]);
+  const rows = useMemo(
+    () =>
+      (data?.data ?? []).filter(
+        (c) => ((c as { status?: string }).status ?? "active") === "active",
+      ),
+    [data],
+  );
+  const sections = useMemo(
+    () => orderCollections(rows, data?.meta?.groups ?? []).filter(([, list]) => list.length > 0),
+    [rows, data],
+  );
 
   if (isLoading) {
     return (
@@ -370,47 +400,104 @@ function CollectionsTree({ activeCollection, onOpen }: { activeCollection?: stri
   }
   if (sections.length === 0) return null;
 
+  const q = query.trim().toLowerCase();
+  const matches = q ? rows.filter((c) => c.slug.toLowerCase().includes(q)) : null;
+  // Preserve the user's pin order; drop slugs whose collection is gone.
+  const pinnedRows = pinned
+    .map((slug) => rows.find((c) => c.slug === slug))
+    .filter((c): c is (typeof rows)[number] => !!c);
+
+  const renderRow = (c: { slug: string }, keyPrefix = "") => {
+    const isPinned = pinned.includes(c.slug);
+    return (
+      <SidebarMenuSubItem key={keyPrefix + c.slug}>
+        <SidebarMenuSubButton
+          isActive={c.slug === activeCollection}
+          onClick={() => onOpen(c.slug)}
+          onMouseEnter={() => prefetchPage("collections")}
+          className="group/pin cursor-pointer"
+        >
+          <span className="truncate font-mono text-[12px]">{c.slug}</span>
+          {/* Not a <button>: SidebarMenuSubButton is an <a>, nesting is invalid. */}
+          <span
+            role="button"
+            tabIndex={-1}
+            title={isPinned ? t`Unpin` : t`Pin to top`}
+            onClick={(e) => {
+              e.stopPropagation();
+              togglePin(c.slug);
+            }}
+            className={`ml-auto shrink-0 transition-opacity ${isPinned ? "text-primary [&_polygon]:fill-current" : "text-muted-foreground opacity-0 group-hover/pin:opacity-100"}`}
+          >
+            <I.Star size={11} />
+          </span>
+        </SidebarMenuSubButton>
+      </SidebarMenuSubItem>
+    );
+  };
+
   return (
     <ScrollArea viewportClassName="max-h-[40vh]">
       <SidebarMenuSub>
-        {sections.map(([g, list]) => {
-          const items = list.map((c) => (
-            <SidebarMenuSubItem key={c.slug}>
-              <SidebarMenuSubButton
-                isActive={c.slug === activeCollection}
-                onClick={() => onOpen(c.slug)}
-                onMouseEnter={() => prefetchPage("collections")}
-                className="cursor-pointer"
-              >
-                <span className="truncate font-mono text-[12px]">{c.slug}</span>
-              </SidebarMenuSubButton>
+        {rows.length >= TREE_FILTER_MIN && (
+          <SidebarMenuSubItem>
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t`Filter collections…`}
+              className="mb-1 h-7 rounded-lg px-2.5 font-mono text-[12px]"
+            />
+          </SidebarMenuSubItem>
+        )}
+        {matches ? (
+          matches.length > 0 ? (
+            matches.map((c) => renderRow(c))
+          ) : (
+            <SidebarMenuSubItem>
+              <div className="px-3 py-1 text-[11.5px] text-muted-foreground"><Trans>No collections match</Trans></div>
             </SidebarMenuSubItem>
-          ));
-          if (g === null) {
-            // Ungrouped rows render flat at the end — no header to collapse.
-            return items;
-          }
-          const open = !collapsed[g];
-          return (
-            <Collapsible key={g} asChild open={open} onOpenChange={() => toggleGroup(g)}>
-              <SidebarMenuSubItem>
-                <CollapsibleTrigger asChild>
-                  <SidebarMenuSubButton className="cursor-pointer text-muted-foreground">
-                    <I.ChevronRight
-                      size={11}
-                      className={`shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
-                    />
-                    <span className="truncate text-[11px] font-semibold uppercase tracking-[0.06em]">{g}</span>
-                    <span className="ml-auto tabular-nums text-[10px]">{list.length}</span>
-                  </SidebarMenuSubButton>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarMenuSub className="mr-0 pr-0">{items}</SidebarMenuSub>
-                </CollapsibleContent>
-              </SidebarMenuSubItem>
-            </Collapsible>
-          );
-        })}
+          )
+        ) : (
+          <>
+            {pinnedRows.length > 0 && (
+              <>
+                <SidebarMenuSubItem>
+                  <div className="flex h-6 items-center gap-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                    <I.Star size={10} /> <Trans>Pinned</Trans>
+                  </div>
+                </SidebarMenuSubItem>
+                {pinnedRows.map((c) => renderRow(c, "pin-"))}
+              </>
+            )}
+            {sections.map(([g, list]) => {
+              const items = list.map((c) => renderRow(c));
+              if (g === null) {
+                // Ungrouped rows render flat at the end — no header to collapse.
+                return items;
+              }
+              const open = !collapsed[g];
+              return (
+                <Collapsible key={g} asChild open={open} onOpenChange={() => toggleGroup(g)}>
+                  <SidebarMenuSubItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuSubButton className="cursor-pointer text-muted-foreground">
+                        <I.ChevronRight
+                          size={11}
+                          className={`shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
+                        />
+                        <span className="truncate text-[11px] font-semibold uppercase tracking-[0.06em]">{g}</span>
+                        <span className="ml-auto tabular-nums text-[10px]">{list.length}</span>
+                      </SidebarMenuSubButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub className="mr-0 pr-0">{items}</SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuSubItem>
+                </Collapsible>
+              );
+            })}
+          </>
+        )}
       </SidebarMenuSub>
     </ScrollArea>
   );

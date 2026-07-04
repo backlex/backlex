@@ -4256,6 +4256,10 @@ msgstr "Filter by email / name…"
 msgid "Filter by path…"
 msgstr "Filter by path…"
 
+#: src/client/admin/ui.tsx
+msgid "Filter collections…"
+msgstr "Filter collections…"
+
 #: src/client/pages/rest-explorer.tsx
 msgid "Filter endpoints…"
 msgstr "Filter endpoints…"
@@ -6306,6 +6310,10 @@ msgstr "No collections — you'll start from scratch."
 msgid "No collections in this workspace yet — create one first, or switch <0>Kind</0> to <1>sql</1>."
 msgstr "No collections in this workspace yet — create one first, or switch <0>Kind</0> to <1>sql</1>."
 
+#: src/client/admin/ui.tsx
+msgid "No collections match"
+msgstr "No collections match"
+
 #: src/client/admin/collections-index.tsx
 msgid "No collections match your search"
 msgstr "No collections match your search"
@@ -7505,6 +7513,14 @@ msgstr "Pick type…"
 #: src/client/admin/item-form.tsx
 msgid "Pick…"
 msgstr "Pick…"
+
+#: src/client/admin/ui.tsx
+msgid "Pin to top"
+msgstr "Pin to top"
+
+#: src/client/admin/ui.tsx
+msgid "Pinned"
+msgstr "Pinned"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Pipe collection events to Slack, your API, or any HTTPS endpoint."
@@ -10776,6 +10792,10 @@ msgstr "Unlinked {0}."
 #: src/client/admin/account-page.tsx
 msgid "Unnamed passkey"
 msgstr "Unnamed passkey"
+
+#: src/client/admin/ui.tsx
+msgid "Unpin"
+msgstr "Unpin"
 
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx

@@ -22,6 +22,7 @@ import {
   type CollectionSchema,
   type MeNav,
   type Post,
+  isNavVisible,
 } from "./config";
 import {
   Badge,
@@ -487,6 +488,21 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     })();
     return () => { cancelled = true; };
   }, []);
+  // Landing redirect for non-admins: the default route is `overview`, which is
+  // admin-only — once /api/me resolves, bounce off any nav-hidden page to the
+  // first page the user can actually see (sidebar order: collections → storage
+  // → logs → …; `logs` is always visible so there's always a target). `replace`
+  // keeps the hidden page out of history. Cosmetic like the sidebar filter —
+  // the API behind every page stays gated server-side.
+  useEffect(() => {
+    if (!me || me.isAdmin) return;
+    const grants = me.nav ?? null;
+    if (isNavVisible(activeNav, false, grants)) return;
+    const fallback = [...NAV_ITEMS, ...NAV_DEVELOPERS, ...NAV_SETTINGS].find((n) =>
+      isNavVisible(n.id, false, grants),
+    );
+    if (fallback) vNav("/" + fallback.id, undefined, { replace: true });
+  }, [me, activeNav, vNav]);
 
   // Detect the actual runtime profile so the sidebar pill, Health card and
   // Settings page show truth instead of the design's `bun` default.

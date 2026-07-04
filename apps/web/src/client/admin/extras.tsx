@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
-import { NAV_ITEMS, NAV_SETTINGS, isNavVisible, type CollectionListItem, type CollectionSchema, type Post, type SchemaField } from "./config";
+import { NAV_ITEMS, NAV_SETTINGS, isNavVisible, type CollectionListItem, type CollectionSchema, type MeNav, type Post, type SchemaField } from "./config";
 import { Badge, Button, EmptyState, IconButton, JsonBlock, navLabel } from "./ui";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
@@ -32,9 +32,11 @@ export interface PaletteProps {
   /** Tri-state admin flag — `false` hides admin-only pages, mirroring the
    *  sidebar (see `isNavVisible`). */
   isAdmin?: boolean | null;
+  /** Per-permission nav grants from `/api/me`, mirroring the sidebar. */
+  navGrants?: MeNav | null;
 }
 
-export function Palette({ open, onClose, onNavigate, items, collections, isAdmin }: PaletteProps) {
+export function Palette({ open, onClose, onNavigate, items, collections, isAdmin, navGrants }: PaletteProps) {
   const { t, i18n } = useLingui();
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
@@ -50,7 +52,7 @@ export function Palette({ open, onClose, onNavigate, items, collections, isAdmin
 
   const groups = useMemo(() => {
     const ql = q.toLowerCase().trim();
-    const nav: PaletteSelection[] = NAV_ITEMS.concat(NAV_SETTINGS).filter((n) => isNavVisible(n.id, isAdmin)).map((n) => ({ kind: "page", id: n.id, label: i18n._(navLabel(n.id)), icon: String(n.icon), meta: t`goto` })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
+    const nav: PaletteSelection[] = NAV_ITEMS.concat(NAV_SETTINGS).filter((n) => isNavVisible(n.id, isAdmin, navGrants)).map((n) => ({ kind: "page", id: n.id, label: i18n._(navLabel(n.id)), icon: String(n.icon), meta: t`goto` })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
     const cols: PaletteSelection[] = collections.map((c) => ({ kind: "collection", id: c.slug, label: c.slug, icon: "Database", meta: t`${c.count} items` })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
     const its: PaletteSelection[] = ql
       ? items.filter((i) => i.title.toLowerCase().includes(ql) || i.slug.toLowerCase().includes(ql)).slice(0, 8).map((i) => ({ kind: "item", id: i.id, label: i.title, sub: i.slug, icon: "Inbox", meta: i.status }))
@@ -66,7 +68,7 @@ export function Palette({ open, onClose, onNavigate, items, collections, isAdmin
       { name: t`Pages`, list: nav },
       { name: t`Actions`, list: actions },
     ].filter((g) => g.list.length);
-  }, [q, items, collections, isAdmin, i18n, t]);
+  }, [q, items, collections, isAdmin, navGrants, i18n, t]);
 
   const flat = useMemo(() => groups.flatMap((g) => g.list), [groups]);
 

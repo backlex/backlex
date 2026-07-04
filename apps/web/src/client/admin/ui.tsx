@@ -17,7 +17,7 @@ import { msg } from "@lingui/core/macro";
 import type { MessageDescriptor } from "@lingui/core";
 import { cn } from "@backlex/ui/lib/utils";
 import { I, type IconComponent, type IconKey } from "./icons";
-import { NAV_PRIMARY, NAV_DATA, NAV_AUTOMATION, NAV_OBSERVABILITY, NAV_SETTINGS, NAV_DEVELOPERS, isNavVisible } from "./config";
+import { NAV_PRIMARY, NAV_DATA, NAV_AUTOMATION, NAV_OBSERVABILITY, NAV_SETTINGS, NAV_DEVELOPERS, isNavVisible, type MeNav } from "./config";
 import { prefetchPage } from "./lib/page-prefetch";
 import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
 import { orderCollections, useCollections, useNotifications, useNotificationsUnread, queryKeys } from "./queries";
@@ -318,6 +318,9 @@ export interface SidebarProps {
    *  items; `null`/`undefined` (still loading) shows everything so admins
    *  don't watch their menu pop in. Cosmetic — the API stays gated. */
   isAdmin?: boolean | null;
+  /** Per-permission nav grants from `/api/me` — narrows the non-admin
+   *  allow-list to pages the user holds an actual read grant for. */
+  navGrants?: MeNav | null;
 }
 
 /** Collapsed-state of sidebar collection groups. Per-device UI state —
@@ -553,7 +556,7 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
 export const navLabel = (id: string): MessageDescriptor =>
   NAV_LABELS[id] ?? { id };
 
-export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, activeCollection, isAdmin }: SidebarProps) {
+export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, activeCollection, isAdmin, navGrants }: SidebarProps) {
   const settings = NAV_SETTINGS;
   const developers = NAV_DEVELOPERS;
   const { t, i18n } = useLingui();
@@ -712,7 +715,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, 
           ...group,
           // Non-admins only get the entries whose pages they can actually
           // use; empty groups drop out below (Docs keeps "developers" alive).
-          entries: group.entries.filter((it) => isNavVisible(it.id, isAdmin)),
+          entries: group.entries.filter((it) => isNavVisible(it.id, isAdmin, navGrants)),
         })).filter((group) => group.entries.length > 0 || group.key === "developers").map((group) => (
           <SidebarGroup key={group.key}>
             {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}

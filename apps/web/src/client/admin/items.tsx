@@ -17,6 +17,7 @@ import { i18n } from "@lingui/core";
 import { fieldLabel, formatFieldValue } from "./format-value";
 import { useListColumns } from "./list-columns";
 import { useRelationLabels } from "./relation-labels";
+import { useCollections } from "./queries";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -715,16 +716,48 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   // since the row's own hover/selected tint can't show through them.
   const STICKY_BG = "bg-card group-hover/row:bg-[color-mix(in_oklab,var(--muted)_50%,var(--card))] group-data-[selected=true]/row:bg-selected-surface";
   const STICKY_BOX = "sm:sticky sm:z-[1] " + STICKY_BG;
+  // Resolve column names to field descriptors. Dot-notation names
+  // (`author.first_name`) synthesize one from the relation's target field —
+  // the value comes from the server-side `expand` of the head (app.tsx wires
+  // `expand=` into the list request from the same saved columns).
+  const { data: colsData } = useCollections();
+  const allCollections = colsData?.data;
   const dynFields = baseCols
-    .map((n) => (schema?.fields ?? []).find((f) => (f as { name?: string }).name === n))
-    .filter(Boolean) as Array<{ name: string; label?: string; type?: string; to?: string; translations?: Record<string, string> }>;
+    .map((n) => {
+      const direct = (schema?.fields ?? []).find((f) => (f as { name?: string }).name === n);
+      if (direct) return direct;
+      if (!n.includes(".")) return null;
+      const [head, sub] = n.split(".");
+      const rel = (schema?.fields ?? []).find(
+        (f) => (f as { name?: string; type?: string }).name === head && (f as { type?: string }).type === "relation",
+      ) as { name: string; to?: string; label?: string; translations?: Record<string, string> } | undefined;
+      if (!rel?.to) return null;
+      const target = allCollections?.find((c) => c.slug === rel.to);
+      const tf = (target?.fields ?? []).find((f) => (f as { name?: string }).name === sub);
+      if (!tf) return null;
+      return {
+        ...(tf as object),
+        name: n,
+        dot: { head, sub },
+        dotLabel: `${fieldLabel(rel, i18n.locale)} › ${fieldLabel(tf, i18n.locale)}`,
+      };
+    })
+    .filter(Boolean) as Array<{
+      name: string;
+      label?: string;
+      type?: string;
+      to?: string;
+      translations?: Record<string, string>;
+      dot?: { head: string; sub: string };
+      dotLabel?: string;
+    }>;
   const useDynamic = dynFields.length > 0;
   const isNumF = (ty?: string) => ty === "integer" || ty === "number";
 
   // Relation columns render the target row's display-template label instead
   // of the raw FK id (one `_in` fetch per relation column per page).
   const relLabels = useRelationLabels(
-    dynFields.filter((f) => f.type === "relation" && f.to),
+    dynFields.filter((f) => f.type === "relation" && f.to && !f.dot),
     rows as Array<Record<string, unknown>>,
   );
   const shortId = (v: unknown) => {
@@ -758,7 +791,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
               <SortHead
                 key={f.name}
                 id={f.name}
-                label={fieldLabel(f, i18n.locale)}
+                label={f.dotLabel ?? fieldLabel(f, i18n.locale)}
                 num={isNumF(f.type)}
                 sort={sort}
                 setSort={setSort}
@@ -811,7 +844,10 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                 dynFields.map((f, idx) => {
                   // Preserve the status badge when the status field is a column;
                   // everything else renders through the display formatter.
-                  const rawV = (r as Record<string, unknown>)[f.name];
+                  // Dot columns read the sub-value off the server-expanded head.
+                  const rawV = f.dot
+                    ? ((r as Record<string, unknown>)[f.dot.head] as Record<string, unknown> | null | undefined)?.[f.dot.sub]
+                    : (r as Record<string, unknown>)[f.name];
                   const anchorCls = !identity && idx === 0 ? `sm:left-[37px] ${STICKY_BOX}` : "";
                   if (statusField && f.name === statusField.name) {
                     const svStr = rawV != null ? String(rawV) : null;
@@ -841,17 +877,22 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                   }
                   // Relation columns: show the target row's resolved label
                   // (display template / title-ish scan) instead of the FK id.
-                  const isRel = f.type === "relation";
+                  // When the head is server-expanded the value is the nested
+                  // row itself — its id keys the same label map.
+                  const isRel = !f.dot && f.type === "relation";
+                  const fkId = isRel && rawV != null && typeof rawV === "object"
+                    ? String((rawV as Record<string, unknown>).id ?? "")
+                    : rawV;
                   const txt = isRel
-                    ? rawV == null || rawV === ""
+                    ? fkId == null || fkId === ""
                       ? ""
-                      : (relLabels[f.name]?.[String(rawV)] ?? shortId(rawV))
+                      : (relLabels[f.name]?.[String(fkId)] ?? shortId(fkId))
                     : formatFieldValue(rawV, f, i18n.locale);
                   const choices = fieldChoices(f);
                   return (
                     <EditCell
                       key={f.name}
-                      editable={!!choices || INLINE_TYPES.has(f.type ?? "")}
+                      editable={!f.dot && (!!choices || INLINE_TYPES.has(f.type ?? ""))}
                       editing={isEditing(r.id, f.name)}
                       num={isNumF(f.type)}
                       className={`${isNumF(f.type) ? "" : "max-w-[280px]"} ${anchorCls}`}

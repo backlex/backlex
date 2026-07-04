@@ -16,13 +16,18 @@ export interface RelationColumn {
 
 /** Returns `fieldName → (fk id → label)` for every relation column on the
  *  current page. Missing entries mean "not loaded yet / row deleted" — render
- *  the id as the fallback. */
+ *  the id as the fallback. When the list request already `expand`ed the head
+ *  (a dot column is active), the nested row labels itself with no fetch. */
 export function useRelationLabels(
   fields: RelationColumn[],
   rows: Array<Record<string, unknown>>,
 ): Record<string, Record<string, string>> {
   const { data } = useCollections();
   const cols = data?.data;
+  const templateFor = (target: string) =>
+    (cols?.find((c) => c.slug === target) as { displayTemplate?: string | null } | undefined)
+      ?.displayTemplate ?? null;
+
   const queries = fields.map((f) => {
     const target = f.to ?? "";
     const ids = [
@@ -32,9 +37,7 @@ export function useRelationLabels(
           .filter((v): v is string => typeof v === "string" && v.length > 0),
       ),
     ].sort();
-    const tmpl =
-      (cols?.find((c) => c.slug === target) as { displayTemplate?: string | null } | undefined)
-        ?.displayTemplate ?? null;
+    const tmpl = templateFor(target);
     return {
       queryKey: ["relation-labels", target, tmpl, ids] as const,
       enabled: !!target && ids.length > 0,
@@ -57,9 +60,24 @@ export function useRelationLabels(
     };
   });
   const results = useQueries({ queries });
+
   const out: Record<string, Record<string, string>> = {};
   fields.forEach((f, i) => {
-    out[f.name] = (results[i]?.data as Record<string, string> | undefined) ?? {};
+    const map: Record<string, string> = {
+      ...((results[i]?.data as Record<string, string> | undefined) ?? {}),
+    };
+    // Server-expanded values are the nested rows themselves — label them
+    // synchronously so no fetch is needed for those ids.
+    const labelFor = makeLabelFor(templateFor(f.to ?? ""));
+    for (const r of rows) {
+      const v = r[f.name];
+      if (v && typeof v === "object" && !Array.isArray(v)) {
+        const nested = v as Record<string, unknown>;
+        const id = String(nested.id ?? "");
+        if (id && !map[id]) map[id] = labelFor(nested) ?? id;
+      }
+    }
+    out[f.name] = map;
   });
   return out;
 }

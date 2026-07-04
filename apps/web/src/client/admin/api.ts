@@ -1470,6 +1470,15 @@ export const accountApi = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+  /** Per-user list-view columns (slug → ordered field names). PATCH replaces
+   *  the full map; drop a slug to fall back to the workspace default. */
+  getListColumns: () =>
+    api<Envelope<Record<string, string[]>>>(`/api/account/list-columns`),
+  patchListColumns: (listColumns: Record<string, string[]>) =>
+    api<{ ok: true }>(`/api/account/list-columns`, {
+      method: "PATCH",
+      body: JSON.stringify({ listColumns }),
+    }),
 };
 
 /** In-app notification row (`/api/notifications`). The real schema has no

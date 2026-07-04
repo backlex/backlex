@@ -211,24 +211,24 @@ export function ColumnPicker({
               const isOpen = !!expandedRel[f.name];
               return (
                 <div key={f.name} className="flex flex-col">
-                  <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-foreground hover:bg-accent">
+                  <label
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-foreground hover:bg-accent"
+                    onClick={subs.length > 0 ? (e) => {
+                      // Relation rows: clicking the row expands/collapses the
+                      // target-field list; only the checkbox itself selects
+                      // the FK column.
+                      if ((e.target as HTMLElement).closest('[data-slot="checkbox"]')) return;
+                      e.preventDefault();
+                      setExpandedRel((m) => ({ ...m, [f.name]: !isOpen }));
+                    } : undefined}
+                  >
                     <Checkbox checked={false} onChange={() => toggle(f.name)} />
                     <span className="min-w-0 flex-1 truncate">{fieldLabel(f, i18n.locale)}</span>
                     {f.type && <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground">{f.type}</span>}
                     {subs.length > 0 && (
-                      <button
-                        type="button"
-                        className="shrink-0 cursor-pointer rounded-sm p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                        onClick={(e) => {
-                          // preventDefault keeps the wrapping label from
-                          // activating the checkbox.
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setExpandedRel((m) => ({ ...m, [f.name]: !isOpen }));
-                        }}
-                      >
+                      <span className="shrink-0 text-muted-foreground">
                         {isOpen ? <I.ChevronDown size={13} /> : <I.ChevronRight size={13} />}
-                      </button>
+                      </span>
                     )}
                   </label>
                   {isOpen && subs

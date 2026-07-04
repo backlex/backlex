@@ -6199,6 +6199,10 @@ msgstr "No default sort configured — list responses fall back to<0> -created_a
 msgid "No deliveries yet"
 msgstr "No deliveries yet"
 
+#: src/client/admin/app.tsx
+msgid "No display template set — cards label rows from their first text fields. Define a template in Settings for proper labels."
+msgstr "No display template set — cards label rows from their first text fields. Define a template in Settings for proper labels."
+
 #: src/client/admin/parity/revisions.tsx
 msgid "No earlier revisions — showing the current field values."
 msgstr "No earlier revisions — showing the current field values."
@@ -6771,6 +6775,10 @@ msgstr "Open collection"
 #: src/client/admin/pages/advisor.tsx
 msgid "Open resource"
 msgstr "Open resource"
+
+#: src/client/admin/app.tsx
+msgid "Open settings"
+msgstr "Open settings"
 
 #: src/client/admin/pages/settings.tsx
 msgid "Open-source · Apache-2.0 licensed"

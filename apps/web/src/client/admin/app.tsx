@@ -1118,7 +1118,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         pageRows.length === 0 ? (
                           <EmptyItems onCreate={openCreate} slug={activeCollection ?? undefined} />
                         ) : (
-                          <ItemsTable rows={pageRows} selected={selected} setSelected={setSelected} sort={sort} setSort={setSort} onEdit={openEdit} schema={schemaState} />
+                          <ItemsTable rows={pageRows} selected={selected} setSelected={setSelected} sort={sort} setSort={setSort} onEdit={openEdit} schema={schemaState} onCellError={(e) => pushToast((e as Error).message, "error")} />
                         )
                       )}
                       {viewMode === "kanban" && (

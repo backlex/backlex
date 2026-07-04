@@ -1,6 +1,7 @@
 // @ts-nocheck
 // Filter DSL builder + Items DataTable for the backlex admin design.
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useItemPatch } from "./queries";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { renderTemplate } from "@backlex/core";
 import { I } from "./icons";
@@ -390,6 +391,8 @@ export interface ItemsTableProps {
   onDelete?: (it: Post) => void;
   /** Pass the current collection schema to derive the status field config. */
   schema?: CollectionSchema;
+  /** Surfaces inline-edit PATCH failures (the cache already rolled back). */
+  onCellError?: (e: unknown) => void;
 }
 
 /** Drag-to-reorder context threaded into draggable column headers. */
@@ -408,13 +411,14 @@ interface HeaderDragCtx {
  *  component identity every render, so the first drag state update remounted
  *  every <th> — which detaches the drag source mid-drag and kills the native
  *  drag operation. */
-function SortHead({ id, label, num, sort, setSort, dragCtx }: {
+function SortHead({ id, label, num, sort, setSort, dragCtx, className }: {
   id: string;
   label: string;
   num?: boolean;
   sort: string;
   setSort: (s: string) => void;
   dragCtx?: HeaderDragCtx;
+  className?: string;
 }) {
   const dir: "asc" | "desc" = sort.startsWith("-") ? "desc" : "asc";
   const isActive = sort.replace("-", "") === id;
@@ -426,7 +430,7 @@ function SortHead({ id, label, num, sort, setSort, dragCtx }: {
   return (
     <TableHead
       onClick={() => setSort(isActive ? (dir === "asc" ? "-" + id : id) : id)}
-      className={`cursor-pointer select-none ${num ? "text-right" : "text-left"}`}
+      className={`cursor-pointer select-none ${num ? "text-right" : "text-left"} ${className ?? ""}`}
       draggable={d ? true : undefined}
       // Inset shadow instead of a border so the drop indicator doesn't
       // shift the header row's layout while dragging.
@@ -469,7 +473,139 @@ function SortHead({ id, label, num, sort, setSort, dragCtx }: {
   );
 }
 
-export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit, schema }: ItemsTableProps) {
+/** Inline cell editor — Atlassian inline-edit semantics: Enter or blur
+ *  commits, Esc cancels. Dropdowns and booleans commit on change directly. */
+function CellEditor({ field, value, choices, onCommit, onCancel }: {
+  field: { name: string; type?: string };
+  value: unknown;
+  choices?: StatusChoice[];
+  onCommit: (v: unknown) => void;
+  onCancel: () => void;
+}) {
+  const [raw, setRaw] = useState(value == null ? "" : String(value));
+  // Guards the Esc→blur double-fire: cancelling unmounts the input, whose
+  // blur would otherwise commit the value straight back.
+  const done = useRef(false);
+  const finish = (fn: () => void) => {
+    if (done.current) return;
+    done.current = true;
+    fn();
+  };
+
+  if (choices?.length) {
+    return (
+      <Select
+        value={value == null ? undefined : String(value)}
+        onChange={(v) => finish(() => onCommit(v))}
+        options={choices.map((c) => ({ value: c.value, label: c.label ?? c.value }))}
+        size="sm"
+        className="min-w-[110px]"
+      />
+    );
+  }
+  if (field.type === "boolean") {
+    const on = value === true || value === 1 || value === "1" || value === "true";
+    return (
+      <span className="inline-flex items-center py-1">
+        <Checkbox checked={on} onChange={() => finish(() => onCommit(!on))} />
+      </span>
+    );
+  }
+  const isNum = field.type === "integer" || field.type === "number";
+  const commitText = () => {
+    if (isNum) {
+      const trimmed = raw.trim();
+      if (trimmed === "") return onCommit(null);
+      const n = Number(trimmed);
+      if (!Number.isFinite(n)) return onCancel();
+      return onCommit(field.type === "integer" ? Math.trunc(n) : n);
+    }
+    onCommit(raw);
+  };
+  return (
+    <Input
+      autoFocus
+      value={raw}
+      onChange={(e) => setRaw(e.target.value)}
+      onFocus={(e) => e.currentTarget.select()}
+      inputMode={isNum ? "decimal" : undefined}
+      className={`h-7 min-w-[110px] px-2 text-[13px] ${isNum ? "text-right" : ""}`}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") finish(commitText);
+        else if (e.key === "Escape") finish(onCancel);
+      }}
+      onBlur={() => finish(commitText)}
+    />
+  );
+}
+
+/** Table cell with hover-pencil inline editing. Jira-style disambiguation:
+ *  clicking the row still opens the detail editor; the pencil (kept primary-
+ *  tinted — greyed-out pencils get overlooked) or a double-click edits the
+ *  single cell in place. Hover-only affordance, so touch devices keep the
+ *  row-tap → detail-editor flow. */
+function EditCell({ editable, editing, num, className, field, value, choices, display, onStart, onCommit, onCancel }: {
+  editable: boolean;
+  editing: boolean;
+  num?: boolean;
+  className?: string;
+  field: { name: string; type?: string };
+  value: unknown;
+  choices?: StatusChoice[];
+  display: React.ReactNode;
+  onStart: () => void;
+  onCommit: (v: unknown) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useLingui();
+  return (
+    <TableCell
+      className={`group/cell ${num ? "text-right tabular-nums" : ""} ${className ?? ""}`}
+      onDoubleClick={editable && !editing ? (e) => {
+        e.stopPropagation();
+        onStart();
+      } : undefined}
+      onClick={editing ? (e) => e.stopPropagation() : undefined}
+    >
+      {editing ? (
+        <CellEditor field={field} value={value} choices={choices} onCommit={onCommit} onCancel={onCancel} />
+      ) : (
+        <span className={`flex max-w-full items-center gap-1 ${num ? "justify-end" : ""}`}>
+          <span className="min-w-0 truncate">{display}</span>
+          {editable && (
+            <button
+              type="button"
+              title={t`Edit`}
+              className="shrink-0 cursor-pointer rounded-sm p-0.5 text-primary opacity-0 transition-opacity hover:bg-accent focus-visible:opacity-100 group-hover/cell:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStart();
+              }}
+            >
+              <I.Pencil size={12} />
+            </button>
+          )}
+        </span>
+      )}
+    </TableCell>
+  );
+}
+
+/** Field types the in-place editor can handle; everything else (relation,
+ *  json, i18n_text, uuid, timestamp…) goes through the full detail editor. */
+const INLINE_TYPES = new Set(["text", "longtext", "integer", "number", "boolean"]);
+
+/** Dropdown-interface fields carry their choices in options — those edit via
+ *  a Select regardless of storage type. */
+function fieldChoices(f: { interface?: string; options?: { choices?: StatusChoice[]; values?: string[] } }): StatusChoice[] | undefined {
+  if (f.interface !== "dropdown") return undefined;
+  const choices = f.options?.choices?.length
+    ? f.options.choices
+    : (f.options?.values ?? []).map((v) => ({ value: v }));
+  return choices.length ? choices : undefined;
+}
+
+export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit, schema, onCellError }: ItemsTableProps) {
   const { t } = useLingui();
   // Subscribe so the table re-renders when authors-cache populates.
   useSyncExternalStore(subscribeAuthors, getAuthors, getAuthors);
@@ -524,6 +660,28 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
     setColumns(next);
   };
   const dragCtx: HeaderDragCtx = { dragCol, overCol, setDragCol, setOverCol, order: colNames, move: moveColumn };
+
+  // Inline cell editing — one cell at a time; optimistic PATCH through the
+  // shared items cache (rollback + onCellError toast on failure).
+  const [editCell, setEditCell] = useState<{ id: string; field: string } | null>(null);
+  const patchItem = useItemPatch(schema?.slug ?? null);
+  const isEditing = (rowId: string, name: string) => editCell?.id === rowId && editCell.field === name;
+  const commitCell = (rowId: string, name: string, prev: unknown, next: unknown) => {
+    setEditCell(null);
+    const same = prev === next || (prev == null && (next == null || next === "")) || String(prev ?? "") === String(next ?? "");
+    if (same) return;
+    patchItem.mutate(
+      { id: rowId, patch: { [name]: next } },
+      { onError: (e) => onCellError?.(e) },
+    );
+  };
+
+  // Sticky columns: checkbox + Title pin left (desktop only — on a phone the
+  // title column would swallow most of the viewport), actions stay pinned
+  // right. Sticky cells need an opaque background plus row-state variants,
+  // since the row's own hover/selected tint can't show through them.
+  const STICKY_BG = "bg-card group-hover/row:bg-[color-mix(in_oklab,var(--muted)_50%,var(--card))] group-data-[selected=true]/row:bg-selected-surface";
+  const STICKY_BOX = "sm:sticky sm:z-[1] " + STICKY_BG;
   const dynFields = colNames
     .map((n) => (schema?.fields ?? []).find((f) => (f as { name?: string }).name === n))
     .filter(Boolean) as Array<{ name: string; label?: string; type?: string; translations?: Record<string, string> }>;
@@ -534,10 +692,10 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
     <Table className={ADMIN_TABLE_CLS}>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[38px]">
+          <TableHead className="w-[38px] bg-card sm:sticky sm:left-0 sm:z-[2]">
             <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} />
           </TableHead>
-          <SortHead id="title" label={t`Title`} sort={sort} setSort={setSort} />
+          <SortHead id="title" label={t`Title`} sort={sort} setSort={setSort} className="bg-card sm:sticky sm:left-[38px] sm:z-[2]" />
           {useDynamic ? (
             dynFields.map((f) => (
               <SortHead key={f.name} id={f.name} label={fieldLabel(f, i18n.locale)} num={isNumF(f.type)} sort={sort} setSort={setSort} dragCtx={dragCtx} />
@@ -571,27 +729,33 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
           const displayStatus = rawStatus != null ? String(rawStatus) : null;
           const choice = displayStatus ? choiceByValue.get(displayStatus) : null;
           return (
-            <TableRow key={r.id} data-selected={selected.has(r.id)} onClick={() => onEdit(r)} className="cursor-pointer data-[selected=true]:bg-selected-surface">
-              <TableCell onClick={(e) => e.stopPropagation()}>
+            <TableRow key={r.id} data-selected={selected.has(r.id)} onClick={() => onEdit(r)} className="group/row cursor-pointer data-[selected=true]:bg-selected-surface">
+              <TableCell onClick={(e) => e.stopPropagation()} className={`sm:left-0 ${STICKY_BOX}`}>
                 <Checkbox checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
               </TableCell>
-              <TableCell>
-                <div className="flex flex-col">
-                  <span className="font-medium text-foreground">{cellText(displayTitle)}</span>
-                  {displaySlug && <span className="font-mono text-[11px] text-muted-foreground">/{String(displaySlug).slice(0, 24)}</span>}
+              <TableCell className={`sm:left-[38px] sm:max-w-[320px] ${STICKY_BOX}`}>
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate font-medium text-foreground">{cellText(displayTitle)}</span>
+                  {displaySlug && <span className="truncate font-mono text-[11px] text-muted-foreground">/{String(displaySlug).slice(0, 24)}</span>}
                 </div>
               </TableCell>
               {useDynamic ? (
                 dynFields.map((f) => {
                   // Preserve the status badge when the status field is a column;
                   // everything else renders through the display formatter.
+                  const rawV = (r as Record<string, unknown>)[f.name];
                   if (statusField && f.name === statusField.name) {
-                    const sv = (r as Record<string, unknown>)[f.name];
-                    const svStr = sv != null ? String(sv) : null;
+                    const svStr = rawV != null ? String(rawV) : null;
                     const ch = svStr ? choiceByValue.get(svStr) : null;
                     return (
-                      <TableCell key={f.name}>
-                        {svStr ? (
+                      <EditCell
+                        key={f.name}
+                        editable
+                        editing={isEditing(r.id, f.name)}
+                        field={f}
+                        value={rawV}
+                        choices={statusField.choices}
+                        display={svStr ? (
                           <Badge variant={ch?.color ? "outline" : statusVariant(svStr)}>
                             {ch?.color && <span className="mr-1 inline-block size-1.5 rounded-full" style={{ background: ch.color }} />}
                             {ch?.label ?? svStr}
@@ -599,21 +763,41 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
-                      </TableCell>
+                        onStart={() => setEditCell({ id: r.id, field: f.name })}
+                        onCommit={(v) => commitCell(r.id, f.name, rawV, v)}
+                        onCancel={() => setEditCell(null)}
+                      />
                     );
                   }
-                  const txt = formatFieldValue((r as Record<string, unknown>)[f.name], f, i18n.locale);
+                  const txt = formatFieldValue(rawV, f, i18n.locale);
+                  const choices = fieldChoices(f);
                   return (
-                    <TableCell key={f.name} className={isNumF(f.type) ? "text-right tabular-nums" : "max-w-[280px] truncate"}>
-                      {txt || <span className="text-muted-foreground">—</span>}
-                    </TableCell>
+                    <EditCell
+                      key={f.name}
+                      editable={!!choices || INLINE_TYPES.has(f.type ?? "")}
+                      editing={isEditing(r.id, f.name)}
+                      num={isNumF(f.type)}
+                      className={isNumF(f.type) ? "" : "max-w-[280px]"}
+                      field={f}
+                      value={rawV}
+                      choices={choices}
+                      display={txt || <span className="text-muted-foreground">—</span>}
+                      onStart={() => setEditCell({ id: r.id, field: f.name })}
+                      onCommit={(v) => commitCell(r.id, f.name, rawV, v)}
+                      onCancel={() => setEditCell(null)}
+                    />
                   );
                 })
               ) : (
                 <>
                   {has.status && (
-                    <TableCell>
-                      {displayStatus ? (
+                    <EditCell
+                      editable
+                      editing={isEditing(r.id, statusField!.name)}
+                      field={{ name: statusField!.name, type: "text" }}
+                      value={rawStatus}
+                      choices={statusField!.choices}
+                      display={displayStatus ? (
                         <Badge variant={choice?.color ? "outline" : statusVariant(displayStatus)}>
                           {choice?.color && (
                             <span
@@ -626,7 +810,10 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
-                    </TableCell>
+                      onStart={() => setEditCell({ id: r.id, field: statusField!.name })}
+                      onCommit={(v) => commitCell(r.id, statusField!.name, rawStatus, v)}
+                      onCancel={() => setEditCell(null)}
+                    />
                   )}
                   {has.author && (
                     <TableCell>
@@ -637,15 +824,36 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                     </TableCell>
                   )}
                   {has.words && (
-                    <TableCell className="text-right tabular-nums">{r.word_count ?? "—"}</TableCell>
+                    <EditCell
+                      editable
+                      editing={isEditing(r.id, "word_count")}
+                      num
+                      field={{ name: "word_count", type: "integer" }}
+                      value={r.word_count}
+                      display={r.word_count ?? "—"}
+                      onStart={() => setEditCell({ id: r.id, field: "word_count" })}
+                      onCommit={(v) => commitCell(r.id, "word_count", r.word_count, v)}
+                      onCancel={() => setEditCell(null)}
+                    />
                   )}
                   {has.views && (
-                    <TableCell className={`text-right tabular-nums ${r.view_count ? "text-foreground" : "text-muted-foreground"}`}>{r.view_count ? Number(r.view_count).toLocaleString() : "—"}</TableCell>
+                    <EditCell
+                      editable
+                      editing={isEditing(r.id, "view_count")}
+                      num
+                      className={r.view_count ? "text-foreground" : "text-muted-foreground"}
+                      field={{ name: "view_count", type: "integer" }}
+                      value={r.view_count}
+                      display={r.view_count ? Number(r.view_count).toLocaleString() : "—"}
+                      onStart={() => setEditCell({ id: r.id, field: "view_count" })}
+                      onCommit={(v) => commitCell(r.id, "view_count", r.view_count, v)}
+                      onCancel={() => setEditCell(null)}
+                    />
                   )}
                 </>
               )}
               <TableCell className="font-mono tabular-nums text-muted-foreground">{fmtDate(r.updated_at ?? r.updatedAt)}</TableCell>
-              <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
+              <TableCell className={`sticky right-0 text-right ${STICKY_BG}`} onClick={(e) => e.stopPropagation()}>
                 <IconButton icon={I.Pencil} onClick={() => onEdit(r)} title={t`Edit`} />
               </TableCell>
             </TableRow>

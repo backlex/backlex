@@ -34,6 +34,8 @@ import {
 import {
   activityApi,
   advisorApi,
+  type ApiCollection,
+  type CollectionsLayoutInput,
   collectionsApi,
   commentsApi,
   itemsApi,
@@ -143,6 +145,74 @@ export function useCollections(includeArchived = false) {
   return useQuery({
     queryKey: queryKeys.collections(includeArchived),
     queryFn: () => collectionsApi.listWithArchived(includeArchived),
+  });
+}
+
+/** Deterministic grouping used by both the Collections page and the sidebar
+ *  tree: group order = the saved `groups` list (kept even when empty, so
+ *  Edit-layout mode can render just-created groups — consumers filter empties
+ *  where they don't want them), then any group names not in it (alphabetical),
+ *  then ungrouped (`null`) last; within a group, `sortOrder` asc nulls-last,
+ *  then `slug` asc. */
+export function orderCollections<
+  T extends { slug: string; group?: string | null; sortOrder?: number | null },
+>(items: T[], groups: string[]): [string | null, T[]][] {
+  const byGroup = new Map<string | null, T[]>();
+  for (const it of items) {
+    const g = it.group ?? null;
+    const list = byGroup.get(g);
+    if (list) list.push(it);
+    else byGroup.set(g, [it]);
+  }
+  const unknown = [...byGroup.keys()]
+    .filter((g): g is string => g !== null && !groups.includes(g))
+    .sort((a, b) => a.localeCompare(b));
+  const orderedKeys: (string | null)[] = [
+    ...groups,
+    ...unknown,
+    ...(byGroup.has(null) ? [null] : []),
+  ];
+  const cmp = (a: T, b: T) => {
+    const ao = a.sortOrder ?? null;
+    const bo = b.sortOrder ?? null;
+    if (ao !== null && bo !== null && ao !== bo) return ao - bo;
+    if (ao !== null && bo === null) return -1;
+    if (ao === null && bo !== null) return 1;
+    return a.slug.localeCompare(b.slug);
+  };
+  return orderedKeys.map((g) => [g, [...(byGroup.get(g) ?? [])].sort(cmp)]);
+}
+
+/** Persist the whole Collections grouping/order layout (Edit layout mode).
+ *  Optimistic: patches the RAW `{data, meta}` list-cache shape immediately,
+ *  rolls back on error, reconciles with an invalidate. */
+export function useSaveCollectionsLayout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CollectionsLayoutInput) => collectionsApi.saveLayout(input),
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: ["collections"] });
+      const key = queryKeys.collections(false);
+      const snap = qc.getQueryData(key);
+      const bySlug = new Map(input.items.map((i) => [i.slug, i]));
+      qc.setQueryData(
+        key,
+        (old: { data: ApiCollection[]; meta?: { groups: string[] } } | undefined) =>
+          old && {
+            ...old,
+            data: old.data.map((c) => {
+              const l = bySlug.get(c.slug);
+              return l ? { ...c, group: l.group, sortOrder: l.sortOrder } : c;
+            }),
+            meta: { ...old.meta, groups: input.groups },
+          },
+      );
+      return { snap };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx) qc.setQueryData(queryKeys.collections(false), ctx.snap);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["collections"] }),
   });
 }
 

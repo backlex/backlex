@@ -70,6 +70,22 @@ describe("collections list cache invalidation", () => {
     expect(del.status).toBe(200);
     expect(await list()).not.toContain(renamed);
   });
+
+  test("layout write invalidates the group-order cache too", async () => {
+    // Prime both caches (rows + group order ride the same GET).
+    await list();
+    const save = await h.fetch("/api/collections/layout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ groups: ["Fresh"], items: [] }),
+    });
+    expect(save.status).toBe(200);
+    // Without group-order invalidation this read would still serve the
+    // primed (empty) header list from the isolate cache.
+    const res = await h.fetch("/api/collections");
+    const body = (await res.json()) as { meta?: { groups: string[] } };
+    expect(body.meta?.groups).toEqual(["Fresh"]);
+  });
 });
 
 /**

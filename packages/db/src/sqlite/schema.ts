@@ -1027,6 +1027,11 @@ export const collections = sqliteTable(
      *  Comma-separated field list, `-` prefix = DESC (`-` prefix = DESC).
      *  e.g. `"-published_at,name"`. */
     defaultSort: text("default_sort"),
+    /** Admin grouping section header. Column is `group_name` (`GROUP` is
+     *  reserved); JSON key stays `group`. See the pg/schema.ts twin. */
+    group: text("group_name"),
+    /** Manual position within its group. See the pg/schema.ts twin. */
+    sortOrder: integer("sort_order"),
     /** Adopted (existing table) vs managed (we created the table). See the
      *  pg/schema.ts twin for the full contract. */
     adopted: integer("adopted", { mode: "boolean" }).notNull().default(false),

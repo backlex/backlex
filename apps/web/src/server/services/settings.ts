@@ -30,6 +30,10 @@ export interface AppSettings {
    *  names shown as table columns. Admin-UI-only (rendering); the query engine
    *  never reads it. Empty / missing slug = the curated default columns. */
   listColumns: Record<string, string[]>;
+  /** Ordered group-header names for the Collections page + sidebar tree.
+   *  Rendering order for group sections; collection rows carry their own
+   *  `group` value. Written by `POST /api/collections/layout`. */
+  collectionGroups: string[];
   /** Automatic schema-snapshot cadence (#9). `off` disables it; `daily`/`weekly`
    *  make the cron tick capture a `kind:"scheduled"` schema snapshot when due. */
   schemaSnapshotSchedule: "off" | "daily" | "weekly";
@@ -44,6 +48,7 @@ export const APP_SETTINGS_DEFAULTS: AppSettings = {
   timezone: DEFAULT_TIMEZONE,
   erdLayout: {},
   listColumns: {},
+  collectionGroups: [],
   schemaSnapshotSchedule: "off",
   schemaSnapshotKeepLast: 7,
 };
@@ -100,6 +105,8 @@ export const loadAppSettings = async (
         out.erdLayout = r.value;
       else if (r.key === "listColumns" && isListColumns(r.value))
         out.listColumns = r.value;
+      else if (r.key === "collectionGroups" && isStringArray(r.value))
+        out.collectionGroups = r.value;
       else if (
         r.key === "schemaSnapshotSchedule" &&
         (r.value === "off" || r.value === "daily" || r.value === "weekly")

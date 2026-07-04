@@ -3147,6 +3147,10 @@ msgstr "Delete function"
 msgid "Delete function?"
 msgstr "Delete function?"
 
+#: src/client/admin/collections-index.tsx
+msgid "Delete group (collections become ungrouped)"
+msgstr "Delete group (collections become ungrouped)"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Delete panel"
 msgstr "Delete panel"
@@ -3409,6 +3413,7 @@ msgstr "Docs"
 msgid "Don't have an account?"
 msgstr "Don't have an account?"
 
+#: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Done"
@@ -3458,6 +3463,10 @@ msgstr "Draft support_tickets schema"
 #: src/client/admin/storage.tsx
 msgid "drafts"
 msgstr "drafts"
+
+#: src/client/admin/collections-index.tsx
+msgid "Drag collections here"
+msgstr "Drag collections here"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Drag to another collection to create a relation"
@@ -3622,6 +3631,7 @@ msgstr "Edit flag"
 msgid "Edit flow"
 msgstr "Edit flow"
 
+#: src/client/admin/collections-index.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Edit layout"
 msgstr "Edit layout"
@@ -4275,6 +4285,10 @@ msgstr "Filter tools"
 msgid "Filter tools…"
 msgstr "Filter tools…"
 
+#: src/client/admin/collections-index.tsx
+msgid "Finish arranging collections"
+msgstr "Finish arranging collections"
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Fire a repository_dispatch on data events."
 msgstr "Fire a repository_dispatch on data events."
@@ -4592,9 +4606,17 @@ msgstr "Grid"
 msgid "Group"
 msgstr "Group"
 
+#: src/client/admin/collections-index.tsx
+msgid "Group and reorder collections"
+msgstr "Group and reorder collections"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Group by"
 msgstr "Group by"
+
+#: src/client/admin/collections-index.tsx
+msgid "Group name…"
+msgstr "Group name…"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Group panels into dashboards, build them from a collection (count / sum / average …) or a saved SQL query, then publish a dashboard to a public embed URL."
@@ -4611,6 +4633,10 @@ msgstr "Group thousands (1,234)"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Groups"
 msgstr "Groups"
+
+#: src/client/admin/collections-index.tsx
+msgid "Groups organize the Collections page and the sidebar. Rearrange them anytime with Edit layout."
+msgstr "Groups organize the Collections page and the sidebar. Rearrange them anytime with Edit layout."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Guards updated"
@@ -6106,6 +6132,10 @@ msgstr "New folder"
 msgid "New function"
 msgstr "New function"
 
+#: src/client/admin/collections-index.tsx
+msgid "New group"
+msgstr "New group"
+
 #: src/client/admin/parity/insights.tsx
 msgid "New insight panel"
 msgstr "New insight panel"
@@ -6433,6 +6463,10 @@ msgstr "No functions defined yet. Create a function before enqueuing a function 
 #: src/client/admin/pages/functions.tsx
 msgid "No functions yet — click + New function."
 msgstr "No functions yet — click + New function."
+
+#: src/client/admin/collections-index.tsx
+msgid "No group"
+msgstr "No group"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "No image selected"
@@ -6982,6 +7016,10 @@ msgstr "Optional — the key stops working after this time."
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "or"
 msgstr "or"
+
+#: src/client/admin/collections-index.tsx
+msgid "Or type a new group name…"
+msgstr "Or type a new group name…"
 
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -8163,6 +8201,10 @@ msgstr "Rename collection"
 #: src/client/admin/pages/functions.tsx
 msgid "Rename function"
 msgstr "Rename function"
+
+#: src/client/admin/collections-index.tsx
+msgid "Rename group"
+msgstr "Rename group"
 
 #. placeholder {0}: totals ? ` (${totals} updated)` : ""
 #: src/client/admin/app.tsx
@@ -10687,6 +10729,7 @@ msgstr "unbound"
 msgid "unchanged"
 msgstr "unchanged"
 
+#: src/client/admin/collections-index.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Ungrouped"
 msgstr "Ungrouped"

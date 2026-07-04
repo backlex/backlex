@@ -1139,6 +1139,15 @@ export const collections = pgTable(
      *  e.g. `"-published_at,name"`. Null falls back to `-created_at` if the
      *  collection has that column, otherwise the PK. */
     defaultSort: text("default_sort"),
+    /** Admin grouping: section header this collection sits under on the
+     *  Collections page + sidebar tree. Column is `group_name` because
+     *  `GROUP` is reserved in both dialects; the JSON key stays `group`.
+     *  Null = ungrouped (rendered last). Group-header order lives in the
+     *  `collectionGroups` app_settings key. */
+    group: text("group_name"),
+    /** Manual position within its group. Null = unordered (sorted by slug
+     *  after all explicitly-ordered rows). */
+    sortOrder: integer("sort_order"),
     /** True when this collection was adopted from an existing physical table
      *  (vs. created by us). Schema applier becomes a no-op for these rows,
      *  drop never touches the underlying table, and ownership uses the

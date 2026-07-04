@@ -19,14 +19,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useUrlState } from "@/lib/use-url-state";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { Card } from "@backlex/ui/components/card";
+import { useIsMobile } from "@backlex/ui/hooks/use-mobile";
 import { SkeletonRow } from "./loading";
-import { useCollections } from "./queries";
+import { orderCollections, useCollections, useSaveCollectionsLayout } from "./queries";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 
 export interface CollectionsIndexProps {
   collections: CollectionListItem[];
+  /** Saved group-header order (`meta.groups` from the collections list). */
+  collectionGroups: string[];
   onOpen: (slug: string) => void;
   onNew: () => void;
   onDelete?: (slug: string) => void;
@@ -43,7 +46,7 @@ export interface CollectionsIndexProps {
   pushToast: (msg: string) => void;
 }
 
-export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArchived, onToggleArchived, onRestore, onOpenApi, pushToast }: CollectionsIndexProps) {
+export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew, onDelete, showArchived, onToggleArchived, onRestore, onOpenApi, pushToast }: CollectionsIndexProps) {
   const { t } = useLingui();
   const [search, setSearch] = useUrlState("q", "");
   const [view, setView] = useState<"grid" | "table">("grid");
@@ -61,21 +64,132 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
   const collectionsQuery = useCollections(!!showArchived);
   const loading = collectionsQuery.isLoading;
 
+  // --- Edit-layout mode (grouping + manual order) ---------------------------
+  // Same posture as the dashboards editor: desktop-only (HTML5 dnd doesn't
+  // fire reliably on touch), grid view forced, search cleared on entry. Every
+  // committed action recomputes the FULL layout (dense per-group sortOrder)
+  // and saves optimistically — the query cache patches first, the props
+  // re-derive, and a failed save rolls back.
+  const isMobile = useIsMobile();
+  const [editingLayout, setEditingLayout] = useState(false);
+  const editing = editingLayout && !isMobile && !showArchived;
+  useEffect(() => {
+    if (isMobile || showArchived) setEditingLayout(false);
+  }, [isMobile, showArchived]);
+  const layoutMutation = useSaveCollectionsLayout();
+  // Drag state: which card / group header is in flight + the hovered target
+  // (`card:<slug>` | `group:<name|∅>` | `header:<name>`) for the drop hint.
+  const [dragSlug, setDragSlug] = useState<string | null>(null);
+  const [dragGroup, setDragGroup] = useState<string | null>(null);
+  const [dropHint, setDropHint] = useState<string | null>(null);
+  const [renamingGroup, setRenamingGroup] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [addingGroup, setAddingGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return collections;
     return collections.filter((c) => c.slug.toLowerCase().includes(q) || (c.group || "").toLowerCase().includes(q));
   }, [collections, search]);
 
-  const groups = useMemo(() => {
-    const m = new Map<string, CollectionListItem[]>();
-    for (const c of filtered) {
-      const g = c.group || "Other";
-      if (!m.has(g)) m.set(g, []);
-      m.get(g)!.push(c);
+  // Ordered [group, items] sections. Edit mode ignores the search filter so a
+  // drop can't silently reorder rows that are filtered out of view; empty
+  // saved groups only render while editing (they're drop targets there).
+  const grouped = useMemo(() => {
+    const all = orderCollections(editing ? collections : filtered, collectionGroups);
+    return editing ? all : all.filter(([, list]) => list.length > 0);
+  }, [collections, filtered, collectionGroups, editing]);
+
+  /** Persist a full layout: `lists` is every section's slugs in display
+   *  order; per-group `sortOrder` is renumbered dense from it. */
+  const commitLayout = (nextGroups: string[], nextLists: [string | null, string[]][]) => {
+    const items = nextLists.flatMap(([g, slugs]) =>
+      slugs.map((slug, i) => ({ slug, group: g, sortOrder: i })),
+    );
+    layoutMutation.mutate(
+      { groups: nextGroups, items },
+      { onError: (e) => pushToast?.((e as Error).message, "error") },
+    );
+  };
+
+  const currentLists = (): [string | null, string[]][] =>
+    grouped.map(([g, list]) => [g, list.map((c) => c.slug)]);
+
+  /** Saved header order + any group names that only exist on rows (shown
+   *  appended in the UI) — committing normalizes them into the saved list. */
+  const currentGroups = (): string[] => {
+    const extras = grouped
+      .map(([g]) => g)
+      .filter((g): g is string => g !== null && !collectionGroups.includes(g));
+    return [...collectionGroups, ...extras];
+  };
+
+  const moveCard = (slug: string, target: { group: string | null; beforeSlug?: string }) => {
+    const lists: [string | null, string[]][] = currentLists().map(([g, slugs]) => [
+      g,
+      slugs.filter((s) => s !== slug),
+    ]);
+    let entry = lists.find(([g]) => g === target.group);
+    if (!entry) {
+      entry = [target.group, []];
+      lists.push(entry);
     }
-    return [...m.entries()];
-  }, [filtered]);
+    const idx = target.beforeSlug ? entry[1].indexOf(target.beforeSlug) : -1;
+    if (idx >= 0) entry[1].splice(idx, 0, slug);
+    else entry[1].push(slug);
+    commitLayout(currentGroups(), lists);
+  };
+
+  const moveGroupHeader = (name: string, beforeName: string) => {
+    const gs = currentGroups().filter((g) => g !== name);
+    const idx = gs.indexOf(beforeName);
+    if (idx >= 0) gs.splice(idx, 0, name);
+    else gs.push(name);
+    commitLayout(gs, currentLists());
+  };
+
+  const renameGroup = (from: string, to: string) => {
+    setRenamingGroup(null);
+    const name = to.trim();
+    if (!name || name === from) return;
+    const gs = currentGroups().map((g) => (g === from ? name : g));
+    // Renaming onto an existing name merges the two sections.
+    const dedup = gs.filter((g, i) => gs.indexOf(g) === i);
+    const merged = new Map<string | null, string[]>();
+    for (const [g, slugs] of currentLists()) {
+      const key = g === from ? name : g;
+      merged.set(key, [...(merged.get(key) ?? []), ...slugs]);
+    }
+    commitLayout(dedup, [...merged.entries()]);
+  };
+
+  const deleteGroup = (name: string) => {
+    const gs = currentGroups().filter((g) => g !== name);
+    const lists = currentLists();
+    const removed = lists.find(([g]) => g === name)?.[1] ?? [];
+    const rest = lists.filter(([g]) => g !== name);
+    const nullEntry = rest.find(([g]) => g === null);
+    if (nullEntry) nullEntry[1].push(...removed);
+    else if (removed.length) rest.push([null, removed]);
+    commitLayout(gs, rest);
+  };
+
+  const addGroup = () => {
+    setAddingGroup(false);
+    const name = newGroupName.trim();
+    setNewGroupName("");
+    if (!name) return;
+    const gs = currentGroups();
+    if (gs.includes(name)) return;
+    commitLayout([...gs, name], currentLists());
+  };
+
+  const clearDrag = () => {
+    setDragSlug(null);
+    setDragGroup(null);
+    setDropHint(null);
+  };
 
   return (
     <div className="flex min-w-0 flex-col gap-4.5">
@@ -102,6 +216,24 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
             </Button>
           )}
           {!showArchived && <>
+            {!isMobile && (
+              <Button
+                variant={editing ? "primary" : "outline"}
+                icon={editing ? I.Check : I.Pencil}
+                onClick={() => {
+                  if (!editingLayout) {
+                    // Drops reorder what's visible — force the grouped grid
+                    // and drop any search filter before enabling dnd.
+                    setView("grid");
+                    setSearch("");
+                  }
+                  setEditingLayout((v) => !v);
+                }}
+                title={editing ? t`Finish arranging collections` : t`Group and reorder collections`}
+              >
+                {editing ? <Trans>Done</Trans> : <Trans>Edit layout</Trans>}
+              </Button>
+            )}
             <Button variant="outline" icon={I.Code}><Trans>Schema</Trans></Button>
             <Button variant="outline" icon={I.ExternalLink} onClick={() => onOpenApi?.()}><Trans>API docs</Trans></Button>
             <Button variant="primary" icon={I.Plus} onClick={() => setChooserOpen(true)}><Trans>New collection</Trans></Button>
@@ -177,7 +309,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
         />
       ) : view === "grid" ? (
         <div className="flex flex-col gap-[22px]">
-          {loading && groups.length === 0 && (
+          {loading && grouped.length === 0 && (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Card key={i} className="min-h-[138px] gap-3 p-4">
@@ -186,36 +318,150 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
               ))}
             </div>
           )}
-          {groups.map(([g, list]) => (
-            <div key={g} className="flex flex-col gap-2.5">
-              <div className="flex items-baseline gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{g}</span>
+          {grouped.map(([g, list]) => (
+            <div key={g ?? "__ungrouped"} className="flex flex-col gap-2.5">
+              <div
+                className={`flex items-center gap-2 rounded-md ${editing && g !== null ? "cursor-grab" : ""} ${dropHint === `header:${g}` ? "ring-2 ring-primary" : ""} ${dragGroup === g && g !== null ? "opacity-50" : ""}`}
+                draggable={editing && g !== null}
+                onDragStart={editing && g !== null ? (e) => {
+                  setDragGroup(g);
+                  e.dataTransfer.setData("text/plain", g);
+                  e.dataTransfer.effectAllowed = "move";
+                } : undefined}
+                onDragEnd={editing ? clearDrag : undefined}
+                onDragOver={editing ? (e) => {
+                  // Header row doubles as a drop target: another header lands
+                  // before this one; a card appends to this group.
+                  if (dragGroup && g !== null && dragGroup !== g) {
+                    e.preventDefault();
+                    setDropHint(`header:${g}`);
+                  } else if (dragSlug) {
+                    e.preventDefault();
+                    setDropHint(`group:${g ?? ""}`);
+                  }
+                } : undefined}
+                onDrop={editing ? (e) => {
+                  e.preventDefault();
+                  if (dragGroup && g !== null && dragGroup !== g) moveGroupHeader(dragGroup, g);
+                  else if (dragSlug) moveCard(dragSlug, { group: g });
+                  clearDrag();
+                } : undefined}
+              >
+                {editing && g !== null && <I.Grip size={12} className="text-muted-foreground" />}
+                {renamingGroup === g && g !== null ? (
+                  <Input
+                    autoFocus
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onBlur={() => renameGroup(g, renameValue)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") renameGroup(g, renameValue);
+                      if (e.key === "Escape") setRenamingGroup(null);
+                    }}
+                    className="h-6 max-w-[220px] text-[11px] font-semibold uppercase tracking-[0.08em]"
+                  />
+                ) : (
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    {g ?? <Trans>Ungrouped</Trans>}
+                  </span>
+                )}
                 <span className="text-[11px] tabular-nums text-muted-foreground">{list.length}</span>
+                {editing && g !== null && renamingGroup !== g && (
+                  <span className="flex items-center gap-0.5">
+                    <IconButton icon={I.Pencil} title={t`Rename group`} onClick={() => { setRenamingGroup(g); setRenameValue(g); }} />
+                    <IconButton icon={I.X} title={t`Delete group (collections become ungrouped)`} onClick={() => deleteGroup(g)} />
+                  </span>
+                )}
                 <div className="ml-1.5 h-px flex-1 bg-border" />
               </div>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
+              <div
+                className={`grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3 ${editing && dropHint === `group:${g ?? ""}` ? "rounded-2xl ring-2 ring-primary/50" : ""}`}
+                onDragOver={editing && dragSlug ? (e) => {
+                  e.preventDefault();
+                  setDropHint(`group:${g ?? ""}`);
+                } : undefined}
+                onDrop={editing ? (e) => {
+                  e.preventDefault();
+                  if (dragSlug) moveCard(dragSlug, { group: g });
+                  clearDrag();
+                } : undefined}
+              >
                 {list.map((c) => (
-                  <CollectionCard
+                  <div
                     key={c.slug}
-                    c={c}
-                    archived={!!showArchived}
-                    onOpen={() => onOpen(c.slug)}
-                    onOpenApi={onOpenApi ? () => onOpenApi(c.slug) : undefined}
-                    onRestore={onRestore ? () => onRestore(c.slug) : undefined}
-                  />
+                    draggable={editing}
+                    onDragStart={editing ? (e) => {
+                      setDragSlug(c.slug);
+                      e.dataTransfer.setData("text/plain", c.slug);
+                      e.dataTransfer.effectAllowed = "move";
+                    } : undefined}
+                    onDragEnd={editing ? clearDrag : undefined}
+                    onDragOver={editing ? (e) => {
+                      if (dragSlug && dragSlug !== c.slug) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDropHint(`card:${c.slug}`);
+                      }
+                    } : undefined}
+                    onDrop={editing ? (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (dragSlug && dragSlug !== c.slug) moveCard(dragSlug, { group: g, beforeSlug: c.slug });
+                      clearDrag();
+                    } : undefined}
+                    className={editing ? `cursor-grab rounded-4xl ${dropHint === `card:${c.slug}` ? "ring-2 ring-primary" : ""} ${dragSlug === c.slug ? "opacity-50" : ""}` : "contents"}
+                  >
+                    <CollectionCard
+                      c={c}
+                      archived={!!showArchived}
+                      editing={editing}
+                      onOpen={() => onOpen(c.slug)}
+                      onOpenApi={onOpenApi ? () => onOpenApi(c.slug) : undefined}
+                      onRestore={onRestore ? () => onRestore(c.slug) : undefined}
+                    />
+                  </div>
                 ))}
-                {!showArchived && (
-                  <Card asChild variant="dashed" interactive className="min-h-[138px] items-center justify-center gap-2 rounded-4xl p-5 text-muted-foreground hover:text-foreground">
-                    <button onClick={onNew}>
-                      <I.Plus size={20} />
-                      <span className="text-[13px] font-medium"><Trans>New collection</Trans></span>
-                      <span className="text-[11px]"><Trans>Create or adopt a table</Trans></span>
-                    </button>
-                  </Card>
+                {editing && list.length === 0 && (
+                  <div className="grid min-h-[80px] place-items-center rounded-4xl border border-dashed border-border text-[12px] text-muted-foreground">
+                    <Trans>Drag collections here</Trans>
+                  </div>
                 )}
               </div>
             </div>
           ))}
+          {editing && (
+            <div className="flex items-center gap-2">
+              {addingGroup ? (
+                <Input
+                  autoFocus
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  onBlur={addGroup}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") addGroup();
+                    if (e.key === "Escape") { setAddingGroup(false); setNewGroupName(""); }
+                  }}
+                  placeholder={t`Group name…`}
+                  className="h-8 max-w-[220px]"
+                />
+              ) : (
+                <Button variant="outline" size="sm" icon={I.Plus} onClick={() => setAddingGroup(true)}>
+                  <Trans>New group</Trans>
+                </Button>
+              )}
+            </div>
+          )}
+          {!showArchived && !editing && !loading && (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
+              <Card asChild variant="dashed" interactive className="min-h-[138px] items-center justify-center gap-2 rounded-4xl p-5 text-muted-foreground hover:text-foreground">
+                <button onClick={onNew}>
+                  <I.Plus size={20} />
+                  <span className="text-[13px] font-medium"><Trans>New collection</Trans></span>
+                  <span className="text-[11px]"><Trans>Create or adopt a table</Trans></span>
+                </button>
+              </Card>
+            </div>
+          )}
         </div>
       ) : (
         <Card className="gap-0 py-0">
@@ -252,7 +498,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                         {c.singleton && <Badge variant="outline"><Trans>singleton</Trans></Badge>}
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{c.group}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{c.group ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{c.count.toLocaleString()}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">{c.fields}</TableCell>
                     <TableCell className="text-right tabular-nums">{c.writes24h}</TableCell>
@@ -282,15 +528,16 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
   );
 }
 
-function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: CollectionListItem; onOpen: () => void; archived?: boolean; onRestore?: () => void; onOpenApi?: () => void }) {
+function CollectionCard({ c, onOpen, archived, editing, onRestore, onOpenApi }: { c: CollectionListItem; onOpen: () => void; archived?: boolean; editing?: boolean; onRestore?: () => void; onOpenApi?: () => void }) {
   const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
   return (
     <Card
-      interactive
-      className={`gap-3 p-4 transition-colors ${archived ? "opacity-90" : ""}`}
-      onClick={onOpen}
+      interactive={!editing}
+      className={`h-full gap-3 p-4 transition-colors ${archived ? "opacity-90" : ""} ${editing ? "select-none" : ""}`}
+      onClick={editing ? undefined : onOpen}
     >
       <div className="flex items-center gap-2.5">
+        {editing && <I.Grip size={14} className="shrink-0 text-muted-foreground" />}
         <span className="grid size-8 place-items-center rounded-lg border border-border bg-muted text-muted-foreground"><Ic size={15} /></span>
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate font-mono text-[13.5px] font-semibold">{c.slug}</span>
@@ -310,7 +557,7 @@ function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: Coll
         <Stat k="writes 24h" v={c.writes24h} />
         <Stat k="last" v={c.lastWrite} mono />
       </div>
-      <div className="flex gap-1.5">
+      <div className={`flex gap-1.5 ${editing ? "pointer-events-none opacity-50" : ""}`}>
         {archived ? (
           <>
             {onRestore && (
@@ -350,13 +597,18 @@ export interface NewCollectionDialogProps {
   onClose: () => void;
   onCreate: (c: CollectionListItem & Record<string, unknown>) => void;
   existingSlugs: string[];
+  /** Existing group names offered as one-click picks (saved header order). */
+  groups?: string[];
 }
 
-export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: NewCollectionDialogProps) {
+export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs, groups }: NewCollectionDialogProps) {
   const { t } = useLingui();
   const [step, setStep] = useState(0);
   const [slug, setSlug] = useState("");
-  const [group, setGroup] = useState("Content");
+  // Null = ungrouped (the default); `customGroup` wins when non-empty so a
+  // fresh workspace can name its first group right from the wizard.
+  const [group, setGroup] = useState<string | null>(null);
+  const [customGroup, setCustomGroup] = useState("");
   const [singleton, setSingleton] = useState(false);
   const [ownerScoped, setOwnerScoped] = useState(true);
   const [timestamps, setTimestamps] = useState(true);
@@ -369,7 +621,8 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
     if (open) {
       setStep(0);
       setSlug("");
-      setGroup("Content");
+      setGroup(null);
+      setCustomGroup("");
       setSingleton(false);
       setOwnerScoped(true);
       setTimestamps(true);
@@ -482,7 +735,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
       : tpl.fields;
     onCreate({
       slug: slugClean,
-      group,
+      group: customGroup.trim() || group,
       singleton,
       ownerScoped,
       timestamps,
@@ -524,10 +777,20 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Group</Trans></label>
                 <div className="flex flex-wrap gap-1.5">
-                  {["Content", "Marketing", "System", "Other"].map((g) => (
-                    <Button key={g} type="button" size="sm" variant={group === g ? "outline" : "ghost"} onClick={() => setGroup(g)}>{g}</Button>
+                  <Button type="button" size="sm" variant={group === null && !customGroup.trim() ? "outline" : "ghost"} onClick={() => { setGroup(null); setCustomGroup(""); }}>
+                    <Trans>No group</Trans>
+                  </Button>
+                  {(groups ?? []).map((g) => (
+                    <Button key={g} type="button" size="sm" variant={group === g && !customGroup.trim() ? "outline" : "ghost"} onClick={() => { setGroup(g); setCustomGroup(""); }}>{g}</Button>
                   ))}
                 </div>
+                <Input
+                  value={customGroup}
+                  onChange={(e) => setCustomGroup(e.target.value)}
+                  placeholder={t`Or type a new group name…`}
+                  className="max-w-[280px]"
+                />
+                <span className="text-[11.5px] text-muted-foreground"><Trans>Groups organize the Collections page and the sidebar. Rearrange them anytime with Edit layout.</Trans></span>
               </div>
 
               <div className="flex flex-col gap-1.5">

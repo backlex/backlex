@@ -65,8 +65,20 @@ export interface ApiCollection {
    *  off" sends both as false. */
   hasCreatedAt?: boolean;
   hasUpdatedAt?: boolean;
+  /** Admin grouping section header. Null = ungrouped (rendered last). */
+  group?: string | null;
+  /** Manual position within the group. Null sorts after ordered rows. */
+  sortOrder?: number | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+/** Full-layout write for the Collections "Edit layout" mode. */
+export interface CollectionsLayoutInput {
+  /** Ordered group-header names (empty groups persist here). */
+  groups: string[];
+  /** Every collection's target placement; unknown slugs are skipped server-side. */
+  items: { slug: string; group: string | null; sortOrder: number | null }[];
 }
 
 export interface ApiUser {
@@ -318,7 +330,10 @@ export const tenantsApi = {
 };
 
 export const collectionsApi = {
-  list: () => api<Envelope<ApiCollection[]>>(`/api/collections`),
+  list: () =>
+    api<Envelope<ApiCollection[]> & { meta?: { groups: string[] } }>(
+      `/api/collections`,
+    ),
   get: (slug: string) => api<Envelope<ApiCollection>>(`/api/collections/${slug}`),
   create: (input: Partial<ApiCollection> & { slug: string; fields: ApiCollection["fields"] }) =>
     api<Envelope<ApiCollection>>(`/api/collections`, {
@@ -346,9 +361,15 @@ export const collectionsApi = {
     }),
   /** Fetch collections list, optionally including archived (adopted-soft-delete) rows. */
   listWithArchived: (includeArchived?: boolean) =>
-    api<Envelope<ApiCollection[]>>(
+    api<Envelope<ApiCollection[]> & { meta?: { groups: string[] } }>(
       `/api/collections${includeArchived ? "?include_archived=true" : ""}`,
     ),
+  /** Persist the whole grouping/order layout in one request (Edit layout mode). */
+  saveLayout: (input: CollectionsLayoutInput) =>
+    api<{ ok: true; changed: number }>(`/api/collections/layout`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 };
 
 export interface TemplateSummary {

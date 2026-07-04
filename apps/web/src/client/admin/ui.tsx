@@ -20,7 +20,7 @@ import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_PRIMARY, NAV_DATA, NAV_AUTOMATION, NAV_OBSERVABILITY, NAV_SETTINGS, NAV_DEVELOPERS } from "./config";
 import { prefetchPage } from "./lib/page-prefetch";
 import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
-import { useNotifications, useNotificationsUnread, queryKeys } from "./queries";
+import { orderCollections, useCollections, useNotifications, useNotificationsUnread, queryKeys } from "./queries";
 import { useWorkspaceBranding } from "@/lib/branding";
 import { Button as ShadcnButton } from "@backlex/ui/components/button";
 import { Card } from "@backlex/ui/components/card";
@@ -68,10 +68,18 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
   SidebarTrigger,
   useSidebar,
 } from "@backlex/ui/components/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@backlex/ui/components/collapsible";
 import { TooltipProvider } from "@backlex/ui/components/tooltip";
 
 export function formatJson(value: unknown): string {
@@ -303,6 +311,109 @@ export interface SidebarProps {
   setActiveNav: (id: string) => void;
   pushToast: (msg: string, type?: "success" | "error") => void;
   collectionsCount?: number;
+  /** Slug of the collection whose items page is open — highlights the
+   *  matching row in the sidebar collections tree. */
+  activeCollection?: string | null;
+}
+
+/** Collapsed-state of sidebar collection groups. Per-device UI state —
+ *  localStorage, not the server (a chevron click shouldn't be a write). */
+const COLLAPSED_GROUPS_LS = "backlex.sidebar.collection-groups.collapsed";
+
+/**
+ * Grouped collections tree under the "Collections" nav item: groups as
+ * collapsible headers in the saved `meta.groups` order, collections beneath
+ * in their saved manual order, ungrouped rows at the end. Reads the same
+ * `["collections", {includeArchived:false}]` query the app shell already
+ * holds — React Query dedupes, so this adds no network call.
+ */
+function CollectionsTree({ activeCollection, onOpen }: { activeCollection?: string | null; onOpen: (slug: string) => void }) {
+  const { data, isLoading } = useCollections(false);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(COLLAPSED_GROUPS_LS) ?? "{}") as Record<string, boolean>;
+    } catch {
+      return {};
+    }
+  });
+  const toggleGroup = (g: string) => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [g]: !prev[g] };
+      try {
+        localStorage.setItem(COLLAPSED_GROUPS_LS, JSON.stringify(next));
+      } catch {
+        // Private-mode storage failures just lose persistence, not function.
+      }
+      return next;
+    });
+  };
+
+  const sections = useMemo(() => {
+    const rows = (data?.data ?? []).filter(
+      (c) => ((c as { status?: string }).status ?? "active") === "active",
+    );
+    return orderCollections(rows, data?.meta?.groups ?? []).filter(
+      ([, list]) => list.length > 0,
+    );
+  }, [data]);
+
+  if (isLoading) {
+    return (
+      <SidebarMenuSub>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <SidebarMenuSubItem key={i}>
+            <Skeleton className="my-1 h-4 w-4/5" />
+          </SidebarMenuSubItem>
+        ))}
+      </SidebarMenuSub>
+    );
+  }
+  if (sections.length === 0) return null;
+
+  return (
+    <ScrollArea viewportClassName="max-h-[40vh]">
+      <SidebarMenuSub>
+        {sections.map(([g, list]) => {
+          const items = list.map((c) => (
+            <SidebarMenuSubItem key={c.slug}>
+              <SidebarMenuSubButton
+                isActive={c.slug === activeCollection}
+                onClick={() => onOpen(c.slug)}
+                onMouseEnter={() => prefetchPage("collections")}
+                className="cursor-pointer"
+              >
+                <span className="truncate font-mono text-[12px]">{c.slug}</span>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+          ));
+          if (g === null) {
+            // Ungrouped rows render flat at the end — no header to collapse.
+            return items;
+          }
+          const open = !collapsed[g];
+          return (
+            <Collapsible key={g} asChild open={open} onOpenChange={() => toggleGroup(g)}>
+              <SidebarMenuSubItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuSubButton className="cursor-pointer text-muted-foreground">
+                    <I.ChevronRight
+                      size={11}
+                      className={`shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
+                    />
+                    <span className="truncate text-[11px] font-semibold uppercase tracking-[0.06em]">{g}</span>
+                    <span className="ml-auto tabular-nums text-[10px]">{list.length}</span>
+                  </SidebarMenuSubButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub className="mr-0 pr-0">{items}</SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuSubItem>
+            </Collapsible>
+          );
+        })}
+      </SidebarMenuSub>
+    </ScrollArea>
+  );
 }
 
 /**
@@ -351,7 +462,7 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
 export const navLabel = (id: string): MessageDescriptor =>
   NAV_LABELS[id] ?? { id };
 
-export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }: SidebarProps) {
+export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, activeCollection }: SidebarProps) {
   const settings = NAV_SETTINGS;
   const developers = NAV_DEVELOPERS;
   const { t, i18n } = useLingui();
@@ -534,6 +645,15 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
                     </SidebarMenuButton>
                     {liveBadge != null && (
                       <SidebarMenuBadge className="tabular-nums">{liveBadge}</SidebarMenuBadge>
+                    )}
+                    {it.id === "collections" && (
+                      <CollectionsTree
+                        activeCollection={activeCollection}
+                        onOpen={(slug) => {
+                          setActiveNav("collections/" + slug);
+                          if (isMobile) setOpenMobile(false);
+                        }}
+                      />
                     )}
                   </SidebarMenuItem>
                 );

@@ -4256,6 +4256,10 @@ msgstr "E-posta / ada göre filtrele…"
 msgid "Filter by path…"
 msgstr "Yola göre filtrele…"
 
+#: src/client/admin/ui.tsx
+msgid "Filter collections…"
+msgstr "Koleksiyonları filtrele…"
+
 #: src/client/pages/rest-explorer.tsx
 msgid "Filter endpoints…"
 msgstr "Uç noktaları filtrele…"
@@ -6306,6 +6310,10 @@ msgstr "Koleksiyon yok — sıfırdan başlayacaksınız."
 msgid "No collections in this workspace yet — create one first, or switch <0>Kind</0> to <1>sql</1>."
 msgstr "Bu çalışma alanında henüz koleksiyon yok — önce bir tane oluşturun veya <0>Tür</0>'ü <1>sql</1> olarak değiştirin."
 
+#: src/client/admin/ui.tsx
+msgid "No collections match"
+msgstr "Eşleşen koleksiyon yok"
+
 #: src/client/admin/collections-index.tsx
 msgid "No collections match your search"
 msgstr "Aramanızla eşleşen koleksiyon yok"
@@ -7513,6 +7521,14 @@ msgstr "Tür seçin…"
 #: src/client/admin/item-form.tsx
 msgid "Pick…"
 msgstr "Seçin…"
+
+#: src/client/admin/ui.tsx
+msgid "Pin to top"
+msgstr "Üste sabitle"
+
+#: src/client/admin/ui.tsx
+msgid "Pinned"
+msgstr "Sabitlenmiş"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Pipe collection events to Slack, your API, or any HTTPS endpoint."
@@ -10784,6 +10800,10 @@ msgstr "{0} bağlantısı kaldırıldı."
 #: src/client/admin/account-page.tsx
 msgid "Unnamed passkey"
 msgstr "Adsız passkey"
+
+#: src/client/admin/ui.tsx
+msgid "Unpin"
+msgstr "Sabitlemeyi kaldır"
 
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx

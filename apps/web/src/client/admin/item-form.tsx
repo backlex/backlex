@@ -6,6 +6,8 @@
 // these so there is exactly one copy of the per-interface input logic.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { i18n } from "@lingui/core";
+import { fieldLabel } from "./format-value";
 import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
 import { Badge, Checkbox, Switch } from "./ui";
@@ -22,6 +24,8 @@ export type SchemaField = {
   interface?: string;
   /** Human display name shown in the editor; falls back to `name`. */
   label?: string;
+  /** Per-locale label overrides (locale → label). */
+  translations?: Record<string, string>;
   /** Inline help text rendered beneath the field. */
   description?: string;
   required?: boolean;
@@ -434,7 +438,7 @@ export function ItemFields({ form }: { form: ItemForm }) {
     const label = (
       <>
         <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
-          {f.label ?? f.name}{" "}
+          {fieldLabel(f, i18n.locale)}{" "}
           <Badge variant="outline" mono>
             {typeLabel}
           </Badge>{" "}

@@ -24,6 +24,21 @@ export interface FormattableField {
   format?: FieldFormat;
 }
 
+/** Field shape the label resolver needs. */
+export interface LabelledField {
+  name: string;
+  label?: string;
+  translations?: Record<string, string>;
+}
+
+/**
+ * Resolve a field's display label for the active admin locale:
+ * `translations[locale] ?? label ?? name`. Pure — call sites pass the current
+ * `i18n.locale`.
+ */
+export const fieldLabel = (field: LabelledField, locale = "en"): string =>
+  field.translations?.[locale] || field.label || field.name;
+
 /** Collapse an i18n_text map ({ en, tr }) to one string (English first). */
 const pickI18n = (v: Record<string, unknown>): string => {
   const pick = v.en ?? Object.values(v).find((x) => x != null);

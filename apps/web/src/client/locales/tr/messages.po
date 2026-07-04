@@ -3476,6 +3476,10 @@ msgstr "İlişki oluşturmak için başka bir koleksiyona sürükleyin"
 msgid "Drag to move"
 msgstr "Taşımak için sürükleyin"
 
+#: src/client/admin/list-columns.tsx
+msgid "Drag to reorder — the table follows this order."
+msgstr "Sıralamak için sürükleyin — tablo bu sırayı izler."
+
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to resize"
 msgstr "Yeniden boyutlandırmak için sürükleyin"

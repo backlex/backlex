@@ -37,6 +37,7 @@ import {
   type ApiCollection,
   type CollectionsLayoutInput,
   collectionsApi,
+  accountApi,
   commentsApi,
   itemsApi,
   meApi,
@@ -69,6 +70,8 @@ export const queryKeys = {
   roles: () => ["roles"] as const,
   me: () => ["me"] as const,
   settings: () => ["settings"] as const,
+  /** The signed-in user's own list-view columns (`/api/account/list-columns`). */
+  myListColumns: () => ["my-list-columns"] as const,
   notifications: () => ["notifications"] as const,
   notificationsList: () => ["notifications", "list"] as const,
   notificationsUnread: () => ["notifications", "unread-count"] as const,
@@ -242,6 +245,16 @@ export function useSettings() {
   return useQuery({
     queryKey: queryKeys.settings(),
     queryFn: () => settingsApi.load(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** The signed-in user's own per-collection list columns. Falls back to the
+ *  workspace `listColumns` setting in `useListColumns` when a slug is absent. */
+export function useMyListColumns() {
+  return useQuery({
+    queryKey: queryKeys.myListColumns(),
+    queryFn: () => accountApi.getListColumns(),
     staleTime: 5 * 60 * 1000,
   });
 }

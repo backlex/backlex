@@ -392,6 +392,83 @@ export interface ItemsTableProps {
   schema?: CollectionSchema;
 }
 
+/** Drag-to-reorder context threaded into draggable column headers. */
+interface HeaderDragCtx {
+  dragCol: string | null;
+  overCol: string | null;
+  setDragCol: (v: string | null) => void;
+  setOverCol: (v: string | null) => void;
+  /** The saved column order — used to pick which side the drop indicator shows. */
+  order: string[];
+  move: (from: string, to: string) => void;
+}
+
+/** Sortable (and optionally drag-reorderable) column header. Deliberately a
+ *  module-level component: defining it inline in ItemsTable gave it a new
+ *  component identity every render, so the first drag state update remounted
+ *  every <th> — which detaches the drag source mid-drag and kills the native
+ *  drag operation. */
+function SortHead({ id, label, num, sort, setSort, dragCtx }: {
+  id: string;
+  label: string;
+  num?: boolean;
+  sort: string;
+  setSort: (s: string) => void;
+  dragCtx?: HeaderDragCtx;
+}) {
+  const dir: "asc" | "desc" = sort.startsWith("-") ? "desc" : "asc";
+  const isActive = sort.replace("-", "") === id;
+  const Arrow = !isActive ? I.ArrowUpDown : dir === "asc" ? I.ArrowUp : I.ArrowDown;
+  const d = dragCtx;
+  const isDragging = d ? d.dragCol === id : false;
+  const isOver = d ? d.overCol === id && d.dragCol !== null && d.dragCol !== id : false;
+  const overFromRight = d && isOver ? d.order.indexOf(d.dragCol) > d.order.indexOf(id) : false;
+  return (
+    <TableHead
+      onClick={() => setSort(isActive ? (dir === "asc" ? "-" + id : id) : id)}
+      className={`cursor-pointer select-none ${num ? "text-right" : "text-left"}`}
+      draggable={d ? true : undefined}
+      // Inset shadow instead of a border so the drop indicator doesn't
+      // shift the header row's layout while dragging.
+      style={d ? {
+        opacity: isDragging ? 0.4 : 1,
+        boxShadow: isOver ? `inset ${overFromRight ? "2px" : "-2px"} 0 0 var(--primary)` : undefined,
+        transition: "opacity 80ms",
+      } : undefined}
+      onDragStart={d ? (e) => {
+        d.setDragCol(id);
+        e.dataTransfer.effectAllowed = "move";
+        // Required for Firefox to actually start the drag.
+        e.dataTransfer.setData("text/plain", id);
+      } : undefined}
+      onDragOver={d ? (e) => {
+        if (d.dragCol === null || d.dragCol === id) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (d.overCol !== id) d.setOverCol(id);
+      } : undefined}
+      onDragLeave={d ? () => {
+        if (d.overCol === id) d.setOverCol(null);
+      } : undefined}
+      onDrop={d ? (e) => {
+        e.preventDefault();
+        if (d.dragCol !== null && d.dragCol !== id) d.move(d.dragCol, id);
+        d.setDragCol(null);
+        d.setOverCol(null);
+      } : undefined}
+      onDragEnd={d ? () => {
+        d.setDragCol(null);
+        d.setOverCol(null);
+      } : undefined}
+    >
+      <span className={`inline-flex items-center gap-1.5 ${isActive ? "text-foreground" : ""}`}>
+        {label}
+        <Arrow size={11} stroke={2.2} />
+      </span>
+    </TableHead>
+  );
+}
+
 export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit, schema }: ItemsTableProps) {
   const { t } = useLingui();
   // Subscribe so the table re-renders when authors-cache populates.
@@ -412,23 +489,6 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
     setSelected(next);
   };
 
-  const SortHead = ({ id, label, num }: { id: string; label: string; num?: boolean }) => {
-    const dir: "asc" | "desc" = sort.startsWith("-") ? "desc" : "asc";
-    const isActive = sort.replace("-", "") === id;
-    const Arrow = !isActive ? I.ArrowUpDown : dir === "asc" ? I.ArrowUp : I.ArrowDown;
-    return (
-      <TableHead
-        onClick={() => setSort(isActive ? (dir === "asc" ? "-" + id : id) : id)}
-        className={`cursor-pointer select-none ${num ? "text-right" : "text-left"}`}
-      >
-        <span className={`inline-flex items-center gap-1.5 ${isActive ? "text-foreground" : ""}`}>
-          {label}
-          <Arrow size={11} stroke={2.2} />
-        </span>
-      </TableHead>
-    );
-  };
-
   // Detect which optional columns are actually present on the rows. Real
   // c_<slug> tables won't have author/word_count/view_count unless the user
   // defined them. Status is now schema-driven — only shown when the
@@ -447,7 +507,23 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   // Configurable columns: when the workspace has saved a column list for this
   // collection, render those user fields (formatted per their `format`) instead
   // of the curated author/words/views set. Empty = keep the curated default.
-  const { columns: colNames } = useListColumns(schema?.slug ?? "");
+  const { columns: colNames, setColumns } = useListColumns(schema?.slug ?? "");
+  // Drag state for reordering saved columns by dragging the table headers.
+  // Tracked by field name (not index) so stale names in the saved list —
+  // e.g. a since-dropped field — can't skew the splice positions.
+  const [dragCol, setDragCol] = useState<string | null>(null);
+  const [overCol, setOverCol] = useState<string | null>(null);
+  const moveColumn = (from: string, to: string) => {
+    const fromIdx = colNames.indexOf(from);
+    const toIdx = colNames.indexOf(to);
+    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+    const next = [...colNames];
+    const moved = next.splice(fromIdx, 1)[0];
+    if (moved === undefined) return;
+    next.splice(toIdx, 0, moved);
+    setColumns(next);
+  };
+  const dragCtx: HeaderDragCtx = { dragCol, overCol, setDragCol, setOverCol, order: colNames, move: moveColumn };
   const dynFields = colNames
     .map((n) => (schema?.fields ?? []).find((f) => (f as { name?: string }).name === n))
     .filter(Boolean) as Array<{ name: string; label?: string; type?: string; translations?: Record<string, string> }>;
@@ -461,18 +537,20 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
           <TableHead className="w-[38px]">
             <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} />
           </TableHead>
-          <SortHead id="title" label={t`Title`} />
+          <SortHead id="title" label={t`Title`} sort={sort} setSort={setSort} />
           {useDynamic ? (
-            dynFields.map((f) => <SortHead key={f.name} id={f.name} label={fieldLabel(f, i18n.locale)} num={isNumF(f.type)} />)
+            dynFields.map((f) => (
+              <SortHead key={f.name} id={f.name} label={fieldLabel(f, i18n.locale)} num={isNumF(f.type)} sort={sort} setSort={setSort} dragCtx={dragCtx} />
+            ))
           ) : (
             <>
-              {has.status && <SortHead id={statusField!.name} label={t`Status`} />}
+              {has.status && <SortHead id={statusField!.name} label={t`Status`} sort={sort} setSort={setSort} />}
               {has.author && <TableHead className="w-[110px]"><Trans>Author</Trans></TableHead>}
-              {has.words && <SortHead id="word_count" label={t`Words`} num />}
-              {has.views && <SortHead id="view_count" label={t`Views`} num />}
+              {has.words && <SortHead id="word_count" label={t`Words`} num sort={sort} setSort={setSort} />}
+              {has.views && <SortHead id="view_count" label={t`Views`} num sort={sort} setSort={setSort} />}
             </>
           )}
-          <SortHead id="updated_at" label={t`Updated`} />
+          <SortHead id="updated_at" label={t`Updated`} sort={sort} setSort={setSort} />
           <TableHead className="sticky right-0 w-[60px] bg-card text-right" />
         </TableRow>
       </TableHeader>

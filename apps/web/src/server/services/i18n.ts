@@ -1,4 +1,4 @@
-import { eq, isNull, or } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
@@ -137,4 +137,100 @@ export const loadMatrix = async (
     configuredLocales: settings.i18nLocales,
     defaultLocale: settings.i18nDefaultLocale,
   };
+};
+
+// ── Shared surface helpers ───────────────────────────────────────────────────
+// REST (routes/i18n.ts) and GraphQL (services/graphql/i18n.ts) both call
+// these so the upsert-by-(key,locale) and tenant-vs-global scoping rules live
+// in one place.
+
+export interface I18nStringRow {
+  id: string;
+  tenantId: string | null;
+  key: string;
+  locale: string;
+  value: string;
+}
+
+/** Rows for the workspace plus global fallback rows (row form; the admin UI
+ *  pivots them into a key×locale table). */
+export const listI18nStrings = async (
+  db: PgDb | SqliteDb,
+  dialect: "pg" | "sqlite",
+  tenantId: string | null,
+): Promise<I18nStringRow[]> => {
+  const t = tableFor(dialect);
+  return (await (db as any)
+    .select()
+    .from(t)
+    .where(or(eq(t.tenantId, tenantId ?? ""), isNull(t.tenantId)))) as I18nStringRow[];
+};
+
+/** Upsert one (key, locale) string. `created` distinguishes insert vs update
+ *  so REST can keep its 201/200 split. */
+export const upsertI18nString = async (
+  db: PgDb | SqliteDb,
+  dialect: "pg" | "sqlite",
+  tenantId: string | null,
+  input: { key: string; locale: string; value: string },
+): Promise<{ id: string; created: boolean }> => {
+  const t = tableFor(dialect);
+  const existing = (await (db as any)
+    .select({ id: t.id })
+    .from(t)
+    .where(
+      and(
+        eq(t.key, input.key),
+        eq(t.locale, input.locale),
+        tenantId ? eq(t.tenantId, tenantId) : isNull(t.tenantId),
+      ),
+    )
+    .limit(1)) as { id: string }[];
+  if (existing[0]) {
+    await (db as any)
+      .update(t)
+      .set({
+        value: input.value,
+        updatedAt: dialect === "pg" ? new Date() : Date.now(),
+      })
+      .where(eq(t.id, existing[0].id));
+    return { id: existing[0].id, created: false };
+  }
+  const id = crypto.randomUUID();
+  await (db as any).insert(t).values({
+    id,
+    tenantId: tenantId ?? null,
+    key: input.key,
+    locale: input.locale,
+    value: input.value,
+  });
+  return { id, created: true };
+};
+
+export const bulkUpsertI18nStrings = async (
+  db: PgDb | SqliteDb,
+  dialect: "pg" | "sqlite",
+  tenantId: string | null,
+  rows: { key: string; locale: string; value: string }[],
+): Promise<number> => {
+  let upserts = 0;
+  for (const row of rows) {
+    await upsertI18nString(db, dialect, tenantId, row);
+    upserts += 1;
+  }
+  return upserts;
+};
+
+/** Delete one row — scoped to the workspace's own rows or global rows,
+ *  mirroring the REST semantics. */
+export const deleteI18nString = async (
+  db: PgDb | SqliteDb,
+  dialect: "pg" | "sqlite",
+  tenantId: string,
+  id: string,
+): Promise<void> => {
+  const t = tableFor(dialect);
+  await (db as any)
+    .delete(t)
+    .where(and(eq(t.id, id), or(eq(t.tenantId, tenantId), isNull(t.tenantId))));
 };

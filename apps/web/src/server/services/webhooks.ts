@@ -1,4 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
+import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { DbCtx } from "./seed";
@@ -514,4 +515,110 @@ export const listDeliveries = async (
   if (opts.webhookId) q = q.where(eq(t.webhookId, opts.webhookId));
   q = q.orderBy(desc(t.deliveredAt)).limit(opts.limit ?? 50);
   return (await q) as WebhookDeliveryRow[];
+};
+
+// ── Shared surface helpers ───────────────────────────────────────────────────
+// REST (routes/webhooks.ts) and GraphQL (services/graphql/webhooks.ts) both
+// call these so tenant scoping + the breaker-reset rule live in one place.
+// Activity logging stays surface-specific (REST logs ip/UA via logActivity;
+// GraphQL uses recordActivity).
+
+export interface WebhookConfigInput {
+  name: string;
+  url: string;
+  events: string[];
+  headers?: Record<string, string> | null;
+  secret?: string | null;
+  active?: boolean;
+}
+
+/** Every webhook in the workspace (includes breaker state columns). */
+export const listWebhooks = async (
+  ctx: Ctx,
+  tenantId: string,
+): Promise<Record<string, unknown>[]> => {
+  const t = webhooksTable(ctx.dialect);
+  return (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(eq(t.tenantId, tenantId))) as Record<string, unknown>[];
+};
+
+export const createWebhook = async (
+  ctx: Ctx,
+  tenantId: string,
+  input: WebhookConfigInput,
+): Promise<Record<string, unknown>> => {
+  const t = webhooksTable(ctx.dialect);
+  const id = crypto.randomUUID();
+  await (ctx.db as any).insert(t).values({
+    id,
+    tenantId,
+    name: input.name,
+    url: input.url,
+    events: input.events,
+    headers: input.headers ?? null,
+    secret: input.secret ?? null,
+    active: input.active ?? true,
+  });
+  // Wire shape preserved from the legacy route handler: echo the input back
+  // (headers/secret stay absent when the caller omitted them).
+  return { id, ...input, active: input.active ?? true };
+};
+
+export const updateWebhook = async (
+  ctx: Ctx,
+  tenantId: string,
+  id: string,
+  patch: Partial<WebhookConfigInput>,
+): Promise<void> => {
+  const t = webhooksTable(ctx.dialect);
+  await (ctx.db as any)
+    .update(t)
+    .set({
+      ...(patch.name !== undefined ? { name: patch.name } : {}),
+      ...(patch.url !== undefined ? { url: patch.url } : {}),
+      ...(patch.events !== undefined ? { events: patch.events } : {}),
+      ...(patch.headers !== undefined ? { headers: patch.headers } : {}),
+      ...(patch.secret !== undefined ? { secret: patch.secret } : {}),
+      ...(patch.active !== undefined ? { active: patch.active } : {}),
+      // Re-enabling (manual resume) clears the breaker so the hook gets a
+      // clean slate instead of tripping again on the next single failure.
+      ...(patch.active === true
+        ? { consecutiveFailures: 0, lastFailureAt: null, disabledReason: null }
+        : {}),
+      updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
+    })
+    .where(and(eq(t.id, id), eq(t.tenantId, tenantId)));
+};
+
+export const deleteWebhook = async (
+  ctx: Ctx,
+  tenantId: string,
+  id: string,
+): Promise<void> => {
+  const t = webhooksTable(ctx.dialect);
+  await (ctx.db as any).delete(t).where(and(eq(t.id, id), eq(t.tenantId, tenantId)));
+};
+
+/** Fire a synthetic `webhook.test` delivery at one hook (honours its
+ *  signature + headers). Throws NOT_FOUND when the hook isn't in scope. */
+export const testWebhook = async (
+  ctx: Ctx,
+  tenantId: string,
+  id: string,
+): Promise<{ status?: number; error?: string } | null> => {
+  const t = webhooksTable(ctx.dialect);
+  const hook = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(and(eq(t.id, id), eq(t.tenantId, tenantId)))
+    .limit(1)) as WebhookRow[];
+  const h = hook[0];
+  if (!h) throw new AppError("NOT_FOUND", "Webhook not found");
+  const payload = {
+    type: "webhook.test",
+    data: { hookId: h.id, ts: new Date().toISOString() },
+  };
+  return fireDelivery(ctx, h, "webhook.test", payload);
 };

@@ -301,6 +301,24 @@ probe restricted fields via filters.
 GraphQL uses the same session middleware as REST: cookie session
 (better-auth) or `Authorization: Bearer pak_…` API key. Both work.
 
+## Admin twins (webhooks / i18n / storage / backups)
+
+Beyond collections, the schema carries static admin-scoped fields mirroring
+their REST routes through the same service layer (gate:
+`admin-graphql-parity.test.ts`, `backup-surfaces.test.ts`):
+
+- **Webhooks** — `webhooks`, `webhookDeliveries(webhookId, limit)`;
+  `createWebhook(data)`, `updateWebhook(id, data)`, `deleteWebhook(id)`,
+  `testWebhook(id)`, `retryWebhookDelivery(id)`.
+- **i18n** — `i18nStrings`, `i18nMatrix`; `setI18nString(data)`,
+  `setI18nStrings(data)`, `deleteI18nString(id)`.
+- **Storage (metadata plane)** — `files(prefix, folderId, search, limit,
+  offset)`; `updateFile(key, data)`, `deleteFile(key)`. These ride the
+  `system_files` permission DSL rows (row-level `whereSql` included) exactly
+  like REST. Upload/download/transform stay REST-only (byte streams).
+- **Backups** — `backups`, `backupConfig`; `runBackup(label)`,
+  `restoreBackup(id, confirm: true)`, `setBackupConfig(data)`.
+
 ## What's not in the schema
 
 - **Subscriptions over WebSocket** — subscriptions ship over SSE (see
@@ -308,6 +326,8 @@ GraphQL uses the same session middleware as REST: cookie session
 - **Aggregates** — count is via REST `meta=filter_count`. GraphQL-side
   aggregations defer to v2.
 - **Custom scalars beyond `JSON`** — timestamps are ISO strings in `String`.
+- **File byte streams** — upload/download/transform are REST-only; GraphQL
+  covers the file *metadata* plane (see Admin twins above).
 
 ## Inspecting
 

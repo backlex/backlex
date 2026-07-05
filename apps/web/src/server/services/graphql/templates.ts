@@ -151,15 +151,24 @@ export const templateQueryFields: Record<string, GraphQLFieldConfig<unknown, Gql
       "Export the workspace's managed collections as a reusable schema template " +
       "(JSON-encoded — collections in dependency order + saved group headers). " +
       "Optionally narrow with `collections`. Apply elsewhere via `applyCustomTemplate` (admin-only).",
-    args: { collections: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) } },
+    args: {
+      collections: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
+      samples: { type: GraphQLInt },
+    },
     resolve: async (_src, args, gqlCtx) => {
       const tenantId = requireTemplateAdmin(gqlCtx);
       const { ctx } = gqlCtx;
+      const a = args as { collections?: string[]; samples?: number | null };
+      if (a.samples != null && (!Number.isInteger(a.samples) || a.samples < 1 || a.samples > 50)) {
+        throw new GraphQLError("samples must be an integer between 1 and 50", {
+          extensions: { code: "VALIDATION" },
+        });
+      }
       try {
         const template = await extractTemplate(
           { db: ctx.db, dialect: ctx.dialect },
           tenantId,
-          { collections: (args as { collections?: string[] }).collections },
+          { collections: a.collections, sampleRows: a.samples ?? undefined },
         );
         return JSON.stringify(template);
       } catch (e) {
@@ -180,11 +189,7 @@ export const templateMutationFields: Record<string, GraphQLFieldConfig<unknown, 
       const tenantId = requireTemplateAdmin(gqlCtx);
       const { ctx } = gqlCtx;
       try {
-        return await applyTemplate(
-          { db: ctx.db, dialect: ctx.dialect },
-          tenantId,
-          (args as { templateId: string }).templateId,
-        );
+        return await applyTemplate(ctx, tenantId, (args as { templateId: string }).templateId);
       } catch (e) {
         return rethrow(e);
       }
@@ -205,11 +210,7 @@ export const templateMutationFields: Record<string, GraphQLFieldConfig<unknown, 
         } catch {
           throw new AppError("VALIDATION", "template must be a JSON-encoded object");
         }
-        return await applyTemplateDefinition(
-          { db: ctx.db, dialect: ctx.dialect },
-          tenantId,
-          parseCustomTemplate(raw),
-        );
+        return await applyTemplateDefinition(ctx, tenantId, parseCustomTemplate(raw));
       } catch (e) {
         return rethrow(e);
       }

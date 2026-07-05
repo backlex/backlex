@@ -55,9 +55,11 @@ Apply is **idempotent and additive**:
   merged, so re-applying never resurrects a group the admin deleted — and a
   collection the admin moved to another group **stays where they put it**.
 - Sample rows are seeded only into freshly-created collections, recorded in
-  the seed manifest, and their full-text index is backfilled inline (vector
-  embeddings still need a `vectorize` backfill — that path needs the
-  embedding adapter).
+  the seed manifest, and their full-text index is backfilled inline. Vector
+  embeddings are backfilled too when the apply comes through REST/GraphQL and
+  the collection is vectorizable (best-effort, never aborts the apply); the
+  `SEED_TEMPLATE` auto-apply during boot skips vectors — run
+  `POST /api/collections/:slug/vectorize` later if needed.
 - Bundled roles/dashboards are skipped wholesale when one with the same name
   already exists.
 
@@ -91,15 +93,21 @@ webhooks, flows or realtime events.
 
 `GET /api/admin/templates/extract` exports the workspace's managed
 collections **in template format**: collection defs (fields, `ownerScoped`/
-`versioned`/`vectorize`/`fts` flags, `vectorizeModel`, `displayTemplate`,
-`defaultSort`, admin `group` + explicit `sortOrder`) plus the saved
-group-header order. The array is emitted in dependency order (relation
-targets first) — the admin's in-group arrangement travels via `sortOrder`,
-not array position. Narrow with `?collections=a,b` — relation fields pointing at
-collections outside the exported set stay as plain (unlinked) columns until
-their target exists, since relations carry no hard FK constraint. Not
-exported (template format doesn't carry them yet): sample data, `singleton`,
-`softDelete`, `auditReads`, and adopted collections.
+`versioned`/`vectorize`/`fts`/`singleton`/`softDelete`/`auditReads` flags,
+`vectorizeModel`, `displayTemplate`, `defaultSort`, admin `group` + explicit
+`sortOrder`) plus the saved group-header order. The array is emitted in
+dependency order (relation targets first) — the admin's in-group arrangement
+travels via `sortOrder`, not array position. Narrow with `?collections=a,b` —
+relation fields pointing at collections outside the exported set stay as
+plain (unlinked) columns until their target exists, since relations carry no
+hard FK constraint.
+
+Add `?samples=N` (1–50, matching the apply-side per-collection cap) to also
+export the first N rows of each collection as template `samples`: relation
+values are rewritten to `{ "ref": "slug:index" }` links when the target row
+made the same extract (dropped otherwise — a concrete id would dangle in the
+destination workspace), `hash`/`file`/computed fields are skipped, and
+soft-deleted rows are excluded. Adopted collections are never exported.
 
 The same shape applies elsewhere via `POST /api/admin/templates/apply` with
 `{ "template": { … } }` — fields are deep-validated with the same rules as

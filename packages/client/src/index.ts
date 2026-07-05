@@ -830,7 +830,11 @@ export interface TemplatesClient {
   clearSamples(): Promise<{ data: ClearTemplateSamplesResult }>;
   /** Export the workspace's managed collections as a reusable template
    *  (schema + admin groups; no sample data). */
-  extract(opts?: { collections?: string[] }): Promise<{ data: ExtractedTemplate }>;
+  extract(opts?: {
+    collections?: string[];
+    /** Also export the first N rows per collection (1–50) as template samples. */
+    samples?: number;
+  }): Promise<{ data: ExtractedTemplate }>;
 }
 
 /** A collection inside a schema snapshot — the schema-relevant subset of a
@@ -1884,14 +1888,17 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         {},
       ),
     /** Export the workspace schema as a reusable template. */
-    extract: (opts?: { collections?: string[] }) =>
+    extract: (opts?: { collections?: string[]; samples?: number }) =>
       request<{ data: ExtractedTemplate }>(
         "GET",
-        `/api/admin/templates/extract${
-          opts?.collections?.length
-            ? `?collections=${encodeURIComponent(opts.collections.join(","))}`
-            : ""
-        }`,
+        (() => {
+          const params = new URLSearchParams();
+          if (opts?.collections?.length)
+            params.set("collections", opts.collections.join(","));
+          if (opts?.samples != null) params.set("samples", String(opts.samples));
+          const qs = params.size ? `?${params.toString()}` : "";
+          return `/api/admin/templates/extract${qs}`;
+        })(),
       ),
   };
 

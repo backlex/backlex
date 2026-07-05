@@ -41,6 +41,12 @@ export interface TemplateCollection {
    *  from listing order); extract emits it so the round-trip preserves the
    *  admin's arrangement even though the array is dependency-ordered. */
   sortOrder?: number;
+  /** Single-row collection (extract/apply-custom fidelity). */
+  singleton?: boolean;
+  /** Soft delete — rows get a `deleted_at` column instead of hard deletes. */
+  softDelete?: boolean;
+  /** Audit reads of this collection (extract/apply-custom fidelity). */
+  auditReads?: boolean;
   fields: FieldDef[];
   /** Realistic example rows seeded on apply (only when the collection is newly
    *  created). Relation values use `{ ref: "slug:index" }`. */

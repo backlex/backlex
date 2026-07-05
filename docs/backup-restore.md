@@ -156,3 +156,25 @@ const summary = await backlex
 
 `importItems` also accepts a raw string plus `"csv"` to upload a spreadsheet
 verbatim.
+
+Backups themselves are on `client.backups`:
+
+```ts
+const { data: b } = await backlex.backups.run({ label: "before-migration" });
+await backlex.backups.list(); // tracking rows, newest first
+await backlex.backups.restore(b.id); // additive; the SDK sends the confirm header
+await backlex.backups.setConfig({ schedule: "daily", retain: 14 });
+```
+
+## Other surfaces
+
+Backup/restore has full multi-surface parity (gate:
+`apps/web/tests/backup-surfaces.test.ts`):
+
+- **GraphQL** — `backups` / `backupConfig` queries; `runBackup(label)`,
+  `restoreBackup(id, confirm: true)`, `setBackupConfig(data)` mutations.
+  `confirm: true` mirrors REST's `X-Backlex-Confirm: yes` header.
+- **MCP** — `backups.list`, `backups.run`, `backups.restore` (requires
+  `confirm: true`), `backups.get_config`, `backups.set_config`.
+- **CLI** — `backlex backup <list|now|download|restore|config>` (see
+  `docs/sdk-and-cli.md`).

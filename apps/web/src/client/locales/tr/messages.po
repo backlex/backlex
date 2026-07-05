@@ -360,6 +360,11 @@ msgstr "{0} yayınlandı, {failed} başarısız."
 msgid "{0} published."
 msgstr "{0} yayınlandı."
 
+#. placeholder {0}: results.length
+#: src/client/admin/pages/search-playground.tsx
+msgid "{0} result(s)"
+msgstr "{0} sonuç"
+
 #. placeholder {0}: collections.reduce((a, c) => a + c.count, 0).toLocaleString()
 #: src/client/admin/collections-index.tsx
 msgid "{0} rows"
@@ -1564,6 +1569,10 @@ msgstr "Yazar"
 msgid "auto"
 msgstr "otomatik"
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "Auto"
+msgstr "Otomatik"
+
 #: src/client/admin/storage.tsx
 msgid "Auto = preserve source aspect. Pin height to crop to a different aspect (uses Focal point + fit=cover)."
 msgstr "Otomatik = kaynak en-boy oranını korur. Farklı bir en-boy oranında kırpmak için yüksekliği sabitleyin (Odak noktası + fit=cover kullanır)."
@@ -2166,6 +2175,7 @@ msgstr "İşbirliği"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/logs.tsx
+#: src/client/admin/pages/search-playground.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "Collection"
@@ -4414,6 +4424,10 @@ msgstr "tam erişim"
 msgid "Full access"
 msgstr "Tam erişim"
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "Full-text"
+msgstr "Tam metin"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Full-text search"
 msgstr "Tam metin arama"
@@ -4670,6 +4684,10 @@ msgstr "bu koleksiyonun gezinti ve listelerde nasıl görüneceği"
 #: src/client/admin/pages/overview.tsx
 msgid "http · event · cron"
 msgstr "http · olay · cron"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Hybrid"
+msgstr "Hibrit"
 
 #: src/client/pages/sign-up.tsx
 msgid "I agree to the <0>Terms</0> and <1>Privacy</1>."
@@ -5147,6 +5165,10 @@ msgstr "Anahtar 2–40 karakter olmalıdır (harf, rakam, tire, alt çizgi)."
 #: src/client/admin/adopt-wizard.tsx
 msgid "keys"
 msgstr "anahtarlar"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "keyword index"
+msgstr "anahtar kelime dizini"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "kind"
@@ -5792,6 +5814,10 @@ msgstr "Bu kaydı salt okunur olarak gösteren bir genel bağlantı oluşturun �
 msgid "Missing ({0})"
 msgstr "Eksik ({0})"
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "Mode"
+msgstr "Mod"
+
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Model"
@@ -6405,6 +6431,10 @@ msgstr "Eşleşen günlük girdisi yok"
 msgid "No logs yet — click Run."
 msgstr "Henüz günlük yok — Çalıştır'a tıklayın."
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "No matches"
+msgstr "Eşleşme yok"
+
 #: src/client/admin/parity/app-users.tsx
 #: src/client/pages/graphql.tsx
 #: src/client/pages/rest-explorer.tsx
@@ -6673,6 +6703,10 @@ msgstr "Son {range} içinde hiçbir şey gelmedi. Aralığı genişletin veya is
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Nothing new — all {0} collections already exist"
 msgstr "Yeni bir şey yok — {0} koleksiyonun tümü zaten var"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Nothing ranked for that query — try different words or another mode."
+msgstr "Bu sorgu için sonuç çıkmadı — farklı kelimeler veya başka bir mod deneyin."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Nothing selected"
@@ -7208,6 +7242,7 @@ msgstr "Fotoğrafçı, tasarımcı, kaynak…"
 msgid "physical c_<slug> tables"
 msgstr "fiziksel c_<slug> tabloları"
 
+#: src/client/admin/pages/search-playground.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "Pick a collection"
 msgstr "Bir koleksiyon seçin"
@@ -7219,6 +7254,10 @@ msgstr "Aşağıdan bir koleksiyon ve toplam seçin — yazılacak sorgu yok."
 #: src/client/admin/parity/insights.tsx
 msgid "Pick a collection first"
 msgstr "Önce bir koleksiyon seçin"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured."
+msgstr "Bir koleksiyon seçin, sorgunuzu yazın ve çalıştırın. Tam metin için koleksiyonun FTS anahtarı açık olmalı; vektör için bir embedding modeli yapılandırılmış olmalı."
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/parity/insights.tsx
@@ -7719,6 +7758,7 @@ msgid "Queries"
 msgstr "Sorgular"
 
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/search-playground.tsx
 #: src/client/pages/graphql.tsx
 msgid "Query"
 msgstr "Sorgu"
@@ -8541,6 +8581,10 @@ msgstr "{r} tarafından oluşturulan satırlar bu kuralı karşılamalıdır."
 msgid "Rows matching this rule are visible to {r}."
 msgstr "Bu kuralla eşleşen satırlar {r} için görünür."
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "RRF fusion of both"
+msgstr "ikisinin RRF birleşimi"
+
 #: src/client/admin/condition-editor.tsx
 msgid "rules"
 msgstr "kurallar"
@@ -8579,6 +8623,10 @@ msgstr "Şimdi çalıştır"
 #: src/client/admin/parity/insights.tsx
 msgid "Run preview"
 msgstr "Önizleme çalıştır"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Run ranked full-text, vector, or hybrid search against a collection — same permissions and visibility as the API."
+msgstr "Bir koleksiyonda sıralı tam metin, vektör veya hibrit arama çalıştırın — API ile aynı izinler ve görünürlük."
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Run re-queued — the copy continues where it stopped."
@@ -8885,6 +8933,11 @@ msgstr "Role göre kapsama al"
 msgid "scoping & lifecycle"
 msgstr "kapsam ve yaşam döngüsü"
 
+#: src/client/admin/pages/search-playground.tsx
+#: src/client/admin/ui.tsx
+msgid "Search"
+msgstr "Arama"
+
 #. placeholder {0}: FIELD_INTERFACES.length
 #: src/client/admin/add-field.tsx
 msgid "Search {0} interfaces — input, markdown, dropdown, relation…"
@@ -8893,6 +8946,10 @@ msgstr "{0} arayüz ara — giriş, markdown, açılır menü, ilişki…"
 #: src/client/admin/items.tsx
 msgid "Search {total} items by title or slug…"
 msgstr "{total} öğeyi başlık veya slug ile ara…"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Search a collection"
+msgstr "Bir koleksiyonda arayın"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "Search by label or id…"
@@ -8909,6 +8966,10 @@ msgstr "Koleksiyonları slug veya gruba göre ara…"
 #: src/client/admin/ui.tsx
 msgid "Search collections, items, settings…"
 msgstr "Koleksiyonları, öğeleri, ayarları ara…"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Search failed."
+msgstr "Arama başarısız oldu."
 
 #: src/client/admin/display-template-editor.tsx
 msgid "Search fields…"
@@ -8938,6 +8999,10 @@ msgstr "yüklenen satırlarda ara — yol, işlem, kullanıcı, mesaj…"
 msgid "Search members…"
 msgstr "Üyeleri ara…"
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "Search playground"
+msgstr "Arama alanı"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Search steps…"
 msgstr "Adımları ara…"
@@ -8950,6 +9015,10 @@ msgstr "Şablonları ara…"
 #: src/client/admin/edit-field.tsx
 msgid "Searchable"
 msgstr "Aranabilir"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Searching…"
+msgstr "Aranıyor…"
 
 #: src/client/admin/pages/settings.tsx
 msgid "secret"
@@ -9028,6 +9097,10 @@ msgstr "Cloudflare Workers üzerinde öz barındırılan. Yapılandırmanın bü
 #: src/client/admin/pages/settings.tsx
 msgid "Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run."
 msgstr "Cloudflare Workers üzerinde öz barındırılan. Telemetri yok, fatura yok — sadece klonla, dağıt, çalıştır."
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "semantic embeddings"
+msgstr "anlamsal embedding'ler"
 
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/agents.tsx
@@ -10911,6 +10984,10 @@ msgstr "Değişkenler (JSON)"
 msgid "Variables use Liquid-style <0>{userEmailExample}</0>. Template renders run through the Functions sandbox."
 msgstr "Değişkenler Liquid stili <0>{userEmailExample}</0> kullanır. Şablon işlemeleri Fonksiyonlar kum havuzundan geçer."
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "Vector"
+msgstr "Vektör"
+
 #: src/client/admin/pages/overview.tsx
 msgid "vector index"
 msgstr "vektör indeksi"
@@ -11056,6 +11133,10 @@ msgstr "Tekrar hoş geldiniz"
 msgid "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
 msgstr "Tekrar hoş geldin. Kaldığın yerden devam et — içerik, veri ve API'lar tek yerde."
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "What are you looking for?"
+msgstr "Ne arıyorsunuz?"
+
 #: src/client/admin/pages/agents.tsx
 msgid "What this agent is for"
 msgstr "Bu ajan ne için"
@@ -11067,6 +11148,10 @@ msgstr "Bu dosya hakkında…"
 #: src/client/admin/role-editor.tsx
 msgid "What this role can do…"
 msgstr "Bu rolün yapabilecekleri…"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "whatever the collection has enabled"
+msgstr "koleksiyonda etkin olan neyse"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "When"

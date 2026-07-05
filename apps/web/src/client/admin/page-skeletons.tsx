@@ -376,6 +376,28 @@ function WebhooksSkeletonImpl() {
   );
 }
 
+/** Search playground — header, the controls card (collection / query / mode /
+ *  button row), then the empty-state area where results land. */
+function SearchPlaygroundSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-4.5">
+      <HeaderSkeleton actions={0} />
+      <Card className="p-4">
+        <div className="grid grid-cols-[220px_minmax(0,1fr)_170px_auto] items-end gap-2.5 max-[820px]:grid-cols-1">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex flex-col gap-1.5">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-9 w-full rounded-md" />
+            </div>
+          ))}
+          <Skeleton className="h-9 w-24 rounded-md max-[820px]:justify-self-end" />
+        </div>
+      </Card>
+      <Skeleton className="h-[180px] w-full rounded-2xl" />
+    </div>
+  );
+}
+
 /** Realtime — header, then a channel list + a tail pane. */
 function RealtimeSkeletonImpl() {
   return (
@@ -798,6 +820,7 @@ export const FlowsSkeleton = withSkeletonDelay(FlowsSkeletonImpl);
 export const FunctionsSkeleton = withSkeletonDelay(FunctionsSkeletonImpl);
 export const WebhooksSkeleton = withSkeletonDelay(WebhooksSkeletonImpl);
 export const RealtimeSkeleton = withSkeletonDelay(RealtimeSkeletonImpl);
+export const SearchPlaygroundSkeleton = withSkeletonDelay(SearchPlaygroundSkeletonImpl);
 export const AdvisorSkeleton = withSkeletonDelay(AdvisorSkeletonImpl);
 export const SchemaGraphSkeleton = withSkeletonDelay(SchemaGraphSkeletonImpl);
 export const SchemaVersionsSkeleton = withSkeletonDelay(SchemaVersionsSkeletonImpl);
@@ -857,6 +880,8 @@ export function PageSkeleton({ nav }: { nav: string }) {
       return <WebhooksSkeleton />;
     case "realtime":
       return <RealtimeSkeleton />;
+    case "search":
+      return <SearchPlaygroundSkeleton />;
     case "logs":
       return <LogsSkeleton />;
     case "advisor":

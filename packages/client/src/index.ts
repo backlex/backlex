@@ -737,13 +737,20 @@ export interface TemplateCollectionDef {
   singular?: string;
   plural?: string;
   note?: string;
+  /** Row-title format hint for the admin UI. */
+  displayTemplate?: string;
   ownerScoped?: boolean;
   versioned?: boolean;
   vectorize?: boolean;
+  /** Embedding model override. */
+  vectorizeModel?: string;
   fts?: boolean;
   defaultSort?: string;
   /** Admin group header this collection lands under. */
   group?: string;
+  /** Explicit position within the group (extract emits it; the array itself
+   *  is dependency-ordered, not display-ordered). */
+  sortOrder?: number;
   fields: Record<string, unknown>[];
   samples?: Record<string, unknown>[];
 }

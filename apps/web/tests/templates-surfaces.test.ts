@@ -93,10 +93,16 @@ describe("templates — GraphQL surface", () => {
     expect(applied.data?.applyCustomTemplate.created).toHaveLength(0);
     expect(applied.data?.applyCustomTemplate.skipped.length).toBeGreaterThan(0);
 
-    // clearTemplateSamples removes the rows the blog apply seeded.
+    // clearTemplateSamples removes the rows the blog apply seeded…
+    const before = await gql(`{ templateSeedStatus { hasCollections sampleSeeds } }`);
+    expect(before.data?.templateSeedStatus.hasCollections).toBe(true);
+    expect(before.data?.templateSeedStatus.sampleSeeds).toBe(10);
     const cleared = await gql(`mutation{ clearTemplateSamples { removed collections } }`);
     expect(cleared.errors).toBeUndefined();
     expect(cleared.data?.clearTemplateSamples.removed).toBe(10);
+    // …and the seed status reflects it (REST catalog-meta parity).
+    const after = await gql(`{ templateSeedStatus { sampleSeeds } }`);
+    expect(after.data?.templateSeedStatus.sampleSeeds).toBe(0);
   });
 });
 

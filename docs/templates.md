@@ -91,11 +91,15 @@ webhooks, flows or realtime events.
 
 `GET /api/admin/templates/extract` exports the workspace's managed
 collections **in template format**: collection defs (fields, `ownerScoped`/
-`versioned`/`vectorize`/`fts` flags, `defaultSort`, admin `group`) in
-dependency order plus the saved group-header order. Narrow with
-`?collections=a,b`. Not exported (template format doesn't carry them yet):
-sample data, `displayTemplate`, `singleton`, `softDelete`, `auditReads`, and
-adopted collections.
+`versioned`/`vectorize`/`fts` flags, `vectorizeModel`, `displayTemplate`,
+`defaultSort`, admin `group` + explicit `sortOrder`) plus the saved
+group-header order. The array is emitted in dependency order (relation
+targets first) — the admin's in-group arrangement travels via `sortOrder`,
+not array position. Narrow with `?collections=a,b` — relation fields pointing at
+collections outside the exported set stay as plain (unlinked) columns until
+their target exists, since relations carry no hard FK constraint. Not
+exported (template format doesn't carry them yet): sample data, `singleton`,
+`softDelete`, `auditReads`, and adopted collections.
 
 The same shape applies elsewhere via `POST /api/admin/templates/apply` with
 `{ "template": { … } }` — fields are deep-validated with the same rules as
@@ -122,7 +126,7 @@ Like flows, templates are mirrored across every surface:
 | --- | --- | --- | --- | --- | --- |
 | REST | `GET /api/admin/templates` | `POST …/apply {templateId}` | `POST …/apply {template}` | `POST …/clear-samples` | `GET …/extract` |
 | SDK | `client.templates.list()` | `.apply(id)` | `.applyCustom(tpl)` | `.clearSamples()` | `.extract()` |
-| GraphQL | `templates` | `applyTemplate` | `applyCustomTemplate` | `clearTemplateSamples` | `extractTemplate` |
+| GraphQL | `templates` (+ `templateSeedStatus` for the catalog meta) | `applyTemplate` | `applyCustomTemplate` | `clearTemplateSamples` | `extractTemplate` |
 | MCP | `templates.list` | `templates.apply` | `templates.apply` (`template` arg) | `templates.clearSamples` | `templates.extract` |
 | CLI | `backlex templates list` | `apply <id>` | `apply --file <path>` | `clear-samples` | `extract` |
 

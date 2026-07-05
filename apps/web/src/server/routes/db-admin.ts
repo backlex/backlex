@@ -1,15 +1,15 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
-import { sql, desc, eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import * as pg from "@backlex/db/pg";
-import * as sqlite from "@backlex/db/sqlite";
 import { MIGRATION_TAGS_PG, MIGRATION_TAGS_SQLITE } from "@backlex/db";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import {
-  recordAndRunBackup,
-  restoreBackup,
+  listBackups,
+  startManualBackup,
+  getBackupScoped,
+  restoreBackupById,
   loadBackupConfig,
   saveBackupConfig,
 } from "../services/backup";
@@ -349,13 +349,7 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      const t = ctx.dialect === "pg" ? pg.schema.backups : sqlite.schema.backups;
-      const rows = await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(eq(t.tenantId, auth.tenantId ?? ""))
-        .orderBy(desc(t.createdAt))
-        .limit(100);
+      const rows = await listBackups(ctx, auth.tenantId ?? null);
       return c.json({ data: rows });
     },
   )
@@ -398,36 +392,14 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>()
       } catch {
         body = {};
       }
-      const t = ctx.dialect === "pg" ? pg.schema.backups : sqlite.schema.backups;
-      const id = crypto.randomUUID();
-      const stamp = new Date().toISOString().replace(/[:.TZ-]/g, "").slice(0, 14);
-      const storageKey = `backups/${auth.tenantId ?? "global"}/${stamp}_${id}.jsonl`;
-      await (ctx.db as any).insert(t).values({
-        id,
-        tenantId: auth.tenantId ?? null,
-        kind: "manual",
-        label: body.label ?? null,
-        storageKey,
-        size: 0,
-        tableCount: 0,
-        status: "queued",
-        createdBy: auth.userId,
-      });
-      // Run inline — dump is small enough for D1/pg fixtures + this is admin
+      // Runs inline — dump is small enough for D1/pg fixtures + this is admin
       // traffic. Larger deployments can move this to a queue/cron worker.
-      await recordAndRunBackup(ctx, {
-        id,
+      const row = await startManualBackup(ctx, {
         tenantId: auth.tenantId ?? null,
-        storageKey,
         userId: auth.userId,
         label: body.label ?? null,
       });
-      const refreshed = await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(eq(t.id, id))
-        .limit(1);
-      return c.json({ data: refreshed[0] ?? { id, storageKey, status: "running" } }, 201);
+      return c.json({ data: row }, 201);
     },
   )
   .openapi(
@@ -456,17 +428,7 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>()
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const { id } = c.req.valid("param");
-      const t = ctx.dialect === "pg" ? pg.schema.backups : sqlite.schema.backups;
-      const rows = await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(eq(t.id, id))
-        .limit(1);
-      const row = rows[0];
-      if (!row) throw new AppError("NOT_FOUND", "Backup not found");
-      if (auth.tenantId && row.tenantId && row.tenantId !== auth.tenantId) {
-        throw new AppError("FORBIDDEN", "Backup belongs to a different workspace");
-      }
+      const row = await getBackupScoped(ctx, auth.tenantId ?? null, id);
       const file = await ctx.storage.get(row.storageKey as string);
       if (!file) throw new AppError("NOT_FOUND", "Backup file missing on storage");
       return new Response(file.body, {
@@ -514,21 +476,7 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>()
           "Restore requires the X-Backlex-Confirm: yes header.",
         );
       }
-      const t = ctx.dialect === "pg" ? pg.schema.backups : sqlite.schema.backups;
-      const rows = await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(eq(t.id, id))
-        .limit(1);
-      const row = rows[0];
-      if (!row) throw new AppError("NOT_FOUND", "Backup not found");
-      if (auth.tenantId && row.tenantId && row.tenantId !== auth.tenantId) {
-        throw new AppError("FORBIDDEN", "Backup belongs to a different workspace");
-      }
-      const result = await restoreBackup(ctx, {
-        storageKey: row.storageKey as string,
-        tenantId: auth.tenantId ?? null,
-      });
+      const result = await restoreBackupById(ctx, auth.tenantId ?? null, id);
       return c.json({ data: result });
     },
   )

@@ -24,6 +24,11 @@ export interface ManagedCollectionDef {
   /** Enable keyword full-text search — pairs with `searchable` fields. */
   fts?: boolean;
   defaultSort?: string | null;
+  /** Admin grouping: section header on the Collections page + sidebar tree.
+   *  Header order lives in the `collectionGroups` app_settings key. */
+  group?: string | null;
+  /** Manual position within the group. Null sorts after ordered rows. */
+  sortOrder?: number | null;
 }
 
 /**
@@ -75,6 +80,8 @@ export async function createManagedCollection(
     vectorizeModel: def.vectorizeModel ?? null,
     fts: def.fts ?? false,
     defaultSort: def.defaultSort ?? null,
+    group: def.group ?? null,
+    sortOrder: def.sortOrder ?? null,
     adopted: false,
     pkColumn: "id",
     hasCreatedAt: true,

@@ -94,8 +94,10 @@ Usage:
   backlex agents <list|get|create|update|delete|threads|run>
       AI agents. \`run <id> --message "…"\` runs a turn and prints the answer.
 
-  backlex templates <list|apply>
-      Schema-template catalog. \`apply <id>\` seeds collections + sample data.
+  backlex templates <list|apply|extract|clear-samples>
+      Schema-template catalog. \`apply <id>\` seeds collections + sample data;
+      \`apply --file <path>\` applies a custom template; \`extract\` exports the
+      workspace schema as a template; \`clear-samples\` removes seeded demo rows.
 
   backlex webhooks <list|create|test|deliveries|retry|resume|delete>
       Outbound webhooks + delivery ops. \`resume\` re-enables an auto-disabled hook.

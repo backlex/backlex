@@ -259,6 +259,8 @@ describe("MCP — initialize + tools/list", () => {
     expect(byName.get("ai.query")?.kind).toBe("read");
     expect(byName.get("ai.suggest_schema")?.kind).toBe("read");
     expect(byName.get("saml.providers_delete")?.kind).toBe("destruct");
+    expect(byName.get("templates.clearSamples")?.kind).toBe("destruct");
+    expect(byName.get("templates.extract")?.kind).toBe("read");
   });
 
   test("tools/list surfaces outputSchema only where the shape is stable", async () => {

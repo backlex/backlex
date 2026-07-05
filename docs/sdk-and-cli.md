@@ -81,10 +81,14 @@ const run = await wks.flows.run(flow.data.id, { hello: "world" }); // { ok, erro
 await wks.flows.delete(flow.data.id);
 
 // Schema templates — admin-scoped; mirrors `/api/admin/templates`, the MCP
-// `templates.*` tools, and GraphQL `templates`/`applyTemplate`.
-const catalog = await wks.templates.list();          // { data, defaultTemplateId, hasCollections }
-const seeded = await wks.templates.apply("blog");    // idempotent — seeds collections + sample data
-// seeded.data → { templateId, created[], skipped[], seeded }
+// `templates.*` tools, and GraphQL `templates`/`applyTemplate`/etc. Full
+// guide: docs/templates.md.
+const catalog = await wks.templates.list();          // { data, defaultTemplateId, hasCollections, sampleSeeds }
+const seeded = await wks.templates.apply("blog");    // idempotent — groups + sample data + bundled roles/dashboards
+// seeded.data → { templateId, created[], skipped[], seeded, roles[], dashboards[] }
+const tpl = await wks.templates.extract();           // workspace schema in template format
+await wks.templates.applyCustom(tpl.data);           // …applied elsewhere (same idempotent semantics)
+await wks.templates.clearSamples();                  // remove every template-seeded sample row
 ```
 
 ### Errors
@@ -245,7 +249,7 @@ backlex flags <list|set|delete>                  feature flags / remote config
 backlex settings <get|set>                       workspace settings (whitelisted keys)
 backlex functions <list|deploy|invoke|delete>    sandboxed JS functions
 backlex flows <list|get|run|create|delete>       visual workflow builder
-backlex templates <list|apply>                   schema-template catalog (apply seeds + sample data)
+backlex templates <list|apply|extract|clear-samples>  schema-template catalog (apply seeds groups + samples + bundles; apply --file for custom; extract exports the workspace)
 backlex webhooks <list|create|test|deliveries|retry|resume|delete>  outbound webhooks
 backlex jobs <list|get|retry|cancel|remove|enqueue>  durable job queue
 backlex advisor [--kind …] [--fail-on error|warn]   security/perf checks (CI gate)

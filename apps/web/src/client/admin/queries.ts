@@ -46,6 +46,8 @@ import {
   rolesApi,
   settingsApi,
   sharedLinksApi,
+  type TemplateCatalog,
+  templatesApi,
   tenantsApi,
   tracesApi,
 } from "./api";
@@ -66,6 +68,9 @@ export const queryKeys = {
    *  other list. `invalidateQueries({ queryKey: ["collections"] })` still
    *  matches both because the prefix is shared. */
   collections: (includeArchived = false) => ["collections", { includeArchived }] as const,
+  /** Schema-template catalog (`/api/admin/templates`) — also carries
+   *  `sampleSeeds`, the "Remove sample data" affordance's driver. */
+  templates: () => ["templates"] as const,
   metricsOverview: (range: string) => ["metrics", "overview", range] as const,
   roles: () => ["roles"] as const,
   me: () => ["me"] as const,
@@ -216,6 +221,44 @@ export function useSaveCollectionsLayout() {
       if (ctx) qc.setQueryData(queryKeys.collections(false), ctx.snap);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["collections"] }),
+  });
+}
+
+/** Schema-template catalog. Shared by the Overview onboarding card, the
+ *  Collections "From template" dialog and the sample-data callout — one cache
+ *  entry, RQ dedupes the reads. */
+export function useTemplatesCatalog(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.templates(),
+    queryFn: () => templatesApi.list(),
+    enabled,
+  });
+}
+
+/** Remove every template-seeded sample row. Optimistic: the catalog cache's
+ *  `sampleSeeds` zeroes immediately (hides the callout), restored on error. */
+export function useClearTemplateSamples() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => templatesApi.clearSamples(),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: queryKeys.templates() });
+      const snap = qc.getQueryData(queryKeys.templates());
+      qc.setQueryData(
+        queryKeys.templates(),
+        (old: TemplateCatalog | undefined) => old && { ...old, sampleSeeds: 0 },
+      );
+      return { snap };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx) qc.setQueryData(queryKeys.templates(), ctx.snap);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.templates() });
+      // Seeded rows just disappeared from item lists + row counts.
+      void qc.invalidateQueries({ queryKey: ["items"] });
+      void qc.invalidateQueries({ queryKey: ["metrics"] });
+    },
   });
 }
 

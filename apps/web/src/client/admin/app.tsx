@@ -105,6 +105,7 @@ const LogsPage = lazy(() => import("./pages/logs").then((m) => ({ default: m.Log
 const TracesPage = lazy(() => import("./pages/traces").then((m) => ({ default: m.TracesPage })));
 const AdvisorPage = lazy(() => import("./pages/advisor").then((m) => ({ default: m.AdvisorPage })));
 const SchemaGraphPage = lazy(() => import("./pages/schema-graph").then((m) => ({ default: m.SchemaGraphPage })));
+const SearchPlaygroundPage = lazy(() => import("./pages/search-playground").then((m) => ({ default: m.SearchPlaygroundPage })));
 const SchemaVersionsPage = lazy(() => import("./pages/schema-versions").then((m) => ({ default: m.SchemaVersionsPage })));
 const DatabaseImportPage = lazy(() => import("./pages/database-import").then((m) => ({ default: m.DatabaseImportPage })));
 const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
@@ -957,6 +958,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "traces" && <TracesPage pushToast={pushToast} />}
             {activeNav === "advisor" && <AdvisorPage pushToast={pushToast} />}
             {activeNav === "schema-graph" && <SchemaGraphPage pushToast={pushToast} />}
+            {activeNav === "search" && <SearchPlaygroundPage pushToast={pushToast} />}
             {activeNav === "schema-versions" && <SchemaVersionsPage pushToast={pushToast} />}
             {activeNav === "database-import" && <DatabaseImportPage pushToast={pushToast} />}
             {activeNav === "insights" && <InsightsPage pushToast={pushToast} />}

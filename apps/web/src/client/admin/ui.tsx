@@ -523,6 +523,7 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
   access: msg`Access`,
   database: msg`Database`,
   storage: msg`Storage`,
+  search: msg`Search`,
   flows: msg`Flows`,
   agents: msg`Agents`,
   functions: msg`Functions`,

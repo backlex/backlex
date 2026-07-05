@@ -1,4 +1,9 @@
-import type { ImageAdapter, ImageTransform } from "@backlex/core";
+import type {
+  EdgeImageAdapter,
+  EdgeImageFocal,
+  ImageAdapter,
+  ImageTransform,
+} from "@backlex/core";
 
 /**
  * Cloudflare Image Resizing — works on the Workers runtime when the zone is
@@ -60,3 +65,20 @@ export const cfImageFromUrl = (
   if (opts.gravity) cfOptions.gravity = opts.gravity;
   return fetch(url, { cf: { image: cfOptions } } as RequestInit);
 };
+
+/**
+ * Edge adapter for Cloudflare Image Resizing — the `EdgeImageAdapter` face of
+ * {@link cfImageFromUrl}, selected on the Workers runtime by `buildContext`.
+ * Maps the 0–100 focal query units to CF's 0–1 `gravity` coordinates so the
+ * serve path never has to know CF conventions.
+ */
+export const cfEdgeImage = (): EdgeImageAdapter => ({
+  name: "cf-image-resizing",
+  transformFromUrl(sourceUrl: string, opts: ImageTransform, focal?: EdgeImageFocal) {
+    const cf: CfImageTransform = {
+      ...opts,
+      ...(focal ? { gravity: { x: focal.x / 100, y: focal.y / 100 } } : {}),
+    };
+    return cfImageFromUrl(sourceUrl, cf);
+  },
+});

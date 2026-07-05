@@ -31,6 +31,7 @@ import {
   type ApiRole,
 } from "../api";
 import { PanelBody, panelSubtitle } from "../panel-render";
+import { detectSeries, MAX_SERIES } from "../panel-series";
 import { InsightsSkeleton } from "../page-skeletons";
 
 /**
@@ -540,13 +541,30 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
 const SAMPLE_PANEL_SQL = "SELECT COUNT(*) AS n FROM user;";
 
 type PanelKind = "sql" | "items-aggregate" | "static";
-type PanelViz = "counter" | "sparkline" | "bars" | "donut" | "table";
+type PanelViz =
+  | "counter"
+  | "sparkline"
+  | "line"
+  | "area"
+  | "bars"
+  | "stacked-bars"
+  | "donut"
+  | "pie"
+  | "radar"
+  | "radial"
+  | "table";
 
 const VIZ_DESCRIPTIONS: Record<PanelViz, string> = {
   counter: "single number",
-  sparkline: "filled line over a numeric series",
-  bars: "vertical bars over a numeric series",
+  sparkline: "compact filled line, no axes",
+  line: "line chart with axis + hover values",
+  area: "filled line chart with axis + hover values",
+  bars: "vertical bars with axis + hover values",
+  "stacked-bars": "stacked bars — one layer per numeric column",
   donut: "donut chart over up to 6 segments",
+  pie: "pie chart over up to 6 segments",
+  radar: "radar over the label axis — one shape per numeric column",
+  radial: "radial bars over up to 6 segments",
   table: "small key/value table",
 };
 
@@ -1154,27 +1172,40 @@ function PreviewTable({ rows }: { rows: Record<string, unknown>[] }) {
  * actually returned. Mirrors the auto-detection in RealPanel so the editor and
  * the dashboard agree on what each viz reads.
  */
+const VIZ_LABELS: Record<PanelViz, string> = {
+  counter: "Counter",
+  sparkline: "Sparkline",
+  line: "Line",
+  area: "Area",
+  bars: "Bars",
+  "stacked-bars": "Stacked bars",
+  donut: "Donut",
+  pie: "Pie",
+  radar: "Radar",
+  radial: "Radial",
+  table: "Table",
+};
+
 function describeVizMapping(viz: PanelViz, rows: Record<string, unknown>[]): string {
   const first = rows[0] ?? {};
-  const cols = Object.keys(first);
-  const numericCol = cols.find((c) => typeof first[c] === "number");
-  const labelCol = cols.find((c) => c !== numericCol);
+  const { cols, numericCols } = detectSeries(rows);
+  const numericCol = numericCols[0];
+  const labelCol = cols.find((c) => !numericCols.includes(c));
+  const label = VIZ_LABELS[viz];
   if (viz === "counter") {
     return numericCol
       ? `Counter → "${numericCol}" from the first row (${Number(first[numericCol]).toLocaleString()}).`
       : `Counter → no numeric column, so it shows the row count (${rows.length}).`;
   }
-  if (viz === "sparkline" || viz === "bars") {
-    const col = numericCol ?? cols[0];
-    const label = viz === "bars" ? "Bars" : "Sparkline";
-    return col
-      ? `${label} → "${col}" across all ${rows.length} row${rows.length === 1 ? "" : "s"}.`
+  if (viz === "sparkline" || viz === "line" || viz === "area" || viz === "bars" || viz === "stacked-bars" || viz === "radar") {
+    const used = (numericCols.length > 0 ? numericCols : cols.slice(0, 1)).slice(0, MAX_SERIES);
+    return used.length > 0
+      ? `${label} → ${used.map((c) => `"${c}"`).join(", ")} across all ${rows.length} row${rows.length === 1 ? "" : "s"}.`
       : `${label} → the first numeric column across all rows.`;
   }
-  // donut | table
+  // donut | pie | radial | table
   const lc = labelCol ?? cols[0];
   const vc = numericCol ?? cols[1];
-  const label = viz === "donut" ? "Donut" : "Table";
   return lc && vc
     ? `${label} → "${lc}" (label) paired with "${vc}" (value).`
     : `${label} → the first two columns: label, then value.`;

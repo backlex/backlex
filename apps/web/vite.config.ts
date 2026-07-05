@@ -305,6 +305,25 @@ export default defineConfig({
           ) {
             return undefined;
           }
+          // Client: recharts (+ its exclusive dep graph) is reached only via
+          // the dynamically-imported panel chart renderer
+          // (admin/panel-render.tsx → panel-charts.tsx). Keep it unpinned so
+          // it lands in its own lazy chunk — the sign-in page, admin shell and
+          // chart-less embeds never download it.
+          if (
+            id.includes("/node_modules/recharts/") ||
+            id.includes("/node_modules/victory-vendor/") ||
+            id.includes("/node_modules/d3-") ||
+            id.includes("/node_modules/decimal.js-light/") ||
+            id.includes("/node_modules/@reduxjs/") ||
+            id.includes("/node_modules/react-redux/") ||
+            id.includes("/node_modules/immer/") ||
+            id.includes("/node_modules/reselect/") ||
+            id.includes("/node_modules/eventemitter3/") ||
+            id.includes("/node_modules/internmap/")
+          ) {
+            return undefined;
+          }
           // Worker: the GraphQL subsystem is reached only through the
           // dynamically-imported `/api/graphql` handler. Leaving it unpinned
           // (vs. the eager `vendor` chunk) lets Rollup keep it in its own lazy

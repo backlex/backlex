@@ -117,6 +117,7 @@ export const NAV_DATA: NavItem[] = [
   { id: "access", icon: "Shield" },
   { id: "database", icon: "Server" },
   { id: "storage", icon: "Folder" },
+  { id: "search", icon: "Search" },
   { id: "schema-graph", icon: "Network" },
   { id: "schema-versions", icon: "Layers" },
   { id: "database-import", icon: "Download" },

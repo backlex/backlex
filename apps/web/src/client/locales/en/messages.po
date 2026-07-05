@@ -360,6 +360,11 @@ msgstr "{0} published, {failed} failed."
 msgid "{0} published."
 msgstr "{0} published."
 
+#. placeholder {0}: results.length
+#: src/client/admin/pages/search-playground.tsx
+msgid "{0} result(s)"
+msgstr "{0} result(s)"
+
 #. placeholder {0}: collections.reduce((a, c) => a + c.count, 0).toLocaleString()
 #: src/client/admin/collections-index.tsx
 msgid "{0} rows"
@@ -1564,6 +1569,10 @@ msgstr "Author"
 msgid "auto"
 msgstr "auto"
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "Auto"
+msgstr "Auto"
+
 #: src/client/admin/storage.tsx
 msgid "Auto = preserve source aspect. Pin height to crop to a different aspect (uses Focal point + fit=cover)."
 msgstr "Auto = preserve source aspect. Pin height to crop to a different aspect (uses Focal point + fit=cover)."
@@ -2166,6 +2175,7 @@ msgstr "Collaboration"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/logs.tsx
+#: src/client/admin/pages/search-playground.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "Collection"
@@ -4414,6 +4424,10 @@ msgstr "full access"
 msgid "Full access"
 msgstr "Full access"
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "Full-text"
+msgstr "Full-text"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Full-text search"
 msgstr "Full-text search"
@@ -4670,6 +4684,10 @@ msgstr "how this collection shows up in nav and lists"
 #: src/client/admin/pages/overview.tsx
 msgid "http · event · cron"
 msgstr "http · event · cron"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Hybrid"
+msgstr "Hybrid"
 
 #: src/client/pages/sign-up.tsx
 msgid "I agree to the <0>Terms</0> and <1>Privacy</1>."
@@ -5147,6 +5165,10 @@ msgstr "Key must be 2–40 chars (letters, digits, dash, underscore)."
 #: src/client/admin/adopt-wizard.tsx
 msgid "keys"
 msgstr "keys"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "keyword index"
+msgstr "keyword index"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "kind"
@@ -5792,6 +5814,10 @@ msgstr "Mint a public link that shows this record read-only — no sign-in requi
 msgid "Missing ({0})"
 msgstr "Missing ({0})"
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "Mode"
+msgstr "Mode"
+
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Model"
@@ -6405,6 +6431,10 @@ msgstr "No log entries match"
 msgid "No logs yet — click Run."
 msgstr "No logs yet — click Run."
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "No matches"
+msgstr "No matches"
+
 #: src/client/admin/parity/app-users.tsx
 #: src/client/pages/graphql.tsx
 #: src/client/pages/rest-explorer.tsx
@@ -6673,6 +6703,10 @@ msgstr "Nothing landed in the last {range}. Widen the range, or wait for request
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Nothing new — all {0} collections already exist"
 msgstr "Nothing new — all {0} collections already exist"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Nothing ranked for that query — try different words or another mode."
+msgstr "Nothing ranked for that query — try different words or another mode."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Nothing selected"
@@ -7208,6 +7242,7 @@ msgstr "Photographer, designer, source…"
 msgid "physical c_<slug> tables"
 msgstr "physical c_<slug> tables"
 
+#: src/client/admin/pages/search-playground.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "Pick a collection"
 msgstr "Pick a collection"
@@ -7219,6 +7254,10 @@ msgstr "Pick a collection and an aggregate below — no query to write."
 #: src/client/admin/parity/insights.tsx
 msgid "Pick a collection first"
 msgstr "Pick a collection first"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured."
+msgstr "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured."
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/parity/insights.tsx
@@ -7719,6 +7758,7 @@ msgid "Queries"
 msgstr "Queries"
 
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/search-playground.tsx
 #: src/client/pages/graphql.tsx
 msgid "Query"
 msgstr "Query"
@@ -8541,6 +8581,10 @@ msgstr "Rows created by {r} must match this rule."
 msgid "Rows matching this rule are visible to {r}."
 msgstr "Rows matching this rule are visible to {r}."
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "RRF fusion of both"
+msgstr "RRF fusion of both"
+
 #: src/client/admin/condition-editor.tsx
 msgid "rules"
 msgstr "rules"
@@ -8579,6 +8623,10 @@ msgstr "Run now"
 #: src/client/admin/parity/insights.tsx
 msgid "Run preview"
 msgstr "Run preview"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Run ranked full-text, vector, or hybrid search against a collection — same permissions and visibility as the API."
+msgstr "Run ranked full-text, vector, or hybrid search against a collection — same permissions and visibility as the API."
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Run re-queued — the copy continues where it stopped."
@@ -8885,6 +8933,11 @@ msgstr "Scope to role"
 msgid "scoping & lifecycle"
 msgstr "scoping & lifecycle"
 
+#: src/client/admin/pages/search-playground.tsx
+#: src/client/admin/ui.tsx
+msgid "Search"
+msgstr "Search"
+
 #. placeholder {0}: FIELD_INTERFACES.length
 #: src/client/admin/add-field.tsx
 msgid "Search {0} interfaces — input, markdown, dropdown, relation…"
@@ -8893,6 +8946,10 @@ msgstr "Search {0} interfaces — input, markdown, dropdown, relation…"
 #: src/client/admin/items.tsx
 msgid "Search {total} items by title or slug…"
 msgstr "Search {total} items by title or slug…"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Search a collection"
+msgstr "Search a collection"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "Search by label or id…"
@@ -8909,6 +8966,10 @@ msgstr "Search collections by slug or group…"
 #: src/client/admin/ui.tsx
 msgid "Search collections, items, settings…"
 msgstr "Search collections, items, settings…"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Search failed."
+msgstr "Search failed."
 
 #: src/client/admin/display-template-editor.tsx
 msgid "Search fields…"
@@ -8938,6 +8999,10 @@ msgstr "search loaded rows — path, action, user, message…"
 msgid "Search members…"
 msgstr "Search members…"
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "Search playground"
+msgstr "Search playground"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Search steps…"
 msgstr "Search steps…"
@@ -8950,6 +9015,10 @@ msgstr "Search templates…"
 #: src/client/admin/edit-field.tsx
 msgid "Searchable"
 msgstr "Searchable"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Searching…"
+msgstr "Searching…"
 
 #: src/client/admin/pages/settings.tsx
 msgid "secret"
@@ -9028,6 +9097,10 @@ msgstr "Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; t
 #: src/client/admin/pages/settings.tsx
 msgid "Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run."
 msgstr "Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run."
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "semantic embeddings"
+msgstr "semantic embeddings"
 
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/agents.tsx
@@ -10911,6 +10984,10 @@ msgstr "Variables (JSON)"
 msgid "Variables use Liquid-style <0>{userEmailExample}</0>. Template renders run through the Functions sandbox."
 msgstr "Variables use Liquid-style <0>{userEmailExample}</0>. Template renders run through the Functions sandbox."
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "Vector"
+msgstr "Vector"
+
 #: src/client/admin/pages/overview.tsx
 msgid "vector index"
 msgstr "vector index"
@@ -11056,6 +11133,10 @@ msgstr "Welcome back"
 msgid "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
 msgstr "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
 
+#: src/client/admin/pages/search-playground.tsx
+msgid "What are you looking for?"
+msgstr "What are you looking for?"
+
 #: src/client/admin/pages/agents.tsx
 msgid "What this agent is for"
 msgstr "What this agent is for"
@@ -11067,6 +11148,10 @@ msgstr "What this file is about…"
 #: src/client/admin/role-editor.tsx
 msgid "What this role can do…"
 msgstr "What this role can do…"
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "whatever the collection has enabled"
+msgstr "whatever the collection has enabled"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "When"

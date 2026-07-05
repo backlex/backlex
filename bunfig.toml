@@ -1,0 +1,9 @@
+# Root test config — mirrors apps/web/bunfig.toml so `bun test` behaves the
+# same from the repo root as from apps/web. The lefthook pre-push hook runs
+# `bun test` from the root; without these preloads the React render tests
+# under apps/web/tests/client/ fail with "document is not defined" (bun only
+# reads the bunfig.toml of the directory it starts in, not the workspace's).
+# Both preloads are additive/no-op for the backend specs — see each file's
+# header.
+[test]
+preload = ["./apps/web/tests/client/lingui-macro.ts", "./apps/web/tests/client/happydom.ts"]

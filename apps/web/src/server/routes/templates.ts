@@ -33,7 +33,10 @@ const ApplyInput = z.union([
  *  role/dashboard bundles — into the active workspace; the cloud control plane
  *  preselects one via the SEED_TEMPLATE worker var. */
 export const templatesRoutes = new Hono<AppBindings>()
-  .get("/", requireUser, async (c) => {
+  // Admin-gated like every other template surface (GraphQL/MCP already were):
+  // the catalog itself is static, but `hasCollections`/`sampleSeeds` are
+  // workspace state, and only admins can act on any of it.
+  .get("/", requireUser, requirePlatformMw, requireAdminMw, async (c) => {
     const { db, dialect, env } = c.get("ctx");
     const tenantId = requireTenant(c);
     // `hasCollections` lets the onboarding card decide whether to show; the
@@ -74,9 +77,9 @@ export const templatesRoutes = new Hono<AppBindings>()
     return c.json({ data: result }, 201);
   })
   .post("/clear-samples", requireUser, requirePlatformMw, requireAdminMw, async (c) => {
-    const { db, dialect } = c.get("ctx");
     const tenantId = requireTenant(c);
-    const result = await clearTemplateSamples({ db, dialect }, tenantId);
+    // Full ctx — vector cleanup needs the embedding adapter + env.
+    const result = await clearTemplateSamples(c.get("ctx"), tenantId);
     await logActivity(c, {
       action: "delete",
       collection: "system_collections",

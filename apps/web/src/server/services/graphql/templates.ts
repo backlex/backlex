@@ -18,7 +18,9 @@ import {
   applyTemplate,
   applyTemplateDefinition,
   clearTemplateSamples,
+  countSeededSamples,
   extractTemplate,
+  hasNoManagedCollections,
   parseCustomTemplate,
 } from "../templates";
 import { templateSummaries } from "../../templates/catalog";
@@ -81,6 +83,17 @@ const ClearTemplateSamplesResultType = new GraphQLObjectType({
   },
 });
 
+/** Catalog metadata REST returns alongside the summaries — mirrored so the
+ *  GraphQL surface can also drive the onboarding/clear-samples affordances. */
+const TemplateSeedStatusType = new GraphQLObjectType({
+  name: "TemplateSeedStatus",
+  fields: {
+    defaultTemplateId: { type: new GraphQLNonNull(GraphQLString) },
+    hasCollections: { type: new GraphQLNonNull(GraphQLBoolean) },
+    sampleSeeds: { type: new GraphQLNonNull(GraphQLInt) },
+  },
+});
+
 /** Templates are admin-only on every surface — mirror that gate (FORBIDDEN for
  *  non-admins, not a silent empty list). Returns the active tenant id. */
 const requireTemplateAdmin = (gqlCtx: GqlCtx): string => {
@@ -109,6 +122,27 @@ export const templateQueryFields: Record<string, GraphQLFieldConfig<unknown, Gql
     resolve: (_src, _args, gqlCtx) => {
       requireTemplateAdmin(gqlCtx);
       return templateSummaries();
+    },
+  },
+  templateSeedStatus: {
+    type: new GraphQLNonNull(TemplateSeedStatusType),
+    description:
+      "Workspace template state — the cloud-preselected default, whether managed collections exist, and how many seeded sample rows remain (admin-only). Mirrors the extra fields of REST `GET /api/admin/templates`.",
+    resolve: async (_src, _args, gqlCtx) => {
+      const tenantId = requireTemplateAdmin(gqlCtx);
+      const { ctx } = gqlCtx;
+      try {
+        const dbCtx = { db: ctx.db, dialect: ctx.dialect };
+        const empty = await hasNoManagedCollections(dbCtx, tenantId);
+        const sampleSeeds = await countSeededSamples(dbCtx, tenantId);
+        return {
+          defaultTemplateId: ctx.env.SEED_TEMPLATE || "blank",
+          hasCollections: !empty,
+          sampleSeeds,
+        };
+      } catch (e) {
+        return rethrow(e);
+      }
     },
   },
   extractTemplate: {
@@ -187,9 +221,9 @@ export const templateMutationFields: Record<string, GraphQLFieldConfig<unknown, 
       "Delete every sample row a template apply seeded (tracked in the seed manifest) — user-created rows are never touched (admin-only).",
     resolve: async (_src, _args, gqlCtx) => {
       const tenantId = requireTemplateAdmin(gqlCtx);
-      const { ctx } = gqlCtx;
       try {
-        return await clearTemplateSamples({ db: ctx.db, dialect: ctx.dialect }, tenantId);
+        // Full ctx — vector cleanup needs the embedding adapter + env.
+        return await clearTemplateSamples(gqlCtx.ctx, tenantId);
       } catch (e) {
         return rethrow(e);
       }

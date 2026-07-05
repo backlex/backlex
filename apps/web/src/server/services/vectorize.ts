@@ -172,3 +172,15 @@ export const deleteVector = async (
   if (!meta.vectorize) return;
   await safeDelete(ctx, meta, tenantId, [itemId]);
 };
+
+/** Batch delete — one adapter call per id set (bulk ops like the template
+ *  clear-samples path). Best-effort like every other write hook here. */
+export const deleteVectors = async (
+  ctx: Ctx,
+  meta: VectorizeMeta,
+  tenantId: string | null,
+  itemIds: string[],
+): Promise<void> => {
+  if (!meta.vectorize || itemIds.length === 0) return;
+  await safeDelete(ctx, meta, tenantId, itemIds);
+};

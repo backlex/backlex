@@ -27,3 +27,29 @@ export interface ImageAdapter {
     opts: ImageTransform,
   ): Promise<TransformedImage>;
 }
+
+/** Focal point for `fit=cover` crops, in 0–100 percent coordinates (the same
+ *  units the `?focal=x,y` query param carries). Adapters map to their
+ *  backend's convention; backends without focal support ignore it. */
+export interface EdgeImageFocal {
+  x: number;
+  y: number;
+}
+
+/**
+ * URL-based edge transform backend (Cloudflare Image Resizing, Netlify Image
+ * CDN, …). Unlike {@link ImageAdapter} it never sees the object bytes — the
+ * source must be publicly reachable, and the returned `Response` either
+ * carries the transformed bytes (edge fetch) or redirects the client to a CDN
+ * endpoint that will. Selected per-runtime in `buildContext`; callers treat it
+ * as an optimization in front of `ImageAdapter`, not a replacement.
+ */
+export interface EdgeImageAdapter {
+  /** Stable name for diagnostics (`cf-image-resizing`, `netlify-image-cdn`). */
+  readonly name: string;
+  transformFromUrl(
+    sourceUrl: string,
+    opts: ImageTransform,
+    focal?: EdgeImageFocal,
+  ): Promise<Response>;
+}

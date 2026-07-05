@@ -1,6 +1,7 @@
 import { type Auth, createAuth } from "@backlex/auth";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type {
+  EdgeImageAdapter,
   EmailAdapter,
   EmbeddingAdapter,
   ImageAdapter,
@@ -25,6 +26,8 @@ import {
 import { selfHostEmbeddingAdapter } from "./adapters/embedding.self-host";
 import { workersAiEmbeddingAdapter } from "./adapters/embedding.workers-ai";
 import { bunImage } from "./adapters/image.bun";
+import { cfEdgeImage } from "./adapters/image.cf";
+import { netlifyEdgeImage } from "./adapters/image.netlify";
 import { passthroughImage } from "./adapters/image.passthrough";
 import { sharpImage } from "./adapters/image.sharp";
 import { wasmImage } from "./adapters/image.photon";
@@ -111,6 +114,11 @@ export interface Ctx {
    *  provider isn't configured. */
   embedding: EmbeddingAdapter;
   image: ImageAdapter;
+  /** URL-based edge transform backend (CF Image Resizing / Netlify Image
+   *  CDN); undefined on runtimes without one. The serve path prefers it over
+   *  `image` when the file is publicly reachable — no bytes through the
+   *  runtime. */
+  edgeImage?: EdgeImageAdapter;
 }
 
 // Memoize the assembled Ctx by Env reference. Workers reuse the same `env`
@@ -694,6 +702,14 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   // Workers don't use this field; they resize at the edge in the storage route.
   const image: ImageAdapter =
     bunImage() ?? (await sharpImage()) ?? (await wasmImage()) ?? passthroughImage();
+  // URL-based edge resize backends — the only two runtimes with one. This is
+  // the single place that knows which runtime maps to which edge backend; the
+  // serve path just checks `ctx.edgeImage`.
+  const edgeImage = isCloudflareWorkers()
+    ? cfEdgeImage()
+    : isNetlify()
+      ? netlifyEdgeImage()
+      : undefined;
 
   const ctx: Ctx = {
     env,
@@ -712,6 +728,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     vector,
     embedding,
     image,
+    edgeImage,
   };
   // Late-bind so the `onUserCreated` closure can publish events through the
   // fully assembled Ctx (runFlows + webhook dispatch need `fullCtx`).

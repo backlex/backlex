@@ -35,9 +35,19 @@ Panels are unchanged from Insights:
 | `sql` | a single read-only `SELECT` against the workspace DB |
 | `static` | renders its `config` verbatim |
 
-Viz types: `counter`, `sparkline`, `bars`, `donut`, `table`. The renderer
+Viz types: `counter`, `sparkline`, `line`, `area`, `bars`, `stacked-bars`,
+`donut`, `pie`, `radar`, `radial`, `table`. The renderer
 (`apps/web/src/client/admin/panel-render.tsx`) is shared by the admin grid and
-the public embed page so both agree on how each viz maps its rows.
+the public embed page so both agree on how each viz maps its rows. Chart
+vizzes draw through the shadcn chart primitives (`@backlex/ui/components/chart`,
+recharts) with hover tooltips, axes and legends; the recharts bundle is
+lazy-loaded (`panel-charts.tsx`) so chart-less pages never download it.
+Series charts (`sparkline`/`line`/`area`/`bars`/`stacked-bars`/`radar`) draw
+one series per numeric column (up to 5, colored `--chart-1..5`); segment
+charts (`donut`/`pie`/`radial`) read the first non-numeric column as the
+slice label and the first numeric column as the value (up to 6 slices, side
+legend). A panel PATCH only touches the fields it sends — `viz`/`kind` keep
+their saved values when omitted.
 
 ## The public embed
 

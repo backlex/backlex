@@ -79,6 +79,7 @@ export default defineConfig({
         {
           label: "Data",
           items: [
+            { slug: "templates" },
             { slug: "querying" },
             { slug: "permissions" },
             { slug: "hashed-fields" },

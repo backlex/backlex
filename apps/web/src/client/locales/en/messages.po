@@ -564,6 +564,10 @@ msgstr "{r} may delete rows matching this rule."
 msgid "{r} may update rows matching this rule."
 msgstr "{r} may update rows matching this rule."
 
+#: src/client/admin/collections-index.tsx
+msgid "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
+msgstr "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
+
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/collections-index.tsx
 msgid "{slugClean} already exists"
@@ -940,6 +944,10 @@ msgstr "Add a language"
 msgid "Add a one-time code from an authenticator app (Google Authenticator, Authy, 1Password…) as a second step when signing in."
 msgstr "Add a one-time code from an authenticator app (Google Authenticator, Authy, 1Password…) as a second step when signing in."
 
+#: src/client/admin/collections-index.tsx
+msgid "Add a ready-made vertical (blog, e-commerce, CRM, …) — grouped collections with sample data. Existing collections are skipped."
+msgstr "Add a ready-made vertical (blog, e-commerce, CRM, …) — grouped collections with sample data. Existing collections are skipped."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
 msgstr "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
@@ -982,6 +990,10 @@ msgstr "Add field to <0>c_{0}</0>"
 #: src/client/admin/items.tsx
 msgid "Add filter"
 msgstr "Add filter"
+
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Add from template"
+msgstr "Add from template"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Add next step"
@@ -1046,6 +1058,16 @@ msgstr "Add to true branch"
 #: src/client/admin/account-page.tsx
 msgid "Added {0}"
 msgstr "Added {0}"
+
+#. placeholder {0}: created.length
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Added {0} collections"
+msgstr "Added {0} collections"
+
+#. placeholder {0}: created.length
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Added {0} collections with {seeded} sample rows"
+msgstr "Added {0} collections with {seeded} sample rows"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Added provider \"{id}\"."
@@ -1382,9 +1404,14 @@ msgstr "Apply to live schema"
 msgid "Apply to selection:"
 msgstr "Apply to selection:"
 
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Applying is additive: collections that already exist are skipped, new ones land under the template's groups."
+msgstr "Applying is additive: collections that already exist are skipped, new ones land under the template's groups."
+
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/bulk-edit.tsx
 #: src/client/admin/pages/schema-versions.tsx
+#: src/client/admin/pages/template-onboarding.tsx
 msgid "Applying…"
 msgstr "Applying…"
 
@@ -1806,6 +1833,22 @@ msgstr "Built-in sign-in method."
 msgid "Bulk edit {count} rows"
 msgstr "Bulk edit {count} rows"
 
+#. placeholder {0}: tpl.dashboards.join('", "')
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Bundles the \"{0}\" dashboard"
+msgstr "Bundles the \"{0}\" dashboard"
+
+#. placeholder {0}: tpl.roles.join('", "')
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Bundles the \"{0}\" role"
+msgstr "Bundles the \"{0}\" role"
+
+#. placeholder {0}: tpl.roles.join('", "')
+#. placeholder {1}: tpl.dashboards.join('", "')
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Bundles the \"{0}\" role and the \"{1}\" dashboard"
+msgstr "Bundles the \"{0}\" role and the \"{1}\" dashboard"
+
 #: src/client/admin/extras.tsx
 msgid "by"
 msgstr "by"
@@ -1848,6 +1891,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/schema-versions.tsx
+#: src/client/admin/pages/template-onboarding.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -2570,6 +2614,10 @@ msgstr "Couldn't load auth config."
 #: src/client/admin/pages/logs.tsx
 msgid "Couldn't load logs"
 msgstr "Couldn't load logs"
+
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Couldn't load the template catalog."
+msgstr "Couldn't load the template catalog."
 
 #: src/client/admin/pages/traces.tsx
 msgid "Couldn't load traces"
@@ -3660,8 +3708,12 @@ msgid "Empty = the default columns. Formatting comes from each field's Interface
 msgstr "Empty = the default columns. Formatting comes from each field's Interface tab."
 
 #: src/client/admin/collections-index.tsx
-msgid "Empty or template"
-msgstr "Empty or template"
+msgid "Empty collection"
+msgstr "Empty collection"
+
+#: src/client/admin/collections-index.tsx
+#~ msgid "Empty or template"
+#~ msgstr "Empty or template"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Enable anyway"
@@ -4329,6 +4381,10 @@ msgstr "from"
 msgid "From"
 msgstr "From"
 
+#: src/client/admin/collections-index.tsx
+msgid "From a schema template"
+msgstr "From a schema template"
+
 #: src/client/admin/pages/settings.tsx
 msgid "From address"
 msgstr "From address"
@@ -4738,8 +4794,13 @@ msgstr "Include"
 
 #. placeholder {0}: current.sampleRows
 #: src/client/admin/pages/template-onboarding.tsx
-msgid "Includes {0} sample rows to explore"
-msgstr "Includes {0} sample rows to explore"
+#~ msgid "Includes {0} sample rows to explore"
+#~ msgstr "Includes {0} sample rows to explore"
+
+#. placeholder {0}: tpl.sampleRows
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Includes {0} sample rows to explore — removable in one click later"
+msgstr "Includes {0} sample rows to explore — removable in one click later"
 
 #: src/client/admin/condition-editor.tsx
 msgid "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
@@ -6500,6 +6561,10 @@ msgid "No tags yet."
 msgstr "No tags yet."
 
 #: src/client/admin/pages/template-onboarding.tsx
+msgid "No templates available."
+msgstr "No templates available."
+
+#: src/client/admin/pages/template-onboarding.tsx
 msgid "No templates match your search."
 msgstr "No templates match your search."
 
@@ -6603,6 +6668,11 @@ msgstr "Note <0>(optional)</0>"
 #: src/client/admin/pages/logs.tsx
 msgid "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
 msgstr "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
+
+#. placeholder {0}: skipped.length
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Nothing new — all {0} collections already exist"
+msgstr "Nothing new — all {0} collections already exist"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Nothing selected"
@@ -7985,6 +8055,10 @@ msgstr "Remove group"
 msgid "Remove it from the list"
 msgstr "Remove it from the list"
 
+#: src/client/admin/collections-index.tsx
+msgid "Remove sample data"
+msgstr "Remove sample data"
+
 #: src/client/admin/storage.tsx
 msgid "Remove tag"
 msgstr "Remove tag"
@@ -7992,6 +8066,15 @@ msgstr "Remove tag"
 #: src/client/admin/storage.tsx
 msgid "Remove tag {tag}"
 msgstr "Remove tag {tag}"
+
+#. placeholder {0}: res.data.removed
+#: src/client/admin/collections-index.tsx
+msgid "Removed {0} sample rows"
+msgstr "Removed {0} sample rows"
+
+#: src/client/admin/collections-index.tsx
+msgid "Removing…"
+msgstr "Removing…"
 
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/functions.tsx
@@ -8233,6 +8316,7 @@ msgstr "Retain (auto)"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/pages/template-onboarding.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Retry"
 msgstr "Retry"
@@ -8881,8 +8965,12 @@ msgid "Security"
 msgstr "Security"
 
 #: src/client/admin/pages/template-onboarding.tsx
-msgid "Seed a ready-made set of collections — with sample data — for your use case. You can edit or add more anytime."
-msgstr "Seed a ready-made set of collections — with sample data — for your use case. You can edit or add more anytime."
+msgid "Seed a ready-made set of collections — grouped, with sample data — for your use case. You can edit or add more anytime."
+msgstr "Seed a ready-made set of collections — grouped, with sample data — for your use case. You can edit or add more anytime."
+
+#: src/client/admin/pages/template-onboarding.tsx
+#~ msgid "Seed a ready-made set of collections — with sample data — for your use case. You can edit or add more anytime."
+#~ msgstr "Seed a ready-made set of collections — with sample data — for your use case. You can edit or add more anytime."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Select"

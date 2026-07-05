@@ -15,13 +15,20 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { AdoptWizard } from "./adopt-wizard";
+import { AddFromTemplateDialog } from "./pages/template-onboarding";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import { useUrlState } from "@/lib/use-url-state";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { Card } from "@backlex/ui/components/card";
 import { useIsMobile } from "@backlex/ui/hooks/use-mobile";
 import { SkeletonRow } from "./loading";
-import { orderCollections, useCollections, useSaveCollectionsLayout } from "./queries";
+import {
+  orderCollections,
+  useClearTemplateSamples,
+  useCollections,
+  useSaveCollectionsLayout,
+  useTemplatesCatalog,
+} from "./queries";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -59,9 +66,15 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
   const [adoptOpen, setAdoptOpen] = useState(false);
   // Single entry-point chooser: the create + adopt flows share one backend
   // path (`POST /api/collections` with optional `adopted: true`), and this
-  // chooser is the UI counterpart — one button on the page, two distinct
-  // wizards routed by the user's intent.
+  // chooser is the UI counterpart — one button on the page, three distinct
+  // flows (blank wizard / adopt wizard / template picker) routed by intent.
   const [chooserOpen, setChooserOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  // Seed-manifest state drives the "Remove sample data" callout. Only worth
+  // fetching for admins on the active view — the button is DDL-gated anyway.
+  const templatesCatalog = useTemplatesCatalog(canManage && !showArchived);
+  const sampleSeeds = templatesCatalog.data?.sampleSeeds ?? 0;
+  const clearSamples = useClearTemplateSamples();
   // `collections` arrives enriched (metrics merge + status filter) from the
   // parent. The real fetch lifecycle lives in React Query — observe the same
   // cached query so the skeleton tracks the actual request instead of the
@@ -263,7 +276,37 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
         onClose={() => setChooserOpen(false)}
         onPickEmpty={() => { setChooserOpen(false); onNew(); }}
         onPickAdopt={() => { setChooserOpen(false); setAdoptOpen(true); }}
+        onPickTemplate={() => { setChooserOpen(false); setTemplateOpen(true); }}
       />
+      <AddFromTemplateDialog
+        open={templateOpen}
+        onClose={() => setTemplateOpen(false)}
+        pushToast={pushToast}
+      />
+
+      {canManage && !showArchived && sampleSeeds > 0 && (
+        <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-border bg-muted/40 px-3.5 py-2.5">
+          <I.Sparkles size={14} className="text-primary shrink-0" />
+          <span className="flex-1 min-w-[200px] text-[12.5px] text-muted-foreground">
+            <Trans>{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched.</Trans>
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            icon={I.Trash}
+            disabled={clearSamples.isPending}
+            onClick={() =>
+              clearSamples.mutate(undefined, {
+                onSuccess: (res) =>
+                  pushToast?.(t`Removed ${res.data.removed} sample rows`, "success"),
+                onError: (e) => pushToast?.((e as Error).message, "error"),
+              })
+            }
+          >
+            {clearSamples.isPending ? <Trans>Removing…</Trans> : <Trans>Remove sample data</Trans>}
+          </Button>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <InputGroup>
@@ -914,47 +957,64 @@ interface CreateChooserDialogProps {
   onClose: () => void;
   onPickEmpty: () => void;
   onPickAdopt: () => void;
+  onPickTemplate: () => void;
 }
 
-function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: CreateChooserDialogProps) {
+function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt, onPickTemplate }: CreateChooserDialogProps) {
   if (!open) return null;
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[560px]">
-        <DialogHeader className="flex-row items-center gap-2.5 border-b border-border px-4 py-3.5 pr-12 text-left">
+      <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[760px]">
+        <DialogHeader className="shrink-0 flex-row items-center gap-2.5 border-b border-border px-4 py-3.5 pr-12 text-left">
           <I.Plus size={14} />
           <DialogTitle className="text-sm font-medium"><Trans>New collection</Trans></DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3 p-[22px]">
-          <Card asChild interactive className="gap-2.5 py-0 p-[18px] text-left">
-            <button
-              type="button"
-              onClick={onPickEmpty}
-            >
-              <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Braces size={16} /></span>
-              <div className="flex flex-col gap-1">
-                <span className="text-[13.5px] font-semibold"><Trans>Empty or template</Trans></span>
-                <span className="text-xs leading-[1.45] text-muted-foreground">
-                  <Trans>Create a new physical table from scratch. Pick a preset (Content / Taxonomy / People / Blank) and configure scope toggles.</Trans>
-                </span>
-              </div>
-            </button>
-          </Card>
-          <Card asChild interactive className="gap-2.5 py-0 p-[18px] text-left">
-            <button
-              type="button"
-              onClick={onPickAdopt}
-            >
-              <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Database size={16} /></span>
-              <div className="flex flex-col gap-1">
-                <span className="text-[13.5px] font-semibold"><Trans>From existing table</Trans></span>
-                <span className="text-xs leading-[1.45] text-muted-foreground">
-                  <Trans>Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata.</Trans>
-                </span>
-              </div>
-            </button>
-          </Card>
-        </div>
+        <ScrollArea viewportClassName="max-h-[calc(90vh-10rem)]">
+          <div className="grid grid-cols-3 max-sm:grid-cols-1 gap-3 p-[22px]">
+            <Card asChild interactive className="gap-2.5 py-0 p-[18px] text-left">
+              <button
+                type="button"
+                onClick={onPickEmpty}
+              >
+                <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Braces size={16} /></span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[13.5px] font-semibold"><Trans>Empty collection</Trans></span>
+                  <span className="text-xs leading-[1.45] text-muted-foreground">
+                    <Trans>Create a new physical table from scratch. Pick a preset (Content / Taxonomy / People / Blank) and configure scope toggles.</Trans>
+                  </span>
+                </div>
+              </button>
+            </Card>
+            <Card asChild interactive className="gap-2.5 py-0 p-[18px] text-left">
+              <button
+                type="button"
+                onClick={onPickTemplate}
+              >
+                <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Sparkles size={16} /></span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[13.5px] font-semibold"><Trans>From a schema template</Trans></span>
+                  <span className="text-xs leading-[1.45] text-muted-foreground">
+                    <Trans>Add a ready-made vertical (blog, e-commerce, CRM, …) — grouped collections with sample data. Existing collections are skipped.</Trans>
+                  </span>
+                </div>
+              </button>
+            </Card>
+            <Card asChild interactive className="gap-2.5 py-0 p-[18px] text-left">
+              <button
+                type="button"
+                onClick={onPickAdopt}
+              >
+                <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Database size={16} /></span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[13.5px] font-semibold"><Trans>From existing table</Trans></span>
+                  <span className="text-xs leading-[1.45] text-muted-foreground">
+                    <Trans>Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata.</Trans>
+                  </span>
+                </div>
+              </button>
+            </Card>
+          </div>
+        </ScrollArea>
         <div className="flex items-center gap-2 border-t border-border px-4 py-3.5">
           <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>

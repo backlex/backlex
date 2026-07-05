@@ -200,5 +200,35 @@ export const cascadeSlugRename = async (
     }
   }
 
+  // 8) template seed manifest (`templateSampleSeeds` app_settings): keyed by
+  //    slug, so a rename must move the key or clear-samples silently orphans
+  //    the seeded rows. Not counted — internal bookkeeping, not user data.
+  const manifestRows = await db
+    .select({ id: s.appSettings.id, value: s.appSettings.value })
+    .from(s.appSettings)
+    .where(
+      and(eq(s.appSettings.tenantId, tenantId), eq(s.appSettings.key, "templateSampleSeeds")),
+    );
+  const manifestRow = manifestRows[0];
+  const manifest = manifestRow?.value;
+  if (
+    manifestRow &&
+    manifest &&
+    typeof manifest === "object" &&
+    !Array.isArray(manifest) &&
+    Object.hasOwn(manifest, oldSlug)
+  ) {
+    const next = { ...(manifest as Record<string, unknown>) };
+    const ids = next[oldSlug];
+    delete next[oldSlug];
+    // A (rare) existing entry under the new slug merges rather than clobbers.
+    const existing = Array.isArray(next[newSlug]) ? (next[newSlug] as unknown[]) : [];
+    next[newSlug] = [...existing, ...(Array.isArray(ids) ? ids : [])];
+    await db
+      .update(s.appSettings)
+      .set({ value: next, updatedAt: dialect === "pg" ? new Date() : Date.now() })
+      .where(eq(s.appSettings.id, manifestRow.id));
+  }
+
   return counts;
 };

@@ -677,6 +677,8 @@ export interface TemplateCollectionSummary {
   slug: string;
   label: string;
   fieldCount: number;
+  /** Admin group this collection lands under on apply (null = ungrouped). */
+  group: string | null;
 }
 
 /** A schema-template catalog entry — a ready-made vertical collection set. */
@@ -688,6 +690,12 @@ export interface TemplateSummary {
   recommended: boolean;
   /** Total example rows seeded on apply across the template's collections. */
   sampleRows: number;
+  /** Admin group headers seeded by this template, in order. */
+  groups: string[];
+  /** Bundled role names seeded on apply. */
+  roles: string[];
+  /** Bundled insights-dashboard names seeded on apply. */
+  dashboards: string[];
   collections: TemplateCollectionSummary[];
 }
 
@@ -698,24 +706,76 @@ export interface TemplateCatalog {
   defaultTemplateId: string;
   /** Whether the workspace already has managed collections. */
   hasCollections: boolean;
+  /** Sample rows still recorded in the seed manifest — drives the
+   *  "Remove sample data" affordance. */
+  sampleSeeds: number;
 }
 
 /** Result of applying a template. Idempotent — `skipped` are collections that
- *  already existed; `seeded` counts sample rows inserted. */
+ *  already existed; `seeded` counts sample rows inserted; `roles`/`dashboards`
+ *  are bundled artifacts created by this apply. */
 export interface ApplyTemplateResult {
   templateId: string;
   created: string[];
   skipped: string[];
   seeded: number;
+  roles: string[];
+  dashboards: string[];
+}
+
+/** Result of `templates.clearSamples()`. */
+export interface ClearTemplateSamplesResult {
+  /** Sample rows actually deleted. */
+  removed: number;
+  /** Collections that had seeded rows removed. */
+  collections: string[];
+}
+
+/** A collection definition inside a custom/extracted template. */
+export interface TemplateCollectionDef {
+  slug: string;
+  singular?: string;
+  plural?: string;
+  note?: string;
+  ownerScoped?: boolean;
+  versioned?: boolean;
+  vectorize?: boolean;
+  fts?: boolean;
+  defaultSort?: string;
+  /** Admin group header this collection lands under. */
+  group?: string;
+  fields: Record<string, unknown>[];
+  samples?: Record<string, unknown>[];
+}
+
+/** A workspace schema in template format — returned by `templates.extract()`
+ *  and accepted by `templates.applyCustom()`. */
+export interface ExtractedTemplate {
+  label: string;
+  description: string;
+  /** Ordered admin group headers. */
+  groups: string[];
+  /** Collections in dependency order (relation targets first). */
+  collections: TemplateCollectionDef[];
 }
 
 /** Schema templates (admin-scoped). Mirrors `/api/admin/templates`. */
 export interface TemplatesClient {
   /** List the template catalog for the active workspace. */
   list(): Promise<TemplateCatalog>;
-  /** Seed a template's collections (and sample data) into the active
-   *  workspace. Idempotent — existing collections are skipped. */
+  /** Seed a template's collections (grouped, with sample data and any bundled
+   *  roles/dashboards) into the active workspace. Idempotent — existing
+   *  collections are skipped. */
   apply(templateId: string): Promise<{ data: ApplyTemplateResult }>;
+  /** Apply a custom template (the `extract()` shape) — same idempotent
+   *  semantics as `apply`. */
+  applyCustom(template: ExtractedTemplate): Promise<{ data: ApplyTemplateResult }>;
+  /** Delete every sample row a template apply seeded; user-created rows are
+   *  never touched. */
+  clearSamples(): Promise<{ data: ClearTemplateSamplesResult }>;
+  /** Export the workspace's managed collections as a reusable template
+   *  (schema + admin groups; no sample data). */
+  extract(opts?: { collections?: string[] }): Promise<{ data: ExtractedTemplate }>;
 }
 
 /** A collection inside a schema snapshot — the schema-relevant subset of a
@@ -1719,8 +1779,9 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<{ data: MigrateRun }>("POST", `${migrateBase}/runs/${encodeURIComponent(id)}/resume`),
   };
 
-  // Schema templates. Admin-scoped catalog + apply over `/api/admin/templates`;
-  // `apply` is idempotent and seeds sample data for newly-created collections.
+  // Schema templates. Admin-scoped catalog + apply/extract over
+  // `/api/admin/templates`; `apply`/`applyCustom` are idempotent and seed
+  // groups, sample data and bundled roles/dashboards for new collections.
   const templates: TemplatesClient = {
     /** List the template catalog for the active workspace. */
     list: () => request<TemplateCatalog>("GET", "/api/admin/templates"),
@@ -1729,6 +1790,28 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<{ data: ApplyTemplateResult }>("POST", "/api/admin/templates/apply", {
         templateId,
       }),
+    /** Apply a custom template (the `extract()` shape). */
+    applyCustom: (template: ExtractedTemplate) =>
+      request<{ data: ApplyTemplateResult }>("POST", "/api/admin/templates/apply", {
+        template,
+      }),
+    /** Remove every template-seeded sample row (seed-manifest scoped). */
+    clearSamples: () =>
+      request<{ data: ClearTemplateSamplesResult }>(
+        "POST",
+        "/api/admin/templates/clear-samples",
+        {},
+      ),
+    /** Export the workspace schema as a reusable template. */
+    extract: (opts?: { collections?: string[] }) =>
+      request<{ data: ExtractedTemplate }>(
+        "GET",
+        `/api/admin/templates/extract${
+          opts?.collections?.length
+            ? `?collections=${encodeURIComponent(opts.collections.join(","))}`
+            : ""
+        }`,
+      ),
   };
 
   // Feature flags / remote config, evaluated for the current caller (targeting

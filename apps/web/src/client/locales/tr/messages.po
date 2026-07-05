@@ -6776,6 +6776,7 @@ msgstr "Ekim"
 
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/database.tsx
 msgid "off"
 msgstr "kapalı"
 
@@ -7676,6 +7677,10 @@ msgstr "sağlayıcılar"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Providers"
 msgstr "Sağlayıcılar"
+
+#: src/client/admin/parity/database.tsx
+msgid "Prune older than (days)"
+msgstr "Şundan eski olanları sil (gün)"
 
 #: src/client/admin/storage.tsx
 msgid "Public"
@@ -8870,6 +8875,10 @@ msgstr "Zamanlandı"
 #: src/client/admin/pages/functions.tsx
 msgid "scheduled — granularity is 1 minute"
 msgstr "zamanlanmış — ayrıntı düzeyi 1 dakikadır"
+
+#: src/client/admin/parity/database.tsx
+msgid "Scheduled backups run from the cron tick and keep the newest {retain} automatic dumps, pruning any older than {retainDays} days. Manual backups are never pruned."
+msgstr "Zamanlanmış yedekler cron tetiğinden çalışır ve en yeni {retain} otomatik dökümü tutar; {retainDays} günden eski olanlar silinir. Manuel yedekler asla silinmez."
 
 #: src/client/admin/parity/database.tsx
 msgid "Scheduled backups run from the cron tick and keep the newest {retain} automatic dumps. Manual backups are never pruned."

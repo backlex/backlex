@@ -72,6 +72,7 @@ const BackupConfigType = new GraphQLObjectType({
   fields: {
     schedule: { type: new GraphQLNonNull(GraphQLString) },
     retain: { type: new GraphQLNonNull(GraphQLInt) },
+    retainDays: { type: GraphQLInt },
   },
 });
 
@@ -80,6 +81,7 @@ const BackupConfigInputType = new GraphQLInputObjectType({
   fields: {
     schedule: { type: GraphQLString },
     retain: { type: GraphQLInt },
+    retainDays: { type: GraphQLInt },
   },
 });
 
@@ -162,8 +164,11 @@ export const backupMutationFields: Record<string, GraphQLFieldConfig<unknown, Gq
     args: { data: { type: new GraphQLNonNull(BackupConfigInputType) } },
     resolve: (_src, args, gqlCtx) => {
       const tenantId = requireBackupAdmin(gqlCtx);
-      const data = (args as { data: { schedule?: string | null; retain?: number | null } })
-        .data;
+      const data = (
+        args as {
+          data: { schedule?: string | null; retain?: number | null; retainDays?: number | null };
+        }
+      ).data;
       const patch: Partial<BackupConfig> = {};
       if (data.schedule != null) {
         if (!["off", "daily", "weekly"].includes(data.schedule))
@@ -178,6 +183,18 @@ export const backupMutationFields: Record<string, GraphQLFieldConfig<unknown, Gq
             extensions: { code: "VALIDATION" },
           });
         patch.retain = data.retain;
+      }
+      // Explicit `retainDays: null` disables the age rule; absent leaves it be.
+      if (data.retainDays !== undefined) {
+        if (
+          data.retainDays !== null &&
+          (!Number.isInteger(data.retainDays) || data.retainDays < 1 || data.retainDays > 3650)
+        )
+          throw new GraphQLError(
+            "retainDays must be null or an integer between 1 and 3650",
+            { extensions: { code: "VALIDATION" } },
+          );
+        patch.retainDays = data.retainDays;
       }
       return surfacing(() => saveBackupConfig(gqlCtx.ctx, tenantId, patch));
     },

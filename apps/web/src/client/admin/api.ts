@@ -1380,6 +1380,8 @@ export const dbAdminApi = {
 export interface BackupConfig {
   schedule: "off" | "daily" | "weekly";
   retain: number;
+  /** Prune autos older than this many days; null = count-only retention. */
+  retainDays: number | null;
 }
 
 export interface ActivityListParams {

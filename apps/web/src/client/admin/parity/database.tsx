@@ -348,6 +348,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
   const [backups, setBackups] = useState<Backup[]>([]);
   const [schedule, setSchedule] = useState<BackupConfig["schedule"]>("off");
   const [retain, setRetain] = useState(7);
+  const [retainDays, setRetainDays] = useState<number | null>(null);
   const [savingCfg, setSavingCfg] = useState(false);
   const [restoring, setRestoring] = useState<string | null>(null);
   const reload = async () => {
@@ -368,6 +369,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
       if (cfg.data) {
         setSchedule(cfg.data.schedule);
         setRetain(cfg.data.retain);
+        setRetainDays(cfg.data.retainDays ?? null);
       }
     } catch (e) {
       pushToast?.((e as Error).message);
@@ -386,9 +388,10 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
   const saveConfig = async (next: Partial<BackupConfig>) => {
     setSavingCfg(true);
     try {
-      const r = await dbAdminApi.saveBackupConfig({ schedule, retain, ...next });
+      const r = await dbAdminApi.saveBackupConfig({ schedule, retain, retainDays, ...next });
       setSchedule(r.data.schedule);
       setRetain(r.data.retain);
+      setRetainDays(r.data.retainDays ?? null);
       pushToast(t`Backup schedule saved.`);
     } catch (e) {
       pushToast((e as Error).message);
@@ -449,9 +452,30 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
               <Button size="sm" variant="outline" disabled={schedule === "off" || savingCfg} onClick={() => void saveConfig({ retain })}><Trans>Save</Trans></Button>
             </div>
           </div>
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Prune older than (days)</Trans></div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={1}
+                max={3650}
+                placeholder={t`off`}
+                value={retainDays == null ? "" : String(retainDays)}
+                disabled={schedule === "off" || savingCfg}
+                onChange={(e) => {
+                  const raw = e.target.value.trim();
+                  setRetainDays(raw === "" ? null : Math.max(1, Math.min(3650, Number(raw) || 1)));
+                }}
+                className="h-8 w-20"
+              />
+              <Button size="sm" variant="outline" disabled={schedule === "off" || savingCfg} onClick={() => void saveConfig({ retainDays })}><Trans>Save</Trans></Button>
+            </div>
+          </div>
         </div>
         <div className="text-[11.5px] text-muted-foreground">
-          <Trans>Scheduled backups run from the cron tick and keep the newest {retain} automatic dumps. Manual backups are never pruned.</Trans>
+          {retainDays == null
+            ? <Trans>Scheduled backups run from the cron tick and keep the newest {retain} automatic dumps. Manual backups are never pruned.</Trans>
+            : <Trans>Scheduled backups run from the cron tick and keep the newest {retain} automatic dumps, pruning any older than {retainDays} days. Manual backups are never pruned.</Trans>}
         </div>
       </Card>
       <Card className="gap-0 py-0">

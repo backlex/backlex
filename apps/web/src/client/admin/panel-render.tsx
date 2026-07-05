@@ -50,7 +50,7 @@ export function PanelBody({
 
   if (isChartViz(viz)) {
     return (
-      <Suspense fallback={<Skeleton className="min-h-40 w-full grow" />}>
+      <Suspense fallback={<Skeleton className="h-40 w-full grow" />}>
         <PanelChart viz={viz} rows={rows} />
       </Suspense>
     );

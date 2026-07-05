@@ -224,17 +224,17 @@ function JobDetailDialog({ job, onClose }: { job: ApiJob; onClose: () => void })
             {job.lastError && (
               <div className="flex flex-col gap-1.5">
                 <span className="font-medium text-destructive"><Trans>Last error</Trans></span>
-                <pre className="overflow-x-auto rounded-lg bg-destructive/10 p-3 font-mono text-[11.5px] text-destructive whitespace-pre-wrap">{job.lastError}</pre>
+                <pre className="rounded-lg bg-destructive/10 p-3 font-mono text-[11.5px] text-destructive whitespace-pre-wrap [overflow-wrap:anywhere]">{job.lastError}</pre>
               </div>
             )}
             <div className="flex flex-col gap-1.5">
               <span className="font-medium"><Trans>Payload</Trans></span>
-              <pre className="overflow-x-auto rounded-lg bg-muted p-3 font-mono text-[11.5px] whitespace-pre-wrap">{pretty(job.payload)}</pre>
+              <pre className="rounded-lg bg-muted p-3 font-mono text-[11.5px] whitespace-pre-wrap [overflow-wrap:anywhere]">{pretty(job.payload)}</pre>
             </div>
             {job.result != null && (
               <div className="flex flex-col gap-1.5">
                 <span className="font-medium"><Trans>Result</Trans></span>
-                <pre className="overflow-x-auto rounded-lg bg-muted p-3 font-mono text-[11.5px] whitespace-pre-wrap">{pretty(job.result)}</pre>
+                <pre className="rounded-lg bg-muted p-3 font-mono text-[11.5px] whitespace-pre-wrap [overflow-wrap:anywhere]">{pretty(job.result)}</pre>
               </div>
             )}
           </div>

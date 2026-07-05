@@ -16,6 +16,11 @@
  */
 import * as babel from "@babel/core";
 
+// The macro plugin discovers lingui.config.ts by walking up from process.cwd().
+// Pin it explicitly so `bun test` from the repo root (lefthook pre-push) finds
+// the same config as a run from apps/web. @lingui/conf honors LINGUI_CONFIG.
+process.env.LINGUI_CONFIG ??= new URL("../../lingui.config.ts", import.meta.url).pathname;
+
 Bun.plugin({
   name: "lingui-macro",
   setup(build) {
@@ -36,7 +41,10 @@ Bun.plugin({
         parserOpts: {
           plugins: args.path.endsWith("x") ? ["typescript", "jsx"] : ["typescript"],
         },
-        plugins: ["@lingui/babel-plugin-lingui-macro"],
+        // Resolve relative to THIS file, not process.cwd() — babel resolves
+        // bare plugin names from the cwd, which breaks when `bun test` runs
+        // from the repo root (lefthook pre-push) instead of apps/web.
+        plugins: [Bun.fileURLToPath(import.meta.resolve("@lingui/babel-plugin-lingui-macro"))],
       });
       return { contents: result?.code ?? code, loader };
     });

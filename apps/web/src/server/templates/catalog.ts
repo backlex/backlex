@@ -21,9 +21,14 @@ export interface TemplateCollection {
   singular?: string;
   plural?: string;
   note?: string;
+  /** Row-title format hint for the admin UI (extract/apply-custom fidelity —
+   *  catalog templates leave it to the engine's defaults). */
+  displayTemplate?: string;
   ownerScoped?: boolean;
   versioned?: boolean;
   vectorize?: boolean;
+  /** Embedding model override (extract/apply-custom fidelity). */
+  vectorizeModel?: string;
   /** Enable keyword full-text search — pairs with `searchable` fields. */
   fts?: boolean;
   defaultSort?: string;
@@ -32,6 +37,10 @@ export interface TemplateCollection {
    *  per-field `group` (which sections the item FORM) — this one organizes the
    *  collection LIST. Header order lives in `SchemaTemplate.groups`. */
   group?: string;
+  /** Explicit position within the group. Catalog templates omit it (derived
+   *  from listing order); extract emits it so the round-trip preserves the
+   *  admin's arrangement even though the array is dependency-ordered. */
+  sortOrder?: number;
   fields: FieldDef[];
   /** Realistic example rows seeded on apply (only when the collection is newly
    *  created). Relation values use `{ ref: "slug:index" }`. */

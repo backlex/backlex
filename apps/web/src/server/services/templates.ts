@@ -18,6 +18,7 @@ import { createManagedCollection } from "./collections";
 import { invalidateTenantCollections } from "./collections-cache";
 import { invalidateTenantPermissions } from "./permissions-cache";
 import { indexFts, isSearchable } from "./fts";
+import { deleteVectors } from "./vectorize";
 import { serialize, nowFor } from "./items-helpers";
 import { ensureSystemRoles, type DbCtx } from "./seed";
 
@@ -390,10 +391,12 @@ export async function applyTemplateDefinition(
   let seeded = 0;
   try {
     for (const col of template.collections) {
-      // Position within the group follows template order (10, 20, …), counted
-      // over ALL template collections so skips don't shift later positions.
-      let sortOrder: number | null = null;
-      if (col.group) {
+      // Position within the group: an explicit `sortOrder` wins (extracted
+      // templates — their array is dependency-ordered, not display-ordered);
+      // otherwise it follows template order (10, 20, …), counted over ALL
+      // template collections so skips don't shift later positions.
+      let sortOrder: number | null = col.sortOrder ?? null;
+      if (col.group && sortOrder === null) {
         const next = (perGroupCount.get(col.group) ?? 0) + 1;
         perGroupCount.set(col.group, next);
         sortOrder = next * 10;
@@ -468,13 +471,21 @@ const chunk = <T>(arr: T[], size: number): T[][] => {
 };
 
 /**
- * Delete every sample row recorded in the seed manifest, then clear the
- * manifest. Only touches ids the template apply inserted — rows the admin
- * created (or seeded rows they already deleted) are untouched, so this is the
- * safe "remove sample data" escape hatch after exploring a template.
+ * Delete every sample row recorded in the seed manifest, then drop those ids
+ * from the manifest. Only touches ids the template apply inserted — rows the
+ * admin created (or seeded rows they already deleted) are untouched, so this
+ * is the safe "remove sample data" escape hatch after exploring a template.
+ *
+ * Bulk admin op by design: deletes rows as a set (FTS shadow rows + vector
+ * embeddings cleaned up alongside) without running the per-item delete
+ * pipeline — no webhooks/flows/realtime events, no app-layer ON DELETE
+ * fixups (intra-template refs are deleted together anyway).
+ *
+ * Takes the full {@link Ctx} (not just DbCtx) because vector cleanup needs
+ * the embedding adapter + env.
  */
 export async function clearTemplateSamples(
-  ctx: DbCtx,
+  ctx: Ctx,
   tenantId: string,
 ): Promise<ClearSamplesResult> {
   const raw = await readSetting(ctx, tenantId, SEED_MANIFEST_KEY);
@@ -487,23 +498,37 @@ export async function clearTemplateSamples(
 
   const t = collectionsTable(ctx.dialect);
   const rows = (await (ctx.db as never as { select: Function })
-    .select({ slug: t.slug, physicalTable: t.physicalTable, fields: t.fields, fts: t.fts })
+    .select({
+      slug: t.slug,
+      physicalTable: t.physicalTable,
+      fields: t.fields,
+      fts: t.fts,
+      vectorize: t.vectorize,
+      vectorizeModel: t.vectorizeModel,
+    })
     .from(t)
     .where(eq(t.tenantId, tenantId))) as {
     slug: string;
     physicalTable: string;
     fields: FieldDef[];
     fts: boolean | number;
+    vectorize: boolean | number;
+    vectorizeModel: string | null;
   }[];
   const bySlug = new Map(rows.map((r) => [r.slug, r]));
 
   let removed = 0;
   const touched: string[] = [];
+  // Every manifest id we handled this run (deleted, already-gone, or its
+  // collection deleted) — subtracted from a FRESH manifest read at the end so
+  // ids merged by an apply that finishes mid-clear are never dropped.
+  const processed = new Map<string, Set<string>>();
   for (const slug of slugs) {
+    const ids = manifest[slug] as string[];
+    processed.set(slug, new Set(ids));
     const col = bySlug.get(slug);
     // Collection deleted since the seed → its rows went with the table.
     if (!col) continue;
-    const ids = manifest[slug] as string[];
     let removedHere = 0;
     for (const batch of chunk(ids, 50)) {
       const inList = sql.join(batch.map((id) => sql`${id}`), sql`, `);
@@ -529,13 +554,43 @@ export async function clearTemplateSamples(
           console.error(`[templates] fts cleanup failed for ${slug}:`, (e as Error).message);
         }
       }
+      // Embeddings from a post-seed `vectorize` backfill would otherwise stay
+      // orphaned in the vector index and keep matching semantic search.
+      // deleteVectors is best-effort by contract (logs, never throws).
+      if (col.vectorize) {
+        await deleteVectors(
+          ctx,
+          {
+            slug,
+            vectorize: true,
+            vectorizeModel: col.vectorizeModel ?? null,
+            fields: col.fields ?? [],
+          },
+          tenantId,
+          existing,
+        );
+      }
       removedHere += existing.length;
     }
     if (removedHere > 0) touched.push(slug);
     removed += removedHere;
   }
 
-  await writeSetting(ctx, tenantId, SEED_MANIFEST_KEY, {});
+  // Re-read and subtract only what we processed (instead of writing `{}`):
+  // an apply racing this clear keeps its freshly-merged ids clearable.
+  const freshRaw = await readSetting(ctx, tenantId, SEED_MANIFEST_KEY);
+  const fresh =
+    freshRaw && typeof freshRaw === "object" && !Array.isArray(freshRaw)
+      ? (freshRaw as Record<string, unknown>)
+      : {};
+  const next: Record<string, string[]> = {};
+  for (const [slug, ids] of Object.entries(fresh)) {
+    if (!isStringArray(ids)) continue;
+    const done = processed.get(slug);
+    const remaining = done ? ids.filter((id) => !done.has(id)) : ids;
+    if (remaining.length > 0) next[slug] = remaining;
+  }
+  await writeSetting(ctx, tenantId, SEED_MANIFEST_KEY, next);
   return { removed, collections: touched };
 }
 
@@ -563,12 +618,15 @@ interface ExtractRow {
   singular: string | null;
   plural: string | null;
   note: string | null;
+  displayTemplate: string | null;
   ownerScoped: boolean | number;
   versioned: boolean | number;
   vectorize: boolean | number;
+  vectorizeModel: string | null;
   fts: boolean | number;
   defaultSort: string | null;
   group: string | null;
+  sortOrder: number | null;
   fields: FieldDef[];
 }
 
@@ -602,12 +660,15 @@ export async function extractTemplate(
       singular: t.singular,
       plural: t.plural,
       note: t.note,
+      displayTemplate: t.displayTemplate,
       ownerScoped: t.ownerScoped,
       versioned: t.versioned,
       vectorize: t.vectorize,
+      vectorizeModel: t.vectorizeModel,
       fts: t.fts,
       defaultSort: t.defaultSort,
       group: t.group,
+      sortOrder: t.sortOrder,
       fields: t.fields,
     })
     .from(t)
@@ -620,6 +681,17 @@ export async function extractTemplate(
   if (rows.length === 0) {
     throw new AppError("VALIDATION", "No managed collections to extract");
   }
+  // Deterministic base order BEFORE the (stable) topo-sort: group, then the
+  // admin's in-group arrangement, then slug. Re-apply derives per-group
+  // sortOrder from array position, so this is what preserves the admin's
+  // ordering through the round-trip — and it fixes Postgres's unordered
+  // SELECT making back-to-back extracts differ.
+  rows.sort(
+    (a, b) =>
+      (a.group ?? "￿").localeCompare(b.group ?? "￿") ||
+      (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER) ||
+      a.slug.localeCompare(b.slug),
+  );
 
   // Kahn topo-sort on relation deps so relation targets precede dependents.
   // Deps outside the exported set are ignored (they can't be satisfied here);
@@ -656,12 +728,15 @@ export async function extractTemplate(
       ...(r.singular ? { singular: r.singular } : {}),
       ...(r.plural ? { plural: r.plural } : {}),
       ...(r.note ? { note: r.note } : {}),
+      ...(r.displayTemplate ? { displayTemplate: r.displayTemplate } : {}),
       ...(r.ownerScoped ? { ownerScoped: true } : {}),
       ...(r.versioned ? { versioned: true } : {}),
       ...(r.vectorize ? { vectorize: true } : {}),
+      ...(r.vectorizeModel ? { vectorizeModel: r.vectorizeModel } : {}),
       ...(r.fts ? { fts: true } : {}),
       ...(r.defaultSort ? { defaultSort: r.defaultSort } : {}),
       ...(r.group ? { group: r.group } : {}),
+      ...(r.sortOrder != null ? { sortOrder: r.sortOrder } : {}),
       fields: r.fields ?? [],
     })),
   };
@@ -674,7 +749,10 @@ export async function extractTemplate(
 export const CustomTemplateInput = z.object({
   label: z.string().max(80).optional(),
   description: z.string().max(500).optional(),
-  groups: z.array(z.string().min(1).max(60)).max(50).optional(),
+  // Caps sized so anything extractTemplate can emit round-trips back in:
+  // groups matches the layout endpoint's 200-header cap; collections/fields
+  // are generous sanity bounds (POST /collections itself caps neither).
+  groups: z.array(z.string().min(1).max(60)).max(200).optional(),
   collections: z
     .array(
       z.object({
@@ -682,18 +760,21 @@ export const CustomTemplateInput = z.object({
         singular: z.string().max(80).optional(),
         plural: z.string().max(80).optional(),
         note: z.string().max(500).optional(),
+        displayTemplate: z.string().max(200).optional(),
         ownerScoped: z.boolean().optional(),
         versioned: z.boolean().optional(),
         vectorize: z.boolean().optional(),
+        vectorizeModel: z.string().max(120).optional(),
         fts: z.boolean().optional(),
         defaultSort: z.string().max(120).optional(),
         group: z.string().min(1).max(60).optional(),
-        fields: z.array(z.record(z.string(), z.unknown())).min(1).max(200),
+        sortOrder: z.number().int().min(0).max(100_000).optional(),
+        fields: z.array(z.record(z.string(), z.unknown())).min(1).max(500),
         samples: z.array(z.record(z.string(), z.unknown())).max(50).optional(),
       }),
     )
     .min(1)
-    .max(100),
+    .max(1000),
 });
 
 /** Storable field types — keep in sync with `FieldType` in @backlex/db

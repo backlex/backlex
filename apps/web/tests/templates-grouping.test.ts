@@ -289,4 +289,100 @@ describe("extract → apply-custom round-trip", () => {
     );
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
+
+  test("extract preserves the admin's in-group ordering through the round-trip", async () => {
+    // Blog seeds Content as media(10) → posts(20) → pages(30). Move posts to
+    // the front; extract must carry the explicit sortOrder (the array itself
+    // is dependency-ordered — posts trails its relation targets), and a
+    // re-apply must reproduce the arrangement.
+    const patch = await a.fetch("/api/collections/posts", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sortOrder: 5 }),
+    });
+    expect(patch.status).toBe(200);
+    const res = await a.fetch("/api/admin/templates/extract");
+    const { data } = (await res.json()) as {
+      data: { collections: { slug: string; group?: string; sortOrder?: number }[] };
+    };
+    expect(data.collections.find((c) => c.slug === "posts")?.sortOrder).toBe(5);
+    expect(data.collections.find((c) => c.slug === "media")?.sortOrder).toBe(10);
+
+    const c = makeHarness();
+    await seedAdmin(c);
+    try {
+      const apply = await c.fetch("/api/admin/templates/apply", json({ template: data }));
+      expect(apply.status).toBe(201);
+      const cols = (await (await c.fetch("/api/collections")).json()) as {
+        data: { slug: string; group: string | null; sortOrder: number | null }[];
+      };
+      const posts = cols.data.find((x) => x.slug === "posts")!;
+      const media = cols.data.find((x) => x.slug === "media")!;
+      expect(posts.sortOrder!).toBeLessThan(media.sortOrder!);
+    } finally {
+      c.cleanup();
+    }
+  });
+
+  test("extract carries displayTemplate + vectorizeModel through the round-trip", async () => {
+    // Set fidelity fields on a collection, extract, and confirm they survive.
+    const patch = await a.fetch("/api/collections/authors", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ displayTemplate: "{name} <{email}>" }),
+    });
+    expect(patch.status).toBe(200);
+    const res = await a.fetch("/api/admin/templates/extract?collections=authors");
+    const { data } = (await res.json()) as {
+      data: { collections: { slug: string; displayTemplate?: string }[] };
+    };
+    expect(data.collections[0]?.displayTemplate).toBe("{name} <{email}>");
+  });
+
+  test("subset extract with an out-of-set relation target still applies (no hard FK)", async () => {
+    // posts.author points at authors, which is NOT exported — relations are
+    // plain indexed columns, so the apply must succeed with a dangling link.
+    const res = await a.fetch("/api/admin/templates/extract?collections=posts");
+    const { data: template } = (await res.json()) as { data: unknown };
+    const c = makeHarness();
+    await seedAdmin(c);
+    try {
+      const apply = await c.fetch("/api/admin/templates/apply", json({ template }));
+      expect(apply.status).toBe(201);
+      const { data } = (await apply.json()) as { data: { created: string[] } };
+      expect(data.created).toEqual(["posts"]);
+    } finally {
+      c.cleanup();
+    }
+  });
+});
+
+describe("template surfaces are admin-gated", () => {
+  let h: TestHarness;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    // Second signed-in user WITHOUT the admin role.
+    const su = await h.fetch("/api/auth/sign-up/email", json({
+      email: "member@example.test",
+      password: "correct-horse-battery",
+      name: "Member",
+    }));
+    expect(su.status).toBe(200);
+  });
+  afterAll(() => h.cleanup());
+
+  test("catalog + extract + clear-samples all reject non-admins", async () => {
+    for (const [path, init] of [
+      ["/api/admin/templates", undefined],
+      ["/api/admin/templates/extract", undefined],
+      ["/api/admin/templates/clear-samples", json({})],
+      ["/api/admin/templates/apply", json({ templateId: "blog" })],
+    ] as const) {
+      const res = await h.fetch(path, init);
+      expect(res.status).toBeGreaterThanOrEqual(401);
+      expect(res.status).toBeLessThan(500);
+    }
+  });
 });

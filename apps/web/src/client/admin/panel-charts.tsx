@@ -40,10 +40,13 @@ const trimTick = (v: unknown) => {
   return s.length > 12 ? `${s.slice(0, 11)}…` : s;
 };
 
-// min-h + grow (flex-basis stays auto): in the dashboard grid the card is a
-// fixed-height flex column, so the chart stretches to fill the tile; in
-// natural-height cards (public embed) it settles at the 160px minimum.
-const CONTAINER = "aspect-auto min-h-40 w-full grow";
+// h-40 + grow (flex-basis stays auto = the 160px height): in the dashboard
+// grid the card is a fixed-height flex column, so the chart grows to fill the
+// tile; in natural-height cards (public embed, mobile stacked list) it stays
+// at 160px. Must be a real `h-*`, not `min-h-*` — a percentage-height child
+// (recharts' ResponsiveContainer) resolves against height only, so with just
+// min-height the SVG never renders in natural-height cards.
+const CONTAINER = "aspect-auto h-40 w-full grow";
 
 export default function PanelChart({ viz, rows }: { viz: ChartViz; rows: Record<string, unknown>[] }) {
   if (SEGMENT_VIZES.includes(viz)) return <SegmentChart viz={viz} rows={rows} />;
@@ -126,9 +129,13 @@ function SeriesChart({ viz, rows }: { viz: ChartViz; rows: Record<string, unknow
   }
 
   if (viz === "radar") {
+    // Polar sizing ignores `margin`: the default 80% outerRadius leaves no
+    // room for the angle labels drawn OUTSIDE the polygon, so the bottom
+    // label collided with the legend row. Shrink the radius and lift the
+    // center instead — that reserves a band for labels on every edge.
     return (
       <ChartContainer config={config} className={CONTAINER}>
-        <RadarChart accessibilityLayer data={data} margin={{ top: 4, right: 16, bottom: 12, left: 16 }}>
+        <RadarChart accessibilityLayer data={data} outerRadius="58%" cy="42%">
           <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
           <PolarAngleAxis dataKey="__label" tickFormatter={trimTick} />
           <PolarGrid />

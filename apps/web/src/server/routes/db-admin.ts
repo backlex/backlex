@@ -349,7 +349,9 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      const rows = await listBackups(ctx, auth.tenantId ?? null);
+      // Cast matches the repo-wide dual-dialect convention — the zod response
+      // schema is the wire contract; drizzle rows are structurally loose.
+      const rows = (await listBackups(ctx, auth.tenantId ?? null)) as any;
       return c.json({ data: rows });
     },
   )
@@ -394,11 +396,11 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>()
       }
       // Runs inline — dump is small enough for D1/pg fixtures + this is admin
       // traffic. Larger deployments can move this to a queue/cron worker.
-      const row = await startManualBackup(ctx, {
+      const row = (await startManualBackup(ctx, {
         tenantId: auth.tenantId ?? null,
         userId: auth.userId,
         label: body.label ?? null,
-      });
+      })) as any;
       return c.json({ data: row }, 201);
     },
   )

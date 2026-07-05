@@ -607,7 +607,7 @@ export const testWebhook = async (
   ctx: Ctx,
   tenantId: string,
   id: string,
-): Promise<{ status?: number; error?: string } | null> => {
+): Promise<Awaited<ReturnType<typeof fireDelivery>>> => {
   const t = webhooksTable(ctx.dialect);
   const hook = (await (ctx.db as any)
     .select()

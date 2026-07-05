@@ -108,7 +108,7 @@ export const webhooksRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c);
-      const rows = await listWebhooks(ctx, tenantId);
+      const rows = (await listWebhooks(ctx, tenantId)) as any;
       return c.json({ data: rows });
     },
   )

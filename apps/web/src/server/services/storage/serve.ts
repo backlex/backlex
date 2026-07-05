@@ -1,8 +1,6 @@
 import { and, eq, inArray, type SQL } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../../app";
-import { cfImageFromUrl, type CfImageTransform } from "../../adapters/image.cf";
-import { isNetlify } from "../../lib/runtime";
 import { filesTable } from "./folders";
 import { keyCandidates } from "./keys";
 import {
@@ -83,74 +81,43 @@ export async function serveObject(
     return new Response(null, { status: 304, headers: { etag } });
   }
 
-  const isWorker = typeof (ctx.env as { R2?: unknown }).R2 !== "undefined";
-  const publicBase = (ctx.env as { R2_PUBLIC_BASE?: string }).R2_PUBLIC_BASE;
+  const publicBase = ctx.env.R2_PUBLIC_BASE;
 
-  // Workers + public R2 origin: let the edge resize. Cheapest path — no
-  // bytes through the Worker isolate. Requires the file to be reachable
-  // publicly, which is only honest when the row's ACL is public.
-  if (isWorker && publicBase && row.acl === "public") {
+  // Edge/URL path — CF Image Resizing or the Netlify Image CDN, whichever the
+  // runtime wired into `ctx.edgeImage`. Cheapest path: no bytes through the
+  // runtime. Requires the file to be reachable publicly, which is only honest
+  // when the row's ACL is public.
+  if (ctx.edgeImage && publicBase && row.acl === "public") {
     const origin = publicBase.replace(/\/$/, "");
-    const sourceUrl = `${origin}/${key}`;
-    // CF Image Resizing wants a gravity object — focal x/y in 0..1.
-    const cf: CfImageTransform = {
-      ...parsed.transform,
-      ...(parsed.focal
-        ? { gravity: { x: parsed.focal.x / 100, y: parsed.focal.y / 100 } }
-        : {}),
-    };
-    const resp = await cfImageFromUrl(sourceUrl, cf);
+    const resp = await ctx.edgeImage.transformFromUrl(
+      `${origin}/${key}`,
+      parsed.transform,
+      parsed.focal,
+    );
     const headers = new Headers(resp.headers);
     headers.set("etag", etag);
-    for (const [k, v] of Object.entries(TRANSFORM_CACHE_HEADERS)) headers.set(k, v);
+    // A redirect (Netlify CDN) is cached by the CDN itself; only decorate
+    // byte-carrying responses with our transform cache policy.
+    if (resp.status !== 302) {
+      for (const [k, v] of Object.entries(TRANSFORM_CACHE_HEADERS)) headers.set(k, v);
+    }
     return new Response(resp.body, { status: resp.status, headers });
   }
 
-  // Bun / fs / passthrough — read the object and run it through ctx.image.
-  // Workers without a public origin would fall here, but ctx.image is the
-  // passthrough adapter (no Bun.Image), so transforms are a no-op. We'd
-  // rather surface that than silently lie.
-  if (isWorker && !publicBase) {
-    throw new AppError(
-      "VALIDATION",
-      "Image transform on Workers requires R2_PUBLIC_BASE to be set and the file to be public",
-    );
-  }
-  if (isWorker && row.acl !== "public") {
-    throw new AppError(
-      "VALIDATION",
-      "Image transform on Workers is only available for public files",
-    );
-  }
-  // Netlify Functions + public R2 origin: hand off to the native Netlify Image
-  // CDN (`/.netlify/images`) instead of bundling sharp's native addon into the
-  // function. Mirrors the Workers CF Image Resizing path — the source must be
-  // publicly reachable (public ACL + R2_PUBLIC_BASE) and allowlisted via the
-  // build's `.netlify/deploy/v1/config.json` images.remote_images (written by
-  // scripts/build-netlify-fn.ts). We 302-redirect so the edge fetches the
-  // source, transforms, and caches; the browser/img tag follows it.
-  if (isNetlify() && publicBase && row.acl === "public") {
-    const origin = publicBase.replace(/\/$/, "");
-    const p = new URLSearchParams({ url: `${origin}/${key}` });
-    const t = parsed.transform;
-    if (t.width !== undefined) p.set("w", String(t.width));
-    if (t.height !== undefined) p.set("h", String(t.height));
-    if (t.fit) {
-      // Netlify supports contain/cover/fill; map our richer enum down.
-      const fit =
-        t.fit === "cover" || t.fit === "outside"
-          ? "cover"
-          : t.fit === "fill"
-            ? "fill"
-            : "contain";
-      p.set("fit", fit);
+  // An edge-only runtime (edge backend present, no byte backend) can't fall
+  // through to `ctx.image` — surface the unmet precondition rather than
+  // silently no-op'ing the transform.
+  if (ctx.edgeImage && ctx.image.name === "passthrough") {
+    if (!publicBase) {
+      throw new AppError(
+        "VALIDATION",
+        `Image transform via ${ctx.edgeImage.name} requires R2_PUBLIC_BASE to be set and the file to be public`,
+      );
     }
-    if (t.format) p.set("fm", t.format === "jpeg" ? "jpg" : t.format);
-    if (t.quality !== undefined) p.set("q", String(t.quality));
-    return new Response(null, {
-      status: 302,
-      headers: { location: `/.netlify/images?${p.toString()}`, etag },
-    });
+    throw new AppError(
+      "VALIDATION",
+      `Image transform via ${ctx.edgeImage.name} is only available for public files`,
+    );
   }
   if (ctx.image.name === "passthrough") {
     throw new AppError(

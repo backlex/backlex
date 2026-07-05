@@ -391,7 +391,7 @@ function SimulationResult({ result }: { result: PermissionSimulation }) {
             <Trans>Compiled WHERE</Trans>
           </span>
           {result.whereSql ? (
-            <pre className="overflow-x-auto rounded-md border border-border bg-muted/40 px-3 py-2 font-mono text-xs">
+            <pre className="rounded-md border border-border bg-muted/40 px-3 py-2 font-mono text-xs whitespace-pre-wrap [overflow-wrap:anywhere]">
               {result.whereSql.sql}
               {result.whereSql.params.length > 0 &&
                 `\n-- params: ${JSON.stringify(result.whereSql.params)}`}

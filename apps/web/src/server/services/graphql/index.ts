@@ -22,6 +22,9 @@ import { flowQueryFields, flowMutationFields } from "./flows";
 import { messagingMutationFields } from "./messaging";
 import { dashboardQueryFields, dashboardMutationFields } from "./dashboards";
 import { backupQueryFields, backupMutationFields } from "./backups";
+import { webhookQueryFields, webhookMutationFields } from "./webhooks";
+import { i18nQueryFields, i18nMutationFields } from "./i18n";
+import { storageQueryFields, storageMutationFields } from "./storage";
 import { schemaVersionQueryFields, schemaVersionMutationFields } from "./schema-versions";
 import { migrateQueryFields, migrateMutationFields } from "./migrate";
 import { agentQueryFields, agentMutationFields } from "./agents";
@@ -62,6 +65,9 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...flowQueryFields,
           ...dashboardQueryFields,
           ...backupQueryFields,
+          ...webhookQueryFields,
+          ...i18nQueryFields,
+          ...storageQueryFields,
           ...schemaVersionQueryFields,
           ...migrateQueryFields,
           ...agentQueryFields,
@@ -75,6 +81,9 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...flowMutationFields,
           ...dashboardMutationFields,
           ...backupMutationFields,
+          ...webhookMutationFields,
+          ...i18nMutationFields,
+          ...storageMutationFields,
           ...schemaVersionMutationFields,
           ...migrateMutationFields,
           ...agentMutationFields,
@@ -89,6 +98,9 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...flowQueryFields,
     ...dashboardQueryFields,
     ...backupQueryFields,
+    ...webhookQueryFields,
+    ...i18nQueryFields,
+    ...storageQueryFields,
     ...schemaVersionQueryFields,
     ...migrateQueryFields,
     ...agentQueryFields,
@@ -99,6 +111,9 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...flowMutationFields,
     ...dashboardMutationFields,
     ...backupMutationFields,
+    ...webhookMutationFields,
+    ...i18nMutationFields,
+    ...storageMutationFields,
     ...schemaVersionMutationFields,
     ...migrateMutationFields,
     ...agentMutationFields,

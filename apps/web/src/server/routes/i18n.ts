@@ -6,7 +6,13 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { loadMatrix } from "../services/i18n";
+import {
+  bulkUpsertI18nStrings,
+  deleteI18nString,
+  listI18nStrings,
+  loadMatrix,
+  upsertI18nString,
+} from "../services/i18n";
 import { autoTranslateBatch } from "../services/i18n-translate";
 import { loadAppSettings } from "../services/settings";
 import { GLOBAL_AI_CONFIG_ID, resolveAiOverride } from "../services/ai-config";
@@ -101,13 +107,11 @@ export const i18nRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      const t = tableFor(ctx.dialect);
-      const rows = (await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(
-          or(eq(t.tenantId, auth.tenantId ?? ""), isNull(t.tenantId)),
-        )) as I18nRowDb[];
+      const rows = (await listI18nStrings(
+        ctx.db,
+        ctx.dialect,
+        auth.tenantId ?? null,
+      )) as I18nRowDb[];
       return c.json({ data: rows });
     },
   )
@@ -167,39 +171,15 @@ export const i18nRoutes = new OpenAPIHono<AppBindings>()
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const body = c.req.valid("json");
-      const t = tableFor(ctx.dialect);
-      const existing = (await (ctx.db as any)
-        .select({ id: t.id })
-        .from(t)
-        .where(
-          and(
-            eq(t.key, body.key),
-            eq(t.locale, body.locale),
-            auth.tenantId ? eq(t.tenantId, auth.tenantId) : isNull(t.tenantId),
-          ),
-        )
-        .limit(1)) as { id: string }[];
-      if (existing[0]) {
-        await (ctx.db as any)
-          .update(t)
-          .set({
-            value: body.value,
-            updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
-          })
-          .where(eq(t.id, existing[0].id));
-        // Wire shape preserved verbatim from the legacy handler — no `tenantId`
-        // on the responseBody. The schema treats it as optional via partial().
-        return c.json({ data: { id: existing[0].id, ...body } });
-      }
-      const id = crypto.randomUUID();
-      await (ctx.db as any).insert(t).values({
-        id,
-        tenantId: auth.tenantId ?? null,
-        key: body.key,
-        locale: body.locale,
-        value: body.value,
-      });
-      return c.json({ data: { id, ...body } }, 201);
+      const { id, created } = await upsertI18nString(
+        ctx.db,
+        ctx.dialect,
+        auth.tenantId ?? null,
+        body,
+      );
+      // Wire shape preserved verbatim from the legacy handler — no `tenantId`
+      // on the responseBody. The schema treats it as optional via partial().
+      return c.json({ data: { id, ...body } }, created ? 201 : 200);
     },
   )
   /** Bulk upsert; mostly used by the import button on the design's UI. */
@@ -230,39 +210,12 @@ export const i18nRoutes = new OpenAPIHono<AppBindings>()
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const body = c.req.valid("json");
-      const t = tableFor(ctx.dialect);
-      let upserts = 0;
-      for (const row of body) {
-        const existing = (await (ctx.db as any)
-          .select({ id: t.id })
-          .from(t)
-          .where(
-            and(
-              eq(t.key, row.key),
-              eq(t.locale, row.locale),
-              auth.tenantId ? eq(t.tenantId, auth.tenantId) : isNull(t.tenantId),
-            ),
-          )
-          .limit(1)) as { id: string }[];
-        if (existing[0]) {
-          await (ctx.db as any)
-            .update(t)
-            .set({
-              value: row.value,
-              updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
-            })
-            .where(eq(t.id, existing[0].id));
-        } else {
-          await (ctx.db as any).insert(t).values({
-            id: crypto.randomUUID(),
-            tenantId: auth.tenantId ?? null,
-            key: row.key,
-            locale: row.locale,
-            value: row.value,
-          });
-        }
-        upserts += 1;
-      }
+      const upserts = await bulkUpsertI18nStrings(
+        ctx.db,
+        ctx.dialect,
+        auth.tenantId ?? null,
+        body,
+      );
       return c.json({ ok: true, upserts });
     },
   )
@@ -459,15 +412,7 @@ export const i18nRoutes = new OpenAPIHono<AppBindings>()
       if (!auth.tenantId) {
         throw new AppError("UNAUTHORIZED", "Active tenant required");
       }
-      const t = tableFor(ctx.dialect);
-      await (ctx.db as any)
-        .delete(t)
-        .where(
-          and(
-            eq(t.id, id),
-            or(eq(t.tenantId, auth.tenantId), isNull(t.tenantId)),
-          ),
-        );
+      await deleteI18nString(ctx.db, ctx.dialect, auth.tenantId, id);
       return c.json({ ok: true });
     },
   );

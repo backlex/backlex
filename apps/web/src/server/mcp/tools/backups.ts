@@ -101,6 +101,11 @@ export const setBackupConfig: McpTool = {
     properties: {
       schedule: { type: "string", enum: ["off", "daily", "weekly"] },
       retain: { type: "number", minimum: 1, maximum: 365 },
+      retainDays: {
+        type: ["number", "null"],
+        description:
+          "Prune auto backups older than this many days (1–3650); null disables the age rule.",
+      },
     },
     additionalProperties: false,
   },
@@ -108,6 +113,7 @@ export const setBackupConfig: McpTool = {
     const patch: Record<string, unknown> = {};
     if (args.schedule !== undefined) patch.schedule = args.schedule;
     if (args.retain !== undefined) patch.retain = args.retain;
+    if (args.retainDays !== undefined) patch.retainDays = args.retainDays;
     const res = await ctx.fetchInternal(`/api/admin/db/backups/config`, {
       method: "PUT",
       headers: { "content-type": "application/json" },

@@ -6776,6 +6776,7 @@ msgstr "October"
 
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/database.tsx
 msgid "off"
 msgstr "off"
 
@@ -7676,6 +7677,10 @@ msgstr "providers"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Providers"
 msgstr "Providers"
+
+#: src/client/admin/parity/database.tsx
+msgid "Prune older than (days)"
+msgstr "Prune older than (days)"
 
 #: src/client/admin/storage.tsx
 msgid "Public"
@@ -8870,6 +8875,10 @@ msgstr "Scheduled"
 #: src/client/admin/pages/functions.tsx
 msgid "scheduled — granularity is 1 minute"
 msgstr "scheduled — granularity is 1 minute"
+
+#: src/client/admin/parity/database.tsx
+msgid "Scheduled backups run from the cron tick and keep the newest {retain} automatic dumps, pruning any older than {retainDays} days. Manual backups are never pruned."
+msgstr "Scheduled backups run from the cron tick and keep the newest {retain} automatic dumps, pruning any older than {retainDays} days. Manual backups are never pruned."
 
 #: src/client/admin/parity/database.tsx
 msgid "Scheduled backups run from the cron tick and keep the newest {retain} automatic dumps. Manual backups are never pruned."

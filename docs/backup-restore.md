@@ -51,14 +51,18 @@ Set a per-workspace schedule and retention count:
 
 ```http
 PUT /api/admin/db/backups/config
-{ "schedule": "daily", "retain": 7 }     # schedule: off | daily | weekly
+{ "schedule": "daily", "retain": 7, "retainDays": 30 }
+# schedule: off | daily | weekly
+# retain: keep this many newest auto backups (1–365)
+# retainDays: ALSO prune autos older than N days (1–3650); null = count-only
 GET /api/admin/db/backups/config
 ```
 
 The cron tick runs a throttled sweep (`maybeRunScheduledBackups`) that, for
 each workspace with a non-`off` schedule, checks the age of the most recent
 `auto` backup against the interval, runs one if it's due, then prunes `auto`
-backups beyond the newest `retain` (deleting their storage objects too).
+backups beyond the newest `retain` — and, when `retainDays` is set, any older
+than that many days regardless of count (deleting their storage objects too).
 **Manual backups are never pruned.**
 
 In the admin, this is the **Database → Backups** tab: the schedule selector

@@ -95,6 +95,21 @@ describe("backups — GraphQL surface", () => {
 
     const round = await gql(`{ backupConfig { schedule retain } }`);
     expect(round.data?.backupConfig).toEqual({ schedule: "daily", retain: 3 });
+
+    // Age rule: set → read back → explicit null disables; 0 is rejected.
+    const days = await gql(
+      `mutation{ setBackupConfig(data:{ retainDays: 30 }){ retainDays } }`,
+    );
+    expect(days.data?.setBackupConfig.retainDays).toBe(30);
+    const badDays = await gql(
+      `mutation{ setBackupConfig(data:{ retainDays: 0 }){ retainDays } }`,
+    );
+    expect(badDays.errors?.[0]?.extensions?.code).toBe("VALIDATION");
+    const cleared = await gql(
+      `mutation{ setBackupConfig(data:{ retainDays: null }){ retainDays } }`,
+    );
+    expect(cleared.errors).toBeUndefined();
+    expect(cleared.data?.setBackupConfig.retainDays).toBeNull();
   });
 });
 
@@ -125,10 +140,13 @@ describe("backups — SDK surface", () => {
     expect((await client.backups.getConfig()).data).toEqual({
       schedule: "off",
       retain: 7,
+      retainDays: null,
     });
     const set = await client.backups.setConfig({ schedule: "weekly" });
     expect(set.data.schedule).toBe("weekly");
     expect(set.data.retain).toBe(7);
+    const aged = await client.backups.setConfig({ retainDays: 30 });
+    expect(aged.data.retainDays).toBe(30);
   });
 });
 

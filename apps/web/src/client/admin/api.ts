@@ -382,27 +382,43 @@ export interface TemplateSummary {
   recommended: boolean;
   /** Total example rows seeded on apply across all the template's collections. */
   sampleRows: number;
-  collections: { slug: string; label: string; fieldCount: number }[];
+  /** Admin group headers this template seeds, in order. */
+  groups: string[];
+  /** Bundled role names seeded on apply. */
+  roles: string[];
+  /** Bundled insights-dashboard names seeded on apply. */
+  dashboards: string[];
+  collections: { slug: string; label: string; fieldCount: number; group: string | null }[];
 }
 export interface TemplateCatalog {
   data: TemplateSummary[];
   defaultTemplateId: string;
   hasCollections: boolean;
+  /** Sample rows still recorded in the seed manifest — drives the
+   *  "Remove sample data" affordance on the Collections page. */
+  sampleSeeds: number;
+}
+export interface ApplyTemplateResult {
+  templateId: string;
+  created: string[];
+  skipped: string[];
+  seeded: number;
+  roles: string[];
+  dashboards: string[];
 }
 export const templatesApi = {
   list: () => api<TemplateCatalog>(`/api/admin/templates`),
   apply: (templateId: string) =>
-    api<{
-      data: {
-        templateId: string;
-        created: string[];
-        skipped: string[];
-        seeded: number;
-      };
-    }>(`/api/admin/templates/apply`, {
+    api<{ data: ApplyTemplateResult }>(`/api/admin/templates/apply`, {
       method: "POST",
       body: JSON.stringify({ templateId }),
     }),
+  /** Remove every template-seeded sample row (seed-manifest scoped). */
+  clearSamples: () =>
+    api<{ data: { removed: number; collections: string[] } }>(
+      `/api/admin/templates/clear-samples`,
+      { method: "POST", body: JSON.stringify({}) },
+    ),
 };
 
 export interface ItemsListResp<T = Record<string, unknown>> {

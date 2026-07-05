@@ -32,7 +32,7 @@ describe("templates — GraphQL surface", () => {
 
   test("templates query lists the catalog with metadata", async () => {
     const res = await gql(
-      `{ templates { id label category recommended sampleRows collections { slug fieldCount } } }`,
+      `{ templates { id label category recommended sampleRows groups roles dashboards collections { slug fieldCount group } } }`,
     );
     expect(res.errors).toBeUndefined();
     const ids = (res.data?.templates ?? []).map((t: any) => t.id);
@@ -42,6 +42,11 @@ describe("templates — GraphQL surface", () => {
     expect(blog.recommended).toBe(true);
     expect(blog.sampleRows).toBeGreaterThan(0);
     expect(blog.collections.length).toBeGreaterThan(0);
+    // Grouping + bundle metadata reach the GraphQL surface too.
+    expect(blog.groups).toEqual(["Content", "Taxonomy", "People"]);
+    expect(blog.roles).toEqual(["Editor"]);
+    expect(blog.dashboards).toEqual(["Content overview"]);
+    expect(blog.collections.find((c: any) => c.slug === "posts").group).toBe("Content");
   });
 
   test("applyTemplate seeds collections + sample data (idempotent)", async () => {
@@ -66,6 +71,33 @@ describe("templates — GraphQL surface", () => {
     const res = await gql(`mutation{ applyTemplate(templateId:"nope"){ templateId } }`);
     expect(res.errors?.[0]?.extensions?.code).toBe("VALIDATION");
   });
+
+  test("extractTemplate → applyCustomTemplate → clearTemplateSamples round-trip", async () => {
+    // blog was applied above — extract it (JSON-encoded template).
+    const extracted = await gql(`{ extractTemplate }`);
+    expect(extracted.errors).toBeUndefined();
+    const template = JSON.parse(extracted.data?.extractTemplate ?? "{}") as {
+      groups: string[];
+      collections: { slug: string; group?: string }[];
+    };
+    expect(template.groups).toEqual(["Content", "Taxonomy", "People"]);
+    expect(template.collections.find((c) => c.slug === "posts")?.group).toBe("Content");
+
+    // Re-applying it to the SAME workspace converges (everything skipped).
+    const applied = await gql(
+      `mutation($tpl:String!){ applyCustomTemplate(template:$tpl){ templateId created skipped } }`,
+      { tpl: JSON.stringify(template) },
+    );
+    expect(applied.errors).toBeUndefined();
+    expect(applied.data?.applyCustomTemplate.templateId).toBe("custom");
+    expect(applied.data?.applyCustomTemplate.created).toHaveLength(0);
+    expect(applied.data?.applyCustomTemplate.skipped.length).toBeGreaterThan(0);
+
+    // clearTemplateSamples removes the rows the blog apply seeded.
+    const cleared = await gql(`mutation{ clearTemplateSamples { removed collections } }`);
+    expect(cleared.errors).toBeUndefined();
+    expect(cleared.data?.clearTemplateSamples.removed).toBe(10);
+  });
 });
 
 describe("templates — SDK surface", () => {
@@ -83,16 +115,43 @@ describe("templates — SDK surface", () => {
     const catalog = await client.templates.list();
     expect(catalog.data.some((t) => t.id === "ecommerce")).toBe(true);
     expect(catalog.hasCollections).toBe(false);
+    expect(catalog.sampleSeeds).toBe(0);
     expect(typeof catalog.defaultTemplateId).toBe("string");
+    const ecommerce = catalog.data.find((t) => t.id === "ecommerce")!;
+    expect(ecommerce.groups[0]).toBe("Catalog");
+    expect(ecommerce.roles).toEqual(["Store staff"]);
+    expect(ecommerce.dashboards).toEqual(["Store overview"]);
 
     const applied = await client.templates.apply("ecommerce");
     expect(applied.data.templateId).toBe("ecommerce");
     expect(applied.data.created).toContain("products");
     expect(applied.data.seeded).toBeGreaterThan(0);
+    expect(applied.data.roles).toEqual(["Store staff"]);
+    expect(applied.data.dashboards).toEqual(["Store overview"]);
 
-    // Catalog now reports the workspace as non-empty.
+    // Catalog now reports the workspace as non-empty + the seed manifest.
     const after = await client.templates.list();
     expect(after.hasCollections).toBe(true);
+    expect(after.sampleSeeds).toBe(applied.data.seeded);
+  });
+
+  test("extract → applyCustom → clearSamples", async () => {
+    const extracted = await client.templates.extract({
+      collections: ["products", "brands", "categories", "media"],
+    });
+    const slugs = extracted.data.collections.map((c) => c.slug);
+    expect(slugs.sort()).toEqual(["brands", "categories", "media", "products"].sort());
+    expect(extracted.data.collections.find((c) => c.slug === "products")?.group).toBe("Catalog");
+
+    // Same workspace → converges (all skipped).
+    const applied = await client.templates.applyCustom(extracted.data);
+    expect(applied.data.created).toHaveLength(0);
+    expect(applied.data.skipped.length).toBe(4);
+
+    const cleared = await client.templates.clearSamples();
+    expect(cleared.data.removed).toBeGreaterThan(0);
+    const after = await client.templates.list();
+    expect(after.sampleSeeds).toBe(0);
   });
 });
 
@@ -130,10 +189,32 @@ describe("templates — MCP surface", () => {
     expect(r.result?.isError).toBeFalsy();
     expect(r.result?.structuredContent?.data?.created).toContain("contacts");
     expect(r.result?.structuredContent?.data?.seeded).toBeGreaterThan(0);
+    expect(r.result?.structuredContent?.data?.roles).toEqual(["Sales manager"]);
+    expect(r.result?.structuredContent?.data?.dashboards).toEqual(["Sales overview"]);
   });
 
   test("templates.apply on an unknown id reports an error", async () => {
     const r = await callTool("templates.apply", { templateId: "nope" });
     expect(r.result?.isError).toBe(true);
+  });
+
+  test("templates.extract → templates.apply(template) → templates.clearSamples", async () => {
+    const extracted = await callTool("templates.extract", { collections: ["companies", "contacts"] });
+    expect(extracted.result?.isError).toBeFalsy();
+    const template = extracted.result?.structuredContent?.data;
+    expect(template?.collections?.map((c: any) => c.slug).sort()).toEqual([
+      "companies",
+      "contacts",
+    ]);
+    expect(template?.collections?.find((c: any) => c.slug === "contacts")?.group).toBe("People");
+
+    // Inline custom apply on the same workspace converges (all skipped).
+    const applied = await callTool("templates.apply", { template });
+    expect(applied.result?.isError).toBeFalsy();
+    expect(applied.result?.structuredContent?.data?.created).toHaveLength(0);
+
+    const cleared = await callTool("templates.clearSamples", {});
+    expect(cleared.result?.isError).toBeFalsy();
+    expect(cleared.result?.structuredContent?.data?.removed).toBeGreaterThan(0);
   });
 });

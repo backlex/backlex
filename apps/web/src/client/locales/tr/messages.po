@@ -564,6 +564,10 @@ msgstr "{r} bu kuralla eşleşen satırları silebilir."
 msgid "{r} may update rows matching this rule."
 msgstr "{r} bu kuralla eşleşen satırları güncelleyebilir."
 
+#: src/client/admin/collections-index.tsx
+msgid "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
+msgstr "{sampleSeeds} şablon örnek satırı hâlâ bu çalışma alanında. Kendi verilerinize asla dokunulmaz."
+
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/collections-index.tsx
 msgid "{slugClean} already exists"
@@ -940,6 +944,10 @@ msgstr "Dil ekle"
 msgid "Add a one-time code from an authenticator app (Google Authenticator, Authy, 1Password…) as a second step when signing in."
 msgstr "Oturum açarken ikinci adım olarak bir doğrulayıcı uygulamadan (Google Authenticator, Authy, 1Password…) tek seferlik kod ekleyin."
 
+#: src/client/admin/collections-index.tsx
+msgid "Add a ready-made vertical (blog, e-commerce, CRM, …) — grouped collections with sample data. Existing collections are skipped."
+msgstr "Hazır bir dikey ekleyin (blog, e-ticaret, CRM, …) — örnek verili, gruplanmış koleksiyonlar. Var olan koleksiyonlar atlanır."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
 msgstr "<0>c_{from}</0> koleksiyonuna <1>c_{to}</1> öğesini gösteren bir ilişki alanı ekle."
@@ -982,6 +990,10 @@ msgstr "<0>c_{0}</0> koleksiyonuna alan ekle"
 #: src/client/admin/items.tsx
 msgid "Add filter"
 msgstr "Filtre ekle"
+
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Add from template"
+msgstr "Şablondan ekle"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Add next step"
@@ -1046,6 +1058,16 @@ msgstr "Doğru dalına ekle"
 #: src/client/admin/account-page.tsx
 msgid "Added {0}"
 msgstr "{0} eklendi"
+
+#. placeholder {0}: created.length
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Added {0} collections"
+msgstr "{0} koleksiyon eklendi"
+
+#. placeholder {0}: created.length
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Added {0} collections with {seeded} sample rows"
+msgstr "{0} koleksiyon {seeded} örnek satırla eklendi"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Added provider \"{id}\"."
@@ -1382,9 +1404,14 @@ msgstr "Canlı şemaya uygula"
 msgid "Apply to selection:"
 msgstr "Seçime uygula:"
 
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Applying is additive: collections that already exist are skipped, new ones land under the template's groups."
+msgstr "Uygulama eklemelidir: var olan koleksiyonlar atlanır, yeniler şablonun grupları altına yerleşir."
+
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/bulk-edit.tsx
 #: src/client/admin/pages/schema-versions.tsx
+#: src/client/admin/pages/template-onboarding.tsx
 msgid "Applying…"
 msgstr "Uygulanıyor…"
 
@@ -1806,6 +1833,22 @@ msgstr "Yerleşik giriş yöntemi."
 msgid "Bulk edit {count} rows"
 msgstr "{count} satırı toplu düzenle"
 
+#. placeholder {0}: tpl.dashboards.join('", "')
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Bundles the \"{0}\" dashboard"
+msgstr "\"{0}\" panosunu paket olarak içerir"
+
+#. placeholder {0}: tpl.roles.join('", "')
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Bundles the \"{0}\" role"
+msgstr "\"{0}\" rolünü paket olarak içerir"
+
+#. placeholder {0}: tpl.roles.join('", "')
+#. placeholder {1}: tpl.dashboards.join('", "')
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Bundles the \"{0}\" role and the \"{1}\" dashboard"
+msgstr "\"{0}\" rolünü ve \"{1}\" panosunu paket olarak içerir"
+
 #: src/client/admin/extras.tsx
 msgid "by"
 msgstr "tarafından"
@@ -1848,6 +1891,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/schema-versions.tsx
+#: src/client/admin/pages/template-onboarding.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -2570,6 +2614,10 @@ msgstr "Auth yapılandırması yüklenemedi."
 #: src/client/admin/pages/logs.tsx
 msgid "Couldn't load logs"
 msgstr "Günlükler yüklenemedi"
+
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Couldn't load the template catalog."
+msgstr "Şablon kataloğu yüklenemedi."
 
 #: src/client/admin/pages/traces.tsx
 msgid "Couldn't load traces"
@@ -3660,8 +3708,12 @@ msgid "Empty = the default columns. Formatting comes from each field's Interface
 msgstr "Boş = varsayılan kolonlar. Biçimlendirme her alanın Arayüz sekmesinden gelir."
 
 #: src/client/admin/collections-index.tsx
-msgid "Empty or template"
-msgstr "Boş veya şablon"
+msgid "Empty collection"
+msgstr "Boş koleksiyon"
+
+#: src/client/admin/collections-index.tsx
+#~ msgid "Empty or template"
+#~ msgstr "Boş veya şablon"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Enable anyway"
@@ -4329,6 +4381,10 @@ msgstr "kaynak"
 msgid "From"
 msgstr "Kimden"
 
+#: src/client/admin/collections-index.tsx
+msgid "From a schema template"
+msgstr "Şema şablonundan"
+
 #: src/client/admin/pages/settings.tsx
 msgid "From address"
 msgstr "Gönderen adresi"
@@ -4738,8 +4794,13 @@ msgstr "Dahil et"
 
 #. placeholder {0}: current.sampleRows
 #: src/client/admin/pages/template-onboarding.tsx
-msgid "Includes {0} sample rows to explore"
-msgstr "Keşfetmeniz için {0} örnek satır içerir"
+#~ msgid "Includes {0} sample rows to explore"
+#~ msgstr "Keşfetmeniz için {0} örnek satır içerir"
+
+#. placeholder {0}: tpl.sampleRows
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Includes {0} sample rows to explore — removable in one click later"
+msgstr "Keşfetmek için {0} örnek satır içerir — sonradan tek tıkla kaldırılabilir"
 
 #: src/client/admin/condition-editor.tsx
 msgid "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
@@ -6500,6 +6561,10 @@ msgid "No tags yet."
 msgstr "Henüz etiket yok."
 
 #: src/client/admin/pages/template-onboarding.tsx
+msgid "No templates available."
+msgstr "Kullanılabilir şablon yok."
+
+#: src/client/admin/pages/template-onboarding.tsx
 msgid "No templates match your search."
 msgstr "Aramanızla eşleşen şablon yok."
 
@@ -6603,6 +6668,11 @@ msgstr "Not <0>(isteğe bağlı)</0>"
 #: src/client/admin/pages/logs.tsx
 msgid "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
 msgstr "Son {range} içinde hiçbir şey gelmedi. Aralığı genişletin veya isteklerin, öğe yazmalarının ve otomasyon çalıştırmalarının akmasını bekleyin."
+
+#. placeholder {0}: skipped.length
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Nothing new — all {0} collections already exist"
+msgstr "Yeni bir şey yok — {0} koleksiyonun tümü zaten var"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Nothing selected"
@@ -7985,6 +8055,10 @@ msgstr "Grubu kaldır"
 msgid "Remove it from the list"
 msgstr "Listeden çıkar"
 
+#: src/client/admin/collections-index.tsx
+msgid "Remove sample data"
+msgstr "Örnek verileri kaldır"
+
 #: src/client/admin/storage.tsx
 msgid "Remove tag"
 msgstr "Etiketi kaldır"
@@ -7992,6 +8066,15 @@ msgstr "Etiketi kaldır"
 #: src/client/admin/storage.tsx
 msgid "Remove tag {tag}"
 msgstr "{tag} etiketini kaldır"
+
+#. placeholder {0}: res.data.removed
+#: src/client/admin/collections-index.tsx
+msgid "Removed {0} sample rows"
+msgstr "{0} örnek satır kaldırıldı"
+
+#: src/client/admin/collections-index.tsx
+msgid "Removing…"
+msgstr "Kaldırılıyor…"
 
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/functions.tsx
@@ -8233,6 +8316,7 @@ msgstr "Sakla (otomatik)"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/pages/template-onboarding.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Retry"
 msgstr "Yeniden dene"
@@ -8881,8 +8965,12 @@ msgid "Security"
 msgstr "Güvenlik"
 
 #: src/client/admin/pages/template-onboarding.tsx
-msgid "Seed a ready-made set of collections — with sample data — for your use case. You can edit or add more anytime."
-msgstr "Kullanım senaryonuz için hazır bir koleksiyon setini — örnek verilerle — yükleyin. İstediğiniz zaman düzenleyebilir veya yenisini ekleyebilirsiniz."
+msgid "Seed a ready-made set of collections — grouped, with sample data — for your use case. You can edit or add more anytime."
+msgstr "Kullanım senaryonuza göre hazır bir koleksiyon seti oluşturun — gruplanmış, örnek verili. Dilediğiniz zaman düzenleyebilir veya ekleyebilirsiniz."
+
+#: src/client/admin/pages/template-onboarding.tsx
+#~ msgid "Seed a ready-made set of collections — with sample data — for your use case. You can edit or add more anytime."
+#~ msgstr "Kullanım senaryonuz için hazır bir koleksiyon setini — örnek verilerle — yükleyin. İstediğiniz zaman düzenleyebilir veya yenisini ekleyebilirsiniz."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Select"

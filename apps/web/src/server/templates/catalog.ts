@@ -27,17 +27,77 @@ export interface TemplateCollection {
   /** Enable keyword full-text search — pairs with `searchable` fields. */
   fts?: boolean;
   defaultSort?: string;
+  /** Collection-level admin group: the section header this collection lands
+   *  under on the Collections page + sidebar tree. NOT the same thing as the
+   *  per-field `group` (which sections the item FORM) — this one organizes the
+   *  collection LIST. Header order lives in `SchemaTemplate.groups`. */
+  group?: string;
   fields: FieldDef[];
   /** Realistic example rows seeded on apply (only when the collection is newly
    *  created). Relation values use `{ ref: "slug:index" }`. */
   samples?: SampleRow[];
 }
 
+/** A role (+ its permission grants) seeded alongside the collections. Skipped
+ *  wholesale when a role with the same name already exists in the workspace. */
+export interface TemplateRole {
+  name: string;
+  description?: string;
+  permissions: TemplatePermission[];
+}
+
+export interface TemplatePermission {
+  collection: string;
+  action: "read" | "create" | "update" | "delete" | "publish";
+  /** Field allow-list (omit = all fields). */
+  fields?: string[];
+  /** Permission-DSL condition (same shape the permissions API accepts). */
+  condition?: unknown;
+}
+
+/** An insights dashboard (+ its panels) seeded alongside the collections.
+ *  Skipped wholesale when a dashboard with the same name already exists.
+ *  Panels stick to `items-aggregate`/`static` — never raw SQL — so seeding is
+ *  safe on every runtime. */
+export interface TemplateDashboard {
+  name: string;
+  description?: string;
+  panels: TemplatePanel[];
+}
+
+export interface TemplatePanel {
+  name: string;
+  description?: string;
+  kind: "items-aggregate" | "static";
+  viz:
+    | "sparkline"
+    | "line"
+    | "area"
+    | "bars"
+    | "stacked-bars"
+    | "donut"
+    | "pie"
+    | "radar"
+    | "radial"
+    | "counter"
+    | "table";
+  config: Record<string, unknown>;
+  layout?: { x: number; y: number; w: number; h: number };
+}
+
 export interface SchemaTemplate {
   id: string;
   label: string;
   description: string;
+  /** Ordered group-header names, merged into the workspace's `collectionGroups`
+   *  setting on apply (missing headers appended after the existing ones).
+   *  Falls back to first-appearance order of `collections[].group`. */
+  groups?: string[];
   collections: TemplateCollection[];
+  /** Optional bundled roles — see {@link TemplateRole}. */
+  roles?: TemplateRole[];
+  /** Optional bundled insights dashboards — see {@link TemplateDashboard}. */
+  dashboards?: TemplateDashboard[];
 }
 
 /**
@@ -128,11 +188,12 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "blog",
     label: "Blog / CMS",
+    groups: ["Content", "Taxonomy", "People"],
     description: "WordPress-grade content: posts & pages with SEO, categories, tags, authors and media.",
     collections: [
-      { slug: "media", singular: "Media", plural: "Media", fields: [image("file"), text("alt", { label: "Alt text" }), text("caption"), int("width"), int("height")] },
+      { slug: "media", group: "Content", singular: "Media", plural: "Media", fields: [image("file"), text("alt", { label: "Alt text" }), text("caption"), int("width"), int("height")] },
       {
-        slug: "authors", singular: "Author", plural: "Authors", defaultSort: "name",
+        slug: "authors", group: "People", singular: "Author", plural: "Authors", defaultSort: "name",
         fields: [text("name", { required: true }), slugField(), notes("bio"), image("avatar"), email("email"), url("website"), text("twitter", { label: "Twitter / X handle" })],
         samples: [
           { name: "Ada Lovelace", slug: "ada-lovelace", bio: "Writes about engineering and the craft of building software.", email: "ada@example.com" },
@@ -140,7 +201,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "categories", singular: "Category", plural: "Categories", defaultSort: "name",
+        slug: "categories", group: "Taxonomy", singular: "Category", plural: "Categories", defaultSort: "name",
         fields: [text("name", { required: true }), slugField(), notes("description"), parent("categories"), text("color", { interface: "color" })],
         samples: [
           { name: "Engineering", slug: "engineering", color: C.blue },
@@ -148,12 +209,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "tags", singular: "Tag", plural: "Tags", defaultSort: "name",
+        slug: "tags", group: "Taxonomy", singular: "Tag", plural: "Tags", defaultSort: "name",
         fields: [text("name", { required: true }), slugField(), notes("description")],
         samples: [{ name: "Release", slug: "release" }, { name: "Tutorial", slug: "tutorial" }],
       },
       {
-        slug: "posts", singular: "Post", plural: "Posts", ownerScoped: true, versioned: true, vectorize: true, fts: true,
+        slug: "posts", group: "Content", singular: "Post", plural: "Posts", ownerScoped: true, versioned: true, vectorize: true, fts: true,
         defaultSort: "-_published_at",
         fields: [
           text("title", { required: true, vectorize: true, searchable: true, group: "Content" }),
@@ -187,9 +248,42 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "pages", singular: "Page", plural: "Pages", versioned: true, fts: true, defaultSort: "title",
+        slug: "pages", group: "Content", singular: "Page", plural: "Pages", versioned: true, fts: true, defaultSort: "title",
         fields: [text("title", { required: true, searchable: true }), slugField(), { name: "body", type: "longtext", interface: "richtext", searchable: true }, text("seo_title", { label: "SEO title" }), notes("seo_description", { label: "SEO description" })],
         samples: [{ title: "About", slug: "about", body: "About this site." }, { title: "Contact", slug: "contact", body: "Get in touch." }],
+      },
+    ],
+    roles: [
+      {
+        name: "Editor",
+        description: "Create and edit content; publish posts and pages.",
+        permissions: [
+          { collection: "posts", action: "read" },
+          { collection: "posts", action: "create" },
+          { collection: "posts", action: "update" },
+          { collection: "posts", action: "publish" },
+          { collection: "pages", action: "read" },
+          { collection: "pages", action: "create" },
+          { collection: "pages", action: "update" },
+          { collection: "pages", action: "publish" },
+          { collection: "media", action: "read" },
+          { collection: "media", action: "create" },
+          { collection: "media", action: "update" },
+          { collection: "categories", action: "read" },
+          { collection: "tags", action: "read" },
+          { collection: "authors", action: "read" },
+        ],
+      },
+    ],
+    dashboards: [
+      {
+        name: "Content overview",
+        description: "Publishing volume and draft flow at a glance.",
+        panels: [
+          { name: "Posts", kind: "items-aggregate", viz: "counter", config: { collection: "posts", agg: "count" } },
+          { name: "Pages", kind: "items-aggregate", viz: "counter", config: { collection: "pages", agg: "count" } },
+          { name: "Posts by status", kind: "items-aggregate", viz: "donut", config: { collection: "posts", agg: "count", groupBy: "_status" } },
+        ],
       },
     ],
   },
@@ -197,18 +291,19 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "ecommerce",
     label: "E-commerce",
+    groups: ["Catalog", "Orders", "Customers", "Inventory", "Marketing"],
     description:
       "Shopify-grade storefront: products with options & variants, multi-location inventory, customers, discounts, orders with separate payment & fulfillment status, transactions, fulfillments, reviews and gift cards.",
     collections: [
-      { slug: "media", singular: "Media", plural: "Media", fields: [image("file"), text("alt", { label: "Alt text" }), int("position", { default: 0 })] },
+      { slug: "media", group: "Catalog", singular: "Media", plural: "Media", fields: [image("file"), text("alt", { label: "Alt text" }), int("position", { default: 0 })] },
       {
-        slug: "brands", singular: "Brand", plural: "Brands", defaultSort: "name",
+        slug: "brands", group: "Catalog", singular: "Brand", plural: "Brands", defaultSort: "name",
         fields: [text("name", { required: true }), slugField(), image("logo"), url("website")],
         samples: [{ name: "Northwind", slug: "northwind" }, { name: "Acme", slug: "acme" }],
       },
       {
         // Hierarchical navigation tree (Saleor / BigCommerce category model).
-        slug: "categories", singular: "Category", plural: "Categories", defaultSort: "position",
+        slug: "categories", group: "Catalog", singular: "Category", plural: "Categories", defaultSort: "position",
         fields: [
           text("name", { required: true }), slugField(),
           notes("description"), parent("categories"), image("image"),
@@ -221,7 +316,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         // Merchandising grouping (Shopify manual/smart collection model).
-        slug: "collections", singular: "Collection", plural: "Collections", defaultSort: "position",
+        slug: "collections", group: "Catalog", singular: "Collection", plural: "Collections", defaultSort: "position",
         fields: [
           text("title", { required: true }), slugField(),
           notes("description"), image("image"),
@@ -232,7 +327,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ title: "Summer Sale", slug: "summer-sale", collection_type: "manual", position: 1, published: true }],
       },
       {
-        slug: "products", singular: "Product", plural: "Products", versioned: true, vectorize: true, fts: true, defaultSort: "name",
+        slug: "products", group: "Catalog", singular: "Product", plural: "Products", versioned: true, vectorize: true, fts: true, defaultSort: "name",
         fields: [
           text("name", { required: true, vectorize: true, searchable: true, group: "Basics" }),
           slugField("slug", { group: "Basics" }),
@@ -262,7 +357,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         // Option axes (e.g. Size, Color). Shopify caps at 3 per product.
-        slug: "product_options", singular: "Option", plural: "Options", defaultSort: "position",
+        slug: "product_options", group: "Catalog", singular: "Option", plural: "Options", defaultSort: "position",
         fields: [rel("product", "products"), text("name", { required: true }), position()],
         samples: [
           { product: { ref: "products:0" }, name: "Size", position: 1 },
@@ -270,7 +365,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "product_option_values", singular: "Option value", plural: "Option values", defaultSort: "position",
+        slug: "product_option_values", group: "Catalog", singular: "Option value", plural: "Option values", defaultSort: "position",
         fields: [rel("option", "product_options"), text("value", { required: true }), text("swatch", { interface: "color", label: "Swatch color" }), position()],
         samples: [
           { option: { ref: "product_options:0" }, value: "S", position: 1 },
@@ -281,7 +376,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "locations", singular: "Location", plural: "Locations", defaultSort: "name",
+        slug: "locations", group: "Inventory", singular: "Location", plural: "Locations", defaultSort: "name",
         fields: [text("name", { required: true }), text("code", { label: "Code" }), text("address"), text("city"), text("country"), bool("active", { default: true, label: "Active" })],
         samples: [
           { name: "Central DC", code: "DC-1", city: "Newark", country: "US", active: true },
@@ -290,7 +385,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         // The unit of sale, price & inventory (Shopify/BigCommerce variant model).
-        slug: "product_variants", singular: "Variant", plural: "Variants", defaultSort: "position",
+        slug: "product_variants", group: "Catalog", singular: "Variant", plural: "Variants", defaultSort: "position",
         fields: [
           rel("product", "products", { group: "Variant" }),
           text("title", { label: "Title", group: "Variant" }),
@@ -313,7 +408,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         // Inventory as a (variant × location) join — not a single int on the variant.
-        slug: "inventory_levels", singular: "Inventory level", plural: "Inventory levels",
+        slug: "inventory_levels", group: "Inventory", singular: "Inventory level", plural: "Inventory levels",
         fields: [
           rel("variant", "product_variants"), rel("location", "locations"),
           int("available", { default: 0, validation: { min: 0 }, label: "Available" }),
@@ -327,7 +422,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "customers", singular: "Customer", plural: "Customers", defaultSort: "-created_at",
+        slug: "customers", group: "Customers", singular: "Customer", plural: "Customers", defaultSort: "-created_at",
         fields: [
           email("email", { required: true, unique: true, group: "Profile" }),
           text("first_name", { label: "First name", group: "Profile" }),
@@ -347,7 +442,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "addresses", singular: "Address", plural: "Addresses",
+        slug: "addresses", group: "Customers", singular: "Address", plural: "Addresses",
         fields: [
           rel("customer", "customers"), text("first_name", { label: "First name" }), text("last_name", { label: "Last name" }),
           text("company"), text("line1", { label: "Address line 1" }), text("line2", { label: "Address line 2" }),
@@ -357,7 +452,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ customer: { ref: "customers:0" }, first_name: "Jordan", last_name: "Reed", line1: "1 Market St", city: "San Francisco", province: "CA", country: "US", postal_code: "94105", is_default: true }],
       },
       {
-        slug: "discounts", singular: "Discount", plural: "Discounts", defaultSort: "-starts_at",
+        slug: "discounts", group: "Marketing", singular: "Discount", plural: "Discounts", defaultSort: "-starts_at",
         fields: [
           text("code", { unique: true, required: true }),
           select("value_type", [ch("percentage", C.blue), ch("fixed_amount", C.teal), ch("free_shipping", C.purple)], { default: "percentage", label: "Value type" }),
@@ -373,7 +468,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ code: "WELCOME10", value_type: "percentage", value: 10, target_selection: "all", status: "active", starts_at: ms("2026-01-01"), ends_at: ms("2026-12-31") }],
       },
       {
-        slug: "orders", singular: "Order", plural: "Orders", defaultSort: "-placed_at",
+        slug: "orders", group: "Orders", singular: "Order", plural: "Orders", defaultSort: "-placed_at",
         fields: [
           text("number", { unique: true, group: "Order" }),
           rel("customer", "customers", { group: "Order" }),
@@ -400,7 +495,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "order_items", singular: "Order item", plural: "Order items",
+        slug: "order_items", group: "Orders", singular: "Order item", plural: "Order items",
         fields: [
           rel("order", "orders"), rel("product", "products"), rel("variant", "product_variants"),
           text("title", { label: "Title (snapshot)" }), text("sku", { label: "SKU (snapshot)" }),
@@ -414,7 +509,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         // Payment ledger — `kind` and `status` are two separate axes (Shopify).
-        slug: "transactions", singular: "Transaction", plural: "Transactions", defaultSort: "-processed_at",
+        slug: "transactions", group: "Orders", singular: "Transaction", plural: "Transactions", defaultSort: "-processed_at",
         fields: [
           rel("order", "orders"),
           select("kind", [ch("authorization", C.blue), ch("capture", C.teal), ch("sale", C.green), ch("void", C.gray), ch("refund", C.red)], { default: "sale" }),
@@ -425,7 +520,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ order: { ref: "orders:0" }, kind: "sale", status: "success", amount: 43, currency: "USD", gateway: "stripe", processed_at: ms("2026-01-12") }],
       },
       {
-        slug: "fulfillments", singular: "Fulfillment", plural: "Fulfillments", defaultSort: "-shipped_at",
+        slug: "fulfillments", group: "Orders", singular: "Fulfillment", plural: "Fulfillments", defaultSort: "-shipped_at",
         fields: [
           rel("order", "orders"), rel("location", "locations"),
           select("status", [ch("pending", C.amber), ch("open", C.blue), ch("success", C.green), ch("cancelled", C.red)], { default: "pending" }),
@@ -435,7 +530,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ order: { ref: "orders:0" }, location: { ref: "locations:0" }, status: "success", tracking_number: "1Z999AA10123456784", tracking_company: "UPS", shipped_at: ms("2026-01-13") }],
       },
       {
-        slug: "reviews", singular: "Review", plural: "Reviews", ownerScoped: true, defaultSort: "-created_at",
+        slug: "reviews", group: "Customers", singular: "Review", plural: "Reviews", ownerScoped: true, defaultSort: "-created_at",
         fields: [
           rel("product", "products"), rel("customer", "customers"),
           rating("rating"), text("title"), notes("body"),
@@ -445,7 +540,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ product: { ref: "products:0" }, customer: { ref: "customers:0" }, rating: 5, title: "Perfect fit", body: "Great quality, fits perfectly.", verified_purchase: true, status: "approved" }],
       },
       {
-        slug: "gift_cards", singular: "Gift card", plural: "Gift cards", defaultSort: "-created_at",
+        slug: "gift_cards", group: "Marketing", singular: "Gift card", plural: "Gift cards", defaultSort: "-created_at",
         fields: [
           text("code", { unique: true, required: true, label: "Code" }),
           money("initial_value", { label: "Initial value" }), money("balance", { label: "Balance" }),
@@ -457,16 +552,52 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ code: "GIFT-AB12-CD34", initial_value: 50, balance: 50, currency: "USD", customer: { ref: "customers:0" }, status: "enabled", expires_at: ms("2027-12-31") }],
       },
     ],
+    roles: [
+      {
+        name: "Store staff",
+        description: "Day-to-day store operations: manage orders, fulfillments and stock; read the catalog and customers.",
+        permissions: [
+          { collection: "orders", action: "read" },
+          { collection: "orders", action: "update" },
+          { collection: "order_items", action: "read" },
+          { collection: "fulfillments", action: "read" },
+          { collection: "fulfillments", action: "create" },
+          { collection: "fulfillments", action: "update" },
+          { collection: "transactions", action: "read" },
+          { collection: "products", action: "read" },
+          { collection: "product_variants", action: "read" },
+          { collection: "inventory_levels", action: "read" },
+          { collection: "inventory_levels", action: "update" },
+          { collection: "customers", action: "read" },
+          { collection: "addresses", action: "read" },
+        ],
+      },
+    ],
+    dashboards: [
+      {
+        name: "Store overview",
+        description: "Orders, revenue and catalog health.",
+        panels: [
+          { name: "Orders", kind: "items-aggregate", viz: "counter", config: { collection: "orders", agg: "count" } },
+          { name: "Revenue", kind: "items-aggregate", viz: "counter", config: { collection: "orders", agg: "sum", field: "total" } },
+          { name: "Customers", kind: "items-aggregate", viz: "counter", config: { collection: "customers", agg: "count" } },
+          { name: "Orders by payment status", kind: "items-aggregate", viz: "bars", config: { collection: "orders", agg: "count", groupBy: "status" } },
+          { name: "Orders by fulfillment", kind: "items-aggregate", viz: "donut", config: { collection: "orders", agg: "count", groupBy: "fulfillment_status" } },
+          { name: "Products by status", kind: "items-aggregate", viz: "donut", config: { collection: "products", agg: "count", groupBy: "status" } },
+        ],
+      },
+    ],
   },
 
   {
     id: "saas",
     label: "SaaS",
+    groups: ["Accounts", "Catalog", "Billing", "Platform"],
     description:
       "Stripe-grade billing: accounts & members, products with prices, subscriptions and subscription items, invoices, payments, metered usage, plus feature flags and webhooks.",
     collections: [
       {
-        slug: "accounts", singular: "Account", plural: "Accounts", defaultSort: "name",
+        slug: "accounts", group: "Accounts", singular: "Account", plural: "Accounts", defaultSort: "name",
         fields: [
           text("name", { required: true }), slugField(),
           email("billing_email", { label: "Billing email" }),
@@ -477,17 +608,17 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ name: "Acme Inc", slug: "acme-inc", billing_email: "billing@acme.example", status: "active" }, { name: "Globex", slug: "globex", billing_email: "billing@globex.example", status: "trialing" }],
       },
       {
-        slug: "account_members", singular: "Member", plural: "Members",
+        slug: "account_members", group: "Accounts", singular: "Member", plural: "Members",
         fields: [rel("account", "accounts"), email("email", { required: true }), text("name"), select("role", [ch("owner", C.purple), ch("admin", C.blue), ch("member", C.gray), ch("billing", C.teal)], { default: "member" }), select("status", [ch("active", C.green), ch("invited", C.amber)], { default: "active" })],
         samples: [{ account: { ref: "accounts:0" }, email: "owner@acme.example", name: "Jordan Reed", role: "owner", status: "active" }],
       },
       {
-        slug: "products", singular: "Product", plural: "Products", defaultSort: "name",
+        slug: "products", group: "Catalog", singular: "Product", plural: "Products", defaultSort: "name",
         fields: [text("name", { required: true }), notes("description"), bool("active", { default: true, label: "Active" }), text("unit_label", { label: "Unit label" })],
         samples: [{ name: "Pro Plan", description: "Everything in Starter, plus advanced features.", active: true }, { name: "API Usage", description: "Metered API calls.", active: true }],
       },
       {
-        slug: "prices", singular: "Price", plural: "Prices", defaultSort: "unit_amount",
+        slug: "prices", group: "Catalog", singular: "Price", plural: "Prices", defaultSort: "unit_amount",
         fields: [
           rel("product", "products"),
           money("unit_amount", { required: true, label: "Unit amount" }),
@@ -504,7 +635,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "subscriptions", singular: "Subscription", plural: "Subscriptions", defaultSort: "-current_period_end",
+        slug: "subscriptions", group: "Billing", singular: "Subscription", plural: "Subscriptions", defaultSort: "-current_period_end",
         fields: [
           rel("account", "accounts", { group: "Subscription" }),
           select("status", [ch("trialing", C.amber), ch("active", C.green), ch("past_due", C.red, "Past due"), ch("canceled", C.gray), ch("unpaid", C.red), ch("incomplete", C.slate), ch("paused", C.blue)], { default: "trialing", group: "Subscription" }),
@@ -518,12 +649,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ account: { ref: "accounts:0" }, status: "active", collection_method: "charge_automatically", current_period_start: ms("2026-06-01"), current_period_end: ms("2026-07-01") }],
       },
       {
-        slug: "subscription_items", singular: "Subscription item", plural: "Subscription items",
+        slug: "subscription_items", group: "Billing", singular: "Subscription item", plural: "Subscription items",
         fields: [rel("subscription", "subscriptions"), rel("price", "prices"), int("quantity", { default: 1, validation: { min: 1 } })],
         samples: [{ subscription: { ref: "subscriptions:0" }, price: { ref: "prices:0" }, quantity: 1 }],
       },
       {
-        slug: "invoices", singular: "Invoice", plural: "Invoices", defaultSort: "-issued_at",
+        slug: "invoices", group: "Billing", singular: "Invoice", plural: "Invoices", defaultSort: "-issued_at",
         fields: [
           rel("account", "accounts"), rel("subscription", "subscriptions"), text("number", { unique: true }),
           select("status", [ch("draft", C.gray), ch("open", C.blue), ch("paid", C.green), ch("void", C.slate), ch("uncollectible", C.red)], { default: "draft" }),
@@ -536,7 +667,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ account: { ref: "accounts:0" }, subscription: { ref: "subscriptions:0" }, number: "INV-1001", status: "paid", amount_due: 49, amount_paid: 49, currency: "USD", billing_reason: "subscription_cycle", issued_at: ms("2026-06-01") }],
       },
       {
-        slug: "payments", singular: "Payment", plural: "Payments", defaultSort: "-created_at",
+        slug: "payments", group: "Billing", singular: "Payment", plural: "Payments", defaultSort: "-created_at",
         fields: [
           rel("account", "accounts"), rel("invoice", "invoices"),
           money("amount"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" }),
@@ -547,17 +678,17 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ account: { ref: "accounts:0" }, invoice: { ref: "invoices:0" }, amount: 49, currency: "USD", status: "succeeded", payment_method: "card" }],
       },
       {
-        slug: "usage_records", singular: "Usage", plural: "Usage", defaultSort: "-recorded_at",
+        slug: "usage_records", group: "Billing", singular: "Usage", plural: "Usage", defaultSort: "-recorded_at",
         fields: [rel("subscription_item", "subscription_items"), text("metric"), num("quantity", { validation: { min: 0 } }), select("action", [ch("increment", C.blue), ch("set", C.purple)], { default: "increment" }), ts("recorded_at", { indexed: true, label: "Recorded at" })],
         samples: [{ subscription_item: { ref: "subscription_items:0" }, metric: "api_calls", quantity: 1240, action: "increment", recorded_at: ms("2026-06-20") }],
       },
       {
-        slug: "feature_flags", singular: "Feature flag", plural: "Feature flags", defaultSort: "key",
+        slug: "feature_flags", group: "Platform", singular: "Feature flag", plural: "Feature flags", defaultSort: "key",
         fields: [text("key", { unique: true }), bool("enabled", { default: false }), pct("rollout_percentage", { default: 0, label: "Rollout (%)" }), notes("description")],
         samples: [{ key: "new_dashboard", enabled: true, rollout_percentage: 100, description: "Roll out the redesigned dashboard." }],
       },
       {
-        slug: "webhooks", singular: "Webhook", plural: "Webhooks",
+        slug: "webhooks", group: "Platform", singular: "Webhook", plural: "Webhooks",
         fields: [rel("account", "accounts"), url("url", { required: true }), text("secret", { label: "Signing secret" }), bool("active", { default: true })],
         samples: [{ account: { ref: "accounts:0" }, url: "https://acme.example/hooks/backlex", active: true }],
       },
@@ -567,11 +698,12 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "crm",
     label: "CRM",
+    groups: ["People", "Sales", "Engagement"],
     description:
       "Salesforce/HubSpot-grade sales CRM: companies, contacts with lifecycle stages, leads, a configurable pipeline of stages, deals with probability & forecast, logged activities and tasks.",
     collections: [
       {
-        slug: "companies", singular: "Company", plural: "Companies", defaultSort: "name",
+        slug: "companies", group: "People", singular: "Company", plural: "Companies", defaultSort: "name",
         fields: [
           text("name", { required: true, group: "Company" }),
           url("domain", { group: "Company" }),
@@ -590,7 +722,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "contacts", singular: "Contact", plural: "Contacts", fts: true, defaultSort: "last_name",
+        slug: "contacts", group: "People", singular: "Contact", plural: "Contacts", fts: true, defaultSort: "last_name",
         fields: [
           text("first_name", { label: "First name", searchable: true, group: "Identity" }),
           text("last_name", { label: "Last name", searchable: true, group: "Identity" }),
@@ -611,12 +743,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "pipelines", singular: "Pipeline", plural: "Pipelines", defaultSort: "position",
+        slug: "pipelines", group: "Sales", singular: "Pipeline", plural: "Pipelines", defaultSort: "position",
         fields: [text("name", { required: true }), bool("is_default", { default: false, label: "Default" }), position()],
         samples: [{ name: "Sales", is_default: true, position: 1 }],
       },
       {
-        slug: "pipeline_stages", singular: "Stage", plural: "Stages", defaultSort: "position",
+        slug: "pipeline_stages", group: "Sales", singular: "Stage", plural: "Stages", defaultSort: "position",
         fields: [
           rel("pipeline", "pipelines"), text("name", { required: true }), position(),
           pct("probability", { default: 50, label: "Win probability (%)" }),
@@ -632,7 +764,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "leads", singular: "Lead", plural: "Leads", ownerScoped: true, defaultSort: "-created_at",
+        slug: "leads", group: "Sales", singular: "Lead", plural: "Leads", ownerScoped: true, defaultSort: "-created_at",
         fields: [
           text("first_name", { label: "First name" }), text("last_name", { label: "Last name" }),
           email("email"), text("phone"), text("company", { label: "Company (text)" }), text("title", { label: "Job title" }),
@@ -644,7 +776,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ first_name: "Alex", last_name: "Kim", email: "lead@example.com", company: "Initech", status: "new", rating: "warm", source: "web", score: 35 }],
       },
       {
-        slug: "deals", singular: "Deal", plural: "Deals", ownerScoped: true, defaultSort: "-created_at",
+        slug: "deals", group: "Sales", singular: "Deal", plural: "Deals", ownerScoped: true, defaultSort: "-created_at",
         fields: [
           text("name", { required: true, group: "Deal" }),
           money("amount", { group: "Deal" }),
@@ -661,7 +793,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ name: "Acme — annual contract", amount: 24000, currency: "USD", pipeline: { ref: "pipelines:0" }, stage: { ref: "pipeline_stages:1" }, probability: 60, deal_type: "new_business", company: { ref: "companies:0" }, primary_contact: { ref: "contacts:0" }, expected_close_date: ms("2026-08-01") }],
       },
       {
-        slug: "activities", singular: "Activity", plural: "Activities", ownerScoped: true, defaultSort: "-due_at",
+        slug: "activities", group: "Engagement", singular: "Activity", plural: "Activities", ownerScoped: true, defaultSort: "-due_at",
         fields: [
           select("type", [ch("call", C.blue), ch("email", C.teal), ch("meeting", C.purple), ch("note", C.gray), ch("task", C.amber)], { default: "note" }),
           text("subject"), notes("body"),
@@ -672,9 +804,41 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ type: "call", subject: "Intro call", body: "Intro call with Jordan.", direction: "outbound", contact: { ref: "contacts:0" }, deal: { ref: "deals:0" }, due_at: ms("2026-07-05") }],
       },
       {
-        slug: "tasks", singular: "Task", plural: "Tasks", ownerScoped: true, defaultSort: "due_at",
+        slug: "tasks", group: "Engagement", singular: "Task", plural: "Tasks", ownerScoped: true, defaultSort: "due_at",
         fields: [text("title", { required: true }), select("priority", [ch("low", C.gray), ch("normal", C.blue), ch("high", C.red)], { default: "normal" }), bool("done", { default: false }), ts("due_at", { indexed: true })],
         samples: [{ title: "Send proposal to Acme", priority: "high", done: false, due_at: ms("2026-07-02") }],
+      },
+    ],
+    roles: [
+      {
+        name: "Sales manager",
+        description: "Read the whole CRM; work leads, deals and tasks across every rep.",
+        permissions: [
+          { collection: "companies", action: "read" },
+          { collection: "contacts", action: "read" },
+          { collection: "pipelines", action: "read" },
+          { collection: "pipeline_stages", action: "read" },
+          { collection: "leads", action: "read" },
+          { collection: "leads", action: "update" },
+          { collection: "deals", action: "read" },
+          { collection: "deals", action: "update" },
+          { collection: "activities", action: "read" },
+          { collection: "tasks", action: "read" },
+          { collection: "tasks", action: "update" },
+        ],
+      },
+    ],
+    dashboards: [
+      {
+        name: "Sales overview",
+        description: "Pipeline value and deal flow.",
+        panels: [
+          { name: "Deals", kind: "items-aggregate", viz: "counter", config: { collection: "deals", agg: "count" } },
+          { name: "Pipeline value", kind: "items-aggregate", viz: "counter", config: { collection: "deals", agg: "sum", field: "amount" } },
+          { name: "Contacts", kind: "items-aggregate", viz: "counter", config: { collection: "contacts", agg: "count" } },
+          { name: "Deals by type", kind: "items-aggregate", viz: "donut", config: { collection: "deals", agg: "count", groupBy: "deal_type" } },
+          { name: "Leads by status", kind: "items-aggregate", viz: "bars", config: { collection: "leads", agg: "count", groupBy: "status" } },
+        ],
       },
     ],
   },
@@ -682,36 +846,37 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "support",
     label: "Support / Helpdesk",
+    groups: ["Tickets", "People", "Knowledge base"],
     description:
       "Zendesk-grade helpdesk: organizations, customers, agents and teams, tickets with separate status/priority/type axes, SLA policies, threaded messages with public/internal notes, a knowledge base and canned responses.",
     collections: [
       {
-        slug: "organizations", singular: "Organization", plural: "Organizations", defaultSort: "name",
+        slug: "organizations", group: "People", singular: "Organization", plural: "Organizations", defaultSort: "name",
         fields: [text("name", { required: true }), url("domain"), notes("notes")],
         samples: [{ name: "Acme Inc", domain: "https://acme.example" }],
       },
       {
-        slug: "customers", singular: "Customer", plural: "Customers", defaultSort: "name",
+        slug: "customers", group: "People", singular: "Customer", plural: "Customers", defaultSort: "name",
         fields: [email("email", { required: true, unique: true }), text("name"), text("phone"), rel("organization", "organizations")],
         samples: [{ email: "jordan@example.com", name: "Jordan Reed", organization: { ref: "organizations:0" } }, { email: "sam@example.com", name: "Sam Taylor", organization: { ref: "organizations:0" } }],
       },
       {
-        slug: "agents", singular: "Agent", plural: "Agents", defaultSort: "name",
+        slug: "agents", group: "People", singular: "Agent", plural: "Agents", defaultSort: "name",
         fields: [text("name", { required: true }), email("email", { unique: true }), select("role", [ch("agent", C.blue), ch("admin", C.purple)], { default: "agent" }), bool("active", { default: true, label: "Active" })],
         samples: [{ name: "Robin Park", email: "robin@support.example", role: "agent" }],
       },
       {
-        slug: "teams", singular: "Team", plural: "Teams", defaultSort: "name",
+        slug: "teams", group: "People", singular: "Team", plural: "Teams", defaultSort: "name",
         fields: [text("name", { required: true }), notes("description")],
         samples: [{ name: "Tier 1" }, { name: "Billing" }],
       },
       {
-        slug: "categories", singular: "Category", plural: "Categories", defaultSort: "name",
+        slug: "categories", group: "Knowledge base", singular: "Category", plural: "Categories", defaultSort: "name",
         fields: [text("name", { required: true })],
         samples: [{ name: "Billing" }, { name: "Technical" }],
       },
       {
-        slug: "slas", singular: "SLA policy", plural: "SLA policies", defaultSort: "position",
+        slug: "slas", group: "Tickets", singular: "SLA policy", plural: "SLA policies", defaultSort: "position",
         fields: [
           text("name", { required: true }), notes("description"), position(),
           select("priority", [ch("low", C.gray), ch("normal", C.blue), ch("high", C.amber), ch("urgent", C.red)], { default: "normal", label: "Applies to priority" }),
@@ -725,7 +890,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "tickets", singular: "Ticket", plural: "Tickets", fts: true, defaultSort: "-created_at",
+        slug: "tickets", group: "Tickets", singular: "Ticket", plural: "Tickets", fts: true, defaultSort: "-created_at",
         fields: [
           text("subject", { required: true, searchable: true, group: "Ticket" }),
           { name: "description", type: "longtext", interface: "textarea", searchable: true, group: "Ticket" },
@@ -749,12 +914,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "ticket_messages", singular: "Message", plural: "Messages", defaultSort: "created_at",
+        slug: "ticket_messages", group: "Tickets", singular: "Message", plural: "Messages", defaultSort: "created_at",
         fields: [rel("ticket", "tickets"), rel("agent", "agents"), notes("body"), bool("public", { default: true, label: "Public reply" })],
         samples: [{ ticket: { ref: "tickets:0" }, agent: { ref: "agents:0" }, body: "Thanks for reaching out — taking a look now.", public: true }],
       },
       {
-        slug: "kb_articles", singular: "Article", plural: "Articles", versioned: true, vectorize: true, fts: true, defaultSort: "title",
+        slug: "kb_articles", group: "Knowledge base", singular: "Article", plural: "Articles", versioned: true, vectorize: true, fts: true, defaultSort: "title",
         fields: [
           text("title", { required: true, vectorize: true, searchable: true }), slugField(),
           { name: "body", type: "longtext", interface: "richtext", vectorize: true, searchable: true },
@@ -764,7 +929,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ title: "How to reset your password", slug: "reset-password", body: "Go to Settings → Security and click Reset.", category: { ref: "categories:1" }, author: { ref: "agents:0" } }],
       },
       {
-        slug: "canned_responses", singular: "Canned response", plural: "Canned responses", defaultSort: "title",
+        slug: "canned_responses", group: "Tickets", singular: "Canned response", plural: "Canned responses", defaultSort: "title",
         fields: [text("title"), notes("body")],
         samples: [{ title: "Greeting", body: "Hi there! Thanks for contacting support." }],
       },
@@ -774,16 +939,17 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "hr",
     label: "HR / People",
+    groups: ["People", "Organization", "Operations"],
     description:
       "Workday/BambooHR-grade HRIS: employees with manager hierarchy, departments, locations, positions, time-off requests, performance reviews, documents and a compensation history.",
     collections: [
       {
-        slug: "departments", singular: "Department", plural: "Departments", defaultSort: "name",
+        slug: "departments", group: "Organization", singular: "Department", plural: "Departments", defaultSort: "name",
         fields: [text("name", { required: true }), text("code"), parent("departments"), text("cost_center", { label: "Cost center" })],
         samples: [{ name: "Engineering", code: "ENG" }, { name: "Sales", code: "SALES" }],
       },
       {
-        slug: "locations", singular: "Location", plural: "Locations", defaultSort: "name",
+        slug: "locations", group: "Organization", singular: "Location", plural: "Locations", defaultSort: "name",
         fields: [
           text("name", { required: true }),
           select("type", [ch("office", C.blue), ch("remote", C.teal), ch("hybrid", C.purple), ch("field", C.amber)], { default: "office" }),
@@ -792,12 +958,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ name: "HQ", type: "office", city: "Austin", country: "US", timezone: "America/Chicago", is_headquarters: true }],
       },
       {
-        slug: "positions", singular: "Position", plural: "Positions", defaultSort: "title",
+        slug: "positions", group: "Organization", singular: "Position", plural: "Positions", defaultSort: "title",
         fields: [text("title", { required: true }), text("job_code", { label: "Job code" }), rel("department", "departments"), text("level", { label: "Level / grade" }), select("flsa_status", [ch("exempt", C.blue), ch("non_exempt", C.amber, "Non-exempt")], { default: "exempt", label: "FLSA status" }), bool("is_filled", { default: false, label: "Filled" })],
         samples: [{ title: "Software Engineer", job_code: "ENG-2", department: { ref: "departments:0" }, level: "L3", flsa_status: "exempt" }, { title: "Account Executive", job_code: "SAL-2", department: { ref: "departments:1" }, level: "L3", flsa_status: "exempt" }],
       },
       {
-        slug: "employees", singular: "Employee", plural: "Employees", fts: true, defaultSort: "last_name",
+        slug: "employees", group: "People", singular: "Employee", plural: "Employees", fts: true, defaultSort: "last_name",
         fields: [
           text("employee_number", { unique: true, label: "Employee #", group: "Identity" }),
           text("first_name", { label: "First name", searchable: true, group: "Identity" }),
@@ -827,7 +993,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "leave_requests", singular: "Time off", plural: "Time off", defaultSort: "-start_date",
+        slug: "leave_requests", group: "Operations", singular: "Time off", plural: "Time off", defaultSort: "-start_date",
         fields: [
           rel("employee", "employees"),
           select("type", [ch("vacation", C.blue), ch("sick", C.amber), ch("personal", C.teal), ch("unpaid", C.gray), ch("parental", C.purple), ch("bereavement", C.slate)], { default: "vacation" }),
@@ -839,7 +1005,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ employee: { ref: "employees:0" }, type: "vacation", start_date: ms("2026-08-10"), end_date: ms("2026-08-17"), days: 5, status: "pending" }],
       },
       {
-        slug: "performance_reviews", singular: "Review", plural: "Reviews", defaultSort: "-created_at",
+        slug: "performance_reviews", group: "Operations", singular: "Review", plural: "Reviews", defaultSort: "-created_at",
         fields: [
           rel("employee", "employees"), rel("reviewer", "employees"), text("period", { label: "Cycle / period" }),
           select("review_type", [ch("annual", C.blue), ch("quarterly", C.teal), ch("probationary", C.amber), ch("self", C.gray), ch("peer", C.purple), ch("360", C.green)], { default: "annual", label: "Review type" }),
@@ -850,12 +1016,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ employee: { ref: "employees:0" }, period: "2025 H2", review_type: "annual", rating: "outstanding", status: "completed", notes: "Outstanding contributions this half." }],
       },
       {
-        slug: "documents", singular: "Document", plural: "Documents",
+        slug: "documents", group: "People", singular: "Document", plural: "Documents",
         fields: [rel("employee", "employees"), text("title"), select("type", [ch("offer_letter", C.blue, "Offer letter"), ch("contract", C.purple), ch("tax_form", C.amber, "Tax form"), ch("certification", C.teal), ch("policy", C.gray), ch("other", C.slate)], { default: "other" }), file("file"), date("expires_at", { label: "Expires at" })],
         samples: [{ employee: { ref: "employees:0" }, title: "Offer letter", type: "offer_letter" }],
       },
       {
-        slug: "compensation_history", singular: "Compensation change", plural: "Compensation history", defaultSort: "-effective_date",
+        slug: "compensation_history", group: "People", singular: "Compensation change", plural: "Compensation history", defaultSort: "-effective_date",
         fields: [
           rel("employee", "employees"), date("effective_date", { indexed: true, label: "Effective date" }),
           money("amount"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" }),
@@ -870,16 +1036,17 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "projects",
     label: "Project management",
+    groups: ["Planning", "Work", "Organize"],
     description:
       "Jira/Linear-grade issue tracking: projects, issues with type/state/priority and subtask & epic hierarchy, sprints (cycles), milestones, labels, comments and worklogs.",
     collections: [
       {
-        slug: "members", singular: "Member", plural: "Members", defaultSort: "name",
+        slug: "members", group: "Organize", singular: "Member", plural: "Members", defaultSort: "name",
         fields: [text("name", { required: true }), email("email", { unique: true }), image("avatar"), select("role", [ch("admin", C.purple), ch("member", C.blue), ch("guest", C.gray)], { default: "member" })],
         samples: [{ name: "Ada Lovelace", email: "ada@team.example", role: "admin" }, { name: "Grace Hopper", email: "grace@team.example", role: "member" }],
       },
       {
-        slug: "projects", singular: "Project", plural: "Projects", defaultSort: "name",
+        slug: "projects", group: "Planning", singular: "Project", plural: "Projects", defaultSort: "name",
         fields: [
           text("name", { required: true }), text("key", { unique: true, label: "Key" }),
           rel("lead", "members"),
@@ -890,22 +1057,22 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ name: "Website Redesign", key: "WEB", lead: { ref: "members:0" }, status: "started", description: "Refresh the marketing site.", target_date: ms("2026-09-01") }],
       },
       {
-        slug: "labels", singular: "Label", plural: "Labels", defaultSort: "name",
+        slug: "labels", group: "Organize", singular: "Label", plural: "Labels", defaultSort: "name",
         fields: [text("name", { required: true }), text("color", { interface: "color" }), notes("description")],
         samples: [{ name: "frontend", color: C.blue }, { name: "bug", color: C.red }],
       },
       {
-        slug: "milestones", singular: "Milestone", plural: "Milestones", defaultSort: "target_date",
+        slug: "milestones", group: "Planning", singular: "Milestone", plural: "Milestones", defaultSort: "target_date",
         fields: [rel("project", "projects"), text("name"), notes("description"), date("target_date", { indexed: true, label: "Target date" }), select("status", [ch("upcoming", C.gray), ch("in_progress", C.blue, "In progress"), ch("completed", C.green)], { default: "upcoming" }), position()],
         samples: [{ project: { ref: "projects:0" }, name: "Design complete", target_date: ms("2026-07-15"), status: "in_progress", position: 1 }],
       },
       {
-        slug: "sprints", singular: "Sprint", plural: "Sprints", defaultSort: "-start_date",
+        slug: "sprints", group: "Planning", singular: "Sprint", plural: "Sprints", defaultSort: "-start_date",
         fields: [rel("project", "projects"), text("name"), notes("goal"), int("number", { label: "Cycle #" }), date("start_date", { indexed: true, label: "Start date" }), date("end_date", { label: "End date" }), select("state", [ch("future", C.gray), ch("active", C.green), ch("closed", C.slate)], { default: "future" })],
         samples: [{ project: { ref: "projects:0" }, name: "Sprint 1", goal: "Ship the new home page.", number: 1, start_date: ms("2026-07-01"), end_date: ms("2026-07-14"), state: "active" }],
       },
       {
-        slug: "issues", singular: "Issue", plural: "Issues", ownerScoped: true, fts: true, defaultSort: "-created_at",
+        slug: "issues", group: "Work", singular: "Issue", plural: "Issues", ownerScoped: true, fts: true, defaultSort: "-created_at",
         fields: [
           text("identifier", { unique: true, label: "Identifier", group: "Issue" }),
           text("title", { required: true, searchable: true, group: "Issue" }),
@@ -929,12 +1096,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "worklogs", singular: "Worklog", plural: "Worklogs", ownerScoped: true, defaultSort: "-logged_at",
+        slug: "worklogs", group: "Work", singular: "Worklog", plural: "Worklogs", ownerScoped: true, defaultSort: "-logged_at",
         fields: [rel("issue", "issues"), rel("member", "members"), num("hours", { validation: { min: 0 } }), notes("description"), ts("logged_at", { indexed: true, label: "Logged at" })],
         samples: [{ issue: { ref: "issues:0" }, member: { ref: "members:0" }, hours: 3.5, logged_at: ms("2026-07-03") }],
       },
       {
-        slug: "comments", singular: "Comment", plural: "Comments", ownerScoped: true, defaultSort: "created_at",
+        slug: "comments", group: "Work", singular: "Comment", plural: "Comments", ownerScoped: true, defaultSort: "created_at",
         fields: [rel("issue", "issues"), rel("author", "members"), notes("body")],
         samples: [{ issue: { ref: "issues:0" }, author: { ref: "members:1" }, body: "First draft looks great!" }],
       },
@@ -944,22 +1111,23 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "events",
     label: "Events / Booking",
+    groups: ["Events", "Ticketing", "Attendees"],
     description:
       "Eventbrite-grade ticketing: events with venues & sessions, tiered ticket types with capacity, attendees, orders and individual issued tickets with check-in.",
     collections: [
-      { slug: "media", singular: "Media", plural: "Media", fields: [image("file"), text("alt", { label: "Alt text" })] },
+      { slug: "media", group: "Events", singular: "Media", plural: "Media", fields: [image("file"), text("alt", { label: "Alt text" })] },
       {
-        slug: "venues", singular: "Venue", plural: "Venues", defaultSort: "name",
+        slug: "venues", group: "Events", singular: "Venue", plural: "Venues", defaultSort: "name",
         fields: [text("name", { required: true }), text("address"), text("city"), text("country"), int("capacity", { validation: { min: 0 } })],
         samples: [{ name: "Main Hall", address: "1 Conference Way", city: "Austin", country: "US", capacity: 500 }],
       },
       {
-        slug: "organizers", singular: "Organizer", plural: "Organizers", defaultSort: "name",
+        slug: "organizers", group: "Events", singular: "Organizer", plural: "Organizers", defaultSort: "name",
         fields: [text("name", { required: true }), email("email"), url("website")],
         samples: [{ name: "Backlex Events", email: "events@backlex.example" }],
       },
       {
-        slug: "events", singular: "Event", plural: "Events", versioned: true, vectorize: true, fts: true, defaultSort: "-start_at",
+        slug: "events", group: "Events", singular: "Event", plural: "Events", versioned: true, vectorize: true, fts: true, defaultSort: "-start_at",
         fields: [
           text("title", { required: true, vectorize: true, searchable: true, group: "Event" }),
           slugField("slug", { group: "Event" }),
@@ -977,12 +1145,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ title: "Backlex Conf 2026", slug: "backlex-conf-2026", description: "Our annual user conference.", organizer: { ref: "organizers:0" }, venue: { ref: "venues:0" }, status: "on_sale", type: "conference", start_at: ms("2026-10-01T09:00:00Z"), end_at: ms("2026-10-01T17:00:00Z") }],
       },
       {
-        slug: "sessions", singular: "Session", plural: "Sessions", defaultSort: "start_at",
+        slug: "sessions", group: "Events", singular: "Session", plural: "Sessions", defaultSort: "start_at",
         fields: [rel("event", "events"), text("title"), notes("description"), text("speaker"), text("room"), ts("start_at", { indexed: true, label: "Starts at" }), ts("end_at", { label: "Ends at" })],
         samples: [{ event: { ref: "events:0" }, title: "Opening keynote", speaker: "Ada Lovelace", start_at: ms("2026-10-01T09:30:00Z"), end_at: ms("2026-10-01T10:30:00Z") }],
       },
       {
-        slug: "ticket_types", singular: "Ticket type", plural: "Ticket types", defaultSort: "price",
+        slug: "ticket_types", group: "Ticketing", singular: "Ticket type", plural: "Ticket types", defaultSort: "price",
         fields: [
           rel("event", "events"), text("name"), money("price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
           int("quantity", { validation: { min: 0 }, label: "Quantity" }), int("sold", { default: 0, validation: { min: 0 }, label: "Sold" }),
@@ -992,12 +1160,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ event: { ref: "events:0" }, name: "General Admission", price: 99, currency: "USD", quantity: 400, sold: 120 }, { event: { ref: "events:0" }, name: "VIP", price: 249, currency: "USD", quantity: 50, sold: 12 }],
       },
       {
-        slug: "attendees", singular: "Attendee", plural: "Attendees", defaultSort: "name",
+        slug: "attendees", group: "Attendees", singular: "Attendee", plural: "Attendees", defaultSort: "name",
         fields: [text("name"), email("email", { required: true }), text("phone"), text("company")],
         samples: [{ name: "Jordan Reed", email: "jordan@example.com", company: "Acme" }],
       },
       {
-        slug: "orders", singular: "Order", plural: "Orders", defaultSort: "-placed_at",
+        slug: "orders", group: "Ticketing", singular: "Order", plural: "Orders", defaultSort: "-placed_at",
         fields: [
           text("number", { unique: true }), rel("event", "events"), rel("buyer", "attendees"),
           select("status", [ch("pending", C.amber), ch("paid", C.green), ch("refunded", C.gray), ch("cancelled", C.red)], { default: "pending" }),
@@ -1006,7 +1174,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ number: "EVT-1001", event: { ref: "events:0" }, buyer: { ref: "attendees:0" }, status: "paid", total: 198, currency: "USD", placed_at: ms("2026-08-01") }],
       },
       {
-        slug: "tickets", singular: "Ticket", plural: "Tickets", defaultSort: "-created_at",
+        slug: "tickets", group: "Ticketing", singular: "Ticket", plural: "Tickets", defaultSort: "-created_at",
         fields: [
           rel("order", "orders"), rel("ticket_type", "ticket_types"), rel("attendee", "attendees"),
           text("code", { unique: true, label: "Ticket code" }),
@@ -1024,26 +1192,27 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "inventory",
     label: "Inventory / Operations",
+    groups: ["Catalog", "Stock", "Purchasing"],
     description:
       "NetSuite-grade inventory: items with reorder points, multi-warehouse stock levels (on-hand / reserved / available), suppliers, purchase orders with line items, transfers and adjustments.",
     collections: [
       {
-        slug: "warehouses", singular: "Warehouse", plural: "Warehouses", defaultSort: "name",
+        slug: "warehouses", group: "Stock", singular: "Warehouse", plural: "Warehouses", defaultSort: "name",
         fields: [text("name", { required: true }), text("code"), text("address"), text("city"), text("country"), bool("active", { default: true, label: "Active" })],
         samples: [{ name: "Central DC", code: "DC-1", city: "Newark", country: "US", active: true }, { name: "West DC", code: "DC-2", city: "Reno", country: "US", active: true }],
       },
       {
-        slug: "suppliers", singular: "Supplier", plural: "Suppliers", defaultSort: "name",
+        slug: "suppliers", group: "Purchasing", singular: "Supplier", plural: "Suppliers", defaultSort: "name",
         fields: [text("name", { required: true }), text("contact_name", { label: "Contact name" }), email("email"), text("phone"), text("address"), select("payment_terms", [ch("net_15", C.blue, "Net 15"), ch("net_30", C.teal, "Net 30"), ch("net_60", C.amber, "Net 60"), ch("prepaid", C.gray)], { default: "net_30", label: "Payment terms" }), bool("active", { default: true, label: "Active" })],
         samples: [{ name: "Globex Supplies", contact_name: "Pat Lee", email: "sales@globex.example", phone: "+1 555 0190", payment_terms: "net_30", active: true }],
       },
       {
-        slug: "item_categories", singular: "Category", plural: "Categories", defaultSort: "name",
+        slug: "item_categories", group: "Catalog", singular: "Category", plural: "Categories", defaultSort: "name",
         fields: [text("name", { required: true }), parent("item_categories")],
         samples: [{ name: "Components" }, { name: "Finished goods" }],
       },
       {
-        slug: "items", singular: "Item", plural: "Items", fts: true, defaultSort: "name",
+        slug: "items", group: "Catalog", singular: "Item", plural: "Items", fts: true, defaultSort: "name",
         fields: [
           text("name", { required: true, searchable: true, group: "Item" }),
           text("sku", { unique: true, label: "SKU", group: "Item" }),
@@ -1061,7 +1230,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ name: "Widget A", sku: "WID-A", category: { ref: "item_categories:0" }, supplier: { ref: "suppliers:0" }, unit_cost: 4.5, unit_price: 9.99, unit: "ea", reorder_point: 100, reorder_quantity: 500 }, { name: "Widget B", sku: "WID-B", category: { ref: "item_categories:0" }, supplier: { ref: "suppliers:0" }, unit_cost: 6.0, unit_price: 12.99, unit: "ea", reorder_point: 50, reorder_quantity: 200 }],
       },
       {
-        slug: "stock_levels", singular: "Stock level", plural: "Stock levels",
+        slug: "stock_levels", group: "Stock", singular: "Stock level", plural: "Stock levels",
         fields: [
           rel("item", "items"), rel("warehouse", "warehouses"),
           int("on_hand", { default: 0, validation: { min: 0 }, label: "On hand" }),
@@ -1075,7 +1244,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "purchase_orders", singular: "Purchase order", plural: "Purchase orders", defaultSort: "-order_date",
+        slug: "purchase_orders", group: "Purchasing", singular: "Purchase order", plural: "Purchase orders", defaultSort: "-order_date",
         fields: [
           text("number", { unique: true }), rel("supplier", "suppliers"), rel("warehouse", "warehouses"),
           select("status", [ch("draft", C.gray), ch("ordered", C.blue), ch("partial", C.amber, "Partially received"), ch("received", C.green), ch("cancelled", C.red)], { default: "draft" }),
@@ -1085,17 +1254,17 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ number: "PO-2001", supplier: { ref: "suppliers:0" }, warehouse: { ref: "warehouses:0" }, status: "ordered", total: 2250, currency: "USD", order_date: ms("2026-06-01"), expected_date: ms("2026-06-12") }],
       },
       {
-        slug: "purchase_order_items", singular: "PO line", plural: "PO lines",
+        slug: "purchase_order_items", group: "Purchasing", singular: "PO line", plural: "PO lines",
         fields: [rel("purchase_order", "purchase_orders"), rel("item", "items"), int("qty_ordered", { default: 1, validation: { min: 0 }, label: "Qty ordered" }), int("qty_received", { default: 0, validation: { min: 0 }, label: "Qty received" }), money("unit_cost", { label: "Unit cost" }), computedNum("line_total", "qty_ordered * unit_cost", { label: "Line total" })],
         samples: [{ purchase_order: { ref: "purchase_orders:0" }, item: { ref: "items:0" }, qty_ordered: 500, qty_received: 0, unit_cost: 4.5 }],
       },
       {
-        slug: "stock_transfers", singular: "Transfer", plural: "Transfers", defaultSort: "-transferred_at",
+        slug: "stock_transfers", group: "Stock", singular: "Transfer", plural: "Transfers", defaultSort: "-transferred_at",
         fields: [rel("item", "items"), rel("from_warehouse", "warehouses", { label: "From warehouse" }), rel("to_warehouse", "warehouses", { label: "To warehouse" }), int("quantity", { validation: { min: 0 } }), select("status", [ch("pending", C.amber), ch("in_transit", C.blue, "In transit"), ch("completed", C.green)], { default: "pending" }), ts("transferred_at", { indexed: true, label: "Transferred at" })],
         samples: [{ item: { ref: "items:0" }, from_warehouse: { ref: "warehouses:0" }, to_warehouse: { ref: "warehouses:1" }, quantity: 50, status: "completed", transferred_at: ms("2026-06-10") }],
       },
       {
-        slug: "stock_adjustments", singular: "Adjustment", plural: "Adjustments", defaultSort: "-adjusted_at",
+        slug: "stock_adjustments", group: "Stock", singular: "Adjustment", plural: "Adjustments", defaultSort: "-adjusted_at",
         fields: [rel("item", "items"), rel("warehouse", "warehouses"), int("quantity_change", { label: "Quantity change" }), select("reason", [ch("count", C.blue, "Cycle count"), ch("damage", C.red), ch("theft", C.amber), ch("return", C.green), ch("correction", C.gray)], { default: "count" }), notes("note"), ts("adjusted_at", { indexed: true, label: "Adjusted at" })],
         samples: [{ item: { ref: "items:1" }, warehouse: { ref: "warehouses:0" }, quantity_change: -5, reason: "damage", note: "Water damage in transit.", adjusted_at: ms("2026-06-15") }],
       },
@@ -1105,16 +1274,17 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "real-estate",
     label: "Real estate",
+    groups: ["Listings", "People", "Deals"],
     description: "Property listings, agents, inquiries and viewings.",
     collections: [
-      { slug: "media", singular: "Media", plural: "Media", fields: [file("file"), text("alt", { label: "Alt text" })] },
+      { slug: "media", group: "Listings", singular: "Media", plural: "Media", fields: [file("file"), text("alt", { label: "Alt text" })] },
       {
-        slug: "agents", singular: "Agent", plural: "Agents", defaultSort: "name",
+        slug: "agents", group: "People", singular: "Agent", plural: "Agents", defaultSort: "name",
         fields: [text("name", { required: true }), email("email", { unique: true }), text("phone"), image("photo"), text("license_number", { label: "License #" }), text("agency")],
         samples: [{ name: "Casey Morgan", email: "casey@realty.example", phone: "+1 555 0170", license_number: "RE-558210", agency: "Skyline Realty" }],
       },
       {
-        slug: "properties", singular: "Property", plural: "Properties", versioned: true, vectorize: true, fts: true, defaultSort: "-created_at",
+        slug: "properties", group: "Listings", singular: "Property", plural: "Properties", versioned: true, vectorize: true, fts: true, defaultSort: "-created_at",
         fields: [
           text("title", { required: true, vectorize: true, searchable: true, group: "Listing" }),
           slugField("slug", { group: "Listing" }),
@@ -1148,17 +1318,17 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "inquiries", singular: "Inquiry", plural: "Inquiries", ownerScoped: true, defaultSort: "-created_at",
+        slug: "inquiries", group: "Deals", singular: "Inquiry", plural: "Inquiries", ownerScoped: true, defaultSort: "-created_at",
         fields: [rel("property", "properties"), text("name"), email("email"), notes("message"), select("status", [ch("new", C.blue), ch("contacted", C.amber), ch("closed", C.gray)], { default: "new" })],
         samples: [{ property: { ref: "properties:0" }, name: "Jordan Reed", email: "jordan@example.com", message: "Is this still available?", status: "new" }],
       },
       {
-        slug: "viewings", singular: "Viewing", plural: "Viewings", defaultSort: "-scheduled_at",
+        slug: "viewings", group: "Deals", singular: "Viewing", plural: "Viewings", defaultSort: "-scheduled_at",
         fields: [rel("property", "properties"), rel("agent", "agents"), text("name"), email("email"), ts("scheduled_at", { indexed: true, label: "Scheduled at" }), select("status", [ch("scheduled", C.blue), ch("completed", C.green), ch("no_show", C.red, "No show"), ch("cancelled", C.gray)], { default: "scheduled" }), notes("feedback")],
         samples: [{ property: { ref: "properties:0" }, agent: { ref: "agents:0" }, name: "Jordan Reed", email: "jordan@example.com", scheduled_at: ms("2026-07-10T15:00:00Z"), status: "scheduled" }],
       },
       {
-        slug: "offers", singular: "Offer", plural: "Offers", defaultSort: "-submitted_at",
+        slug: "offers", group: "Deals", singular: "Offer", plural: "Offers", defaultSort: "-submitted_at",
         fields: [
           rel("property", "properties"), text("buyer_name", { label: "Buyer name" }), email("buyer_email", { label: "Buyer email" }),
           money("amount"), select("status", [ch("submitted", C.blue), ch("countered", C.amber), ch("accepted", C.green), ch("rejected", C.red), ch("withdrawn", C.gray)], { default: "submitted" }),
@@ -1172,16 +1342,17 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "restaurant",
     label: "Restaurant",
+    groups: ["Menu", "Front of house", "Orders"],
     description:
       "Toast/Square-grade restaurant ops: menus with categories, items and modifier groups, dietary flags, tables, reservations, and dine-in / takeout / delivery orders with line items.",
     collections: [
       {
-        slug: "menu_categories", singular: "Menu category", plural: "Menu categories", defaultSort: "position",
+        slug: "menu_categories", group: "Menu", singular: "Menu category", plural: "Menu categories", defaultSort: "position",
         fields: [text("name", { required: true }), notes("description"), position(), bool("active", { default: true, label: "Active" })],
         samples: [{ name: "Starters", position: 1 }, { name: "Mains", position: 2 }, { name: "Desserts", position: 3 }],
       },
       {
-        slug: "menu_items", singular: "Menu item", plural: "Menu items", fts: true, defaultSort: "name",
+        slug: "menu_items", group: "Menu", singular: "Menu item", plural: "Menu items", fts: true, defaultSort: "name",
         fields: [
           text("name", { required: true, searchable: true, group: "Item" }),
           notes("description", { searchable: true, group: "Item" }),
@@ -1204,27 +1375,27 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "modifier_groups", singular: "Modifier group", plural: "Modifier groups", defaultSort: "name",
+        slug: "modifier_groups", group: "Menu", singular: "Modifier group", plural: "Modifier groups", defaultSort: "name",
         fields: [rel("menu_item", "menu_items"), text("name", { required: true }), int("min_select", { default: 0, label: "Min select" }), int("max_select", { default: 1, label: "Max select" }), bool("required", { default: false, label: "Required" })],
         samples: [{ menu_item: { ref: "menu_items:1" }, name: "Size", min_select: 1, max_select: 1, required: true }],
       },
       {
-        slug: "modifiers", singular: "Modifier", plural: "Modifiers", defaultSort: "name",
+        slug: "modifiers", group: "Menu", singular: "Modifier", plural: "Modifiers", defaultSort: "name",
         fields: [rel("modifier_group", "modifier_groups"), text("name", { required: true }), money("price", { default: 0 })],
         samples: [{ modifier_group: { ref: "modifier_groups:0" }, name: 'Large (14")', price: 4 }, { modifier_group: { ref: "modifier_groups:0" }, name: 'Regular (10")', price: 0 }],
       },
       {
-        slug: "tables", singular: "Table", plural: "Tables", defaultSort: "name",
+        slug: "tables", group: "Front of house", singular: "Table", plural: "Tables", defaultSort: "name",
         fields: [text("name", { required: true }), int("seats", { default: 2, validation: { min: 1 } }), text("section"), select("status", [ch("available", C.green), ch("occupied", C.amber), ch("reserved", C.blue)], { default: "available" })],
         samples: [{ name: "T1", seats: 2, section: "Patio", status: "available" }, { name: "T2", seats: 4, section: "Main", status: "available" }],
       },
       {
-        slug: "reservations", singular: "Reservation", plural: "Reservations", defaultSort: "-reserved_at",
+        slug: "reservations", group: "Front of house", singular: "Reservation", plural: "Reservations", defaultSort: "-reserved_at",
         fields: [text("name", { required: true }), email("email"), text("phone"), int("party_size", { default: 2, validation: { min: 1 }, label: "Party size" }), ts("reserved_at", { indexed: true, label: "Reserved at" }), rel("table", "tables"), select("status", [ch("pending", C.amber), ch("confirmed", C.green), ch("seated", C.blue), ch("completed", C.teal), ch("no_show", C.red, "No show"), ch("cancelled", C.gray)], { default: "pending" }), notes("notes")],
         samples: [{ name: "Jordan Reed", email: "jordan@example.com", party_size: 4, reserved_at: ms("2026-07-04T19:00:00Z"), table: { ref: "tables:1" }, status: "confirmed" }],
       },
       {
-        slug: "orders", singular: "Order", plural: "Orders", defaultSort: "-opened_at",
+        slug: "orders", group: "Orders", singular: "Order", plural: "Orders", defaultSort: "-opened_at",
         fields: [
           text("number", { unique: true }), rel("table", "tables"),
           select("type", [ch("dine_in", C.blue, "Dine-in"), ch("takeout", C.teal), ch("delivery", C.purple)], { default: "dine_in" }),
@@ -1234,7 +1405,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ number: "R-1001", table: { ref: "tables:1" }, type: "dine_in", status: "open", subtotal: 22, tax: 1.9, total: 23.9, opened_at: ms("2026-07-04T19:15:00Z") }],
       },
       {
-        slug: "order_items", singular: "Order item", plural: "Order items",
+        slug: "order_items", group: "Orders", singular: "Order item", plural: "Order items",
         fields: [rel("order", "orders"), rel("menu_item", "menu_items"), int("qty", { default: 1, validation: { min: 1 } }), money("unit_price"), computedNum("line_total", "qty * unit_price", { label: "Line total" }), notes("special_requests", { label: "Special requests" })],
         samples: [{ order: { ref: "orders:0" }, menu_item: { ref: "menu_items:0" }, qty: 1, unit_price: 8 }, { order: { ref: "orders:0" }, menu_item: { ref: "menu_items:1" }, qty: 1, unit_price: 14 }],
       },
@@ -1244,21 +1415,22 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "lms",
     label: "Online courses (LMS)",
+    groups: ["Curriculum", "People", "Assessment", "Progress"],
     description:
       "Canvas/Teachable-grade learning platform: courses with modules & lessons, instructors, students and enrollments with progress, quizzes with questions & graded attempts, certificates and course reviews.",
     collections: [
       {
-        slug: "categories", singular: "Category", plural: "Categories", defaultSort: "name",
+        slug: "categories", group: "Curriculum", singular: "Category", plural: "Categories", defaultSort: "name",
         fields: [text("name", { required: true }), slugField(), parent("categories")],
         samples: [{ name: "Programming", slug: "programming" }, { name: "Design", slug: "design" }],
       },
       {
-        slug: "instructors", singular: "Instructor", plural: "Instructors", defaultSort: "name",
+        slug: "instructors", group: "People", singular: "Instructor", plural: "Instructors", defaultSort: "name",
         fields: [text("name", { required: true }), email("email", { unique: true }), notes("bio"), image("avatar")],
         samples: [{ name: "Dr. Ada Lovelace", email: "ada@academy.example", bio: "Teaches computing fundamentals." }],
       },
       {
-        slug: "courses", singular: "Course", plural: "Courses", versioned: true, vectorize: true, fts: true, defaultSort: "title",
+        slug: "courses", group: "Curriculum", singular: "Course", plural: "Courses", versioned: true, vectorize: true, fts: true, defaultSort: "title",
         fields: [
           text("title", { required: true, vectorize: true, searchable: true, group: "Course" }),
           slugField("slug", { group: "Course" }),
@@ -1279,12 +1451,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ title: "Intro to Programming", slug: "intro-to-programming", subtitle: "Start coding from zero", description: "Start coding from zero.", instructor: { ref: "instructors:0" }, category: { ref: "categories:0" }, level: "beginner", pricing_type: "free", price: 0, status: "published", duration_minutes: 240 }],
       },
       {
-        slug: "modules", singular: "Module", plural: "Modules", defaultSort: "position",
+        slug: "modules", group: "Curriculum", singular: "Module", plural: "Modules", defaultSort: "position",
         fields: [rel("course", "courses"), text("title", { required: true }), notes("description"), position(), bool("published", { default: true, label: "Published" })],
         samples: [{ course: { ref: "courses:0" }, title: "Getting started", position: 1 }, { course: { ref: "courses:0" }, title: "Variables & types", position: 2 }],
       },
       {
-        slug: "lessons", singular: "Lesson", plural: "Lessons", defaultSort: "position",
+        slug: "lessons", group: "Curriculum", singular: "Lesson", plural: "Lessons", defaultSort: "position",
         fields: [
           rel("module", "modules"), rel("course", "courses"), text("title", { required: true }),
           select("type", [ch("video", C.blue), ch("text", C.gray), ch("quiz", C.purple), ch("pdf", C.amber), ch("audio", C.teal), ch("assignment", C.red)], { default: "video" }),
@@ -1295,12 +1467,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ module: { ref: "modules:0" }, course: { ref: "courses:0" }, title: "Welcome", type: "video", content: "Course overview.", duration_minutes: 5, position: 1, free_preview: true }],
       },
       {
-        slug: "students", singular: "Student", plural: "Students", defaultSort: "name",
+        slug: "students", group: "People", singular: "Student", plural: "Students", defaultSort: "name",
         fields: [text("name", { required: true }), email("email", { unique: true }), image("avatar")],
         samples: [{ name: "Sam Taylor", email: "sam@student.example" }],
       },
       {
-        slug: "enrollments", singular: "Enrollment", plural: "Enrollments", ownerScoped: true, defaultSort: "-enrolled_at",
+        slug: "enrollments", group: "Progress", singular: "Enrollment", plural: "Enrollments", ownerScoped: true, defaultSort: "-enrolled_at",
         fields: [
           rel("student", "students"), rel("course", "courses"),
           select("status", [ch("active", C.green), ch("completed", C.blue), ch("expired", C.amber), ch("cancelled", C.gray)], { default: "active" }),
@@ -1310,7 +1482,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ student: { ref: "students:0" }, course: { ref: "courses:0" }, status: "active", progress: 35, enrolled_at: ms("2026-06-01") }],
       },
       {
-        slug: "quizzes", singular: "Quiz", plural: "Quizzes", defaultSort: "title",
+        slug: "quizzes", group: "Assessment", singular: "Quiz", plural: "Quizzes", defaultSort: "title",
         fields: [
           rel("course", "courses"), rel("lesson", "lessons"), text("title", { required: true }), notes("description"),
           select("type", [ch("graded", C.green), ch("practice", C.blue), ch("survey", C.gray), ch("exam", C.red)], { default: "graded" }),
@@ -1321,7 +1493,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ course: { ref: "courses:0" }, lesson: { ref: "lessons:0" }, title: "Module 1 quiz", type: "graded", passing_score: 70, max_attempts: 3 }],
       },
       {
-        slug: "questions", singular: "Question", plural: "Questions", defaultSort: "position",
+        slug: "questions", group: "Assessment", singular: "Question", plural: "Questions", defaultSort: "position",
         fields: [
           rel("quiz", "quizzes"), notes("prompt"),
           select("type", [ch("multiple_choice", C.blue, "Multiple choice"), ch("true_false", C.teal, "True / false"), ch("multiple_answers", C.purple, "Multiple answers"), ch("short_answer", C.amber, "Short answer"), ch("essay", C.gray)], { default: "multiple_choice" }),
@@ -1331,7 +1503,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ quiz: { ref: "quizzes:0" }, prompt: "What is a variable?", type: "multiple_choice", points: 1, position: 1 }],
       },
       {
-        slug: "quiz_attempts", singular: "Attempt", plural: "Attempts", ownerScoped: true, defaultSort: "-started_at",
+        slug: "quiz_attempts", group: "Assessment", singular: "Attempt", plural: "Attempts", ownerScoped: true, defaultSort: "-started_at",
         fields: [
           rel("quiz", "quizzes"), rel("student", "students"), rel("enrollment", "enrollments"),
           int("attempt_number", { default: 1, label: "Attempt #", validation: { min: 1 } }),
@@ -1342,12 +1514,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ quiz: { ref: "quizzes:0" }, student: { ref: "students:0" }, enrollment: { ref: "enrollments:0" }, attempt_number: 1, score: 80, passed: true, status: "graded", started_at: ms("2026-06-05") }],
       },
       {
-        slug: "certificates", singular: "Certificate", plural: "Certificates", defaultSort: "-issued_at",
+        slug: "certificates", group: "Progress", singular: "Certificate", plural: "Certificates", defaultSort: "-issued_at",
         fields: [rel("student", "students"), rel("course", "courses"), rel("enrollment", "enrollments"), text("serial", { unique: true, label: "Serial number" }), ts("issued_at", { indexed: true, label: "Issued at" }), date("expires_at", { label: "Expires at" }), select("status", [ch("issued", C.green), ch("revoked", C.red), ch("expired", C.gray)], { default: "issued" })],
         samples: [{ student: { ref: "students:0" }, course: { ref: "courses:0" }, enrollment: { ref: "enrollments:0" }, serial: "CERT-0001", issued_at: ms("2026-06-30"), status: "issued" }],
       },
       {
-        slug: "reviews", singular: "Review", plural: "Reviews", ownerScoped: true, defaultSort: "-created_at",
+        slug: "reviews", group: "Progress", singular: "Review", plural: "Reviews", ownerScoped: true, defaultSort: "-created_at",
         fields: [rel("student", "students"), rel("course", "courses"), rating("rating"), text("title"), notes("body"), select("status", [ch("pending", C.amber), ch("published", C.green), ch("hidden", C.gray)], { default: "pending" })],
         samples: [{ student: { ref: "students:0" }, course: { ref: "courses:0" }, rating: 5, title: "Loved it", body: "Clear and beginner-friendly.", status: "published" }],
       },
@@ -1357,16 +1529,17 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "ats",
     label: "Recruiting (ATS)",
+    groups: ["Jobs", "Candidates", "Hiring"],
     description:
       "Greenhouse/Lever-grade applicant tracking: job requisitions, candidates, a configurable interview pipeline of stages, applications (status separate from stage), interviews, scorecards and offers.",
     collections: [
       {
-        slug: "departments", singular: "Department", plural: "Departments", defaultSort: "name",
+        slug: "departments", group: "Jobs", singular: "Department", plural: "Departments", defaultSort: "name",
         fields: [text("name", { required: true })],
         samples: [{ name: "Engineering" }, { name: "Marketing" }],
       },
       {
-        slug: "jobs", singular: "Job", plural: "Jobs", versioned: true, fts: true, defaultSort: "-created_at",
+        slug: "jobs", group: "Jobs", singular: "Job", plural: "Jobs", versioned: true, fts: true, defaultSort: "-created_at",
         fields: [
           text("title", { required: true, searchable: true, group: "Job" }),
           slugField("slug", { group: "Job" }),
@@ -1386,7 +1559,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ title: "Senior Backend Engineer", slug: "senior-backend-engineer", requisition_id: "REQ-001", description: "Build our API platform.", department: { ref: "departments:0" }, location: "Remote", employment_type: "full_time", status: "open", openings: 2, hiring_manager: "Grace Hopper", salary_min: 120000, salary_max: 160000 }],
       },
       {
-        slug: "stages", singular: "Stage", plural: "Stages", defaultSort: "position",
+        slug: "stages", group: "Hiring", singular: "Stage", plural: "Stages", defaultSort: "position",
         fields: [
           rel("job", "jobs"), text("name", { required: true }),
           select("type", [ch("application_review", C.gray, "Application review"), ch("assessment", C.teal), ch("phone_interview", C.blue, "Phone interview"), ch("onsite_interview", C.amber, "Onsite interview"), ch("offer", C.purple), ch("hired", C.green)], { default: "application_review", label: "Stage type" }),
@@ -1400,7 +1573,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "candidates", singular: "Candidate", plural: "Candidates", fts: true, defaultSort: "last_name",
+        slug: "candidates", group: "Candidates", singular: "Candidate", plural: "Candidates", fts: true, defaultSort: "last_name",
         fields: [
           text("first_name", { label: "First name", searchable: true }), text("last_name", { label: "Last name", searchable: true }),
           email("email", { unique: true }), text("phone"), file("resume"), url("linkedin", { label: "LinkedIn" }),
@@ -1410,7 +1583,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ first_name: "Jordan", last_name: "Reed", email: "jordan@example.com", phone: "+1 555 0123", current_company: "Initech", current_title: "Backend Engineer", source: "referral" }],
       },
       {
-        slug: "applications", singular: "Application", plural: "Applications", ownerScoped: true, defaultSort: "-applied_at",
+        slug: "applications", group: "Candidates", singular: "Application", plural: "Applications", ownerScoped: true, defaultSort: "-applied_at",
         fields: [
           rel("job", "jobs"), rel("candidate", "candidates"), rel("stage", "stages"),
           select("status", [ch("active", C.blue), ch("rejected", C.red), ch("hired", C.green)], { default: "active" }),
@@ -1420,7 +1593,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ job: { ref: "jobs:0" }, candidate: { ref: "candidates:0" }, stage: { ref: "stages:1" }, status: "active", source: "referral", rating: 4, notes: "Strong background — schedule a call.", applied_at: ms("2026-06-15") }],
       },
       {
-        slug: "interviews", singular: "Interview", plural: "Interviews", defaultSort: "-scheduled_at",
+        slug: "interviews", group: "Hiring", singular: "Interview", plural: "Interviews", defaultSort: "-scheduled_at",
         fields: [
           rel("application", "applications"), rel("stage", "stages"), text("interviewer"),
           ts("scheduled_at", { indexed: true, label: "Scheduled at" }), int("duration_minutes", { default: 60, label: "Duration (min)", validation: { min: 0 } }),
@@ -1430,12 +1603,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ application: { ref: "applications:0" }, stage: { ref: "stages:1" }, interviewer: "Grace Hopper", scheduled_at: ms("2026-06-22T16:00:00Z"), status: "scheduled" }],
       },
       {
-        slug: "scorecards", singular: "Scorecard", plural: "Scorecards", defaultSort: "-created_at",
+        slug: "scorecards", group: "Hiring", singular: "Scorecard", plural: "Scorecards", defaultSort: "-created_at",
         fields: [rel("interview", "interviews"), rel("application", "applications"), text("interviewer"), select("recommendation", [ch("strong_yes", C.green, "Strong yes"), ch("yes", C.teal), ch("no", C.amber), ch("strong_no", C.red, "Strong no"), ch("no_decision", C.gray, "No decision")], { default: "no_decision" }), notes("notes")],
         samples: [{ interview: { ref: "interviews:0" }, application: { ref: "applications:0" }, interviewer: "Grace Hopper", recommendation: "yes", notes: "Solid systems-design answers." }],
       },
       {
-        slug: "offers", singular: "Offer", plural: "Offers", defaultSort: "-created_at",
+        slug: "offers", group: "Hiring", singular: "Offer", plural: "Offers", defaultSort: "-created_at",
         fields: [
           rel("application", "applications"), rel("candidate", "candidates"), rel("job", "jobs"),
           money("salary"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" }),
@@ -1451,12 +1624,13 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "marketplace",
     label: "Marketplace",
+    groups: ["Catalog", "Vendors", "Orders", "Customers"],
     description:
       "Amazon/Etsy-grade multi-vendor marketplace: vendors with commission & payouts, category tree, listings, buyers, orders split into per-vendor line items, and moderated reviews.",
     collections: [
-      { slug: "media", singular: "Media", plural: "Media", fields: [image("file"), text("alt", { label: "Alt text" })] },
+      { slug: "media", group: "Catalog", singular: "Media", plural: "Media", fields: [image("file"), text("alt", { label: "Alt text" })] },
       {
-        slug: "vendors", singular: "Vendor", plural: "Vendors", defaultSort: "name",
+        slug: "vendors", group: "Vendors", singular: "Vendor", plural: "Vendors", defaultSort: "name",
         fields: [
           text("name", { required: true }), slugField(), email("email", { unique: true }), notes("description"), image("logo"),
           select("status", [ch("pending", C.amber), ch("active", C.green), ch("suspended", C.red)], { default: "pending" }),
@@ -1467,12 +1641,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ name: "Acme Goods", slug: "acme-goods", email: "sales@acme.example", status: "active", commission_pct: 12, rating: 4.7 }],
       },
       {
-        slug: "categories", singular: "Category", plural: "Categories", defaultSort: "name",
+        slug: "categories", group: "Catalog", singular: "Category", plural: "Categories", defaultSort: "name",
         fields: [text("name", { required: true }), slugField(), parent("categories")],
         samples: [{ name: "Home", slug: "home" }, { name: "Outdoors", slug: "outdoors" }],
       },
       {
-        slug: "listings", singular: "Listing", plural: "Listings", versioned: true, vectorize: true, fts: true, defaultSort: "-created_at",
+        slug: "listings", group: "Catalog", singular: "Listing", plural: "Listings", versioned: true, vectorize: true, fts: true, defaultSort: "-created_at",
         fields: [
           text("title", { required: true, vectorize: true, searchable: true, group: "Listing" }),
           slugField("slug", { group: "Listing" }),
@@ -1494,27 +1668,27 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ title: "Camp Stove", slug: "camp-stove", description: "Compact gas stove.", vendor: { ref: "vendors:0" }, category: { ref: "categories:1" }, sku: "CAMP-STOVE-1", price: 45, currency: "USD", condition: "new", stock: 30, status: "active" }],
       },
       {
-        slug: "buyers", singular: "Buyer", plural: "Buyers", defaultSort: "name",
+        slug: "buyers", group: "Customers", singular: "Buyer", plural: "Buyers", defaultSort: "name",
         fields: [text("name", { required: true }), email("email", { unique: true }), text("phone")],
         samples: [{ name: "Sam Taylor", email: "sam@example.com" }],
       },
       {
-        slug: "orders", singular: "Order", plural: "Orders", defaultSort: "-placed_at",
+        slug: "orders", group: "Orders", singular: "Order", plural: "Orders", defaultSort: "-placed_at",
         fields: [text("number", { unique: true }), rel("buyer", "buyers"), select("status", [ch("pending", C.amber), ch("paid", C.green), ch("shipped", C.blue), ch("delivered", C.teal), ch("refunded", C.red)], { default: "pending" }), money("subtotal"), money("total"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }), ts("placed_at", { indexed: true, label: "Placed at" })],
         samples: [{ number: "M-1001", buyer: { ref: "buyers:0" }, status: "paid", subtotal: 45, total: 45, currency: "USD", placed_at: ms("2026-06-18") }],
       },
       {
-        slug: "order_items", singular: "Order item", plural: "Order items",
+        slug: "order_items", group: "Orders", singular: "Order item", plural: "Order items",
         fields: [rel("order", "orders"), rel("listing", "listings"), rel("vendor", "vendors"), int("qty", { default: 1, validation: { min: 1 } }), money("unit_price"), computedNum("line_total", "qty * unit_price", { label: "Line total" })],
         samples: [{ order: { ref: "orders:0" }, listing: { ref: "listings:0" }, vendor: { ref: "vendors:0" }, qty: 1, unit_price: 45 }],
       },
       {
-        slug: "payouts", singular: "Payout", plural: "Payouts", defaultSort: "-period_end",
+        slug: "payouts", group: "Vendors", singular: "Payout", plural: "Payouts", defaultSort: "-period_end",
         fields: [rel("vendor", "vendors"), money("amount"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }), select("status", [ch("pending", C.amber), ch("paid", C.green), ch("failed", C.red)], { default: "pending" }), date("period_start", { label: "Period start" }), date("period_end", { indexed: true, label: "Period end" })],
         samples: [{ vendor: { ref: "vendors:0" }, amount: 39.6, currency: "USD", status: "pending", period_start: ms("2026-06-01"), period_end: ms("2026-06-30") }],
       },
       {
-        slug: "reviews", singular: "Review", plural: "Reviews", ownerScoped: true, defaultSort: "-created_at",
+        slug: "reviews", group: "Customers", singular: "Review", plural: "Reviews", ownerScoped: true, defaultSort: "-created_at",
         fields: [rel("listing", "listings"), rel("buyer", "buyers"), rating("rating"), text("title"), notes("body"), bool("verified_purchase", { default: false, label: "Verified purchase" }), select("status", [ch("pending", C.amber), ch("approved", C.green), ch("rejected", C.red)], { default: "pending" })],
         samples: [{ listing: { ref: "listings:0" }, buyer: { ref: "buyers:0" }, rating: 5, title: "Great for trips", body: "Works great on trips.", verified_purchase: true, status: "approved" }],
       },
@@ -1524,11 +1698,12 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "nonprofit",
     label: "Nonprofit",
+    groups: ["Donors", "Fundraising", "Volunteering"],
     description:
       "Salesforce NPSP-grade fundraising: donors, campaigns, donations (one-time & recurring), pledges, grants, volunteers, events and volunteer shifts.",
     collections: [
       {
-        slug: "donors", singular: "Donor", plural: "Donors", defaultSort: "name",
+        slug: "donors", group: "Donors", singular: "Donor", plural: "Donors", defaultSort: "name",
         fields: [
           text("name", { required: true }), email("email", { unique: true }), text("phone"),
           select("type", [ch("individual", C.blue), ch("organization", C.purple), ch("foundation", C.teal)], { default: "individual" }),
@@ -1539,7 +1714,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ name: "Jordan Reed", email: "jordan@example.com", type: "individual", total_donated: 100 }, { name: "Globex Foundation", email: "giving@globex.example", type: "foundation", total_donated: 25000 }],
       },
       {
-        slug: "campaigns", singular: "Campaign", plural: "Campaigns", defaultSort: "-created_at",
+        slug: "campaigns", group: "Fundraising", singular: "Campaign", plural: "Campaigns", defaultSort: "-created_at",
         fields: [
           text("name", { required: true, group: "Campaign" }),
           slugField("slug", { group: "Campaign" }),
@@ -1554,7 +1729,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ name: "Winter Fund", slug: "winter-fund", description: "Support families this winter.", type: "emergency", goal_amount: 50000, raised_amount: 12500, status: "active", starts_at: ms("2026-11-01"), ends_at: ms("2026-12-31") }],
       },
       {
-        slug: "donations", singular: "Donation", plural: "Donations", ownerScoped: true, defaultSort: "-donated_at",
+        slug: "donations", group: "Fundraising", singular: "Donation", plural: "Donations", ownerScoped: true, defaultSort: "-donated_at",
         fields: [
           rel("donor", "donors"), rel("campaign", "campaigns"), money("amount", { required: true }),
           select("currency", ["USD", "EUR", "GBP"], { default: "USD" }),
@@ -1567,27 +1742,27 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ donor: { ref: "donors:0" }, campaign: { ref: "campaigns:0" }, amount: 100, currency: "USD", type: "one_time", payment_method: "card", status: "completed", donated_at: ms("2026-11-10") }],
       },
       {
-        slug: "pledges", singular: "Pledge", plural: "Pledges", defaultSort: "-created_at",
+        slug: "pledges", group: "Fundraising", singular: "Pledge", plural: "Pledges", defaultSort: "-created_at",
         fields: [rel("donor", "donors"), rel("campaign", "campaigns"), money("amount"), int("installments", { default: 1, validation: { min: 1 } }), select("status", [ch("active", C.green), ch("fulfilled", C.blue), ch("cancelled", C.gray)], { default: "active" }), date("start_date", { label: "Start date" })],
         samples: [{ donor: { ref: "donors:1" }, campaign: { ref: "campaigns:0" }, amount: 12000, installments: 12, status: "active", start_date: ms("2026-01-01") }],
       },
       {
-        slug: "grants", singular: "Grant", plural: "Grants", defaultSort: "-applied_at",
+        slug: "grants", group: "Fundraising", singular: "Grant", plural: "Grants", defaultSort: "-applied_at",
         fields: [text("name", { required: true }), text("funder"), money("amount"), select("status", [ch("researching", C.gray), ch("applied", C.blue), ch("awarded", C.green), ch("declined", C.red)], { default: "researching" }), date("applied_at", { indexed: true, label: "Applied at" }), date("decision_at", { label: "Decision date" })],
         samples: [{ name: "Community Resilience Grant", funder: "City Foundation", amount: 30000, status: "applied", applied_at: ms("2026-05-01") }],
       },
       {
-        slug: "volunteers", singular: "Volunteer", plural: "Volunteers", defaultSort: "name",
+        slug: "volunteers", group: "Volunteering", singular: "Volunteer", plural: "Volunteers", defaultSort: "name",
         fields: [text("name", { required: true }), email("email"), text("phone"), notes("skills"), select("status", [ch("active", C.green), ch("inactive", C.gray)], { default: "active" })],
         samples: [{ name: "Casey Morgan", email: "casey@example.com", skills: "Event setup, outreach.", status: "active" }],
       },
       {
-        slug: "events", singular: "Event", plural: "Events", defaultSort: "-starts_at",
+        slug: "events", group: "Volunteering", singular: "Event", plural: "Events", defaultSort: "-starts_at",
         fields: [text("title", { required: true }), slugField(), { name: "description", type: "longtext", interface: "richtext" }, ts("starts_at", { indexed: true, label: "Starts at" }), text("location"), int("capacity", { validation: { min: 0 } })],
         samples: [{ title: "Charity Gala", slug: "charity-gala", description: "Annual fundraising gala.", starts_at: ms("2026-12-05T18:00:00Z"), location: "Grand Hotel", capacity: 200 }],
       },
       {
-        slug: "volunteer_shifts", singular: "Shift", plural: "Shifts", defaultSort: "-created_at",
+        slug: "volunteer_shifts", group: "Volunteering", singular: "Shift", plural: "Shifts", defaultSort: "-created_at",
         fields: [rel("event", "events"), rel("volunteer", "volunteers"), text("role"), num("hours", { validation: { min: 0 } }), select("status", [ch("scheduled", C.blue), ch("completed", C.green), ch("no_show", C.red, "No show")], { default: "scheduled" })],
         samples: [{ event: { ref: "events:0" }, volunteer: { ref: "volunteers:0" }, role: "Registration desk", hours: 4, status: "scheduled" }],
       },
@@ -1597,11 +1772,12 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "forms",
     label: "Forms & surveys",
+    groups: ["Forms", "Results"],
     description:
       "Typeform-grade form builder: forms with a typed question bank (text, choice, rating, file…), required & conditional fields, complete/partial responses and per-question answers.",
     collections: [
       {
-        slug: "forms", singular: "Form", plural: "Forms", defaultSort: "-created_at",
+        slug: "forms", group: "Forms", singular: "Form", plural: "Forms", defaultSort: "-created_at",
         fields: [
           text("name", { required: true }), slugField(), notes("description"),
           select("status", [ch("draft", C.gray), ch("published", C.green), ch("closed", C.red)], { default: "draft" }),
@@ -1613,7 +1789,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [{ name: "Customer Feedback", slug: "customer-feedback", description: "Tell us how we did.", status: "published", submit_message: "Thanks for your feedback!" }],
       },
       {
-        slug: "questions", singular: "Question", plural: "Questions", defaultSort: "position",
+        slug: "questions", group: "Forms", singular: "Question", plural: "Questions", defaultSort: "position",
         fields: [
           rel("form", "forms"), text("label", { required: true }), text("help_text", { label: "Help text" }),
           select("type", [ch("short_text", C.blue, "Short text"), ch("long_text", C.teal, "Long text"), ch("email", C.purple), ch("number", C.gray), ch("single_select", C.amber, "Single choice"), ch("multi_select", C.amber, "Multiple choice"), ch("rating", C.green), ch("date", C.slate), ch("file", C.gray), ch("yes_no", C.blue, "Yes / no")], { default: "short_text" }),
@@ -1626,12 +1802,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         ],
       },
       {
-        slug: "responses", singular: "Response", plural: "Responses", defaultSort: "-submitted_at",
+        slug: "responses", group: "Results", singular: "Response", plural: "Responses", defaultSort: "-submitted_at",
         fields: [rel("form", "forms"), email("email"), select("status", [ch("complete", C.green), ch("partial", C.amber)], { default: "complete" }), ts("submitted_at", { indexed: true, label: "Submitted at" })],
         samples: [{ form: { ref: "forms:0" }, email: "jordan@example.com", status: "complete", submitted_at: ms("2026-06-20") }],
       },
       {
-        slug: "answers", singular: "Answer", plural: "Answers",
+        slug: "answers", group: "Results", singular: "Answer", plural: "Answers",
         fields: [rel("response", "responses"), rel("question", "questions"), notes("value")],
         samples: [
           { response: { ref: "responses:0" }, question: { ref: "questions:0" }, value: "5" },
@@ -1681,9 +1857,17 @@ export const templateSummaries = () =>
     category: CATEGORY[t.id] ?? "Other",
     recommended: RECOMMENDED.has(t.id),
     sampleRows: t.collections.reduce((n, c) => n + (c.samples?.length ?? 0), 0),
+    /** Admin group headers seeded by this template, in order. */
+    groups: t.groups ?? [],
+    /** Bundled role names seeded on apply. */
+    roles: (t.roles ?? []).map((r) => r.name),
+    /** Bundled dashboard names seeded on apply. */
+    dashboards: (t.dashboards ?? []).map((d) => d.name),
     collections: t.collections.map((c) => ({
       slug: c.slug,
       label: c.plural ?? c.slug,
       fieldCount: c.fields.length,
+      /** Admin group this collection lands under (null = ungrouped). */
+      group: c.group ?? null,
     })),
   }));

@@ -21,6 +21,7 @@ import {
 import { flowQueryFields, flowMutationFields } from "./flows";
 import { messagingMutationFields } from "./messaging";
 import { dashboardQueryFields, dashboardMutationFields } from "./dashboards";
+import { backupQueryFields, backupMutationFields } from "./backups";
 import { schemaVersionQueryFields, schemaVersionMutationFields } from "./schema-versions";
 import { migrateQueryFields, migrateMutationFields } from "./migrate";
 import { agentQueryFields, agentMutationFields } from "./agents";
@@ -60,6 +61,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           },
           ...flowQueryFields,
           ...dashboardQueryFields,
+          ...backupQueryFields,
           ...schemaVersionQueryFields,
           ...migrateQueryFields,
           ...agentQueryFields,
@@ -72,6 +74,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
         fields: {
           ...flowMutationFields,
           ...dashboardMutationFields,
+          ...backupMutationFields,
           ...schemaVersionMutationFields,
           ...migrateMutationFields,
           ...agentMutationFields,
@@ -85,6 +88,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
   const queryFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
     ...flowQueryFields,
     ...dashboardQueryFields,
+    ...backupQueryFields,
     ...schemaVersionQueryFields,
     ...migrateQueryFields,
     ...agentQueryFields,
@@ -94,6 +98,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
   const mutationFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
     ...flowMutationFields,
     ...dashboardMutationFields,
+    ...backupMutationFields,
     ...schemaVersionMutationFields,
     ...migrateMutationFields,
     ...agentMutationFields,

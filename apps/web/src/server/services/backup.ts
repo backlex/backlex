@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { and, desc, eq, isNull } from "drizzle-orm";
+import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { applyCollection, type FieldDef } from "@backlex/db";
@@ -563,6 +564,92 @@ export const saveBackupConfig = async (
     });
   }
   return cfg;
+};
+
+// ── Shared surface helpers ───────────────────────────────────────────────────
+// REST (routes/db-admin.ts), GraphQL (services/graphql/backups.ts) and — via
+// the REST routes — MCP + SDK all funnel through these, so tenant scoping and
+// the tracking-row lifecycle live in exactly one place.
+
+const backupsTable = (dialect: "pg" | "sqlite") =>
+  dialect === "pg" ? pg.schema.backups : sqlite.schema.backups;
+
+/** Backup tracking rows for a workspace, newest first (capped at 100). */
+export const listBackups = async (
+  ctx: Ctx,
+  tenantId: string | null,
+): Promise<Record<string, unknown>[]> => {
+  const t = backupsTable(ctx.dialect);
+  return (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(eq(t.tenantId, tenantId ?? ""))
+    .orderBy(desc(t.createdAt))
+    .limit(100)) as Record<string, unknown>[];
+};
+
+/**
+ * Insert the tracking row and run the dump synchronously (small enough for
+ * admin traffic — see the REST handler's note), then return the refreshed row
+ * so callers can render immediate `done`/`failed` state without polling.
+ */
+export const startManualBackup = async (
+  ctx: Ctx,
+  options: { tenantId: string | null; userId: string | null; label?: string | null },
+): Promise<Record<string, unknown>> => {
+  const t = backupsTable(ctx.dialect);
+  const id = crypto.randomUUID();
+  const stamp = new Date().toISOString().replace(/[:.TZ-]/g, "").slice(0, 14);
+  const storageKey = `backups/${options.tenantId ?? "global"}/${stamp}_${id}.jsonl`;
+  await (ctx.db as any).insert(t).values({
+    id,
+    tenantId: options.tenantId,
+    kind: "manual",
+    label: options.label ?? null,
+    storageKey,
+    size: 0,
+    tableCount: 0,
+    status: "queued",
+    createdBy: options.userId,
+  });
+  await recordAndRunBackup(ctx, {
+    id,
+    tenantId: options.tenantId,
+    storageKey,
+    userId: options.userId,
+    label: options.label ?? null,
+  });
+  const refreshed = await (ctx.db as any).select().from(t).where(eq(t.id, id)).limit(1);
+  return (refreshed[0] ?? { id, storageKey, status: "running" }) as Record<string, unknown>;
+};
+
+/** Fetch one tracking row, enforcing workspace scoping. */
+export const getBackupScoped = async (
+  ctx: Ctx,
+  tenantId: string | null,
+  id: string,
+): Promise<Record<string, unknown>> => {
+  const t = backupsTable(ctx.dialect);
+  const rows = await (ctx.db as any).select().from(t).where(eq(t.id, id)).limit(1);
+  const row = rows[0];
+  if (!row) throw new AppError("NOT_FOUND", "Backup not found");
+  if (tenantId && row.tenantId && row.tenantId !== tenantId)
+    throw new AppError("FORBIDDEN", "Backup belongs to a different workspace");
+  return row as Record<string, unknown>;
+};
+
+/** Additive restore of a stored backup into the active workspace. Confirm
+ *  gating stays surface-specific (REST header / GraphQL arg / MCP arg). */
+export const restoreBackupById = async (
+  ctx: Ctx,
+  tenantId: string | null,
+  id: string,
+): Promise<RestoreResult> => {
+  const row = await getBackupScoped(ctx, tenantId, id);
+  return restoreBackup(ctx, {
+    storageKey: row.storageKey as string,
+    tenantId: tenantId ?? null,
+  });
 };
 
 const toMs = (v: unknown): number => {

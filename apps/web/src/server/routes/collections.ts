@@ -308,6 +308,24 @@ const CollectionInput = z.object({
   ownerIdColumn: z.string().min(1).max(120).nullable().optional(),
 });
 
+// PATCH must NOT reuse CollectionInput's create-time defaults: `.default()`
+// survives `.partial()` in zod, so a partial update that omits a flag would
+// parse it to its default and the `!== undefined` guards below would then
+// "apply" it — e.g. a bare rename PATCH would silently turn `versioned` /
+// `softDelete` / `fts` back off (and `tenantScoped` back on). Re-declare the
+// defaulted flags as plain optionals.
+const CollectionPatch = CollectionInput.partial().extend({
+  ownerScoped: z.boolean().optional(),
+  tenantScoped: z.boolean().optional(),
+  versioned: z.boolean().optional(),
+  softDelete: z.boolean().optional(),
+  singleton: z.boolean().optional(),
+  auditReads: z.boolean().optional(),
+  vectorize: z.boolean().optional(),
+  fts: z.boolean().optional(),
+  adopted: z.boolean().optional(),
+});
+
 /** Full-layout write for the Collections page "Edit layout" mode: every
  *  collection's `{group, sortOrder}` plus the ordered group-header list, in
  *  one request with a single cache invalidation (per-row PATCH would also
@@ -905,7 +923,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
   })
   .patch("/:slug", ...DDL_GATE, async (c) => {
     const slug = c.req.param("slug");
-    const body = CollectionInput.partial().parse(await c.req.json());
+    const body = CollectionPatch.parse(await c.req.json());
     if (body.fields) {
       try {
         validateFields(body.fields);

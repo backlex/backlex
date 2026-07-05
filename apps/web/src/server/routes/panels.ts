@@ -15,27 +15,51 @@ import {
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.savedPanels : sqlite.schema.savedPanels;
 
-const PanelInput = z
-  .object({
-    name: z.string().min(1).max(80),
-    description: z.string().max(500).nullable().optional(),
-    kind: z.enum(["sql", "items-aggregate", "static"]).default("sql"),
-    sql: z.string().nullable().optional(),
-    viz: z.enum(["sparkline", "bars", "donut", "counter", "table"]).default("sparkline"),
-    config: z.record(z.string(), z.unknown()).nullable().optional(),
-    layout: z
-      .object({
-        x: z.number().int(),
-        y: z.number().int(),
-        w: z.number().int().positive(),
-        h: z.number().int().positive(),
-      })
-      .nullable()
-      .optional(),
-    /** Optional parent dashboard. NULL = loose panel on the default grid. */
-    dashboardId: z.string().nullable().optional(),
-  })
-  .openapi("PanelInput");
+const PANEL_KINDS = ["sql", "items-aggregate", "static"] as const;
+const PANEL_VIZES = [
+  "sparkline",
+  "line",
+  "area",
+  "bars",
+  "stacked-bars",
+  "donut",
+  "pie",
+  "radar",
+  "radial",
+  "counter",
+  "table",
+] as const;
+
+const PanelBase = z.object({
+  name: z.string().min(1).max(80),
+  description: z.string().max(500).nullable().optional(),
+  kind: z.enum(PANEL_KINDS),
+  sql: z.string().nullable().optional(),
+  viz: z.enum(PANEL_VIZES),
+  config: z.record(z.string(), z.unknown()).nullable().optional(),
+  layout: z
+    .object({
+      x: z.number().int(),
+      y: z.number().int(),
+      w: z.number().int().positive(),
+      h: z.number().int().positive(),
+    })
+    .nullable()
+    .optional(),
+  /** Optional parent dashboard. NULL = loose panel on the default grid. */
+  dashboardId: z.string().nullable().optional(),
+});
+
+const PanelInput = PanelBase.extend({
+  kind: z.enum(PANEL_KINDS).default("sql"),
+  viz: z.enum(PANEL_VIZES).default("sparkline"),
+}).openapi("PanelInput");
+
+// PATCH must NOT reuse PanelInput: `.default()` fields survive `.partial()`,
+// so an update that omits `viz`/`kind` would silently reset them to the
+// create-time defaults (that exact data-loss happened — a `{dashboardId}`
+// move rewrote every panel's viz back to "sparkline").
+const PanelPatch = PanelBase.partial().openapi("PanelPatchInput");
 
 const PanelRow = z
   .object({
@@ -210,7 +234,7 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>()
         params: z.object({ id: z.string() }),
         body: {
           required: true,
-          content: { "application/json": { schema: PanelInput.partial() } },
+          content: { "application/json": { schema: PanelPatch } },
         },
       },
       responses: {

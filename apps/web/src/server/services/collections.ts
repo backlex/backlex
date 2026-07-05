@@ -29,6 +29,12 @@ export interface ManagedCollectionDef {
   group?: string | null;
   /** Manual position within the group. Null sorts after ordered rows. */
   sortOrder?: number | null;
+  /** Single-row collection (settings-style). Metadata-only flag. */
+  singleton?: boolean;
+  /** Adds a nullable `deleted_at` column; deletes become soft. */
+  softDelete?: boolean;
+  /** Write access-audit rows on reads of this collection. Metadata-only. */
+  auditReads?: boolean;
 }
 
 /**
@@ -82,6 +88,9 @@ export async function createManagedCollection(
     defaultSort: def.defaultSort ?? null,
     group: def.group ?? null,
     sortOrder: def.sortOrder ?? null,
+    singleton: def.singleton ?? false,
+    softDelete: def.softDelete ?? false,
+    auditReads: def.auditReads ?? false,
     adopted: false,
     pkColumn: "id",
     hasCreatedAt: true,
@@ -95,6 +104,7 @@ export async function createManagedCollection(
     tenantScoped,
     versioned: def.versioned ?? false,
     fts: def.fts ?? false,
+    softDelete: def.softDelete ?? false,
     adopted: false,
   });
 

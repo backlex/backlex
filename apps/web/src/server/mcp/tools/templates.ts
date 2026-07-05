@@ -101,8 +101,9 @@ export const extractTemplate: McpTool = {
   kind: "read",
   description:
     "Export the workspace's managed collections as a reusable schema template " +
-    "(collections in dependency order + saved admin group headers; no sample " +
-    "data). Optionally narrow with `collections`. Feed the result to " +
+    "(collections in dependency order + saved admin group headers). Optionally " +
+    "narrow with `collections`, or set `samples` (1-50) to also export the " +
+    "first N rows per collection as seed data. Feed the result to " +
     "`templates.apply` on another workspace (admin).",
   inputSchema: {
     type: "object",
@@ -112,6 +113,12 @@ export const extractTemplate: McpTool = {
         items: { type: "string" },
         description: "Only export these collection slugs (default: all managed collections).",
       },
+      samples: {
+        type: "number",
+        minimum: 1,
+        maximum: 50,
+        description: "Also export the first N rows per collection as template samples.",
+      },
     },
     additionalProperties: false,
   },
@@ -119,7 +126,10 @@ export const extractTemplate: McpTool = {
     const slugs = Array.isArray(args.collections)
       ? (args.collections as unknown[]).map(String).filter(Boolean)
       : [];
-    const qs = slugs.length ? `?collections=${encodeURIComponent(slugs.join(","))}` : "";
+    const params = new URLSearchParams();
+    if (slugs.length) params.set("collections", slugs.join(","));
+    if (typeof args.samples === "number") params.set("samples", String(args.samples));
+    const qs = params.size ? `?${params.toString()}` : "";
     const res = await ctx.fetchInternal(`/api/admin/templates/extract${qs}`);
     return passthrough(res, "templates.extract");
   },

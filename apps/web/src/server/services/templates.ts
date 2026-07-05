@@ -18,7 +18,12 @@ import { createManagedCollection } from "./collections";
 import { invalidateTenantCollections } from "./collections-cache";
 import { invalidateTenantPermissions } from "./permissions-cache";
 import { indexFts, isSearchable } from "./fts";
-import { deleteVectors } from "./vectorize";
+import {
+  deleteVectors,
+  embedAndUpsertBatch,
+  isVectorizable,
+  type VectorizeMeta,
+} from "./vectorize";
 import { serialize, nowFor } from "./items-helpers";
 import { ensureSystemRoles, type DbCtx } from "./seed";
 
@@ -83,6 +88,24 @@ const exec = async (ctx: DbCtx, query: unknown): Promise<void> => {
   } else {
     await (ctx.db as never as { run: Function }).run(query);
   }
+};
+
+/** Read raw rows from a physical table (sample extraction). */
+const queryRows = async (
+  ctx: DbCtx,
+  query: unknown,
+): Promise<Record<string, unknown>[]> => {
+  if (ctx.dialect === "pg") {
+    const r = await (ctx.db as never as { execute: Function }).execute(query);
+    if (Array.isArray(r)) return r as Record<string, unknown>[];
+    if (r && typeof r === "object" && "rows" in (r as object))
+      return (r as { rows: Record<string, unknown>[] }).rows;
+    return r as Record<string, unknown>[];
+  }
+  return (await (ctx.db as never as { all: Function }).all(query)) as Record<
+    string,
+    unknown
+  >[];
 };
 
 const isStringArray = (v: unknown): v is string[] =>
@@ -186,12 +209,13 @@ async function seedSamples(
   tenantId: string,
   col: TemplateCollection,
   seeded: SeededIds,
-): Promise<string[]> {
+): Promise<{ ids: string[]; rows: Array<{ id: string; row: Record<string, unknown> }> }> {
   const rows = col.samples ?? [];
-  if (rows.length === 0) return [];
+  if (rows.length === 0) return { ids: [], rows: [] };
   const physicalTable = derivePhysicalTable(tenantId, col.slug);
   const fieldByName = new Map(col.fields.map((f) => [f.name, f]));
   const ids: string[] = [];
+  const seededRows: Array<{ id: string; row: Record<string, unknown> }> = [];
   const ftsTarget = { fts: !!col.fts, physicalTable, pkColumn: "id", fields: col.fields };
   const searchable = isSearchable(ftsTarget);
 
@@ -249,8 +273,9 @@ async function seedSamples(
     // hiccup must not abort the apply.
     if (searchable) await indexFts(ctx as unknown as Ctx, ftsTarget, id, raw);
     ids.push(id);
+    seededRows.push({ id, row: raw });
   }
-  return ids;
+  return { ids, rows: seededRows };
 }
 
 /** Seed bundled roles + their permission grants. A role whose name already
@@ -410,10 +435,34 @@ export async function applyTemplateDefinition(
       // Only seed freshly-created collections — re-applying over an existing
       // workspace must never duplicate sample rows.
       if (res.created && col.samples?.length) {
-        const ids = await seedSamples(ctx, tenantId, col, seededIds);
-        seededIds[col.slug] = ids;
-        manifest[col.slug] = ids;
-        seeded += ids.length;
+        const out = await seedSamples(ctx, tenantId, col, seededIds);
+        seededIds[col.slug] = out.ids;
+        manifest[col.slug] = out.ids;
+        seeded += out.ids.length;
+        // Vector backfill for the seeded rows — only when the caller handed us
+        // a full Ctx (REST/GraphQL apply). The SEED_TEMPLATE auto-apply during
+        // context assembly passes a bare DbCtx and skips it (rows remain
+        // backfillable later via POST /collections/:slug/vectorize). Mirrors
+        // the inline FTS backfill: best-effort, never aborts the apply.
+        const rich = ctx as DbCtx & Partial<Pick<Ctx, "embedding" | "vector" | "env">>;
+        if (rich.embedding && rich.vector && rich.env && out.rows.length) {
+          const meta: VectorizeMeta = {
+            slug: col.slug,
+            vectorize: !!col.vectorize,
+            vectorizeModel: col.vectorizeModel ?? null,
+            fields: col.fields,
+          };
+          if (isVectorizable(meta, rich.env)) {
+            try {
+              await embedAndUpsertBatch(rich as Ctx, meta, tenantId, out.rows);
+            } catch (e) {
+              console.error(
+                `[templates] vector backfill failed for ${col.slug}:`,
+                (e as Error).message,
+              );
+            }
+          }
+        }
       }
     }
   } finally {
@@ -627,6 +676,9 @@ interface ExtractRow {
   defaultSort: string | null;
   group: string | null;
   sortOrder: number | null;
+  singleton: boolean | number;
+  softDelete: boolean | number;
+  auditReads: boolean | number;
   fields: FieldDef[];
 }
 
@@ -646,12 +698,15 @@ const relationDeps = (row: ExtractRow): string[] => {
  * Export the workspace's managed collections as a reusable schema template:
  * collection defs (fields, flags, admin group) + the saved group-header order.
  * Collections are emitted in dependency order (relation targets first) so the
- * result applies cleanly into an empty workspace. Sample data is not exported.
+ * result applies cleanly into an empty workspace. Sample data is opt-in via
+ * `sampleRows` (first N rows per collection, capped at the apply-side's 50):
+ * hash/file/computed fields are skipped, relations become `{ ref }` links when
+ * the target row made the same extract, and everything else round-trips.
  */
 export async function extractTemplate(
   ctx: DbCtx,
   tenantId: string,
-  opts: { collections?: string[] } = {},
+  opts: { collections?: string[]; sampleRows?: number } = {},
 ): Promise<ExtractedTemplate> {
   const t = collectionsTable(ctx.dialect);
   const all = (await (ctx.db as never as { select: Function })
@@ -669,6 +724,9 @@ export async function extractTemplate(
       defaultSort: t.defaultSort,
       group: t.group,
       sortOrder: t.sortOrder,
+      singleton: t.singleton,
+      softDelete: t.softDelete,
+      auditReads: t.auditReads,
       fields: t.fields,
     })
     .from(t)
@@ -712,6 +770,82 @@ export async function extractTemplate(
     pending = pending.filter((r) => !placed.has(r.slug));
   }
 
+  // Opt-in sample rows. Walk in dependency order so relation values can be
+  // rewritten as `{ ref: "target:index" }` links against rows that made the
+  // same extract; values pointing outside the window are dropped (a dangling
+  // concrete id would be meaningless in the workspace the template lands in).
+  const samplesBySlug = new Map<string, SampleRow[]>();
+  if (opts.sampleRows && opts.sampleRows > 0) {
+    const cap = Math.min(50, Math.floor(opts.sampleRows));
+    const idIndex = new Map<string, Map<string, number>>();
+    for (const r of ordered) {
+      const physicalTable = derivePhysicalTable(tenantId, r.slug);
+      const fields = (r.fields ?? []) as FieldDef[];
+      const deletedWhere = r.softDelete
+        ? sql` WHERE ${sql.identifier("deleted_at")} IS NULL`
+        : sql``;
+      let rows: Record<string, unknown>[];
+      try {
+        rows = await queryRows(
+          ctx,
+          sql`SELECT * FROM ${sql.identifier(physicalTable)}${deletedWhere} ORDER BY ${sql.identifier("created_at")} ASC LIMIT ${cap}`,
+        );
+      } catch {
+        continue; // physical table missing/unreadable — emit schema only
+      }
+      const ids = new Map<string, number>();
+      rows.forEach((row, i) => ids.set(String(row.id), i));
+      idIndex.set(r.slug, ids);
+      const samples: SampleRow[] = [];
+      for (const row of rows) {
+        const sample: SampleRow = {};
+        for (const f of fields) {
+          // Hash samples would seed plaintext where the API stores a digest;
+          // file values are storage keys that don't exist in the target
+          // workspace; computed columns re-derive on write.
+          if (f.computed || f.type === "hash" || f.type === "file") continue;
+          let v = row[f.name];
+          if (v == null) continue;
+          if (f.type === "relation") {
+            const idx = f.to ? idIndex.get(f.to)?.get(String(v)) : undefined;
+            if (f.to && idx !== undefined) sample[f.name] = { ref: `${f.to}:${idx}` };
+            continue;
+          }
+          if (f.type === "relation_many" || f.type === "json" || f.type === "i18n_text") {
+            // sqlite stores JSON-ish columns as text — decode before emitting.
+            if (typeof v === "string") {
+              try {
+                v = JSON.parse(v);
+              } catch {
+                /* keep the raw string */
+              }
+            }
+            if (f.type === "relation_many") {
+              const arr = Array.isArray(v) ? v : [];
+              const refs = arr
+                .map((x) => {
+                  const idx = f.to ? idIndex.get(f.to)?.get(String(x)) : undefined;
+                  return f.to && idx !== undefined ? { ref: `${f.to}:${idx}` } : null;
+                })
+                .filter((x): x is { ref: string } => x != null);
+              if (refs.length) sample[f.name] = refs;
+              continue;
+            }
+            sample[f.name] = v;
+            continue;
+          }
+          if (f.type === "boolean") {
+            sample[f.name] = Boolean(v);
+            continue;
+          }
+          sample[f.name] = v instanceof Date ? v.toISOString() : v;
+        }
+        samples.push(sample);
+      }
+      if (samples.length) samplesBySlug.set(r.slug, samples);
+    }
+  }
+
   const savedGroups = await readSetting(ctx, tenantId, "collectionGroups");
   const usedGroups = new Set(ordered.map((r) => r.group).filter((g): g is string => !!g));
   const groups = (isStringArray(savedGroups) ? savedGroups : []).filter((g) =>
@@ -737,7 +871,11 @@ export async function extractTemplate(
       ...(r.defaultSort ? { defaultSort: r.defaultSort } : {}),
       ...(r.group ? { group: r.group } : {}),
       ...(r.sortOrder != null ? { sortOrder: r.sortOrder } : {}),
+      ...(r.singleton ? { singleton: true } : {}),
+      ...(r.softDelete ? { softDelete: true } : {}),
+      ...(r.auditReads ? { auditReads: true } : {}),
       fields: r.fields ?? [],
+      ...(samplesBySlug.has(r.slug) ? { samples: samplesBySlug.get(r.slug) } : {}),
     })),
   };
 }
@@ -769,6 +907,9 @@ export const CustomTemplateInput = z.object({
         defaultSort: z.string().max(120).optional(),
         group: z.string().min(1).max(60).optional(),
         sortOrder: z.number().int().min(0).max(100_000).optional(),
+        singleton: z.boolean().optional(),
+        softDelete: z.boolean().optional(),
+        auditReads: z.boolean().optional(),
         fields: z.array(z.record(z.string(), z.unknown())).min(1).max(500),
         samples: z.array(z.record(z.string(), z.unknown())).max(50).optional(),
       }),

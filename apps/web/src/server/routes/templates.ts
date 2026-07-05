@@ -53,12 +53,11 @@ export const templatesRoutes = new Hono<AppBindings>()
   })
   .post("/apply", requireUser, requirePlatformMw, requireAdminMw, async (c) => {
     const body = ApplyInput.parse(await c.req.json());
-    const { db, dialect } = c.get("ctx");
     const tenantId = requireTenant(c);
     const result =
       "templateId" in body
-        ? await applyTemplate({ db, dialect }, tenantId, body.templateId)
-        : await applyTemplateDefinition({ db, dialect }, tenantId, parseCustomTemplate(body.template));
+        ? await applyTemplate(c.get("ctx"), tenantId, body.templateId)
+        : await applyTemplateDefinition(c.get("ctx"), tenantId, parseCustomTemplate(body.template));
     // applyTemplateDefinition already invalidated the per-isolate collection
     // caches; nothing extra needed here.
     await logActivity(c, {
@@ -96,6 +95,19 @@ export const templatesRoutes = new Hono<AppBindings>()
     const collections = filter
       ? filter.split(",").map((s) => s.trim()).filter(Boolean)
       : undefined;
-    const template = await extractTemplate({ db, dialect }, tenantId, { collections });
+    // Opt-in sample rows (1-50; matches the apply-side per-collection cap).
+    const rawSamples = c.req.query("samples");
+    let sampleRows: number | undefined;
+    if (rawSamples !== undefined) {
+      const n = Number(rawSamples);
+      if (!Number.isInteger(n) || n < 1 || n > 50) {
+        throw new AppError("VALIDATION", "samples must be an integer between 1 and 50");
+      }
+      sampleRows = n;
+    }
+    const template = await extractTemplate({ db, dialect }, tenantId, {
+      collections,
+      sampleRows,
+    });
     return c.json({ data: template });
   });

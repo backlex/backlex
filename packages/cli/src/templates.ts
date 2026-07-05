@@ -138,7 +138,11 @@ export const runTemplates = async (args: string[]): Promise<void> => {
       }
       case "extract": {
         const collections = flag(rest, "--collections");
-        const qs = collections ? `?collections=${encodeURIComponent(collections)}` : "";
+        const samples = flag(rest, "--samples");
+        const params = new URLSearchParams();
+        if (collections) params.set("collections", collections);
+        if (samples) params.set("samples", samples);
+        const qs = params.size ? `?${params.toString()}` : "";
         const { data } = await client.request<{ data: unknown }>("GET", `${BASE}/extract${qs}`);
         // Always JSON — the output IS the template file.
         printJson(data);

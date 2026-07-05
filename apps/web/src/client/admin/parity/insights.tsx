@@ -101,6 +101,26 @@ function DashboardGrid({
         if (cx >= COLS) { cx = 0; cy += 4; }
       }
     }
+    // Vertical compaction — tiles sit at their absolute saved `y`, so deleted
+    // or moved panels used to leave permanent empty bands in the grid. Scan
+    // top-to-bottom and pull every tile up until it rests on the lowest
+    // x-overlapping tile above it (react-grid-layout's "vertical compact").
+    // x/w/h stay untouched; saved layouts are not rewritten — this is a
+    // display-time collapse, recomputed whenever panels/layouts change.
+    const ids = Object.keys(out).sort(
+      (a, b) => out[a]!.y - out[b]!.y || out[a]!.x - out[b]!.x,
+    );
+    const placed: { x: number; y: number; w: number; h: number }[] = [];
+    for (const id of ids) {
+      const l = out[id]!;
+      let y = 0;
+      for (const q of placed) {
+        if (l.x < q.x + q.w && q.x < l.x + l.w) y = Math.max(y, q.y + q.h);
+      }
+      const next = { ...l, y };
+      out[id] = next;
+      placed.push(next);
+    }
     return out;
   }, [panels, layouts]);
 
@@ -1292,7 +1312,10 @@ function Panel({
 }) {
   const { t } = useLingui();
   return (
-    <Card className="gap-2 p-4">
+    // h-full: inside the dashboard grid the card must fill its (row-span)
+    // cell — a natural-height card leaves the rest of the tile as a dead
+    // transparent band, which reads as random gaps between panels.
+    <Card className="h-full min-h-0 gap-2 p-4">
       <div className="flex items-baseline gap-2">
         <span className="text-[13px] font-medium">{title}</span>
         <span className="flex-1 text-[11.5px] text-muted-foreground">{sub}</span>

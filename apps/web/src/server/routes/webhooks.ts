@@ -1,18 +1,20 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
-import { and, eq } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import * as pg from "@backlex/db/pg";
-import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { fireDelivery, listDeliveries, retryDelivery } from "../services/webhooks";
+import {
+  createWebhook,
+  deleteWebhook,
+  listDeliveries,
+  listWebhooks,
+  retryDelivery,
+  testWebhook,
+  updateWebhook,
+} from "../services/webhooks";
 import { logActivity } from "../services/activity";
 import { parsePagination } from "../lib/pagination";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-
-const tableFor = (dialect: "pg" | "sqlite") =>
-  dialect === "pg" ? pg.schema.webhooks : sqlite.schema.webhooks;
 
 const WebhookInput = z
   .object({
@@ -106,8 +108,7 @@ export const webhooksRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c);
-      const t = tableFor(ctx.dialect);
-      const rows = await (ctx.db as any).select().from(t).where(eq(t.tenantId, tenantId));
+      const rows = await listWebhooks(ctx, tenantId);
       return c.json({ data: rows });
     },
   )
@@ -137,23 +138,11 @@ export const webhooksRoutes = new OpenAPIHono<AppBindings>()
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c);
       const body = c.req.valid("json");
-      const t = tableFor(ctx.dialect);
-      const id = crypto.randomUUID();
-      await (ctx.db as any).insert(t).values({
-        id,
-        tenantId,
-        name: body.name,
-        url: body.url,
-        events: body.events,
-        headers: body.headers ?? null,
-        secret: body.secret ?? null,
-        active: body.active ?? true,
-      });
-      const created = { id, ...body, active: body.active ?? true };
+      const created = await createWebhook(ctx, tenantId, body);
       await logActivity(c, {
         action: "create",
         collection: "system_webhooks",
-        itemId: id,
+        itemId: created.id as string,
         payload: { name: body.name, url: body.url },
         response: { data: created },
       });
@@ -256,24 +245,7 @@ export const webhooksRoutes = new OpenAPIHono<AppBindings>()
       const tenantId = requireTenant(c);
       const body = c.req.valid("json");
       const { id } = c.req.valid("param");
-      const t = tableFor(ctx.dialect);
-      await (ctx.db as any)
-        .update(t)
-        .set({
-          ...(body.name !== undefined ? { name: body.name } : {}),
-          ...(body.url !== undefined ? { url: body.url } : {}),
-          ...(body.events !== undefined ? { events: body.events } : {}),
-          ...(body.headers !== undefined ? { headers: body.headers } : {}),
-          ...(body.secret !== undefined ? { secret: body.secret } : {}),
-          ...(body.active !== undefined ? { active: body.active } : {}),
-          // Re-enabling (manual resume) clears the breaker so the hook gets a
-          // clean slate instead of tripping again on the next single failure.
-          ...(body.active === true
-            ? { consecutiveFailures: 0, lastFailureAt: null, disabledReason: null }
-            : {}),
-          updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
-        })
-        .where(and(eq(t.id, id), eq(t.tenantId, tenantId)));
+      await updateWebhook(ctx, tenantId, id, body);
       await logActivity(c, {
         action: "update",
         collection: "system_webhooks",
@@ -306,10 +278,7 @@ export const webhooksRoutes = new OpenAPIHono<AppBindings>()
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c);
       const { id } = c.req.valid("param");
-      const t = tableFor(ctx.dialect);
-      await (ctx.db as any)
-        .delete(t)
-        .where(and(eq(t.id, id), eq(t.tenantId, tenantId)));
+      await deleteWebhook(ctx, tenantId, id);
       await logActivity(c, {
         action: "delete",
         collection: "system_webhooks",
@@ -350,30 +319,11 @@ export const webhooksRoutes = new OpenAPIHono<AppBindings>()
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c);
       const { id } = c.req.valid("param");
-      const t = tableFor(ctx.dialect);
-      const hook = (await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(and(eq(t.id, id), eq(t.tenantId, tenantId)))
-        .limit(1)) as {
-          id: string;
-          name: string;
-          url: string;
-          secret: string | null;
-          events: string[];
-          headers: Record<string, string> | null;
-        }[];
-      const h = hook[0];
-      if (!h) throw new AppError("NOT_FOUND", "Webhook not found");
-      const payload = {
-        type: "webhook.test",
-        data: { hookId: h.id, ts: new Date().toISOString() },
-      };
-      const r = await fireDelivery(ctx, h, "webhook.test", payload);
+      const r = await testWebhook(ctx, tenantId, id);
       await logActivity(c, {
         action: "test",
         collection: "system_webhooks",
-        itemId: h.id,
+        itemId: id,
         payload: { status: r?.status, error: r?.error },
         response: { data: r },
       });

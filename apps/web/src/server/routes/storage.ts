@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { and, count, desc, eq, gte, inArray, isNull, lt, sql, type SQL } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, type SQL } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
@@ -36,11 +36,16 @@ import {
   SignInput,
   SignResponse,
   tags,
-  type FileRow,
 } from "../services/storage/schemas";
 import { serveObject } from "../services/storage/serve";
+import {
+  deleteFileScoped,
+  listFilesScoped,
+  patchFileScoped,
+} from "../services/storage/files";
+import { FILES_COLLECTION } from "../services/storage/constants";
 
-export const FILES_COLLECTION = "system_files";
+export { FILES_COLLECTION };
 
 const filesCollection = () => FILES_COLLECTION;
 
@@ -95,75 +100,17 @@ export const storageRoutes = new OpenAPIHono<AppBindings>()
       const auth = c.get("auth");
       const perm = c.get("permission");
       const tenantId = requireTenantId(auth);
-      const t = filesTable(ctx.dialect);
-      const prefix = c.req.query("prefix") ?? "";
-      const physicalPrefix = physicalKey(tenantId, prefix);
-      const folderId = c.req.query("folderId");
-      const search = (c.req.query("search") ?? "").trim();
       const { limit, offset } = parsePagination(c);
-
-      const conds: SQL[] = [eq(t.tenantId, tenantId)];
-      // The key-prefix filter is purely organizational: only enforced when
-      // the caller is browsing into a sub-path. Tenant isolation is already
-      // handled by `tenant_id = ?`, and legacy rows (uploaded before the
-      // `tenants/<tid>/` physical prefix was introduced) would otherwise
-      // never show up in the list.
-      if (prefix) {
-        // Prefix match as an index-friendly range scan rather than `key LIKE
-        // 'prefix%'`. D1's SQLite rejects a bound LIKE pattern with "LIKE or
-        // GLOB pattern too complex" (and the range form also hits the index
-        // instead of a full scan). The upper sentinel is the prefix with a
-        // code point above any byte a normal key contains.
-        conds.push(gte(t.key, physicalPrefix), lt(t.key, `${physicalPrefix}\u{10FFFF}`));
-      }
-      if (folderId === "__root__") conds.push(isNull(t.folderId));
-      else if (folderId) conds.push(eq(t.folderId, folderId));
-      if (search) {
-        // Substring match — tolerant of legacy rows without the
-        // `tenants/<tid>/` physical prefix. SQLite LIKE is case-insensitive
-        // for ASCII; Postgres uses ILIKE for portability.
-        const esc = search.replace(/[\\%_]/g, (m) => `\\${m}`);
-        const pattern = `%${esc}%`;
-        conds.push(
-          ctx.dialect === "pg"
-            ? sql`${sql.identifier("key")} ILIKE ${pattern} ESCAPE '\\'`
-            : sql`${sql.identifier("key")} LIKE ${pattern} ESCAPE '\\'`,
-        );
-      }
-      if (perm.whereSql) conds.push(perm.whereSql);
-
-      const where = and(...conds);
-      const [rows, totalRows] = await Promise.all([
-        (ctx.db as any)
-          .select()
-          .from(t)
-          .where(where)
-          .orderBy(desc(t.createdAt))
-          .limit(limit)
-          .offset(offset) as Promise<FileRow[]>,
-        (ctx.db as any)
-          .select({ value: count() })
-          .from(t)
-          .where(where) as Promise<{ value: number }[]>,
-      ]);
-      const total = Number(totalRows[0]?.value ?? 0);
-
-      return c.json({
-        data: rows.map((r) => ({
-          key: stripTenantPrefix(tenantId, r.key),
-          folderId: r.folderId,
-          size: r.size,
-          contentType: r.contentType ?? undefined,
-          ownerId: r.ownerId,
-          acl: r.acl,
-          metadata: r.metadata ?? null,
-          uploadedAt:
-            r.createdAt instanceof Date
-              ? r.createdAt.toISOString()
-              : new Date(r.createdAt).toISOString(),
-        })),
-        meta: { total, limit, offset },
+      const result = await listFilesScoped(ctx, {
+        tenantId,
+        prefix: c.req.query("prefix") ?? "",
+        folderId: c.req.query("folderId"),
+        search: c.req.query("search") ?? "",
+        limit,
+        offset,
+        permWhere: perm.whereSql,
       });
+      return c.json(result);
     },
   )
   /**
@@ -621,26 +568,7 @@ export const storageRoutes = new OpenAPIHono<AppBindings>()
     const perm = c.get("permission");
     const tenantId = requireTenantId(auth);
     const logicalKey = c.req.param("key");
-    guardLogicalKey(logicalKey);
-    const t = filesTable(ctx.dialect);
-
-    const conds: SQL[] = [
-      inArray(t.key, keyCandidates(tenantId, logicalKey)),
-      eq(t.tenantId, tenantId),
-    ];
-    if (perm.whereSql) conds.push(perm.whereSql);
-    const rows = (await (ctx.db as any)
-      .select({ key: t.key })
-      .from(t)
-      .where(and(...conds))
-      .limit(1)) as { key: string }[];
-    if (!rows[0]) throw new AppError("NOT_FOUND", "Object not found");
-    const matchedKey = rows[0].key;
-
-    await ctx.storage.delete(matchedKey);
-    await (ctx.db as any)
-      .delete(t)
-      .where(and(eq(t.key, matchedKey), eq(t.tenantId, tenantId)));
+    await deleteFileScoped(ctx, { tenantId, logicalKey, permWhere: perm.whereSql });
     await logActivity(c, {
       action: "delete",
       collection: FILES_COLLECTION,
@@ -660,7 +588,6 @@ export const storageRoutes = new OpenAPIHono<AppBindings>()
     const perm = c.get("permission");
     const tenantId = requireTenantId(auth);
     const logicalKey = c.req.param("key");
-    guardLogicalKey(logicalKey);
     const body = (await c.req.json().catch(() => ({}))) as {
       acl?: "public" | "private";
       folderId?: string | null;
@@ -669,41 +596,14 @@ export const storageRoutes = new OpenAPIHono<AppBindings>()
        *  to `null` are removed so the UI can clear a field. */
       metadata?: Record<string, unknown> | null;
     };
-    const t = filesTable(ctx.dialect);
-    const conds: SQL[] = [
-      inArray(t.key, keyCandidates(tenantId, logicalKey)),
-      eq(t.tenantId, tenantId),
-    ];
-    if (perm.whereSql) conds.push(perm.whereSql);
-    const existing = (await (ctx.db as any)
-      .select({ key: t.key, metadata: t.metadata })
-      .from(t)
-      .where(and(...conds))
-      .limit(1)) as { key: string; metadata: Record<string, unknown> | null }[];
-    if (!existing[0]) throw new AppError("NOT_FOUND", "Object not found");
-    const matchedKey = existing[0].key;
-
-    const patch: Record<string, unknown> = {};
-    if (body.acl) patch.acl = body.acl;
-    if (body.folderId !== undefined) patch.folderId = body.folderId;
-    if (body.metadata !== undefined) {
-      // null = wipe everything; an object = merge (null leaves on keys remove them)
-      if (body.metadata === null) {
-        patch.metadata = null;
-      } else {
-        const merged: Record<string, unknown> = { ...(existing[0].metadata ?? {}) };
-        for (const [k, v] of Object.entries(body.metadata)) {
-          if (v === null) delete merged[k];
-          else merged[k] = v;
-        }
-        patch.metadata = Object.keys(merged).length > 0 ? merged : null;
-      }
-    }
-    await (ctx.db as any)
-      .update(t)
-      .set(patch)
-      .where(and(eq(t.key, matchedKey), eq(t.tenantId, tenantId)));
-    const updateResponse = { ok: true, data: { key: logicalKey, ...patch } };
+    const data = await patchFileScoped(ctx, {
+      tenantId,
+      logicalKey,
+      permWhere: perm.whereSql,
+      patch: body,
+    });
+    const { key: _key, ...patch } = data;
+    const updateResponse = { ok: true, data };
     await logActivity(c, {
       action: "update",
       collection: FILES_COLLECTION,

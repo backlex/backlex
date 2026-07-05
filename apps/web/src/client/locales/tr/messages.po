@@ -74,7 +74,7 @@ msgstr " Hedef koleksiyonu alan ayarlarından belirleyin."
 msgid "— none —"
 msgstr "— yok —"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "— None (root) —"
 msgstr "— Yok (kök) —"
 
@@ -83,7 +83,7 @@ msgstr "— Yok (kök) —"
 msgid "… and {0} more"
 msgstr "… ve {0} tane daha"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "…or a custom code (e.g. zh-Hant)"
 msgstr "…ya da özel bir kod (örn. zh-Hant)"
 
@@ -105,7 +105,7 @@ msgstr "\"{0}\" bu koleksiyonda bir sütun değil."
 msgid "\"{bad}\" isn't a valid URL — use e.g. https://app.example.com/auth/callback."
 msgstr "\"{bad}\" geçerli bir URL değil — örn. https://app.example.com/auth/callback kullanın."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "\"{c}\" is not a valid language code."
 msgstr "\"{c}\" geçerli bir dil kodu değil."
 
@@ -121,7 +121,7 @@ msgstr "(öğe)"
 msgid "(new template)"
 msgstr "(yeni şablon)"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "(no body)"
 msgstr "(boş)"
 
@@ -153,7 +153,7 @@ msgstr "(yok — doğrudan konu/içerik kullanın)"
 msgid "(none)"
 msgstr "(yok)"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "(not set)"
 msgstr "(ayarlanmadı)"
 
@@ -173,7 +173,7 @@ msgstr "{0} · son görülme {1}"
 
 #. placeholder {0}: jobs.length
 #. placeholder {1}: jobs.length === 1 ? "file" : "files"
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "{0} {1} queued for {target}/."
 msgstr "{0} {1} {target}/ için kuyruğa alındı."
 
@@ -192,7 +192,7 @@ msgstr "{0} {1}."
 
 #. placeholder {0}: uploads.filter((u) => u.status === "done").length
 #. placeholder {1}: uploads.length
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "{0} / {1} complete"
 msgstr "{0} / {1} tamamlandı"
 
@@ -238,7 +238,7 @@ msgstr "{0} sütun"
 
 #. placeholder {0}: bindings.filter((b) => b.status === "connected").length
 #. placeholder {1}: bindings.filter((b) => b.status !== "connected").length
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "{0} connected · {1} optional"
 msgstr "{0} bağlı · {1} isteğe bağlı"
 
@@ -302,7 +302,7 @@ msgid "{0} fields · {1}"
 msgstr "{0} alan · {1}"
 
 #. placeholder {0}: folderCounts.total
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "{0} files"
 msgstr "{0} dosya"
 
@@ -386,7 +386,7 @@ msgstr "{0} seçildi"
 
 #. placeholder {0}: envVars.filter((v) => v.value !== "(unset)").length
 #. placeholder {1}: envVars.filter((v) => v.value === "(unset)").length
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "{0} set · {1} unset"
 msgstr "{0} ayarlandı · {1} ayarlanmadı"
 
@@ -461,12 +461,12 @@ msgid "{0}-{1} of {total}"
 msgstr "{total} kaydın {0}-{1} arası"
 
 #. placeholder {0}: f.name
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "{0}: {msg}"
 msgstr "{0}: {msg}"
 
 #. placeholder {0}: f.name
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "{0}: network error"
 msgstr "{0}: ağ hatası"
 
@@ -476,7 +476,7 @@ msgid "{0}% of base"
 msgstr "tabanın %{0}'ı"
 
 #. placeholder {0}: Math.round((1 - transformedSize / f.size) * 100)
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "{0}% smaller"
 msgstr "%{0} daha küçük"
 
@@ -516,11 +516,11 @@ msgstr "{activeRole} · {0} · {c}: {state}"
 msgid "{allowedReadCount} readable · {allowedWriteCount} writable"
 msgstr "{allowedReadCount} okunabilir · {allowedWriteCount} yazılabilir"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "{allowlistSize} of {totalTools} tools enabled."
 msgstr "{totalTools} aracın {allowlistSize} tanesi etkin."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "{c} is already in the list."
 msgstr "{c} zaten listede."
 
@@ -541,15 +541,15 @@ msgstr "{doneTables}/{0} tablo · {copied} satır"
 msgid "{email} is already a member."
 msgstr "{email} zaten üye."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "{folder}/<derived>"
 msgstr "{folder}/<türetilmiş>"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "{key} → {next}."
 msgstr "{key} → {next}."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "{key} deleted."
 msgstr "{key} silindi."
 
@@ -586,7 +586,8 @@ msgstr "toplam {totalCount}"
 msgid "* (all collections)"
 msgstr "* (tüm koleksiyonlar)"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "•••••••• (stored — leave blank to keep)"
 msgstr "•••••••• (saklandı — korumak için boş bırakın)"
 
@@ -619,7 +620,7 @@ msgstr "<0>{fieldsCount}</0> alan kaydedildi."
 msgid "<0>Branches</0> are named working copies forked from the live schema — stage changes on a branch, then apply it to live. A branch keeps its own history; a snapshot is a single frozen point."
 msgstr "<0>Dallar</0>, canlı şemadan çatallanmış adlandırılmış çalışma kopyalarıdır — bir dalda değişiklikleri hazırlayın, sonra canlıya uygulayın. Bir dal kendi geçmişini tutar; anlık görüntü ise tek bir donmuş noktadır."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "<0>resources/subscribe</0> for live tail"
 msgstr "Canlı akış için <0>resources/subscribe</0>"
 
@@ -644,7 +645,7 @@ msgstr "1 dosya"
 msgid "1 year"
 msgstr "1 yıl"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "1:1 square"
 msgstr "1:1 kare"
 
@@ -657,7 +658,7 @@ msgstr "1. Bu anahtarı doğrulayıcı uygulamanıza ekleyin"
 msgid "123456"
 msgstr "123456"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "16:9 widescreen"
 msgstr "16:9 geniş ekran"
 
@@ -682,7 +683,7 @@ msgstr "2FA etkin"
 msgid "2FA reset for {0}. They can re-enrol from Account → Security."
 msgstr "{0} için 2FA sıfırlandı. Hesap → Güvenlik'ten yeniden kaydolabilirler."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "3:2 standard"
 msgstr "3:2 standart"
 
@@ -694,7 +695,7 @@ msgstr "3. Onaylamak için bir kod girin"
 msgid "30 days"
 msgstr "30 gün"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "4:5 portrait"
 msgstr "4:5 dikey"
 
@@ -758,7 +759,8 @@ msgstr "Tek değer — sayaç en uygunudur; kıvılcım grafik / çubuklar birde
 msgid "A template with key \"{trimmedKey}\" already exists."
 msgstr "\"{trimmedKey}\" anahtarlı bir şablon zaten mevcut."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "A value is stored. Type a new one to replace it, or leave blank to keep it."
 msgstr "Bir değer saklandı. Değiştirmek için yeni bir değer yazın ya da korumak için boş bırakın."
 
@@ -766,7 +768,7 @@ msgstr "Bir değer saklandı. Değiştirmek için yeni bir değer yazın ya da k
 msgid "a, b, c"
 msgstr "a, b, c"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "About"
 msgstr "Hakkında"
 
@@ -795,7 +797,7 @@ msgstr "Hesap menüsü"
 msgid "Account settings"
 msgstr "Hesap ayarları"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "ACL"
 msgstr "ACL"
 
@@ -842,7 +844,7 @@ msgstr "etkin"
 msgid "Active"
 msgstr "Etkin"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/shared.tsx
 msgid "Active API key"
 msgstr "Etkin API anahtarı"
 
@@ -854,7 +856,7 @@ msgstr "Etkin akışlar"
 msgid "Active in 24h"
 msgstr "Son 24 saatte etkin"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Active key guards"
 msgstr "Etkin anahtar koruyucuları"
 
@@ -905,12 +907,12 @@ msgstr "Geçici roller"
 msgid "Adapter auto-selected from bindings/env."
 msgstr "Bağlamalar/env'den adaptör otomatik seçildi."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Adapter auto-selected: R2 binding → R2; S3 env vars → S3; else local filesystem (Bun dev). Public folders are served at <0>/storage/<key></0>; private require a signed URL."
 msgstr "Adaptör otomatik seçildi: R2 bağlaması → R2; S3 ortam değişkenleri → S3; aksi halde yerel dosya sistemi (Bun dev). Genel klasörler <0>/storage/<key></0> adresinden sunulur; özel olanlar imzalı URL gerektirir."
 
 #: src/client/admin/add-field.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/translations.tsx
 msgid "Add"
@@ -941,7 +943,7 @@ msgstr "Önce bir Client ID ve gizli anahtar ekleyin"
 msgid "Add a helpful note for editors…"
 msgstr "Editörler için yardımcı bir not ekleyin…"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "Add a language"
 msgstr "Dil ekle"
 
@@ -957,7 +959,7 @@ msgstr "Hazır bir dikey ekleyin (blog, e-ticaret, CRM, …) — örnek verili, 
 msgid "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
 msgstr "<0>c_{from}</0> koleksiyonuna <1>c_{to}</1> öğesini gösteren bir ilişki alanı ekle."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Add a tag and press Enter…"
 msgstr "Etiket ekleyip Enter'a basın…"
 
@@ -1047,7 +1049,7 @@ msgstr "Adım ekle"
 msgid "Add to <0>~/Library/Application Support/Claude/claude_desktop_config.json</0> (macOS) and restart Claude Desktop."
 msgstr "<0>~/Library/Application Support/Claude/claude_desktop_config.json</0> dosyasına ekle (macOS) ve Claude Desktop'ı yeniden başlat."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Add to <0>~/Library/Application Support/Claude/claude_desktop_config.json</0> (macOS), restart Claude Desktop, then look under the plug icon."
 msgstr "macOS'ta <0>~/Library/Application Support/Claude/claude_desktop_config.json</0> dosyasına ekleyin, Claude Desktop'ı yeniden başlatın ve fiş simgesine bakın."
 
@@ -1173,7 +1175,7 @@ msgstr "Ajanlar"
 msgid "Aggregate function"
 msgstr "Toplama fonksiyonu"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "AI"
 msgstr "AI"
 
@@ -1182,15 +1184,15 @@ msgid "AI agents that reason, call your tools, and answer — built on your coll
 msgstr "Akıl yürüten, araçlarınızı çağıran ve yanıt veren — koleksiyonlarınız üzerine kurulu AI ajanları."
 
 #. placeholder {0}: r.reply
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
 msgid "AI key works — model replied: {0}"
 msgstr "AI anahtarı çalışıyor — model yanıtı: {0}"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
 msgid "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
 msgstr "<0>Bu çalışma alanı</0> için AI sağlayıcı anahtarı. Ayarlandığında, AI üretimi için dağıtım varsayılanını geçersiz kılar (Ask AI,<1> ai.*</1> araçları, otomatik çeviri) — managed cloud dahil; burada ölçülen platform AI ağ geçidinden çıkıp kendi sağlayıcınızı kullanabilirsiniz. Anahtarlar beklerken şifrelenir ve bir daha asla gösterilmez."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
 msgid "AI settings saved."
 msgstr "AI ayarları kaydedildi."
 
@@ -1207,7 +1209,7 @@ msgstr "Başka bir sütundan takma ad"
 msgid "alice"
 msgstr "alice"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/ui.tsx
@@ -1219,7 +1221,7 @@ msgstr "Tümü"
 msgid "All ({0})"
 msgstr "Tümü ({0})"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "All {totalTools} tools allowed."
 msgstr "{totalTools} aracın tamamı izinli."
 
@@ -1240,11 +1242,11 @@ msgid "all fields"
 msgstr "tüm alanlar"
 
 #: src/client/admin/relational-pickers.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "All files"
 msgstr "Tüm dosyalar"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "all folders"
 msgstr "tüm klasörler"
 
@@ -1334,7 +1336,7 @@ msgstr "herhangi bir sağlayıcı/model kimliği"
 msgid "any signed-in"
 msgstr "oturum açmış herhangi biri"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Anyone with the URL can fetch this file."
 msgstr "URL'ye sahip herkes bu dosyaya erişebilir."
 
@@ -1346,7 +1348,7 @@ msgstr "Bu bağlantıya sahip herkes kaydı görüntüleyebilir — şimdi kopya
 msgid "API docs"
 msgstr "API belgeleri"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "API key"
 msgstr "API anahtarı"
 
@@ -1367,7 +1369,7 @@ msgstr "app (çalışma alanı son kullanıcıları)"
 msgid "App-layer trigger — backlex has no DB foreign keys, so it's enforced on delete."
 msgstr "Uygulama katmanı tetikleyicisi — backlex'te DB yabancı anahtarı yok, bu yüzden silmede uygulanır."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Appearance"
 msgstr "Görünüm"
 
@@ -1384,16 +1386,16 @@ msgstr "{0} değişiklik uygulandı."
 msgid "Applied at"
 msgstr "Uygulanma tarihi"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "Applied to members who haven't set a personal time zone in their account."
 msgstr "Hesaplarında kişisel saat dilimi belirlemeyen üyelere uygulanır."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Applied to users with no local override yet."
 msgstr "Henüz yerel geçersiz kılma ayarı yapmamış kullanıcılara uygulanır."
 
 #: src/client/admin/adopt-wizard.tsx
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Apply"
 msgstr "Uygula"
 
@@ -1420,7 +1422,7 @@ msgstr "Uygulama eklemelidir: var olan koleksiyonlar atlanır, yeniler şablonun
 msgid "Applying…"
 msgstr "Uygulanıyor…"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Approve & run"
 msgstr "Onayla ve çalıştır"
 
@@ -1457,11 +1459,11 @@ msgstr "arşivlendi"
 msgid "Archived"
 msgstr "Arşivlendi"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Args copied"
 msgstr "Argümanlar kopyalandı"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Args updated"
 msgstr "Argümanlar güncellendi"
 
@@ -1473,11 +1475,11 @@ msgstr "artan"
 msgid "Ascending"
 msgstr "Artan"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Ask"
 msgstr "Sor"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/ui.tsx
 msgid "Ask AI"
 msgstr "Yapay zekâya sor"
@@ -1486,7 +1488,7 @@ msgstr "Yapay zekâya sor"
 msgid "Ask an admin to send you a fresh invite, or sign in if you already have an account."
 msgstr "Bir yöneticiden yeni bir davet istemesini iste ya da zaten hesabın varsa giriş yap."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Ask in natural language"
 msgstr "Doğal dilde sor"
 
@@ -1494,11 +1496,11 @@ msgstr "Doğal dilde sor"
 msgid "Ask the agent…"
 msgstr "Ajana sorun…"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "asking {model}…"
 msgstr "{model} düşünüyor…"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Aspect-cropping active. Focal point picks which area is kept."
 msgstr "En-boy kırpma etkin. Odak noktası hangi alanın korunacağını belirler."
 
@@ -1511,7 +1513,7 @@ msgstr "En az 8 karakter"
 msgid "At least 8 characters."
 msgstr "En az 8 karakter."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "At least one language is required."
 msgstr "En az bir dil gereklidir."
 
@@ -1561,11 +1563,11 @@ msgid "Authentication succeeded"
 msgstr "Kimlik doğrulama başarılı"
 
 #: src/client/admin/items.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Author"
 msgstr "Yazar"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "auto"
 msgstr "otomatik"
 
@@ -1573,7 +1575,7 @@ msgstr "otomatik"
 msgid "Auto"
 msgstr "Otomatik"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Auto = preserve source aspect. Pin height to crop to a different aspect (uses Focal point + fit=cover)."
 msgstr "Otomatik = kaynak en-boy oranını korur. Farklı bir en-boy oranında kırpmak için yüksekliği sabitleyin (Odak noktası + fit=cover kullanır)."
 
@@ -1593,7 +1595,7 @@ msgstr "c_<slug> tablosunu otomatik oluşturur"
 msgid "Auto-derived from title until edited."
 msgstr "Düzenlenene kadar başlıktan otomatik türetilir."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Auto-detected from <0>env</0> bindings."
 msgstr "<0>env</0> bağlamalarından otomatik algılandı."
 
@@ -1601,7 +1603,7 @@ msgstr "<0>env</0> bağlamalarından otomatik algılandı."
 msgid "auto-disabled"
 msgstr "otomatik kapatıldı"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "auto-run reads"
 msgstr "okumaları otomatik çalıştır"
 
@@ -1712,7 +1714,7 @@ msgstr "Yedekleme zamanlaması kaydedildi."
 msgid "Backups"
 msgstr "Yedekler"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "balanced — recommended for most queries"
 msgstr "dengeli — çoğu sorgu için önerilir"
 
@@ -1732,7 +1734,7 @@ msgstr "Temel DN (arama kökü)"
 msgid "Base value"
 msgstr "Temel değer"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "BCP-47 codes — a language plus an optional region/script (e.g. <0>pt-BR</0>, <1>zh-Hant</1>)."
 msgstr "BCP-47 kodları — bir dil ve isteğe bağlı bölge/yazı sistemi (örn. <0>pt-BR</0>, <1>zh-Hant</1>)."
 
@@ -1754,15 +1756,15 @@ msgstr "Bind DN"
 msgid "Bind password"
 msgstr "Bind parolası"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Bindings"
 msgstr "Bağlamalar"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Bindings are read-only here"
 msgstr "Bağlamalar burada salt okunur"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Bindings refreshed."
 msgstr "Bağlamalar yenilendi."
 
@@ -1774,11 +1776,11 @@ msgstr "Boş"
 msgid "Block all"
 msgstr "Tümünü engelle"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "blocked"
 msgstr "engellendi"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Blocks every write tool at the dispatcher."
 msgstr "Yazma işlemi yapan her aracı yönlendiricide engeller."
 
@@ -1814,7 +1816,7 @@ msgstr "Dal adı (örn. add-orders)"
 msgid "Branches"
 msgstr "Dallar"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Branding saved."
 msgstr "Marka ayarları kaydedildi."
 
@@ -1892,7 +1894,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/agents.tsx
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
@@ -1911,7 +1913,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/role-editor.tsx
 #: src/client/admin/sheet.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 #: src/client/admin/ui.tsx
 #: src/client/components/confirm-action.tsx
 #: src/client/pages/api-keys.tsx
@@ -1926,7 +1928,7 @@ msgstr "Temizlemeyi iptal et"
 msgid "Cancel schedule"
 msgstr "Zamanlamayı iptal et"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Cancel upload"
 msgstr "Yüklemeyi iptal et"
 
@@ -2035,7 +2037,7 @@ msgstr "Seçenekler"
 msgid "Choose a new password"
 msgstr "Yeni parola seçin"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Chunked, resumable upload"
 msgstr "Parçalı, sürdürülebilir yükleme"
 
@@ -2060,14 +2062,14 @@ msgstr "Bu örneği sahiplen"
 msgid "Claiming…"
 msgstr "Sahipleniliyor…"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Claude Desktop"
 msgstr "Claude Desktop"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/items.tsx
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/relational-pickers.tsx
@@ -2075,7 +2077,7 @@ msgstr "Claude Desktop"
 msgid "Clear"
 msgstr "Temizle"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Clear done"
 msgstr "Tamamlananları temizle"
 
@@ -2122,7 +2124,7 @@ msgstr "Yeni parola belirlemek için gelen kutunuzdaki bağlantıya tıklayın. 
 
 #. placeholder {0}: focal.x
 #. placeholder {1}: focal.y
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Click the preview to set the crop pivot — <0>focal {0},{1}</0> — applied when <1>fit=cover</1>."
 msgstr "Kırpma merkezini ayarlamak için önizlemeye tıklayın — <0>focal {0},{1}</0> — <1>fit=cover</1> ile uygulanır."
 
@@ -2299,7 +2301,7 @@ msgstr "Yorum gönderildi."
 msgid "comments"
 msgstr "yorumlar"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Comments needing moderation"
 msgstr "Moderasyon bekleyen yorumlar"
 
@@ -2384,7 +2386,7 @@ msgstr "Giriş yöntemlerini, MFA'yı ve oturum politikasını yapılandırın. 
 msgid "Configure this provider (add a Client ID) before enabling it"
 msgstr "Etkinleştirmeden önce bu sağlayıcıyı yapılandırın (Client ID ekleyin)"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/shared.tsx
 msgid "Configured via <0>AI_GATEWAY_API_KEY</0> on the backlex deployment (or legacy <1>ANTHROPIC_API_KEY</1>)."
 msgstr "Backlex dağıtımında <0>AI_GATEWAY_API_KEY</0> üzerinden (veya eski <1>ANTHROPIC_API_KEY</1> ile) yapılandırılır."
 
@@ -2394,7 +2396,7 @@ msgstr "Backlex dağıtımında <0>AI_GATEWAY_API_KEY</0> üzerinden (veya eski 
 msgid "Confirm"
 msgstr "Onayla"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Confirm & run"
 msgstr "Doğrulayıp çalıştır"
 
@@ -2414,7 +2416,7 @@ msgstr "Şifrenizi onaylayın"
 msgid "Confirm your password to begin"
 msgstr "Başlamak için şifrenizi onaylayın"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/integrations.tsx
 msgid "Connect"
 msgstr "Bağlantı"
@@ -2423,7 +2425,7 @@ msgstr "Bağlantı"
 msgid "Connect {name}"
 msgstr "{name} bağlantısı"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Connect an MCP client"
 msgstr "Bir MCP istemcisi bağlayın"
 
@@ -2436,7 +2438,7 @@ msgid "Connect MCP — {keyName}"
 msgstr "MCP'yi bağla — {keyName}"
 
 #: src/client/admin/pages/overview.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "connected"
 msgstr "bağlı"
 
@@ -2503,7 +2505,7 @@ msgstr "curl kodu kopyalandı."
 msgid "Copied JSON."
 msgstr "JSON kopyalandı."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Copied to clipboard."
 msgstr "Panoya kopyalandı."
 
@@ -2518,7 +2520,7 @@ msgstr "kopyala"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/item-collaboration.tsx
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -2545,7 +2547,7 @@ msgstr "Düzeltmeyi kopyala"
 msgid "Copy id"
 msgstr "ID'yi kopyala"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Copy JSON"
 msgstr "JSON'u kopyala"
 
@@ -2553,7 +2555,7 @@ msgstr "JSON'u kopyala"
 msgid "Copy order:"
 msgstr "Kopyalama sırası:"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Copy URL"
 msgstr "URL'yi kopyala"
 
@@ -2581,7 +2583,7 @@ msgstr "Düzeltme kopyalanamadı."
 msgid "Could not copy link."
 msgstr "Bağlantı kopyalanamadı."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Could not copy snippet — clipboard blocked."
 msgstr "Parça kopyalanamadı — pano engellendi."
 
@@ -2597,7 +2599,7 @@ msgstr "Yorum silinemedi."
 msgid "Could not export logs."
 msgstr "Günlükler dışa aktarılamadı."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Could not export runs."
 msgstr "Çalıştırmalar dışa aktarılamadı."
 
@@ -2695,7 +2697,7 @@ msgstr "Koleksiyon oluştur"
 msgid "Create dashboard"
 msgstr "Pano oluştur"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Create folder"
 msgstr "Klasör oluştur"
 
@@ -2802,7 +2804,7 @@ msgstr "Anahtar oluşturuluyor"
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/translations.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Creating…"
 msgstr "Oluşturuluyor…"
@@ -2815,7 +2817,7 @@ msgstr "Kimlik bilgileri beklemede şifrelenir ve bir daha gösterilmez."
 msgid "Cron expression"
 msgstr "Cron ifadesi"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "curl"
 msgstr "curl"
@@ -2861,7 +2863,7 @@ msgstr "Geçerli çalışma alanı"
 msgid "Current user"
 msgstr "Geçerli kullanıcı"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Cursor"
 msgstr "Cursor"
@@ -2898,7 +2900,7 @@ msgstr "özel kural"
 msgid "Custom…"
 msgstr "Özel…"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Customize…"
 msgstr "Özelleştir…"
 
@@ -2916,7 +2918,7 @@ msgstr "tehlike bölgesi"
 msgid "Danger zone"
 msgstr "Tehlike bölgesi"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Dark"
 msgstr "Koyu"
 
@@ -2989,7 +2991,7 @@ msgstr "Ondalık basamak"
 msgid "Default (auto)"
 msgstr "Varsayılan (otomatik)"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "Default language"
 msgstr "Varsayılan dil"
 
@@ -2997,7 +2999,7 @@ msgstr "Varsayılan dil"
 msgid "Default locale"
 msgstr "Varsayılan yerel ayar"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
 msgid "Default model (optional)"
 msgstr "Varsayılan model (isteğe bağlı)"
 
@@ -3022,7 +3024,7 @@ msgstr "İlk girişte varsayılan rol"
 msgid "Default sort <0>(optional)</0>"
 msgstr "Varsayılan sıralama <0>(isteğe bağlı)</0>"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "Default time zone"
 msgstr "Varsayılan saat dilimi"
 
@@ -3038,7 +3040,7 @@ msgstr "Oluşturma sırasında uygulanan varsayılan değerler. Kullanıcı bunl
 msgid "defaults"
 msgstr "varsayılanlar"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Defaults to the URL's filename"
 msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 
@@ -3057,7 +3059,8 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Delete"
 msgstr "Sil"
 
@@ -3183,12 +3186,12 @@ msgstr "Teslimatlar"
 msgid "Deliveries pause immediately when off; queued events are dropped after 24h."
 msgstr "Devre dışı bırakıldığında teslimatlar hemen duraklar; kuyruktaki olaylar 24 saat sonra düşürülür."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/permissions-matrix.tsx
 msgid "denied"
 msgstr "reddedildi"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "Denied"
 msgstr "Reddedildi"
@@ -3205,7 +3208,7 @@ msgstr "Tümünü reddet"
 msgid "deprecated"
 msgstr "kullanımdan kaldırıldı"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Derive from width × source aspect"
 msgstr "Genişlik × kaynak en-boy oranından türet"
 
@@ -3223,10 +3226,10 @@ msgstr "Azalan"
 
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/feature-flags.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/role-editor.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Description"
 msgstr "Açıklama"
 
@@ -3264,7 +3267,7 @@ msgstr "Cihaz"
 msgid "Diff"
 msgstr "Fark"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Dim"
 msgstr "Soluk"
 
@@ -3273,7 +3276,7 @@ msgstr "Soluk"
 msgid "Direct access to the underlying engine. Adapter: <0>{0}</0>. SQL editor runs through the same permission layer as the API."
 msgstr "Altta yatan motora doğrudan erişim. Adaptör: <0>{0}</0>. SQL editörü API ile aynı izin katmanından çalışır."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Direct Streamable HTTP — useful for CI agents and smoke tests."
 msgstr "Doğrudan Streamable HTTP — CI ajanları ve duman testleri için kullanışlı."
 
@@ -3293,8 +3296,11 @@ msgstr "devre dışı"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/item-editor.tsx
-#: src/client/admin/pages/settings.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Discard"
 msgstr "Vazgeç"
 
@@ -3333,7 +3339,7 @@ msgid "Display format"
 msgstr "Görüntü biçimi"
 
 #. placeholder {0}: f.key
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Display label. The storage key stays <0>{0}</0>."
 msgstr "Görüntü etiketi. Depolama anahtarı <0>{0}</0> olarak kalır."
 
@@ -3368,7 +3374,7 @@ msgstr "Dağıtık istek izleri. Her SDK/API çağrısı bir W3C traceparent ta�
 msgid "Do nothing"
 msgstr "Hiçbir şey yapma"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/ui.tsx
 msgid "Docs"
 msgstr "Belgeler"
@@ -3394,7 +3400,7 @@ msgid "Dotted namespaces are conventional, e.g. <0>common.cancel</0>, <1>auth.si
 msgstr "Noktalı ad alanları gelenekseldir, örn. <0>common.cancel</0>, <1>auth.signin.title</1>."
 
 #: src/client/admin/parity/database.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Download"
 msgstr "İndir"
 
@@ -3420,11 +3426,11 @@ msgstr "taslak"
 msgid "Draft"
 msgstr "Taslak"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Draft support_tickets schema"
 msgstr "support_tickets şeması taslağı"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "drafts"
 msgstr "taslaklar"
 
@@ -3458,7 +3464,7 @@ msgstr "\"{name}\" sütunu silinsin mi?"
 msgid "Drop field"
 msgstr "Alanı sil"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Drop files anywhere on this page or use Upload."
 msgstr "Dosyaları bu sayfanın herhangi bir yerine bırakın veya Yükle'yi kullanın."
 
@@ -3466,7 +3472,7 @@ msgstr "Dosyaları bu sayfanın herhangi bir yerine bırakın veya Yükle'yi kul
 msgid "Drop files here, or click to upload"
 msgstr "Dosyaları buraya bırakın veya yüklemek için tıklayın"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Drop files to upload — or <0>browse</0>"
 msgstr "Yüklemek için dosyaları bırakın — veya <0>göz atın</0>"
 
@@ -3516,7 +3522,7 @@ msgstr "Dinamik şema. Her koleksiyon çalışma zamanında fiziksel bir <0>c_<s
 msgid "e.g. 30s, 5m, 1h, 2d. ≤ 30s sleeps inline; longer waits persist to the scheduler."
 msgstr "örn. 30s, 5m, 1h, 2d. ≤ 30s satır içi bekler; daha uzun bekleme süresi zamanlayıcıya aktarılır."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "e.g. posts published in the past 7 days, sorted by view_count desc"
 msgstr "örn: son 7 günde yayınlanmış postlar, view_count'a göre azalan"
 
@@ -3570,7 +3576,7 @@ msgstr "Güncellemeye dahil etmek için aşağıdan bir alanı düzenleyin."
 msgid "Edit agent"
 msgstr "Ajanı düzenle"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Edit args"
 msgstr "Argümanları düzenle"
 
@@ -3583,7 +3589,7 @@ msgstr "aşağıdaki koşulları düzenle ↓"
 msgid "Edit field"
 msgstr "Alanı düzenle"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Edit file"
 msgstr "Dosyayı düzenle"
 
@@ -3612,7 +3618,7 @@ msgstr "Ham DSL'i düzenle. Görsel moduna dönmek için Oluşturucu'ya tıklay�
 msgid "Edit rule"
 msgstr "Kuralı düzenle"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Edit them in <0>wrangler.toml</0> and redeploy. This panel reflects the live binding map from <1>env</1>."
 msgstr "<0>wrangler.toml</0> dosyasında düzenleyin ve yeniden dağıtın. Bu panel <1>env</1>'deki canlı bağlama haritasını yansıtır."
 
@@ -3636,7 +3642,7 @@ msgstr "Editör"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/pages/overview.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/pages/forgot.tsx
@@ -3672,7 +3678,7 @@ msgstr "E-posta tek zorunlu alandır. Roller kayıt sonrası atanır — ilk kul
 msgid "email magic link"
 msgstr "e-posta sihirli bağlantısı"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Email settings saved."
 msgstr "E-posta ayarları kaydedildi."
 
@@ -3681,7 +3687,7 @@ msgstr "E-posta ayarları kaydedildi."
 msgid "Email templates"
 msgstr "E-posta şablonları"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Email transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>EMAIL_PROVIDER</1> / env keys. Secret values are encrypted at rest and never shown again."
 msgstr "<0>Bu çalışma alanı</0> için e-posta taşıma. Çözüm sırası: bu yapılandırma → örnek geneli varsayılan → dağıtımın <1>EMAIL_PROVIDER</1> / env anahtarları. Gizli değerler beklemede şifrelenir ve bir daha gösterilmez."
 
@@ -3776,7 +3782,7 @@ msgstr "Uç nokta"
 msgid "Endpoint URL"
 msgstr "Uç nokta URL'si"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Endpoints"
 msgstr "Uç noktalar"
 
@@ -3873,16 +3879,16 @@ msgstr "Bu panele giriş yapan operatörler için kurumsal SSO. Workspace son ku
 msgid "Entry id copied to clipboard."
 msgstr "Giriş ID'si panoya kopyalandı."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "environment"
 msgstr "ortam"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/ui.tsx
 msgid "Environment"
 msgstr "Ortam"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Environment variables are read-only here"
 msgstr "Ortam değişkenleri burada salt okunur"
 
@@ -3890,7 +3896,7 @@ msgstr "Ortam değişkenleri burada salt okunur"
 msgid "err"
 msgstr "hata"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Error"
 msgstr "Hata"
 
@@ -3992,7 +3998,7 @@ msgid "Export"
 msgstr "Dışa aktar"
 
 #: src/client/admin/app.tsx
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Export CSV"
 msgstr "CSV olarak dışa aktar"
@@ -4011,7 +4017,7 @@ msgid "Exported {0} rows as activity.csv."
 msgstr "{0} satır activity.csv olarak dışa aktarıldı."
 
 #. placeholder {0}: visible.length
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Exported {0} rows as mcp-runs.csv."
 msgstr "{0} satır mcp-runs.csv olarak dışa aktarıldı."
 
@@ -4038,7 +4044,7 @@ msgstr "Akışı hata ile sonlandır"
 
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/relational-pickers.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "failed"
 msgstr "başarısız"
 
@@ -4075,11 +4081,11 @@ msgstr "Başarısızlıklar (24s)"
 msgid "Fan record events out to chat, alerting, analytics, search, and automation tools. Secrets are encrypted at rest."
 msgstr "Kayıt olaylarını sohbet, uyarı, analitik, arama ve otomasyon araçlarına dağıt. Gizli bilgiler şifrelenerek saklanır."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "fast · cheap · routine reads"
 msgstr "hızlı · ucuz · rutin okumalar"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "fast · very cheap · routine reads"
 msgstr "hızlı · çok ucuz · rutin okumalar"
 
@@ -4087,7 +4093,7 @@ msgstr "hızlı · çok ucuz · rutin okumalar"
 msgid "Faster, phishing-resistant sign-in. Your device will prompt for biometric or PIN after the account is created. You can add or remove passkeys later in Settings."
 msgstr "Daha hızlı, kimlik avına karşı dirençli giriş. Hesap oluşturulduktan sonra cihazınız biyometrik veya PIN isteyecektir. Geçiş anahtarlarını daha sonra Ayarlar'dan ekleyip kaldırabilirsiniz."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Favicon"
 msgstr "Favicon"
 
@@ -4171,11 +4177,11 @@ msgstr "Alanlar"
 msgid "Fields of {0}"
 msgstr "{0} alanları"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "File detail"
 msgstr "Dosya detayı"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "files"
 msgstr "dosyalar"
 
@@ -4187,7 +4193,7 @@ msgstr "Dosyalar"
 msgid "Fill the required fields."
 msgstr "Zorunlu alanları doldurun."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Fills the public key + private key fields above with a fresh VAPID pair. Click Save to store it."
 msgstr "Yukarıdaki public ve private anahtar alanlarını taze bir VAPID çiftiyle doldurur. Saklamak için Kaydet'e basın."
 
@@ -4216,7 +4222,7 @@ msgstr "Uç noktaları filtrele…"
 msgid "Filter fields & types…"
 msgstr "Alanları ve türleri filtrele…"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Filter folders…"
 msgstr "Klasörleri filtrele…"
 
@@ -4228,12 +4234,12 @@ msgstr "Tabloları ada göre filtrele…"
 msgid "Filter tables…"
 msgstr "Tabloları filtrele…"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Filter tools"
 msgstr "Araçları filtrele"
 
 #: src/client/admin/pages/agents.tsx
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Filter tools…"
 msgstr "Araçları filtrele…"
 
@@ -4257,7 +4263,7 @@ msgstr "Ad"
 msgid "First-user policy."
 msgstr "İlk kullanıcı politikası."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Fit"
 msgstr "Sığdır"
 
@@ -4311,15 +4317,15 @@ msgstr "FTS açıkken bu alanı koleksiyonun tam metin arama dizinine dahil et."
 msgid "Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing."
 msgstr "FTS açıkken bu alanı koleksiyonun tam metin arama dizinine dahil et. Değiştirdikten sonra yeniden dizinle."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Folder"
 msgstr "Klasör"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Folder \"{clean}\" already exists."
 msgstr "\"{clean}\" klasörü zaten mevcut."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Folder \"{clean}\" created."
 msgstr "\"{clean}\" klasörü oluşturuldu."
 
@@ -4337,7 +4343,7 @@ msgid "Folder tag"
 msgstr "Klasör etiketi"
 
 #: src/client/admin/relational-pickers.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Folders"
 msgstr "Klasörler"
 
@@ -4366,7 +4372,7 @@ msgid "Fork a branch to stage schema changes off to the side."
 msgstr "Şema değişikliklerini ayrı tutmak için bir dal çatallayın."
 
 #: src/client/admin/field-validation-editor.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Format"
 msgstr "Biçim"
 
@@ -4395,7 +4401,7 @@ msgstr "Kimden"
 msgid "From a schema template"
 msgstr "Şema şablonundan"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "From address"
 msgstr "Gönderen adresi"
 
@@ -4496,7 +4502,7 @@ msgid "Gallery"
 msgstr "Galeri"
 
 #: src/client/admin/item-form.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "General"
 msgstr "Genel"
 
@@ -4504,7 +4510,7 @@ msgstr "Genel"
 msgid "Generate"
 msgstr "Oluştur"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Generate keypair"
 msgstr "Anahtar çifti üret"
 
@@ -4516,7 +4522,7 @@ msgstr "Oluşturulan DSL — kayıt sırasında <0>role_permissions</0> tablosun
 msgid "Generating…"
 msgstr "Oluşturuluyor…"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "GitHub"
 msgstr "GitHub"
 
@@ -4550,7 +4556,7 @@ msgid "GraphQL"
 msgstr "GraphQL"
 
 #: src/client/admin/collections-index.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Grid"
 msgstr "Izgara"
 
@@ -4590,7 +4596,7 @@ msgstr "Gruplar"
 msgid "Groups organize the Collections page and the sidebar. Rearrange them anytime with Edit layout."
 msgstr "Gruplar, Koleksiyonlar sayfasını ve kenar çubuğunu düzenler. Düzeni düzenle ile istediğiniz zaman yeniden düzenleyebilirsiniz."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Guards updated"
 msgstr "Koruyucular güncellendi"
 
@@ -4611,11 +4617,11 @@ msgstr "Hesabınız var mı?"
 msgid "Head"
 msgstr "Uç"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Headline"
 msgstr "Başlık"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Headline, tagline, and the Terms/Privacy links shown on the public sign-in and sign-up screens. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default (or, for the URLs, to show plain text with no link)."
 msgstr "Genel giriş ve kayıt ekranlarında gösterilen başlık, slogan ve Şartlar/Gizlilik bağlantıları. Bu ayar tüm instance genelinde geçerlidir — giriş sayfası herhangi bir workspace seçilmeden önce açılır. Yerleşik varsayılanı kullanmak (veya URL'lerde bağlantısız düz metin göstermek) için bir alanı boş bırakın."
 
@@ -4631,7 +4637,7 @@ msgstr "Sağlık"
 msgid "healthy"
 msgstr "sağlıklı"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Height"
 msgstr "Yükseklik"
 
@@ -4661,7 +4667,7 @@ msgstr "Parolayı gizle"
 msgid "Hide variables"
 msgstr "Değişkenleri gizle"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "highest reasoning · slower · ~3x cost"
 msgstr "en yüksek akıl yürütme · daha yavaş · ~3x maliyet"
 
@@ -4673,7 +4679,7 @@ msgstr "Geçmiş"
 msgid "Hook"
 msgstr "Hook"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Hosted Claude"
 msgstr "Barındırılan Claude"
 
@@ -4745,11 +4751,11 @@ msgstr "{displayEmail} bir hesapla eşleşiyorsa, giriş bağlantısı yola çı
 
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/schema-versions.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Import"
 msgstr "İçe aktar"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Import from URL"
 msgstr "URL'den içe aktar"
 
@@ -4761,7 +4767,7 @@ msgstr "Metadata içe aktar"
 msgid "Import schema"
 msgstr "Şema içe aktar"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Import URL"
 msgstr "İçe aktarma URL'si"
 
@@ -4773,16 +4779,16 @@ msgid "Imported {0} rows — {1} new, {2} updated."
 msgstr "{0} satır içe aktarıldı — {1} yeni, {2} güncellendi."
 
 #. placeholder {0}: res.data.key.split("/").pop() ?? res.data.key
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Imported {0}."
 msgstr "{0} içe aktarıldı."
 
 #: src/client/admin/pages/schema-versions.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Importing…"
 msgstr "İçe aktarılıyor…"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "in <0>{folder}/</0>"
 msgstr "<0>{folder}/</0> içinde"
 
@@ -5000,7 +5006,7 @@ msgstr "null"
 msgid "ISO or $now"
 msgstr "ISO veya $now"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Istanbul, Turkey"
 msgstr "İstanbul, Türkiye"
 
@@ -5135,10 +5141,11 @@ msgid "key"
 msgstr "anahtar"
 
 #: src/client/admin/pages/feature-flags.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/translations.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Key"
 msgstr "Anahtar"
 
@@ -5175,7 +5182,7 @@ msgid "kind"
 msgstr "tür"
 
 #: src/client/admin/pages/schema-versions.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Kind"
@@ -5203,15 +5210,15 @@ msgstr "{pending} içine düşer"
 msgid "Language"
 msgstr "Dil"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "Languages"
 msgstr "Diller"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "Languages this workspace is translated into — they become the columns on the <0>Translations</0> page and the locale options members can pick in their account. The <1>default</1> applies to anyone who hasn't chosen one."
 msgstr "Bu çalışma alanının çevrildiği diller — <0>Çeviriler</0> sayfasındaki sütunlar ve üyelerin hesaplarında seçebileceği yerel ayar seçenekleri olurlar. <1>Varsayılan</1>, seçim yapmamış herkese uygulanır."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Large title in the sign-in brand panel."
 msgstr "Giriş marka panelindeki büyük başlık."
 
@@ -5294,11 +5301,11 @@ msgstr "Son görülme"
 msgid "Last write"
 msgstr "Son yazma"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "latency"
 msgstr "gecikme"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Latency"
 msgstr "Gecikme"
 
@@ -5364,12 +5371,12 @@ msgstr "mevcut değeri korumak için boş bırakın"
 msgid "Leave blank to keep the stored cert."
 msgstr "Saklanan sertifikayı korumak için boş bırakın."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
 msgid "Leave blank to use the built-in default. Callers may still override per request."
 msgstr "Yerleşik varsayılanı kullanmak için boş bırakın. Çağıranlar yine de istek bazında değiştirebilir."
 
 #. placeholder {0}: folder ? <>currently in <span className="font-mono">{folder}/</span></> : <>root by default</>
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Leave blank to use the URL's last path segment. Slashes auto-create folders ({0})."
 msgstr "URL'nin son yol segmentini kullanmak için boş bırakın. Eğik çizgiler otomatik olarak klasör oluşturur ({0})."
 
@@ -5389,7 +5396,7 @@ msgstr "IdP'nizin doğruladığı her operatöre hesap açmak için boş bırak�
 msgid "Leave empty to run on the next tick."
 msgstr "Bir sonraki tıklamada çalışması için boş bırakın."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Leave to user"
 msgstr "Kullanıcıya bırak"
 
@@ -5397,11 +5404,11 @@ msgstr "Kullanıcıya bırak"
 msgid "legacy production"
 msgstr "eski üretim"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "License"
 msgstr "Lisans"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Light"
 msgstr "Açık"
 
@@ -5430,11 +5437,11 @@ msgstr "Bağlandı — bu sağlayıcıyla giriş yapabilirsiniz."
 msgid "Linked {0}."
 msgstr "{0} bağlandı."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Linked from the sign-up consent line. Leave blank to show plain text with no link."
 msgstr "Kayıt onay satırından bağlantı verilir. Bağlantısız düz metin göstermek için boş bırakın."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "List"
 msgstr "Liste"
 
@@ -5483,7 +5490,7 @@ msgid "Live tail resumed."
 msgstr "Canlı kuyruk devam ettirildi."
 
 #: src/client/admin/pages/logs.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Load more"
 msgstr "Daha fazla yükle"
 
@@ -5517,7 +5524,7 @@ msgid "Locales updated."
 msgstr "Yerel ayarlar güncellendi."
 
 #: src/client/admin/parity/auth-settings.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Location"
 msgstr "Konum"
 
@@ -5529,11 +5536,11 @@ msgstr "Tek satıra kilitli — site ayarları için kullanışlı."
 msgid "log entry"
 msgstr "günlük girdisi"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Logical grouping in the DB. The object's storage key doesn't change."
 msgstr "Veritabanında mantıksal gruplama. Nesnenin depolama anahtarı değişmez."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Logo"
 msgstr "Logo"
 
@@ -5547,7 +5554,7 @@ msgstr "Günlükler"
 msgid "logs to stdout"
 msgstr "stdout'a günlük yazar"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "long context · multimodal"
 msgstr "uzun bağlam · çok modlu"
 
@@ -5567,7 +5574,7 @@ msgstr "Kodlarınızı kaybettiniz veya azaldı mı? Yeni bir set oluşturun —
 msgid "Lowercase letters, digits, _ or -; must start with a letter."
 msgstr "Küçük harf, rakam, _ veya -; bir harfle başlamalıdır."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Lowercase letters, digits, <0>_</0> and <1>-</1>. Use <2>/</2> in the name to nest under an existing folder."
 msgstr "Küçük harf, rakam, <0>_</0> ve <1>-</1>. Mevcut bir klasörün altına yerleştirmek için adda <2>/</2> kullanın."
 
@@ -5608,7 +5615,7 @@ msgstr "Sunucuda sihirli bağlantı eklentisi etkin değil"
 msgid "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). After enabling on an existing collection, run a re-index to backfill."
 msgstr "<0> searchable</0> olarak işaretlenen alanlardan bir anahtar kelime arama dizini tutar.<1> ?q=</1> sorgusunu sıralı anahtar kelime eşleştirmesine yükseltir ve<2> /search</2> uç noktasını (tam metin / vektör / hibrit) etkinleştirir. Mevcut bir koleksiyonda etkinleştirdikten sonra geri doldurmak için yeniden dizinleme çalıştırın."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "Make default"
 msgstr "Varsayılan yap"
 
@@ -5695,7 +5702,7 @@ msgstr "Maksimum adım"
 msgid "May"
 msgstr "Mayıs"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "MCP · {MCP_TOOL_COUNT} tools"
 msgstr "MCP · {MCP_TOOL_COUNT} araç"
 
@@ -5711,7 +5718,7 @@ msgstr "MCP uç nokta URL'i"
 msgid "MCP read-only"
 msgstr "MCP salt-okunur"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "MCP tool catalog"
 msgstr "MCP araç kataloğu"
 
@@ -5749,7 +5756,7 @@ msgid "metadata"
 msgstr "meta veri"
 
 #: src/client/admin/adopt-wizard.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Metadata"
 msgstr "Metadata"
 
@@ -5761,7 +5768,7 @@ msgstr "Metadata içe aktarıldı."
 msgid "Metadata parsed — review and save."
 msgstr "Metadata ayrıştırıldı — gözden geçirip kaydedin."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Metadata saved."
 msgstr "Metadata kaydedildi."
 
@@ -5819,7 +5826,7 @@ msgid "Mode"
 msgstr "Mod"
 
 #: src/client/admin/pages/agents.tsx
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/shared.tsx
 msgid "Model"
 msgstr "Model"
 
@@ -5844,11 +5851,11 @@ msgstr "Aşağı taşı"
 msgid "Move up"
 msgstr "Yukarı taşı"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Moved to root."
 msgstr "Köke taşındı."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Moved."
 msgstr "Taşındı."
 
@@ -5902,7 +5909,7 @@ msgstr "http:// veya https:// ile başlamalıdır"
 msgid "Mustache-style template for row display in pickers and references."
 msgstr "Seçicilerde ve referanslarda satır görüntülemek için Mustache tarzı şablon."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Mutation — requires confirmation"
 msgstr "Mutasyon — onay gerektirir"
 
@@ -5910,7 +5917,7 @@ msgstr "Mutasyon — onay gerektirir"
 msgid "Mutations"
 msgstr "Mutasyonlar"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "My theme"
 msgstr "Temam"
 
@@ -5920,7 +5927,7 @@ msgstr "Temam"
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/schema-versions.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -5928,7 +5935,7 @@ msgstr "Temam"
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/role-editor.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 #: src/client/admin/ui.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Name"
@@ -5962,7 +5969,7 @@ msgstr "Ad, Entity ID, SSO URL ve IdP sertifikası gereklidir."
 msgid "NameID format"
 msgstr "NameID biçimi"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Native push transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>PUSH_*</1> env vars. Secret values are encrypted at rest and never shown again. In-app notifications can fan out to devices via the <2>push</2> flag."
 msgstr "<0>Bu çalışma alanı</0> için yerel push aktarımı. Çözümleme sırası: bu yapılandırma → örnek genelindeki varsayılan → dağıtımın <1>PUSH_*</1> ortam değişkenleri. Gizli değerler şifreli saklanır ve bir daha gösterilmez. Uygulama içi bildirimler <2>push</2> bayrağıyla cihazlara yayılabilir."
 
@@ -5970,7 +5977,7 @@ msgstr "<0>Bu çalışma alanı</0> için yerel push aktarımı. Çözümleme s�
 msgid "navigate"
 msgstr "gezin"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "network error"
 msgstr "ağ hatası"
 
@@ -6038,7 +6045,7 @@ msgstr "Yeni bayrak"
 msgid "New flow"
 msgstr "Yeni akış"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "New folder"
 msgstr "Yeni klasör"
 
@@ -6146,7 +6153,7 @@ msgstr "Erişim yok"
 msgid "No actions yet — click to add steps."
 msgstr "Henüz eylem yok — adım eklemek için tıklayın."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "No active devices for your account. Register one from a client app to receive a test push."
 msgstr "Hesabınız için etkin cihaz yok. Test push almak için bir istemci uygulamadan cihaz kaydedin."
 
@@ -6339,7 +6346,7 @@ msgstr "\"{q}\" ile eşleşen dosya yok."
 msgid "No files uploaded yet — drop one above to get started."
 msgstr "Henüz dosya yüklenmedi — başlamak için yukarıya bir dosya bırakın."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "No files yet"
 msgstr "Henüz dosya yok"
 
@@ -6351,7 +6358,8 @@ msgstr "Akış seçilmedi"
 msgid "No flows yet — click + New flow."
 msgstr "Henüz akış yok — + Yeni akış'a tıklayın."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "No folders match."
 msgstr "Eşleşen klasör yok."
 
@@ -6359,7 +6367,7 @@ msgstr "Eşleşen klasör yok."
 msgid "No folders yet — uploads land under <0>uploads/</0>."
 msgstr "Henüz klasör yok — yüklemeler <0>uploads/</0> altına gider."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "No folders yet. <0>Create one</0>."
 msgstr "Henüz klasör yok. <0>Bir tane oluşturun</0>."
 
@@ -6419,7 +6427,7 @@ msgstr "İş yok"
 msgid "No JSON content defined."
 msgstr "JSON içeriği tanımlanmamış."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/shared.tsx
 msgid "No live keys — create one on the <0>API Keys</0> page first."
 msgstr "Canlı anahtar yok — önce <0>API Anahtarları</0> sayfasından bir tane oluşturun."
 
@@ -6529,11 +6537,11 @@ msgstr "\"{q}\" ile eşleşen satır yok."
 msgid "No rows returned."
 msgstr "Satır döndürülmedi."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "No runs in this bucket yet."
 msgstr "Bu kümede henüz çalıştırma yok."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "No runs yet — your tool calls will show up here."
 msgstr "Henüz çalışma yok — araç çağrıların burada görünecek."
 
@@ -6586,7 +6594,7 @@ msgstr "Eşleşen tablo yok."
 msgid "No tables yet."
 msgstr "Henüz tablo yok."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "No tags yet."
 msgstr "Henüz etiket yok."
 
@@ -6602,7 +6610,7 @@ msgstr "Aramanızla eşleşen şablon yok."
 msgid "No templates yet — use \"New template\" to add one."
 msgstr "Henüz şablon yok — eklemek için \"Yeni şablon\"u kullanın."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "No tools match this filter."
 msgstr "Bu filtreyle eşleşen araç yok."
 
@@ -6716,7 +6724,7 @@ msgstr "Hiçbir şey seçilmedi"
 msgid "Nothing selected yet"
 msgstr "Henüz hiçbir şey seçilmedi"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Nothing to export — the current view is empty."
 msgstr "Dışa aktarılacak şey yok — mevcut görünüm boş."
@@ -6758,11 +6766,11 @@ msgstr "{0} ile kaydedilecek OAuth yönlendirme URI'si"
 msgid "OAuth required"
 msgstr "OAuth gerekli"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "OAuth scope mapping → backlex roles"
 msgstr "OAuth kapsam eşlemesi → backlex rolleri"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
 msgstr "Barındırılan Claude için OAuth akışı (anahtar yapıştırma adımı olmadan) ayrı bir epik olarak takip ediliyor."
 
@@ -6790,7 +6798,7 @@ msgstr "Kapalı"
 msgid "Off keeps the provider configured but hidden from sign-in."
 msgstr "Kapalı, sağlayıcıyı yapılandırılmış tutar ancak girişte gizler."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/pages/graphql.tsx
 msgid "ok"
 msgstr "tamam"
@@ -6885,11 +6893,11 @@ msgstr "Kaynağı aç"
 msgid "Open settings"
 msgstr "Ayarları aç"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Open-source · Apache-2.0 licensed"
 msgstr "Açık kaynak · Apache-2.0 lisanslı"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "OpenAI flagship; comparable to Opus"
 msgstr "OpenAI'nin amiral gemisi; Opus ile karşılaştırılabilir"
 
@@ -6918,7 +6926,7 @@ msgstr "Bu IdP'yi kullanan operatörler artık giriş yapamayacak."
 msgid "Operators with access to this dashboard. The first to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
 msgstr "Bu panele erişimi olan operatörler. İlk kaydolan admin olur; diğerleri authenticated rolüne düşer. Oturumlar, sağlayıcılar ve 2FA hesap bazında izlenir."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Ops bots — admin role required."
 msgstr "Operasyon botları — yönetici rolü gerekli."
 
@@ -6947,11 +6955,11 @@ msgstr "Veya yeni bir grup adı yazın…"
 msgid "or with email"
 msgstr "veya e-postayla"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Orders by status"
 msgstr "Duruma göre siparişler"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Original"
 msgstr "Orijinal"
 
@@ -6967,7 +6975,7 @@ msgstr "Koleksiyon olaylarında giden HTTP. Başarısız teslimatlar üstel geri
 msgid "Outgoing webhook deliveries will show up here once a collection event fires."
 msgstr "Koleksiyon olayı tetiklendiğinde giden webhook teslimatları burada görünecek."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Overrides the `--primary` token used across the admin and any published surfaces."
 msgstr "Admin ve yayımlanan yüzeylerde kullanılan `--primary` token'ını geçersiz kılar."
 
@@ -7157,7 +7165,7 @@ msgstr "Bekliyor"
 msgid "Pending invites"
 msgstr "Bekleyen davetler"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "pending review"
 msgstr "inceleme bekliyor"
 
@@ -7222,7 +7230,7 @@ msgstr "İzinler"
 msgid "Permissions (per action)"
 msgstr "İzinler (eylem başına)"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Permissions DSL will filter rows"
 msgstr "İzin DSL'i satırları filtreleyecek"
 
@@ -7235,7 +7243,7 @@ msgstr "{activeRole} için izinler"
 msgid "Permissions: {0}."
 msgstr "İzinler: {0}."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Photographer, designer, source…"
 msgstr "Fotoğrafçı, tasarımcı, kaynak…"
 
@@ -7281,15 +7289,15 @@ msgstr "Alan seçin…"
 msgid "Pick a file"
 msgstr "Dosya seçin"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/shared.tsx
 msgid "Pick a key"
 msgstr "Bir anahtar seçin"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Pick a key to manage its allowlist."
 msgstr "İzin listesini yönetmek için bir anahtar seçin."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "Pick a language…"
 msgstr "Dil seçin…"
 
@@ -7440,7 +7448,7 @@ msgstr "Sabitlenmiş"
 msgid "Pipe collection events to Slack, your API, or any HTTPS endpoint."
 msgstr "Koleksiyon olaylarını Slack'e, API'nize veya herhangi bir HTTPS uç noktasına iletin."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "plain"
 msgstr "sade"
 
@@ -7448,7 +7456,7 @@ msgstr "sade"
 msgid "Plain"
 msgstr "Düz"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Plan"
 msgstr "Plan"
 
@@ -7456,11 +7464,11 @@ msgstr "Plan"
 msgid "Plane"
 msgstr "Düzlem"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Planning the tool call…"
 msgstr "Araç çağrısı planlanıyor…"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Planning…"
 msgstr "Planlanıyor…"
 
@@ -7482,7 +7490,7 @@ msgstr "Bu örnekte Platform SSO etkin değil. Kurumsal SSO içeren planlarda ve
 msgid "Plural"
 msgstr "Çoğul"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "PNG or ICO recommended (≤ 64 KB)."
 msgstr "PNG veya ICO önerilir (≤ 64 KB)."
 
@@ -7490,7 +7498,7 @@ msgstr "PNG veya ICO önerilir (≤ 64 KB)."
 msgid "PNG, JPG or WebP. Shown in the header and on any author display."
 msgstr "PNG, JPG veya WebP. Başlıkta ve yazar görünümlerinde gösterilir."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "PNG, JPG, SVG or WebP — square images display best. Replaces any previous upload."
 msgstr "PNG, JPG, SVG veya WebP — kare görseller en iyi görüntülenir. Önceki yüklemeyi değiştirir."
 
@@ -7588,11 +7596,11 @@ msgstr "Önceki ay"
 msgid "Previous record"
 msgstr "Önceki kayıt"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Primary color"
 msgstr "Birincil renk"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Primary color must be a hex (#rrggbb) or a CSS color function."
 msgstr "Birincil renk bir hex (#rrggbb) veya CSS renk fonksiyonu olmalıdır."
 
@@ -7609,13 +7617,13 @@ msgstr "birincil anahtar {0} desteklenmiyor"
 msgid "Priority"
 msgstr "Öncelik"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Privacy Policy URL"
 msgstr "Gizlilik Politikası URL'si"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Private"
 msgstr "Özel"
 
@@ -7647,7 +7655,8 @@ msgstr "Profil kaydedildi."
 msgid "provider"
 msgstr "sağlayıcı"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/pages/users.tsx
 msgid "Provider"
 msgstr "Sağlayıcı"
@@ -7682,7 +7691,7 @@ msgstr "Sağlayıcılar"
 msgid "Prune older than (days)"
 msgstr "Şundan eski olanları sil (gün)"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Public"
 msgstr "Herkese açık"
 
@@ -7702,7 +7711,7 @@ msgstr "Herkese açık gömme etkinleştirildi."
 msgid "public link"
 msgstr "herkese açık bağlantı"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Public origin of this Worker — set via <0>wrangler.toml [vars]</0> (or <1>.env</1> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here."
 msgstr "Bu Worker'ın genel origin'i — <0>wrangler.toml [vars]</0> (veya öz barındırmada <1>.env</1>) üzerinden ayarlanır. CORS, OAuth geri çağrıları ve mutlak bağlantılar için kullanılır. Burada salt okunur."
 
@@ -7742,19 +7751,19 @@ msgstr "Yayınlandı"
 msgid "published only"
 msgstr "yalnızca yayınlananlar"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Published posts past week"
 msgstr "Son haftada yayınlanmış postlar"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Push"
 msgstr "Push"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Push settings saved."
 msgstr "Push ayarları kaydedildi."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Quality"
 msgstr "Kalite"
 
@@ -7762,7 +7771,7 @@ msgstr "Kalite"
 msgid "Queries"
 msgstr "Sorgular"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/search-playground.tsx
 #: src/client/pages/graphql.tsx
 msgid "Query"
@@ -7786,11 +7795,11 @@ msgstr "Kuyruk"
 msgid "Queue durable background work. Function jobs run a named function; jobs retry with backoff and dead-letter."
 msgstr "Dayanıklı arka plan işlerini kuyruğa alın. Fonksiyon işleri adlandırılmış bir fonksiyon çalıştırır; işler geri çekilmeyle yeniden denenir ve ölü mektuba düşer."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Qwen flagship · 1M context · strong multilingual"
 msgstr "Qwen amiral · 1M bağlam · çok dilli güçlü"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Qwen mid-tier · balanced pricing"
 msgstr "Qwen orta seviye · dengeli fiyat"
 
@@ -7851,7 +7860,7 @@ msgstr "salt okunur"
 msgid "Read-only"
 msgstr "Salt okunur"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Read-only mode"
 msgstr "Salt-okunur mod"
@@ -7907,7 +7916,7 @@ msgstr "Son teslimatlar"
 msgid "Recent errors"
 msgstr "Son hatalar"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Recent runs"
 msgstr "Son çalışmalar"
 
@@ -7948,14 +7957,15 @@ msgstr "/api/openapi.json yeniden çek"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/realtime.tsx
 #: src/client/admin/pages/schema-graph.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/traces.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/pages/openapi-export.tsx
@@ -7996,7 +8006,7 @@ msgstr "Fiziksel bir tabloyu backlex koleksiyonu olarak kaydet. Tabloda hiç DDL
 msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
 msgstr "Veritabanınızda zaten var olan bir tabloyu kaydet. Tabloda hiç DDL çalıştırılmaz — backlex yalnızca kendi meta verilerini yazar."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Reject"
 msgstr "Reddet"
 
@@ -8043,7 +8053,7 @@ msgstr "İlişki"
 msgid "Relative (3d ago)"
 msgstr "Göreli (3g önce)"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Released"
 msgstr "Yayımlandı"
 
@@ -8055,7 +8065,8 @@ msgstr "Şemayı yeniden yükle"
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/members-panel.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/rule-builder.tsx
 msgid "Remove"
 msgstr "Kaldır"
@@ -8087,7 +8098,7 @@ msgstr "Seçeneği kaldır"
 msgid "Remove condition"
 msgstr "Koşulu kaldır"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Remove device"
 msgstr "Cihazı kaldır"
 
@@ -8104,11 +8115,11 @@ msgstr "Listeden çıkar"
 msgid "Remove sample data"
 msgstr "Örnek verileri kaldır"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Remove tag"
 msgstr "Etiketi kaldır"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Remove tag {tag}"
 msgstr "{tag} etiketini kaldır"
 
@@ -8156,11 +8167,11 @@ msgid "rendering only — never affects storage or sorting"
 msgstr "yalnızca gösterim — depolama veya sıralamayı etkilemez"
 
 #: src/client/admin/account-page.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Replace"
 msgstr "Değiştir"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Repository"
 msgstr "Depo"
 
@@ -8188,7 +8199,7 @@ msgstr "zorunlu"
 msgid "Required"
 msgstr "Zorunlu"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Required for every provider — must be a verified sender/domain for the chosen transport."
 msgstr "Her sağlayıcı için zorunlu — seçilen taşıma için doğrulanmış bir gönderici/etki alanı olmalıdır."
 
@@ -8205,7 +8216,7 @@ msgstr "Zorunlu."
 msgid "Requires a password on your account. Social-only users should set one above first."
 msgstr "Hesabınızda bir şifre gerektirir. Yalnızca sosyal giriş kullananlar önce yukarıdan bir şifre belirlemeli."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Requires a signed URL or auth cookie."
 msgstr "İmzalı URL veya kimlik doğrulama çerezi gerektirir."
 
@@ -8214,8 +8225,8 @@ msgid "Resend verification email"
 msgstr "Doğrulama e-postasını yeniden gönder"
 
 #: src/client/admin/list-columns.tsx
-#: src/client/admin/pages/settings.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Reset"
 msgstr "Sıfırla"
 
@@ -8277,7 +8288,7 @@ msgid "Resolved variables"
 msgstr "Çözümlenen değişkenler"
 
 #: src/client/admin/pages/logs.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Resource"
 msgstr "Kaynak"
 
@@ -8327,7 +8338,8 @@ msgstr "{1} tabloda {0} satır geri yüklendi."
 msgid "Restricts the authenticated role to its own rows. Pick where ownership lives — a side table, the conventional <0>owner_id</0> column, or an aliased column."
 msgstr "Kimliği doğrulanmış rolü yalnızca kendi satırlarıyla sınırlar. Sahipliğin nerede olduğunu seçin — yan tablo, alışılmış <0>owner_id</0> sütunu veya takma adlı bir sütun."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Result"
@@ -8337,11 +8349,11 @@ msgstr "Sonuç"
 msgid "Result is piped into <0>$last</0> for the next step."
 msgstr "Sonuç bir sonraki adım için <0>$last</0> değişkenine aktarılır."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "resumable"
 msgstr "sürdürülebilir"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Resumable SSE on <0>GET /mcp</0>"
 msgstr "<0>GET /mcp</0> üzerinde sürdürülebilir SSE"
 
@@ -8406,7 +8418,7 @@ msgstr "Geri alma şu alanları değiştirecek:"
 msgid "Reverting…"
 msgstr "Geri alınıyor…"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Review"
 msgstr "İnceleme"
 
@@ -8560,7 +8572,8 @@ msgstr "satır sayısı (alan gerekmez)"
 msgid "Row id"
 msgstr "Satır ID"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/parity/database.tsx
 msgid "rows"
 msgstr "satır"
@@ -8595,7 +8608,7 @@ msgid "rules"
 msgstr "kurallar"
 
 #: src/client/admin/flow-builder.tsx
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Run"
@@ -8647,7 +8660,7 @@ msgid "Running"
 msgstr "Çalışıyor"
 
 #: src/client/admin/flow-builder.tsx
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/parity/insights.tsx
@@ -8659,7 +8672,7 @@ msgstr "Çalışıyor…"
 msgid "runs"
 msgstr "çalışmalar"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/database-import.tsx
 msgid "Runs"
 msgstr "Çalışmalar"
@@ -8668,7 +8681,7 @@ msgstr "Çalışmalar"
 msgid "runs daily at 09:00 UTC"
 msgstr "her gün 09:00 UTC'de çalışır"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Runtime"
 msgstr "Çalışma zamanı"
 
@@ -8742,7 +8755,10 @@ msgstr "Cmt"
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/functions.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/parity/email-templates.tsx
@@ -8764,7 +8780,7 @@ msgstr "Kaydet ve kapat"
 msgid "Save and continue"
 msgstr "Kaydet ve devam et"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Save as <0>(optional)</0>"
 msgstr "Farklı kaydet <0>(isteğe bağlı)</0>"
 
@@ -8798,7 +8814,7 @@ msgstr "Korumaları kaydet"
 msgid "Save LDAP config"
 msgstr "LDAP yapılandırmasını kaydet"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Save metadata"
 msgstr "Meta verileri kaydet"
 
@@ -8849,13 +8865,16 @@ msgstr "MCP korumaları kaydediliyor"
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/sheet.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 #: src/client/components/mcp-key-modal.tsx
 #: src/client/pages/reset-password.tsx
 msgid "Saving…"
@@ -8988,7 +9007,7 @@ msgstr "Alanlarda ara…"
 msgid "Search files by key…"
 msgstr "Dosyaları anahtara göre ara…"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Search folders…"
 msgstr "Klasörleri ara…"
 
@@ -8996,7 +9015,7 @@ msgstr "Klasörleri ara…"
 msgid "Search images by key…"
 msgstr "Görselleri anahtara göre ara…"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Search keys…"
 msgstr "Anahtarları ara…"
 
@@ -9029,7 +9048,7 @@ msgstr "Aranabilir"
 msgid "Searching…"
 msgstr "Aranıyor…"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "secret"
 msgstr "gizli"
 
@@ -9099,11 +9118,11 @@ msgstr "<0>{0}</0> seçildi"
 msgid "Selected <0>{selected}</0>"
 msgstr "<0>{selected}</0> seçildi"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values."
 msgstr "Cloudflare Workers üzerinde öz barındırılan. Yapılandırmanın büyük kısmı wrangler.toml içindedir; bu sayfa çalışma zamanında değiştirilebilen değerler için canlı görünüm ve arayüzdür."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run."
 msgstr "Cloudflare Workers üzerinde öz barındırılan. Telemetri yok, fatura yok — sadece klonla, dağıt, çalıştır."
 
@@ -9156,19 +9175,19 @@ msgstr "Sıfırlama bağlantısı gönder"
 msgid "Send test"
 msgstr "Test gönder"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Send test email"
 msgstr "Test e-postası gönder"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Send test push"
 msgstr "Test push gönder"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Send test SMS"
 msgstr "Test SMS gönder"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Sender address for transactional email — set via <0>wrangler secret put</0> / <1>.env</1>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here."
 msgstr "İşlemsel e-posta gönderici adresi — <0>wrangler secret put</0> / <1>.env</1> üzerinden ayarlanır. Ayarlanmadığında (veya RESEND_API_KEY eksikse) e-posta stdout'a kaydedilir. Burada salt okunur."
 
@@ -9181,7 +9200,7 @@ msgid "Sending reset link"
 msgstr "Sıfırlama bağlantısı gönderiliyor"
 
 #: src/client/admin/item-collaboration.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/rest-explorer.tsx
@@ -9196,7 +9215,7 @@ msgstr "E-posta ile tek kullanımlık giriş bağlantısı gönderir — yapıla
 msgid "September"
 msgstr "Eylül"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Server fetches the URL and stores it in this workspace. http/https only — private/internal hosts are rejected."
 msgstr "Sunucu URL'yi getirir ve bu çalışma alanında depolar. Yalnızca http/https — özel/dahili hostlar reddedilir."
 
@@ -9264,7 +9283,7 @@ msgstr "Oturumlar"
 msgid "Sessions revoked for {0}."
 msgstr "{0} için oturumlar iptal edildi."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "set"
 msgstr "ayarlandı"
@@ -9305,7 +9324,7 @@ msgstr "Parola belirle"
 msgid "Set the config object via the API once the panel exists."
 msgstr "Panel oluşturulduktan sonra API aracılığıyla yapılandırma nesnesini ayarlayın."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Set them in <0>wrangler.toml [vars]</0> / <1>wrangler secret put</1> (or <2>apps/web/.env</2> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser."
 msgstr "<0>wrangler.toml [vars]</0> / <1>wrangler secret put</1> (veya öz barındırmada <2>apps/web/.env</2>) içine ayarlayın ve yeniden dağıtın. Bu panel yalnızca hangi anahtarların mevcut olduğunu bildirir — gizli değerler hiçbir zaman tarayıcıya gönderilmez."
 
@@ -9332,7 +9351,7 @@ msgstr "Passkey ayarlanıyor…"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/app.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/ui.tsx
 msgid "Settings"
 msgstr "Ayarlar"
@@ -9341,7 +9360,7 @@ msgstr "Ayarlar"
 msgid "Settings → MCP → Add new MCP server → paste the JSON."
 msgstr "Ayarlar → MCP → Yeni MCP sunucusu ekle → JSON'u yapıştır."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
 msgstr "Ayarlar → MCP → Ekle. Claude Desktop ile aynı JSON şeklini kullanır."
 
@@ -9382,11 +9401,11 @@ msgstr "Paylaşılan kayıt"
 msgid "Shared via backlex · this link can be revoked at any time."
 msgstr "backlex aracılığıyla paylaşıldı · bu bağlantı istediğiniz zaman iptal edilebilir."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Short sentence shown under the headline."
 msgstr "Başlığın altında gösterilen kısa cümle."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Short tagline for the workspace."
 msgstr "Çalışma alanı için kısa slogan."
 
@@ -9434,7 +9453,7 @@ msgid "Show variables"
 msgstr "Değişkenleri göster"
 
 #. placeholder {0}: files.length
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "showing {0}"
 msgstr "{0} gösteriliyor"
 
@@ -9444,7 +9463,7 @@ msgstr "{0} gösteriliyor"
 msgid "Showing {0} changed field{1}"
 msgstr "{0} değiştirilmiş alan gösteriliyor"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Showing {loaded} of {total}"
 msgstr "{total} öğeden {loaded} tanesi gösteriliyor"
 
@@ -9456,7 +9475,7 @@ msgstr "Tüm alanlar gösteriliyor"
 msgid "Showing the 100 most recently updated rows. Use search to narrow down."
 msgstr "En son güncellenen 100 satır gösteriliyor. Daraltmak için arama yapın."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Showing the original above. Toggle <0>Public</0> to enable edge resizing for this file."
 msgstr "Yukarıda orijinal gösteriliyor. Bu dosya için kenar yeniden boyutlandırmayı etkinleştirmek için <0>Herkese açık</0> seçeneğini açın."
 
@@ -9468,7 +9487,7 @@ msgstr "Panoda panel başlığı olarak gösterilir."
 msgid "Shown in author bylines and the header dropdown."
 msgstr "Yazar satırlarında ve üst bilgi açılır menüsünde gösterilir."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Shown in the sidebar and the browser title."
 msgstr "Kenar çubuğunda ve tarayıcı başlığında gösterilir."
 
@@ -9497,7 +9516,7 @@ msgstr "Giriş yap"
 msgid "Sign in to <0>backlex</0>."
 msgstr "<0>backlex</0>'a giriş yapın."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Sign in to backlex."
 msgstr "backlex'a giriş yapın."
 
@@ -9546,7 +9565,7 @@ msgstr "Diğer cihazlardan çıkış yap"
 msgid "Sign up"
 msgstr "Kayıt ol"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Sign URL"
 msgstr "URL'yi imzala"
 
@@ -9558,7 +9577,7 @@ msgstr "Giriş başarısız"
 msgid "Sign-in method"
 msgstr "Giriş yöntemi"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Sign-in screen saved."
 msgstr "Giriş ekranı kaydedildi."
 
@@ -9579,7 +9598,7 @@ msgstr "Kayıt devre dışı"
 msgid "Signature algorithm"
 msgstr "İmza algoritması"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Signed URL copied (1h)."
 msgstr "İmzalı URL kopyalandı (1 saat)."
 
@@ -9631,7 +9650,8 @@ msgstr "Tekil ad"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/database.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Size"
 msgstr "Boyut"
 
@@ -9664,15 +9684,15 @@ msgstr "slug zorunludur"
 msgid "Slug: <0>{slugClean}</0>"
 msgstr "Slug: <0>{slugClean}</0>"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "SMS"
 msgstr "SMS"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "SMS settings saved."
 msgstr "SMS ayarları kaydedildi."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "SMS transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>SMS_*</1> env vars. Secret values are encrypted at rest and never shown again. Send to a user via the <2>messaging.send_sms</2> tool / API once they register a phone number."
 msgstr "<0>Bu çalışma alanı</0> için SMS taşıyıcısı. Çözümleme sırası: bu yapılandırma → örnek genelindeki varsayılan → dağıtımın <1>SMS_*</1> ortam değişkenleri. Gizli değerler şifreli saklanır ve bir daha gösterilmez. Bir kullanıcı telefon numarası kaydettikten sonra <2>messaging.send_sms</2> aracı / API ile gönderim yapın."
 
@@ -9704,7 +9724,7 @@ msgstr "Anlık görüntüler"
 msgid "snapshots — older ones are pruned automatically."
 msgstr "anlık görüntü tutulur — eskiler otomatik olarak budanır."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Snippet copied"
 msgstr "Parça kopyalandı"
 
@@ -9733,7 +9753,7 @@ msgstr "Kaynak silindi."
 msgid "Source saved. The connection string is encrypted at rest."
 msgstr "Kaynak kaydedildi. Bağlantı dizesi bekleme durumunda şifrelenir."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Source URL"
 msgstr "Kaynak URL"
 
@@ -9803,7 +9823,7 @@ msgstr "Başlatılıyor…"
 msgid "State"
 msgstr "Durum"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Stateless Streamable HTTP. No <0>GET /mcp</0> (resumable SSE) yet."
 msgstr "Durumsuz Streamable HTTP. Henüz <0>GET /mcp</0> (sürdürülebilir SSE) yok."
 
@@ -9815,7 +9835,7 @@ msgstr "statik paneller yapılandırma nesnelerini aynen işler — panel oluşt
 #: src/client/admin/items.tsx
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/jobs.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/traces.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -9845,7 +9865,7 @@ msgid "Steps"
 msgstr "Adımlar"
 
 #: src/client/admin/pages/overview.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 #: src/client/admin/ui.tsx
 msgid "Storage"
 msgstr "Depolama"
@@ -9895,7 +9915,7 @@ msgstr "Hedef satırın <0>id</0> değerini saklar. Hedef değiştirilemez — d
 msgid "Stream"
 msgstr "Akış"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "strong reasoning · 1M context · low cost"
 msgstr "güçlü akıl yürütme · 1M bağlam · uygun fiyat"
 
@@ -9925,7 +9945,7 @@ msgstr "Abone olundu. Etkinlikler bekleniyor…"
 msgid "Succeeded"
 msgstr "Başarılı"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Success"
 msgstr "Başarılı"
@@ -9997,7 +10017,7 @@ msgid "system"
 msgstr "sistem"
 
 #: src/client/admin/display-template-editor.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "System"
 msgstr "Sistem"
 
@@ -10044,17 +10064,17 @@ msgstr "Tablo"
 msgid "Tables"
 msgstr "Tablolar"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Tagline"
 msgstr "Slogan"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Tags"
 msgstr "Etiketler"
 
 #. placeholder {0}: folder || "uploads"
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Target folder: <0>{0}/</0> · max 100 MB per file · jpeg, png, webp, avif transformed on the fly"
 msgstr "Hedef klasör: <0>{0}/</0> · dosya başına maksimum 100 MB · jpeg, png, webp, avif anında dönüştürülür"
 
@@ -10083,7 +10103,7 @@ msgstr "Şablon"
 msgid "Template saved."
 msgstr "Şablon kaydedildi."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Tenant agents. DSL-filtered."
 msgstr "Kiracı ajanları. DSL ile filtrelenmiş."
 
@@ -10097,7 +10117,7 @@ msgstr "Kiracı kapsamlı"
 msgid "Tenant-scoped lookup at run time. Inactive functions throw at execution."
 msgstr "Çalışma zamanında kiracı kapsamlı arama. Etkin olmayan fonksiyonlar çalıştırmada hata verir."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Terms of Service URL"
 msgstr "Hizmet Şartları URL'si"
 
@@ -10119,7 +10139,7 @@ msgid "Test connection"
 msgstr "Bağlantıyı test et"
 
 #. placeholder {0}: r.to
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Test email sent to {0}."
 msgstr "Test e-postası {0} adresine gönderildi."
 
@@ -10133,7 +10153,7 @@ msgstr "Test e-postası gönderildi."
 msgid "Test event sent to {0}."
 msgstr "Test etkinliği {0} adresine gönderildi."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
 msgid "Test key"
 msgstr "Anahtarı test et"
 
@@ -10142,11 +10162,11 @@ msgid "Test LDAP connection"
 msgstr "LDAP bağlantısını test et"
 
 #. placeholder {0}: r.sent
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Test push sent to {0} device(s)."
 msgstr "{0} cihaza test push gönderildi."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Test recipient (E.164)"
 msgstr "Test alıcısı (E.164)"
 
@@ -10163,7 +10183,7 @@ msgid "Test run dispatched."
 msgstr "Test çalışması başlatıldı."
 
 #. placeholder {0}: r.sent
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Test SMS sent to {0} number(s)."
 msgstr "{0} numaraya test SMS gönderildi."
 
@@ -10176,7 +10196,7 @@ msgid "Tester"
 msgstr "Test aracı"
 
 #: src/client/admin/pages/database-import.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
 msgid "Testing…"
 msgstr "Test ediliyor…"
 
@@ -10424,11 +10444,11 @@ msgstr "Alıcı"
 msgid "to execute"
 msgstr "çalıştırmak için"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "to run"
 msgstr "çalıştırmak için"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Toggle"
 msgstr "Aç/kapat"
 
@@ -10450,38 +10470,38 @@ msgstr "Kenar çubuğunu aç/kapat"
 msgid "Toggle theme"
 msgstr "Temayı değiştir"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Toggle tools below to edit the allowlist."
 msgstr "İzin listesini düzenlemek için aşağıdaki araçları açıp kapatın."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Tool"
 msgstr "Araç"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Tool allowlist"
 msgstr "Araç izin listesi"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Tool failed"
 msgstr "Araç başarısız"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Tool ok"
 msgstr "Araç tamam"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Tool ok — {count} rows"
 msgstr "Araç tamam — {count} satır"
 
 #: src/client/admin/pages/agents.tsx
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "tools"
 msgstr "araç"
 
 #: src/client/admin/pages/agents.tsx
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Tools"
 msgstr "Araçlar"
 
@@ -10489,7 +10509,7 @@ msgstr "Araçlar"
 msgid "Top collections"
 msgstr "En çok kullanılan koleksiyonlar"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Top customers by spend"
 msgstr "Harcamaya göre en iyi müşteriler"
 
@@ -10518,15 +10538,15 @@ msgstr "İzler yenilendi."
 msgid "Track data events through Segment."
 msgstr "Veri olaylarını Segment üzerinden izle."
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Transform"
 msgstr "Dönüştür"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Transform unavailable"
 msgstr "Dönüştürme kullanılamıyor"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Transformed"
 msgstr "Dönüştürüldü"
 
@@ -10534,7 +10554,7 @@ msgstr "Dönüştürüldü"
 msgid "Translate"
 msgstr "Çevir"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Translate natural language into operator-style queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
 msgstr "Doğal dili operatör-tabanlı sorgulara dönüştür, şema taslakları çıkar ve istediğin MCP aracını çalıştır — rolüne ve anahtar bazlı izin listene göre sınırlı. Claude Desktop'ın gördüğü yüzeyle aynı."
 
@@ -10581,7 +10601,7 @@ msgstr "Veri olaylarında PagerDuty uyarıları tetikle."
 msgid "Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
 msgstr "Tetikleyiciler koleksiyon etkinliklerinde, zamanlamalarda veya webhook'larda tetiklenir. Her adım kum havuzunda çalışır."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "Try"
 msgstr "Dene"
 
@@ -10631,8 +10651,8 @@ msgid "Two-factor authentication is on."
 msgstr "İki adımlı doğrulama açık."
 
 #: src/client/admin/pages/jobs.tsx
-#: src/client/admin/pages/settings.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/pages/settings/index.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Type"
 msgstr "Tür"
 
@@ -10652,7 +10672,7 @@ msgstr "Yazın ve Enter'a basın…"
 msgid "Types"
 msgstr "Türler"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "unbound"
 msgstr "bağlanmamış"
 
@@ -10726,7 +10746,7 @@ msgid "Unrestricted — no row filter applies."
 msgstr "Kısıtlamasız — satır filtresi uygulanmaz."
 
 #: src/client/admin/parity/email-templates.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "unsaved"
 msgstr "kaydedilmemiş"
 
@@ -10734,7 +10754,7 @@ msgstr "kaydedilmemiş"
 msgid "Unsaved"
 msgstr "Kaydedilmedi"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "unset"
 msgstr "ayarlanmamış"
 
@@ -10764,18 +10784,19 @@ msgid "Update password"
 msgstr "Parolayı güncelle"
 
 #: src/client/admin/items.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Updated"
 msgstr "Güncellendi"
 
 #: src/client/admin/account-page.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/relational-pickers.tsx
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Upload"
 msgstr "Yükle"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "upload failed"
 msgstr "yükleme başarısız"
 
@@ -10792,11 +10813,11 @@ msgid "uploading…"
 msgstr "yükleniyor…"
 
 #: src/client/admin/account-page.tsx
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Uploading…"
 msgstr "Yükleniyor…"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "Uploads"
 msgstr "Yüklemeler"
 
@@ -10806,7 +10827,7 @@ msgid "URL"
 msgstr "URL"
 
 #. placeholder {0}: k.split("/").pop() ?? k
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "URL copied: {0}"
 msgstr "URL kopyalandı: {0}"
 
@@ -10823,7 +10844,7 @@ msgstr "URL tanımlayıcısı. Mevcut <0>{0}</0> tablosuna başvurur (fiziksel y
 msgid "url is required"
 msgstr "URL zorunludur"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/index.tsx
 msgid "URL is required."
 msgstr "URL zorunludur."
 
@@ -10846,7 +10867,7 @@ msgid "Use {0} file{1}"
 msgstr "{0} dosyayı kullan"
 
 #. placeholder {0}: p.label
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Use {0} palette"
 msgstr "{0} paletini kullan"
 
@@ -10862,7 +10883,7 @@ msgstr "Yedek kod kullan"
 msgid "Use a different email"
 msgstr "Farklı bir e-posta kullan"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Use a hex value (#rrggbb), or a CSS color function: rgb(), hsl(), oklch(), oklab()."
 msgstr "Hex değeri (#rrggbb) veya CSS renk fonksiyonu kullanın: rgb(), hsl(), oklch(), oklab()."
 
@@ -10977,7 +10998,7 @@ msgstr "{f} değeri"
 msgid "value or $user.id"
 msgstr "değer veya $user.id"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "VAPID keypair generated — review and Save to store it."
 msgstr "VAPID anahtar çifti üretildi — gözden geçirip Kaydet'e basın."
 
@@ -11036,7 +11057,7 @@ msgstr "E-postayı doğrula"
 msgid "Verifying…"
 msgstr "Doğrulanıyor…"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Version"
 msgstr "Sürüm"
@@ -11150,7 +11171,7 @@ msgstr "Ne arıyorsunuz?"
 msgid "What this agent is for"
 msgstr "Bu ajan ne için"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "What this file is about…"
 msgstr "Bu dosya hakkında…"
 
@@ -11162,7 +11183,7 @@ msgstr "Bu rolün yapabilecekleri…"
 msgid "whatever the collection has enabled"
 msgstr "koleksiyonda etkin olan neyse"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "When"
 msgstr "Ne zaman"
 
@@ -11196,7 +11217,7 @@ msgstr "Referans verilen öğe silindiğinde"
 msgid "When the rule matches the row, apply the effects. <0>Required</0> is enforced on save (422); Readonly/Hidden affect the item form."
 msgstr "Kural satırla eşleştiğinde efektler uygulanır. <0>Zorunlu</0> kayıtta zorlanır (422); Salt okunur/Gizli öğe formunu etkiler."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
 msgstr "“Test SMS gönder” işleminin nereye iletileceği. Hesabınızın kayıtlı numaralarını kullanmak için boş bırakın."
 
@@ -11204,7 +11225,7 @@ msgstr "“Test SMS gönder” işleminin nereye iletileceği. Hesabınızın ka
 msgid "Whole numbers only (no decimals)"
 msgstr "Yalnızca tam sayılar (ondalık yok)"
 
-#: src/client/admin/storage.tsx
+#: src/client/admin/storage/widgets.tsx
 msgid "Width"
 msgstr "Genişlik"
 
@@ -11241,7 +11262,7 @@ msgstr "Bu API anahtarını bir Model Context Protocol istemcisine bağla (Claud
 msgid "Words"
 msgstr "Kelimeler"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "worker bindings"
 msgstr "worker bağlamaları"
 
@@ -11276,23 +11297,23 @@ msgstr "Çalışma alanı auth API'si <0>· hizmet olarak kimlik doğrulama</0>"
 msgid "Workspace default — {0}"
 msgstr "Çalışma alanı varsayılanı — {0}"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Workspace default theme"
 msgstr "Çalışma alanı varsayılan teması"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "workspace favicon"
 msgstr "çalışma alanı favicon'u"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/locale-card.tsx
 msgid "Workspace language settings saved."
 msgstr "Çalışma alanı dil ayarları kaydedildi."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "workspace logo"
 msgstr "çalışma alanı logosu"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Workspace name"
 msgstr "Çalışma alanı adı"
 
@@ -11300,11 +11321,11 @@ msgstr "Çalışma alanı adı"
 msgid "Workspaces"
 msgstr "Çalışma alanları"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "Wrangler"
 msgstr "Wrangler"
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/index.tsx
 msgid "wrangler.toml snippet"
 msgstr "wrangler.toml kod parçacığı"
 
@@ -11336,11 +11357,11 @@ msgstr "Yazma işlemleri 24s"
 msgid "Writes blocked. Toggle \"read-only\" off to run mutations."
 msgstr "Yazma işlemleri engellendi. Değişiklik yapmak için \"salt okunur\" seçeneğini kapatın."
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "xAI · optimized for code agents · cheap"
 msgstr "xAI · kod ajanları için optimize · ucuz"
 
-#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/ask-ai/index.tsx
 msgid "xAI flagship · 1M context"
 msgstr "xAI amiral modeli · 1M bağlam"
 
@@ -11408,7 +11429,7 @@ msgstr "Görünen adınız"
 msgid "Your email isn't verified yet. Check your inbox for the verification link."
 msgstr "E-postanız henüz doğrulanmadı. Doğrulama bağlantısı için gelen kutunuzu kontrol edin."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Your own preference — stored locally, not synced."
 msgstr "Kişisel tercihiniz — yerel olarak saklanır, senkronize edilmez."
 
@@ -11420,6 +11441,6 @@ msgstr "Şifreniz"
 msgid "Your personal profile, preferences, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page."
 msgstr "Kişisel profiliniz, tercihleriniz, parolanız, oturumlarınız ve bağlı kimlik bilgileriniz. Çalışma alanı genelindeki ayarlar Ayarlar sayfasındadır."
 
-#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Your registered devices"
 msgstr "Kayıtlı cihazlarınız"

@@ -691,6 +691,9 @@ export interface BackupRecord {
 export interface BackupScheduleConfig {
   schedule: "off" | "daily" | "weekly";
   retain: number;
+  /** Age-based retention on top of the count — auto backups older than this
+   *  many days are pruned. `null` disables the age rule. */
+  retainDays: number | null;
 }
 
 /** Result of an additive restore (`ON CONFLICT DO NOTHING`). */

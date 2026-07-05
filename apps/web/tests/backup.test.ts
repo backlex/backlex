@@ -154,7 +154,7 @@ describe("backup schedule config", () => {
     const def = ((await (await h.fetch("/api/admin/db/backups/config")).json()) as {
       data: { schedule: string; retain: number };
     }).data;
-    expect(def).toEqual({ schedule: "off", retain: 7 });
+    expect(def).toEqual({ schedule: "off", retain: 7, retainDays: null });
 
     const put = await h.fetch("/api/admin/db/backups/config", {
       method: "PUT",
@@ -165,11 +165,30 @@ describe("backup schedule config", () => {
     expect(((await put.json()) as { data: unknown }).data).toEqual({
       schedule: "daily",
       retain: 3,
+      retainDays: null,
     });
     const after = ((await (await h.fetch("/api/admin/db/backups/config")).json()) as {
       data: unknown;
     }).data;
-    expect(after).toEqual({ schedule: "daily", retain: 3 });
+    expect(after).toEqual({ schedule: "daily", retain: 3, retainDays: null });
+
+    // Age rule round-trips too; explicit null turns it back off.
+    const days = await h.fetch("/api/admin/db/backups/config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ retainDays: 14 }),
+    });
+    expect(((await days.json()) as { data: unknown }).data).toEqual({
+      schedule: "daily",
+      retain: 3,
+      retainDays: 14,
+    });
+    const off = await h.fetch("/api/admin/db/backups/config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ retainDays: null }),
+    });
+    expect(((await off.json()) as { data: { retainDays: number | null } }).data.retainDays).toBeNull();
   });
 
   test("rejects an invalid schedule value", async () => {

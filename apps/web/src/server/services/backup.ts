@@ -487,9 +487,17 @@ export interface BackupConfig {
    *  objects) are pruned after each scheduled run. Manual backups are never
    *  pruned. */
   retain: number;
+  /** Age-based retention on top of the count: `auto` backups older than this
+   *  many days are pruned even when fewer than `retain` exist. `null`
+   *  disables the age rule (count-only, the historical behavior). */
+  retainDays: number | null;
 }
 
-export const BACKUP_CONFIG_DEFAULT: BackupConfig = { schedule: "off", retain: 7 };
+export const BACKUP_CONFIG_DEFAULT: BackupConfig = {
+  schedule: "off",
+  retain: 7,
+  retainDays: null,
+};
 const BACKUP_CONFIG_KEY = "backupConfig";
 
 const settingsTable = (dialect: "pg" | "sqlite") =>
@@ -503,7 +511,13 @@ const normalizeConfig = (value: unknown): BackupConfig => {
     typeof v.retain === "number" && v.retain >= 1 && v.retain <= 365
       ? Math.floor(v.retain)
       : BACKUP_CONFIG_DEFAULT.retain;
-  return { schedule, retain };
+  // Stored configs predating the age rule have no `retainDays` — treat as
+  // disabled rather than inventing a cutoff.
+  const retainDays =
+    typeof v.retainDays === "number" && v.retainDays >= 1 && v.retainDays <= 3650
+      ? Math.floor(v.retainDays)
+      : null;
+  return { schedule, retain, retainDays };
 };
 
 /** Read the per-workspace backup schedule from `app_settings`. */
@@ -746,19 +760,28 @@ export const maybeRunScheduledBackups = async (
       autos.unshift({ id, storageKey, createdAt: now });
     }
 
-    // Retention: drop `auto` backups beyond the newest `retain`, storage first.
-    if (autos.length > cfg.retain) {
-      for (const old of autos.slice(cfg.retain)) {
-        try {
-          await ctx.storage.delete(old.storageKey);
-        } catch {
-          // Storage object already gone — drop the tracking row anyway.
-        }
-        await (ctx.db as any)
-          .delete(backupsTable)
-          .where(eq(backupsTable.id, old.id));
-        pruned += 1;
+    // Retention: drop `auto` backups beyond the newest `retain` AND (when the
+    // age rule is on) any older than `retainDays` — whichever bites first.
+    // Storage object goes first so a crash between the two deletes leaves a
+    // harmless tracking row, not an orphaned blob.
+    const ageCutoff =
+      cfg.retainDays != null
+        ? now.getTime() - cfg.retainDays * 24 * 60 * 60 * 1000
+        : null;
+    const stale = autos.filter(
+      (a, i) =>
+        i >= cfg.retain || (ageCutoff != null && toMs(a.createdAt) < ageCutoff),
+    );
+    for (const old of stale) {
+      try {
+        await ctx.storage.delete(old.storageKey);
+      } catch {
+        // Storage object already gone — drop the tracking row anyway.
       }
+      await (ctx.db as any)
+        .delete(backupsTable)
+        .where(eq(backupsTable.id, old.id));
+      pruned += 1;
     }
   }
 

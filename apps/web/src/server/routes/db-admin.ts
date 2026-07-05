@@ -116,6 +116,10 @@ const BackupConfigSchema = z
   .object({
     schedule: z.enum(["off", "daily", "weekly"]),
     retain: z.number().int().min(1).max(365),
+    retainDays: z.number().int().min(1).max(3650).nullable().openapi({
+      description:
+        "Age-based retention on top of the count — auto backups older than this many days are pruned. null disables the age rule.",
+    }),
   })
   .openapi("BackupConfig");
 

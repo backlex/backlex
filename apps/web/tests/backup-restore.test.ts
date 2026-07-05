@@ -130,7 +130,7 @@ describe("scheduled backups + retention", () => {
     });
     expect(put.status).toBe(200);
     const saved = ((await put.json()) as { data: { schedule: string; retain: number } }).data;
-    expect(saved).toEqual({ schedule: "daily", retain: 1 });
+    expect(saved).toEqual({ schedule: "daily", retain: 1, retainDays: null });
   });
 
   test("sweep runs when due, skips when not, and prunes to the retention count", async () => {
@@ -154,6 +154,33 @@ describe("scheduled backups + retention", () => {
     const autos = ((await list.json()) as { data: { kind: string }[] }).data.filter(
       (b) => b.kind === "auto",
     );
+    expect(autos.length).toBe(1);
+  });
+
+  test("age rule prunes autos older than retainDays even under the count cap", async () => {
+    const ctx = await buildContext(h.env);
+    // Plenty of count headroom, but a 2-day age ceiling.
+    const put = await h.fetch("/api/admin/db/backups/config", {
+      method: "PUT",
+      headers: json,
+      body: JSON.stringify({ schedule: "daily", retain: 100, retainDays: 2 }),
+    });
+    expect(put.status).toBe(200);
+
+    const base = new Date();
+    // Continues from the previous test's timeline (one auto exists at ~+25h);
+    // running the sweep 5 days out takes a fresh auto AND ages out every
+    // older one, despite retain=100 never biting.
+    const far = new Date(base.getTime() + 5 * 24 * 60 * 60 * 1000);
+    const sweep = await maybeRunScheduledBackups(ctx, far);
+    expect(sweep.ran).toBe(1);
+    expect(sweep.pruned).toBeGreaterThanOrEqual(1);
+
+    const list = await h.fetch("/api/admin/db/backups");
+    const autos = ((await list.json()) as { data: { kind: string }[] }).data.filter(
+      (b) => b.kind === "auto",
+    );
+    // Only the just-taken auto survives the age rule.
     expect(autos.length).toBe(1);
   });
 });

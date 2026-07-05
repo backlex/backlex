@@ -150,3 +150,53 @@ describe("dashboards — SDK surface + public embed", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("panels — PATCH keeps unspecified fields", () => {
+  let h: TestHarness;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+  });
+  afterAll(() => h.cleanup());
+
+  // Regression: PanelInput's create-time defaults (`viz`, `kind`) used to leak
+  // through `.partial()` on PATCH, so a `{dashboardId}`-only move silently
+  // reset every panel back to viz "sparkline" / kind "sql".
+  test("a partial PATCH does not reset viz/kind to their create defaults", async () => {
+    const created = await h.fetch(
+      "/api/admin/panels",
+      json({ name: "keep-viz", kind: "static", viz: "donut" }),
+    );
+    expect(created.status).toBe(201);
+    const id = ((await created.json()) as { data: { id: string } }).data.id;
+
+    const patch = await h.fetch(`/api/admin/panels/${id}`, {
+      ...json({ description: "only the description" }),
+      method: "PATCH",
+    });
+    expect(patch.status).toBe(200);
+
+    const list = (await (await h.fetch("/api/admin/panels")).json()) as {
+      data: { id: string; viz: string; kind: string; description: string | null }[];
+    };
+    const row = list.data.find((p) => p.id === id);
+    expect(row?.description).toBe("only the description");
+    expect(row?.viz).toBe("donut");
+    expect(row?.kind).toBe("static");
+  });
+
+  test("every documented viz value is accepted on create", async () => {
+    const vizzes = [
+      "sparkline", "line", "area", "bars", "stacked-bars",
+      "donut", "pie", "radar", "radial", "counter", "table",
+    ];
+    for (const viz of vizzes) {
+      const res = await h.fetch(
+        "/api/admin/panels",
+        json({ name: `viz-${viz}`, kind: "static", viz }),
+      );
+      expect(res.status).toBe(201);
+    }
+  });
+});

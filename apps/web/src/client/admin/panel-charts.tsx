@@ -40,7 +40,10 @@ const trimTick = (v: unknown) => {
   return s.length > 12 ? `${s.slice(0, 11)}…` : s;
 };
 
-const CONTAINER = "aspect-auto h-40 w-full";
+// min-h + grow (flex-basis stays auto): in the dashboard grid the card is a
+// fixed-height flex column, so the chart stretches to fill the tile; in
+// natural-height cards (public embed) it settles at the 160px minimum.
+const CONTAINER = "aspect-auto min-h-40 w-full grow";
 
 export default function PanelChart({ viz, rows }: { viz: ChartViz; rows: Record<string, unknown>[] }) {
   if (SEGMENT_VIZES.includes(viz)) return <SegmentChart viz={viz} rows={rows} />;

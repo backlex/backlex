@@ -35,6 +35,8 @@ import {
 } from "../permissions";
 import { publishEvent } from "../events";
 import { loadCollection } from "../items/collection-loader";
+import { ITEMS_AGG_FUNCS, runItemsAggregate } from "../items/aggregate";
+import { searchCollectionItems } from "../items/search";
 import { runBatch, type BatchOp } from "../items/batch";
 import { runBulkUpdate } from "../items/bulk";
 import { hashIncomingFields, scrubHashFields } from "../items/hash-fields";
@@ -1063,3 +1065,119 @@ export const batchResolver = async (
   }
 };
 
+
+// ── Aggregate + relevance search (REST parity) ───────────────────────────────
+// Both reuse the ONE shared items service (runItemsAggregate /
+// searchCollectionItems), so validation, permission clamps, and the
+// draft/soft-delete oracle guards can never diverge from REST.
+
+const surfaceAppError = async <T>(work: () => Promise<T>): Promise<T> => {
+  try {
+    return await work();
+  } catch (e) {
+    if (e instanceof AppError) {
+      throw new GraphQLError(e.message, { extensions: { code: e.code } });
+    }
+    throw e;
+  }
+};
+
+export const aggregateResolver = async (
+  gqlCtx: GqlCtx,
+  collection: CollectionRow,
+  args: {
+    agg: string;
+    field?: string | null;
+    groupBy?: string | null;
+    filter?: Record<string, unknown> | null;
+    limit?: number | null;
+  },
+) => {
+  const { ctx, auth, permCache } = gqlCtx;
+  const perm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
+  if (!perm.allowed) denyOrThrow(auth, collection.slug);
+  if (!auth.tenantId) {
+    throw new GraphQLError("Active tenant required", {
+      extensions: { code: "UNAUTHORIZED" },
+    });
+  }
+  if (!(ITEMS_AGG_FUNCS as readonly string[]).includes(args.agg)) {
+    throw new GraphQLError(`agg must be one of ${ITEMS_AGG_FUNCS.join(", ")}`, {
+      extensions: { code: "VALIDATION" },
+    });
+  }
+  // Mirror the REST draft-oracle guard: COUNT/MIN/MAX over rows the caller
+  // can't read would otherwise leak their existence.
+  const canSeeDrafts =
+    Boolean(perm.isAdmin) ||
+    (await resolvePermission(ctx, auth, collection.slug, "publish", permCache)).allowed ||
+    (await resolvePermission(ctx, auth, collection.slug, "update", permCache)).allowed;
+  return surfaceAppError(() =>
+    runItemsAggregate(
+      ctx,
+      auth,
+      auth.tenantId as string,
+      {
+        collection: collection.slug,
+        agg: args.agg,
+        field: args.field ?? undefined,
+        groupBy: args.groupBy ?? undefined,
+        filter: args.filter ?? undefined,
+        limit: args.limit ?? undefined,
+      },
+      {
+        permWhere: perm.whereSql,
+        allowedFields: perm.fields,
+        excludeSoftDeleted: true,
+        excludeDrafts: !canSeeDrafts,
+      },
+    ),
+  );
+};
+
+export const searchResolver = async (
+  gqlCtx: GqlCtx,
+  collection: CollectionRow,
+  args: { q: string; mode?: string | null; limit?: number | null; locale?: string | null },
+) => {
+  const { ctx, auth, permCache } = gqlCtx;
+  const perm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
+  if (!perm.allowed) denyOrThrow(auth, collection.slug);
+  if (args.mode != null && !["fts", "vector", "hybrid"].includes(args.mode)) {
+    throw new GraphQLError("mode must be fts | vector | hybrid", {
+      extensions: { code: "VALIDATION" },
+    });
+  }
+  if (args.limit != null && (args.limit < 1 || args.limit > 100)) {
+    throw new GraphQLError("limit must be between 1 and 100", {
+      extensions: { code: "VALIDATION" },
+    });
+  }
+  return surfaceAppError(async () => {
+    // The search service needs the items-loader row (fts/vectorize metadata
+    // isn't on GraphQL's structurally-different CollectionRow) — same pattern
+    // as the verify resolver above.
+    const loaded = await loadCollection(ctx, auth.tenantId ?? undefined, collection.slug);
+    const canSeeDrafts =
+      Boolean(perm.isAdmin) ||
+      (await resolvePermission(ctx, auth, collection.slug, "publish", permCache)).allowed ||
+      (await resolvePermission(ctx, auth, collection.slug, "update", permCache)).allowed;
+    const { data } = await searchCollectionItems(
+      ctx,
+      auth,
+      loaded,
+      {
+        q: args.q,
+        mode: (args.mode ?? undefined) as "fts" | "vector" | "hybrid" | undefined,
+        limit: args.limit ?? undefined,
+        locale: args.locale ?? undefined,
+      },
+      {
+        permWhere: perm.whereSql,
+        permFields: perm.fields,
+        canSeeDrafts,
+      },
+    );
+    return data;
+  });
+};

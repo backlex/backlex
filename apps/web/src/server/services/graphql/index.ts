@@ -5,6 +5,7 @@ import {
   buildCollectionType,
   buildInputType,
   bulkUpdateResolver,
+  aggregateResolver,
   camel,
   collectionsTable,
   createResolver,
@@ -12,6 +13,7 @@ import {
   getResolver,
   listResolver,
   pascal,
+  searchResolver,
   updateResolver,
   verifyResolver,
   JSONScalar,
@@ -155,6 +157,41 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
       args: { id: { type: new GraphQLNonNull(GraphQLID) } },
       resolve: async (_src, rawArgs, gqlCtx) =>
         getResolver(gqlCtx, c, (rawArgs as { id: string }).id),
+    };
+
+    queryFields[`${lowerName}Aggregate`] = {
+      type: new GraphQLNonNull(JSONScalar),
+      description:
+        `Aggregate "${c.slug}": count / sum / avg / min / max, optionally ` +
+        "grouped by a column. Returns `[{ value }]` (scalar) or " +
+        "`[{ label, value }, …]` (grouped, value desc). Mirrors REST " +
+        "`POST /api/items/{slug}/aggregate` — same permission/tenant/draft guards.",
+      args: {
+        agg: { type: new GraphQLNonNull(GraphQLString) },
+        field: { type: GraphQLString },
+        groupBy: { type: GraphQLString },
+        filter: { type: JSONScalar },
+        limit: { type: GraphQLInt },
+      },
+      resolve: async (_src, rawArgs, gqlCtx) =>
+        aggregateResolver(gqlCtx, c, rawArgs as Parameters<typeof aggregateResolver>[2]),
+    };
+
+    queryFields[`${lowerName}Search`] = {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(Type))),
+      description:
+        `Relevance search over "${c.slug}": full-text (\`fts\`), semantic ` +
+        "(`vector`), or `hybrid` (RRF fusion), best-first. Mirrors REST " +
+        "`POST /api/items/{slug}/search` — permission, tenant, soft-delete and " +
+        "draft visibility all enforced at hydration.",
+      args: {
+        q: { type: new GraphQLNonNull(GraphQLString) },
+        mode: { type: GraphQLString },
+        limit: { type: GraphQLInt },
+        locale: { type: GraphQLString },
+      },
+      resolve: async (_src, rawArgs, gqlCtx) =>
+        searchResolver(gqlCtx, c, rawArgs as Parameters<typeof searchResolver>[2]),
     };
 
     mutationFields[`create${Pascal}`] = {

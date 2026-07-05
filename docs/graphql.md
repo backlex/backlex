@@ -301,6 +301,30 @@ probe restricted fields via filters.
 GraphQL uses the same session middleware as REST: cookie session
 (better-auth) or `Authorization: Bearer pak_…` API key. Both work.
 
+## Aggregate & relevance search
+
+Every collection gets two extra query fields mirroring the REST items
+extras (gate: `graphql-aggregate-search.test.ts`):
+
+```graphql
+{
+  postsAggregate(agg: "sum", field: "price", groupBy: "category")
+  # → [{ "label": "db", "value": 30 }, …]  (JSON; value desc)
+
+  postsSearch(q: "postgres", mode: "hybrid", limit: 10) {
+    id
+    title   # typed collection rows, best-first
+  }
+}
+```
+
+`agg` is `count | sum | avg | min | max`; `filter` (JSON) and `limit` match
+`POST /api/items/{slug}/aggregate`. `mode` is `fts | vector | hybrid`
+(defaults to whatever the collection has enabled) and requires the matching
+capability, exactly like `POST /api/items/{slug}/search`. Both resolvers call
+the same service the REST routes use, so permission clamps (rows AND fields),
+tenant scope, soft-delete, and the draft-oracle guard are identical.
+
 ## Admin twins (webhooks / i18n / storage / backups)
 
 Beyond collections, the schema carries static admin-scoped fields mirroring
@@ -323,8 +347,6 @@ their REST routes through the same service layer (gate:
 
 - **Subscriptions over WebSocket** — subscriptions ship over SSE (see
   above); a WS transport is not planned while SSE covers all runtimes.
-- **Aggregates** — count is via REST `meta=filter_count`. GraphQL-side
-  aggregations defer to v2.
 - **Custom scalars beyond `JSON`** — timestamps are ISO strings in `String`.
 - **File byte streams** — upload/download/transform are REST-only; GraphQL
   covers the file *metadata* plane (see Admin twins above).

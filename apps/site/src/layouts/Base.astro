@@ -36,7 +36,12 @@ const canonical = new URL(cleanPath || "/", Astro.site).href;
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/favicon.svg" color="#7c5cff" />
+    <meta name="theme-color" content="#06050d" />
     <!-- Open Graph / Twitter — used by social cards and some LLM crawlers. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="backlex" />
@@ -49,17 +54,18 @@ const canonical = new URL(cleanPath || "/", Astro.site).href;
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <script is:inline>
-      // Apply theme before paint to avoid a flash.
-      try {
-        var t =
-          localStorage.getItem("backlex.theme") ||
-          (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-        if (t === "dark") document.documentElement.classList.add("dark");
-      } catch (_) {}
+      // The cosmos redesign is a dark-only space theme — always dark, no toggle.
+      // Re-apply after every client-side view transition (astro:after-swap),
+      // otherwise ClientRouter restores the server HTML's <html> (no .dark) and
+      // the page flashes to light on internal navigations (e.g. logo click).
+      document.documentElement.classList.add("dark");
+      document.addEventListener("astro:after-swap", function () {
+        document.documentElement.classList.add("dark");
+      });
     </script>
     <!-- Smooth cross-page morphs (fade/slide) on client-side navigation. -->
     <ClientRouter />
@@ -88,26 +94,46 @@ const canonical = new URL(cleanPath || "/", Astro.site).href;
     {showChrome && <Nav />}
     <slot />
     {showChrome && <Footer />}
+    <div id="cosmos-cursor" aria-hidden="true"></div>
     <script is:inline>
+      // Cosmos custom cursor — a mint ring that trails the pointer and swells
+      // over interactive targets. Pointer-fine devices only; native cursor is
+      // hidden via CSS. Disabled entirely for touch / reduced-motion users.
       (function () {
-        var root = document.documentElement;
-        var btn = document.getElementById("theme-toggle");
-        if (!btn) return;
-        var sun = btn.querySelector(".ic-sun");
-        var moon = btn.querySelector(".ic-moon");
-        function applyTheme(t) {
-          root.classList.toggle("dark", t === "dark");
-          if (sun) sun.classList.toggle("hidden", t === "dark");
-          if (moon) moon.classList.toggle("hidden", t !== "dark");
+        var fine = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+        var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var dot = document.getElementById("cosmos-cursor");
+        if (!dot || !fine || reduce) {
+          if (dot) dot.style.display = "none";
+          return;
         }
-        applyTheme(root.classList.contains("dark") ? "dark" : "light");
-        btn.addEventListener("click", function () {
-          var next = root.classList.contains("dark") ? "light" : "dark";
-          try {
-            localStorage.setItem("backlex.theme", next);
-          } catch (_) {}
-          applyTheme(next);
+        // Smooth trailing follow (design LERP 0.18), like the site mockup.
+        var mx = window.innerWidth / 2, my = window.innerHeight / 2;
+        var cx = mx, cy = my, shown = false;
+        window.addEventListener("mousemove", function (e) {
+          mx = e.clientX;
+          my = e.clientY;
+          if (!shown) {
+            shown = true;
+            dot.style.opacity = "1";
+          }
         });
+        document.addEventListener("mouseover", function (e) {
+          var t = e.target;
+          var interactive =
+            t && t.closest && t.closest('a,button,[role="button"],input,textarea,select,summary,label,.cosmos-hot');
+          dot.classList.toggle("is-hot", !!interactive);
+        });
+        document.addEventListener("mouseleave", function () {
+          shown = false;
+          dot.style.opacity = "0";
+        });
+        (function loop() {
+          cx += (mx - cx) * 0.18;
+          cy += (my - cy) * 0.18;
+          dot.style.transform = "translate(" + cx + "px," + cy + "px)";
+          requestAnimationFrame(loop);
+        })();
       })();
     </script>
   </body>

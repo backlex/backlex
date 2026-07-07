@@ -1,0 +1,45 @@
+---
+// Canonical Saturn brand mark — violet planet, tilted coral ring with proper
+// front/back occlusion, and a small moon on the near arc. Pure SVG so it stays
+// crisp at any size. A unique id keeps gradient/clip refs isolated per instance.
+interface Props {
+  size?: number;
+  class?: string;
+}
+const { size = 30, class: cls = "" } = Astro.props;
+const uid = Math.random().toString(36).slice(2, 8);
+---
+<svg
+  viewBox="0 0 32 32"
+  width={size}
+  height={size}
+  fill="none"
+  aria-hidden="true"
+  class={cls}
+  style="display:block;flex:0 0 auto;overflow:visible"
+>
+  <defs>
+    <radialGradient id={`bp-${uid}`} cx="36%" cy="30%" r="72%">
+      <stop offset="0%" stop-color="#e9e1ff"></stop>
+      <stop offset="55%" stop-color="#7c5cff"></stop>
+      <stop offset="100%" stop-color="#3a2384"></stop>
+    </radialGradient>
+    <clipPath id={`bf-${uid}`}><rect x="0" y="16" width="32" height="16"></rect></clipPath>
+  </defs>
+  <!-- ring behind the planet -->
+  <g transform="rotate(-22 16 16)">
+    <ellipse cx="16" cy="16" rx="14.2" ry="5.3" stroke="#ff9d83" stroke-opacity="0.85" stroke-width="1.7"></ellipse>
+  </g>
+  <!-- planet body + soft glow -->
+  <circle cx="16" cy="16" r="7.3" fill={`url(#bp-${uid})`}></circle>
+  <!-- ring in front (lower/near arc) -->
+  <g transform="rotate(-22 16 16)" clip-path={`url(#bf-${uid})`}>
+    <ellipse cx="16" cy="16" rx="14.2" ry="5.3" stroke="#ffb59e" stroke-width="1.7"></ellipse>
+  </g>
+  <!-- moon orbiting along the tilted ring -->
+  <g transform="rotate(-22 16 16)">
+    <circle r="1.5" fill="#ffe2d4">
+      <animateMotion dur="6s" repeatCount="indefinite" path="M 1.8 16 a 14.2 5.3 0 1 0 28.4 0 a 14.2 5.3 0 1 0 -28.4 0"></animateMotion>
+    </circle>
+  </g>
+</svg>

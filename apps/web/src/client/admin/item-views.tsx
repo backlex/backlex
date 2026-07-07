@@ -62,9 +62,14 @@ export function ItemsViewToggle({
   const opts = hasStatus ? ALL_OPTS : ALL_OPTS.filter((o) => o.id !== "kanban");
   return (
     <Tabs value={mode} onValueChange={(v) => setMode(v as ItemsViewMode)}>
-      <TabsList>
+      <TabsList className="gap-[2px] rounded-[9px] border border-white/[0.07] bg-white/[0.04] p-[2px]">
         {opts.map((o) => (
-          <TabsTrigger key={o.id} value={o.id} title={LABELS[o.id]}>
+          <TabsTrigger
+            key={o.id}
+            value={o.id}
+            title={LABELS[o.id]}
+            className="rounded-[7px] px-[9px] py-[5px] text-[11.5px] font-semibold text-[#8580A2] data-active:bg-[rgba(139,108,255,0.16)] data-active:text-[#E7E4F4] dark:data-active:bg-[rgba(139,108,255,0.16)] dark:data-active:text-[#E7E4F4]"
+          >
             <o.icon size={13} />
             <span>{LABELS[o.id]}</span>
           </TabsTrigger>

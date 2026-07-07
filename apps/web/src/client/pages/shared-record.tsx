@@ -102,18 +102,29 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-svh w-full items-center justify-center bg-background px-4 py-10 text-foreground">
       <div className="w-full max-w-[520px]">
         <div className="mb-5 flex items-center gap-2.5 font-mono text-sm font-semibold tracking-tight">
-          <svg
-            viewBox="-6 -6 104 100"
-            className="size-7"
-            fill="var(--color-foreground)"
-            stroke="var(--color-background)"
-            strokeWidth={7}
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <polygon points="46,44 92,66 46,88 0,66" />
-            <polygon points="46,22 92,44 46,66 0,44" />
-            <polygon points="46,0 92,22 46,44 0,22" fill="var(--color-primary)" />
+          <svg viewBox="0 0 32 32" className="size-7" fill="none" aria-hidden="true" style={{ overflow: "visible" }}>
+            <defs>
+              <radialGradient id="blxsr-p" cx="36%" cy="30%" r="72%">
+                <stop offset="0%" stopColor="#e9e1ff" />
+                <stop offset="55%" stopColor="#7c5cff" />
+                <stop offset="100%" stopColor="#3a2384" />
+              </radialGradient>
+              <clipPath id="blxsr-f">
+                <rect x="0" y="16" width="32" height="16" />
+              </clipPath>
+            </defs>
+            <g transform="rotate(-22 16 16)">
+              <ellipse cx="16" cy="16" rx="14.2" ry="5.3" stroke="#ff9d83" strokeOpacity="0.85" strokeWidth="1.7" />
+            </g>
+            <circle cx="16" cy="16" r="7.3" fill="url(#blxsr-p)" />
+            <g transform="rotate(-22 16 16)" clipPath="url(#blxsr-f)">
+              <ellipse cx="16" cy="16" rx="14.2" ry="5.3" stroke="#ffb59e" strokeWidth="1.7" />
+            </g>
+            <g transform="rotate(-22 16 16)">
+              <circle r="1.5" fill="#ffe2d4">
+                <animateMotion dur="6s" repeatCount="indefinite" path="M 1.8 16 a 14.2 5.3 0 1 0 28.4 0 a 14.2 5.3 0 1 0 -28.4 0" />
+              </circle>
+            </g>
           </svg>
           backlex
         </div>

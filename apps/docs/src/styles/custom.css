@@ -1,8 +1,9 @@
 /* backlex docs theme — spec lives in design/backlex docs.html. */
 
 :root {
-  --sl-font: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --sl-font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+  --sl-font: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sl-font-heading: "Lexend", var(--sl-font);
+  --sl-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
     Consolas, monospace;
   --sl-text-h1: 38px;
   --sl-text-h2: 22px;
@@ -55,42 +56,44 @@
   --color-callout-info-border: oklch(0.6 0.13 240);
 }
 
+/* Dark = the "cosmos" space-theme brand variant (violet, matching apps/site
+   and the "Backlex Docs" design). Light stays on the original lime brand. */
 :root[data-theme="dark"] {
-  --sl-color-accent-low: oklch(0.274 0.072 130.85);
-  --sl-color-accent: oklch(0.768 0.233 130.85);
-  --sl-color-accent-high: oklch(0.897 0.196 130.85);
+  --sl-color-accent-low: oklch(0.28 0.09 287);
+  --sl-color-accent: oklch(0.62 0.214 286.2);
+  --sl-color-accent-high: oklch(0.86 0.09 295);
 
-  --sl-color-white: oklch(0.985 0 0);
-  --sl-color-gray-1: oklch(0.967 0.001 286.375);
-  --sl-color-gray-2: oklch(0.92 0.004 286.32);
-  --sl-color-gray-3: oklch(0.705 0.015 286.067);
-  --sl-color-gray-4: oklch(0.552 0.016 285.938);
-  --sl-color-gray-5: oklch(0.45 0.012 285.938);
-  --sl-color-gray-6: oklch(0.274 0.006 286.033);
-  --sl-color-gray-7: oklch(0.21 0.006 285.885);
-  --sl-color-black: oklch(0.141 0.005 285.823);
+  --sl-color-white: oklch(0.972 0.013 295.3);
+  --sl-color-gray-1: oklch(0.955 0.012 295);
+  --sl-color-gray-2: oklch(0.9 0.015 294);
+  --sl-color-gray-3: oklch(0.724 0.048 292.1);
+  --sl-color-gray-4: oklch(0.5 0.03 292);
+  --sl-color-gray-5: oklch(0.4 0.03 293);
+  --sl-color-gray-6: oklch(0.245 0.03 293);
+  --sl-color-gray-7: oklch(0.185 0.028 293);
+  --sl-color-black: oklch(0.122 0.02 290.3);
 
-  --sl-color-bg: oklch(0.141 0.005 285.823);
-  --sl-color-bg-nav: color-mix(in oklch, oklch(0.141 0.005 285.823) 92%, transparent);
-  --sl-color-bg-sidebar: oklch(0.141 0.005 285.823);
-  --sl-color-bg-inline-code: oklch(0.245 0.006 286);
-  --sl-color-text: oklch(0.985 0 0);
-  --sl-color-text-accent: oklch(0.82 0.22 131);
-  --sl-color-hairline: oklch(1 0 0 / 11%);
-  --sl-color-hairline-light: oklch(1 0 0 / 11%);
-  --sl-color-hairline-shade: oklch(1 0 0 / 11%);
+  --sl-color-bg: oklch(0.122 0.02 290.3);
+  --sl-color-bg-nav: color-mix(in oklch, oklch(0.122 0.02 290.3) 88%, transparent);
+  --sl-color-bg-sidebar: oklch(0.122 0.02 290.3);
+  --sl-color-bg-inline-code: oklch(0.2 0.028 292);
+  --sl-color-text: oklch(0.972 0.013 295.3);
+  --sl-color-text-accent: oklch(0.83 0.09 296);
+  --sl-color-hairline: oklch(1 0 0 / 9%);
+  --sl-color-hairline-light: oklch(1 0 0 / 9%);
+  --sl-color-hairline-shade: oklch(1 0 0 / 9%);
 
-  --color-primary: oklch(0.768 0.233 130.85);
-  --color-primary-foreground: oklch(0.22 0.072 131);
-  --color-primary-link: oklch(0.82 0.22 131);
-  --color-muted: oklch(0.245 0.006 286.033);
-  --color-muted-foreground: oklch(0.705 0.015 286.067);
-  --color-border: oklch(1 0 0 / 11%);
-  --color-code-bg: oklch(0.19 0.006 285.885);
-  --color-code-bg-inline: oklch(0.245 0.006 286);
-  --color-table-stripe: oklch(0.18 0.006 285.885);
-  --color-body-text: oklch(0.86 0.005 285);
-  --color-callout-bg: oklch(0.25 0.05 128 / 0.35);
+  --color-primary: oklch(0.599 0.23 286.2);
+  --color-primary-foreground: oklch(0.98 0.012 295.3);
+  --color-primary-link: oklch(0.83 0.09 296);
+  --color-muted: oklch(0.189 0.028 293.3);
+  --color-muted-foreground: oklch(0.724 0.048 292.1);
+  --color-border: oklch(1 0 0 / 9%);
+  --color-code-bg: oklch(0.16 0.025 291);
+  --color-code-bg-inline: oklch(0.2 0.028 292);
+  --color-table-stripe: oklch(0.155 0.024 291);
+  --color-body-text: oklch(0.86 0.02 293);
+  --color-callout-bg: oklch(0.3 0.08 287 / 0.28);
   --color-callout-warn-bg: oklch(0.25 0.05 30 / 0.35);
   --color-callout-info-bg: oklch(0.22 0.04 240 / 0.45);
   --color-callout-warn-border: oklch(0.78 0.16 30);
@@ -125,23 +128,7 @@ header.header {
   font-size: 14.5px;
   letter-spacing: -0.01em;
   color: var(--sl-color-text);
-}
-
-.site-title > span:not(.sr-only)::after {
-  content: "docs";
-  display: inline-block;
-  margin-inline-start: 6px;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  background: var(--color-muted);
-  color: var(--color-muted-foreground);
-  font-family: var(--sl-font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  vertical-align: middle;
-  line-height: 1.4;
+  gap: 10px;
 }
 
 /* Sidebar */
@@ -252,10 +239,11 @@ header.header {
 
 .page-title {
   margin: 0;
-  font-size: 38px;
-  font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
+  font-family: var(--sl-font-heading);
+  font-size: 40px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
   color: var(--sl-color-text);
 }
 
@@ -288,7 +276,9 @@ header.header {
 .sl-markdown-content h3,
 .sl-markdown-content h4 {
   color: var(--sl-color-text);
+  font-family: var(--sl-font-heading);
   font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .sl-markdown-content h2:not(:where(.not-content *)) {
@@ -543,8 +533,254 @@ starlight-toc nav a[aria-current="true"] {
   .sl-markdown-content .expressive-code:not(:where(.not-content *)) {
     overflow-x: auto;
   }
-  .site-title > span:not(.sr-only)::after {
-    font-size: 10px;
+  .brand-tag {
+    font-size: 8.5px;
     padding: 1px 6px;
+  }
+  .page-title {
+    font-size: 32px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   Cosmic shell — starfield + nebula background and the orbiting-planet
+   brand mark, from the "Backlex Docs" design. Dark theme only; light
+   keeps the plain surface. #cosmos-bg is injected into <body> by
+   Head.astro and sits behind the page. */
+
+#cosmos-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+#cosmos-bg #stars {
+  position: absolute;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+}
+#cosmos-bg .neb {
+  position: absolute;
+  border-radius: 50%;
+}
+#cosmos-bg .neb-a {
+  top: -12%;
+  right: -8%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(124, 92, 255, 0.42), transparent 65%);
+  filter: blur(74px);
+  animation: nebA 22s ease-in-out infinite;
+}
+#cosmos-bg .neb-b {
+  bottom: -14%;
+  left: -12%;
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(255, 122, 89, 0.2), transparent 65%);
+  filter: blur(84px);
+  animation: nebB 28s ease-in-out infinite;
+}
+:root[data-theme="light"] #cosmos-bg {
+  display: none;
+}
+
+/* Cosmic base gradient behind the stars (dark only). */
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(1200px 800px at 82% -6%, rgba(124, 92, 255, 0.16), transparent 60%),
+    radial-gradient(900px 700px at 6% 6%, rgba(255, 122, 89, 0.07), transparent 55%),
+    var(--sl-color-bg);
+}
+/* Lift the whole page above the fixed starfield. */
+body > .page {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes nebA {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, -30px) scale(1.12); }
+}
+@keyframes nebB {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-50px, 30px) scale(1.15); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .planet-spin,
+  #cosmos-bg .neb {
+    animation: none !important;
+  }
+}
+
+/* Orbiting-planet brand mark (SiteTitle override). */
+.cosmos-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.planet {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+.planet-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #cdbcff, #7c5cff 60%, #3a2384);
+  box-shadow: 0 0 10px rgba(139, 108, 255, 0.8);
+}
+.planet-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 11px;
+  margin: -5.5px 0 0 -14px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 157, 131, 0.85);
+  transform: rotate(-22deg);
+}
+.planet-orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  transform: rotate(-22deg) scaleY(0.4);
+}
+.planet-spin {
+  position: absolute;
+  inset: 0;
+  animation: spin 5s linear infinite;
+}
+.planet-moon {
+  position: absolute;
+  top: -1.5px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: #ffe2d4;
+  box-shadow: 0 0 8px rgba(255, 157, 131, 1);
+}
+.brand-word {
+  font-family: var(--sl-font-heading);
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: var(--sl-color-text);
+}
+.brand-tag {
+  align-self: center;
+  font-family: var(--sl-font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #b9a3ff;
+  border: 1px solid rgba(139, 108, 255, 0.4);
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: rgba(139, 108, 255, 0.12);
+  line-height: 1.4;
+}
+
+/* Coral sidebar group markers, echoing the design's section glyphs. */
+:root[data-theme="dark"] .sidebar-content .group-label::before {
+  background: #ff9d83;
+}
+
+/* ── Header (design nav layout) ───────────────────────────────────────── */
+.cosmos-header {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  height: 100%;
+}
+.cosmos-header .title-wrapper {
+  overflow: clip;
+  padding: 0.25rem;
+  margin: -0.25rem;
+  min-width: 0;
+}
+.cosmos-header .header-right {
+  margin-inline-start: auto;
+  align-items: center;
+  gap: 12px;
+}
+.cosmos-header .gh-link {
+  font-size: 14px;
+  color: var(--sl-color-gray-2);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+.cosmos-header .gh-link:hover {
+  color: var(--sl-color-white);
+}
+
+/* Search button → design's input-styled box. custom.css is unlayered, so it
+   overrides Starlight's @layer starlight.core defaults without !important. */
+.cosmos-header site-search button[data-open-modal] {
+  width: 300px;
+  height: 42px;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--sl-color-hairline);
+  background: color-mix(in oklch, var(--sl-color-white) 4%, transparent);
+  color: var(--sl-color-gray-3);
+  font: inherit;
+  font-size: 14px;
+}
+.cosmos-header site-search button[data-open-modal]:hover {
+  border-color: color-mix(in oklch, var(--sl-color-accent) 60%, var(--sl-color-hairline));
+  background: color-mix(in oklch, var(--sl-color-white) 6%, transparent);
+}
+.cosmos-header site-search button[data-open-modal] > span {
+  margin-inline-end: auto;
+  color: var(--sl-color-gray-3);
+}
+.cosmos-header site-search button[data-open-modal] kbd {
+  font-family: var(--sl-font-mono);
+  font-size: 10px;
+  color: var(--sl-color-gray-4);
+  background: color-mix(in oklch, var(--sl-color-white) 4%, transparent);
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.cosmos-header site-search button[data-open-modal] kbd kbd {
+  border: 0;
+  background: none;
+  padding: 0;
+}
+
+@media (max-width: 50rem) {
+  .cosmos-header {
+    gap: 12px;
+  }
+  .cosmos-header .gh-link {
+    display: none;
+  }
+  .cosmos-header site-search button[data-open-modal] {
+    width: 42px;
+    padding: 0;
+    justify-content: center;
   }
 }

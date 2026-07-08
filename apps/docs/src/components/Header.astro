@@ -1,0 +1,28 @@
+---
+// Starlight `Header` override — reproduces the "Backlex Docs" design nav:
+// planet brand (left), then a right-aligned group with a search box styled as
+// an input and a "GitHub ↗" text link. Reuses Starlight's own Search / SiteTitle
+// (our overrides) / ThemeSelect / LanguageSelect so search, theming and i18n
+// keep working. The mobile menu toggle is rendered by Starlight elsewhere (not
+// in the header), so overriding here doesn't affect it.
+// Import our own overrides directly (planet mark + Pagefind re-init search) and
+// the Starlight defaults for theme/language via the typed package path. The
+// `virtual:starlight/*` specifiers aren't type-declared in the user project, so
+// they're avoided here.
+import SiteTitle from "./SiteTitle.astro";
+import Search from "./Search.astro";
+
+const github = "https://github.com/backlex/backlex";
+---
+
+<div class="header cosmos-header">
+  <div class="title-wrapper sl-flex">
+    <SiteTitle />
+  </div>
+  <div class="header-right sl-flex print:hidden">
+    <Search />
+    <a class="gh-link" href={github} target="_blank" rel="noopener noreferrer">
+      GitHub <span aria-hidden="true">↗</span>
+    </a>
+  </div>
+</div>

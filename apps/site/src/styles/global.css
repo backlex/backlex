@@ -18,8 +18,12 @@
   --color-ring: oklch(0.705 0.015 286.067);
   --color-tint: oklch(0.978 0.04 128);
   --color-amber: oklch(0.76 0.16 60);
-  --font-sans: "Geist", system-ui, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+  /* Cosmos brand accents (available in both themes) */
+  --color-accent-coral: oklch(0.729 0.170 35.1);
+  --color-accent-mint: oklch(0.851 0.114 168.2);
+  --font-sans: "Manrope", system-ui, sans-serif;
+  --font-display: "Lexend", "Manrope", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   --radius: 0.875rem;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -38,25 +42,32 @@
 }
 
 @layer base {
+  /* ── Cosmos space theme (dark) ───────────────────────────────
+     Violet-shifted neutrals (h≈291), darker base; primary swaps
+     lime→violet (h286) at the same chroma so accents stay coherent. */
   .dark {
-    --color-background: oklch(0.141 0.005 285.823);
-    --color-foreground: oklch(0.985 0 0);
-    --color-card: oklch(0.21 0.006 285.885);
-    --color-popover: oklch(0.21 0.006 285.885);
-    --color-primary: oklch(0.768 0.233 130.85);
-    --color-primary-foreground: oklch(0.22 0.072 131);
-    --color-secondary: oklch(0.274 0.006 286.033);
-    --color-muted: oklch(0.245 0.006 286.033);
-    --color-muted-foreground: oklch(0.705 0.015 286.067);
-    --color-accent: oklch(0.274 0.006 286.033);
-    --color-border: oklch(1 0 0 / 11%);
-    --color-input: oklch(1 0 0 / 15%);
-    --color-ring: oklch(0.552 0.016 285.938);
-    --color-tint: oklch(0.27 0.04 128 / 0.22);
+    --color-background: oklch(0.122 0.020 290.3);
+    --color-foreground: oklch(0.972 0.013 295.3);
+    --color-card: oklch(0.163 0.025 291.0);
+    --color-popover: oklch(0.163 0.025 291.0);
+    --color-primary: oklch(0.599 0.230 286.2);
+    --color-primary-foreground: oklch(0.985 0 0);
+    --color-secondary: oklch(0.189 0.028 293.3);
+    --color-muted: oklch(0.163 0.025 291.0);
+    --color-muted-foreground: oklch(0.724 0.048 292.1);
+    --color-accent: oklch(0.189 0.028 293.3);
+    --color-border: oklch(1 0 0 / 8%);
+    --color-input: oklch(1 0 0 / 12%);
+    --color-ring: oklch(0.599 0.230 286.2);
+    --color-tint: oklch(0.599 0.230 286.2 / 0.16);
   }
   html {
     scroll-behavior: smooth;
     scroll-padding-top: 72px;
+    /* Contain oversized decorative art at the document level too — some hero
+       orbit pieces are positioned against the ICB and escape body's clip.
+       clip (not hidden) keeps vertical scroll + sticky nav intact. */
+    overflow-x: clip;
   }
   body {
     font-feature-settings: "ss01", "cv11";
@@ -73,6 +84,20 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   line-height: 1.55;
+  /* Cosmos decorative art (hero orbit rings, nebula glows) is intentionally
+     oversized; clip horizontal bleed without creating a scroll container so
+     the sticky nav keeps working. */
+  overflow-x: clip;
+}
+
+/* Cosmos deep-space canvas — the marketing surface sits on #06050d with two
+   fixed nebula glows (violet top-right, coral top-left). */
+.dark body {
+  background-color: #06050d;
+  background-image:
+    radial-gradient(1200px 800px at 78% -5%, rgba(124, 92, 255, 0.18), transparent 60%),
+    radial-gradient(900px 700px at 10% 8%, rgba(255, 122, 89, 0.08), transparent 55%);
+  background-attachment: fixed;
 }
 
 @keyframes beam-sweep-back {
@@ -1443,4 +1468,203 @@ details.acc > summary::-webkit-details-marker {
 }
 details.acc[open] > summary .acc-chev {
   transform: rotate(180deg);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Cosmos space theme — shared atmosphere, keyframes & helpers
+   (marketing surface: dark only; light theme keeps flat backgrounds)
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes cosmos-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes cosmos-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+@keyframes cosmos-neb-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(40px, -30px) scale(1.12);
+  }
+}
+@keyframes cosmos-neb-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-50px, 30px) scale(1.15);
+  }
+}
+@keyframes cosmos-neb-c {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(30px, 40px) scale(1.1);
+  }
+}
+@keyframes cosmos-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+@keyframes cosmos-glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(139, 108, 255, 0.4),
+      0 8px 30px -6px rgba(139, 108, 255, 0.55);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(139, 108, 255, 0.6),
+      0 14px 50px -4px rgba(139, 108, 255, 0.85);
+  }
+}
+@keyframes cosmos-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Fixed atmosphere layer (rendered by BeamsBackground.astro in dark mode) */
+.cosmos-sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.cosmos-stars {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+.cosmos-neb {
+  position: absolute;
+  border-radius: 50%;
+}
+.cosmos-neb-1 {
+  top: -10%;
+  right: -8%;
+  width: 620px;
+  height: 620px;
+  background: radial-gradient(circle, rgba(124, 92, 255, 0.5), transparent 65%);
+  filter: blur(70px);
+  animation: cosmos-neb-a 22s ease-in-out infinite;
+}
+.cosmos-neb-2 {
+  top: 38%;
+  left: -12%;
+  width: 540px;
+  height: 540px;
+  background: radial-gradient(circle, rgba(255, 122, 89, 0.26), transparent 65%);
+  filter: blur(80px);
+  animation: cosmos-neb-b 28s ease-in-out infinite;
+}
+.cosmos-neb-3 {
+  bottom: -12%;
+  right: 18%;
+  width: 560px;
+  height: 560px;
+  background: radial-gradient(circle, rgba(86, 72, 200, 0.32), transparent 65%);
+  filter: blur(80px);
+  animation: cosmos-neb-c 26s ease-in-out infinite;
+}
+/* The cosmos atmosphere only exists in the dark space theme; the light theme
+   keeps the original beam sweep. Each hides in the other's mode. */
+html:not(.dark) .cosmos-sky,
+html:not(.dark) .cosmos-stars {
+  display: none;
+}
+.dark .bg-beams {
+  display: none;
+}
+
+/* Cosmos custom cursor — mint ring trailing the pointer. Native cursor hidden
+   on pointer-fine devices; the ring swells + warms over interactive targets. */
+@media (hover: hover) and (pointer: fine) {
+  html.dark,
+  html.dark * {
+    cursor: none !important;
+  }
+}
+#cosmos-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(124, 230, 192, 0.85);
+  box-shadow:
+    0 0 12px rgba(124, 230, 192, 0.55),
+    inset 0 0 8px rgba(124, 230, 192, 0.25);
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transition:
+    opacity 0.25s ease,
+    width 0.18s ease,
+    height 0.18s ease,
+    margin 0.18s ease,
+    border-color 0.18s ease;
+  will-change: transform;
+}
+#cosmos-cursor.is-hot {
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border-color: rgba(255, 157, 131, 0.95);
+  box-shadow:
+    0 0 12px rgba(255, 157, 131, 0.55),
+    inset 0 0 8px rgba(255, 157, 131, 0.25);
+}
+@media (hover: none), (pointer: coarse) {
+  #cosmos-cursor {
+    display: none;
+  }
+}
+
+/* Gradient headline accent text */
+.cosmos-grad {
+  background: linear-gradient(100deg, #b9a3ff 10%, #ff9d83 55%, #b9a3ff 90%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: cosmos-shimmer 6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cosmos-neb,
+  .saturn .orbit-spin,
+  .cosmos-grad {
+    animation: none;
+  }
 }

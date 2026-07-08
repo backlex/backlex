@@ -72,6 +72,7 @@ import {
 import { api } from "@/lib/api";
 import { useUrlState, useUrlStateJson } from "@/lib/use-url-state";
 import { useTheme } from "@/components/theme-provider";
+import { CosmosStars } from "@/components/cosmos-stars";
 import { SidebarInset, SidebarProvider } from "@backlex/ui/components/sidebar";
 import { StoragePage } from "./storage";
 import {
@@ -134,7 +135,7 @@ const DEFAULTS = {
   density: "comfortable" as "compact" | "cozy" | "comfortable",
   sidebarCollapsed: false,
   adapter: "bun" as AdapterId,
-  showRealtime: true,
+  showRealtime: false,
   populated: true,
 };
 
@@ -912,15 +913,16 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   return (
     <PreferencesProvider>
     <AdminLocaleSync />
+    <CosmosStars />
     <SidebarProvider
       open={!tweaks.sidebarCollapsed}
       onOpenChange={(o) => setTweak("sidebarCollapsed", !o)}
-      className="h-svh"
+      className="relative z-10 h-svh bg-transparent"
       data-density={tweaks.density}
     >
       <Sidebar activeNav={activeNav} setActiveNav={navTo} pushToast={pushToast} collectionsCount={collections.length} activeCollection={activeCollection} isAdmin={me ? me.isAdmin : null} navGrants={me?.nav ?? null} />
 
-      <SidebarInset className="min-h-0 min-w-0">
+      <SidebarInset className="min-h-0 min-w-0 bg-transparent">
         <Topbar
           crumbs={
             activeNav === "collections" && activeCollection
@@ -1064,32 +1066,60 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
               <CollectionItemsSkeleton />
             )}
             {activeNav === "collections" && activeCollection && !activeItem && !((collectionLoading && schemaState.slug !== activeCollection) || !itemsLoaded) && <>
-              <Button variant="ghost" size="sm" icon={I.ChevronLeft} className="self-start" onClick={() => setActiveCollection(null)}><Trans>All collections</Trans></Button>
-              <PageHeader
-                slug={activeCollection}
-                description={<Trans>Dynamic schema. Each collection becomes a physical <span className="font-mono">c_&lt;slug&gt;</span> table at runtime; drop or alter via this UI.</Trans>}
-                badges={
-                  <span style={{ display: "inline-flex", gap: 6, marginLeft: 4 }}>
-                    {schemaState.ownerScoped && <Badge variant="default"><Trans>owner-scoped</Trans></Badge>}
-                    <Badge variant="outline" mono>{ADAPTER_PROFILES[tweaks.adapter].db}</Badge>
-                    {itemsLive && (
-                      <Badge variant="outline" title={t`This list updates in real time`}>
-                        <span className="inline-block size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <Trans>Live</Trans>
-                      </Badge>
-                    )}
-                  </span>
-                }
-                actions={
-                  <>
-                    <Button variant="outline" icon={I.Refresh} onClick={refresh}><Trans>Refresh</Trans></Button>
-                    <Button variant="outline" icon={I.Upload} onClick={importItems}><Trans>Import</Trans></Button>
-                    <Button variant="outline" icon={I.Download} onClick={() => exportItems("csv")}><Trans>Export CSV</Trans></Button>
-                    <Button variant="outline" icon={I.ExternalLink} onClick={() => navigate(`/rest-explorer?slug=${encodeURIComponent(activeCollection)}`)}>API</Button>
-                    <Button variant="primary" icon={I.Plus} onClick={openCreate}><Trans>New post</Trans></Button>
-                  </>
-                }
-              />
+              {/* Cosmos console breadcrumb — replaces the old "All collections"
+                  back button. "collections" links back to the index; the
+                  c_<slug> crumb is the current physical table. */}
+              <div className="flex items-center gap-1.5 self-start font-mono text-[12.5px]">
+                <button
+                  type="button"
+                  onClick={() => setActiveCollection(null)}
+                  className="cursor-pointer border-0 bg-transparent p-0 text-[#8580A2] transition-colors hover:text-foreground"
+                >
+                  <Trans>collections</Trans>
+                </button>
+                <span className="text-white/20">/</span>
+                <span className="font-semibold text-foreground">c_{activeCollection}</span>
+              </div>
+              {/* "Backlex Console" collection header — display-name title +
+                  {rows · fields · owner-scoped} subtitle on the left, the
+                  preserved action set (Refresh/Import/Export/API) plus the
+                  violet-gradient New-item CTA on the right. */}
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h1 className="m-0 text-[26px] font-normal leading-none tracking-[-0.02em] text-foreground">
+                      {schemaState.singular?.trim() || activeCollection}
+                    </h1>
+                    <span className="inline-flex flex-wrap gap-1.5">
+                      <Badge variant="outline" mono>{ADAPTER_PROFILES[tweaks.adapter].db}</Badge>
+                      {itemsLive && (
+                        <Badge variant="outline" title={t`This list updates in real time`}>
+                          <span className="inline-block size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <Trans>Live</Trans>
+                        </Badge>
+                      )}
+                    </span>
+                  </div>
+                  <p className="m-0 text-[13px] text-muted-foreground">
+                    {t`${total} rows · ${schemaState.fields.length} fields`}
+                    {schemaState.ownerScoped ? ` · ${t`owner-scoped`}` : ""}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <Button variant="outline" icon={I.Refresh} onClick={refresh}><Trans>Refresh</Trans></Button>
+                  <Button variant="outline" icon={I.Upload} onClick={importItems}><Trans>Import</Trans></Button>
+                  <Button variant="outline" icon={I.Download} onClick={() => exportItems("csv")}><Trans>Export CSV</Trans></Button>
+                  <Button variant="outline" icon={I.ExternalLink} onClick={() => navigate(`/rest-explorer?slug=${encodeURIComponent(activeCollection)}`)}>API</Button>
+                  <Button
+                    variant="primary"
+                    icon={I.Plus}
+                    onClick={openCreate}
+                    className="h-[34px] gap-1.5 rounded-[9px] border-0 bg-[linear-gradient(135deg,#8B6CFF,#7c5cff)] px-3.5 text-[13px] font-semibold text-white hover:bg-[linear-gradient(135deg,#8B6CFF,#7c5cff)] hover:opacity-90"
+                  >
+                    <Trans>New post</Trans>
+                  </Button>
+                </div>
+              </div>
 
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "items" | "schema" | "settings")}>
                 <TabsList>
@@ -1106,7 +1136,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
               </Tabs>
 
               {activeTab === "items" && (
-                <div className="grid grid-cols-[1fr_320px] items-start gap-4 max-[1280px]:grid-cols-1">
+                <div className={tweaks.showRealtime ? "grid grid-cols-[1fr_320px] items-start gap-4 max-[1280px]:grid-cols-1" : "grid grid-cols-1"}>
                   <div className="flex min-w-0 flex-col gap-3">
                     <FilterBar
                       search={search} setSearch={setSearch}
@@ -1129,19 +1159,27 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         </Button>
                       </div>
                     )}
-                    <Card className="py-0 gap-0">
+                    <Card className="gap-0 overflow-hidden rounded-2xl py-0">
                       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
                         <ItemsViewToggle
                           mode={viewMode}
                           setMode={(m) => setView(m)}
                           hasStatus={!!resolveStatusField(schemaState as unknown as { fields?: Array<Record<string, unknown>> } | null)}
                         />
+                        <div className="flex-1" />
                         {viewMode === "table" && schemaState.slug && (
-                          <>
-                            <div className="flex-1" />
-                            <ColumnPicker slug={schemaState.slug} fields={schemaState.fields as never} />
-                          </>
+                          <ColumnPicker slug={schemaState.slug} fields={schemaState.fields as never} />
                         )}
+                        <button
+                          type="button"
+                          onClick={() => setTweak("showRealtime", !tweaks.showRealtime)}
+                          aria-pressed={tweaks.showRealtime}
+                          title={t`Live tail`}
+                          className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-medium transition-colors ${tweaks.showRealtime ? "border-[rgba(139,108,255,0.45)] bg-[rgba(139,108,255,0.14)] text-foreground" : "border-border bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
+                        >
+                          <I.Zap size={13} />
+                          <span className="max-sm:hidden">{t`Live tail`}</span>
+                        </button>
                       </div>
                       <FilterDSLPreview filters={filters} sort={sort} />
                       {viewMode === "table" && (
@@ -1178,12 +1216,58 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         <CalendarView rows={itemsForView} onEdit={openEdit} displayTemplate={schemaState.displayTemplate} fields={schemaState.fields as never} />
                       )}
                       {viewMode === "table" && pageRows.length > 0 && (
-                        <div className="flex items-center gap-2 border-t border-border bg-card px-3.5 py-2.5 text-[12.5px] text-muted-foreground">
-                          <span className="font-mono text-xs tabular-nums"><Trans>{(page - 1) * PER_PAGE + 1}-{Math.min(page * PER_PAGE, total)} of {total}</Trans></span>
+                        <div className="flex flex-wrap items-center gap-2 border-t border-white/5 bg-white/[0.02] px-4 py-2.5">
+                          <span className="text-[11.5px] text-muted-foreground">
+                            {t`Showing ${(page - 1) * PER_PAGE + 1}–${Math.min(page * PER_PAGE, total)} of ${total} rows`}
+                          </span>
                           <div className="flex-1" />
-                          <Button variant="ghost" size="sm" icon={I.ChevronLeft} disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}><Trans>Prev</Trans></Button>
-                          <span className="font-mono text-xs tabular-nums"><Trans>page {page} / {totalPages}</Trans></span>
-                          <Button variant="ghost" size="sm" iconRight={I.ChevronRight} disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}><Trans>Next</Trans></Button>
+                          <div className="flex flex-wrap items-center gap-1">
+                            <button
+                              type="button"
+                              disabled={page === 1}
+                              onClick={() => setPage((p) => Math.max(1, p - 1))}
+                              className="inline-flex h-7 items-center gap-1 rounded-[7px] border border-white/10 bg-white/[0.03] px-2.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                            >
+                              <I.ChevronLeft size={13} /><Trans>Prev</Trans>
+                            </button>
+                            {(() => {
+                              // Windowed page numbers: show all when there are ≤7
+                              // pages, else first/last + a ±1 window around the
+                              // current page with "…" gaps. Pure display — the
+                              // page/setPage pagination logic is unchanged.
+                              const N = totalPages;
+                              const nums: number[] = N <= 7
+                                ? Array.from({ length: N }, (_, i) => i + 1)
+                                : [...new Set([1, page - 1, page, page + 1, N])].filter((p) => p >= 1 && p <= N).sort((a, b) => a - b);
+                              const out: React.ReactNode[] = [];
+                              let prev = 0;
+                              for (const p of nums) {
+                                if (p - prev > 1) out.push(<span key={`gap-${p}`} className="px-1 text-[11.5px] text-muted-foreground">…</span>);
+                                prev = p;
+                                const active = p === page;
+                                out.push(
+                                  <button
+                                    key={p}
+                                    type="button"
+                                    onClick={() => setPage(p)}
+                                    aria-current={active ? "page" : undefined}
+                                    className={`grid h-7 min-w-7 place-items-center rounded-[7px] border px-2 text-[11.5px] font-medium tabular-nums transition-colors ${active ? "border-[rgba(139,108,255,0.4)] bg-[rgba(139,108,255,0.14)] text-[#E7E4F4]" : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
+                                  >
+                                    {p}
+                                  </button>,
+                                );
+                              }
+                              return out;
+                            })()}
+                            <button
+                              type="button"
+                              disabled={page === totalPages}
+                              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                              className="inline-flex h-7 items-center gap-1 rounded-[7px] border border-white/10 bg-white/[0.03] px-2.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                            >
+                              <Trans>Next</Trans><I.ChevronRight size={13} />
+                            </button>
+                          </div>
                         </div>
                       )}
                     </Card>

@@ -1,10 +1,10 @@
 // @ts-nocheck
 // Collections index — grid of all collections + new-collection wizard
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import type { CollectionListItem } from "./config";
-import { Badge, Button, EmptyState, IconButton, PageHeader, Switch } from "./ui";
+import { Badge, Button, EmptyState, IconButton, Switch } from "./ui";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@backlex/ui/components/input-group";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
@@ -199,18 +199,30 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
 
   return (
     <div className="flex min-w-0 flex-col gap-4.5">
-      <PageHeader
-        title={<Trans>Collections</Trans>}
-        description={<Trans>Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations.</Trans>}
-        badges={<span className="ml-1 inline-flex flex-wrap gap-1.5">
-          <Badge variant={showArchived ? "secondary" : "outline"} mono>
-            {collections.length} {showArchived ? <Trans>archived</Trans> : <Trans>collections</Trans>}
-          </Badge>
-          {!showArchived && (
-            <Badge variant="outline" mono><Trans>{collections.reduce((a, c) => a + c.count, 0).toLocaleString()} rows</Trans></Badge>
-          )}
-        </span>}
-        actions={<>
+      {/* Cosmos "Backlex Console" header — h1 + description on the left, the
+          gradient primary CTA on the right. All existing actions (archive
+          toggle, edit-layout, schema, API docs) are preserved as outline
+          buttons; badges keep the live counts. */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="m-0 text-[27px] font-normal leading-none tracking-[-0.02em] text-foreground">
+              <Trans>Collections</Trans>
+            </h1>
+            <span className="inline-flex flex-wrap gap-1.5">
+              <Badge variant={showArchived ? "secondary" : "outline"} mono>
+                {collections.length} {showArchived ? <Trans>archived</Trans> : <Trans>collections</Trans>}
+              </Badge>
+              {!showArchived && (
+                <Badge variant="outline" mono><Trans>{collections.reduce((a, c) => a + c.count, 0).toLocaleString()} rows</Trans></Badge>
+              )}
+            </span>
+          </div>
+          <p className="m-0 max-w-[640px] text-[13.5px] text-muted-foreground">
+            <Trans>Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations.</Trans>
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {onToggleArchived && (
             <Button
               variant="outline"
@@ -242,10 +254,19 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
             )}
             <Button variant="outline" icon={I.Code} onClick={() => onOpenSchema?.()}><Trans>Schema</Trans></Button>
             <Button variant="outline" icon={I.ExternalLink} onClick={() => onOpenApi?.()}><Trans>API docs</Trans></Button>
-            {canManage && <Button variant="primary" icon={I.Plus} onClick={() => setChooserOpen(true)}><Trans>New collection</Trans></Button>}
+            {canManage && (
+              <Button
+                variant="primary"
+                icon={I.Plus}
+                onClick={() => setChooserOpen(true)}
+                className="h-[34px] gap-1.5 rounded-[9px] border-0 bg-[linear-gradient(135deg,#8B6CFF,#7c5cff)] px-3.5 text-[13px] font-semibold text-white hover:bg-[linear-gradient(135deg,#8B6CFF,#7c5cff)] hover:opacity-90"
+              >
+                <Trans>New collection</Trans>
+              </Button>
+            )}
           </>}
-        </>}
-      />
+        </div>
+      </div>
       <AdoptWizard
         open={adoptOpen}
         onClose={() => setAdoptOpen(false)}
@@ -542,30 +563,33 @@ function CollectionCard({ c, onOpen, archived, editing, dropTarget, onRestore, o
       interactive={!editing}
       // Drop-target highlight lives on the Card itself so it follows the
       // card's own rounded-2xl border — a ring on the drag wrapper drew at a
-      // mismatched radius and spilled outside the corners.
-      className={`h-full gap-3 p-4 transition-colors ${archived ? "opacity-90" : ""} ${editing ? "select-none" : ""} ${dropTarget ? "border-primary ring-2 ring-primary/50" : ""}`}
+      // mismatched radius and spilled outside the corners. The violet hover
+      // (border + faint fill) matches the Backlex Console collections design.
+      className={`h-full gap-3 p-4 text-left transition-colors ${archived ? "opacity-90" : ""} ${editing ? "select-none" : ""} ${dropTarget ? "border-primary ring-2 ring-primary/50" : "hover:border-[color-mix(in_oklch,var(--primary)_40%,transparent)] hover:bg-[color-mix(in_oklch,var(--primary)_4%,transparent)]"}`}
       onClick={editing ? undefined : onOpen}
     >
       <div className="flex items-center gap-2.5">
         {editing && <I.Grip size={14} className="shrink-0 text-muted-foreground" />}
-        <span className="grid size-8 place-items-center rounded-lg border border-border bg-muted text-muted-foreground"><Ic size={15} /></span>
+        <span className="grid size-[34px] shrink-0 place-items-center rounded-[9px] bg-[color-mix(in_oklch,var(--primary)_12%,transparent)] text-[oklch(from_var(--primary)_0.78_0.15_h)]"><Ic size={14} /></span>
         <div className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate font-mono text-[13.5px] font-semibold">{c.slug}</span>
-          <span className="truncate text-[11.5px] text-muted-foreground"><Trans>{c.fields} fields · {c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"}</Trans></span>
+          <span className="truncate font-mono text-[13px] text-foreground">c_{c.slug}</span>
+          <span className="truncate text-[11px] text-muted-foreground"><Trans>{c.fields} fields</Trans></span>
         </div>
-        {archived && (
-          <span className="ml-auto">
-            <Badge variant="secondary">
-              <I.Archive size={10} />
-              <span className="ml-1"><Trans>archived</Trans></span>
-            </Badge>
+        {archived ? (
+          <Badge variant="secondary">
+            <I.Archive size={10} />
+            <span className="ml-1"><Trans>archived</Trans></span>
+          </Badge>
+        ) : c.ownerScoped ? (
+          <span className="shrink-0 rounded-[5px] border border-[color-mix(in_oklch,var(--color-accent-mint)_22%,transparent)] bg-[color-mix(in_oklch,var(--color-accent-mint)_10%,transparent)] px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.08em] text-accent-mint">
+            <Trans>owner</Trans>
           </span>
-        )}
+        ) : null}
       </div>
-      <div className="grid grid-cols-3 gap-2">
-        <Stat k="rows" v={c.count.toLocaleString()} />
-        <Stat k="writes 24h" v={c.writes24h} />
-        <Stat k="last" v={c.lastWrite} mono />
+      <div className="flex items-center justify-between border-t border-border pt-[11px]">
+        <Stat k={<Trans>Rows</Trans>} v={c.count.toLocaleString()} />
+        <Stat k={<Trans>Writes 24h</Trans>} v={c.writes24h} />
+        <Stat k={<Trans>Last</Trans>} v={c.lastWrite} mono />
       </div>
       <div className={`flex gap-1.5 ${editing ? "pointer-events-none opacity-50" : ""}`}>
         {archived ? (
@@ -593,11 +617,11 @@ function CollectionCard({ c, onOpen, archived, editing, dropTarget, onRestore, o
   );
 }
 
-function Stat({ k, v, mono }: { k: string; v: string | number; mono?: boolean }) {
+function Stat({ k, v, mono }: { k: ReactNode; v: string | number; mono?: boolean }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="truncate text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{k}</span>
-      <span className={`truncate tabular-nums ${mono ? "font-mono text-[11.5px] font-normal" : "text-sm font-semibold"}`}>{v}</span>
+      <span className="truncate text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/70">{k}</span>
+      <span className={`truncate tabular-nums ${mono ? "font-mono text-[11.5px] font-normal text-muted-foreground" : "text-sm font-semibold text-foreground"}`}>{v}</span>
     </div>
   );
 }

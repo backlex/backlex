@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { Button } from "@backlex/ui/components/button";
 import type {
   AuthBranding,
@@ -9,15 +9,17 @@ import type {
 } from "../types";
 
 /**
- * Two-column auth shell: brand panel on the left (gradient + animated beams,
- * brand lockup, headline + lede), form column on the right (theme toggle +
- * children + footer links).
+ * "Cosmos" auth shell: a single centred glass card floating on a fixed star
+ * canvas + drifting nebula blobs. The card carries a Saturn brand lockup, the
+ * per-screen form (children), the mode-switch footer links, and the version
+ * line.
  *
- * Lingui- and router-free: the consumer passes a `Link` component and a
- * `copy` object with the per-mode headline + lede already resolved.
+ * Lingui- and router-free: the consumer passes a `Link` component and a `copy`
+ * object with the per-mode headline + lede already resolved.
  *
- * The CSS for the animated beams lives in `@backlex/auth-ui/auth-shell.css`;
- * make sure to import it once at app bootstrap.
+ * The CSS (star/nebula/glass/keyframes + cosmos token overrides for the nested
+ * @backlex/ui primitives) lives in `@backlex/auth-ui/auth-shell.css`; import it
+ * once at app bootstrap.
  */
 export interface AuthShellProps {
   mode: AuthMode;
@@ -25,7 +27,7 @@ export interface AuthShellProps {
   copy: AuthShellCopy;
   /** Surface flags from `/api/auth/providers` — drives "claim instance" link. */
   surface?: AuthSurfaceFlags | null;
-  /** App version printed in the bottom-left of the brand panel. Optional. */
+  /** App version printed at the bottom of the card. Optional. */
   appVersion?: string;
   /** Router-agnostic Link component (e.g. React Router's `<Link to=…>`). */
   Link: LinkComponent;
@@ -39,6 +41,211 @@ interface FooterLink {
   to: string;
   label: string;
 }
+
+/**
+ * Fixed twinkling star field (spec §8). Ported from the vanilla-JS design
+ * script into a React effect: a `<canvas>` sized to the viewport draws
+ * ~(w·h/6500) stars — violet `#cdbcff` for the deep ones, white otherwise —
+ * that slowly drift downward, twinkle, and occasionally streak as a shooting
+ * star. Honours `prefers-reduced-motion` (draws one static frame, no rAF) and
+ * tears the loop + listeners down on unmount.
+ */
+const StarCanvas = () => {
+  const ref = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const reduce =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const dpr = Math.min(
+      typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
+      2,
+    );
+
+    type Star = {
+      x: number;
+      y: number;
+      r: number;
+      base: number;
+      tw: number;
+      tws: number;
+      vy: number;
+      violet: boolean;
+    };
+    type Shooter = {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      len: number;
+      life: number;
+      max: number;
+    };
+
+    let w = 0;
+    let h = 0;
+    let stars: Star[] = [];
+    const shooters: Shooter[] = [];
+    let raf = 0;
+
+    const build = () => {
+      w = canvas.clientWidth || window.innerWidth;
+      h = canvas.clientHeight || window.innerHeight;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const count = Math.round((w * h) / 6500);
+      stars = Array.from({ length: count }, () => {
+        const deep = Math.random() < 0.25;
+        return {
+          x: Math.random() * w,
+          y: Math.random() * h,
+          r: Math.random() * (deep ? 1.5 : 1.0) + 0.3,
+          base: Math.random() * 0.45 + 0.35,
+          tw: Math.random() * Math.PI * 2,
+          tws: Math.random() * 0.018 + 0.004,
+          vy: Math.random() * 0.05 + 0.015,
+          violet: deep,
+        };
+      });
+    };
+
+    const paintStars = (animate: boolean) => {
+      ctx.clearRect(0, 0, w, h);
+      for (const s of stars) {
+        let a = s.base;
+        if (animate) {
+          s.tw += s.tws;
+          a = s.base + Math.sin(s.tw) * 0.35;
+          s.y += s.vy;
+          if (s.y > h) {
+            s.y = 0;
+            s.x = Math.random() * w;
+          }
+        }
+        ctx.globalAlpha = Math.max(0, Math.min(1, a));
+        ctx.fillStyle = s.violet ? "#cdbcff" : "#ffffff";
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    const spawnShooter = () => {
+      const fromLeft = Math.random() < 0.5;
+      const speed = Math.random() * 4 + 6;
+      shooters.push({
+        x: fromLeft ? -40 : w + 40,
+        y: Math.random() * h * 0.5,
+        vx: fromLeft ? speed : -speed,
+        vy: speed * 0.45,
+        len: Math.random() * 80 + 60,
+        life: 0,
+        max: Math.random() * 40 + 40,
+      });
+    };
+
+    const paintShooters = () => {
+      for (let i = shooters.length - 1; i >= 0; i--) {
+        const sh = shooters[i];
+        if (!sh) continue;
+        sh.x += sh.vx;
+        sh.y += sh.vy;
+        sh.life += 1;
+        const nx = sh.x - (sh.vx / Math.hypot(sh.vx, sh.vy)) * sh.len;
+        const ny = sh.y - (sh.vy / Math.hypot(sh.vx, sh.vy)) * sh.len;
+        const grad = ctx.createLinearGradient(sh.x, sh.y, nx, ny);
+        const fade = 1 - sh.life / sh.max;
+        grad.addColorStop(0, `rgba(255,226,212,${Math.max(0, fade)})`);
+        grad.addColorStop(1, "rgba(255,226,212,0)");
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(sh.x, sh.y);
+        ctx.lineTo(nx, ny);
+        ctx.stroke();
+        if (sh.life >= sh.max || sh.x < -80 || sh.x > w + 80 || sh.y > h + 80) {
+          shooters.splice(i, 1);
+        }
+      }
+    };
+
+    const loop = () => {
+      paintStars(true);
+      if (Math.random() < 0.004 && shooters.length < 2) spawnShooter();
+      paintShooters();
+      raf = requestAnimationFrame(loop);
+    };
+
+    build();
+    if (reduce) {
+      paintStars(false);
+    } else {
+      raf = requestAnimationFrame(loop);
+    }
+
+    const onResize = () => {
+      build();
+      if (reduce) paintStars(false);
+    };
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  // Decorative starfield: an empty canvas exposes no accessible content.
+  return <canvas ref={ref} className="cosmos-stars" tabIndex={-1} />;
+};
+
+/** Saturn: violet planet, tilted coral ring with front/back occlusion, moon. */
+const SaturnMark = ({ size = 34 }: { size?: number }) => {
+  const uid = useId().replace(/:/g, "");
+  return (
+    <svg
+      viewBox="0 0 32 32"
+      width={size}
+      height={size}
+      className="cosmos-saturn"
+      style={{ display: "block", overflow: "visible", flex: "0 0 auto" }}
+      fill="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <radialGradient id={`bp-${uid}`} cx="36%" cy="30%" r="72%">
+          <stop offset="0%" stopColor="#e9e1ff" />
+          <stop offset="55%" stopColor="#7c5cff" />
+          <stop offset="100%" stopColor="#3a2384" />
+        </radialGradient>
+        <clipPath id={`bf-${uid}`}>
+          <rect x="0" y="16" width="32" height="16" />
+        </clipPath>
+      </defs>
+      <g transform="rotate(-22 16 16)">
+        <ellipse cx="16" cy="16" rx="14.2" ry="5.3" stroke="#ff9d83" strokeOpacity="0.85" strokeWidth="1.7" />
+      </g>
+      <circle cx="16" cy="16" r="7.3" fill={`url(#bp-${uid})`} />
+      <g transform="rotate(-22 16 16)" clipPath={`url(#bf-${uid})`}>
+        <ellipse cx="16" cy="16" rx="14.2" ry="5.3" stroke="#ffb59e" strokeWidth="1.7" />
+      </g>
+      <g transform="rotate(-22 16 16)">
+        <circle r="1.5" fill="#ffe2d4">
+          <animateMotion dur="6s" repeatCount="indefinite" path="M 1.8 16 a 14.2 5.3 0 1 0 28.4 0 a 14.2 5.3 0 1 0 -28.4 0" />
+        </circle>
+      </g>
+    </svg>
+  );
+};
 
 export const AuthShell = ({
   mode,
@@ -75,63 +282,55 @@ export const AuthShell = ({
   );
 
   return (
-    <div className="grid min-h-svh w-full grid-cols-1 bg-background text-foreground md:grid-cols-2">
-      {/* Left: brand panel */}
-      <div
-        className="auth-brand relative hidden flex-col overflow-hidden border-r border-border p-8 md:flex md:p-10"
-        style={{
-          background:
-            "radial-gradient(900px 500px at 110% 0%, color-mix(in oklab, var(--primary) 22%, transparent), transparent 60%), linear-gradient(180deg, color-mix(in oklab, var(--primary) 6%, var(--card)) 0%, var(--card) 100%)",
-        }}
-      >
-        {/* Animated primary light beams — diagonal sweep behind the brand copy. */}
-        <div className="auth-beams" aria-hidden="true">
-          <div className="beam beam-back" />
-          <div className="beam beam-mid" />
-          <div className="beam beam-front" />
-          <div className="beam-grain" />
-        </div>
-        <BrandLockup brandLogo={brandLogo} brandName={brandName} />
+    <div className="cosmos-auth">
+      <StarCanvas />
+      <div className="cosmos-neb cosmos-neb-a" aria-hidden="true" />
+      <div className="cosmos-neb cosmos-neb-b" aria-hidden="true" />
+      <div className="cosmos-neb cosmos-neb-c" aria-hidden="true" />
 
-        <h1 className="mt-auto mb-3 text-balance text-4xl font-semibold leading-[1.05] tracking-tight">
-          <BrandHeadline>{headline}</BrandHeadline>
-        </h1>
-        <p className="max-w-[36ch] text-[15px] leading-snug text-muted-foreground">
-          {lede}
-        </p>
-
-        {appVersion && (
-          <div className="mt-auto flex gap-4 pt-6 font-mono text-xs text-muted-foreground">
-            <span>v{appVersion}</span>
-          </div>
+      <div className="cosmos-stage">
+        {themeToggle && (
+          <div className="cosmos-theme-toggle">{themeToggle}</div>
         )}
-      </div>
 
-      {/* Right: form panel */}
-      <div className="relative flex items-center justify-center p-6 md:p-10">
-        <div className="relative w-full max-w-[380px]">
-          {themeToggle && (
-            <div className="absolute -top-7 right-0">{themeToggle}</div>
+        <div className="cosmos-card">
+          <div className="cosmos-brand">
+            {brandLogo ? (
+              <img src={brandLogo} alt="" className="cosmos-brand-logo" />
+            ) : (
+              <SaturnMark size={34} />
+            )}
+            <span className="cosmos-wordmark">{brandName}</span>
+          </div>
+
+          {(headline || lede) && (
+            <div className="cosmos-intro">
+              {headline && (
+                <p className="cosmos-headline">
+                  <BrandHeadline>{headline}</BrandHeadline>
+                </p>
+              )}
+              {lede && <p className="cosmos-lede">{lede}</p>}
+            </div>
           )}
-          <div className="mb-8 md:hidden">
-            <BrandLockup brandLogo={brandLogo} brandName={brandName} />
-          </div>
+
           {children}
-          <div className="mt-7 flex justify-center gap-4 text-xs text-muted-foreground">
-            {visibleLinks.map((link) => (
-              <Link
-                key={link.mode}
-                to={link.to}
-                className={
-                  mode === link.mode
-                    ? "font-medium text-foreground"
-                    : "hover:text-foreground"
-                }
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
+
+          {visibleLinks.length > 0 && (
+            <div className="cosmos-switch">
+              {visibleLinks.map((link) => (
+                <Link
+                  key={link.mode}
+                  to={link.to}
+                  className={mode === link.mode ? "is-active" : undefined}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {appVersion && <div className="cosmos-version">v{appVersion}</div>}
         </div>
       </div>
     </div>
@@ -139,38 +338,11 @@ export const AuthShell = ({
 };
 
 /**
- * Renders the headline so `<em>` becomes the chartreuse-primary highlight.
- * The design system reserves italic for this brand emphasis only.
+ * Renders the headline so `<em>` becomes the violet brand highlight. The
+ * design reserves italic for this emphasis only (CSS resets it to normal).
  */
 const BrandHeadline = ({ children }: { children: ReactNode }) => (
-  <span className="[&_em]:not-italic [&_em]:text-primary">{children}</span>
-);
-
-/**
- * Workspace logo + name lockup, shared by the desktop brand panel and the
- * mobile form-column header so mobile users still see the workspace identity.
- */
-const BrandLockup = ({
-  brandLogo,
-  brandName,
-}: {
-  brandLogo: string | null;
-  brandName: string;
-}) => (
-  <div className="flex items-center gap-2.5 font-mono text-sm font-semibold tracking-tight">
-    {brandLogo ? (
-      <img
-        src={brandLogo}
-        alt=""
-        className="size-7 rounded-lg object-contain"
-      />
-    ) : (
-      <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground text-xs font-bold">
-        {brandName.charAt(0).toLowerCase()}
-      </span>
-    )}
-    {brandName}
-  </div>
+  <span>{children}</span>
 );
 
 /** Reusable card body container for individual auth screens. */
@@ -186,12 +358,10 @@ export const AuthCardHeader = ({
   title: ReactNode;
   description?: ReactNode;
 }) => (
-  <div className="space-y-1">
-    <h2 className="text-[24px] font-semibold leading-tight tracking-tight">
-      {title}
-    </h2>
+  <div className="space-y-1.5">
+    <h2>{title}</h2>
     {description && (
-      <p className="text-[13.5px] leading-relaxed text-muted-foreground">
+      <p className="text-[13px] leading-relaxed text-muted-foreground">
         {description}
       </p>
     )}
@@ -200,10 +370,10 @@ export const AuthCardHeader = ({
 
 /** Horizontal "or with email" divider. */
 export const AuthDivider = ({ children }: { children: ReactNode }) => (
-  <div className="flex items-center gap-2.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-    <span className="h-px flex-1 bg-border" />
+  <div className="cosmos-divider flex items-center gap-2.5 text-[11px] uppercase">
+    <span className="h-px flex-1 bg-white/10" />
     {children}
-    <span className="h-px flex-1 bg-border" />
+    <span className="h-px flex-1 bg-white/10" />
   </div>
 );
 
@@ -215,14 +385,14 @@ export const AuthCallout = ({
   icon?: ReactNode;
   children: ReactNode;
 }) => (
-  <div className="flex items-start gap-2.5 rounded-2xl border border-primary/35 bg-primary/8 px-3.5 py-3 text-[12.5px] leading-relaxed">
+  <div className="flex items-start gap-2.5 rounded-xl border border-primary/35 bg-primary/10 px-3.5 py-3 text-[12.5px] leading-relaxed">
     {icon && <span className="mt-0.5 shrink-0 text-primary">{icon}</span>}
     <div>{children}</div>
   </div>
 );
 
 export const AuthError = ({ children }: { children: ReactNode }) => (
-  <div className="flex items-center gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-xs text-destructive">
+  <div className="flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-xs text-destructive">
     {children}
   </div>
 );
@@ -250,25 +420,31 @@ export const AuthFootLink = ({
   </p>
 );
 
-/** Tall, full-width primary action used by every auth form. */
+/** Tall, full-width violet-gradient primary action used by every auth form. */
 export const AuthSubmit = ({
   children,
+  className,
   ...rest
 }: React.ComponentProps<typeof Button>) => (
-  <Button {...rest} className="h-10 w-full justify-center" size="lg">
+  <Button
+    {...rest}
+    className={`cosmos-cta w-full justify-center ${className ?? ""}`}
+    size="lg"
+  >
     {children}
   </Button>
 );
 
-/** Tall, full-width outline alt action (magic link / second CTA). */
+/** Tall, full-width ghost alt action (magic link / passkey / second CTA). */
 export const AuthOutline = ({
   children,
+  className,
   ...rest
 }: React.ComponentProps<typeof Button>) => (
   <Button
     {...rest}
     variant="outline"
-    className="h-10 w-full justify-center"
+    className={`cosmos-ghost w-full justify-center ${className ?? ""}`}
     size="lg"
   >
     {children}

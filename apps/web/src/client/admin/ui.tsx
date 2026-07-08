@@ -4,6 +4,7 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useState,
   type ButtonHTMLAttributes,
@@ -138,6 +139,7 @@ export interface BrandMarkProps {
 }
 
 export function BrandMark({ size = 32, logoUrl }: BrandMarkProps) {
+  const uid = useId().replace(/:/g, "");
   if (logoUrl) {
     return (
       <img
@@ -148,22 +150,39 @@ export function BrandMark({ size = 32, logoUrl }: BrandMarkProps) {
       />
     );
   }
+  // Saturn: violet planet, tilted coral ring with front/back occlusion, moon.
   return (
     <svg
-      viewBox="-6 -6 104 100"
+      viewBox="0 0 32 32"
       width={size}
       height={size}
       className="brand-mark brand-mark--logo"
-      style={{ width: size, height: size }}
-      fill="var(--foreground)"
-      stroke="var(--background)"
-      strokeWidth={7}
-      strokeLinejoin="round"
+      style={{ width: size, height: size, display: "block", overflow: "visible" }}
+      fill="none"
       aria-hidden="true"
     >
-      <polygon points="46,44 92,66 46,88 0,66" />
-      <polygon points="46,22 92,44 46,66 0,44" />
-      <polygon points="46,0 92,22 46,44 0,22" fill="var(--primary)" />
+      <defs>
+        <radialGradient id={`bp-${uid}`} cx="36%" cy="30%" r="72%">
+          <stop offset="0%" stopColor="#e9e1ff" />
+          <stop offset="55%" stopColor="#7c5cff" />
+          <stop offset="100%" stopColor="#3a2384" />
+        </radialGradient>
+        <clipPath id={`bf-${uid}`}>
+          <rect x="0" y="16" width="32" height="16" />
+        </clipPath>
+      </defs>
+      <g transform="rotate(-22 16 16)">
+        <ellipse cx="16" cy="16" rx="14.2" ry="5.3" stroke="#ff9d83" strokeOpacity="0.85" strokeWidth="1.7" />
+      </g>
+      <circle cx="16" cy="16" r="7.3" fill={`url(#bp-${uid})`} />
+      <g transform="rotate(-22 16 16)" clipPath={`url(#bf-${uid})`}>
+        <ellipse cx="16" cy="16" rx="14.2" ry="5.3" stroke="#ffb59e" strokeWidth="1.7" />
+      </g>
+      <g transform="rotate(-22 16 16)">
+        <circle r="1.5" fill="#ffe2d4">
+          <animateMotion dur="6s" repeatCount="indefinite" path="M 1.8 16 a 14.2 5.3 0 1 0 28.4 0 a 14.2 5.3 0 1 0 -28.4 0" />
+        </circle>
+      </g>
     </svg>
   );
 }
@@ -568,6 +587,25 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, 
   const [tenantsLoaded, setTenantsLoaded] = useState(false);
   const [newWsOpen, setNewWsOpen] = useState(false);
 
+  // Collapse the Collections tree in the sidebar (per-device UI state).
+  const [collectionsOpen, setCollectionsOpen] = useState(() => {
+    try {
+      return localStorage.getItem("backlex.sidebar.collections.open") !== "false";
+    } catch {
+      return true;
+    }
+  });
+  const toggleCollections = () =>
+    setCollectionsOpen((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem("backlex.sidebar.collections.open", String(next));
+      } catch {
+        // Private-mode storage failures just lose persistence, not function.
+      }
+      return next;
+    });
+
   const reloadTenants = useCallback(async () => {
     try {
       const res = await tenantsApi.list();
@@ -743,16 +781,29 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, 
                       <span>{i18n._(navLabel(it.id))}</span>
                     </SidebarMenuButton>
                     {liveBadge != null && (
-                      <SidebarMenuBadge className="tabular-nums">{liveBadge}</SidebarMenuBadge>
+                      <SidebarMenuBadge className={cn("rounded-md bg-white/8 px-1.5 font-mono text-[10.5px] tabular-nums text-muted-foreground", it.id === "collections" && "right-7")}>{liveBadge}</SidebarMenuBadge>
                     )}
                     {it.id === "collections" && (
-                      <CollectionsTree
-                        activeCollection={activeCollection}
-                        onOpen={(slug) => {
-                          setActiveNav("collections/" + slug);
-                          if (isMobile) setOpenMobile(false);
-                        }}
-                      />
+                      <>
+                        <button
+                          type="button"
+                          aria-label={collectionsOpen ? t`Collapse collections` : t`Expand collections`}
+                          aria-expanded={collectionsOpen}
+                          onClick={toggleCollections}
+                          className="absolute top-1.5 right-1 z-10 grid size-5 place-items-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        >
+                          <I.ChevronDown size={14} className={cn("transition-transform", !collectionsOpen && "-rotate-90")} />
+                        </button>
+                        {collectionsOpen && (
+                          <CollectionsTree
+                            activeCollection={activeCollection}
+                            onOpen={(slug) => {
+                              setActiveNav("collections/" + slug);
+                              if (isMobile) setOpenMobile(false);
+                            }}
+                          />
+                        )}
+                      </>
                     )}
                   </SidebarMenuItem>
                 );

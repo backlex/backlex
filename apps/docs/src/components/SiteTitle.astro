@@ -1,0 +1,18 @@
+---
+// Starlight `SiteTitle` override — the cosmic brand mark (orbiting planet)
+// from the "Backlex Docs" design, replacing the static stacked-layers logo.
+// Keeps Starlight's `.site-title` anchor so header layout/spacing is unchanged.
+const href = import.meta.env.BASE_URL;
+---
+
+<a href={href} class="site-title sl-flex cosmos-brand">
+  <span class="planet" aria-hidden="true">
+    <span class="planet-core"></span>
+    <span class="planet-ring"></span>
+    <span class="planet-orbit">
+      <span class="planet-spin"><span class="planet-moon"></span></span>
+    </span>
+  </span>
+  <span class="brand-word">backlex</span>
+  <span class="brand-tag">docs</span>
+</a>

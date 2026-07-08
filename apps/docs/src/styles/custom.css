@@ -136,6 +136,15 @@ header.header {
 .sidebar-content {
   background: var(--sl-color-bg-sidebar);
 }
+/* Transparent sidebar on desktop (cosmos/dark) so the starfield shows behind
+   it, like the design. The mobile slide-in overlay stays opaque so page
+   content doesn't bleed through it. */
+@media (min-width: 50rem) {
+  :root[data-theme="dark"] .sidebar-pane,
+  :root[data-theme="dark"] .sidebar-content {
+    background: transparent;
+  }
+}
 
 .sidebar-content {
   padding-top: 1.5rem;

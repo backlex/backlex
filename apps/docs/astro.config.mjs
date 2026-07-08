@@ -28,6 +28,10 @@ export default defineConfig({
       customCss: ["./src/styles/custom.css"],
       components: {
         PageTitle: "./src/components/PageTitle.astro",
+        // Cosmic brand mark (orbiting planet) replacing the static logo.
+        SiteTitle: "./src/components/SiteTitle.astro",
+        // Design nav layout: planet + search box + "GitHub ↗".
+        Header: "./src/components/Header.astro",
         // Override Head to inject Astro's ClientRouter — Starlight has no
         // built-in view transitions, so this adds smooth cross-page morphs.
         Head: "./src/components/Head.astro",
@@ -54,7 +58,7 @@ export default defineConfig({
           tag: "link",
           attrs: {
             rel: "stylesheet",
-            href: "https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap",
+            href: "https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap",
           },
         },
       ],

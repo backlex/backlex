@@ -700,9 +700,40 @@ body > .page {
   line-height: 1.4;
 }
 
-/* Coral sidebar group markers, echoing the design's section glyphs. */
+/* Distinct coral section glyphs per sidebar group (design parity) — replaces
+   the single dot with ◆ ▲ ● ✦ ➜ … in JetBrains Mono, like the "Backlex Docs"
+   design's sidebar. */
 :root[data-theme="dark"] .sidebar-content .group-label::before {
-  background: #ff9d83;
+  content: "◆";
+  width: 14px;
+  height: auto;
+  background: none;
+  border-radius: 0;
+  color: #ff9d83;
+  font-family: var(--sl-font-mono);
+  font-size: 11px;
+  line-height: 1;
+  text-align: center;
+}
+:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(1) .group-label::before { content: "◆"; }
+:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(2) .group-label::before { content: "▲"; }
+:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(3) .group-label::before { content: "●"; }
+:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(4) .group-label::before { content: "✦"; }
+:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(5) .group-label::before { content: "➜"; }
+:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(6) .group-label::before { content: "◇"; }
+
+/* Active sidebar item → violet pill with an inset ring (design parity),
+   replacing the left-border treatment in the cosmos (dark) theme. */
+:root[data-theme="dark"] .sidebar-content a[aria-current="page"],
+:root[data-theme="dark"] .sidebar-content a[aria-current="page"]:hover,
+:root[data-theme="dark"] .sidebar-content a[aria-current="page"]:focus {
+  color: #edeafa;
+  background: rgba(139, 108, 255, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(139, 108, 255, 0.3);
+  border-left: 0;
+  padding-left: 0.75rem;
+  border-radius: 8px;
+  font-weight: 600;
 }
 
 /* ── Header (design nav layout) ───────────────────────────────────────── */

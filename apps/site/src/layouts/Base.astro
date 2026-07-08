@@ -133,7 +133,16 @@ const canonical = new URL(cleanPath || "/", Astro.site).href;
           var d = dot();
           if (d) d.classList.toggle("is-hot", !!interactive);
         });
-        document.addEventListener("mouseleave", function () { S.shown = false; });
+        // Switching apps (alt-tab) or tabs leaves the ring frozen at opacity 1
+        // while the OS repaints its own cursor, so both show at once. Reset
+        // `shown` on blur / tab-hide; the next mousemove re-shows the ring and
+        // the loop re-hides the native cursor via `cursor: none`.
+        function hideCursor() { S.shown = false; }
+        document.addEventListener("mouseleave", hideCursor);
+        window.addEventListener("blur", hideCursor);
+        document.addEventListener("visibilitychange", function () {
+          if (document.hidden) hideCursor();
+        });
         (function loop() {
           S.cx += (S.mx - S.cx) * 0.18;
           S.cy += (S.my - S.cy) * 0.18;

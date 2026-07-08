@@ -6,7 +6,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { renderTemplate } from "@backlex/core";
 import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
-import { Badge, Button, Checkbox, IconButton } from "./ui";
+import { Button, Checkbox, IconButton } from "./ui";
 import { Select } from "./select";
 import { Input } from "@backlex/ui/components/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@backlex/ui/components/input-group";
@@ -20,8 +20,45 @@ import { useRelationLabels } from "./relation-labels";
 import { shortId } from "./row-label";
 import { useCollections } from "./queries";
 
+// Cosmos "Backlex Console" data-grid styling. Header cells: mono 10px violet-
+// gray, uppercase, subtle padding; body rows: subtle white/5 dividers, 12.5px
+// cells. The header background sits on the header <TableRow> (sticky cells keep
+// their opaque bg-card so scrolled content can't bleed through them).
 const ADMIN_TABLE_CLS =
-  "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
+  "[&_th]:h-auto [&_th]:px-4 [&_th]:py-2.5 [&_th]:font-mono [&_th]:text-[10px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-[#8580A2] [&_td]:px-4 [&_td]:py-[11px] [&_td]:text-[12.5px] [&_tbody_tr]:border-white/[0.05]";
+
+/** Segmented-control classes shared by the status tabs + the view toggle so
+ *  the two strips read as one system. Restyle-only — the Radix Tabs behavior
+ *  (keyboard nav, value change) is untouched. */
+export const SEG_LIST_CLS =
+  "gap-[3px] rounded-[10px] border border-white/[0.07] bg-white/[0.04] p-[3px]";
+export const SEG_TRIGGER_CLS =
+  "rounded-[7px] px-3 py-[5px] text-xs font-semibold text-[#8580A2] data-active:bg-[rgba(139,108,255,0.16)] data-active:text-[#E7E4F4] dark:data-active:bg-[rgba(139,108,255,0.16)] dark:data-active:text-[#E7E4F4]";
+
+/** Cosmos status chip — mint (published) / coral (review) / gray (draft) /
+ *  dim (archived), or a custom-color dot when the schema's choice carries its
+ *  own color. Value + label come straight from the schema-driven status field;
+ *  this only restyles the presentation. */
+function StatusBadge({ value, label, color }: { value: string; label?: string; color?: string }) {
+  const base = "inline-flex items-center gap-1 rounded-[6px] border px-2 py-0.5 font-mono text-[10.5px]";
+  if (color) {
+    return (
+      <span className={`${base} border-white/[0.12] bg-white/5 text-foreground`}>
+        <span className="inline-block size-1.5 rounded-full" style={{ background: color }} />
+        {label ?? value}
+      </span>
+    );
+  }
+  const TONES: Record<string, string> = {
+    published:
+      "text-accent-mint bg-[color-mix(in_oklch,var(--color-accent-mint)_10%,transparent)] border-[color-mix(in_oklch,var(--color-accent-mint)_22%,transparent)]",
+    review:
+      "text-accent-coral bg-[color-mix(in_oklch,var(--color-accent-coral)_10%,transparent)] border-[color-mix(in_oklch,var(--color-accent-coral)_25%,transparent)]",
+    draft: "text-muted-foreground bg-white/5 border-white/[0.12]",
+    archived: "text-[#7E789B] bg-white/[0.03] border-white/[0.09]",
+  };
+  return <span className={`${base} ${TONES[value] ?? TONES.draft}`}>{label ?? value}</span>;
+}
 
 export const FIELD_OPS: Record<string, string[]> = {
   text: ["_eq", "_neq", "_contains", "_starts_with", "_ends_with", "_in", "_null"],
@@ -301,60 +338,65 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <InputGroup>
-        <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
-        <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t`Search ${total} items by title or slug…`} />
-        {search && (
-          <InputGroupAddon align="inline-end">
-            <InputGroupButton size="icon-xs" onClick={() => setSearch("")}><I.X size={13} /></InputGroupButton>
-          </InputGroupAddon>
-        )}
-      </InputGroup>
+  // Status tabs live on their own top row (design), above the search + filter
+  // row. Rendered only for collections that declare a status field.
+  const statusCfg = resolveStatusField(schema as any);
+  const statusTabs = statusCfg
+    ? [
+        { id: "all", label: "All", count: total } as { id: string; label: string; count?: number },
+        ...statusCfg.choices.map((c) => ({ id: c.value, label: c.label ?? c.value })),
+      ]
+    : null;
 
-      {(() => {
-        const cfg = resolveStatusField(schema as any);
-        // Skip the tabs row entirely when the collection has no status field
-        // — parity: don't surface status UI on schemas that don't
-        // declare it.
-        if (!cfg) return null;
-        const tabs = [
-          { id: "all", label: "All", count: total } as { id: string; label: string; count?: number },
-          ...cfg.choices.map((c) => ({ id: c.value, label: c.label ?? c.value })),
-        ];
-        return (
-          <Tabs value={status} onValueChange={(v) => setStatus(v)}>
-            <TabsList>
-              {tabs.map((t) => (
-                <TabsTrigger key={t.id} value={t.id}>
-                  {t.label}
-                  {t.count != null && <span className="rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground">{t.count}</span>}
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Row 1: search + Filter on the left, status tabs pinned to the right. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <InputGroup className="h-[34px] min-w-[220px] flex-1 basis-[360px] rounded-[9px] border-white/10 bg-white/[0.03] sm:max-w-[420px]">
+          <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
+          <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t`Search ${total} items by title or slug…`} />
+          {search && (
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton size="icon-xs" onClick={() => setSearch("")}><I.X size={13} /></InputGroupButton>
+            </InputGroupAddon>
+          )}
+        </InputGroup>
+
+        <div ref={wrapRef} className="relative">
+          <Button variant="outline" size="sm" icon={I.Filter} className="h-[34px] rounded-[9px] border-white/10 bg-white/[0.03]" onClick={() => setPopOpen((v) => !v)}>
+            <Trans>Filter</Trans>
+          </Button>
+          {popOpen && <AddFilterPopover schema={schema} onAdd={(f) => setFilters([...filters, f])} onClose={() => setPopOpen(false)} />}
+        </div>
+
+        {statusTabs && (
+          <Tabs value={status} onValueChange={(v) => setStatus(v)} className="ml-auto">
+            <TabsList className={SEG_LIST_CLS}>
+              {statusTabs.map((tb) => (
+                <TabsTrigger key={tb.id} value={tb.id} className={SEG_TRIGGER_CLS}>
+                  {tb.label}
+                  {tb.count != null && <span className="rounded-[5px] bg-white/8 px-1.5 py-px font-mono text-[10px] tabular-nums text-current opacity-80">{tb.count}</span>}
                 </TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
-        );
-      })()}
-
-      <div ref={wrapRef} className="relative">
-        <Button variant="outline" size="sm" icon={I.Filter} onClick={() => setPopOpen((v) => !v)}>
-          <Trans>Filter</Trans>
-        </Button>
-        {popOpen && <AddFilterPopover schema={schema} onAdd={(f) => setFilters([...filters, f])} onClose={() => setPopOpen(false)} />}
+        )}
       </div>
 
-      {filters.map((f, i) => (
-        <FilterChip
-          key={i}
-          field={f.field}
-          op={f.op}
-          value={f.value}
-          onRemove={() => setFilters(filters.filter((_, j) => j !== i))}
-        />
-      ))}
+      {/* Row 2: active filter chips — a dedicated line so the tabs never jump. */}
       {filters.length > 0 && (
-        <Button variant="ghost" size="sm" onClick={() => setFilters([])}><Trans>Clear</Trans></Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {filters.map((f, i) => (
+            <FilterChip
+              key={i}
+              field={f.field}
+              op={f.op}
+              value={f.value}
+              onRemove={() => setFilters(filters.filter((_, j) => j !== i))}
+            />
+          ))}
+          <Button variant="ghost" size="sm" onClick={() => setFilters([])}><Trans>Clear</Trans></Button>
+        </div>
       )}
     </div>
   );
@@ -806,7 +848,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   return (
     <Table className={ADMIN_TABLE_CLS}>
       <TableHeader>
-        <TableRow>
+        <TableRow className="bg-white/[0.02] hover:bg-white/[0.02]">
           {/* The checkbox column needs min-w, not just w — with many columns
               the auto table layout compresses it below 38px, opening a seam
               between it and the Title cell pinned at a fixed offset (scrolled
@@ -897,10 +939,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                         value={rawV}
                         choices={statusField.choices}
                         display={svStr ? (
-                          <Badge variant={ch?.color ? "outline" : statusVariant(svStr)}>
-                            {ch?.color && <span className="mr-1 inline-block size-1.5 rounded-full" style={{ background: ch.color }} />}
-                            {ch?.label ?? svStr}
-                          </Badge>
+                          <StatusBadge value={svStr} label={ch?.label} color={ch?.color} />
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
@@ -951,15 +990,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                       value={rawStatus}
                       choices={statusField!.choices}
                       display={displayStatus ? (
-                        <Badge variant={choice?.color ? "outline" : statusVariant(displayStatus)}>
-                          {choice?.color && (
-                            <span
-                              className="mr-1 inline-block size-1.5 rounded-full"
-                              style={{ background: choice.color }}
-                            />
-                          )}
-                          {choice?.label ?? displayStatus}
-                        </Badge>
+                        <StatusBadge value={displayStatus} label={choice?.label} color={choice?.color} />
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}

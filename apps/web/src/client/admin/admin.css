@@ -92,7 +92,9 @@ body {
   gap: 10px;
   padding: 14px 28px;
   border-bottom: 1px solid var(--border);
-  background: var(--background);
+  /* Frosted translucent bar so the cosmic backdrop reads faintly behind it. */
+  background: rgba(6, 5, 13, 0.72);
+  backdrop-filter: blur(14px);
 }
 .crumbs { display: flex; align-items: center; gap: 2px; font-size: 13px; color: var(--muted-foreground); }
 .crumbs.path { font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace); }
@@ -102,18 +104,108 @@ body {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-3xl);
-  color: var(--muted-foreground);
+  gap: 8px;
+  padding: 0 11px;
+  height: 32px;
+  /* Per design: subtle hairline border on a faint translucent fill. */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  color: #8580a2;
   font-size: 12.5px;
-  background: var(--card);
+  background: rgba(255, 255, 255, 0.03);
   cursor: pointer;
   min-width: 280px;
 }
-.kbar:hover { background: var(--accent); }
+.kbar:hover { background: rgba(255, 255, 255, 0.05); }
 .kbar .kbd { margin-left: auto; padding: 2px 6px; font-family: 'Geist Mono', monospace; font-size: 11px; background: var(--muted); border-radius: var(--radius-sm); border: 1px solid var(--border); color: var(--muted-foreground); }
+
+/* Sidebar nav items — text + icon colors per the cosmos Console design.
+   (.dark prefix keeps these above the shared component's utility classes;
+   icons are stroke=currentColor, so they inherit the row color.) */
+.dark [data-sidebar="menu-button"] {
+  color: #a29dbf;
+}
+.dark [data-sidebar="menu-button"]:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e7e4f4;
+}
+.dark [data-sidebar="menu-button"][data-active="true"] {
+  background: rgba(139, 108, 255, 0.16);
+  color: #f3f1fb;
+}
+/* Group labels — dim mono, per design */
+.dark [data-sidebar="group-label"] {
+  color: #635e80;
+}
+
+/* ── Cosmic backdrop (full-screen, behind the whole admin) ───────────── */
+/* Page base: design radial gradients over #06050d, behind the fixed canvas. */
+html.dark body {
+  background-color: #06050d;
+  background-image:
+    radial-gradient(1200px 800px at 78% -5%, rgba(124, 92, 255, 0.16), transparent 60%),
+    radial-gradient(900px 700px at 10% 8%, rgba(255, 122, 89, 0.07), transparent 55%);
+  background-attachment: fixed;
+}
+.cosmos-neb {
+  position: absolute;
+  border-radius: 50%;
+}
+.cosmos-neb-1 {
+  top: -10%;
+  right: -8%;
+  width: 620px;
+  height: 620px;
+  background: radial-gradient(circle, rgba(124, 92, 255, 0.4), transparent 65%);
+  filter: blur(70px);
+  animation: nebA 22s ease-in-out infinite;
+}
+.cosmos-neb-2 {
+  top: 38%;
+  left: -12%;
+  width: 540px;
+  height: 540px;
+  background: radial-gradient(circle, rgba(255, 122, 89, 0.2), transparent 65%);
+  filter: blur(80px);
+  animation: nebB 28s ease-in-out infinite;
+}
+.cosmos-neb-3 {
+  bottom: -12%;
+  right: 18%;
+  width: 560px;
+  height: 560px;
+  background: radial-gradient(circle, rgba(86, 72, 200, 0.28), transparent 65%);
+  filter: blur(80px);
+  animation: nebC 26s ease-in-out infinite;
+}
+@keyframes nebA {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, -30px) scale(1.12); }
+}
+@keyframes nebB {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-50px, 30px) scale(1.15); }
+}
+@keyframes nebC {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, 40px) scale(1.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cosmos-neb { animation: none; }
+}
+
+/* Frosted translucent sidebar so the backdrop reads through it (design). */
+html.dark {
+  --sidebar: rgba(12, 10, 22, 0.58);
+  /* Tighter radii to match the design: 14px cards/panels, 9px controls
+     (buttons, tabs, search, nav, tiles). The stock scale was 25–31px. */
+  --radius-xl: 0.5625rem; /* 9px — sidebar nav, inputs */
+  --radius-2xl: 0.875rem; /* 14px — cards, panels */
+  --radius-3xl: 0.5625rem; /* 9px — buttons, tabs, tiles, segmented */
+}
+[data-slot="sidebar-inner"] {
+  backdrop-filter: blur(14px);
+}
 .icon-btn {
   width: 32px; height: 32px;
   border-radius: var(--radius-3xl);
@@ -139,11 +231,11 @@ body {
 /* ─── Page ─── */
 .scrollarea { overflow: auto; }
 .page {
-  padding: 24px 28px 80px;
+  padding: 26px 28px 64px;
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-width: 1440px;
+  max-width: 1180px;
   width: 100%;
   margin-inline: auto;
   /* Lifts the content area into its own view-transition group so only it

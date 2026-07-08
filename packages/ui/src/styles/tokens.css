@@ -41,6 +41,10 @@
     --color-warn-foreground: var(--warn-foreground);
     --color-success: var(--success);
 
+    /* Cosmos semantic accents (dark-only re-skin) */
+    --color-accent-coral: var(--accent-coral);
+    --color-accent-mint: var(--accent-mint);
+
     /* Charts + sidebar (derive from --primary) */
     --color-chart-1: var(--chart-1);
     --color-chart-2: var(--chart-2);
@@ -112,29 +116,35 @@
 }
 
 .dark {
-    --background: oklch(0.141 0.005 285.823);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.21 0.006 285.885);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.21 0.006 285.885);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.768 0.233 130.85);
+    /* "Cosmos" space-theme re-skin — zinc ramp shifted violet (h≈291), darker
+     * base; primary swaps lime → violet at the SAME chroma 0.23 so the
+     * chart/sidebar oklch(from var(--primary) …) derivations auto-retint. */
+    --background: oklch(0.122 0.020 290.3);
+    --foreground: oklch(0.972 0.013 295.3);
+    --card: oklch(0.163 0.025 291.0);
+    --card-foreground: oklch(0.972 0.013 295.3);
+    --popover: oklch(0.163 0.025 291.0);
+    --popover-foreground: oklch(0.972 0.013 295.3);
+    --primary: oklch(0.599 0.230 286.2);
     --primary-foreground: oklch(from var(--primary) clamp(0.18, (0.62 - l) * 1000, 0.95) 0.04 h);
-    --secondary: oklch(0.274 0.006 286.033);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.274 0.006 286.033);
-    --muted-foreground: oklch(0.705 0.015 286.067);
-    --accent: oklch(0.274 0.006 286.033);
-    --accent-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.189 0.028 293.3);
+    --secondary-foreground: oklch(0.972 0.013 295.3);
+    --muted: oklch(0.189 0.028 293.3);
+    --muted-foreground: oklch(0.724 0.048 292.1);
+    --accent: oklch(0.189 0.028 293.3);
+    --accent-foreground: oklch(0.972 0.013 295.3);
     --destructive: oklch(0.704 0.191 22.216);
     --destructive-foreground: oklch(0.985 0 0);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.552 0.016 285.938);
+    --border: oklch(1 0 0 / 8%);
+    --input: oklch(1 0 0 / 12%);
+    --ring: oklch(0.599 0.230 286.2);
 
-    /* Semantic accents — accent-brand tracks --primary; warn stays amber. */
+    /* Semantic accents — accent-brand tracks --primary; warn stays amber.
+     * Cosmos adds two brand-independent accents (coral + mint). */
     --warn: oklch(0.78 0.16 70);
     --warn-foreground: oklch(0.78 0.16 70);
+    --accent-coral: oklch(0.729 0.170 35.1);
+    --accent-mint: oklch(0.851 0.114 168.2);
 
     --chart-1: oklch(from var(--primary) 0.897 0.196 h);
     --chart-2: oklch(from var(--primary) 0.768 0.233 h);
@@ -142,12 +152,15 @@
     --chart-4: oklch(from var(--primary) 0.532 0.157 h);
     --chart-5: oklch(from var(--primary) 0.453 0.124 h);
 
-    --sidebar: oklch(0.21 0.006 285.885);
-    --sidebar-foreground: oklch(0.985 0 0);
+    /* Sidebar mirrors the cosmos surface ramp; the sidebar bg is nudged into
+     * the --background family (mockup sidebar #0C0A16 sits just above page bg,
+     * darker than cards). sidebar-primary* derivations kept as-is. */
+    --sidebar: oklch(0.145 0.022 291.0);
+    --sidebar-foreground: oklch(0.972 0.013 295.3);
     --sidebar-primary: oklch(from var(--primary) 0.768 0.233 h);
     --sidebar-primary-foreground: oklch(from var(--primary) 0.274 0.072 h);
-    --sidebar-accent: oklch(0.274 0.006 286.033);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.552 0.016 285.938);
+    --sidebar-accent: oklch(0.189 0.028 293.3);
+    --sidebar-accent-foreground: oklch(0.972 0.013 295.3);
+    --sidebar-border: oklch(1 0 0 / 8%);
+    --sidebar-ring: oklch(0.599 0.230 286.2);
 }

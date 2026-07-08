@@ -10,7 +10,7 @@ import { Card } from "@backlex/ui/components/card";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 
 const ADMIN_TABLE_CLS =
-  "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
+  "[&_td]:px-3.5 [&_td]:text-[12.5px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:font-mono [&_th]:text-[10px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-[#8580a2]";
 import {
   metricsApi,
   settingsApi,
@@ -88,14 +88,13 @@ function MetricsSlider({ metrics }: { metrics: Metric[] }) {
       >
         <div className="flex gap-3 sm:grid sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
           {metrics.map((m) => (
-            <Card key={m.label} className="w-full shrink-0 snap-start gap-2 py-0 sm:w-auto sm:shrink">
-              <div className="flex items-center justify-between px-3.5 pt-3.5">
-                <div className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{m.label}</div>
-                <span className="font-mono text-[11px] tabular-nums" style={{ color: m.up ? "oklch(0.55 0.16 145)" : "var(--destructive)" }}>{m.delta}</span>
+            <Card key={m.label} className="w-full shrink-0 snap-start gap-0 overflow-hidden py-0 sm:w-auto sm:shrink">
+              <div className="flex items-center px-[15px] pt-3.5">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{m.label}</div>
               </div>
-              <div className="px-3.5 text-2xl font-semibold tabular-nums tracking-[-0.02em]">{m.value}</div>
-              <div className="mt-1.5 block leading-[0]">
-                <Sparkline data={m.series} color={m.color} height={36} />
+              <div className="mt-0.5 px-[15px] text-[25px] font-semibold leading-tight tabular-nums tracking-[-0.02em]">{m.value}</div>
+              <div className="mt-2 block leading-[0]">
+                <Sparkline data={m.series} color={m.color} height={34} />
               </div>
             </Card>
           ))}
@@ -173,9 +172,9 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
   const p95 = metrics?.totals.p95Ms ?? 0;
   const todayMetrics = [
     { label: t`Requests`, value: totalRequests.toLocaleString(), delta: range, up: true, series: reqSeries, color: "var(--primary)" },
-    { label: t`p95 latency`, value: p95 ? `${p95}ms` : "—", delta: "duration_ms", up: p95 < 500, series: latSeries, color: "oklch(0.65 0.15 240)" },
+    { label: t`p95 latency`, value: `${p95 || 0}ms`, delta: "duration_ms", up: p95 < 500, series: latSeries, color: "oklch(0.65 0.15 240)" },
     { label: t`Error rate`, value: errorPct, delta: "errors", up: (metrics?.totals.errorRate ?? 0) < 0.05, series: errSeries, color: "oklch(0.7 0.18 22)" },
-    { label: t`Active users`, value: String(activeUsers), delta: range, up: activeUsers > 0, series: errSeries, color: "oklch(0.72 0.16 145)" },
+    { label: t`Active users`, value: String(activeUsers), delta: range, up: activeUsers > 0, series: errSeries, color: "var(--color-accent-mint)" },
   ];
 
   const fmtAgo = (ts: number | null | undefined): string => {
@@ -276,16 +275,16 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
         {quickActions.map((a) => {
           const Icon = a.icon;
           return (
-            <button key={a.label} onClick={a.onClick} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-border bg-transparent px-3.5 py-3 text-left text-inherit">
-              <span className="grid size-8 place-items-center rounded-lg bg-[color-mix(in_oklch,var(--primary)_16%,var(--card))] text-primary">
+            <button key={a.label} onClick={a.onClick} className="flex cursor-pointer items-center gap-[11px] rounded-2xl border border-dashed border-white/[0.14] bg-transparent px-3.5 py-3 text-left text-inherit transition-colors hover:border-[rgba(139,108,255,0.45)] hover:bg-[rgba(139,108,255,0.05)]">
+              <span className="grid size-8 place-items-center rounded-lg bg-[rgba(139,108,255,0.14)] text-[#b9a3ff]">
                 <Icon size={14} />
               </span>
               <div className="flex flex-col">
-                <span className="text-[13px] font-medium">{a.label}</span>
-                <span className="text-[11.5px] text-muted-foreground">{a.hint}</span>
+                <span className="text-[13px] font-medium text-foreground">{a.label}</span>
+                <span className="font-mono text-[11.5px] text-[#8580a2]">{a.hint}</span>
               </div>
               <div className="flex-1" />
-              <I.ChevronRight size={14} className="text-muted-foreground" />
+              <I.ChevronRight size={14} className="text-[#8580a2]" />
             </button>
           );
         })}
@@ -295,13 +294,13 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
         {stats.map((s) => {
           const Icon = s.icon;
           return (
-            <Card key={s.label} className="cursor-pointer gap-1 p-4" onClick={() => setActiveNav(s.nav)}>
-              <div className="flex items-center gap-2">
-                <Icon size={13} className="text-muted-foreground" />
-                <div className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{s.label}</div>
+            <Card key={s.label} className="cursor-pointer gap-1 p-4 transition-colors hover:border-[rgba(139,108,255,0.35)]" onClick={() => setActiveNav(s.nav)}>
+              <div className="flex items-center gap-[7px] text-[#8580a2]">
+                <Icon size={13} />
+                <div className="text-[11px] font-semibold uppercase tracking-[0.06em]">{s.label}</div>
               </div>
-              <div className="mt-0.5 text-[28px] font-semibold tabular-nums tracking-[-0.02em]">{s.value}</div>
-              <div className="text-xs text-muted-foreground">{s.sub}</div>
+              <div className="mt-0.5 text-[26px] font-semibold tabular-nums tracking-[-0.02em]">{s.value}</div>
+              <div className="text-[11.5px] text-[#8580a2]">{s.sub}</div>
             </Card>
           );
         })}
@@ -311,14 +310,14 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
         <div className="flex min-w-0 flex-col gap-3.5">
           <Card className="gap-0 py-0">
             <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-              <I.Database size={14} />
+              <I.Database size={14} className="text-muted-foreground" />
               <span className="text-[13px] font-medium"><Trans>Top collections</Trans></span>
               <div className="flex-1" />
               <Button variant="ghost" size="sm" onClick={() => setActiveNav("collections")} iconRight={I.ChevronRight}><Trans>Manage</Trans></Button>
             </div>
             {/* Every collection renders here — cap the card and scroll, with
                 the header row pinned while the body scrolls under it. */}
-            <ScrollArea viewportClassName="max-h-[420px]">
+            <ScrollArea className="[&_[data-slot=scroll-area-scrollbar][data-orientation=vertical]]:top-9 [&_[data-slot=scroll-area-scrollbar][data-orientation=vertical]]:h-[calc(100%-2.25rem)]" viewportClassName="max-h-[420px]">
               <Table className={`${ADMIN_TABLE_CLS} [&_th]:sticky [&_th]:top-0 [&_th]:z-[1] [&_th]:bg-card`}>
                 <TableHeader><TableRow><TableHead><Trans>Slug</Trans></TableHead><TableHead className="w-[80px] text-right"><Trans>Rows</Trans></TableHead><TableHead className="w-[90px] text-right"><Trans>Size</Trans></TableHead><TableHead className="w-[110px] text-right"><Trans>Writes (1h)</Trans></TableHead><TableHead className="w-[100px]"><Trans>Last write</Trans></TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -338,7 +337,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
 
           <Card className="gap-0 py-0">
             <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-              <I.Activity size={14} />
+              <I.Activity size={14} className="text-muted-foreground" />
               <span className="text-[13px] font-medium"><Trans>Activity</Trans></span>
               <div className="flex-1" />
               <Button variant="ghost" size="sm" iconRight={I.ChevronRight} onClick={() => setActiveNav("logs")}><Trans>All events</Trans></Button>
@@ -373,7 +372,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
 
           <Card className="gap-0 py-0">
             <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-              <I.AlertTriangle size={14} />
+              <I.AlertTriangle size={14} className="text-muted-foreground" />
               <span className="text-[13px] font-medium"><Trans>Recent errors</Trans></span>
               <span className="font-mono text-xs text-muted-foreground"><Trans>last {range} · {(metrics?.totals?.errors ?? recentErrors.reduce((a, e) => a + (e.count ?? 0), 0))} {(metrics?.totals?.errors ?? 0) === 1 ? "event" : "events"}</Trans></span>
               <div className="flex-1" />
@@ -400,9 +399,9 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
         <div className="flex flex-col gap-3.5">
           <Card className="gap-3 p-4">
             <div className="flex items-center gap-2">
-              <I.Globe size={14} /><span className="text-[13px] font-medium"><Trans>Health</Trans></span>
+              <I.Globe size={14} className="text-muted-foreground" /><span className="text-[13px] font-medium"><Trans>Health</Trans></span>
               <div className="flex-1" />
-              <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className="size-[7px] shrink-0 rounded-full bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]" />{adapter === "workers" ? "cf workers" : adapter}</span>
+              <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className="size-[7px] shrink-0 rounded-full bg-accent-mint shadow-[0_0_0_3px_color-mix(in_oklch,var(--color-accent-mint)_22%,transparent)]" />{adapter === "workers" ? "cf workers" : adapter}</span>
             </div>
             {(() => {
               // Live health rows derived from /api/admin/settings/runtime.
@@ -459,7 +458,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                   <div className="text-[12.5px] font-medium">{k}</div>
                   <div className="font-mono text-[11.5px] text-muted-foreground">{v} · {hint}</div>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className={`size-[7px] shrink-0 rounded-full ${status === t`idle` ? "bg-[oklch(0.78_0.16_75)] shadow-[0_0_0_3px_oklch(0.78_0.16_75/0.2)]" : "bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]"}`} />{status}</span>
+                <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className={`size-[7px] shrink-0 rounded-full ${status === t`idle` ? "bg-[oklch(0.78_0.16_75)] shadow-[0_0_0_3px_oklch(0.78_0.16_75/0.2)]" : status === t`connected` ? "bg-accent-mint shadow-[0_0_0_3px_color-mix(in_oklch,var(--color-accent-mint)_22%,transparent)]" : "bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]"}`} />{status}</span>
               </div>
             ))}
           </Card>

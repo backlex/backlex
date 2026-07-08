@@ -3,334 +3,709 @@ import Base from "../layouts/Base.astro";
 ---
 <Base title="backlex Cloud — pricing">
 
-<!-- ─────────────────── Hero ─────────────────── -->
-<section class="relative pt-20 pb-12 border-b border-border overflow-hidden"
+<!-- ═══════════════════════ Hero ═══════════════════════ -->
+<section class="relative z-[1] pt-24 max-sm:pt-12 pb-14 border-b border-border overflow-hidden"
   style="background: radial-gradient(60% 80% at 50% 0%, var(--color-tint), transparent 70%);">
   <div class="relative max-w-[1240px] mx-auto px-8 max-md:px-5 flex flex-col items-center text-center gap-5">
-    <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap border border-border rounded-full px-3 py-1.5 bg-muted">
-      <span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
-      <span>transparent · cloudflare-powered</span>
+
+    <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.16em] whitespace-nowrap border border-border rounded-full px-3 py-1.5 bg-muted">
+      <span class="w-1.5 h-1.5 rounded-full" style="background:#9b7bff"></span>
+      <span>transparent · usage-based</span>
     </span>
-    <h1 class="font-semibold -tracking-[0.04em] leading-[1.04] text-[clamp(36px,5vw,56px)] max-w-[20ch]">From free to production, <span class='text-primary dark:text-[oklch(0.82_0.22_131)]'>limits and prices are transparent.</span></h1>
-    <p class="text-[17px] text-muted-foreground max-w-[60ch] leading-snug">Each tier maps to real numbers from Cloudflare's vendor docs. We email near the limit; we don't surprise your card.</p>
+
+    <h1 class="font-display font-semibold -tracking-[0.04em] leading-[1.04] text-[clamp(36px,5vw,58px)] max-w-[20ch]">
+      From free to production, <span class="cosmos-grad">limits and prices are transparent.</span>
+    </h1>
+
+    <p class="text-[17px] max-sm:text-[15px] text-muted-foreground max-w-[60ch] leading-snug">
+      Each tier maps to real infrastructure numbers. We email near the limit; we don't surprise your card.
+    </p>
 
     <!-- Billing toggle -->
-    <div class="mt-3 inline-flex items-center rounded-full border border-border bg-card p-1 text-[12.5px] font-medium">
-      <button id="billing-monthly" class="px-4 h-8 rounded-full bg-muted text-foreground">Monthly</button>
-      <button id="billing-annual" class="px-4 h-8 rounded-full text-muted-foreground"><span>Annual</span> <span class="font-mono text-[10.5px] uppercase tracking-wider ml-1" style="color: oklch(0.42 0.16 131);">-20%</span></button>
+    <div class="bill-toggle mt-3" role="group" aria-label="Billing interval">
+      <button type="button" data-billing="monthly" aria-pressed="true">Monthly</button>
+      <button type="button" data-billing="annual" aria-pressed="false">
+        <span>Annual</span>
+        <span class="font-mono text-[10px] uppercase tracking-wider" style="color:#7CE6C0">-20%</span>
+      </button>
     </div>
   </div>
 </section>
 
-<!-- ─────────────────── Pricing cards ─────────────────── -->
-<section class="py-16 border-b border-border">
+<!-- ═══════════════════════ Plan cards ═══════════════════════ -->
+<section class="relative z-[1] py-16 border-b border-border">
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
-    <div class="grid grid-cols-4 max-[1020px]:grid-cols-2 max-[560px]:grid-cols-1 gap-3.5">
+    <div class="grid grid-cols-4 max-[1020px]:grid-cols-2 max-[560px]:grid-cols-1 gap-3.5 items-start">
 
       <!-- Free -->
-      <div class="border border-border rounded-3xl bg-card p-6 flex flex-col gap-4">
+      <div class="glass glass-hover p-6 flex flex-col gap-4">
         <div>
-          <div class="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] mb-2">Free</div>
-          <div class="text-[36px] font-semibold -tracking-[0.022em] leading-none">$0</div>
-          <p class="text-[12.5px] text-muted-foreground mt-2">Forever. No card.</p>
+          <div class="pr-plan">Free</div>
+          <div class="pr-price">$0</div>
+          <p class="pr-bill">Forever. No card.</p>
+          <p class="pr-blurb">Spin up, ship, and stay free as long as you fit the limits.</p>
         </div>
-        <a href="https://cloud.backlex.com/sign-up" class="inline-flex items-center justify-center h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors">Sign up</a>
-        <div class="pt-3 border-t border-border">
-          <div class="text-[11px] uppercase tracking-wider font-medium text-muted-foreground mb-2">includes</div>
-          <ul class="text-[12.5px] space-y-1.5 list-none p-0">
-            <li class="flex gap-2"><span class="text-primary">✓</span><span>100K requests / mo</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>5s CPU / req</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>500MB D1 · 1GB R2</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span><span>1 project · 1 env</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>backlex.com subdomain</li>
-            <li class="flex gap-2"><span class="text-muted-foreground">−</span><span class="text-muted-foreground">No backup / PITR</span></li>
-            <li class="flex gap-2"><span class="text-muted-foreground">−</span><span class="text-muted-foreground">Community support</span></li>
+        <a href="https://cloud.backlex.com/sign-up" class="pr-btn pr-btn-ghost">Sign up</a>
+        <div class="pt-4 border-t border-border">
+          <div class="pr-inc">includes</div>
+          <ul class="pr-feat">
+            <li><span class="mk-yes">✓</span><span>100K requests / mo</span></li>
+            <li><span class="mk-yes">✓</span><span>5s CPU / req</span></li>
+            <li><span class="mk-yes">✓</span><span>500MB DB · 1GB storage</span></li>
+            <li><span class="mk-yes">✓</span><span>1 project · 1 env</span></li>
+            <li><span class="mk-yes">✓</span><span>backlex.com subdomain</span></li>
+            <li class="off"><span class="mk-no">−</span><span>No backup / PITR</span></li>
+            <li class="off"><span class="mk-no">−</span><span>Community support</span></li>
           </ul>
         </div>
       </div>
 
-      <!-- Pro -->
-      <div class="border-2 rounded-3xl p-6 flex flex-col gap-4 relative" style="border-color: color-mix(in oklch, var(--color-primary) 55%, var(--color-border)); background: color-mix(in oklch, var(--color-primary) 5%, var(--color-card));">
-        <span class="absolute -top-2.5 left-6 text-[10.5px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary text-primary-foreground">most teams</span>
+      <!-- Pro (highlighted) -->
+      <div class="pro-card p-6 flex flex-col gap-4">
+        <span class="pro-badge">most teams</span>
         <div>
-          <div class="font-mono text-[11px] uppercase tracking-[0.12em] mb-2" style="color: color-mix(in oklch, var(--color-primary) 60%, var(--color-foreground));">Pro</div>
-          <div class="text-[36px] font-semibold -tracking-[0.022em] leading-none"><span data-price-monthly="19" data-price-annual="15">$19</span><span class="text-[14px] font-normal text-muted-foreground"> / <span>project / mo</span></span></div>
-          <p class="text-[12.5px] text-muted-foreground mt-2">Production, small teams. 14-day free trial.</p>
+          <div class="pr-plan" style="color:#b9a3ff">Pro</div>
+          <div class="pr-price"><span data-price-monthly="19" data-price-annual="15">$19</span><span class="pr-price-suf"> / project / mo</span></div>
+          <p class="pr-bill" data-bill-monthly="billed monthly" data-bill-annual="billed annually · save 20%">billed monthly</p>
+          <p class="pr-blurb">Production, small teams. 14-day free trial.</p>
         </div>
-        <a href="https://cloud.backlex.com/sign-up?plan=pro" class="inline-flex items-center justify-center h-10 px-4 rounded-3xl bg-primary text-primary-foreground hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] text-[13px] font-medium no-underline transition-colors">Try 14 days free</a>
-        <div class="pt-3 border-t border-border">
-          <div class="text-[11px] uppercase tracking-wider font-medium text-muted-foreground mb-2">Free + </div>
-          <ul class="text-[12.5px] space-y-1.5 list-none p-0">
-            <li class="flex gap-2"><span class="text-primary">✓</span><span>10M requests / mo</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>30s CPU / req</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>5GB D1 · 25GB R2</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>3 <span>projects · unlimited envs</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>Custom domain</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span><span>Daily backup, 7-day PITR</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>Preview branches</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>Slack Connect support</li>
+        <a href="https://cloud.backlex.com/sign-up?plan=pro" class="pr-btn pr-btn-grad">Try 14 days free</a>
+        <div class="pt-4 border-t" style="border-color:rgba(139,108,255,0.22)">
+          <div class="pr-inc">Free +</div>
+          <ul class="pr-feat">
+            <li><span class="mk-yes">✓</span><span>10M requests / mo</span></li>
+            <li><span class="mk-yes">✓</span><span>30s CPU / req</span></li>
+            <li><span class="mk-yes">✓</span><span>5GB DB · 25GB storage</span></li>
+            <li><span class="mk-yes">✓</span><span>3 projects · unlimited envs</span></li>
+            <li><span class="mk-yes">✓</span><span>Custom domain</span></li>
+            <li><span class="mk-yes">✓</span><span>Daily backup, 7-day PITR</span></li>
+            <li><span class="mk-yes">✓</span><span>Preview branches</span></li>
+            <li><span class="mk-yes">✓</span><span>Slack Connect support</span></li>
           </ul>
         </div>
       </div>
 
       <!-- Scale -->
-      <div class="border border-border rounded-3xl bg-card p-6 flex flex-col gap-4">
+      <div class="glass glass-hover p-6 flex flex-col gap-4">
         <div>
-          <div class="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] mb-2">Scale</div>
-          <div class="text-[36px] font-semibold -tracking-[0.022em] leading-none"><span data-price-monthly="99" data-price-annual="79">$99</span><span class="text-[14px] font-normal text-muted-foreground"> / <span>project / mo</span></span></div>
-          <p class="text-[12.5px] text-muted-foreground mt-2">Traffic grew, SLA matters.</p>
+          <div class="pr-plan">Scale</div>
+          <div class="pr-price"><span data-price-monthly="99" data-price-annual="79">$99</span><span class="pr-price-suf"> / project / mo</span></div>
+          <p class="pr-bill" data-bill-monthly="billed monthly" data-bill-annual="billed annually · save 20%">billed monthly</p>
+          <p class="pr-blurb">Traffic grew, SLA matters.</p>
         </div>
-        <a href="https://cloud.backlex.com/sign-up?plan=scale" class="inline-flex items-center justify-center h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors">Go Scale</a>
-        <div class="pt-3 border-t border-border">
-          <div class="text-[11px] uppercase tracking-wider font-medium text-muted-foreground mb-2">Pro + </div>
-          <ul class="text-[12.5px] space-y-1.5 list-none p-0">
-            <li class="flex gap-2"><span class="text-primary">✓</span><span>100M requests / mo</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>5min CPU / req</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>10GB D1 · 500GB R2</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>25 <span>projects</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span><span>Region pinning</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>30 <span>day PITR</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>90-day audit log</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>99.9% SLA</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>SAML SSO</li>
+        <a href="https://cloud.backlex.com/sign-up?plan=scale" class="pr-btn pr-btn-ghost">Go Scale</a>
+        <div class="pt-4 border-t border-border">
+          <div class="pr-inc">Pro +</div>
+          <ul class="pr-feat">
+            <li><span class="mk-yes">✓</span><span>100M requests / mo</span></li>
+            <li><span class="mk-yes">✓</span><span>5min CPU / req</span></li>
+            <li><span class="mk-yes">✓</span><span>10GB DB · 500GB storage</span></li>
+            <li><span class="mk-yes">✓</span><span>25 projects</span></li>
+            <li><span class="mk-yes">✓</span><span>Region pinning</span></li>
+            <li><span class="mk-yes">✓</span><span>30 day PITR</span></li>
+            <li><span class="mk-yes">✓</span><span>90-day audit log</span></li>
+            <li><span class="mk-yes">✓</span><span>99.9% SLA</span></li>
+            <li><span class="mk-yes">✓</span><span>SAML SSO</span></li>
           </ul>
         </div>
       </div>
 
       <!-- Max -->
-      <div class="border border-border rounded-3xl bg-card p-6 flex flex-col gap-4">
+      <div class="glass glass-hover p-6 flex flex-col gap-4">
         <div>
-          <div class="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] mb-2">Max</div>
-          <div class="text-[36px] font-semibold -tracking-[0.022em] leading-none"><span data-price-monthly="199" data-price-annual="159">$199</span><span class="text-[14px] font-normal text-muted-foreground"> / <span>project / mo</span></span></div>
-          <p class="text-[12.5px] text-muted-foreground mt-2">Highest tier — self-serve, no sales call.</p>
+          <div class="pr-plan">Max</div>
+          <div class="pr-price"><span data-price-monthly="199" data-price-annual="159">$199</span><span class="pr-price-suf"> / project / mo</span></div>
+          <p class="pr-bill" data-bill-monthly="billed monthly" data-bill-annual="billed annually · save 20%">billed monthly</p>
+          <p class="pr-blurb">Highest tier — self-serve, no sales call.</p>
         </div>
-        <a href="https://cloud.backlex.com/sign-up?plan=max" class="inline-flex items-center justify-center h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors">Go Max</a>
-        <div class="pt-3 border-t border-border">
-          <div class="text-[11px] uppercase tracking-wider font-medium text-muted-foreground mb-2">Scale + </div>
-          <ul class="text-[12.5px] space-y-1.5 list-none p-0">
-            <li class="flex gap-2"><span class="text-primary">✓</span><span>500M requests / mo</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>10GB D1 · 2TB R2</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>100 <span>projects</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>1-year audit log</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>99.95% SLA</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>SCIM provisioning</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>Priority support</li>
+        <a href="https://cloud.backlex.com/sign-up?plan=max" class="pr-btn pr-btn-ghost">Go Max</a>
+        <div class="pt-4 border-t border-border">
+          <div class="pr-inc">Scale +</div>
+          <ul class="pr-feat">
+            <li><span class="mk-yes">✓</span><span>500M requests / mo</span></li>
+            <li><span class="mk-yes">✓</span><span>10GB DB · 2TB storage</span></li>
+            <li><span class="mk-yes">✓</span><span>100 projects</span></li>
+            <li><span class="mk-yes">✓</span><span>1-year audit log</span></li>
+            <li><span class="mk-yes">✓</span><span>99.95% SLA</span></li>
+            <li><span class="mk-yes">✓</span><span>SCIM provisioning</span></li>
+            <li><span class="mk-yes">✓</span><span>Priority support</span></li>
           </ul>
         </div>
       </div>
     </div>
 
-    <p class="mt-6 text-[12.5px] text-muted-foreground text-center">All prices exclude VAT. 20% off annual plans. D1 is capped at 10&nbsp;GB per database.</p>
+    <p class="mt-6 text-[12.5px] text-muted-foreground text-center">All prices exclude VAT. 20% off annual plans. The managed database is capped at 10&nbsp;GB.</p>
   </div>
 </section>
 
-<!-- ─────────────────── Full comparison table ─────────────────── -->
-<section class="py-20 border-b border-border bg-muted/40">
+<!-- ═══════════════════════ Self-host strip ═══════════════════════ -->
+<section class="relative z-[1] py-14 border-b border-border">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
+    <div class="glass p-8 max-sm:p-6 flex max-md:flex-col items-center max-md:items-start gap-7 justify-between">
+      <div class="max-w-[64ch]">
+        <h2 class="font-display text-[clamp(20px,2.4vw,28px)] font-semibold -tracking-[0.02em] leading-tight">Prefer to run it yourself? The open-source core is free, forever.</h2>
+        <p class="text-[14px] text-muted-foreground mt-2 leading-snug">Same Apache-2.0 backlex — Bun, Node, Deno, Docker, or your own infrastructure. No seat fees, no quotas.</p>
+      </div>
+      <a href="https://github.com/backlex/backlex" class="pr-btn pr-btn-ghost h-11 px-5 text-[14px] flex-shrink-0">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.29-.01-1.05-.02-2.06-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.66-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.29-1.55 3.3-1.23 3.3-1.23.65 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.63-5.49 5.92.43.37.82 1.1.82 2.22 0 1.6-.02 2.9-.02 3.29 0 .32.22.7.83.58A12.01 12.01 0 0 0 24 12.5C24 5.87 18.63.5 12 .5Z"/></svg>
+        <span>GitHub ↗</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ Full comparison table ═══════════════════════ -->
+<section class="relative z-[1] py-20 border-b border-border">
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
     <div class="flex flex-col gap-4 max-w-[720px] mb-10">
-      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span><span>full comparison</span></span>
-      <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15]">Everything, line by line.</h2>
+      <span class="pr-eyebrow"><span class="dot"></span>full comparison</span>
+      <h2 class="font-display text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15]">Everything, line by line.</h2>
     </div>
-    <div class="border border-border rounded-3xl bg-card overflow-x-auto">
+
+    <div class="glass overflow-x-auto">
       <table class="w-full border-collapse text-[13px] min-w-[820px]">
         <thead>
-          <tr class="bg-muted">
-            <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground border-b border-border sticky left-0 bg-muted">Feature</th>
-            <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground border-b border-border">Free</th>
-            <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-foreground border-b border-border">Pro</th>
-            <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground border-b border-border">Scale</th>
-            <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground border-b border-border">Max</th>
+          <tr>
+            <th class="cmp-th text-left sticky left-0" style="min-width:220px">Feature</th>
+            <th class="cmp-th">Free</th>
+            <th class="cmp-th col-pro col-pro-top" style="color:#b9a3ff">Pro</th>
+            <th class="cmp-th">Scale</th>
+            <th class="cmp-th">Max</th>
           </tr>
         </thead>
         <tbody>
-          <!-- Capacity -->
-          <tr class="bg-muted/50">
-            <td colspan="5" class="px-5 py-2 text-[11px] uppercase tracking-wider font-mono text-muted-foreground">capacity</td>
-          </tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Monthly requests</td><td class="px-5 py-2.5 border-b border-border font-mono">100K</td><td class="px-5 py-2.5 border-b border-border font-mono">10M</td><td class="px-5 py-2.5 border-b border-border font-mono">100M</td><td class="px-5 py-2.5 border-b border-border font-mono">500M</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">CPU / request</td><td class="px-5 py-2.5 border-b border-border font-mono">5s</td><td class="px-5 py-2.5 border-b border-border font-mono">30s</td><td class="px-5 py-2.5 border-b border-border font-mono">5min</td><td class="px-5 py-2.5 border-b border-border font-mono">5min</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">D1 size</td><td class="px-5 py-2.5 border-b border-border font-mono">500MB</td><td class="px-5 py-2.5 border-b border-border font-mono">5GB</td><td class="px-5 py-2.5 border-b border-border font-mono">10GB</td><td class="px-5 py-2.5 border-b border-border font-mono">10GB</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">R2 storage</td><td class="px-5 py-2.5 border-b border-border font-mono">1GB</td><td class="px-5 py-2.5 border-b border-border font-mono">25GB</td><td class="px-5 py-2.5 border-b border-border font-mono">500GB</td><td class="px-5 py-2.5 border-b border-border font-mono">2TB</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Workers AI</td><td class="px-5 py-2.5 border-b border-border font-mono">5K/mo</td><td class="px-5 py-2.5 border-b border-border font-mono">200K/mo</td><td class="px-5 py-2.5 border-b border-border font-mono">2M/mo</td><td class="px-5 py-2.5 border-b border-border font-mono">10M/mo</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Egress</td><td class="px-5 py-2.5 border-b border-border text-primary font-mono">∞</td><td class="px-5 py-2.5 border-b border-border text-primary font-mono">∞</td><td class="px-5 py-2.5 border-b border-border text-primary font-mono">∞</td><td class="px-5 py-2.5 border-b border-border text-primary font-mono">∞</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Realtime (WebSocket / SSE)</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Projects</td><td class="px-5 py-2.5 border-b border-border font-mono">1</td><td class="px-5 py-2.5 border-b border-border font-mono">3</td><td class="px-5 py-2.5 border-b border-border font-mono">25</td><td class="px-5 py-2.5 border-b border-border font-mono">100</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Team members</td><td class="px-5 py-2.5 border-b border-border font-mono">1</td><td class="px-5 py-2.5 border-b border-border font-mono">10</td><td class="px-5 py-2.5 border-b border-border font-mono">50</td><td class="px-5 py-2.5 border-b border-border font-mono">200</td></tr>
+          <!-- capacity -->
+          <tr class="cmp-grp"><td colspan="5"><span class="grp-h">capacity</span></td></tr>
+          <tr><td class="cmp-f">Monthly requests</td><td class="cmp-v">100K</td><td class="cmp-v col-pro">10M</td><td class="cmp-v">100M</td><td class="cmp-v">500M</td></tr>
+          <tr><td class="cmp-f">CPU / request</td><td class="cmp-v">5s</td><td class="cmp-v col-pro">30s</td><td class="cmp-v">5min</td><td class="cmp-v">5min</td></tr>
+          <tr><td class="cmp-f">Database size</td><td class="cmp-v">500MB</td><td class="cmp-v col-pro">5GB</td><td class="cmp-v">10GB</td><td class="cmp-v">10GB</td></tr>
+          <tr><td class="cmp-f">Object storage</td><td class="cmp-v">1GB</td><td class="cmp-v col-pro">25GB</td><td class="cmp-v">500GB</td><td class="cmp-v">2TB</td></tr>
+          <tr><td class="cmp-f">AI inference</td><td class="cmp-v">5K/mo</td><td class="cmp-v col-pro">200K/mo</td><td class="cmp-v">2M/mo</td><td class="cmp-v">10M/mo</td></tr>
+          <tr><td class="cmp-f">Egress</td><td class="cmp-v">∞</td><td class="cmp-v col-pro">∞</td><td class="cmp-v">∞</td><td class="cmp-v">∞</td></tr>
+          <tr><td class="cmp-f">Realtime (WebSocket / SSE)</td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
+          <tr><td class="cmp-f">Projects</td><td class="cmp-v">1</td><td class="cmp-v col-pro">3</td><td class="cmp-v">25</td><td class="cmp-v">100</td></tr>
+          <tr><td class="cmp-f">Team members</td><td class="cmp-v">1</td><td class="cmp-v col-pro">10</td><td class="cmp-v">50</td><td class="cmp-v">200</td></tr>
 
-          <!-- Regions / runtime -->
-          <tr class="bg-muted/50"><td colspan="5" class="px-5 py-2 text-[11px] uppercase tracking-wider font-mono text-muted-foreground">runtime · region</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Edge network</td><td class="px-5 py-2.5 border-b border-border font-mono text-primary">Global</td><td class="px-5 py-2.5 border-b border-border font-mono text-primary">Global</td><td class="px-5 py-2.5 border-b border-border font-mono text-primary">Global</td><td class="px-5 py-2.5 border-b border-border font-mono text-primary">Global</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Region pinning</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Custom domain</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Preview branches</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
+          <!-- runtime · region -->
+          <tr class="cmp-grp"><td colspan="5"><span class="grp-h">runtime · region</span></td></tr>
+          <tr><td class="cmp-f">Edge network</td><td class="cmp-v">Global</td><td class="cmp-v col-pro">Global</td><td class="cmp-v">Global</td><td class="cmp-v">Global</td></tr>
+          <tr><td class="cmp-f">Region pinning</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-no">—</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
+          <tr><td class="cmp-f">Custom domain</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
+          <tr><td class="cmp-f">Preview branches</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
 
-          <!-- Backup -->
-          <tr class="bg-muted/50"><td colspan="5" class="px-5 py-2 text-[11px] uppercase tracking-wider font-mono text-muted-foreground">backup · restore</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Daily backup</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">PITR window</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border font-mono">7d</td><td class="px-5 py-2.5 border-b border-border font-mono">30d</td><td class="px-5 py-2.5 border-b border-border font-mono">30d</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">One-click export</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
+          <!-- backup · restore -->
+          <tr class="cmp-grp"><td colspan="5"><span class="grp-h">backup · restore</span></td></tr>
+          <tr><td class="cmp-f">Daily backup</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
+          <tr><td class="cmp-f">PITR window</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro">7d</td><td class="cmp-v">30d</td><td class="cmp-v">30d</td></tr>
+          <tr><td class="cmp-f">One-click export</td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
 
-          <!-- Auth -->
-          <tr class="bg-muted/50"><td colspan="5" class="px-5 py-2 text-[11px] uppercase tracking-wider font-mono text-muted-foreground">identity · security</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Email / OAuth / Passkey</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">SAML SSO</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">SCIM provisioning</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Audit log</td><td class="px-5 py-2.5 border-b border-border font-mono">7d</td><td class="px-5 py-2.5 border-b border-border font-mono">30d</td><td class="px-5 py-2.5 border-b border-border font-mono">90d</td><td class="px-5 py-2.5 border-b border-border font-mono">1y</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">IP allowlist</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
+          <!-- identity · security -->
+          <tr class="cmp-grp"><td colspan="5"><span class="grp-h">identity · security</span></td></tr>
+          <tr><td class="cmp-f">Email / OAuth / Passkey</td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
+          <tr><td class="cmp-f">SAML SSO</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-no">—</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
+          <tr><td class="cmp-f">SCIM provisioning</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-no">—</span></td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
+          <tr><td class="cmp-f">Audit log</td><td class="cmp-v">7d</td><td class="cmp-v col-pro">30d</td><td class="cmp-v">90d</td><td class="cmp-v">1y</td></tr>
+          <tr><td class="cmp-f">IP allowlist</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
 
-          <!-- Support -->
-          <tr class="bg-muted/50"><td colspan="5" class="px-5 py-2 text-[11px] uppercase tracking-wider font-mono text-muted-foreground">support · SLA</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Support channel</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">community</td><td class="px-5 py-2.5 border-b border-border font-mono">slack</td><td class="px-5 py-2.5 border-b border-border font-mono">slack · email</td><td class="px-5 py-2.5 border-b border-border font-mono">slack · email · priority</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">First response SLA</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border font-mono">48h</td><td class="px-5 py-2.5 border-b border-border font-mono">8h</td><td class="px-5 py-2.5 border-b border-border font-mono">4h</td></tr>
-          <tr><td class="px-5 py-2.5 font-medium">Uptime SLA</td><td class="px-5 py-2.5 text-muted-foreground">none</td><td class="px-5 py-2.5 text-muted-foreground">none</td><td class="px-5 py-2.5 font-mono">99.9%</td><td class="px-5 py-2.5 font-mono">99.95%</td></tr>
+          <!-- support · SLA -->
+          <tr class="cmp-grp"><td colspan="5"><span class="grp-h">support · SLA</span></td></tr>
+          <tr><td class="cmp-f">Support channel</td><td class="cmp-v">community</td><td class="cmp-v col-pro">slack</td><td class="cmp-v">slack · email</td><td class="cmp-v">slack · email · priority</td></tr>
+          <tr><td class="cmp-f">First response SLA</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro">48h</td><td class="cmp-v">8h</td><td class="cmp-v">4h</td></tr>
+          <tr><td class="cmp-f cmp-last">Uptime SLA</td><td class="cmp-v cmp-last">none</td><td class="cmp-v col-pro col-pro-bot cmp-last">none</td><td class="cmp-v cmp-last">99.9%</td><td class="cmp-v cmp-last">99.95%</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 </section>
 
-<!-- ─────────────────── Add-ons ─────────────────── -->
-<section class="py-20 border-b border-border">
+<!-- ═══════════════════════ Add-ons ═══════════════════════ -->
+<section class="relative z-[1] py-20 border-b border-border">
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
     <div class="flex flex-col gap-4 max-w-[720px] mb-10">
-      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>add-ons</span>
-      <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15]">Added when needed, paused any day.</h2>
+      <span class="pr-eyebrow"><span class="dot"></span>add-ons</span>
+      <h2 class="font-display text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15]">Added when needed, paused any day.</h2>
     </div>
     <div class="grid grid-cols-3 max-[920px]:grid-cols-1 gap-3.5">
-      <div class="border border-border rounded-3xl bg-card p-6">
-        <div class="flex items-center gap-2.5 mb-2">
-          <span class="w-8 h-8 rounded-md bg-muted grid place-items-center font-mono text-[12px] font-semibold">R</span>
+
+      <div class="glass glass-hover p-6">
+        <div class="flex items-center gap-2.5 mb-3">
+          <span class="addon-ic">R</span>
           <h3 class="text-[15.5px] font-semibold">Extra storage</h3>
           <span class="ml-auto cf-pill">all tiers</span>
         </div>
-        <div class="text-[24px] font-semibold -tracking-[0.018em]">$0.20<span class="text-[13px] font-normal text-muted-foreground"> / GB / <span>mo</span></span></div>
-        <p class="text-[12.5px] text-muted-foreground mt-2 leading-snug">Zero egress R2. Scales beyond your tier quota, no ceiling.</p>
-        <ul class="text-[12px] text-muted-foreground mt-3 space-y-1 list-none p-0">
-          <li class="flex gap-2"><span class="text-primary">✓</span><span>Zero egress cost</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span>CF Images auto</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span>Per-GB-second billing</span></li>
+        <div class="addon-price">$0.20<span class="addon-suf"> / GB / mo</span></div>
+        <p class="text-[12.5px] text-muted-foreground mt-2 leading-snug">Zero-egress object storage. Scales beyond your tier quota, no ceiling.</p>
+        <ul class="pr-feat pr-feat-sm mt-3">
+          <li><span class="mk-yes">✓</span><span>Zero egress cost</span></li>
+          <li><span class="mk-yes">✓</span><span>Image transforms auto</span></li>
+          <li><span class="mk-yes">✓</span><span>Per-GB-second billing</span></li>
         </ul>
       </div>
-      <div class="border border-border rounded-3xl bg-card p-6">
-        <div class="flex items-center gap-2.5 mb-2">
-          <span class="w-8 h-8 rounded-md bg-muted grid place-items-center font-mono text-[12px] font-semibold">+</span>
+
+      <div class="glass glass-hover p-6">
+        <div class="flex items-center gap-2.5 mb-3">
+          <span class="addon-ic">+</span>
           <h3 class="text-[15.5px] font-semibold">Extra request pack</h3>
           <span class="ml-auto cf-pill">Pro+</span>
         </div>
-        <div class="text-[24px] font-semibold -tracking-[0.018em]">$2<span class="text-[13px] font-normal text-muted-foreground"> / 1M req</span></div>
+        <div class="addon-price">$2<span class="addon-suf"> / 1M req</span></div>
         <p class="text-[12.5px] text-muted-foreground mt-2 leading-snug">Add request packs instead of jumping a tier. Unused packs don't roll over.</p>
-        <ul class="text-[12px] text-muted-foreground mt-3 space-y-1 list-none p-0">
-          <li class="flex gap-2"><span class="text-primary">✓</span><span>80% email alert</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span>Manual top-up</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span>Cap configurable</span></li>
+        <ul class="pr-feat pr-feat-sm mt-3">
+          <li><span class="mk-yes">✓</span><span>80% email alert</span></li>
+          <li><span class="mk-yes">✓</span><span>Manual top-up</span></li>
+          <li><span class="mk-yes">✓</span><span>Cap configurable</span></li>
         </ul>
       </div>
 
-      <div class="border border-border rounded-3xl bg-card p-6">
-        <div class="flex items-center gap-2.5 mb-2">
-          <span class="w-8 h-8 rounded-md bg-muted grid place-items-center font-mono text-[12px] font-semibold">+</span>
+      <div class="glass glass-hover p-6">
+        <div class="flex items-center gap-2.5 mb-3">
+          <span class="addon-ic">+</span>
           <h3 class="text-[15.5px] font-semibold">AI overage</h3>
           <span class="ml-auto cf-pill">Pro+</span>
         </div>
-        <div class="text-[24px] font-semibold -tracking-[0.018em]">$0.025<span class="text-[13px] font-normal text-muted-foreground"> / 1K neurons</span></div>
-        <p class="text-[12.5px] text-muted-foreground mt-2 leading-snug">Workers AI beyond your tier quota — embeddings, vector search, LLM calls. Billed only past the included neurons.</p>
-        <ul class="text-[12px] text-muted-foreground mt-3 space-y-1 list-none p-0">
-          <li class="flex gap-2"><span class="text-primary">✓</span><span>Per-1K-neuron billing</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span>Hard cap available</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span>Usage in dashboard</span></li>
+        <div class="addon-price">$0.025<span class="addon-suf"> / 1K units</span></div>
+        <p class="text-[12.5px] text-muted-foreground mt-2 leading-snug">AI inference beyond your tier quota — embeddings, vector search, LLM calls. Billed only past the included units.</p>
+        <ul class="pr-feat pr-feat-sm mt-3">
+          <li><span class="mk-yes">✓</span><span>Per-1K-unit billing</span></li>
+          <li><span class="mk-yes">✓</span><span>Hard cap available</span></li>
+          <li><span class="mk-yes">✓</span><span>Usage in dashboard</span></li>
         </ul>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ─────────────────── FAQ ─────────────────── -->
-<section class="py-20 border-b border-border bg-muted/40">
+<!-- ═══════════════════════ FAQ ═══════════════════════ -->
+<section class="relative z-[1] py-20 border-b border-border">
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
-    <div class="grid grid-cols-[1fr_2fr] max-[820px]:grid-cols-1 gap-12">
+    <div class="grid grid-cols-[1fr_2fr] max-[820px]:grid-cols-1 gap-12 max-[820px]:gap-8">
       <div>
-        <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>FAQ</span>
-        <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15] mt-4">Frequently asked.</h2>
+        <span class="pr-eyebrow"><span class="dot"></span>faq</span>
+        <h2 class="font-display text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15] mt-4">Frequently asked.</h2>
         <p class="text-[14px] text-muted-foreground mt-3 max-w-[40ch]">Didn't find your answer?</p>
-        <a href="mailto:hi@backlex.com" class="inline-flex items-center gap-2 h-9 px-4 mt-3 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors">hi@backlex.com</a>
+        <a href="mailto:hi@backlex.com" class="pr-btn pr-btn-ghost mt-3 inline-flex">hi@backlex.com</a>
       </div>
       <div class="flex flex-col gap-2.5">
-        <details class="faq border border-border rounded-2xl bg-card overflow-hidden">
+        <details class="faq glass overflow-hidden">
           <summary class="px-5 py-4 flex items-center gap-3">
             <span class="text-[14.5px] font-medium">Will you charge my card on the free tier?</span>
-            <svg class="chev ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg class="chev ml-auto text-muted-foreground" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
           <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">No. No card on free. When limits are reached, the project pauses; you can upgrade to Pro to resume, or export and self-host.</div>
         </details>
-        <details class="faq border border-border rounded-2xl bg-card overflow-hidden">
+        <details class="faq glass overflow-hidden">
           <summary class="px-5 py-4 flex items-center gap-3">
-            <span class="text-[14.5px] font-medium">What if Cloudflare's prices change?</span>
-            <svg class="chev ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            <span class="text-[14.5px] font-medium">What if infrastructure prices change?</span>
+            <svg class="chev ml-auto text-muted-foreground" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
           <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">On annual — your price is locked until renewal. On monthly — we email 30 days ahead; you automatically benefit from any cuts.</div>
         </details>
-        <details class="faq border border-border rounded-2xl bg-card overflow-hidden">
+        <details class="faq glass overflow-hidden">
           <summary class="px-5 py-4 flex items-center gap-3">
-            <span class="text-[14.5px] font-medium">My workload doesn't fit D1. What are my options?</span>
-            <svg class="chev ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            <span class="text-[14.5px] font-medium">My workload needs full Postgres. What are my options?</span>
+            <svg class="chev ml-auto text-muted-foreground" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
-          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">The managed cloud runs on Cloudflare D1, capped at 10&nbsp;GB per database. Keep large blobs in R2 (separately billed, effectively uncapped). If you need full Postgres, the open-source backlex runs on any Postgres — self-host it on your own infrastructure with one-click export from Cloud.</div>
+          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">The managed cloud database is capped at 10&nbsp;GB. Keep large blobs in object storage (separately billed, effectively uncapped). If you need full Postgres, the open-source backlex runs on any Postgres — self-host it with one-click export from Cloud.</div>
         </details>
-        <details class="faq border border-border rounded-2xl bg-card overflow-hidden">
+        <details class="faq glass overflow-hidden">
           <summary class="px-5 py-4 flex items-center gap-3">
             <span class="text-[14.5px] font-medium">What if I want to take my data out?</span>
-            <svg class="chev ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg class="chev ml-auto text-muted-foreground" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
-          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">Every plan offers one-click full export: schema (DDL), data (SQL + JSON), storage (R2 archive). It's the same Apache-2.0 backlex — runs on your own Cloudflare account or your own server in minutes. No contract lock-in.</div>
+          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">Every plan offers one-click full export: schema (DDL), data (SQL + JSON), and a storage archive. It is the same Apache-2.0 backlex — runs on your own infrastructure in minutes. No contract lock-in.</div>
         </details>
-        <details class="faq border border-border rounded-2xl bg-card overflow-hidden">
+        <details class="faq glass overflow-hidden">
           <summary class="px-5 py-4 flex items-center gap-3">
             <span class="text-[14.5px] font-medium">Can I require data to stay in a specific region?</span>
-            <svg class="chev ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg class="chev ml-auto text-muted-foreground" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
-          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">From Scale onwards you get region pinning — primary D1 and R2 bucket pinned to the region you choose. CF PoPs cache reads at the edge; writes stay in-region. A DPA is available for data residency.</div>
+          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">From Scale onwards you get region pinning — primary database and object storage pinned to the region you choose. Edge nodes cache reads; writes stay in-region. A DPA is available for data residency.</div>
         </details>
-        <details class="faq border border-border rounded-2xl bg-card overflow-hidden">
+        <details class="faq glass overflow-hidden">
           <summary class="px-5 py-4 flex items-center gap-3">
             <span class="text-[14.5px] font-medium">I already self-host. Why switch to Cloud?</span>
-            <svg class="chev ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg class="chev ml-auto text-muted-foreground" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
-          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">Often, don't. If self-host works and your team enjoys uptime/migrations/backups — stay. Cloud is for solo devs and scale-ups who don't have that role.</div>
+          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">Often, don't. If self-host works and your team enjoys uptime, migrations, and backups — stay. Cloud is for solo devs and scale-ups who don't have that role.</div>
         </details>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ─────────────────── CTA ─────────────────── -->
-<section class="py-20 border-b border-border" style="background: radial-gradient(80% 100% at 50% 0%, var(--color-tint), transparent 70%);">
+<!-- ═══════════════════════ Final CTA ═══════════════════════ -->
+<section class="relative z-[1] py-20 border-b border-border"
+  style="background: radial-gradient(80% 100% at 50% 0%, var(--color-tint), transparent 70%);">
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
-    <div class="border border-border rounded-4xl bg-card p-12 max-md:p-7 flex max-md:flex-col items-center max-md:items-start gap-8 justify-between">
+    <div class="glass p-12 max-md:p-7 flex max-md:flex-col items-center max-md:items-start gap-8 justify-between">
       <div>
-        <h2 class="text-[clamp(22px,2.4vw,30px)] font-semibold -tracking-[0.018em] leading-tight max-w-[26ch]">100K requests, no card, 30 seconds.</h2>
-        <p class="text-muted-foreground mt-2 text-[14.5px]">Don't like it? One-click export, run on your own Cloudflare account.</p>
+        <h2 class="font-display text-[clamp(22px,2.4vw,30px)] font-semibold -tracking-[0.018em] leading-tight max-w-[26ch]">100K requests, no card, 30 seconds.</h2>
+        <p class="text-muted-foreground mt-2 text-[14.5px]">Don't like it? One-click export, run on your own infrastructure.</p>
       </div>
       <div class="flex gap-2.5 flex-shrink-0 flex-wrap">
-        <a class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl bg-primary text-primary-foreground text-[14.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap" href="https://cloud.backlex.com/sign-up">Start free →</a>
-        <a class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl border border-border bg-background text-foreground text-[14.5px] font-medium no-underline hover:bg-muted transition-colors whitespace-nowrap" href="https://cloud.backlex.com/sign-up?plan=max">Go Max</a>
+        <a class="pr-btn pr-btn-grad pr-glow h-11 px-5 text-[14.5px]" href="https://cloud.backlex.com/sign-up">Start free →</a>
+        <a class="pr-btn pr-btn-ghost h-11 px-5 text-[14.5px]" href="https://cloud.backlex.com/sign-up?plan=max">Go Max</a>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ─────────────────── Footer ─────────────────── -->
+<style>
+  /* ── Eyebrow (cosmos spec §5) ── */
+  .pr-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #9b7bff;
+    align-self: flex-start;
+  }
+  .pr-eyebrow .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: #9b7bff;
+    flex: 0 0 auto;
+  }
+
+  /* ── Glass card (cosmos spec §6) ── */
+  .glass {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 18px;
+  }
+  .dark .glass {
+    background: rgba(255, 255, 255, 0.022);
+    border-color: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(9px);
+  }
+  .glass-hover {
+    transition:
+      transform 0.18s ease,
+      border-color 0.18s ease;
+  }
+  .glass-hover:hover {
+    transform: translateY(-4px);
+    border-color: color-mix(in oklch, var(--color-primary) 40%, var(--color-border));
+  }
+  .dark .glass-hover:hover {
+    border-color: rgba(139, 108, 255, 0.42);
+  }
+
+  /* ── Pro highlighted card (violet gradient border + glow) ── */
+  .pro-card {
+    position: relative;
+    border-radius: 18px;
+    border: 1px solid color-mix(in oklch, var(--color-primary) 55%, var(--color-border));
+    background: color-mix(in oklch, var(--color-primary) 6%, var(--color-card));
+  }
+  .dark .pro-card {
+    border: 1px solid rgba(139, 108, 255, 0.5);
+    background: linear-gradient(180deg, rgba(124, 92, 255, 0.12), rgba(255, 255, 255, 0.02));
+    box-shadow: 0 24px 60px -28px rgba(124, 92, 255, 0.7);
+    backdrop-filter: blur(9px);
+    animation: cosmos-glow-pulse 4s ease-in-out infinite;
+  }
+  .pro-badge {
+    position: absolute;
+    top: -11px;
+    left: 24px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    color: #fff;
+    background: linear-gradient(135deg, #8b6cff, #7c5cff);
+    box-shadow: 0 4px 14px -4px rgba(139, 108, 255, 0.7);
+  }
+
+  /* ── Plan meta ── */
+  .pr-plan {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--color-muted-foreground);
+    margin-bottom: 8px;
+  }
+  .pr-price {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 600;
+    letter-spacing: -0.022em;
+    line-height: 1;
+    color: var(--color-foreground);
+  }
+  .pr-price-suf {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--color-muted-foreground);
+  }
+  .pr-bill {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-muted-foreground);
+    margin-top: 8px;
+  }
+  .pr-blurb {
+    font-size: 12.5px;
+    color: var(--color-muted-foreground);
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+  .pr-inc {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-muted-foreground);
+    margin-bottom: 10px;
+  }
+
+  /* ── Feature list ── */
+  .pr-feat {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    font-size: 12.5px;
+    color: var(--color-foreground);
+  }
+  .pr-feat.pr-feat-sm {
+    font-size: 12px;
+    color: var(--color-muted-foreground);
+    gap: 5px;
+  }
+  .pr-feat li {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .pr-feat li.off {
+    color: var(--color-muted-foreground);
+  }
+  .mk-yes {
+    color: #7ce6c0;
+    flex: 0 0 auto;
+  }
+  .mk-no {
+    color: var(--color-muted-foreground);
+    flex: 0 0 auto;
+  }
+  .dark .mk-no {
+    color: #5a5670;
+  }
+
+  /* ── Buttons ── */
+  .pr-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 11px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      filter 0.15s ease,
+      transform 0.15s ease;
+  }
+  .pr-btn-grad {
+    background: linear-gradient(135deg, #8b6cff, #7c5cff);
+    color: #fff;
+    box-shadow: 0 8px 30px -6px rgba(139, 108, 255, 0.6);
+  }
+  .pr-btn-grad:hover {
+    filter: brightness(1.09);
+    transform: translateY(-1px);
+  }
+  .pr-glow {
+    animation: cosmos-glow-pulse 4s ease-in-out infinite;
+  }
+  .pr-btn-ghost {
+    background: var(--color-muted);
+    border: 1px solid var(--color-border);
+    color: var(--color-foreground);
+  }
+  .dark .pr-btn-ghost {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.13);
+  }
+  .pr-btn-ghost:hover {
+    border-color: color-mix(in oklch, var(--color-primary) 55%, var(--color-border));
+    background: color-mix(in oklch, var(--color-primary) 8%, var(--color-muted));
+  }
+  .dark .pr-btn-ghost:hover {
+    background: rgba(139, 108, 255, 0.16);
+    border-color: rgba(139, 108, 255, 0.7);
+  }
+
+  /* ── Billing toggle ── */
+  .bill-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    border-radius: 9999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-card);
+  }
+  .dark .bill-toggle {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.09);
+  }
+  .bill-toggle button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+    color: var(--color-muted-foreground);
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+  .bill-toggle button[aria-pressed="true"] {
+    color: var(--color-foreground);
+    background: var(--color-muted);
+  }
+  .dark .bill-toggle button[aria-pressed="true"] {
+    color: #f6f4fe;
+    background: rgba(139, 108, 255, 0.22);
+  }
+
+  /* ── Comparison table ── */
+  .cmp-th {
+    padding: 14px 20px;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    color: var(--color-muted-foreground);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-muted);
+  }
+  .dark .cmp-th {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .cmp-grp td {
+    padding: 8px 20px;
+    background: color-mix(in oklch, var(--color-muted) 55%, transparent);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .dark .cmp-grp td {
+    background: rgba(255, 255, 255, 0.015);
+  }
+  .grp-h {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #ff9d83;
+  }
+  .cmp-f {
+    padding: 10px 20px;
+    font-weight: 500;
+    color: var(--color-foreground);
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+  }
+  .cmp-v {
+    padding: 10px 20px;
+    font-family: var(--font-mono);
+    color: var(--color-muted-foreground);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .dark .cmp-v {
+    color: #d4d0e6;
+  }
+  .cmp-last {
+    border-bottom: 0;
+  }
+  /* Pro column tint */
+  .col-pro {
+    background: color-mix(in oklch, var(--color-primary) 7%, transparent);
+  }
+  .dark .col-pro {
+    background: rgba(124, 92, 255, 0.07);
+  }
+  .col-pro-top {
+    border-top-right-radius: 4px;
+  }
+
+  /* ── Add-ons ── */
+  .addon-ic {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: #b9a3ff;
+    background: color-mix(in oklch, var(--color-primary) 12%, transparent);
+  }
+  .dark .addon-ic {
+    background: rgba(139, 108, 255, 0.16);
+  }
+  .addon-price {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.018em;
+    color: var(--color-foreground);
+  }
+  .addon-suf {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--color-muted-foreground);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dark .pro-card,
+    .pr-glow {
+      animation: none;
+    }
+  }
+</style>
+
 <script is:inline>
-  // Billing toggle (monthly <-> annual)
+  // Billing toggle (monthly <-> annual): swap displayed prices + the per-card
+  // billing caption, and carry the chosen interval into the plan sign-up CTAs.
   (function () {
-    var monthlyBtn = document.getElementById("billing-monthly");
-    var annualBtn = document.getElementById("billing-annual");
-    if (!monthlyBtn || !annualBtn) return;
+    var btns = Array.prototype.slice.call(document.querySelectorAll("[data-billing]"));
+    if (!btns.length) return;
     function apply(mode) {
       document.querySelectorAll("[data-price-monthly]").forEach(function (el) {
-        var val = mode === "monthly" ? el.dataset.priceMonthly : el.dataset.priceAnnual;
+        var val = mode === "annual" ? el.dataset.priceAnnual : el.dataset.priceMonthly;
         el.textContent = "$" + val;
       });
-      // Carry the chosen interval into the sign-up CTAs so checkout opens on it.
+      document.querySelectorAll("[data-bill-monthly]").forEach(function (el) {
+        el.textContent = mode === "annual" ? el.dataset.billAnnual : el.dataset.billMonthly;
+      });
       document.querySelectorAll('a[href*="/sign-up?plan="]').forEach(function (a) {
         try {
           var u = new URL(a.href);
@@ -339,15 +714,15 @@ import Base from "../layouts/Base.astro";
           a.href = u.toString();
         } catch (e) {}
       });
-      [monthlyBtn, annualBtn].forEach(function (b) {
-        var on = b.id === "billing-" + mode;
-        b.classList.toggle("bg-muted", on);
-        b.classList.toggle("text-foreground", on);
-        b.classList.toggle("text-muted-foreground", !on);
+      btns.forEach(function (b) {
+        b.setAttribute("aria-pressed", String(b.dataset.billing === mode));
       });
     }
-    monthlyBtn.addEventListener("click", function () { apply("monthly"); });
-    annualBtn.addEventListener("click", function () { apply("annual"); });
+    btns.forEach(function (b) {
+      b.addEventListener("click", function () {
+        apply(b.dataset.billing);
+      });
+    });
     apply("monthly");
   })();
 </script>

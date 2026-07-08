@@ -1,9 +1,148 @@
 ---
-// Fixed beam + grain background, present on every marketing page.
+// Fixed page background, present on every marketing page.
+//  - Dark (cosmos) theme: drifting nebula glows + an animated star canvas.
+//  - Light theme: the original beam + grain sweep (hidden in dark via CSS).
 ---
+<!-- Cosmos deep-space atmosphere (shown in dark theme) -->
+<canvas id="cosmos-stars" class="cosmos-stars" aria-hidden="true"></canvas>
+<div class="cosmos-sky" aria-hidden="true">
+  <div class="cosmos-neb cosmos-neb-1"></div>
+  <div class="cosmos-neb cosmos-neb-2"></div>
+  <div class="cosmos-neb cosmos-neb-3"></div>
+</div>
+
+<!-- Light-theme beams (hidden in dark) -->
 <div class="bg-beams" aria-hidden="true">
   <div class="beam beam-back"></div>
   <div class="beam beam-mid"></div>
   <div class="beam beam-front"></div>
   <div class="beam-grain"></div>
 </div>
+
+<script is:inline>
+  (function () {
+    var c = document.getElementById("cosmos-stars");
+    if (!c) return;
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var ctx = c.getContext("2d");
+    var w = 0,
+      h = 0,
+      dpr = 1;
+    var stars = [];
+    var shooting = [];
+    var raf = 0;
+
+    function make() {
+      stars.length = 0;
+      var n = Math.round(((w * h) / 6500) * 1);
+      for (var i = 0; i < n; i++) {
+        var depth = Math.random();
+        stars.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          r: depth * 1.4 + 0.2,
+          depth: depth * 0.6 + 0.12,
+          drift: 0.02 + depth * 0.05,
+          tw: Math.random() * 6.28,
+          sp: 0.003 + Math.random() * 0.006,
+        });
+      }
+    }
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = window.innerWidth;
+      h = window.innerHeight;
+      c.width = w * dpr;
+      c.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      make();
+    }
+    function tick() {
+      ctx.clearRect(0, 0, w, h);
+      var sy = window.scrollY || 0;
+      for (var i = 0; i < stars.length; i++) {
+        var s = stars[i];
+        s.tw += s.sp;
+        s.y += s.drift;
+        if (s.y > h) s.y -= h;
+        var a = 0.35 + Math.sin(s.tw) * 0.45;
+        var yy = s.y - sy * s.depth * 0.18;
+        yy = ((yy % h) + h) % h;
+        ctx.globalAlpha = Math.max(0, a) * (0.45 + s.depth);
+        ctx.fillStyle = s.depth > 0.45 ? "#cdbcff" : "#ffffff";
+        ctx.beginPath();
+        ctx.arc(s.x, yy, s.r, 0, 6.283);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      if (Math.random() < 0.005 && shooting.length < 2) {
+        shooting.push({
+          x: Math.random() * w * 0.8,
+          y: Math.random() * h * 0.35,
+          vx: 6 + Math.random() * 5,
+          vy: 2 + Math.random() * 2.5,
+          life: 0,
+        });
+      }
+      for (var j = shooting.length - 1; j >= 0; j--) {
+        var m = shooting[j];
+        m.x += m.vx;
+        m.y += m.vy;
+        m.life++;
+        var tx = m.x - m.vx * 9,
+          ty = m.y - m.vy * 9;
+        var grad = ctx.createLinearGradient(m.x, m.y, tx, ty);
+        grad.addColorStop(0, "rgba(205,188,255,0.9)");
+        grad.addColorStop(1, "rgba(205,188,255,0)");
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(m.x, m.y);
+        ctx.lineTo(tx, ty);
+        ctx.stroke();
+        if (m.x > w || m.y > h || m.life > 140) shooting.splice(j, 1);
+      }
+      raf = requestAnimationFrame(tick);
+    }
+    function start() {
+      // Only animate in the dark (cosmos) theme.
+      if (!document.documentElement.classList.contains("dark")) {
+        if (raf) cancelAnimationFrame(raf);
+        raf = 0;
+        ctx && ctx.clearRect(0, 0, w, h);
+        return;
+      }
+      resize();
+      if (reduce) {
+        tickOnce();
+      } else if (!raf) {
+        tick();
+      }
+    }
+    function tickOnce() {
+      // Static field for reduced-motion users.
+      ctx.clearRect(0, 0, w, h);
+      for (var i = 0; i < stars.length; i++) {
+        var s = stars[i];
+        ctx.globalAlpha = 0.5 * (0.45 + s.depth);
+        ctx.fillStyle = s.depth > 0.45 ? "#cdbcff" : "#ffffff";
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, 6.283);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    window.addEventListener("resize", function () {
+      if (document.documentElement.classList.contains("dark")) {
+        resize();
+        if (reduce) tickOnce();
+      }
+    });
+    // React to theme toggles.
+    new MutationObserver(start).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    start();
+  })();
+</script>

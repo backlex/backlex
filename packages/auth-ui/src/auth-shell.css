@@ -1,116 +1,407 @@
-/* Animated primary light beams for the auth brand panel.
-   Ported verbatim from the backlex auth design handoff (auth.css):
-   three radial-gradient clouds doing a seamless diagonal sweep. */
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* Keep the brand copy above the beams. */
-.auth-brand > :not(.auth-beams) {
+/* ============================================================================
+   @backlex/auth-ui — "Cosmos" space-theme auth surface.
+
+   A single centred glass card floating on a fixed star canvas + drifting nebula
+   blobs. Fully self-contained: the `.cosmos-auth` root re-declares the cosmos
+   dark design tokens (the same values the admin's `.dark` theme uses) so the
+   nested @backlex/ui primitives (Input / Button / Label / Checkbox) render in
+   the right palette no matter where the shell is mounted (light or dark app).
+
+   Import once at app bootstrap:  import "@backlex/auth-ui/auth-shell.css";
+   ========================================================================== */
+
+.cosmos-auth {
+  /* ── cosmos dark design tokens (mirror of packages/ui .dark) ───────────── */
+  --background: oklch(0.122 0.020 290.3);
+  --foreground: oklch(0.972 0.013 295.3);
+  --card: oklch(0.163 0.025 291.0);
+  --card-foreground: oklch(0.972 0.013 295.3);
+  --popover: oklch(0.163 0.025 291.0);
+  --popover-foreground: oklch(0.972 0.013 295.3);
+  --primary: oklch(0.599 0.230 286.2);
+  --primary-foreground: oklch(from var(--primary) clamp(0.18, (0.62 - l) * 1000, 0.95) 0.04 h);
+  --secondary: oklch(0.189 0.028 293.3);
+  --secondary-foreground: oklch(0.972 0.013 295.3);
+  --muted: oklch(0.189 0.028 293.3);
+  --muted-foreground: oklch(0.724 0.048 292.1);
+  --accent: oklch(0.189 0.028 293.3);
+  --accent-foreground: oklch(0.972 0.013 295.3);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.599 0.230 286.2);
+  --radius: 0.875rem;
+
+  /* raw cosmos accents used by the bespoke chrome below */
+  --cosmos-violet: #7c5cff;
+  --cosmos-violet-lite: #b9a3ff;
+  --cosmos-coral: #ff9d83;
+
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: 100svh;
+  width: 100%;
+  padding: 48px 20px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: var(--foreground);
+  font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  background:
+    radial-gradient(1200px 800px at 78% -5%, rgba(124, 92, 255, 0.18), transparent 60%),
+    radial-gradient(900px 700px at 10% 8%, rgba(255, 122, 89, 0.08), transparent 55%),
+    #06050d;
+}
+
+/* ── Fixed star canvas ─────────────────────────────────────────────────── */
+.cosmos-stars {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ── Drifting nebula blobs ─────────────────────────────────────────────── */
+.cosmos-neb {
+  position: fixed;
+  z-index: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform;
+}
+.cosmos-neb-a {
+  top: -160px;
+  right: -120px;
+  width: 460px;
+  height: 460px;
+  background: rgba(124, 92, 255, 0.5);
+  filter: blur(70px);
+  opacity: 0.55;
+  animation: nebA 24s ease-in-out infinite;
+}
+.cosmos-neb-b {
+  top: 20%;
+  left: -180px;
+  width: 420px;
+  height: 420px;
+  background: rgba(255, 122, 89, 0.26);
+  filter: blur(80px);
+  opacity: 0.5;
+  animation: nebB 27s ease-in-out infinite;
+}
+.cosmos-neb-c {
+  bottom: -200px;
+  right: -80px;
+  width: 480px;
+  height: 480px;
+  background: rgba(86, 72, 200, 0.32);
+  filter: blur(82px);
+  opacity: 0.55;
+  animation: nebC 22s ease-in-out infinite;
+}
+
+/* ── Stage + card ──────────────────────────────────────────────────────── */
+.cosmos-stage {
   position: relative;
   z-index: 1;
+  margin: auto;
+  width: 100%;
+  max-width: 412px;
 }
 
-.auth-beams {
+.cosmos-theme-toggle {
   position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
-  mix-blend-mode: normal;
-  --beam-cool: var(--primary);
-  --beam-core: var(--primary);
-  --beam-warm: var(--primary);
+  top: -44px;
+  right: 0;
+  z-index: 2;
 }
 
-.auth-beams .beam {
+.cosmos-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  padding: 32px 30px 26px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(22, 17, 42, 0.86), rgba(11, 9, 22, 0.92));
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 40px 100px -30px rgba(60, 30, 140, 0.7);
+}
+
+@media (max-width: 480px) {
+  .cosmos-card {
+    padding: 26px 20px 22px;
+    border-radius: 18px;
+  }
+}
+
+/* ── Brand lockup ──────────────────────────────────────────────────────── */
+.cosmos-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.cosmos-brand-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+.cosmos-wordmark {
+  font-family: 'Lexend', sans-serif;
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  color: #f3f1fb;
+}
+
+/* Saturn planet mark (spec §7) */
+.cosmos-saturn {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+.cosmos-saturn-planet {
   position: absolute;
-  top: -40%;
-  bottom: -40%;
-  left: -30%;
-  width: 55%;
-  transform: translate3d(-60%, 0, 0) rotate(18deg);
-  transform-origin: center;
-  will-change: transform, opacity;
+  left: 50%;
+  top: 50%;
   border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #cdbcff, #7c5cff 60%, #3a2384);
+  box-shadow: 0 0 10px rgba(139, 108, 255, 0.8);
 }
-
-/* Back beam — wide, soft halo */
-.auth-beams .beam-back {
-  background: radial-gradient(
-    closest-side,
-    color-mix(in oklch, var(--beam-cool) 55%, transparent) 0%,
-    color-mix(in oklch, var(--beam-cool) 20%, transparent) 45%,
-    transparent 75%
-  );
-  filter: blur(80px);
-  opacity: 0.45;
-  animation: beam-sweep-back 14s linear infinite;
-  animation-delay: 0s;
+.cosmos-saturn-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  border-style: solid;
+  border-color: rgba(255, 157, 131, 0.85);
+  transform: rotate(-22deg);
 }
-
-/* Mid beam — primary cloud */
-.auth-beams .beam-mid {
-  width: 36%;
-  background: radial-gradient(
-    closest-side,
-    color-mix(in oklch, var(--beam-core) 65%, transparent) 0%,
-    color-mix(in oklch, var(--beam-core) 25%, transparent) 50%,
-    transparent 80%
-  );
-  filter: blur(55px);
-  opacity: 0.6;
-  animation: beam-sweep-mid 14s linear infinite;
-  animation-delay: -4.8s;
+.cosmos-saturn-orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: rotate(-22deg) scaleY(0.4);
 }
-
-/* Front beam — tighter, brighter ribbon */
-.auth-beams .beam-front {
-  width: 22%;
-  background: radial-gradient(
-    closest-side,
-    color-mix(in oklch, var(--beam-warm) 70%, transparent) 0%,
-    color-mix(in oklch, var(--beam-warm) 28%, transparent) 50%,
-    transparent 80%
-  );
-  filter: blur(40px);
-  opacity: 0.65;
-  animation: beam-sweep-front 14s linear infinite;
-  animation-delay: -9s;
-}
-
-/* Subtle film grain to dim the bloom */
-.auth-beams .beam-grain {
+.cosmos-saturn-spin {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(1px 1px at 22% 18%, color-mix(in oklch, var(--foreground) 8%, transparent) 50%, transparent 51%),
-    radial-gradient(1px 1px at 71% 44%, color-mix(in oklch, var(--foreground) 6%, transparent) 50%, transparent 51%),
-    radial-gradient(1px 1px at 41% 81%, color-mix(in oklch, var(--foreground) 7%, transparent) 50%, transparent 51%),
-    radial-gradient(1px 1px at 88% 76%, color-mix(in oklch, var(--foreground) 5%, transparent) 50%, transparent 51%);
-  background-size: 220px 220px;
-  opacity: 0.35;
-  mix-blend-mode: overlay;
+  animation: spin 5s linear infinite;
+}
+.cosmos-saturn-moon {
+  position: absolute;
+  left: 50%;
+  border-radius: 50%;
+  background: #ffe2d4;
+  box-shadow: 0 0 8px rgba(255, 157, 131, 1);
 }
 
-/* Per-beam keyframes — each starts/ends fully off-screen so the loop
-   never fades; widths differ so the visible-area cadence stays even. */
-@keyframes beam-sweep-back {
-  0%   { transform: translate3d(-100%, 0, 0) rotate(18deg); }
-  100% { transform: translate3d(280%, 0, 0) rotate(18deg); }
+/* ── Brand intro (shell headline / lede — kept subordinate to the screen
+   title so admin-set sign-in headline/tagline overrides still surface) ──── */
+.cosmos-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: -4px;
 }
-@keyframes beam-sweep-mid {
-  0%   { transform: translate3d(-180%, 0, 0) rotate(18deg); }
-  100% { transform: translate3d(480%, 0, 0) rotate(18deg); }
+.cosmos-headline {
+  font-family: 'Lexend', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.35;
+  color: #d4d0e6;
 }
-@keyframes beam-sweep-front {
-  0%   { transform: translate3d(-350%, 0, 0) rotate(18deg); }
-  100% { transform: translate3d(1100%, 0, 0) rotate(18deg); }
+.cosmos-headline em {
+  font-style: normal;
+  color: var(--cosmos-violet-lite);
+}
+.cosmos-lede {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #8e88ac;
 }
 
+/* ── Mode-switch footer links ──────────────────────────────────────────── */
+.cosmos-switch {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 12px;
+  color: #8e88ac;
+}
+.cosmos-switch a {
+  color: #a6a1c2;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.cosmos-switch a:hover {
+  color: #f3f1fb;
+}
+.cosmos-switch a.is-active {
+  color: #f3f1fb;
+  font-weight: 600;
+}
+
+.cosmos-version {
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #635e80;
+}
+
+/* ============================================================================
+   Overrides for nested @backlex/ui primitives, scoped to `.cosmos-auth`.
+   The `[data-slot]` attribute selectors out-specify Tailwind's single-class
+   utilities, so the design radii / heights / focus rings win without !important.
+   ========================================================================== */
+
+.cosmos-auth h2 {
+  font-family: 'Lexend', sans-serif;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: #f6f4fe;
+}
+
+.cosmos-auth [data-slot="label"] {
+  font-family: 'Manrope', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #c9c5dd;
+}
+
+.cosmos-auth [data-slot="input"] {
+  height: 44px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.03);
+  color: #f0eefa;
+  font-family: 'Manrope', sans-serif;
+  font-size: 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.cosmos-auth [data-slot="input"]::placeholder {
+  color: #7e789b;
+}
+.cosmos-auth [data-slot="input"]:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.cosmos-auth [data-slot="input"]:focus-visible {
+  border-color: rgba(139, 108, 255, 0.7);
+  box-shadow: 0 0 0 3px rgba(139, 108, 255, 0.15);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Primary violet-gradient CTA */
+.cosmos-auth .cosmos-cta[data-slot="button"] {
+  height: 44px;
+  border: none;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #8b6cff, #7c5cff);
+  color: #fff;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 8px 30px -6px rgba(139, 108, 255, 0.6);
+  animation: glowPulse 4s ease-in-out infinite;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.cosmos-auth .cosmos-cta[data-slot="button"]:hover:not(:disabled) {
+  filter: brightness(1.09);
+  transform: translateY(-1px);
+}
+.cosmos-auth .cosmos-cta[data-slot="button"]:disabled {
+  animation: none;
+  opacity: 0.6;
+}
+
+/* Ghost / secondary + provider-style buttons */
+.cosmos-auth .cosmos-ghost[data-slot="button"] {
+  height: 44px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.04);
+  color: #e7e4f4;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.cosmos-auth .cosmos-ghost[data-slot="button"]:hover:not(:disabled) {
+  background: rgba(139, 108, 255, 0.16);
+  border-color: rgba(139, 108, 255, 0.7);
+}
+
+/* "or with email" divider label */
+.cosmos-auth .cosmos-divider {
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.14em;
+  color: #8580a2;
+}
+
+/* ── Reduced motion: stop all cosmos ambient animation ─────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .auth-beams .beam-back,
-  .auth-beams .beam-mid,
-  .auth-beams .beam-front {
-    animation: none;
-    opacity: 0.3;
-    transform: translate3d(60%, 0, 0) rotate(18deg);
+  .cosmos-neb-a,
+  .cosmos-neb-b,
+  .cosmos-neb-c,
+  .cosmos-saturn-spin,
+  .cosmos-auth .cosmos-cta[data-slot="button"] {
+    animation: none !important;
+  }
+}
+
+/* ── Shared cosmos keyframes (spec §9) ─────────────────────────────────── */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes glowPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(139, 108, 255, 0.4), 0 8px 30px -6px rgba(139, 108, 255, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(139, 108, 255, 0.6), 0 14px 50px -4px rgba(139, 108, 255, 0.85);
+  }
+}
+@keyframes nebA {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(40px, -30px) scale(1.12);
+  }
+}
+@keyframes nebB {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-50px, 30px) scale(1.15);
+  }
+}
+@keyframes nebC {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(30px, 40px) scale(1.1);
   }
 }

@@ -145,6 +145,12 @@ header.header {
     background: transparent;
   }
 }
+/* No divider line on the "On this page" TOC — the design keeps it open. The
+   sidebar's right border stays as the single content divider, so the content
+   column no longer looks boxed in a frame over the starfield. */
+:root[data-theme="dark"] .right-sidebar {
+  border-inline-start-color: transparent;
+}
 
 .sidebar-content {
   padding-top: 1.5rem;

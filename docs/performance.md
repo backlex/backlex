@@ -130,24 +130,18 @@ with the spacer-row technique (keeps the semantic table + sticky columns
 intact), inside a bounded `ScrollArea`; update `ItemsTableSkeleton` to match;
 verify geometry at both breakpoints.
 
-### Read-set-tracked reactive SSE invalidation (Convex-style)
+### Read-set-tracked reactive SSE invalidation
 
-**Win:** replace broadcast-and-filter SSE with surgical invalidation — track
-each live query's read set (row ids + index ranges) and, on a write, recompute
-only the subscriptions whose read set the write overlaps. Invalidation cost
-scales with *affected* subscriptions, not total.
+**Win:** instead of broadcasting every collection event to every subscriber and
+filtering client-side, the server narrows each live query's stream to the events
+that actually affect it. Invalidation cost scales with *affected* subscriptions,
+not total.
 
-**Status: Stages 1–3 shipped; Stage 4 designed + deferred.** Stage 1 (server-side
-live-query filter — the subscription narrows the stream to only matching
-events), Stage 2 (server-computed `enter`/`leave`/`update` transitions, so an
-update that pushes a row out of the result set is still delivered), and Stage 3
-(windowed live queries skip the reconcile refetch on inserts) are live and wired
-into the SDK `liveQuery`. They reuse the in-memory `matchesCondition` evaluator
-(the overlap primitive) at the existing emit chokepoint, shared across both
-transports. Building them revealed that a separate Stage-4 registry/transaction-
-log engine is largely **subsumed** by backlex's per-event per-subscription model
-(each event already triggers exactly the per-subscription overlap check a
-registry would schedule); the one genuine remainder — server-pushed window
-backfill to retire the last refetch — is stateful + Workers-only + needs live DO
-verification, so it's designed but not built. Full write-up:
-[Reactive invalidation — design plan](/reactive-invalidation-plan/).
+**Shipped.** A live query's `filter` is evaluated server-side, so a subscription
+only receives matching events; membership transitions (`enter` / `leave` /
+`update`) are computed on the server, so an update that pushes a row out of the
+result set is still delivered rather than silently dropped; and windowed live
+queries skip the reconcile refetch on inserts. All three are wired into the SDK
+`liveQuery`. They share the in-memory `matchesCondition` evaluator at the emit
+chokepoint, so both transports (the in-process / Redis fan-out and the Durable
+Object socket path) apply identical rules.

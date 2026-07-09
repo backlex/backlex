@@ -1,7 +1,10 @@
 ---
 // Starlight `Header` override — reproduces the "Backlex Docs" design nav:
 // planet brand (left), then a right-aligned group with a search box styled as
-// an input and a "GitHub ↗" text link. Reuses Starlight's own Search / SiteTitle
+// an input and a GitHub mark. The icon is the same 18px mark the marketing site
+// nav uses (apps/site/src/components/Nav.astro), so the three headers (site,
+// docs, cloud docs) present one consistent GitHub affordance.
+// Reuses Starlight's own Search / SiteTitle
 // (our overrides) / ThemeSelect / LanguageSelect so search, theming and i18n
 // keep working. The mobile menu toggle is rendered by Starlight elsewhere (not
 // in the header), so overriding here doesn't affect it.
@@ -21,8 +24,18 @@ const github = "https://github.com/backlex/backlex";
   </div>
   <div class="header-right sl-flex print:hidden">
     <Search />
-    <a class="gh-link" href={github} target="_blank" rel="noopener noreferrer">
-      GitHub
+    <a
+      class="gh-link"
+      href={github}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="GitHub"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"
+        ><path
+          d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.2.8.8 1.3 1.9 1.3 3.1 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"
+        ></path></svg
+      >
     </a>
   </div>
 </div>

@@ -94,53 +94,63 @@ const canonical = new URL(cleanPath || "/", Astro.site).href;
     {showChrome && <Nav />}
     <slot />
     {showChrome && <Footer />}
-    <div id="cosmos-cursor" aria-hidden="true"></div>
+    <div id="cosmos-cursor" transition:persist aria-hidden="true"></div>
     <script is:inline>
       // Cosmos custom cursor — a mint ring that trails the pointer and swells
-      // over interactive targets. Pointer-fine devices only; native cursor is
-      // hidden via CSS. Disabled entirely for touch / reduced-motion users.
+      // over interactive targets. Pointer-fine only; hidden on touch / reduced
+      // motion.
+      //
+      // State lives on `window` and the animation loop re-resolves the current
+      // #cosmos-cursor element every frame, so the cursor survives
+      // <ClientRouter /> view transitions (clicking the logo → home, navigating
+      // to /pricing, …) instead of freezing on the detached pre-swap node.
+      // `transition:persist` keeps the same element for a seamless handoff; the
+      // window guard makes the script idempotent if it re-runs after a swap.
       (function () {
+        if (window.__cosmosCursor) return;
         var fine = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
         var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        var dot = document.getElementById("cosmos-cursor");
-        if (!dot || !fine || reduce) {
-          if (dot) dot.style.display = "none";
+        var dot = function () { return document.getElementById("cosmos-cursor"); };
+        if (!fine || reduce) {
+          window.__cosmosCursor = true;
+          var hide = function () { var d = dot(); if (d) d.style.display = "none"; };
+          hide();
+          document.addEventListener("astro:page-load", hide);
           return;
         }
         // Smooth trailing follow (design LERP 0.18), like the site mockup.
-        var mx = window.innerWidth / 2, my = window.innerHeight / 2;
-        var cx = mx, cy = my, shown = false;
+        var S = (window.__cosmosCursor = {
+          mx: window.innerWidth / 2, my: window.innerHeight / 2,
+          cx: window.innerWidth / 2, cy: window.innerHeight / 2, shown: false,
+        });
         window.addEventListener("mousemove", function (e) {
-          mx = e.clientX;
-          my = e.clientY;
-          if (!shown) {
-            shown = true;
-            dot.style.opacity = "1";
-          }
+          S.mx = e.clientX; S.my = e.clientY; S.shown = true;
         });
         document.addEventListener("mouseover", function (e) {
           var t = e.target;
           var interactive =
             t && t.closest && t.closest('a,button,[role="button"],input,textarea,select,summary,label,.cosmos-hot');
-          dot.classList.toggle("is-hot", !!interactive);
+          var d = dot();
+          if (d) d.classList.toggle("is-hot", !!interactive);
         });
-        function hideCursor() {
-          shown = false;
-          dot.style.opacity = "0";
-        }
-        document.addEventListener("mouseleave", hideCursor);
         // Switching apps (alt-tab) or tabs leaves the ring frozen at opacity 1
-        // while the OS repaints its own cursor, so both show at once. Reset on
-        // blur / tab-hide; the next mousemove re-shows the ring (and re-hides
-        // the native cursor via `cursor: none`).
+        // while the OS repaints its own cursor, so both show at once. Reset
+        // `shown` on blur / tab-hide; the next mousemove re-shows the ring and
+        // the loop re-hides the native cursor via `cursor: none`.
+        function hideCursor() { S.shown = false; }
+        document.addEventListener("mouseleave", hideCursor);
         window.addEventListener("blur", hideCursor);
         document.addEventListener("visibilitychange", function () {
           if (document.hidden) hideCursor();
         });
         (function loop() {
-          cx += (mx - cx) * 0.18;
-          cy += (my - cy) * 0.18;
-          dot.style.transform = "translate(" + cx + "px," + cy + "px)";
+          S.cx += (S.mx - S.cx) * 0.18;
+          S.cy += (S.my - S.cy) * 0.18;
+          var d = dot();
+          if (d) {
+            d.style.transform = "translate(" + S.cx + "px," + S.cy + "px)";
+            d.style.opacity = S.shown ? "1" : "0";
+          }
           requestAnimationFrame(loop);
         })();
       })();

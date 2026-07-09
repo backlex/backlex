@@ -581,7 +581,7 @@ msgstr "{slugClean} zaten mevcut"
 #. placeholder {0}: schemaState.fields.length
 #: src/client/admin/app.tsx
 msgid "{total} rows · {0} fields"
-msgstr ""
+msgstr "{total} satır · {0} alan"
 
 #: src/client/admin/pages/logs.tsx
 msgid "{totalCount} total"
@@ -2186,7 +2186,7 @@ msgstr "İşbirliği"
 
 #: src/client/admin/ui.tsx
 msgid "Collapse collections"
-msgstr ""
+msgstr "Koleksiyonları daralt"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/logs.tsx
@@ -4000,7 +4000,7 @@ msgstr "Mevcut kullanıcı"
 
 #: src/client/admin/ui.tsx
 msgid "Expand collections"
-msgstr ""
+msgstr "Koleksiyonları genişlet"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Expects"
@@ -5246,7 +5246,7 @@ msgstr "Giriş marka panelindeki büyük başlık."
 
 #: src/client/admin/collections-index.tsx
 msgid "Last"
-msgstr ""
+msgstr "Son"
 
 #: src/client/admin/pages/logs.tsx
 msgid "last {range}"
@@ -6379,7 +6379,7 @@ msgstr "Henüz dosya yok"
 
 #: src/client/admin/items.tsx
 msgid "No filterable fields in this collection."
-msgstr ""
+msgstr "Bu koleksiyonda filtrelenebilir alan yok."
 
 #: src/client/admin/pages/flows.tsx
 msgid "No flow selected"
@@ -7022,7 +7022,7 @@ msgstr "Genel bakış"
 
 #: src/client/admin/collections-index.tsx
 msgid "owner"
-msgstr ""
+msgstr "sahip"
 
 #: src/client/admin/role-editor.tsx
 msgid "owner only"
@@ -9506,7 +9506,7 @@ msgstr "{0} değiştirilmiş alan gösteriliyor"
 #. placeholder {1}: Math.min(page * PER_PAGE, total)
 #: src/client/admin/app.tsx
 msgid "Showing {0}–{1} of {total} rows"
-msgstr ""
+msgstr "{total} satırdan {0}–{1} arası gösteriliyor"
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Showing {loaded} of {total}"

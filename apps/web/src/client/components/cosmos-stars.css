@@ -1,0 +1,61 @@
+/* Cosmic backdrop styles for <CosmosStars>. Co-located with the component so
+ * the backdrop can render anywhere it's mounted — the admin shell *and* the
+ * pre-shell boot screen (see boot-screen.tsx) — without pulling in the whole
+ * lazy admin.css bundle. Previously lived in admin/admin.css; moved here so the
+ * AuthGate boot/retry screen shows the same cosmos backdrop before AdminApp
+ * (and its CSS) has loaded. */
+
+/* Page base: design radial gradients over #06050d, behind the fixed canvas. */
+html.dark body {
+  background-color: #06050d;
+  background-image:
+    radial-gradient(1200px 800px at 78% -5%, rgba(124, 92, 255, 0.16), transparent 60%),
+    radial-gradient(900px 700px at 10% 8%, rgba(255, 122, 89, 0.07), transparent 55%);
+  background-attachment: fixed;
+}
+.cosmos-neb {
+  position: absolute;
+  border-radius: 50%;
+}
+.cosmos-neb-1 {
+  top: -10%;
+  right: -8%;
+  width: 620px;
+  height: 620px;
+  background: radial-gradient(circle, rgba(124, 92, 255, 0.4), transparent 65%);
+  filter: blur(70px);
+  animation: nebA 22s ease-in-out infinite;
+}
+.cosmos-neb-2 {
+  top: 38%;
+  left: -12%;
+  width: 540px;
+  height: 540px;
+  background: radial-gradient(circle, rgba(255, 122, 89, 0.2), transparent 65%);
+  filter: blur(80px);
+  animation: nebB 28s ease-in-out infinite;
+}
+.cosmos-neb-3 {
+  bottom: -12%;
+  right: 18%;
+  width: 560px;
+  height: 560px;
+  background: radial-gradient(circle, rgba(86, 72, 200, 0.28), transparent 65%);
+  filter: blur(80px);
+  animation: nebC 26s ease-in-out infinite;
+}
+@keyframes nebA {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, -30px) scale(1.12); }
+}
+@keyframes nebB {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-50px, 30px) scale(1.15); }
+}
+@keyframes nebC {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, 40px) scale(1.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cosmos-neb { animation: none; }
+}

@@ -286,9 +286,9 @@ msgstr "{0} uç nokta"
 msgid "{0} event detail"
 msgstr "{0} olay ayrıntısı"
 
+#. placeholder {0}: c.fields
 #. placeholder {0}: c.fields.length
 #. placeholder {0}: d.fields.length
-#. placeholder {0}: t.fields.length
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/parity/insights.tsx
@@ -298,8 +298,8 @@ msgstr "{0} alan"
 #. placeholder {0}: c.fields
 #. placeholder {1}: c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"
 #: src/client/admin/collections-index.tsx
-msgid "{0} fields · {1}"
-msgstr "{0} alan · {1}"
+#~ msgid "{0} fields · {1}"
+#~ msgstr "{0} alan · {1}"
 
 #. placeholder {0}: folderCounts.total
 #: src/client/admin/storage/index.tsx
@@ -457,8 +457,8 @@ msgstr "{0} güncellendi."
 #. placeholder {0}: (page - 1) * PER_PAGE + 1
 #. placeholder {1}: Math.min(page * PER_PAGE, total)
 #: src/client/admin/app.tsx
-msgid "{0}-{1} of {total}"
-msgstr "{total} kaydın {0}-{1} arası"
+#~ msgid "{0}-{1} of {total}"
+#~ msgstr "{total} kaydın {0}-{1} arası"
 
 #. placeholder {0}: f.name
 #: src/client/admin/storage/index.tsx
@@ -577,6 +577,11 @@ msgstr "{sampleSeeds} şablon örnek satırı hâlâ bu çalışma alanında. Ke
 #: src/client/admin/collections-index.tsx
 msgid "{slugClean} already exists"
 msgstr "{slugClean} zaten mevcut"
+
+#. placeholder {0}: schemaState.fields.length
+#: src/client/admin/app.tsx
+msgid "{total} rows · {0} fields"
+msgstr ""
 
 #: src/client/admin/pages/logs.tsx
 msgid "{totalCount} total"
@@ -1230,8 +1235,8 @@ msgid "All clear in this category"
 msgstr "Bu kategoride sorun yok"
 
 #: src/client/admin/app.tsx
-msgid "All collections"
-msgstr "Tüm koleksiyonlar"
+#~ msgid "All collections"
+#~ msgstr "Tüm koleksiyonlar"
 
 #: src/client/admin/pages/overview.tsx
 msgid "All events"
@@ -1880,6 +1885,10 @@ msgstr "c_{target} boş."
 msgid "Calendar"
 msgstr "Takvim"
 
+#: src/client/components/boot-screen.tsx
+msgid "Can't reach your workspace"
+msgstr "Çalışma alanınıza ulaşılamıyor"
+
 #: src/client/admin/account-page.tsx
 msgid "Can't unlink your only sign-in method."
 msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
@@ -2175,6 +2184,10 @@ msgstr "Kod"
 msgid "Collaboration"
 msgstr "İşbirliği"
 
+#: src/client/admin/ui.tsx
+msgid "Collapse collections"
+msgstr ""
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/search-playground.tsx
@@ -2208,6 +2221,7 @@ msgstr "Koleksiyon ayarları kaydedildi."
 msgid "Collection wizard opened."
 msgstr "Koleksiyon sihirbazı açıldı."
 
+#: src/client/admin/app.tsx
 #: src/client/admin/collections-index.tsx
 msgid "collections"
 msgstr "koleksiyonlar"
@@ -2446,6 +2460,10 @@ msgstr "bağlı"
 #: src/client/admin/pages/integrations.tsx
 msgid "Connected"
 msgstr "Bağlı"
+
+#: src/client/components/boot-screen.tsx
+msgid "Connecting to your workspace…"
+msgstr "Çalışma alanınıza bağlanılıyor…"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Connecting…"
@@ -3515,8 +3533,8 @@ msgid "Duration"
 msgstr "Süre"
 
 #: src/client/admin/app.tsx
-msgid "Dynamic schema. Each collection becomes a physical <0>c_<slug></0> table at runtime; drop or alter via this UI."
-msgstr "Dinamik şema. Her koleksiyon çalışma zamanında fiziksel bir <0>c_<slug></0> tablosu olur; bu arayüz üzerinden silin veya değiştirin."
+#~ msgid "Dynamic schema. Each collection becomes a physical <0>c_<slug></0> table at runtime; drop or alter via this UI."
+#~ msgstr "Dinamik şema. Her koleksiyon çalışma zamanında fiziksel bir <0>c_<slug></0> tablosu olur; bu arayüz üzerinden silin veya değiştirin."
 
 #: src/client/admin/flow-builder.tsx
 msgid "e.g. 30s, 5m, 1h, 2d. ≤ 30s sleeps inline; longer waits persist to the scheduler."
@@ -3979,6 +3997,10 @@ msgstr "Sonuçları görmek için bir sorgu çalıştırın."
 #: src/client/admin/permission-tester.tsx
 msgid "Existing user"
 msgstr "Mevcut kullanıcı"
+
+#: src/client/admin/ui.tsx
+msgid "Expand collections"
+msgstr ""
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Expects"
@@ -5222,6 +5244,10 @@ msgstr "Bu çalışma alanının çevrildiği diller — <0>Çeviriler</0> sayfa
 msgid "Large title in the sign-in brand panel."
 msgstr "Giriş marka panelindeki büyük başlık."
 
+#: src/client/admin/collections-index.tsx
+msgid "Last"
+msgstr ""
+
 #: src/client/admin/pages/logs.tsx
 msgid "last {range}"
 msgstr "son {range}"
@@ -5477,6 +5503,7 @@ msgstr "/api altındaki her uç nokta için canlı tarayıcı. Çalışma alanı
 msgid "Live schema already matches this version."
 msgstr "Canlı şema zaten bu sürümle eşleşiyor."
 
+#: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 msgid "Live tail"
 msgstr "Canlı kuyruk"
@@ -6350,6 +6377,10 @@ msgstr "Henüz dosya yüklenmedi — başlamak için yukarıya bir dosya bırak�
 msgid "No files yet"
 msgstr "Henüz dosya yok"
 
+#: src/client/admin/items.tsx
+msgid "No filterable fields in this collection."
+msgstr ""
+
 #: src/client/admin/pages/flows.tsx
 msgid "No flow selected"
 msgstr "Akış seçilmedi"
@@ -6831,6 +6862,10 @@ msgstr "Güncellendiğinde"
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 msgstr "Bu sayfadan ayrıldığınızda gizli anahtar bir daha alınamaz — yalnızca iptal edilebilir. MCP erişimini istediğiniz zaman anahtarın Connect MCP panelinden ayarlayabilirsiniz."
 
+#: src/client/components/boot-screen.tsx
+msgid "One moment while we get things ready."
+msgstr "Her şeyi hazırlarken bir saniye."
+
 #: src/client/pages/invite.tsx
 msgid "One moment."
 msgstr "Bir saniye."
@@ -6985,6 +7020,10 @@ msgstr "Admin ve yayımlanan yüzeylerde kullanılan `--primary` token'ını ge�
 msgid "Overview"
 msgstr "Genel bakış"
 
+#: src/client/admin/collections-index.tsx
+msgid "owner"
+msgstr ""
+
 #: src/client/admin/role-editor.tsx
 msgid "owner only"
 msgstr "yalnızca sahip"
@@ -7012,8 +7051,8 @@ msgid "p95 latency"
 msgstr "p95 gecikme"
 
 #: src/client/admin/app.tsx
-msgid "page {page} / {totalPages}"
-msgstr "sayfa {page} / {totalPages}"
+#~ msgid "page {page} / {totalPages}"
+#~ msgstr "sayfa {page} / {totalPages}"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Page titles, badges. Falls back to the slug."
@@ -9463,6 +9502,12 @@ msgstr "{0} gösteriliyor"
 msgid "Showing {0} changed field{1}"
 msgstr "{0} değiştirilmiş alan gösteriliyor"
 
+#. placeholder {0}: (page - 1) * PER_PAGE + 1
+#. placeholder {1}: Math.min(page * PER_PAGE, total)
+#: src/client/admin/app.tsx
+msgid "Showing {0}–{1} of {total} rows"
+msgstr ""
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Showing {loaded} of {total}"
 msgstr "{total} öğeden {loaded} tanesi gösteriliyor"
@@ -10373,6 +10418,10 @@ msgstr "Bu, öğeyi {1} tarihli v{0} anlık görüntüsüne yeniden yazar. Mevcu
 msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
 msgstr "<1>c_{1}</1> üzerinde <0>ALTER TABLE … DROP COLUMN {0}</0> çalıştırır. Sütun ve tüm verileri kaldırılır. Bu geri alınamaz."
 
+#: src/client/components/boot-screen.tsx
+msgid "This usually clears on its own in a moment. We'll keep trying automatically."
+msgstr "Bu genellikle kısa sürede kendiliğinden düzelir. Otomatik olarak denemeye devam edeceğiz."
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "This weakens two-factor authentication"
 msgstr "Bu, iki adımlı doğrulamayı zayıflatır"
@@ -10612,6 +10661,10 @@ msgstr "Farklı bir slug veya grup deneyin."
 #: src/client/admin/pages/logs.tsx
 msgid "Try a wider time range or clear the level filter."
 msgstr "Daha geniş bir zaman aralığı deneyin veya seviye filtresini temizleyin."
+
+#: src/client/components/boot-screen.tsx
+msgid "Try again"
+msgstr "Tekrar dene"
 
 #: src/client/pages/rest-explorer.tsx
 msgid "Try it"

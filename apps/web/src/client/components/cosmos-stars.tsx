@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import "./cosmos-stars.css";
 
 /**
  * Full-screen cosmos backdrop for the admin — a fixed star canvas (drift +

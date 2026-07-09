@@ -286,9 +286,9 @@ msgstr "{0} endpoints"
 msgid "{0} event detail"
 msgstr "{0} event detail"
 
+#. placeholder {0}: c.fields
 #. placeholder {0}: c.fields.length
 #. placeholder {0}: d.fields.length
-#. placeholder {0}: t.fields.length
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/parity/insights.tsx
@@ -298,8 +298,8 @@ msgstr "{0} fields"
 #. placeholder {0}: c.fields
 #. placeholder {1}: c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"
 #: src/client/admin/collections-index.tsx
-msgid "{0} fields · {1}"
-msgstr "{0} fields · {1}"
+#~ msgid "{0} fields · {1}"
+#~ msgstr "{0} fields · {1}"
 
 #. placeholder {0}: folderCounts.total
 #: src/client/admin/storage/index.tsx
@@ -457,8 +457,8 @@ msgstr "{0} updated."
 #. placeholder {0}: (page - 1) * PER_PAGE + 1
 #. placeholder {1}: Math.min(page * PER_PAGE, total)
 #: src/client/admin/app.tsx
-msgid "{0}-{1} of {total}"
-msgstr "{0}-{1} of {total}"
+#~ msgid "{0}-{1} of {total}"
+#~ msgstr "{0}-{1} of {total}"
 
 #. placeholder {0}: f.name
 #: src/client/admin/storage/index.tsx
@@ -577,6 +577,11 @@ msgstr "{sampleSeeds} template sample rows are still in this workspace. Your own
 #: src/client/admin/collections-index.tsx
 msgid "{slugClean} already exists"
 msgstr "{slugClean} already exists"
+
+#. placeholder {0}: schemaState.fields.length
+#: src/client/admin/app.tsx
+msgid "{total} rows · {0} fields"
+msgstr "{total} rows · {0} fields"
 
 #: src/client/admin/pages/logs.tsx
 msgid "{totalCount} total"
@@ -1230,8 +1235,8 @@ msgid "All clear in this category"
 msgstr "All clear in this category"
 
 #: src/client/admin/app.tsx
-msgid "All collections"
-msgstr "All collections"
+#~ msgid "All collections"
+#~ msgstr "All collections"
 
 #: src/client/admin/pages/overview.tsx
 msgid "All events"
@@ -1880,6 +1885,10 @@ msgstr "c_{target} is empty."
 msgid "Calendar"
 msgstr "Calendar"
 
+#: src/client/components/boot-screen.tsx
+msgid "Can't reach your workspace"
+msgstr "Can't reach your workspace"
+
 #: src/client/admin/account-page.tsx
 msgid "Can't unlink your only sign-in method."
 msgstr "Can't unlink your only sign-in method."
@@ -2175,6 +2184,10 @@ msgstr "Code"
 msgid "Collaboration"
 msgstr "Collaboration"
 
+#: src/client/admin/ui.tsx
+msgid "Collapse collections"
+msgstr "Collapse collections"
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/search-playground.tsx
@@ -2208,6 +2221,7 @@ msgstr "Collection settings saved."
 msgid "Collection wizard opened."
 msgstr "Collection wizard opened."
 
+#: src/client/admin/app.tsx
 #: src/client/admin/collections-index.tsx
 msgid "collections"
 msgstr "collections"
@@ -2446,6 +2460,10 @@ msgstr "connected"
 #: src/client/admin/pages/integrations.tsx
 msgid "Connected"
 msgstr "Connected"
+
+#: src/client/components/boot-screen.tsx
+msgid "Connecting to your workspace…"
+msgstr "Connecting to your workspace…"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Connecting…"
@@ -3515,8 +3533,8 @@ msgid "Duration"
 msgstr "Duration"
 
 #: src/client/admin/app.tsx
-msgid "Dynamic schema. Each collection becomes a physical <0>c_<slug></0> table at runtime; drop or alter via this UI."
-msgstr "Dynamic schema. Each collection becomes a physical <0>c_<slug></0> table at runtime; drop or alter via this UI."
+#~ msgid "Dynamic schema. Each collection becomes a physical <0>c_<slug></0> table at runtime; drop or alter via this UI."
+#~ msgstr "Dynamic schema. Each collection becomes a physical <0>c_<slug></0> table at runtime; drop or alter via this UI."
 
 #: src/client/admin/flow-builder.tsx
 msgid "e.g. 30s, 5m, 1h, 2d. ≤ 30s sleeps inline; longer waits persist to the scheduler."
@@ -3979,6 +3997,10 @@ msgstr "Execute a query to see results here."
 #: src/client/admin/permission-tester.tsx
 msgid "Existing user"
 msgstr "Existing user"
+
+#: src/client/admin/ui.tsx
+msgid "Expand collections"
+msgstr "Expand collections"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Expects"
@@ -5222,6 +5244,10 @@ msgstr "Languages this workspace is translated into — they become the columns 
 msgid "Large title in the sign-in brand panel."
 msgstr "Large title in the sign-in brand panel."
 
+#: src/client/admin/collections-index.tsx
+msgid "Last"
+msgstr "Last"
+
 #: src/client/admin/pages/logs.tsx
 msgid "last {range}"
 msgstr "last {range}"
@@ -5477,6 +5503,7 @@ msgstr "Live browser for every endpoint under /api. Built from the OpenAPI doc y
 msgid "Live schema already matches this version."
 msgstr "Live schema already matches this version."
 
+#: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 msgid "Live tail"
 msgstr "Live tail"
@@ -6350,6 +6377,10 @@ msgstr "No files uploaded yet — drop one above to get started."
 msgid "No files yet"
 msgstr "No files yet"
 
+#: src/client/admin/items.tsx
+msgid "No filterable fields in this collection."
+msgstr "No filterable fields in this collection."
+
 #: src/client/admin/pages/flows.tsx
 msgid "No flow selected"
 msgstr "No flow selected"
@@ -6831,6 +6862,10 @@ msgstr "On update"
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 msgstr "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 
+#: src/client/components/boot-screen.tsx
+msgid "One moment while we get things ready."
+msgstr "One moment while we get things ready."
+
 #: src/client/pages/invite.tsx
 msgid "One moment."
 msgstr "One moment."
@@ -6985,6 +7020,10 @@ msgstr "Overrides the `--primary` token used across the admin and any published 
 msgid "Overview"
 msgstr "Overview"
 
+#: src/client/admin/collections-index.tsx
+msgid "owner"
+msgstr "owner"
+
 #: src/client/admin/role-editor.tsx
 msgid "owner only"
 msgstr "owner only"
@@ -7012,8 +7051,8 @@ msgid "p95 latency"
 msgstr "p95 latency"
 
 #: src/client/admin/app.tsx
-msgid "page {page} / {totalPages}"
-msgstr "page {page} / {totalPages}"
+#~ msgid "page {page} / {totalPages}"
+#~ msgstr "page {page} / {totalPages}"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Page titles, badges. Falls back to the slug."
@@ -9463,6 +9502,12 @@ msgstr "showing {0}"
 msgid "Showing {0} changed field{1}"
 msgstr "Showing {0} changed field{1}"
 
+#. placeholder {0}: (page - 1) * PER_PAGE + 1
+#. placeholder {1}: Math.min(page * PER_PAGE, total)
+#: src/client/admin/app.tsx
+msgid "Showing {0}–{1} of {total} rows"
+msgstr "Showing {0}–{1} of {total} rows"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Showing {loaded} of {total}"
 msgstr "Showing {loaded} of {total}"
@@ -10373,6 +10418,10 @@ msgstr "This rewrites the item to the v{0} snapshot from {1}. The current state 
 msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
 msgstr "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
 
+#: src/client/components/boot-screen.tsx
+msgid "This usually clears on its own in a moment. We'll keep trying automatically."
+msgstr "This usually clears on its own in a moment. We'll keep trying automatically."
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "This weakens two-factor authentication"
 msgstr "This weakens two-factor authentication"
@@ -10612,6 +10661,10 @@ msgstr "Try a different slug or group."
 #: src/client/admin/pages/logs.tsx
 msgid "Try a wider time range or clear the level filter."
 msgstr "Try a wider time range or clear the level filter."
+
+#: src/client/components/boot-screen.tsx
+msgid "Try again"
+msgstr "Try again"
 
 #: src/client/pages/rest-explorer.tsx
 msgid "Try it"

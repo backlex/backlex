@@ -194,10 +194,14 @@ function FilterChip({ field, op, value, onRemove, onClick }: { field: string; op
 function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema; onAdd: (f: FilterCondition) => void; onClose: () => void }) {
   const { t } = useLingui();
   const editable = schema.fields.filter((f) => !f.system || f.name === "created_at" || f.name === "updated_at");
-  const [field, setField] = useState(editable[1]?.name || "title");
-  const fieldDef = editable.find((f) => f.name === field) || editable[0];
-  const isRelation = fieldDef.type === "relation";
-  const isRelationMany = fieldDef.type === "relation_many";
+  const [field, setField] = useState(editable[1]?.name || editable[0]?.name || "title");
+  // `fieldDef` is undefined when the collection has no filterable fields (a
+  // bare/empty collection). Every access below is null-safe so opening the
+  // filter popover never throws — a render throw here blanks the whole SPA
+  // (there is no error boundary above the items view).
+  const fieldDef = editable.find((f) => f.name === field) ?? editable[0];
+  const isRelation = fieldDef?.type === "relation";
+  const isRelationMany = fieldDef?.type === "relation_many";
 
   // Lazy-fetched target collection fields for nested relation filters.
   // We only hit the network when the user actually picks a relation
@@ -214,34 +218,35 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
 
   useEffect(() => {
     setNestedSub("");
-    if (!needsTargetDrill || !fieldDef.to) return;
-    if (targetFieldsCache[fieldDef.to]) return;
+    const to = fieldDef?.to;
+    if (!needsTargetDrill || !to) return;
+    if (targetFieldsCache[to]) return;
     let cancelled = false;
     setTargetLoading(true);
-    fetch(`/api/collections/${fieldDef.to}`, { credentials: "include" })
+    fetch(`/api/collections/${to}`, { credentials: "include" })
       .then((r) => r.json())
       .then((j) => {
         if (cancelled) return;
         const f = (j?.data?.fields ?? []) as Array<{ name: string; type: string }>;
-        setTargetFieldsCache((cache) => ({ ...cache, [fieldDef.to as string]: f }));
+        setTargetFieldsCache((cache) => ({ ...cache, [to]: f }));
       })
       .catch(() => { /* leave cache empty; sub dropdown will say "Target unavailable" */ })
       .finally(() => { if (!cancelled) setTargetLoading(false); });
     return () => { cancelled = true; };
-  }, [field, needsTargetDrill, fieldDef.to]);
+  }, [field, needsTargetDrill, fieldDef?.to]);
 
   // Leaf field — the one that actually drives op list + value parsing.
   // For nested filters that's the sub-field on the target collection.
-  const targetFields = needsTargetDrill && fieldDef.to ? targetFieldsCache[fieldDef.to] : null;
+  const targetFields = needsTargetDrill && fieldDef?.to ? targetFieldsCache[fieldDef.to] : null;
   const subDef = nestedSub && targetFields ? targetFields.find((f) => f.name === nestedSub) : null;
-  const leafType = subDef?.type ?? fieldDef.type;
-  const ops = FIELD_OPS[leafType] || ["_eq"];
+  const leafType = subDef?.type ?? fieldDef?.type;
+  const ops = (leafType ? FIELD_OPS[leafType] : undefined) || ["_eq"];
   const [op, setOp] = useState(ops[0]);
   const [val, setVal] = useState("");
 
   useEffect(() => { setOp(ops[0]); }, [field, nestedSub]);
 
-  const canSubmit = !needsTargetDrill || !!nestedSub;
+  const canSubmit = !!fieldDef && (!needsTargetDrill || !!nestedSub);
 
   const submit = () => {
     if (!canSubmit) return;
@@ -256,6 +261,11 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
 
   return (
     <div className="absolute left-0 top-11 z-50 flex w-[320px] max-w-[calc(100vw-16px)] flex-col gap-1.5 rounded-xl border border-border bg-popover p-2 shadow-[0_12px_30px_-8px_oklch(0_0_0/0.18),0_2px_8px_oklch(0_0_0/0.06)]">
+      {editable.length === 0 && (
+        <p className="px-1 py-2 text-center text-[13px] text-muted-foreground">
+          <Trans>No filterable fields in this collection.</Trans>
+        </p>
+      )}
       <div className="flex items-center gap-1.5">
         <Select value={field} onChange={setField} options={editable.map((f) => ({ value: f.name, label: f.name, hint: f.type }))} className="flex-1" />
         <Select value={op} onChange={setOp} options={ops} className="flex-[0_0_110px]" disabled={needsTargetDrill && !nestedSub} />
@@ -269,7 +279,7 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
             value={nestedSub}
             onChange={setNestedSub}
             options={
-              !fieldDef.to
+              !fieldDef?.to
                 ? [{ value: "", label: t`Relation has no target` }]
                 : targetLoading
                   ? [{ value: "", label: t`Fetching subfields…` }]
@@ -277,9 +287,9 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
                     ? targetFields.map((f) => ({ value: f.name, label: f.name, hint: f.type }))
                     : [{ value: "", label: t`Target unavailable` }]
             }
-            placeholder={fieldDef.to ? t`Pick a subfield…` : "—"}
+            placeholder={fieldDef?.to ? t`Pick a subfield…` : "—"}
             className="flex-1"
-            disabled={!fieldDef.to || targetLoading || !targetFields}
+            disabled={!fieldDef?.to || targetLoading || !targetFields}
           />
         </div>
       )}

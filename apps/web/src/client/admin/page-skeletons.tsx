@@ -727,12 +727,12 @@ function CollectionItemsSkeletonImpl() {
       <Skeleton className="h-8 w-32" />
       <HeaderSkeleton actions={3} />
       <TabStripSkeleton tabs={3} />
-      <div className="grid grid-cols-[1fr_320px] items-start gap-4 max-[1024px]:grid-cols-1">
-        <div className="flex min-w-0 flex-col gap-3">
-          <Skeleton className="h-10 w-full rounded-xl" />
-          <TableCardSkeleton rows={8} cols={5} />
-        </div>
-        <Skeleton className="h-[360px] w-full rounded-2xl" />
+      {/* Single column: the live-tail widget is hidden by default, so the real
+          page renders one column (the 320px right panel only appears when the
+          user toggles "Live tail" on). */}
+      <div className="flex min-w-0 flex-col gap-3">
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <TableCardSkeleton rows={8} cols={5} />
       </div>
     </div>
   );

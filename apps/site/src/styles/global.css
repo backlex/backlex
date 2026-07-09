@@ -1605,52 +1605,6 @@ html:not(.dark) .cosmos-stars {
   display: none;
 }
 
-/* Cosmos custom cursor — mint ring trailing the pointer. Native cursor hidden
-   on pointer-fine devices; the ring swells + warms over interactive targets. */
-@media (hover: hover) and (pointer: fine) {
-  html.dark,
-  html.dark * {
-    cursor: none !important;
-  }
-}
-#cosmos-cursor {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 24px;
-  height: 24px;
-  margin: -12px 0 0 -12px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(124, 230, 192, 0.85);
-  box-shadow:
-    0 0 12px rgba(124, 230, 192, 0.55),
-    inset 0 0 8px rgba(124, 230, 192, 0.25);
-  pointer-events: none;
-  z-index: 9999;
-  opacity: 0;
-  transition:
-    opacity 0.25s ease,
-    width 0.18s ease,
-    height 0.18s ease,
-    margin 0.18s ease,
-    border-color 0.18s ease;
-  will-change: transform;
-}
-#cosmos-cursor.is-hot {
-  width: 28px;
-  height: 28px;
-  margin: -14px 0 0 -14px;
-  border-color: rgba(255, 157, 131, 0.95);
-  box-shadow:
-    0 0 12px rgba(255, 157, 131, 0.55),
-    inset 0 0 8px rgba(255, 157, 131, 0.25);
-}
-@media (hover: none), (pointer: coarse) {
-  #cosmos-cursor {
-    display: none;
-  }
-}
-
 /* Gradient headline accent text */
 .cosmos-grad {
   background: linear-gradient(100deg, #b9a3ff 10%, #ff9d83 55%, #b9a3ff 90%);

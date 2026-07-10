@@ -60,7 +60,10 @@
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
 
-    /* Radius scale */
+    /* Radius scale — the t-shirt names are kept for existing callsites, but
+       prefer the semantic tokens below for anything new. The t-shirt scale is
+       remapped per-app (see apps/web admin.css), so `xl` is not reliably
+       larger than `lg`; the semantic names never move. */
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -68,6 +71,14 @@
     --radius-2xl: calc(var(--radius) * 1.8);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
+
+    /* Semantic radius — three steps, one shape language. Tailwind derives
+       `rounded-control` / `rounded-surface` / `rounded-pill` from these.
+       Deliberately literal (not calc'd off --radius) so they never drift and
+       never depend on the color scheme. */
+    --radius-control: 0.5625rem; /* 9px — buttons, inputs, tabs, tiles, nav */
+    --radius-surface: 0.875rem; /* 14px — cards, panels, dialogs, popovers */
+    --radius-pill: 999px; /* badges, chips, status dots, segmented pills */
 }
 
 :root {

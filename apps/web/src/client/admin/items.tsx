@@ -33,7 +33,7 @@ const ADMIN_TABLE_CLS =
 export const SEG_LIST_CLS =
   "gap-[3px] rounded-[10px] border border-white/[0.07] bg-white/[0.04] p-[3px]";
 export const SEG_TRIGGER_CLS =
-  "rounded-[7px] px-3 py-[5px] text-xs font-semibold text-[#8580A2] data-active:bg-[rgba(139,108,255,0.16)] data-active:text-[#E7E4F4] dark:data-active:bg-[rgba(139,108,255,0.16)] dark:data-active:text-[#E7E4F4]";
+  "rounded-[7px] px-3 py-[5px] text-xs font-semibold text-muted-foreground data-active:bg-[color-mix(in_oklch,var(--primary)_16%,transparent)] data-active:text-foreground";
 
 /** Cosmos status chip — mint (published) / coral (review) / gray (draft) /
  *  dim (archived), or a custom-color dot when the schema's choice carries its
@@ -362,7 +362,7 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
     <div className="flex flex-col gap-2">
       {/* Row 1: search + Filter on the left, status tabs pinned to the right. */}
       <div className="flex flex-wrap items-center gap-2">
-        <InputGroup className="h-[34px] min-w-[220px] flex-1 basis-[360px] rounded-[9px] border-white/10 bg-white/[0.03] sm:max-w-[420px]">
+        <InputGroup className="h-[34px] min-w-[220px] flex-1 basis-[360px] rounded-control border-white/10 bg-white/[0.03] sm:max-w-[420px]">
           <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
           <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t`Search ${total} items by title or slug…`} />
           {search && (
@@ -373,7 +373,7 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
         </InputGroup>
 
         <div ref={wrapRef} className="relative">
-          <Button variant="outline" size="sm" icon={I.Filter} className="h-[34px] rounded-[9px] border-white/10 bg-white/[0.03]" onClick={() => setPopOpen((v) => !v)}>
+          <Button variant="outline" size="sm" icon={I.Filter} className="h-[34px] rounded-control border-white/10 bg-white/[0.03]" onClick={() => setPopOpen((v) => !v)}>
             <Trans>Filter</Trans>
           </Button>
           {popOpen && <AddFilterPopover schema={schema} onAdd={(f) => setFilters([...filters, f])} onClose={() => setPopOpen(false)} />}

@@ -374,21 +374,34 @@ header.header {
   font-weight: 600;
 }
 
-/* Tables */
+/* Tables — `rehype-table-wrapper` wraps each one in `.table-wrapper`, which
+   owns the frame and the horizontal scroll. The table itself stays a real
+   `display: table` box (Starlight defaults it to `block`, which shrinks the
+   inner table to content and leaves dead space on the right), so `width: 100%`
+   fills the column when it fits and overflows into the wrapper's scroll when
+   it doesn't — instead of painting over the "On this page" sidebar. */
+.sl-markdown-content .table-wrapper:not(:where(.not-content *)) {
+  margin: 16px 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+}
+
+.sl-markdown-content .table-wrapper:focus-visible {
+  outline: 2px solid var(--sl-color-accent);
+  outline-offset: 2px;
+}
+
 .sl-markdown-content table:not(:where(.not-content *)) {
-  /* Starlight's default sets `display: block`, which makes `width: 100%` size
-     the block box while the inner table shrinks to content — leaving dead space
-     on the right for small tables. Force a real table box so it fills the
-     column. The mobile media query below restores `display: block` for scroll. */
   display: table;
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  margin: 16px 0;
+  margin: 0;
   font-size: 13.5px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  overflow: hidden;
+  border: 0;
 }
 
 .sl-markdown-content th:not(:where(.not-content *)) {
@@ -577,11 +590,6 @@ starlight-toc nav a[aria-current="true"] {
   body {
     font-size: 14px;
   }
-  .sl-markdown-content table:not(:where(.not-content *)) {
-    display: block;
-    overflow-x: auto;
-    min-width: 0;
-  }
   .sl-markdown-content .expressive-code:not(:where(.not-content *)) {
     overflow-x: auto;
   }
@@ -752,27 +760,60 @@ body > .page {
   line-height: 1.4;
 }
 
-/* Distinct coral section glyphs per sidebar group (design parity) — replaces
-   the single dot with ◆ ▲ ● ✦ ➜ … in JetBrains Mono, like the "Backlex Docs"
-   design's sidebar. */
+/* Distinct coral section glyphs per sidebar group (design parity) — diamond,
+   triangle, circle, sparkle, arrow, hollow diamond.
+
+   These are SVG masks, not text glyphs. JetBrains Mono carries almost none of
+   the geometric/dingbat codepoints (◆ ▲ ● ✦ ➜ ◇), so a `content: "✦"` makes the
+   browser fall back per-codepoint to whatever system font has it — a different
+   font, with different metrics, for each shape and each OS. That is what made
+   the sparkle render visibly smaller than the circle. Masking a shape we ship
+   ourselves pins the optical size on every platform.
+
+   `mask-size` (not the 14px box) sets each shape's size, so the shapes stay
+   optically matched — a filled circle reads larger than a diamond at identical
+   geometric size — while the box stays constant and the labels stay aligned. */
 :root[data-theme="dark"] .sidebar-content .group-label::before {
-  content: "◆";
+  content: "";
+  display: inline-block;
   width: 14px;
-  height: auto;
-  background: none;
+  height: 14px;
+  flex-shrink: 0;
   border-radius: 0;
-  color: #ff9d83;
-  font-family: var(--sl-font-mono);
-  font-size: 11px;
-  line-height: 1;
-  text-align: center;
+  background: #ff9d83;
+  -webkit-mask: var(--group-glyph) no-repeat center / var(--group-glyph-size, 11px);
+  mask: var(--group-glyph) no-repeat center / var(--group-glyph-size, 11px);
 }
-:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(1) .group-label::before { content: "◆"; }
-:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(2) .group-label::before { content: "▲"; }
-:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(3) .group-label::before { content: "●"; }
-:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(4) .group-label::before { content: "✦"; }
-:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(5) .group-label::before { content: "➜"; }
-:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(6) .group-label::before { content: "◇"; }
+/* Start — filled diamond */
+:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(1) .group-label::before {
+  --group-glyph: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201.5%2022.5%2012%2012%2022.5%201.5%2012Z'/%3E%3C/svg%3E");
+  --group-glyph-size: 11px;
+}
+/* Data — filled triangle */
+:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(2) .group-label::before {
+  --group-glyph: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%202.5%2022.5%2020.5%201.5%2020.5Z'/%3E%3C/svg%3E");
+  --group-glyph-size: 11px;
+}
+/* Runtime — filled circle (optically largest, so drawn smallest) */
+:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(3) .group-label::before {
+  --group-glyph: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Ccircle%20cx='12'%20cy='12'%20r='10.5'/%3E%3C/svg%3E");
+  --group-glyph-size: 9.5px;
+}
+/* Auth — four-point sparkle (concave, so drawn largest) */
+:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(4) .group-label::before {
+  --group-glyph: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%201C12.6%206.9%2017.1%2011.4%2023%2012C17.1%2012.6%2012.6%2017.1%2012%2023C11.4%2017.1%206.9%2012.6%201%2012C6.9%2011.4%2011.4%206.9%2012%201Z'/%3E%3C/svg%3E");
+  --group-glyph-size: 13px;
+}
+/* Developer — arrow */
+:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(5) .group-label::before {
+  --group-glyph: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M2%2012h17m0%200-6.5-6.5M19%2012l-6.5%206.5'%20fill='none'%20stroke='%23000'%20stroke-width='2.4'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E");
+  --group-glyph-size: 12.5px;
+}
+/* Internals — hollow diamond */
+:root[data-theme="dark"] .sidebar-content ul.top-level > li:nth-child(6) .group-label::before {
+  --group-glyph: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M12%202.5%2021.5%2012%2012%2021.5%202.5%2012Z'%20fill='none'%20stroke='%23000'%20stroke-width='2.4'%20stroke-linejoin='round'/%3E%3C/svg%3E");
+  --group-glyph-size: 11.5px;
+}
 
 /* Active sidebar item → violet pill with an inset ring (design parity),
    replacing the left-border treatment in the cosmos (dark) theme. */
@@ -806,11 +847,13 @@ body > .page {
   align-items: center;
   gap: 12px;
 }
+/* GitHub mark — matches the marketing site nav (18px, currentColor). */
 .cosmos-header .gh-link {
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--sl-color-gray-2);
   text-decoration: none;
-  white-space: nowrap;
   transition: color 0.15s ease;
 }
 .cosmos-header .gh-link:hover {

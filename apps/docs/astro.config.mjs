@@ -1,11 +1,15 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import starlightLlmsTxt from "starlight-llms-txt";
+import rehypeTableWrapper from "./src/plugins/rehype-table-wrapper.mjs";
 
 // https://astro.build/config
 export default defineConfig({
   site: "https://backlex.com",
   base: "/docs",
+  markdown: {
+    rehypePlugins: [rehypeTableWrapper],
+  },
   integrations: [
     starlight({
       title: "Backlex",

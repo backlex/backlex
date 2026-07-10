@@ -2,16 +2,31 @@
    single source of truth in packages/ui/src/styles/globals.css (loaded
    app-wide via main.tsx). Only admin-shell-specific tokens live here. */
 :root {
-  /* Radius scale mirrors globals.css's @theme so legacy var(--radius-*)
-     callsites keep resolving even if Tailwind inlines the theme values. */
+  /* Radius. The design has exactly two shapes: 9px controls and 14px surfaces.
+     `--radius-control` / `--radius-surface` / `--radius-pill` (tokens.css) are
+     the names to reach for — components consume those.
+
+     The t-shirt names below are the legacy scale. They're pinned here rather
+     than mirrored from globals.css because ~120 admin callsites were authored
+     against these remapped values (rounded-xl == a 9px control, rounded-2xl ==
+     a 14px card). Two things this fixes vs. the old block:
+       - it lives in `:root`, not `html.dark`. The remap used to be dark-only,
+         so flipping to light silently reshaped every card (14px → 25.2px) and
+         every control (9px → 19.6px). Shape must not depend on color mode.
+       - `--radius-4xl` is no longer left at 36.4px. It was the one step the
+         old override missed, and the shared Button used exactly that step —
+         which is why every button rendered as a pill despite the design
+         calling for 9px, and why two CTAs hardcoded `rounded-[9px]` to escape.
+     The scale is still not monotonic (xl < lg). Migrate callsites to the
+     semantic names and this block can go away. */
   --radius: 0.875rem;
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-sm: calc(var(--radius) * 0.6); /* 8.4px */
+  --radius-md: calc(var(--radius) * 0.8); /* 11.2px */
+  --radius-lg: var(--radius); /* 14px */
+  --radius-xl: var(--radius-control); /* 9px — sidebar nav, inputs */
+  --radius-2xl: var(--radius-surface); /* 14px — cards, panels */
+  --radius-3xl: var(--radius-control); /* 9px — tabs, tiles, segmented */
+  --radius-4xl: var(--radius-control); /* 9px — buttons */
 
   --row-h: 44px; /* density: comfortable */
 }
@@ -130,8 +145,8 @@ body {
   color: #e7e4f4;
 }
 .dark [data-sidebar="menu-button"][data-active="true"] {
-  background: rgba(139, 108, 255, 0.16);
-  color: #f3f1fb;
+  background: color-mix(in oklch, var(--primary) 16%, transparent);
+  color: var(--foreground);
 }
 /* Group labels — dim mono, per design */
 .dark [data-sidebar="group-label"] {
@@ -147,11 +162,6 @@ body {
 /* Frosted translucent sidebar so the backdrop reads through it (design). */
 html.dark {
   --sidebar: rgba(12, 10, 22, 0.58);
-  /* Tighter radii to match the design: 14px cards/panels, 9px controls
-     (buttons, tabs, search, nav, tiles). The stock scale was 25–31px. */
-  --radius-xl: 0.5625rem; /* 9px — sidebar nav, inputs */
-  --radius-2xl: 0.875rem; /* 14px — cards, panels */
-  --radius-3xl: 0.5625rem; /* 9px — buttons, tabs, tiles, segmented */
 }
 [data-slot="sidebar-inner"] {
   backdrop-filter: blur(14px);
@@ -165,6 +175,26 @@ html.dark {
   cursor: pointer;
   display: grid; place-items: center;
 }
+
+/* Primary CTA ("New post", "New collection"). The gradient is derived from
+   var(--primary) with the same relative-color technique as .avatar, so it
+   tracks the workspace accent set in Settings → Appearance. It used to be a
+   literal `linear-gradient(135deg,#8B6CFF,#7c5cff)`, which painted over the
+   themed background-color and left these two buttons violet on every
+   workspace. `--primary-foreground` clamps on lightness, so the label stays
+   readable when the accent is light (e.g. yellow) — the old hardcoded
+   `text-white` did not. Unlayered, so it beats Tailwind's `bg-primary`. */
+.btn-cta {
+  border: 0;
+  border-radius: var(--radius-control);
+  background: linear-gradient(
+    135deg,
+    oklch(from var(--primary) calc(l + 0.04) c h),
+    oklch(from var(--primary) l c calc(h + 8))
+  );
+  color: var(--primary-foreground);
+}
+.btn-cta:hover { opacity: 0.9; }
 .icon-btn:hover { background: var(--accent); }
 
 .avatar {

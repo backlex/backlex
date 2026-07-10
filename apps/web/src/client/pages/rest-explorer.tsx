@@ -826,6 +826,67 @@ interface TryResult {
   bodyText: string;
 }
 
+interface NetworkTimingProbe {
+  /** Resolves with `responseEnd - startTime`, or null if no entry showed up. */
+  read: () => Promise<number | null>;
+  cancel: () => void;
+}
+
+/** The resource entry is queued a task or two after the body is consumed. */
+const TIMING_ENTRY_WAIT_MS = 1_000;
+
+/**
+ * Reads the browser's own timing for `url` so the number next to Send matches
+ * the Network panel, rather than also counting JSON parsing and whatever else
+ * the main thread was busy with while the request was in flight.
+ */
+const probeNetworkTiming = (url: string): NetworkTimingProbe => {
+  if (typeof PerformanceObserver === "undefined") {
+    return { read: async () => null, cancel: () => {} };
+  }
+
+  const openedAt = performance.now();
+  let captured: number | undefined;
+  let deliver: ((ms: number | null) => void) | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const stop = () => {
+    observer.disconnect();
+    if (timer !== undefined) clearTimeout(timer);
+  };
+
+  const observer = new PerformanceObserver((list) => {
+    const hit = list
+      .getEntries()
+      .find(
+        (e): e is PerformanceResourceTiming =>
+          e.name === url &&
+          e.entryType === "resource" &&
+          (e as PerformanceResourceTiming).initiatorType === "fetch" &&
+          // Ignore a same-URL request that was already in flight before us.
+          e.startTime >= openedAt,
+      );
+    if (!hit) return;
+    captured = hit.duration;
+    stop();
+    deliver?.(captured);
+  });
+  observer.observe({ type: "resource", buffered: false });
+
+  return {
+    read: () =>
+      new Promise<number | null>((resolve) => {
+        if (captured !== undefined) return resolve(captured);
+        deliver = resolve;
+        timer = setTimeout(() => {
+          stop();
+          resolve(null);
+        }, TIMING_ENTRY_WAIT_MS);
+      }),
+    cancel: stop,
+  };
+};
+
 const _renderToBody = (val: string, schema?: OpenApiSchema): unknown => {
   // For path/query params: coerce based on the schema if possible.
   const t = Array.isArray(schema?.type) ? schema?.type[0] : schema?.type;
@@ -921,6 +982,7 @@ const TryItTab = ({
   const send = useCallback(async () => {
     setRunning(true);
     setResult(null);
+    const timing = probeNetworkTiming(fullUrl);
     const started = performance.now();
     try {
       const init: RequestInit = {
@@ -938,7 +1000,7 @@ const TryItTab = ({
       if (allowsBody && bodyText.trim()) {
         init.body = bodyText;
       }
-      const res = await fetch(`${resolvedPath}${queryString}`, init);
+      const res = await fetch(fullUrl, init);
       const text = await res.text();
       let parsed: unknown = text;
       try {
@@ -950,22 +1012,24 @@ const TryItTab = ({
       res.headers.forEach((value, key) => {
         headersOut[key] = value;
       });
+      const networkMs = await timing.read();
       setResult({
         status: res.status,
         statusText: res.statusText,
         ok: res.ok,
-        durationMs: Math.round(performance.now() - started),
+        durationMs: networkMs ?? performance.now() - started,
         headers: headersOut,
         body: parsed,
         bodyText: text,
       });
     } catch (e) {
+      timing.cancel();
       notifyError(e, `while calling ${ep.method.toUpperCase()} ${ep.path}`);
       setResult({
         status: 0,
         statusText: "Network error",
         ok: false,
-        durationMs: Math.round(performance.now() - started),
+        durationMs: performance.now() - started,
         headers: {},
         body: { error: (e as Error).message },
         bodyText: (e as Error).message,
@@ -973,7 +1037,7 @@ const TryItTab = ({
     } finally {
       setRunning(false);
     }
-  }, [ep, bodyText, resolvedPath, queryString, headerValues]);
+  }, [ep, bodyText, fullUrl, headerValues]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -1086,7 +1150,7 @@ const TryItTab = ({
         </Button>
         {result && (
           <span className="text-xs text-muted-foreground tabular-nums">
-            {result.durationMs} ms
+            {result.durationMs.toFixed(1)} ms
           </span>
         )}
       </div>

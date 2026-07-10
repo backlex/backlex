@@ -275,8 +275,8 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
         {quickActions.map((a) => {
           const Icon = a.icon;
           return (
-            <button key={a.label} onClick={a.onClick} className="flex cursor-pointer items-center gap-[11px] rounded-2xl border border-dashed border-white/[0.14] bg-transparent px-3.5 py-3 text-left text-inherit transition-colors hover:border-[rgba(139,108,255,0.45)] hover:bg-[rgba(139,108,255,0.05)]">
-              <span className="grid size-8 place-items-center rounded-lg bg-[rgba(139,108,255,0.14)] text-[#b9a3ff]">
+            <button key={a.label} onClick={a.onClick} className="flex cursor-pointer items-center gap-[11px] rounded-2xl border border-dashed border-white/[0.14] bg-transparent px-3.5 py-3 text-left text-inherit transition-colors hover:border-[color-mix(in_oklch,var(--primary)_45%,transparent)] hover:bg-[color-mix(in_oklch,var(--primary)_5%,transparent)]">
+              <span className="grid size-8 place-items-center rounded-lg bg-[color-mix(in_oklch,var(--primary)_14%,transparent)] text-[oklch(from_var(--primary)_0.78_0.12_h)]">
                 <Icon size={14} />
               </span>
               <div className="flex flex-col">
@@ -294,7 +294,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
         {stats.map((s) => {
           const Icon = s.icon;
           return (
-            <Card key={s.label} className="cursor-pointer gap-1 p-4 transition-colors hover:border-[rgba(139,108,255,0.35)]" onClick={() => setActiveNav(s.nav)}>
+            <Card key={s.label} className="cursor-pointer gap-1 p-4 transition-colors hover:border-[color-mix(in_oklch,var(--primary)_35%,transparent)]" onClick={() => setActiveNav(s.nav)}>
               <div className="flex items-center gap-[7px] text-[#8580a2]">
                 <Icon size={13} />
                 <div className="text-[11px] font-semibold uppercase tracking-[0.06em]">{s.label}</div>

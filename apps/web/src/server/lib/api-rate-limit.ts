@@ -9,9 +9,14 @@
  * on shared cloud infra) gets a 429 instead of saturating the backend.
  *
  * Backend is the same as the auth limiter — a Durable Object on Workers
- * (authoritative across isolates), an in-process Map elsewhere — via
- * `rateLimitCheck`. Every gated response carries the IETF-draft `RateLimit-*`
- * headers so well-behaved clients can back off before they're throttled.
+ * (authoritative across isolates), an in-process Map elsewhere — but through
+ * the NON-BLOCKING `rateLimitCheckDeferred`: the verdict comes from the last
+ * DO snapshot (plus a per-isolate window) and the DO round-trip happens in
+ * `waitUntil`, off the request's critical path. A blocking DO check here cost
+ * ~75ms on every warm data request — most of the handler's latency — for
+ * precision this generous quota doesn't need. Every gated response carries the
+ * IETF-draft `RateLimit-*` headers so well-behaved clients can back off before
+ * they're throttled.
  *
  * Enablement (see {@link apiRateLimitConfig}):
  *   - OFF by default on self-host (an operator's own API shouldn't sprout a
@@ -25,7 +30,7 @@
 import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import type { Env } from "../env";
-import { rateLimitCheck } from "./rate-limit";
+import { rateLimitCheckDeferred } from "./rate-limit";
 
 const DEFAULT_MAX = 600;
 const DEFAULT_WINDOW_MS = 60_000;
@@ -111,7 +116,23 @@ export const apiRateLimitMiddleware: MiddlewareHandler<AppBindings> = async (
     return;
   }
 
-  const r = await rateLimitCheck(env, keyForRequest(c), cfg.max, cfg.windowMs);
+  // Non-blocking: verdict from the last DO snapshot; the DO sync (which also
+  // counts this request) runs in waitUntil. `c.executionCtx` is a getter that
+  // THROWS outside Workers (Bun/Vercel/Netlify) — guard it and fall back to
+  // fire-and-forget, same pattern as the span persist in app.ts.
+  const r = rateLimitCheckDeferred(
+    env,
+    keyForRequest(c),
+    cfg.max,
+    cfg.windowMs,
+    (work) => {
+      try {
+        c.executionCtx?.waitUntil?.(work);
+      } catch {
+        void work;
+      }
+    },
+  );
   const resetSec = Math.max(0, Math.ceil((r.resetAt - Date.now()) / 1000));
   // Set on every gated response so clients can self-throttle before a 429.
   c.header("RateLimit-Limit", String(r.limit));

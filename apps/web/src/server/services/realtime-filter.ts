@@ -4,11 +4,8 @@
  * what shape?", used by BOTH transports (the in-process / Redis fan-out in
  * events.ts AND the Durable Object's per-socket deliver()). Keeping it here,
  * importing only `matchesCondition`, means the two paths can't drift — which
- * matters most for the membership-transition logic (reactive invalidation
- * Stage 2), where a mismatch would silently leak or drop rows on one runtime
- * but not the other.
- *
- * See docs/reactive-invalidation-plan.md.
+ * matters most for the membership-transition logic, where a mismatch would
+ * silently leak or drop rows on one runtime but not the other.
  */
 import { matchesCondition } from "@backlex/db";
 import type { AuthSubject, Condition } from "@backlex/core";

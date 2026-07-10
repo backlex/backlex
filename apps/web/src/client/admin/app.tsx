@@ -1116,7 +1116,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                     variant="primary"
                     icon={I.Plus}
                     onClick={openCreate}
-                    className="h-[34px] gap-1.5 rounded-[9px] border-0 bg-[linear-gradient(135deg,#8B6CFF,#7c5cff)] px-3.5 text-[13px] font-semibold text-white hover:bg-[linear-gradient(135deg,#8B6CFF,#7c5cff)] hover:opacity-90"
+                    className="btn-cta h-[34px] gap-1.5 px-3.5 text-[13px] font-semibold"
                   >
                     <Trans>New post</Trans>
                   </Button>
@@ -1177,7 +1177,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                           onClick={() => setTweak("showRealtime", !tweaks.showRealtime)}
                           aria-pressed={tweaks.showRealtime}
                           title={t`Live tail`}
-                          className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-medium transition-colors ${tweaks.showRealtime ? "border-[rgba(139,108,255,0.45)] bg-[rgba(139,108,255,0.14)] text-foreground" : "border-border bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
+                          className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-medium transition-colors ${tweaks.showRealtime ? "border-[color-mix(in_oklch,var(--primary)_45%,transparent)] bg-[color-mix(in_oklch,var(--primary)_14%,transparent)] text-foreground" : "border-border bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
                         >
                           <I.Zap size={13} />
                           <span className="max-sm:hidden">{t`Live tail`}</span>
@@ -1253,7 +1253,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                                     type="button"
                                     onClick={() => setPage(p)}
                                     aria-current={active ? "page" : undefined}
-                                    className={`grid h-7 min-w-7 place-items-center rounded-[7px] border px-2 text-[11.5px] font-medium tabular-nums transition-colors ${active ? "border-[rgba(139,108,255,0.4)] bg-[rgba(139,108,255,0.14)] text-[#E7E4F4]" : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
+                                    className={`grid h-7 min-w-7 place-items-center rounded-[7px] border px-2 text-[11.5px] font-medium tabular-nums transition-colors ${active ? "border-[color-mix(in_oklch,var(--primary)_40%,transparent)] bg-[color-mix(in_oklch,var(--primary)_14%,transparent)] text-foreground" : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
                                   >
                                     {p}
                                   </button>,

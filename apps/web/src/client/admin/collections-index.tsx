@@ -272,7 +272,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
                 variant="primary"
                 icon={I.Plus}
                 onClick={() => setChooserOpen(true)}
-                className="h-[34px] gap-1.5 rounded-[9px] border-0 bg-[linear-gradient(135deg,#8B6CFF,#7c5cff)] px-3.5 text-[13px] font-semibold text-white hover:bg-[linear-gradient(135deg,#8B6CFF,#7c5cff)] hover:opacity-90"
+                className="btn-cta h-[34px] gap-1.5 px-3.5 text-[13px] font-semibold"
               >
                 <Trans>New collection</Trans>
               </Button>
@@ -613,7 +613,7 @@ function CollectionCard({ c, onOpen, archived, editing, dropTarget, onRestore, o
     >
       <div className="flex items-center gap-2.5">
         {editing && <I.Grip size={14} className="shrink-0 text-muted-foreground" />}
-        <span className="grid size-[34px] shrink-0 place-items-center rounded-[9px] bg-[color-mix(in_oklch,var(--primary)_12%,transparent)] text-[oklch(from_var(--primary)_0.78_0.15_h)]"><Ic size={14} /></span>
+        <span className="grid size-[34px] shrink-0 place-items-center rounded-control bg-[color-mix(in_oklch,var(--primary)_12%,transparent)] text-[oklch(from_var(--primary)_0.78_0.15_h)]"><Ic size={14} /></span>
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate font-mono text-[13px] text-foreground">c_{c.slug}</span>
           <span className="truncate text-[11px] text-muted-foreground"><Trans>{c.fields} fields</Trans></span>

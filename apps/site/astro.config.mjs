@@ -5,6 +5,10 @@ import tailwindcss from "@tailwindcss/vite";
 // https://astro.build/config
 export default defineConfig({
   site: "https://backlex.com",
+  // Astro's HTML compressor drops a whitespace-only text node that ends a line,
+  // gluing a prose link to the word before it ("ourTerms of Service"). The legal
+  // pages and every /vs-* comparison hit it. Costs ~300B gzipped per page.
+  compressHTML: false,
   // No-trailing-slash canonical URLs site-wide (/pricing, /vs-supabase, …).
   // `format: "file"` emits `pricing.html` instead of `pricing/index.html`, so
   // Cloudflare's default `auto-trailing-slash` serves the no-slash path with a

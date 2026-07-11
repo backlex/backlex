@@ -538,13 +538,15 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>()
       // unqualified column references (`owner_id` etc.) also get pinned to
       // the base table. `perm.conditions === null` means at least one
       // matching permission row was unconditional → stays null. Otherwise
-      // recompile through the join-aware colRef. Permission conditions
-      // never reference dotted relation_many keys (they're defined per-
-      // collection by admins), so we don't need to thread the leaf
-      // compiler through this path.
+      // recompile through the join-aware colRef. Dotted relation paths in
+      // permission conditions must keep their EXISTS lowering here too —
+      // `perm.relationLeaf` (built by resolvePermission) takes precedence
+      // over nestedColRef for dotted keys, so a user filter that LEFT JOINs
+      // the same relation can't reroute a permission condition through the
+      // join alias (whose NULL-extending semantics differ from EXISTS).
       const permWhere =
         hasJoins && perm.conditions
-          ? combineConditions(perm.conditions, auth, nestedColRef, undefined, {
+          ? combineConditions(perm.conditions, auth, nestedColRef, perm.relationLeaf, {
               dialect: ctx.dialect,
             })
           : perm.whereSql;

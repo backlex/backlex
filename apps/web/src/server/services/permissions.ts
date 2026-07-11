@@ -11,8 +11,12 @@ import {
   normalizeCondition,
   SYSTEM_ROLES,
 } from "@backlex/core";
-import { combineConditions, matchesCondition } from "@backlex/db";
+import { combineConditions, matchesCondition, type LeafCompiler } from "@backlex/db";
 import type { DbCtx } from "./seed";
+import {
+  buildPermissionRelationLeaf,
+  conditionHasDottedKey,
+} from "./permission-relations";
 import {
   type CachedRoleRow,
   type CachedStaticPermission,
@@ -229,6 +233,14 @@ export interface ResolvedPermission {
   conditions: Condition[] | null;
   /** Union of allowed fields across matching rows; null = all fields. */
   fields: Set<string> | null;
+  /**
+   * Present only when `conditions` contain dotted relation paths
+   * (`employee.app_user_id`). The same leaf compiler that lowered those keys
+   * into `whereSql` as correlated EXISTS subqueries — consumers that
+   * RE-compile `conditions` (the list handler's join-aware path) must thread
+   * it through `combineConditions` so dotted keys keep their lowering.
+   */
+  relationLeaf?: LeafCompiler;
 }
 
 /** Per-request L1 cache. Keyed by `"<collection>:<action>"` because `auth`
@@ -361,11 +373,27 @@ export const resolvePermission = async (
     });
   }
 
+  // Dotted relation paths in permission conditions lower to correlated
+  // EXISTS subqueries (a bare-identifier compile would reference a column
+  // that doesn't exist and match nothing). Only built when a condition
+  // actually carries a dotted key, so the common path stays free of extra
+  // metadata loads.
+  const relationLeaf = staticPerm.rawConditions.some(
+    (c) => c != null && conditionHasDottedKey(c),
+  )
+    ? await buildPermissionRelationLeaf(
+        ctx,
+        tenantId,
+        collection,
+        staticPerm.rawConditions,
+      )
+    : undefined;
+
   const whereSql = combineConditions(
     staticPerm.rawConditions,
     auth,
     undefined,
-    undefined,
+    relationLeaf,
     { dialect: ctx.dialect },
   );
   const conditions: Condition[] | null = staticPerm.rawConditions.some(
@@ -375,7 +403,14 @@ export const resolvePermission = async (
     : (staticPerm.rawConditions as Condition[]);
   const fields = staticPerm.fields ? new Set(staticPerm.fields) : null;
 
-  return remember({ allowed: true, isAdmin: false, whereSql, conditions, fields });
+  return remember({
+    allowed: true,
+    isAdmin: false,
+    whereSql,
+    conditions,
+    fields,
+    ...(relationLeaf ? { relationLeaf } : {}),
+  });
 };
 
 /**

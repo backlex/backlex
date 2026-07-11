@@ -239,7 +239,8 @@ backlex login [--url <url>] [--key <pak_...>|-] [--tenant <id>] [--profile <name
 backlex logout [--profile <name>] [--all]        clear saved credentials (--all removes the profile)
 backlex whoami [--profile <name>] [--json]       show the identity behind the resolved key
 backlex profile <list|use|add|remove>            manage saved connection profiles
-backlex collections <list|get|export-schema>     inspect the connected instance's schema
+backlex collections <list|get|export-schema|drop-field|fts-reindex|vectorize>
+                                                 inspect the schema + rebuild search indexes
 backlex items <list|get|create|update|delete|export|import|search> <slug>
                                                  data-plane CRUD + bulk export/import + search
 backlex backup <list|now|download|restore|config>   logical backups + restore + schedule

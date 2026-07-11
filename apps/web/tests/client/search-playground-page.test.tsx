@@ -32,10 +32,18 @@ const mockFetchRoutes = (
         data: [
           { slug: "notes", fts: false, displayTemplate: null, fields: [] },
           {
-            slug: "posts",
+            // fts toggled on but nothing marked searchable — the /search
+            // endpoint 422s this, so the page must not preselect or badge it.
+            slug: "drafts",
             fts: true,
             displayTemplate: null,
             fields: [{ name: "title", type: "text" }],
+          },
+          {
+            slug: "posts",
+            fts: true,
+            displayTemplate: null,
+            fields: [{ name: "title", type: "text", searchable: true }],
           },
         ],
       });
@@ -81,6 +89,19 @@ describe("<SearchPlaygroundPage>", () => {
     mockFetchRoutes(() => json({ data: [], mode: "fts", limit: 20 }));
     await runSearch("zeppelin");
     await waitFor(() => expect(screen.getByText("No matches")).toBeTruthy());
+  });
+
+  test("preselection + FTS badge require a searchable field, not just the toggle", async () => {
+    mockFetchRoutes();
+    renderWithProviders(<SearchPlaygroundPage pushToast={() => {}} />);
+    // "drafts" comes first and has fts: true, but no searchable field — the
+    // old `c.fts`-only rule would preselect it and the search would 422.
+    // "posts" (effectively searchable) must win, and its trigger renders the
+    // FTS badge (Radix SelectValue mirrors the selected item's content).
+    await waitFor(() => expect(screen.getByText("posts")).toBeTruthy());
+    expect(screen.queryByText("drafts")).toBeNull();
+    const trigger = screen.getByText("posts").closest("button");
+    expect(trigger?.textContent).toContain("FTS");
   });
 
   test("server VALIDATION messages surface inline instead of vanishing", async () => {

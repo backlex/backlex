@@ -17,6 +17,8 @@ interface FieldLike {
   type?: string;
   /** Target collection slug — present on `relation` fields. */
   to?: string;
+  /** Contributes to the FTS index when the collection has `fts: true`. */
+  searchable?: boolean;
 }
 
 interface SchemaLike {
@@ -280,6 +282,15 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
                 <span className="font-mono"> /search</span> endpoint (full-text / vector / hybrid).
                 After enabling on an existing collection, run a re-index to backfill.</Trans>
               </div>
+              {!!schema.fts &&
+                !(schema.fields ?? []).some(
+                  (f) => f.searchable && (f.type === "text" || f.type === "longtext"),
+                ) && (
+                  <div className="mt-1 text-[11.5px] text-amber-500">
+                    <Trans>No text field is marked <span className="font-mono">searchable</span> yet,
+                    so search stays empty — flip it on a text field in the Schema tab.</Trans>
+                  </div>
+                )}
             </div>
             <Switch checked={!!schema.fts} onChange={(v) => onPatch({ fts: v })} />
           </div>

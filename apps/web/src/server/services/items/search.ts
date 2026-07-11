@@ -57,27 +57,35 @@ export const searchCollectionItems = async (
   const ftsOn = isSearchable(collection);
   const vecOn = isVectorizable(collection, ctx.env);
 
+  // The toggle can be on while the index is still empty of inputs (no field
+  // marked `searchable` / `vectorize`, no embedding model). Name the actual
+  // missing piece so the 422 doesn't contradict what the admin sees in the
+  // collection's settings.
+  const ftsReason = collection.fts
+    ? `full-text search is on, but no text field is marked "searchable" — mark at least one text/longtext field searchable, then run a re-index`
+    : "full-text search is not enabled";
+  const vecReason = !collection.vectorize
+    ? "vector search is not enabled"
+    : !resolveModel(collection, ctx.env)
+      ? "vector search is on, but no embedding model is configured"
+      : `vector search is on, but no text field is marked "vectorize"`;
+
   // Resolve the effective mode, rejecting requests for a backend the
   // collection hasn't enabled so the caller gets a precise 422 instead of
   // a silently-empty result.
   let mode: SearchMode;
   if (input.mode) {
     if (input.mode === "fts" && !ftsOn) {
-      throw new AppError(
-        "VALIDATION",
-        `Collection "${collection.slug}" does not have full-text search enabled.`,
-      );
+      throw new AppError("VALIDATION", `Collection "${collection.slug}": ${ftsReason}.`);
     }
     if (input.mode === "vector" && !vecOn) {
-      throw new AppError(
-        "VALIDATION",
-        `Collection "${collection.slug}" does not have vector search configured.`,
-      );
+      throw new AppError("VALIDATION", `Collection "${collection.slug}": ${vecReason}.`);
     }
     if (input.mode === "hybrid" && !(ftsOn && vecOn)) {
+      const missing = [...(ftsOn ? [] : [ftsReason]), ...(vecOn ? [] : [vecReason])];
       throw new AppError(
         "VALIDATION",
-        "Hybrid search needs both full-text search and vector search enabled on this collection.",
+        `Hybrid search needs both backends on collection "${collection.slug}": ${missing.join("; ")}.`,
       );
     }
     mode = input.mode;
@@ -90,7 +98,7 @@ export const searchCollectionItems = async (
   } else {
     throw new AppError(
       "VALIDATION",
-      `Collection "${collection.slug}" has neither full-text search nor vector search enabled.`,
+      `Collection "${collection.slug}" is not searchable: ${ftsReason}; ${vecReason}.`,
     );
   }
 

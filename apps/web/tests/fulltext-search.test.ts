@@ -239,6 +239,32 @@ describe("full-text search — enabling + backfill on an existing collection", (
     expect(r.data[0]!.title).toBe("Existing alpha doc");
   });
 
+  test("fts on but no searchable field → 422 names the missing piece", async () => {
+    // The admin toggle alone doesn't make a collection searchable; the 422
+    // must say "mark a field searchable", not "full-text search not enabled"
+    // (which contradicts what the settings screen shows).
+    const other = `ftsnofield_${Date.now()}`;
+    const create = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({
+        slug: other,
+        fts: true,
+        fields: [{ name: "title", type: "text" }], // not searchable
+      }),
+    });
+    expect(create.status).toBe(201);
+    const res = await h.fetch(`/api/items/${other}/search`, {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({ q: "anything" }),
+    });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("searchable");
+    expect(body.error.message).not.toContain("neither");
+  });
+
   test("fts-reindex 422s on a collection without fts enabled", async () => {
     const other = `ftsoff_${Date.now()}`;
     await h.fetch("/api/collections", {

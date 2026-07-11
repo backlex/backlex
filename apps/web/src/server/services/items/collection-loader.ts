@@ -82,7 +82,9 @@ export const collectionsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
 
 export const loadCollection = async (
-  ctx: Ctx,
+  // Only the DB handle + dialect are used, so callers that hold a bare
+  // `DbCtx` (e.g. the permission resolver) can load collection metadata too.
+  ctx: Pick<Ctx, "db" | "dialect">,
   tenantId: string | null | undefined,
   slug: string,
 ): Promise<CollectionRow> => {

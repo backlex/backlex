@@ -2086,6 +2086,558 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
     ],
   },
+
+  {
+    id: "field-service",
+    label: "Field service",
+    groups: ["Work orders", "People", "Catalog"],
+    description:
+      "Odoo/Jobber-grade field service: customers with service addresses, technicians, work orders with scheduling and priority, visit timesheets, parts used per job, and signed completion worksheets.",
+    collections: [
+      {
+        slug: "technicians", group: "People", singular: "Technician", plural: "Technicians", defaultSort: "name",
+        fields: [text("name", { required: true }), email("email"), text("phone"), text("skills_summary", { label: "Skills" }), select("home_region", ["north", "south", "east", "west", "central"], { default: "central", label: "Home region" }), bool("active", { default: true, label: "Active" })],
+        samples: [
+          { name: "Dana Whitfield", email: "dana@example.com", phone: "+1 555 0170", skills_summary: "HVAC, electrical", home_region: "north", active: true },
+          { name: "Marco Ruiz", email: "marco@example.com", phone: "+1 555 0171", skills_summary: "Plumbing", home_region: "central", active: true },
+        ],
+      },
+      {
+        slug: "customers", group: "People", singular: "Customer", plural: "Customers", fts: true, defaultSort: "name",
+        fields: [
+          text("name", { required: true, searchable: true, group: "Customer" }), email("email", { group: "Customer" }), text("phone", { group: "Customer" }),
+          text("address", { group: "Service address" }), text("city", { group: "Service address" }), text("postal_code", { label: "Postal code", group: "Service address" }),
+          notes("access_notes", { label: "Access notes", group: "Service address" }),
+        ],
+        samples: [{ name: "Riverside Apartments", email: "manager@riverside.example", phone: "+1 555 0180", address: "88 River Rd", city: "Portland", access_notes: "Gate code 4415; parking in the rear lot." }],
+      },
+      {
+        slug: "parts", group: "Catalog", singular: "Part", plural: "Parts", defaultSort: "name",
+        fields: [text("name", { required: true }), text("sku", { unique: true, label: "SKU" }), money("unit_cost", { label: "Unit cost" }), money("unit_price", { label: "Bill price" }), int("stock", { default: 0, validation: { min: 0 } })],
+        samples: [{ name: "Condenser fan motor", sku: "HVAC-FM-01", unit_cost: 84, unit_price: 149, stock: 12 }, { name: "3/4\" ball valve", sku: "PLB-BV-34", unit_cost: 9.5, unit_price: 24, stock: 40 }],
+      },
+      {
+        slug: "work_orders", group: "Work orders", singular: "Work order", plural: "Work orders", fts: true, defaultSort: "-scheduled_at",
+        fields: [
+          text("number", { required: true, unique: true, group: "Job" }),
+          text("title", { required: true, searchable: true, group: "Job" }),
+          notes("description", { searchable: true, group: "Job" }),
+          rel("customer", "customers", { group: "Job" }),
+          rel("technician", "technicians", { group: "Assignment" }),
+          select("priority", [ch("low", C.gray), ch("normal", C.blue), ch("high", C.amber), ch("urgent", C.red)], { default: "normal", group: "Assignment" }),
+          select("status", [ch("new", C.gray), ch("scheduled", C.blue), ch("en_route", C.teal, "En route"), ch("in_progress", C.amber, "In progress"), ch("done", C.green), ch("cancelled", C.red)], { default: "new", group: "Assignment" }),
+          ts("scheduled_at", { indexed: true, label: "Scheduled at", group: "Schedule" }),
+          int("estimated_minutes", { default: 60, validation: { min: 0 }, label: "Estimate (min)", group: "Schedule" }),
+          ts("completed_at", { label: "Completed at", group: "Schedule" }),
+        ],
+        samples: [
+          { number: "WO-1001", title: "AC unit not cooling — building B", description: "Tenant reports warm air from unit 2B.", customer: { ref: "customers:0" }, technician: { ref: "technicians:0" }, priority: "high", status: "scheduled", scheduled_at: ms("2026-07-15T13:00:00Z"), estimated_minutes: 90 },
+          { number: "WO-1002", title: "Quarterly boiler inspection", customer: { ref: "customers:0" }, technician: { ref: "technicians:1" }, priority: "normal", status: "done", scheduled_at: ms("2026-07-01T09:00:00Z"), estimated_minutes: 60, completed_at: ms("2026-07-01T10:05:00Z") },
+        ],
+      },
+      {
+        slug: "visits", group: "Work orders", singular: "Visit", plural: "Visits", defaultSort: "-started_at",
+        fields: [rel("work_order", "work_orders"), rel("technician", "technicians"), ts("started_at", { indexed: true, label: "Started at" }), ts("ended_at", { label: "Ended at" }), int("minutes_on_site", { default: 0, validation: { min: 0 }, label: "Minutes on site" }), notes("summary")],
+        samples: [{ work_order: { ref: "work_orders:1" }, technician: { ref: "technicians:1" }, started_at: ms("2026-07-01T09:00:00Z"), ended_at: ms("2026-07-01T10:05:00Z"), minutes_on_site: 65, summary: "Inspection passed; replaced pressure gauge." }],
+      },
+      {
+        slug: "work_order_parts", group: "Work orders", singular: "Part used", plural: "Parts used",
+        fields: [rel("work_order", "work_orders"), rel("part", "parts"), int("quantity", { default: 1, validation: { min: 0 } }), money("unit_price", { label: "Billed price" }), computedNum("line_total", "quantity * unit_price", { label: "Line total" })],
+        samples: [{ work_order: { ref: "work_orders:1" }, part: { ref: "parts:1" }, quantity: 1, unit_price: 24 }],
+      },
+      {
+        slug: "worksheets", group: "Work orders", singular: "Worksheet", plural: "Worksheets", defaultSort: "-signed_at",
+        fields: [
+          rel("work_order", "work_orders"), notes("work_performed", { label: "Work performed" }), notes("recommendations"),
+          select("outcome", [ch("resolved", C.green), ch("follow_up", C.amber, "Needs follow-up"), ch("unresolved", C.red)], { default: "resolved" }),
+          rating("customer_rating", { label: "Customer rating" }), text("signed_by", { label: "Signed by" }), ts("signed_at", { label: "Signed at" }), file("signature"),
+        ],
+        samples: [{ work_order: { ref: "work_orders:1" }, work_performed: "Full inspection; gauge swap.", outcome: "resolved", customer_rating: 5, signed_by: "R. Alvarez", signed_at: ms("2026-07-01T10:10:00Z") }],
+      },
+    ],
+    roles: [
+      {
+        name: "Dispatcher",
+        description: "Schedule and assign work orders; manage customers; read everything else.",
+        permissions: [
+          { collection: "technicians", action: "read" },
+          { collection: "customers", action: "read" },
+          { collection: "customers", action: "create" },
+          { collection: "customers", action: "update" },
+          { collection: "parts", action: "read" },
+          { collection: "work_orders", action: "read" },
+          { collection: "work_orders", action: "create" },
+          { collection: "work_orders", action: "update" },
+          { collection: "visits", action: "read" },
+          { collection: "work_order_parts", action: "read" },
+          { collection: "worksheets", action: "read" },
+        ],
+      },
+    ],
+    dashboards: [
+      {
+        name: "Field operations",
+        description: "Job load, status mix and technician activity.",
+        panels: [
+          { name: "Work orders", kind: "items-aggregate", viz: "counter", config: { collection: "work_orders", agg: "count" } },
+          { name: "Visits", kind: "items-aggregate", viz: "counter", config: { collection: "visits", agg: "count" } },
+          { name: "Minutes on site", kind: "items-aggregate", viz: "counter", config: { collection: "visits", agg: "sum", field: "minutes_on_site" } },
+          { name: "Orders by status", kind: "items-aggregate", viz: "donut", config: { collection: "work_orders", agg: "count", groupBy: "status" } },
+          { name: "Orders by priority", kind: "items-aggregate", viz: "bars", config: { collection: "work_orders", agg: "count", groupBy: "priority" } },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: "rental",
+    label: "Rental",
+    groups: ["Catalog", "Rentals", "People"],
+    description:
+      "Odoo-grade rental ops: rentable products with hourly/daily/weekly rates, serialized units, customers, rental orders with pickup & return schedules, per-line periods, and late-return fees.",
+    collections: [
+      {
+        slug: "rental_products", group: "Catalog", singular: "Rental product", plural: "Rental products", fts: true, defaultSort: "name",
+        fields: [
+          text("name", { required: true, searchable: true, group: "Product" }), notes("description", { searchable: true, group: "Product" }),
+          select("category", [ch("tools", C.blue), ch("vehicles", C.teal), ch("av_equipment", C.purple, "A/V equipment"), ch("event", C.amber, "Event & party"), ch("other", C.gray)], { default: "other", group: "Product" }),
+          money("rate_hourly", { label: "Hourly rate", group: "Rates" }),
+          money("rate_daily", { label: "Daily rate", group: "Rates" }),
+          money("rate_weekly", { label: "Weekly rate", group: "Rates" }),
+          money("deposit", { label: "Security deposit", group: "Rates" }),
+          money("late_fee_per_day", { label: "Late fee / day", group: "Rates" }),
+          int("padding_hours", { default: 0, validation: { min: 0 }, label: "Padding between rentals (h)", group: "Rates" }),
+          bool("active", { default: true, label: "Active", group: "Rates" }),
+        ],
+        samples: [
+          { name: "Excavator — 1.7t mini", category: "tools", rate_hourly: 45, rate_daily: 280, rate_weekly: 1250, deposit: 500, late_fee_per_day: 80, padding_hours: 2, active: true },
+          { name: "PA system — 2×12\" + mixer", category: "av_equipment", rate_daily: 90, rate_weekly: 420, deposit: 150, late_fee_per_day: 30, active: true },
+        ],
+      },
+      {
+        slug: "units", group: "Catalog", singular: "Unit", plural: "Units", defaultSort: "serial",
+        fields: [
+          rel("product", "rental_products"), text("serial", { required: true, unique: true, label: "Serial no." }),
+          select("condition", [ch("new", C.green), ch("good", C.blue), ch("worn", C.amber), ch("maintenance", C.red, "In maintenance"), ch("retired", C.slate)], { default: "good" }),
+          date("acquired_at", { label: "Acquired" }), notes("notes"),
+        ],
+        samples: [
+          { product: { ref: "rental_products:0" }, serial: "EXC-17-001", condition: "good", acquired_at: ms("2025-03-10") },
+          { product: { ref: "rental_products:1" }, serial: "PA-212-004", condition: "new", acquired_at: ms("2026-01-22") },
+        ],
+      },
+      {
+        slug: "customers", group: "People", singular: "Customer", plural: "Customers", fts: true, defaultSort: "name",
+        fields: [text("name", { required: true, searchable: true }), email("email"), text("phone"), text("id_document", { label: "ID document no." }), notes("notes")],
+        samples: [{ name: "Hartley Construction", email: "ops@hartley.example", phone: "+1 555 0166", id_document: "BL-778812" }],
+      },
+      {
+        slug: "rental_orders", group: "Rentals", singular: "Rental order", plural: "Rental orders", defaultSort: "-starts_at",
+        fields: [
+          text("number", { required: true, unique: true, group: "Order" }), rel("customer", "customers", { group: "Order" }),
+          select("status", [ch("quote", C.gray), ch("reserved", C.blue), ch("picked_up", C.amber, "Picked up"), ch("returned", C.green), ch("late", C.red), ch("cancelled", C.slate)], { default: "quote", group: "Order" }),
+          ts("starts_at", { indexed: true, label: "Pickup at", group: "Period" }),
+          ts("due_back_at", { indexed: true, label: "Due back at", group: "Period" }),
+          ts("returned_at", { label: "Returned at", group: "Period" }),
+          money("subtotal", { group: "Totals" }), money("deposit_held", { label: "Deposit held", group: "Totals" }),
+          money("late_fees", { label: "Late fees", group: "Totals" }), money("total", { group: "Totals" }),
+        ],
+        samples: [
+          { number: "RO-3001", customer: { ref: "customers:0" }, status: "picked_up", starts_at: ms("2026-07-08T08:00:00Z"), due_back_at: ms("2026-07-15T08:00:00Z"), subtotal: 1250, deposit_held: 500, late_fees: 0, total: 1250 },
+          { number: "RO-3002", customer: { ref: "customers:0" }, status: "returned", starts_at: ms("2026-06-20T09:00:00Z"), due_back_at: ms("2026-06-22T09:00:00Z"), returned_at: ms("2026-06-23T11:00:00Z"), subtotal: 180, deposit_held: 150, late_fees: 30, total: 210 },
+        ],
+      },
+      {
+        slug: "rental_lines", group: "Rentals", singular: "Rental line", plural: "Rental lines",
+        fields: [
+          rel("order", "rental_orders"), rel("product", "rental_products"), rel("unit", "units"),
+          select("rate_type", [ch("hourly", C.blue), ch("daily", C.teal), ch("weekly", C.purple)], { default: "daily", label: "Rate" }),
+          num("periods", { default: 1, validation: { min: 0 }, label: "Periods billed" }), money("rate", { label: "Rate amount" }),
+          computedNum("line_total", "periods * rate", { label: "Line total" }),
+        ],
+        samples: [
+          { order: { ref: "rental_orders:0" }, product: { ref: "rental_products:0" }, unit: { ref: "units:0" }, rate_type: "weekly", periods: 1, rate: 1250 },
+          { order: { ref: "rental_orders:1" }, product: { ref: "rental_products:1" }, unit: { ref: "units:1" }, rate_type: "daily", periods: 2, rate: 90 },
+        ],
+      },
+      {
+        slug: "inspections", group: "Rentals", singular: "Inspection", plural: "Inspections", defaultSort: "-inspected_at",
+        fields: [
+          rel("order", "rental_orders"), rel("unit", "units"),
+          select("stage", [ch("pre_rental", C.blue, "Pre-rental"), ch("post_return", C.teal, "Post-return")], { default: "pre_rental" }),
+          select("result", [ch("ok", C.green, "OK"), ch("damage", C.red), ch("missing_parts", C.amber, "Missing parts")], { default: "ok" }),
+          money("damage_charge", { label: "Damage charge" }), notes("notes"), file("photo"), ts("inspected_at", { indexed: true, label: "Inspected at" }),
+        ],
+        samples: [{ order: { ref: "rental_orders:1" }, unit: { ref: "units:1" }, stage: "post_return", result: "ok", damage_charge: 0, inspected_at: ms("2026-06-23T11:20:00Z") }],
+      },
+    ],
+    roles: [
+      {
+        name: "Rental desk",
+        description: "Create and manage rental orders, customers and inspections; read the catalog.",
+        permissions: [
+          { collection: "rental_products", action: "read" },
+          { collection: "units", action: "read" },
+          { collection: "units", action: "update" },
+          { collection: "customers", action: "read" },
+          { collection: "customers", action: "create" },
+          { collection: "customers", action: "update" },
+          { collection: "rental_orders", action: "read" },
+          { collection: "rental_orders", action: "create" },
+          { collection: "rental_orders", action: "update" },
+          { collection: "rental_lines", action: "read" },
+          { collection: "rental_lines", action: "create" },
+          { collection: "rental_lines", action: "update" },
+          { collection: "inspections", action: "read" },
+          { collection: "inspections", action: "create" },
+        ],
+      },
+    ],
+    dashboards: [
+      {
+        name: "Rental overview",
+        description: "Fleet utilization, order flow and revenue.",
+        panels: [
+          { name: "Rental orders", kind: "items-aggregate", viz: "counter", config: { collection: "rental_orders", agg: "count" } },
+          { name: "Revenue", kind: "items-aggregate", viz: "counter", config: { collection: "rental_orders", agg: "sum", field: "total" } },
+          { name: "Late fees", kind: "items-aggregate", viz: "counter", config: { collection: "rental_orders", agg: "sum", field: "late_fees" } },
+          { name: "Orders by status", kind: "items-aggregate", viz: "donut", config: { collection: "rental_orders", agg: "count", groupBy: "status" } },
+          { name: "Units by condition", kind: "items-aggregate", viz: "bars", config: { collection: "units", agg: "count", groupBy: "condition" } },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: "fleet",
+    label: "Fleet",
+    groups: ["Fleet", "Usage", "Costs"],
+    description:
+      "Odoo Fleet-grade vehicle management: vehicles with model/plate/status, drivers and assignment history, lease & insurance contracts with renewal dates, odometer logs, and service records with costs.",
+    collections: [
+      {
+        slug: "drivers", group: "Fleet", singular: "Driver", plural: "Drivers", defaultSort: "name",
+        fields: [text("name", { required: true }), email("email"), text("phone"), text("license_no", { label: "License no." }), date("license_expires", { label: "License expires" }), bool("active", { default: true, label: "Active" })],
+        samples: [{ name: "Priya Nair", email: "priya@example.com", license_no: "D-4471820", license_expires: ms("2028-03-01"), active: true }, { name: "Tom Becker", email: "tom@example.com", license_no: "D-9982710", license_expires: ms("2027-09-15"), active: true }],
+      },
+      {
+        slug: "vehicles", group: "Fleet", singular: "Vehicle", plural: "Vehicles", fts: true, defaultSort: "name",
+        fields: [
+          text("name", { required: true, searchable: true, group: "Vehicle" }),
+          text("make", { group: "Vehicle" }), text("model", { group: "Vehicle" }), int("year", { validation: { min: 1980, max: 2100 }, group: "Vehicle" }),
+          text("plate", { unique: true, label: "License plate", group: "Vehicle" }), text("vin", { label: "VIN", group: "Vehicle" }),
+          select("fuel_type", [ch("gasoline", C.amber), ch("diesel", C.slate), ch("hybrid", C.teal), ch("electric", C.green)], { default: "gasoline", label: "Fuel", group: "Specs" }),
+          select("status", [ch("ordered", C.gray), ch("active", C.green), ch("in_service", C.amber, "In service"), ch("retired", C.slate), ch("sold", C.blue)], { default: "active", group: "Specs" }),
+          rel("current_driver", "drivers", { label: "Current driver", group: "Specs" }),
+          int("odometer", { default: 0, validation: { min: 0 }, label: "Odometer (km)", group: "Specs" }),
+          money("acquisition_cost", { label: "Acquisition cost", group: "Specs" }),
+          date("acquired_at", { label: "Acquired", group: "Specs" }),
+        ],
+        samples: [
+          { name: "Van 12", make: "Ford", model: "Transit", year: 2024, plate: "7-KLM-482", fuel_type: "diesel", status: "active", current_driver: { ref: "drivers:0" }, odometer: 48210, acquisition_cost: 42000, acquired_at: ms("2024-05-01") },
+          { name: "Car 3", make: "Tesla", model: "Model 3", year: 2025, plate: "9-EV-2210", fuel_type: "electric", status: "active", current_driver: { ref: "drivers:1" }, odometer: 15890, acquisition_cost: 39000, acquired_at: ms("2025-02-14") },
+        ],
+      },
+      {
+        slug: "assignments", group: "Usage", singular: "Assignment", plural: "Assignments", defaultSort: "-assigned_at",
+        fields: [rel("vehicle", "vehicles"), rel("driver", "drivers"), ts("assigned_at", { indexed: true, label: "Assigned at" }), ts("returned_at", { label: "Returned at" }), notes("note")],
+        samples: [{ vehicle: { ref: "vehicles:0" }, driver: { ref: "drivers:0" }, assigned_at: ms("2026-01-05T08:00:00Z") }],
+      },
+      {
+        slug: "contracts", group: "Costs", singular: "Contract", plural: "Contracts", defaultSort: "-ends_at",
+        fields: [
+          rel("vehicle", "vehicles"),
+          select("type", [ch("lease", C.blue), ch("insurance", C.teal), ch("warranty", C.purple), ch("service_plan", C.amber, "Service plan")], { default: "lease" }),
+          text("provider"), text("reference"),
+          date("starts_at", { label: "Starts" }), date("ends_at", { indexed: true, label: "Ends" }),
+          money("monthly_cost", { label: "Monthly cost" }),
+          select("status", [ch("active", C.green), ch("expiring", C.amber), ch("expired", C.red), ch("cancelled", C.slate)], { default: "active" }),
+        ],
+        samples: [{ vehicle: { ref: "vehicles:0" }, type: "insurance", provider: "Allianz", reference: "POL-88213", starts_at: ms("2026-01-01"), ends_at: ms("2026-12-31"), monthly_cost: 110, status: "active" }],
+      },
+      {
+        slug: "odometer_logs", group: "Usage", singular: "Odometer log", plural: "Odometer logs", defaultSort: "-logged_at",
+        fields: [rel("vehicle", "vehicles"), rel("driver", "drivers"), int("reading", { validation: { min: 0 }, label: "Reading (km)" }), date("logged_at", { indexed: true, label: "Logged at" })],
+        samples: [{ vehicle: { ref: "vehicles:0" }, driver: { ref: "drivers:0" }, reading: 48210, logged_at: ms("2026-07-01") }],
+      },
+      {
+        slug: "service_records", group: "Costs", singular: "Service record", plural: "Service records", defaultSort: "-serviced_at",
+        fields: [
+          rel("vehicle", "vehicles"),
+          select("service_type", [ch("maintenance", C.blue), ch("repair", C.red), ch("tires", C.slate), ch("inspection", C.teal), ch("fuel", C.amber), ch("other", C.gray)], { default: "maintenance", label: "Type" }),
+          text("vendor"), money("cost"), int("odometer_at", { validation: { min: 0 }, label: "Odometer (km)" }), date("serviced_at", { indexed: true, label: "Serviced at" }), notes("notes"),
+        ],
+        samples: [
+          { vehicle: { ref: "vehicles:0" }, service_type: "maintenance", vendor: "Ford Service Center", cost: 320, odometer_at: 45000, serviced_at: ms("2026-05-20"), notes: "45k service — oil, filters, brake check." },
+          { vehicle: { ref: "vehicles:1" }, service_type: "tires", vendor: "QuickTire", cost: 540, odometer_at: 15000, serviced_at: ms("2026-06-11") },
+        ],
+      },
+    ],
+    roles: [
+      {
+        name: "Fleet manager",
+        description: "Manage vehicles, assignments, contracts and service records.",
+        permissions: [
+          { collection: "drivers", action: "read" },
+          { collection: "drivers", action: "create" },
+          { collection: "drivers", action: "update" },
+          { collection: "vehicles", action: "read" },
+          { collection: "vehicles", action: "create" },
+          { collection: "vehicles", action: "update" },
+          { collection: "assignments", action: "read" },
+          { collection: "assignments", action: "create" },
+          { collection: "assignments", action: "update" },
+          { collection: "contracts", action: "read" },
+          { collection: "contracts", action: "create" },
+          { collection: "contracts", action: "update" },
+          { collection: "odometer_logs", action: "read" },
+          { collection: "odometer_logs", action: "create" },
+          { collection: "service_records", action: "read" },
+          { collection: "service_records", action: "create" },
+          { collection: "service_records", action: "update" },
+        ],
+      },
+    ],
+    dashboards: [
+      {
+        name: "Fleet overview",
+        description: "Fleet size, running costs and service activity.",
+        panels: [
+          { name: "Vehicles", kind: "items-aggregate", viz: "counter", config: { collection: "vehicles", agg: "count" } },
+          { name: "Service spend", kind: "items-aggregate", viz: "counter", config: { collection: "service_records", agg: "sum", field: "cost" } },
+          { name: "Monthly contracts", kind: "items-aggregate", viz: "counter", config: { collection: "contracts", agg: "sum", field: "monthly_cost" } },
+          { name: "Vehicles by status", kind: "items-aggregate", viz: "donut", config: { collection: "vehicles", agg: "count", groupBy: "status" } },
+          { name: "Service by type", kind: "items-aggregate", viz: "bars", config: { collection: "service_records", agg: "count", groupBy: "service_type" } },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: "maintenance",
+    label: "Maintenance / Assets",
+    groups: ["Assets", "Requests"],
+    description:
+      "Odoo Maintenance-grade asset upkeep: equipment with location and warranty, maintenance teams, corrective & preventive requests with priority and downtime, and recurring preventive schedules.",
+    collections: [
+      {
+        slug: "teams", group: "Requests", singular: "Team", plural: "Teams", defaultSort: "name",
+        fields: [text("name", { required: true }), notes("description")],
+        samples: [{ name: "Internal maintenance", description: "In-house crew for facilities and machines." }, { name: "Vendor — HVAC" }],
+      },
+      {
+        slug: "equipment_categories", group: "Assets", singular: "Category", plural: "Categories", defaultSort: "name",
+        fields: [text("name", { required: true }), parent("equipment_categories")],
+        samples: [{ name: "Production machines" }, { name: "Facilities" }],
+      },
+      {
+        slug: "equipment", group: "Assets", singular: "Equipment", plural: "Equipment", fts: true, defaultSort: "name",
+        fields: [
+          text("name", { required: true, searchable: true, group: "Asset" }), text("serial", { unique: true, label: "Serial no.", group: "Asset" }),
+          rel("category", "equipment_categories", { group: "Asset" }), text("location", { group: "Asset" }),
+          rel("team", "teams", { label: "Maintenance team", group: "Upkeep" }),
+          select("criticality", [ch("low", C.gray), ch("medium", C.blue), ch("high", C.amber), ch("critical", C.red)], { default: "medium", group: "Upkeep" }),
+          date("purchased_at", { label: "Purchased", group: "Upkeep" }), date("warranty_until", { label: "Warranty until", group: "Upkeep" }),
+          money("purchase_cost", { label: "Purchase cost", group: "Upkeep" }),
+          bool("active", { default: true, label: "In service", group: "Upkeep" }),
+        ],
+        samples: [
+          { name: "CNC mill #2", serial: "CNC-2201", category: { ref: "equipment_categories:0" }, location: "Hall A", team: { ref: "teams:0" }, criticality: "critical", purchased_at: ms("2023-08-15"), warranty_until: ms("2026-08-15"), purchase_cost: 84000, active: true },
+          { name: "Rooftop AC unit", serial: "HVAC-R1", category: { ref: "equipment_categories:1" }, location: "Roof", team: { ref: "teams:1" }, criticality: "high", purchased_at: ms("2022-04-01"), purchase_cost: 12500, active: true },
+        ],
+      },
+      {
+        slug: "maintenance_requests", group: "Requests", singular: "Request", plural: "Requests", fts: true, defaultSort: "-requested_at",
+        fields: [
+          text("title", { required: true, searchable: true, group: "Request" }), notes("description", { searchable: true, group: "Request" }),
+          rel("equipment", "equipment", { group: "Request" }), rel("team", "teams", { group: "Request" }),
+          select("kind", [ch("corrective", C.red), ch("preventive", C.blue)], { default: "corrective", label: "Type", group: "Triage" }),
+          select("priority", [ch("low", C.gray), ch("normal", C.blue), ch("high", C.amber), ch("critical", C.red)], { default: "normal", group: "Triage" }),
+          select("status", [ch("new", C.gray), ch("in_progress", C.amber, "In progress"), ch("blocked", C.red), ch("done", C.green), ch("cancelled", C.slate)], { default: "new", group: "Triage" }),
+          ts("requested_at", { indexed: true, label: "Requested at", group: "Timing" }),
+          ts("scheduled_for", { label: "Scheduled for", group: "Timing" }),
+          ts("completed_at", { label: "Completed at", group: "Timing" }),
+          int("downtime_minutes", { default: 0, validation: { min: 0 }, label: "Downtime (min)", group: "Timing" }),
+          money("cost", { group: "Timing" }),
+        ],
+        samples: [
+          { title: "Spindle vibration above threshold", description: "Vibration sensor tripped during morning shift.", equipment: { ref: "equipment:0" }, team: { ref: "teams:0" }, kind: "corrective", priority: "critical", status: "in_progress", requested_at: ms("2026-07-09T06:40:00Z"), downtime_minutes: 240 },
+          { title: "Quarterly filter change", equipment: { ref: "equipment:1" }, team: { ref: "teams:1" }, kind: "preventive", priority: "normal", status: "done", requested_at: ms("2026-06-25T09:00:00Z"), completed_at: ms("2026-06-25T11:30:00Z"), cost: 180 },
+        ],
+      },
+      {
+        slug: "preventive_schedules", group: "Requests", singular: "Preventive schedule", plural: "Preventive schedules", defaultSort: "next_due",
+        fields: [
+          rel("equipment", "equipment"), rel("team", "teams"), text("task", { required: true, label: "Task" }),
+          select("frequency", [ch("weekly", C.blue), ch("monthly", C.teal), ch("quarterly", C.amber), ch("yearly", C.purple)], { default: "monthly" }),
+          date("last_done", { label: "Last done" }), date("next_due", { indexed: true, label: "Next due" }), bool("active", { default: true, label: "Active" }),
+        ],
+        samples: [{ equipment: { ref: "equipment:1" }, team: { ref: "teams:1" }, task: "Replace filters + coil clean", frequency: "quarterly", last_done: ms("2026-06-25"), next_due: ms("2026-09-25"), active: true }],
+      },
+    ],
+    roles: [
+      {
+        name: "Maintenance tech",
+        description: "Work requests and schedules; read the asset register.",
+        permissions: [
+          { collection: "teams", action: "read" },
+          { collection: "equipment_categories", action: "read" },
+          { collection: "equipment", action: "read" },
+          { collection: "equipment", action: "update" },
+          { collection: "maintenance_requests", action: "read" },
+          { collection: "maintenance_requests", action: "create" },
+          { collection: "maintenance_requests", action: "update" },
+          { collection: "preventive_schedules", action: "read" },
+          { collection: "preventive_schedules", action: "update" },
+        ],
+      },
+    ],
+    dashboards: [
+      {
+        name: "Maintenance overview",
+        description: "Request load, downtime and asset criticality.",
+        panels: [
+          { name: "Open requests", kind: "items-aggregate", viz: "counter", config: { collection: "maintenance_requests", agg: "count" } },
+          { name: "Downtime (min)", kind: "items-aggregate", viz: "counter", config: { collection: "maintenance_requests", agg: "sum", field: "downtime_minutes" } },
+          { name: "Maintenance spend", kind: "items-aggregate", viz: "counter", config: { collection: "maintenance_requests", agg: "sum", field: "cost" } },
+          { name: "Requests by status", kind: "items-aggregate", viz: "donut", config: { collection: "maintenance_requests", agg: "count", groupBy: "status" } },
+          { name: "Requests by type", kind: "items-aggregate", viz: "bars", config: { collection: "maintenance_requests", agg: "count", groupBy: "kind" } },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: "manufacturing",
+    label: "Manufacturing",
+    groups: ["Engineering", "Production", "Catalog"],
+    description:
+      "Odoo MRP-grade production: products (raw / component / finished), multi-line bills of materials with per-operation work centers, manufacturing orders that consume components, work orders per operation, and scrap records.",
+    collections: [
+      {
+        slug: "work_centers", group: "Production", singular: "Work center", plural: "Work centers", defaultSort: "name",
+        fields: [
+          text("name", { required: true }), text("code", { unique: true }),
+          int("capacity_per_hour", { default: 1, validation: { min: 0 }, label: "Capacity / hour" }),
+          money("cost_per_hour", { label: "Cost / hour" }), bool("active", { default: true, label: "Active" }),
+        ],
+        samples: [{ name: "Assembly line 1", code: "ASM-1", capacity_per_hour: 20, cost_per_hour: 85, active: true }, { name: "Paint booth", code: "PNT-1", capacity_per_hour: 12, cost_per_hour: 60, active: true }],
+      },
+      {
+        slug: "products", group: "Catalog", singular: "Product", plural: "Products", fts: true, defaultSort: "name",
+        fields: [
+          text("name", { required: true, searchable: true, group: "Product" }), text("sku", { unique: true, label: "SKU", group: "Product" }),
+          select("kind", [ch("raw", C.slate, "Raw material"), ch("component", C.blue), ch("finished", C.green, "Finished good")], { default: "component", label: "Type", group: "Product" }),
+          text("unit", { default: "ea", label: "Unit of measure", group: "Product" }),
+          money("cost", { label: "Standard cost", group: "Stock" }),
+          int("on_hand", { default: 0, validation: { min: 0 }, label: "On hand", group: "Stock" }),
+          int("reorder_point", { default: 0, validation: { min: 0 }, label: "Reorder point", group: "Stock" }),
+          bool("active", { default: true, label: "Active", group: "Stock" }),
+        ],
+        samples: [
+          { name: "Steel frame", sku: "RM-FRAME", kind: "raw", unit: "ea", cost: 34, on_hand: 320, reorder_point: 100, active: true },
+          { name: "Motor assembly", sku: "CMP-MOTOR", kind: "component", unit: "ea", cost: 78, on_hand: 140, reorder_point: 50, active: true },
+          { name: "E-bike Model S", sku: "FG-EBIKE-S", kind: "finished", unit: "ea", cost: 420, on_hand: 25, reorder_point: 10, active: true },
+        ],
+      },
+      {
+        slug: "boms", group: "Engineering", singular: "Bill of materials", plural: "Bills of materials", defaultSort: "name",
+        fields: [
+          text("name", { required: true }), rel("product", "products", { label: "Produces" }),
+          int("output_qty", { default: 1, validation: { min: 1 }, label: "Output qty" }),
+          text("version", { default: "v1" }),
+          select("status", [ch("draft", C.gray), ch("active", C.green), ch("obsolete", C.slate)], { default: "active" }),
+        ],
+        samples: [{ name: "E-bike Model S — standard build", product: { ref: "products:2" }, output_qty: 1, version: "v3", status: "active" }],
+      },
+      {
+        slug: "bom_lines", group: "Engineering", singular: "BoM line", plural: "BoM lines",
+        fields: [rel("bom", "boms"), rel("component", "products"), num("quantity", { default: 1, validation: { min: 0 } }), notes("note")],
+        samples: [
+          { bom: { ref: "boms:0" }, component: { ref: "products:0" }, quantity: 1 },
+          { bom: { ref: "boms:0" }, component: { ref: "products:1" }, quantity: 1 },
+        ],
+      },
+      {
+        slug: "bom_operations", group: "Engineering", singular: "Operation", plural: "Operations", defaultSort: "position",
+        fields: [rel("bom", "boms"), text("name", { required: true }), rel("work_center", "work_centers"), int("minutes", { default: 30, validation: { min: 0 }, label: "Duration (min)" }), position()],
+        samples: [
+          { bom: { ref: "boms:0" }, name: "Frame prep", work_center: { ref: "work_centers:1" }, minutes: 25, position: 1 },
+          { bom: { ref: "boms:0" }, name: "Final assembly", work_center: { ref: "work_centers:0" }, minutes: 45, position: 2 },
+        ],
+      },
+      {
+        slug: "manufacturing_orders", group: "Production", singular: "Manufacturing order", plural: "Manufacturing orders", defaultSort: "-planned_start",
+        fields: [
+          text("number", { required: true, unique: true, group: "Order" }), rel("bom", "boms", { group: "Order" }), rel("product", "products", { group: "Order" }),
+          int("quantity", { default: 1, validation: { min: 1 }, group: "Order" }),
+          select("status", [ch("draft", C.gray), ch("confirmed", C.blue), ch("in_progress", C.amber, "In progress"), ch("done", C.green), ch("cancelled", C.red)], { default: "draft", group: "Order" }),
+          select("priority", [ch("normal", C.blue), ch("rush", C.red)], { default: "normal", group: "Order" }),
+          ts("planned_start", { indexed: true, label: "Planned start", group: "Schedule" }),
+          ts("planned_end", { label: "Planned end", group: "Schedule" }),
+          ts("completed_at", { label: "Completed at", group: "Schedule" }),
+          int("qty_produced", { default: 0, validation: { min: 0 }, label: "Qty produced", group: "Schedule" }),
+        ],
+        samples: [
+          { number: "MO-501", bom: { ref: "boms:0" }, product: { ref: "products:2" }, quantity: 10, status: "in_progress", priority: "normal", planned_start: ms("2026-07-10T07:00:00Z"), planned_end: ms("2026-07-12T16:00:00Z"), qty_produced: 4 },
+          { number: "MO-502", bom: { ref: "boms:0" }, product: { ref: "products:2" }, quantity: 5, status: "confirmed", priority: "rush", planned_start: ms("2026-07-16T07:00:00Z") },
+        ],
+      },
+      {
+        slug: "work_orders", group: "Production", singular: "Work order", plural: "Work orders", defaultSort: "-started_at",
+        fields: [
+          rel("manufacturing_order", "manufacturing_orders", { label: "MO" }), text("operation", { required: true }), rel("work_center", "work_centers"),
+          select("status", [ch("pending", C.gray), ch("running", C.amber), ch("done", C.green), ch("blocked", C.red)], { default: "pending" }),
+          ts("started_at", { indexed: true, label: "Started at" }), ts("finished_at", { label: "Finished at" }),
+          int("minutes_actual", { default: 0, validation: { min: 0 }, label: "Actual minutes" }),
+        ],
+        samples: [{ manufacturing_order: { ref: "manufacturing_orders:0" }, operation: "Frame prep", work_center: { ref: "work_centers:1" }, status: "done", started_at: ms("2026-07-10T07:15:00Z"), finished_at: ms("2026-07-10T11:40:00Z"), minutes_actual: 265 }],
+      },
+      {
+        slug: "scrap_records", group: "Production", singular: "Scrap record", plural: "Scrap records", defaultSort: "-scrapped_at",
+        fields: [
+          rel("manufacturing_order", "manufacturing_orders", { label: "MO" }), rel("product", "products"), int("quantity", { default: 1, validation: { min: 0 } }),
+          select("reason", [ch("defect", C.red), ch("damage", C.amber), ch("expired", C.slate), ch("other", C.gray)], { default: "defect" }),
+          notes("note"), ts("scrapped_at", { indexed: true, label: "Scrapped at" }),
+        ],
+        samples: [{ manufacturing_order: { ref: "manufacturing_orders:0" }, product: { ref: "products:1" }, quantity: 1, reason: "defect", note: "Bent shaft on arrival.", scrapped_at: ms("2026-07-10T09:00:00Z") }],
+      },
+    ],
+    roles: [
+      {
+        name: "Production supervisor",
+        description: "Run manufacturing and work orders; read engineering data.",
+        permissions: [
+          { collection: "work_centers", action: "read" },
+          { collection: "products", action: "read" },
+          { collection: "boms", action: "read" },
+          { collection: "bom_lines", action: "read" },
+          { collection: "bom_operations", action: "read" },
+          { collection: "manufacturing_orders", action: "read" },
+          { collection: "manufacturing_orders", action: "create" },
+          { collection: "manufacturing_orders", action: "update" },
+          { collection: "work_orders", action: "read" },
+          { collection: "work_orders", action: "create" },
+          { collection: "work_orders", action: "update" },
+          { collection: "scrap_records", action: "read" },
+          { collection: "scrap_records", action: "create" },
+        ],
+      },
+    ],
+    dashboards: [
+      {
+        name: "Production overview",
+        description: "Order flow, output and scrap.",
+        panels: [
+          { name: "Manufacturing orders", kind: "items-aggregate", viz: "counter", config: { collection: "manufacturing_orders", agg: "count" } },
+          { name: "Units produced", kind: "items-aggregate", viz: "counter", config: { collection: "manufacturing_orders", agg: "sum", field: "qty_produced" } },
+          { name: "Scrapped units", kind: "items-aggregate", viz: "counter", config: { collection: "scrap_records", agg: "sum", field: "quantity" } },
+          { name: "MOs by status", kind: "items-aggregate", viz: "donut", config: { collection: "manufacturing_orders", agg: "count", groupBy: "status" } },
+          { name: "Scrap by reason", kind: "items-aggregate", viz: "bars", config: { collection: "scrap_records", agg: "count", groupBy: "reason" } },
+        ],
+      },
+    ],
+  },
 ];
 
 export const TEMPLATE_IDS = TEMPLATES.map((t) => t.id);
@@ -2111,6 +2663,11 @@ const CATEGORY: Record<string, string> = {
   projects: "Operations",
   invoicing: "Finance",
   appointments: "Operations",
+  "field-service": "Operations",
+  rental: "Commerce",
+  fleet: "Operations",
+  maintenance: "Operations",
+  manufacturing: "Operations",
   "real-estate": "Industry",
   lms: "Industry",
   nonprofit: "Industry",

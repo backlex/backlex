@@ -16,9 +16,4 @@ export const config: VercelConfig = {
   installCommand: "bun install --frozen-lockfile",
   buildCommand:
     "DEPLOY_TARGET=vercel bun run --cwd apps/web build && bun scripts/build-vercel-output.ts",
-  // Run the (prebuilt, launcherType: Nodejs) function on Vercel's Bun runtime
-  // instead of Node. Beta — verify via `GET /health` (`runtime` field) on the
-  // preview deploy; if it still reports node, the flag doesn't reach Build
-  // Output API functions and this line is a no-op to drop.
-  bunVersion: "1.x",
 };

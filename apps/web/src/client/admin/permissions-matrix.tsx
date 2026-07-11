@@ -277,7 +277,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
               <TabsTrigger key={r.name} value={r.name}>
                 <I.Users size={12} />
                 <span className="font-mono">{r.name}</span>
-                {r.system && <span className="rounded-[3px] bg-[color-mix(in_oklch,var(--muted)_70%,transparent)] px-[5px] py-px text-[9.5px] font-semibold uppercase tracking-[0.05em] text-muted-foreground"><Trans>system</Trans></span>}
+                {r.system && <span className="rounded-sm bg-[color-mix(in_oklch,var(--muted)_70%,transparent)] px-[5px] py-px text-[9.5px] font-semibold uppercase tracking-[0.05em] text-muted-foreground"><Trans>system</Trans></span>}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -285,7 +285,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
       </div>
 
       <div className="relative bg-card p-4">
-        <ScrollArea className="rounded-xl border border-border bg-card">
+        <ScrollArea className="rounded-control border border-border bg-card">
         <div className="grid grid-cols-[minmax(160px,1.4fr)_repeat(5,minmax(80px,1fr))]" role="grid" aria-label={t`Permissions for ${activeRole}`}>
           <div className="border-b border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]" />
           {PM_ACTIONS.map((a) => (

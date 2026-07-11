@@ -282,7 +282,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
             value={code}
             onChange={(e) => setCode(e.target.value)}
             spellCheck={false}
-            className="min-h-[200px] w-full resize-y whitespace-pre-wrap rounded-xl border-0 bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-xs leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)] [word-break:break-word]"
+            className="min-h-[200px] w-full resize-y whitespace-pre-wrap rounded-control border-0 bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-xs leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)] [word-break:break-word]"
           />
 
           <Card className="py-0 gap-0">

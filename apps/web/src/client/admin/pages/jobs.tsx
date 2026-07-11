@@ -224,17 +224,17 @@ function JobDetailDialog({ job, onClose }: { job: ApiJob; onClose: () => void })
             {job.lastError && (
               <div className="flex flex-col gap-1.5">
                 <span className="font-medium text-destructive"><Trans>Last error</Trans></span>
-                <pre className="rounded-lg bg-destructive/10 p-3 font-mono text-[11.5px] text-destructive whitespace-pre-wrap [overflow-wrap:anywhere]">{job.lastError}</pre>
+                <pre className="rounded-surface bg-destructive/10 p-3 font-mono text-[11.5px] text-destructive whitespace-pre-wrap [overflow-wrap:anywhere]">{job.lastError}</pre>
               </div>
             )}
             <div className="flex flex-col gap-1.5">
               <span className="font-medium"><Trans>Payload</Trans></span>
-              <pre className="rounded-lg bg-muted p-3 font-mono text-[11.5px] whitespace-pre-wrap [overflow-wrap:anywhere]">{pretty(job.payload)}</pre>
+              <pre className="rounded-surface bg-muted p-3 font-mono text-[11.5px] whitespace-pre-wrap [overflow-wrap:anywhere]">{pretty(job.payload)}</pre>
             </div>
             {job.result != null && (
               <div className="flex flex-col gap-1.5">
                 <span className="font-medium"><Trans>Result</Trans></span>
-                <pre className="rounded-lg bg-muted p-3 font-mono text-[11.5px] whitespace-pre-wrap [overflow-wrap:anywhere]">{pretty(job.result)}</pre>
+                <pre className="rounded-surface bg-muted p-3 font-mono text-[11.5px] whitespace-pre-wrap [overflow-wrap:anywhere]">{pretty(job.result)}</pre>
               </div>
             )}
           </div>
@@ -351,7 +351,7 @@ function EnqueueJobDialog({
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium"><Trans>Function name</Trans> <span className="text-destructive">*</span></label>
                 {fnLoaded && functions.length === 0 ? (
-                  <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-[12px] text-muted-foreground">
+                  <div className="flex items-center gap-1.5 rounded-surface border border-border bg-muted/40 px-3 py-2.5 text-[12px] text-muted-foreground">
                     <I.AlertTriangle size={13} />
                     <Trans>No functions defined yet. Create a function before enqueuing a function job.</Trans>
                   </div>

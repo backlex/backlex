@@ -131,11 +131,11 @@ export function ColumnPicker({
         <Button variant="outline" size="sm" icon={I.Sliders}>
           <Trans>Columns</Trans>
           {columns.length > 0 && (
-            <span className="ml-1 rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">{columns.length}</span>
+            <span className="ml-1 rounded-sm bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary">{columns.length}</span>
           )}
         </Button>
       </PopoverTrigger>
-      {/* p-0 lets children reach the edges, so clip them to the rounded
+      {/* p-0 lets children reach the edges, so clip them to the rounded-sm
           corners — otherwise the square header/footer bars poke out. */}
       <PopoverContent align="end" collisionPadding={12} className="w-64 overflow-hidden p-0">
         {/* Same header anatomy as the editor's Fields card: icon + label +
@@ -164,7 +164,7 @@ export function ColumnPicker({
               return (
                 <label
                   key={f.name}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-foreground hover:bg-accent"
+                  className="flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-[12.5px] text-foreground hover:bg-accent"
                   draggable
                   style={{
                     opacity: isDragging ? 0.4 : 1,
@@ -212,7 +212,7 @@ export function ColumnPicker({
               return (
                 <div key={f.name} className="flex flex-col">
                   <label
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-foreground hover:bg-accent"
+                    className="flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-[12.5px] text-foreground hover:bg-accent"
                     onClick={subs.length > 0 ? (e) => {
                       // Relation rows: clicking the row expands/collapses the
                       // target-field list; only the checkbox itself selects
@@ -234,7 +234,7 @@ export function ColumnPicker({
                   {isOpen && subs
                     .filter((tf) => !columns.includes(`${f.name}.${tf.name}`))
                     .map((tf) => (
-                      <label key={tf.name} className="ml-6 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-foreground hover:bg-accent">
+                      <label key={tf.name} className="ml-6 flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-[12.5px] text-foreground hover:bg-accent">
                         <Checkbox checked={false} onChange={() => toggle(`${f.name}.${tf.name}`)} />
                         <span className="min-w-0 flex-1 truncate">{fieldLabel(tf, i18n.locale)}</span>
                         {tf.type && <span className="shrink-0 font-mono text-[10.5px] text-muted-foreground">{tf.type}</span>}

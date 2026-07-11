@@ -705,7 +705,7 @@ function TwoFactorCard({
                 </p>
                 {freshCodes && (
                   <div className="mt-1 flex flex-col gap-1.5">
-                    <div className="grid grid-cols-2 gap-1 rounded-md bg-muted p-3 font-mono text-sm">
+                    <div className="grid grid-cols-2 gap-1 rounded-control bg-muted p-3 font-mono text-sm">
                       {freshCodes.map((code) => (
                         <span key={code} className="select-all">{code}</span>
                       ))}
@@ -784,7 +784,7 @@ function TwoFactorCard({
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label><Trans>1. Add this key to your authenticator app</Trans></Label>
-              <code className="select-all rounded-md bg-muted px-3 py-2 font-mono text-sm tracking-wider">
+              <code className="select-all rounded-control bg-muted px-3 py-2 font-mono text-sm tracking-wider">
                 {groupSecret(pending.secret) || "—"}
               </code>
               <p className="text-xs text-muted-foreground">
@@ -800,7 +800,7 @@ function TwoFactorCard({
                     <Trans>Copy</Trans>
                   </Button>
                 </div>
-                <div className="grid grid-cols-2 gap-1 rounded-md bg-muted p-3 font-mono text-sm">
+                <div className="grid grid-cols-2 gap-1 rounded-control bg-muted p-3 font-mono text-sm">
                   {pending.backupCodes.map((c) => (
                     <span key={c} className="select-all">{c}</span>
                   ))}
@@ -1351,7 +1351,7 @@ function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
             <Trans>Timestamps across the admin render in this zone.</Trans>
           </p>
         </div>
-        <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
+        <div className="rounded-surface border border-border bg-muted/40 px-3 py-2 text-sm">
           <span className="text-muted-foreground"><Trans>Preview: </Trans></span>
           <span className="font-mono">{preview}</span>
         </div>

@@ -391,7 +391,7 @@ export const SignUpPage = ({
                     <div
                       key={i}
                       className={cn(
-                        "h-[3px] flex-1 rounded",
+                        "h-[3px] flex-1 rounded-sm",
                         !filled && "bg-muted",
                         filled && weak && "bg-amber-500",
                         filled && !weak && "bg-primary",
@@ -407,7 +407,7 @@ export const SignUpPage = ({
           </div>
 
           {passkeyOffered && (
-            <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-primary/30 bg-primary/8 px-3 py-2.5 text-[12.5px]">
+            <label className="flex cursor-pointer items-start gap-2 rounded-surface border border-primary/30 bg-primary/8 px-3 py-2.5 text-[12.5px]">
               <Checkbox
                 checked={enrollPasskey}
                 onCheckedChange={(v) => setEnrollPasskey(!!v)}
@@ -417,7 +417,7 @@ export const SignUpPage = ({
                 <span className="flex items-center gap-1.5 font-medium text-foreground">
                   <KeyRoundIcon className="size-3.5 text-primary" />
                   {copy.passkeyEnrol}
-                  <span className="rounded-md border border-primary/30 bg-card px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wide text-primary">
+                  <span className="rounded-sm border border-primary/30 bg-card px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wide text-primary">
                     {copy.passkeyRecommended}
                   </span>
                 </span>

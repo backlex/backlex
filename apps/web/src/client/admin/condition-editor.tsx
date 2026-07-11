@@ -246,7 +246,7 @@ export function ConditionEditor({ role, action, collection, pushToast, available
               </div>
             </div>
             {availableFields.length === 0 && (
-              <div className="rounded-md border border-dashed border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-3 py-2.5 text-xs text-muted-foreground">
+              <div className="rounded-surface border border-dashed border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-3 py-2.5 text-xs text-muted-foreground">
                 <Trans>No fields defined for <span className="font-mono text-foreground">{collection}</span> yet — add fields in the schema editor before writing rules.</Trans>
               </div>
             )}
@@ -285,7 +285,7 @@ export function ConditionEditor({ role, action, collection, pushToast, available
                 <span className="text-[11.5px] text-muted-foreground"><Trans>Edit raw DSL. Click Builder to round-trip back to visual.</Trans></span>
               </div>
             )}
-            <div className="flex flex-wrap gap-1 rounded-md border border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] p-1.5">
+            <div className="flex flex-wrap gap-1 rounded-control border border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] p-1.5">
               {CE_DYNAMIC_VARS.map((v) => (
                 <span key={v.v} className="inline-flex items-center gap-[5px] rounded-full border border-border bg-card px-[7px] py-0.5 text-[11px]" title={v.desc}><span className="font-mono">{v.v}</span><span className="text-muted-foreground">{v.desc}</span></span>
               ))}
@@ -298,7 +298,7 @@ export function ConditionEditor({ role, action, collection, pushToast, available
             <div className="text-[12.5px] text-muted-foreground">
               <Trans>Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role.</Trans>
             </div>
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="overflow-hidden rounded-control border border-border bg-card">
               <div className="grid grid-cols-[minmax(0,1fr)_80px_80px] items-center border-b border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] px-3.5 py-2 text-[11.5px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
                 <span><Trans>Field</Trans></span>
                 <span className="text-center"><Trans>Read</Trans></span>
@@ -345,7 +345,7 @@ export function ConditionEditor({ role, action, collection, pushToast, available
             <div className="text-[12.5px] text-muted-foreground">
               <Trans>Default values applied on create. The user cannot override these — they are stamped server-side after validation.</Trans>
             </div>
-            <div className="flex flex-col gap-2 rounded-xl border border-border bg-[color-mix(in_oklch,var(--muted)_18%,var(--card))] p-3">
+            <div className="flex flex-col gap-2 rounded-control border border-border bg-[color-mix(in_oklch,var(--muted)_18%,var(--card))] p-3">
               {presets.map((p, i) => (
                 <div key={p.id} className="flex items-center gap-2">
                   <Select
@@ -388,7 +388,7 @@ export function ConditionEditor({ role, action, collection, pushToast, available
         )}
 
         {tab === "item" && (
-          <details className="rounded-md border border-border bg-card">
+          <details className="rounded-control border border-border bg-card">
             <summary className="cursor-pointer px-3 py-2 text-[12.5px] font-medium text-foreground [list-style:none]">
               <Trans>Test against an item</Trans>
             </summary>
@@ -411,7 +411,7 @@ export function ConditionEditor({ role, action, collection, pushToast, available
         {showSql && (
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Compiled SQL</Trans></label>
-            <pre className="m-0 whitespace-pre-wrap rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{compileSql()}</pre>
+            <pre className="m-0 whitespace-pre-wrap rounded-control bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{compileSql()}</pre>
           </div>
         )}
 

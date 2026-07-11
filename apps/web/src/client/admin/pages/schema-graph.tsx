@@ -165,7 +165,7 @@ function CollectionNodeView({ data, selected }: NodeProps<CollectionNode>) {
   const d = data;
   return (
     <div
-      className={`w-[248px] overflow-hidden rounded-xl border bg-card shadow-sm transition-colors ${selected ? "border-primary ring-1 ring-primary" : "border-border"}`}
+      className={`w-[248px] overflow-hidden rounded-control border bg-card shadow-sm transition-colors ${selected ? "border-primary ring-1 ring-primary" : "border-border"}`}
     >
       {/* Target handle — incoming relations anchor on the node's left edge. */}
       <Handle
@@ -186,7 +186,7 @@ function CollectionNodeView({ data, selected }: NodeProps<CollectionNode>) {
         </span>
         <button
           type="button"
-          className="nodrag grid size-5 shrink-0 place-items-center rounded-[5px] text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="nodrag grid size-5 shrink-0 place-items-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
           title={t`Add field`}
           onClick={(e) => { e.stopPropagation(); d.onAddField(d.slug); }}
         >
@@ -194,7 +194,7 @@ function CollectionNodeView({ data, selected }: NodeProps<CollectionNode>) {
         </button>
         <button
           type="button"
-          className="nodrag grid size-5 shrink-0 place-items-center rounded-[5px] text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="nodrag grid size-5 shrink-0 place-items-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
           title={t`Open collection`}
           onClick={(e) => { e.stopPropagation(); d.onOpen(d.slug); }}
         >
@@ -224,13 +224,13 @@ function CollectionNodeView({ data, selected }: NodeProps<CollectionNode>) {
             <span className="truncate font-mono text-[11.5px]">{f.name}</span>
             {f.required && <span className="text-[11px] text-destructive" title={t`required`}>*</span>}
             {f.unique && <span className="text-[10px] uppercase text-muted-foreground" title={t`unique`}>u</span>}
-            <span className="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[9.5px] text-muted-foreground">
+            <span className="ml-auto shrink-0 rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[9.5px] text-muted-foreground">
               {TYPE_ABBR[f.type] ?? f.type}
             </span>
             <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
               <button
                 type="button"
-                className="nodrag grid size-5 place-items-center rounded-[5px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="nodrag grid size-5 place-items-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
                 title={t`Edit field`}
                 onClick={(e) => { e.stopPropagation(); d.onEditField(d.slug, f.name); }}
               >
@@ -239,7 +239,7 @@ function CollectionNodeView({ data, selected }: NodeProps<CollectionNode>) {
               {!d.adopted && (
                 <button
                   type="button"
-                  className="nodrag grid size-5 place-items-center rounded-[5px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  className="nodrag grid size-5 place-items-center rounded-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   title={t`Drop field`}
                   onClick={(e) => { e.stopPropagation(); d.onDropField(d.slug, f.name); }}
                 >
@@ -574,7 +574,7 @@ function ErdCanvas({
               and the minimap isn't an oversized grey panel. */}
           <Controls
             showInteractive={false}
-            className="!shadow-md !overflow-hidden !rounded-lg !border !border-border [&_button]:!border-b [&_button]:!border-border [&_button]:!bg-card [&_button:hover]:!bg-muted [&_button:last-child]:!border-b-0 [&_button_svg]:!fill-foreground"
+            className="!shadow-md !overflow-hidden !rounded-surface !border !border-border [&_button]:!border-b [&_button]:!border-border [&_button]:!bg-card [&_button:hover]:!bg-muted [&_button:last-child]:!border-b-0 [&_button_svg]:!fill-foreground"
           />
           <MiniMap
             pannable
@@ -585,7 +585,7 @@ function ErdCanvas({
             bgColor="var(--card)"
             maskColor="color-mix(in oklch, var(--background) 55%, transparent)"
             style={{ width: 168, height: 112 }}
-            className="!bottom-3 !right-3 !m-0 overflow-hidden rounded-lg border border-border shadow-md"
+            className="!bottom-3 !right-3 !m-0 overflow-hidden rounded-surface border border-border shadow-md"
           />
         </ReactFlow>
       </div>

@@ -211,7 +211,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
           { label: t`Pending invites`, value: stats.pending, hint: stats.pending ? t`awaiting accept` : t`none` },
           { label: t`Admins`, value: stats.admins, hint: t`full access` },
         ].map((s) => (
-          <div key={s.label} className="flex flex-col gap-1 rounded-xl border border-border bg-card px-4 py-3.5">
+          <div key={s.label} className="flex flex-col gap-1 rounded-control border border-border bg-card px-4 py-3.5">
             <span className="text-[11.5px] uppercase tracking-[0.02em] text-muted-foreground">{s.label}</span>
             <span className="text-[26px] font-semibold tracking-[-0.02em]">{s.value}</span>
             <span className="text-[11.5px] text-muted-foreground">{s.hint}</span>
@@ -249,7 +249,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
       </div>
 
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[color-mix(in_oklch,var(--primary)_40%,var(--border))] bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))] px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2 rounded-control border border-[color-mix(in_oklch,var(--primary)_40%,var(--border))] bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))] px-3 py-2">
           <Badge variant="default"><Trans>{selected.size} selected</Trans></Badge>
           <span className="text-[12.5px] text-muted-foreground"><Trans>Apply to selection:</Trans></span>
           <Button size="sm" variant="outline" onClick={() => bulk("activate")}><Trans>Activate</Trans></Button>
@@ -502,7 +502,7 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-medium text-foreground"><Trans>Roles</Trans></label>
-              <div className="flex flex-col overflow-hidden rounded-xl border border-border">
+              <div className="flex flex-col overflow-hidden rounded-control border border-border">
                 {allRoles.filter((r) => r.name !== "public").map((r) => (
                   <label key={r.id} className="flex cursor-pointer items-center gap-2.5 border-b border-border px-3 py-2.5 last:border-b-0">
                     <Checkbox
@@ -519,7 +519,7 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-xl bg-muted px-3.5 py-3 max-[900px]:grid-cols-1">
+          <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-control bg-muted px-3.5 py-3 max-[900px]:grid-cols-1">
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Provider</Trans></span><span className="inline-flex items-center gap-1.5 text-foreground"><ProviderGlyph kind={user.provider} size={12} />{PROVIDER_LABEL[user.provider] ?? user.provider}</span></div>
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>2FA</Trans></span>{user.mfa ? <span className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklch,oklch(0.55_0.15_145)_35%,var(--border))] bg-[color-mix(in_oklch,oklch(0.78_0.14_145)_14%,transparent)] px-[7px] py-0.5 font-mono text-[11px] text-[oklch(0.55_0.15_145)]"><I.Shield size={11} /> <Trans>enrolled</Trans></span> : <span className="inline-flex items-center gap-1 rounded-full border border-border px-[7px] py-0.5 font-mono text-[11px] text-muted-foreground"><Trans>disabled</Trans></span>}</div>
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Created</Trans></span><span className="font-mono text-xs">{user.created}</span></div>
@@ -533,9 +533,9 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
               <span className="text-[11.5px] font-normal text-muted-foreground">{sessions.length}</span>
             </div>
             {sessions.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border p-3.5 text-center text-[12.5px] text-muted-foreground"><Trans>No active sessions.</Trans></div>
+              <div className="rounded-control border border-dashed border-border p-3.5 text-center text-[12.5px] text-muted-foreground"><Trans>No active sessions.</Trans></div>
             ) : (
-              <div className="flex flex-col overflow-hidden rounded-xl border border-border">
+              <div className="flex flex-col overflow-hidden rounded-control border border-border">
                 {sessions.map((s) => (
                   <div key={s.id} className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5 last:border-b-0">
                     <div className="flex min-w-0 flex-col gap-0.5">
@@ -564,7 +564,7 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
               <span><Trans>Recent activity</Trans></span>
               <span className="text-[11.5px] font-normal text-muted-foreground"><Trans>last 30 days</Trans></span>
             </div>
-            <div className="flex flex-col overflow-hidden rounded-xl border border-border">
+            <div className="flex flex-col overflow-hidden rounded-control border border-border">
               {activity.map((a, i) => (
                 <div key={i} className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5 last:border-b-0">
                   <div className="flex flex-col gap-0.5">
@@ -577,7 +577,7 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
             </div>
           </div>
 
-          <div className="rounded-xl border border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_5%,var(--card))] px-3.5 py-3">
+          <div className="rounded-control border border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_5%,var(--card))] px-3.5 py-3">
             <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium"><span><Trans>Danger zone</Trans></span></div>
             <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
               <div>

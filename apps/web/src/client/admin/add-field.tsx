@@ -333,16 +333,16 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                       <button
                         key={it.id}
                         type="button"
-                        className={`flex min-w-0 cursor-pointer flex-col gap-1.5 rounded-xl border p-3 text-left text-foreground transition-colors ${on ? "border-[color-mix(in_oklch,var(--primary)_60%,var(--border))] bg-selected-surface" : "border-border bg-card hover:bg-accent"}`}
+                        className={`flex min-w-0 cursor-pointer flex-col gap-1.5 rounded-control border p-3 text-left text-foreground transition-colors ${on ? "border-[color-mix(in_oklch,var(--primary)_60%,var(--border))] bg-selected-surface" : "border-border bg-card hover:bg-accent"}`}
                         onClick={() => pickInterface(it.id)}
                         title={it.sub}
                       >
                         <span className="flex w-full min-w-0 items-center gap-2.5">
-                          <span className={`grid size-7 shrink-0 place-items-center rounded-[8px] text-foreground ${on ? "bg-icon-surface" : "bg-muted"}`}><Ic size={14} /></span>
+                          <span className={`grid size-7 shrink-0 place-items-center rounded-control text-foreground ${on ? "bg-icon-surface" : "bg-muted"}`}><Ic size={14} /></span>
                           <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{it.label}</span>
                         </span>
                         <span className="line-clamp-2 text-[11.5px] leading-snug text-muted-foreground">{it.sub}</span>
-                        <span className="mt-auto max-w-full self-start truncate rounded-[6px] bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">{it.type}</span>
+                        <span className="mt-auto max-w-full self-start truncate rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">{it.type}</span>
                       </button>
                     );
                   })}
@@ -492,7 +492,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
               <div className="flex flex-col gap-3.5">
                 <div className="flex flex-col gap-1.5">
                   <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Interface</Trans></label>
-                  <div className="flex flex-wrap items-center gap-2 rounded-3xl border border-border bg-card px-3 py-2">
+                  <div className="flex flex-wrap items-center gap-2 rounded-control border border-border bg-card px-3 py-2">
                     <Icon size={14} />
                     <span className="text-[13px] font-medium">{def.label}</span>
                     <Badge variant="outline" mono>{def.type}</Badge>
@@ -503,7 +503,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                 </div>
 
                 {def.hasChoices && (
-                  <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
+                  <div className="flex flex-col gap-1.5 rounded-control bg-muted p-3">
                     <div className="mb-2 flex items-center gap-2">
                       <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Choices</Trans></span>
                       <span className="text-[11.5px] text-muted-foreground"><Trans>value · label · color</Trans></span>
@@ -518,7 +518,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                         <div key={i} className="flex flex-wrap items-center gap-1.5">
                           <Input className="min-w-[7.5rem] flex-1" placeholder={t`value`} value={c.value} onChange={(e) => setChoice(i, { value: e.target.value })} />
                           <Input className="min-w-[7.5rem] flex-1" placeholder={t`label (optional)`} value={c.label ?? ""} onChange={(e) => setChoice(i, { label: e.target.value })} />
-                          <input type="color" value={c.color ?? "#A1A6B8"} onChange={(e) => setChoice(i, { color: e.target.value })} className="h-[30px] w-16 shrink-0 cursor-pointer rounded-[6px] border border-border bg-card" />
+                          <input type="color" value={c.color ?? "#A1A6B8"} onChange={(e) => setChoice(i, { color: e.target.value })} className="h-[30px] w-16 shrink-0 cursor-pointer rounded-control border border-border bg-card" />
                           <IconButton icon={I.Trash} title={t`Remove choice`} onClick={() => removeChoice(i)} />
                         </div>
                       ))}
@@ -530,7 +530,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                 <FieldFormatEditor type={def.type} value={formatDraft} onChange={setFormatDraft} />
 
                 {!def.hasChoices && def.type !== "integer" && def.type !== "number" && def.type !== "timestamp" && (
-                  <div className="rounded-xl bg-muted p-3 text-[12.5px] text-muted-foreground">
+                  <div className="rounded-control bg-muted p-3 text-[12.5px] text-muted-foreground">
                     <Trans>This interface has no extra options. Selection interfaces (dropdown, radio…) show a choices editor here.</Trans>
                   </div>
                 )}
@@ -542,7 +542,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
             )}
 
             {activeTab === "conditions" && (
-              <div className="flex flex-col gap-2 rounded-xl bg-muted p-3">
+              <div className="flex flex-col gap-2 rounded-control bg-muted p-3">
                 <div className="flex items-center gap-2">
                   <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Conditions</Trans></span>
                   <div className="flex-1" />
@@ -557,7 +557,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   </div>
                 )}
                 {conds.map((c, i) => (
-                  <div key={i} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2.5">
+                  <div key={i} className="flex flex-col gap-2 rounded-surface border border-border bg-card p-2.5">
                     <div className="flex items-center gap-2">
                       <Input
                         className="h-8 flex-1"

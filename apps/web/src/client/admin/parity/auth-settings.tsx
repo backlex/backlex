@@ -500,7 +500,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
               <div className="flex-1" />
               <Button size="sm" variant="ghost" onClick={() => void copyText(code, () => pushToast?.(t`Copied.`))}><Trans>Copy</Trans></Button>
             </div>
-            <ScrollArea className="rounded-lg"><pre className="m-0 whitespace-pre rounded-lg bg-muted p-3 font-mono text-[11.5px]">{code}</pre></ScrollArea>
+            <ScrollArea className="rounded-surface"><pre className="m-0 whitespace-pre rounded-surface bg-muted p-3 font-mono text-[11.5px]">{code}</pre></ScrollArea>
           </div>
         );
         const sdkCode =

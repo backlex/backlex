@@ -379,7 +379,7 @@ const SchemaTreeRow = ({
     onClick={onClick}
     title={description ?? undefined}
     className={cn(
-      "group flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs font-mono transition-colors",
+      "group flex w-full items-center gap-2 rounded-control px-2 py-1 text-left text-xs font-mono transition-colors",
       "hover:bg-accent hover:text-accent-foreground",
       active && "bg-accent text-accent-foreground",
     )}
@@ -405,12 +405,12 @@ const SectionHeader = ({ icon, title, count, open, ...buttonProps }: SectionHead
   <button
     type="button"
     {...buttonProps}
-    className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:bg-accent/40"
+    className="flex w-full items-center gap-1.5 rounded-control px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:bg-accent/40"
   >
     {open ? <ChevronDownIcon className="size-3" /> : <ChevronRightIcon className="size-3" />}
     {icon}
     <span>{title}</span>
-    <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono tabular-nums text-muted-foreground">
+    <span className="ml-auto rounded-sm bg-muted px-1.5 py-0.5 text-[10px] font-mono tabular-nums text-muted-foreground">
       {count}
     </span>
   </button>
@@ -808,7 +808,7 @@ export const GraphqlPage = () => {
             )}
 
             {schemaError && !schemaLoading && (
-              <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+              <div className="rounded-surface border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
                 {schemaError}
               </div>
             )}
@@ -1018,11 +1018,11 @@ export const GraphqlPage = () => {
                 )}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>
-                    <kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">
+                    <kbd className="rounded-sm border bg-muted px-1 py-0.5 font-mono text-[10px]">
                       ⌘
                     </kbd>{" "}
                     +{" "}
-                    <kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">
+                    <kbd className="rounded-sm border bg-muted px-1 py-0.5 font-mono text-[10px]">
                       ↵
                     </kbd>{" "}
                     <Trans>to execute</Trans>
@@ -1084,7 +1084,7 @@ export const GraphqlPage = () => {
                   </TabsContent>
                 </Tabs>
               ) : (
-                <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-8 text-center text-xs text-muted-foreground">
+                <div className="rounded-surface border border-dashed border-border bg-muted/30 px-3 py-8 text-center text-xs text-muted-foreground">
                   <Trans>Execute a query to see results here.</Trans>
                 </div>
               )}

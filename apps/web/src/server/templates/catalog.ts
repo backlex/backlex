@@ -176,6 +176,10 @@ const image = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name
 const tags = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "json", interface: "tags", ...extra });
 /** Self-referential parent FK for hierarchical/tree collections. */
 const parent = (to: string, extra: Partial<FieldDef> = {}): FieldDef => rel("parent", to, { label: "Parent", ...extra });
+/** Link to a workspace end-user (`app_users.id`) — set by the admin (or a
+ *  future invite/auto-link flow) so the person can sign in and see their own
+ *  rows via `$user.id` permission conditions. */
+const userLink = (extra: Partial<FieldDef> = {}): FieldDef => text("app_user_id", { indexed: true, label: "Login user", ...extra });
 /** Integer position/sort key — indexed so ordered lists stay cheap. */
 const position = (name = "position", extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "integer", default: 0, indexed: true, ...extra });
 /** Percent 0–100 integer. */
@@ -1334,6 +1338,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           money("compensation_amount", { label: "Base compensation", group: "Compensation" }),
           select("compensation_currency", ["USD", "EUR", "GBP"], { default: "USD", label: "Currency", group: "Compensation" }),
           select("pay_frequency", [ch("hourly", C.gray), ch("biweekly", C.blue), ch("semimonthly", C.teal, "Semi-monthly"), ch("monthly", C.purple), ch("annually", C.green)], { default: "monthly", label: "Pay frequency", group: "Compensation" }),
+          userLink(),
         ],
         samples: [
           { employee_number: "E-001", first_name: "Ada", last_name: "Lovelace", work_email: "ada@company.example", job_title: "Software Engineer", department: { ref: "departments:0" }, position: { ref: "positions:0" }, location: { ref: "locations:0" }, employment_type: "full_time", status: "active", hire_date: ms("2024-03-01"), compensation_amount: 145000 },
@@ -1553,6 +1558,24 @@ export const TEMPLATES: SchemaTemplate[] = [
           { collection: "goals", action: "update" },
           { collection: "onboarding_tasks", action: "read" },
           { collection: "onboarding_tasks", action: "update" },
+        ],
+      },
+      {
+        name: "Employee (self-service)",
+        description: "Employee self-service portal: own profile, leave balances and requests, attendance, benefits, goals and onboarding tasks; request time off.",
+        permissions: [
+          { collection: "leave_types", action: "read" },
+          { collection: "public_holidays", action: "read" },
+          { collection: "benefits", action: "read" },
+          { collection: "employees", action: "read", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "leave_allocations", action: "read", condition: { "employee.app_user_id": { _eq: "$user.id" } } },
+          { collection: "leave_requests", action: "read", condition: { "employee.app_user_id": { _eq: "$user.id" } } },
+          { collection: "leave_requests", action: "create" },
+          { collection: "leave_requests", action: "update", condition: { "employee.app_user_id": { _eq: "$user.id" } } },
+          { collection: "attendance_records", action: "read", condition: { "employee.app_user_id": { _eq: "$user.id" } } },
+          { collection: "benefit_enrollments", action: "read", condition: { "employee.app_user_id": { _eq: "$user.id" } } },
+          { collection: "goals", action: "read", condition: { "employee.app_user_id": { _eq: "$user.id" } } },
+          { collection: "onboarding_tasks", action: "read", condition: { "employee.app_user_id": { _eq: "$user.id" } } },
         ],
       },
     ],
@@ -1895,7 +1918,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "attendees", group: "Attendees", singular: "Attendee", plural: "Attendees", defaultSort: "name",
-        fields: [text("name"), email("email", { required: true }), text("phone"), text("company")],
+        fields: [text("name"), email("email", { required: true }), text("phone"), text("company"), userLink()],
         samples: [{ name: "Jordan Reed", email: "jordan@example.com", company: "Acme" }],
       },
       {
@@ -1971,6 +1994,20 @@ export const TEMPLATES: SchemaTemplate[] = [
           { collection: "booths", action: "create" },
           { collection: "booths", action: "update" },
           { collection: "event_budgets", action: "read" },
+        ],
+      },
+      {
+        name: "Attendee (portal)",
+        description: "Signed-in attendee self-service: browse events, sessions and ticket types; see and update own registration, orders and tickets.",
+        permissions: [
+          { collection: "events", action: "read" },
+          { collection: "sessions", action: "read" },
+          { collection: "ticket_types", action: "read" },
+          { collection: "attendees", action: "read", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "attendees", action: "update", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "orders", action: "read", condition: { "buyer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "tickets", action: "read", condition: { "attendee.app_user_id": { _eq: "$user.id" } } },
+          { collection: "tickets", action: "update", condition: { "attendee.app_user_id": { _eq: "$user.id" } } },
         ],
       },
     ],
@@ -2682,7 +2719,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "students", group: "People", singular: "Student", plural: "Students", defaultSort: "name",
-        fields: [text("name", { required: true }), email("email", { unique: true }), image("avatar")],
+        fields: [text("name", { required: true }), email("email", { unique: true }), image("avatar"), userLink()],
         samples: [{ name: "Sam Taylor", email: "sam@student.example" }],
       },
       {
@@ -2736,6 +2773,30 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "reviews", group: "Progress", singular: "Review", plural: "Reviews", ownerScoped: true, defaultSort: "-created_at",
         fields: [rel("student", "students"), rel("course", "courses"), rating("rating"), text("title"), notes("body"), select("status", [ch("pending", C.amber), ch("published", C.green), ch("hidden", C.gray)], { default: "pending" })],
         samples: [{ student: { ref: "students:0" }, course: { ref: "courses:0" }, rating: 5, title: "Loved it", body: "Clear and beginner-friendly.", status: "published" }],
+      },
+    ],
+    roles: [
+      {
+        name: "Student (portal)",
+        description: "Student portal: browse the catalog and lessons, follow own enrollments, take quizzes, and see own certificates and reviews.",
+        permissions: [
+          { collection: "categories", action: "read" },
+          { collection: "instructors", action: "read" },
+          { collection: "courses", action: "read" },
+          { collection: "modules", action: "read" },
+          { collection: "lessons", action: "read" },
+          { collection: "quizzes", action: "read" },
+          { collection: "questions", action: "read" },
+          { collection: "students", action: "read", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "enrollments", action: "read", condition: { "student.app_user_id": { _eq: "$user.id" } } },
+          { collection: "quiz_attempts", action: "read", condition: { "student.app_user_id": { _eq: "$user.id" } } },
+          { collection: "quiz_attempts", action: "create" },
+          { collection: "quiz_attempts", action: "update", condition: { "student.app_user_id": { _eq: "$user.id" } } },
+          { collection: "certificates", action: "read", condition: { "student.app_user_id": { _eq: "$user.id" } } },
+          { collection: "reviews", action: "read", condition: { "student.app_user_id": { _eq: "$user.id" } } },
+          { collection: "reviews", action: "create" },
+          { collection: "reviews", action: "update", condition: { "student.app_user_id": { _eq: "$user.id" } } },
+        ],
       },
     ],
   },
@@ -2995,6 +3056,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           num("commission_pct", { default: 10, validation: { min: 0, max: 100 }, label: "Commission (%)" }),
           num("rating", { validation: { min: 0, max: 5 }, label: "Rating" }),
           text("payout_account", { label: "Payout account" }),
+          userLink(),
         ],
         samples: [{ name: "Acme Goods", slug: "acme-goods", email: "sales@acme.example", status: "active", commission_pct: 12, rating: 4.7 }],
       },
@@ -3050,7 +3112,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "buyers", group: "Customers", singular: "Buyer", plural: "Buyers", defaultSort: "name",
-        fields: [text("name", { required: true }), email("email", { unique: true }), text("phone")],
+        fields: [text("name", { required: true }), email("email", { unique: true }), text("phone"), userLink()],
         samples: [{ name: "Sam Taylor", email: "sam@example.com" }],
       },
       {
@@ -3122,6 +3184,34 @@ export const TEMPLATES: SchemaTemplate[] = [
           { collection: "media", action: "read" },
         ],
       },
+      {
+        name: "Buyer (portal)",
+        description: "Signed-in buyer self-service: browse the catalog, see own orders and disputes, open disputes and leave reviews.",
+        permissions: [
+          { collection: "categories", action: "read" },
+          { collection: "listings", action: "read" },
+          { collection: "buyers", action: "read", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "orders", action: "read", condition: { "buyer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "order_items", action: "read", condition: { "order.buyer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "disputes", action: "read", condition: { "buyer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "disputes", action: "create" },
+          { collection: "reviews", action: "read", condition: { "buyer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "reviews", action: "create" },
+        ],
+      },
+      {
+        name: "Vendor (portal)",
+        description: "Signed-in vendor self-service: manage own listings, see own order lines, payouts and disputes — never other vendors' data.",
+        permissions: [
+          { collection: "categories", action: "read" },
+          { collection: "vendors", action: "read", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "listings", action: "read", condition: { "vendor.app_user_id": { _eq: "$user.id" } } },
+          { collection: "listings", action: "update", condition: { "vendor.app_user_id": { _eq: "$user.id" } } },
+          { collection: "order_items", action: "read", condition: { "vendor.app_user_id": { _eq: "$user.id" } } },
+          { collection: "payouts", action: "read", condition: { "vendor.app_user_id": { _eq: "$user.id" } } },
+          { collection: "disputes", action: "read", condition: { "vendor.app_user_id": { _eq: "$user.id" } } },
+        ],
+      },
     ],
     dashboards: [
       {
@@ -3156,6 +3246,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           text("address"), text("city"), text("country"),
           money("total_donated", { default: 0, label: "Total donated" }),
           date("first_gift_at", { label: "First gift" }), date("last_gift_at", { label: "Last gift" }),
+          userLink(),
         ],
         samples: [{ name: "Jordan Reed", email: "jordan@example.com", type: "individual", total_donated: 100 }, { name: "Globex Foundation", email: "giving@globex.example", type: "foundation", total_donated: 25000 }],
       },
@@ -3246,7 +3337,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "volunteers", group: "Volunteering", singular: "Volunteer", plural: "Volunteers", defaultSort: "name",
-        fields: [text("name", { required: true }), email("email"), text("phone"), notes("skills"), select("status", [ch("active", C.green), ch("inactive", C.gray)], { default: "active" })],
+        fields: [text("name", { required: true }), email("email"), text("phone"), notes("skills"), select("status", [ch("active", C.green), ch("inactive", C.gray)], { default: "active" }), userLink()],
         samples: [{ name: "Casey Morgan", email: "casey@example.com", skills: "Event setup, outreach.", status: "active" }],
       },
       {
@@ -3305,6 +3396,26 @@ export const TEMPLATES: SchemaTemplate[] = [
           { collection: "volunteer_shifts", action: "update" },
           { collection: "programs", action: "read" },
           { collection: "beneficiaries", action: "read" },
+        ],
+      },
+      {
+        name: "Donor (portal)",
+        description: "Signed-in donor self-service: browse campaigns and events, see own donor record, donations and pledges.",
+        permissions: [
+          { collection: "campaigns", action: "read" },
+          { collection: "events", action: "read" },
+          { collection: "donors", action: "read", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "donations", action: "read", condition: { "donor.app_user_id": { _eq: "$user.id" } } },
+          { collection: "pledges", action: "read", condition: { "donor.app_user_id": { _eq: "$user.id" } } },
+        ],
+      },
+      {
+        name: "Volunteer (portal)",
+        description: "Signed-in volunteer self-service: browse events, see own volunteer profile and shifts.",
+        permissions: [
+          { collection: "events", action: "read" },
+          { collection: "volunteers", action: "read", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "volunteer_shifts", action: "read", condition: { "volunteer.app_user_id": { _eq: "$user.id" } } },
         ],
       },
     ],
@@ -3473,6 +3584,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           select("payment_terms", [ch("due_on_receipt", C.green, "Due on receipt"), ch("net_15", C.blue, "Net 15"), ch("net_30", C.teal, "Net 30"), ch("net_60", C.amber, "Net 60")], { default: "net_30", label: "Payment terms", group: "Billing" }),
           select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", group: "Billing" }),
           notes("notes", { group: "Billing" }), bool("active", { default: true, label: "Active", group: "Billing" }),
+          userLink({ group: "Billing" }),
         ],
         samples: [
           { name: "Acme Corp", email: "billing@acme.example", tax_number: "US-88-1234567", city: "Chicago", country: "US", payment_terms: "net_30", currency: "USD", active: true },
@@ -3694,6 +3806,18 @@ export const TEMPLATES: SchemaTemplate[] = [
           { collection: "expenses", action: "update" },
         ],
       },
+      {
+        name: "Customer (portal)",
+        description: "Signed-in customer self-service: read own invoices, line items, payments, quotes and credit notes — no writes, no payables.",
+        permissions: [
+          { collection: "customers", action: "read", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "invoices", action: "read", condition: { "customer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "invoice_lines", action: "read", condition: { "invoice.customer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "payments", action: "read", condition: { "customer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "quotes", action: "read", condition: { "customer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "credit_notes", action: "read", condition: { "customer.app_user_id": { _eq: "$user.id" } } },
+        ],
+      },
     ],
     dashboards: [
       {
@@ -3787,7 +3911,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "customers", group: "People", singular: "Customer", plural: "Customers", fts: true, defaultSort: "name",
-        fields: [text("name", { required: true, searchable: true }), email("email"), text("phone"), notes("notes")],
+        fields: [text("name", { required: true, searchable: true }), email("email"), text("phone"), notes("notes"), userLink()],
         samples: [{ name: "Jordan Ellis", email: "jordan@example.com", phone: "+1 555 0142" }],
       },
       {
@@ -3922,6 +4046,25 @@ export const TEMPLATES: SchemaTemplate[] = [
           { collection: "booking_answers", action: "read" },
         ],
       },
+      {
+        name: "Customer (portal)",
+        description: "Customer self-service portal: browse services, staff and availability, book and manage own appointments, join the waitlist, track own packages.",
+        permissions: [
+          { collection: "locations", action: "read" },
+          { collection: "staff", action: "read" },
+          { collection: "services", action: "read" },
+          { collection: "availability_rules", action: "read" },
+          { collection: "booking_questions", action: "read" },
+          { collection: "packages", action: "read" },
+          { collection: "customers", action: "read", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "bookings", action: "read", condition: { "customer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "bookings", action: "create" },
+          { collection: "bookings", action: "update", condition: { "customer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "package_purchases", action: "read", condition: { "customer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "waitlist_entries", action: "read", condition: { "customer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "waitlist_entries", action: "create" },
+        ],
+      },
     ],
     dashboards: [
       {
@@ -3962,6 +4105,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           text("name", { required: true, searchable: true, group: "Customer" }), email("email", { group: "Customer" }), text("phone", { group: "Customer" }),
           text("address", { group: "Service address" }), text("city", { group: "Service address" }), text("postal_code", { label: "Postal code", group: "Service address" }),
           notes("access_notes", { label: "Access notes", group: "Service address" }),
+          userLink({ group: "Customer" }),
         ],
         samples: [{ name: "Riverside Apartments", email: "manager@riverside.example", phone: "+1 555 0180", address: "88 River Rd", city: "Portland", access_notes: "Gate code 4415; parking in the rear lot." }],
       },
@@ -4116,6 +4260,18 @@ export const TEMPLATES: SchemaTemplate[] = [
           { collection: "worksheets", action: "read" },
           { collection: "worksheets", action: "create" },
           { collection: "worksheets", action: "update" },
+        ],
+      },
+      {
+        name: "Customer (portal)",
+        description: "Signed-in customer self-service: read own work orders, visits, invoices, estimates and service contracts — no writes, no parts stock.",
+        permissions: [
+          { collection: "customers", action: "read", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "work_orders", action: "read", condition: { "customer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "visits", action: "read", condition: { "work_order.customer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "invoices", action: "read", condition: { "customer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "estimates", action: "read", condition: { "customer.app_user_id": { _eq: "$user.id" } } },
+          { collection: "service_contracts", action: "read", condition: { "customer.app_user_id": { _eq: "$user.id" } } },
         ],
       },
     ],
@@ -4970,6 +5126,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           date("renews_at", { indexed: true, label: "Renews", group: "Membership" }),
           text("emergency_contact", { label: "Emergency contact", group: "Membership" }),
           notes("notes", { group: "Membership" }),
+          userLink(),
         ],
         samples: [
           { name: "Jamie Fox", email: "jamie@example.com", plan: { ref: "membership_plans:1" }, status: "active", joined_at: ms("2026-02-01"), renews_at: ms("2026-08-01") },
@@ -5140,6 +5297,25 @@ export const TEMPLATES: SchemaTemplate[] = [
           { collection: "check_ins", action: "read" },
         ],
       },
+      {
+        name: "Member (self-service)",
+        description: "Member self-service portal: browse plans and class schedules, book classes, request freezes, and see own payments, PT sessions and progress.",
+        permissions: [
+          { collection: "trainers", action: "read" },
+          { collection: "membership_plans", action: "read" },
+          { collection: "classes", action: "read" },
+          { collection: "class_sessions", action: "read" },
+          { collection: "members", action: "read", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "class_bookings", action: "read", condition: { "member.app_user_id": { _eq: "$user.id" } } },
+          { collection: "class_bookings", action: "create" },
+          { collection: "class_bookings", action: "update", condition: { "member.app_user_id": { _eq: "$user.id" } } },
+          { collection: "pt_sessions", action: "read", condition: { "member.app_user_id": { _eq: "$user.id" } } },
+          { collection: "body_measurements", action: "read", condition: { "member.app_user_id": { _eq: "$user.id" } } },
+          { collection: "membership_freezes", action: "read", condition: { "member.app_user_id": { _eq: "$user.id" } } },
+          { collection: "membership_freezes", action: "create" },
+          { collection: "payments", action: "read", condition: { "member.app_user_id": { _eq: "$user.id" } } },
+        ],
+      },
     ],
     dashboards: [
       {
@@ -5173,7 +5349,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "clients", group: "People", singular: "Client", plural: "Clients", fts: true, defaultSort: "name",
-        fields: [text("name", { required: true, searchable: true }), email("email"), text("phone"), text("company"), text("address"), notes("notes")],
+        fields: [text("name", { required: true, searchable: true }), email("email"), text("phone"), text("company"), text("address"), notes("notes"), userLink()],
         samples: [{ name: "Meridian Holdings LLC", email: "legal@meridian.example", company: "Meridian Holdings", phone: "+1 555 0122" }],
       },
       {
@@ -5351,6 +5527,16 @@ export const TEMPLATES: SchemaTemplate[] = [
           { collection: "disbursements", action: "update" },
         ],
       },
+      {
+        name: "Client (portal)",
+        description: "Client portal: read-only view of own matters, invoices and hearings/deadlines — no other records, no writes.",
+        permissions: [
+          { collection: "clients", action: "read", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "matters", action: "read", condition: { "client.app_user_id": { _eq: "$user.id" } } },
+          { collection: "key_dates", action: "read", condition: { "matter.client.app_user_id": { _eq: "$user.id" } } },
+          { collection: "invoices", action: "read", condition: { "client.app_user_id": { _eq: "$user.id" } } },
+        ],
+      },
     ],
     dashboards: [
       {
@@ -5392,6 +5578,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           text("emergency_contact", { label: "Emergency contact", group: "Coverage" }),
           notes("allergies", { group: "Coverage" }),
           notes("notes", { group: "Coverage" }),
+          userLink(),
         ],
         samples: [{ name: "Rae Lindqvist", email: "rae@example.com", phone: "+1 555 0107", birth_date: ms("1991-04-18"), insurance_provider: "BlueShield", insurance_number: "BS-2210475", allergies: "Penicillin" }],
       },
@@ -5546,6 +5733,20 @@ export const TEMPLATES: SchemaTemplate[] = [
           { collection: "recalls", action: "read" },
           { collection: "recalls", action: "create" },
           { collection: "recalls", action: "update" },
+        ],
+      },
+      {
+        name: "Patient (portal)",
+        description: "Patient portal: own appointments, prescriptions, lab results, invoices and recalls — never other patients, visit notes or vitals.",
+        permissions: [
+          { collection: "practitioners", action: "read" },
+          { collection: "services", action: "read" },
+          { collection: "patients", action: "read", condition: { app_user_id: { _eq: "$user.id" } } },
+          { collection: "appointments", action: "read", condition: { "patient.app_user_id": { _eq: "$user.id" } } },
+          { collection: "prescriptions", action: "read", condition: { "patient.app_user_id": { _eq: "$user.id" } } },
+          { collection: "lab_results", action: "read", condition: { "patient.app_user_id": { _eq: "$user.id" } } },
+          { collection: "invoices", action: "read", condition: { "patient.app_user_id": { _eq: "$user.id" } } },
+          { collection: "recalls", action: "read", condition: { "patient.app_user_id": { _eq: "$user.id" } } },
         ],
       },
     ],

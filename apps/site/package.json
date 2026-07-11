@@ -5,14 +5,14 @@
   "private": true,
   "description": "Public marketing site for backlex — standalone Astro + Tailwind v4.",
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro check && astro build",
-    "build:web": "astro build && bun run --cwd ../docs build && rm -rf dist/docs && cp -r ../docs/dist dist/docs",
+    "dev": "bunx --bun astro dev",
+    "start": "bunx --bun astro dev",
+    "build": "astro check && bunx --bun astro build",
+    "build:web": "bunx --bun astro build && bun run --cwd ../docs build && rm -rf dist/docs && cp -r ../docs/dist dist/docs",
     "deploy": "bun run build:web && wrangler deploy",
     "typecheck": "astro check",
-    "preview": "astro preview",
-    "astro": "astro"
+    "preview": "bunx --bun astro preview",
+    "astro": "bunx --bun astro"
   },
   "dependencies": {
     "@astrojs/check": "0.9.9",

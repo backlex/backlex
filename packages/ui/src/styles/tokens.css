@@ -78,7 +78,7 @@
        never depend on the color scheme. */
     --radius-control: 0.5625rem; /* 9px — buttons, inputs, selects, tabs, tiles, nav */
     --radius-surface: 0.875rem; /* 14px — cards, panels, dialogs, popovers, menus */
-    --radius-pill: 999px; /* badges, chips, status dots, segmented pills */
+    --radius-pill: 999px; /* chips, status dots, segmented pills */
 }
 
 :root {

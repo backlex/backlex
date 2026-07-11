@@ -2217,6 +2217,12 @@ msgstr "Collection c_{slug} restored."
 msgid "Collection settings saved."
 msgstr "Collection settings saved."
 
+#. placeholder {0}: resp.ftsBackfill.processed
+#. placeholder {1}: resp.ftsBackfill.total
+#: src/client/admin/app.tsx
+msgid "Collection settings saved. Search index rebuilt ({0} of {1} rows indexed)."
+msgstr "Collection settings saved. Search index rebuilt ({0} of {1} rows indexed)."
+
 #: src/client/admin/pages/overview.tsx
 msgid "Collection wizard opened."
 msgstr "Collection wizard opened."
@@ -4158,6 +4164,13 @@ msgstr "Field"
 msgid "Field \"{0}\" updated."
 msgstr "Field \"{0}\" updated."
 
+#. placeholder {0}: (next as { name?: string }).name
+#. placeholder {1}: resp.ftsBackfill.processed
+#. placeholder {2}: resp.ftsBackfill.total
+#: src/client/admin/app.tsx
+msgid "Field \"{0}\" updated. Search index rebuilt ({1} of {2} rows indexed)."
+msgstr "Field \"{0}\" updated. Search index rebuilt ({1} of {2} rows indexed)."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Field name"
 msgstr "Field name"
@@ -4336,8 +4349,12 @@ msgid "Fold this field into the collection's full-text-search index (when FTS is
 msgstr "Fold this field into the collection's full-text-search index (when FTS is enabled)."
 
 #: src/client/admin/edit-field.tsx
-msgid "Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing."
-msgstr "Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing."
+#~ msgid "Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing."
+#~ msgstr "Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing."
+
+#: src/client/admin/edit-field.tsx
+msgid "Fold this field into the collection's full-text-search index (when FTS is enabled). Saving re-indexes existing rows automatically."
+msgstr "Fold this field into the collection's full-text-search index (when FTS is enabled). Saving re-indexes existing rows automatically."
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Folder"
@@ -5639,8 +5656,12 @@ msgid "Magic-link plugin not enabled on the server"
 msgstr "Magic-link plugin not enabled on the server"
 
 #: src/client/admin/collection-settings.tsx
-msgid "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). After enabling on an existing collection, run a re-index to backfill."
-msgstr "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). After enabling on an existing collection, run a re-index to backfill."
+#~ msgid "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). After enabling on an existing collection, run a re-index to backfill."
+#~ msgstr "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). After enabling on an existing collection, run a re-index to backfill."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). Existing rows are indexed automatically when you enable this or change which fields are searchable."
+msgstr "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). Existing rows are indexed automatically when you enable this or change which fields are searchable."
 
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Make default"
@@ -6750,6 +6771,10 @@ msgstr "Nothing new — all {0} collections already exist"
 #: src/client/admin/pages/search-playground.tsx
 msgid "Nothing ranked for that query — try different words or another mode."
 msgstr "Nothing ranked for that query — try different words or another mode."
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Nothing ranked for that query — try different words or another mode. If rows that should match exist, the index may be stale; re-index to rebuild it."
+msgstr "Nothing ranked for that query — try different words or another mode. If rows that should match exist, the index may be stale; re-index to rebuild it."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Nothing selected"
@@ -7867,6 +7892,19 @@ msgstr "Raw"
 #: src/client/admin/parity/app-users.tsx
 msgid "Re-enables sign-in for this end-user."
 msgstr "Re-enables sign-in for this end-user."
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Re-index & search again"
+msgstr "Re-index & search again"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Re-index now"
+msgstr "Re-index now"
+
+#: src/client/admin/collection-settings.tsx
+#: src/client/admin/pages/search-playground.tsx
+msgid "Re-indexing…"
+msgstr "Re-indexing…"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Re-run all"
@@ -9061,6 +9099,19 @@ msgstr "Search folders…"
 #: src/client/admin/relational-pickers.tsx
 msgid "Search images by key…"
 msgstr "Search images by key…"
+
+#. placeholder {0}: r.processed
+#. placeholder {1}: r.skipped
+#. placeholder {2}: r.total
+#: src/client/admin/app.tsx
+msgid "Search index rebuilt: {0} indexed, {1} empty, {2} total."
+msgstr "Search index rebuilt: {0} indexed, {1} empty, {2} total."
+
+#. placeholder {0}: r.processed
+#. placeholder {1}: r.total
+#: src/client/admin/pages/search-playground.tsx
+msgid "Search index rebuilt: {0} indexed, {1} total."
+msgstr "Search index rebuilt: {0} indexed, {1} total."
 
 #: src/client/admin/storage/index.tsx
 msgid "Search keys…"

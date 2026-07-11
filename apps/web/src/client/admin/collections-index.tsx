@@ -306,7 +306,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
       />
 
       {canManage && !showArchived && sampleSeeds > 0 && (
-        <div className="flex flex-wrap items-center gap-2.5 rounded-lg border border-border bg-muted/40 px-3.5 py-2.5">
+        <div className="flex flex-wrap items-center gap-2.5 rounded-surface border border-border bg-muted/40 px-3.5 py-2.5">
           <I.Sparkles size={14} className="text-primary shrink-0" />
           <span className="flex-1 min-w-[200px] text-[12.5px] text-muted-foreground">
             <Trans>{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched.</Trans>
@@ -391,7 +391,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
           {grouped.map(([g, list]) => (
             <div key={g ?? "__ungrouped"} className="flex flex-col gap-2.5">
               <div
-                className={`flex items-center gap-2 rounded-md ${editing && g !== null ? "cursor-grab" : ""} ${dropHint === `header:${g}` ? "ring-2 ring-primary" : ""} ${dragGroup === g && g !== null ? "opacity-50" : ""}`}
+                className={`flex items-center gap-2 rounded-control ${editing && g !== null ? "cursor-grab" : ""} ${dropHint === `header:${g}` ? "ring-2 ring-primary" : ""} ${dragGroup === g && g !== null ? "opacity-50" : ""}`}
                 draggable={editing && g !== null}
                 onDragStart={editing && g !== null ? (e) => {
                   setDragGroup(g);
@@ -445,7 +445,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
                 <div className="ml-1.5 h-px flex-1 bg-border" />
               </div>
               <div
-                className={`grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3 ${editing && dropHint === `group:${g ?? ""}` ? "rounded-2xl ring-2 ring-primary/50" : ""}`}
+                className={`grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3 ${editing && dropHint === `group:${g ?? ""}` ? "rounded-surface ring-2 ring-primary/50" : ""}`}
                 onDragOver={editing && dragSlug ? (e) => {
                   e.preventDefault();
                   setDropHint(`group:${g ?? ""}`);
@@ -493,7 +493,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
                   </div>
                 ))}
                 {editing && list.length === 0 && (
-                  <div className="grid min-h-[80px] place-items-center rounded-2xl border border-dashed border-border text-[12px] text-muted-foreground">
+                  <div className="grid min-h-[80px] place-items-center rounded-surface border border-dashed border-border text-[12px] text-muted-foreground">
                     <Trans>Drag collections here</Trans>
                   </div>
                 )}
@@ -524,7 +524,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
           )}
           {!showArchived && !editing && !loading && canManage && (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
-              <Card asChild variant="dashed" interactive className="min-h-[138px] items-center justify-center gap-2 rounded-4xl p-5 text-muted-foreground hover:text-foreground">
+              <Card asChild variant="dashed" interactive className="min-h-[138px] items-center justify-center gap-2 rounded-control p-5 text-muted-foreground hover:text-foreground">
                 <button onClick={onNew}>
                   <I.Plus size={20} />
                   <span className="text-[13px] font-medium"><Trans>New collection</Trans></span>
@@ -564,7 +564,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
                   <TableRow key={c.slug} onClick={() => onOpen(c.slug)} className="cursor-pointer">
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className="grid size-6 place-items-center rounded-md bg-muted"><Ic size={12} /></span>
+                        <span className="grid size-6 place-items-center rounded-control bg-muted"><Ic size={12} /></span>
                         <span className="font-mono text-[13px] font-medium">{c.slug}</span>
                         {c.singleton && <Badge variant="outline"><Trans>singleton</Trans></Badge>}
                       </div>
@@ -605,7 +605,7 @@ function CollectionCard({ c, onOpen, archived, editing, dropTarget, onRestore, o
     <Card
       interactive={!editing}
       // Drop-target highlight lives on the Card itself so it follows the
-      // card's own rounded-2xl border — a ring on the drag wrapper drew at a
+      // card's own rounded-surface border — a ring on the drag wrapper drew at a
       // mismatched radius and spilled outside the corners. The violet hover
       // (border + faint fill) matches the Backlex Console collections design.
       className={`h-full gap-3 p-4 text-left transition-colors ${archived ? "opacity-90" : ""} ${editing ? "select-none" : ""} ${dropTarget ? "border-primary ring-2 ring-primary/50" : "hover:border-[color-mix(in_oklch,var(--primary)_40%,transparent)] hover:bg-[color-mix(in_oklch,var(--primary)_4%,transparent)]"}`}
@@ -624,7 +624,7 @@ function CollectionCard({ c, onOpen, archived, editing, dropTarget, onRestore, o
             <span className="ml-1"><Trans>archived</Trans></span>
           </Badge>
         ) : c.ownerScoped ? (
-          <span className="shrink-0 rounded-[5px] border border-[color-mix(in_oklch,var(--color-accent-mint)_22%,transparent)] bg-[color-mix(in_oklch,var(--color-accent-mint)_10%,transparent)] px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.08em] text-accent-mint">
+          <span className="shrink-0 rounded-sm border border-[color-mix(in_oklch,var(--color-accent-mint)_22%,transparent)] bg-[color-mix(in_oklch,var(--color-accent-mint)_10%,transparent)] px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.08em] text-accent-mint">
             <Trans>owner</Trans>
           </span>
         ) : null}
@@ -944,7 +944,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs, gr
                 <Switch checked={singleton} onChange={setSingleton} />
               </div>
 
-              <pre className="mt-1 m-0 whitespace-pre-wrap rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{sql}</pre>
+              <pre className="mt-1 m-0 whitespace-pre-wrap rounded-control bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{sql}</pre>
             </>
           )}
         </div>
@@ -1000,7 +1000,7 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt, onPickTe
                 type="button"
                 onClick={onPickEmpty}
               >
-                <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Braces size={16} /></span>
+                <span className="grid size-9 place-items-center rounded-control border border-border bg-muted"><I.Braces size={16} /></span>
                 <div className="flex flex-col gap-1">
                   <span className="text-[13.5px] font-semibold"><Trans>Empty collection</Trans></span>
                   <span className="text-xs leading-[1.45] text-muted-foreground">
@@ -1014,7 +1014,7 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt, onPickTe
                 type="button"
                 onClick={onPickTemplate}
               >
-                <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Sparkles size={16} /></span>
+                <span className="grid size-9 place-items-center rounded-control border border-border bg-muted"><I.Sparkles size={16} /></span>
                 <div className="flex flex-col gap-1">
                   <span className="text-[13.5px] font-semibold"><Trans>From a schema template</Trans></span>
                   <span className="text-xs leading-[1.45] text-muted-foreground">
@@ -1028,7 +1028,7 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt, onPickTe
                 type="button"
                 onClick={onPickAdopt}
               >
-                <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Database size={16} /></span>
+                <span className="grid size-9 place-items-center rounded-control border border-border bg-muted"><I.Database size={16} /></span>
                 <div className="flex flex-col gap-1">
                   <span className="text-[13.5px] font-semibold"><Trans>From existing table</Trans></span>
                   <span className="text-xs leading-[1.45] text-muted-foreground">

@@ -72,7 +72,7 @@ export function FieldFormatEditor({
   const preview = formatFieldValue(sample, { type, format: compiled as never }, "en");
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-xl bg-muted p-3">
+    <div className="flex flex-col gap-2.5 rounded-control bg-muted p-3">
       <div className="flex items-center gap-2">
         <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
           <Trans>Display format</Trans>

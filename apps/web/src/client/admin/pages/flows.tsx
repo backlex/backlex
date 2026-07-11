@@ -275,7 +275,7 @@ function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operati
         backgroundSize: "14px 14px",
       }}
     >
-      <ScrollArea className="size-full" viewportClassName="rounded-2xl">
+      <ScrollArea className="size-full" viewportClassName="rounded-surface">
         <div style={{ position: "relative", height: 220, minWidth: contentWidth }}>
           <FlowNode x={X0} y={Y} kind="trigger" title="trigger" sub={trigger || "—"} />
           {visible.map((op, i) => {
@@ -399,7 +399,7 @@ function FlowStatCard({
     return () => { cancelled = true; clearInterval(iv); };
   }, [flowId, refreshNonce, onRunCount]);
   const tile = (k: string, v: string, ok: boolean) => (
-    <div key={k} className="overflow-hidden rounded-xl border border-border bg-card p-3 text-card-foreground">
+    <div key={k} className="overflow-hidden rounded-control border border-border bg-card p-3 text-card-foreground">
       <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{k}</div>
       <div className={`mt-0.5 text-lg font-semibold tabular-nums ${ok ? "text-foreground" : "text-destructive"}`}>{v}</div>
     </div>

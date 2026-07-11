@@ -31,7 +31,7 @@ export function PanelBody({
 }): ReactNode {
   if (error) {
     return (
-      <div className="flex items-start gap-2 rounded-md border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] px-3 py-2.5 text-xs text-destructive">
+      <div className="flex items-start gap-2 rounded-surface border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] px-3 py-2.5 text-xs text-destructive">
         <span className="flex-1 [word-break:break-word]">{errorLabel ?? error}</span>
       </div>
     );

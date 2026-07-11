@@ -434,7 +434,7 @@ export const OpenApiExportPage = () => {
                 key={tag}
                 open={isOpen}
                 onOpenChange={() => toggleGroup(tag)}
-                className="overflow-hidden rounded-md border bg-background/50"
+                className="overflow-hidden rounded-control border bg-background/50"
               >
                 <CollapsibleTrigger asChild>
                   <button
@@ -503,8 +503,8 @@ export const OpenApiExportPage = () => {
               <Trans>Drop in a workspace API key (<code className="font-mono">pak_…</code>) before running.</Trans>
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="rounded-md" viewportClassName="max-h-[40vh]">
-            <pre className="whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-3 font-mono text-xs">
+          <ScrollArea className="rounded-control" viewportClassName="max-h-[40vh]">
+            <pre className="whitespace-pre-wrap break-words rounded-control border bg-muted/30 p-3 font-mono text-xs">
               {curlText}
             </pre>
           </ScrollArea>

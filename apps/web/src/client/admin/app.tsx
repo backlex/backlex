@@ -1151,7 +1151,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         fallback — nudge toward the permanent fix (a display
                         template) where the big label is what you look at. */}
                     {schemaReady && viewMode !== "table" && needsDisplayTemplate(schemaState) && (
-                      <div className="flex items-center gap-2.5 rounded-xl border border-border bg-muted/50 px-3.5 py-2 text-[12px] text-muted-foreground">
+                      <div className="flex items-center gap-2.5 rounded-control border border-border bg-muted/50 px-3.5 py-2 text-[12px] text-muted-foreground">
                         <I.Info size={13} className="shrink-0" />
                         <span className="min-w-0 flex-1">
                           <Trans>No display template set — cards label rows from their first text fields. Define a template in Settings for proper labels.</Trans>
@@ -1161,7 +1161,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         </Button>
                       </div>
                     )}
-                    <Card className="gap-0 overflow-hidden rounded-2xl py-0">
+                    <Card className="gap-0 overflow-hidden rounded-surface py-0">
                       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
                         <ItemsViewToggle
                           mode={viewMode}
@@ -1177,7 +1177,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                           onClick={() => setTweak("showRealtime", !tweaks.showRealtime)}
                           aria-pressed={tweaks.showRealtime}
                           title={t`Live tail`}
-                          className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-medium transition-colors ${tweaks.showRealtime ? "border-[color-mix(in_oklch,var(--primary)_45%,transparent)] bg-[color-mix(in_oklch,var(--primary)_14%,transparent)] text-foreground" : "border-border bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
+                          className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-control border px-2.5 text-[12px] font-medium transition-colors ${tweaks.showRealtime ? "border-[color-mix(in_oklch,var(--primary)_45%,transparent)] bg-[color-mix(in_oklch,var(--primary)_14%,transparent)] text-foreground" : "border-border bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
                         >
                           <I.Zap size={13} />
                           <span className="max-sm:hidden">{t`Live tail`}</span>
@@ -1228,7 +1228,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                               type="button"
                               disabled={page === 1}
                               onClick={() => setPage((p) => Math.max(1, p - 1))}
-                              className="inline-flex h-7 items-center gap-1 rounded-[7px] border border-white/10 bg-white/[0.03] px-2.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                              className="inline-flex h-7 items-center gap-1 rounded-control border border-white/10 bg-white/[0.03] px-2.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                             >
                               <I.ChevronLeft size={13} /><Trans>Prev</Trans>
                             </button>
@@ -1253,7 +1253,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                                     type="button"
                                     onClick={() => setPage(p)}
                                     aria-current={active ? "page" : undefined}
-                                    className={`grid h-7 min-w-7 place-items-center rounded-[7px] border px-2 text-[11.5px] font-medium tabular-nums transition-colors ${active ? "border-[color-mix(in_oklch,var(--primary)_40%,transparent)] bg-[color-mix(in_oklch,var(--primary)_14%,transparent)] text-foreground" : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
+                                    className={`grid h-7 min-w-7 place-items-center rounded-control border px-2 text-[11.5px] font-medium tabular-nums transition-colors ${active ? "border-[color-mix(in_oklch,var(--primary)_40%,transparent)] bg-[color-mix(in_oklch,var(--primary)_14%,transparent)] text-foreground" : "border-white/10 bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
                                   >
                                     {p}
                                   </button>,
@@ -1265,7 +1265,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                               type="button"
                               disabled={page === totalPages}
                               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                              className="inline-flex h-7 items-center gap-1 rounded-[7px] border border-white/10 bg-white/[0.03] px-2.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                              className="inline-flex h-7 items-center gap-1 rounded-control border border-white/10 bg-white/[0.03] px-2.5 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                             >
                               <Trans>Next</Trans><I.ChevronRight size={13} />
                             </button>

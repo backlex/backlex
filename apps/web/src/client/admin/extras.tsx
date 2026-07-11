@@ -122,7 +122,7 @@ export function Palette({ open, onClose, onNavigate, items, collections, isAdmin
                   return (
                     <div
                       key={`${g.name}-${it.id}`}
-                      className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-[13.5px] ${idx === active ? "bg-accent" : ""}`}
+                      className={`flex cursor-pointer items-center gap-2.5 rounded-control px-3 py-2 text-[13.5px] ${idx === active ? "bg-accent" : ""}`}
                       onMouseEnter={() => setActive(idx)}
                       onClick={() => onNavigate(it)}
                     >
@@ -432,7 +432,7 @@ export function AlterPreview({
   const ident = "text-[oklch(0.85_0.13_200)]";
   const comment = "italic text-[oklch(from_var(--primary)_0.6_0.02_h)]";
   return (
-    <div className="whitespace-pre-wrap rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-xs leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)] [word-break:break-word]">
+    <div className="whitespace-pre-wrap rounded-control bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-xs leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)] [word-break:break-word]">
       <span className={comment}>-- runtime DDL preview · sqlite dialect</span>{"\n"}
       <span className={kw}>ALTER TABLE</span> <span className={ident}>"{table}"</span>{"\n"}
       {"  "}<span className={kw}>ADD COLUMN</span> <span className={ident}>"{pendingField.name || "new_field"}"</span> {sqlType}

@@ -41,7 +41,7 @@ export function FieldTabLayout({ tabs, active, onSelect, viewportClassName, chil
               key={t.key}
               type="button"
               onClick={() => onSelect(t.key)}
-              className={`flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12.5px] font-medium transition-colors ${on ? "bg-selected-surface text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+              className={`flex items-center gap-2 rounded-control px-2.5 py-2 text-left text-[12.5px] font-medium transition-colors ${on ? "bg-selected-surface text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
             >
               <Ic size={14} className="shrink-0" />
               <span className="min-w-0 flex-1 truncate">{t.label}</span>

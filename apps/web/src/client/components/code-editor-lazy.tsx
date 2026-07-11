@@ -13,7 +13,7 @@ type Props = ComponentProps<typeof CodeEditorImpl>;
 export const CodeEditor = (props: Props) => (
   <Suspense
     fallback={
-      <div className="overflow-hidden rounded-2xl border border-input bg-background p-3">
+      <div className="overflow-hidden rounded-surface border border-input bg-background p-3">
         <Skeleton className="h-24 w-full" />
       </div>
     }

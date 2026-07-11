@@ -253,7 +253,7 @@ function AddSamlDialog({
           <Field label={t`Slug (URL handle)`}>
             <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="okta" />
           </Field>
-          <div className="rounded-md border border-border p-2 text-[11.5px] text-muted-foreground">
+          <div className="rounded-control border border-border p-2 text-[11.5px] text-muted-foreground">
             <div className="flex items-center justify-between gap-2">
               <span className="font-mono">ACS: {acsUrl}</span>
               <Button size="xs" variant="ghost" onClick={() => copyText(acsUrl)}><Trans>Copy</Trans></Button>
@@ -371,7 +371,7 @@ function PlatformLdapCard({
         <Switch checked={c.enabled} onChange={(v) => set({ enabled: v })} />
       </div>
       <div className="space-y-3 px-4 py-3.5 text-[13px]">
-        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11.5px] text-muted-foreground">
+        <div className="rounded-control border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11.5px] text-muted-foreground">
           <Trans>LDAP runs only on self-hosted (Bun/Node) deployments — it is unavailable on Cloudflare Workers, which block raw TCP. Use SAML there.</Trans>
         </div>
         <Field label={t`Server URL`}>

@@ -447,7 +447,7 @@ export function ItemFields({ form }: { form: ItemForm }) {
             <button
               type="button"
               onClick={() => setPreviews((p) => ({ ...p, [f.name]: !p[f.name] }))}
-              className="ml-auto inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+              className="ml-auto inline-flex items-center gap-1 rounded-control border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
             >
               <I.Eye size={11} />
               {showPreview ? <Trans>Edit</Trans> : <Trans>Preview</Trans>}
@@ -1031,7 +1031,7 @@ export function ItemFields({ form }: { form: ItemForm }) {
           {label}
           {showPreview ? (
             <div
-              className="prose-preview min-h-[8rem] rounded-xl border border-border bg-card px-3.5 py-3 text-[13px] text-foreground"
+              className="prose-preview min-h-[8rem] rounded-control border border-border bg-card px-3.5 py-3 text-[13px] text-foreground"
               // richtext is authored HTML; markdown is escaped then formatted.
               dangerouslySetInnerHTML={{
                 __html: iface === "richtext" ? raw : renderMarkdown(raw),
@@ -1206,7 +1206,7 @@ export function ItemFields({ form }: { form: ItemForm }) {
       return (
         <div key={f.name} className="flex flex-col gap-1.5">
           {label}
-          <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-2.5">
+          <div className="flex flex-col gap-2 rounded-control border border-border bg-card p-2.5">
             {locales.map((loc) => (
               <div key={loc} className="flex items-center gap-2">
                 <Badge variant="outline" mono className="min-w-12 justify-center uppercase">
@@ -1271,7 +1271,7 @@ export function ItemFields({ form }: { form: ItemForm }) {
 
   if (fields.length === 0) {
     return (
-      <div className="rounded-xl bg-muted p-3 text-[13px] text-muted-foreground">
+      <div className="rounded-control bg-muted p-3 text-[13px] text-muted-foreground">
         <Trans>
           No editable fields. Add columns from the Schema tab to capture data on this collection.
         </Trans>

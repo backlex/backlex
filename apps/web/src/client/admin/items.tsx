@@ -31,16 +31,16 @@ const ADMIN_TABLE_CLS =
  *  the two strips read as one system. Restyle-only — the Radix Tabs behavior
  *  (keyboard nav, value change) is untouched. */
 export const SEG_LIST_CLS =
-  "gap-[3px] rounded-[10px] border border-white/[0.07] bg-white/[0.04] p-[3px]";
+  "gap-[3px] rounded-control border border-white/[0.07] bg-white/[0.04] p-[3px]";
 export const SEG_TRIGGER_CLS =
-  "rounded-[7px] px-3 py-[5px] text-xs font-semibold text-muted-foreground data-active:bg-[color-mix(in_oklch,var(--primary)_16%,transparent)] data-active:text-foreground";
+  "rounded-sm px-3 py-[5px] text-xs font-semibold text-muted-foreground data-active:bg-[color-mix(in_oklch,var(--primary)_16%,transparent)] data-active:text-foreground";
 
 /** Cosmos status chip — mint (published) / coral (review) / gray (draft) /
  *  dim (archived), or a custom-color dot when the schema's choice carries its
  *  own color. Value + label come straight from the schema-driven status field;
  *  this only restyles the presentation. */
 function StatusBadge({ value, label, color }: { value: string; label?: string; color?: string }) {
-  const base = "inline-flex items-center gap-1 rounded-[6px] border px-2 py-0.5 font-mono text-[10.5px]";
+  const base = "inline-flex items-center gap-1 rounded-sm border px-2 py-0.5 font-mono text-[10.5px]";
   if (color) {
     return (
       <span className={`${base} border-white/[0.12] bg-white/5 text-foreground`}>
@@ -182,7 +182,7 @@ function FilterChip({ field, op, value, onRemove, onClick }: { field: string; op
   const { t } = useLingui();
   const valStr = Array.isArray(value) ? `[${(value as unknown[]).join(", ")}]` : op === "_null" ? (value ? t`is null` : t`is not null`) : String(value);
   return (
-    <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border border-chip-border bg-accent px-[11px] text-[12.5px] text-foreground" onClick={onClick}>
+    <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-control border border-chip-border bg-accent px-[11px] text-[12.5px] text-foreground" onClick={onClick}>
       <span className="text-muted-foreground">{field}</span>
       <span className="font-mono text-[11.5px] text-muted-foreground">{op}</span>
       <span className="font-mono">{valStr}</span>
@@ -260,7 +260,7 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
   };
 
   return (
-    <div className="absolute left-0 top-11 z-50 flex w-[320px] max-w-[calc(100vw-16px)] flex-col gap-1.5 rounded-xl border border-border bg-popover p-2 shadow-[0_12px_30px_-8px_oklch(0_0_0/0.18),0_2px_8px_oklch(0_0_0/0.06)]">
+    <div className="absolute left-0 top-11 z-50 flex w-[320px] max-w-[calc(100vw-16px)] flex-col gap-1.5 rounded-control border border-border bg-popover p-2 shadow-[0_12px_30px_-8px_oklch(0_0_0/0.18),0_2px_8px_oklch(0_0_0/0.06)]">
       {editable.length === 0 && (
         <p className="px-1 py-2 text-center text-[13px] text-muted-foreground">
           <Trans>No filterable fields in this collection.</Trans>
@@ -385,7 +385,7 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
               {statusTabs.map((tb) => (
                 <TabsTrigger key={tb.id} value={tb.id} className={SEG_TRIGGER_CLS}>
                   {tb.label}
-                  {tb.count != null && <span className="rounded-[5px] bg-white/8 px-1.5 py-px font-mono text-[10px] tabular-nums text-current opacity-80">{tb.count}</span>}
+                  {tb.count != null && <span className="rounded-sm bg-white/8 px-1.5 py-px font-mono text-[10px] tabular-nums text-current opacity-80">{tb.count}</span>}
                 </TabsTrigger>
               ))}
             </TabsList>

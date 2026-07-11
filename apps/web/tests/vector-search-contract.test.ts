@@ -30,6 +30,27 @@ describe("vector.search request contract", () => {
       body: JSON.stringify(body),
     });
 
+  test("GET /capabilities reports store + per-model readiness", async () => {
+    const res = await h.fetch("/api/vector/capabilities");
+    expect(res.status).toBe(200);
+    const { data } = (await res.json()) as {
+      data: {
+        store: string;
+        defaultModel: string | null;
+        models: Array<{ key: string; label: string; provider: string; ready: boolean }>;
+      };
+    };
+    // The bun-test harness runs on plain Bun SQLite with no embedding
+    // provider and no vector store — everything must read as unavailable.
+    expect(data.store).toBe("none");
+    expect(data.defaultModel).toBeNull();
+    expect(data.models.length).toBeGreaterThan(0);
+    for (const m of data.models) {
+      expect(m.ready).toBe(false);
+      expect(m.label.length).toBeGreaterThan(0);
+    }
+  });
+
   test("OLD planner shape {collection, query, top_k} → 400 on model + text", async () => {
     const res = await search({
       collection: "customers",

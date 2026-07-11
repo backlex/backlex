@@ -329,6 +329,14 @@ export const tenantsApi = {
     }),
 };
 
+export interface FtsBackfillResult {
+  /** Rows whose searchable fields produced index text. */
+  processed: number;
+  /** Rows whose searchable fields were all empty. */
+  skipped: number;
+  total: number;
+}
+
 export const collectionsApi = {
   list: () =>
     api<Envelope<ApiCollection[]> & { meta?: { groups: string[] } }>(
@@ -341,9 +349,21 @@ export const collectionsApi = {
       body: JSON.stringify(input),
     }),
   patch: (slug: string, input: Partial<ApiCollection>) =>
-    api<{ ok: true }>(`/api/collections/${slug}`, {
+    api<{ ok: true; ftsBackfill?: FtsBackfillResult | null }>(`/api/collections/${slug}`, {
       method: "PATCH",
       body: JSON.stringify(input),
+    }),
+  /** Rebuild the full-text index for every existing row. Only needed as a
+   *  manual recovery — PATCH auto-backfills when the searchable set changes. */
+  ftsReindex: (slug: string) =>
+    api<{ ok: true } & FtsBackfillResult>(`/api/collections/${slug}/fts-reindex`, {
+      method: "POST",
+    }),
+  /** Embed every existing row into the vector store. Deliberately manual
+   *  (unlike the FTS auto-backfill) — each row costs an embedding call. */
+  vectorizeBackfill: (slug: string) =>
+    api<{ ok: true } & FtsBackfillResult>(`/api/collections/${slug}/vectorize`, {
+      method: "POST",
     }),
   remove: (slug: string) =>
     api<{ ok: true; archived?: boolean }>(`/api/collections/${slug}`, { method: "DELETE" }),
@@ -370,6 +390,27 @@ export const collectionsApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+};
+
+export interface VectorCapabilityModel {
+  key: string;
+  label: string;
+  provider: "workers-ai" | "openai" | "self-host";
+  dimensions: number;
+  /** Usable right now: provider configured + store can hold its vectors. */
+  ready: boolean;
+}
+
+export interface VectorCapabilities {
+  store: "vectorize" | "pgvector" | "libsql" | "none";
+  defaultModel: string | null;
+  models: VectorCapabilityModel[];
+}
+
+export const vectorApi = {
+  /** Deployment-level vector-search readiness — drives the collection
+   *  Settings model picker so it never offers a model that can't embed. */
+  capabilities: () => api<Envelope<VectorCapabilities>>(`/api/vector/capabilities`),
 };
 
 export interface TemplateSummary {

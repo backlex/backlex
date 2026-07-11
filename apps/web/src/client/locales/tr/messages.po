@@ -2217,6 +2217,12 @@ msgstr "c_{slug} koleksiyonu geri yüklendi."
 msgid "Collection settings saved."
 msgstr "Koleksiyon ayarları kaydedildi."
 
+#. placeholder {0}: resp.ftsBackfill.processed
+#. placeholder {1}: resp.ftsBackfill.total
+#: src/client/admin/app.tsx
+msgid "Collection settings saved. Search index rebuilt ({0} of {1} rows indexed)."
+msgstr "Koleksiyon ayarları kaydedildi. Arama indeksi yeniden oluşturuldu ({1} satırın {0} tanesi indekslendi)."
+
 #: src/client/admin/pages/overview.tsx
 msgid "Collection wizard opened."
 msgstr "Koleksiyon sihirbazı açıldı."
@@ -3222,6 +3228,10 @@ msgstr "bu rol için reddedildi"
 msgid "Deny all"
 msgstr "Tümünü reddet"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Deployment default"
+msgstr "Dağıtım varsayılanı"
+
 #: src/client/pages/rest-explorer.tsx
 msgid "deprecated"
 msgstr "kullanımdan kaldırıldı"
@@ -3725,13 +3735,32 @@ msgstr "yalnızca e-posta, parola yok"
 msgid "Emails a one-time link valid for 30 minutes."
 msgstr "30 dakika geçerli tek kullanımlık bir bağlantı e-posta ile gönderir."
 
+#: src/client/admin/collection-settings.tsx
+msgid "Embed all rows"
+msgstr "Tüm satırları embed et"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Embed live"
 msgstr "Gömme aktif"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Embed the fields marked <0>vectorize</0> on every write and rank the <1>/search</1> endpoint's vector / hybrid modes by meaning. Existing rows are NOT embedded automatically — run \"Embed all rows\" below (each row is one embedding-provider call)."
+msgstr "<0>vectorize</0> işaretli alanları her yazımda embed eder ve <1>/search</1> endpoint'inin vektör / hibrit modlarını anlama göre sıralar. Mevcut satırlar otomatik olarak embed edilmez — aşağıdaki \"Tüm satırları embed et\" işlemini çalıştırın (her satır bir embedding sağlayıcı çağrısıdır)."
+
 #: src/client/admin/parity/insights.tsx
 msgid "Embed URL — copy it now"
 msgstr "Gömme URL’si — şimdi kopyalayın"
+
+#. placeholder {0}: r.processed
+#. placeholder {1}: r.total
+#. placeholder {2}: r.skipped
+#: src/client/admin/app.tsx
+msgid "Embedded {0} of {1} rows into the vector store ({2} empty)."
+msgstr "{1} satırın {0} tanesi vektör deposuna embed edildi ({2} boş)."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Embedding…"
+msgstr "Embed ediliyor…"
 
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Empty"
@@ -4158,6 +4187,13 @@ msgstr "Alan"
 msgid "Field \"{0}\" updated."
 msgstr "\"{0}\" alanı güncellendi."
 
+#. placeholder {0}: (next as { name?: string }).name
+#. placeholder {1}: resp.ftsBackfill.processed
+#. placeholder {2}: resp.ftsBackfill.total
+#: src/client/admin/app.tsx
+msgid "Field \"{0}\" updated. Search index rebuilt ({1} of {2} rows indexed)."
+msgstr "\"{0}\" alanı güncellendi. Arama indeksi yeniden oluşturuldu ({2} satırın {1} tanesi indekslendi)."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Field name"
 msgstr "Alan adı"
@@ -4336,8 +4372,20 @@ msgid "Fold this field into the collection's full-text-search index (when FTS is
 msgstr "FTS açıkken bu alanı koleksiyonun tam metin arama dizinine dahil et."
 
 #: src/client/admin/edit-field.tsx
-msgid "Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing."
-msgstr "FTS açıkken bu alanı koleksiyonun tam metin arama dizinine dahil et. Değiştirdikten sonra yeniden dizinle."
+#~ msgid "Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing."
+#~ msgstr "FTS açıkken bu alanı koleksiyonun tam metin arama dizinine dahil et. Değiştirdikten sonra yeniden dizinle."
+
+#: src/client/admin/edit-field.tsx
+msgid "Fold this field into the collection's full-text-search index (when FTS is enabled). Saving re-indexes existing rows automatically."
+msgstr "Bu alanı koleksiyonun tam metin arama indeksine dahil et (FTS açıkken). Kaydetme, mevcut satırları otomatik olarak yeniden indeksler."
+
+#: src/client/admin/add-field.tsx
+msgid "Fold this field into the text embedded for vector search (when vector search is enabled)."
+msgstr "Bu alanı vektör araması için embed edilen metne dahil et (vektör araması açıkken)."
+
+#: src/client/admin/edit-field.tsx
+msgid "Fold this field into the text embedded for vector search (when vector search is enabled). Existing rows need an embed backfill from the collection's Settings tab."
+msgstr "Bu alanı vektör araması için embed edilen metne dahil et (vektör araması açıkken). Mevcut satırlar için koleksiyonun Settings sekmesinden embed backfill çalıştırılmalıdır."
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Folder"
@@ -5639,8 +5687,12 @@ msgid "Magic-link plugin not enabled on the server"
 msgstr "Sunucuda sihirli bağlantı eklentisi etkin değil"
 
 #: src/client/admin/collection-settings.tsx
-msgid "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). After enabling on an existing collection, run a re-index to backfill."
-msgstr "<0> searchable</0> olarak işaretlenen alanlardan bir anahtar kelime arama dizini tutar.<1> ?q=</1> sorgusunu sıralı anahtar kelime eşleştirmesine yükseltir ve<2> /search</2> uç noktasını (tam metin / vektör / hibrit) etkinleştirir. Mevcut bir koleksiyonda etkinleştirdikten sonra geri doldurmak için yeniden dizinleme çalıştırın."
+#~ msgid "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). After enabling on an existing collection, run a re-index to backfill."
+#~ msgstr "<0> searchable</0> olarak işaretlenen alanlardan bir anahtar kelime arama dizini tutar.<1> ?q=</1> sorgusunu sıralı anahtar kelime eşleştirmesine yükseltir ve<2> /search</2> uç noktasını (tam metin / vektör / hibrit) etkinleştirir. Mevcut bir koleksiyonda etkinleştirdikten sonra geri doldurmak için yeniden dizinleme çalıştırın."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). Existing rows are indexed automatically when you enable this or change which fields are searchable."
+msgstr "<0> searchable</0> işaretli alanlardan bir anahtar kelime arama indeksi tutar.<1> ?q=</1> parametresini sıralı anahtar kelime eşleşmesine yükseltir ve<2> /search</2> endpoint'ini (tam metin / vektör / hibrit) etkinleştirir. Bunu açtığınızda veya hangi alanların aranabilir olduğunu değiştirdiğinizde mevcut satırlar otomatik olarak indekslenir."
 
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Make default"
@@ -6332,6 +6384,10 @@ msgstr "Önceki revizyon yok — mevcut alan değerleri gösteriliyor."
 msgid "No editable fields. Add columns from the Schema tab to capture data on this collection."
 msgstr "Düzenlenebilir alan yok. Bu koleksiyonda veri yakalamak için Şema sekmesinden sütun ekleyin."
 
+#: src/client/admin/collection-settings.tsx
+msgid "No embedding model selected and the deployment sets no<0> EMBEDDING_DEFAULT_MODEL</0> — pick one below."
+msgstr "Seçili embedding modeli yok ve dağıtımda<0> EMBEDDING_DEFAULT_MODEL</0> tanımlı değil — aşağıdan bir model seçin."
+
 #: src/client/admin/parity/app-users.tsx
 msgid "No end-users yet — they appear here after signing up via the workspace auth endpoint."
 msgstr "Henüz son kullanıcı yok — çalışma alanı kimlik doğrulama uç noktası aracılığıyla kaydolduklarında burada görünürler."
@@ -6645,6 +6701,10 @@ msgstr "Henüz şablon yok — eklemek için \"Yeni şablon\"u kullanın."
 msgid "No text field is marked <0>searchable</0> yet, so search stays empty — flip it on a text field in the Schema tab."
 msgstr "Henüz <0>searchable</0> olarak işaretlenmiş bir metin alanı yok, bu yüzden arama boş kalır — Şema sekmesinden bir metin alanında açın."
 
+#: src/client/admin/collection-settings.tsx
+msgid "No text field is marked <0>vectorize</0> yet, so nothing gets embedded — flip it on a text field in the Schema tab."
+msgstr "Henüz <0>vectorize</0> işaretli bir metin alanı yok, bu yüzden hiçbir şey embed edilmiyor — Schema sekmesinde bir metin alanında açın."
+
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "No tools match this filter."
 msgstr "Bu filtreyle eşleşen araç yok."
@@ -6699,6 +6759,7 @@ msgstr "yok (herkese açık)"
 msgid "none selected = all"
 msgstr "hiçbiri seçili değil = tümü"
 
+#: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/auth-settings.tsx
 msgid "not configured"
@@ -6719,6 +6780,10 @@ msgstr "NOT NULL — satırları olan bir tabloya eklemek varsayılan değer ger
 #: src/client/admin/adopt-wizard.tsx
 msgid "Not owner-scoped"
 msgstr "Sahip kapsamlı değil"
+
+#: src/client/admin/collection-settings.tsx
+msgid "not set"
+msgstr "tanımlı değil"
 
 #: src/client/admin/account-page.tsx
 msgid "Not signed in."
@@ -6750,6 +6815,10 @@ msgstr "Yeni bir şey yok — {0} koleksiyonun tümü zaten var"
 #: src/client/admin/pages/search-playground.tsx
 msgid "Nothing ranked for that query — try different words or another mode."
 msgstr "Bu sorgu için sonuç çıkmadı — farklı kelimeler veya başka bir mod deneyin."
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Nothing ranked for that query — try different words or another mode. If rows that should match exist, the index may be stale; re-index to rebuild it."
+msgstr "Bu sorgu için sıralanan bir sonuç yok — farklı kelimeler veya başka bir mod deneyin. Eşleşmesi gereken satırlar varsa indeks bayat olabilir; yeniden indeksleyerek onarın."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Nothing selected"
@@ -7867,6 +7936,19 @@ msgstr "Ham"
 #: src/client/admin/parity/app-users.tsx
 msgid "Re-enables sign-in for this end-user."
 msgstr "Bu son kullanıcının girişini yeniden etkinleştirir."
+
+#: src/client/admin/pages/search-playground.tsx
+msgid "Re-index & search again"
+msgstr "Yeniden indeksle ve tekrar ara"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Re-index now"
+msgstr "Şimdi yeniden indeksle"
+
+#: src/client/admin/collection-settings.tsx
+#: src/client/admin/pages/search-playground.tsx
+msgid "Re-indexing…"
+msgstr "Yeniden indeksleniyor…"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Re-run all"
@@ -9062,6 +9144,19 @@ msgstr "Klasörleri ara…"
 msgid "Search images by key…"
 msgstr "Görselleri anahtara göre ara…"
 
+#. placeholder {0}: r.processed
+#. placeholder {1}: r.skipped
+#. placeholder {2}: r.total
+#: src/client/admin/app.tsx
+msgid "Search index rebuilt: {0} indexed, {1} empty, {2} total."
+msgstr "Arama indeksi yeniden oluşturuldu: {0} indekslendi, {1} boş, toplam {2}."
+
+#. placeholder {0}: r.processed
+#. placeholder {1}: r.total
+#: src/client/admin/pages/search-playground.tsx
+msgid "Search index rebuilt: {0} indexed, {1} total."
+msgstr "Arama indeksi yeniden oluşturuldu: {0} indekslendi, toplam {1}."
+
 #: src/client/admin/storage/index.tsx
 msgid "Search keys…"
 msgstr "Anahtarları ara…"
@@ -10253,6 +10348,12 @@ msgstr "Test aracı"
 msgid "Testing…"
 msgstr "Test ediliyor…"
 
+#. placeholder {0}: chosen.provider
+#. placeholder {1}: chosen.key
+#: src/client/admin/collection-settings.tsx
+msgid "The <0>{0}</0> provider behind<1> {1}</1> isn't configured on this deployment — embeds will fail until it is (or pick a ready model)."
+msgstr "<1> {1}</1> modelinin arkasındaki <0>{0}</0> sağlayıcısı bu dağıtımda yapılandırılmamış — yapılandırılana kadar embed işlemleri başarısız olur (ya da hazır bir model seçin)."
+
 #: src/client/admin/pages/logs.tsx
 msgid "The activity endpoint returned an error. Try again in a moment."
 msgstr "Etkinlik uç noktası hata döndürdü. Bir süre sonra tekrar deneyin."
@@ -10363,6 +10464,10 @@ msgstr "Bu veritabanında hiç tablo yok."
 #: src/client/admin/parity/insights.tsx
 msgid "This deletes the dashboard and disables its public embed. Its panels are <0>not</0> deleted — they become ungrouped. This action can't be undone."
 msgstr "Bu, panoyu siler ve herkese açık gömmesini kapatır. Panelleri <0>silinmez</0> — gruplanmamış hale gelir. Bu işlem geri alınamaz."
+
+#: src/client/admin/collection-settings.tsx
+msgid "This deployment has no vector store — connect a Vectorize binding (Cloudflare), pgvector (Postgres), or libSQL before vector search can run."
+msgstr "Bu dağıtımda vektör deposu yok — vektör araması çalışmadan önce bir Vectorize binding'i (Cloudflare), pgvector (Postgres) veya libSQL bağlayın."
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -11083,6 +11188,12 @@ msgstr "Vektör"
 msgid "vector index"
 msgstr "vektör indeksi"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Vector search (semantic)"
+msgstr "Vektör araması (anlamsal)"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/pages/overview.tsx
 msgid "Vectorize"
 msgstr "Vectorize"

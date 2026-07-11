@@ -69,6 +69,8 @@ interface FieldDraft {
   unique?: boolean;
   /** Fold into the collection's full-text index (text/longtext only). */
   searchable?: boolean;
+  /** Fold into the collection's embedding text for vector search (text/longtext only). */
+  vectorize?: boolean;
   interface?: string;
   /** Target collection slug (relation / relation_many). Immutable here. */
   to?: string;
@@ -299,9 +301,19 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Searchable</Trans></div>
-                    <div className="text-[11.5px] text-muted-foreground"><Trans>Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing.</Trans></div>
+                    <div className="text-[11.5px] text-muted-foreground"><Trans>Fold this field into the collection's full-text-search index (when FTS is enabled). Saving re-indexes existing rows automatically.</Trans></div>
                   </div>
                   <Switch checked={!!draft.searchable} onChange={(v) => setDraft((d) => d ? { ...d, searchable: v } : d)} />
+                </div>
+              )}
+
+              {(draft.type === "text" || draft.type === "longtext") && (
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Vectorize</Trans></div>
+                    <div className="text-[11.5px] text-muted-foreground"><Trans>Fold this field into the text embedded for vector search (when vector search is enabled). Existing rows need an embed backfill from the collection's Settings tab.</Trans></div>
+                  </div>
+                  <Switch checked={!!draft.vectorize} onChange={(v) => setDraft((d) => d ? { ...d, vectorize: v } : d)} />
                 </div>
               )}
 

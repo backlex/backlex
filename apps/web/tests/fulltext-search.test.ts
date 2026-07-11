@@ -2,8 +2,9 @@
  * Full-text + hybrid search. Exercises the keyword index end-to-end on SQLite
  * (FTS5 shadow table): the on-write hook, the `?q=` precision filter, the
  * `POST /:slug/search` ranked endpoint, the RRF mode-resolution guards, and
- * the `/:slug/fts-reindex` backfill. Reads the shadow table directly to prove
- * the DDL + content actually landed, not just the metadata.
+ * the PATCH auto-backfill (fts toggled on / searchable set changed), and the
+ * manual `/:slug/fts-reindex` recovery endpoint. Reads the shadow table
+ * directly to prove the DDL + content actually landed, not just the metadata.
  */
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { Database } from "bun:sqlite";
@@ -213,7 +214,7 @@ describe("full-text search — enabling + backfill on an existing collection", (
     expect(body.data.length).toBe(1);
   });
 
-  test("enabling fts + backfill indexes pre-existing rows", async () => {
+  test("enabling fts via PATCH auto-backfills pre-existing rows", async () => {
     const patch = await h.fetch(`/api/collections/${slug}`, {
       method: "PATCH",
       headers: json,
@@ -223,20 +224,74 @@ describe("full-text search — enabling + backfill on an existing collection", (
       }),
     });
     expect(patch.status).toBe(200);
+    const pBody = (await patch.json()) as {
+      ftsBackfill: { processed: number; skipped: number; total: number } | null;
+    };
+    expect(pBody.ftsBackfill).toEqual({ processed: 2, skipped: 0, total: 2 });
 
-    // Before reindex the shadow table is empty → no hits.
-    let r = await search(h, slug, { q: "alpha" });
-    expect(r.data.length).toBe(0);
+    // Rows written before FTS existed are searchable immediately — the old
+    // "search stays empty until a manual /fts-reindex" trap is gone.
+    const r = await search(h, slug, { q: "alpha" });
+    expect(r.data.length).toBe(1);
+    expect(r.data[0]!.title).toBe("Existing alpha doc");
+  });
 
+  test("a PATCH that doesn't change the searchable set skips the backfill", async () => {
+    const patch = await h.fetch(`/api/collections/${slug}`, {
+      method: "PATCH",
+      headers: json,
+      body: JSON.stringify({ note: "metadata-only change" }),
+    });
+    expect(patch.status).toBe(200);
+    const pBody = (await patch.json()) as { ftsBackfill: unknown };
+    expect(pBody.ftsBackfill).toBeNull();
+  });
+
+  test("changing which fields are searchable re-indexes automatically", async () => {
+    // Add a non-searchable `body` column — same searchable set, no backfill.
+    const addField = await h.fetch(`/api/collections/${slug}`, {
+      method: "PATCH",
+      headers: json,
+      body: JSON.stringify({
+        fields: [
+          { name: "title", type: "text", searchable: true },
+          { name: "body", type: "longtext" },
+        ],
+      }),
+    });
+    expect(addField.status).toBe(200);
+    expect(((await addField.json()) as { ftsBackfill: unknown }).ftsBackfill).toBeNull();
+
+    await createItem(h, slug, { title: "Existing gamma doc", body: "hidden treasure inside" });
+    let r = await search(h, slug, { q: "treasure" });
+    expect(r.data.length).toBe(0); // body isn't searchable yet
+
+    // Flip `body` searchable — the signature changes, so PATCH re-indexes.
+    const flip = await h.fetch(`/api/collections/${slug}`, {
+      method: "PATCH",
+      headers: json,
+      body: JSON.stringify({
+        fields: [
+          { name: "title", type: "text", searchable: true },
+          { name: "body", type: "longtext", searchable: true },
+        ],
+      }),
+    });
+    expect(flip.status).toBe(200);
+    const flipBody = (await flip.json()) as { ftsBackfill: { total: number } | null };
+    expect(flipBody.ftsBackfill?.total).toBe(3);
+
+    r = await search(h, slug, { q: "treasure" });
+    expect(r.data.length).toBe(1);
+    expect(r.data[0]!.title).toBe("Existing gamma doc");
+  });
+
+  test("the manual fts-reindex endpoint still rebuilds and reports counts", async () => {
     const re = await h.fetch(`/api/collections/${slug}/fts-reindex`, { method: "POST" });
     expect(re.status).toBe(200);
     const reBody = (await re.json()) as { processed: number; total: number };
-    expect(reBody.total).toBe(2);
-    expect(reBody.processed).toBe(2);
-
-    r = await search(h, slug, { q: "alpha" });
-    expect(r.data.length).toBe(1);
-    expect(r.data[0]!.title).toBe("Existing alpha doc");
+    expect(reBody.total).toBe(3);
+    expect(reBody.processed).toBe(3);
   });
 
   test("fts on but no searchable field → 422 names the missing piece", async () => {

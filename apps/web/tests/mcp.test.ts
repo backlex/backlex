@@ -1679,3 +1679,76 @@ describe("MCP — completions + resource templates", () => {
     expect((r as RpcSuccess).result.completion.values).toEqual([]);
   });
 });
+
+describe("MCP — search surface (fts auto-backfill + reindex + vector capabilities)", () => {
+  let h: TestHarness;
+  const slug = `mcp_fts_${Date.now()}`;
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    // Row written BEFORE fts is on — the auto-backfill must pick it up.
+    await callTool(h, "schema.create_collection", {
+      slug,
+      fields: [{ name: "title", type: "text" }],
+    });
+    await callTool(h, "collections.insert", {
+      collection: slug,
+      data: { title: "orange mcp doc" },
+    });
+  });
+  afterAll(() => h.cleanup());
+
+  test("tools/list exposes the search-surface tools with correct kinds", async () => {
+    const r = await mcp(h, { jsonrpc: "2.0", id: 91, method: "tools/list" });
+    expect(isErr(r)).toBe(false);
+    const tools = (r as RpcSuccess).result.tools as any[];
+    const byName = new Map(tools.map((t: any) => [t.name, t]));
+    expect(byName.has("schema.fts_reindex")).toBe(true);
+    expect(byName.has("schema.vectorize_backfill")).toBe(true);
+    // "capabilities" isn't a recognised read verb — the explicit kind must win.
+    expect(byName.get("vector.capabilities")?.kind).toBe("read");
+    // `additionalProperties: false` strips unknown fields, so `fts` must be
+    // declared or MCP/agents can never enable full-text search.
+    const upd = byName.get("schema.update_collection");
+    expect(Object.keys(upd.inputSchema.properties)).toContain("fts");
+    expect(Object.keys(byName.get("schema.create_collection").inputSchema.properties)).toContain("fts");
+  });
+
+  test("update_collection with fts auto-backfills; collections.search then hits", async () => {
+    const updated = await callTool(h, "schema.update_collection", {
+      slug,
+      fts: true,
+      fields: [{ name: "title", type: "text", searchable: true }],
+    });
+    expect(updated.structuredContent.ftsBackfill).toEqual({ processed: 1, skipped: 0, total: 1 });
+
+    const found = await callTool(h, "collections.search", {
+      collection: slug,
+      q: "orange",
+      mode: "fts",
+    });
+    expect(found.structuredContent.data.length).toBe(1);
+    expect(found.structuredContent.data[0].title).toBe("orange mcp doc");
+  });
+
+  test("schema.fts_reindex rebuilds and reports counts", async () => {
+    const re = await callTool(h, "schema.fts_reindex", { slug });
+    expect(re.structuredContent).toMatchObject({ ok: true, processed: 1, skipped: 0, total: 1 });
+  });
+
+  test("vector.capabilities reports the bare test deployment truthfully", async () => {
+    const caps = await callTool(h, "vector.capabilities", {});
+    expect(caps.structuredContent.data.store).toBe("none");
+    expect(caps.structuredContent.data.models.length).toBeGreaterThan(0);
+    expect(caps.structuredContent.data.models.every((m: any) => m.ready === false)).toBe(true);
+  });
+
+  test("schema.vectorize_backfill surfaces the server's 422 when nothing can embed", async () => {
+    // vectorize is off on this collection — the tool must relay the server's
+    // validation error (carried in the text payload, like other tool errors),
+    // not swallow it into a fake success.
+    const res = await callTool(h, "schema.vectorize_backfill", { slug }).catch((e: Error) => e);
+    const text = res instanceof Error ? res.message : String(res.content?.[0]?.text ?? "");
+    expect(text).toContain("vectorize");
+  });
+});

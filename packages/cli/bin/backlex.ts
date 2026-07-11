@@ -50,9 +50,10 @@ Usage:
       add <name> --url <url> [--key …] [--tenant …]   add/replace a profile
       remove <name>                     delete a profile
 
-  backlex collections <list|get|export-schema>
+  backlex collections <list|get|export-schema|drop-field|fts-reindex|vectorize>
       Inspect the schema of the connected instance. \`list\` shows everything
-      the key can reach. Run \`backlex collections\` for details.
+      the key can reach; \`fts-reindex\` / \`vectorize\` rebuild a collection's
+      search indexes. Run \`backlex collections\` for details.
 
   backlex items <list|get|create|update|delete|export|import|search> <slug>
       Data-plane CRUD + bulk export/import + search. Run \`backlex items\`

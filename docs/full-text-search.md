@@ -144,6 +144,17 @@ The `collections.search` tool exposes the same endpoint to agents — prefer it
 over `collections.list` for "find the most relevant…" questions, since `list`
 only does exact filters, not ranking.
 
+Agents can also manage the index end-to-end: `schema.update_collection`
+accepts the `fts` flag (enabling it auto-backfills existing rows, same as the
+REST PATCH), and `schema.fts_reindex` triggers the manual rebuild.
+
+## CLI
+
+```bash
+backlex collections fts-reindex articles
+# ✓ articles: 1240 indexed, 12 empty, 1252 total
+```
+
 ## See also
 
 - [Vector search & AI](/vector-search) — the semantic half of hybrid search.

@@ -39,6 +39,13 @@ export const createCollection: McpTool = {
       ownerScoped: { type: "boolean" },
       tenantScoped: { type: "boolean" },
       versioned: { type: "boolean" },
+      fts: {
+        type: "boolean",
+        description:
+          "Keyword full-text-search index over the fields marked " +
+          "`searchable: true` (text/longtext). Powers `collections.search` " +
+          "mode `fts` and keyword `?q=` filtering.",
+      },
       vectorize: { type: "boolean" },
       vectorizeModel: { type: "string" },
       defaultSort: { type: "string" },
@@ -66,7 +73,9 @@ export const updateCollection: McpTool = {
   description:
     "Patch a collection's metadata or field list. Field changes go through " +
     "the additive applier — columns are added; column removal goes via " +
-    "`schema.drop_field`.",
+    "`schema.drop_field`. Enabling `fts` (or changing which fields are " +
+    "`searchable`) auto-backfills the full-text index for existing rows — " +
+    "the response's `ftsBackfill` reports `{ processed, skipped, total }`.",
   inputSchema: {
     type: "object",
     properties: {
@@ -77,6 +86,13 @@ export const updateCollection: McpTool = {
       fields: { type: "array" },
       ownerScoped: { type: "boolean" },
       versioned: { type: "boolean" },
+      fts: {
+        type: "boolean",
+        description:
+          "Keyword full-text-search index over the fields marked " +
+          "`searchable: true`. Enabling on an existing collection " +
+          "auto-backfills the index for rows already present.",
+      },
       vectorize: { type: "boolean" },
       vectorizeModel: { type: "string" },
       defaultSort: { type: "string" },
@@ -157,9 +173,66 @@ export const dropCollection: McpTool = {
   },
 };
 
+export const ftsReindex: McpTool = {
+  name: "schema.fts_reindex",
+  description:
+    "Rebuild the collection's full-text-search index for every existing row. " +
+    "Rarely needed — `schema.update_collection` auto-backfills when `fts` or " +
+    "the `searchable` field set changes; use this as a manual recovery (e.g. " +
+    "rows imported around the API). Requires `fts: true` and at least one " +
+    "searchable text field. Returns `{ ok, processed, skipped, total }`.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      slug: { type: "string" },
+    },
+    required: ["slug"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const slug = requireSlug(args);
+    const res = await ctx.fetchInternal(
+      `/api/collections/${encodeURIComponent(slug)}/fts-reindex`,
+      { method: "POST" },
+    );
+    const body = await readJson<unknown>(res);
+    return withLinks(textResult(body), collectionLink(slug));
+  },
+};
+
+export const vectorizeBackfill: McpTool = {
+  name: "schema.vectorize_backfill",
+  description:
+    "Embed every existing row of a vectorize-enabled collection into the " +
+    "vector store. Deliberately manual (unlike the FTS auto-backfill): each " +
+    "row is one embedding-provider call, so it costs money/quota — confirm " +
+    "with the user before running on large collections. Check " +
+    "`vector.capabilities` first if unsure the deployment can embed at all. " +
+    "Returns `{ ok, processed, skipped, total }`.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      slug: { type: "string" },
+    },
+    required: ["slug"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const slug = requireSlug(args);
+    const res = await ctx.fetchInternal(
+      `/api/collections/${encodeURIComponent(slug)}/vectorize`,
+      { method: "POST" },
+    );
+    const body = await readJson<unknown>(res);
+    return withLinks(textResult(body), collectionLink(slug));
+  },
+};
+
 export const schemaAdminTools: McpTool[] = [
   createCollection,
   updateCollection,
   dropField,
   dropCollection,
+  ftsReindex,
+  vectorizeBackfill,
 ];

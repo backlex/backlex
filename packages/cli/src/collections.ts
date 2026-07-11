@@ -32,12 +32,16 @@ interface Collection {
   adopted?: boolean | number;
 }
 
-const COLLECTIONS_HELP = `backlex collections <list|get|export-schema|drop-field>
+const COLLECTIONS_HELP = `backlex collections <list|get|export-schema|drop-field|fts-reindex|vectorize>
 
   list                              every collection the key can read
   get <slug>                        one collection's fields
   export-schema [--out <file>]      full schema as JSON (commit + diff for GitOps)
   drop-field <slug> <field>         drop a column (destructive; managed-only)
+  fts-reindex <slug>                rebuild the full-text index for existing rows
+                                    (rarely needed — enabling fts auto-backfills)
+  vectorize <slug>                  embed every existing row into the vector store
+                                    (manual by design: each row costs a provider call)
 `;
 
 const fetchCollections = (args: string[]): Promise<Collection[]> => {
@@ -157,6 +161,40 @@ export const runCollections = async (args: string[]): Promise<void> => {
       process.stderr.write(`✓ dropped ${field} from ${res.slug}\n`);
     } catch (e) {
       die(e, "collections drop-field");
+    }
+    return;
+  }
+
+  // fts-reindex + vectorize share one shape: POST an empty body to the
+  // collection's backfill endpoint and report the processed/skipped counts.
+  if (sub === "fts-reindex" || sub === "vectorize") {
+    const slug = args[1];
+    if (!slug) {
+      process.stderr.write(`collections ${sub} <slug>\n`);
+      process.exit(1);
+    }
+    const path =
+      sub === "fts-reindex"
+        ? `/api/collections/${encodeURIComponent(slug)}/fts-reindex`
+        : `/api/collections/${encodeURIComponent(slug)}/vectorize`;
+    try {
+      const ctx = resolveContext(args.slice(2));
+      const res = await makeClient(ctx).request<{
+        ok: true;
+        processed: number;
+        skipped: number;
+        total: number;
+      }>("POST", path);
+      if (json) {
+        printJson(res);
+        return;
+      }
+      const verb = sub === "fts-reindex" ? "indexed" : "embedded";
+      process.stderr.write(
+        `✓ ${slug}: ${res.processed} ${verb}, ${res.skipped} empty, ${res.total} total\n`,
+      );
+    } catch (e) {
+      die(e, `collections ${sub}`);
     }
     return;
   }

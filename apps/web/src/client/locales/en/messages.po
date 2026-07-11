@@ -6641,6 +6641,10 @@ msgstr "No templates match your search."
 msgid "No templates yet — use \"New template\" to add one."
 msgstr "No templates yet — use \"New template\" to add one."
 
+#: src/client/admin/collection-settings.tsx
+msgid "No text field is marked <0>searchable</0> yet, so search stays empty — flip it on a text field in the Schema tab."
+msgstr "No text field is marked <0>searchable</0> yet, so search stays empty — flip it on a text field in the Schema tab."
+
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "No tools match this filter."
 msgstr "No tools match this filter."
@@ -7304,8 +7308,12 @@ msgid "Pick a collection first"
 msgstr "Pick a collection first"
 
 #: src/client/admin/pages/search-playground.tsx
-msgid "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured."
-msgstr "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured."
+msgid "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on plus a text field marked searchable; vector needs an embedding model configured."
+msgstr "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on plus a text field marked searchable; vector needs an embedding model configured."
+
+#: src/client/admin/pages/search-playground.tsx
+#~ msgid "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured."
+#~ msgstr "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured."
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/parity/insights.tsx

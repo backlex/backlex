@@ -6641,6 +6641,10 @@ msgstr "Aramanızla eşleşen şablon yok."
 msgid "No templates yet — use \"New template\" to add one."
 msgstr "Henüz şablon yok — eklemek için \"Yeni şablon\"u kullanın."
 
+#: src/client/admin/collection-settings.tsx
+msgid "No text field is marked <0>searchable</0> yet, so search stays empty — flip it on a text field in the Schema tab."
+msgstr "Henüz <0>searchable</0> olarak işaretlenmiş bir metin alanı yok, bu yüzden arama boş kalır — Şema sekmesinden bir metin alanında açın."
+
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "No tools match this filter."
 msgstr "Bu filtreyle eşleşen araç yok."
@@ -7304,8 +7308,12 @@ msgid "Pick a collection first"
 msgstr "Önce bir koleksiyon seçin"
 
 #: src/client/admin/pages/search-playground.tsx
-msgid "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured."
-msgstr "Bir koleksiyon seçin, sorgunuzu yazın ve çalıştırın. Tam metin için koleksiyonun FTS anahtarı açık olmalı; vektör için bir embedding modeli yapılandırılmış olmalı."
+msgid "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on plus a text field marked searchable; vector needs an embedding model configured."
+msgstr "Bir koleksiyon seçin, bir sorgu yazın ve çalıştırın. Tam metin için koleksiyonun FTS anahtarı açık ve searchable işaretli bir metin alanı gerekir; vektör için bir gömme modeli yapılandırılmış olmalı."
+
+#: src/client/admin/pages/search-playground.tsx
+#~ msgid "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured."
+#~ msgstr "Bir koleksiyon seçin, sorgunuzu yazın ve çalıştırın. Tam metin için koleksiyonun FTS anahtarı açık olmalı; vektör için bir embedding modeli yapılandırılmış olmalı."
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/parity/insights.tsx

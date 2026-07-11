@@ -17,8 +17,18 @@ interface SearchCollection {
   slug: string;
   fts?: boolean;
   displayTemplate?: string | null;
-  fields?: LabelSchemaField[];
+  fields?: (LabelSchemaField & { searchable?: boolean })[];
 }
+
+// Mirrors the server's `isSearchable`: the FTS toggle alone doesn't make a
+// collection searchable — at least one text field must be marked `searchable`.
+// The badge and preselection use this so they never advertise a collection the
+// /search endpoint will 422 on.
+const ftsReady = (c: SearchCollection): boolean =>
+  Boolean(c.fts) &&
+  (c.fields ?? []).some(
+    (f) => f.searchable && (f.type === "text" || f.type === "longtext"),
+  );
 
 type SearchMode = "auto" | "fts" | "vector" | "hybrid";
 
@@ -45,7 +55,7 @@ export function SearchPlaygroundPage({ pushToast }: { pushToast: (m: string) => 
           setCols(list);
           // Preselect the first searchable collection so the page is one
           // keystroke away from a result.
-          setSlug((list.find((c) => c.fts) ?? list[0])?.slug);
+          setSlug((list.find(ftsReady) ?? list[0])?.slug);
         }
       } catch {
         if (!cancelled) setCols([]);
@@ -124,7 +134,7 @@ export function SearchPlaygroundPage({ pushToast }: { pushToast: (m: string) => 
               options={cols.map((c) => ({
                 value: c.slug,
                 label: c.slug,
-                badge: c.fts ? (
+                badge: ftsReady(c) ? (
                   <Badge variant="outline" mono>
                     FTS
                   </Badge>
@@ -181,7 +191,7 @@ export function SearchPlaygroundPage({ pushToast }: { pushToast: (m: string) => 
         <EmptyState
           icon={I.Search}
           title={t`Search a collection`}
-          description={t`Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured.`}
+          description={t`Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on plus a text field marked searchable; vector needs an embedding model configured.`}
         />
       ) : results.length === 0 ? (
         <EmptyState

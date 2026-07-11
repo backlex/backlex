@@ -38,6 +38,21 @@ const isFtsField = (f: FieldDef): boolean =>
 export const isSearchable = (c: Pick<FtsTarget, "fts" | "fields">): boolean =>
   c.fts && c.fields.some(isFtsField);
 
+/**
+ * Stable fingerprint of what feeds the full-text index: "" when FTS is off,
+ * else the sorted names of the searchable text fields. Two metadata states
+ * with the same signature index identical content, so a PATCH only needs a
+ * backfill when the signature changes.
+ */
+export const ftsIndexSignature = (c: Pick<FtsTarget, "fts" | "fields">): string =>
+  c.fts
+    ? c.fields
+        .filter(isFtsField)
+        .map((f) => f.name)
+        .sort()
+        .join(",")
+    : "";
+
 /** Concatenate the `searchable` text fields of a row into one index string.
  *  Mirrors the vectorize `buildText`. Returns "" when nothing is indexable. */
 const buildSearchText = (row: Record<string, unknown>, fields: FieldDef[]): string => {
@@ -144,6 +159,61 @@ export const indexFtsBatch = async (
     if (text) indexed += 1;
   }
   return indexed;
+};
+
+export interface FtsBackfillResult {
+  /** Rows whose searchable fields produced index text. */
+  processed: number;
+  /** Rows whose searchable fields were all empty (nothing to index). */
+  skipped: number;
+  /** Rows visited. */
+  total: number;
+}
+
+/**
+ * Backfill the full-text index for every existing row in the collection's
+ * physical table. Synchronous + paginated (100 rows per batch). Scoped to
+ * `tenantId` only when the collection is tenant-scoped — a global table has
+ * no `tenant_id` column to filter on. Shared by the explicit
+ * `POST /:slug/fts-reindex` endpoint and the PATCH auto-backfill that runs
+ * when FTS is enabled / the searchable field set changes.
+ */
+export const backfillFts = async (
+  ctx: Ctx,
+  collection: FtsTarget & { tenantScoped?: boolean },
+  tenantId: string | null,
+): Promise<FtsBackfillResult> => {
+  const table = sql.identifier(collection.physicalTable);
+  const where =
+    (collection.tenantScoped ?? true) && tenantId
+      ? sql` WHERE ${sql.identifier("tenant_id")} = ${tenantId}`
+      : sql``;
+  const totalRow = await queryAll<{ count: number | string | bigint }>(
+    ctx,
+    sql`SELECT COUNT(*) AS count FROM ${table}${where}`,
+  );
+  const total = Number(totalRow[0]?.count ?? 0);
+
+  let processed = 0;
+  let skipped = 0;
+  let offset = 0;
+  const batchSize = 100;
+  while (offset < total) {
+    const batch = await queryAll<Record<string, unknown>>(
+      ctx,
+      sql`SELECT * FROM ${table}${where} ORDER BY ${sql.identifier(collection.pkColumn)} LIMIT ${batchSize} OFFSET ${offset}`,
+    );
+    if (batch.length === 0) break;
+    const indexed = await indexFtsBatch(
+      ctx,
+      collection,
+      batch.map((row) => ({ id: String(row[collection.pkColumn]), row })),
+    );
+    processed += indexed;
+    skipped += batch.length - indexed;
+    offset += batch.length;
+  }
+  return { processed, skipped, total };
 };
 
 /**

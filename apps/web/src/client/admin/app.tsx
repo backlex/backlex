@@ -1368,10 +1368,23 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                     const prev = schemaState;
                     setSchemaState((s) => ({ ...s, ...patch }));
                     try {
-                      await collectionsApi.patch(slug, patch as any);
-                      pushToast(t`Collection settings saved.`);
+                      const resp = await collectionsApi.patch(slug, patch as any);
+                      pushToast(
+                        resp.ftsBackfill
+                          ? t`Collection settings saved. Search index rebuilt (${resp.ftsBackfill.processed} of ${resp.ftsBackfill.total} rows indexed).`
+                          : t`Collection settings saved.`,
+                      );
                     } catch (e) {
                       setSchemaState(prev);
+                      pushToast((e as Error).message, "error");
+                    }
+                  }}
+                  onFtsReindex={async () => {
+                    const slug = activeCollection || "posts";
+                    try {
+                      const r = await collectionsApi.ftsReindex(slug);
+                      pushToast(t`Search index rebuilt: ${r.processed} indexed, ${r.skipped} empty, ${r.total} total.`);
+                    } catch (e) {
                       pushToast((e as Error).message, "error");
                     }
                   }}
@@ -1481,8 +1494,12 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           const prev = schemaState.fields;
           setSchemaState((s) => ({ ...s, fields: merged }));
           try {
-            await collectionsApi.patch(slug, { fields: merged as any });
-            pushToast(t`Field "${(next as { name?: string }).name}" updated.`);
+            const resp = await collectionsApi.patch(slug, { fields: merged as any });
+            pushToast(
+              resp.ftsBackfill
+                ? t`Field "${(next as { name?: string }).name}" updated. Search index rebuilt (${resp.ftsBackfill.processed} of ${resp.ftsBackfill.total} rows indexed).`
+                : t`Field "${(next as { name?: string }).name}" updated.`,
+            );
           } catch (e) {
             setSchemaState((s) => ({ ...s, fields: prev }));
             pushToast((e as Error).message, "error");

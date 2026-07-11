@@ -77,9 +77,12 @@ export interface CollectionSettingsProps {
   onPatch: (patch: Partial<SchemaLike>) => void | Promise<void>;
   onRename: (nextSlug: string) => void | Promise<void>;
   onDelete: () => void;
+  /** Rebuild the full-text index for existing rows (manual recovery — the
+   *  server auto-backfills when FTS settings change). */
+  onFtsReindex?: () => void | Promise<void>;
 }
 
-export function CollectionSettings({ schema, existingSlugs, collections, onPatch, onRename, onDelete }: CollectionSettingsProps) {
+export function CollectionSettings({ schema, existingSlugs, collections, onPatch, onRename, onDelete, onFtsReindex }: CollectionSettingsProps) {
   const { t } = useLingui();
   const [slug, setSlug] = useState(schema.slug);
   const [singular, setSingular] = useState(schema.singular ?? "");
@@ -89,6 +92,7 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
   const [sortClauses, setSortClauses] = useState<SortClause[]>(
     parseDefaultSort(schema.defaultSort),
   );
+  const [reindexing, setReindexing] = useState(false);
 
   // Reseed when the user navigates between collections (or hits Refresh).
   useEffect(() => {
@@ -280,7 +284,7 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
                 <span className="font-mono"> searchable</span>. Upgrades
                 <span className="font-mono"> ?q=</span> to ranked keyword matching and enables the
                 <span className="font-mono"> /search</span> endpoint (full-text / vector / hybrid).
-                After enabling on an existing collection, run a re-index to backfill.</Trans>
+                Existing rows are indexed automatically when you enable this or change which fields are searchable.</Trans>
               </div>
               {!!schema.fts &&
                 !(schema.fields ?? []).some(
@@ -289,6 +293,31 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
                   <div className="mt-1 text-[11.5px] text-amber-500">
                     <Trans>No text field is marked <span className="font-mono">searchable</span> yet,
                     so search stays empty — flip it on a text field in the Schema tab.</Trans>
+                  </div>
+                )}
+              {!!schema.fts &&
+                !schema.adopted &&
+                !!onFtsReindex &&
+                (schema.fields ?? []).some(
+                  (f) => f.searchable && (f.type === "text" || f.type === "longtext"),
+                ) && (
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={I.Refresh}
+                      disabled={reindexing}
+                      onClick={async () => {
+                        setReindexing(true);
+                        try {
+                          await onFtsReindex();
+                        } finally {
+                          setReindexing(false);
+                        }
+                      }}
+                    >
+                      {reindexing ? <Trans>Re-indexing…</Trans> : <Trans>Re-index now</Trans>}
+                    </Button>
                   </div>
                 )}
             </div>

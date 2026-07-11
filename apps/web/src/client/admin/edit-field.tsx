@@ -299,7 +299,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Searchable</Trans></div>
-                    <div className="text-[11.5px] text-muted-foreground"><Trans>Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing.</Trans></div>
+                    <div className="text-[11.5px] text-muted-foreground"><Trans>Fold this field into the collection's full-text-search index (when FTS is enabled). Saving re-indexes existing rows automatically.</Trans></div>
                   </div>
                   <Switch checked={!!draft.searchable} onChange={(v) => setDraft((d) => d ? { ...d, searchable: v } : d)} />
                 </div>

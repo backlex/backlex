@@ -359,6 +359,12 @@ export const collectionsApi = {
     api<{ ok: true } & FtsBackfillResult>(`/api/collections/${slug}/fts-reindex`, {
       method: "POST",
     }),
+  /** Embed every existing row into the vector store. Deliberately manual
+   *  (unlike the FTS auto-backfill) — each row costs an embedding call. */
+  vectorizeBackfill: (slug: string) =>
+    api<{ ok: true } & FtsBackfillResult>(`/api/collections/${slug}/vectorize`, {
+      method: "POST",
+    }),
   remove: (slug: string) =>
     api<{ ok: true; archived?: boolean }>(`/api/collections/${slug}`, { method: "DELETE" }),
   /** Drop a single field (column) from a managed collection. Destructive —
@@ -384,6 +390,27 @@ export const collectionsApi = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+};
+
+export interface VectorCapabilityModel {
+  key: string;
+  label: string;
+  provider: "workers-ai" | "openai" | "self-host";
+  dimensions: number;
+  /** Usable right now: provider configured + store can hold its vectors. */
+  ready: boolean;
+}
+
+export interface VectorCapabilities {
+  store: "vectorize" | "pgvector" | "libsql" | "none";
+  defaultModel: string | null;
+  models: VectorCapabilityModel[];
+}
+
+export const vectorApi = {
+  /** Deployment-level vector-search readiness — drives the collection
+   *  Settings model picker so it never offers a model that can't embed. */
+  capabilities: () => api<Envelope<VectorCapabilities>>(`/api/vector/capabilities`),
 };
 
 export interface TemplateSummary {

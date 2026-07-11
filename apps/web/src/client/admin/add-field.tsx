@@ -92,6 +92,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [relationTarget, setRelationTarget] = useState("");
   const [indexed, setIndexed] = useState(false);
   const [searchable, setSearchable] = useState(false);
+  const [vectorize, setVectorize] = useState(false);
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -255,6 +256,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(validCreate ? { onCreate: validCreate } : {}),
       ...(validUpdate ? { onUpdate: validUpdate } : {}),
       ...(searchable && (def.type === "text" || def.type === "longtext") ? { searchable: true } : {}),
+      ...(vectorize && (def.type === "text" || def.type === "longtext") ? { vectorize: true } : {}),
       ...(def.hasChoices && cleanChoices.length ? { options: { choices: cleanChoices } } : {}),
       ...(def.hasRelation ? { to: relationTarget } : {}),
       ...(def.hasRelation && onDelete !== "no_action" ? { onDelete } : {}),
@@ -407,6 +409,15 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                         <div className="text-[11.5px] text-muted-foreground"><Trans>Fold this field into the collection's full-text-search index (when FTS is enabled).</Trans></div>
                       </div>
                       <Switch checked={searchable} onChange={setSearchable} />
+                    </div>
+                  )}
+                  {(def.type === "text" || def.type === "longtext") && (
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Vectorize</Trans></div>
+                        <div className="text-[11.5px] text-muted-foreground"><Trans>Fold this field into the text embedded for vector search (when vector search is enabled).</Trans></div>
+                      </div>
+                      <Switch checked={vectorize} onChange={setVectorize} />
                     </div>
                   )}
                 </div>

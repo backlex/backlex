@@ -582,6 +582,18 @@ export const createApp = (env: Env) => {
       ok: true,
       version: templateVersion,
       dialect: c.get("ctx").dialect,
+      // Which JS engine is actually executing — workerd/node/bun deploys of
+      // the same bundle are otherwise indistinguishable from the outside.
+      // workerd must be checked before node: under `nodejs_compat` it also
+      // populates `process.versions.node` (polyfill, not a real node).
+      runtime:
+        typeof Bun !== "undefined"
+          ? `bun/${Bun.version}`
+          : globalThis.navigator?.userAgent === "Cloudflare-Workers"
+            ? "workerd"
+            : typeof process !== "undefined" && process.versions?.node
+              ? `node/${process.versions.node}`
+              : "unknown",
       ts: Date.now(),
     }),
   );

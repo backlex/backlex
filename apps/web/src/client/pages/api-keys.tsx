@@ -250,7 +250,7 @@ export const ApiKeys = () => {
             <CardTitle className="text-sm"><Trans>Save this secret now</Trans></CardTitle>
           </CardHeader>
           <CardContent>
-            <code className="block break-all rounded-md bg-muted p-3 font-mono text-xs">
+            <code className="block break-all rounded-control bg-muted p-3 font-mono text-xs">
               {secret}
             </code>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -356,7 +356,7 @@ export const ApiKeys = () => {
                 <DatePicker value={customExpiry} onChange={setCustomExpiry} />
               )}
               {expiryPreset === "never" && (
-                <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2.5 text-xs text-destructive">
+                <div className="flex items-start gap-2 rounded-surface border border-destructive/40 bg-destructive/5 p-2.5 text-xs text-destructive">
                   <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
                   <span>
                     <Trans>Long-lived keys widen blast radius. Prefer the shortest expiry that works — you can always rotate.</Trans>
@@ -370,7 +370,7 @@ export const ApiKeys = () => {
             <Collapsible
               open={mcpOpen}
               onOpenChange={setMcpOpen}
-              className="rounded-md border border-border/60 bg-muted/20"
+              className="rounded-control border border-border/60 bg-muted/20"
             >
               <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 p-3 text-left">
                 <div className="space-y-0.5">
@@ -404,7 +404,7 @@ export const ApiKeys = () => {
                   </Trans>
                 </p>
                 {mcpDerivedFrom && (
-                  <p className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-2 text-xs text-muted-foreground">
+                  <p className="rounded-control border border-border/60 bg-muted/30 px-2.5 py-2 text-xs text-muted-foreground">
                     <Trans>
                       Derived from the {mcpDerivedFrom} role — adjust below if needed.
                     </Trans>

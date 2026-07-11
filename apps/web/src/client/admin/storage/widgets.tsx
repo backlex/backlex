@@ -112,7 +112,7 @@ export function FileTile({ f, active, onSelect, onCopyUrl }: { f: StoredFile; ac
   return (
     <div
       onClick={onSelect}
-      className={`flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-md border transition-[background,border-color] duration-100 ${
+      className={`flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-control border transition-[background,border-color] duration-100 ${
         active ? "border-primary bg-[color-mix(in_oklch,var(--primary)_6%,transparent)]" : "border-border bg-card"
       }`}
     >
@@ -321,7 +321,7 @@ export function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt
   const previewH = h != null ? h : ((isImage && f.w) ? Math.round(w * aspect) : null);
 
   const Wrapper: any = embedded ? Fragment : "div";
-  const wrapperProps: any = embedded ? {} : { className: "flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground" };
+  const wrapperProps: any = embedded ? {} : { className: "flex flex-col overflow-hidden rounded-surface border border-border bg-card text-card-foreground" };
 
   /** Hit POST /api/storage/_sign/<key> and return the relative signed URL.
    *  Prefix form (not `<key>/sign` suffix) — see the routing note in
@@ -495,7 +495,7 @@ export function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt
 
             <div className="flex flex-col gap-1.5">
               <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Format</Trans></label>
-              <div className="inline-flex w-full divide-x divide-border overflow-hidden rounded-md border border-border bg-card">
+              <div className="inline-flex w-full divide-x divide-border overflow-hidden rounded-control border border-border bg-card">
                 {[
                   { v: "webp", save: "−45%" },
                   { v: "avif", save: "−60%" },
@@ -512,7 +512,7 @@ export function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt
 
             <div className="flex flex-col gap-1.5">
               <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Fit</Trans></label>
-              <div className="inline-flex w-full divide-x divide-border overflow-hidden rounded-md border border-border bg-card">
+              <div className="inline-flex w-full divide-x divide-border overflow-hidden rounded-control border border-border bg-card">
                 {["cover", "contain"].map((o) => (
                   <button key={o} type="button" className={cn(SEG_BTN_BASE, fit === o ? SEG_BTN_ON : SEG_BTN_OFF)} onClick={() => setFit(o)}><span className="font-mono">{o}</span></button>
                 ))}
@@ -525,7 +525,7 @@ export function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt
           <div className="px-3.5 pb-3.5">
           {transformError ? (
             <div
-              className="flex items-start gap-2 rounded-md border border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3 py-2.5 text-xs"
+              className="flex items-start gap-2 rounded-control border border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3 py-2.5 text-xs"
               role="alert"
             >
               <I.Shield size={14} className="mt-0.5 shrink-0 text-[oklch(0.65_0.16_50)]" />
@@ -538,7 +538,7 @@ export function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2.5 rounded-md border border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3 py-2.5 text-xs">
+            <div className="flex items-center gap-2.5 rounded-control border border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3 py-2.5 text-xs">
               <div>
                 <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Original</Trans></div>
                 <div className="tabular-nums">{fmtSize(f.size)}</div>
@@ -568,7 +568,7 @@ export function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt
           <span className="break-all font-mono text-xs">{f.key}</span>
         </div>
 
-        <div className="whitespace-pre-wrap break-words rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-2.5 font-mono text-[11px] leading-normal text-[oklch(from_var(--primary)_0.95_0.02_h)]">
+        <div className="whitespace-pre-wrap break-words rounded-control bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-2.5 font-mono text-[11px] leading-normal text-[oklch(from_var(--primary)_0.95_0.02_h)]">
           <span className="text-[oklch(0.78_0.18_95)]">GET</span> <span className="text-foreground">{url}</span>{params && <span className="text-muted-foreground">{params}</span>}
         </div>
 
@@ -654,7 +654,7 @@ export function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Tags</Trans></label>
             <div className="mb-1.5 flex flex-wrap gap-1">
               {metaTags.map((tag) => (
-                <span key={tag} className="inline-flex h-7 items-center gap-1 rounded-3xl border border-border bg-card px-[11px] text-[12.5px] text-foreground">
+                <span key={tag} className="inline-flex h-7 items-center gap-1 rounded-control border border-border bg-card px-[11px] text-[12.5px] text-foreground">
                   <span className="font-mono">{tag}</span>
                   <ShadButton
                     type="button"

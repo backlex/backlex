@@ -151,7 +151,7 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
         <div className="grid grid-cols-2 gap-3 p-4 max-[640px]:grid-cols-1">
           <div className="col-span-full flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Slug</Trans></label>
-            <div className={`flex h-9 items-stretch overflow-hidden rounded-md border bg-background ${slugError ? "border-destructive focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--destructive)_22%,transparent)]" : "border-border focus-within:border-ring focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_22%,transparent)]"}`}>
+            <div className={`flex h-9 items-stretch overflow-hidden rounded-control border bg-background ${slugError ? "border-destructive focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--destructive)_22%,transparent)]" : "border-border focus-within:border-ring focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_22%,transparent)]"}`}>
               <input
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
@@ -418,7 +418,7 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
         // Adopted collections soft-delete (archive). The physical table stays
         // intact, metadata is retained, and the row can be restored from the
         // Archived view in the collections index.
-        <div className="overflow-hidden rounded-2xl border border-[color-mix(in_oklch,var(--chart-2,var(--primary))_35%,var(--border))] bg-card text-card-foreground">
+        <div className="overflow-hidden rounded-surface border border-[color-mix(in_oklch,var(--chart-2,var(--primary))_35%,var(--border))] bg-card text-card-foreground">
           <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
             <I.Archive size={14} />
             <span className="text-[13px] font-medium text-[color-mix(in_oklch,var(--chart-2,var(--primary))_80%,var(--foreground))]"><Trans>archive zone</Trans></span>
@@ -437,7 +437,7 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-card text-card-foreground">
+        <div className="overflow-hidden rounded-surface border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-card text-card-foreground">
           <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
             <I.Trash size={14} />
             <span className="text-[13px] font-medium text-destructive"><Trans>danger zone</Trans></span>

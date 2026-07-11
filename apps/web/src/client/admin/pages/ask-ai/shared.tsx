@@ -200,7 +200,7 @@ export function ModelPickerList({
               key={m.id}
               type="button"
               onClick={() => onSelect(m.id)}
-              className={`flex w-full cursor-pointer items-start gap-2.5 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-accent ${value === m.id ? "bg-accent" : ""}`}
+              className={`flex w-full cursor-pointer items-start gap-2.5 rounded-surface border-0 bg-transparent px-2.5 py-2 text-left hover:bg-accent ${value === m.id ? "bg-accent" : ""}`}
             >
               <span
                 className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${value === m.id ? "bg-primary" : "bg-border"}`}
@@ -530,7 +530,7 @@ export function KeyPicker({
   }
   if (keys.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border px-3 py-2 text-[12px] text-muted-foreground">
+      <div className="rounded-surface border border-dashed border-border px-3 py-2 text-[12px] text-muted-foreground">
         <Trans>
           No live keys — create one on the{" "}
           <a className="font-mono underline" href="/api-keys">

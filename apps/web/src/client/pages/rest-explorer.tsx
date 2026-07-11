@@ -209,7 +209,7 @@ const MethodBadge = ({
   const style = METHOD_STYLE[method];
   return (
     <span
-      className="font-mono inline-flex shrink-0 items-center justify-center rounded-md border tabular-nums"
+      className="font-mono inline-flex shrink-0 items-center justify-center rounded-control border tabular-nums"
       style={{
         ...style,
         fontSize: size === "md" ? 11 : 10,
@@ -507,7 +507,7 @@ const ParametersTable = ({
       <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         {group} parameters
       </h4>
-      <div className="rounded-md border bg-card">
+      <div className="rounded-control border bg-card">
         {parameters.map((p) => (
           <div key={`${p.in}:${p.name}`} className="border-b border-border/50 px-3 py-2 last:border-b-0">
             <div className="flex flex-wrap items-baseline gap-2">
@@ -636,7 +636,7 @@ const OverviewTab = ({
         )}
       </div>
       {Object.keys(schemes).length > 0 && security.length > 0 && (
-        <div className="rounded-md border bg-muted/30 p-3">
+        <div className="rounded-control border bg-muted/30 p-3">
           <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             <Trans>Resolved schemes</Trans>
           </h4>
@@ -704,7 +704,7 @@ const RequestTab = ({
             <p className="mb-2 text-[12px] text-muted-foreground">{body.description}</p>
           )}
           {json ? (
-            <div className="rounded-md border bg-card px-3">
+            <div className="rounded-control border bg-card px-3">
               <SchemaTree schema={json.media.schema} doc={doc} />
             </div>
           ) : (
@@ -754,7 +754,7 @@ const ResponseSection = ({
           ? "text-destructive"
           : "text-muted-foreground";
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="rounded-md border bg-card">
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-control border bg-card">
       <CollapsibleTrigger asChild>
         <button
           type="button"
@@ -1041,7 +1041,7 @@ const TryItTab = ({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-md border bg-muted/30 px-3 py-2 font-mono text-[11.5px] break-all">
+      <div className="rounded-control border bg-muted/30 px-3 py-2 font-mono text-[11.5px] break-all">
         <span className="text-muted-foreground">{ep.method.toUpperCase()}</span>{" "}
         <span className="text-foreground">{fullUrl}</span>
       </div>
@@ -1361,7 +1361,7 @@ const EndpointList = ({
                       type="button"
                       onClick={() => onSelect(ep.id)}
                       className={cn(
-                        "flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
+                        "flex w-full items-start gap-2 rounded-control px-2 py-1.5 text-left transition-colors",
                         active ? "bg-muted" : "hover:bg-muted/50",
                       )}
                     >

@@ -39,14 +39,14 @@ export function FieldTranslationsEditor({
         <Trans>Field name translations <span className="text-muted-foreground">(optional)</span></Trans>
       </label>
       {locales.length === 0 ? (
-        <div className="rounded-lg bg-muted p-3 text-[11.5px] text-muted-foreground">
+        <div className="rounded-surface bg-muted p-3 text-[11.5px] text-muted-foreground">
           <Trans>No workspace locales configured — add them under Settings → Localization.</Trans>
         </div>
       ) : (
         <div className="flex flex-col gap-1.5">
           {locales.map((loc) => (
             <div key={loc} className="flex items-center gap-2">
-              <span className="w-9 shrink-0 rounded-md bg-muted px-1.5 py-1 text-center font-mono text-[11px] uppercase text-muted-foreground">{loc}</span>
+              <span className="w-9 shrink-0 rounded-control bg-muted px-1.5 py-1 text-center font-mono text-[11px] uppercase text-muted-foreground">{loc}</span>
               <Input
                 className="h-8 flex-1"
                 placeholder={t`Label in ${loc}`}

@@ -182,11 +182,11 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
             <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>From</Trans></label><Input value={fromAddress} placeholder={t`(use the configured default)`} onChange={(e) => setFromAddress(e.target.value)} /></div>
             <div className="flex flex-col gap-1.5">
               <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Body (HTML)</Trans></label>
-              <Textarea value={body} onChange={(e) => setBody(e.target.value)} spellCheck={false} className="min-h-[220px] w-full resize-y rounded-xl border border-border bg-[oklch(0.18_0.01_130)] p-3 font-mono text-[12.5px] leading-[1.55] text-[oklch(0.92_0.02_130)]" />
+              <Textarea value={body} onChange={(e) => setBody(e.target.value)} spellCheck={false} className="min-h-[220px] w-full resize-y rounded-control border border-border bg-[oklch(0.18_0.01_130)] p-3 font-mono text-[12.5px] leading-[1.55] text-[oklch(0.92_0.02_130)]" />
             </div>
             <div className="flex flex-wrap gap-1.5">
               {(active?.vars ?? []).map((v) => (
-                <button key={v} onClick={() => setBody((b) => b + `{{ ${v} }}`)} className="inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border border-border bg-card px-[11px] text-[12.5px] text-foreground hover:bg-accent"><I.Code size={11} /> {`{{ ${v} }}`}</button>
+                <button key={v} onClick={() => setBody((b) => b + `{{ ${v} }}`)} className="inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-control border border-border bg-card px-[11px] text-[12.5px] text-foreground hover:bg-accent"><I.Code size={11} /> {`{{ ${v} }}`}</button>
               ))}
             </div>
           </div>
@@ -194,7 +194,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
         <Card className="py-0 gap-0">
           <div className="border-b border-border px-4 py-3.5"><span className="text-xs font-medium"><Trans>Preview</Trans></span></div>
           <div className="min-h-[280px] bg-[oklch(0.97_0.005_130)] p-6">
-            <div className="mx-auto max-w-[480px] rounded-[12px] bg-white p-7 text-[#1a1a1a] shadow-[0_1px_4px_oklch(0_0_0/0.06)]" dangerouslySetInnerHTML={{ __html: preview.replace(/<a /g, '<a style="display:inline-block;margin-top:8px;padding:10px 16px;background:oklch(0.85 0.18 125);color:#1a1a1a;border-radius:999px;text-decoration:none;font-weight:500;font-family:Geist,sans-serif" ') }} />
+            <div className="mx-auto max-w-[480px] rounded-surface bg-white p-7 text-[#1a1a1a] shadow-[0_1px_4px_oklch(0_0_0/0.06)]" dangerouslySetInnerHTML={{ __html: preview.replace(/<a /g, '<a style="display:inline-block;margin-top:8px;padding:10px 16px;background:oklch(0.85 0.18 125);color:#1a1a1a;border-radius:999px;text-decoration:none;font-weight:500;font-family:Geist,sans-serif" ') }} />
           </div>
         </Card>
       </div>

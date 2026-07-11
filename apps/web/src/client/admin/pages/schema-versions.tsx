@@ -252,7 +252,7 @@ export function SchemaVersionsPage({
 
       {/* Auto-snapshot cadence — a scheduled capture + retention, per workspace. */}
       {tab === "snapshots" && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/20 px-3 py-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-surface border bg-muted/20 px-3 py-2 text-sm">
           <I.Clock size={14} className="shrink-0 text-muted-foreground" />
           <span className="text-muted-foreground">
             <Trans>Auto-snapshot</Trans>
@@ -751,12 +751,12 @@ function DiffApplyDialog({
                   <Skeleton className="h-5 w-24 rounded-full" />
                 </div>
                 {[0, 1, 2].map((i) => (
-                  <Skeleton key={i} className="h-8 w-full rounded-md" />
+                  <Skeleton key={i} className="h-8 w-full rounded-control" />
                 ))}
               </div>
             )}
             {noChanges && (
-              <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+              <div className="rounded-surface border border-dashed p-4 text-center text-sm text-muted-foreground">
                 <Trans>Live schema already matches this version.</Trans>
               </div>
             )}
@@ -773,7 +773,7 @@ function DiffApplyDialog({
                     return (
                       <li
                         key={`${ch.kind}-${ch.collection}-${ch.field ?? ""}-${i}`}
-                        className="flex items-start gap-2 rounded-md border px-2.5 py-1.5 text-[13px]"
+                        className="flex items-start gap-2 rounded-control border px-2.5 py-1.5 text-[13px]"
                       >
                         <span className={`mt-0.5 font-mono ${sty.dot}`}>
                           {ch.severity === "destructive" ? "!" : ch.severity === "additive" ? "+" : "·"}
@@ -786,7 +786,7 @@ function DiffApplyDialog({
               </>
             )}
             {diff?.hasDestructive && (
-              <label className="mt-1 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+              <label className="mt-1 flex items-start gap-2 rounded-surface border border-destructive/40 bg-destructive/5 p-3 text-sm">
                 <Checkbox
                   checked={confirmDestructive}
                   onCheckedChange={(v) => setConfirmDestructive(Boolean(v))}

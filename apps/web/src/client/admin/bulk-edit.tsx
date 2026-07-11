@@ -108,7 +108,7 @@ export function BulkEditDialog({ open, count, schema, onClose, onApply }: BulkEd
         <ScrollArea className="min-h-0">
           <div className="flex flex-col gap-8 px-5 py-[18px]">
             {noFields ? (
-              <div className="rounded-xl bg-muted p-3 text-[13px] text-muted-foreground">
+              <div className="rounded-control bg-muted p-3 text-[13px] text-muted-foreground">
                 <Trans>
                   This collection has no fields that support bulk editing. Structured
                   (json / file / relation list / localized) and rich-text fields are edited per

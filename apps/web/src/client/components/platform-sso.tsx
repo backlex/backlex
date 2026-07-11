@@ -78,7 +78,7 @@ export const PlatformSso = ({ callbackURL = "/" }: PlatformSsoProps) => {
 
       {hasLdap &&
         (showLdap ? (
-          <form className="space-y-2 rounded-md border border-border p-3" onSubmit={ldapSubmit}>
+          <form className="space-y-2 rounded-control border border-border p-3" onSubmit={ldapSubmit}>
             <div className="space-y-1.5">
               <Label htmlFor="ldap-username">
                 <Trans>LDAP username</Trans>

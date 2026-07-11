@@ -37,7 +37,10 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/45 duration-100 supports-backdrop-filter:backdrop-blur-[2px] data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        // No backdrop-blur here: a full-screen backdrop-filter re-blurs the
+        // whole viewport on every repaint beneath/above it (animated cosmos
+        // backdrop, dialog body scroll), tanking scroll FPS inside modals.
+        "fixed inset-0 isolate z-50 bg-black/45 duration-100 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
       {...props}

@@ -169,9 +169,12 @@ function ProfileCard({
     setDirty(false);
   }, [user?.id, user?.name, user?.image]);
 
-  // `auth.updateUser({image})` accepts a string. We keep the storage logical
-  // key (e.g. "account-avatars/<uid>.png") in `user.image` and render it
-  // through `/api/storage/<key>` so the same-origin cookie auth applies.
+  // `auth.updateUser({image})` accepts a string. The avatar endpoint returns
+  // a ready-to-render, workspace-independent URL (`/api/account/avatar/<uid>
+  // ?v=<etag>`) which we store verbatim in `user.image`. Legacy values may
+  // still carry a tenant-scoped storage key ("account-avatars/<uid>.png") —
+  // those keep resolving through `/api/storage/<key>` until re-uploaded, but
+  // only render under the workspace they were uploaded in.
   const previewSrc = useMemo(() => {
     if (!image) return null;
     if (/^https?:\/\//i.test(image) || image.startsWith("/")) return image;
@@ -183,11 +186,9 @@ function ProfileCard({
       pushToast(t`Not signed in.`);
       return;
     }
-    const ext = (file.name.split(".").pop() ?? "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
-    const key = `account-avatars/${user.id}.${ext}`;
     setUploading(true);
     try {
-      const res = await fetch(`/api/storage/${encodeURIComponent(key)}`, {
+      const res = await fetch("/api/account/avatar", {
         method: "PUT",
         credentials: "include",
         headers: { "content-type": file.type || "application/octet-stream" },
@@ -197,7 +198,9 @@ function ProfileCard({
         const txt = await res.text().catch(() => "");
         throw new Error(`Upload failed (${res.status}): ${txt.slice(0, 200)}`);
       }
-      setImage(key);
+      const json = (await res.json()) as { data?: { url?: string } };
+      if (!json.data?.url) throw new Error("Upload failed: no URL returned");
+      setImage(json.data.url);
       setImageBust(String(Date.now()));
       setDirty(true);
     } catch (e) {
@@ -211,6 +214,14 @@ function ProfileCard({
     setSaving(true);
     try {
       unwrap(await auth.updateUser({ name: name.trim(), image }));
+      // Avatar cleared → also drop the stored object so it doesn't linger.
+      // Best-effort: the profile save itself already succeeded.
+      if (!image && user?.image) {
+        await fetch("/api/account/avatar", {
+          method: "DELETE",
+          credentials: "include",
+        }).catch(() => {});
+      }
       setDirty(false);
       pushToast(t`Profile saved.`);
       refetch();

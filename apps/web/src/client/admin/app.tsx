@@ -491,6 +491,8 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           // search playground (reading the raw list row) showed the truth.
           auditReads: !!(res.data as any).auditReads,
           fts: !!(res.data as any).fts,
+          vectorize: !!(res.data as any).vectorize,
+          vectorizeModel: (res.data as any).vectorizeModel ?? null,
           fields: fields as any,
         } as any);
       } catch {
@@ -1384,6 +1386,15 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                     try {
                       const r = await collectionsApi.ftsReindex(slug);
                       pushToast(t`Search index rebuilt: ${r.processed} indexed, ${r.skipped} empty, ${r.total} total.`);
+                    } catch (e) {
+                      pushToast((e as Error).message, "error");
+                    }
+                  }}
+                  onVectorizeBackfill={async () => {
+                    const slug = activeCollection || "posts";
+                    try {
+                      const r = await collectionsApi.vectorizeBackfill(slug);
+                      pushToast(t`Embedded ${r.processed} of ${r.total} rows into the vector store (${r.skipped} empty).`);
                     } catch (e) {
                       pushToast((e as Error).message, "error");
                     }

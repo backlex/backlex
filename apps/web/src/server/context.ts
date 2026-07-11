@@ -1,5 +1,12 @@
 import { type Auth, createAuth } from "@backlex/auth";
-import { AppError, SYSTEM_ROLES } from "@backlex/core";
+import {
+  AppError,
+  EMBEDDING_MODELS,
+  EMBEDDING_MODEL_NAMES,
+  SYSTEM_ROLES,
+  isEmbeddingModel,
+  type EmbeddingModel,
+} from "@backlex/core";
 import type {
   EdgeImageAdapter,
   EmailAdapter,
@@ -70,6 +77,22 @@ import {
 import { applyTemplate } from "./services/templates";
 import { getTemplate } from "./templates/catalog";
 
+/**
+ * What vector search can actually do on this deployment — computed once in
+ * `buildContext` from the same env checks that pick the vector/embedding
+ * adapters, so the admin UI (model picker, enable toggle) can tell the truth
+ * instead of letting a request fail at first embed.
+ */
+export interface VectorCapabilities {
+  /** Where vectors are stored. `none` → vector search cannot work at all. */
+  store: "vectorize" | "pgvector" | "libsql" | "none";
+  /** `env.EMBEDDING_DEFAULT_MODEL` when it names a known model, else null. */
+  defaultModel: EmbeddingModel | null;
+  /** Per-model readiness: the model's embedding provider is configured AND
+   *  the store can hold its vectors (on Vectorize: its binding is present). */
+  models: Record<EmbeddingModel, boolean>;
+}
+
 export interface Ctx {
   env: Env;
   dialect: "pg" | "sqlite";
@@ -113,6 +136,8 @@ export interface Ctx {
    *  requested model (see `EMBEDDING_MODELS`). Throws if the model's
    *  provider isn't configured. */
   embedding: EmbeddingAdapter;
+  /** Deployment-level vector-search readiness (store + per-model providers). */
+  vectorCaps: VectorCapabilities;
   image: ImageAdapter;
   /** URL-based edge transform backend (CF Image Resizing / Netlify Image
    *  CDN); undefined on runtimes without one. The serve path prefers it over
@@ -697,6 +722,35 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
       })
     : noEmbeddingAdapter();
 
+  // Vector-search readiness, derived from the exact same env checks that
+  // picked the `vector` + `embedding` adapters above — the admin UI reads
+  // this to disable models whose provider/store isn't configured.
+  const providerReady: Record<"workers-ai" | "openai" | "self-host", boolean> = {
+    "workers-ai": Boolean(workersAiEmbedding),
+    openai: Boolean(env.OPENAI_API_KEY),
+    "self-host": Boolean(env.EMBEDDING_HTTP_URL),
+  };
+  const vectorStore = hasAnyVectorize
+    ? ("vectorize" as const)
+    : pgHasPgvector
+      ? ("pgvector" as const)
+      : sqliteHasLibsqlVectors
+        ? ("libsql" as const)
+        : ("none" as const);
+  const vectorCaps: VectorCapabilities = {
+    store: vectorStore,
+    defaultModel: isEmbeddingModel(env.EMBEDDING_DEFAULT_MODEL)
+      ? env.EMBEDDING_DEFAULT_MODEL
+      : null,
+    models: Object.fromEntries(
+      EMBEDDING_MODEL_NAMES.map((m) => [
+        m,
+        providerReady[EMBEDDING_MODELS[m].provider] &&
+          (vectorStore === "vectorize" ? Boolean(vectorizeBindings[m]) : vectorStore !== "none"),
+      ]),
+    ) as Record<EmbeddingModel, boolean>,
+  };
+
   // Image transform: Bun's built-in image API (self-host) → sharp (Node
   // serverless / any Node host, if the native addon loads) → passthrough. CF
   // Workers don't use this field; they resize at the edge in the storage route.
@@ -727,6 +781,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     storage,
     vector,
     embedding,
+    vectorCaps,
     image,
     edgeImage,
   };

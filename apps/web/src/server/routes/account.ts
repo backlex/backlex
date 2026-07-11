@@ -75,6 +75,29 @@ const isListColumnsMap = (v: unknown): v is Record<string, string[]> =>
 
 const TAG = "account";
 
+/** Physical storage key for a user's account avatar. Deliberately OUTSIDE the
+ *  `tenants/<tid>/…` namespace: the avatar follows the user across every
+ *  workspace, so it must resolve regardless of which tenant is active. */
+const avatarKey = (userId: string): string => `account/${userId}/avatar`;
+
+const AVATAR_CONTENT_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+
+/** Magic-byte sniff limited to the upload allowlist — used when the storage
+ *  backend doesn't persist content type (the fs adapter). */
+const sniffImageType = (b: Uint8Array): string | null => {
+  if (b.length >= 4 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47)
+    return "image/png";
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (
+    b.length >= 12 &&
+    b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+    b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50
+  )
+    return "image/webp";
+  return null;
+};
+
 /**
  * Per-user preferences for the signed-in admin. The control-plane user pool
  * (`users` table) carries an optional `locale` + `timezone`; both fall through
@@ -298,4 +321,102 @@ export const accountRoutes = new OpenAPIHono<AppBindings>()
       }
       return c.json({ ok: true });
     },
-  );
+  )
+  /**
+   * Account avatar — user-scoped, workspace-independent.
+   *
+   * The profile picture belongs to the *user*, not to a workspace, so it
+   * can't live in the tenant-scoped storage surface (`/api/storage/<key>`
+   * resolves under `tenants/<active-tenant>/…` — an avatar uploaded there
+   * 404s the moment the user switches workspaces). These routes write the
+   * object at the reserved, un-prefixed physical key `account/<uid>/avatar`,
+   * which no tenant upload can collide with (those are always written under
+   * `tenants/…`).
+   *
+   * Plain (non-`createRoute`) handlers, same as the binary storage routes —
+   * a raw image body has nothing for zod-openapi to validate.
+   *
+   * `users.image` stores the ready-to-render URL (`/api/account/avatar/<uid>
+   * ?v=<etag>`) rather than a storage key, so every consumer — header
+   * dropdown, author bylines — can use it verbatim, and the `?v` bust
+   * changes on each replace.
+   */
+  .put("/avatar", requireUser, async (c) => {
+    const ctx = c.get("ctx");
+    const auth = c.get("auth");
+    if (!auth.userId) throw new AppError("UNAUTHORIZED", "Not signed in");
+    const contentType = c.req.header("content-type") ?? "";
+    if (!AVATAR_CONTENT_TYPES.has(contentType)) {
+      throw new AppError(
+        "VALIDATION",
+        `Avatar must be one of: ${[...AVATAR_CONTENT_TYPES].join(", ")}`,
+      );
+    }
+    // Buffer instead of streaming: gives a definitive size check and avatars
+    // are small by contract.
+    const body = await c.req.arrayBuffer();
+    if (body.byteLength === 0) throw new AppError("BAD_REQUEST", "Empty body");
+    if (body.byteLength > AVATAR_MAX_BYTES) {
+      throw new AppError(
+        "VALIDATION",
+        `Avatar must be at most ${Math.floor(AVATAR_MAX_BYTES / (1024 * 1024))} MB`,
+      );
+    }
+    const obj = await ctx.storage.put({
+      key: avatarKey(auth.userId),
+      body,
+      contentType,
+    });
+    const bust = obj.etag ?? String(obj.uploadedAt.getTime());
+    return c.json(
+      {
+        data: {
+          url: `/api/account/avatar/${auth.userId}?v=${encodeURIComponent(bust)}`,
+          size: obj.size,
+          contentType,
+        },
+      },
+      201,
+    );
+  })
+  .get("/avatar/:userId", requireUser, async (c) => {
+    const ctx = c.get("ctx");
+    const userId = c.req.param("userId");
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(userId)) {
+      throw new AppError("VALIDATION", "Invalid user id");
+    }
+    const obj = await ctx.storage.get(avatarKey(userId));
+    if (!obj) throw new AppError("NOT_FOUND", "Avatar not found");
+    // fs adapter has no metadata sidecar (R2/S3 do persist both), so fall
+    // back to a weak mtime etag and magic-byte sniffing for the content type.
+    const etag = obj.meta.etag
+      ? `"${obj.meta.etag}"`
+      : `W/"${obj.meta.uploadedAt.getTime()}-${obj.meta.size}"`;
+    if (c.req.header("if-none-match") === etag) {
+      return new Response(null, { status: 304, headers: { etag } });
+    }
+    let contentType = obj.meta.contentType ?? null;
+    let body: ReadableStream | ArrayBuffer = obj.body;
+    if (!contentType) {
+      const buf = await new Response(obj.body).arrayBuffer();
+      body = buf;
+      contentType = sniffImageType(new Uint8Array(buf));
+    }
+    return new Response(body, {
+      headers: {
+        "content-type": contentType ?? "application/octet-stream",
+        "content-length": String(obj.meta.size),
+        // The `?v=` bust in the stored URL changes on every replace, so a
+        // long private cache is safe; the etag covers un-busted fetches.
+        "cache-control": "private, max-age=86400",
+        etag,
+      },
+    });
+  })
+  .delete("/avatar", requireUser, async (c) => {
+    const ctx = c.get("ctx");
+    const auth = c.get("auth");
+    if (!auth.userId) throw new AppError("UNAUTHORIZED", "Not signed in");
+    await ctx.storage.delete(avatarKey(auth.userId));
+    return c.json({ ok: true });
+  });

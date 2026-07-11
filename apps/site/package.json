@@ -7,8 +7,8 @@
   "scripts": {
     "dev": "bunx --bun astro dev",
     "start": "bunx --bun astro dev",
-    "build": "astro check && bunx --bun astro build",
-    "build:web": "bunx --bun astro build && bun run --cwd ../docs build && rm -rf dist/docs && cp -r ../docs/dist dist/docs",
+    "build": "astro check && astro build",
+    "build:web": "astro build && bun run --cwd ../docs build && rm -rf dist/docs && cp -r ../docs/dist dist/docs",
     "deploy": "bun run build:web && wrangler deploy",
     "typecheck": "astro check",
     "preview": "bunx --bun astro preview",

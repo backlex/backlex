@@ -165,6 +165,14 @@ Under `/api/vector` (see also the `vector.search` MCP tool):
 Vectors are isolated per collection via a `namespace` (the collection slug), so
 one index safely holds many collections.
 
+**MCP:** agents get the same surface — `vector.search`, `vector.upsert`,
+`vector.capabilities` (readiness check), plus `schema.update_collection`
+(`vectorize` / `vectorizeModel`) and `schema.vectorize_backfill` for the
+manual embed backfill.
+
+**CLI:** `backlex collections vectorize <slug>` runs the backfill and prints
+the processed/skipped counts.
+
 ## Hybrid search
 
 Vector (semantic) search and [full-text](/full-text-search) (keyword) search are

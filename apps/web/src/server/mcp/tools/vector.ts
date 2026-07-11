@@ -82,4 +82,28 @@ export const vectorUpsert: McpTool = {
   },
 };
 
-export const vectorTools: McpTool[] = [vectorSearch, vectorUpsert];
+export const vectorCapabilities: McpTool = {
+  name: "vector.capabilities",
+  // Pure read — the name heuristic would misclassify the "capabilities" verb
+  // as a write and block it for read-only API keys.
+  kind: "read",
+  description:
+    "What vector search can do on this deployment: which store holds the " +
+    "vectors (`vectorize` / `pgvector` / `libsql` / `none`) and, per " +
+    "embedding model, whether it's usable right now (provider configured + " +
+    "store ready). Call this before enabling `vectorize` on a collection or " +
+    "running `schema.vectorize_backfill` — a `store: \"none\"` deployment " +
+    "cannot do vector search at all.",
+  inputSchema: {
+    type: "object",
+    properties: {},
+    additionalProperties: false,
+  },
+  handler: async (_args, ctx) => {
+    const res = await ctx.fetchInternal(`/api/vector/capabilities`, { method: "GET" });
+    const body = await readJson<unknown>(res);
+    return textResult(body);
+  },
+};
+
+export const vectorTools: McpTool[] = [vectorSearch, vectorUpsert, vectorCapabilities];

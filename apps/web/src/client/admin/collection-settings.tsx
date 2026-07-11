@@ -7,6 +7,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
+import { vectorApi, type VectorCapabilities } from "./api";
 import { I } from "./icons";
 import { Select } from "./select";
 import { Button, Switch } from "./ui";
@@ -19,6 +20,8 @@ interface FieldLike {
   to?: string;
   /** Contributes to the FTS index when the collection has `fts: true`. */
   searchable?: boolean;
+  /** Contributes to the embedded text when the collection has `vectorize: true`. */
+  vectorize?: boolean;
 }
 
 interface SchemaLike {
@@ -36,6 +39,11 @@ interface SchemaLike {
   /** Maintain a keyword full-text-search index from the fields flagged
    *  `searchable`. Powers `?q=` keyword filtering + the `/search` endpoint. */
   fts?: boolean;
+  /** Embed the fields flagged `vectorize` on write — powers the `/search`
+   *  endpoint's vector + hybrid modes. */
+  vectorize?: boolean;
+  /** Embedding model key. Null → the deployment's EMBEDDING_DEFAULT_MODEL. */
+  vectorizeModel?: string | null;
   /** True when the collection was adopted from a pre-existing physical table.
    *  Adopted collections soft-delete (archive) rather than hard-drop; managed
    *  collections hard-DROP the underlying `c_<slug>` table on delete. */
@@ -77,9 +85,15 @@ export interface CollectionSettingsProps {
   onPatch: (patch: Partial<SchemaLike>) => void | Promise<void>;
   onRename: (nextSlug: string) => void | Promise<void>;
   onDelete: () => void;
+  /** Rebuild the full-text index for existing rows (manual recovery — the
+   *  server auto-backfills when FTS settings change). */
+  onFtsReindex?: () => void | Promise<void>;
+  /** Embed every existing row into the vector store. Manual by design —
+   *  each row costs an embedding-provider call. */
+  onVectorizeBackfill?: () => void | Promise<void>;
 }
 
-export function CollectionSettings({ schema, existingSlugs, collections, onPatch, onRename, onDelete }: CollectionSettingsProps) {
+export function CollectionSettings({ schema, existingSlugs, collections, onPatch, onRename, onDelete, onFtsReindex, onVectorizeBackfill }: CollectionSettingsProps) {
   const { t } = useLingui();
   const [slug, setSlug] = useState(schema.slug);
   const [singular, setSingular] = useState(schema.singular ?? "");
@@ -89,6 +103,24 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
   const [sortClauses, setSortClauses] = useState<SortClause[]>(
     parseDefaultSort(schema.defaultSort),
   );
+  const [reindexing, setReindexing] = useState(false);
+  const [embedding, setEmbedding] = useState(false);
+  // Deployment-level vector readiness — fetched once so the model picker can
+  // disable models whose provider/store isn't configured instead of letting
+  // the first embed call fail.
+  const [vectorCaps, setVectorCaps] = useState<VectorCapabilities | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    vectorApi
+      .capabilities()
+      .then((r) => {
+        if (!cancelled) setVectorCaps(r.data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Reseed when the user navigates between collections (or hits Refresh).
   useEffect(() => {
@@ -272,7 +304,7 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
             </div>
             <Switch checked={!!schema.auditReads} onChange={(v) => onPatch({ auditReads: v })} />
           </div>
-          <div className="flex items-center justify-between gap-3 pb-1">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Full-text search</Trans></div>
               <div className="text-[11.5px] text-muted-foreground">
@@ -280,7 +312,7 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
                 <span className="font-mono"> searchable</span>. Upgrades
                 <span className="font-mono"> ?q=</span> to ranked keyword matching and enables the
                 <span className="font-mono"> /search</span> endpoint (full-text / vector / hybrid).
-                After enabling on an existing collection, run a re-index to backfill.</Trans>
+                Existing rows are indexed automatically when you enable this or change which fields are searchable.</Trans>
               </div>
               {!!schema.fts &&
                 !(schema.fields ?? []).some(
@@ -291,8 +323,124 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
                     so search stays empty — flip it on a text field in the Schema tab.</Trans>
                   </div>
                 )}
+              {!!schema.fts &&
+                !schema.adopted &&
+                !!onFtsReindex &&
+                (schema.fields ?? []).some(
+                  (f) => f.searchable && (f.type === "text" || f.type === "longtext"),
+                ) && (
+                  <div className="mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={I.Refresh}
+                      disabled={reindexing}
+                      onClick={async () => {
+                        setReindexing(true);
+                        try {
+                          await onFtsReindex();
+                        } finally {
+                          setReindexing(false);
+                        }
+                      }}
+                    >
+                      {reindexing ? <Trans>Re-indexing…</Trans> : <Trans>Re-index now</Trans>}
+                    </Button>
+                  </div>
+                )}
             </div>
             <Switch checked={!!schema.fts} onChange={(v) => onPatch({ fts: v })} />
+          </div>
+          <div className="flex items-center justify-between gap-3 pb-1">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Vector search (semantic)</Trans></div>
+              <div className="text-[11.5px] text-muted-foreground">
+                <Trans>Embed the fields marked <span className="font-mono">vectorize</span> on
+                every write and rank the <span className="font-mono">/search</span> endpoint's
+                vector / hybrid modes by meaning. Existing rows are NOT embedded automatically —
+                run "Embed all rows" below (each row is one embedding-provider call).</Trans>
+              </div>
+              {!!schema.vectorize && vectorCaps?.store === "none" && (
+                <div className="mt-1 text-[11.5px] text-amber-500">
+                  <Trans>This deployment has no vector store — connect a Vectorize binding
+                  (Cloudflare), pgvector (Postgres), or libSQL before vector search can run.</Trans>
+                </div>
+              )}
+              {!!schema.vectorize &&
+                !(schema.fields ?? []).some(
+                  (f) => f.vectorize && (f.type === "text" || f.type === "longtext"),
+                ) && (
+                  <div className="mt-1 text-[11.5px] text-amber-500">
+                    <Trans>No text field is marked <span className="font-mono">vectorize</span> yet,
+                    so nothing gets embedded — flip it on a text field in the Schema tab.</Trans>
+                  </div>
+                )}
+              {!!schema.vectorize && vectorCaps && vectorCaps.store !== "none" && (() => {
+                const effective = schema.vectorizeModel ?? vectorCaps.defaultModel;
+                const chosen = vectorCaps.models.find((m) => m.key === effective);
+                if (!effective) {
+                  return (
+                    <div className="mt-1 text-[11.5px] text-amber-500">
+                      <Trans>No embedding model selected and the deployment sets no
+                      <span className="font-mono"> EMBEDDING_DEFAULT_MODEL</span> — pick one below.</Trans>
+                    </div>
+                  );
+                }
+                if (chosen && !chosen.ready) {
+                  return (
+                    <div className="mt-1 text-[11.5px] text-amber-500">
+                      <Trans>The <span className="font-mono">{chosen.provider}</span> provider behind
+                      <span className="font-mono"> {chosen.key}</span> isn't configured on this
+                      deployment — embeds will fail until it is (or pick a ready model).</Trans>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              {!!schema.vectorize && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <div className="w-[300px] max-w-full min-w-0">
+                    <Select
+                      value={schema.vectorizeModel ?? "__default"}
+                      onChange={(v) =>
+                        onPatch({ vectorizeModel: v === "__default" ? null : v })
+                      }
+                      options={[
+                        {
+                          value: "__default",
+                          label: t`Deployment default`,
+                          hint: vectorCaps?.defaultModel ?? t`not set`,
+                        },
+                        ...(vectorCaps?.models ?? []).map((m) => ({
+                          value: m.key,
+                          label: m.key,
+                          hint: m.ready ? `${m.dimensions}d` : t`not configured`,
+                        })),
+                      ]}
+                    />
+                  </div>
+                  {!!onVectorizeBackfill && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={I.Refresh}
+                      disabled={embedding}
+                      onClick={async () => {
+                        setEmbedding(true);
+                        try {
+                          await onVectorizeBackfill();
+                        } finally {
+                          setEmbedding(false);
+                        }
+                      }}
+                    >
+                      {embedding ? <Trans>Embedding…</Trans> : <Trans>Embed all rows</Trans>}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+            <Switch checked={!!schema.vectorize} onChange={(v) => onPatch({ vectorize: v })} />
           </div>
         </div>
       </Card>

@@ -131,12 +131,31 @@ vector is upserted under the collection's namespace.
 Embedding on write is **best-effort** — a provider/store hiccup is logged but
 never blocks the item write.
 
+In the admin UI: toggle **Vector search (semantic)** on the collection's
+Settings card (it also hosts the embedding-model picker and warns when the
+chosen model's provider or the vector store isn't configured — readiness comes
+from `GET /api/vector/capabilities`), and flip **Vectorize** on each
+text/longtext field in the Add/Edit field dialog.
+
+### Backfilling existing rows
+
+Rows written before the toggle are **not** embedded automatically (each row is
+one embedding-provider call, so backfill is a deliberate action — unlike the
+[full-text index](/full-text-search), which auto-backfills). Run it once from
+the Settings card's **Embed all rows** button, or:
+
+```bash
+POST /api/collections/articles/vectorize
+# → { "ok": true, "processed": 1240, "skipped": 12, "total": 1252 }
+```
+
 ## Endpoints
 
 Under `/api/vector` (see also the `vector.search` MCP tool):
 
 | Endpoint | Purpose |
 | --- | --- |
+| `GET /capabilities` | store + per-model readiness (drives the admin model picker) |
 | `POST /embed-upsert` | server embeds `text`, then upserts |
 | `POST /search` | server embeds the query `text`, then ANN-searches |
 | `POST /upsert` | upsert pre-computed vectors |

@@ -7,6 +7,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { Skeleton } from "@backlex/ui/components/skeleton";
+import { collectionsApi } from "../api";
 import { I } from "../icons";
 import { Badge, Button, EmptyState, PageHeader } from "../ui";
 import { Select } from "../select";
@@ -39,6 +40,7 @@ export function SearchPlaygroundPage({ pushToast }: { pushToast: (m: string) => 
   const [q, setQ] = useState("");
   const [mode, setMode] = useState<SearchMode>("auto");
   const [searching, setSearching] = useState(false);
+  const [reindexing, setReindexing] = useState(false);
   const [results, setResults] = useState<Record<string, unknown>[] | null>(null);
   const [usedMode, setUsedMode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +99,22 @@ export function SearchPlaygroundPage({ pushToast }: { pushToast: (m: string) => 
       pushToast(t`Search failed.`);
     } finally {
       setSearching(false);
+    }
+  };
+
+  // Rebuild the collection's FTS index, then re-run the query — the escape
+  // hatch for a stale index (rows written before FTS was enabled).
+  const reindexAndRetry = async () => {
+    if (!slug || reindexing) return;
+    setReindexing(true);
+    try {
+      const r = await collectionsApi.ftsReindex(slug);
+      pushToast(t`Search index rebuilt: ${r.processed} indexed, ${r.total} total.`);
+      await run();
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setReindexing(false);
     }
   };
 
@@ -197,7 +215,23 @@ export function SearchPlaygroundPage({ pushToast }: { pushToast: (m: string) => 
         <EmptyState
           icon={I.Search}
           title={t`No matches`}
-          description={t`Nothing ranked for that query — try different words or another mode.`}
+          description={
+            active && ftsReady(active)
+              ? t`Nothing ranked for that query — try different words or another mode. If rows that should match exist, the index may be stale; re-index to rebuild it.`
+              : t`Nothing ranked for that query — try different words or another mode.`
+          }
+          action={
+            active && ftsReady(active) ? (
+              <Button
+                variant="outline"
+                icon={I.Refresh}
+                disabled={reindexing}
+                onClick={() => void reindexAndRetry()}
+              >
+                {reindexing ? <Trans>Re-indexing…</Trans> : <Trans>Re-index & search again</Trans>}
+              </Button>
+            ) : undefined
+          }
         />
       ) : (
         <Card className="flex flex-col gap-0 py-0">

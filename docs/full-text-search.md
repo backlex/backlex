@@ -62,15 +62,23 @@ and flip **Searchable** on each text/longtext field (Add/Edit field dialog).
 
 ### Backfilling existing rows
 
-Enabling `fts` only indexes rows written *after* it's on. To index the rows
-that already exist, run the backfill once:
+Existing rows are indexed **automatically**: when a `PATCH` enables `fts` (or
+changes which fields are `searchable`), the server backfills the index in the
+same request and reports the result in the response's `ftsBackfill` field. The
+admin UI surfaces the counts in the save toast.
+
+A manual rebuild is still available for recovery (e.g. rows imported around
+the index outside the API):
 
 ```bash
 POST /api/collections/articles/fts-reindex
 # → { "ok": true, "processed": 1240, "skipped": 12, "total": 1252 }
 ```
 
-`skipped` counts rows whose searchable fields were all empty.
+`skipped` counts rows whose searchable fields were all empty. The same rebuild
+is one click away in the admin: the collection's **Settings → Full-text
+search** card has a *Re-index now* button, and the Search playground offers
+*Re-index & search again* when a query comes back empty.
 
 ## Searching
 

@@ -1,5 +1,10 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { AppError, EMBEDDING_MODEL_NAMES, type EmbeddingModel } from "@backlex/core";
+import {
+  AppError,
+  EMBEDDING_MODELS,
+  EMBEDDING_MODEL_NAMES,
+  type EmbeddingModel,
+} from "@backlex/core";
 import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
@@ -103,7 +108,65 @@ const Match = z
 
 const tags = ["vector"];
 
+const CapabilityModel = z
+  .object({
+    key: ModelEnum,
+    label: z.string(),
+    provider: z.enum(["workers-ai", "openai", "self-host"]),
+    dimensions: z.number().int().positive(),
+    /** Usable right now: provider configured + store can hold its vectors. */
+    ready: z.boolean(),
+  })
+  .openapi("VectorCapabilityModel");
+
+const Capabilities = z
+  .object({
+    store: z.enum(["vectorize", "pgvector", "libsql", "none"]),
+    defaultModel: ModelEnum.nullable(),
+    models: z.array(CapabilityModel),
+  })
+  .openapi("VectorCapabilities");
+
 export const vectorRoutes = new OpenAPIHono<AppBindings>()
+  /**
+   * What vector search can do on this deployment — which embedding models
+   * are usable (provider configured + store ready) and which store holds
+   * the vectors. The admin collection-settings model picker reads this so
+   * it never offers a model that would fail at first embed.
+   */
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/capabilities",
+      tags,
+      summary: "Vector search readiness",
+      security: SECURITY,
+      middleware: [requireUser],
+      responses: {
+        200: {
+          description: "OK",
+          content: { "application/json": { schema: z.object({ data: Capabilities }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const caps = c.get("ctx").vectorCaps;
+      return c.json({
+        data: {
+          store: caps.store,
+          defaultModel: caps.defaultModel,
+          models: EMBEDDING_MODEL_NAMES.map((key) => ({
+            key,
+            label: EMBEDDING_MODELS[key].label,
+            provider: EMBEDDING_MODELS[key].provider,
+            dimensions: EMBEDDING_MODELS[key].dimensions,
+            ready: caps.models[key],
+          })),
+        },
+      });
+    },
+  )
   // Raw vector endpoints — caller supplies pre-computed `values`.
   .openapi(
     createRoute({

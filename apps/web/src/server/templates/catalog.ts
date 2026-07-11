@@ -2638,6 +2638,335 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
     ],
   },
+
+  {
+    id: "fitness",
+    label: "Fitness / Gym",
+    groups: ["Members", "Classes", "Operations"],
+    description:
+      "Odoo Fitness-Center-grade gym ops: membership plans, members with status and renewal dates, trainers, classes with capacity, scheduled sessions, class bookings and front-door check-ins.",
+    collections: [
+      {
+        slug: "trainers", group: "Classes", singular: "Trainer", plural: "Trainers", defaultSort: "name",
+        fields: [text("name", { required: true }), email("email"), text("phone"), text("specialties", { label: "Specialties" }), bool("active", { default: true, label: "Active" })],
+        samples: [{ name: "Alex Morgan", email: "alex@example.com", specialties: "Strength, HIIT", active: true }, { name: "Sofia Reyes", email: "sofia@example.com", specialties: "Yoga, Pilates", active: true }],
+      },
+      {
+        slug: "membership_plans", group: "Members", singular: "Plan", plural: "Membership plans", defaultSort: "price_monthly",
+        fields: [
+          text("name", { required: true }), money("price_monthly", { label: "Price / month" }),
+          select("term", [ch("monthly", C.blue), ch("quarterly", C.teal), ch("yearly", C.purple)], { default: "monthly" }),
+          int("class_credits", { default: 0, validation: { min: 0 }, label: "Class credits / month" }),
+          bool("unlimited_classes", { default: false, label: "Unlimited classes" }),
+          bool("active", { default: true, label: "Active" }),
+        ],
+        samples: [
+          { name: "Basic", price_monthly: 39, term: "monthly", class_credits: 4, unlimited_classes: false, active: true },
+          { name: "Unlimited", price_monthly: 79, term: "monthly", class_credits: 0, unlimited_classes: true, active: true },
+        ],
+      },
+      {
+        slug: "members", group: "Members", singular: "Member", plural: "Members", fts: true, defaultSort: "name",
+        fields: [
+          text("name", { required: true, searchable: true, group: "Member" }), email("email", { group: "Member" }), text("phone", { group: "Member" }),
+          rel("plan", "membership_plans", { group: "Membership" }),
+          select("status", [ch("active", C.green), ch("paused", C.amber), ch("cancelled", C.red), ch("trial", C.blue)], { default: "active", group: "Membership" }),
+          date("joined_at", { indexed: true, label: "Joined", group: "Membership" }),
+          date("renews_at", { indexed: true, label: "Renews", group: "Membership" }),
+          text("emergency_contact", { label: "Emergency contact", group: "Membership" }),
+          notes("notes", { group: "Membership" }),
+        ],
+        samples: [
+          { name: "Jamie Fox", email: "jamie@example.com", plan: { ref: "membership_plans:1" }, status: "active", joined_at: ms("2026-02-01"), renews_at: ms("2026-08-01") },
+          { name: "Chris Yuen", email: "chris@example.com", plan: { ref: "membership_plans:0" }, status: "trial", joined_at: ms("2026-07-01"), renews_at: ms("2026-08-01") },
+        ],
+      },
+      {
+        slug: "classes", group: "Classes", singular: "Class", plural: "Classes", defaultSort: "name",
+        fields: [
+          text("name", { required: true }), rel("trainer", "trainers"), notes("description"),
+          int("capacity", { default: 12, validation: { min: 1 } }), int("duration_minutes", { default: 45, validation: { min: 10 }, label: "Duration (min)" }),
+          select("level", [ch("beginner", C.green), ch("intermediate", C.blue), ch("advanced", C.red), ch("all", C.gray, "All levels")], { default: "all" }),
+          bool("active", { default: true, label: "Active" }),
+        ],
+        samples: [
+          { name: "Morning yoga flow", trainer: { ref: "trainers:1" }, capacity: 16, duration_minutes: 60, level: "all", active: true },
+          { name: "HIIT 45", trainer: { ref: "trainers:0" }, capacity: 12, duration_minutes: 45, level: "intermediate", active: true },
+        ],
+      },
+      {
+        slug: "class_sessions", group: "Classes", singular: "Session", plural: "Sessions", defaultSort: "-starts_at",
+        fields: [
+          rel("class", "classes"), rel("trainer", "trainers"), ts("starts_at", { required: true, indexed: true, label: "Starts at" }),
+          select("status", [ch("scheduled", C.blue), ch("completed", C.green), ch("cancelled", C.red)], { default: "scheduled" }),
+        ],
+        samples: [
+          { class: { ref: "classes:0" }, trainer: { ref: "trainers:1" }, starts_at: ms("2026-07-14T07:00:00Z"), status: "scheduled" },
+          { class: { ref: "classes:1" }, trainer: { ref: "trainers:0" }, starts_at: ms("2026-07-10T18:00:00Z"), status: "completed" },
+        ],
+      },
+      {
+        slug: "class_bookings", group: "Classes", singular: "Booking", plural: "Class bookings", defaultSort: "-booked_at",
+        fields: [
+          rel("session", "class_sessions"), rel("member", "members"),
+          select("status", [ch("booked", C.blue), ch("attended", C.green), ch("no_show", C.slate, "No-show"), ch("cancelled", C.red)], { default: "booked" }),
+          ts("booked_at", { indexed: true, label: "Booked at" }),
+        ],
+        samples: [
+          { session: { ref: "class_sessions:0" }, member: { ref: "members:0" }, status: "booked", booked_at: ms("2026-07-11T10:00:00Z") },
+          { session: { ref: "class_sessions:1" }, member: { ref: "members:0" }, status: "attended", booked_at: ms("2026-07-09T08:00:00Z") },
+        ],
+      },
+      {
+        slug: "check_ins", group: "Operations", singular: "Check-in", plural: "Check-ins", defaultSort: "-checked_in_at",
+        fields: [rel("member", "members"), ts("checked_in_at", { required: true, indexed: true, label: "Checked in at" })],
+        samples: [{ member: { ref: "members:0" }, checked_in_at: ms("2026-07-10T17:52:00Z") }],
+      },
+    ],
+    roles: [
+      {
+        name: "Front desk",
+        description: "Manage members, bookings and check-ins; read plans, classes and schedules.",
+        permissions: [
+          { collection: "trainers", action: "read" },
+          { collection: "membership_plans", action: "read" },
+          { collection: "members", action: "read" },
+          { collection: "members", action: "create" },
+          { collection: "members", action: "update" },
+          { collection: "classes", action: "read" },
+          { collection: "class_sessions", action: "read" },
+          { collection: "class_bookings", action: "read" },
+          { collection: "class_bookings", action: "create" },
+          { collection: "class_bookings", action: "update" },
+          { collection: "check_ins", action: "read" },
+          { collection: "check_ins", action: "create" },
+        ],
+      },
+    ],
+    dashboards: [
+      {
+        name: "Gym overview",
+        description: "Membership health and class activity.",
+        panels: [
+          { name: "Members", kind: "items-aggregate", viz: "counter", config: { collection: "members", agg: "count" } },
+          { name: "Check-ins", kind: "items-aggregate", viz: "counter", config: { collection: "check_ins", agg: "count" } },
+          { name: "Class bookings", kind: "items-aggregate", viz: "counter", config: { collection: "class_bookings", agg: "count" } },
+          { name: "Members by status", kind: "items-aggregate", viz: "donut", config: { collection: "members", agg: "count", groupBy: "status" } },
+          { name: "Bookings by outcome", kind: "items-aggregate", viz: "bars", config: { collection: "class_bookings", agg: "count", groupBy: "status" } },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: "legal",
+    label: "Legal practice",
+    groups: ["Matters", "People", "Billing"],
+    description:
+      "Odoo Law-Firm-grade practice management: clients, matters with practice area and billing type, attorneys, billable time entries, hearings & deadlines, case documents and matter invoices.",
+    collections: [
+      {
+        slug: "attorneys", group: "People", singular: "Attorney", plural: "Attorneys", defaultSort: "name",
+        fields: [text("name", { required: true }), email("email"), text("bar_number", { label: "Bar no." }), money("hourly_rate", { label: "Default hourly rate" }), bool("active", { default: true, label: "Active" })],
+        samples: [{ name: "Elena Vasquez", email: "elena@firm.example", bar_number: "NY-448211", hourly_rate: 350, active: true }, { name: "David Osei", email: "david@firm.example", bar_number: "NY-501992", hourly_rate: 275, active: true }],
+      },
+      {
+        slug: "clients", group: "People", singular: "Client", plural: "Clients", fts: true, defaultSort: "name",
+        fields: [text("name", { required: true, searchable: true }), email("email"), text("phone"), text("company"), text("address"), notes("notes")],
+        samples: [{ name: "Meridian Holdings LLC", email: "legal@meridian.example", company: "Meridian Holdings", phone: "+1 555 0122" }],
+      },
+      {
+        slug: "matters", group: "Matters", singular: "Matter", plural: "Matters", fts: true, defaultSort: "-opened_at",
+        fields: [
+          text("number", { required: true, unique: true, group: "Matter" }),
+          text("title", { required: true, searchable: true, group: "Matter" }),
+          rel("client", "clients", { group: "Matter" }),
+          rel("lead_attorney", "attorneys", { label: "Lead attorney", group: "Matter" }),
+          select("practice_area", [ch("corporate", C.blue), ch("litigation", C.red), ch("real_estate", C.teal, "Real estate"), ch("ip", C.purple, "IP"), ch("family", C.amber), ch("criminal", C.slate), ch("other", C.gray)], { default: "corporate", label: "Practice area", group: "Status" }),
+          select("status", [ch("intake", C.gray), ch("active", C.green), ch("on_hold", C.amber, "On hold"), ch("closed", C.slate)], { default: "intake", group: "Status" }),
+          select("billing_type", [ch("hourly", C.blue), ch("fixed", C.teal, "Fixed fee"), ch("contingency", C.purple)], { default: "hourly", label: "Billing", group: "Status" }),
+          money("fixed_fee", { label: "Fixed fee", group: "Status" }),
+          date("opened_at", { indexed: true, label: "Opened", group: "Dates" }),
+          date("closed_at", { label: "Closed", group: "Dates" }),
+          notes("summary", { searchable: true, group: "Dates" }),
+        ],
+        samples: [
+          { number: "M-2026-014", title: "Meridian — Series B financing", client: { ref: "clients:0" }, lead_attorney: { ref: "attorneys:0" }, practice_area: "corporate", status: "active", billing_type: "hourly", opened_at: ms("2026-05-12"), summary: "Term sheet review and closing docs." },
+          { number: "M-2026-019", title: "Meridian — office lease dispute", client: { ref: "clients:0" }, lead_attorney: { ref: "attorneys:1" }, practice_area: "litigation", status: "intake", billing_type: "fixed", fixed_fee: 7500, opened_at: ms("2026-07-01") },
+        ],
+      },
+      {
+        slug: "time_entries", group: "Billing", singular: "Time entry", plural: "Time entries", defaultSort: "-worked_on",
+        fields: [
+          rel("matter", "matters"), rel("attorney", "attorneys"), date("worked_on", { indexed: true, label: "Date" }),
+          num("hours", { validation: { min: 0 } }), money("rate"), computedNum("amount", "hours * rate"),
+          bool("billable", { default: true, label: "Billable" }), notes("description"),
+        ],
+        samples: [
+          { matter: { ref: "matters:0" }, attorney: { ref: "attorneys:0" }, worked_on: ms("2026-07-08"), hours: 3.5, rate: 350, billable: true, description: "Reviewed investor rights agreement." },
+          { matter: { ref: "matters:0" }, attorney: { ref: "attorneys:1" }, worked_on: ms("2026-07-09"), hours: 2, rate: 275, billable: true, description: "Drafted board consent." },
+        ],
+      },
+      {
+        slug: "key_dates", group: "Matters", singular: "Key date", plural: "Hearings & deadlines", defaultSort: "due_at",
+        fields: [
+          rel("matter", "matters"), text("title", { required: true }),
+          select("kind", [ch("hearing", C.red), ch("filing_deadline", C.amber, "Filing deadline"), ch("meeting", C.blue), ch("statute_limitation", C.purple, "Statute of limitations"), ch("other", C.gray)], { default: "meeting" }),
+          ts("due_at", { required: true, indexed: true, label: "Due" }),
+          select("status", [ch("upcoming", C.blue), ch("done", C.green), ch("missed", C.red)], { default: "upcoming" }),
+          notes("notes"),
+        ],
+        samples: [{ matter: { ref: "matters:0" }, title: "Closing call with investors", kind: "meeting", due_at: ms("2026-07-22T14:00:00Z"), status: "upcoming" }],
+      },
+      {
+        slug: "documents", group: "Matters", singular: "Document", plural: "Documents", defaultSort: "-uploaded_at",
+        fields: [
+          rel("matter", "matters"), text("title", { required: true }), file("file"),
+          select("doc_type", [ch("contract", C.blue), ch("pleading", C.red), ch("evidence", C.amber), ch("correspondence", C.teal), ch("other", C.gray)], { default: "other", label: "Type" }),
+          ts("uploaded_at", { indexed: true, label: "Uploaded at" }),
+        ],
+        samples: [{ matter: { ref: "matters:0" }, title: "Series B term sheet (v4)", doc_type: "contract", uploaded_at: ms("2026-06-30T16:00:00Z") }],
+      },
+      {
+        slug: "invoices", group: "Billing", singular: "Invoice", plural: "Invoices", defaultSort: "-issued_at",
+        fields: [
+          text("number", { required: true, unique: true }), rel("matter", "matters"), rel("client", "clients"), money("amount"),
+          select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("paid", C.green), ch("overdue", C.red)], { default: "draft" }),
+          date("issued_at", { indexed: true, label: "Issued" }), date("due_date", { label: "Due" }),
+        ],
+        samples: [{ number: "LF-2026-031", matter: { ref: "matters:0" }, client: { ref: "clients:0" }, amount: 4287.5, status: "sent", issued_at: ms("2026-07-01"), due_date: ms("2026-07-31") }],
+      },
+    ],
+    roles: [
+      {
+        name: "Paralegal",
+        description: "Work matters day-to-day: time, documents and key dates; no billing changes.",
+        permissions: [
+          { collection: "attorneys", action: "read" },
+          { collection: "clients", action: "read" },
+          { collection: "clients", action: "update" },
+          { collection: "matters", action: "read" },
+          { collection: "matters", action: "update" },
+          { collection: "time_entries", action: "read" },
+          { collection: "time_entries", action: "create" },
+          { collection: "time_entries", action: "update" },
+          { collection: "key_dates", action: "read" },
+          { collection: "key_dates", action: "create" },
+          { collection: "key_dates", action: "update" },
+          { collection: "documents", action: "read" },
+          { collection: "documents", action: "create" },
+          { collection: "documents", action: "update" },
+        ],
+      },
+    ],
+    dashboards: [
+      {
+        name: "Practice overview",
+        description: "Matter pipeline, billable hours and receivables.",
+        panels: [
+          { name: "Matters", kind: "items-aggregate", viz: "counter", config: { collection: "matters", agg: "count" } },
+          { name: "Hours logged", kind: "items-aggregate", viz: "counter", config: { collection: "time_entries", agg: "sum", field: "hours" } },
+          { name: "Invoiced", kind: "items-aggregate", viz: "counter", config: { collection: "invoices", agg: "sum", field: "amount" } },
+          { name: "Matters by practice area", kind: "items-aggregate", viz: "donut", config: { collection: "matters", agg: "count", groupBy: "practice_area" } },
+          { name: "Matters by status", kind: "items-aggregate", viz: "bars", config: { collection: "matters", agg: "count", groupBy: "status" } },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: "clinic",
+    label: "Clinic / Health",
+    groups: ["Patients", "Scheduling", "Care"],
+    description:
+      "Clinic-grade patient ops: patients with insurance and allergy info, practitioners, services, appointments with status flow, visit notes and prescriptions — with a Reception role that never sees clinical records.",
+    collections: [
+      {
+        slug: "practitioners", group: "Scheduling", singular: "Practitioner", plural: "Practitioners", defaultSort: "name",
+        fields: [text("name", { required: true }), text("title", { label: "Title" }), text("specialty"), email("email"), bool("active", { default: true, label: "Active" })],
+        samples: [{ name: "Dr. Amara Okafor", title: "MD", specialty: "Family medicine", email: "amara@clinic.example", active: true }, { name: "Dr. Jonas Weiss", title: "DDS", specialty: "Dentistry", email: "jonas@clinic.example", active: true }],
+      },
+      {
+        slug: "patients", group: "Patients", singular: "Patient", plural: "Patients", fts: true, defaultSort: "name",
+        fields: [
+          text("name", { required: true, searchable: true, group: "Patient" }), email("email", { group: "Patient" }), text("phone", { group: "Patient" }),
+          date("birth_date", { label: "Date of birth", group: "Patient" }),
+          text("insurance_provider", { label: "Insurance provider", group: "Coverage" }),
+          text("insurance_number", { label: "Policy no.", group: "Coverage" }),
+          text("emergency_contact", { label: "Emergency contact", group: "Coverage" }),
+          notes("allergies", { group: "Coverage" }),
+          notes("notes", { group: "Coverage" }),
+        ],
+        samples: [{ name: "Rae Lindqvist", email: "rae@example.com", phone: "+1 555 0107", birth_date: ms("1991-04-18"), insurance_provider: "BlueShield", insurance_number: "BS-2210475", allergies: "Penicillin" }],
+      },
+      {
+        slug: "services", group: "Scheduling", singular: "Service", plural: "Services", defaultSort: "name",
+        fields: [text("name", { required: true }), int("duration_minutes", { default: 30, validation: { min: 5 }, label: "Duration (min)" }), money("price"), bool("active", { default: true, label: "Active" })],
+        samples: [{ name: "General consultation", duration_minutes: 30, price: 95, active: true }, { name: "Dental cleaning", duration_minutes: 45, price: 140, active: true }],
+      },
+      {
+        slug: "appointments", group: "Scheduling", singular: "Appointment", plural: "Appointments", defaultSort: "-starts_at",
+        fields: [
+          rel("patient", "patients"), rel("practitioner", "practitioners"), rel("service", "services"),
+          ts("starts_at", { required: true, indexed: true, label: "Starts at" }),
+          select("status", [ch("scheduled", C.blue), ch("checked_in", C.teal, "Checked in"), ch("completed", C.green), ch("cancelled", C.red), ch("no_show", C.slate, "No-show")], { default: "scheduled" }),
+          notes("reason", { label: "Reason for visit" }),
+        ],
+        samples: [
+          { patient: { ref: "patients:0" }, practitioner: { ref: "practitioners:0" }, service: { ref: "services:0" }, starts_at: ms("2026-07-15T10:30:00Z"), status: "scheduled", reason: "Seasonal allergies follow-up." },
+          { patient: { ref: "patients:0" }, practitioner: { ref: "practitioners:1" }, service: { ref: "services:1" }, starts_at: ms("2026-06-20T09:00:00Z"), status: "completed" },
+        ],
+      },
+      {
+        slug: "visit_notes", group: "Care", singular: "Visit note", plural: "Visit notes", defaultSort: "-recorded_at",
+        fields: [
+          rel("appointment", "appointments"), rel("patient", "patients"), rel("practitioner", "practitioners"),
+          notes("summary", { label: "Visit summary" }), notes("diagnosis"), notes("treatment_plan", { label: "Treatment plan" }),
+          ts("recorded_at", { indexed: true, label: "Recorded at" }),
+        ],
+        samples: [{ appointment: { ref: "appointments:1" }, patient: { ref: "patients:0" }, practitioner: { ref: "practitioners:1" }, summary: "Routine cleaning, no cavities.", treatment_plan: "Next cleaning in 6 months.", recorded_at: ms("2026-06-20T09:50:00Z") }],
+      },
+      {
+        slug: "prescriptions", group: "Care", singular: "Prescription", plural: "Prescriptions", defaultSort: "-prescribed_at",
+        fields: [
+          rel("patient", "patients"), rel("practitioner", "practitioners"),
+          text("medication", { required: true }), text("dosage"), text("frequency"),
+          date("prescribed_at", { indexed: true, label: "Prescribed" }), date("ends_at", { label: "Ends" }),
+          select("status", [ch("active", C.green), ch("completed", C.slate), ch("stopped", C.red)], { default: "active" }),
+          notes("instructions"),
+        ],
+        samples: [{ patient: { ref: "patients:0" }, practitioner: { ref: "practitioners:0" }, medication: "Loratadine 10mg", dosage: "1 tablet", frequency: "Once daily", prescribed_at: ms("2026-06-01"), status: "active" }],
+      },
+    ],
+    roles: [
+      {
+        name: "Reception",
+        description: "Manage patients and the appointment book — no access to clinical notes or prescriptions.",
+        permissions: [
+          { collection: "practitioners", action: "read" },
+          { collection: "services", action: "read" },
+          { collection: "patients", action: "read" },
+          { collection: "patients", action: "create" },
+          { collection: "patients", action: "update" },
+          { collection: "appointments", action: "read" },
+          { collection: "appointments", action: "create" },
+          { collection: "appointments", action: "update" },
+        ],
+      },
+    ],
+    dashboards: [
+      {
+        name: "Clinic overview",
+        description: "Appointment flow and patient base.",
+        panels: [
+          { name: "Patients", kind: "items-aggregate", viz: "counter", config: { collection: "patients", agg: "count" } },
+          { name: "Appointments", kind: "items-aggregate", viz: "counter", config: { collection: "appointments", agg: "count" } },
+          { name: "Active prescriptions", kind: "items-aggregate", viz: "counter", config: { collection: "prescriptions", agg: "count" } },
+          { name: "Appointments by status", kind: "items-aggregate", viz: "donut", config: { collection: "appointments", agg: "count", groupBy: "status" } },
+        ],
+      },
+    ],
+  },
 ];
 
 export const TEMPLATE_IDS = TEMPLATES.map((t) => t.id);
@@ -2672,6 +3001,9 @@ const CATEGORY: Record<string, string> = {
   lms: "Industry",
   nonprofit: "Industry",
   events: "Industry",
+  fitness: "Industry",
+  legal: "Industry",
+  clinic: "Industry",
 };
 
 /** Popular starters surfaced with a "Recommended" badge in the picker. */

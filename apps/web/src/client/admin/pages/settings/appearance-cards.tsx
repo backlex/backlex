@@ -221,7 +221,7 @@ export function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) =
             <img
               src={logoSrc}
               alt={t`workspace logo`}
-              className="size-14 rounded-[6px] bg-muted object-contain p-1"
+              className="size-14 rounded-control bg-muted object-contain p-1"
             />
           )}
           <input
@@ -265,7 +265,7 @@ export function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) =
             <img
               src={faviconSrc}
               alt={t`workspace favicon`}
-              className="size-8 rounded-[6px] bg-muted object-contain p-0.5"
+              className="size-8 rounded-control bg-muted object-contain p-0.5"
             />
           )}
           <input

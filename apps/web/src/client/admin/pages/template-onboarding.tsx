@@ -115,7 +115,7 @@ function TemplateBrowser({
             value={query}
             onChange={(e) => onQuery(e.target.value)}
             placeholder={t`Search templates…`}
-            className="w-full rounded-md border border-border bg-background pl-7 pr-2 py-1.5 text-[12.5px] outline-none focus:border-primary"
+            className="w-full rounded-control border border-border bg-background pl-7 pr-2 py-1.5 text-[12.5px] outline-none focus:border-primary"
           />
         </div>
       </div>
@@ -289,9 +289,9 @@ export function TemplateOnboarding({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden mb-5">
+    <div className="rounded-control border border-border bg-card overflow-hidden mb-5">
       <div className="px-5 py-4 border-b border-border flex items-start gap-3">
-        <span className="grid h-9 w-9 place-items-center rounded-md bg-primary/15 text-primary shrink-0">
+        <span className="grid h-9 w-9 place-items-center rounded-control bg-primary/15 text-primary shrink-0">
           <I.Sparkles size={16} />
         </span>
         <div className="flex-1 min-w-0">

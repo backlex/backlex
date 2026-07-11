@@ -451,7 +451,7 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
               <Textarea rows={3} value={node.config.test} onChange={(e) => onChange({ config: { test: e.target.value } })} />
               <span className="text-[11.5px] text-muted-foreground"><Trans>Evaluates against current step context. Use <span className="font-mono">{"{{ var }}"}</span> for interpolation.</Trans></span>
             </div>
-            <div className="whitespace-pre-wrap break-words rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">
+            <div className="whitespace-pre-wrap break-words rounded-control bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">
               <span className="text-[oklch(0.78_0.18_95)]">if</span> ({node.config.test}) {"{ → true }"} <br /> <span className="text-[oklch(0.78_0.18_95)]">else</span> {"{ → false }"}
             </div>
           </>

@@ -101,11 +101,11 @@ export function treeHasRule(tree: GroupNode): boolean {
 }
 
 // Shared rule-builder utility strings — replace the legacy .rb-* classes.
-export const RB_RM = "inline-grid size-6 cursor-pointer place-items-center rounded-md border border-transparent bg-transparent text-muted-foreground hover:border-border hover:bg-card hover:text-destructive";
-export const RB_ADD = "rounded-md border border-dashed border-border bg-transparent px-2.5 py-1 text-[11.5px] font-medium text-muted-foreground hover:border-ring hover:text-foreground";
-export const RB_TOGGLE = "inline-flex overflow-hidden rounded-md border border-border bg-card";
+export const RB_RM = "inline-grid size-6 cursor-pointer place-items-center rounded-control border border-transparent bg-transparent text-muted-foreground hover:border-border hover:bg-card hover:text-destructive";
+export const RB_ADD = "rounded-control border border-dashed border-border bg-transparent px-2.5 py-1 text-[11.5px] font-medium text-muted-foreground hover:border-ring hover:text-foreground";
+export const RB_TOGGLE = "inline-flex overflow-hidden rounded-control border border-border bg-card";
 export const RB_INPUT_COND = "h-7 w-full min-w-[120px] border-0 bg-transparent px-2 text-[12.5px] text-foreground outline-none";
-export const RB_INPUT_FULL = "h-[30px] min-w-[120px] flex-1 rounded-md border border-border bg-card px-2.5 text-[12.5px] text-foreground outline-none focus:border-ring focus:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_30%,transparent)]";
+export const RB_INPUT_FULL = "h-[30px] min-w-[120px] flex-1 rounded-control border border-border bg-card px-2.5 text-[12.5px] text-foreground outline-none focus:border-ring focus:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_30%,transparent)]";
 
 export function RuleBuilder({
   tree,
@@ -138,7 +138,7 @@ export function RuleBuilder({
   };
 
   const Group = ({ node, path }: { node: GroupNode; path: number[] }) => (
-    <div className="rounded-xl border border-border bg-[color-mix(in_oklch,var(--muted)_18%,var(--card))]">
+    <div className="rounded-control border border-border bg-[color-mix(in_oklch,var(--muted)_18%,var(--card))]">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-2.5 py-2">
         <div className={RB_TOGGLE} role="tablist">
           <Button
@@ -173,7 +173,7 @@ export function RuleBuilder({
           </div>
         ))}
         {node.children.length === 0 && (
-          <div className="rounded-md border border-dashed border-border p-3 text-center text-xs text-muted-foreground"><Trans>No conditions — this rule matches everything.</Trans></div>
+          <div className="rounded-surface border border-dashed border-border p-3 text-center text-xs text-muted-foreground"><Trans>No conditions — this rule matches everything.</Trans></div>
         )}
       </div>
     </div>
@@ -182,7 +182,7 @@ export function RuleBuilder({
   const Cond = ({ node, path }: { node: CondNode; path: number[] }) => {
     const needsValue = node.op !== "_null" && node.op !== "_nnull";
     return (
-      <div className="flex flex-1 flex-wrap items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1.5">
+      <div className="flex flex-1 flex-wrap items-center gap-1.5 rounded-control border border-border bg-card px-2 py-1.5">
         <Select
           value={node.field}
           onChange={(v) => update(path, (n) => { n.field = v; })}

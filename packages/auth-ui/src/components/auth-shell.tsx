@@ -385,14 +385,14 @@ export const AuthCallout = ({
   icon?: ReactNode;
   children: ReactNode;
 }) => (
-  <div className="flex items-start gap-2.5 rounded-xl border border-primary/35 bg-primary/10 px-3.5 py-3 text-[12.5px] leading-relaxed">
+  <div className="flex items-start gap-2.5 rounded-surface border border-primary/35 bg-primary/10 px-3.5 py-3 text-[12.5px] leading-relaxed">
     {icon && <span className="mt-0.5 shrink-0 text-primary">{icon}</span>}
     <div>{children}</div>
   </div>
 );
 
 export const AuthError = ({ children }: { children: ReactNode }) => (
-  <div className="flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-xs text-destructive">
+  <div className="flex items-center gap-2 rounded-surface border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-xs text-destructive">
     {children}
   </div>
 );

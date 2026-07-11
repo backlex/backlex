@@ -154,7 +154,7 @@ export function MembersPanel({ pushToast }: MembersPanelProps) {
         <span className="text-[13px] font-medium"><Trans>members</Trans></span>
         <span className="font-mono text-xs text-muted-foreground"><Trans>{stats.active} active · {stats.invited} invited</Trans></span>
         <div className="flex-1" />
-        <div className="flex h-[30px] items-center gap-1.5 rounded-md border border-border bg-card px-2.5">
+        <div className="flex h-[30px] items-center gap-1.5 rounded-control border border-border bg-card px-2.5">
           <I.Search size={12} />
           <Input
             value={q}

@@ -904,7 +904,7 @@ function PanelEditorDialog({
         <ScrollArea viewportClassName="max-h-[calc(90vh-10rem)] max-[640px]:max-h-[calc(90vh-15rem)]">
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           {topError && (
-            <div className="flex items-start gap-2 rounded-md border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] p-2.5 text-[12.5px] text-destructive">
+            <div className="flex items-start gap-2 rounded-surface border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] p-2.5 text-[12.5px] text-destructive">
               <I.AlertTriangle size={13} className="mt-px shrink-0" />
               <span className="flex-1 [word-break:break-word]">{topError}</span>
             </div>
@@ -1138,7 +1138,7 @@ function PanelEditorDialog({
           )}
 
           {kind === "static" && (
-            <div className="flex items-start gap-2 rounded-xl bg-muted p-3 text-[12.5px] text-muted-foreground">
+            <div className="flex items-start gap-2 rounded-control bg-muted p-3 text-[12.5px] text-muted-foreground">
               <I.AlertTriangle size={12} className="mt-0.5 shrink-0" />
               <Trans>static panels render their config object verbatim — set it from the API once the panel exists.</Trans>
             </div>
@@ -1161,7 +1161,7 @@ function PreviewTable({ rows }: { rows: Record<string, unknown>[] }) {
   const cols = Object.keys(rows[0] ?? {}).slice(0, 6);
   const max = 5;
   return (
-    <ScrollArea className="rounded-md border border-border bg-card">
+    <ScrollArea className="rounded-control border border-border bg-card">
       <table className="w-full border-collapse text-[11.5px]">
         <thead>
           <tr>
@@ -1243,7 +1243,7 @@ function PreviewBlock({
 }) {
   if (!preview && !previewError) return null;
   return (
-    <div className="flex flex-col gap-1.5 rounded-md bg-muted p-2.5">
+    <div className="flex flex-col gap-1.5 rounded-control bg-muted p-2.5">
       <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground">
         {previewError
           ? <><I.AlertTriangle size={12} className="text-destructive" /> <Trans>Preview error</Trans></>
@@ -1341,7 +1341,7 @@ function PickerTab({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center rounded-md border px-2.5 py-1 text-[12.5px] font-medium transition-colors ${
+      className={`flex items-center rounded-control border px-2.5 py-1 text-[12.5px] font-medium transition-colors ${
         active
           ? "border-primary bg-[color-mix(in_oklch,var(--primary)_12%,var(--card))] text-foreground"
           : "border-border text-muted-foreground hover:bg-muted"
@@ -1401,7 +1401,7 @@ function NewDashboardDialog({
         </DialogHeader>
         <div className="flex flex-col gap-3 py-1">
           {error && (
-            <div className="flex items-start gap-2 rounded-md border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] p-2.5 text-[12.5px] text-destructive">
+            <div className="flex items-start gap-2 rounded-surface border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] p-2.5 text-[12.5px] text-destructive">
               <I.AlertTriangle size={13} className="mt-px shrink-0" /><span className="flex-1">{error}</span>
             </div>
           )}
@@ -1533,7 +1533,7 @@ function ShareDashboardDialog({
           </div>
 
           {url && (
-            <div className="flex flex-col gap-1.5 rounded-md border border-[color-mix(in_oklch,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklch,var(--primary)_6%,var(--card))] p-2.5">
+            <div className="flex flex-col gap-1.5 rounded-control border border-[color-mix(in_oklch,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklch,var(--primary)_6%,var(--card))] p-2.5">
               <div className="flex items-center gap-1.5 text-[12px] font-medium text-foreground"><I.Link size={12} /><Trans>Embed URL — copy it now</Trans></div>
               <div className="flex items-center gap-1.5">
                 <Input readOnly value={url} className="min-w-0 flex-1 font-mono text-[11.5px]" onFocus={(e) => e.currentTarget.select()} />
@@ -1545,7 +1545,7 @@ function ShareDashboardDialog({
           )}
 
           {enabled && !url && (
-            <div className="flex items-start gap-2 rounded-md bg-muted p-2.5 text-[12.5px] text-muted-foreground">
+            <div className="flex items-start gap-2 rounded-control bg-muted p-2.5 text-[12.5px] text-muted-foreground">
               <I.Check size={13} className="mt-px shrink-0 text-primary" />
               <Trans>The public embed is live. The link was shown once when it was created — rotate it below if you need the URL again.</Trans>
             </div>

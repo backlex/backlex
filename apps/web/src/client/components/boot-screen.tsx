@@ -29,7 +29,7 @@ export function BootScreen({
     >
       <CosmosStars />
       <div
-        className="relative z-10 mx-4 w-full max-w-sm rounded-2xl border border-white/10 p-8 text-center shadow-2xl"
+        className="relative z-10 mx-4 w-full max-w-sm rounded-surface border border-white/10 p-8 text-center shadow-2xl"
         style={{ background: "rgba(12, 10, 22, 0.6)", backdropFilter: "blur(20px)" }}
       >
         {variant === "connecting" ? (
@@ -79,7 +79,7 @@ export function BootScreen({
               <button
                 type="button"
                 onClick={onRetry}
-                className="mt-5 inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+                className="mt-5 inline-flex items-center justify-center rounded-control px-4 py-2 text-sm font-medium text-white transition-colors"
                 style={{ background: "rgba(139, 108, 255, 0.9)" }}
               >
                 <Trans>Try again</Trans>

@@ -48,7 +48,7 @@ const CodeEditor = ({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl border border-input bg-background text-sm",
+        "overflow-hidden rounded-surface border border-input bg-background text-sm",
         className,
       )}
     >

@@ -145,7 +145,7 @@ export const McpKeyModal = ({
                 id="mcp-url"
                 value={mcpUrl}
                 onChange={(e) => setMcpUrl(e.target.value)}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs"
+                className="w-full rounded-control border border-border bg-background px-3 py-2 font-mono text-xs"
               />
             </div>
 
@@ -240,7 +240,7 @@ const SnippetBlock = ({
         dialog's vertical ScrollArea bled the whole modal past the viewport
         on narrow screens. `break-all` + `whitespace-pre-wrap` keeps it
         contained. Right padding clears the copy button. */}
-    <pre className="m-0 max-w-full overflow-hidden whitespace-pre-wrap break-all rounded-md border border-border bg-muted/50 p-3 pr-20 font-mono text-xs">
+    <pre className="m-0 max-w-full overflow-hidden whitespace-pre-wrap break-all rounded-control border border-border bg-muted/50 p-3 pr-20 font-mono text-xs">
       {snippet}
     </pre>
     <Button

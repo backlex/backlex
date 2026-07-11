@@ -154,7 +154,7 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
             <div className="truncate text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{c.l}</div>
             <div className="flex items-center gap-1.5">
               <span className="font-medium tabular-nums">{c.pct}%</span>
-              <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-[2px] bg-muted">
+              <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-sm bg-muted">
                 <div className="h-full" style={{ width: `${c.pct}%`, background: c.pct === 100 ? "oklch(0.7 0.18 145)" : c.pct < 80 ? "oklch(0.78 0.16 75)" : "var(--primary)" }} />
               </div>
             </div>
@@ -316,7 +316,7 @@ function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreat
             <div className="text-[11.5px] text-muted-foreground"><Trans>Leave blank to create the key with empty values across all locales.</Trans></div>
           </div>
 
-          <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
+          <div className="flex flex-col gap-1.5 rounded-control bg-muted p-3">
             <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground">
               <I.Globe size={12} /> <Trans>Locales</Trans>
             </div>
@@ -394,7 +394,7 @@ function AutoTranslateDialog({ locales, base, data, busy, onClose, onRun }: Auto
             </div>
             <Switch checked={onlyMissing} onChange={setOnlyMissing} />
           </div>
-          <div className="flex items-center gap-1.5 rounded-xl bg-muted p-2.5 text-xs">
+          <div className="flex items-center gap-1.5 rounded-control bg-muted p-2.5 text-xs">
             <I.Info size={12} />
             <span><Trans>Will translate <strong>{Math.min(targetCount, 50)}</strong> key{targetCount === 1 ? "" : "s"}{targetCount > 50 ? ` of ${targetCount} (capped at 50 per run)` : ""}.</Trans></span>
           </div>
@@ -468,7 +468,7 @@ function ManageLocalesDialog({ locales, defaultLocale, onClose, onSave }: Manage
             </label>
             <div className="mb-2 flex flex-wrap gap-1.5">
               {list.map((l) => (
-                <span key={l} className={`inline-flex items-center gap-1 rounded-[6px] border border-border py-0.5 pl-2 pr-1.5 font-mono text-[11px] ${l === def ? "bg-primary text-primary-foreground" : "bg-transparent"}`}>
+                <span key={l} className={`inline-flex items-center gap-1 rounded-sm border border-border py-0.5 pl-2 pr-1.5 font-mono text-[11px] ${l === def ? "bg-primary text-primary-foreground" : "bg-transparent"}`}>
                   {l}{l === def && <Trans> · default</Trans>}
                   <Button
                     variant="ghost"

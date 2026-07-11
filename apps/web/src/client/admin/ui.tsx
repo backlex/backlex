@@ -121,8 +121,8 @@ export function JsonBlock({ label, value, maxHeight = 280 }: { label: string; va
           {copied ? t`copied` : t`copy`}
         </Button>
       </div>
-      <ScrollArea className="rounded-lg" viewportStyle={{ maxHeight }}>
-        <pre className="m-0 whitespace-pre rounded-lg border border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] p-3 font-mono text-[11.5px] leading-[1.55]">
+      <ScrollArea className="rounded-surface" viewportStyle={{ maxHeight }}>
+        <pre className="m-0 whitespace-pre rounded-surface border border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] p-3 font-mono text-[11.5px] leading-[1.55]">
           {json}
         </pre>
       </ScrollArea>
@@ -471,7 +471,7 @@ function CollectionsTree({ activeCollection, onOpen }: { activeCollection?: stri
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t`Filter collections…`}
-              className="mb-1 h-7 rounded-lg px-2.5 font-mono text-[12px]"
+              className="mb-1 h-7 rounded-control px-2.5 font-mono text-[12px]"
             />
           </SidebarMenuSubItem>
         )}
@@ -782,7 +782,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, 
                       <span>{i18n._(navLabel(it.id))}</span>
                     </SidebarMenuButton>
                     {liveBadge != null && (
-                      <SidebarMenuBadge className={cn("rounded-md bg-white/8 px-1.5 font-mono text-[10.5px] tabular-nums text-muted-foreground", it.id === "collections" && "right-7")}>{liveBadge}</SidebarMenuBadge>
+                      <SidebarMenuBadge className={cn("rounded-control bg-white/8 px-1.5 font-mono text-[10.5px] tabular-nums text-muted-foreground", it.id === "collections" && "right-7")}>{liveBadge}</SidebarMenuBadge>
                     )}
                     {it.id === "collections" && (
                       <>
@@ -791,7 +791,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, 
                           aria-label={collectionsOpen ? t`Collapse collections` : t`Expand collections`}
                           aria-expanded={collectionsOpen}
                           onClick={toggleCollections}
-                          className="absolute top-1.5 right-1 z-10 grid size-5 place-items-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                          className="absolute top-1.5 right-1 z-10 grid size-5 place-items-center rounded-control text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                         >
                           <I.ChevronDown size={14} className={cn("transition-transform", !collectionsOpen && "-rotate-90")} />
                         </button>
@@ -1141,7 +1141,7 @@ export function Topbar({ crumbs, onOpenPalette, onSignOut, user, onAccountSettin
             )}
             {user?.isAdmin && (
               <div className="mt-1">
-                <span className="inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-3xl border border-[color-mix(in_oklch,var(--primary)_22%,transparent)] bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))] px-2 py-px text-[11px] font-medium tabular-nums text-[oklch(from_var(--primary)_0.38_0.12_h)] dark:text-[oklch(from_var(--primary)_0.92_0.18_h)]">
+                <span className="inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-control border border-[color-mix(in_oklch,var(--primary)_22%,transparent)] bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))] px-2 py-px text-[11px] font-medium tabular-nums text-[oklch(from_var(--primary)_0.38_0.12_h)] dark:text-[oklch(from_var(--primary)_0.92_0.18_h)]">
                   admin
                 </span>
               </div>
@@ -1275,7 +1275,7 @@ export function useToasts(): [ReactNode, (msg: string, type?: "success" | "error
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="flex min-w-[240px] animate-in items-center gap-2.5 rounded-xl border border-border bg-popover px-3.5 py-2.5 text-[13px] text-popover-foreground shadow-[0_10px_30px_-8px_oklch(0_0_0/0.2)] fade-in-0 slide-in-from-top-2 duration-200"
+          className="flex min-w-[240px] animate-in items-center gap-2.5 rounded-control border border-border bg-popover px-3.5 py-2.5 text-[13px] text-popover-foreground shadow-[0_10px_30px_-8px_oklch(0_0_0/0.2)] fade-in-0 slide-in-from-top-2 duration-200"
         >
           <span className={t.type === "error" ? "flex-none text-destructive" : "flex-none text-primary"}>
             {t.type === "error" ? <I.AlertTriangle size={14} /> : <I.Check size={14} stroke={2.5} />}

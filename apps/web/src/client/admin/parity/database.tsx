@@ -175,7 +175,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
               // First-load placeholder for the table list.
               Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-2 border-t border-border px-3 py-1.5">
-                  <Skeleton className="size-3 shrink-0 rounded" />
+                  <Skeleton className="size-3 shrink-0 rounded-sm" />
                   <Skeleton className="h-3.5 flex-1" />
                   <Skeleton className="h-3 w-8" />
                 </div>

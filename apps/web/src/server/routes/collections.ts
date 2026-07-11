@@ -37,7 +37,7 @@ import { invalidateTenantPermissions } from "../services/permissions-cache";
 import { ifNoneMatch, weakETag } from "../lib/etag";
 import { seedOwnerScopedPermissions } from "../services/seed";
 import { embedAndUpsertBatch, isVectorizable } from "../services/vectorize";
-import { indexFtsBatch, isSearchable } from "../services/fts";
+import { backfillFts, ftsIndexSignature, isSearchable } from "../services/fts";
 
 const DurationPartsSchema = z
   .object({
@@ -1023,11 +1023,36 @@ export const collectionsRoutes = new Hono<AppBindings>()
       await seedOwnerScopedPermissions({ db, dialect }, tenantId, nextSlug);
       invalidateTenantPermissions(tenantId);
     }
+
+    // Auto-backfill the full-text index when what feeds it changed: FTS just
+    // toggled on, or the searchable field set moved while it's on. Without
+    // this, rows written before the change stay invisible to search until an
+    // admin manually hits `/:slug/fts-reindex` — the #1 "search returns
+    // nothing" trap. Skipped for adopted tables (FTS is managed-only; the
+    // applier never creates index objects for them).
+    const before = existing[0] as Record<string, unknown>;
+    const ftsMeta = {
+      fts: Boolean(merged.fts),
+      physicalTable: (merged.physicalTable ?? merged.physical_table) as string,
+      pkColumn: ((merged.pkColumn ?? merged.pk_column) as string | undefined) ?? "id",
+      fields: merged.fields as FieldDef[],
+      tenantScoped: Boolean(merged.tenantScoped ?? merged.tenant_scoped ?? true),
+    };
+    let ftsBackfill: Awaited<ReturnType<typeof backfillFts>> | null = null;
+    if (
+      !merged.adopted &&
+      isSearchable(ftsMeta) &&
+      ftsIndexSignature(ftsMeta) !==
+        ftsIndexSignature({ fts: Boolean(before.fts), fields: before.fields as FieldDef[] })
+    ) {
+      ftsBackfill = await backfillFts(c.get("ctx"), ftsMeta, tenantId);
+    }
+
     // Invalidate after *all* metadata writes (the row update above plus any
     // cascadeSlugRename) so a same-isolate read can't repopulate the cache
     // mid-rename.
     invalidateTenantCollections(tenantId);
-    const updateResponse = { ok: true, slug: nextSlug, renamed: renameCounts };
+    const updateResponse = { ok: true, slug: nextSlug, renamed: renameCounts, ftsBackfill };
     await logActivity(c, {
       action: "update",
       collection: "system_collections",
@@ -1247,6 +1272,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       physicalTable,
       pkColumn: ((r.pkColumn ?? r.pk_column) as string | undefined) ?? "id",
       fields: r.fields as FieldDef[],
+      tenantScoped: Boolean(r.tenantScoped ?? r.tenant_scoped ?? true),
     };
     if (!meta.fts) {
       throw new AppError(
@@ -1260,32 +1286,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
         "No field is flagged `searchable: true`. Mark at least one text/longtext field as searchable.",
       );
     }
-    const tenantWhere: SQL = sql`${sql.identifier("tenant_id")} = ${tenantId}`;
-    const totalRow = await runQuery<{ count: number | string | bigint }>(
-      ctx,
-      sql`SELECT COUNT(*) AS count FROM ${sql.identifier(physicalTable)} WHERE ${tenantWhere}`,
-    );
-    const total = Number(totalRow[0]?.count ?? 0);
-
-    let processed = 0;
-    let skipped = 0;
-    let offset = 0;
-    const batchSize = 100;
-    while (offset < total) {
-      const batch = await runQuery<Record<string, unknown>>(
-        ctx,
-        sql`SELECT * FROM ${sql.identifier(physicalTable)} WHERE ${tenantWhere} ORDER BY ${sql.identifier(meta.pkColumn)} LIMIT ${batchSize} OFFSET ${offset}`,
-      );
-      if (batch.length === 0) break;
-      const indexed = await indexFtsBatch(
-        ctx,
-        meta,
-        batch.map((row) => ({ id: row[meta.pkColumn] as string, row })),
-      );
-      processed += indexed;
-      skipped += batch.length - indexed;
-      offset += batch.length;
-    }
+    const { processed, skipped, total } = await backfillFts(ctx, meta, tenantId);
     const ftsResponse = { ok: true, processed, skipped, total };
     await logActivity(c, {
       action: "fts-reindex",

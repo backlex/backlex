@@ -329,6 +329,14 @@ export const tenantsApi = {
     }),
 };
 
+export interface FtsBackfillResult {
+  /** Rows whose searchable fields produced index text. */
+  processed: number;
+  /** Rows whose searchable fields were all empty. */
+  skipped: number;
+  total: number;
+}
+
 export const collectionsApi = {
   list: () =>
     api<Envelope<ApiCollection[]> & { meta?: { groups: string[] } }>(
@@ -341,9 +349,15 @@ export const collectionsApi = {
       body: JSON.stringify(input),
     }),
   patch: (slug: string, input: Partial<ApiCollection>) =>
-    api<{ ok: true }>(`/api/collections/${slug}`, {
+    api<{ ok: true; ftsBackfill?: FtsBackfillResult | null }>(`/api/collections/${slug}`, {
       method: "PATCH",
       body: JSON.stringify(input),
+    }),
+  /** Rebuild the full-text index for every existing row. Only needed as a
+   *  manual recovery — PATCH auto-backfills when the searchable set changes. */
+  ftsReindex: (slug: string) =>
+    api<{ ok: true } & FtsBackfillResult>(`/api/collections/${slug}/fts-reindex`, {
+      method: "POST",
     }),
   remove: (slug: string) =>
     api<{ ok: true; archived?: boolean }>(`/api/collections/${slug}`, { method: "DELETE" }),

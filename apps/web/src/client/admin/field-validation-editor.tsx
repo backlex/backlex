@@ -162,7 +162,7 @@ export function FieldValidationEditor({
   const fieldVars = fields.map((f) => ({ v: `$field.${f}`, desc: t`value of ${f}` }));
 
   return (
-    <div className="flex flex-col gap-2.5 rounded-xl bg-muted p-3">
+    <div className="flex flex-col gap-2.5 rounded-control bg-muted p-3">
       <div className="flex items-center gap-2">
         <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
           <I.Shield size={13} /> <Trans>Validation</Trans>
@@ -280,7 +280,7 @@ export function FieldValidationEditor({
         >
           {advanced ? <I.ChevronDown size={13} /> : <I.ChevronRight size={13} />}
           <Trans>Advanced — cross-field rule</Trans>
-          {draftHasRule(value) && <span className="ml-1 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary"><Trans>active</Trans></span>}
+          {draftHasRule(value) && <span className="ml-1 rounded-sm bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary"><Trans>active</Trans></span>}
         </button>
         {advanced && (
           <div className="mt-2 flex flex-col gap-1.5">

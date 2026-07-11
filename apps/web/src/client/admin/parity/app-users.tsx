@@ -318,7 +318,7 @@ function AppUserDrawer({
                   <Trans>This workspace has no custom roles yet — create one under <strong>Roles &amp; permissions</strong>.</Trans>
                 </div>
               ) : (
-                <div className="flex flex-col overflow-hidden rounded-xl border border-border">
+                <div className="flex flex-col overflow-hidden rounded-control border border-border">
                   {roles.map((r) => (
                     <label key={r.id} className="flex cursor-pointer items-center justify-between gap-3 border-b border-border px-3 py-2.5 last:border-b-0">
                       <div className="min-w-0">
@@ -336,7 +336,7 @@ function AppUserDrawer({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-xl bg-muted px-3.5 py-3 max-[900px]:grid-cols-1">
+          <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-control bg-muted px-3.5 py-3 max-[900px]:grid-cols-1">
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Email verified</Trans></span><span className="font-mono text-xs">{user.emailVerified ? t`yes` : t`no`}</span></div>
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Status</Trans></span><span className="font-mono text-xs">{user.status}</span></div>
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Created</Trans></span><span className="font-mono text-xs">{fmtDate(user.createdAt)}</span></div>
@@ -349,9 +349,9 @@ function AppUserDrawer({
               <span className="text-[11.5px] font-normal text-muted-foreground">{sessions.length}</span>
             </div>
             {sessions.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border p-3.5 text-center text-[12.5px] text-muted-foreground"><Trans>No active sessions.</Trans></div>
+              <div className="rounded-control border border-dashed border-border p-3.5 text-center text-[12.5px] text-muted-foreground"><Trans>No active sessions.</Trans></div>
             ) : (
-              <div className="flex flex-col overflow-hidden rounded-xl border border-border">
+              <div className="flex flex-col overflow-hidden rounded-control border border-border">
                 {sessions.map((s) => (
                   <div key={s.id} className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5 last:border-b-0">
                     <div className="flex min-w-0 flex-col gap-0.5">
@@ -373,7 +373,7 @@ function AppUserDrawer({
             )}
           </div>
 
-          <div className="rounded-xl border border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_5%,var(--card))] px-3.5 py-3">
+          <div className="rounded-control border border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_5%,var(--card))] px-3.5 py-3">
             <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium"><span><Trans>Danger zone</Trans></span></div>
             <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
               <div>

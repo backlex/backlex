@@ -18,11 +18,13 @@
          which is why every button rendered as a pill despite the design
          calling for 9px, and why two CTAs hardcoded `rounded-[9px]` to escape.
      The scale is still not monotonic (xl < lg). Migrate callsites to the
-     semantic names and this block can go away. */
+     semantic names and this block can go away. The whole scale now resolves
+     to the two shapes (+6px `sm`, from tokens.css): md was the odd one out at
+     11.2px, sitting between the design's 9px controls (icon buttons, glyph
+     tiles used it) — snapped to control. */
   --radius: 0.875rem;
-  --radius-sm: calc(var(--radius) * 0.6); /* 8.4px */
-  --radius-md: calc(var(--radius) * 0.8); /* 11.2px */
-  --radius-lg: var(--radius); /* 14px */
+  --radius-md: var(--radius-control); /* 9px — icon buttons, glyph tiles */
+  --radius-lg: var(--radius-surface); /* 14px — info boxes, mini panels */
   --radius-xl: var(--radius-control); /* 9px — sidebar nav, inputs */
   --radius-2xl: var(--radius-surface); /* 14px — cards, panels */
   --radius-3xl: var(--radius-control); /* 9px — tabs, tiles, segmented */
@@ -56,7 +58,7 @@ body {
   flex: none;
   background: var(--primary);
   color: var(--primary-foreground);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -92,7 +94,7 @@ body {
 
 .dot {
   width: 7px; height: 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--primary);
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 20%, transparent);
   flex: none;
@@ -124,7 +126,7 @@ body {
   height: 32px;
   /* Per design: subtle hairline border on a faint translucent fill. */
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   color: #8580a2;
   font-size: 12.5px;
   background: rgba(255, 255, 255, 0.03);
@@ -168,7 +170,7 @@ html.dark {
 }
 .icon-btn {
   width: 32px; height: 32px;
-  border-radius: var(--radius-3xl);
+  border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--foreground);
@@ -199,7 +201,7 @@ html.dark {
 
 .avatar {
   width: 32px; height: 32px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: linear-gradient(135deg, oklch(from var(--primary) 0.78 0.18 h), oklch(from var(--primary) 0.55 0.18 calc(h + 15)));
   color: oklch(from var(--primary) 0.18 0.05 h);
   display: grid; place-items: center;
@@ -274,10 +276,10 @@ html[data-vt="back"]::view-transition-new(main-pane) { animation-name: vt-in-lef
 /* ─── Tabs ─── (pill segment; used for both page-section sub-nav and inline
    list filters. .ce-tabs below is kept only for in-panel use by the condition
    editor. .rb-toggle further down is the binary mode toggle.) */
-.tabs { display: flex; gap: 2px; padding: 3px; background: var(--muted); border-radius: var(--radius-3xl); width: fit-content; }
+.tabs { display: flex; gap: 2px; padding: 3px; background: var(--muted); border-radius: var(--radius-control); width: fit-content; }
 .tab {
   padding: 5px 14px;
-  border-radius: var(--radius-3xl);
+  border-radius: var(--radius-control);
   font-size: 12.5px;
   font-weight: 500;
   color: var(--muted-foreground);
@@ -307,7 +309,7 @@ html[data-vt="back"]::view-transition-new(main-pane) { animation-name: vt-in-lef
   background: var(--card);
   color: var(--card-foreground);
   border: 1px solid var(--border);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-surface);
   overflow: hidden;
 }
 .card-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
@@ -325,7 +327,7 @@ html[data-vt="back"]::view-transition-new(main-pane) { animation-name: vt-in-lef
   gap: 6px;
   height: 28px;
   padding: 0 11px 0 11px;
-  border-radius: var(--radius-3xl);
+  border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: var(--card);
   color: var(--foreground);
@@ -339,7 +341,7 @@ html[data-vt="back"]::view-transition-new(main-pane) { animation-name: vt-in-lef
   border-color: var(--color-chip-border);
   color: var(--foreground);
 }
-.chip .x { width: 14px; height: 14px; display: grid; place-items: center; opacity: 0.6; border-radius: 999px; }
+.chip .x { width: 14px; height: 14px; display: grid; place-items: center; opacity: 0.6; border-radius: var(--radius-pill); }
 .chip .x:hover { background: var(--muted); opacity: 1; }
 .chip .key { color: var(--muted-foreground); }
 .chip .op { font-family: 'Geist Mono', monospace; color: var(--muted-foreground); font-size: 11.5px; }
@@ -410,7 +412,7 @@ html[data-vt="back"]::view-transition-new(main-pane) { animation-name: vt-in-lef
   gap: 4px;
   padding: 1px 8px;
   height: 20px;
-  border-radius: var(--radius-3xl);
+  border-radius: var(--radius-control);
   font-size: 11px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -456,7 +458,7 @@ html[data-vt="back"]::view-transition-new(main-pane) { animation-name: vt-in-lef
   display: flex; flex-direction: column;
   border: 1px solid var(--border);
   background: var(--card);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-surface);
   overflow: hidden;
   max-height: calc(100vh - 140px);
 }
@@ -556,12 +558,12 @@ input[type="range"] {
 }
 input[type="range"]::-webkit-slider-runnable-track {
   height: 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--muted);
 }
 input[type="range"]::-moz-range-track {
   height: 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--muted);
 }
 input[type="range"]::-webkit-slider-thumb {
@@ -594,7 +596,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .switch {
   width: 36px; height: 20px;
   background: var(--input);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   position: relative;
   cursor: pointer;
   flex: none;
@@ -606,7 +608,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   top: 2px; left: 2px;
   width: 16px; height: 16px;
   background: white;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   transition: transform 160ms;
   box-shadow: 0 1px 2px oklch(0 0 0 / 0.2);
 }
@@ -638,7 +640,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   max-height: 60vh;
   background: var(--popover);
   border: 1px solid var(--border);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-surface);
   box-shadow: 0 20px 70px -10px oklch(0 0 0 / 0.4), 0 4px 14px oklch(0 0 0 / 0.1);
   z-index: 70;
   display: flex;
@@ -662,7 +664,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .palette-item {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 12px;
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   font-size: 13.5px;
   cursor: pointer;
 }
@@ -680,7 +682,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   position: absolute;
   background: var(--popover);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   box-shadow: 0 12px 30px -8px oklch(0 0 0 / 0.18), 0 2px 8px oklch(0 0 0 / 0.06);
   z-index: 50;
   width: 320px;
@@ -699,7 +701,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   width: min(440px, 92vw);
   background: var(--popover);
   border: 1px solid var(--border);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-surface);
   box-shadow: 0 20px 70px -10px oklch(0 0 0 / 0.4);
   z-index: 71;
   padding: 22px 22px 18px;
@@ -725,7 +727,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   width: 100%;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   color: var(--foreground);
   font: inherit;
   font-size: 13px;
@@ -748,7 +750,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   z-index: 200;
   background: var(--popover);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   box-shadow: 0 12px 32px oklch(0 0 0 / 0.16);
   padding: 4px;
   max-height: 280px;
@@ -764,7 +766,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   align-items: center;
   gap: 6px;
   padding: 6px 8px 6px 6px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   font-size: 13px;
   color: var(--foreground);
   cursor: pointer;
@@ -817,7 +819,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   background: var(--card);
   color: var(--foreground);
   border: 1px solid var(--border);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-surface);
   box-shadow: 0 24px 60px oklch(0 0 0 / 0.22), 0 2px 8px oklch(0 0 0 / 0.08);
   animation: pal-in 180ms ease-out;
 }
@@ -870,7 +872,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   font-family: var(--font-mono); font-size: 11px;
   padding: 1px 6px;
   background: var(--muted); color: var(--muted-foreground);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 .ce-tab.on .ce-tab-count {
   background: color-mix(in oklch, var(--primary) 18%, transparent);
@@ -880,7 +882,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 /* Rule builder */
 .rb-group {
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   background: color-mix(in oklch, var(--muted) 18%, var(--card));
   padding: 0;
 }
@@ -895,7 +897,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .rb-toggle {
   display: inline-flex;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   overflow: hidden;
   background: var(--card);
 }
@@ -916,7 +918,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   padding: 4px 10px;
   background: transparent;
   border: 1px dashed var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   color: var(--muted-foreground);
   cursor: pointer;
 }
@@ -926,7 +928,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   display: inline-grid; place-items: center;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   color: var(--muted-foreground);
   cursor: pointer;
 }
@@ -946,7 +948,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   flex: 1;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   padding: 6px 8px;
 }
 .rb-input {
@@ -956,7 +958,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   background: var(--card);
   color: var(--foreground);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   outline: none;
   min-width: 120px;
 }
@@ -965,7 +967,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .rb-empty {
   padding: 12px; text-align: center;
   color: var(--muted-foreground); font-size: 12px;
-  border: 1px dashed var(--border); border-radius: var(--radius-md);
+  border: 1px dashed var(--border); border-radius: var(--radius-control);
 }
 
 .ce-vars {
@@ -973,7 +975,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   padding: 6px;
   background: color-mix(in oklch, var(--muted) 30%, var(--card));
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
 }
 .ce-var {
   display: inline-flex; align-items: center; gap: 5px;
@@ -981,13 +983,13 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   font-size: 11px;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 /* Field permission grid */
 .field-grid {
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   overflow: hidden;
   background: var(--card);
 }
@@ -1016,7 +1018,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   appearance: none; -webkit-appearance: none;
   width: 16px; height: 16px;
   border: 1.25px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--card);
   cursor: pointer;
   display: grid; place-items: center;
@@ -1053,7 +1055,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   display: flex; flex-direction: column; gap: 8px;
   padding: 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   background: color-mix(in oklch, var(--muted) 18%, var(--card));
 }
 .presets-row {
@@ -1073,7 +1075,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 }
 .addfield-stepper .step.on { color: var(--foreground); }
 .addfield-stepper .step .num {
-  width: 20px; height: 20px; border-radius: 999px;
+  width: 20px; height: 20px; border-radius: var(--radius-pill);
   display: grid; place-items: center;
   background: var(--muted); color: var(--muted-foreground);
   font-size: 11px; font-weight: 600;
@@ -1117,7 +1119,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   padding: 12px;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   cursor: pointer;
   transition: background 100ms, border-color 100ms;
   font-family: inherit;
@@ -1132,7 +1134,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   grid-row: 1 / span 2; align-self: center;
   width: 28px; height: 28px;
   display: grid; place-items: center;
-  background: var(--muted); border-radius: 8px;
+  background: var(--muted); border-radius: var(--radius-control);
   color: var(--foreground);
 }
 .type-card.active .type-icon { background: var(--color-icon-surface); }
@@ -1141,7 +1143,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .type-card .type-sql {
   grid-row: 1 / span 2; align-self: center;
   font-size: 10.5px; color: var(--muted-foreground);
-  background: var(--muted); padding: 2px 6px; border-radius: 6px;
+  background: var(--muted); padding: 2px 6px; border-radius: var(--radius-sm);
 }
 
 /* Toast */
@@ -1156,7 +1158,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   background: var(--popover);
   color: var(--popover-foreground);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   padding: 10px 14px;
   font-size: 13px;
   box-shadow: 0 10px 30px -8px oklch(0 0 0 / 0.2);
@@ -1174,7 +1176,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 }
 .scrollarea::-webkit-scrollbar-thumb, .palette-results::-webkit-scrollbar-thumb, .tail-list::-webkit-scrollbar-thumb, .sheet-body::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 2px solid var(--background);
 }
 
@@ -1189,7 +1191,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   align-items: center;
   gap: 6px;
   padding: 2px 8px 2px 6px;
-  border-radius: var(--radius-3xl);
+  border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: var(--background);
   font-size: 11px;
@@ -1206,7 +1208,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .pm-role {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 6px 10px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   border: 1px solid transparent;
   background: transparent;
   color: var(--muted-foreground);
@@ -1224,7 +1226,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .pm-role-tag {
   font-size: 9.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: color-mix(in oklch, var(--muted) 70%, transparent);
   color: var(--muted-foreground);
 }
@@ -1238,7 +1240,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   display: grid;
   grid-template-columns: minmax(160px, 1.4fr) repeat(4, minmax(80px, 1fr));
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   overflow: hidden;
   background: var(--card);
 }
@@ -1320,7 +1322,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .pm-glyph {
   display: inline-grid; place-items: center;
   width: 22px; height: 22px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 .pm-glyph-all {
   background: color-mix(in oklch, oklch(from var(--primary) 0.72 0.18 h) 22%, transparent);
@@ -1347,7 +1349,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   padding: 8px 10px;
   border: 0;
   background: transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   cursor: pointer;
   text-align: left;
   font-size: 12.5px;
@@ -1378,7 +1380,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   flex: 1;
   border: 1px solid var(--border);
   background: var(--card);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   height: 30px; padding: 0 10px;
   font-size: 12.5px;
   outline: none;
@@ -1387,7 +1389,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .mp-invite-role {
   border: 1px solid var(--border);
   background: var(--card);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   height: 30px; padding: 0 8px;
   font-size: 12px;
 }
@@ -1410,7 +1412,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .mp-member { display: flex; align-items: center; gap: 10px; }
 .mp-avatar {
   width: 30px; height: 30px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   display: grid; place-items: center;
   font-family: 'Geist Mono', monospace; font-weight: 600; font-size: 11.5px;
   color: oklch(0.18 0 0);
@@ -1421,7 +1423,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .mp-role-select {
   border: 1px solid var(--border);
   background: var(--card);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   height: 26px; padding: 0 8px;
   font-size: 11.5px;
   font-family: 'Geist Mono', monospace;
@@ -1439,7 +1441,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   padding: 14px 16px;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
 }
 .users-stat-label { font-size: 11.5px; color: var(--muted-foreground); letter-spacing: 0.02em; text-transform: uppercase; }
 .users-stat-value { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
@@ -1456,7 +1458,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   padding: 8px 12px;
   background: color-mix(in oklch, var(--primary) 8%, var(--card));
   border: 1px solid color-mix(in oklch, var(--primary) 40%, var(--border));
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   flex-wrap: wrap;
 }
 
@@ -1465,7 +1467,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .users-table tbody tr.users-row.on { background: color-mix(in oklch, var(--primary) 6%, transparent); }
 .users-avatar {
   width: 32px; height: 32px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   display: grid; place-items: center;
   font-size: 11.5px; font-weight: 600;
   flex: none;
@@ -1479,7 +1481,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   font-size: 11px;
   font-family: 'Geist Mono', monospace;
   padding: 2px 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--border);
 }
 .users-mfa.on  { color: oklch(0.55 0.15 145); border-color: color-mix(in oklch, oklch(0.55 0.15 145) 35%, var(--border)); background: color-mix(in oklch, oklch(0.78 0.14 145) 14%, transparent); }
@@ -1491,7 +1493,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   z-index: 30;
   background: var(--popover);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   box-shadow: 0 8px 24px oklch(0 0 0 / 0.16);
   min-width: 180px;
   padding: 4px;
@@ -1501,7 +1503,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .users-menu button {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 10px;
-  background: transparent; border: 0; border-radius: var(--radius-md);
+  background: transparent; border: 0; border-radius: var(--radius-control);
   font: inherit; font-size: 12.5px; color: var(--foreground);
   cursor: pointer;
   text-align: left;
@@ -1517,7 +1519,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   gap: 10px 14px;
   padding: 12px 14px;
   background: var(--muted);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
 }
 .user-facts > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .user-facts .muted { font-size: 11px; letter-spacing: 0.02em; text-transform: uppercase; }
@@ -1532,7 +1534,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .user-list {
   display: flex; flex-direction: column;
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   overflow: hidden;
 }
 .user-list-row {
@@ -1545,7 +1547,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .user-empty {
   padding: 14px;
   border: 1px dashed var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   font-size: 12.5px;
   color: var(--muted-foreground);
   text-align: center;
@@ -1553,7 +1555,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 
 .user-danger {
   border: 1px solid color-mix(in oklch, var(--destructive) 30%, var(--border));
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   padding: 12px 14px;
   background: color-mix(in oklch, var(--destructive) 5%, var(--card));
 }
@@ -1576,7 +1578,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   height: 36px;
   background: var(--background);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   overflow: hidden;
   transition: border-color 80ms, box-shadow 80ms;
 }
@@ -1619,7 +1621,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   padding: 10px;
   background: var(--muted);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   max-height: 220px;
   overflow-y: auto;
 }
@@ -1628,7 +1630,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   padding: 6px 10px;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   font: inherit;
   color: var(--muted-foreground);
   cursor: pointer;
@@ -1919,7 +1921,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   padding: 1px 6px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
   text-align: center;
 }
 .log-s-2 { background: color-mix(in oklch, var(--primary) 12%, var(--card)); color: oklch(0.42 0.12 130); }
@@ -1955,7 +1957,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   font-size: 11.5px;
   background: var(--muted);
   padding: 10px 12px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-surface);
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
@@ -1971,7 +1973,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   padding: 14px 16px;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   cursor: pointer;
   text-align: left;
   font-family: inherit;
@@ -1979,14 +1981,14 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 }
 .summary-card:hover { background: var(--accent); }
 .summary-card.on { border-color: color-mix(in oklch, var(--foreground) 30%, var(--border)); background: var(--accent); }
-.dot-error { display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: var(--destructive); }
-.dot-warn  { display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: oklch(0.7 0.18 70); }
-.dot-info  { display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: var(--muted-foreground); }
+.dot-error { display: inline-block; width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--destructive); }
+.dot-warn  { display: inline-block; width: 8px; height: 8px; border-radius: var(--radius-pill); background: oklch(0.7 0.18 70); }
+.dot-info  { display: inline-block; width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--muted-foreground); }
 
 .advisor-row {
   border: 1px solid var(--border);
   background: var(--card);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-surface);
   overflow: hidden;
 }
 .advisor-row.advisor-error { border-color: color-mix(in oklch, var(--destructive) 28%, var(--border)); }
@@ -2009,7 +2011,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .advisor-ico {
   width: 28px; height: 28px;
   display: grid; place-items: center;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-surface);
 }
 .advisor-ico-error { background: color-mix(in oklch, var(--destructive) 16%, var(--card)); color: var(--destructive); }
 .advisor-ico-warn  { background: color-mix(in oklch, oklch(0.75 0.18 70) 18%, var(--card)); color: oklch(0.55 0.18 70); }
@@ -2046,7 +2048,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   display: grid; place-items: center;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
   color: var(--foreground);
   cursor: pointer;
   transition: background 120ms;
@@ -2061,7 +2063,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   height: 16px;
   min-width: 16px;
   padding: 0 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   display: grid; place-items: center;
   border: 1.5px solid var(--background);
 }
@@ -2094,7 +2096,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .notif-ico {
   width: 26px; height: 26px;
   display: grid; place-items: center;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-surface);
   background: var(--muted);
   color: var(--muted-foreground);
 }
@@ -2109,7 +2111,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .notif-meta { font-size: 10.5px; color: var(--muted-foreground); margin-top: 4px; opacity: 0.85; }
 .notif-unread-dot {
   width: 8px; height: 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--primary);
   margin-top: 6px;
 }

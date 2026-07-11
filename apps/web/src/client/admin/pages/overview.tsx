@@ -275,8 +275,8 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
         {quickActions.map((a) => {
           const Icon = a.icon;
           return (
-            <button key={a.label} onClick={a.onClick} className="flex cursor-pointer items-center gap-[11px] rounded-2xl border border-dashed border-white/[0.14] bg-transparent px-3.5 py-3 text-left text-inherit transition-colors hover:border-[color-mix(in_oklch,var(--primary)_45%,transparent)] hover:bg-[color-mix(in_oklch,var(--primary)_5%,transparent)]">
-              <span className="grid size-8 place-items-center rounded-lg bg-[color-mix(in_oklch,var(--primary)_14%,transparent)] text-[oklch(from_var(--primary)_0.78_0.12_h)]">
+            <button key={a.label} onClick={a.onClick} className="flex cursor-pointer items-center gap-[11px] rounded-surface border border-dashed border-white/[0.14] bg-transparent px-3.5 py-3 text-left text-inherit transition-colors hover:border-[color-mix(in_oklch,var(--primary)_45%,transparent)] hover:bg-[color-mix(in_oklch,var(--primary)_5%,transparent)]">
+              <span className="grid size-8 place-items-center rounded-control bg-[color-mix(in_oklch,var(--primary)_14%,transparent)] text-[oklch(from_var(--primary)_0.78_0.12_h)]">
                 <Icon size={14} />
               </span>
               <div className="flex flex-col">
@@ -401,7 +401,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
             <div className="flex items-center gap-2">
               <I.Globe size={14} className="text-muted-foreground" /><span className="text-[13px] font-medium"><Trans>Health</Trans></span>
               <div className="flex-1" />
-              <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className="size-[7px] shrink-0 rounded-full bg-accent-mint shadow-[0_0_0_3px_color-mix(in_oklch,var(--color-accent-mint)_22%,transparent)]" />{adapter === "workers" ? "cf workers" : adapter}</span>
+              <span className="inline-flex items-center gap-1.5 rounded-control border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className="size-[7px] shrink-0 rounded-full bg-accent-mint shadow-[0_0_0_3px_color-mix(in_oklch,var(--color-accent-mint)_22%,transparent)]" />{adapter === "workers" ? "cf workers" : adapter}</span>
             </div>
             {(() => {
               // Live health rows derived from /api/admin/settings/runtime.
@@ -458,7 +458,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                   <div className="text-[12.5px] font-medium">{k}</div>
                   <div className="font-mono text-[11.5px] text-muted-foreground">{v} · {hint}</div>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className={`size-[7px] shrink-0 rounded-full ${status === t`idle` ? "bg-[oklch(0.78_0.16_75)] shadow-[0_0_0_3px_oklch(0.78_0.16_75/0.2)]" : status === t`connected` ? "bg-accent-mint shadow-[0_0_0_3px_color-mix(in_oklch,var(--color-accent-mint)_22%,transparent)]" : "bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]"}`} />{status}</span>
+                <span className="inline-flex items-center gap-1.5 rounded-control border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className={`size-[7px] shrink-0 rounded-full ${status === t`idle` ? "bg-[oklch(0.78_0.16_75)] shadow-[0_0_0_3px_oklch(0.78_0.16_75/0.2)]" : status === t`connected` ? "bg-accent-mint shadow-[0_0_0_3px_color-mix(in_oklch,var(--color-accent-mint)_22%,transparent)]" : "bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]"}`} />{status}</span>
               </div>
             ))}
           </Card>

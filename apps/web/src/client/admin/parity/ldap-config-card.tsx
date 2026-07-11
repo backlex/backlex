@@ -154,7 +154,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
     return (
       <Card className="gap-0 py-0">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
-          <Skeleton className="size-4 rounded" />
+          <Skeleton className="size-4 rounded-sm" />
           <Skeleton className="h-4 w-44" />
           <div className="flex-1" />
           <Skeleton className="h-8 w-32" />

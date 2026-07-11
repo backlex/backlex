@@ -68,7 +68,7 @@ export function ItemsViewToggle({
             key={o.id}
             value={o.id}
             title={LABELS[o.id]}
-            className="rounded-[7px] px-[9px] py-[5px] text-[11.5px] font-semibold text-muted-foreground data-active:bg-[color-mix(in_oklch,var(--primary)_16%,transparent)] data-active:text-foreground"
+            className="rounded-sm px-[9px] py-[5px] text-[11.5px] font-semibold text-muted-foreground data-active:bg-[color-mix(in_oklch,var(--primary)_16%,transparent)] data-active:text-foreground"
           >
             <o.icon size={13} />
             <span>{LABELS[o.id]}</span>
@@ -146,17 +146,17 @@ export function KanbanBoard({
             onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverCol(c.id); } }}
             onDragLeave={() => setOverCol((o) => (o === c.id ? null : o))}
             onDrop={(e) => { e.preventDefault(); drop(c.id); }}
-            className={`flex min-h-[240px] flex-col rounded-xl border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] transition-colors ${overCol === c.id && dragId ? "border-primary ring-2 ring-primary/40" : "border-border"}`}
+            className={`flex min-h-[240px] flex-col rounded-control border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] transition-colors ${overCol === c.id && dragId ? "border-primary ring-2 ring-primary/40" : "border-border"}`}
           >
             <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
               <span className="text-[12.5px] font-medium capitalize">{c.label}</span>
-              <span className="rounded-md border border-border bg-card px-1.5 py-px font-mono text-[10.5px] tabular-nums text-muted-foreground">{items.length}</span>
+              <span className="rounded-control border border-border bg-card px-1.5 py-px font-mono text-[10.5px] tabular-nums text-muted-foreground">{items.length}</span>
               <div className="flex-1" />
               <IconButton icon={I.Plus} title={t`New ${c.label} item`} onClick={() => onCreate?.(c.id)} />
             </div>
             <div className="flex flex-1 flex-col gap-2 p-2.5">
               {items.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border py-[22px] text-center text-[11.5px] text-muted-foreground"><Trans>No items</Trans></div>
+                <div className="rounded-surface border border-dashed border-border py-[22px] text-center text-[11.5px] text-muted-foreground"><Trans>No items</Trans></div>
               ) : (
                 items.map((r) => {
                   const author = r.author ? authorById(r.author) : null;
@@ -169,7 +169,7 @@ export function KanbanBoard({
                       draggable
                       onDragStart={(e) => { setDragId(r.id); e.dataTransfer.effectAllowed = "move"; }}
                       onDragEnd={() => { setDragId(null); setOverCol(null); }}
-                      className={`flex cursor-grab flex-col gap-1.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left transition-opacity hover:border-chip-border active:cursor-grabbing ${dragId === r.id ? "opacity-40" : ""}`}
+                      className={`flex cursor-grab flex-col gap-1.5 rounded-surface border border-border bg-card px-3 py-2.5 text-left transition-opacity hover:border-chip-border active:cursor-grabbing ${dragId === r.id ? "opacity-40" : ""}`}
                       onClick={() => onEdit(r)}
                     >
                       <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r, displayTemplate, fields)}</div>
@@ -234,9 +234,9 @@ export function GalleryGrid({ rows, onEdit, displayTemplate, fields }: { rows: P
         const b = hashColor(r.id.split("").reverse().join(""));
         const words = rowNumber(r.word_count);
         return (
-          <button key={r.id} type="button" className="cursor-pointer overflow-hidden rounded-xl border border-border bg-card text-left text-foreground hover:border-chip-border" onClick={() => onEdit(r)}>
+          <button key={r.id} type="button" className="cursor-pointer overflow-hidden rounded-control border border-border bg-card text-left text-foreground hover:border-chip-border" onClick={() => onEdit(r)}>
             <div className="relative grid aspect-[16/10] p-2.5 [place-items:end_start]" style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}>
-              <span className="rounded-md bg-[color-mix(in_oklch,var(--background)_65%,transparent)] px-2 py-0.5 font-mono text-[10.5px] text-foreground backdrop-blur-[4px]">{r.slug || shortId(r.id)}</span>
+              <span className="rounded-control bg-[color-mix(in_oklch,var(--background)_65%,transparent)] px-2 py-0.5 font-mono text-[10.5px] text-foreground backdrop-blur-[4px]">{r.slug || shortId(r.id)}</span>
             </div>
             <div className="flex flex-col gap-1.5 px-3 pb-3 pt-2.5">
               <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r, displayTemplate, fields)}</div>
@@ -340,8 +340,8 @@ export function CalendarView({ rows, onEdit, displayTemplate, fields }: { rows: 
             key={i}
             className={
               d == null
-                ? "flex min-h-[92px] flex-col gap-1 rounded-md border border-transparent bg-transparent p-1.5"
-                : "flex min-h-[92px] flex-col gap-1 rounded-md border border-border bg-card p-1.5"
+                ? "flex min-h-[92px] flex-col gap-1 rounded-control border border-transparent bg-transparent p-1.5"
+                : "flex min-h-[92px] flex-col gap-1 rounded-control border border-border bg-card p-1.5"
             }
           >
             {d != null && (

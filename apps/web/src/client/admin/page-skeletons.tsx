@@ -84,7 +84,7 @@ function HeaderSkeleton({
   );
 }
 
-/** A rounded-2xl card shell with N body lines — the generic admin card. */
+/** A rounded-surface card shell with N body lines — the generic admin card. */
 function CardSkeleton({ lines = 3, className = "" }: { lines?: number; className?: string }) {
   return (
     <Card className={`gap-3 p-4 ${className}`}>
@@ -126,7 +126,7 @@ function TabStripSkeleton({ tabs = 3 }: { tabs?: number }) {
   return (
     <div className="flex max-w-full gap-1.5 overflow-hidden">
       {Array.from({ length: tabs }).map((_, i) => (
-        <Skeleton key={i} className="h-8 w-24 shrink-0 rounded-md" />
+        <Skeleton key={i} className="h-8 w-24 shrink-0 rounded-control" />
       ))}
     </div>
   );
@@ -146,7 +146,7 @@ function ListCardSkeleton({ rows = 6, header = true }: { rows?: number; header?:
           key={i}
           className="flex items-center gap-2.5 border-b border-border px-3.5 py-3 last:border-b-0"
         >
-          <Skeleton className="size-4 shrink-0 rounded" />
+          <Skeleton className="size-4 shrink-0 rounded-sm" />
           <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <Skeleton className="h-3.5 w-3/4" />
             <Skeleton className="h-3 w-1/2" />
@@ -172,7 +172,7 @@ function AskAiSkeletonImpl() {
           {/* Prompt card */}
           <Card className="gap-3 p-5">
             <div className="flex items-center gap-2">
-              <Skeleton className="size-4 rounded" />
+              <Skeleton className="size-4 rounded-sm" />
               <Skeleton className="h-3.5 w-44" />
               <div className="flex-1" />
               <Skeleton className="h-5 w-32 rounded-full" />
@@ -193,7 +193,7 @@ function AskAiSkeletonImpl() {
               <Skeleton className="h-5 w-32 rounded-full" />
             </div>
             <Skeleton className="h-3.5 w-3/4" />
-            <Skeleton className="h-32 w-full rounded-xl" />
+            <Skeleton className="h-32 w-full rounded-control" />
           </Card>
         </div>
         {/* Recent runs rail */}
@@ -240,7 +240,7 @@ function OverviewSkeletonImpl() {
       {/* quick actions */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-2.5">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-[58px] w-full rounded-2xl" />
+          <Skeleton key={i} className="h-[58px] w-full rounded-surface" />
         ))}
       </div>
       {/* stat cards */}
@@ -272,7 +272,7 @@ function LogsSkeletonImpl() {
       {/* Search box + the time-range tab strip. */}
       <div className="flex items-center gap-2">
         <Skeleton className="h-9 flex-1" />
-        <Skeleton className="h-8 w-44 rounded-md" />
+        <Skeleton className="h-8 w-44 rounded-control" />
       </div>
       {/* Source tabs (HTTP / Data / …) + the export button. The lens strip
           claims the row width and clips its own overflow (`min-w-0 flex-1
@@ -283,10 +283,10 @@ function LogsSkeletonImpl() {
       <div className="flex items-center gap-2">
         <div className="flex min-w-0 flex-1 gap-1.5 overflow-hidden">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-8 w-24 shrink-0 rounded-md" />
+            <Skeleton key={i} className="h-8 w-24 shrink-0 rounded-control" />
           ))}
         </div>
-        <Skeleton className="h-8 w-9 shrink-0 rounded-md sm:w-36" />
+        <Skeleton className="h-8 w-9 shrink-0 rounded-control sm:w-36" />
       </div>
       {/* Volume sparkline + level-filter summary card (info / warn / error).
           Stacks vertically on mobile and goes side-by-side at `sm`, matching
@@ -294,9 +294,9 @@ function LogsSkeletonImpl() {
       <Card className="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:gap-3.5">
         <Skeleton className="h-11 w-full sm:flex-1" />
         <div className="flex flex-wrap justify-end gap-2 sm:justify-start">
-          <Skeleton className="h-8 w-20 rounded-md" />
-          <Skeleton className="h-8 w-20 rounded-md" />
-          <Skeleton className="h-8 w-20 rounded-md" />
+          <Skeleton className="h-8 w-20 rounded-control" />
+          <Skeleton className="h-8 w-20 rounded-control" />
+          <Skeleton className="h-8 w-20 rounded-control" />
         </div>
       </Card>
       {/* Log-row stream. */}
@@ -323,8 +323,8 @@ function DatabaseSkeletonImpl() {
           <CardSkeleton lines={4} />
         </div>
         <div className="flex min-w-0 flex-col gap-3">
-          <Skeleton className="h-[240px] w-full rounded-2xl" />
-          <Skeleton className="h-[180px] w-full rounded-2xl" />
+          <Skeleton className="h-[240px] w-full rounded-surface" />
+          <Skeleton className="h-[180px] w-full rounded-surface" />
         </div>
       </div>
     </div>
@@ -340,8 +340,8 @@ function FlowsSkeletonImpl() {
         <ListCardSkeleton rows={5} header={false} />
         <Card className="gap-4.5 p-[22px]">
           <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-[220px] w-full rounded-2xl" />
-          <Skeleton className="h-24 w-full rounded-2xl" />
+          <Skeleton className="h-[220px] w-full rounded-surface" />
+          <Skeleton className="h-24 w-full rounded-surface" />
         </Card>
       </div>
     </div>
@@ -356,8 +356,8 @@ function FunctionsSkeletonImpl() {
       <div className="grid grid-cols-[280px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
         <ListCardSkeleton rows={6} />
         <div className="flex flex-col gap-3">
-          <Skeleton className="h-[320px] w-full rounded-2xl" />
-          <Skeleton className="h-[140px] w-full rounded-2xl" />
+          <Skeleton className="h-[320px] w-full rounded-surface" />
+          <Skeleton className="h-[140px] w-full rounded-surface" />
         </div>
       </div>
     </div>
@@ -387,13 +387,13 @@ function SearchPlaygroundSkeletonImpl() {
           {[0, 1, 2].map((i) => (
             <div key={i} className="flex flex-col gap-1.5">
               <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-9 w-full rounded-md" />
+              <Skeleton className="h-9 w-full rounded-control" />
             </div>
           ))}
-          <Skeleton className="h-9 w-24 rounded-md max-[820px]:justify-self-end" />
+          <Skeleton className="h-9 w-24 rounded-control max-[820px]:justify-self-end" />
         </div>
       </Card>
-      <Skeleton className="h-[180px] w-full rounded-2xl" />
+      <Skeleton className="h-[180px] w-full rounded-surface" />
     </div>
   );
 }
@@ -405,7 +405,7 @@ function RealtimeSkeletonImpl() {
       <HeaderSkeleton actions={1} />
       <div className="grid grid-cols-[300px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
         <ListCardSkeleton rows={5} header={false} />
-        <Skeleton className="h-[440px] w-full rounded-2xl" />
+        <Skeleton className="h-[440px] w-full rounded-surface" />
       </div>
     </div>
   );
@@ -450,7 +450,7 @@ function SchemaGraphSkeletonImpl() {
           <Skeleton className="h-4 w-48" />
         </div>
         <div className="p-6">
-          <Skeleton className="h-[360px] w-full rounded-xl" />
+          <Skeleton className="h-[360px] w-full rounded-control" />
         </div>
       </Card>
       <TableCardSkeleton rows={4} cols={6} />
@@ -490,7 +490,7 @@ function InsightsSkeletonImpl() {
       <HeaderSkeleton actions={2} />
       <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-[180px] w-full rounded-2xl" />
+          <Skeleton key={i} className="h-[180px] w-full rounded-surface" />
         ))}
       </div>
     </div>
@@ -529,7 +529,7 @@ function TranslationsSkeletonImpl() {
       </Card>
       {/* Controls row — base-locale select + All/Missing tabs + Manage locales. */}
       <div className="flex flex-wrap items-center gap-2">
-        <Skeleton className="h-8 w-32 rounded-md" />
+        <Skeleton className="h-8 w-32 rounded-control" />
         <TabStripSkeleton tabs={2} />
         <div className="ml-auto">
           <Skeleton className="h-9 w-36" />
@@ -547,8 +547,8 @@ function EmailTemplatesSkeletonImpl() {
       <HeaderSkeleton actions={1} />
       <div className="grid grid-cols-[240px_minmax(0,1fr)_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
         <ListCardSkeleton rows={6} />
-        <Skeleton className="h-[420px] w-full rounded-2xl" />
-        <Skeleton className="h-[420px] w-full rounded-2xl" />
+        <Skeleton className="h-[420px] w-full rounded-surface" />
+        <Skeleton className="h-[420px] w-full rounded-surface" />
       </div>
     </div>
   );
@@ -581,7 +581,7 @@ function UsersSkeletonImpl() {
       {/* Total users / Active 24h / Pending invites / Admins. */}
       <div className="grid grid-cols-4 gap-2.5 max-[900px]:grid-cols-2">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex flex-col gap-1 rounded-xl border border-border bg-card px-4 py-3.5">
+          <div key={i} className="flex flex-col gap-1 rounded-control border border-border bg-card px-4 py-3.5">
             <Skeleton className="h-3 w-24" />
             <Skeleton className="h-7 w-16" />
             <Skeleton className="h-3 w-20" />
@@ -603,7 +603,7 @@ function AppUsersSkeletonImpl() {
       <Card className="gap-0 py-0">
         {/* Card header strip — icon + "End-users" + count + filter input. */}
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
-          <Skeleton className="size-3.5 shrink-0 rounded" />
+          <Skeleton className="size-3.5 shrink-0 rounded-sm" />
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-3 w-8" />
           <div className="flex-1" />
@@ -689,13 +689,13 @@ function StorageSkeletonImpl() {
     <div className="flex flex-col gap-[18px]">
       <HeaderSkeleton actions={3} />
       {/* Full-width drag-and-drop upload zone. */}
-      <Skeleton className="h-[72px] w-full rounded-2xl" />
+      <Skeleton className="h-[72px] w-full rounded-surface" />
       <div className="grid grid-cols-[240px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
         <ListCardSkeleton rows={6} />
         <Card className="gap-0 p-3">
           <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2">
             {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-[140px] w-full rounded-xl" />
+              <Skeleton key={i} className="h-[140px] w-full rounded-control" />
             ))}
           </div>
         </Card>
@@ -713,7 +713,7 @@ function CollectionsSkeletonImpl() {
       <Skeleton className="h-9 w-full" />
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-[138px] w-full rounded-2xl" />
+          <Skeleton key={i} className="h-[138px] w-full rounded-surface" />
         ))}
       </div>
     </div>
@@ -731,7 +731,7 @@ function CollectionItemsSkeletonImpl() {
           page renders one column (the 320px right panel only appears when the
           user toggles "Live tail" on). */}
       <div className="flex min-w-0 flex-col gap-3">
-        <Skeleton className="h-10 w-full rounded-xl" />
+        <Skeleton className="h-10 w-full rounded-control" />
         <TableCardSkeleton rows={8} cols={5} />
       </div>
     </div>
@@ -745,7 +745,7 @@ function RestExplorerSkeletonImpl() {
       <HeaderSkeleton actions={0} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
         <ListCardSkeleton rows={8} />
-        <Skeleton className="h-[480px] w-full rounded-2xl" />
+        <Skeleton className="h-[480px] w-full rounded-surface" />
       </div>
     </div>
   );
@@ -758,7 +758,7 @@ function GraphqlSkeletonImpl() {
       <HeaderSkeleton actions={1} />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
         <ListCardSkeleton rows={7} />
-        <Skeleton className="h-[480px] w-full rounded-2xl" />
+        <Skeleton className="h-[480px] w-full rounded-surface" />
       </div>
     </div>
   );

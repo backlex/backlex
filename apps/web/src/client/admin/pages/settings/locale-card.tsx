@@ -125,7 +125,7 @@ export function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => v
             return (
               <div
                 key={code}
-                className="flex items-center gap-2.5 rounded-xl border border-border bg-background px-3 py-2"
+                className="flex items-center gap-2.5 rounded-control border border-border bg-background px-3 py-2"
               >
                 <span className="text-[13px]">{localeLabel(code)}</span>
                 <span className="font-mono text-[11.5px] text-muted-foreground">{code}</span>

@@ -232,7 +232,7 @@ export function DisplayTemplateEditor({
           placeholder={placeholder}
         />
       ) : (
-        <div className="flex min-h-9 flex-wrap items-center gap-1 rounded-md border border-border bg-background px-2 py-1.5 focus-within:border-ring focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_22%,transparent)]">
+        <div className="flex min-h-9 flex-wrap items-center gap-1 rounded-control border border-border bg-background px-2 py-1.5 focus-within:border-ring focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_22%,transparent)]">
           {segments.map((seg, idx) =>
             seg.kind === "text" ? (
               <input
@@ -275,7 +275,7 @@ export function DisplayTemplateEditor({
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="ml-auto inline-flex h-6 items-center gap-1 rounded-md border border-dashed border-border px-2 text-[11.5px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="ml-auto inline-flex h-6 items-center gap-1 rounded-control border border-dashed border-border px-2 text-[11.5px] text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <I.Plus size={11} /> <Trans>Insert field</Trans>
               </button>

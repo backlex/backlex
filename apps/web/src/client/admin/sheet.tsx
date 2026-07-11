@@ -198,7 +198,7 @@ export function ItemSheet({
             {activeTab === "fields" && (
               <>
                 <ItemFields form={form} />
-                <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
+                <div className="flex flex-col gap-1.5 rounded-control bg-muted p-3">
                   <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground">
                     <Trans>system fields</Trans>
                   </div>
@@ -308,7 +308,7 @@ export function ItemSheet({
                 size="sm"
                 onClick={() => void submit({ close: true })}
                 disabled={saving}
-                className={cn("rounded-2xl rounded-r-none border-r-0")}
+                className={cn("rounded-control rounded-r-none border-r-0")}
               >
                 {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
               </Button>
@@ -319,7 +319,7 @@ export function ItemSheet({
                     size="sm"
                     disabled={saving}
                     aria-label={t`More save options`}
-                    className={cn("rounded-2xl rounded-l-none border-l-0 px-2")}
+                    className={cn("rounded-control rounded-l-none border-l-0 px-2")}
                   >
                     <I.ChevronDown size={14} />
                   </Button>

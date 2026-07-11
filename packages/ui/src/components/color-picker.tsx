@@ -150,7 +150,7 @@ function ColorPicker({
           disabled={disabled}
           aria-label="Pick color"
           className={cn(
-            "rounded-md border border-input shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+            "rounded-control border border-input shadow-sm transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
             className,
           )}
           style={{
@@ -160,10 +160,10 @@ function ColorPicker({
           }}
         />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto gap-3 rounded-2xl p-3">
+      <PopoverContent align="start" className="w-auto gap-3 rounded-surface p-3">
         <div
           onPointerDown={onAreaPointer}
-          className="relative h-40 w-56 cursor-crosshair touch-none overflow-hidden rounded-lg"
+          className="relative h-40 w-56 cursor-crosshair touch-none overflow-hidden rounded-surface"
           style={{ background: hueColor }}
         >
           <div

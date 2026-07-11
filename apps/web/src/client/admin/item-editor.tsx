@@ -359,7 +359,7 @@ export function ItemEditorPage({
                 icon={I.Save}
                 disabled={saving}
                 onClick={() => void persist({ close: false })}
-                className={cn("rounded-2xl rounded-r-none border-r-0")}
+                className={cn("rounded-control rounded-r-none border-r-0")}
               >
                 {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
               </Button>
@@ -370,7 +370,7 @@ export function ItemEditorPage({
                     size="sm"
                     disabled={saving}
                     aria-label={t`More save options`}
-                    className={cn("rounded-2xl rounded-l-none border-l-0 px-2")}
+                    className={cn("rounded-control rounded-l-none border-l-0 px-2")}
                   >
                     <I.ChevronDown size={14} />
                   </Button>
@@ -753,7 +753,7 @@ function RevisionHistory({
                     </Button>
                   </div>
                   {isOpen && (
-                    <div className="mt-2 rounded-lg border border-border bg-muted/40 p-2.5 text-[11.5px]">
+                    <div className="mt-2 rounded-surface border border-border bg-muted/40 p-2.5 text-[11.5px]">
                       {diff.length === 0 ? (
                         <div className="text-muted-foreground"><Trans>Same as the current values — nothing to revert.</Trans></div>
                       ) : (

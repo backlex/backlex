@@ -486,6 +486,11 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           defaultSort: (res.data as any).defaultSort ?? null,
           tenantScoped: (res.data as any).tenantScoped !== false,
           versioned: !!(res.data as any).versioned,
+          // fts + auditReads were missing here, so the Settings tab rendered
+          // both toggles OFF regardless of the stored value — while the
+          // search playground (reading the raw list row) showed the truth.
+          auditReads: !!(res.data as any).auditReads,
+          fts: !!(res.data as any).fts,
           fields: fields as any,
         } as any);
       } catch {

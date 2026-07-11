@@ -115,7 +115,7 @@ export function TracesPage({
 
       {isError ? (
         <Card className="items-center gap-3 px-6 py-12 text-center">
-          <div className="grid size-10 place-items-center rounded-xl bg-muted text-primary">
+          <div className="grid size-10 place-items-center rounded-control bg-muted text-primary">
             <I.AlertTriangle size={18} />
           </div>
           <h4 className="m-0 text-[15px] font-semibold">
@@ -272,9 +272,9 @@ function SpanBar({ span, min, total }: { span: ApiSpan; min: number; total: numb
           <span className="truncate font-mono text-[11.5px]">{span.name}</span>
         )}
       </div>
-      <div className="relative h-5 rounded bg-muted">
+      <div className="relative h-5 rounded-sm bg-muted">
         <div
-          className={`absolute top-0 h-5 rounded ${isError ? "bg-destructive" : "bg-primary"}`}
+          className={`absolute top-0 h-5 rounded-sm ${isError ? "bg-destructive" : "bg-primary"}`}
           style={{ left: `${left}%`, width: `${width}%` }}
         />
       </div>

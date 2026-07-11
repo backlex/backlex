@@ -700,7 +700,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
       />
 
       <div
-        className={`flex cursor-pointer items-center gap-3.5 rounded-2xl border-[1.5px] bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] px-[18px] py-4 transition-all duration-[120ms] hover:bg-muted ${
+        className={`flex cursor-pointer items-center gap-3.5 rounded-surface border-[1.5px] bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] px-[18px] py-4 transition-all duration-[120ms] hover:bg-muted ${
           dragOver
             ? "scale-[1.005] border-solid border-primary bg-muted"
             : "border-dashed border-border hover:border-interactive-hover-border"
@@ -712,7 +712,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         role="button"
         tabIndex={0}
       >
-        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted text-primary">
+        <div className="grid size-10 shrink-0 place-items-center rounded-control bg-muted text-primary">
           <I.Upload size={20} />
         </div>
         <div className="flex min-w-0 flex-col gap-0.5">
@@ -818,7 +818,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           <button
             key={v}
             type="button"
-            className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border bg-card px-[11px] text-[12.5px] text-foreground hover:bg-accent ${
+            className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-control border bg-card px-[11px] text-[12.5px] text-foreground hover:bg-accent ${
               view === v ? "border-chip-border bg-accent" : "border-border"
             }`}
             onClick={() => setView(v)}
@@ -847,7 +847,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           <div className="px-1.5 pb-2 pt-1.5">
             <button
               type="button"
-              className={`flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-md border-0 py-1.5 pl-2.5 pr-2 text-left text-[12.5px] text-foreground hover:bg-accent ${
+              className={`flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-control border-0 py-1.5 pl-2.5 pr-2 text-left text-[12.5px] text-foreground hover:bg-accent ${
                 folder == null ? "bg-accent font-medium" : "bg-transparent"
               }`}
               onClick={() => setFolder(null)}
@@ -871,7 +871,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               return (
                 <div
                   key={node.path}
-                  className={`flex w-full min-w-0 items-center gap-1.5 rounded-md py-1.5 pr-2 text-[12.5px] text-foreground ${
+                  className={`flex w-full min-w-0 items-center gap-1.5 rounded-control py-1.5 pr-2 text-[12.5px] text-foreground ${
                     isActive ? "bg-accent font-medium" : "bg-transparent"
                   }`}
                   style={{ paddingLeft: 8 + node.depth * 14 }}
@@ -1089,7 +1089,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                 </span>
               </div>
               {importError && (
-                <div className="rounded-md bg-[color-mix(in_oklch,var(--destructive)_8%,transparent)] px-2.5 py-2 text-xs text-destructive">
+                <div className="rounded-surface bg-[color-mix(in_oklch,var(--destructive)_8%,transparent)] px-2.5 py-2 text-xs text-destructive">
                   {importError}
                 </div>
               )}

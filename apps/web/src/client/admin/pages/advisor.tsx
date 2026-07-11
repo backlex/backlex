@@ -220,13 +220,13 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
       <div className="flex flex-col gap-2.5">
         {isError ? (
           <Card className="items-center gap-3 px-6 py-12 text-center">
-            <div className="grid size-10 place-items-center rounded-xl bg-muted text-primary"><I.AlertTriangle size={18} /></div>
+            <div className="grid size-10 place-items-center rounded-control bg-muted text-primary"><I.AlertTriangle size={18} /></div>
             <h4 className="m-0 text-[15px] font-semibold"><Trans>Couldn't load advisor findings</Trans></h4>
             <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>The advisor endpoint returned an error. Re-run to try again.</Trans></p>
           </Card>
         ) : list.length === 0 ? (
           <Card className="items-center gap-3 px-6 py-12 text-center">
-            <div className="grid size-10 place-items-center rounded-xl bg-muted text-primary"><I.CheckCircle size={18} /></div>
+            <div className="grid size-10 place-items-center rounded-control bg-muted text-primary"><I.CheckCircle size={18} /></div>
             <h4 className="m-0 text-[15px] font-semibold"><Trans>All clear in this category</Trans></h4>
             <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>No outstanding findings. Re-run after a schema or permission change.</Trans></p>
           </Card>
@@ -272,7 +272,7 @@ function SummaryCard({
   label: string;
 }) {
   return (
-    <button type="button" onClick={onClick} className={`flex cursor-pointer flex-col rounded-xl border px-4 py-3.5 text-left hover:bg-accent ${active ? "border-[color-mix(in_oklch,var(--foreground)_30%,var(--border))] bg-accent" : "border-border bg-card"}`}>
+    <button type="button" onClick={onClick} className={`flex cursor-pointer flex-col rounded-control border px-4 py-3.5 text-left hover:bg-accent ${active ? "border-[color-mix(in_oklch,var(--foreground)_30%,var(--border))] bg-accent" : "border-border bg-card"}`}>
       <div className="mb-2.5 flex items-center gap-2">
         <IconComp size={15} />
         <span className="text-[13px] font-medium">{label}</span>
@@ -358,7 +358,7 @@ function FindingDetail({
         <div className="mb-1.5 text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
           <Trans>suggested fix</Trans>
         </div>
-        <ScrollArea className="rounded-lg"><pre className="m-0 whitespace-pre rounded-lg bg-muted px-3 py-2.5 font-mono text-[11.5px]">{c.fix}</pre></ScrollArea>
+        <ScrollArea className="rounded-surface"><pre className="m-0 whitespace-pre rounded-surface bg-muted px-3 py-2.5 font-mono text-[11.5px]">{c.fix}</pre></ScrollArea>
       </div>
       <div className="flex gap-1.5">
         <Button variant="outline" size="sm" icon={I.Copy} onClick={onCopy}>
@@ -392,10 +392,10 @@ function AdvisorRow({
   const [open, setOpen] = useState(false);
   const { Icon, border, ico } = levelStyles(c.level);
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className={`overflow-hidden rounded-2xl border bg-card ${border}`}>
+    <Collapsible open={open} onOpenChange={setOpen} className={`overflow-hidden rounded-surface border bg-card ${border}`}>
       <CollapsibleTrigger asChild>
         <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_16px] max-[640px]:grid-cols-[32px_1fr_16px] items-center gap-3 border-0 bg-transparent px-4 py-3 text-left hover:bg-accent">
-          <span className={`grid size-7 place-items-center rounded-lg ${ico}`}><Icon size={14} /></span>
+          <span className={`grid size-7 place-items-center rounded-control ${ico}`}><Icon size={14} /></span>
           <span className="min-w-0 truncate text-[13.5px] font-medium">{c.title}</span>
           <span className="font-mono text-[11.5px] text-muted-foreground max-[640px]:hidden">{c.resource}</span>
           <I.ChevronDown size={12} className="text-muted-foreground transition-transform data-[open=true]:rotate-180" data-open={open} />
@@ -429,10 +429,10 @@ function AdvisorGroup({
   const [open, setOpen] = useState(false);
   const { Icon, border, ico } = levelStyles(level);
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className={`overflow-hidden rounded-2xl border bg-card ${border}`}>
+    <Collapsible open={open} onOpenChange={setOpen} className={`overflow-hidden rounded-surface border bg-card ${border}`}>
       <CollapsibleTrigger asChild>
         <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_16px] items-center gap-3 border-0 bg-transparent px-4 py-3 text-left hover:bg-accent">
-          <span className={`grid size-7 place-items-center rounded-lg ${ico}`}><Icon size={14} /></span>
+          <span className={`grid size-7 place-items-center rounded-control ${ico}`}><Icon size={14} /></span>
           <span className="min-w-0 truncate text-[13.5px] font-medium">{title}</span>
           <span className="rounded-sm border border-border bg-muted px-[6px] py-px font-mono text-[11px] text-muted-foreground">{items.length}</span>
           <I.ChevronDown size={12} className="text-muted-foreground transition-transform data-[open=true]:rotate-180" data-open={open} />
@@ -474,7 +474,7 @@ function GroupedFinding({
     <Collapsible open={open} onOpenChange={setOpen} className="border-b border-dashed border-border last:border-b-0">
       <CollapsibleTrigger asChild>
         <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_16px] max-[640px]:grid-cols-[32px_1fr_16px] items-center gap-3 border-0 bg-transparent px-4 py-2.5 pl-7 text-left hover:bg-accent">
-          <span className={`grid size-6 place-items-center rounded-md ${ico}`}><Icon size={12} /></span>
+          <span className={`grid size-6 place-items-center rounded-control ${ico}`}><Icon size={12} /></span>
           <span className="min-w-0 truncate text-[13px]">{c.title}</span>
           <span className="font-mono text-[11px] text-muted-foreground max-[640px]:hidden">{c.resource}</span>
           <I.ChevronDown size={11} className="text-muted-foreground transition-transform data-[open=true]:rotate-180" data-open={open} />

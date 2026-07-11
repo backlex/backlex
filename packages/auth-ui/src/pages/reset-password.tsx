@@ -126,7 +126,7 @@ export const ResetPasswordPage = ({
         <AuthCardHeader title={copy.title} description={copy.description} />
 
         {linkInvalid ? (
-          <div className="flex flex-col gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 p-4">
+          <div className="flex flex-col gap-2 rounded-surface border border-destructive/40 bg-destructive/10 p-4">
             <div className="grid size-9 place-items-center rounded-full bg-destructive text-destructive-foreground">
               <AlertTriangleIcon size={18} />
             </div>

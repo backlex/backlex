@@ -100,7 +100,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
 
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Permissions (per action)</Trans></label>
-            <div className="overflow-hidden rounded-xl border border-border">
+            <div className="overflow-hidden rounded-control border border-border">
               {ACTIONS.map((a, i) => (
                 <div
                   key={a}
@@ -119,7 +119,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
                         key={opt.v}
                         type="button"
                         onClick={() => setRule((r) => ({ ...r, [a]: opt.v as RuleState }))}
-                        className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[11.5px] text-foreground hover:bg-accent ${rule[a] === opt.v ? "border-chip-border bg-accent" : "border-border bg-card"}`}
+                        className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-control border px-[11px] text-[11.5px] text-foreground hover:bg-accent ${rule[a] === opt.v ? "border-chip-border bg-accent" : "border-border bg-card"}`}
                       >
                         {opt.label}
                       </button>
@@ -132,8 +132,8 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
 
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Compiled rule</Trans></label>
-            <ScrollArea className="rounded-xl">
-            <pre className="m-0 whitespace-pre rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{compiled}</pre>
+            <ScrollArea className="rounded-control">
+            <pre className="m-0 whitespace-pre rounded-control bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{compiled}</pre>
             </ScrollArea>
             <span className="text-[11.5px] text-muted-foreground"><Trans>Generated DSL — saved to <span className="font-mono">role_permissions</span> on save.</Trans></span>
           </div>

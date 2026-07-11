@@ -307,14 +307,14 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
                     <Input type="number" min={1} max={25} value={draft.maxSteps} onChange={(e) => setDraft({ ...draft, maxSteps: Math.max(1, Math.min(25, Number(e.target.value) || 1)) })} />
                   </div>
                 </div>
-                <div className="flex items-center justify-between rounded-md border border-border px-3 py-2.5">
+                <div className="flex items-center justify-between rounded-control border border-border px-3 py-2.5">
                   <div className="flex flex-col">
                     <span className="text-[13px] font-medium"><Trans>Memory</Trans></span>
                     <span className="text-[11.5px] text-muted-foreground"><Trans>Recall relevant past turns (needs an embedding provider).</Trans></span>
                   </div>
                   <Switch checked={draft.memory} onChange={(next) => setDraft({ ...draft, memory: next })} />
                 </div>
-                <div className="flex items-center justify-between rounded-md border border-border px-3 py-2.5">
+                <div className="flex items-center justify-between rounded-control border border-border px-3 py-2.5">
                   <span className="text-[13px] font-medium"><Trans>Active</Trans></span>
                   <Switch checked={draft.active} onChange={(next) => setDraft({ ...draft, active: next })} />
                 </div>
@@ -324,7 +324,7 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
                     <Label><Trans>Tools</Trans> <span className="text-[11px] text-muted-foreground">({draft.tools.length})</span></Label>
                     <Input className="h-7 w-40 text-[12px]" value={toolFilter} onChange={(e) => setToolFilter(e.target.value)} placeholder={t`Filter tools…`} />
                   </div>
-                  <div className="max-h-[200px] overflow-hidden rounded-md border border-border">
+                  <div className="max-h-[200px] overflow-hidden rounded-control border border-border">
                     <ScrollArea className="max-h-[200px]">
                       <div className="flex flex-col">
                         {filteredTools.length === 0 && (
@@ -490,7 +490,7 @@ function AgentDetail({
         <span className="text-xs text-muted-foreground">· {agent.tools.length} {t`tools`}</span>
         <div className="ml-auto flex items-center gap-2.5">
           <select
-            className="h-8 rounded-md border border-border bg-background px-2 text-[12.5px]"
+            className="h-8 rounded-control border border-border bg-background px-2 text-[12.5px]"
             value={threadId ?? ""}
             onChange={(e) => setThreadId(e.target.value || null)}
           >
@@ -505,12 +505,12 @@ function AgentDetail({
       </div>
 
       {agent.tools.length === 0 && (
-        <div className="rounded-md border border-dashed border-border px-3 py-2 text-[12px] text-muted-foreground">
+        <div className="rounded-surface border border-dashed border-border px-3 py-2 text-[12px] text-muted-foreground">
           <Trans>This agent has no tools — it answers from the model alone. Add tools in Edit to let it read your data.</Trans>
         </div>
       )}
 
-      <div className="flex h-[440px] flex-col overflow-hidden rounded-md border border-border">
+      <div className="flex h-[440px] flex-col overflow-hidden rounded-control border border-border">
         <ScrollArea className="min-h-0 flex-1">
           <div className="flex flex-col gap-3 p-4">
             {messages.length === 0 && liveSteps.length === 0 && (
@@ -522,7 +522,7 @@ function AgentDetail({
               <MessageRow key={m.id} message={m} />
             ))}
             {liveSteps.map((s, i) => (
-              <div key={`live-${i}`} className="flex flex-col gap-1 rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px]">
+              <div key={`live-${i}`} className="flex flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
                 <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
                   <I.Zap size={12} /> {s.tool}
                 </span>
@@ -562,7 +562,7 @@ function AgentDetail({
 function MessageRow({ message }: { message: Message }) {
   if (message.role === "tool") {
     return (
-      <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px]">
+      <div className="flex flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
         <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
           <I.Zap size={12} /> {message.toolName}
         </span>
@@ -574,7 +574,7 @@ function MessageRow({ message }: { message: Message }) {
   // A tool-call assistant step carries a toolName — render it like a step note.
   if (message.role === "assistant" && message.toolName) {
     return (
-      <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px]">
+      <div className="flex flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
         <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
           <I.Sparkles size={12} /> {message.toolName}
         </span>
@@ -584,7 +584,7 @@ function MessageRow({ message }: { message: Message }) {
   }
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[80%] whitespace-pre-wrap rounded-lg px-3.5 py-2 text-[13px] ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+      <div className={`max-w-[80%] whitespace-pre-wrap rounded-surface px-3.5 py-2 text-[13px] ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
         {message.content}
       </div>
     </div>

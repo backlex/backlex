@@ -111,7 +111,7 @@ export const McpGuardsFields = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-2 rounded-md border border-border/60 bg-muted/30 p-3">
+      <div className="flex items-start gap-2 rounded-control border border-border/60 bg-muted/30 p-3">
         <Checkbox
           id={readonlyId}
           checked={readOnly}
@@ -169,10 +169,10 @@ export const McpGuardsFields = ({
           )}
         </p>
         {loading && (
-          <div className="flex flex-col gap-2 rounded-md border border-border/50 bg-muted/20 p-3">
+          <div className="flex flex-col gap-2 rounded-control border border-border/50 bg-muted/20 p-3">
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className="flex items-center gap-2">
-                <Skeleton className="size-4 rounded" />
+                <Skeleton className="size-4 rounded-sm" />
                 <Skeleton className="h-3.5 w-44" />
               </div>
             ))}
@@ -191,7 +191,7 @@ export const McpGuardsFields = ({
                     return (
                       <label
                         key={tool.name}
-                        className="flex min-w-0 cursor-pointer items-start gap-2 rounded-md p-2 hover:bg-muted/40"
+                        className="flex min-w-0 cursor-pointer items-start gap-2 rounded-control p-2 hover:bg-muted/40"
                       >
                         <Checkbox
                           checked={checked}

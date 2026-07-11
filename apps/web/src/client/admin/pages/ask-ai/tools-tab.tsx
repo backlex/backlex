@@ -262,7 +262,7 @@ export function ToolsTab({
               <div className="flex flex-col gap-2 px-5 py-4">
                 {[0, 1, 2, 3].map((i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <Skeleton className="size-4 rounded" />
+                    <Skeleton className="size-4 rounded-sm" />
                     <Skeleton className="h-3.5 w-48" />
                   </div>
                 ))}

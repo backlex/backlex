@@ -135,7 +135,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Runtime</Trans></div>
               <div className="text-[11.5px] text-muted-foreground"><Trans>Auto-detected from <span className="font-mono">env</span> bindings.</Trans></div>
             </div>
-            <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className="size-[7px] shrink-0 rounded-full bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]" />{adapter}</span>
+            <span className="inline-flex items-center gap-1.5 rounded-control border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className="size-[7px] shrink-0 rounded-full bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]" />{adapter}</span>
           </div>
         </Card>
         <WorkspaceLocaleCard pushToast={pushToast} />
@@ -159,7 +159,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
 
       {tab === "bindings" && (
         <div className="flex max-w-[920px] flex-col gap-3">
-          <div className="flex items-start gap-2.5 overflow-hidden rounded-2xl border border-border bg-muted p-3.5">
+          <div className="flex items-start gap-2.5 overflow-hidden rounded-surface border border-border bg-muted p-3.5">
             <I.Info size={14} className="mt-0.5" />
             <div className="flex flex-col gap-0.5">
               <span className="text-[12.5px] font-medium"><Trans>Bindings are read-only here</Trans></span>
@@ -200,7 +200,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
               <I.Code size={13} />
               <span className="text-[12.5px] font-medium"><Trans>wrangler.toml snippet</Trans></span>
             </div>
-            <pre className="m-0 whitespace-pre-wrap rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{`[[d1_databases]]
+            <pre className="m-0 whitespace-pre-wrap rounded-control bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{`[[d1_databases]]
 binding = "D1"
 database_name = "backlex"
 
@@ -221,7 +221,7 @@ class_name = "RealtimeRoom"`}</pre>
 
       {tab === "env" && (
         <div className="flex max-w-[920px] flex-col gap-3">
-          <div className="flex items-start gap-2.5 overflow-hidden rounded-2xl border border-border bg-muted p-3.5">
+          <div className="flex items-start gap-2.5 overflow-hidden rounded-surface border border-border bg-muted p-3.5">
             <I.Info size={14} className="mt-0.5" />
             <div className="flex flex-col gap-0.5">
               <span className="text-[12.5px] font-medium"><Trans>Environment variables are read-only here</Trans></span>

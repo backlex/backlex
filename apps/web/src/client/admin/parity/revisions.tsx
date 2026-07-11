@@ -275,7 +275,7 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
               <div className="flex flex-col gap-3">
                 <Skeleton className="h-5 w-40" />
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                  <Skeleton key={i} className="h-16 w-full rounded-control" />
                 ))}
               </div>
             ) : (
@@ -330,7 +330,7 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
               return (
                 <div
                   key={d.field}
-                  className={`flex flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card p-3 ${d.changed || showFull ? "" : "opacity-70"}`}
+                  className={`flex flex-col gap-2 overflow-hidden rounded-control border border-border bg-card p-3 ${d.changed || showFull ? "" : "opacity-70"}`}
                 >
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-xs font-medium">{d.field}</span>
@@ -339,11 +339,11 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
                   </div>
                   <div className={`grid gap-2 ${hasPrev ? "grid-cols-2" : "grid-cols-1"}`}>
                     {hasPrev && (
-                      <div className={`whitespace-pre-wrap rounded-md border p-2 font-mono text-[11.5px] [word-break:break-word] ${d.changed ? "border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))]" : "border-border bg-card"}`}>
+                      <div className={`whitespace-pre-wrap rounded-control border p-2 font-mono text-[11.5px] [word-break:break-word] ${d.changed ? "border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))]" : "border-border bg-card"}`}>
                         <div className="mb-1 text-[10px] text-muted-foreground"><Trans>before</Trans></div>{fmtRevValue(d.before)}
                       </div>
                     )}
-                    <div className={`whitespace-pre-wrap rounded-md border p-2 font-mono text-[11.5px] [word-break:break-word] ${d.changed && hasPrev ? "border-[color-mix(in_oklch,oklch(0.7_0.18_145)_40%,var(--border))] bg-[color-mix(in_oklch,oklch(0.7_0.18_145)_12%,var(--card))]" : "border-border bg-card"}`}>
+                    <div className={`whitespace-pre-wrap rounded-control border p-2 font-mono text-[11.5px] [word-break:break-word] ${d.changed && hasPrev ? "border-[color-mix(in_oklch,oklch(0.7_0.18_145)_40%,var(--border))] bg-[color-mix(in_oklch,oklch(0.7_0.18_145)_12%,var(--card))]" : "border-border bg-card"}`}>
                       <div className="mb-1 text-[10px] text-muted-foreground">{hasPrev ? <Trans>after</Trans> : <Trans>value</Trans>}</div>{fmtRevValue(d.after)}
                     </div>
                   </div>

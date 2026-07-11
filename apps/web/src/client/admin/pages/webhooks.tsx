@@ -363,11 +363,11 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
               <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Events</Trans> <span className="text-destructive">*</span></label>
               <span className="text-[11.5px] text-muted-foreground"><Trans>{draft.events.length} selected</Trans></span>
             </div>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-1.5 rounded-xl border border-border bg-muted p-2.5">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-1.5 rounded-control border border-border bg-muted p-2.5">
               {WH_EVENTS.map((ev) => {
                 const on = draft.events.includes(ev);
                 return (
-                  <button key={ev} type="button" className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 ${on ? "border-interactive-hover-border bg-muted text-foreground" : "border-border bg-card text-muted-foreground hover:border-[color-mix(in_oklch,var(--foreground)_25%,var(--border))] hover:text-foreground"}`} onClick={() => toggleEvent(ev)}>
+                  <button key={ev} type="button" className={`flex cursor-pointer items-center gap-1.5 rounded-control border px-2.5 py-1.5 ${on ? "border-interactive-hover-border bg-muted text-foreground" : "border-border bg-card text-muted-foreground hover:border-[color-mix(in_oklch,var(--foreground)_25%,var(--border))] hover:text-foreground"}`} onClick={() => toggleEvent(ev)}>
                     {on ? <I.Check size={11} /> : <I.Plus size={11} />}
                     <span className="font-mono text-[11.5px]">{ev}</span>
                   </button>

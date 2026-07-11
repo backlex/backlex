@@ -185,9 +185,9 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
       <div className="grid grid-cols-3 max-[920px]:grid-cols-2 max-[560px]:grid-cols-1 gap-3">
         {!loaded
           ? skeletonKinds.map((k) => (
-              <div key={k} className="rounded-xl border border-border bg-card p-5 flex flex-col gap-3">
+              <div key={k} className="rounded-control border border-border bg-card p-5 flex flex-col gap-3">
                 <div className="flex items-start gap-3">
-                  <Skeleton className="h-10 w-10 rounded-md" />
+                  <Skeleton className="h-10 w-10 rounded-control" />
                   <Skeleton className="h-3.5 w-24 mt-1" />
                 </div>
                 <Skeleton className="h-3 w-full" />
@@ -200,10 +200,10 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
               const isConnected = it?.status === "connected";
               const busy = busyKind === kind;
               return (
-                <div key={kind} className="rounded-xl border border-border bg-card p-5 flex flex-col gap-3">
+                <div key={kind} className="rounded-control border border-border bg-card p-5 flex flex-col gap-3">
                   <div className="flex items-start gap-3">
                     <span
-                      className="w-10 h-10 rounded-md grid place-items-center font-bold text-white text-[14px] shrink-0"
+                      className="w-10 h-10 rounded-control grid place-items-center font-bold text-white text-[14px] shrink-0"
                       style={{ background: brand.markBg }}
                     >
                       {brand.mark}
@@ -346,7 +346,7 @@ function ConnectDialog({
                         key={e}
                         type="button"
                         onClick={() => toggleEvent(e)}
-                        className={`rounded-md border px-2 py-1 font-mono text-[11px] transition-colors ${
+                        className={`rounded-control border px-2 py-1 font-mono text-[11px] transition-colors ${
                           on
                             ? "border-primary bg-primary/10 text-foreground"
                             : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"

@@ -507,7 +507,7 @@ export function DatabaseImportPage({ pushToast }: PageProps) {
                     </p>
                   ) : (
                     tables.map((tbl) => (
-                      <label key={tbl.name} className="flex items-center gap-2.5 rounded px-1 py-1 text-[13px] hover:bg-accent">
+                      <label key={tbl.name} className="flex items-center gap-2.5 rounded-sm px-1 py-1 text-[13px] hover:bg-accent">
                         <Checkbox
                           checked={picked.has(tbl.name)}
                           onCheckedChange={(v) =>
@@ -537,7 +537,7 @@ export function DatabaseImportPage({ pushToast }: PageProps) {
                     <span className="font-mono">{plan.order.join(" → ")}</span>
                   </p>
                   {plan.tables.map((tbl) => (
-                    <div key={tbl.table} className="rounded-md border border-border px-3 py-2">
+                    <div key={tbl.table} className="rounded-control border border-border px-3 py-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-mono text-[12.5px] font-medium">{tbl.table}</span>
                         {tbl.include ? (

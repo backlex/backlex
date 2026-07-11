@@ -25,7 +25,7 @@ const FIELD_CLS = "flex flex-col gap-1.5";
 const FIELD_LABEL_CLS = "flex items-center gap-2 text-[12.5px] font-medium text-foreground";
 const FIELD_HINT_CLS = "text-[11.5px] text-muted-foreground";
 const CHIP_CLS =
-  "inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-3xl border border-border bg-card px-[11px] text-[12.5px] text-foreground";
+  "inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-control border border-border bg-card px-[11px] text-[12.5px] text-foreground";
 const AVATAR_XS_CLS =
   "grid size-[18px] place-items-center rounded-full border border-border bg-muted font-mono text-[9.5px] text-muted-foreground";
 

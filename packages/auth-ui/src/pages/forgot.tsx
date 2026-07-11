@@ -111,7 +111,7 @@ export const ForgotPage = ({
         <AuthCardHeader title={copy.title} description={copy.description} />
 
         {sent ? (
-          <div className="flex flex-col gap-2 rounded-2xl border border-primary/50 bg-primary/12 p-4">
+          <div className="flex flex-col gap-2 rounded-surface border border-primary/50 bg-primary/12 p-4">
             <div className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground">
               <MailIcon size={18} />
             </div>

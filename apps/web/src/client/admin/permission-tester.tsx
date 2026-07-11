@@ -174,7 +174,7 @@ export function PermissionTesterPanel({
               />
             </div>
           ) : (
-            <div className="flex flex-col gap-3 rounded-md border border-dashed border-border p-3">
+            <div className="flex flex-col gap-3 rounded-surface border border-dashed border-border p-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
                   <Trans>Roles</Trans>
@@ -356,7 +356,7 @@ function SimulationResult({ result }: { result: PermissionSimulation }) {
             <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
               <Trans>Matched rules</Trans>
             </span>
-            <ScrollArea className="w-full rounded-md border border-border" viewportClassName="max-h-64">
+            <ScrollArea className="w-full rounded-control border border-border" viewportClassName="max-h-64">
               <div className="min-w-[480px]">
                 {result.matchedRules.map((rule) => (
                   <div
@@ -391,7 +391,7 @@ function SimulationResult({ result }: { result: PermissionSimulation }) {
             <Trans>Compiled WHERE</Trans>
           </span>
           {result.whereSql ? (
-            <pre className="rounded-md border border-border bg-muted/40 px-3 py-2 font-mono text-xs whitespace-pre-wrap [overflow-wrap:anywhere]">
+            <pre className="rounded-control border border-border bg-muted/40 px-3 py-2 font-mono text-xs whitespace-pre-wrap [overflow-wrap:anywhere]">
               {result.whereSql.sql}
               {result.whereSql.params.length > 0 &&
                 `\n-- params: ${JSON.stringify(result.whereSql.params)}`}

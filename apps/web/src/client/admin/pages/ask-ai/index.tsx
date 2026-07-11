@@ -403,10 +403,10 @@ export function AskAiPage({
             </div>
             <div className="flex items-center gap-2 border-t border-border bg-card px-5 py-3">
               <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-                <kbd className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] leading-none text-muted-foreground">
+                <kbd className="rounded-control border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] leading-none text-muted-foreground">
                   ⌘
                 </kbd>
-                <kbd className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] leading-none text-muted-foreground">
+                <kbd className="rounded-control border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] leading-none text-muted-foreground">
                   ↵
                 </kbd>
                 <span><Trans>to run</Trans></span>
@@ -473,7 +473,7 @@ export function AskAiPage({
           )}
 
           {planError && (
-            <div className="rounded-2xl border border-destructive/40 bg-destructive/5 px-5 py-4 text-[12.5px] text-destructive">
+            <div className="rounded-surface border border-destructive/40 bg-destructive/5 px-5 py-4 text-[12.5px] text-destructive">
               {planError}
             </div>
           )}
@@ -535,7 +535,7 @@ export function AskAiPage({
                 {plan.rationale}
               </div>
               <div className="px-5 py-3">
-                <div className="rounded-xl border border-border bg-muted/40 p-4">
+                <div className="rounded-control border border-border bg-muted/40 p-4">
                   {editing ? (
                     <>
                       <Textarea

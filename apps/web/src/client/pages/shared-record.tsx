@@ -82,8 +82,8 @@ function FieldRow({
         </span>
       </div>
       {multiline ? (
-        <ScrollArea className="rounded-lg">
-          <pre className="whitespace-pre-wrap break-words rounded-lg bg-muted px-2.5 py-2 font-mono text-[12px] text-foreground">
+        <ScrollArea className="rounded-surface">
+          <pre className="whitespace-pre-wrap break-words rounded-surface bg-muted px-2.5 py-2 font-mono text-[12px] text-foreground">
             {display}
           </pre>
         </ScrollArea>

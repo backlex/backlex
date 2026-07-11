@@ -335,7 +335,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
             <div className="flex flex-col gap-3.5">
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>References collection</Trans></label>
-                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2">
+                <div className="flex items-center gap-2 rounded-surface border border-border bg-muted px-3 py-2">
                   <I.Database size={14} className="text-muted-foreground" />
                   <span className="font-mono text-[13px] text-foreground">{draft.to || "—"}</span>
                 </div>
@@ -398,7 +398,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
               </div>
 
               {wantsChoices && (
-                <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
+                <div className="flex flex-col gap-1.5 rounded-control bg-muted p-3">
                   <div className="mb-2 flex items-center gap-2">
                     <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Choices</Trans></span>
                     <span className="text-[11.5px] text-muted-foreground">
@@ -433,7 +433,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
                             overlaid invisibly so the control matches the other
                             inputs instead of the browser's chunky default swatch. */}
                         <label
-                          className="relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-border ring-offset-background focus-within:ring-2 focus-within:ring-ring/50"
+                          className="relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-control border border-border ring-offset-background focus-within:ring-2 focus-within:ring-ring/50"
                           title={t`Choice color`}
                           style={{ backgroundColor: c.color ?? "#A1A6B8" }}
                         >
@@ -455,7 +455,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
               <FieldFormatEditor type={draft.type} value={formatDraft} onChange={setFormatDraft} />
 
               {!wantsChoices && draft.type !== "integer" && draft.type !== "number" && draft.type !== "timestamp" && (
-                <div className="rounded-xl bg-muted p-3 text-[12.5px] text-muted-foreground">
+                <div className="rounded-control bg-muted p-3 text-[12.5px] text-muted-foreground">
                   <Trans>This interface has no extra options. Selection interfaces (dropdown, radio…) show a choices editor here.</Trans>
                 </div>
               )}
@@ -472,7 +472,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
           )}
 
           {activeTab === "conditions" && (
-            <div className="flex flex-col gap-2 rounded-xl bg-muted p-3">
+            <div className="flex flex-col gap-2 rounded-control bg-muted p-3">
               <div className="flex items-center gap-2">
                 <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Conditions</Trans></span>
                 <div className="flex-1" />
@@ -489,7 +489,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
               )}
 
               {conds.map((c, i) => (
-                <div key={i} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-2.5">
+                <div key={i} className="flex flex-col gap-2 rounded-surface border border-border bg-card p-2.5">
                   <div className="flex items-center gap-2">
                     <Input
                       className="h-8 flex-1"

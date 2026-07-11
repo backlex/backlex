@@ -314,6 +314,13 @@ const matchesInner = (
     return Number.NaN;
   };
   for (const [field, cmp] of Object.entries(cond as Record<string, ComparisonObj>)) {
+    // The JS matcher is row-local — it can't traverse relations, so a dotted
+    // key (`employee.app_user_id`) has no value it could compare against.
+    // Report NO MATCH (fail closed) instead of falling through to comparisons
+    // against `undefined`, which could accidentally match (`_neq`, `_null`,
+    // `_nin`, …). The SQL compiler lowers these keys to correlated EXISTS
+    // subqueries; realtime + the permission simulator simply never match.
+    if (field.includes(".")) return false;
     const left = lookup(row, field);
     if (cmp._eq !== undefined && left !== r(cmp._eq)) return false;
     if (cmp._neq !== undefined && left === r(cmp._neq)) return false;

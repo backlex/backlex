@@ -1831,6 +1831,261 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
     ],
   },
+
+  {
+    id: "invoicing",
+    label: "Invoicing / Billing",
+    groups: ["Billing", "Expenses", "Settings"],
+    description:
+      "QuickBooks-grade billing: customers with payment terms, invoices with line items and taxes, payments, credit notes, and company expenses with approval status.",
+    collections: [
+      {
+        slug: "taxes", group: "Settings", singular: "Tax", plural: "Taxes", defaultSort: "name",
+        fields: [text("name", { required: true }), num("rate", { validation: { min: 0, max: 100 }, label: "Rate (%)" }), bool("active", { default: true, label: "Active" })],
+        samples: [{ name: "VAT 20%", rate: 20, active: true }, { name: "Sales tax 8.5%", rate: 8.5, active: true }],
+      },
+      {
+        slug: "customers", group: "Billing", singular: "Customer", plural: "Customers", fts: true, defaultSort: "name",
+        fields: [
+          text("name", { required: true, searchable: true, group: "Customer" }),
+          email("email", { group: "Customer" }), text("phone", { group: "Customer" }),
+          text("tax_number", { label: "Tax number", group: "Customer" }),
+          text("address", { group: "Address" }), text("city", { group: "Address" }), text("country", { group: "Address" }),
+          select("payment_terms", [ch("due_on_receipt", C.green, "Due on receipt"), ch("net_15", C.blue, "Net 15"), ch("net_30", C.teal, "Net 30"), ch("net_60", C.amber, "Net 60")], { default: "net_30", label: "Payment terms", group: "Billing" }),
+          select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", group: "Billing" }),
+          notes("notes", { group: "Billing" }), bool("active", { default: true, label: "Active", group: "Billing" }),
+        ],
+        samples: [
+          { name: "Acme Corp", email: "billing@acme.example", tax_number: "US-88-1234567", city: "Chicago", country: "US", payment_terms: "net_30", currency: "USD", active: true },
+          { name: "Nordwind GmbH", email: "finanz@nordwind.example", tax_number: "DE123456789", city: "Hamburg", country: "DE", payment_terms: "net_15", currency: "EUR", active: true },
+        ],
+      },
+      {
+        slug: "invoices", group: "Billing", singular: "Invoice", plural: "Invoices", defaultSort: "-issue_date",
+        fields: [
+          text("number", { required: true, unique: true, group: "Invoice" }),
+          rel("customer", "customers", { group: "Invoice" }),
+          select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("partial", C.amber, "Partially paid"), ch("paid", C.green), ch("overdue", C.red), ch("void", C.slate)], { default: "draft", group: "Invoice" }),
+          date("issue_date", { indexed: true, label: "Issue date", group: "Invoice" }),
+          date("due_date", { indexed: true, label: "Due date", group: "Invoice" }),
+          select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", group: "Amounts" }),
+          money("subtotal", { group: "Amounts" }), money("tax_total", { label: "Tax", group: "Amounts" }), money("total", { group: "Amounts" }),
+          money("amount_paid", { label: "Amount paid", group: "Amounts" }),
+          computedNum("balance_due", "total - amount_paid", { label: "Balance due", group: "Amounts" }),
+          notes("notes", { group: "Amounts" }),
+        ],
+        samples: [
+          { number: "INV-2026-001", customer: { ref: "customers:0" }, status: "paid", issue_date: ms("2026-06-01"), due_date: ms("2026-07-01"), currency: "USD", subtotal: 4800, tax_total: 408, total: 5208, amount_paid: 5208 },
+          { number: "INV-2026-002", customer: { ref: "customers:1" }, status: "sent", issue_date: ms("2026-06-20"), due_date: ms("2026-07-05"), currency: "EUR", subtotal: 1500, tax_total: 300, total: 1800, amount_paid: 0 },
+        ],
+      },
+      {
+        slug: "invoice_lines", group: "Billing", singular: "Line item", plural: "Line items",
+        fields: [
+          rel("invoice", "invoices"), text("description", { required: true }),
+          num("quantity", { default: 1, validation: { min: 0 } }), money("unit_price", { label: "Unit price" }),
+          rel("tax", "taxes"), computedNum("line_total", "quantity * unit_price", { label: "Line total" }),
+        ],
+        samples: [
+          { invoice: { ref: "invoices:0" }, description: "Consulting — June retainer", quantity: 32, unit_price: 150, tax: { ref: "taxes:1" } },
+          { invoice: { ref: "invoices:1" }, description: "Design sprint", quantity: 1, unit_price: 1500, tax: { ref: "taxes:0" } },
+        ],
+      },
+      {
+        slug: "payments", group: "Billing", singular: "Payment", plural: "Payments", defaultSort: "-received_at",
+        fields: [
+          rel("invoice", "invoices"), rel("customer", "customers"), money("amount"),
+          select("method", [ch("bank_transfer", C.blue, "Bank transfer"), ch("card", C.purple), ch("cash", C.green), ch("check", C.gray), ch("other", C.slate)], { default: "bank_transfer" }),
+          date("received_at", { indexed: true, label: "Received at" }), text("reference"),
+        ],
+        samples: [{ invoice: { ref: "invoices:0" }, customer: { ref: "customers:0" }, amount: 5208, method: "bank_transfer", received_at: ms("2026-06-28"), reference: "WIRE-84413" }],
+      },
+      {
+        slug: "credit_notes", group: "Billing", singular: "Credit note", plural: "Credit notes", defaultSort: "-issued_at",
+        fields: [
+          text("number", { required: true, unique: true }), rel("invoice", "invoices"), rel("customer", "customers"), money("amount"),
+          select("status", [ch("draft", C.gray), ch("issued", C.blue), ch("applied", C.green)], { default: "draft" }),
+          select("reason", [ch("return", C.amber), ch("correction", C.blue), ch("goodwill", C.teal), ch("duplicate", C.gray)], { default: "correction" }),
+          date("issued_at", { indexed: true, label: "Issued at" }), notes("note"),
+        ],
+        samples: [{ number: "CN-2026-001", invoice: { ref: "invoices:0" }, customer: { ref: "customers:0" }, amount: 150, status: "applied", reason: "correction", issued_at: ms("2026-06-30"), note: "Overbilled one consulting hour." }],
+      },
+      {
+        slug: "expenses", group: "Expenses", singular: "Expense", plural: "Expenses", defaultSort: "-spent_at",
+        fields: [
+          text("merchant", { required: true, group: "Expense" }),
+          select("category", [ch("travel", C.blue), ch("meals", C.amber), ch("office", C.teal), ch("software", C.purple), ch("other", C.gray)], { default: "other", group: "Expense" }),
+          money("amount", { group: "Expense" }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", group: "Expense" }),
+          date("spent_at", { indexed: true, label: "Spent at", group: "Expense" }),
+          select("status", [ch("submitted", C.blue), ch("approved", C.green), ch("reimbursed", C.teal), ch("rejected", C.red)], { default: "submitted", group: "Approval" }),
+          text("submitted_by", { label: "Submitted by", group: "Approval" }),
+          bool("billable", { default: false, label: "Billable to a customer", group: "Approval" }),
+          rel("customer", "customers", { label: "Re-invoice to", group: "Approval" }),
+          file("receipt", { group: "Approval" }),
+        ],
+        samples: [
+          { merchant: "Delta Airlines", category: "travel", amount: 420, currency: "USD", spent_at: ms("2026-06-12"), status: "approved", submitted_by: "Sam Carter", billable: true, customer: { ref: "customers:0" } },
+          { merchant: "Figma", category: "software", amount: 45, currency: "USD", spent_at: ms("2026-06-15"), status: "submitted", submitted_by: "Robin Vale" },
+        ],
+      },
+    ],
+    roles: [
+      {
+        name: "Bookkeeper",
+        description: "Manage invoices, payments, credit notes and expenses; read customers and taxes.",
+        permissions: [
+          { collection: "taxes", action: "read" },
+          { collection: "customers", action: "read" },
+          { collection: "invoices", action: "read" },
+          { collection: "invoices", action: "create" },
+          { collection: "invoices", action: "update" },
+          { collection: "invoice_lines", action: "read" },
+          { collection: "invoice_lines", action: "create" },
+          { collection: "invoice_lines", action: "update" },
+          { collection: "payments", action: "read" },
+          { collection: "payments", action: "create" },
+          { collection: "credit_notes", action: "read" },
+          { collection: "credit_notes", action: "create" },
+          { collection: "credit_notes", action: "update" },
+          { collection: "expenses", action: "read" },
+          { collection: "expenses", action: "update" },
+        ],
+      },
+    ],
+    dashboards: [
+      {
+        name: "Billing overview",
+        description: "Invoiced vs collected, invoice flow and spend.",
+        panels: [
+          { name: "Invoices", kind: "items-aggregate", viz: "counter", config: { collection: "invoices", agg: "count" } },
+          { name: "Invoiced total", kind: "items-aggregate", viz: "counter", config: { collection: "invoices", agg: "sum", field: "total" } },
+          { name: "Collected", kind: "items-aggregate", viz: "counter", config: { collection: "invoices", agg: "sum", field: "amount_paid" } },
+          { name: "Invoices by status", kind: "items-aggregate", viz: "donut", config: { collection: "invoices", agg: "count", groupBy: "status" } },
+          { name: "Payments by method", kind: "items-aggregate", viz: "bars", config: { collection: "payments", agg: "count", groupBy: "method" } },
+          { name: "Expenses by category", kind: "items-aggregate", viz: "bars", config: { collection: "expenses", agg: "count", groupBy: "category" } },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: "appointments",
+    label: "Appointments / Scheduling",
+    groups: ["Scheduling", "Catalog", "People"],
+    description:
+      "Calendly-grade booking: bookable services with duration, buffer and price, staff with weekly availability, resources (rooms, stations), customers, and bookings with payment status and reminders.",
+    collections: [
+      {
+        slug: "staff", group: "People", singular: "Staff member", plural: "Staff", defaultSort: "name",
+        fields: [text("name", { required: true }), text("title"), email("email"), text("phone"), image("avatar"), notes("bio"), bool("active", { default: true, label: "Active" })],
+        samples: [{ name: "Maya Chen", title: "Senior consultant", email: "maya@example.com", active: true }, { name: "Leo Fontaine", title: "Consultant", email: "leo@example.com", active: true }],
+      },
+      {
+        slug: "resources", group: "Catalog", singular: "Resource", plural: "Resources", defaultSort: "name",
+        fields: [
+          text("name", { required: true }),
+          select("type", [ch("room", C.blue), ch("station", C.amber), ch("equipment", C.teal), ch("other", C.gray)], { default: "room" }),
+          int("capacity", { default: 1, validation: { min: 1 } }), bool("active", { default: true, label: "Active" }),
+        ],
+        samples: [{ name: "Meeting room A", type: "room", capacity: 6, active: true }, { name: "Studio 1", type: "station", capacity: 1, active: true }],
+      },
+      {
+        slug: "services", group: "Catalog", singular: "Service", plural: "Services", fts: true, defaultSort: "name",
+        fields: [
+          text("name", { required: true, searchable: true, group: "Service" }), notes("description", { searchable: true, group: "Service" }),
+          int("duration_minutes", { default: 30, validation: { min: 5 }, label: "Duration (min)", group: "Slot" }),
+          int("buffer_minutes", { default: 0, validation: { min: 0 }, label: "Buffer after (min)", group: "Slot" }),
+          select("location_type", [ch("in_person", C.blue, "In person"), ch("video", C.purple), ch("phone", C.teal)], { default: "in_person", label: "Location", group: "Slot" }),
+          money("price", { group: "Pricing" }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD", group: "Pricing" }),
+          relMany("providers", "staff", { label: "Bookable staff", group: "Pricing" }),
+          bool("active", { default: true, label: "Active", group: "Pricing" }),
+        ],
+        samples: [
+          { name: "Intro consultation", description: "30-minute discovery call.", duration_minutes: 30, buffer_minutes: 10, location_type: "video", price: 0, currency: "USD", active: true },
+          { name: "Strategy session", description: "Deep-dive working session.", duration_minutes: 90, buffer_minutes: 15, location_type: "in_person", price: 240, currency: "USD", active: true },
+        ],
+      },
+      {
+        slug: "availability_rules", group: "Scheduling", singular: "Availability rule", plural: "Availability",
+        fields: [
+          rel("staff", "staff"),
+          select("weekday", [ch("monday", C.blue), ch("tuesday", C.blue), ch("wednesday", C.blue), ch("thursday", C.blue), ch("friday", C.blue), ch("saturday", C.amber), ch("sunday", C.amber)], { default: "monday" }),
+          text("start_time", { default: "09:00", label: "From (HH:MM)" }), text("end_time", { default: "17:00", label: "To (HH:MM)" }),
+          bool("active", { default: true, label: "Active" }),
+        ],
+        samples: [
+          { staff: { ref: "staff:0" }, weekday: "monday", start_time: "09:00", end_time: "17:00", active: true },
+          { staff: { ref: "staff:0" }, weekday: "wednesday", start_time: "10:00", end_time: "16:00", active: true },
+        ],
+      },
+      {
+        slug: "customers", group: "People", singular: "Customer", plural: "Customers", fts: true, defaultSort: "name",
+        fields: [text("name", { required: true, searchable: true }), email("email"), text("phone"), notes("notes")],
+        samples: [{ name: "Jordan Ellis", email: "jordan@example.com", phone: "+1 555 0142" }],
+      },
+      {
+        slug: "bookings", group: "Scheduling", singular: "Booking", plural: "Bookings", defaultSort: "-starts_at",
+        fields: [
+          rel("service", "services", { group: "Booking" }), rel("staff", "staff", { group: "Booking" }),
+          rel("resource", "resources", { group: "Booking" }), rel("customer", "customers", { group: "Booking" }),
+          ts("starts_at", { required: true, indexed: true, label: "Starts at", group: "Booking" }),
+          ts("ends_at", { label: "Ends at", group: "Booking" }),
+          select("status", [ch("pending", C.amber), ch("confirmed", C.blue), ch("completed", C.green), ch("cancelled", C.red), ch("no_show", C.slate, "No-show")], { default: "pending", group: "Status" }),
+          select("payment_status", [ch("unpaid", C.gray), ch("paid", C.green), ch("refunded", C.red)], { default: "unpaid", label: "Payment", group: "Status" }),
+          money("amount", { group: "Status" }), notes("notes", { group: "Status" }),
+        ],
+        samples: [
+          { service: { ref: "services:0" }, staff: { ref: "staff:0" }, customer: { ref: "customers:0" }, starts_at: ms("2026-07-14T15:00:00Z"), ends_at: ms("2026-07-14T15:30:00Z"), status: "confirmed", payment_status: "unpaid", amount: 0 },
+          { service: { ref: "services:1" }, staff: { ref: "staff:1" }, resource: { ref: "resources:0" }, customer: { ref: "customers:0" }, starts_at: ms("2026-07-18T09:00:00Z"), ends_at: ms("2026-07-18T10:30:00Z"), status: "pending", payment_status: "paid", amount: 240 },
+        ],
+      },
+      {
+        slug: "reminders", group: "Scheduling", singular: "Reminder", plural: "Reminders",
+        fields: [
+          rel("booking", "bookings"),
+          select("channel", [ch("email", C.blue), ch("sms", C.teal, "SMS")], { default: "email" }),
+          int("minutes_before", { default: 60, validation: { min: 0 }, label: "Minutes before" }),
+          select("status", [ch("scheduled", C.amber), ch("sent", C.green), ch("failed", C.red)], { default: "scheduled" }),
+          ts("sent_at", { label: "Sent at" }),
+        ],
+        samples: [{ booking: { ref: "bookings:0" }, channel: "email", minutes_before: 60, status: "scheduled" }],
+      },
+    ],
+    roles: [
+      {
+        name: "Front desk",
+        description: "Take and manage bookings; read the service catalog and staff schedules.",
+        permissions: [
+          { collection: "staff", action: "read" },
+          { collection: "resources", action: "read" },
+          { collection: "services", action: "read" },
+          { collection: "availability_rules", action: "read" },
+          { collection: "customers", action: "read" },
+          { collection: "customers", action: "create" },
+          { collection: "customers", action: "update" },
+          { collection: "bookings", action: "read" },
+          { collection: "bookings", action: "create" },
+          { collection: "bookings", action: "update" },
+          { collection: "reminders", action: "read" },
+          { collection: "reminders", action: "create" },
+          { collection: "reminders", action: "update" },
+        ],
+      },
+    ],
+    dashboards: [
+      {
+        name: "Bookings overview",
+        description: "Booking volume, status mix and revenue.",
+        panels: [
+          { name: "Bookings", kind: "items-aggregate", viz: "counter", config: { collection: "bookings", agg: "count" } },
+          { name: "Revenue", kind: "items-aggregate", viz: "counter", config: { collection: "bookings", agg: "sum", field: "amount" } },
+          { name: "Customers", kind: "items-aggregate", viz: "counter", config: { collection: "customers", agg: "count" } },
+          { name: "Bookings by status", kind: "items-aggregate", viz: "donut", config: { collection: "bookings", agg: "count", groupBy: "status" } },
+          { name: "Bookings by payment", kind: "items-aggregate", viz: "bars", config: { collection: "bookings", agg: "count", groupBy: "payment_status" } },
+        ],
+      },
+    ],
+  },
 ];
 
 export const TEMPLATE_IDS = TEMPLATES.map((t) => t.id);
@@ -1854,6 +2109,8 @@ const CATEGORY: Record<string, string> = {
   inventory: "Operations",
   support: "Operations",
   projects: "Operations",
+  invoicing: "Finance",
+  appointments: "Operations",
   "real-estate": "Industry",
   lms: "Industry",
   nonprofit: "Industry",

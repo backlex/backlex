@@ -109,9 +109,12 @@ body {
   gap: 10px;
   padding: 14px 28px;
   border-bottom: 1px solid var(--border);
-  /* Frosted translucent bar so the cosmic backdrop reads faintly behind it. */
-  background: rgba(6, 5, 13, 0.72);
-  backdrop-filter: blur(14px);
+  /* Translucent bar so the cosmic backdrop reads faintly behind it.
+   * No backdrop-filter: Chrome re-evaluates it on EVERY document repaint —
+   * including scrolls in dialogs stacked above it — measured in cloud at
+   * 36.6ms → 17.3ms avg frame time while scrolling a modal body. A higher
+   * alpha approximates the old frosted separation instead. */
+  background: rgba(6, 5, 13, 0.9);
 }
 .crumbs { display: flex; align-items: center; gap: 2px; font-size: 13px; color: var(--muted-foreground); }
 .crumbs.path { font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace); }
@@ -161,12 +164,10 @@ body {
  * backdrop can render on the pre-shell boot screen (AuthGate) before this
  * lazy admin bundle has loaded. */
 
-/* Frosted translucent sidebar so the backdrop reads through it (design). */
+/* Translucent sidebar so the backdrop reads through it (design). Same
+ * no-backdrop-filter rule as the topbar above — higher alpha instead. */
 html.dark {
-  --sidebar: rgba(12, 10, 22, 0.58);
-}
-[data-slot="sidebar-inner"] {
-  backdrop-filter: blur(14px);
+  --sidebar: rgba(12, 10, 22, 0.85);
 }
 .icon-btn {
   width: 32px; height: 32px;

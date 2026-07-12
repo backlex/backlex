@@ -16,7 +16,7 @@ import { getAuthors, subscribeAuthors } from "./authors-cache";
 import { i18n } from "@lingui/core";
 import { fieldLabel, formatFieldValue } from "./format-value";
 import { useListColumns } from "./list-columns";
-import { useRelationLabels } from "./relation-labels";
+import { useAppUserLabels, useRelationLabels } from "./relation-labels";
 import { shortId } from "./row-label";
 import { useCollections } from "./queries";
 
@@ -838,6 +838,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
       label?: string;
       type?: string;
       to?: string;
+      interface?: string;
       translations?: Record<string, string>;
       dot?: { head: string; sub: string };
       dotLabel?: string;
@@ -849,6 +850,12 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   // of the raw FK id (one `_in` fetch per relation column per page).
   const relLabels = useRelationLabels(
     dynFields.filter((f) => f.type === "relation" && f.to && !f.dot),
+    rows as Array<Record<string, unknown>>,
+  );
+  // `interface: "user"` columns render the end-user's email (+ name) instead
+  // of the raw app_users id (one batched `?ids=` fetch per page).
+  const appUserLabels = useAppUserLabels(
+    dynFields.filter((f) => !f.dot && f.interface === "user").map((f) => f.name),
     rows as Array<Record<string, unknown>>,
   );
   // Sticky classes for the identity slot (title column, or the first data
@@ -964,6 +971,9 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                   // When the head is server-expanded the value is the nested
                   // row itself — its id keys the same label map.
                   const isRel = !f.dot && f.type === "relation";
+                  // App-user link cells resolve the id to email (+ name) via
+                  // the batched map — same lazy pattern as relation labels.
+                  const isUser = !f.dot && f.interface === "user";
                   const fkId = isRel && rawV != null && typeof rawV === "object"
                     ? String((rawV as Record<string, unknown>).id ?? "")
                     : rawV;
@@ -971,7 +981,11 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                     ? fkId == null || fkId === ""
                       ? ""
                       : (relLabels[f.name]?.[String(fkId)] ?? shortId(fkId))
-                    : formatFieldValue(rawV, f, i18n.locale);
+                    : isUser
+                      ? rawV == null || rawV === ""
+                        ? ""
+                        : (appUserLabels[String(rawV)] ?? shortId(rawV))
+                      : formatFieldValue(rawV, f, i18n.locale);
                   const choices = fieldChoices(f);
                   return (
                     <EditCell

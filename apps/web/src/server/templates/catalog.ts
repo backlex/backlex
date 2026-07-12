@@ -178,8 +178,9 @@ const tags = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name,
 const parent = (to: string, extra: Partial<FieldDef> = {}): FieldDef => rel("parent", to, { label: "Parent", ...extra });
 /** Link to a workspace end-user (`app_users.id`) — set by the admin (or a
  *  future invite/auto-link flow) so the person can sign in and see their own
- *  rows via `$user.id` permission conditions. */
-const userLink = (extra: Partial<FieldDef> = {}): FieldDef => text("app_user_id", { indexed: true, label: "Login user", ...extra });
+ *  rows via `$user.id` permission conditions. The "user" interface renders an
+ *  end-user picker in the admin and enforces that the id exists on write. */
+const userLink = (extra: Partial<FieldDef> = {}): FieldDef => text("app_user_id", { indexed: true, label: "Login user", interface: "user", ...extra });
 /** Integer position/sort key — indexed so ordered lists stay cheap. */
 const position = (name = "position", extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "integer", default: 0, indexed: true, ...extra });
 /** Percent 0–100 integer. */

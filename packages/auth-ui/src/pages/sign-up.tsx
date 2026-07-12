@@ -157,9 +157,16 @@ export const SignUpPage = ({
   const [stage, setStage] = useState<
     "form" | "creating" | "enrolling" | "verify"
   >("form");
+  // True once getSession has resolved with NO session (the session-present
+  // path navigates away instead). Claim mode holds its first paint on this.
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   const claim = searchParam("claim") === "1";
   const isFirst = surface?.firstUserMode === true && claim;
+  // A claim deep-link on an already-claimed instance (the cloud panel's
+  // claimed-probe is best-effort and can link here stale) — never show the
+  // claim/sign-up form for it; bounce to sign-in instead.
+  const staleClaim = claim && surface != null && surface.firstUserMode !== true;
   const openSignup = surface ? surface.openSignup !== false : true;
   const requireVerify = surface
     ? surface.requireEmailVerification !== false
@@ -179,12 +186,19 @@ export const SignUpPage = ({
         const session = (res as { data?: { session?: unknown } })?.data
           ?.session;
         if (session) navigate("/", { replace: true });
+        else setSessionChecked(true);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled) setSessionChecked(true);
+      });
     return () => {
       cancelled = true;
     };
   }, [authClient, navigate]);
+
+  useEffect(() => {
+    if (staleClaim && sessionChecked) navigate("/sign-in", { replace: true });
+  }, [staleClaim, sessionChecked, navigate]);
 
   // `forcedEmail` may arrive after first paint (it rides the async auth
   // surface); sync it into the field once it's known.
@@ -249,6 +263,16 @@ export const SignUpPage = ({
       window.location.href = "/";
     }
   };
+
+  // Claim mode: don't paint anything until we know there's no session — the
+  // common way to land here is the cloud panel's stale claim deep-link while
+  // already signed in as the admin, and painting the "create admin" form for
+  // the round-trip reads as a scary flash before the redirect to "/". Same
+  // grace-window pattern as the admin AuthGate. `staleClaim` keeps the hold
+  // through the sign-in redirect above.
+  if (claim && (!sessionChecked || staleClaim)) {
+    return null;
+  }
 
   if (blocked) {
     return (

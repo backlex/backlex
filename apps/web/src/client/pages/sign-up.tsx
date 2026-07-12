@@ -160,6 +160,7 @@ export const SignUp = () => {
       hasSocials={hasSocials}
       onInvalidateSurface={invalidateAuthSurface}
       forcedEmail={isFirst ? surface?.ownerEmail || undefined : undefined}
+      showConsent={!!(surface?.branding?.termsUrl || surface?.branding?.privacyUrl)}
     />
   );
 };

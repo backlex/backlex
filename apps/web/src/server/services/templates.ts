@@ -26,6 +26,7 @@ import {
 } from "./vectorize";
 import { serialize, nowFor } from "./items-helpers";
 import { ensureSystemRoles, type DbCtx } from "./seed";
+import { mergePortalLink } from "./portal-links";
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
@@ -486,6 +487,27 @@ export async function applyTemplateDefinition(
 
   const roles = await seedRoles(ctx, tenantId, template.roles ?? []);
   const dashboards = await seedDashboards(ctx, tenantId, template.dashboards ?? []);
+
+  // Portal auto-link rules bundled with person collections. Merge is
+  // idempotent per collection (an existing — possibly admin-edited — rule is
+  // never overwritten) and best-effort: a settings hiccup must not fail an
+  // apply that already created collections.
+  for (const col of template.collections) {
+    if (!col.portalLink) continue;
+    try {
+      await mergePortalLink(ctx, tenantId, {
+        collection: col.slug,
+        emailField: col.portalLink.emailField,
+        userField: "app_user_id",
+        role: col.portalLink.role,
+      });
+    } catch (e) {
+      console.error(
+        `[templates] portal-link merge failed for ${col.slug}:`,
+        (e as Error).message,
+      );
+    }
+  }
 
   // Same-isolate freshness for every apply path (REST, GraphQL, MCP via REST,
   // and the SEED_TEMPLATE auto-apply in context.ts which previously relied on

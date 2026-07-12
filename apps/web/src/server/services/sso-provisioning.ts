@@ -37,6 +37,7 @@ import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import { assignAppUserRoleByName, ensureSystemRoles } from "./seed";
 import { invalidateUserRoles } from "./permissions-cache";
+import { autoLinkAppUser } from "./portal-links";
 import { SYSTEM_ROLES } from "@backlex/core";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
@@ -390,6 +391,13 @@ export const provisionAppUser = async (
         authnContext,
       });
     }
+  }
+
+  // 8. First-login auto-link: stamp matching unlinked person rows with this
+  //    user id per the workspace's portalLinks rules (best-effort — the
+  //    helper logs and never throws, so it can't fail the SSO login).
+  if (isNew) {
+    await autoLinkAppUser(ctx, tenantId, { id: appUserId, email });
   }
 
   // New users always had the `authenticated` role attached at step 5; existing

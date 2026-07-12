@@ -14,6 +14,7 @@ import { decryptSecret } from "../lib/crypto";
 import { loadAuthConfigRow } from "./auth-config";
 import { resolveEmailAdapter } from "./email-config";
 import { envExtraOrigins, redirectUrlOrigins } from "./cors-origins";
+import { autoLinkAppUser } from "./portal-links";
 
 /** Parse a session-lifetime string like `30d` / `24h` / `90m` / `3600s` into
  *  seconds. Returns `undefined` for unrecognised input so callers fall back to
@@ -193,6 +194,17 @@ export const getTenantAuth = async (
     email: tenantEmail,
     socialProviders: Object.keys(social).length > 0 ? social : undefined,
     plugins: pluginList,
+    hooks: {
+      // Auto-link portal person rows (employees/members/…) whose email
+      // matches the new end-user, per the workspace's portalLinks setting.
+      // Covers every better-auth creation path (email+password, social,
+      // magic-link); SAML/LDAP run the same call inside provisionAppUser.
+      // autoLinkAppUser is best-effort by contract (logs, never throws), so
+      // it can't fail the sign-up this hook runs inside of.
+      onUserCreated: async (user) => {
+        await autoLinkAppUser({ db: ctx.db, dialect: ctx.dialect }, tenant.id, user);
+      },
+    },
   });
 
   const entry: CachedEntry = {

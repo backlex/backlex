@@ -284,6 +284,21 @@ resolved for the request:
 | `GET    /api/app-users/{id}/sessions`               | List active `app_sessions` rows for the user                              |
 | `DELETE /api/app-users/{id}/sessions/{sessionId}`   | Revoke a single session                                                   |
 | `DELETE /api/app-users/{id}`                        | Delete the user + sessions + OAuth accounts + role assignments. Explicit deletes (not FK cascade) because SQLite/D1 don't enforce FKs by default. |
+| `POST   /api/app-users/invite`                      | Create a pending end-user (`status: "invited"`, no credential) + a 7-day token in `app_verifications` (best-effort mail); optionally binds roles and stamps `app_user_id` on a person row. |
+
+The invitee accepts on the **app plane** — `POST
+/api/t/{slug}/auth/invite/accept` with `{ token, password }` sets the
+credential (better-auth's scrypt format, so normal email sign-in works
+from then on), flips the row to `active`, and returns the standard
+sign-in token pair.
+
+Self-signups can also link themselves: templates seed per-workspace
+`portalLinks` rules into `app_settings` (see
+`services/portal-links.ts`) — on any app-plane user creation
+(email/social signup, SAML/LDAP provisioning) a person row whose
+email field matches the new user's email gets its `app_user_id`
+stamped and the rule's self-service role auto-assigned. Best-effort;
+never blocks the sign-up.
 
 Distinct from `/api/users`, which is the **control-plane** pool. The
 two never overlap.

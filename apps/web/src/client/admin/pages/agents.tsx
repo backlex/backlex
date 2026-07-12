@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { api } from "@/lib/api";
+import { useMcpTools, type ToolDescriptor } from "@/components/mcp-guards-fields";
 import { fetchSafely } from "./_shared";
 
 interface Agent {
@@ -88,7 +89,9 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
   // Editor dialog
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState<Agent>(EMPTY_DRAFT);
-  const [toolCatalog, setToolCatalog] = useState<{ name: string; description: string }[]>([]);
+  // Shared MCP catalog hook (same one the API-key guard editor uses) — lazy
+  // fetches `tools/list` the first time the editor opens.
+  const { tools: toolCatalog, loading: toolsLoading } = useMcpTools(editorOpen);
   const [toolFilter, setToolFilter] = useState("");
   const [saving, setSaving] = useState(false);
   // Whether the Model picker is in free-text ("Custom…") mode.
@@ -107,24 +110,12 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
   const agent = agents.find((a) => a.id === active) ?? null;
 
   // ── editor ────────────────────────────────────────────────────────────────
-  const openEditor = useCallback(async (a?: Agent) => {
+  const openEditor = useCallback((a?: Agent) => {
     setDraft(a ? { ...a, description: a.description ?? "", systemPrompt: a.systemPrompt ?? "", model: a.model ?? "" } : EMPTY_DRAFT);
     setModelCustom(!!(a?.model && !isKnownModel(a.model)));
     setToolFilter("");
     setEditorOpen(true);
-    // Lazy-load the MCP tool catalog the first time the editor opens.
-    if (toolCatalog.length === 0) {
-      try {
-        const body = await api<{ result?: { tools?: { name: string; description: string }[] } }>(
-          "/api/admin/mcp",
-          { method: "POST", body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) },
-        );
-        setToolCatalog(body.result?.tools ?? []);
-      } catch {
-        /* leave catalog empty — admin can still type-free via REST */
-      }
-    }
-  }, [toolCatalog.length]);
+  }, []);
 
   const saveDraft = useCallback(async () => {
     if (!draft.name.trim()) {
@@ -181,6 +172,19 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
       tools: d.tools.includes(name) ? d.tools.filter((x) => x !== name) : [...d.tools, name],
     }));
 
+  /** Group-header checkbox: all-on → clear the group, otherwise select it whole. */
+  const toggleGroup = (tools: ToolDescriptor[]) =>
+    setDraft((d) => {
+      const names = tools.map((x) => x.name);
+      const allOn = names.every((n) => d.tools.includes(n));
+      return {
+        ...d,
+        tools: allOn
+          ? d.tools.filter((n) => !names.includes(n))
+          : [...new Set([...d.tools, ...names])],
+      };
+    });
+
   if (!loaded) {
     return (
       <div className="flex flex-col gap-4.5">
@@ -198,9 +202,24 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
     );
   }
 
-  const filteredTools = toolCatalog.filter(
-    (tool) => !toolFilter || tool.name.toLowerCase().includes(toolFilter.toLowerCase()),
-  );
+  // Filtered catalog grouped by namespace (`schema.*`, `collections.*`, …) so
+  // the ~130-tool roster stays browsable. The filter matches the tool name or
+  // its namespace.
+  const q = toolFilter.trim().toLowerCase();
+  const groupedTools = (() => {
+    const groups = new Map<string, ToolDescriptor[]>();
+    for (const tool of toolCatalog ?? []) {
+      const dot = tool.name.indexOf(".");
+      const namespace = dot < 0 ? "other" : tool.name.slice(0, dot);
+      if (q && !tool.name.toLowerCase().includes(q) && !namespace.includes(q)) continue;
+      const bucket = groups.get(namespace) ?? [];
+      bucket.push(tool);
+      groups.set(namespace, bucket);
+    }
+    return [...groups.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([namespace, tools]) => ({ namespace, tools }));
+  })();
 
   return (
     <div className="flex flex-col gap-4.5">
@@ -321,24 +340,46 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
 
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
-                    <Label><Trans>Tools</Trans> <span className="text-[11px] text-muted-foreground">({draft.tools.length})</span></Label>
+                    <Label><Trans>Tools</Trans> <span className="text-[11px] tabular-nums text-muted-foreground">({draft.tools.length}/{toolCatalog?.length ?? 0})</span></Label>
                     <Input className="h-7 w-40 text-[12px]" value={toolFilter} onChange={(e) => setToolFilter(e.target.value)} placeholder={t`Filter tools…`} />
                   </div>
-                  <div className="max-h-[200px] overflow-hidden rounded-control border border-border">
-                    <ScrollArea className="max-h-[200px]">
+                  <div className="overflow-hidden rounded-control border border-border">
+                    <ScrollArea viewportClassName="max-h-[260px]">
                       <div className="flex flex-col">
-                        {filteredTools.length === 0 && (
+                        {toolsLoading && (
+                          <div className="flex flex-col gap-2.5 p-3">
+                            {[0, 1, 2, 3, 4].map((i) => (
+                              <div key={i} className="flex items-center gap-2.5">
+                                <Skeleton className="size-4 rounded-sm" />
+                                <Skeleton className="h-3.5 w-44" />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {!toolsLoading && groupedTools.length === 0 && (
                           <span className="px-3 py-3 text-[12px] text-muted-foreground"><Trans>No tools match.</Trans></span>
                         )}
-                        {filteredTools.map((tool) => (
-                          <label key={tool.name} className="flex cursor-pointer items-start gap-2.5 border-b border-border px-3 py-2 last:border-b-0 hover:bg-accent/50">
-                            <Checkbox checked={draft.tools.includes(tool.name)} onCheckedChange={() => toggleTool(tool.name)} className="mt-0.5" />
-                            <div className="flex min-w-0 flex-col">
-                              <span className="font-mono text-[12px]">{tool.name}</span>
-                              <span className="truncate text-[11px] text-muted-foreground">{tool.description}</span>
+                        {groupedTools.map((group) => {
+                          const onCount = group.tools.filter((x) => draft.tools.includes(x.name)).length;
+                          return (
+                            <div key={group.namespace} className="flex flex-col">
+                              <label className="sticky top-0 z-10 flex cursor-pointer items-center gap-2.5 border-b border-border bg-muted px-3 py-1.5 hover:bg-accent/70">
+                                <Checkbox checked={onCount === group.tools.length} onCheckedChange={() => toggleGroup(group.tools)} />
+                                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{group.namespace}</span>
+                                <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">{onCount}/{group.tools.length}</span>
+                              </label>
+                              {group.tools.map((tool) => (
+                                <label key={tool.name} className="flex cursor-pointer items-start gap-2.5 border-b border-border px-3 py-2 last:border-b-0 hover:bg-accent/50">
+                                  <Checkbox checked={draft.tools.includes(tool.name)} onCheckedChange={() => toggleTool(tool.name)} className="mt-0.5" />
+                                  <div className="flex min-w-0 flex-col">
+                                    <span className="font-mono text-[12px]">{tool.name}</span>
+                                    <span className="truncate text-[11px] text-muted-foreground">{tool.description}</span>
+                                  </div>
+                                </label>
+                              ))}
                             </div>
-                          </label>
-                        ))}
+                          );
+                        })}
                       </div>
                     </ScrollArea>
                   </div>

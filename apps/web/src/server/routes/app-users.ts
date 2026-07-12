@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, like, or, type SQL } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
@@ -99,9 +99,15 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>()
       tags: [TAG],
       summary: "List workspace end-users",
       description:
-        "Returns the `app_users` for the active workspace with their custom role assignments.",
+        "Returns the `app_users` for the active workspace with their custom role assignments. `q` filters by email/name substring (case-insensitive); `ids` narrows to a comma-separated id list (used to batch-resolve user-link field labels).",
       security: SECURITY,
       middleware: [requireUser, requireAdmin],
+      request: {
+        query: z.object({
+          q: z.string().trim().max(200).optional(),
+          ids: z.string().max(4000).optional(),
+        }),
+      },
       responses: {
         200: {
           description: "OK",
@@ -112,13 +118,29 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>()
         ...errorResponses,
       },
     }),
-    /** List the workspace's end-users with their assigned (custom) role names. */
+    /** List the workspace's end-users with their assigned (custom) role names.
+     *  `q` narrows by email/name substring; `ids` by an explicit id list. */
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const tenantId = auth.tenantId;
       if (!tenantId) return c.json({ data: [] });
+      const { q, ids: idsParam } = c.req.valid("query");
       const t = tablesFor(ctx.dialect);
+      const conds: SQL[] = [eq(t.appUsers.tenantId, tenantId)];
+      if (q) {
+        // ILIKE on PG for case-insensitive matching; SQLite's LIKE is already
+        // case-insensitive for ASCII. Wildcards in `q` are left as-is — this
+        // is an admin-only search box, a `%` just broadens the match.
+        const matches = ctx.dialect === "pg" ? ilike : like;
+        const pat = `%${q}%`;
+        conds.push(or(matches(t.appUsers.email, pat), matches(t.appUsers.name, pat))!);
+      }
+      if (idsParam !== undefined) {
+        const wanted = idsParam.split(",").map((s) => s.trim()).filter(Boolean);
+        if (wanted.length === 0) return c.json({ data: [] });
+        conds.push(inArray(t.appUsers.id, wanted));
+      }
       const users = (await (ctx.db as any)
         .select({
           id: t.appUsers.id,
@@ -129,7 +151,7 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>()
           createdAt: t.appUsers.createdAt,
         })
         .from(t.appUsers)
-        .where(eq(t.appUsers.tenantId, tenantId))
+        .where(and(...conds))
         .orderBy(desc(t.appUsers.createdAt))) as Array<{ id: string }>;
       const ids = users.map((u) => u.id);
       const roleRows = ids.length

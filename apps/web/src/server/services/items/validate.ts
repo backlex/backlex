@@ -220,3 +220,55 @@ export const validateRelations = async (
     }
   }
 };
+
+/**
+ * Verify that every `interface: "user"` field value in the payload points at a
+ * real `app_users` row in the active workspace. The mirror of
+ * {@link validateRelations} for the app-user link field: empty string and null
+ * are skipped (treated as "no link"), a missing id throws 422, and all ids are
+ * batched into one SELECT. Suspended end-users are still valid link targets —
+ * suspension gates sign-in, not references. The tenant filter keeps the check
+ * workspace-scoped, so an id from another workspace's pool fails the same way
+ * a bogus id does.
+ */
+export const validateAppUserLinks = async (
+  data: Record<string, unknown>,
+  fields: FieldDef[],
+  ctx: Ctx,
+  tenantId: string | null | undefined,
+): Promise<void> => {
+  const idSet = new Set<string>();
+  for (const f of fields) {
+    if (f.interface !== "user") continue;
+    const val = data[f.name];
+    if (val === undefined || val === null || val === "") continue;
+    idSet.add(String(val));
+  }
+  if (idSet.size === 0) return;
+  if (!tenantId) {
+    throw new AppError(
+      "VALIDATION",
+      "Active tenant could not be resolved; cannot link a workspace end-user",
+    );
+  }
+  const ids = [...idSet];
+  const rows = await queryAll<Record<string, unknown>>(
+    ctx,
+    sql`SELECT ${sql.identifier("id")} FROM ${sql.identifier("app_users")}
+        WHERE ${sql.identifier("tenant_id")} = ${tenantId}
+        AND ${sql.identifier("id")} IN (${sql.join(
+      ids.map((i) => sql`${i}`),
+      sql`, `,
+    )})`,
+  );
+  const found = new Set(rows.map((r) => String(r["id"] ?? "")));
+  const missing = ids.filter((id) => !found.has(id));
+  if (missing.length > 0) {
+    const sample = missing.slice(0, 3).join(", ");
+    const suffix = missing.length > 3 ? ` (…and ${missing.length - 3} more)` : "";
+    throw new AppError(
+      "VALIDATION",
+      `No workspace end-user with id: ${sample}${suffix}`,
+    );
+  }
+};

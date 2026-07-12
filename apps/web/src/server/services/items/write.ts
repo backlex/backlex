@@ -14,6 +14,7 @@ import {
   enforceFieldConditions,
   enforceValidationRules,
   type FieldWarning,
+  validateAppUserLinks,
   validateBody,
   validateRelations,
 } from "./validate";
@@ -133,6 +134,7 @@ export const performCreate = async (
   }
   validateBody(data, collection.fields, false, perm.fields);
   await validateRelations(data, collection.fields, ctx, env.tenantId);
+  await validateAppUserLinks(data, collection.fields, ctx, env.tenantId);
   // Enforce conditional `required` effects against the proposed row (runs before
   // hashing so a rule sees the plaintext the user typed).
   enforceFieldConditions(data, collection.fields, authSubjectOf(env));
@@ -261,6 +263,7 @@ export const performUpdate = async (
   const table = collection.physicalTable;
   validateBody(patch, collection.fields, true, perm.fields);
   await validateRelations(patch, collection.fields, ctx, env.tenantId);
+  await validateAppUserLinks(patch, collection.fields, ctx, env.tenantId);
   // Hash `hash`-typed fields; an empty/omitted value is dropped so the existing
   // digest is left untouched ("leave blank to keep").
   await hashIncomingFields(patch, collection.fields);

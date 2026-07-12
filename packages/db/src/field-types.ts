@@ -86,8 +86,10 @@ export interface FieldValidation {
  * catalog of these in `apps/web/src/client/admin/interfaces.ts` (`input`,
  * `markdown`, `richtext`, `dropdown`, `toggle`, `datetime`, `color`,
  * `relation`, …); the server treats the value as an opaque string and only
- * special-cases `dropdown` (choice membership is enforced). New interfaces
- * can be added to the catalog without touching this package.
+ * special-cases `dropdown` (choice membership is enforced) and `user` (a
+ * `text` field whose value must reference an `app_users` row in the active
+ * workspace — checked on item write). New interfaces can be added to the
+ * catalog without touching this package.
  */
 export type FieldInterface = string;
 
@@ -623,6 +625,12 @@ export const validateFields = (fields: FieldDef[]): void => {
       throw new Error(
         `Field "${f.name}": dropdown interface requires options.choices (or legacy options.values)`,
       );
+    }
+    // The "user" interface stores a workspace end-user id (`app_users.id`) in
+    // a plain text column — no new storage type. Referential integrity is
+    // enforced on item write (see validateAppUserLinks in the items service).
+    if (f.interface === "user" && f.type !== "text") {
+      throw new Error(`Field "${f.name}": the "user" interface requires a text field`);
     }
     if (f.visibleWhen) {
       if (!names.has(f.visibleWhen.field)) {

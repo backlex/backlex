@@ -15,7 +15,7 @@ import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { Select } from "./select";
 import { DatePicker } from "@/components/date-picker";
-import { RelationPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
+import { RelationPicker, AppUserPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
 import { useSettings } from "./queries";
 
 export type SchemaField = {
@@ -1110,6 +1110,22 @@ export function ItemFields({ form }: { form: ItemForm }) {
               Stores a row id from <span className="font-mono">c_{target || "—"}</span>.
             </Trans>
             {!target && <Trans> Set the target collection in the field settings.</Trans>}
+          </div>
+          {errBlock}
+        </div>
+      );
+    }
+    // App-user link — the value is an `app_users.id`; the picker searches the
+    // workspace's end-user pool and shows email (+ name) for the current id.
+    if (iface === "user") {
+      return (
+        <div key={f.name} className="flex flex-col gap-1.5">
+          {label}
+          <AppUserPicker value={String(val ?? "")} onChange={setField} error={!!err} />
+          <div className="text-[11.5px] text-muted-foreground">
+            <Trans>
+              Stores a workspace end-user id from <span className="font-mono">app_users</span>.
+            </Trans>
           </div>
           {errBlock}
         </div>

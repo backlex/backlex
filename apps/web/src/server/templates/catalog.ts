@@ -1926,6 +1926,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "attendees", group: "Attendees", singular: "Attendee", plural: "Attendees", defaultSort: "name",
+        portalLink: { emailField: "email", role: "Attendee (portal)" },
         fields: [text("name"), email("email", { required: true }), text("phone"), text("company"), userLink()],
         samples: [{ name: "Jordan Reed", email: "jordan@example.com", company: "Acme" }],
       },
@@ -2727,6 +2728,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "students", group: "People", singular: "Student", plural: "Students", defaultSort: "name",
+        portalLink: { emailField: "email", role: "Student (portal)" },
         fields: [text("name", { required: true }), email("email", { unique: true }), image("avatar"), userLink()],
         samples: [{ name: "Sam Taylor", email: "sam@student.example" }],
       },
@@ -3058,6 +3060,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "vendors", group: "Vendors", singular: "Vendor", plural: "Vendors", defaultSort: "name",
+        portalLink: { emailField: "email", role: "Vendor (portal)" },
         fields: [
           text("name", { required: true }), slugField(), email("email", { unique: true }), notes("description"), image("logo"),
           select("status", [ch("pending", C.amber), ch("active", C.green), ch("suspended", C.red)], { default: "pending" }),
@@ -3120,6 +3123,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "buyers", group: "Customers", singular: "Buyer", plural: "Buyers", defaultSort: "name",
+        portalLink: { emailField: "email", role: "Buyer (portal)" },
         fields: [text("name", { required: true }), email("email", { unique: true }), text("phone"), userLink()],
         samples: [{ name: "Sam Taylor", email: "sam@example.com" }],
       },
@@ -3248,6 +3252,7 @@ export const TEMPLATES: SchemaTemplate[] = [
     collections: [
       {
         slug: "donors", group: "Donors", singular: "Donor", plural: "Donors", defaultSort: "name",
+        portalLink: { emailField: "email", role: "Donor (portal)" },
         fields: [
           text("name", { required: true }), email("email", { unique: true }), text("phone"),
           select("type", [ch("individual", C.blue), ch("organization", C.purple), ch("foundation", C.teal)], { default: "individual" }),
@@ -3345,6 +3350,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "volunteers", group: "Volunteering", singular: "Volunteer", plural: "Volunteers", defaultSort: "name",
+        portalLink: { emailField: "email", role: "Volunteer (portal)" },
         fields: [text("name", { required: true }), email("email"), text("phone"), notes("skills"), select("status", [ch("active", C.green), ch("inactive", C.gray)], { default: "active" }), userLink()],
         samples: [{ name: "Casey Morgan", email: "casey@example.com", skills: "Event setup, outreach.", status: "active" }],
       },
@@ -3584,6 +3590,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "customers", group: "Billing", singular: "Customer", plural: "Customers", fts: true, defaultSort: "name",
+        portalLink: { emailField: "email", role: "Customer (portal)" },
         fields: [
           text("name", { required: true, searchable: true, group: "Customer" }),
           email("email", { group: "Customer" }), text("phone", { group: "Customer" }),
@@ -3919,6 +3926,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "customers", group: "People", singular: "Customer", plural: "Customers", fts: true, defaultSort: "name",
+        portalLink: { emailField: "email", role: "Customer (portal)" },
         fields: [text("name", { required: true, searchable: true }), email("email"), text("phone"), notes("notes"), userLink()],
         samples: [{ name: "Jordan Ellis", email: "jordan@example.com", phone: "+1 555 0142" }],
       },
@@ -4109,6 +4117,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "customers", group: "People", singular: "Customer", plural: "Customers", fts: true, defaultSort: "name",
+        portalLink: { emailField: "email", role: "Customer (portal)" },
         fields: [
           text("name", { required: true, searchable: true, group: "Customer" }), email("email", { group: "Customer" }), text("phone", { group: "Customer" }),
           text("address", { group: "Service address" }), text("city", { group: "Service address" }), text("postal_code", { label: "Postal code", group: "Service address" }),
@@ -5358,6 +5367,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "clients", group: "People", singular: "Client", plural: "Clients", fts: true, defaultSort: "name",
+        portalLink: { emailField: "email", role: "Client (portal)" },
         fields: [text("name", { required: true, searchable: true }), email("email"), text("phone"), text("company"), text("address"), notes("notes"), userLink()],
         samples: [{ name: "Meridian Holdings LLC", email: "legal@meridian.example", company: "Meridian Holdings", phone: "+1 555 0122" }],
       },
@@ -5579,6 +5589,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "patients", group: "Patients", singular: "Patient", plural: "Patients", fts: true, defaultSort: "name",
+        portalLink: { emailField: "email", role: "Patient (portal)" },
         fields: [
           text("name", { required: true, searchable: true, group: "Patient" }), email("email", { group: "Patient" }), text("phone", { group: "Patient" }),
           date("birth_date", { label: "Date of birth", group: "Patient" }),

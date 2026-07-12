@@ -278,6 +278,10 @@ export interface AuthClient {
   requestPasswordReset(input: { email: string; redirectTo?: string }): Promise<{ status: boolean }>;
   /** Complete a reset with the emailed token and a new password. */
   resetPassword(input: { newPassword: string; token: string }): Promise<{ status: boolean }>;
+  /** Accept an admin-issued end-user invite (app mode only — the admin plane
+   *  has no invite/accept endpoint): sets the password on the pending account
+   *  and signs straight in; the session token is captured like `signIn`. */
+  acceptInvite(input: { token: string; password: string }): Promise<AuthResult>;
   /** Mint a fresh short-lived access JWT from the stored session token (app mode). */
   refresh(): Promise<{ accessToken: string; refreshToken: string; expiresIn: number; tokenType: string }>;
   /** Change the signed-in user's password. */
@@ -814,6 +818,23 @@ export interface ExtractedTemplate {
   collections: TemplateCollectionDef[];
 }
 
+/** Workspace end-user provisioning (admin-scoped). Mirrors `/api/app-users`. */
+export interface AppUsersClient {
+  /** Invite an end-user: creates a pending `app_users` row (status `invited`,
+   *  no credential), mints a 7-day one-shot invite token (also mailed
+   *  best-effort), and optionally binds roles (`roleIds` — the admin role is
+   *  rejected) and links a person row (`link` — stamps
+   *  `<collection>.<itemId>.app_user_id` so `$user.id` permission conditions
+   *  match after accept). The invitee completes the flow with
+   *  `auth.acceptInvite({ token, password })` on an app-mode client. */
+  invite(input: {
+    email: string;
+    name?: string;
+    roleIds?: string[];
+    link?: { collection: string; itemId: string };
+  }): Promise<{ data: { id: string; email: string; token: string; expiresAt: number } }>;
+}
+
 /** Schema templates (admin-scoped). Mirrors `/api/admin/templates`. */
 export interface TemplatesClient {
   /** List the template catalog for the active workspace. */
@@ -1058,6 +1079,8 @@ export interface BacklexClient {
   permissions: PermissionsClient;
   /** Schema templates (catalog + apply). */
   templates: TemplatesClient;
+  /** Workspace end-user provisioning (invites — admin plane). */
+  appUsers: AppUsersClient;
   /** Schema versions — migration diffing / schema branching. */
   schema: SchemaClient;
   /** External-DB migration (sources + server-side copy runs). */
@@ -1342,6 +1365,11 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     /** Complete a reset with the token from the email and a new password. */
     resetPassword: (input: { newPassword: string; token: string }) =>
       request<{ status: boolean }>("POST", `${authBase}/reset-password`, input),
+    /** Accept an admin-issued end-user invite (`appUsers.invite` on the admin
+     *  plane): `{ token, password }` activates the pending account and signs
+     *  in. App mode only — `/api/t/<slug>/auth/invite/accept`. */
+    acceptInvite: (input: { token: string; password: string }) =>
+      request<AuthResult>("POST", `${authBase}/invite/accept`, input).then(captureToken),
     /** Mint a fresh short-lived access JWT from the stored session token (app
      *  mode). The SDK's own requests keep using the session token; use this when a
      *  downstream service needs a proper access token. */
@@ -1902,6 +1930,23 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       ),
   };
 
+  // Workspace end-user provisioning (admin plane). The invitee accepts on an
+  // app-mode client via `auth.acceptInvite`.
+  const appUsers: AppUsersClient = {
+    /** Invite an end-user (pending row + one-shot token; roles/link optional). */
+    invite: (input: {
+      email: string;
+      name?: string;
+      roleIds?: string[];
+      link?: { collection: string; itemId: string };
+    }) =>
+      request<{ data: { id: string; email: string; token: string; expiresAt: number } }>(
+        "POST",
+        "/api/app-users/invite",
+        input,
+      ),
+  };
+
   // Feature flags / remote config, evaluated for the current caller (targeting
   // rules + rollout already applied server-side).
   let flagsCache: Record<string, FlagState> | null = null;
@@ -1960,6 +2005,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     agents,
     permissions,
     templates,
+    appUsers,
     schema,
     migrate,
     flags,

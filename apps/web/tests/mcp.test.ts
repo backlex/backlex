@@ -196,6 +196,7 @@ describe("MCP — initialize + tools/list", () => {
     expect(names).toContain("app_users.list");
     expect(names).toContain("app_users.set_roles");
     expect(names).toContain("app_users.update");
+    expect(names).toContain("app_users.invite");
     expect(names).toContain("saml.providers_list");
     expect(names).toContain("saml.providers_create");
     expect(names).toContain("saml.providers_delete");

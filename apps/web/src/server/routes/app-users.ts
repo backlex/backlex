@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { and, desc, eq, ilike, inArray, like, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, like, or, type SQL } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
@@ -8,9 +8,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { invalidateUserRoles } from "../services/permissions-cache";
-import { createAppUserInvite } from "../services/app-user-invites";
-import { linkPersonRow } from "../services/portal-links";
-import type { DbCtx } from "../services/seed";
+import { inviteAppUser, resolveAssignableRoles } from "../services/app-user-invites";
 
 /**
  * Manage the workspace end-user pool (`app_users`) — the customers of the
@@ -107,37 +105,6 @@ const requireAppUser = async (
     .where(and(eq(t.appUsers.id, appUserId), eq(t.appUsers.tenantId, tenantId)))
     .limit(1)) as Array<{ id: string }>;
   if (!rows[0]) throw new AppError("NOT_FOUND", "End-user not found in this workspace");
-};
-
-/**
- * Validate a set of role ids for assignment to a workspace end-user: every id
- * must belong to the active workspace and the admin role is rejected — an
- * app-user can never hold the workspace admin bypass. Shared by PUT
- * `/{id}/roles` and POST `/invite`.
- */
-const resolveAssignableRoles = async (
-  ctx: DbCtx,
-  tenantId: string,
-  roleIds: string[],
-): Promise<Array<{ id: string; name: string }>> => {
-  const wanted = Array.from(new Set(roleIds));
-  if (wanted.length === 0) return [];
-  const t = tablesFor(ctx.dialect);
-  const valid = (await (ctx.db as any)
-    .select({ id: t.roles.id, name: t.roles.name, admin: t.roles.admin })
-    .from(t.roles)
-    .where(and(eq(t.roles.tenantId, tenantId), inArray(t.roles.id, wanted)))) as Array<{
-      id: string;
-      name: string;
-      admin: boolean;
-    }>;
-  const validIds = new Set(valid.map((r) => r.id));
-  const unknown = wanted.filter((id) => !validIds.has(id));
-  if (unknown.length)
-    throw new AppError("VALIDATION", `Unknown role(s) for this workspace: ${unknown.join(", ")}`);
-  if (valid.some((r) => r.admin || r.name === SYSTEM_ROLES.admin))
-    throw new AppError("VALIDATION", "The admin role cannot be assigned to a workspace end-user");
-  return valid.map((r) => ({ id: r.id, name: r.name }));
 };
 
 export const appUsersRoutes = new OpenAPIHono<AppBindings>()
@@ -546,7 +513,9 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>()
      * /api/tenants/{id}/members/invite`): pending row + 7-day token +
      * best-effort email (a mail-transport failure never fails the request).
      * The row stays `status: "invited"` — no credential, no session access —
-     * until the invitee sets a password via the accept endpoint.
+     * until the invitee sets a password via the accept endpoint. Core lives in
+     * `services/app-user-invites.ts::inviteAppUser`, shared with the GraphQL
+     * `inviteAppUser` mutation and MCP `app_users.invite`.
      */
     async (c) => {
       const ctx = c.get("ctx");
@@ -554,86 +523,7 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>()
       const tenantId = auth.tenantId;
       if (!tenantId) throw new AppError("VALIDATION", "No active workspace");
       const body = c.req.valid("json");
-      const t = tablesFor(ctx.dialect);
-      const dbCtx: DbCtx = { db: ctx.db, dialect: ctx.dialect };
-
-      // Emails are unique per (tenant, email) — better-auth lowercases on
-      // sign-up, so normalize here and match case-insensitively for the
-      // duplicate check.
-      const email = body.email.trim().toLowerCase();
-      const dup = (await (ctx.db as any)
-        .select({ id: t.appUsers.id })
-        .from(t.appUsers)
-        .where(
-          and(
-            eq(t.appUsers.tenantId, tenantId),
-            sql`lower(${t.appUsers.email}) = ${email}`,
-          ),
-        )
-        .limit(1)) as Array<{ id: string }>;
-      if (dup[0])
-        throw new AppError(
-          "CONFLICT",
-          `${email} already has an end-user account in this workspace`,
-        );
-
-      // Validate roles + link target BEFORE creating anything, so a bad
-      // request leaves no half-provisioned user behind.
-      const roles = await resolveAssignableRoles(dbCtx, tenantId, body.roleIds ?? []);
-
-      const appUserId = crypto.randomUUID();
-      const now = ctx.dialect === "pg" ? new Date() : Date.now();
-      await (ctx.db as any).insert(t.appUsers).values({
-        id: appUserId,
-        tenantId,
-        email,
-        emailVerified: false,
-        name: body.name ?? null,
-        status: "invited",
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      for (const r of roles) {
-        await (ctx.db as any)
-          .insert(t.appUserRoles)
-          .values({ appUserId, roleId: r.id });
-      }
-      if (roles.length) invalidateUserRoles(tenantId, appUserId);
-
-      // Link the person row (employees/members/…) so the invitee's
-      // `$user.id`-conditioned permissions match from the first sign-in.
-      if (body.link) {
-        await linkPersonRow(dbCtx, tenantId, body.link.collection, body.link.itemId, appUserId);
-      }
-
-      const { token, expiresAt } = await createAppUserInvite(dbCtx, tenantId, appUserId, email);
-
-      // Best-effort mail through the workspace's transport (dev falls back to
-      // the console adapter). Fire-and-forget with a swallow — a broken SMTP
-      // config must never 500 the invite; the admin still gets the token back.
-      const tenants = ctx.dialect === "pg" ? pg.schema.tenants : sqlite.schema.tenants;
-      void (async () => {
-        const slugRows = (await (ctx.db as any)
-          .select({ slug: tenants.slug })
-          .from(tenants)
-          .where(eq(tenants.id, tenantId))
-          .limit(1)) as Array<{ slug: string }>;
-        const slug = slugRows[0]?.slug ?? tenantId;
-        const transport = await ctx.emailFor(tenantId);
-        await transport.send({
-          to: email,
-          subject: "You've been invited",
-          text:
-            `You've been invited to sign in. Set your password with this invite token: ${token}\n\n` +
-            `POST ${ctx.env.APP_URL}/api/t/${slug}/auth/invite/accept with { "token": "${token}", "password": "<your password>" }.\n` +
-            `The token expires ${expiresAt.toISOString()}.`,
-        });
-      })().catch(() => {});
-
-      return c.json(
-        { data: { id: appUserId, email, token, expiresAt: expiresAt.getTime() } },
-        201,
-      );
+      const { id, email, token, expiresAt } = await inviteAppUser(ctx, tenantId, body);
+      return c.json({ data: { id, email, token, expiresAt: expiresAt.getTime() } }, 201);
     },
   );

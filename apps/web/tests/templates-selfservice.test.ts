@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
+import { drizzle } from "drizzle-orm/bun-sqlite";
 import { TEMPLATES } from "../src/server/templates/catalog";
+import { readPortalLinks, type PortalLink } from "../src/server/services/portal-links";
+import type { DbCtx } from "../src/server/services/seed";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 /**
@@ -84,6 +88,111 @@ describe("self-service role conditions are statically sound", () => {
             }
           }
         }
+      }
+    });
+  }
+});
+
+describe("portalLink declarations are statically sound", () => {
+  for (const tpl of TEMPLATES) {
+    const withLinks = tpl.collections.filter((c) => c.portalLink);
+    if (withLinks.length === 0) continue;
+    test(`${tpl.id} portalLinks reference real email fields and bundled roles`, () => {
+      const roleNames = new Set((tpl.roles ?? []).map((r) => r.name));
+      for (const col of withLinks) {
+        const field = col.fields.find((f) => f.name === col.portalLink!.emailField);
+        expect(
+          field,
+          `${tpl.id}/${col.slug}: portalLink emailField "${col.portalLink!.emailField}" missing`,
+        ).toBeDefined();
+        expect(
+          roleNames.has(col.portalLink!.role),
+          `${tpl.id}/${col.slug}: portalLink role "${col.portalLink!.role}" is not a bundled role`,
+        ).toBe(true);
+      }
+    });
+  }
+});
+
+/* ── seeding: every portal template writes its portalLinks rules ── */
+
+/** The portal-link rules each template must seed into the `portalLinks`
+ *  app_setting on apply — one entry per person collection that declares a
+ *  `portalLink` in the catalog. */
+const PORTAL_SEEDS: Record<string, Array<{ collection: string; emailField: string; role: string }>> = {
+  hr: [{ collection: "employees", emailField: "work_email", role: "Employee (self-service)" }],
+  fitness: [{ collection: "members", emailField: "email", role: "Member (self-service)" }],
+  clinic: [{ collection: "patients", emailField: "email", role: "Patient (portal)" }],
+  appointments: [{ collection: "customers", emailField: "email", role: "Customer (portal)" }],
+  lms: [{ collection: "students", emailField: "email", role: "Student (portal)" }],
+  legal: [{ collection: "clients", emailField: "email", role: "Client (portal)" }],
+  events: [{ collection: "attendees", emailField: "email", role: "Attendee (portal)" }],
+  invoicing: [{ collection: "customers", emailField: "email", role: "Customer (portal)" }],
+  "field-service": [{ collection: "customers", emailField: "email", role: "Customer (portal)" }],
+  marketplace: [
+    { collection: "buyers", emailField: "email", role: "Buyer (portal)" },
+    { collection: "vendors", emailField: "email", role: "Vendor (portal)" },
+  ],
+  nonprofit: [
+    { collection: "donors", emailField: "email", role: "Donor (portal)" },
+    { collection: "volunteers", emailField: "email", role: "Volunteer (portal)" },
+  ],
+};
+
+/** Read the stored rules the same way the runtime does — through
+ *  `readPortalLinks` over the harness's SQLite file. */
+const storedPortalLinks = async (h: TestHarness): Promise<PortalLink[]> => {
+  const client = new Database(h.env.SQLITE_PATH!, { readonly: true });
+  try {
+    const tenant = client
+      .query("SELECT id FROM tenants WHERE slug = 'default'")
+      .get() as { id: string } | null;
+    expect(tenant).toBeTruthy();
+    const ctx = { db: drizzle({ client }), dialect: "sqlite" } as unknown as DbCtx;
+    return await readPortalLinks(ctx, tenant!.id);
+  } finally {
+    client.close();
+  }
+};
+
+describe("template apply seeds portalLinks rules", () => {
+  // The catalog-derived expectation map must stay in lockstep with the catalog
+  // itself: no portal template missing from the map, none expected that lost
+  // its portalLink.
+  test("PORTAL_SEEDS covers exactly the templates that declare portalLink", () => {
+    const declared = TEMPLATES.filter((t) => t.collections.some((c) => c.portalLink))
+      .map((t) => t.id)
+      .sort();
+    expect(Object.keys(PORTAL_SEEDS).sort()).toEqual(declared);
+  });
+
+  for (const [templateId, expected] of Object.entries(PORTAL_SEEDS)) {
+    test(`${templateId} seeds ${expected.length} portal-link rule(s)`, async () => {
+      const h = makeHarness();
+      try {
+        await seedAdmin(h);
+        const applied = await h.fetch("/api/admin/templates/apply", {
+          method: "POST",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({ templateId }),
+        });
+        expect(applied.status).toBe(201);
+
+        const links = await storedPortalLinks(h);
+        const rows = links
+          .map(({ collection, emailField, role }) => ({ collection, emailField, role }))
+          .sort((a, b) => a.collection.localeCompare(b.collection));
+        expect(rows).toEqual(
+          [...expected].sort((a, b) => a.collection.localeCompare(b.collection)),
+        );
+        // Every rule points at a role the same apply actually seeded.
+        const roles = (await (await h.fetch("/api/roles")).json()) as {
+          data: { name: string }[];
+        };
+        const roleNames = new Set(roles.data.map((r) => r.name));
+        for (const rule of expected) expect(roleNames.has(rule.role)).toBe(true);
+      } finally {
+        h.cleanup();
       }
     });
   }

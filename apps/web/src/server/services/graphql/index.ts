@@ -32,6 +32,7 @@ import { migrateQueryFields, migrateMutationFields } from "./migrate";
 import { agentQueryFields, agentMutationFields } from "./agents";
 import { permissionQueryFields } from "./permission-sim";
 import { templateQueryFields, templateMutationFields } from "./templates";
+import { appUserMutationFields } from "./app-users";
 import {
   GraphQLBoolean,
   GraphQLID,
@@ -90,6 +91,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...migrateMutationFields,
           ...agentMutationFields,
           ...templateMutationFields,
+          ...appUserMutationFields,
           ...messagingMutationFields,
         },
       }),
@@ -120,6 +122,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...migrateMutationFields,
     ...agentMutationFields,
     ...templateMutationFields,
+    ...appUserMutationFields,
     ...messagingMutationFields,
   };
 

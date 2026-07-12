@@ -120,6 +120,11 @@ export interface SignUpPageProps extends AuthWiring {
    *  the managed-cloud first-admin claim, where only the pinned owner address
    *  may register. */
   forcedEmail?: string;
+  /** Whether to render the Terms/Privacy consent checkbox (and require it
+   *  before submit). Pass `false` when the instance has no legal URLs
+   *  configured — asking users to agree to documents that don't exist is
+   *  meaningless. Defaults to `true`. */
+  showConsent?: boolean;
 }
 
 /**
@@ -146,6 +151,7 @@ export const SignUpPage = ({
   onInvalidateSurface,
   onSignedUp,
   forcedEmail,
+  showConsent = true,
 }: SignUpPageProps) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState(forcedEmail ?? "");
@@ -210,7 +216,7 @@ export const SignUpPage = ({
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!email || !password || !agreed) return;
+    if (!email || !password || (showConsent && !agreed)) return;
     setBusy(true);
     setStage("creating");
 
@@ -452,18 +458,20 @@ export const SignUpPage = ({
             </label>
           )}
 
-          <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-muted-foreground">
-            <Checkbox
-              checked={agreed}
-              onCheckedChange={(v) => setAgreed(!!v)}
-              className="mt-0.5"
-            />
-            <span>{copy.termsAgreement}</span>
-          </label>
+          {showConsent && (
+            <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-muted-foreground">
+              <Checkbox
+                checked={agreed}
+                onCheckedChange={(v) => setAgreed(!!v)}
+                className="mt-0.5"
+              />
+              <span>{copy.termsAgreement}</span>
+            </label>
+          )}
 
           <AuthSubmit
             type="submit"
-            disabled={!email || !password || !agreed || busy}
+            disabled={!email || !password || (showConsent && !agreed) || busy}
           >
             {stage === "enrolling"
               ? copy.submitEnrollingPasskey

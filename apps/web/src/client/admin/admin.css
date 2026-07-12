@@ -802,7 +802,10 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .dialog-backdrop {
   position: fixed; inset: 0;
   background: oklch(0 0 0 / 0.45);
-  z-index: 70; backdrop-filter: blur(2px);
+  /* No backdrop-filter here: a full-screen blur re-blurs the whole viewport on
+   * every repaint beneath/above it (cosmos backdrop, dialog body scroll) — same
+   * scroll-jank the packages/ui Dialog overlay fix removed. */
+  z-index: 70;
   display: grid; place-items: center;
   animation: scrim-in 160ms ease-out;
 }
@@ -1313,8 +1316,9 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   z-index: 3;
   opacity: 0;
   transition: opacity 120ms;
-  background: color-mix(in oklch, var(--card) 80%, transparent);
-  backdrop-filter: blur(2px);
+  /* More opaque mix instead of a backdrop-filter — the blur kept the matrix
+   * scroll compositing even while the button sat at opacity 0. */
+  background: color-mix(in oklch, var(--card) 92%, transparent);
 }
 .pm-cell-wrap:hover .pm-cell-edit,
 .pm-cell-edit:focus-visible { opacity: 1; }

@@ -6388,6 +6388,18 @@ msgstr "No editable fields. Add columns from the Schema tab to capture data on t
 msgid "No embedding model selected and the deployment sets no<0> EMBEDDING_DEFAULT_MODEL</0> — pick one below."
 msgstr "No embedding model selected and the deployment sets no<0> EMBEDDING_DEFAULT_MODEL</0> — pick one below."
 
+#: src/client/admin/relational-pickers.tsx
+msgid "No end-user selected"
+msgstr "No end-user selected"
+
+#: src/client/admin/relational-pickers.tsx
+msgid "No end-users in this workspace yet."
+msgstr "No end-users in this workspace yet."
+
+#: src/client/admin/relational-pickers.tsx
+msgid "No end-users match \"{q}\"."
+msgstr "No end-users match \"{q}\"."
+
 #: src/client/admin/parity/app-users.tsx
 msgid "No end-users yet — they appear here after signing up via the workspace auth endpoint."
 msgstr "No end-users yet — they appear here after signing up via the workspace auth endpoint."
@@ -7487,6 +7499,14 @@ msgstr "Pick a user"
 #: src/client/admin/pages/agents.tsx
 msgid "Pick an agent on the left, or click <0>+ New agent</0>."
 msgstr "Pick an agent on the left, or click <0>+ New agent</0>."
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick an end-user"
+msgstr "Pick an end-user"
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick an end-user to select them"
+msgstr "Pick an end-user to select them"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "Pick an existing file, or drop a new one to upload."
@@ -9109,6 +9129,10 @@ msgid "Search a collection"
 msgstr "Search a collection"
 
 #: src/client/admin/relational-pickers.tsx
+msgid "Search by email or name…"
+msgstr "Search by email or name…"
+
+#: src/client/admin/relational-pickers.tsx
 msgid "Search by label or id…"
 msgstr "Search by label or id…"
 
@@ -10039,6 +10063,10 @@ msgstr "Stores a list of storage keys. Upload new files on the <0>Storage</0> pa
 msgid "Stores a row id from <0>c_{0}</0>."
 msgstr "Stores a row id from <0>c_{0}</0>."
 
+#: src/client/admin/item-form.tsx
+msgid "Stores a workspace end-user id from <0>app_users</0>."
+msgstr "Stores a workspace end-user id from <0>app_users</0>."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "stores an array of ids"
 msgstr "stores an array of ids"
@@ -10145,6 +10173,7 @@ msgstr "Suspend end-user"
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/relational-pickers.tsx
 msgid "suspended"
 msgstr "suspended"
 
@@ -10420,6 +10449,10 @@ msgstr "The share link may have been revoked, or the record it pointed to was re
 #: src/client/admin/pages/traces.tsx
 msgid "The traces endpoint returned an error. Refresh to try again."
 msgstr "The traces endpoint returned an error. Refresh to try again."
+
+#: src/client/admin/relational-pickers.tsx
+msgid "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
+msgstr "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
 
 #: src/client/admin/app.tsx
 msgid "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."

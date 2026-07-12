@@ -2,6 +2,8 @@
 // Modal pickers for the "Relational" interface group in the item edit sheet.
 //
 //   • RelationPicker  — pick a row from c_<target> for `relation` fields.
+//   • AppUserPicker   — pick a workspace end-user (`app_users`) for
+//     `interface: "user"` fields; server-side `?q=` email/name search.
 //   • FilePicker      — pick one file/image key from /api/storage; lets the
 //     user upload new files via drag-drop or click-to-pick.
 //   • MultiFilePicker — multi-select variant; staged selection commits on Done.
@@ -34,9 +36,10 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { api } from "@/lib/api";
-import { itemsApi } from "./api";
+import { appUsersApi, itemsApi } from "./api";
 import { useCollections } from "./queries";
 import { expandParam } from "./display-template";
+import { appUserLabel } from "./relation-labels";
 import { makeLabelFor, type LabelFn } from "./row-label";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -932,6 +935,208 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels, 
             {selected
               ? <Trans>Selected <span className="font-mono">{selected}</span></Trans>
               : <Trans>Pick a row to select it</Trans>}
+          </span>
+          <div className="flex-1" />
+          <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
+          <Button variant="primary" size="sm" disabled={!selected} onClick={() => onCommit(selected)}><Trans>Confirm</Trans></Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AppUserPicker (modal) — workspace end-user for `interface: "user"` fields
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface AppUserLite {
+  id: string;
+  email: string;
+  name: string | null;
+  status: string;
+}
+
+export interface AppUserPickerProps {
+  value: string;
+  onChange: (v: string) => void;
+  error?: boolean;
+}
+
+/** The `interface: "user"` counterpart of RelationPicker: the field stores an
+ *  `app_users.id`, the trigger shows the resolved email (+ name), and the
+ *  modal searches the workspace's end-user pool server-side via `?q=`. */
+export function AppUserPicker({ value, onChange, error }: AppUserPickerProps) {
+  const { t } = useLingui();
+  const [open, setOpen] = useState(false);
+  const [labelCache, setLabelCache] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!value || labelCache[value]) return;
+    let cancelled = false;
+    appUsersApi.list({ ids: [value] })
+      .then((res) => {
+        if (cancelled) return;
+        const u = (res?.data ?? [])[0];
+        if (u) setLabelCache((c) => ({ ...c, [value]: appUserLabel(u) }));
+      })
+      .catch(() => { /* user may be deleted — keep id-only */ });
+    return () => { cancelled = true; };
+  }, [value, labelCache]);
+
+  const seedLabels = useCallback((users: AppUserLite[]) => {
+    setLabelCache((c) => {
+      const next = { ...c };
+      for (const u of users) next[u.id] = appUserLabel(u);
+      return next;
+    });
+  }, []);
+
+  return (
+    <>
+      <RelationTrigger
+        value={value}
+        label={value ? labelCache[value] : undefined}
+        error={!!error}
+        target="app_users"
+        placeholder={t`No end-user selected`}
+        onOpen={() => setOpen(true)}
+        onClear={() => onChange("")}
+      />
+      {open && (
+        <AppUserBrowserModal
+          initial={value}
+          onCommit={(id) => { onChange(id); setOpen(false); }}
+          onClose={() => setOpen(false)}
+          seedLabels={seedLabels}
+        />
+      )}
+    </>
+  );
+}
+
+function AppUserBrowserModal({ initial, onCommit, onClose, seedLabels }: {
+  initial: string;
+  onCommit: (id: string) => void;
+  onClose: () => void;
+  seedLabels: (users: AppUserLite[]) => void;
+}) {
+  const { t } = useLingui();
+  const [users, setUsers] = useState<AppUserLite[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [selected, setSelected] = useState<string>(initial);
+
+  // Server-side email/name search, debounced so typing doesn't fire a request
+  // per keystroke. An empty query lists the whole pool.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setErr(null);
+    const timer = setTimeout(() => {
+      const query = q.trim();
+      appUsersApi.list(query ? { q: query } : undefined)
+        .then((res) => {
+          if (cancelled) return;
+          const next = (res?.data ?? []) as AppUserLite[];
+          setUsers(next);
+          seedLabels(next);
+        })
+        .catch((e: Error) => { if (!cancelled) setErr(e.message || "Failed to load end-users"); })
+        .finally(() => { if (!cancelled) setLoading(false); });
+    }, q ? 250 : 0);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [q, seedLabels]);
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[min(88vh,720px)] w-[min(720px,92vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
+            <Trans>Pick an end-user</Trans>
+          </DialogTitle>
+          <DialogDescription className="text-[12.5px]">
+            <Trans>The workspace's end-user pool (<span className="font-mono">app_users</span>). Search by email or name.</Trans>
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea viewportClassName="max-h-[calc(min(88vh,720px)-10rem)] max-[640px]:max-h-[calc(min(88vh,720px)-15rem)]">
+          <div className="flex flex-col gap-3 p-4">
+          <InputGroup>
+            <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
+            <InputGroupInput
+              autoFocus
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={t`Search by email or name…`}
+            />
+          </InputGroup>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minHeight: 200 }}>
+            {loading && (
+              <div className="flex flex-col gap-2 p-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-9 w-full" />
+                ))}
+              </div>
+            )}
+            {err && <div style={{ color: "var(--destructive)", fontSize: 12.5, padding: 12 }}>{err}</div>}
+            {!loading && !err && (users ?? []).length === 0 && (
+              <div className="p-3 text-[12.5px] text-muted-foreground">
+                {q ? t`No end-users match "${q}".` : t`No end-users in this workspace yet.`}
+              </div>
+            )}
+            {!loading && (users ?? []).map((u) => {
+              const on = selected === u.id;
+              return (
+                <div
+                  key={u.id}
+                  onClick={() => setSelected(u.id)}
+                  onDoubleClick={() => { setSelected(u.id); onCommit(u.id); }}
+                  role="button"
+                  tabIndex={0}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "8px 12px",
+                    borderRadius: "var(--radius-xl)",
+                    border: `1px solid ${on ? "var(--primary)" : "var(--border)"}`,
+                    background: on ? "color-mix(in oklch, var(--primary) 8%, var(--card))" : "var(--card)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span style={{
+                    width: 14, height: 14, borderRadius: 999,
+                    border: `1px solid ${on ? "var(--primary)" : "var(--border)"}`,
+                    background: on ? "var(--primary)" : "transparent",
+                    boxShadow: on ? "inset 0 0 0 3px var(--card)" : "none",
+                    flex: "none",
+                  }} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {u.email}
+                      {u.name ? <span className="text-muted-foreground"> · {u.name}</span> : null}
+                    </div>
+                    <div className="truncate font-mono text-[11px] text-muted-foreground">
+                      {u.id}
+                    </div>
+                  </div>
+                  {u.status === "suspended" && (
+                    <span className="rounded-full border border-border bg-muted px-2 py-[2px] text-[10.5px] text-muted-foreground">
+                      <Trans>suspended</Trans>
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          </div>
+        </ScrollArea>
+
+        <DialogFooter className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
+          <span className="text-xs text-muted-foreground">
+            {selected
+              ? <Trans>Selected <span className="font-mono">{selected}</span></Trans>
+              : <Trans>Pick an end-user to select them</Trans>}
           </span>
           <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>

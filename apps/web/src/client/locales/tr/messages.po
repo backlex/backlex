@@ -6388,6 +6388,18 @@ msgstr "Düzenlenebilir alan yok. Bu koleksiyonda veri yakalamak için Şema sek
 msgid "No embedding model selected and the deployment sets no<0> EMBEDDING_DEFAULT_MODEL</0> — pick one below."
 msgstr "Seçili embedding modeli yok ve dağıtımda<0> EMBEDDING_DEFAULT_MODEL</0> tanımlı değil — aşağıdan bir model seçin."
 
+#: src/client/admin/relational-pickers.tsx
+msgid "No end-user selected"
+msgstr "Son kullanıcı seçilmedi"
+
+#: src/client/admin/relational-pickers.tsx
+msgid "No end-users in this workspace yet."
+msgstr "Bu çalışma alanında henüz son kullanıcı yok."
+
+#: src/client/admin/relational-pickers.tsx
+msgid "No end-users match \"{q}\"."
+msgstr "\"{q}\" ile eşleşen son kullanıcı yok."
+
 #: src/client/admin/parity/app-users.tsx
 msgid "No end-users yet — they appear here after signing up via the workspace auth endpoint."
 msgstr "Henüz son kullanıcı yok — çalışma alanı kimlik doğrulama uç noktası aracılığıyla kaydolduklarında burada görünürler."
@@ -7487,6 +7499,14 @@ msgstr "Bir kullanıcı seçin"
 #: src/client/admin/pages/agents.tsx
 msgid "Pick an agent on the left, or click <0>+ New agent</0>."
 msgstr "Soldan bir ajan seçin veya <0>+ Yeni ajan</0>’a tıklayın."
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick an end-user"
+msgstr "Bir son kullanıcı seçin"
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick an end-user to select them"
+msgstr "Seçmek için bir son kullanıcıya tıklayın"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "Pick an existing file, or drop a new one to upload."
@@ -9109,6 +9129,10 @@ msgid "Search a collection"
 msgstr "Bir koleksiyonda arayın"
 
 #: src/client/admin/relational-pickers.tsx
+msgid "Search by email or name…"
+msgstr "E-posta veya ada göre ara…"
+
+#: src/client/admin/relational-pickers.tsx
 msgid "Search by label or id…"
 msgstr "Etiket veya ID ile ara…"
 
@@ -10039,6 +10063,10 @@ msgstr "Depolama anahtarlarının listesini saklar. Yeni dosyaları <0>Depolama<
 msgid "Stores a row id from <0>c_{0}</0>."
 msgstr "<0>c_{0}</0> tablosundan bir satır ID'si saklar."
 
+#: src/client/admin/item-form.tsx
+msgid "Stores a workspace end-user id from <0>app_users</0>."
+msgstr "<0>app_users</0> tablosundan bir çalışma alanı son kullanıcı kimliği saklar."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "stores an array of ids"
 msgstr "bir id dizisi saklar"
@@ -10145,6 +10173,7 @@ msgstr "Son kullanıcıyı askıya al"
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/relational-pickers.tsx
 msgid "suspended"
 msgstr "askıya alındı"
 
@@ -10420,6 +10449,10 @@ msgstr "Paylaşım bağlantısı iptal edilmiş olabilir ya da işaret ettiği k
 #: src/client/admin/pages/traces.tsx
 msgid "The traces endpoint returned an error. Refresh to try again."
 msgstr "İzler uç noktası hata döndürdü. Yeniden denemek için yenileyin."
+
+#: src/client/admin/relational-pickers.tsx
+msgid "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
+msgstr "Çalışma alanının son kullanıcı havuzu (<0>app_users</0>). E-posta veya ada göre arayın."
 
 #: src/client/admin/app.tsx
 msgid "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."

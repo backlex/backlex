@@ -2,13 +2,17 @@ import { Hono, type Context } from "hono";
 import { and, eq, lt } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { AppError } from "@backlex/core";
+import { AppError, SYSTEM_ROLES } from "@backlex/core";
+import { hashSecret } from "@backlex/auth";
 import type { AppBindings } from "../app";
 import { findTenantBySlugOrId, getTenantAuth } from "../services/tenant-auth";
 import { loadAuthConfigRow, resolveAuthSurface } from "../services/auth-config";
 import { resolveSamlProvider } from "../services/saml-providers";
 import { resolveLdapAdapter } from "../services/ldap-config";
 import { provisionAppUser } from "../services/sso-provisioning";
+import { consumeAppUserInvite, findAppUserInvite } from "../services/app-user-invites";
+import { assignAppUserRoleByName, ensureSystemRoles } from "../services/seed";
+import { invalidateUserRoles } from "../services/permissions-cache";
 import { rateLimitOk } from "../lib/rate-limit";
 import { signAccessToken } from "../lib/jwt";
 
@@ -733,6 +737,118 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
       refreshToken,
       expiresIn: access.expiresIn,
       tokenType: "Bearer",
+    });
+  })
+  /**
+   * Accept an admin-issued end-user invite (`POST /api/app-users/invite`):
+   * `{ token, password }` sets the credential on the pending `app_users` row,
+   * flips it to `active` (email counted as verified — the token arrived at
+   * that mailbox), consumes the one-shot token, and signs the user straight
+   * in with the same token pair every other sign-in path returns.
+   *
+   * Mounted BEFORE the better-auth catch-all so it isn't proxied there.
+   */
+  .post("/:slug/auth/invite/accept", async (c) => {
+    const { ctx, tenant } = await resolveTenant(c);
+    const dbCtx = { db: ctx.db, dialect: ctx.dialect };
+    const body = (await c.req.json().catch(() => null)) as
+      | { token?: unknown; password?: unknown }
+      | null;
+    const token = typeof body?.token === "string" ? body.token.trim() : "";
+    const password = typeof body?.password === "string" ? body.password : "";
+    if (!token || !password) {
+      throw new AppError("VALIDATION", "token and password are required");
+    }
+    // Match better-auth's `minPasswordLength` for the email+password flow.
+    if (password.length < 8) {
+      throw new AppError("VALIDATION", "Password must be at least 8 characters");
+    }
+
+    const invite = await findAppUserInvite(dbCtx, tenant.id, token);
+    if (!invite) throw new AppError("NOT_FOUND", "Invite not found");
+    if (invite.expired) throw new AppError("VALIDATION", "Invite has expired");
+
+    const t =
+      ctx.dialect === "pg"
+        ? { users: pg.schema.appUsers, accounts: pg.schema.appAccounts }
+        : { users: sqlite.schema.appUsers, accounts: sqlite.schema.appAccounts };
+    const users = (await (ctx.db as any)
+      .select({ id: t.users.id, email: t.users.email, status: t.users.status })
+      .from(t.users)
+      .where(and(eq(t.users.id, invite.appUserId), eq(t.users.tenantId, tenant.id)))
+      .limit(1)) as Array<{ id: string; email: string; status: string }>;
+    const user = users[0];
+    if (!user) throw new AppError("NOT_FOUND", "Invited end-user no longer exists");
+    if (user.status === "suspended") {
+      throw new AppError("FORBIDDEN", "This account is suspended");
+    }
+
+    // Set the credential — better-auth's own scrypt format (`hashSecret`
+    // re-exports better-auth/crypto), so the normal email+password sign-in
+    // verifies it from here on.
+    const hash = await hashSecret(password);
+    const now = ctx.dialect === "pg" ? new Date() : Date.now();
+    const existing = (await (ctx.db as any)
+      .select({ id: t.accounts.id })
+      .from(t.accounts)
+      .where(and(eq(t.accounts.userId, user.id), eq(t.accounts.providerId, "credential")))
+      .limit(1)) as Array<{ id: string }>;
+    if (existing[0]) {
+      await (ctx.db as any)
+        .update(t.accounts)
+        .set({ password: hash, updatedAt: now })
+        .where(eq(t.accounts.id, existing[0].id));
+    } else {
+      await (ctx.db as any).insert(t.accounts).values({
+        id: crypto.randomUUID(),
+        tenantId: tenant.id,
+        userId: user.id,
+        providerId: "credential",
+        accountId: user.id,
+        password: hash,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    await (ctx.db as any)
+      .update(t.users)
+      .set({ status: "active", emailVerified: true, updatedAt: now })
+      .where(eq(t.users.id, user.id));
+    await consumeAppUserInvite(dbCtx, invite.id);
+
+    // Implicit `authenticated` role, same as every other provisioning path.
+    await ensureSystemRoles(dbCtx, tenant.id);
+    await assignAppUserRoleByName(dbCtx, tenant.id, user.id, SYSTEM_ROLES.authenticated);
+    invalidateUserRoles(tenant.id, user.id);
+
+    const lifetime =
+      parseLifetime(
+        (await loadAuthConfigRow(
+          { db: ctx.db as any, dialect: ctx.dialect },
+          tenant.id,
+        ))?.sessionLifetime,
+      ) ?? DEFAULT_APP_SESSION_LIFETIME_SECONDS;
+    const tokens = await issueTokenPair(
+      { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
+      {
+        tenantId: tenant.id,
+        userId: user.id,
+        email: user.email,
+        ipAddress: extractIp(c.req.raw),
+        userAgent: c.req.raw.headers.get("user-agent"),
+        lifetimeSeconds: lifetime,
+      },
+    );
+    return c.json({
+      // Same shape as the LDAP sign-in: `token` = the opaque refresh token
+      // (what existing bearer clients replay), plus the short-lived JWT pair.
+      token: tokens.refreshToken,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresIn: tokens.expiresIn,
+      tokenType: "Bearer",
+      user: { id: user.id, email: user.email },
     });
   })
   .all("/:slug/auth/*", async (c) => {

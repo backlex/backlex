@@ -356,7 +356,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
                       <IconButton
                         icon={I.Pencil}
                         title={t`Edit rule`}
-                        className="absolute right-[3px] top-[3px] z-[3] size-5 min-w-0 bg-[color-mix(in_oklch,var(--card)_80%,transparent)] p-0 opacity-0 backdrop-blur-[2px] transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                        className="absolute right-[3px] top-[3px] z-[3] size-5 min-w-0 bg-[color-mix(in_oklch,var(--card)_92%,transparent)] p-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
                         onClick={() => {
                           setSheetTarget({ role: activeRole, action: a.v, collection: c });
                         }}

@@ -236,7 +236,7 @@ export function GalleryGrid({ rows, onEdit, displayTemplate, fields }: { rows: P
         return (
           <button key={r.id} type="button" className="cursor-pointer overflow-hidden rounded-control border border-border bg-card text-left text-foreground hover:border-chip-border" onClick={() => onEdit(r)}>
             <div className="relative grid aspect-[16/10] p-2.5 [place-items:end_start]" style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}>
-              <span className="rounded-control bg-[color-mix(in_oklch,var(--background)_65%,transparent)] px-2 py-0.5 font-mono text-[10.5px] text-foreground backdrop-blur-[4px]">{r.slug || shortId(r.id)}</span>
+              <span className="rounded-control bg-[color-mix(in_oklch,var(--background)_80%,transparent)] px-2 py-0.5 font-mono text-[10.5px] text-foreground">{r.slug || shortId(r.id)}</span>
             </div>
             <div className="flex flex-col gap-1.5 px-3 pb-3 pt-2.5">
               <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r, displayTemplate, fields)}</div>

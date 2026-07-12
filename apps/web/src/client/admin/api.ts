@@ -667,7 +667,15 @@ export const permissionsApi = {
 /** Workspace end-user pool admin (the `app_users` table). All endpoints are
  *  admin-only and scoped to the active workspace. */
 export const appUsersApi = {
-  list: () => api<Envelope<ApiAppUser[]>>(`/api/app-users`),
+  /** `q` = email/name substring search; `ids` = batch label resolution for
+   *  `interface: "user"` fields. */
+  list: (params?: { q?: string; ids?: string[] }) => {
+    const qs = new URLSearchParams();
+    if (params?.q) qs.set("q", params.q);
+    if (params?.ids?.length) qs.set("ids", params.ids.join(","));
+    const query = qs.toString();
+    return api<Envelope<ApiAppUser[]>>(`/api/app-users${query ? `?${query}` : ""}`);
+  },
   setRoles: (id: string, roleIds: string[]) =>
     api<{ ok: true; roleIds: string[] }>(`/api/app-users/${id}/roles`, {
       method: "PUT",

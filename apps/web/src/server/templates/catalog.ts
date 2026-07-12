@@ -51,6 +51,12 @@ export interface TemplateCollection {
   /** Realistic example rows seeded on apply (only when the collection is newly
    *  created). Relation values use `{ ref: "slug:index" }`. */
   samples?: SampleRow[];
+  /** Portal auto-link rule seeded into the workspace's `portalLinks` setting
+   *  on apply (idempotent per collection): an app-plane signup whose email
+   *  matches `emailField` on an unlinked row of this collection gets its
+   *  `app_user_id` stamped and `role` (a bundled self-service role, by name)
+   *  auto-assigned. Only meaningful on collections with a `userLink()` field. */
+  portalLink?: { emailField: string; role: string };
 }
 
 /** A role (+ its permission grants) seeded alongside the collections. Skipped
@@ -1317,6 +1323,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "employees", group: "People", singular: "Employee", plural: "Employees", fts: true, defaultSort: "last_name",
+        portalLink: { emailField: "work_email", role: "Employee (self-service)" },
         fields: [
           text("employee_number", { unique: true, label: "Employee #", group: "Identity" }),
           text("first_name", { label: "First name", searchable: true, group: "Identity" }),
@@ -5119,6 +5126,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "members", group: "Members", singular: "Member", plural: "Members", fts: true, defaultSort: "name",
+        portalLink: { emailField: "email", role: "Member (self-service)" },
         fields: [
           text("name", { required: true, searchable: true, group: "Member" }), email("email", { group: "Member" }), text("phone", { group: "Member" }),
           rel("plan", "membership_plans", { group: "Membership" }),

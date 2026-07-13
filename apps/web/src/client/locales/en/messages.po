@@ -2086,6 +2086,10 @@ msgstr "Claude Desktop"
 msgid "Clear"
 msgstr "Clear"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Clear all"
+msgstr "Clear all"
+
 #: src/client/admin/storage/index.tsx
 msgid "Clear done"
 msgstr "Clear done"
@@ -9258,6 +9262,10 @@ msgstr "Select a function to save."
 #: src/client/admin/flow-builder.tsx
 msgid "Select a function…"
 msgstr "Select a function…"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Select all"
+msgstr "Select all"
 
 #: src/client/pages/rest-explorer.tsx
 msgid "Select an endpoint on the left to inspect it."

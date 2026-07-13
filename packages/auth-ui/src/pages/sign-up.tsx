@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { KeyRoundIcon, MailCheckIcon, ShieldIcon } from "lucide-react";
+import { KeyRoundIcon, Loader2Icon, MailCheckIcon, ShieldIcon } from "lucide-react";
 import { cn } from "@backlex/ui/lib/utils";
 import { Input } from "@backlex/ui/components/input";
 import { Label } from "@backlex/ui/components/label";
@@ -164,8 +164,12 @@ export const SignUpPage = ({
     "form" | "creating" | "enrolling" | "verify"
   >("form");
   // True once getSession has resolved with NO session (the session-present
-  // path navigates away instead). Claim mode holds its first paint on this.
+  // path navigates away instead), OR the probe stalled past the hard cap.
+  // Claim mode holds its first paint on this.
   const [sessionChecked, setSessionChecked] = useState(false);
+  // After a short grace we swap the held-blank paint for a lightweight loader
+  // so a slow session probe reads as "connecting", not a dead black screen.
+  const [holdLoader, setHoldLoader] = useState(false);
 
   const claim = searchParam("claim") === "1";
   const isFirst = surface?.firstUserMode === true && claim;
@@ -185,7 +189,28 @@ export const SignUpPage = ({
   const passkeyOffered = supportsPasskey && surface?.passkey !== false;
 
   useEffect(() => {
+    // Only claim mode holds its paint on the probe; the normal sign-up form
+    // renders immediately, so skip the timers/loader machinery entirely.
+    if (!claim) return;
     let cancelled = false;
+    const timers: number[] = [];
+    // Reveal the loader once the probe is visibly slow (same 700ms grace as the
+    // admin AuthGate — the fast path never flashes it).
+    timers.push(
+      window.setTimeout(() => {
+        if (!cancelled) setHoldLoader(true);
+      }, 700),
+    );
+    // Hard cap: `getSession` takes no abort signal, so a stalled
+    // /api/auth/get-session (a slow or flaky instance) used to hold the claim
+    // paint on `null` forever — a permanent black screen. After the cap, stop
+    // holding and fall through to the form / sign-in redirect. A late-resolving
+    // probe still navigates away below (or the page has already unmounted).
+    timers.push(
+      window.setTimeout(() => {
+        if (!cancelled) setSessionChecked(true);
+      }, 9000),
+    );
     Promise.resolve(authClient.getSession())
       .then((res) => {
         if (cancelled) return;
@@ -199,8 +224,9 @@ export const SignUpPage = ({
       });
     return () => {
       cancelled = true;
+      for (const t of timers) window.clearTimeout(t);
     };
-  }, [authClient, navigate]);
+  }, [authClient, navigate, claim]);
 
   useEffect(() => {
     if (staleClaim && sessionChecked) navigate("/sign-in", { replace: true });
@@ -275,9 +301,19 @@ export const SignUpPage = ({
   // already signed in as the admin, and painting the "create admin" form for
   // the round-trip reads as a scary flash before the redirect to "/". Same
   // grace-window pattern as the admin AuthGate. `staleClaim` keeps the hold
-  // through the sign-in redirect above.
+  // through the sign-in redirect above. Once the probe is visibly slow we swap
+  // the blank for a spinner so a stalled instance never looks like a dead black
+  // screen (the effect's hard cap also releases the hold after 9s).
   if (claim && (!sessionChecked || staleClaim)) {
-    return null;
+    if (!holdLoader) return null;
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2Icon
+          className="size-6 animate-spin text-muted-foreground"
+          aria-label="Loading"
+        />
+      </div>
+    );
   }
 
   if (blocked) {

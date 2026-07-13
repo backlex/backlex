@@ -296,11 +296,11 @@ export function ItemEditorPage({
     <div className="flex flex-col gap-4 pb-4">
       {/* Header bar — sticky so Save / prev-next stay reachable while the form
           scrolls with the page. */}
-      <div className="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-border bg-background pb-3">
+      <div className="sticky top-0 z-20 -mx-[14px] -mt-4 flex flex-wrap items-center gap-2 border-b border-border bg-background px-[14px] pt-4 pb-3 md:-mx-7 md:-mt-[26px] md:px-7 md:pt-[26px]">
         <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => guarded(onBack)}>
           <Trans>Back</Trans>
         </Button>
-        <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center gap-2">
             <span className="truncate text-base font-semibold tracking-[-0.01em]">{title}</span>
             {dirty && (
@@ -309,7 +309,7 @@ export function ItemEditorPage({
               </Badge>
             )}
           </div>
-          <span className="font-mono text-[11px] text-muted-foreground">
+          <span className="truncate font-mono text-[11px] text-muted-foreground">
             c_{slug}
             {mode === "edit" ? ` · ${itemId}` : ""}
           </span>
@@ -344,7 +344,9 @@ export function ItemEditorPage({
           {mode === "edit" && (
             <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground" title={t`Autosave drafts as you type`}>
               <Switch checked={autosave} onChange={setAutosave} />
-              <Trans>Autosave</Trans>
+              <span className="hidden sm:inline">
+                <Trans>Autosave</Trans>
+              </span>
             </label>
           )}
           {mode === "create" ? (

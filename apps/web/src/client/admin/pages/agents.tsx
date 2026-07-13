@@ -220,6 +220,11 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([namespace, tools]) => ({ namespace, tools }));
   })();
+  // Master select-all operates on the currently-visible (filtered) tools, so it
+  // reads "select these 8 matches" rather than the whole 132-tool catalog.
+  const visibleTools = groupedTools.flatMap((g) => g.tools);
+  const allVisibleSelected =
+    visibleTools.length > 0 && visibleTools.every((tt) => draft.tools.includes(tt.name));
 
   return (
     <div className="flex flex-col gap-4.5">
@@ -339,12 +344,23 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label><Trans>Tools</Trans> <span className="text-[11px] tabular-nums text-muted-foreground">({draft.tools.length}/{toolCatalog?.length ?? 0})</span></Label>
-                    <Input className="h-7 w-40 text-[12px]" value={toolFilter} onChange={(e) => setToolFilter(e.target.value)} placeholder={t`Filter tools…`} />
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="shrink-0"><Trans>Tools</Trans> <span className="text-[11px] tabular-nums text-muted-foreground">({draft.tools.length}/{toolCatalog?.length ?? 0})</span></Label>
+                    <div className="flex min-w-0 items-center gap-2">
+                      {visibleTools.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(visibleTools)}
+                          className="shrink-0 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                        >
+                          {allVisibleSelected ? <Trans>Clear all</Trans> : <Trans>Select all</Trans>}
+                        </button>
+                      )}
+                      <Input className="h-7 w-40 min-w-0 text-[12px] max-[380px]:w-28" value={toolFilter} onChange={(e) => setToolFilter(e.target.value)} placeholder={t`Filter tools…`} />
+                    </div>
                   </div>
                   <div className="overflow-hidden rounded-control border border-border">
-                    <ScrollArea viewportClassName="max-h-[260px]">
+                    <ScrollArea type="auto" className="reserve-scrollbar-gutter" viewportClassName="max-h-[260px]">
                       <div className="flex flex-col">
                         {toolsLoading && (
                           <div className="flex flex-col gap-2.5 p-3">

@@ -11279,6 +11279,10 @@ msgstr "Sürüm"
 msgid "Versioned (draft / published)"
 msgstr "Sürümlü (taslak / yayınlandı)"
 
+#: src/client/admin/item-views.tsx
+msgid "View"
+msgstr "Görünüm"
+
 #: src/client/admin/collections-index.tsx
 msgid "View active"
 msgstr "Etkinleri görüntüle"

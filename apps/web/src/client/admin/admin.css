@@ -109,12 +109,13 @@ body {
   gap: 10px;
   padding: 14px 28px;
   border-bottom: 1px solid var(--border);
-  /* Translucent bar so the cosmic backdrop reads faintly behind it.
-   * No backdrop-filter: Chrome re-evaluates it on EVERY document repaint —
-   * including scrolls in dialogs stacked above it — measured in cloud at
-   * 36.6ms → 17.3ms avg frame time while scrolling a modal body. A higher
-   * alpha approximates the old frosted separation instead. */
-  background: rgba(6, 5, 13, 0.9);
+  /* Opaque bar. We dropped backdrop-filter for perf (Chrome re-evaluates it on
+   * EVERY document repaint — incl. scrolls in dialogs stacked above it, measured
+   * in cloud at 36.6ms → 17.3ms avg frame time while scrolling a modal body).
+   * Without the blur, any translucency ghosts the page content that scrolls
+   * under the bar, so it must be fully opaque — a translucent tint alone reads
+   * as the content bleeding through the chrome. */
+  background: rgb(6, 5, 13);
 }
 .crumbs { display: flex; align-items: center; gap: 2px; font-size: 13px; color: var(--muted-foreground); }
 .crumbs.path { font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace); }
@@ -168,6 +169,20 @@ body {
  * no-backdrop-filter rule as the topbar above — higher alpha instead. */
 html.dark {
   --sidebar: rgba(12, 10, 22, 0.85);
+}
+/* The mobile nav is a Radix Sheet drawer that overlays the scrolling page
+ * content — not the fixed cosmic backdrop the desktop sidebar sits over. With
+ * no backdrop-filter, the translucent --sidebar above lets the page bleed
+ * straight through the drawer, so the menu reads as "mixed" with the page.
+ * Pin the drawer opaque; the desktop rail keeps its frosted-over-cosmos tint
+ * because content never passes behind it. */
+html.dark [data-slot="sidebar"][data-mobile="true"] {
+  /* Override --color-sidebar (what `bg-sidebar` reads), not just --sidebar:
+   * Tailwind resolves --color-sidebar's `var(--sidebar)` once at :root and
+   * inherits the computed rgba down, so re-pointing --sidebar here never
+   * reaches the drawer's own background. */
+  --color-sidebar: rgb(12, 10, 22);
+  --sidebar: rgb(12, 10, 22);
 }
 .icon-btn {
   width: 32px; height: 32px;

@@ -26,6 +26,21 @@
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
     }
+  /* Radix ScrollArea draws its scrollbar as an absolute overlay on top of the
+     viewport. For an *edge-to-edge* list (rows/checkboxes running the full
+     width, e.g. a tool picker) the thumb sits over the content. Opt such a
+     list into a reserved gutter with `className="reserve-scrollbar-gutter"`
+     plus `type="auto"` (so the scrollbar stays mounted while overflowing and
+     the gutter never shifts on hover). The gutter is only reserved while a
+     vertical scrollbar is actually present. Deliberately NOT applied to every
+     ScrollArea: dialog/form bodies already carry their own padding, so a blanket
+     gutter would just add dead space on the right. */
+  [data-slot="scroll-area"].reserve-scrollbar-gutter:has(
+      > [data-slot="scroll-area-scrollbar"][data-orientation="vertical"]
+    )
+    > [data-slot="scroll-area-viewport"] {
+    padding-inline-end: 0.625rem;
+  }
 }
 
 /* iOS Safari zooms the page in when a focused text field has a font-size

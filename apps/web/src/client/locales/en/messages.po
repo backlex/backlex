@@ -5921,6 +5921,10 @@ msgstr "Mon"
 msgid "more"
 msgstr "more"
 
+#: src/client/admin/app.tsx
+msgid "More actions"
+msgstr "More actions"
+
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "More save options"

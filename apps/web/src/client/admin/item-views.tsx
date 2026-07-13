@@ -11,6 +11,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "./icons";
 import { Badge, Button, IconButton } from "./ui";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@backlex/ui/components/select";
 import { authorById } from "./items";
 import { rowLabel as sharedRowLabel, shortId, type LabelSchemaField } from "./row-label";
 import type { Post } from "./config";
@@ -60,22 +61,43 @@ export function ItemsViewToggle({
   // Hide Kanban when there's no status-shaped column to group by; the design's
   // prototype always had `status` so it never had to guard for this.
   const opts = hasStatus ? ALL_OPTS : ALL_OPTS.filter((o) => o.id !== "kanban");
+  const active = opts.find((o) => o.id === mode) ?? opts[0];
+  const ActiveIcon = active?.icon;
   return (
-    <Tabs value={mode} onValueChange={(v) => setMode(v as ItemsViewMode)}>
-      <TabsList className="gap-[2px] rounded-control border border-white/[0.07] bg-white/[0.04] p-[2px]">
-        {opts.map((o) => (
-          <TabsTrigger
-            key={o.id}
-            value={o.id}
-            title={LABELS[o.id]}
-            className="rounded-sm px-[9px] py-[5px] text-[11.5px] font-semibold text-muted-foreground data-active:bg-[color-mix(in_oklch,var(--primary)_16%,transparent)] data-active:text-foreground"
-          >
-            <o.icon size={13} />
-            <span>{LABELS[o.id]}</span>
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+    <>
+      {/* Desktop: full segmented strip. Below sm the four icon+label tabs plus
+          Columns + Live tail overflow the toolbar, so collapse to a dropdown. */}
+      <Tabs value={mode} onValueChange={(v) => setMode(v as ItemsViewMode)} className="max-sm:hidden">
+        <TabsList className="gap-[2px] rounded-control border border-white/[0.07] bg-white/[0.04] p-[2px]">
+          {opts.map((o) => (
+            <TabsTrigger
+              key={o.id}
+              value={o.id}
+              title={LABELS[o.id]}
+              className="rounded-sm px-[9px] py-[5px] text-[11.5px] font-semibold text-muted-foreground data-active:bg-[color-mix(in_oklch,var(--primary)_16%,transparent)] data-active:text-foreground"
+            >
+              <o.icon size={13} />
+              <span>{LABELS[o.id]}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+      {/* Mobile: dropdown of the same views. */}
+      <Select value={mode} onValueChange={(v) => setMode(v as ItemsViewMode)}>
+        <SelectTrigger size="sm" className="h-8 gap-1.5 bg-white/[0.04] text-[12px] font-semibold sm:hidden" aria-label={t`View`}>
+          {ActiveIcon ? <ActiveIcon size={13} /> : null}
+          <SelectValue>{active ? LABELS[active.id] : null}</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {opts.map((o) => (
+            <SelectItem key={o.id} value={o.id}>
+              <o.icon size={13} />
+              <span>{LABELS[o.id]}</span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </>
   );
 }
 

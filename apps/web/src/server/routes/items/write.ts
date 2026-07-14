@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { sql, type SQL } from "drizzle-orm";
 import { AppError, } from "@backlex/core";
+import { ensureVersionedColumns } from "@backlex/db";
 import type { AppBindings } from "../../app";
 import { requirePermission } from "../../middleware/permission";
 import { publishEvent } from "../../services/events";
@@ -234,6 +235,11 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>()
       }
       const id = c.req.param("id");
       const table = collection.physicalTable;
+      // Heal tables that predate scheduled publishing before we touch them:
+      // publish/unpublish/schedule all write `_publish_at`, and a versioned
+      // table created before that column existed (schema never re-applied) would
+      // otherwise 500 with "no such column: _publish_at". Idempotent + cheap.
+      await ensureVersionedColumns(ctx.db, ctx.dialect, table);
       const tenantWhere = tenantFilter(collection, auth);
       const unpublish = c.req.query("unpublish") === "1";
       const body = (await c.req.json().catch(() => ({}))) as { publishAt?: string | null };

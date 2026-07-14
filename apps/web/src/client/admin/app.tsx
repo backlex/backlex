@@ -13,6 +13,12 @@ import { I } from "./icons";
 import { Card } from "@backlex/ui/components/card";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@backlex/ui/components/dropdown-menu";
+import {
   ADAPTER_PROFILES,
   NAV_DEVELOPERS,
   NAV_ITEMS,
@@ -1114,11 +1120,14 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                     {schemaState.ownerScoped ? ` · ${t`owner-scoped`}` : ""}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <Button variant="outline" icon={I.Refresh} onClick={refresh}><Trans>Refresh</Trans></Button>
-                  <Button variant="outline" icon={I.Upload} onClick={importItems}><Trans>Import</Trans></Button>
-                  <Button variant="outline" icon={I.Download} onClick={() => exportItems("csv")}><Trans>Export CSV</Trans></Button>
-                  <Button variant="outline" icon={I.ExternalLink} onClick={() => navigate(`/rest-explorer?slug=${encodeURIComponent(activeCollection)}`)}>API</Button>
+                <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                  {/* Desktop: all secondary actions inline. */}
+                  <div className="hidden items-center gap-2 sm:flex">
+                    <Button variant="outline" icon={I.Refresh} onClick={refresh}><Trans>Refresh</Trans></Button>
+                    <Button variant="outline" icon={I.Upload} onClick={importItems}><Trans>Import</Trans></Button>
+                    <Button variant="outline" icon={I.Download} onClick={() => exportItems("csv")}><Trans>Export CSV</Trans></Button>
+                    <Button variant="outline" icon={I.ExternalLink} onClick={() => navigate(`/rest-explorer?slug=${encodeURIComponent(activeCollection)}`)}>API</Button>
+                  </div>
                   <Button
                     variant="primary"
                     icon={I.Plus}
@@ -1127,6 +1136,19 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                   >
                     <Trans>New post</Trans>
                   </Button>
+                  {/* Mobile: collapse the secondary actions into an overflow menu on
+                      the right; New post stays primary. Hidden on desktop (inline above). */}
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" icon={I.More} aria-label={t`More actions`} className="px-2 sm:hidden" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="z-[70]">
+                      <DropdownMenuItem onSelect={refresh}><I.Refresh size={14} /><Trans>Refresh</Trans></DropdownMenuItem>
+                      <DropdownMenuItem onSelect={importItems}><I.Upload size={14} /><Trans>Import</Trans></DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => exportItems("csv")}><I.Download size={14} /><Trans>Export CSV</Trans></DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => navigate(`/rest-explorer?slug=${encodeURIComponent(activeCollection)}`)}><I.ExternalLink size={14} />API</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
 

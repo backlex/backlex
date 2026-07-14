@@ -16,6 +16,12 @@ import { DisplayTemplateEditor } from "./display-template-editor";
 interface FieldLike {
   name: string;
   type?: string;
+  /** Editor interface — `"dropdown"` marks a finite-choice select field,
+   *  the only shape that can drive the Kanban group-by axis. */
+  interface?: string;
+  /** Finite choice set for a `dropdown` field — `choices[]` (value+label) or a
+   *  bare `values[]`. Powers the per-value action mapper. */
+  options?: { choices?: { value: string; label?: string }[]; values?: string[] };
   /** Target collection slug — present on `relation` fields. */
   to?: string;
   /** Contributes to the FTS index when the collection has `fts: true`. */
@@ -51,6 +57,12 @@ interface SchemaLike {
   fields?: FieldLike[];
   /** Comma-separated default sort, `-field,name` shape. */
   defaultSort?: string | null;
+  /** Field name the admin Kanban view groups cards by — a dropdown field's
+   *  name or `_status` on versioned collections. Null = auto-detect. */
+  kanbanGroupBy?: string | null;
+  /** Maps group-by dropdown values → lifecycle actions (e.g. `{done:"publish"}`)
+   *  so moving a card into that column also fires the transition. */
+  kanbanActionMap?: Record<string, "publish" | "unpublish" | "archive"> | null;
 }
 
 type SortClause = { field: string; dir: "asc" | "desc" };
@@ -103,6 +115,15 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
   const [sortClauses, setSortClauses] = useState<SortClause[]>(
     parseDefaultSort(schema.defaultSort),
   );
+  // Kanban group-by axis. `"__auto"` sentinel ↔ null (auto-detect: a field
+  // named `status`, else the first dropdown).
+  const [kanbanGroupBy, setKanbanGroupBy] = useState<string>(
+    schema.kanbanGroupBy ?? "__auto",
+  );
+  // Per-value lifecycle triggers (custom-status → publish/unpublish/archive).
+  const [actionMap, setActionMap] = useState<Record<string, string>>(
+    (schema.kanbanActionMap as Record<string, string>) ?? {},
+  );
   const [reindexing, setReindexing] = useState(false);
   const [embedding, setEmbedding] = useState(false);
   // Deployment-level vector readiness — fetched once so the model picker can
@@ -130,6 +151,8 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
     setNote(schema.note ?? "");
     setDisplayTemplate(schema.displayTemplate ?? "");
     setSortClauses(parseDefaultSort(schema.defaultSort));
+    setKanbanGroupBy(schema.kanbanGroupBy ?? "__auto");
+    setActionMap((schema.kanbanActionMap as Record<string, string>) ?? {});
   }, [schema.slug]);
 
   // Field options for the sort dropdown: id + user fields + (created_at,
@@ -152,6 +175,52 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
 
   const sortDirty =
     serializeSort(sortClauses) !== (schema.defaultSort ?? null);
+
+  // Kanban group-by candidates: the auto sentinel, the `_status` lifecycle
+  // column (only when the collection is versioned), and every dropdown field.
+  // The card is hidden unless at least one real axis exists (matches the
+  // toolbar, which hides the Kanban view mode when there's nothing to group by).
+  const kanbanFieldOptions = (() => {
+    const opts: { value: string; label: string; hint?: string }[] = [
+      { value: "__auto", label: t`Auto`, hint: t`first dropdown` },
+    ];
+    if (schema.versioned) {
+      opts.push({ value: "_status", label: "_status", hint: t`lifecycle` });
+    }
+    for (const f of schema.fields ?? []) {
+      if (f.interface === "dropdown") {
+        opts.push({ value: f.name, label: f.name, hint: "dropdown" });
+      }
+    }
+    return opts;
+  })();
+  const hasKanbanAxis = kanbanFieldOptions.length > 1;
+
+  // Per-value lifecycle triggers apply only when the board groups by a real
+  // dropdown field (not Auto / not `_status`) on a versioned collection. The
+  // choices come from that field's own option set.
+  const triggerField =
+    schema.versioned && kanbanGroupBy !== "__auto" && kanbanGroupBy !== "_status"
+      ? (schema.fields ?? []).find((f) => f.name === kanbanGroupBy && f.interface === "dropdown")
+      : undefined;
+  const triggerChoices: string[] = triggerField
+    ? triggerField.options?.choices?.length
+      ? triggerField.options.choices.map((c) => c.value)
+      : (triggerField.options?.values ?? [])
+    : [];
+  const cleanActionMap = (m: Record<string, string>) =>
+    Object.fromEntries(Object.entries(m).filter(([, v]) => v));
+  const actionOptions = [
+    { value: "", label: t`No action` },
+    { value: "publish", label: t`Publish` },
+    { value: "unpublish", label: t`Unpublish` },
+    { value: "archive", label: t`Archive` },
+  ];
+  const savedActionMap = (schema.kanbanActionMap as Record<string, string>) ?? {};
+  const actionMapDirty =
+    JSON.stringify(cleanActionMap(actionMap)) !== JSON.stringify(cleanActionMap(savedActionMap));
+  const kanbanDirty =
+    (schema.kanbanGroupBy ?? "__auto") !== kanbanGroupBy || actionMapDirty;
 
   const slugClean = slug.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/^_+|_+$/g, "");
   const slugError =
@@ -572,6 +641,84 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
           </Button>
         </div>
       </Card>
+
+      {hasKanbanAxis ? (
+        <Card className="py-0 gap-0">
+          <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
+            <I.LayoutKanban size={14} />
+            <span className="text-[13px] font-medium"><Trans>kanban</Trans></span>
+            <span className="font-mono text-xs text-muted-foreground">
+              <Trans>which field the board groups cards by</Trans>
+            </span>
+          </div>
+          <div className="flex flex-col gap-2.5 p-4">
+            <div className="text-[11.5px] text-muted-foreground">
+              <Trans>Pick the field whose values become the Kanban columns.
+              <span className="font-mono"> Auto</span> uses a field named
+              <span className="font-mono"> status</span>, else the first dropdown.</Trans>
+              {schema.versioned ? (
+                <>
+                  {" "}
+                  <Trans>Choosing <span className="font-mono">_status</span> tracks
+                  the draft/published lifecycle.</Trans>
+                </>
+              ) : null}
+            </div>
+            <div className="max-w-xs">
+              <Select
+                value={kanbanGroupBy}
+                onChange={setKanbanGroupBy}
+                options={kanbanFieldOptions}
+                size="sm"
+              />
+            </div>
+            {triggerChoices.length > 0 && (
+              <div className="flex flex-col gap-2 border-t border-border pt-2.5">
+                <span className="text-[11.5px] text-muted-foreground">
+                  <Trans>Fire a lifecycle action when a card enters a column —
+                  e.g. a <span className="font-mono">done</span> column that also
+                  publishes.</Trans>
+                </span>
+                {triggerChoices.map((value) => (
+                  <div key={value} className="flex items-center gap-2">
+                    <span className="w-1/3 shrink-0 truncate font-mono text-[12px]" title={value}>
+                      {value}
+                    </span>
+                    <div className="flex-1">
+                      <Select
+                        value={actionMap[value] ?? ""}
+                        onChange={(v) =>
+                          setActionMap((m) => ({ ...m, [value]: v }))
+                        }
+                        options={actionOptions}
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 border-t border-border px-4 py-2.5">
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={!kanbanDirty}
+              onClick={() =>
+                onPatch({
+                  kanbanGroupBy: kanbanGroupBy === "__auto" ? null : kanbanGroupBy,
+                  kanbanActionMap: (() => {
+                    const cleaned = cleanActionMap(actionMap);
+                    return Object.keys(cleaned).length ? cleaned : null;
+                  })() as SchemaLike["kanbanActionMap"],
+                })
+              }
+            >
+              <Trans>Save kanban</Trans>
+            </Button>
+          </div>
+        </Card>
+      ) : null}
 
       {schema.adopted ? (
         // Adopted collections soft-delete (archive). The physical table stays

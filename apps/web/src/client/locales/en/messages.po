@@ -1435,6 +1435,11 @@ msgstr "Approve & run"
 msgid "April"
 msgstr "April"
 
+#: src/client/admin/collection-settings.tsx
+#: src/client/admin/item-editor.tsx
+msgid "Archive"
+msgstr "Archive"
+
 #: src/client/admin/app.tsx
 #: src/client/admin/collection-settings.tsx
 msgid "Archive collection"
@@ -1460,6 +1465,7 @@ msgstr "archive zone"
 msgid "archived"
 msgstr "archived"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/item-views.tsx
 msgid "Archived"
 msgstr "Archived"
@@ -1576,6 +1582,7 @@ msgstr "Author"
 msgid "auto"
 msgstr "auto"
 
+#: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/search-playground.tsx
 msgid "Auto"
 msgstr "Auto"
@@ -1629,6 +1636,14 @@ msgstr "Auto-snapshot turned off."
 #: src/client/admin/parity/translations.tsx
 msgid "Auto-translate"
 msgstr "Auto-translate"
+
+#: src/client/admin/item-editor.tsx
+#~ msgid "Auto-unpublish at"
+#~ msgstr "Auto-unpublish at"
+
+#: src/client/admin/item-editor.tsx
+msgid "Auto-unpublish scheduled."
+msgstr "Auto-unpublish scheduled."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Automated lint over schema, permissions, and configuration. Runs on demand against live workspace state."
@@ -1988,6 +2003,10 @@ msgstr "Cardinality"
 msgid "Change"
 msgstr "Change"
 
+#: src/client/admin/item-editor.tsx
+msgid "Change auto-unpublish"
+msgstr "Change auto-unpublish"
+
 #: src/client/admin/account-page.tsx
 msgid "Change password"
 msgstr "Change password"
@@ -2045,6 +2064,10 @@ msgstr "Choices"
 #: src/client/pages/reset-password.tsx
 msgid "Choose a new password"
 msgstr "Choose a new password"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Choosing <0>_status</0> tracks the draft/published lifecycle."
+msgstr "Choosing <0>_status</0> tracks the draft/published lifecycle."
 
 #: src/client/admin/storage/index.tsx
 msgid "Chunked, resumable upload"
@@ -3658,6 +3681,10 @@ msgstr "Edit them in <0>wrangler.toml</0> and redeploy. This panel reflects the 
 msgid "Edit webhook"
 msgstr "Edit webhook"
 
+#: src/client/admin/item-editor.tsx
+msgid "Edited since publish"
+msgstr "Edited since publish"
+
 #. placeholder {0}: panel?.id
 #: src/client/admin/parity/insights.tsx
 msgid "Editing <0>{0}</0>."
@@ -4047,6 +4074,15 @@ msgstr "expired"
 msgid "Expires"
 msgstr "Expires"
 
+#. placeholder {0}: fmtDay(unpublishAtMs)
+#: src/client/admin/item-editor.tsx
+msgid "Expires {0}"
+msgstr "Expires {0}"
+
+#: src/client/admin/item-editor.tsx
+msgid "Expiry cleared."
+msgstr "Expiry cleared."
+
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/parity/translations.tsx
 msgid "Export"
@@ -4309,6 +4345,10 @@ msgstr "Filter tools…"
 msgid "Finish arranging collections"
 msgstr "Finish arranging collections"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Fire a lifecycle action when a card enters a column — e.g. a <0>done</0> column that also publishes."
+msgstr "Fire a lifecycle action when a card enters a column — e.g. a <0>done</0> column that also publishes."
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Fire a repository_dispatch on data events."
 msgstr "Fire a repository_dispatch on data events."
@@ -4316,6 +4356,10 @@ msgstr "Fire a repository_dispatch on data events."
 #: src/client/admin/pages/functions.tsx
 msgid "fires on matching pub-sub channel events"
 msgstr "fires on matching pub-sub channel events"
+
+#: src/client/admin/collection-settings.tsx
+msgid "first dropdown"
+msgstr "first dropdown"
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "First name"
@@ -5085,6 +5129,10 @@ msgid "Istanbul, Turkey"
 msgstr "Istanbul, Turkey"
 
 #: src/client/admin/item-editor.tsx
+msgid "Item archived."
+msgstr "Item archived."
+
+#: src/client/admin/item-editor.tsx
 msgid "Item created."
 msgstr "Item created."
 
@@ -5205,6 +5253,10 @@ msgstr "just now"
 #: src/client/admin/collections-index.tsx
 msgid "Just system fields. Add your own columns."
 msgstr "Just system fields. Add your own columns."
+
+#: src/client/admin/collection-settings.tsx
+msgid "kanban"
+msgstr "kanban"
 
 #: src/client/admin/item-views.tsx
 msgid "Kanban"
@@ -5485,6 +5537,10 @@ msgstr "legacy production"
 #: src/client/admin/pages/settings/index.tsx
 msgid "License"
 msgstr "License"
+
+#: src/client/admin/collection-settings.tsx
+msgid "lifecycle"
+msgstr "lifecycle"
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Light"
@@ -6235,6 +6291,10 @@ msgstr "no access"
 #: src/client/admin/permissions-matrix.tsx
 msgid "No access"
 msgstr "No access"
+
+#: src/client/admin/collection-settings.tsx
+msgid "No action"
+msgstr "No action"
 
 #: src/client/admin/pages/flows.tsx
 msgid "No actions yet — click to add steps."
@@ -7568,6 +7628,15 @@ msgstr "Pick row"
 msgid "Pick the collection this relation points to."
 msgstr "Pick the collection this relation points to."
 
+#: src/client/admin/collection-settings.tsx
+msgid "Pick the field whose values become the Kanban columns.<0> Auto</0> uses a field named<1> status</1>, else the first dropdown."
+msgstr "Pick the field whose values become the Kanban columns.<0> Auto</0> uses a field named<1> status</1>, else the first dropdown."
+
+#. placeholder {0}: schema.versioned ? ( <> Choosing <span className="font-mono">_status</span> tracks the draft/published lifecycle.</> ) : null
+#: src/client/admin/collection-settings.tsx
+#~ msgid "Pick the field whose values become the Kanban columns.<0> Auto</0> uses a field named<1> status</1>, else the first dropdown.{0}"
+#~ msgstr "Pick the field whose values become the Kanban columns.<0> Auto</0> uses a field named<1> status</1>, else the first dropdown.{0}"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "Pick the source tables to copy. Every table becomes a collection."
 msgstr "Pick the source tables to copy. Every table becomes a collection."
@@ -7867,6 +7936,7 @@ msgstr "public read"
 msgid "Public read-only link"
 msgstr "Public read-only link"
 
+#: src/client/admin/collection-settings.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/sheet.tsx
 msgid "Publish"
@@ -7875,6 +7945,10 @@ msgstr "Publish"
 #: src/client/admin/item-editor.tsx
 msgid "Publish now"
 msgstr "Publish now"
+
+#: src/client/admin/item-editor.tsx
+msgid "Publish on"
+msgstr "Publish on"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/item-editor.tsx
@@ -8221,6 +8295,7 @@ msgstr "Reload schema"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
@@ -8377,6 +8452,10 @@ msgstr "Requires a password on your account. Social-only users should set one ab
 msgid "Requires a signed URL or auth cookie."
 msgstr "Requires a signed URL or auth cookie."
 
+#: src/client/admin/item-editor.tsx
+msgid "Reschedule"
+msgstr "Reschedule"
+
 #: src/client/pages/sign-in.tsx
 msgid "Resend verification email"
 msgstr "Resend verification email"
@@ -8484,6 +8563,10 @@ msgstr "Restore from this backup? Missing rows are re-inserted; existing rows ar
 #: src/client/admin/parity/revisions.tsx
 msgid "Restore this snapshot"
 msgstr "Restore this snapshot"
+
+#: src/client/admin/item-editor.tsx
+msgid "Restore to draft"
+msgstr "Restore to draft"
 
 #. placeholder {0}: r.data.rowCount
 #. placeholder {1}: r.data.tableCount
@@ -8967,6 +9050,10 @@ msgstr "Save flow"
 msgid "Save guards"
 msgstr "Save guards"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Save kanban"
+msgstr "Save kanban"
+
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Save LDAP config"
 msgstr "Save LDAP config"
@@ -9044,6 +9131,9 @@ msgid "Schedule"
 msgstr "Schedule"
 
 #: src/client/admin/item-editor.tsx
+msgid "Schedule publish"
+msgstr "Schedule publish"
+
 #: src/client/admin/sheet.tsx
 msgid "Scheduled"
 msgstr "Scheduled"
@@ -9051,6 +9141,11 @@ msgstr "Scheduled"
 #: src/client/admin/pages/functions.tsx
 msgid "scheduled — granularity is 1 minute"
 msgstr "scheduled — granularity is 1 minute"
+
+#. placeholder {0}: fmtDay(publishAtMs)
+#: src/client/admin/item-editor.tsx
+msgid "Scheduled · {0}"
+msgstr "Scheduled · {0}"
 
 #: src/client/admin/parity/database.tsx
 msgid "Scheduled backups run from the cron tick and keep the newest {retain} automatic dumps, pruning any older than {retainDays} days. Manual backups are never pruned."
@@ -9482,9 +9577,17 @@ msgstr "Set a password"
 msgid "Set a password to accept the invite and create your account."
 msgstr "Set a password to accept the invite and create your account."
 
+#: src/client/admin/item-editor.tsx
+msgid "Set auto-unpublish"
+msgstr "Set auto-unpublish"
+
 #: src/client/admin/pages/overview.tsx
 msgid "set EMAIL_FROM + a provider key"
 msgstr "set EMAIL_FROM + a provider key"
+
+#: src/client/admin/item-editor.tsx
+msgid "Set expiry"
+msgstr "Set expiry"
 
 #: src/client/pages/reset-password.tsx
 msgid "Set new password"
@@ -10943,10 +11046,15 @@ msgstr "Unnamed passkey"
 msgid "Unpin"
 msgstr "Unpin"
 
+#: src/client/admin/collection-settings.tsx
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Unpublish"
 msgstr "Unpublish"
+
+#: src/client/admin/item-editor.tsx
+msgid "Unpublish on"
+msgstr "Unpublish on"
 
 #: src/client/admin/ui.tsx
 msgid "Unread"
@@ -11441,6 +11549,10 @@ msgstr "When the rule matches the row, apply the effects. <0>Required</0> is enf
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
 msgstr "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
+
+#: src/client/admin/collection-settings.tsx
+msgid "which field the board groups cards by"
+msgstr "which field the board groups cards by"
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Whole numbers only (no decimals)"

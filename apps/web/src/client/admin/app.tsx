@@ -45,7 +45,7 @@ import {
   FilterDSLPreview,
   ItemsTable,
   evaluateFilter,
-  resolveStatusField,
+  resolveKanbanGroupField,
   type FilterCondition,
 } from "./items";
 import { ConfirmDialog, ItemSheet } from "./sheet";
@@ -289,7 +289,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   // `?view=kanban` on a collection that has none, fall back to the table view
   // (the toggle already hides the Kanban button in that case).
   const kanbanStatusField = useMemo(
-    () => resolveStatusField(schemaState as unknown as { fields?: Array<Record<string, unknown>> } | null),
+    () => resolveKanbanGroupField(schemaState as unknown as { fields?: Array<Record<string, unknown>>; kanbanGroupBy?: string | null; versioned?: boolean } | null),
     [schemaState],
   );
   const hasStatusField = !!kanbanStatusField;
@@ -490,6 +490,11 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           note: (res.data as any).note ?? null,
           displayTemplate: (res.data as any).displayTemplate ?? null,
           defaultSort: (res.data as any).defaultSort ?? null,
+          // Kanban group-by preference — without this the Settings-tab
+          // dropdown reseeds from `undefined` and reverts to "Auto" on refresh
+          // even though the PATCH persisted the chosen field.
+          kanbanGroupBy: (res.data as any).kanbanGroupBy ?? null,
+          kanbanActionMap: (res.data as any).kanbanActionMap ?? null,
           tenantScoped: (res.data as any).tenantScoped !== false,
           versioned: !!(res.data as any).versioned,
           // fts + auditReads were missing here, so the Settings tab rendered
@@ -714,9 +719,22 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   // Carry the list's query string (view / filters / sort / search) into the
   // item editor and back, so returning via "Back" restores the chosen view
   // (e.g. Kanban) instead of snapping to the default Table.
-  const openCreate = () => {
-    if (activeCollection) vNav(`/collections/${activeCollection}/items/new${location.search}`, "forward");
-    else { setSheetMode("create"); setSheetItem(null); setSheetOpen(true); }
+  // `status` is passed by a Kanban column's "+" — preset the grouped field so a
+  // card created in a column lands in that column. Skipped for the `_status`
+  // lifecycle board (new items are always drafts).
+  const openCreate = (status?: string) => {
+    const field = kanbanStatusField?.name;
+    const preset = status && field && field !== "_status" ? { field, value: status } : null;
+    if (activeCollection) {
+      const sp = new URLSearchParams(location.search);
+      if (preset) sp.set("new", `${preset.field}:${preset.value}`);
+      const qs = sp.toString();
+      vNav(`/collections/${activeCollection}/items/new${qs ? `?${qs}` : ""}`, "forward");
+    } else {
+      setSheetMode("create");
+      setSheetItem(preset ? ({ [preset.field]: preset.value } as unknown as Post) : null);
+      setSheetOpen(true);
+    }
   };
   const openEdit = (it: Post) => {
     if (activeCollection) vNav(`/collections/${activeCollection}/items/${it.id}${location.search}`, "forward");
@@ -729,10 +747,33 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     const field = kanbanStatusField.name;
     const prev = (it as unknown as Record<string, unknown>)[field];
     if (prev === status) return;
+    // The lifecycle board (`_status`) is not a plain field — moving a card
+    // fires the real publish/unpublish/archive action (permission-gated, stamps
+    // `_published_at`, emits a realtime event) instead of a column write.
+    if (field === "_status") {
+      const action =
+        status === "published" ? "publish" : status === "archived" ? "archive" : "unpublish";
+      itemPublish.mutate(
+        { id: it.id, action },
+        { onError: (e) => pushToast((e as Error).message, "error") },
+      );
+      return;
+    }
     itemPatch.mutate(
       { id: it.id, patch: { [field]: status } },
       { onError: (e) => pushToast((e as Error).message, "error") },
     );
+    // Custom-status → lifecycle trigger: if this column's value is mapped (e.g.
+    // `done` → `publish`) on a versioned collection, also fire the lifecycle
+    // action so the card's `_status` follows its board column.
+    const actionMap = (schemaState as { kanbanActionMap?: Record<string, string> | null }).kanbanActionMap;
+    const mapped = actionMap?.[status];
+    if (mapped && (schemaState as { versioned?: boolean }).versioned) {
+      itemPublish.mutate(
+        { id: it.id, action: mapped as "publish" | "unpublish" | "archive" },
+        { onError: (e) => pushToast((e as Error).message, "error") },
+      );
+    }
   };
 
   // Per-collection bulk export — streams the file straight from the API (the
@@ -1063,6 +1104,11 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                   itemId={activeItem}
                   schema={schemaState}
                   initialItem={posts.find((p) => p.id === activeItem) ?? null}
+                  createPreset={(() => {
+                    const raw = new URLSearchParams(location.search).get("new");
+                    const i = raw ? raw.indexOf(":") : -1;
+                    return i > 0 ? { [raw!.slice(0, i)]: raw!.slice(i + 1) } : null;
+                  })()}
                   siblingIds={itemsForView.map((p) => p.id)}
                   versioned={schemaState.versioned}
                   canPublish
@@ -1195,7 +1241,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         <ItemsViewToggle
                           mode={viewMode}
                           setMode={(m) => setView(m)}
-                          hasStatus={!!resolveStatusField(schemaState as unknown as { fields?: Array<Record<string, unknown>> } | null)}
+                          hasStatus={!!resolveKanbanGroupField(schemaState as unknown as { fields?: Array<Record<string, unknown>>; kanbanGroupBy?: string | null; versioned?: boolean } | null)}
                         />
                         <div className="flex-1" />
                         {viewMode === "table" && schemaState.slug && (

@@ -3,11 +3,13 @@ title: Draft / publish
 description: First-class draft and published states for content collections — auto-hidden drafts, a dedicated publish permission, and scheduled (timed) publishing applied by the cron tick.
 ---
 
-Content collections can carry a **draft → published** lifecycle. Mark a
-collection `versioned` and every row gains a `_status` (`draft` / `published`)
-plus `_published_at` and `_publish_at` system columns. Drafts are then **hidden
-from readers** who can't publish, items can be **published now** or **scheduled**
-for later, and publishing is gated by its own `publish` permission.
+Content collections can carry a **draft → published** lifecycle, plus an
+**archived** state. Mark a collection `versioned` and every row gains a
+`_status` (`draft` / `published` / `archived`) plus `_published_at` and
+`_publish_at` system columns. Drafts **and archived rows** are **hidden from
+readers** who can't publish, items can be **published now** or **scheduled** for
+later or **archived** (pulled from publication), and every state change is gated
+by the same `publish` permission.
 
 ## Enabling it
 
@@ -37,6 +39,7 @@ collection) see everything by default and can narrow with `?status=`:
 | *(omitted)* | all rows | published only |
 | `published` | published only | published only |
 | `draft` | drafts only | published only (ignored) |
+| `archived` | archived only | published only (ignored) |
 | `all` | all rows | published only (ignored) |
 
 A draft fetched by id returns `404` for a read-only caller. GraphQL applies the
@@ -49,26 +52,52 @@ draft/scheduled events if they can see drafts.
 ```
 POST /api/items/{slug}/{id}/publish              → publish now
 POST /api/items/{slug}/{id}/publish?unpublish=1  → revert to draft
+POST /api/items/{slug}/{id}/publish?archive=1    → archive (leave via publish/unpublish)
 POST /api/items/{slug}/{id}/publish  { "publishAt": "2026-07-01T09:00:00Z" }  → schedule
 POST /api/items/{slug}/{id}/publish  { "publishAt": null }                    → cancel a schedule
 ```
 
-All three require the **`publish`** permission on the collection (not `update`)
-— so you can let editors draft and edit while only publishers go live. The
-endpoint emits a realtime `published` / `unpublished` / `scheduled` event.
+All of these require the **`publish`** permission on the collection (not
+`update`) — so you can let editors draft and edit while only publishers go live.
+The endpoint emits a realtime `published` / `unpublished` / `archived` /
+`scheduled` event.
+
+**Archiving** sets `_status = 'archived'` and clears both timestamps. An
+archived row is hidden from readers exactly like a draft, but the distinct state
+lets you tell "not yet published" apart from "was live, pulled down". There is no
+separate unarchive verb — a normal `publish` (→ published) or `unpublish`
+(→ draft) moves the row back out of archived.
 
 SDK:
 
 ```ts
 await backlex.from("articles").publish(id);
 await backlex.from("articles").unpublish(id);
+await backlex.from("articles").archive(id);
 await backlex.from("articles").schedulePublish(id, "2026-07-01T09:00:00Z");
 await backlex.from("articles").schedulePublish(id, null); // cancel
 // privileged reads:
 await backlex.from("articles").list({ status: "draft" });
+await backlex.from("articles").list({ status: "archived" });
 ```
 
-MCP: `items.publish`, `items.unpublish`, `items.schedule_publish`.
+MCP: `items.publish`, `items.unpublish`, `items.archive`, `items.schedule_publish`,
+`items.schedule_unpublish`.
+
+## Scheduled unpublish (expiry)
+
+The mirror of scheduled publishing: a future **`unpublishAt`** sets an expiry.
+The item stays in its current state (typically `published`) until the cron tick
+(`unpublishDueItems`, alongside `publishDueItems`) finds `_unpublish_at <= now`
+and reverts it to **draft** — clearing `_published_at` and `_unpublish_at` and
+emitting an `unpublished` event. Setting an expiry never changes the current
+state or bumps `updated_at`; `{ unpublishAt: null }` cancels it. Publishing,
+unpublishing, or archiving also clears any pending expiry.
+
+```ts
+await backlex.from("articles").scheduleUnpublish(id, "2026-09-01T00:00:00Z");
+await backlex.from("articles").scheduleUnpublish(id, null); // cancel
+```
 
 ## Scheduled publishing
 
@@ -95,8 +124,10 @@ CRUD but not `publish`.
 ## Limits & follow-ups
 
 - Draft and published are one row's state, not two divergent versions — editing a
-  published row changes what's live immediately (use a draft copy workflow if you
-  need staged edits). See [revisions](/audit-logs/) for change history.
-- `_publish_at` is a single absolute time (no recurring schedules, no
-  auto-unpublish/expiry yet).
+  published row changes what's live immediately. The admin item editor flags this
+  with an **Edited since publish** badge (`updated_at` is later than
+  `_published_at`); for a true staged-edit workflow use a draft copy. See
+  [revisions](/audit-logs/) for change history.
+- `_publish_at` / `_unpublish_at` are single absolute times (no recurring
+  schedules).
 - Storage/collection backend selection is unchanged.

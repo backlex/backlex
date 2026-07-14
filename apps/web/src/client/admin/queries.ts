@@ -618,21 +618,29 @@ export function useItemPublish(collection: string | null) {
   const qc = useQueryClient();
   const slug = collection || "posts";
   return useMutation({
-    mutationFn: (vars: { id: string; action: "publish" | "unpublish" | "schedule"; publishAt?: string | null }) =>
+    mutationFn: (vars: { id: string; action: "publish" | "unpublish" | "archive" | "schedule"; publishAt?: string | null }) =>
       vars.action === "publish"
         ? itemsApi.publish(slug, vars.id)
         : vars.action === "unpublish"
           ? itemsApi.unpublish(slug, vars.id)
-          : itemsApi.schedulePublish(slug, vars.id, vars.publishAt ?? null),
+          : vars.action === "archive"
+            ? itemsApi.archive(slug, vars.id)
+            : itemsApi.schedulePublish(slug, vars.id, vars.publishAt ?? null),
     onMutate: (vars) => {
       const snap = snapshotItems(qc, slug);
       const now = nowIso();
+      // Flip both the display alias (`status`/`published_at`) and the raw
+      // system columns (`_status`/`_published_at`) so every surface moves
+      // optimistically — the list badge reads `status`, the Kanban lifecycle
+      // board groups on the raw `_status`.
       const flip =
         vars.action === "publish"
-          ? { status: "published", published_at: now }
+          ? { status: "published", published_at: now, _status: "published", _published_at: now }
           : vars.action === "unpublish"
-            ? { status: "draft" }
-            : {};
+            ? { status: "draft", _status: "draft", _published_at: null }
+            : vars.action === "archive"
+              ? { status: "archived", _status: "archived", _published_at: null }
+              : {};
       patchItemRows(qc, slug, (rows) =>
         rows.map((r) => (r.id === vars.id ? ({ ...r, ...flip, updated_at: now } as Post) : r)),
       );

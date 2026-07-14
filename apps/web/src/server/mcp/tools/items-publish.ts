@@ -66,6 +66,32 @@ export const unpublishItemTool: McpTool = {
   },
 };
 
+export const archiveItemTool: McpTool = {
+  name: "items.archive",
+  description:
+    "Archive a versioned-collection item (sets `_status='archived'`) — hidden " +
+    "from readers like a draft, but a distinct 'pulled from publication' state. " +
+    "Leave archived via `items.publish` (→ published) or `items.unpublish` " +
+    "(→ draft). Requires the `publish` permission.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      collection: { type: "string" },
+      id: { type: "string" },
+    },
+    required: ["collection", "id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const { collection, id } = reqIds(args);
+    const res = await ctx.fetchInternal(
+      `/api/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/publish?archive=1`,
+      { method: "POST" },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const schedulePublishItemTool: McpTool = {
   name: "items.schedule_publish",
   description:
@@ -94,6 +120,41 @@ export const schedulePublishItemTool: McpTool = {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ publishAt }),
+      },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const scheduleUnpublishItemTool: McpTool = {
+  name: "items.schedule_unpublish",
+  description:
+    "Set an expiry on a versioned-collection item: the cron tick auto-unpublishes " +
+    "it back to draft at a future time, preserving its current state until then. " +
+    "Pass `unpublishAt: null` to cancel a pending expiry. Requires the `publish` " +
+    "permission.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      collection: { type: "string" },
+      id: { type: "string" },
+      unpublishAt: {
+        type: ["string", "null"],
+        description: "ISO timestamp to auto-unpublish at, or null to cancel.",
+      },
+    },
+    required: ["collection", "id", "unpublishAt"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const { collection, id } = reqIds(args);
+    const unpublishAt = args.unpublishAt == null ? null : String(args.unpublishAt);
+    const res = await ctx.fetchInternal(
+      `/api/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/publish`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ unpublishAt }),
       },
     );
     return textResult(await readJson<unknown>(res));
@@ -138,6 +199,8 @@ export const verifyItemTool: McpTool = {
 export const itemsPublishTools: McpTool[] = [
   publishItemTool,
   unpublishItemTool,
+  archiveItemTool,
   schedulePublishItemTool,
+  scheduleUnpublishItemTool,
   verifyItemTool,
 ];

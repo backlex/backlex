@@ -35,6 +35,9 @@ export interface ItemEditorPageProps {
   /** Fast-path row from the in-memory list; the page still refetches by id so
    *  direct links / refreshes work. */
   initialItem?: Post | null;
+  /** Field values to preset on the create form — set by a Kanban column's "+"
+   *  so a new card lands in that column (e.g. `{ status: "done" }`). */
+  createPreset?: Record<string, unknown> | null;
   /** Ordered ids of the current filtered list — drives prev/next. */
   siblingIds?: string[];
   versioned?: boolean;
@@ -55,6 +58,7 @@ export function ItemEditorPage({
   itemId,
   schema,
   initialItem = null,
+  createPreset = null,
   siblingIds = [],
   versioned,
   canPublish,
@@ -68,7 +72,9 @@ export function ItemEditorPage({
   const { t } = useLingui();
   const mode: "create" | "edit" = itemId === "new" ? "create" : "edit";
 
-  const [item, setItem] = useState<Post | null>(mode === "edit" ? initialItem : null);
+  const [item, setItem] = useState<Post | null>(
+    mode === "edit" ? initialItem : createPreset ? (createPreset as unknown as Post) : null,
+  );
   const [loading, setLoading] = useState(mode === "edit" && !initialItem);
   const [saving, setSaving] = useState(false);
   const [autosave, setAutosave] = useState(false);
@@ -77,6 +83,7 @@ export function ItemEditorPage({
   // without a manual page refresh.
   const [revisionsKey, setRevisionsKey] = useState(0);
   const [scheduleAt, setScheduleAt] = useState("");
+  const [unpublishAt, setUnpublishAt] = useState("");
   // Pending guarded navigation — populated when the user tries to leave with
   // unsaved changes; the ConfirmDialog runs it on confirm.
   const [pendingNav, setPendingNav] = useState<(() => void) | null>(null);
@@ -97,7 +104,9 @@ export function ItemEditorPage({
   // link, not only when reached via the in-memory list.
   useEffect(() => {
     if (mode !== "edit") {
-      setItem(null);
+      // Keep the create-preset (a Kanban column's "+" seeds the grouped field)
+      // instead of wiping the form back to empty.
+      setItem(createPreset ? (createPreset as unknown as Post) : null);
       setLoading(false);
       return;
     }
@@ -193,7 +202,10 @@ export function ItemEditorPage({
   );
 
   // ── Publish / unpublish / schedule ───────────────────────────────────────
-  const doPublish = async (action: "publish" | "unpublish" | "schedule", publishAt?: string | null) => {
+  const doPublish = async (
+    action: "publish" | "unpublish" | "archive" | "schedule" | "scheduleUnpublish",
+    at?: string | null,
+  ) => {
     if (!item) return;
     try {
       const res =
@@ -201,7 +213,11 @@ export function ItemEditorPage({
           ? await itemsApi.publish(slug, item.id)
           : action === "unpublish"
             ? await itemsApi.unpublish(slug, item.id)
-            : await itemsApi.schedulePublish(slug, item.id, publishAt ?? null);
+            : action === "archive"
+              ? await itemsApi.archive(slug, item.id)
+              : action === "scheduleUnpublish"
+                ? await itemsApi.scheduleUnpublish(slug, item.id, at ?? null)
+                : await itemsApi.schedulePublish(slug, item.id, at ?? null);
       const updated = { ...item, ...(res.data as Partial<Post>) } as Post;
       setItem(updated);
       onSaved(updated);
@@ -211,7 +227,13 @@ export function ItemEditorPage({
           ? t`Item published.`
           : action === "unpublish"
             ? t`Item reverted to draft.`
-            : t`Publish scheduled.`,
+            : action === "archive"
+              ? t`Item archived.`
+              : action === "scheduleUnpublish"
+                ? at
+                  ? t`Auto-unpublish scheduled.`
+                  : t`Expiry cleared.`
+                : t`Publish scheduled.`,
       );
     } catch (e) {
       pushToast((e as Error).message, "error");
@@ -448,6 +470,8 @@ export function ItemEditorPage({
                   canPublish={!!canPublish}
                   scheduleAt={scheduleAt}
                   setScheduleAt={setScheduleAt}
+                  unpublishAt={unpublishAt}
+                  setUnpublishAt={setUnpublishAt}
                   onPublish={doPublish}
                 />
               </div>
@@ -548,78 +572,216 @@ function SysRow({ label, value, mono }: { label: string; value: string; mono?: b
   );
 }
 
+const toMs = (v: unknown): number =>
+  v == null ? NaN : typeof v === "number" ? v : Date.parse(String(v));
+
 function PublishControls({
   item,
   canPublish,
   scheduleAt,
   setScheduleAt,
+  unpublishAt,
+  setUnpublishAt,
   onPublish,
 }: {
   item: Post | null;
   canPublish: boolean;
   scheduleAt: string;
   setScheduleAt: (v: string) => void;
-  onPublish: (action: "publish" | "unpublish" | "schedule", publishAt?: string | null) => void | Promise<void>;
+  unpublishAt: string;
+  setUnpublishAt: (v: string) => void;
+  onPublish: (
+    action: "publish" | "unpublish" | "archive" | "schedule" | "scheduleUnpublish",
+    at?: string | null,
+  ) => void | Promise<void>;
 }) {
   const rec = (item ?? {}) as Record<string, unknown>;
   const status = String(rec._status ?? "draft");
-  const rawPublishAt = rec._publish_at as string | number | null | undefined;
-  const publishAtMs = rawPublishAt
-    ? typeof rawPublishAt === "number"
-      ? rawPublishAt
-      : Date.parse(String(rawPublishAt))
-    : NaN;
+  const publishAtMs = toMs(rec._publish_at);
+  const unpublishAtMs = toMs(rec._unpublish_at);
+  const publishedAtMs = toMs(rec._published_at);
+  const updatedAtMs = toMs(rec.updated_at ?? rec.updatedAt);
   const scheduled = status === "draft" && Number.isFinite(publishAtMs) && publishAtMs > Date.now();
   const published = status === "published";
+  const archived = status === "archived";
+  const expiresAt = published && Number.isFinite(unpublishAtMs) && unpublishAtMs > Date.now();
+  // Single-row model: editing a published row changes what's live immediately.
+  // A later `updated_at` than `_published_at` means the live content has drifted
+  // from what was reviewed at publish time — surface it so editors notice.
+  const editedSincePublish =
+    published &&
+    Number.isFinite(publishedAtMs) &&
+    Number.isFinite(updatedAtMs) &&
+    updatedAtMs > publishedAtMs + 1000;
+
+  // One timing panel open at a time — keeps the default view compact.
+  const [timing, setTiming] = useState<"schedule" | "expiry" | null>(null);
+
+  const fmtDay = (ms: number) => new Date(ms).toLocaleDateString();
+
+  const stateBadges = (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {scheduled ? (
+        <span title={new Date(publishAtMs).toLocaleString()}>
+          <Badge variant="outline">
+            <I.Clock size={11} /> <Trans>Scheduled · {fmtDay(publishAtMs)}</Trans>
+          </Badge>
+        </span>
+      ) : published ? (
+        <Badge variant="default">
+          <Trans>Published</Trans>
+        </Badge>
+      ) : archived ? (
+        <Badge variant="outline">
+          <I.Archive size={11} /> <Trans>Archived</Trans>
+        </Badge>
+      ) : (
+        <Badge variant="secondary">
+          <Trans>Draft</Trans>
+        </Badge>
+      )}
+      {editedSincePublish && (
+        <span title={publishedAtMs ? new Date(publishedAtMs).toLocaleString() : undefined}>
+          <Badge variant="outline">
+            <I.Pencil size={10} /> <Trans>Edited since publish</Trans>
+          </Badge>
+        </span>
+      )}
+      {expiresAt && (
+        <span title={new Date(unpublishAtMs).toLocaleString()}>
+          <Badge variant="outline">
+            <I.Clock size={10} /> <Trans>Expires {fmtDay(unpublishAtMs)}</Trans>
+          </Badge>
+        </span>
+      )}
+    </div>
+  );
+
+  if (!canPublish) return stateBadges;
+
+  // Shared timing sub-panel — a labeled, bordered block so the date control
+  // never floats loose in the card. Revealed by a single disclosure toggle.
+  const timingPanel =
+    timing === "schedule" ? (
+      <div className="flex flex-col gap-2 rounded-control border border-border bg-card p-2.5">
+        <span className="text-[11px] font-medium text-muted-foreground">
+          <Trans>Publish on</Trans>
+        </span>
+        <DatePicker value={scheduleAt || null} onChange={(iso) => setScheduleAt(iso ?? "")} />
+        <Button
+          variant="primary"
+          size="sm"
+          className="w-full"
+          disabled={!scheduleAt}
+          onClick={() => {
+            if (!scheduleAt) return;
+            void onPublish("schedule", new Date(scheduleAt).toISOString());
+            setTiming(null);
+          }}
+        >
+          <Trans>Schedule publish</Trans>
+        </Button>
+      </div>
+    ) : timing === "expiry" ? (
+      <div className="flex flex-col gap-2 rounded-control border border-border bg-card p-2.5">
+        <span className="text-[11px] font-medium text-muted-foreground">
+          <Trans>Unpublish on</Trans>
+        </span>
+        <DatePicker value={unpublishAt || null} onChange={(iso) => setUnpublishAt(iso ?? "")} />
+        <div className="flex gap-2">
+          {expiresAt && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex-1"
+              onClick={() => {
+                setUnpublishAt("");
+                void onPublish("scheduleUnpublish", null);
+                setTiming(null);
+              }}
+            >
+              <Trans>Remove</Trans>
+            </Button>
+          )}
+          <Button
+            variant="primary"
+            size="sm"
+            className="flex-1"
+            disabled={!unpublishAt}
+            onClick={() => {
+              if (!unpublishAt) return;
+              void onPublish("scheduleUnpublish", new Date(unpublishAt).toISOString());
+              setTiming(null);
+            }}
+          >
+            <Trans>Set expiry</Trans>
+          </Button>
+        </div>
+      </div>
+    ) : null;
 
   return (
-    <>
-      <div>
-        {scheduled ? (
-          <span title={new Date(publishAtMs).toLocaleString()}>
-            <Badge variant="outline">
-              <I.Clock size={11} /> <Trans>Scheduled</Trans>
-            </Badge>
-          </span>
-        ) : published ? (
-          <Badge variant="default">
-            <Trans>Published</Trans>
-          </Badge>
-        ) : (
-          <Badge variant="secondary">
-            <Trans>Draft</Trans>
-          </Badge>
-        )}
-      </div>
-      {canPublish &&
-        (published ? (
-          <Button variant="outline" size="sm" onClick={() => void onPublish("unpublish")}>
-            <Trans>Unpublish</Trans>
+    <div className="flex flex-col gap-2.5">
+      {stateBadges}
+      {archived ? (
+        <>
+          <Button variant="primary" size="sm" className="w-full" onClick={() => void onPublish("publish")}>
+            <Trans>Publish now</Trans>
           </Button>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <Button variant="primary" size="sm" onClick={() => void onPublish("publish")}>
-              <Trans>Publish now</Trans>
+          <Button variant="outline" size="sm" className="w-full" onClick={() => void onPublish("unpublish")}>
+            <Trans>Restore to draft</Trans>
+          </Button>
+        </>
+      ) : published ? (
+        <>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => void onPublish("unpublish")}>
+              <Trans>Unpublish</Trans>
             </Button>
-            <DatePicker value={scheduleAt || null} onChange={(iso) => setScheduleAt(iso ?? "")} />
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!scheduleAt}
-                onClick={() => scheduleAt && void onPublish("schedule", new Date(scheduleAt).toISOString())}
-              >
-                <Trans>Schedule</Trans>
-              </Button>
-              {scheduled && (
-                <Button variant="ghost" size="sm" onClick={() => void onPublish("unpublish")}>
-                  <Trans>Cancel</Trans>
-                </Button>
-              )}
-            </div>
+            <Button variant="ghost" size="sm" className="flex-1" onClick={() => void onPublish("archive")}>
+              <I.Archive size={13} /> <Trans>Archive</Trans>
+            </Button>
           </div>
-        ))}
-    </>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-between text-muted-foreground"
+            onClick={() => setTiming((v) => (v === "expiry" ? null : "expiry"))}
+          >
+            {expiresAt ? <Trans>Change auto-unpublish</Trans> : <Trans>Set auto-unpublish</Trans>}
+            <I.ChevronDown size={13} />
+          </Button>
+          {timingPanel}
+        </>
+      ) : (
+        // draft (optionally already scheduled)
+        <>
+          <Button variant="primary" size="sm" className="w-full" onClick={() => void onPublish("publish")}>
+            <Trans>Publish now</Trans>
+          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => setTiming((v) => (v === "schedule" ? null : "schedule"))}
+            >
+              {scheduled ? <Trans>Reschedule</Trans> : <Trans>Schedule</Trans>}
+            </Button>
+            {scheduled ? (
+              <Button variant="ghost" size="sm" className="flex-1" onClick={() => void onPublish("unpublish")}>
+                <Trans>Cancel</Trans>
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" className="flex-1" onClick={() => void onPublish("archive")}>
+                <I.Archive size={13} /> <Trans>Archive</Trans>
+              </Button>
+            )}
+          </div>
+          {timingPanel}
+        </>
+      )}
+    </div>
   );
 }
 

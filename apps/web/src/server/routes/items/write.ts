@@ -195,19 +195,22 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>()
       method: "post",
       path: "/{slug}/{id}/publish",
       tags: TAGS,
-      summary: "Publish, unpublish, or schedule a versioned item",
+      summary: "Publish, unpublish, archive, or (un)schedule a versioned item",
       description:
-        "Versioned-collection only. Publishes now by default; `?unpublish=1` reverts to draft; body `{ publishAt }` (future ISO) schedules a publish that the cron tick applies when due, `{ publishAt: null }` cancels it.",
+        "Versioned-collection only. Publishes now by default; `?unpublish=1` reverts to draft; `?archive=1` archives (hidden from readers, like a draft, but a distinct 'pulled from publication' state); body `{ publishAt }` (future ISO) schedules a publish the cron tick applies when due, `{ publishAt: null }` cancels it; body `{ unpublishAt }` (future ISO) sets an expiry the cron reverts to draft when due (preserving the current state), `{ unpublishAt: null }` cancels it. Archived rows leave archived via a normal publish/unpublish.",
       security: SECURITY,
       middleware: [requirePermission(collectionFromParam, "publish")],
       request: {
         params: z.object({ slug: z.string(), id: z.string() }),
-        query: z.object({ unpublish: z.enum(["1"]).optional() }),
+        query: z.object({ unpublish: z.enum(["1"]).optional(), archive: z.enum(["1"]).optional() }),
         body: {
           required: false,
           content: {
             "application/json": {
-              schema: z.object({ publishAt: z.string().datetime().nullable().optional() }),
+              schema: z.object({
+                publishAt: z.string().datetime().nullable().optional(),
+                unpublishAt: z.string().datetime().nullable().optional(),
+              }),
             },
           },
         },
@@ -242,26 +245,48 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>()
       await ensureVersionedColumns(ctx.db, ctx.dialect, table);
       const tenantWhere = tenantFilter(collection, auth);
       const unpublish = c.req.query("unpublish") === "1";
-      const body = (await c.req.json().catch(() => ({}))) as { publishAt?: string | null };
+      const archive = c.req.query("archive") === "1";
+      const body = (await c.req.json().catch(() => ({}))) as {
+        publishAt?: string | null;
+        unpublishAt?: string | null;
+      };
       const now = nowFor(ctx.dialect);
       const tsOf = (d: Date): Date | number => (ctx.dialect === "pg" ? d : d.getTime());
 
-      // Decide the operation: unpublish > schedule (future publishAt) > publish-now.
+      // Decide the operation: unpublish > archive > schedule (future publishAt) >
+      // set-expiry (`unpublishAt`, no state change) > publish-now. Every state
+      // change clears `_unpublish_at` so a fresh publish/draft carries no stale
+      // expiry. Archiving clears the timestamps (like unpublish) but lands in the
+      // distinct `archived` state; it leaves archived via publish/unpublish.
       const scheduleAt =
         body.publishAt && new Date(body.publishAt).getTime() > Date.now()
           ? new Date(body.publishAt)
           : null;
-      let event: "published" | "unpublished" | "scheduled";
+      const hasUnpublishAt = Object.hasOwn(body, "unpublishAt");
+      const expireAt =
+        body.unpublishAt && new Date(body.unpublishAt).getTime() > Date.now()
+          ? new Date(body.unpublishAt)
+          : null;
+      let event: "published" | "unpublished" | "archived" | "scheduled" | "unpublish_scheduled";
       let setSql: SQL;
       if (unpublish) {
         event = "unpublished";
-        setSql = sql`${sql.identifier("_status")} = 'draft', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("_publish_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`;
+        setSql = sql`${sql.identifier("_status")} = 'draft', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("_publish_at")} = NULL, ${sql.identifier("_unpublish_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`;
+      } else if (archive) {
+        event = "archived";
+        setSql = sql`${sql.identifier("_status")} = 'archived', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("_publish_at")} = NULL, ${sql.identifier("_unpublish_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`;
       } else if (scheduleAt) {
         event = "scheduled";
-        setSql = sql`${sql.identifier("_status")} = 'draft', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("_publish_at")} = ${tsOf(scheduleAt)}, ${sql.identifier("updated_at")} = ${now}`;
+        setSql = sql`${sql.identifier("_status")} = 'draft', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("_publish_at")} = ${tsOf(scheduleAt)}, ${sql.identifier("_unpublish_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`;
+      } else if (hasUnpublishAt && body.publishAt == null) {
+        // Set/clear the expiry (auto-unpublish) time. Preserves `_status` and does
+        // NOT bump `updated_at` — scheduling an expiry isn't a content edit, so it
+        // must not trip the "edited since publish" indicator.
+        event = "unpublish_scheduled";
+        setSql = sql`${sql.identifier("_unpublish_at")} = ${expireAt ? tsOf(expireAt) : sql`NULL`}`;
       } else {
         event = "published";
-        setSql = sql`${sql.identifier("_status")} = 'published', ${sql.identifier("_published_at")} = ${now}, ${sql.identifier("_publish_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`;
+        setSql = sql`${sql.identifier("_status")} = 'published', ${sql.identifier("_published_at")} = ${now}, ${sql.identifier("_publish_at")} = NULL, ${sql.identifier("_unpublish_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`;
       }
       await execute(
         ctx,

@@ -1435,6 +1435,11 @@ msgstr "Onayla ve çalıştır"
 msgid "April"
 msgstr "Nisan"
 
+#: src/client/admin/collection-settings.tsx
+#: src/client/admin/item-editor.tsx
+msgid "Archive"
+msgstr "Arşivle"
+
 #: src/client/admin/app.tsx
 #: src/client/admin/collection-settings.tsx
 msgid "Archive collection"
@@ -1460,6 +1465,7 @@ msgstr "arşiv bölgesi"
 msgid "archived"
 msgstr "arşivlendi"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/item-views.tsx
 msgid "Archived"
 msgstr "Arşivlendi"
@@ -1576,6 +1582,7 @@ msgstr "Yazar"
 msgid "auto"
 msgstr "otomatik"
 
+#: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/search-playground.tsx
 msgid "Auto"
 msgstr "Otomatik"
@@ -1629,6 +1636,14 @@ msgstr "Otomatik anlık görüntü kapatıldı."
 #: src/client/admin/parity/translations.tsx
 msgid "Auto-translate"
 msgstr "Otomatik çeviri"
+
+#: src/client/admin/item-editor.tsx
+#~ msgid "Auto-unpublish at"
+#~ msgstr "Otomatik yayından kaldırma"
+
+#: src/client/admin/item-editor.tsx
+msgid "Auto-unpublish scheduled."
+msgstr "Otomatik yayından kaldırma planlandı."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Automated lint over schema, permissions, and configuration. Runs on demand against live workspace state."
@@ -1988,6 +2003,10 @@ msgstr "Kardinalite"
 msgid "Change"
 msgstr "Değiştir"
 
+#: src/client/admin/item-editor.tsx
+msgid "Change auto-unpublish"
+msgstr "Otomatik kaldırmayı değiştir"
+
 #: src/client/admin/account-page.tsx
 msgid "Change password"
 msgstr "Parolayı değiştir"
@@ -2045,6 +2064,10 @@ msgstr "Seçenekler"
 #: src/client/pages/reset-password.tsx
 msgid "Choose a new password"
 msgstr "Yeni parola seçin"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Choosing <0>_status</0> tracks the draft/published lifecycle."
+msgstr "<0>_status</0> seçmek taslak/yayınlanmış yaşam döngüsünü izler."
 
 #: src/client/admin/storage/index.tsx
 msgid "Chunked, resumable upload"
@@ -3658,6 +3681,10 @@ msgstr "<0>wrangler.toml</0> dosyasında düzenleyin ve yeniden dağıtın. Bu p
 msgid "Edit webhook"
 msgstr "Webhook'u düzenle"
 
+#: src/client/admin/item-editor.tsx
+msgid "Edited since publish"
+msgstr "Yayından sonra düzenlendi"
+
 #. placeholder {0}: panel?.id
 #: src/client/admin/parity/insights.tsx
 msgid "Editing <0>{0}</0>."
@@ -4047,6 +4074,15 @@ msgstr "süresi dolmuş"
 msgid "Expires"
 msgstr "Son kullanma"
 
+#. placeholder {0}: fmtDay(unpublishAtMs)
+#: src/client/admin/item-editor.tsx
+msgid "Expires {0}"
+msgstr "Bitiş {0}"
+
+#: src/client/admin/item-editor.tsx
+msgid "Expiry cleared."
+msgstr "Bitiş temizlendi."
+
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/parity/translations.tsx
 msgid "Export"
@@ -4309,6 +4345,10 @@ msgstr "Araçları filtrele…"
 msgid "Finish arranging collections"
 msgstr "Koleksiyonları düzenlemeyi bitir"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Fire a lifecycle action when a card enters a column — e.g. a <0>done</0> column that also publishes."
+msgstr "Bir kart bir kolona girdiğinde yaşam döngüsü aksiyonu tetikle — örn. <0>done</0> kolonu aynı zamanda yayınlar."
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Fire a repository_dispatch on data events."
 msgstr "Veri olaylarında bir repository_dispatch tetikler."
@@ -4316,6 +4356,10 @@ msgstr "Veri olaylarında bir repository_dispatch tetikler."
 #: src/client/admin/pages/functions.tsx
 msgid "fires on matching pub-sub channel events"
 msgstr "eşleşen pub-sub kanal olaylarında tetiklenir"
+
+#: src/client/admin/collection-settings.tsx
+msgid "first dropdown"
+msgstr "ilk açılır liste"
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "First name"
@@ -5085,6 +5129,10 @@ msgid "Istanbul, Turkey"
 msgstr "İstanbul, Türkiye"
 
 #: src/client/admin/item-editor.tsx
+msgid "Item archived."
+msgstr "Öğe arşivlendi."
+
+#: src/client/admin/item-editor.tsx
 msgid "Item created."
 msgstr "Öğe oluşturuldu."
 
@@ -5205,6 +5253,10 @@ msgstr "az önce"
 #: src/client/admin/collections-index.tsx
 msgid "Just system fields. Add your own columns."
 msgstr "Yalnızca sistem alanları. Kendi sütunlarınızı ekleyin."
+
+#: src/client/admin/collection-settings.tsx
+msgid "kanban"
+msgstr "kanban"
 
 #: src/client/admin/item-views.tsx
 msgid "Kanban"
@@ -5485,6 +5537,10 @@ msgstr "eski üretim"
 #: src/client/admin/pages/settings/index.tsx
 msgid "License"
 msgstr "Lisans"
+
+#: src/client/admin/collection-settings.tsx
+msgid "lifecycle"
+msgstr "yaşam döngüsü"
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Light"
@@ -6235,6 +6291,10 @@ msgstr "erişim yok"
 #: src/client/admin/permissions-matrix.tsx
 msgid "No access"
 msgstr "Erişim yok"
+
+#: src/client/admin/collection-settings.tsx
+msgid "No action"
+msgstr "Aksiyon yok"
 
 #: src/client/admin/pages/flows.tsx
 msgid "No actions yet — click to add steps."
@@ -7568,6 +7628,15 @@ msgstr "Satır seç"
 msgid "Pick the collection this relation points to."
 msgstr "Bu ilişkinin işaret ettiği koleksiyonu seçin."
 
+#: src/client/admin/collection-settings.tsx
+msgid "Pick the field whose values become the Kanban columns.<0> Auto</0> uses a field named<1> status</1>, else the first dropdown."
+msgstr "Değerleri Kanban kolonlarını oluşturacak alanı seçin.<0> Auto</0> adı<1> status</1> olan alanı, yoksa ilk açılır listeyi kullanır."
+
+#. placeholder {0}: schema.versioned ? ( <> Choosing <span className="font-mono">_status</span> tracks the draft/published lifecycle.</> ) : null
+#: src/client/admin/collection-settings.tsx
+#~ msgid "Pick the field whose values become the Kanban columns.<0> Auto</0> uses a field named<1> status</1>, else the first dropdown.{0}"
+#~ msgstr ""
+
 #: src/client/admin/pages/database-import.tsx
 msgid "Pick the source tables to copy. Every table becomes a collection."
 msgstr "Kopyalanacak kaynak tabloları seçin. Her tablo bir koleksiyona dönüşür."
@@ -7867,6 +7936,7 @@ msgstr "herkese açık okuma"
 msgid "Public read-only link"
 msgstr "Herkese açık salt okunur bağlantı"
 
+#: src/client/admin/collection-settings.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/sheet.tsx
 msgid "Publish"
@@ -7875,6 +7945,10 @@ msgstr "Yayınla"
 #: src/client/admin/item-editor.tsx
 msgid "Publish now"
 msgstr "Şimdi yayınla"
+
+#: src/client/admin/item-editor.tsx
+msgid "Publish on"
+msgstr "Yayın tarihi"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/item-editor.tsx
@@ -8221,6 +8295,7 @@ msgstr "Şemayı yeniden yükle"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
@@ -8377,6 +8452,10 @@ msgstr "Hesabınızda bir şifre gerektirir. Yalnızca sosyal giriş kullananlar
 msgid "Requires a signed URL or auth cookie."
 msgstr "İmzalı URL veya kimlik doğrulama çerezi gerektirir."
 
+#: src/client/admin/item-editor.tsx
+msgid "Reschedule"
+msgstr "Yeniden planla"
+
 #: src/client/pages/sign-in.tsx
 msgid "Resend verification email"
 msgstr "Doğrulama e-postasını yeniden gönder"
@@ -8484,6 +8563,10 @@ msgstr "Bu yedekten geri yüklensin mi? Eksik satırlar yeniden eklenir; mevcut 
 #: src/client/admin/parity/revisions.tsx
 msgid "Restore this snapshot"
 msgstr "Bu anlık görüntüyü geri yükle"
+
+#: src/client/admin/item-editor.tsx
+msgid "Restore to draft"
+msgstr "Taslağa geri al"
 
 #. placeholder {0}: r.data.rowCount
 #. placeholder {1}: r.data.tableCount
@@ -8967,6 +9050,10 @@ msgstr "Akışı kaydet"
 msgid "Save guards"
 msgstr "Korumaları kaydet"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Save kanban"
+msgstr "Kanban'ı kaydet"
+
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Save LDAP config"
 msgstr "LDAP yapılandırmasını kaydet"
@@ -9044,6 +9131,9 @@ msgid "Schedule"
 msgstr "Zamanlama"
 
 #: src/client/admin/item-editor.tsx
+msgid "Schedule publish"
+msgstr "Yayını planla"
+
 #: src/client/admin/sheet.tsx
 msgid "Scheduled"
 msgstr "Zamanlandı"
@@ -9051,6 +9141,11 @@ msgstr "Zamanlandı"
 #: src/client/admin/pages/functions.tsx
 msgid "scheduled — granularity is 1 minute"
 msgstr "zamanlanmış — ayrıntı düzeyi 1 dakikadır"
+
+#. placeholder {0}: fmtDay(publishAtMs)
+#: src/client/admin/item-editor.tsx
+msgid "Scheduled · {0}"
+msgstr "Planlandı · {0}"
 
 #: src/client/admin/parity/database.tsx
 msgid "Scheduled backups run from the cron tick and keep the newest {retain} automatic dumps, pruning any older than {retainDays} days. Manual backups are never pruned."
@@ -9482,9 +9577,17 @@ msgstr "Parola belirle"
 msgid "Set a password to accept the invite and create your account."
 msgstr "Daveti kabul edip hesabını oluşturmak için bir parola belirle."
 
+#: src/client/admin/item-editor.tsx
+msgid "Set auto-unpublish"
+msgstr "Otomatik kaldırma ayarla"
+
 #: src/client/admin/pages/overview.tsx
 msgid "set EMAIL_FROM + a provider key"
 msgstr "EMAIL_FROM + sağlayıcı anahtarı ayarlayın"
+
+#: src/client/admin/item-editor.tsx
+msgid "Set expiry"
+msgstr "Bitiş ayarla"
 
 #: src/client/pages/reset-password.tsx
 msgid "Set new password"
@@ -10943,10 +11046,15 @@ msgstr "Adsız passkey"
 msgid "Unpin"
 msgstr "Sabitlemeyi kaldır"
 
+#: src/client/admin/collection-settings.tsx
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Unpublish"
 msgstr "Yayından kaldır"
+
+#: src/client/admin/item-editor.tsx
+msgid "Unpublish on"
+msgstr "Kaldırma tarihi"
 
 #: src/client/admin/ui.tsx
 msgid "Unread"
@@ -11441,6 +11549,10 @@ msgstr "Kural satırla eşleştiğinde efektler uygulanır. <0>Zorunlu</0> kayı
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
 msgstr "“Test SMS gönder” işleminin nereye iletileceği. Hesabınızın kayıtlı numaralarını kullanmak için boş bırakın."
+
+#: src/client/admin/collection-settings.tsx
+msgid "which field the board groups cards by"
+msgstr "panonun kartları hangi alana göre grupladığı"
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Whole numbers only (no decimals)"

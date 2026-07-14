@@ -196,6 +196,59 @@ export const introspectColumns = async (
 };
 
 /**
+ * Idempotently ensure a *versioned* collection's system columns exist on its
+ * physical table: `_status`, `_published_at`, `_publish_at` (+ their indexes).
+ * Introspects first and only ALTERs what's missing, so it's cheap and safe to
+ * call on the write path.
+ *
+ * This heals tables that were made versioned *before* `_publish_at` /
+ * scheduled publishing existed and whose schema was never re-applied since.
+ * publish / unpublish / schedule all write `_publish_at` unconditionally, so a
+ * table missing that column 500s the request ("no such column: _publish_at")
+ * even though the row still reads/writes fine everywhere else. `applyCollection`
+ * already backfills these on a schema re-apply, but that only runs when an admin
+ * edits the collection — the publish path can't assume it has.
+ */
+export const ensureVersionedColumns = async (
+  db: AnyDb,
+  dialect: Dialect,
+  table: string,
+): Promise<void> => {
+  const existing = await introspectColumns(db, dialect, table);
+  if (!existing.has("_status")) {
+    await exec(
+      db,
+      dialect,
+      `ALTER TABLE ${quote(table)} ADD COLUMN ${quote("_status")} ${sqlTypeFor("text", dialect)} NOT NULL DEFAULT 'draft'`,
+    );
+    await exec(
+      db,
+      dialect,
+      `CREATE INDEX IF NOT EXISTS ${quote(`${table}_status_idx`)} ON ${quote(table)} (${quote("_status")})`,
+    );
+  }
+  if (!existing.has("_published_at")) {
+    await exec(
+      db,
+      dialect,
+      `ALTER TABLE ${quote(table)} ADD COLUMN ${quote("_published_at")} ${sqlTypeFor("timestamp", dialect)}`,
+    );
+  }
+  if (!existing.has("_publish_at")) {
+    await exec(
+      db,
+      dialect,
+      `ALTER TABLE ${quote(table)} ADD COLUMN ${quote("_publish_at")} ${sqlTypeFor("timestamp", dialect)}`,
+    );
+    await exec(
+      db,
+      dialect,
+      `CREATE INDEX IF NOT EXISTS ${quote(`${table}_publish_at_idx`)} ON ${quote(table)} (${quote("_publish_at")})`,
+    );
+  }
+};
+
+/**
  * Emit a plain B-tree index for every field flagged `indexed`, plus every
  * to-one `relation` field — its FK column is what every `expand=`/nested
  * filter/sort JOINs on, and an un-indexed FK turns those into a full scan of
@@ -360,37 +413,11 @@ export const applyCollection = async (
       `CREATE INDEX ${quote(`${table}_deleted_idx`)} ON ${quote(table)} (${quote("deleted_at")})`,
     );
   }
-  // Promote an existing collection to versioned by adding the system cols.
-  if (versioned && !existing.has("_status")) {
-    await exec(
-      db,
-      dialect,
-      `ALTER TABLE ${quote(table)} ADD COLUMN ${quote("_status")} ${sqlTypeFor("text", dialect)} NOT NULL DEFAULT 'draft'`,
-    );
-    await exec(
-      db,
-      dialect,
-      `ALTER TABLE ${quote(table)} ADD COLUMN ${quote("_published_at")} ${sqlTypeFor("timestamp", dialect)}`,
-    );
-    await exec(
-      db,
-      dialect,
-      `CREATE INDEX ${quote(`${table}_status_idx`)} ON ${quote(table)} (${quote("_status")})`,
-    );
-  }
-  // Backfill `_publish_at` onto collections that were already versioned before
-  // scheduled publishing existed (separate guard — `_status` is already present).
-  if (versioned && !existing.has("_publish_at")) {
-    await exec(
-      db,
-      dialect,
-      `ALTER TABLE ${quote(table)} ADD COLUMN ${quote("_publish_at")} ${sqlTypeFor("timestamp", dialect)}`,
-    );
-    await exec(
-      db,
-      dialect,
-      `CREATE INDEX IF NOT EXISTS ${quote(`${table}_publish_at_idx`)} ON ${quote(table)} (${quote("_publish_at")})`,
-    );
+  // Promote an existing collection to versioned + backfill `_publish_at` onto
+  // collections that were already versioned before scheduled publishing existed.
+  // Same idempotent helper the publish path calls, so both stay in lockstep.
+  if (versioned) {
+    await ensureVersionedColumns(db, dialect, table);
   }
   for (const f of def.fields) {
     if (existing.has(f.name)) continue;

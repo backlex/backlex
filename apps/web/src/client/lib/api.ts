@@ -46,7 +46,13 @@ export const api = async <T>(path: string, init?: RequestInit): Promise<T> => {
     credentials: "include",
     ...restInit,
     headers: {
-      "content-type": "application/json",
+      // Only advertise a JSON body when there actually is one. A bodyless POST
+      // (publish/unpublish, and other side-effect endpoints) that still sends
+      // `content-type: application/json` makes the server's zod-openapi body
+      // validator try to parse an empty body — it throws "Malformed JSON in
+      // request body" and 500s before the handler runs. Omit the header when
+      // there's no body so those requests skip body parsing entirely.
+      ...(restInit.body != null ? { "content-type": "application/json" } : {}),
       ...(d1Bookmark ? { "x-d1-bookmark": d1Bookmark } : {}),
       ...(initHeaders ?? {}),
     },

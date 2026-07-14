@@ -782,7 +782,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, 
                       <span>{i18n._(navLabel(it.id))}</span>
                     </SidebarMenuButton>
                     {liveBadge != null && (
-                      <SidebarMenuBadge className={cn("rounded-control bg-white/8 px-1.5 font-mono text-[10.5px] tabular-nums text-muted-foreground", it.id === "collections" && "right-7")}>{liveBadge}</SidebarMenuBadge>
+                      <SidebarMenuBadge className={cn("top-2! rounded-control bg-white/8 px-1.5 font-mono text-[10.5px] tabular-nums text-muted-foreground", it.id === "collections" && "right-7")}>{liveBadge}</SidebarMenuBadge>
                     )}
                     {it.id === "collections" && (
                       <>
@@ -791,7 +791,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, 
                           aria-label={collectionsOpen ? t`Collapse collections` : t`Expand collections`}
                           aria-expanded={collectionsOpen}
                           onClick={toggleCollections}
-                          className="absolute top-1.5 right-1 z-10 grid size-5 place-items-center rounded-control text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                          className="absolute top-2 right-1 z-10 grid size-5 place-items-center rounded-control text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                         >
                           <I.ChevronDown size={14} className={cn("transition-transform", !collectionsOpen && "-rotate-90")} />
                         </button>

@@ -32,9 +32,12 @@ export const createCollection: McpTool = {
       fields: {
         type: "array",
         description:
-          "Array of `{ name, type, required?, unique?, to? }`. " +
+          "Array of `{ name, type, required?, unique?, to?, localized? }`. " +
           "Supported types: text, longtext, integer, number, boolean, json, " +
-          "timestamp, uuid, relation, relation_many. relation/_many requires `to`.",
+          "timestamp, uuid, relation, relation_many. relation/_many requires `to`. " +
+          "`localized: true` stores the value per-locale in the collection's " +
+          "translations sidecar (any type except computed/hash); read/write one " +
+          "locale with `?locale=xx`, the full map with `?locale=*`.",
       },
       ownerScoped: { type: "boolean" },
       tenantScoped: { type: "boolean" },

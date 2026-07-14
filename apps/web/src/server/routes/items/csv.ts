@@ -106,7 +106,6 @@ const coerceCsvRow = (
         break;
       case "json":
       case "relation_many":
-      case "i18n_text":
         try {
           out[key] = JSON.parse(value);
         } catch {

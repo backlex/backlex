@@ -37,7 +37,7 @@ export const ListQuery = z.object({
     description: "`filter_count`, `total_count`, or `*`.",
   }),
   locale: z.string().optional().openapi({
-    description: "Locale for i18n_text projection; `*` returns full map.",
+    description: "Locale for localized-field projection; `*` returns full map.",
   }),
 });
 

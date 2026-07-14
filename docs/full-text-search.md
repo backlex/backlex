@@ -106,7 +106,7 @@ because every candidate id is re-checked when its row is hydrated.
 | `q` | — | required, non-empty |
 | `mode` | auto | `fts` \| `vector` \| `hybrid`. Omit to auto-pick: `hybrid` when both backends are enabled, else whichever single one is. Requesting a backend the collection hasn't enabled returns `422`. |
 | `limit` | `20` | 1–100 |
-| `locale` | none | collapse `i18n_text` fields to one locale (or `*`) |
+| `locale` | none | collapse `localized` fields to one locale (or `*`) |
 
 **RRF.** Each backend returns a ranked id list; every list contributes
 `1 / (60 + rank)` per id (60 is the canonical RRF constant), the scores are

@@ -101,7 +101,7 @@ tenant comes from the session.
 ### Query extras & aggregates
 
 The query builder also exposes the rest of the list API: `expand` (inline
-single-hop relations), `locale` (collapse `i18n_text` fields to one locale, or
+single-hop relations), `locale` (collapse `localized` fields to one locale, or
 `"*"` for the full map), and `search` (free-text across readable text fields). And
 every collection has `aggregate` — a single-function `count`/`sum`/`avg`/`min`/`max`
 over one column, optionally grouped:

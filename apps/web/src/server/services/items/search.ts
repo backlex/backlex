@@ -5,9 +5,10 @@ import type { Ctx } from "../../context";
 import { isVectorizable, resolveModel } from "../vectorize";
 import { ftsRankedIds, isSearchable } from "../fts";
 import { loadAppSettings } from "../settings";
-import { hasI18nField, type CollectionRow } from "./collection-loader";
+import { hasLocalizedField, type CollectionRow } from "./collection-loader";
 import { deserializeRow, projectFields } from "./serialize";
-import { localizeRow } from "./i18n";
+import { applySidecarFromRows, loadSidecarForRows } from "./i18n-sidecar";
+import { sidecarFields } from "@backlex/db";
 import {
   deletedFilter,
   draftFilter,
@@ -177,20 +178,33 @@ export const searchCollectionItems = async (
 
   const locale = input.locale ?? null;
   const defaultLocale =
-    locale && locale !== "*" && hasI18nField(collection.fields)
+    locale && locale !== "*" && hasLocalizedField(collection.fields)
       ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
       : null;
+  const localizedDefs = sidecarFields(collection.fields);
+  const sidecarByRow =
+    localizedDefs.length > 0
+      ? await loadSidecarForRows(
+          ctx,
+          collection.physicalTable,
+          rows.map((r) => String(r[collection.pkColumn])),
+          localizedDefs,
+        )
+      : new Map<string, Array<Record<string, unknown>>>();
   const byId = new Map<string, Record<string, unknown>>();
   for (const r of rows) {
-    const projected = projectFields(
-      localizeRow(
-        deserializeRow(r, collection.fields, ctx.dialect, collection.ownerScoped),
-        collection.fields,
+    const base = deserializeRow(r, collection.fields, ctx.dialect, collection.ownerScoped);
+    if (localizedDefs.length > 0) {
+      applySidecarFromRows(
+        base,
+        sidecarByRow.get(String(r[collection.pkColumn])) ?? [],
+        localizedDefs,
+        ctx.dialect,
         locale,
         defaultLocale,
-      ),
-      gates.permFields,
-    );
+      );
+    }
+    const projected = projectFields(base, gates.permFields);
     byId.set(String(projected.id), projected);
   }
   // Re-order to the fused ranking — `IN (…)` doesn't preserve order, and

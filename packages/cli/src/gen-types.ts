@@ -12,8 +12,7 @@ type FieldType =
   | "uuid"
   | "relation"
   | "file"
-  | "relation_many"
-  | "i18n_text";
+  | "relation_many";
 
 interface FieldChoice {
   value: string;
@@ -24,6 +23,9 @@ interface Field {
   name: string;
   type: FieldType;
   required?: boolean;
+  /** Stored per-locale in the translations sidecar — the value is the native
+   *  type when read with `?locale=xx`, or a `{locale: value}` map otherwise. */
+  localized?: boolean;
   /** Target collection slug for `relation` / `relation_many`. */
   to?: string | null;
   /** UI hint — `"dropdown"`/`"select"` narrows the value to a literal union. */
@@ -64,7 +66,6 @@ const SCALAR_TYPES: Record<FieldType, string> = {
   // Array of foreign ids.
   relation_many: "string[]",
   // Localized map; collapses to a string when read with `?locale=xx`.
-  i18n_text: "string | Record<string, string>",
 };
 
 const pascal = (s: string): string =>
@@ -86,8 +87,11 @@ const lit = (v: string): string => JSON.stringify(v);
 /** The TS type of a field's *stored* value (FK ids, scalars, enum unions). */
 const fieldType = (f: Field): string => {
   const vals = enumValues(f);
-  if (vals) return vals.map(lit).join(" | ");
-  return SCALAR_TYPES[f.type] ?? "unknown";
+  const base = vals ? vals.map(lit).join(" | ") : (SCALAR_TYPES[f.type] ?? "unknown");
+  // A `localized` field reads back as the native value (with `?locale=xx`) or a
+  // `{locale: value}` map (default / `?locale=*`).
+  if (f.localized) return `${base} | Record<string, ${base}>`;
+  return base;
 };
 
 /** Append ` | null` unless the field is required. */

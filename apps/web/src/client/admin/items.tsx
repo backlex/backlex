@@ -18,7 +18,7 @@ import { fieldLabel, formatFieldValue } from "./format-value";
 import { useListColumns } from "./list-columns";
 import { useAppUserLabels, useRelationLabels } from "./relation-labels";
 import { shortId } from "./row-label";
-import { useCollections } from "./queries";
+import { useCollections, useSettings } from "./queries";
 
 // Cosmos "Backlex Console" data-grid styling. Header cells: mono 10px violet-
 // gray, uppercase, subtle padding; body rows: subtle white/5 dividers, 12.5px
@@ -180,13 +180,14 @@ export function fmtDate(iso: string | null | undefined) {
   return d.toISOString().slice(0, 10);
 }
 
-/** Coerce a cell value to a display string. `i18n_text` fields arrive as a
+/** Coerce a cell value to a display string. `localized` fields arrive as a
  *  `{ en, tr }` map when the list isn't locale-collapsed — show one language
- *  (English first, else the first set locale) instead of "[object Object]". */
-function cellText(v: unknown): string {
+ *  (workspace default `prefer`, then English, else the first set locale)
+ *  instead of "[object Object]". */
+function cellText(v: unknown, prefer?: string): string {
   if (v && typeof v === "object" && !Array.isArray(v)) {
     const m = v as Record<string, unknown>;
-    const pick = m.en ?? Object.values(m).find((x) => x != null);
+    const pick = (prefer ? m[prefer] : undefined) ?? m.en ?? Object.values(m).find((x) => x != null);
     return pick != null ? String(pick) : "";
   }
   return String(v ?? "");
@@ -721,7 +722,7 @@ function EditCell({ editable, editing, num, className, field, value, choices, di
 }
 
 /** Field types the in-place editor can handle; everything else (relation,
- *  json, i18n_text, uuid, timestamp…) goes through the full detail editor. */
+ *  json, localized, uuid, timestamp…) goes through the full detail editor. */
 const INLINE_TYPES = new Set(["text", "longtext", "integer", "number", "boolean"]);
 
 /** Dropdown-interface fields carry their choices in options — those edit via
@@ -736,6 +737,13 @@ function fieldChoices(f: { interface?: string; options?: { choices?: StatusChoic
 
 export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit, schema, onCellError }: ItemsTableProps) {
   const { t } = useLingui();
+  // Workspace default content language — `localized` cells collapse to it
+  // (then English) instead of always showing English.
+  const settings = useSettings();
+  const defaultLocale =
+    ((settings.data?.data as Record<string, unknown> | undefined)?.i18nDefaultLocale as
+      | string
+      | undefined) || undefined;
   // Subscribe so the table re-renders when authors-cache populates.
   useSyncExternalStore(subscribeAuthors, getAuthors, getAuthors);
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
@@ -951,10 +959,13 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
           // set — matching what the Settings tab promises — else the resolved
           // title-ish field. No identity ⇒ no cell (the first picked column
           // is the row's anchor instead).
+          // Keep the raw value (don't `String()` it) so `cellText` below can
+          // collapse a `localized` field's `{locale: value}` map to one language
+          // instead of rendering "[object Object]".
           const displayTitle = identity
             ? identity.template
               ? renderTemplate(identity.template, r).trim() || (r.title ?? r.name ?? r.slug ?? r.id ?? "—")
-              : String((r as Record<string, unknown>)[identity.sortId!] ?? "—")
+              : ((r as Record<string, unknown>)[identity.sortId!] ?? "—")
             : "";
           const displaySlug = hasSlugField ? (r.slug ?? "") : "";
           const rawStatus = statusField ? (r as Record<string, unknown>)[statusField.name] : null;
@@ -968,7 +979,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
               {identity && (
                 <TableCell className={`sm:left-[37px] sm:max-w-[320px] ${STICKY_BOX}`}>
                   <div className="flex min-w-0 flex-col">
-                    <span className="truncate font-medium text-foreground">{cellText(displayTitle)}</span>
+                    <span className="truncate font-medium text-foreground">{cellText(displayTitle, defaultLocale)}</span>
                     {displaySlug && <span className="truncate font-mono text-[11px] text-muted-foreground">/{String(displaySlug).slice(0, 24)}</span>}
                   </div>
                 </TableCell>
@@ -1024,7 +1035,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                       ? rawV == null || rawV === ""
                         ? ""
                         : (appUserLabels[String(rawV)] ?? shortId(rawV))
-                      : formatFieldValue(rawV, f, i18n.locale);
+                      : formatFieldValue(rawV, f, i18n.locale, undefined, defaultLocale);
                   const choices = fieldChoices(f);
                   return (
                     <EditCell

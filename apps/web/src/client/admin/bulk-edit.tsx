@@ -24,7 +24,7 @@ import {
 // rows" is ambiguous or destructive — mirrors the server-side bulk guard. Plus
 // long-form authored interfaces (richtext/markdown), which are an anti-pattern
 // to fan out as a uniform blob. Single-record edit still handles all of these.
-const BULK_BLOCKED_TYPES = new Set(["json", "file", "relation_many", "i18n_text"]);
+const BULK_BLOCKED_TYPES = new Set(["json", "file", "relation_many"]);
 const BULK_BLOCKED_IFACES = new Set(["richtext", "markdown"]);
 
 export const isBulkEditable = (f: SchemaField): boolean => {

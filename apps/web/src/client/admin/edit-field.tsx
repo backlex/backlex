@@ -71,6 +71,8 @@ interface FieldDraft {
   searchable?: boolean;
   /** Fold into the collection's embedding text for vector search (text/longtext only). */
   vectorize?: boolean;
+  /** Store one value per locale in the `<table>__i18n` sidecar. */
+  localized?: boolean;
   interface?: string;
   /** Target collection slug (relation / relation_many). Immutable here. */
   to?: string;
@@ -296,6 +298,21 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
                 </div>
                 <Switch checked={!!draft.unique} onChange={(v) => setDraft((d) => d ? { ...d, unique: v } : d)} />
               </div>
+
+              {draft.type !== "hash" && (
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Localized</Trans></div>
+                    <div className="text-[11.5px] text-muted-foreground"><Trans>Store one value per language in the translations sidecar. Turning this on for a field that already has data does not move existing values — backfill them afterwards.</Trans></div>
+                  </div>
+                  <Switch
+                    checked={!!draft.localized}
+                    onChange={(v) =>
+                      setDraft((d) => (d ? { ...d, localized: v, unique: v ? false : d.unique } : d))
+                    }
+                  />
+                </div>
+              )}
 
               {(draft.type === "text" || draft.type === "longtext") && (
                 <div className="flex items-center justify-between gap-3">

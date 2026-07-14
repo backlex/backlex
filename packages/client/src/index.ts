@@ -189,6 +189,17 @@ const buildItemSearch = (q: ItemQuery | undefined): string => {
   return s ? `?${s}` : "";
 };
 
+/** Write-time locale target for `localized` fields. */
+export interface WriteLocaleOpts {
+  /** When set, `localized` field values in the body are the native value for
+   *  this one locale (upserted without disturbing other locales). Omit to send
+   *  full `{locale: value}` maps. */
+  locale?: string;
+}
+
+const writeLocaleQuery = (opts: WriteLocaleOpts | undefined): string =>
+  opts?.locale ? `?locale=${encodeURIComponent(opts.locale)}` : "";
+
 // ── Resumable-upload helpers (TUS) ──────────────────────────────────────────
 /** Default PATCH chunk size: 8 MiB (object stores require ≥5 MiB non-final parts). */
 const DEFAULT_CHUNK = 8 * 1024 * 1024;
@@ -234,8 +245,13 @@ export interface CollectionClient<T extends Record<string, unknown>> {
     format?: "json" | "csv",
   ): Promise<ImportSummary>;
   one(id: string, opts?: ItemQuery): Promise<ItemResponse<T>>;
-  create(data: Partial<T>): Promise<ItemResponse<T>>;
-  update(id: string, patch: Partial<T>): Promise<ItemResponse<T>>;
+  /** Create a row. Pass `{ locale }` to write a single locale of every
+   *  `localized` field (the field values are then the native per-locale value);
+   *  omit it to send full `{locale: value}` maps. */
+  create(data: Partial<T>, opts?: WriteLocaleOpts): Promise<ItemResponse<T>>;
+  /** Update a row. Pass `{ locale }` to upsert a single locale of the
+   *  `localized` fields in `patch` without disturbing the others. */
+  update(id: string, patch: Partial<T>, opts?: WriteLocaleOpts): Promise<ItemResponse<T>>;
   delete(id: string): Promise<{ ok: boolean }>;
   createMany(rows: Partial<T>[], opts?: { atomic?: boolean }): Promise<BatchResponse<T>>;
   updateMany(
@@ -1229,10 +1245,14 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       },
       one: (id: string, opts?: ItemQuery): Promise<ItemResponse<T>> =>
         request<ItemResponse<T>>("GET", `/api/items/${slug}/${id}${buildItemSearch(opts)}`),
-      create: (data: Partial<T>): Promise<ItemResponse<T>> =>
-        request<ItemResponse<T>>("POST", `/api/items/${slug}`, data),
-      update: (id: string, patch: Partial<T>): Promise<ItemResponse<T>> =>
-        request<ItemResponse<T>>("PATCH", `/api/items/${slug}/${id}`, patch),
+      create: (data: Partial<T>, opts?: WriteLocaleOpts): Promise<ItemResponse<T>> =>
+        request<ItemResponse<T>>("POST", `/api/items/${slug}${writeLocaleQuery(opts)}`, data),
+      update: (id: string, patch: Partial<T>, opts?: WriteLocaleOpts): Promise<ItemResponse<T>> =>
+        request<ItemResponse<T>>(
+          "PATCH",
+          `/api/items/${slug}/${id}${writeLocaleQuery(opts)}`,
+          patch,
+        ),
       delete: (id: string): Promise<{ ok: boolean }> =>
         request<{ ok: boolean }>("DELETE", `/api/items/${slug}/${id}`),
       /** Bulk-create rows. `atomic` runs the whole set in one transaction

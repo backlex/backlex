@@ -99,7 +99,7 @@ const serializeField = (
     const b = typeof v === "number" ? v !== 0 : Boolean(v);
     return dialect === "pg" ? b : b ? 1 : 0;
   }
-  if (type === "json" || type === "relation_many" || type === "i18n_text") {
+  if (type === "json" || type === "relation_many") {
     return dialect === "sqlite" ? JSON.stringify(v) : v;
   }
   return v;

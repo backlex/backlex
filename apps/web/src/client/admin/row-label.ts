@@ -11,10 +11,28 @@ import { renderTemplate } from "@backlex/core";
 
 const LABEL_FIELDS = ["title", "name", "label", "slug", "subject", "email", "username"];
 
-export function pickRelationLabel(row: Record<string, unknown>): string | null {
+/** Coerce a value to a display string. Handles a `localized` field's
+ *  `{locale: value}` map — prefers the workspace default language (`prefer`),
+ *  then English, then the first filled locale — so a localized title never
+ *  surfaces as "[object Object]" or falls through to the short id. Returns null
+ *  when there's nothing renderable. */
+const asLabel = (v: unknown, prefer?: string): string | null => {
+  if (typeof v === "string") return v.trim() || null;
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const m = v as Record<string, unknown>;
+    const pick =
+      (prefer ? m[prefer] : undefined) ??
+      m.en ??
+      Object.values(m).find((x) => typeof x === "string" && x.trim());
+    return typeof pick === "string" && pick.trim() ? pick.trim() : null;
+  }
+  return null;
+};
+
+export function pickRelationLabel(row: Record<string, unknown>, prefer?: string): string | null {
   for (const k of LABEL_FIELDS) {
-    const v = row[k];
-    if (typeof v === "string" && v.trim()) return v;
+    const s = asLabel(row[k], prefer);
+    if (s) return s;
   }
   return null;
 }
@@ -24,11 +42,11 @@ export type LabelFn = (row: Record<string, unknown>) => string | null;
 /** Build a row-labeller: prefer the collection's display template (rendered
  *  against the — optionally expanded — row), falling back to the heuristic
  *  field scan when there's no template or it renders empty. */
-export function makeLabelFor(displayTemplate: string | null): LabelFn {
-  if (!displayTemplate) return pickRelationLabel;
+export function makeLabelFor(displayTemplate: string | null, defaultLocale?: string): LabelFn {
+  if (!displayTemplate) return (row) => pickRelationLabel(row, defaultLocale);
   return (row) => {
     const rendered = renderTemplate(displayTemplate, row).trim();
-    return rendered || pickRelationLabel(row);
+    return rendered || pickRelationLabel(row, defaultLocale);
   };
 }
 
@@ -47,22 +65,27 @@ export interface LabelSchemaField {
  *  composed-text fallback; omit it to stop at the title-ish scan. */
 export function rowLabel(
   row: Record<string, unknown>,
-  opts: { displayTemplate?: string | null; fields?: LabelSchemaField[] } = {},
+  opts: {
+    displayTemplate?: string | null;
+    fields?: LabelSchemaField[];
+    /** Workspace content default language — localized maps collapse to it. */
+    defaultLocale?: string;
+  } = {},
 ): string {
   if (opts.displayTemplate) {
     const rendered = renderTemplate(opts.displayTemplate, row).trim();
     if (rendered) return rendered;
   }
-  const scanned = pickRelationLabel(row);
+  const scanned = pickRelationLabel(row, opts.defaultLocale);
   if (scanned) return scanned;
   // Compose from the first two filled text fields ("Jordan · Reed",
   // "1 Market St · San Francisco") before surrendering to the id.
   const texts: string[] = [];
   for (const f of opts.fields ?? []) {
     if (f.system || (f.type !== "text" && f.type !== "longtext")) continue;
-    const v = row[f.name];
-    if (typeof v === "string" && v.trim()) {
-      texts.push(v.trim());
+    const s = asLabel(row[f.name], opts.defaultLocale);
+    if (s) {
+      texts.push(s);
       if (texts.length === 2) break;
     }
   }

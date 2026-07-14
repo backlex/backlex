@@ -16,8 +16,6 @@ export type FieldType =
   | "file"
   /** Many-to-many — JSON array of foreign ids. Stored as TEXT/JSONB. */
   | "relation_many"
-  /** Localized text — JSON `{en, tr, …}`. Resolver swaps by `?locale=xx`. */
-  | "i18n_text"
   /**
    * One-way hashed secret (password / PIN / API secret). The API hashes the
    * incoming plaintext (scrypt) on write and stores only the digest; reads
@@ -127,6 +125,16 @@ export const getChoiceValues = (field: FieldDef): string[] => {
   }
   return [];
 };
+
+/** Whether a field's value is stored per-locale in the `<table>__i18n` sidecar. */
+export const isLocalized = (field: FieldDef): boolean => Boolean(field.localized);
+
+/** Fields whose values live in the sidecar (`localized:true`). */
+export const localizedFields = (fields: FieldDef[]): FieldDef[] =>
+  fields.filter(isLocalized);
+
+/** Alias of {@link localizedFields} — the columns of the `<table>__i18n` sidecar. */
+export const sidecarFields = (fields: FieldDef[]): FieldDef[] => localizedFields(fields);
 
 /** Returns choices in normalized shape — synthesizes from legacy `values` if needed. */
 export const getChoices = (field: FieldDef): FieldChoice[] => {
@@ -297,6 +305,16 @@ export interface FieldDef {
    * `translations[activeLocale] ?? label ?? name`. UI-only.
    */
   translations?: Record<string, string>;
+  /**
+   * When true, this field's *value* is stored per-locale in the collection's
+   * `<physical_table>__i18n` sidecar table (one native-typed column, one row per
+   * locale) instead of on the base table. Orthogonal to `type` — any type may be
+   * localized except `computed` and `hash`. Reads collapse to `?locale=xx` with a
+   * fallback to the workspace default; `?locale=*` returns the full `{locale:
+   * value}` map. Mutually exclusive with `unique` and `computed`. See
+   * {@link isLocalized}, `sidecarColumnDefSql`, and `docs/locale-timezone.md`.
+   */
+  localized?: boolean;
 }
 
 /** Resolve an auto-fill token to a concrete value for the write path. `now`
@@ -352,7 +370,6 @@ const PG_TYPES: Record<FieldType, string> = {
   relation: "text",
   file: "text",
   relation_many: "jsonb",
-  i18n_text: "jsonb",
   hash: "text",
 };
 
@@ -368,7 +385,6 @@ const SQLITE_TYPES: Record<FieldType, string> = {
   relation: "TEXT",
   file: "TEXT",
   relation_many: "TEXT",
-  i18n_text: "TEXT",
   hash: "TEXT",
 };
 
@@ -422,6 +438,16 @@ export const legacyPhysicalTableFor = (slug: string): string => `c_${assertIdent
  */
 export const ftsTableName = (physicalTable: string): string =>
   `${assertIdent(physicalTable)}__fts`;
+
+/**
+ * Name of the per-locale *translations sidecar* table for a collection with
+ * `localized` fields. One row per `(base row, locale)`; one native-typed column
+ * per localized field. Always derive it from the base physical table name so the
+ * items read/write paths and the schema applier agree. Mirrors the FTS shadow
+ * table (`ftsTableName`) but exists on both dialects.
+ */
+export const i18nTableName = (physicalTable: string): string =>
+  `${assertIdent(physicalTable)}__i18n`;
 
 const RESERVED = new Set([
   "id",
@@ -584,6 +610,31 @@ export const validateFields = (fields: FieldDef[]): void => {
         if (on) {
           throw new Error(`Field "${f.name}": "${flag}" is not allowed on a hash field`);
         }
+      }
+    }
+    if (f.localized) {
+      // A localized field's value lives in the `<table>__i18n` sidecar as one
+      // nullable native-typed column per locale. Several flags are incompatible
+      // with that model:
+      //  - computed: a generated column references base-table columns, can't
+      //    live per-locale in the sidecar.
+      //  - hash: write-only salted digests are meaningless per-locale.
+      //  - unique: uniqueness is on `(row_id, locale)`; a per-column UNIQUE
+      //    collides with multi-locale rows.
+      //  - onCreate/onUpdate: server auto-fill has no locale context.
+      if (f.computed) {
+        throw new Error(`Field "${f.name}": a computed field cannot be localized`);
+      }
+      if (f.type === "hash") {
+        throw new Error(`Field "${f.name}": a hash field cannot be localized`);
+      }
+      if (f.unique) {
+        throw new Error(`Field "${f.name}": a localized field cannot be "unique"`);
+      }
+      if (f.onCreate || f.onUpdate) {
+        throw new Error(
+          `Field "${f.name}": "onCreate"/"onUpdate" cannot combine with "localized"`,
+        );
       }
     }
     if (f.computed) {
@@ -905,3 +956,15 @@ export const columnDefSql = (field: FieldDef, dialect: Dialect): string => {
   if (field.unique) parts.push("UNIQUE");
   return parts.join(" ");
 };
+
+/**
+ * Column DDL for a localized field *inside the sidecar* (`<table>__i18n`).
+ * Emits the native storage type only — `required`/`unique`/`default`/`computed`
+ * are all stripped: a locale row may set only some fields, so every sidecar
+ * column must be nullable, and constraints/defaults/generated expressions make
+ * no sense in the per-locale table (uniqueness lives on `(row_id, locale)`).
+ * This is what lets any field type be localized with its native typing intact
+ * (pg `bigint`/`timestamptz`/`jsonb`, sqlite `INTEGER`/`REAL`/`TEXT`).
+ */
+export const sidecarColumnDefSql = (field: FieldDef, dialect: Dialect): string =>
+  `${quote(field.name)} ${sqlTypeFor(field.type, dialect)}`;

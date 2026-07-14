@@ -5,7 +5,11 @@ import {
   type FieldDef,
   columnDefSql,
   ftsTableName,
+  i18nTableName,
+  isLocalized,
   quote,
+  sidecarColumnDefSql,
+  sidecarFields,
   sqlTypeFor,
   validateFields,
 } from "./field-types";
@@ -118,6 +122,86 @@ const ensureFtsObjects = async (
     dialect,
     `CREATE VIRTUAL TABLE IF NOT EXISTS ${quote(ftsTableName(table))} USING fts5(item_id UNINDEXED, content)`,
   );
+};
+
+/**
+ * Create / additively maintain the per-locale *translations sidecar* table for a
+ * collection with `localized` fields. Idempotent and additive — safe to call on
+ * every `applyCollection`. No-op unless at least one field is `localized`.
+ *
+ * Layout: `(row_id, locale, <one native-typed column per localized field>)` with
+ * a composite PRIMARY KEY on `(row_id, locale)` (which also serves as the
+ * read-path lookup index keyed on that pair) plus a secondary index on `locale`
+ * for `?locale=*` aggregation. On Postgres a `row_id → base(id) ON DELETE
+ * CASCADE` FK is added as a safety net; SQLite/D1 have no reliable FK cascade, so
+ * the items write/delete path deletes sidecar rows explicitly on both dialects.
+ * Never drops columns/tables (that goes through `dropField`/`dropCollection`).
+ */
+const ensureSidecar = async (
+  db: AnyDb,
+  dialect: Dialect,
+  table: string,
+  fields: FieldDef[],
+  pkType: PkType,
+): Promise<void> => {
+  const cols = sidecarFields(fields);
+  if (cols.length === 0) return;
+  const sidecar = i18nTableName(table);
+  if (!(await tableExists(db, dialect, sidecar))) {
+    const colDefs = [
+      `${quote("row_id")} ${sqlTypeFor(pkType, dialect)} NOT NULL`,
+      `${quote("locale")} ${sqlTypeFor("text", dialect)} NOT NULL`,
+      ...cols.map((f) => sidecarColumnDefSql(f, dialect)),
+      `PRIMARY KEY (${quote("row_id")}, ${quote("locale")})`,
+      // PG can enforce referential integrity + cascade; SQLite/D1 cannot be
+      // relied on (FK enforcement is off by default on D1), so the app deletes
+      // sidecar rows explicitly.
+      ...(dialect === "pg"
+        ? [
+            `FOREIGN KEY (${quote("row_id")}) REFERENCES ${quote(table)}(${quote("id")}) ON DELETE CASCADE`,
+          ]
+        : []),
+    ];
+    await exec(db, dialect, `CREATE TABLE ${quote(sidecar)} (${colDefs.join(", ")})`);
+    await exec(
+      db,
+      dialect,
+      `CREATE INDEX IF NOT EXISTS ${quote(`${sidecar}_locale_idx`)} ON ${quote(sidecar)} (${quote("locale")})`,
+    );
+    await ensureSidecarFieldIndexes(db, dialect, sidecar, cols);
+    return;
+  }
+  const existing = await introspectColumns(db, dialect, sidecar);
+  for (const f of cols) {
+    if (existing.has(f.name)) continue;
+    await exec(
+      db,
+      dialect,
+      `ALTER TABLE ${quote(sidecar)} ADD COLUMN ${sidecarColumnDefSql(f, dialect)}`,
+    );
+  }
+  await ensureSidecarFieldIndexes(db, dialect, sidecar, cols);
+};
+
+/**
+ * Per-field index on the sidecar for `indexed` localized fields, leading with
+ * `locale` so the planner can seek the requested locale then range the value —
+ * this is what makes `?locale=xx&filter/sort` on a localized field indexed.
+ */
+const ensureSidecarFieldIndexes = async (
+  db: AnyDb,
+  dialect: Dialect,
+  sidecar: string,
+  fields: FieldDef[],
+): Promise<void> => {
+  for (const f of fields) {
+    if (!f.indexed) continue;
+    await exec(
+      db,
+      dialect,
+      `CREATE INDEX IF NOT EXISTS ${quote(`${sidecar}_${f.name}_idx`)} ON ${quote(sidecar)} (${quote("locale")}, ${quote(f.name)})`,
+    );
+  }
 };
 
 const systemColumns = (
@@ -281,6 +365,9 @@ const ensureFieldIndexes = async (
   fields: FieldDef[],
 ): Promise<void> => {
   for (const f of fields) {
+    // Localized fields have no base column — a plain index would target a
+    // non-existent column (their index lives on the sidecar).
+    if (isLocalized(f)) continue;
     const wantIndex = f.indexed || f.type === "relation";
     if (!wantIndex || f.unique) continue;
     await exec(
@@ -355,7 +442,9 @@ export const applyCollection = async (
         softDelete,
         def.pkType ?? "uuid",
       ),
-      ...def.fields.map((f) => columnDefSql(f, dialect)),
+      // `localized` fields live only in the `<table>__i18n` sidecar — never as a
+      // base column.
+      ...def.fields.filter((f) => !isLocalized(f)).map((f) => columnDefSql(f, dialect)),
     ];
     await exec(
       db,
@@ -403,6 +492,7 @@ export const applyCollection = async (
     await ensureFieldIndexes(db, dialect, table, def.fields);
     await ensurePaginationIndex(db, dialect, table, { tenantScoped, hasCreatedAt });
     if (def.fts) await ensureFtsObjects(db, dialect, table, def.fields);
+    await ensureSidecar(db, dialect, table, def.fields, def.pkType ?? "uuid");
     return;
   }
 
@@ -440,6 +530,8 @@ export const applyCollection = async (
     await ensureVersionedColumns(db, dialect, table);
   }
   for (const f of def.fields) {
+    // Localized fields are added to the sidecar by `ensureSidecar`, never here.
+    if (isLocalized(f)) continue;
     if (existing.has(f.name)) continue;
     await exec(
       db,
@@ -456,6 +548,9 @@ export const applyCollection = async (
   // FTS objects are additive too — a collection that gains `fts` (or its first
   // `searchable` field) on a later PATCH picks them up here.
   if (def.fts) await ensureFtsObjects(db, dialect, table, def.fields);
+  // Sidecar is additive too — a collection that gains its first `localized`
+  // field (or another one) on a later PATCH gets the table / ADD COLUMN here.
+  await ensureSidecar(db, dialect, table, def.fields, def.pkType ?? "uuid");
 };
 
 export const dropField = async (
@@ -464,11 +559,31 @@ export const dropField = async (
   table: string,
   fieldName: string,
 ): Promise<void> => {
-  await exec(
-    db,
-    dialect,
-    `ALTER TABLE ${quote(table)} DROP COLUMN ${quote(fieldName)}`,
-  );
+  // Introspect-guard both the base table and the translations sidecar so this
+  // works regardless of which one holds the column: a plain field lives on the
+  // base, a `localized` field lives in `<table>__i18n`, and a field that was
+  // toggled localized may have an orphaned base column alongside the sidecar
+  // one — dropping from wherever it exists covers all three without the caller
+  // needing to know which.
+  const baseCols = await introspectColumns(db, dialect, table);
+  if (baseCols.has(fieldName)) {
+    await exec(
+      db,
+      dialect,
+      `ALTER TABLE ${quote(table)} DROP COLUMN ${quote(fieldName)}`,
+    );
+  }
+  const sidecar = i18nTableName(table);
+  if (await tableExists(db, dialect, sidecar)) {
+    const sideCols = await introspectColumns(db, dialect, sidecar);
+    if (sideCols.has(fieldName)) {
+      await exec(
+        db,
+        dialect,
+        `ALTER TABLE ${quote(sidecar)} DROP COLUMN ${quote(fieldName)}`,
+      );
+    }
+  }
 };
 
 export const dropCollection = async (
@@ -490,4 +605,8 @@ export const dropCollection = async (
   if (dialect === "sqlite") {
     await exec(db, dialect, `DROP TABLE IF EXISTS ${quote(ftsTableName(table))}`);
   }
+  // The translations sidecar exists on BOTH dialects (unlike FTS), so drop it
+  // regardless. On PG the FK is `ON DELETE CASCADE` on rows, but the sidecar
+  // table itself must still be dropped explicitly. No-op when never localized.
+  await exec(db, dialect, `DROP TABLE IF EXISTS ${quote(i18nTableName(table))}`);
 };

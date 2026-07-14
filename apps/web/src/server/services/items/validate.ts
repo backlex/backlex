@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { AppError, type AuthSubject } from "@backlex/core";
-import { matchesCondition, validateValue, type FieldDef } from "@backlex/db";
+import { isLocalized, matchesCondition, validateValue, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../../context";
 import { loadCollection, type CollectionRow } from "./collection-loader";
 import { queryAll } from "./sql-helpers";
@@ -114,8 +114,10 @@ export const validateBody = (
 ): void => {
   for (const f of fields) {
     // Computed + auto-filled columns are system-managed — never required from,
-    // nor writable by, the caller.
-    if (f.computed || f.onCreate || f.onUpdate) continue;
+    // nor writable by, the caller. `localized` fields are pulled out into the
+    // sidecar split before this runs (and are validated per-locale there); v1
+    // does not enforce `required` per-locale, so skip them here too.
+    if (f.computed || f.onCreate || f.onUpdate || isLocalized(f)) continue;
     if (f.required && !partial && (data[f.name] === undefined || data[f.name] === null)) {
       throw new AppError("VALIDATION", `Field "${f.name}" is required`);
     }

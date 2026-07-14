@@ -24,8 +24,8 @@ const ITEMS_HELP = `backlex items <cmd> <slug> [args]
   list <slug>     [--filter <json>] [--sort a,-b] [--fields a,b] [--expand …]
                   [--limit N] [--offset N | --cursor <c>] [--meta filter_count] [--status …]
   get <slug> <id> [--expand …] [--locale xx]
-  create <slug>   --data <json|@file|->
-  update <slug> <id> --data <json|@file|->
+  create <slug>   --data <json|@file|-> [--locale xx]
+  update <slug> <id> --data <json|@file|-> [--locale xx]
   delete <slug> <id>
   verify <slug> <id> --field <name> --value <plaintext>
   export <slug>   [--format json|csv] [--out <file>]
@@ -98,7 +98,8 @@ export const runItems = async (args: string[]): Promise<void> => {
       case "create": {
         const slug = requireSlug(rest, "items create <slug> --data <json|@file|->");
         const data = JSON.parse(await resolvePayload(flag(rest, "--data"))) as Record<string, unknown>;
-        const res = await client.from(slug).create(data);
+        const locale = flag(rest, "--locale");
+        const res = await client.from(slug).create(data, locale ? { locale } : undefined);
         if (json) printJson(res);
         else printKeyValues(res.data as Record<string, unknown>);
         return;
@@ -111,7 +112,8 @@ export const runItems = async (args: string[]): Promise<void> => {
           process.exit(1);
         }
         const patch = JSON.parse(await resolvePayload(flag(rest, "--data"))) as Record<string, unknown>;
-        const res = await client.from(slug).update(id, patch);
+        const locale = flag(rest, "--locale");
+        const res = await client.from(slug).update(id, patch, locale ? { locale } : undefined);
         if (json) printJson(res);
         else printKeyValues(res.data as Record<string, unknown>);
         return;

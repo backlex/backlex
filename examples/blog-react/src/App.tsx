@@ -177,7 +177,7 @@ function Blog({ user, onSignOut }: { user: User; onSignOut: () => void }) {
         .limit(100)
         .withMeta("filter_count")
         .toQuery();
-      // `locale` collapses the i18n_text `title` / `body` to one language.
+      // `locale` collapses the localized `title` / `body` to one language.
       const res = await posts.list({ ...base, status: tab, locale });
       setItems(res.data);
       setError(null);
@@ -194,7 +194,7 @@ function Blog({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   useEffect(() => {
     // Realtime: the SSE stream replays the same create/update/delete events the
     // server applies, so a second tab (or another author) stays in sync. Live
-    // payloads carry the *raw* i18n_text maps (no locale collapse over SSE), so
+    // payloads carry the *raw* per-locale maps (no locale collapse over SSE), so
     // we just re-list — that re-applies the active `locale` and keeps the
     // rendered strings correct.
     const off = backlex.subscribe<Post>("items:posts", () => {
@@ -242,7 +242,7 @@ function Blog({ user, onSignOut }: { user: User; onSignOut: () => void }) {
         </div>
         <div className="flex items-center gap-3">
           {/* Locale switcher — re-lists with `locale`, collapsing the
-              i18n_text fields to the chosen language. */}
+              localized fields to the chosen language. */}
           <div className="flex gap-1 rounded-lg bg-neutral-100 p-1">
             {LOCALES.map((l) => (
               <button
@@ -364,7 +364,7 @@ function Composer({
     if (Object.keys(titleMap).length === 0) return;
     setBusy(true);
     try {
-      // i18n_text fields are written as a `{ locale: value }` map. New rows in a
+      // localized fields are written as a `{ locale: value }` map. New rows in a
       // versioned collection are drafts automatically — you never write
       // `_status`; publishing is a separate step (`publish()`). The `as
       // PostWrite` payload is cast to the SDK's read-shaped `Partial<Post>`.

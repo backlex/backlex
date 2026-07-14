@@ -111,7 +111,6 @@ const TYPE_ABBR: Record<string, string> = {
   uuid: "uuid",
   relation: "rel",
   relation_many: "rel[]",
-  i18n_text: "i18n",
 };
 
 // Rendered card height ≈ header (38px) + one 29px row per field.

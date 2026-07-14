@@ -172,7 +172,7 @@ export class QueryBuilder<T extends Record<string, unknown>> {
     this._expand.push(...(rels as string[]));
     return this;
   }
-  /** Project `i18n_text` fields to one locale, or `"*"` for the full map. */
+  /** Project `localized` fields to one locale, or `"*"` for the full map. */
   locale(loc: string): this {
     this._locale = loc;
     return this;

@@ -139,7 +139,7 @@ Notes:
   `tenant_id`, `_status`, …) are **stripped** — every imported row gets a fresh
   id. This is what lets an export round-trip straight back into a collection.
 - CSV cells are coerced to the field's type (numbers, booleans, JSON for
-  `json`/`relation_many`/`i18n_text`); empty cells are dropped so column
+  `json`/`relation_many`); empty cells are dropped so column
   defaults apply.
 - Unknown *user* columns still fail their row (a typo'd header surfaces in
   `errors` rather than being silently dropped).

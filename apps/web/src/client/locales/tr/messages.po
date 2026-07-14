@@ -5658,6 +5658,11 @@ msgstr "Yerel ayarlar"
 msgid "Locales updated."
 msgstr "Yerel ayarlar güncellendi."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Localized"
+msgstr "Yerelleştirilmiş"
+
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "Location"
@@ -10156,6 +10161,14 @@ msgstr "Adımlar"
 #: src/client/admin/ui.tsx
 msgid "Storage"
 msgstr "Depolama"
+
+#: src/client/admin/add-field.tsx
+msgid "Store one value per language in the translations sidecar. Read/write a single locale with ?locale=xx."
+msgstr "Her dil için ayrı bir değer çeviri yan tablosunda saklanır. Tek bir dili ?locale=xx ile okuyup yazın."
+
+#: src/client/admin/edit-field.tsx
+msgid "Store one value per language in the translations sidecar. Turning this on for a field that already has data does not move existing values — backfill them afterwards."
+msgstr "Her dil için ayrı bir değer çeviri yan tablosunda saklanır. Verisi olan bir alanda bunu açmak mevcut değerleri taşımaz — sonrasında geri doldurun."
 
 #: src/client/admin/item-form.tsx
 msgid "Stored as a one-way hash — it's never shown again. Leave blank to keep the current value."

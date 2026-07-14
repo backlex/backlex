@@ -21,8 +21,17 @@ import {
   compileCondition,
   type FieldDef,
   type FieldType,
+  isLocalized,
   resolveAutoFill,
+  sidecarFields,
 } from "@backlex/db";
+import {
+  loadSidecarForRows,
+  sidecarDeleteRow,
+  sidecarInsert,
+  sidecarUpsert,
+  splitLocalized,
+} from "../items/i18n-sidecar";
 import {
   AppError,
   type AuthSubject,
@@ -140,10 +149,6 @@ const fieldScalar = (
       // Array of foreign ids — exposed as a JSON list for now (avoids
       // tight typing complications with mutations until DataLoader lands).
       return JSONScalar;
-    case "i18n_text":
-      // {locale: value} map exposed verbatim. Locale-aware projection
-      // happens at the REST resolver via `?locale=`.
-      return JSONScalar;
     case "hash":
       // Write-only secret: accepted as a String on input, always resolves to
       // null on output (the digest never leaves the DB).
@@ -152,6 +157,9 @@ const fieldScalar = (
 };
 
 const fieldGqlType = (f: FieldDef): GraphQLOutputType => {
+  // A `localized` field is exposed as its full `{locale: value}` map (JSON),
+  // regardless of native type.
+  if (isLocalized(f)) return JSONScalar;
   const t = fieldScalar(f.type);
   // A hash field always resolves to null on read (write-only), so it must stay
   // nullable on OUTPUT even when `required` — a NonNull wrapper would make every
@@ -220,7 +228,10 @@ export const buildInputType = (collection: CollectionRow): GraphQLInputObjectTyp
         // Auto-filled columns are read-only — not part of the write input.
         if (f.onCreate || f.onUpdate) continue;
         // All fields optional in input — server-side validates required-ness.
-        fields[camel(f.name)] = { type: fieldScalar(f.type) };
+        // A `localized` field accepts a `{locale: value}` map (JSON).
+        fields[camel(f.name)] = {
+          type: isLocalized(f) ? JSONScalar : fieldScalar(f.type),
+        };
       }
       // GraphQL requires at least one input field. A collection with no
       // user-defined fields would otherwise fail the entire schema build —
@@ -271,7 +282,8 @@ const validateInput = (
 ): void => {
   for (const f of collection.fields) {
     // Auto-filled columns are system-managed — never required from the caller.
-    if (f.onCreate || f.onUpdate) continue;
+    // `localized` fields aren't required per-locale (parity with the REST path).
+    if (f.onCreate || f.onUpdate || isLocalized(f)) continue;
     if (
       f.required &&
       !partial &&
@@ -353,9 +365,59 @@ const renderRow = (
   for (const f of fields) {
     if (f.private) continue;
     if (allowedFields && !allowedFields.has(f.name)) continue;
+    // Localized fields live in the sidecar, not on this base row — attached
+    // separately by `attachLocalizedMaps` after the row set is fetched.
+    if (isLocalized(f)) continue;
     out[camel(f.name)] = deserialize(row[f.name], f.type, dialect);
   }
   return out;
+};
+
+/**
+ * Attach `localized` fields as full `{locale: value}` maps (camelCase keys) onto
+ * already-rendered GraphQL rows, batch-loading the sidecar for all ids in one
+ * query. GraphQL always surfaces the full map (no per-locale projection), the full per-locale map.
+ */
+const attachLocalizedMaps = async (
+  ctx: Ctx,
+  collection: CollectionRow,
+  baseRows: Array<Record<string, unknown>>,
+  rendered: Array<Record<string, unknown>>,
+  allowedFields: Set<string> | null = null,
+): Promise<void> => {
+  const defs = sidecarFields(collection.fields).filter(
+    (f) => !f.private && (!allowedFields || allowedFields.has(f.name)),
+  );
+  if (defs.length === 0 || baseRows.length === 0) return;
+  const ids = baseRows.map((r) => String(r.id));
+  const byRow = await loadSidecarForRows(ctx, collection.physicalTable, ids, defs);
+  for (let i = 0; i < baseRows.length; i++) {
+    const sidecarRows = byRow.get(String(baseRows[i]!.id)) ?? [];
+    const out = rendered[i]!;
+    for (const f of defs) {
+      const map: Record<string, unknown> = {};
+      for (const r of sidecarRows) map[r.locale as string] = deserialize(r[f.name], f.type, ctx.dialect);
+      out[camel(f.name)] = map;
+    }
+  }
+};
+
+/** Split a camelCase GraphQL input into a snake-keyed patch of just the
+ *  `localized` fields (values are `{locale: value}` maps), for the sidecar
+ *  write. Removes those keys from `data` so the base INSERT/UPDATE skips them. */
+const takeLocalizedInput = (
+  data: Record<string, unknown>,
+  fields: FieldDef[],
+): Record<string, unknown> => {
+  const patch: Record<string, unknown> = {};
+  for (const f of fields) {
+    if (!isLocalized(f)) continue;
+    const key = camel(f.name);
+    if (!(key in data)) continue;
+    patch[f.name] = data[key];
+    delete data[key];
+  }
+  return patch;
 };
 
 const buildOrderClause = (
@@ -485,7 +547,7 @@ export const listResolver = async (
     ctx,
     sql`SELECT * FROM ${sql.identifier(table)} ${whereClause} ${orderClause} LIMIT ${limit} OFFSET ${offset}`,
   );
-  return rows.map((r) =>
+  const rendered = rows.map((r) =>
     renderRow(
       r,
       collection.fields,
@@ -496,6 +558,8 @@ export const listResolver = async (
       perm.fields,
     ),
   );
+  await attachLocalizedMaps(ctx, collection, rows, rendered, perm.fields);
+  return rendered;
 };
 
 /**
@@ -623,7 +687,7 @@ export const getResolver = async (
     sql`SELECT * FROM ${sql.identifier(table)} WHERE ${sql.join(wheres, sql` AND `)} LIMIT 1`,
   );
   if (!rows[0]) return null;
-  return renderRow(
+  const out = renderRow(
     rows[0],
     collection.fields,
     ctx.dialect,
@@ -632,6 +696,8 @@ export const getResolver = async (
     collection.hasUpdatedAt,
     perm.fields,
   );
+  await attachLocalizedMaps(ctx, collection, [rows[0]], [out], perm.fields);
+  return out;
 };
 
 export const createResolver = async (
@@ -651,6 +717,12 @@ export const createResolver = async (
   // Hash `hash`-typed fields (keyed by the camelCase GraphQL input name) before
   // they hit the INSERT — same shared transform the REST write path uses.
   await hashIncomingFields(args.data, collection.fields, (f) => camel(f.name));
+  // Pull `localized` fields out of the (camelCase) input into a snake-keyed
+  // patch of `{locale: value}` maps; the base INSERT below then skips them.
+  const localizedPatch = takeLocalizedInput(args.data, collection.fields);
+  // Snapshot the maps for the response echo — `splitLocalized` mutates
+  // `localizedPatch` (deletes its keys) when building the sidecar writes.
+  const localizedEcho = { ...localizedPatch };
 
   const table = collection.physicalTable;
 
@@ -730,6 +802,14 @@ export const createResolver = async (
     ctx,
     sql`INSERT INTO ${sql.identifier(table)} (${colSql}) VALUES (${valSql})`,
   );
+  // Translations sidecar: one INSERT per locale (no conflict on a fresh row).
+  const createSplit = splitLocalized(localizedPatch, collection.fields, null);
+  if (createSplit.localePatches.size > 0) {
+    const byName = new Map(collection.fields.map((f) => [f.name, f]));
+    for (const [loc, fieldMap] of createSplit.localePatches) {
+      await execute(ctx, sidecarInsert(table, id, loc, fieldMap, byName, ctx.dialect));
+    }
+  }
   // Digest persisted — scrub it from the input before it feeds the hand-built
   // response `out` and the realtime event.
   scrubHashFields(args.data, collection.fields, (f) => camel(f.name));
@@ -744,6 +824,11 @@ export const createResolver = async (
   if (collection.ownerScoped) out.ownerId = auth.userId;
   for (const f of collection.fields) {
     if (f.private) continue;
+    // Localized fields: echo the input maps (snapshot taken before the split).
+    if (isLocalized(f)) {
+      out[camel(f.name)] = localizedEcho[f.name] ?? {};
+      continue;
+    }
     const v = args.data[camel(f.name)];
     out[camel(f.name)] = v ?? null;
   }
@@ -774,6 +859,8 @@ export const updateResolver = async (
   // digest survives. The re-SELECT + renderRow below re-reads from the DB and
   // masks hash columns to null, so no explicit scrub of the response is needed.
   await hashIncomingFields(args.data, collection.fields, (f) => camel(f.name));
+  // Pull `localized` fields out for the sidecar upsert; base UPDATE skips them.
+  const localizedPatch = takeLocalizedInput(args.data, collection.fields);
 
   const table = collection.physicalTable;
   const wheres: SQL[] = [sql`${sql.identifier("id")} = ${args.id}`];
@@ -815,6 +902,14 @@ export const updateResolver = async (
       sql`UPDATE ${sql.identifier(table)} SET ${sql.join(sets, sql`, `)} WHERE ${sql.join(wheres, sql` AND `)}`,
     );
   }
+  // Translations sidecar: upsert each touched locale (other locales preserved).
+  const updSplit = splitLocalized(localizedPatch, collection.fields, null);
+  if (updSplit.localePatches.size > 0) {
+    const byName = new Map(collection.fields.map((f) => [f.name, f]));
+    for (const [loc, fieldMap] of updSplit.localePatches) {
+      await execute(ctx, sidecarUpsert(table, args.id, loc, fieldMap, byName, ctx.dialect));
+    }
+  }
 
   const refreshed = await queryAll<Record<string, unknown>>(
     ctx,
@@ -830,6 +925,7 @@ export const updateResolver = async (
     collection.hasCreatedAt,
     collection.hasUpdatedAt,
   );
+  await attachLocalizedMaps(ctx, collection, [refreshed[0]!], [refreshedRow]);
   await publishEvent(
     ctx.env,
     `items:${collection.slug}`,
@@ -840,7 +936,7 @@ export const updateResolver = async (
   // allow-list (the `update` grant may permit writing fields they can't read).
   // Mirrors REST, which renders mutation responses through the read projection.
   const readPerm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
-  return renderRow(
+  const out = renderRow(
     refreshed[0]!,
     collection.fields,
     ctx.dialect,
@@ -849,6 +945,14 @@ export const updateResolver = async (
     collection.hasUpdatedAt,
     readPerm.allowed ? readPerm.fields : new Set<string>(),
   );
+  await attachLocalizedMaps(
+    ctx,
+    collection,
+    [refreshed[0]!],
+    [out],
+    readPerm.allowed ? readPerm.fields : new Set<string>(),
+  );
+  return out;
 };
 
 export const deleteResolver = async (
@@ -898,6 +1002,11 @@ export const deleteResolver = async (
       ctx,
       sql`DELETE FROM ${sql.identifier(table)} WHERE ${sql.join(wheres, sql` AND `)}`,
     );
+    // Hard delete: drop the row's sidecar translations too (no FK cascade on
+    // SQLite/D1). Mirrors the REST delete path.
+    if (sidecarFields(collection.fields).length > 0) {
+      await execute(ctx, sidecarDeleteRow(table, args.id));
+    }
   }
   // App-layer ON DELETE relational triggers — mirrors the REST delete path.
   await enforceOnDeleteTriggers(ctx, auth.tenantId, collection.slug, args.id, (stmt) =>

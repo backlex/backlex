@@ -296,7 +296,7 @@ export function ItemEditorPage({
     <div className="flex flex-col gap-4 pb-4">
       {/* Header bar — sticky so Save / prev-next stay reachable while the form
           scrolls with the page. */}
-      <div className="sticky top-0 z-20 -mx-[14px] -mt-4 flex flex-wrap items-center gap-2 border-b border-border bg-background px-[14px] pt-4 pb-3 md:-mx-7 md:-mt-[26px] md:px-7 md:pt-[26px]">
+      <div className="sticky top-3 z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3">
         <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => guarded(onBack)}>
           <Trans>Back</Trans>
         </Button>
@@ -315,7 +315,7 @@ export function ItemEditorPage({
           </span>
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto">
           {viewers.length > 0 && (
             <span
               className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-[11px] text-muted-foreground"
@@ -351,7 +351,9 @@ export function ItemEditorPage({
           )}
           {mode === "create" ? (
             <Button variant="primary" size="sm" icon={I.Save} disabled={saving} onClick={() => void persist()}>
-              {saving ? <Trans>Creating…</Trans> : t`Create ${slug}`}
+              <span className="hidden sm:inline">
+                {saving ? <Trans>Creating…</Trans> : t`Create ${slug}`}
+              </span>
             </Button>
           ) : (
             <div className="inline-flex">
@@ -363,7 +365,9 @@ export function ItemEditorPage({
                 onClick={() => void persist({ close: false })}
                 className={cn("rounded-control rounded-r-none border-r-0")}
               >
-                {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
+                <span className="hidden sm:inline">
+                  {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
+                </span>
               </Button>
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>

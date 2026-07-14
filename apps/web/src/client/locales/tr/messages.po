@@ -5921,6 +5921,10 @@ msgstr "Pzt"
 msgid "more"
 msgstr "daha fazla"
 
+#: src/client/admin/app.tsx
+msgid "More actions"
+msgstr "Diğer işlemler"
+
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "More save options"

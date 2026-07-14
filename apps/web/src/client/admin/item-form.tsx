@@ -411,6 +411,56 @@ export function ItemFields({ form }: { form: ItemForm }) {
     const raw = (settings.data?.data as Record<string, unknown> | undefined)?.i18nLocales;
     return Array.isArray(raw) && raw.length ? (raw as string[]) : ["en"];
   }, [settings.data]);
+  // The workspace default is the source language: the value fallbacks read from
+  // and the one translators start on. Must be a member of `i18nLocales`.
+  const defaultLocale = useMemo<string>(() => {
+    const dl = (settings.data?.data as Record<string, unknown> | undefined)?.i18nDefaultLocale;
+    return typeof dl === "string" && i18nLocales.includes(dl) ? dl : (i18nLocales[0] ?? "en");
+  }, [settings.data, i18nLocales]);
+
+  // Localized-field editing state. Default view edits ONE language at a time
+  // (pick via the locale bar); `compare` splits each localized field into a
+  // read-only source column and an editable target column.
+  const [activeLocale, setActiveLocale] = useState<string>(defaultLocale);
+  const [i18nMode, setI18nMode] = useState<"single" | "compare">("single");
+  const [cmpSource, setCmpSource] = useState<string>(defaultLocale);
+  const [cmpTarget, setCmpTarget] = useState<string>("");
+  // Keep the three selections valid as workspace languages load / change.
+  useEffect(() => {
+    if (!i18nLocales.includes(activeLocale)) setActiveLocale(defaultLocale);
+  }, [i18nLocales, activeLocale, defaultLocale]);
+  useEffect(() => {
+    if (!i18nLocales.includes(cmpSource)) setCmpSource(defaultLocale);
+  }, [i18nLocales, cmpSource, defaultLocale]);
+  useEffect(() => {
+    if (!cmpTarget || !i18nLocales.includes(cmpTarget) || cmpTarget === cmpSource) {
+      setCmpTarget(i18nLocales.find((l) => l !== cmpSource) ?? "");
+    }
+  }, [i18nLocales, cmpTarget, cmpSource]);
+
+  const notEmpty = (v: unknown) => v !== undefined && v !== null && v !== "";
+  const localeMap = (name: string): Record<string, unknown> => {
+    const v = draft[name];
+    return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+  };
+  const localizedFields = useMemo(() => fields.filter((f) => f.localized), [fields]);
+  const filledForLocale = (loc: string) =>
+    localizedFields.filter((f) => notEmpty(localeMap(f.name)[loc])).length;
+  // Small conic-gradient completeness ring (0..1 filled) in the brand green.
+  const localeRing = (p: number): ReactNode => (
+    <span
+      aria-hidden
+      style={{
+        width: 13,
+        height: 13,
+        borderRadius: 999,
+        flex: "none",
+        background: `conic-gradient(var(--primary) ${Math.round(p * 360)}deg, var(--muted) 0)`,
+        WebkitMask: "radial-gradient(circle 3px at center, transparent 98%, #000 100%)",
+        mask: "radial-gradient(circle 3px at center, transparent 98%, #000 100%)",
+      }}
+    />
+  );
 
   const renderField = (f: SchemaField, forceRequired = false): ReactNode => {
     const val = draft[f.name];
@@ -431,7 +481,7 @@ export function ItemFields({ form }: { form: ItemForm }) {
       f.required || f.nullable === false || forceRequired ? (
         <span style={{ color: "var(--destructive)" }}>*</span>
       ) : null;
-    const previewable = !!iface && PREVIEWABLE.has(iface);
+    const previewable = !!iface && PREVIEWABLE.has(iface) && !f.localized;
     const showPreview = previewable && !!previews[f.name];
     const label = (
       <>
@@ -460,60 +510,150 @@ export function ItemFields({ form }: { form: ItemForm }) {
       </>
     );
 
-    // ── Localized (sidecar) fields — one input per workspace language ──────
-    // Any type can be `localized`; the value is a `{locale: value}` map. Render
-    // a native-ish input per language (number/toggle/text) plus a completeness
-    // badge.
+    // ── Localized (sidecar) fields ────────────────────────────────────────
+    // Any type can be `localized`; the value is a `{locale: value}` map. Instead
+    // of stacking every workspace language under the field, the locale bar picks
+    // ONE active language (`single`) — or two to compare — so the form keeps its
+    // natural height. See the bar rendered above the fields.
     if (f.localized) {
-      const map =
-        val && typeof val === "object" && !Array.isArray(val)
-          ? (val as Record<string, unknown>)
-          : {};
-      const locales = [
-        ...i18nLocales,
-        ...Object.keys(map).filter((l) => !i18nLocales.includes(l)),
-      ];
-      const filled = i18nLocales.filter((l) => {
-        const v = map[l];
-        return v !== undefined && v !== null && v !== "";
-      }).length;
+      const map = val && typeof val === "object" && !Array.isArray(val)
+        ? (val as Record<string, unknown>)
+        : {};
+      const filled = i18nLocales.filter((l) => notEmpty(map[l])).length;
       const isNum = f.type === "integer" || f.type === "number";
       const isBool = f.type === "boolean";
-      return (
-        <div key={f.name} className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between gap-2">
-            {label}
-            <Badge variant="outline" className="shrink-0 text-[10.5px]">
-              {filled}/{i18nLocales.length}
-            </Badge>
+      const isLong =
+        f.type === "longtext" || iface === "markdown" || iface === "richtext" || iface === "code";
+      const write = (loc: string, v: unknown) => setField({ ...map, [loc]: v });
+      const coerce = (raw: string): unknown => (isNum ? (raw === "" ? undefined : Number(raw)) : raw);
+
+      // A compact header: field label + the `localized` marker + a right slot.
+      const header = (right: ReactNode): ReactNode => (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+              {fieldLabel(f, i18n.locale)}
+              <Badge variant="outline" mono>
+                {typeLabel}
+              </Badge>
+              <Badge variant="outline" className="gap-1 border-primary/40 text-primary">
+                <I.Globe size={10} />
+                i18n
+              </Badge>
+              {reqMark}
+            </label>
+            {right ? <div className="ml-auto flex shrink-0 items-center gap-1.5">{right}</div> : null}
           </div>
-          <div className="flex flex-col gap-2 rounded-control border border-border bg-card p-2.5">
-            {locales.map((loc) => (
-              <div key={loc} className="flex items-center gap-2">
-                <Badge variant="outline" mono className="min-w-12 justify-center uppercase">
-                  {loc}
-                </Badge>
+          {f.description ? (
+            <p className="text-[11px] leading-snug text-muted-foreground">{f.description}</p>
+          ) : null}
+        </div>
+      );
+
+      // Compare — read-only source column ↔ editable target column.
+      if (i18nMode === "compare") {
+        const sv = map[cmpSource];
+        const tv = map[cmpTarget];
+        const done = notEmpty(tv);
+        return (
+          <div key={f.name} className="flex flex-col gap-1.5">
+            {header(
+              <Badge
+                variant="outline"
+                className={`text-[10px] ${done ? "border-primary/40 text-primary" : "text-muted-foreground"}`}
+              >
+                {done ? <Trans>translated</Trans> : <Trans>to do</Trans>}
+              </Badge>,
+            )}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="flex min-h-9 items-center rounded-control border border-border bg-muted/40 px-3 py-2 text-[13px] text-muted-foreground">
                 {isBool ? (
-                  <Switch
-                    checked={map[loc] === true}
-                    onChange={(v) => setField({ ...map, [loc]: v })}
-                  />
+                  String(sv === true)
+                ) : notEmpty(sv) ? (
+                  <span className="truncate">{String(sv)}</span>
                 ) : (
-                  <Input
-                    type={isNum ? "number" : undefined}
-                    value={map[loc] == null ? "" : String(map[loc])}
-                    aria-invalid={!!err || undefined}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      const next =
-                        isNum ? (raw === "" ? undefined : Number(raw)) : raw;
-                      setField({ ...map, [loc]: next });
-                    }}
-                  />
+                  <span className="opacity-60">
+                    <Trans>empty</Trans>
+                  </span>
                 )}
               </div>
-            ))}
+              {isBool ? (
+                <div className="flex items-center rounded-control border border-border bg-card px-3 py-2">
+                  <Switch checked={tv === true} onChange={(v) => write(cmpTarget, v)} />
+                </div>
+              ) : isLong ? (
+                <Textarea
+                  rows={3}
+                  value={tv == null ? "" : String(tv)}
+                  aria-invalid={!!err || undefined}
+                  onChange={(e) => write(cmpTarget, e.target.value)}
+                />
+              ) : (
+                <Input
+                  type={isNum ? "number" : undefined}
+                  value={tv == null ? "" : String(tv)}
+                  aria-invalid={!!err || undefined}
+                  onChange={(e) => write(cmpTarget, coerce(e.target.value))}
+                />
+              )}
+            </div>
+            {errBlock}
           </div>
+        );
+      }
+
+      // Single — one input for the active language, with source context + copy.
+      const cur = map[activeLocale];
+      const baseVal = map[defaultLocale];
+      const isBase = activeLocale === defaultLocale;
+      const canCopy = !isBase && !notEmpty(cur) && notEmpty(baseVal) && !isBool;
+      return (
+        <div key={f.name} className="flex flex-col gap-1.5">
+          {header(
+            <>
+              {canCopy && (
+                <button
+                  type="button"
+                  onClick={() => write(activeLocale, baseVal)}
+                  className="inline-flex items-center gap-1 rounded-control border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  <I.Copy size={11} />
+                  {t`Copy from ${defaultLocale.toUpperCase()}`}
+                </button>
+              )}
+              <Badge variant="outline" className="text-[10.5px]">
+                {filled}/{i18nLocales.length}
+              </Badge>
+            </>,
+          )}
+          {isBool ? (
+            <div className="flex items-center rounded-control border border-border bg-card px-3 py-2">
+              <Switch checked={cur === true} onChange={(v) => write(activeLocale, v)} />
+            </div>
+          ) : isLong ? (
+            <Textarea
+              rows={4}
+              value={cur == null ? "" : String(cur)}
+              aria-invalid={!!err || undefined}
+              onChange={(e) => write(activeLocale, e.target.value)}
+            />
+          ) : (
+            <Input
+              type={isNum ? "number" : undefined}
+              value={cur == null ? "" : String(cur)}
+              aria-invalid={!!err || undefined}
+              placeholder={isBase ? undefined : t`Translate to ${activeLocale.toUpperCase()}…`}
+              onChange={(e) => write(activeLocale, coerce(e.target.value))}
+            />
+          )}
+          {!isBase && notEmpty(baseVal) && !isBool && (
+            <div className="flex items-baseline gap-2 text-[11.5px] text-muted-foreground">
+              <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground/80">
+                {defaultLocale}
+              </span>
+              <span className="truncate">{String(baseVal)}</span>
+            </div>
+          )}
           {errBlock}
         </div>
       );
@@ -1320,26 +1460,135 @@ export function ItemFields({ form }: { form: ItemForm }) {
 
   // Group fields only when at least one declares a group; otherwise flat.
   const grouped = fields.some((f) => groupOf(f));
-  if (!grouped) {
-    return <div className="flex flex-col gap-8">{fields.map(renderFieldWrapped)}</div>;
-  }
-  const groups = new Map<string, SchemaField[]>();
-  for (const f of fields) {
-    const g = groupOf(f) ?? t`General`;
-    const arr = groups.get(g) ?? [];
-    arr.push(f);
-    groups.set(g, arr);
-  }
+  const body = !grouped ? (
+    <div className="flex flex-col gap-8">{fields.map(renderFieldWrapped)}</div>
+  ) : (
+    (() => {
+      const groups = new Map<string, SchemaField[]>();
+      for (const f of fields) {
+        const g = groupOf(f) ?? t`General`;
+        const arr = groups.get(g) ?? [];
+        arr.push(f);
+        groups.set(g, arr);
+      }
+      return (
+        <div className="flex flex-col gap-7">
+          {[...groups.entries()].map(([g, gf]) => (
+            <section key={g} className="flex flex-col gap-4">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {g}
+              </div>
+              {gf.map(renderFieldWrapped)}
+            </section>
+          ))}
+        </div>
+      );
+    })()
+  );
+
+  // Locale bar — the single switcher for every localized field in the form.
+  // Hidden unless the collection has localized fields AND the workspace ships
+  // more than one language (a single language needs no switcher).
+  const showLocaleBar = localizedFields.length > 0 && i18nLocales.length > 1;
+  const totalCells = localizedFields.length * i18nLocales.length;
+  const filledCells = i18nLocales.reduce((a, l) => a + filledForLocale(l), 0);
+  const docPct = totalCells ? Math.round((filledCells / totalCells) * 100) : 0;
+  const modeBtn = (m: "single" | "compare", node: ReactNode) => (
+    <button
+      type="button"
+      aria-pressed={i18nMode === m}
+      onClick={() => setI18nMode(m)}
+      className={`rounded-md px-2.5 py-1 text-[11.5px] font-medium transition-colors ${
+        i18nMode === m ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {node}
+    </button>
+  );
+
+  if (!showLocaleBar) return body;
+
   return (
-    <div className="flex flex-col gap-7">
-      {[...groups.entries()].map(([g, gf]) => (
-        <section key={g} className="flex flex-col gap-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {g}
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-control border border-border bg-card/60 p-2.5">
+        <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
+          {modeBtn("single", <Trans>Single</Trans>)}
+          {modeBtn("compare", <Trans>Compare</Trans>)}
+        </div>
+        {i18nMode === "single" ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {i18nLocales.map((loc) => {
+              const n = filledForLocale(loc);
+              const on = loc === activeLocale;
+              return (
+                <button
+                  key={loc}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setActiveLocale(loc)}
+                  title={`${loc.toUpperCase()} — ${n}/${localizedFields.length}`}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[11.5px] uppercase transition-colors ${
+                    on
+                      ? "border-primary/50 bg-primary/10 text-foreground"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {localeRing(localizedFields.length ? n / localizedFields.length : 0)}
+                  {loc}
+                  {loc === defaultLocale && (
+                    <span className="text-[9px] text-primary" title={t`Source language`}>
+                      ◆
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-          {gf.map(renderFieldWrapped)}
-        </section>
-      ))}
+        ) : (
+          <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
+            <Trans>Source</Trans>
+            <select
+              value={cmpSource}
+              onChange={(e) => setCmpSource(e.target.value)}
+              className="rounded-control border border-border bg-card px-2 py-1 text-[12px] normal-case tracking-normal text-foreground"
+            >
+              {i18nLocales.map((l) => (
+                <option key={l} value={l}>
+                  {l.toUpperCase()}
+                </option>
+              ))}
+            </select>
+            <span aria-hidden>→</span>
+            <Trans>Target</Trans>
+            <select
+              value={cmpTarget}
+              onChange={(e) => setCmpTarget(e.target.value)}
+              className="rounded-control border border-border bg-card px-2 py-1 text-[12px] normal-case tracking-normal text-foreground"
+            >
+              {i18nLocales
+                .filter((l) => l !== cmpSource)
+                .map((l) => (
+                  <option key={l} value={l}>
+                    {l.toUpperCase()}
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
+        <div
+          className="ml-auto flex items-center gap-2"
+          title={t`Localized values filled across every language`}
+        >
+          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-300"
+              style={{ width: `${docPct}%` }}
+            />
+          </div>
+          <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{docPct}%</span>
+        </div>
+      </div>
+      {body}
     </div>
   );
 }

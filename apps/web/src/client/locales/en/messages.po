@@ -2352,6 +2352,10 @@ msgstr "comments"
 msgid "Comments needing moderation"
 msgstr "Comments needing moderation"
 
+#: src/client/admin/item-form.tsx
+msgid "Compare"
+msgstr "Compare"
+
 #: src/client/admin/role-editor.tsx
 msgid "Compiled rule"
 msgstr "Compiled rule"
@@ -2593,6 +2597,11 @@ msgstr "Copy curl example for {0}"
 #: src/client/admin/pages/advisor.tsx
 msgid "Copy fix"
 msgstr "Copy fix"
+
+#. placeholder {0}: defaultLocale.toUpperCase()
+#: src/client/admin/item-form.tsx
+msgid "Copy from {0}"
+msgstr "Copy from {0}"
 
 #: src/client/admin/pages/logs.tsx
 msgid "Copy id"
@@ -3792,6 +3801,10 @@ msgstr "Embedded {0} of {1} rows into the vector store ({2} empty)."
 #: src/client/admin/collection-settings.tsx
 msgid "Embedding…"
 msgstr "Embedding…"
+
+#: src/client/admin/item-form.tsx
+msgid "empty"
+msgstr "empty"
 
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Empty"
@@ -5662,6 +5675,10 @@ msgstr "Locales updated."
 #: src/client/admin/edit-field.tsx
 msgid "Localized"
 msgstr "Localized"
+
+#: src/client/admin/item-form.tsx
+msgid "Localized values filled across every language"
+msgstr "Localized values filled across every language"
 
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/storage/widgets.tsx
@@ -9919,6 +9936,10 @@ msgstr "Simulating…"
 msgid "Simulation failed."
 msgstr "Simulation failed."
 
+#: src/client/admin/item-form.tsx
+msgid "Single"
+msgstr "Single"
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Single (relation)"
 msgstr "Single (relation)"
@@ -10037,9 +10058,17 @@ msgstr "Social sign-in plugin not enabled"
 msgid "Soft delete"
 msgstr "Soft delete"
 
+#: src/client/admin/item-form.tsx
+msgid "Source"
+msgstr "Source"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "Source deleted."
 msgstr "Source deleted."
+
+#: src/client/admin/item-form.tsx
+msgid "Source language"
+msgstr "Source language"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Source saved. The connection string is encrypted at rest."
@@ -10377,6 +10406,10 @@ msgstr "Tagline"
 #: src/client/pages/openapi-export.tsx
 msgid "Tags"
 msgstr "Tags"
+
+#: src/client/admin/item-form.tsx
+msgid "Target"
+msgstr "Target"
 
 #. placeholder {0}: folder || "uploads"
 #: src/client/admin/storage/index.tsx
@@ -10763,6 +10796,10 @@ msgstr "to"
 msgid "To"
 msgstr "To"
 
+#: src/client/admin/item-form.tsx
+msgid "to do"
+msgstr "to do"
+
 #: src/client/pages/graphql.tsx
 msgid "to execute"
 msgstr "to execute"
@@ -10881,9 +10918,18 @@ msgstr "Translate"
 msgid "Translate natural language into operator-style queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
 msgstr "Translate natural language into operator-style queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
 
+#. placeholder {0}: activeLocale.toUpperCase()
+#: src/client/admin/item-form.tsx
+msgid "Translate to {0}…"
+msgstr "Translate to {0}…"
+
 #: src/client/admin/parity/translations.tsx
 msgid "Translate UI strings using Claude. Requires <0>ANTHROPIC_API_KEY</0> on the server."
 msgstr "Translate UI strings using Claude. Requires <0>ANTHROPIC_API_KEY</0> on the server."
+
+#: src/client/admin/item-form.tsx
+msgid "translated"
+msgstr "translated"
 
 #. placeholder {0}: res.translated
 #. placeholder {1}: res.remaining ? ` (${res.remaining} more queued — run again)` : ""

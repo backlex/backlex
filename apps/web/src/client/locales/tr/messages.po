@@ -2352,6 +2352,10 @@ msgstr "yorumlar"
 msgid "Comments needing moderation"
 msgstr "Moderasyon bekleyen yorumlar"
 
+#: src/client/admin/item-form.tsx
+msgid "Compare"
+msgstr "Karşılaştır"
+
 #: src/client/admin/role-editor.tsx
 msgid "Compiled rule"
 msgstr "Derlenmiş kural"
@@ -2593,6 +2597,11 @@ msgstr "{0} için curl örneğini kopyala"
 #: src/client/admin/pages/advisor.tsx
 msgid "Copy fix"
 msgstr "Düzeltmeyi kopyala"
+
+#. placeholder {0}: defaultLocale.toUpperCase()
+#: src/client/admin/item-form.tsx
+msgid "Copy from {0}"
+msgstr "{0} dilinden kopyala"
 
 #: src/client/admin/pages/logs.tsx
 msgid "Copy id"
@@ -3792,6 +3801,10 @@ msgstr "{1} satırın {0} tanesi vektör deposuna embed edildi ({2} boş)."
 #: src/client/admin/collection-settings.tsx
 msgid "Embedding…"
 msgstr "Embed ediliyor…"
+
+#: src/client/admin/item-form.tsx
+msgid "empty"
+msgstr "boş"
 
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Empty"
@@ -5662,6 +5675,10 @@ msgstr "Yerel ayarlar güncellendi."
 #: src/client/admin/edit-field.tsx
 msgid "Localized"
 msgstr "Yerelleştirilmiş"
+
+#: src/client/admin/item-form.tsx
+msgid "Localized values filled across every language"
+msgstr "Tüm dillerde doldurulan yerelleştirilmiş değerler"
 
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/storage/widgets.tsx
@@ -9919,6 +9936,10 @@ msgstr "Simüle ediliyor…"
 msgid "Simulation failed."
 msgstr "Simülasyon başarısız oldu."
 
+#: src/client/admin/item-form.tsx
+msgid "Single"
+msgstr "Tek dil"
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Single (relation)"
 msgstr "Tekli (relation)"
@@ -10037,9 +10058,17 @@ msgstr "Sosyal giriş eklentisi etkin değil"
 msgid "Soft delete"
 msgstr "Geçici silme"
 
+#: src/client/admin/item-form.tsx
+msgid "Source"
+msgstr "Kaynak"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "Source deleted."
 msgstr "Kaynak silindi."
+
+#: src/client/admin/item-form.tsx
+msgid "Source language"
+msgstr "Kaynak dil"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Source saved. The connection string is encrypted at rest."
@@ -10377,6 +10406,10 @@ msgstr "Slogan"
 #: src/client/pages/openapi-export.tsx
 msgid "Tags"
 msgstr "Etiketler"
+
+#: src/client/admin/item-form.tsx
+msgid "Target"
+msgstr "Hedef"
 
 #. placeholder {0}: folder || "uploads"
 #: src/client/admin/storage/index.tsx
@@ -10763,6 +10796,10 @@ msgstr "→"
 msgid "To"
 msgstr "Alıcı"
 
+#: src/client/admin/item-form.tsx
+msgid "to do"
+msgstr "yapılacak"
+
 #: src/client/pages/graphql.tsx
 msgid "to execute"
 msgstr "çalıştırmak için"
@@ -10881,9 +10918,18 @@ msgstr "Çevir"
 msgid "Translate natural language into operator-style queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
 msgstr "Doğal dili operatör-tabanlı sorgulara dönüştür, şema taslakları çıkar ve istediğin MCP aracını çalıştır — rolüne ve anahtar bazlı izin listene göre sınırlı. Claude Desktop'ın gördüğü yüzeyle aynı."
 
+#. placeholder {0}: activeLocale.toUpperCase()
+#: src/client/admin/item-form.tsx
+msgid "Translate to {0}…"
+msgstr "{0} diline çevir…"
+
 #: src/client/admin/parity/translations.tsx
 msgid "Translate UI strings using Claude. Requires <0>ANTHROPIC_API_KEY</0> on the server."
 msgstr "Claude kullanarak UI dizelerini çevirin. Sunucuda <0>ANTHROPIC_API_KEY</0> gerektirir."
+
+#: src/client/admin/item-form.tsx
+msgid "translated"
+msgstr "çevrildi"
 
 #. placeholder {0}: res.translated
 #. placeholder {1}: res.remaining ? ` (${res.remaining} more queued — run again)` : ""

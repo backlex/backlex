@@ -20,11 +20,14 @@ const i18n = setupI18n({ locale: "en", messages: { en: {} } });
 
 export const renderWithProviders = (
   ui: ReactElement,
-  opts: { route?: string } = {},
+  opts: { route?: string; seed?: (qc: QueryClient) => void } = {},
 ): RenderResult => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+  // Let a test prime query caches (e.g. workspace settings) so components that
+  // read them render as they would against a live backend.
+  opts.seed?.(queryClient);
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <I18nProvider i18n={i18n}>

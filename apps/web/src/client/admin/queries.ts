@@ -283,7 +283,7 @@ export function useRoles() {
 
 /** Workspace settings (`/api/admin/settings`) — includes `i18nLocales` /
  *  `i18nDefaultLocale`, which the item editor reads to render one input per
- *  language for `i18n_text` fields. Cached generously; languages rarely change. */
+ *  language for `localized` fields. Cached generously; languages rarely change. */
 export function useSettings() {
   return useQuery({
     queryKey: queryKeys.settings(),

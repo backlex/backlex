@@ -40,8 +40,10 @@ describe("formatFieldValue", () => {
     expect(formatFieldValue("", { type: "text" }, "en")).toBe("");
   });
 
-  test("i18n_text map collapses to one language", () => {
-    expect(formatFieldValue({ en: "Hello", tr: "Merhaba" }, { type: "i18n_text" }, "en")).toBe("Hello");
+  test("localized map collapses to one language", () => {
+    expect(
+      formatFieldValue({ en: "Hello", tr: "Merhaba" }, { type: "text", localized: true }, "en"),
+    ).toBe("Hello");
   });
 
   test("no format hint → raw string", () => {

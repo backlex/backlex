@@ -32,10 +32,10 @@ export function persistToken(): void {
 
 // ── Collection row type ─────────────────────────────────────────────────────
 // ── Multi-language ───────────────────────────────────────────────────────────
-// The blog is bilingual. `title` and `body` are **i18n_text** fields: each one
+// The blog is bilingual. `title` and `body` are **localized** fields: each one
 // stores a per-locale map `{ en: "...", tr: "..." }`. On *read* you pass
 // `list({ locale })` / `search({ locale })` and the API collapses every
-// i18n_text field down to that locale's string (with a fallback chain). On
+// localized field down to that locale's string (with a fallback chain). On
 // *write* you send the map. Add the languages in the admin (Settings →
 // Languages); see the README.
 export const LOCALES = ["en", "tr"] as const;
@@ -66,7 +66,7 @@ export type Post = {
   created_at?: string;
 } & Record<string, unknown>;
 
-/** Shape of a create/update payload — the i18n_text fields take a locale map. */
+/** Shape of a create/update payload — the localized fields take a locale map. */
 export type PostWrite = {
   title: I18nText;
   body?: I18nText;

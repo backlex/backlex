@@ -7,6 +7,7 @@ import {
   type FieldDef,
   type ColRefResolver,
   type LeafCompiler,
+  sidecarFields,
 } from "@backlex/db";
 import type { AppBindings } from "../../app";
 import { requirePermission } from "../../middleware/permission";
@@ -17,10 +18,17 @@ import { loadAppSettings } from "../../services/settings";
 import { SECURITY, errorResponses } from "../../lib/openapi";
 import {
   collectionFromParam,
-  hasI18nField,
+  hasLocalizedField,
   loadCollection,
   type CollectionRow,
 } from "../../services/items/collection-loader";
+import {
+  I18N_DEF_ALIAS,
+  I18N_REQ_ALIAS,
+  applySidecarLocalization,
+  buildLocalizedSelects,
+  buildSidecarJoins,
+} from "../../services/items/i18n-sidecar";
 import {
   deserializeRow,
 } from "../../services/items/serialize";
@@ -30,7 +38,6 @@ import {
   resolveManyExpands,
   applyManyExpandsToRows,
 } from "../../services/items/expand";
-import { localizeRow, } from "../../services/items/i18n";
 import {
   deletedFilter,
   draftFilter,
@@ -126,6 +133,19 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>()
       // responsible for crafting permission conditions against the aliased
       // column name directly.
       const userFilter = q.filter ? rewriteSystemFieldsInCondition(q.filter, collection) : null;
+
+      // Localization: a concrete `?locale=xx` projects sidecar (`localized`) fields to that locale (with a fallback to
+      // the workspace default); `?locale=*` / omitted returns full per-locale
+      // maps. Resolve the default once here so the sidecar JOINs (added below)
+      // and the row-shaping (further down) share it.
+      const locale = c.req.query("locale") ?? null;
+      const localeSingle = Boolean(locale) && locale !== "*";
+      const localizedDefs = sidecarFields(collection.fields);
+      const localizedNameSet = new Set(localizedDefs.map((f) => f.name));
+      const defaultLocale =
+        locale && locale !== "*" && hasLocalizedField(collection.fields)
+          ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
+          : null;
 
       // Nested-relation joins: for every `<a>.<b>[…].<leaf>` key in the
       // filter or sort, walk the relation chain `[a, b, …]` and LEFT JOIN
@@ -441,6 +461,19 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>()
         q.expandSubs,
       );
       for (const j of expandJoins) extraJoins.push(j);
+      // Sidecar (single-locale) JOINs: surface each localized field for the
+      // requested locale + the default-locale fallback. No-op in full-map mode.
+      // Pushed into `extraJoins` so `hasJoins` qualifies the base `*` (a bare
+      // `SELECT *` alongside the sidecar join would otherwise pull its columns
+      // into the row). The `(row_id, locale)` PK keeps the joins 1:1.
+      for (const j of buildSidecarJoins({
+        physicalTable: collection.physicalTable,
+        pkColumn: collection.pkColumn,
+        locale,
+        defaultLocale,
+      })) {
+        extraJoins.push(j);
+      }
       const hasJoins = extraJoins.length > 0;
 
       // Custom colRef: nested keys route to the join alias; plain fields
@@ -450,7 +483,26 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>()
       // (`sql.identifier(field)`) is preserved.
       const baseTblId = sql.identifier(collection.physicalTable);
       const usesSideTable = usesOwnershipSideTable(collection);
+      // Filter/sort on a `localized` field resolves to the already-joined sidecar
+      // column for the active locale (with the default-locale COALESCE fallback).
+      // Only valid in single-locale mode — that's when the joins exist; otherwise
+      // there is no per-locale column to compare, so reject with a 422.
+      const localizedColRef = (field: string): SQL => {
+        if (!localeSingle) {
+          throw new AppError(
+            "VALIDATION",
+            `Field "${field}" is localized — add ?locale=xx to filter or sort by it`,
+          );
+        }
+        const req = sql`${sql.identifier(I18N_REQ_ALIAS)}.${sql.identifier(field)}`;
+        return defaultLocale && defaultLocale !== locale
+          ? sql`COALESCE(${req}, ${sql.identifier(I18N_DEF_ALIAS)}.${sql.identifier(field)})`
+          : req;
+      };
       const nestedColRef: ColRefResolver = (field) => {
+        if (!field.includes(".") && localizedNameSet.has(field)) {
+          return localizedColRef(field);
+        }
         if (field.includes(".")) {
           const segs = field.split(".");
           const leaf = segs[segs.length - 1]!;
@@ -663,21 +715,43 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>()
           }),
           sql`, `,
         );
-      const baseSelectCols: SQL = projection
+      // Localized fields have no base column — drop them from the base SELECT
+      // (they'd reference a non-existent column) and materialize them via the
+      // sidecar SELECT expressions below. Keep the pk so the row still carries
+      // an id even when `?fields=` names only localized fields.
+      const baseProjection: string[] | null = projection
+        ? (() => {
+            const filtered = projection.filter((c) => !localizedNameSet.has(c));
+            if (!filtered.includes(collection.pkColumn)) filtered.push(collection.pkColumn);
+            return filtered;
+          })()
+        : null;
+      const projectedLocalizedDefs = projection
+        ? localizedDefs.filter((f) => projection.includes(f.name))
+        : localizedDefs;
+      const localizedSelects = buildLocalizedSelects(projectedLocalizedDefs, ctx.dialect, {
+        physicalTable: collection.physicalTable,
+        pkColumn: collection.pkColumn,
+        locale,
+        defaultLocale,
+      });
+      const baseSelectCols: SQL = baseProjection
         ? hasJoins
-          ? buildProjectedWithJoins(projection)
+          ? buildProjectedWithJoins(baseProjection)
           : sql.join(
-              projection.map((col) => selectColRef(collection, col)),
+              baseProjection.map((col) => selectColRef(collection, col)),
               sql`, `,
             )
         : hasJoins
           ? buildStarWithJoins()
           : selectStar(collection);
-      // Append `__expand_<head>` columns when expansions are requested.
-      // They live alongside the base SELECT and never collide because the
-      // double-underscore prefix is reserved for system-emitted aliases.
-      const selectCols: SQL = expandSelects.length
-        ? sql`${baseSelectCols}, ${sql.join(expandSelects, sql`, `)}`
+      // Append `__expand_<head>` columns when expansions are requested, plus the
+      // localized-field expressions. They live alongside the base SELECT and
+      // never collide (double-underscore expand aliases; localized fields have
+      // no base column).
+      const extraSelects = [...expandSelects, ...localizedSelects];
+      const selectCols: SQL = extraSelects.length
+        ? sql`${baseSelectCols}, ${sql.join(extraSelects, sql`, `)}`
         : baseSelectCols;
 
       // Resolve the SQL column reference for one sort clause. Shared by the
@@ -696,6 +770,9 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>()
           return j
             ? sql`${sql.identifier(j.alias)}.${sql.identifier(leaf)}`
             : sql`${sql.identifier(s.field)}`;
+        }
+        if (localizedNameSet.has(s.field)) {
+          return localizedColRef(s.field);
         }
         const physical = rewriteSortField(s.field, collection);
         return hasJoins
@@ -843,11 +920,6 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>()
         }
       }
 
-      const locale = c.req.query("locale") ?? null;
-      const defaultLocale =
-        locale && locale !== "*" && hasI18nField(collection.fields)
-          ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
-          : null;
       // Sensitive-read audit (opt-in per collection). Metadata only: the query
       // shape, result count, and a capped page of returned PK ids — never the
       // row contents. Fires after permission + fetch, so denied reads never log.
@@ -863,24 +935,20 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>()
         ids: pageRows.slice(0, 50).map((r) => r[collection.pkColumn] ?? null),
       });
       const data = pageRows.map((r) => {
-        const out = localizeRow(
-          deserializeRow(
-            r,
-            collection.fields,
-            ctx.dialect,
-            collection.ownerScoped,
-            projection,
-          ),
+        const out = deserializeRow(
+          r,
           collection.fields,
-          locale,
-          defaultLocale,
+          ctx.dialect,
+          collection.ownerScoped,
+          projection,
         );
+        // Materialize sidecar (`localized`) fields from the joined / aggregated
+        // SELECT values — single native value for `?locale=xx`, full map for `*`.
+        applySidecarLocalization(out, r, collection.fields, ctx.dialect, locale);
         // Substitute the raw FK id with the inlined target row. The
         // `__expand_<head>` JSON object was emitted by the SELECT; we
         // parse + camelCase + timestamp-deserialize it here so the
-        // wire shape matches `GET /api/items/<target>/<id>`. Done
-        // AFTER localizeRow so localized i18n_text fields on the
-        // target keep their own behavior (no double-projection).
+        // wire shape matches `GET /api/items/<target>/<id>`.
         if (expandPlans.length > 0) {
           applyExpandToRow(out, r, expandPlans, ctx.dialect);
         }

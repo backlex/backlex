@@ -98,7 +98,7 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>()
       tags: TAGS,
       summary: "Update item",
       description:
-        "Partial update. `i18n_text` fields merge into the existing locale map; pass `?locale=xx` with a string value to upsert one locale.",
+        "Partial update. `localized` fields merge into the existing per-locale value; pass `?locale=xx` with a native value to upsert one locale.",
       security: SECURITY,
       middleware: [requirePermission(collectionFromParam, "update")],
       request: {

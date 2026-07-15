@@ -21,7 +21,7 @@ export const BULK_UPDATE_MAX = 1000;
  * this guard only narrows the bulk surface. `computed` fields are already
  * rejected by `validateBody`. Scalar + single-relation types pass through.
  */
-const BULK_BLOCKED_TYPES = new Set<FieldType>(["json", "file", "relation_many", "i18n_text"]);
+const BULK_BLOCKED_TYPES = new Set<FieldType>(["json", "file", "relation_many"]);
 
 export interface BulkUpdateRowResult {
   id: string;

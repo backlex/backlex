@@ -20,7 +20,7 @@ const COLLECTIONS = [
       { name: "tags", type: "relation_many" as const, to: "categories" },
       { name: "category", type: "relation" as const, to: "categories", required: true },
       { name: "hero", type: "file" as const },
-      { name: "name_i18n", type: "i18n_text" as const },
+      { name: "name_i18n", type: "text" as const, localized: true },
       {
         name: "status",
         type: "text" as const,

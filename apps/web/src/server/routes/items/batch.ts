@@ -84,7 +84,7 @@ export const itemsBatchRoutes = new OpenAPIHono<AppBindings>()
       tags: TAGS,
       summary: "Bulk-update items",
       description:
-        "Apply ONE shared patch to a list of selected item ids. Only the named fields change on each row; everything else is left untouched. Partial-success: a key the caller can't write (row-scope / tenant filtered) is reported per-row and counted in `failed`, the rest still commit. The shared `data` is validated once up front (a bad payload is a single 422). `json` / `file` / `relation_many` / `i18n_text` fields are rejected for bulk — edit them per record. Up to " +
+        "Apply ONE shared patch to a list of selected item ids. Only the named fields change on each row; everything else is left untouched. Partial-success: a key the caller can't write (row-scope / tenant filtered) is reported per-row and counted in `failed`, the rest still commit. The shared `data` is validated once up front (a bad payload is a single 422). `json` / `file` / `relation_many` fields are rejected for bulk — edit them per record. Up to " +
         String(BULK_UPDATE_MAX) +
         " keys per call.",
       security: SECURITY,

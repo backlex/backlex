@@ -22,6 +22,8 @@ type FieldFormat = {
 export interface FormattableField {
   type: string;
   format?: FieldFormat;
+  /** Value is a per-locale `{locale: value}` map — collapse before formatting. */
+  localized?: boolean;
 }
 
 /** Field shape the label resolver needs. */
@@ -39,9 +41,12 @@ export interface LabelledField {
 export const fieldLabel = (field: LabelledField, locale = "en"): string =>
   field.translations?.[locale] || field.label || field.name;
 
-/** Collapse an i18n_text map ({ en, tr }) to one string (English first). */
-const pickI18n = (v: Record<string, unknown>): string => {
-  const pick = v.en ?? Object.values(v).find((x) => x != null);
+/** Collapse a localized `{locale: value}` map to one string. Prefers the
+ *  workspace default language (`prefer`) when given, then English, then the
+ *  first filled locale. */
+const pickI18n = (v: Record<string, unknown>, prefer?: string): string => {
+  const pick =
+    (prefer ? v[prefer] : undefined) ?? v.en ?? Object.values(v).find((x) => x != null);
   return pick != null ? String(pick) : "";
 };
 
@@ -117,18 +122,24 @@ const formatDate = (raw: unknown, f: FieldFormat, locale: string, now: number): 
 
 /**
  * Render a field value for display. `locale` is the admin's active UI locale;
- * `now` is injectable for deterministic relative-time tests.
+ * `now` is injectable for deterministic relative-time tests. `defaultLocale` is
+ * the workspace content default (`i18nDefaultLocale`) — a `localized` field
+ * collapses to it before falling back to English.
  */
 export const formatFieldValue = (
   value: unknown,
   field: FormattableField,
   locale = "en",
   now: number = Date.now(),
+  defaultLocale?: string,
 ): string => {
   if (value === null || value === undefined || value === "") return "";
   if (value && typeof value === "object" && !Array.isArray(value)) {
-    // i18n_text (or any {locale: value} map) — collapse before formatting.
-    if (field.type === "i18n_text") return pickI18n(value as Record<string, unknown>);
+    // A `localized` field value is a `{locale: value}` map; collapse to the
+    // workspace default language (then English) before formatting.
+    if (field.localized) {
+      return pickI18n(value as Record<string, unknown>, defaultLocale);
+    }
   }
   const f = field.format;
   if (f) {

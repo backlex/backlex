@@ -9,10 +9,15 @@ import { loadAppSettings } from "../../services/settings";
 import { SECURITY, errorResponses } from "../../lib/openapi";
 import {
   collectionFromParam,
-  hasI18nField,
+  hasLocalizedField,
   loadCollection,
   type CollectionRow,
 } from "../../services/items/collection-loader";
+import {
+  applySidecarFromRows,
+  loadSidecarForRow,
+} from "../../services/items/i18n-sidecar";
+import { sidecarFields } from "@backlex/db";
 import {
   deserializeRow,
   projectFields,
@@ -23,7 +28,6 @@ import {
   resolveManyExpands,
   applyManyExpandsToRows,
 } from "../../services/items/expand";
-import { localizeRow, } from "../../services/items/i18n";
 import {
   deletedFilter,
   draftFilter,
@@ -277,18 +281,24 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>()
       }
       const locale = c.req.query("locale") ?? null;
       const defaultLocale =
-        locale && locale !== "*" && hasI18nField(collection.fields)
+        locale && locale !== "*" && hasLocalizedField(collection.fields)
           ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
           : null;
-      const projected = projectFields(
-        localizeRow(
-          deserializeRow(rows[0], collection.fields, ctx.dialect, collection.ownerScoped),
-          collection.fields,
-          locale,
-          defaultLocale,
-        ),
-        perm.fields,
-      );
+      const localizedDefs = sidecarFields(collection.fields);
+      const base = deserializeRow(rows[0], collection.fields, ctx.dialect, collection.ownerScoped);
+      // Sidecar (`localized`) fields: one small second query for this id, then
+      // resolve requested→default (single) or the full map (`*`). Applied BEFORE
+      // the perm-field projection so it honours the field allow-list.
+      if (localizedDefs.length > 0) {
+        const sidecarRows = await loadSidecarForRow(
+          ctx,
+          collection.physicalTable,
+          rows[0][collection.pkColumn] as string,
+          localizedDefs,
+        );
+        applySidecarFromRows(base, sidecarRows, localizedDefs, ctx.dialect, locale, defaultLocale);
+      }
+      const projected = projectFields(base, perm.fields);
       // Expand AFTER projectFields so the inlined object survives the
       // perm.fields trim even when the source FK key (e.g. `customer_id`)
       // would have been kept by virtue of being in perm.fields, but a

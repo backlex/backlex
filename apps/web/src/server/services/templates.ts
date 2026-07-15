@@ -254,7 +254,7 @@ async function seedSamples(
       // templates can hit it, so enforce at the engine).
       if (
         ctx.dialect === "pg" &&
-        (def.type === "json" || def.type === "relation_many" || def.type === "i18n_text") &&
+        (def.type === "json" || def.type === "relation_many") &&
         serialized !== null &&
         typeof serialized !== "string"
       ) {
@@ -833,7 +833,7 @@ export async function extractTemplate(
             if (f.to && idx !== undefined) sample[f.name] = { ref: `${f.to}:${idx}` };
             continue;
           }
-          if (f.type === "relation_many" || f.type === "json" || f.type === "i18n_text") {
+          if (f.type === "relation_many" || f.type === "json") {
             // sqlite stores JSON-ish columns as text — decode before emitting.
             if (typeof v === "string") {
               try {
@@ -954,7 +954,6 @@ const FIELD_TYPES = new Set<string>([
   "relation",
   "file",
   "relation_many",
-  "i18n_text",
   "hash",
 ]);
 

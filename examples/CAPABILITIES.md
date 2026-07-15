@@ -28,7 +28,7 @@ in the dashboard · `server`/`CLI` = backend or tooling.
 | Offline-first sync (changefeed + local store) | SDK | **showcase** (Offline sync panel) — `sync({collection, store: memoryStore()})` → `start/pull/flush/create/update/remove` | [offline-sync](../docs/offline-sync.md) |
 | Feature flags + remote config | SDK + admin | **showcase** (Feature flags panel) — `flags.all/isEnabled/get`; flags are defined in the admin | [feature-flags](../docs/feature-flags.md) |
 | Permissions (owner-scoped) | SDK + admin | all three — every collection is created **owner-scoped**, so each user sees only their own rows; configured at collection-create | [permissions](../docs/permissions.md) |
-| Multi-language (`i18n_text`) | SDK + admin | **blog** — `title` / `body` are i18n_text; the composer writes a `{ en, tr }` map and the EN/TR switcher re-lists with `list({ locale })` to collapse each field | [locale-timezone](../docs/locale-timezone.md) |
+| Multi-language (localized) | SDK + admin | **blog** — `title` / `body` are localized; the composer writes a `{ en, tr }` map and the EN/TR switcher re-lists with `list({ locale })` to collapse each field | [locale-timezone](../docs/locale-timezone.md) |
 | Raw REST (no SDK) | HTTP | **showcase** (REST panel) — plain `fetch` to `/api/items/<c>` with a `Bearer` token | [querying](../docs/querying.md) |
 | GraphQL API | HTTP | **showcase** (GraphQL panel) — `POST /api/graphql` `{ query, variables }`; schema generated from your collections | [graphql](../docs/graphql.md) |
 

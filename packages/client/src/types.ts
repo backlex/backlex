@@ -41,7 +41,7 @@ export interface ListQuery {
    *  concurrent inserts — unlike `offset`. When set, `offset` is ignored. */
   cursor?: string;
   meta?: "filter_count" | "total_count" | "*";
-  /** Collapse `i18n_text` fields to one locale, or `"*"` for the full map. */
+  /** Collapse `localized` fields to one locale, or `"*"` for the full map. */
   locale?: string;
   /** Free-text search — `_contains` OR'd across readable text fields. */
   q?: string;
@@ -58,7 +58,7 @@ export interface ListQuery {
 export interface ItemQuery {
   /** Inline single-hop relations (replaces the FK with the related object). */
   expand?: string | string[];
-  /** Collapse `i18n_text` fields to one locale, or `"*"` for the full map. */
+  /** Collapse `localized` fields to one locale, or `"*"` for the full map. */
   locale?: string;
 }
 
@@ -89,7 +89,7 @@ export interface SearchQuery {
   mode?: "fts" | "vector" | "hybrid";
   /** Max rows to return (1–100, default 20). */
   limit?: number;
-  /** Collapse `i18n_text` fields to one locale, or `"*"` for the full map. */
+  /** Collapse `localized` fields to one locale, or `"*"` for the full map. */
   locale?: string;
 }
 

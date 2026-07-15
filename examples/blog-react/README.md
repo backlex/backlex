@@ -15,10 +15,10 @@ A small editor + reader that shows the publishing-focused side of backlex:
    the published/draft counts in the header (`_status` is the versioned
    collection's managed lifecycle column).
 6. **Realtime** — `client.subscribe("items:posts", …)` keeps the list live.
-7. **Multi-language** — `title` and `body` are **`i18n_text`** fields (a
+7. **Multi-language** — `title` and `body` are **localized** `text` fields (a
    per-locale `{ en, tr }` map). The composer writes both languages; the header
    **EN / TR switcher** re-lists with `list({ locale })`, which collapses every
-   i18n_text field to the chosen language (with a fallback chain).
+   localized field to the chosen language (with a fallback chain).
 
 Dependency-light: React 19 + Vite + Tailwind, and `backlex`. In dev the app
 talks to the API **same-origin** through a Vite proxy (`vite.config.ts`) — no
@@ -48,13 +48,13 @@ In the admin UI (`http://localhost:5173`):
    BCP-47 code). This drives the admin Translations UI; the data-layer
    `?locale=xx` collapse works regardless. (See
    [`docs/locale-timezone.md`](../../docs/locale-timezone.md).)
-4. **Create the `posts` collection.** It needs two **`i18n_text`** fields
-   (`title`, `body`). In the admin **New collection** flow, pick the
-   **"Translatable Text"** field type for `title` and `body` (the others are
-   plain **text**), and turn on **Owner-scoped**, **Versioning**, and
-   **Full-text search**. The admin item editor then shows one input **per
-   workspace language** for those fields (add languages under Settings →
-   Languages, step 3).
+4. **Create the `posts` collection.** It needs two **localized** fields
+   (`title`, `body`). In the admin **New collection** flow, add `title` / `body`
+   as **Text** and flip the **Localized** toggle on each (the others are plain
+   **text**), and turn on **Owner-scoped**, **Versioning**, and **Full-text
+   search**. The admin item editor then shows one input **per workspace
+   language** for those fields (add languages under Settings → Languages, step
+   3).
 
    Prefer scripting it? The same thing via the API — sign in as admin in the
    browser (so the cookie is set), then from your terminal:
@@ -69,10 +69,10 @@ In the admin UI (`http://localhost:5173`):
        "versioned": true,
        "fts": true,
        "fields": [
-         { "name": "title",   "type": "i18n_text", "required": true },
+         { "name": "title",   "type": "text",     "localized": true, "required": true },
          { "name": "slug",    "type": "text" },
-         { "name": "excerpt", "type": "text", "searchable": true },
-         { "name": "body",    "type": "i18n_text" }
+         { "name": "excerpt", "type": "text",     "searchable": true },
+         { "name": "body",    "type": "longtext", "localized": true }
        ]
      }'
    ```
@@ -87,7 +87,7 @@ In the admin UI (`http://localhost:5173`):
    - **`fts`** — enables `posts.search(...)`. `excerpt` stays plain text +
      `searchable` so it feeds the keyword index.
      ([`docs/full-text-search.md`](../../docs/full-text-search.md))
-   - **`title` / `body` = `i18n_text`** — localized text stored as a
+   - **`title` / `body` = localized** — one value per locale stored as a
      `{ en, tr }` map; `?locale=xx` collapses it on read.
      ([`docs/locale-timezone.md`](../../docs/locale-timezone.md))
 
@@ -113,7 +113,7 @@ a second tab to watch realtime propagate.
 | `src/backlex.ts` | `createClient({ url, workspace, token })` + token persistence |
 | `src/App.tsx` (`AuthForm`) | `auth.signUp` / `auth.signIn` / `auth.getSession` / `auth.signOut` |
 | `src/App.tsx` (`Blog`) | `query().orderBy().withMeta().list({ status, locale })`, `aggregate({ groupBy })`, `search({ mode: "fts", locale })`, `subscribe("items:posts")`, EN/TR locale switcher |
-| `src/App.tsx` (`Composer`) | writes `i18n_text` fields as a `{ en, tr }` map |
+| `src/App.tsx` (`Composer`) | writes localized fields as a `{ en, tr }` map |
 | `src/App.tsx` (`PostCard`) | `publish` / `unpublish` / `schedulePublish` / `delete` |
 
 For the full list of backlex capabilities and which example demonstrates each,

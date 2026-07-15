@@ -1,4 +1,4 @@
-import type { FieldDef, FieldType } from "@backlex/db";
+import { type FieldDef, type FieldType, isLocalized } from "@backlex/db";
 
 export const serialize = (
   value: unknown,
@@ -7,10 +7,9 @@ export const serialize = (
 ): unknown => {
   if (value === undefined || value === null) return null;
   if (dialect === "sqlite") {
-    if (type === "json" || type === "relation_many" || type === "i18n_text") {
+    if (type === "json" || type === "relation_many") {
       // relation_many is an array of foreign ids — store as JSON text on
       // SQLite so the same column pattern as `json` works (no native array).
-      // i18n_text is a `{locale: value}` map — same story.
       return JSON.stringify(value);
     }
     if (type === "boolean") return value ? 1 : 0;
@@ -50,18 +49,6 @@ export const deserialize = (
   if (type === "hash") return null;
   if (value === null || value === undefined) return value;
   if (dialect === "sqlite") {
-    if (type === "i18n_text") {
-      // A column converted from plain `text` to `i18n_text` may still hold bare
-      // (non-JSON) legacy strings. Be forgiving — return the raw string rather
-      // than 500-ing the whole list; `localizeRow` passes a non-object through
-      // unchanged, so it still renders.
-      if (typeof value !== "string") return value;
-      try {
-        return JSON.parse(value);
-      } catch {
-        return value;
-      }
-    }
     if (type === "json" || type === "relation_many") {
       return typeof value === "string" ? JSON.parse(value) : value;
     }
@@ -123,6 +110,12 @@ export const deserializeRow = (
   for (const f of fields) {
     // Private / internal columns never leave through an API read surface.
     if (f.private) continue;
+    // `localized` fields live in the `<table>__i18n` sidecar, not on the base
+    // row — they're materialized separately by `applySidecarLocalization` on the
+    // read paths that JOIN/aggregate the sidecar. Skipping them here keeps the
+    // full-map/native-value shaping in one place and avoids mis-deserializing a
+    // per-locale aggregate as a single value.
+    if (isLocalized(f)) continue;
     if (includeAll || sel.has(f.name)) {
       out[f.name] = deserialize(row[f.name], f.type, dialect);
     }

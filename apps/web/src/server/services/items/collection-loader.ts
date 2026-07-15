@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { FieldDef } from "@backlex/db";
+import { type FieldDef, isLocalized } from "@backlex/db";
 import type { Context } from "hono";
 import type { AppBindings } from "../../app";
 import type { Ctx } from "../../context";
@@ -151,5 +151,7 @@ export const loadCollection = async (
 export const collectionFromParam = (c: Context<AppBindings>) =>
   c.req.param("slug" as never) as string;
 
-export const hasI18nField = (fields: FieldDef[]): boolean =>
-  fields.some((f) => f.type === "i18n_text");
+/** Any `localized` (sidecar) field present. Guards the read-path
+ *  `defaultLocale` lookup and the write-path locale split. */
+export const hasLocalizedField = (fields: FieldDef[]): boolean =>
+  fields.some(isLocalized);

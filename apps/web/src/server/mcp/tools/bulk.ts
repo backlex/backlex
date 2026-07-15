@@ -231,7 +231,7 @@ export const bulkUpdateShared: McpTool = {
     "`collections.bulk_update`, which takes a distinct `{ id, data }` per row. " +
     "Partial-success: a key you can't write (row-scope / tenant filtered) is " +
     "reported as `NOT_FOUND` in `failed`. Structured fields " +
-    "(json / file / relation_many / i18n_text) are rejected. Returns " +
+    "(json / file / relation_many) are rejected. Returns " +
     "`{ total, updated, failed, results }`.",
   inputSchema: {
     type: "object",

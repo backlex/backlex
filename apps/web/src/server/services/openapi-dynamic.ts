@@ -26,12 +26,6 @@ const fieldToSchema = (type: FieldType): Schema => {
       return {};
     case "relation_many":
       return { type: "array", items: { type: "string" } };
-    case "i18n_text":
-      return {
-        type: "object",
-        additionalProperties: { type: "string" },
-        description: "Localized text: keys are locale codes (e.g. `en`, `tr`).",
-      };
     default:
       return {};
   }

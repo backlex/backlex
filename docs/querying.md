@@ -21,7 +21,7 @@ backs the GraphQL resolver.
 | `limit`  | integer 1-200                     | `50`                                    | Page size                                                                    |
 | `offset` | integer ≥ 0                       | `0`                                     | Page offset                                                                  |
 | `meta`   | `filter_count`, `total_count`, `*`| none                                    | Adds extra `SELECT COUNT(*)` to the response `meta`                          |
-| `locale` | string or `*`                     | `null`                                  | Projects `i18n_text` fields to one locale; `*` returns the full `{xx: …}` map |
+| `locale` | string or `*`                     | `null`                                  | Projects `localized` fields to one locale; `*` returns the full `{xx: …}` map |
 
 Only the list endpoint accepts these except `?expand`, which the single
 GET (`GET /:id`) also accepts. `POST`, `PATCH`, and `DELETE` use
@@ -227,8 +227,8 @@ another page?" rather than an exact total.
 
 ## Localized fields (`locale`)
 
-Collections with `i18n_text` fields store each value as a `{locale: …}`
-JSON map. `?locale=tr` projects every `i18n_text` field down to that
+Collections with `localized` fields store each value per-locale in a
+translations sidecar. `?locale=tr` projects every `localized` field down to that
 locale's string with the fallback chain: requested locale → workspace
 default → first non-empty entry. `?locale=*` (or omitting the param)
 returns the full map.
@@ -728,7 +728,7 @@ and counted in `failed`; the rest still commit.
 ```
 
 Structured / multi-value / localized fields (`json`, `file`, `relation_many`,
-`i18n_text`) are **rejected** for bulk — edit those per record. The admin's data
+`localized` fields) are **rejected** for bulk — edit those per record. The admin's data
 table exposes this via row-select → **Edit**, where only the fields you touch are
 sent.
 

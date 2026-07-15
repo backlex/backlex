@@ -77,11 +77,6 @@ const FieldSchema = z
       "uuid",
       "relation",
       "relation_many",
-      // Localized text — JSON `{en, tr, …}` collapsed by `?locale=xx` on read.
-      // Storage + read/write handling already exist (schema-applier maps it to
-      // TEXT/jsonb; items.ts localizes/merges); this enum just lets a collection
-      // declare the field. Keep in sync with `FieldType` in @backlex/db.
-      "i18n_text",
       // One-way hashed secret. The write path scrypt-hashes the plaintext and
       // stores only the digest; reads return null; verification is via
       // `POST /:slug/:id/verify`. Keep in sync with `FieldType` in @backlex/db.
@@ -92,6 +87,10 @@ const FieldSchema = z
     // Plain B-tree index on the column — speeds up filter/sort. Applied by
     // the schema applier; the admin UI already sends this flag.
     indexed: z.boolean().optional(),
+    // Store this field's value per-locale in the `<table>__i18n` sidecar (any
+    // type except computed/hash). validateFields enforces the
+    // combinations; the schema applier maintains the sidecar column.
+    localized: z.boolean().optional(),
     to: z
       .string()
       .regex(/^[a-z][a-z0-9_]*$/, "snake_case")

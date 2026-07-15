@@ -62,9 +62,35 @@ locale or zone is somehow invalid. `timezoneOptions()` and `languageOptions()`
 (in `client/admin/preferences.tsx`) build the picker option lists shared by the
 Settings and Account forms.
 
+## Localized collection fields (`localized`)
+
+Any collection field can be marked **`localized`** to store one value per
+language. The value lives in a per-collection **translations sidecar** table
+`<physical_table>__i18n` — one native-typed column per localized field, one row
+per `(base row, locale)` — so a localized `number` stays a number, a localized
+`relation` keeps its FK column, and so on. Non-localized fields stay on the base
+table. Turn it on with the **Localized** toggle in the field editor, or send
+`{ localized: true }` on the field in `POST /api/collections`.
+
+Read/write per locale with `?locale=`:
+
+- `?locale=tr` — every localized field collapses to its Turkish value, falling
+  back to the workspace default (`i18nDefaultLocale`) when a translation is
+  missing. Works on list, single-get, and search.
+- `?locale=*` (or omitted) — returns the full `{en, tr, …}` map per field.
+- **Write** — `POST`/`PATCH` with `?locale=tr` upserts just that locale (the
+  native value) without disturbing the others; without `?locale=` send a
+  `{locale: value}` map to write several at once. Reaches REST, SDK
+  (`create`/`update` accept `{ locale }`), CLI (`--locale`), GraphQL (localized
+  fields are a JSON map; a `locale` write threads through the mutation), and MCP
+  (`locale` on list/read/insert/update).
+- **Filter / sort** on a localized field requires a concrete `?locale=xx` (the
+  sidecar is joined for that locale); `indexed` localized fields get a
+  `(locale, column)` index.
+
 ## Scope
 
-The locale has three jobs:
+Beyond localized field *values*, the locale has three jobs:
 
 1. **Date/number formatting** — the `Intl`-backed formatters above.
 2. **Admin SPA chrome** — the admin's own UI strings (nav, buttons, dialogs,

@@ -93,6 +93,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [indexed, setIndexed] = useState(false);
   const [searchable, setSearchable] = useState(false);
   const [vectorize, setVectorize] = useState(false);
+  const [localized, setLocalized] = useState(false);
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
@@ -120,6 +121,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setTab("schema");
       setIndexed(false);
       setSearchable(false);
+      setLocalized(false);
       setLabel("");
       setDescription("");
       setIsPrivate(false);
@@ -257,6 +259,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(validUpdate ? { onUpdate: validUpdate } : {}),
       ...(searchable && (def.type === "text" || def.type === "longtext") ? { searchable: true } : {}),
       ...(vectorize && (def.type === "text" || def.type === "longtext") ? { vectorize: true } : {}),
+      ...(localized && def.type !== "hash" ? { localized: true } : {}),
       ...(def.hasChoices && cleanChoices.length ? { options: { choices: cleanChoices } } : {}),
       ...(def.hasRelation ? { to: relationTarget } : {}),
       ...(def.hasRelation && onDelete !== "no_action" ? { onDelete } : {}),
@@ -402,6 +405,21 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                     </div>
                     <Switch checked={indexed} onChange={setIndexed} />
                   </div>
+                  {def.type !== "hash" && (
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Localized</Trans></div>
+                        <div className="text-[11.5px] text-muted-foreground"><Trans>Store one value per language in the translations sidecar. Read/write a single locale with ?locale=xx.</Trans></div>
+                      </div>
+                      <Switch
+                        checked={localized}
+                        onChange={(v) => {
+                          setLocalized(v);
+                          if (v) setUnique(false);
+                        }}
+                      />
+                    </div>
+                  )}
                   {(def.type === "text" || def.type === "longtext") && (
                     <div className="flex items-center justify-between gap-3">
                       <div>

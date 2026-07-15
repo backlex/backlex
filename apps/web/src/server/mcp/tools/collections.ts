@@ -37,6 +37,7 @@ const buildListQuery = (args: Record<string, unknown>): URLSearchParams => {
   }
   if (args.meta === true || args.meta === "*") qs.set("meta", "*");
   else if (typeof args.meta === "string") qs.set("meta", args.meta);
+  if (typeof args.locale === "string") qs.set("locale", args.locale);
   return qs;
 };
 
@@ -69,6 +70,12 @@ export const listItems: McpTool = {
       meta: {
         type: ["boolean", "string"],
         description: "Set true (or `*`) to include `meta.total` in the response.",
+      },
+      locale: {
+        type: "string",
+        description:
+          "Collapse `localized` fields to one locale (with default " +
+          "fallback), or `*` for the full `{locale: value}` map.",
       },
     },
     required: ["collection"],
@@ -106,6 +113,12 @@ export const readItem: McpTool = {
       collection: { type: "string" },
       id: { type: "string" },
       fields: { type: ["array", "string"] },
+      locale: {
+        type: "string",
+        description:
+          "Collapse `localized` fields to one locale (with default " +
+          "fallback), or `*` for the full `{locale: value}` map.",
+      },
     },
     required: ["collection", "id"],
     additionalProperties: false,
@@ -119,6 +132,7 @@ export const readItem: McpTool = {
     } else if (typeof args.fields === "string") {
       qs.set("fields", args.fields);
     }
+    if (typeof args.locale === "string") qs.set("locale", args.locale);
     const path =
       `/api/items/${encodeURIComponent(slug)}/${encodeURIComponent(id)}` +
       (qs.toString() ? `?${qs.toString()}` : "");
@@ -138,6 +152,12 @@ export const insertItem: McpTool = {
     properties: {
       collection: { type: "string" },
       data: { type: "object", description: "Field → value map for the new row." },
+      locale: {
+        type: "string",
+        description:
+          "Write a single locale of every `localized` field (values are then the " +
+          "native per-locale value); omit to send full `{locale: value}` maps.",
+      },
     },
     required: ["collection", "data"],
     additionalProperties: false,
@@ -148,8 +168,9 @@ export const insertItem: McpTool = {
     if (!data || typeof data !== "object") {
       throw new Error("VALIDATION: data must be an object");
     }
+    const localeQs = typeof args.locale === "string" ? `?locale=${encodeURIComponent(args.locale)}` : "";
     const res = await ctx.fetchInternal(
-      `/api/items/${encodeURIComponent(slug)}`,
+      `/api/items/${encodeURIComponent(slug)}${localeQs}`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -172,6 +193,12 @@ export const updateItem: McpTool = {
       collection: { type: "string" },
       id: { type: "string" },
       data: { type: "object", description: "Partial field → value map." },
+      locale: {
+        type: "string",
+        description:
+          "Upsert a single locale of the `localized` fields in `data` without " +
+          "disturbing the others; omit to send full `{locale: value}` maps.",
+      },
     },
     required: ["collection", "id", "data"],
     additionalProperties: false,
@@ -183,8 +210,9 @@ export const updateItem: McpTool = {
     if (!data || typeof data !== "object") {
       throw new Error("VALIDATION: data must be an object");
     }
+    const localeQs = typeof args.locale === "string" ? `?locale=${encodeURIComponent(args.locale)}` : "";
     const res = await ctx.fetchInternal(
-      `/api/items/${encodeURIComponent(slug)}/${encodeURIComponent(id)}`,
+      `/api/items/${encodeURIComponent(slug)}/${encodeURIComponent(id)}${localeQs}`,
       {
         method: "PATCH",
         headers: { "content-type": "application/json" },
@@ -329,7 +357,7 @@ export const searchItems: McpTool = {
       },
       locale: {
         type: "string",
-        description: "Collapse i18n_text fields to one locale, or `*` for the full map.",
+        description: "Collapse localized fields to one locale, or `*` for the full map.",
       },
     },
     required: ["collection", "q"],

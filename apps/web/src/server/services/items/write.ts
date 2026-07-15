@@ -1,5 +1,5 @@
 import { sql, type SQL } from "drizzle-orm";
-import { resolveAutoFill } from "@backlex/db";
+import { type FieldDef, resolveAutoFill, sidecarFields } from "@backlex/db";
 import { AppError, type AuthSubject } from "@backlex/core";
 import type { Ctx } from "../../context";
 import { publishEvent } from "../events";
@@ -7,7 +7,7 @@ import { recordActivity } from "../activity";
 import { recordRevision } from "../revisions";
 import { embedAndUpsert, deleteVector } from "../vectorize";
 import { indexFts, deleteFts } from "../fts";
-import { type CollectionRow, hasI18nField } from "./collection-loader";
+import type { CollectionRow } from "./collection-loader";
 import { serialize, deserialize, deserializeRow, projectFields } from "./serialize";
 import {
   collectFieldWarnings,
@@ -20,7 +20,16 @@ import {
 } from "./validate";
 import { hashIncomingFields, scrubHashFields, scrubPrivateFields } from "./hash-fields";
 import { enforceOnDeleteTriggers } from "./on-delete";
-import { mergeI18nPatch } from "./i18n";
+import {
+  echoLocalized,
+  sidecarClear,
+  sidecarDeleteRow,
+  sidecarInsert,
+  sidecarUpsert,
+  splitIsEmpty,
+  splitLocalized,
+  validateLocalePatches,
+} from "./i18n-sidecar";
 import {
   deletedFilter,
   execute,
@@ -63,7 +72,7 @@ export interface WriteEnv {
   /** requestMeta(c.req.raw) — ip/ua/etc. for the activity row. */
   meta: Record<string, unknown>;
   durationMs: () => number;
-  /** ?locale= write target for i18n_text fields. */
+  /** ?locale= write target for `localized` (sidecar) fields. */
   locale: string | null;
   /** Physical-write DB handle. Defaults to ctx.db; an atomic batch passes its
    *  transaction handle so the writes commit/roll back together. */
@@ -132,6 +141,10 @@ export const performCreate = async (
   } else {
     id = crypto.randomUUID();
   }
+  // Pull `localized` fields out of `data` up front so the base INSERT never
+  // targets a sidecar-only column, and validate each provided per-locale value.
+  const localeSplit = splitLocalized(data, collection.fields, env.locale);
+  validateLocalePatches(localeSplit, collection.fields);
   validateBody(data, collection.fields, false, perm.fields);
   await validateRelations(data, collection.fields, ctx, env.tenantId);
   await validateAppUserLinks(data, collection.fields, ctx, env.tenantId);
@@ -154,9 +167,6 @@ export const performCreate = async (
     if (existingOne[0]) {
       throw new AppError("VALIDATION", "This collection is a singleton and already has a row");
     }
-  }
-  if (hasI18nField(collection.fields)) {
-    mergeI18nPatch(data, {}, collection.fields, env.locale);
   }
   const now = nowFor(ctx.dialect);
 
@@ -206,6 +216,15 @@ export const performCreate = async (
   const colSql = sql.join(cols.map((n) => sql.identifier(n)), sql`, `);
   const valSql = sql.join(vals.map((v) => sql`${v}`), sql`, `);
   await emit(env, sql`INSERT INTO ${sql.identifier(table)} (${colSql}) VALUES (${valSql})`);
+  // Translations sidecar: one INSERT per locale touched (no conflict possible on
+  // a fresh row). Emitted through the same chokepoint so it joins the atomic
+  // batch / transaction and rolls back with the base row.
+  if (!splitIsEmpty(localeSplit)) {
+    const byName = new Map<string, FieldDef>(collection.fields.map((f) => [f.name, f]));
+    for (const [loc, fieldMap] of localeSplit.localePatches) {
+      await emit(env, sidecarInsert(table, id, loc, fieldMap, byName, ctx.dialect));
+    }
+  }
   if (usesOwnershipSideTable(collection) && env.userId) {
     await emit(
       env,
@@ -218,7 +237,7 @@ export const performCreate = async (
   // response, event, audit and embed/FTS side-effects.
   scrubHashFields(data, collection.fields);
   scrubPrivateFields(data, collection.fields);
-  const out: Record<string, unknown> = { id, ...data };
+  const out: Record<string, unknown> = { id, ...data, ...echoLocalized(localeSplit, env.locale) };
   if (collection.hasCreatedAt) out.createdAt = deserialize(now, "timestamp", ctx.dialect);
   if (collection.hasUpdatedAt) out.updatedAt = deserialize(now, "timestamp", ctx.dialect);
   if (collection.ownerScoped) out.ownerId = env.userId;
@@ -261,6 +280,9 @@ export const performUpdate = async (
 ): Promise<WriteResult> => {
   const { ctx, collection } = env;
   const table = collection.physicalTable;
+  // Split localized fields out before base validation/write (same as create).
+  const localeSplit = splitLocalized(patch, collection.fields, env.locale);
+  validateLocalePatches(localeSplit, collection.fields);
   validateBody(patch, collection.fields, true, perm.fields);
   await validateRelations(patch, collection.fields, ctx, env.tenantId);
   await validateAppUserLinks(patch, collection.fields, ctx, env.tenantId);
@@ -287,9 +309,6 @@ export const performUpdate = async (
   enforceValidationRules(mergedForConditions, collection.fields, authSubjectOf(env));
   const warnings = collectFieldWarnings(mergedForConditions, collection.fields, authSubjectOf(env));
 
-  if (hasI18nField(collection.fields)) {
-    mergeI18nPatch(patch, beforeRow, collection.fields, env.locale);
-  }
 
   const now = nowFor(ctx.dialect);
   const sets: SQL[] = [];
@@ -317,6 +336,19 @@ export const performUpdate = async (
       sql`UPDATE ${sql.identifier(table)} SET ${sql.join(sets, sql`, `)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
     );
   }
+  // Translations sidecar: upsert each touched locale (preserving other locales /
+  // fields), then NULL any field cleared with a locale-less null. The base
+  // UPDATE above already bumped `updated_at` unconditionally, so a sidecar-only
+  // PATCH still moves the row's version (the single-read ETag keys on it).
+  if (!splitIsEmpty(localeSplit)) {
+    const byName = new Map<string, FieldDef>(collection.fields.map((f) => [f.name, f]));
+    for (const [loc, fieldMap] of localeSplit.localePatches) {
+      await emit(env, sidecarUpsert(table, id, loc, fieldMap, byName, ctx.dialect));
+    }
+    for (const name of localeSplit.clearAll) {
+      await emit(env, sidecarClear(table, id, name));
+    }
+  }
 
   // Digest is persisted — scrub it from the patch so the merge below, the
   // response, event and audit payload never carry it.
@@ -332,6 +364,8 @@ export const performUpdate = async (
   for (const f of collection.fields) {
     if (patch[f.name] !== undefined) refreshedRow[f.name] = patch[f.name];
   }
+  // Reflect the localized fields this write touched (native value or map).
+  Object.assign(refreshedRow, echoLocalized(localeSplit, env.locale));
   if (collection.hasUpdatedAt) refreshedRow.updatedAt = deserialize(now, "timestamp", ctx.dialect);
   const projected = projectFields(refreshedRow, perm.fields);
 
@@ -420,6 +454,12 @@ export const performDelete = async (
             WHERE ${sql.identifier("collection_id")} = ${collection.id}
             AND ${sql.identifier("item_id")} = ${id}`,
       );
+    }
+    // Translations sidecar rows go with a hard delete (SQLite/D1 have no FK
+    // cascade). Only emit when the collection actually has a sidecar table, else
+    // the DELETE would target a non-existent table.
+    if (sidecarFields(collection.fields).length > 0) {
+      await emit(env, sidecarDeleteRow(table, id));
     }
   }
 

@@ -7,7 +7,10 @@
  * the delivered message.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { createHmac } from "node:crypto";
 import { type TestHarness, makeHarness, seedAdmin } from "./setup";
+import { collabTransportKind, mintAblyTokenRequest } from "../src/server/services/collab";
+import type { Env } from "../src/server/env";
 
 interface SSEFrame {
   event: string;
@@ -192,5 +195,138 @@ describe("collab channels", () => {
     expect(msg.t).toBe("blur");
     expect(msg.field).toBeUndefined();
     ac.abort();
+  });
+});
+
+describe("collab transport selection", () => {
+  const base = { APP_URL: "x", AUTH_SECRET: "x" } as unknown as Env;
+
+  test("long-lived process is native regardless of keys", () => {
+    expect(collabTransportKind(base)).toBe("native");
+    expect(collabTransportKind({ ...base, ABLY_API_KEY: "k:s" })).toBe("native");
+  });
+
+  test("stateless serverless: ably beats the redis fallback, off without either", () => {
+    process.env.VERCEL = "1";
+    try {
+      expect(collabTransportKind(base)).toBe("off");
+      expect(collabTransportKind({ ...base, ABLY_API_KEY: "k:s" })).toBe("ably");
+      expect(
+        collabTransportKind({
+          ...base,
+          UPSTASH_REDIS_REST_URL: "https://r",
+          UPSTASH_REDIS_REST_TOKEN: "t",
+        }),
+      ).toBe("native");
+      expect(
+        collabTransportKind({
+          ...base,
+          ABLY_API_KEY: "k:s",
+          UPSTASH_REDIS_REST_URL: "https://r",
+          UPSTASH_REDIS_REST_TOKEN: "t",
+        }),
+      ).toBe("ably");
+    } finally {
+      delete process.env.VERCEL;
+    }
+  });
+
+  test("a Durable Object binding always wins", () => {
+    expect(
+      collabTransportKind({ ...base, REALTIME: {} as never, ABLY_API_KEY: "k:s" }),
+    ).toBe("native");
+  });
+});
+
+describe("ably token minting", () => {
+  test("token request is signed per the Ably REST token spec", async () => {
+    const tr = await mintAblyTokenRequest("appId.keyId:topsecret", "user-1", [
+      "collab:item:articles:row1",
+    ]);
+    expect(tr.keyName).toBe("appId.keyId");
+    expect(tr.clientId).toBe("user-1");
+    expect(tr.ttl).toBe(3_600_000);
+    expect(tr.nonce.length).toBeGreaterThanOrEqual(16);
+    expect(JSON.parse(tr.capability)).toEqual({
+      "collab:item:articles:row1": ["publish", "subscribe"],
+    });
+    // Recompute the mac independently — same sign text, same secret.
+    const signText = `${tr.keyName}\n${tr.ttl}\n${tr.capability}\n${tr.clientId}\n${tr.timestamp}\n${tr.nonce}\n`;
+    const expected = createHmac("sha256", "topsecret").update(signText).digest("base64");
+    expect(tr.mac).toBe(expected);
+  });
+
+  test("a key without the keyName:keySecret shape is rejected", async () => {
+    await expect(mintAblyTokenRequest("garbage", "u", ["collab:item:a:b"])).rejects.toThrow();
+  });
+});
+
+describe("collab-token endpoint", () => {
+  let h: TestHarness;
+  const slug = `collabtk_${Date.now()}`;
+  let adminId = "";
+
+  beforeAll(async () => {
+    h = makeHarness({ ABLY_API_KEY: "appId.keyId:topsecret" });
+    await seedAdmin(h);
+    const session = await h.fetch("/api/auth/get-session");
+    adminId = ((await session.json()) as { user?: { id?: string } }).user?.id ?? "";
+    const r = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, fields: [{ name: "title", type: "text" }] }),
+    });
+    expect(r.status).toBe(201);
+  });
+  afterAll(() => h.cleanup());
+
+  test("mints a channel-scoped token request pinned to the session user", async () => {
+    const res = await h.fetch("/api/realtime/collab-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channels: [`collab:item:${slug}:row1`] }),
+    });
+    expect(res.status).toBe(200);
+    const { tokenRequest } = (await res.json()) as {
+      tokenRequest: { clientId: string; capability: string; mac: string };
+    };
+    expect(tokenRequest.clientId).toBe(adminId);
+    expect(JSON.parse(tokenRequest.capability)).toEqual({
+      [`collab:item:${slug}:row1`]: ["publish", "subscribe"],
+    });
+    expect(tokenRequest.mac.length).toBeGreaterThan(0);
+  });
+
+  test("rejects non-collab channels and unauthenticated callers", async () => {
+    const bad = await h.fetch("/api/realtime/collab-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channels: [`items:${slug}`] }),
+    });
+    expect(bad.status).toBe(422);
+
+    const anon = await h.app.fetch(
+      new Request("http://localhost:5173/api/realtime/collab-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: "http://localhost:5173" },
+        body: JSON.stringify({ channels: [`collab:item:${slug}:row1`] }),
+      }),
+    );
+    expect(anon.status).toBe(401);
+  });
+
+  test("returns UNAVAILABLE when Ably is not configured", async () => {
+    const h2 = makeHarness();
+    try {
+      await seedAdmin(h2);
+      const res = await h2.fetch("/api/realtime/collab-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channels: [`collab:item:${slug}:row1`] }),
+      });
+      expect(res.status).toBe(503);
+    } finally {
+      h2.cleanup();
+    }
   });
 });

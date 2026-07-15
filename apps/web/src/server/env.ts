@@ -326,6 +326,14 @@ export interface Env {
    *  instead of returning 503. Unset on Bun (in-proc) / Workers (DO). */
   UPSTASH_REDIS_REST_URL?: string;
   UPSTASH_REDIS_REST_TOKEN?: string;
+  /** Ably API key (`keyName:keySecret`) — collaboration transport for
+   *  stateless serverless runtimes. When set (and no Durable Object /
+   *  long-lived process is available), the admin's collab channels ride Ably:
+   *  the server only mints scoped token requests (`POST
+   *  /api/realtime/collab-token`), the browser connects to Ably directly, so
+   *  awareness traffic costs zero function invocations. The key secret never
+   *  reaches the client. */
+  ABLY_API_KEY?: string;
   /** S3-compatible storage. When `S3_BUCKET` is set the storage adapter
    *  selects S3 (via `Bun.S3Client` when on Bun, else `aws4fetch`).
    *  Compatible with AWS S3, Cloudflare R2, Backblaze B2, MinIO,
@@ -462,6 +470,7 @@ export const STRING_ENV_KEYS = [
   "R2_PUBLIC_BASE",
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_REST_TOKEN",
+  "ABLY_API_KEY",
   "S3_BUCKET",
   "S3_REGION",
   "S3_ENDPOINT",

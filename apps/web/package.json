@@ -42,6 +42,7 @@
     "@tanstack/react-query": "5.100.11",
     "@uiw/react-codemirror": "^4.25.9",
     "@xyflow/react": "^12.10.2",
+    "ably": "^2.24.0",
     "ai": "6.0.191",
     "aws4fetch": "^1.0.20",
     "class-variance-authority": "^0.7.1",

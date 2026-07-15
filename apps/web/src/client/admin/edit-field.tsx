@@ -310,7 +310,7 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
                         {localizable ? (
                           <Trans>Store one value per language in the translations sidecar. Turning this on for a field that already has data does not move existing values — backfill them afterwards.</Trans>
                         ) : (
-                          <Trans>Localization applies to text, number, choice, date, and color fields — not relations, files, IDs, or JSON.</Trans>
+                          <Trans>Localization applies to content fields — not IDs, secrets, raw JSON, or many-to-many relations.</Trans>
                         )}
                       </div>
                     </div>

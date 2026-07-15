@@ -426,5 +426,15 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // Vite's dev server installs its own `cors` middleware that short-circuits
+    // every cross-origin OPTIONS preflight before the request can reach the
+    // Cloudflare/miniflare Worker. That default reply echoes the request origin
+    // but omits `Access-Control-Allow-Credentials`, so a *different-origin*
+    // browser app doing a credentialed request (`credentials: include`, the
+    // @backlex/client default) fails the preflight locally even though the real
+    // POST succeeds and production is fine. Disabling Vite's cors lets the
+    // preflight fall through to the Worker's own `cors()` middleware
+    // (server/app.ts), which returns the correct credentialed headers.
+    cors: false,
   },
 });

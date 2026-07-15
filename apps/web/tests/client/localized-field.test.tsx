@@ -12,7 +12,12 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { cleanup, fireEvent, screen } from "@testing-library/react";
 import type { QueryClient } from "@tanstack/react-query";
-import { ItemFields, type SchemaField, useItemForm } from "../../src/client/admin/item-form";
+import {
+  canLocalize,
+  ItemFields,
+  type SchemaField,
+  useItemForm,
+} from "../../src/client/admin/item-form";
 import { renderWithProviders } from "./render";
 
 function Editor({
@@ -78,6 +83,39 @@ describe("ItemFields — localized (sidecar) editor", () => {
     fireEvent.click(screen.getByRole("button", { name: /^tr/i }));
     expect(screen.getByDisplayValue("Merhaba")).toBeTruthy();
     expect(screen.queryByDisplayValue("Hi")).toBeNull();
+  });
+
+  test("a localized choice field keeps its dropdown, not a free-text input", () => {
+    renderWithProviders(
+      <Editor
+        fields={[
+          {
+            name: "status",
+            type: "text",
+            interface: "dropdown",
+            localized: true,
+            options: { choices: [{ value: "draft" }, { value: "live" }] },
+          },
+        ]}
+        initial={{ status: { en: "draft" } }}
+      />,
+    );
+    // The choice renders as a combobox (shadcn Select), never a raw textbox.
+    expect(screen.getByRole("combobox")).toBeTruthy();
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  test("canLocalize gates out id/file/relation/json fields", () => {
+    // Value-type fields translate; ids, files, relations, and JSON do not.
+    expect(canLocalize({ type: "text" })).toBe(true);
+    expect(canLocalize({ type: "number" })).toBe(true);
+    expect(canLocalize({ type: "text", interface: "dropdown" })).toBe(true);
+    expect(canLocalize({ type: "timestamp", interface: "date" })).toBe(true);
+    expect(canLocalize({ type: "relation" })).toBe(false);
+    expect(canLocalize({ type: "text", interface: "file" })).toBe(false);
+    expect(canLocalize({ type: "json" })).toBe(false);
+    expect(canLocalize({ type: "hash" })).toBe(false);
+    expect(canLocalize({ type: "uuid" })).toBe(false);
   });
 
   test("compare mode shows a read-only source next to the editable target", () => {

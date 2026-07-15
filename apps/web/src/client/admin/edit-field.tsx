@@ -46,6 +46,7 @@ import {
   formatToDraft,
 } from "./field-format-editor";
 import { cleanTranslations, FieldTranslationsEditor } from "./field-translations-editor";
+import { canLocalize } from "./item-form";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -299,20 +300,30 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
                 <Switch checked={!!draft.unique} onChange={(v) => setDraft((d) => d ? { ...d, unique: v } : d)} />
               </div>
 
-              {draft.type !== "hash" && (
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Localized</Trans></div>
-                    <div className="text-[11.5px] text-muted-foreground"><Trans>Store one value per language in the translations sidecar. Turning this on for a field that already has data does not move existing values — backfill them afterwards.</Trans></div>
+              {(() => {
+                const localizable = canLocalize(draft);
+                return (
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Localized</Trans></div>
+                      <div className="text-[11.5px] text-muted-foreground">
+                        {localizable ? (
+                          <Trans>Store one value per language in the translations sidecar. Turning this on for a field that already has data does not move existing values — backfill them afterwards.</Trans>
+                        ) : (
+                          <Trans>Localization applies to text, number, choice, date, and color fields — not relations, files, IDs, or JSON.</Trans>
+                        )}
+                      </div>
+                    </div>
+                    <Switch
+                      checked={!!draft.localized}
+                      disabled={!localizable}
+                      onChange={(v) =>
+                        setDraft((d) => (d ? { ...d, localized: v, unique: v ? false : d.unique } : d))
+                      }
+                    />
                   </div>
-                  <Switch
-                    checked={!!draft.localized}
-                    onChange={(v) =>
-                      setDraft((d) => (d ? { ...d, localized: v, unique: v ? false : d.unique } : d))
-                    }
-                  />
-                </div>
-              )}
+                );
+              })()}
 
               {(draft.type === "text" || draft.type === "longtext") && (
                 <div className="flex items-center justify-between gap-3">

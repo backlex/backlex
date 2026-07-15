@@ -5673,8 +5673,13 @@ msgstr "Yerel ayarlar güncellendi."
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
-msgid "Localization applies to text, number, choice, date, and color fields — not relations, files, IDs, or JSON."
-msgstr "Yerelleştirme metin, sayı, seçim, tarih ve renk alanlarına uygulanır — ilişki, dosya, kimlik veya JSON'a değil."
+msgid "Localization applies to content fields — not IDs, secrets, raw JSON, or many-to-many relations."
+msgstr "Yerelleştirme içerik alanlarına uygulanır — kimlik, gizli anahtar, ham JSON veya çoktan-çoğa ilişkilere değil."
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+#~ msgid "Localization applies to text, number, choice, date, and color fields — not relations, files, IDs, or JSON."
+#~ msgstr "Yerelleştirme metin, sayı, seçim, tarih ve renk alanlarına uygulanır — ilişki, dosya, kimlik veya JSON'a değil."
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx

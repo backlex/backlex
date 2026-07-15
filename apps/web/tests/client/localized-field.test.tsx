@@ -105,17 +105,22 @@ describe("ItemFields — localized (sidecar) editor", () => {
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 
-  test("canLocalize gates out id/file/relation/json fields", () => {
-    // Value-type fields translate; ids, files, relations, and JSON do not.
+  test("canLocalize allows content fields, gates out ids/secrets/json/m2m", () => {
+    // The sidecar stores any native type, so content fields — including files,
+    // images, users, and to-one relations — localize.
     expect(canLocalize({ type: "text" })).toBe(true);
     expect(canLocalize({ type: "number" })).toBe(true);
     expect(canLocalize({ type: "text", interface: "dropdown" })).toBe(true);
     expect(canLocalize({ type: "timestamp", interface: "date" })).toBe(true);
-    expect(canLocalize({ type: "relation" })).toBe(false);
-    expect(canLocalize({ type: "text", interface: "file" })).toBe(false);
-    expect(canLocalize({ type: "json" })).toBe(false);
-    expect(canLocalize({ type: "hash" })).toBe(false);
+    expect(canLocalize({ type: "text", interface: "file" })).toBe(true);
+    expect(canLocalize({ type: "text", interface: "image" })).toBe(true);
+    expect(canLocalize({ type: "text", interface: "user" })).toBe(true);
+    expect(canLocalize({ type: "relation", interface: "relation" })).toBe(true);
+    // Meaningless or lossy: identifiers, secrets, raw JSON, and many-to-many.
     expect(canLocalize({ type: "uuid" })).toBe(false);
+    expect(canLocalize({ type: "hash" })).toBe(false);
+    expect(canLocalize({ type: "json" })).toBe(false);
+    expect(canLocalize({ type: "relation_many" })).toBe(false);
   });
 
   test("compare mode shows a read-only source next to the editable target", () => {

@@ -416,7 +416,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                             {localizable ? (
                               <Trans>Store one value per language in the translations sidecar. Read/write a single locale with ?locale=xx.</Trans>
                             ) : (
-                              <Trans>Localization applies to text, number, choice, date, and color fields — not relations, files, IDs, or JSON.</Trans>
+                              <Trans>Localization applies to content fields — not IDs, secrets, raw JSON, or many-to-many relations.</Trans>
                             )}
                           </div>
                         </div>

@@ -137,28 +137,17 @@ const isArrayInterface = (f: SchemaField) =>
 // editor.
 const PREVIEWABLE = new Set(["markdown", "richtext"]);
 
-// A field can be localized only when a per-row, per-language value is meaningful
-// AND the item editor can render it (see the `control()` renderer). IDs, file
-// keys, secrets, relations, structured JSON, and multi-value arrays are excluded
-// — translating them is meaningless or lossy. Choice/date/color/number/boolean
-// stay in because the editor preserves their real control per language.
-const NON_LOCALIZABLE_TYPES = new Set(["json", "uuid", "hash", "relation"]);
-const NON_LOCALIZABLE_IFACES = new Set([
-  "relation",
-  "user",
-  "file",
-  "files",
-  "tags",
-  "checkboxes",
-  "dropdown_multiple",
-  "map",
-  "uuid",
-  "hash",
-]);
+// A field can be localized when a per-row, per-language value is meaningful AND
+// the item editor can render it (see the `control()` renderer). The sidecar
+// stores any native type, so text, number, boolean, choice, date, color, file,
+// image, user, and to-one relation all localize with their real control per
+// language. Only these are excluded: identifiers (`uuid`), write-only secrets
+// (`hash`, never read back), raw structured `json`/map, and many-to-many
+// (`relation_many`) — translating those is meaningless or needs per-locale JSON
+// (de)serialization the editor doesn't do yet.
+const NON_LOCALIZABLE_TYPES = new Set(["json", "uuid", "hash", "relation_many"]);
 export const canLocalize = (f: { type?: string; interface?: string }): boolean =>
-  !!f.type &&
-  !NON_LOCALIZABLE_TYPES.has(f.type) &&
-  !(f.interface && NON_LOCALIZABLE_IFACES.has(f.interface));
+  !!f.type && !NON_LOCALIZABLE_TYPES.has(f.type);
 
 const blankFor = (f: SchemaField): unknown => {
   // Localized fields hold a per-locale `{locale: value}` map regardless of type.
@@ -611,6 +600,32 @@ export function ItemFields({ form }: { form: ItemForm }) {
                 style={{ flex: 1 }}
               />
             </div>
+          );
+        }
+        if (iface === "file" || iface === "image") {
+          return (
+            <FilePicker
+              value={String(v ?? "")}
+              onChange={set}
+              kind={iface === "image" ? "image" : "file"}
+              error={!!err}
+            />
+          );
+        }
+        if (iface === "user") {
+          return <AppUserPicker value={String(v ?? "")} onChange={set} error={!!err} />;
+        }
+        if (iface === "relation" || f.type === "relation") {
+          return f.to ? (
+            <RelationPicker value={String(v ?? "")} onChange={set} target={f.to} error={!!err} />
+          ) : (
+            <Input
+              className="font-mono"
+              value={String(v ?? "")}
+              placeholder="id"
+              aria-invalid={!!err || undefined}
+              onChange={(e) => set(e.target.value)}
+            />
           );
         }
         if (isLong) {

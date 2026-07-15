@@ -224,6 +224,36 @@ export function useSaveCollectionsLayout() {
   });
 }
 
+/** Clone a collection's schema into a new slug. Optimistic: a placeholder row
+ *  (the source with the new slug) lands in the list cache immediately, then the
+ *  settled invalidate swaps in the canonical server row; errors roll back. */
+export function useCloneCollection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ slug, newSlug }: { slug: string; newSlug: string }) =>
+      collectionsApi.clone(slug, newSlug),
+    onMutate: async ({ slug, newSlug }) => {
+      await qc.cancelQueries({ queryKey: ["collections"] });
+      const key = queryKeys.collections(false);
+      const snap = qc.getQueryData(key);
+      qc.setQueryData(
+        key,
+        (old: { data: ApiCollection[]; meta?: { groups: string[] } } | undefined) => {
+          if (!old) return old;
+          const src = old.data.find((c) => c.slug === slug);
+          if (!src || old.data.some((c) => c.slug === newSlug)) return old;
+          return { ...old, data: [...old.data, { ...src, slug: newSlug, sortOrder: null }] };
+        },
+      );
+      return { snap };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx) qc.setQueryData(queryKeys.collections(false), ctx.snap);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["collections"] }),
+  });
+}
+
 /** Schema-template catalog. Shared by the Overview onboarding card, the
  *  Collections "From template" dialog and the sample-data callout — one cache
  *  entry, RQ dedupes the reads. */

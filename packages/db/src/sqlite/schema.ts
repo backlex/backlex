@@ -995,6 +995,16 @@ export const collections = sqliteTable(
     plural: text("plural"),
     note: text("note"),
     displayTemplate: text("display_template"),
+    /** Admin icon key. See the pg/schema.ts twin. */
+    icon: text("icon"),
+    /** Admin accent color (preset token or `#rrggbb`). See the pg/schema.ts twin. */
+    color: text("color"),
+    /** Hidden from the admin sidebar/index (presentational only). See the
+     *  pg/schema.ts twin. */
+    hidden: integer("hidden", { mode: "boolean" }).notNull().default(false),
+    /** Preview-URL template with `{{field}}` placeholders. See the
+     *  pg/schema.ts twin. */
+    previewUrl: text("preview_url"),
     fields: text("fields", { mode: "json" }).$type<unknown[]>().notNull(),
     ownerScoped: integer("owner_scoped", { mode: "boolean" }).notNull().default(false),
     tenantScoped: integer("tenant_scoped", { mode: "boolean" }).notNull().default(true),

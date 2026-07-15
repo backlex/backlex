@@ -1100,6 +1100,20 @@ export const collections = pgTable(
     plural: text("plural"),
     note: text("note"),
     displayTemplate: text("display_template"),
+    /** Admin icon key from the SPA's icon set (e.g. `"FileText"`). Null falls
+     *  back to the default `Database` icon. Purely presentational. */
+    icon: text("icon"),
+    /** Admin accent color for the icon/labels. A preset token name
+     *  (`"violet"`, `"teal"`, …) or a custom `#rrggbb` hex. Null = default. */
+    color: text("color"),
+    /** When true, the collection is hidden from the admin sidebar and the
+     *  Collections index (an explicit "show hidden" toggle reveals it).
+     *  Purely presentational — API access and permissions are unaffected. */
+    hidden: boolean("hidden").notNull().default(false),
+    /** Optional preview-URL template with `{{field}}` placeholders
+     *  (e.g. `https://site.com/blog/{{slug}}?preview=1`). Renders an
+     *  "Open preview" action on items in the admin. */
+    previewUrl: text("preview_url"),
     fields: jsonb("fields").$type<unknown[]>().notNull(),
     ownerScoped: boolean("owner_scoped").notNull().default(false),
     /** When true, the physical table gains a `tenant_id` column and

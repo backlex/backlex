@@ -528,6 +528,10 @@ msgstr "{c} is already in the list."
 msgid "{changedCount} field(s) will change."
 msgstr "{changedCount} field(s) will change."
 
+#: src/client/admin/collections-index.tsx
+msgid "{clean} already exists"
+msgstr "{clean} already exists"
+
 #: src/client/admin/items.tsx
 msgid "{count} selected"
 msgstr "{count} selected"
@@ -776,6 +780,10 @@ msgstr "a, b, c"
 #: src/client/admin/pages/settings/index.tsx
 msgid "About"
 msgstr "About"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Accent for the icon in nav and lists."
+msgstr "Accent for the icon in nav and lists."
 
 #: src/client/pages/invite.tsx
 msgid "Accept invite"
@@ -1096,6 +1104,10 @@ msgstr "Adds <0>_status</0> + <1>_published_at</1>. Independent of the user-defi
 #: src/client/admin/parity/translations.tsx
 msgid "Adds a row to <0>i18n_strings</0>. The key is shared across all locales; values are filled per locale."
 msgstr "Adds a row to <0>i18n_strings</0>. The key is shared across all locales; values are filled per locale."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Adds an \"Open preview\" button on items. Use field placeholders for the row's values."
+msgstr "Adds an \"Open preview\" button on items. Use field placeholders for the row's values."
 
 #: src/client/admin/pages/users.tsx
 msgid "Adjust your filters or invite a new teammate."
@@ -2181,6 +2193,10 @@ msgstr "Client ID <0>(optional)</0>"
 msgid "Client secret {0}"
 msgstr "Client secret {0}"
 
+#: src/client/admin/collections-index.tsx
+msgid "Cloned {src} → {newSlug} (schema only)"
+msgstr "Cloned {src} → {newSlug} (schema only)"
+
 #: src/client/admin/extras.tsx
 msgid "close"
 msgstr "close"
@@ -2246,6 +2262,10 @@ msgid "Collection c_{slug} restored."
 msgstr "Collection c_{slug} restored."
 
 #: src/client/admin/app.tsx
+msgid "Collection enabled."
+msgstr "Collection enabled."
+
+#: src/client/admin/app.tsx
 msgid "Collection settings saved."
 msgstr "Collection settings saved."
 
@@ -2279,6 +2299,10 @@ msgstr "Collections are physical tables created at runtime. Create one from scra
 #: src/client/admin/collections-index.tsx
 msgid "Collections you archive will show up here."
 msgstr "Collections you archive will show up here."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Color"
+msgstr "Color"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Column"
@@ -2573,6 +2597,10 @@ msgstr "Copied to clipboard."
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Copied."
 msgstr "Copied."
+
+#: src/client/admin/collections-index.tsx
+msgid "Copies the schema and settings. Content is never copied."
+msgstr "Copies the schema and settings. Content is never copied."
 
 #: src/client/admin/ui.tsx
 msgid "copy"
@@ -3293,6 +3321,7 @@ msgstr "desc"
 msgid "Descending"
 msgstr "Descending"
 
+#: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
@@ -3569,9 +3598,22 @@ msgstr "Dry-run summary"
 msgid "Dry-run the resolver and see exactly which rule applied."
 msgstr "Dry-run the resolver and see exactly which rule applied."
 
+#: src/client/admin/collections-index.tsx
 #: src/client/admin/item-editor.tsx
 msgid "Duplicate"
 msgstr "Duplicate"
+
+#: src/client/admin/collections-index.tsx
+msgid "Duplicate <0>{source}</0>"
+msgstr "Duplicate <0>{source}</0>"
+
+#: src/client/admin/collections-index.tsx
+msgid "Duplicate collection (schema only)"
+msgstr "Duplicate collection (schema only)"
+
+#: src/client/admin/collections-index.tsx
+msgid "Duplicating…"
+msgstr "Duplicating…"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Durable background queue — retries with backoff, dead-letters, and delayed/scheduled runs. Drained by the cron tick (~1 min on Workers)."
@@ -3832,6 +3874,10 @@ msgstr "Empty collection"
 #~ msgid "Empty or template"
 #~ msgstr "Empty or template"
 
+#: src/client/admin/app.tsx
+msgid "Enable"
+msgstr "Enable"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Enable anyway"
 msgstr "Enable anyway"
@@ -3845,6 +3891,7 @@ msgstr "Enable public embed"
 msgid "enabled"
 msgstr "enabled"
 
+#: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
@@ -4802,7 +4849,12 @@ msgstr "healthy"
 msgid "Height"
 msgstr "Height"
 
+#: src/client/admin/collections-index.tsx
+msgid "hidden"
+msgstr "hidden"
+
 #: src/client/admin/add-field.tsx
+#: src/client/admin/collection-settings.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Hidden"
 msgstr "Hidden"
@@ -4815,10 +4867,18 @@ msgstr "Hide"
 msgid "Hide compiled SQL"
 msgstr "Hide compiled SQL"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Hide from the sidebar and the Collections page (\"Show hidden\" reveals it). Purely visual — API access and permissions are unaffected."
+msgstr "Hide from the sidebar and the Collections page (\"Show hidden\" reveals it). Purely visual — API access and permissions are unaffected."
+
 #. placeholder {0}: Object.keys(result.headers).length
 #: src/client/pages/rest-explorer.tsx
 msgid "Hide headers ({0})"
 msgstr "Hide headers ({0})"
+
+#: src/client/admin/collections-index.tsx
+msgid "Hide hidden collections"
+msgstr "Hide hidden collections"
 
 #: src/client/pages/sign-in.tsx
 msgid "Hide password"
@@ -4827,6 +4887,10 @@ msgstr "Hide password"
 #: src/client/pages/graphql.tsx
 msgid "Hide variables"
 msgstr "Hide variables"
+
+#: src/client/admin/collections-index.tsx
+msgid "Hiding off"
+msgstr "Hiding off"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "highest reasoning · slower · ~3x cost"
@@ -4863,6 +4927,10 @@ msgstr "I agree to the <0>Terms</0> and <1>Privacy</1>."
 #: src/client/admin/pages/schema-versions.tsx
 msgid "I understand this drops columns/tables or changes types and will lose data."
 msgstr "I understand this drops columns/tables or changes types and will lose data."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Icon"
+msgstr "Icon"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "id"
@@ -4969,6 +5037,7 @@ msgstr "in-isolate, sync only"
 msgid "In-process pub/sub on Bun, Durable Objects on Workers. Permission filter applies on subscribe + publish."
 msgstr "In-process pub/sub on Bun, Durable Objects on Workers. Permission filter applies on subscribe + publish."
 
+#: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "inactive"
 msgstr "inactive"
@@ -5074,7 +5143,6 @@ msgid "Internal column — stored and writable, but never returned by the API (R
 msgstr "Internal column — stored and writable, but never returned by the API (REST, GraphQL, CSV, changefeed)."
 
 #: src/client/admin/adopt-wizard.tsx
-#: src/client/admin/collection-settings.tsx
 msgid "Internal description for teammates."
 msgstr "Internal description for teammates."
 
@@ -6100,6 +6168,10 @@ msgstr "Must be a full http(s) URL."
 msgid "Must be a JSON object."
 msgstr "Must be a JSON object."
 
+#: src/client/admin/collection-settings.tsx
+msgid "Must be an absolute URL (https://…)"
+msgstr "Must be an absolute URL (https://…)"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Must be an integer or number column."
 msgstr "Must be an integer or number column."
@@ -6118,6 +6190,7 @@ msgstr "must start with a letter"
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
+#: src/client/admin/collections-index.tsx
 msgid "must start with a letter; snake_case only"
 msgstr "must start with a letter; snake_case only"
 
@@ -6324,6 +6397,10 @@ msgstr "New role"
 #: src/client/admin/extras.tsx
 msgid "New row"
 msgstr "New row"
+
+#: src/client/admin/collections-index.tsx
+msgid "New slug"
+msgstr "New slug"
 
 #: src/client/admin/parity/email-templates.tsx
 msgid "New template"
@@ -6630,6 +6707,10 @@ msgstr "No functions yet — click + New function."
 #: src/client/admin/collections-index.tsx
 msgid "No group"
 msgstr "No group"
+
+#: src/client/admin/collection-settings.tsx
+msgid "No icon found."
+msgstr "No icon found."
 
 #: src/client/admin/relational-pickers.tsx
 msgid "No image selected"
@@ -6951,7 +7032,6 @@ msgid "Not used"
 msgstr "Not used"
 
 #: src/client/admin/adopt-wizard.tsx
-#: src/client/admin/collection-settings.tsx
 msgid "Note"
 msgstr "Note"
 
@@ -7157,6 +7237,10 @@ msgstr "Open resource"
 #: src/client/admin/app.tsx
 msgid "Open settings"
 msgstr "Open settings"
+
+#: src/client/admin/item-editor.tsx
+msgid "Open the live preview for this record"
+msgstr "Open the live preview for this record"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Open-source · Apache-2.0 licensed"
@@ -7854,6 +7938,7 @@ msgstr "Prev"
 msgid "preview"
 msgstr "preview"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/item-form.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Preview"
@@ -7868,6 +7953,10 @@ msgstr "Preview · {0} rows · {1}ms"
 #: src/client/admin/parity/insights.tsx
 msgid "Preview error"
 msgstr "Preview error"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Preview URL"
+msgstr "Preview URL"
 
 #: src/client/admin/display-template-editor.tsx
 #: src/client/admin/field-format-editor.tsx
@@ -9344,6 +9433,10 @@ msgstr "Search files by key…"
 msgid "Search folders…"
 msgstr "Search folders…"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Search icons…"
+msgstr "Search icons…"
+
 #: src/client/admin/relational-pickers.tsx
 msgid "Search images by key…"
 msgstr "Search images by key…"
@@ -9647,6 +9740,10 @@ msgstr "Sessions revoked for {0}."
 msgid "set"
 msgstr "set"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Set"
+msgstr "Set"
+
 #: src/client/pages/sign-up.tsx
 msgid "Set <0>openSignup</0> to <1>true</1> in admin → Auth Settings to re-open."
 msgstr "Set <0>openSignup</0> to <1>true</1> in admin → Auth Settings to re-open."
@@ -9807,6 +9904,14 @@ msgstr "Show fewer"
 msgid "Show headers ({0})"
 msgstr "Show headers ({0})"
 
+#: src/client/admin/collections-index.tsx
+msgid "Show hidden ({hiddenCount})"
+msgstr "Show hidden ({hiddenCount})"
+
+#: src/client/admin/collections-index.tsx
+msgid "Show hidden collections"
+msgstr "Show hidden collections"
+
 #: src/client/pages/sign-in.tsx
 msgid "Show password"
 msgstr "Show password"
@@ -9864,6 +9969,10 @@ msgstr "Shown as the panel title on the dashboard."
 #: src/client/admin/account-page.tsx
 msgid "Shown in author bylines and the header dropdown."
 msgstr "Shown in author bylines and the header dropdown."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Shown in the sidebar and on the Collections page."
+msgstr "Shown in the sidebar and on the Collections page."
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Shown in the sidebar and the browser title."
@@ -10059,6 +10168,7 @@ msgstr "Slug (URL handle)"
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
+#: src/client/admin/collections-index.tsx
 msgid "slug is required"
 msgstr "slug is required"
 
@@ -10718,6 +10828,10 @@ msgstr "this collection"
 msgid "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
 msgstr "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
 
+#: src/client/admin/app.tsx
+msgid "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
+msgstr "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
+
 #: src/client/admin/parity/insights.tsx
 msgid "This dashboard has no panels yet"
 msgstr "This dashboard has no panels yet"
@@ -11088,6 +11202,10 @@ msgstr "Turn off two-factor authentication."
 #: src/client/admin/account-page.tsx
 msgid "Turning off…"
 msgstr "Turning off…"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Turning this off makes the content API return 404 for this collection (REST, GraphQL, SDK, realtime) while it stays editable here. Data is untouched."
+msgstr "Turning this off makes the content API return 404 for this collection (REST, GraphQL, SDK, realtime) while it stays editable here. Data is untouched."
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -11642,6 +11760,10 @@ msgstr "What are you looking for?"
 #: src/client/admin/pages/agents.tsx
 msgid "What this agent is for"
 msgstr "What this agent is for"
+
+#: src/client/admin/collection-settings.tsx
+msgid "What this collection holds — shown on the Collections page."
+msgstr "What this collection holds — shown on the Collections page."
 
 #: src/client/admin/storage/widgets.tsx
 msgid "What this file is about…"

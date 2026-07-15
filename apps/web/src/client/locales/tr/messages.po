@@ -528,6 +528,10 @@ msgstr "{c} zaten listede."
 msgid "{changedCount} field(s) will change."
 msgstr "{changedCount} alan değişecek."
 
+#: src/client/admin/collections-index.tsx
+msgid "{clean} already exists"
+msgstr "{clean} zaten var"
+
 #: src/client/admin/items.tsx
 msgid "{count} selected"
 msgstr "{count} seçildi"
@@ -776,6 +780,10 @@ msgstr "a, b, c"
 #: src/client/admin/pages/settings/index.tsx
 msgid "About"
 msgstr "Hakkında"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Accent for the icon in nav and lists."
+msgstr "Gezinti ve listelerdeki ikonun vurgu rengi."
 
 #: src/client/pages/invite.tsx
 msgid "Accept invite"
@@ -1096,6 +1104,10 @@ msgstr "<0>_status</0> + <1>_published_at</1> ekler. Kullanıcı tanımlı \"sta
 #: src/client/admin/parity/translations.tsx
 msgid "Adds a row to <0>i18n_strings</0>. The key is shared across all locales; values are filled per locale."
 msgstr "<0>i18n_strings</0> tablosuna bir satır ekler. Anahtar tüm yerel ayarlarda paylaşılır; değerler her yerel ayar için ayrı doldurulur."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Adds an \"Open preview\" button on items. Use field placeholders for the row's values."
+msgstr "Kayıtlara bir \"Önizlemeyi aç\" düğmesi ekler. Satır değerleri için alan yer tutucularını kullanın."
 
 #: src/client/admin/pages/users.tsx
 msgid "Adjust your filters or invite a new teammate."
@@ -2181,6 +2193,10 @@ msgstr "Client ID <0>(isteğe bağlı)</0>"
 msgid "Client secret {0}"
 msgstr "Client secret {0}"
 
+#: src/client/admin/collections-index.tsx
+msgid "Cloned {src} → {newSlug} (schema only)"
+msgstr "{src} → {newSlug} çoğaltıldı (yalnızca şema)"
+
 #: src/client/admin/extras.tsx
 msgid "close"
 msgstr "kapat"
@@ -2246,6 +2262,10 @@ msgid "Collection c_{slug} restored."
 msgstr "c_{slug} koleksiyonu geri yüklendi."
 
 #: src/client/admin/app.tsx
+msgid "Collection enabled."
+msgstr "Koleksiyon etkinleştirildi."
+
+#: src/client/admin/app.tsx
 msgid "Collection settings saved."
 msgstr "Koleksiyon ayarları kaydedildi."
 
@@ -2279,6 +2299,10 @@ msgstr "Koleksiyonlar, çalışma zamanında oluşturulan fiziksel tablolardır.
 #: src/client/admin/collections-index.tsx
 msgid "Collections you archive will show up here."
 msgstr "Arşivlediğiniz koleksiyonlar burada görünür."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Color"
+msgstr "Renk"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Column"
@@ -2573,6 +2597,10 @@ msgstr "Panoya kopyalandı."
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Copied."
 msgstr "Kopyalandı."
+
+#: src/client/admin/collections-index.tsx
+msgid "Copies the schema and settings. Content is never copied."
+msgstr "Şemayı ve ayarları kopyalar. İçerik asla kopyalanmaz."
 
 #: src/client/admin/ui.tsx
 msgid "copy"
@@ -3293,6 +3321,7 @@ msgstr "azalan"
 msgid "Descending"
 msgstr "Azalan"
 
+#: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
@@ -3569,9 +3598,22 @@ msgstr "Deneme çalışması özeti"
 msgid "Dry-run the resolver and see exactly which rule applied."
 msgstr "Çözümleyiciyi deneme amaçlı çalıştırın ve tam olarak hangi kuralın uygulandığını görün."
 
+#: src/client/admin/collections-index.tsx
 #: src/client/admin/item-editor.tsx
 msgid "Duplicate"
 msgstr "Çoğalt"
+
+#: src/client/admin/collections-index.tsx
+msgid "Duplicate <0>{source}</0>"
+msgstr "<0>{source}</0> koleksiyonunu çoğalt"
+
+#: src/client/admin/collections-index.tsx
+msgid "Duplicate collection (schema only)"
+msgstr "Koleksiyonu çoğalt (yalnızca şema)"
+
+#: src/client/admin/collections-index.tsx
+msgid "Duplicating…"
+msgstr "Çoğaltılıyor…"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Durable background queue — retries with backoff, dead-letters, and delayed/scheduled runs. Drained by the cron tick (~1 min on Workers)."
@@ -3832,6 +3874,10 @@ msgstr "Boş koleksiyon"
 #~ msgid "Empty or template"
 #~ msgstr "Boş veya şablon"
 
+#: src/client/admin/app.tsx
+msgid "Enable"
+msgstr "Etkinleştir"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Enable anyway"
 msgstr "Yine de etkinleştir"
@@ -3845,6 +3891,7 @@ msgstr "Herkese açık gömmeyi etkinleştir"
 msgid "enabled"
 msgstr "etkin"
 
+#: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
@@ -4802,7 +4849,12 @@ msgstr "sağlıklı"
 msgid "Height"
 msgstr "Yükseklik"
 
+#: src/client/admin/collections-index.tsx
+msgid "hidden"
+msgstr "gizli"
+
 #: src/client/admin/add-field.tsx
+#: src/client/admin/collection-settings.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Hidden"
 msgstr "Gizli"
@@ -4815,10 +4867,18 @@ msgstr "Gizle"
 msgid "Hide compiled SQL"
 msgstr "Derlenmiş SQL'i gizle"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Hide from the sidebar and the Collections page (\"Show hidden\" reveals it). Purely visual — API access and permissions are unaffected."
+msgstr "Kenar çubuğundan ve Koleksiyonlar sayfasından gizler (\"Gizlileri göster\" ortaya çıkarır). Tamamen görsel — API erişimi ve izinler etkilenmez."
+
 #. placeholder {0}: Object.keys(result.headers).length
 #: src/client/pages/rest-explorer.tsx
 msgid "Hide headers ({0})"
 msgstr "Başlıkları gizle ({0})"
+
+#: src/client/admin/collections-index.tsx
+msgid "Hide hidden collections"
+msgstr "Gizli koleksiyonları gizle"
 
 #: src/client/pages/sign-in.tsx
 msgid "Hide password"
@@ -4827,6 +4887,10 @@ msgstr "Parolayı gizle"
 #: src/client/pages/graphql.tsx
 msgid "Hide variables"
 msgstr "Değişkenleri gizle"
+
+#: src/client/admin/collections-index.tsx
+msgid "Hiding off"
+msgstr "Gizleme kapalı"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "highest reasoning · slower · ~3x cost"
@@ -4863,6 +4927,10 @@ msgstr "<0>Şartlar</0>'ı ve <1>Gizlilik Politikası</1>'nı kabul ediyorum."
 #: src/client/admin/pages/schema-versions.tsx
 msgid "I understand this drops columns/tables or changes types and will lose data."
 msgstr "Bunun sütun/tablo düşüreceğini veya tür değiştireceğini ve veri kaybına yol açacağını anlıyorum."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Icon"
+msgstr "İkon"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "id"
@@ -4969,6 +5037,7 @@ msgstr "izolasyonlu, yalnızca senkron"
 msgid "In-process pub/sub on Bun, Durable Objects on Workers. Permission filter applies on subscribe + publish."
 msgstr "Bun üzerinde süreç içi pub/sub, Workers üzerinde Durable Objects. İzin filtresi abone olma ve yayınlama sırasında uygulanır."
 
+#: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "inactive"
 msgstr "pasif"
@@ -5074,7 +5143,6 @@ msgid "Internal column — stored and writable, but never returned by the API (R
 msgstr "Dahili sütun — saklanır ve yazılabilir, ancak API tarafından asla döndürülmez (REST, GraphQL, CSV, changefeed)."
 
 #: src/client/admin/adopt-wizard.tsx
-#: src/client/admin/collection-settings.tsx
 msgid "Internal description for teammates."
 msgstr "Ekip arkadaşları için dahili açıklama."
 
@@ -6100,6 +6168,10 @@ msgstr "Tam bir http(s) URL'si olmalıdır."
 msgid "Must be a JSON object."
 msgstr "Bir JSON nesnesi olmalıdır."
 
+#: src/client/admin/collection-settings.tsx
+msgid "Must be an absolute URL (https://…)"
+msgstr "Mutlak bir URL olmalı (https://…)"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Must be an integer or number column."
 msgstr "Tam sayı veya sayı sütunu olmalıdır."
@@ -6118,6 +6190,7 @@ msgstr "bir harfle başlamalıdır"
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
+#: src/client/admin/collections-index.tsx
 msgid "must start with a letter; snake_case only"
 msgstr "bir harfle başlamalıdır; yalnızca snake_case"
 
@@ -6324,6 +6397,10 @@ msgstr "Yeni rol"
 #: src/client/admin/extras.tsx
 msgid "New row"
 msgstr "Yeni satır"
+
+#: src/client/admin/collections-index.tsx
+msgid "New slug"
+msgstr "Yeni slug"
 
 #: src/client/admin/parity/email-templates.tsx
 msgid "New template"
@@ -6630,6 +6707,10 @@ msgstr "Henüz fonksiyon yok — + Yeni fonksiyon'a tıklayın."
 #: src/client/admin/collections-index.tsx
 msgid "No group"
 msgstr "Grupsuz"
+
+#: src/client/admin/collection-settings.tsx
+msgid "No icon found."
+msgstr "İkon bulunamadı."
 
 #: src/client/admin/relational-pickers.tsx
 msgid "No image selected"
@@ -6951,7 +7032,6 @@ msgid "Not used"
 msgstr "Kullanılmıyor"
 
 #: src/client/admin/adopt-wizard.tsx
-#: src/client/admin/collection-settings.tsx
 msgid "Note"
 msgstr "Not"
 
@@ -7157,6 +7237,10 @@ msgstr "Kaynağı aç"
 #: src/client/admin/app.tsx
 msgid "Open settings"
 msgstr "Ayarları aç"
+
+#: src/client/admin/item-editor.tsx
+msgid "Open the live preview for this record"
+msgstr "Bu kaydın canlı önizlemesini aç"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Open-source · Apache-2.0 licensed"
@@ -7854,6 +7938,7 @@ msgstr "Önceki"
 msgid "preview"
 msgstr "önizleme"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/item-form.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Preview"
@@ -7868,6 +7953,10 @@ msgstr "Önizleme · {0} satır · {1}ms"
 #: src/client/admin/parity/insights.tsx
 msgid "Preview error"
 msgstr "Önizleme hatası"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Preview URL"
+msgstr "Önizleme URL'si"
 
 #: src/client/admin/display-template-editor.tsx
 #: src/client/admin/field-format-editor.tsx
@@ -9344,6 +9433,10 @@ msgstr "Dosyaları anahtara göre ara…"
 msgid "Search folders…"
 msgstr "Klasörleri ara…"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Search icons…"
+msgstr "İkon ara…"
+
 #: src/client/admin/relational-pickers.tsx
 msgid "Search images by key…"
 msgstr "Görselleri anahtara göre ara…"
@@ -9647,6 +9740,10 @@ msgstr "{0} için oturumlar iptal edildi."
 msgid "set"
 msgstr "ayarlandı"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Set"
+msgstr "Uygula"
+
 #: src/client/pages/sign-up.tsx
 msgid "Set <0>openSignup</0> to <1>true</1> in admin → Auth Settings to re-open."
 msgstr "Yeniden açmak için yönetici → Auth Ayarları'nda <0>openSignup</0> değerini <1>true</1> olarak ayarlayın."
@@ -9807,6 +9904,14 @@ msgstr "Daha az göster"
 msgid "Show headers ({0})"
 msgstr "Başlıkları göster ({0})"
 
+#: src/client/admin/collections-index.tsx
+msgid "Show hidden ({hiddenCount})"
+msgstr "Gizlileri göster ({hiddenCount})"
+
+#: src/client/admin/collections-index.tsx
+msgid "Show hidden collections"
+msgstr "Gizli koleksiyonları göster"
+
 #: src/client/pages/sign-in.tsx
 msgid "Show password"
 msgstr "Parolayı göster"
@@ -9864,6 +9969,10 @@ msgstr "Panoda panel başlığı olarak gösterilir."
 #: src/client/admin/account-page.tsx
 msgid "Shown in author bylines and the header dropdown."
 msgstr "Yazar satırlarında ve üst bilgi açılır menüsünde gösterilir."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Shown in the sidebar and on the Collections page."
+msgstr "Kenar çubuğunda ve Koleksiyonlar sayfasında gösterilir."
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Shown in the sidebar and the browser title."
@@ -10059,6 +10168,7 @@ msgstr "Slug (URL tanıtıcısı)"
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
+#: src/client/admin/collections-index.tsx
 msgid "slug is required"
 msgstr "slug zorunludur"
 
@@ -10718,6 +10828,10 @@ msgstr "bu koleksiyon"
 msgid "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
 msgstr "Bu koleksiyonda toplu düzenlemeyi destekleyen alan yok. Yapısal (json / dosya / ilişki listesi / yerelleştirilmiş) ve zengin metin alanları kayıt bazında düzenlenir."
 
+#: src/client/admin/app.tsx
+msgid "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
+msgstr "Bu koleksiyon devre dışı — içerik API'si 404 döndürür; kayıtlar listelenemez veya düzenlenemez. Şema ve ayarlar düzenlenebilir kalır."
+
 #: src/client/admin/parity/insights.tsx
 msgid "This dashboard has no panels yet"
 msgstr "Bu panoda henüz panel yok"
@@ -11088,6 +11202,10 @@ msgstr "İki adımlı doğrulamayı kapat."
 #: src/client/admin/account-page.tsx
 msgid "Turning off…"
 msgstr "Kapatılıyor…"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Turning this off makes the content API return 404 for this collection (REST, GraphQL, SDK, realtime) while it stays editable here. Data is untouched."
+msgstr "Bunu kapatmak bu koleksiyonun içerik API'sinin 404 döndürmesine neden olur (REST, GraphQL, SDK, realtime); burada düzenlenebilir kalır. Veriye dokunulmaz."
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -11642,6 +11760,10 @@ msgstr "Ne arıyorsunuz?"
 #: src/client/admin/pages/agents.tsx
 msgid "What this agent is for"
 msgstr "Bu ajan ne için"
+
+#: src/client/admin/collection-settings.tsx
+msgid "What this collection holds — shown on the Collections page."
+msgstr "Bu koleksiyonun ne tuttuğu — Koleksiyonlar sayfasında gösterilir."
 
 #: src/client/admin/storage/widgets.tsx
 msgid "What this file is about…"

@@ -26,6 +26,7 @@ import { itemsApi, revisionsApi, type ApiRevision } from "./api";
 import { ItemCommentsPanel } from "./item-collaboration";
 import { ConfirmDialog } from "./sheet";
 import { ItemFields, useItemForm } from "./item-form";
+import { renderUrlTemplate } from "./display-template";
 
 export interface ItemEditorPageProps {
   slug: string;
@@ -345,6 +346,24 @@ export function ItemEditorPage({
             >
               <I.Users size={11} /> {viewers.length}
             </span>
+          )}
+          {mode === "edit" && schema.previewUrl && (
+            <Button
+              variant="outline"
+              size="sm"
+              icon={I.ExternalLink}
+              title={t`Open the live preview for this record`}
+              onClick={() => {
+                // Freshest values win: unsaved draft edits over the loaded row.
+                const url = renderUrlTemplate(schema.previewUrl as string, {
+                  ...((item ?? {}) as Record<string, unknown>),
+                  ...form.draft,
+                });
+                if (/^https?:\/\//.test(url)) window.open(url, "_blank", "noopener");
+              }}
+            >
+              <span className="hidden sm:inline"><Trans>Preview</Trans></span>
+            </Button>
           )}
           {mode === "edit" && (prevId || nextId) && (
             <div className="flex items-center gap-1">

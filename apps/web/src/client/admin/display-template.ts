@@ -85,3 +85,18 @@ export function expandParam(
   const heads = expandHeads(tpl, fields);
   return heads.length ? heads.join(",") : undefined;
 }
+
+/**
+ * Render a collection's preview-URL template against a row. Same `{{ path }}`
+ * syntax as the display template, but every substituted value is
+ * URI-component-encoded so field content can't break out of its URL slot.
+ * Missing values render empty.
+ */
+export function renderUrlTemplate(tpl: string, row: Record<string, unknown>): string {
+  return tpl.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_m, path: string) => {
+    const v = path
+      .split(".")
+      .reduce<unknown>((acc, k) => (acc && typeof acc === "object" ? (acc as Record<string, unknown>)[k] : undefined), row);
+    return v == null ? "" : encodeURIComponent(String(v));
+  });
+}

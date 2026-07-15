@@ -20,6 +20,7 @@ import { cn } from "@backlex/ui/lib/utils";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_PRIMARY, NAV_DATA, NAV_AUTOMATION, NAV_OBSERVABILITY, NAV_SETTINGS, NAV_DEVELOPERS, isNavVisible, type MeNav } from "./config";
 import { prefetchPage } from "./lib/page-prefetch";
+import { resolveCollectionColor } from "./collection-colors";
 import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
 import { orderCollections, useCollections, useNotifications, useNotificationsUnread, queryKeys } from "./queries";
 import { useWorkspaceBranding } from "@/lib/branding";
@@ -403,10 +404,17 @@ function CollectionsTree({ activeCollection, onOpen }: { activeCollection?: stri
 
   const rows = useMemo(
     () =>
-      (data?.data ?? []).filter(
-        (c) => ((c as { status?: string }).status ?? "active") === "active",
-      ),
-    [data],
+      (data?.data ?? []).filter((c) => {
+        const status = (c as { status?: string }).status ?? "active";
+        // Archived rows never render; `inactive` stays (dimmed) — it's still
+        // manageable, only its content API is off.
+        if (status === "archived") return false;
+        // Hidden collections stay out of the tree, except the one that's
+        // currently open — the user shouldn't lose their place.
+        if ((c as { hidden?: boolean }).hidden && c.slug !== activeCollection) return false;
+        return true;
+      }),
+    [data, activeCollection],
   );
   const sections = useMemo(
     () => orderCollections(rows, data?.meta?.groups ?? []).filter(([, list]) => list.length > 0),
@@ -433,16 +441,25 @@ function CollectionsTree({ activeCollection, onOpen }: { activeCollection?: stri
     .map((slug) => rows.find((c) => c.slug === slug))
     .filter((c): c is (typeof rows)[number] => !!c);
 
-  const renderRow = (c: { slug: string }, keyPrefix = "") => {
+  const renderRow = (c: { slug: string; icon?: string | null; color?: string | null; hidden?: boolean; status?: string }, keyPrefix = "") => {
     const isPinned = pinned.includes(c.slug);
+    const Ic = (I as Record<string, (p: { size?: number }) => JSX.Element>)[c.icon ?? ""] ?? I.Database;
+    const accent = resolveCollectionColor(c.color);
+    const dimmed = c.hidden || c.status === "inactive";
     return (
       <SidebarMenuSubItem key={keyPrefix + c.slug}>
         <SidebarMenuSubButton
           isActive={c.slug === activeCollection}
           onClick={() => onOpen(c.slug)}
           onMouseEnter={() => prefetchPage("collections")}
-          className="group/pin cursor-pointer"
+          className={`group/pin cursor-pointer ${dimmed ? "opacity-60" : ""}`}
         >
+          <span
+            className="flex size-4 shrink-0 items-center justify-center rounded-[4px]"
+            style={{ background: `color-mix(in srgb, ${accent} 14%, transparent)`, color: accent }}
+          >
+            <Ic size={10} />
+          </span>
           <span className="truncate font-mono text-[12px]">{c.slug}</span>
           {/* Not a <button>: SidebarMenuSubButton is an <a>, nesting is invalid. */}
           <span

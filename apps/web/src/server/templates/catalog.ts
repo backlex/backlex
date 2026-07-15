@@ -24,6 +24,14 @@ export interface TemplateCollection {
   /** Row-title format hint for the admin UI (extract/apply-custom fidelity —
    *  catalog templates leave it to the engine's defaults). */
   displayTemplate?: string;
+  /** Admin icon key (extract/apply-custom fidelity). */
+  icon?: string;
+  /** Admin accent color — preset token or `#rrggbb` (extract/apply-custom fidelity). */
+  color?: string;
+  /** Hidden from the admin sidebar/index (extract/apply-custom fidelity). */
+  hidden?: boolean;
+  /** Preview-URL template with `{{field}}` placeholders (extract/apply-custom fidelity). */
+  previewUrl?: string;
   ownerScoped?: boolean;
   versioned?: boolean;
   vectorize?: boolean;

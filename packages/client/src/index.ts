@@ -809,6 +809,14 @@ export interface TemplateCollectionDef {
   note?: string;
   /** Row-title format hint for the admin UI. */
   displayTemplate?: string;
+  /** Admin icon key. */
+  icon?: string;
+  /** Admin accent color — preset token or `#rrggbb`. */
+  color?: string;
+  /** Hidden from the admin sidebar/index (presentational only). */
+  hidden?: boolean;
+  /** Preview-URL template with `{{field}}` placeholders. */
+  previewUrl?: string;
   ownerScoped?: boolean;
   versioned?: boolean;
   vectorize?: boolean;
@@ -1055,6 +1063,12 @@ export interface SchemaClient {
     target: SchemaRef,
     opts?: { confirmDestructive?: boolean },
   ): Promise<{ data: SchemaApplyResult }>;
+  /** Clone a collection's schema (fields + metadata, never data) into a new
+   *  managed collection. Mirrors `POST /api/collections/:slug/clone`. */
+  cloneCollection(
+    slug: string,
+    newSlug: string,
+  ): Promise<{ data: Record<string, unknown> }>;
 }
 
 /** The backlex client returned by `createClient` — data, auth, storage, realtime, and more. */
@@ -1890,6 +1904,12 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         target,
         confirmDestructive: opts?.confirmDestructive,
       }),
+    cloneCollection: (slug: string, newSlug: string) =>
+      request<{ data: Record<string, unknown> }>(
+        "POST",
+        `/api/collections/${encodeURIComponent(slug)}/clone`,
+        { slug: newSlug },
+      ),
   };
 
   // External-DB migration over `/api/admin/migrate` — saved sources +

@@ -55,6 +55,16 @@ export interface CollectionSchema {
   tenantScoped?: boolean;
   versioned?: boolean;
   adopted?: boolean;
+  /** Admin icon key. Null = default Database icon. */
+  icon?: string | null;
+  /** Admin accent color — preset token or `#rrggbb`. */
+  color?: string | null;
+  /** Hidden from the sidebar + Collections index (presentational only). */
+  hidden?: boolean;
+  /** Preview-URL template with `{{field}}` placeholders. */
+  previewUrl?: string | null;
+  /** Lifecycle: `active` | `inactive` (admin-visible, item API blocked). */
+  status?: string;
 }
 
 export interface CollectionListItem {
@@ -63,6 +73,12 @@ export interface CollectionListItem {
   ownerScoped: boolean;
   fields: number;
   icon: IconKey | string;
+  /** Accent color — preset token or `#rrggbb`. Null = default violet. */
+  color?: string | null;
+  /** Hidden from the sidebar + index unless "Show hidden" is on. */
+  hidden?: boolean;
+  /** Collection description (the `note` column) — shown on cards/rows. */
+  note?: string | null;
   writes24h: number;
   lastWrite: string;
   singleton: boolean;

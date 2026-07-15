@@ -5,7 +5,7 @@
 // right rail carries status/publish, system fields, collaboration, revision
 // history, and record actions. Supports prev/next record navigation, an
 // unsaved-changes guard, optional autosave for drafts, and best-effort presence.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
@@ -26,6 +26,7 @@ import { itemsApi, revisionsApi, type ApiRevision } from "./api";
 import { ItemCommentsPanel } from "./item-collaboration";
 import { ConfirmDialog } from "./sheet";
 import { ItemFields, useItemForm } from "./item-form";
+import { collabHandle, useCollab } from "./collab";
 import { renderUrlTemplate } from "./display-template";
 
 export interface ItemEditorPageProps {
@@ -298,8 +299,8 @@ export function ItemEditorPage({
     };
   }, [mode, siblingIds, itemId]);
 
-  // ── Presence — best-effort "who else is viewing" ─────────────────────────
-  const viewers = usePresence(mode === "edit" ? slug : null, itemId);
+  // ── Live collaboration — who else is here + which field they're editing ──
+  const collab = useCollab(mode === "edit" ? slug : null, itemId);
 
   const title = useMemo(() => {
     if (mode === "create") return t`New ${slug}`;
@@ -339,12 +340,29 @@ export function ItemEditorPage({
         </div>
 
         <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto">
-          {viewers.length > 0 && (
+          {collab.peers.length > 0 && (
             <span
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-[11px] text-muted-foreground"
+              className="inline-flex items-center"
               title={t`People viewing this record`}
             >
-              <I.Users size={11} /> {viewers.length}
+              {collab.peers.slice(0, 4).map((p, i) => (
+                <span
+                  key={p.id}
+                  className={cn(
+                    "flex size-6 items-center justify-center rounded-full border-2 border-card text-[10px] font-semibold text-white",
+                    i > 0 && "-ml-1.5",
+                  )}
+                  style={{ background: p.color }}
+                  title={collabHandle(p)}
+                >
+                  {collabHandle(p).slice(0, 1).toUpperCase()}
+                </span>
+              ))}
+              {collab.peers.length > 4 && (
+                <span className="ml-1 text-[11px] text-muted-foreground">
+                  +{collab.peers.length - 4}
+                </span>
+              )}
             </span>
           )}
           {mode === "edit" && schema.previewUrl && (
@@ -468,7 +486,14 @@ export function ItemEditorPage({
                 ))}
               </div>
             ) : (
-              <ItemFields form={form} />
+              <ItemFields
+                form={form}
+                collab={{
+                  peersByField: collab.peersByField,
+                  onFieldFocus: collab.onFieldFocus,
+                  onFieldBlur: collab.onFieldBlur,
+                }}
+              />
             )}
           </div>
         </Card>
@@ -987,49 +1012,3 @@ function RevisionHistory({
   );
 }
 
-/** Best-effort presence: subscribe to the item's `presence:*` channel and
- *  surface a viewer count. Defensive — unknown payload shapes simply yield an
- *  empty roster rather than throwing. */
-function usePresence(slug: string | null, itemId: string): { id: string }[] {
-  const [viewers, setViewers] = useState<{ id: string }[]>([]);
-  const esRef = useRef<EventSource | null>(null);
-
-  useEffect(() => {
-    setViewers([]);
-    if (!slug || itemId === "new") return;
-    const channel = `presence:item:${slug}:${itemId}`;
-    let es: EventSource | null = null;
-    try {
-      es = new EventSource(`/api/realtime/${encodeURIComponent(channel)}/subscribe`, {
-        withCredentials: true,
-      });
-      esRef.current = es;
-      es.addEventListener("message", (ev) => {
-        try {
-          const parsed = JSON.parse((ev as MessageEvent).data) as Record<string, unknown>;
-          const data = (parsed.data ?? parsed) as Record<string, unknown>;
-          const members =
-            (data.members as unknown[]) ?? (data.presence as unknown[]) ?? (data.roster as unknown[]);
-          if (Array.isArray(members)) {
-            setViewers(
-              members.map((m, i) => {
-                const mm = (m ?? {}) as Record<string, unknown>;
-                return { id: String(mm.userId ?? mm.id ?? i) };
-              }),
-            );
-          }
-        } catch {
-          // ignore malformed presence frames
-        }
-      });
-    } catch {
-      // EventSource unsupported — no presence
-    }
-    return () => {
-      es?.close();
-      esRef.current = null;
-    };
-  }, [slug, itemId]);
-
-  return viewers;
-}

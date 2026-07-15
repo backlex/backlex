@@ -30,6 +30,13 @@ import {
 } from "../services/realtime-redis";
 import { rateLimitOk } from "../lib/rate-limit";
 import { isStatelessEdge } from "../lib/runtime";
+import {
+  COLLAB_PREFIX,
+  CollabPublishSchema,
+  buildCollabMessage,
+  collabConfig,
+  parseCollabChannel,
+} from "../services/collab";
 
 /** Poll interval for the Redis-Stream subscribe loop (serverless transport). */
 const REDIS_POLL_MS = 1_000;
@@ -64,6 +71,9 @@ interface Gate {
   meta?: SubscriptionMeta;
   /** true for `presence:*` channels — the subscribe handler joins the roster. */
   presence?: boolean;
+  /** true for `collab:*` channels — publish bodies are schema-validated and
+   *  identity-stamped instead of forwarded as-is. */
+  collab?: boolean;
 }
 
 const clientIp = (c: { req: { header: (n: string) => string | undefined } }): string =>
@@ -248,6 +258,24 @@ const gateForChannel = async (
       presence: true,
     };
   }
+  if (channel.startsWith(COLLAB_PREFIX)) {
+    // Collaboration channels: record-level presence + field awareness.
+    // Both subscribe AND publish are open to any signed-in user who can READ
+    // the collection — messages carry only non-sensitive metadata (user id,
+    // email, field name), and identity is stamped server-side at publish.
+    const parsed = parseCollabChannel(channel);
+    if (!parsed) {
+      throw new AppError("VALIDATION", "Malformed collab channel — expected collab:item:<slug>:<id>");
+    }
+    if (!auth.userId) {
+      throw new AppError("UNAUTHORIZED", "Sign in required for collab channels");
+    }
+    const perm = await resolvePermission(ctx, auth, parsed.slug, "read");
+    if (!perm.allowed) {
+      throw new AppError("FORBIDDEN", `No read permission for ${parsed.slug}`);
+    }
+    return { collab: true };
+  }
   // user-defined channel: no auth, no filter
   return {};
 };
@@ -387,15 +415,54 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const { channel } = c.req.valid("param");
-      await gateForChannel(ctx, auth, channel, true);
+      const gate = await gateForChannel(ctx, auth, channel, true);
 
       if (!(await rateLimitOk(ctx.env, `pub:${channel}:${clientIp(c)}`, PUBLISH_RATE_MAX, PUBLISH_RATE_WINDOW_MS))) {
         throw new AppError("RATE_LIMITED", "Too many publishes — slow down");
       }
-      const payload = await c.req.json();
+      let payload = await c.req.json();
+      if (gate.collab) {
+        // Collab channels never forward the raw body: validate the shape and
+        // stamp identity + timestamp from the session so a member can't
+        // impersonate another (the gate guarantees userId is set).
+        const parsed = CollabPublishSchema.safeParse(payload);
+        if (!parsed.success) {
+          throw new AppError("VALIDATION", "Invalid collab message — expected { t, field? }");
+        }
+        payload = buildCollabMessage(parsed.data, {
+          userId: auth.userId!,
+          email: auth.email,
+        });
+      }
       await publishToChannel(ctx.env, channel, payload);
       return c.json({ ok: true });
     },
+  )
+  // How the admin SPA should reach collab channels on this deployment —
+  // `native` (SSE subscribe + REST publish work) or `off` (no viable
+  // transport; the UI hides collab affordances). Phase 2 adds `ably`.
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/collab-config",
+      tags: [TAG],
+      summary: "Collaboration transport capability",
+      security: SECURITY,
+      responses: {
+        200: {
+          description: "Transport the client should use for collab channels",
+          content: {
+            "application/json": {
+              schema: z
+                .object({ transport: z.enum(["native", "ably", "off"]) })
+                .openapi("CollabConfig"),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    (c) => c.json(collabConfig(c.get("ctx").env)),
   )
   // Admin-only synthetic event injector — lets you fire a fake ItemEvent at an
   // `items:*` channel to verify per-subscriber permission filtering / field

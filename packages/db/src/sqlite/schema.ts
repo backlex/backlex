@@ -1027,6 +1027,18 @@ export const collections = sqliteTable(
      *  Comma-separated field list, `-` prefix = DESC (`-` prefix = DESC).
      *  e.g. `"-published_at,name"`. */
     defaultSort: text("default_sort"),
+    /** Field name the admin Kanban view groups cards by. Stores a user
+     *  field's name (a `dropdown`/`select` field) or the special `_status`
+     *  lifecycle column on versioned collections. Null = auto-detect (a field
+     *  literally named `status`, else the first dropdown). See the
+     *  pg/schema.ts twin. */
+    kanbanGroupBy: text("kanban_group_by"),
+    /** Maps a Kanban group-by dropdown *value* to a draft/publish lifecycle
+     *  action (`publish` | `unpublish` | `archive`) — e.g. a `done` column that
+     *  also publishes. Only meaningful on a `versioned` collection whose
+     *  `kanbanGroupBy` is a user dropdown. Null/empty = no triggers. See the
+     *  pg/schema.ts twin. */
+    kanbanActionMap: text("kanban_action_map", { mode: "json" }).$type<Record<string, string>>(),
     /** Admin grouping section header. Column is `group_name` (`GROUP` is
      *  reserved); JSON key stays `group`. See the pg/schema.ts twin. */
     group: text("group_name"),

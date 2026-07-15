@@ -76,3 +76,65 @@ export const publishDueItems = async (ctx: Ctx): Promise<void> => {
     }
   }
 };
+
+/**
+ * Auto-unpublish (expire) published items whose `_unpublish_at` has passed —
+ * the mirror image of `publishDueItems`. Called from the same `cronTick`. Scans
+ * every active, versioned collection for published rows whose expiry is due,
+ * reverts them to `draft` (clearing `_published_at` and `_unpublish_at`), and
+ * emits a realtime `unpublished` event per row.
+ */
+export const unpublishDueItems = async (ctx: Ctx): Promise<void> => {
+  const t = collectionsTable(ctx.dialect);
+  const now = nowFor(ctx.dialect);
+  const cols = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(and(eq(t.versioned, true as any), eq(t.status, "active")))) as Record<string, unknown>[];
+
+  for (const r of cols) {
+    const table = (r.physicalTable ?? r.physical_table) as string | undefined;
+    if (!table) continue;
+    const slug = r.slug as string;
+    const fields = (r.fields as FieldDef[]) ?? [];
+    const ownerScoped = Boolean(r.ownerScoped ?? r.owner_scoped);
+
+    const dueWhere = sql`${sql.identifier("_status")} = 'published' AND ${sql.identifier("_unpublish_at")} IS NOT NULL AND ${sql.identifier("_unpublish_at")} <= ${now}`;
+    let due: Record<string, unknown>[];
+    try {
+      due = await queryAll<Record<string, unknown>>(
+        ctx,
+        sql`SELECT * FROM ${sql.identifier(table)} WHERE ${dueWhere}`,
+      );
+    } catch (e) {
+      // A versioned table that predates `_unpublish_at` (mid-migration) shouldn't
+      // abort the whole sweep — same guard as publishDueItems.
+      console.error(`[scheduled-unpublish] scan failed for ${slug}`, e);
+      continue;
+    }
+    if (due.length === 0) continue;
+
+    await execute(
+      ctx,
+      sql`UPDATE ${sql.identifier(table)} SET ${sql.identifier("_status")} = 'draft', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("_unpublish_at")} = NULL WHERE ${dueWhere}`,
+    );
+
+    for (const row of due) {
+      row._status = "draft";
+      row._published_at = null;
+      row._unpublish_at = null;
+      const after = deserializeRow(row, fields, ctx.dialect, ownerScoped);
+      const tenantId = (row.tenant_id ?? null) as string | null;
+      try {
+        await publishEvent(
+          ctx.env,
+          `items:${slug}`,
+          { event: "unpublished", data: after },
+          { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId },
+        );
+      } catch (e) {
+        console.error(`[scheduled-unpublish] event emit failed for ${slug}`, e);
+      }
+    }
+  }
+};

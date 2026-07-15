@@ -108,10 +108,17 @@ export const deserializeRow = (
   // Versioned-collection system columns — exposed only when present.
   if (row._status !== undefined) {
     out._status = row._status;
-    out._publishedAt =
-      row._published_at != null
-        ? deserialize(row._published_at, "timestamp", dialect)
-        : null;
+    const publishedAt =
+      row._published_at != null ? deserialize(row._published_at, "timestamp", dialect) : null;
+    out._publishedAt = publishedAt; // public/SDK contract (camelCase)
+    // Snake-case mirrors for the admin SPA, which reads `_status` / `_publish_at`
+    // / `_unpublish_at` / `_published_at` directly (Scheduled / Expires badges,
+    // the "edited since publish" indicator, the Kanban lifecycle board).
+    out._published_at = publishedAt;
+    out._publish_at =
+      row._publish_at != null ? deserialize(row._publish_at, "timestamp", dialect) : null;
+    out._unpublish_at =
+      row._unpublish_at != null ? deserialize(row._unpublish_at, "timestamp", dialect) : null;
   }
   for (const f of fields) {
     // Private / internal columns never leave through an API read surface.

@@ -145,6 +145,9 @@ const systemColumns = (
           // Scheduled-publish time; the cron tick flips a draft → published once
           // `_publish_at <= now`. NULL = not scheduled.
           `${quote("_publish_at")} ${ts}`,
+          // Scheduled-unpublish (expiry) time; the cron tick reverts a published
+          // row → draft once `_unpublish_at <= now`. NULL = no expiry.
+          `${quote("_unpublish_at")} ${ts}`,
         ]
       : []),
   ];
@@ -244,6 +247,18 @@ export const ensureVersionedColumns = async (
       db,
       dialect,
       `CREATE INDEX IF NOT EXISTS ${quote(`${table}_publish_at_idx`)} ON ${quote(table)} (${quote("_publish_at")})`,
+    );
+  }
+  if (!existing.has("_unpublish_at")) {
+    await exec(
+      db,
+      dialect,
+      `ALTER TABLE ${quote(table)} ADD COLUMN ${quote("_unpublish_at")} ${sqlTypeFor("timestamp", dialect)}`,
+    );
+    await exec(
+      db,
+      dialect,
+      `CREATE INDEX IF NOT EXISTS ${quote(`${table}_unpublish_at_idx`)} ON ${quote(table)} (${quote("_unpublish_at")})`,
     );
   }
 };
@@ -371,6 +386,11 @@ export const applyCollection = async (
         db,
         dialect,
         `CREATE INDEX ${quote(`${table}_publish_at_idx`)} ON ${quote(table)} (${quote("_publish_at")})`,
+      );
+      await exec(
+        db,
+        dialect,
+        `CREATE INDEX ${quote(`${table}_unpublish_at_idx`)} ON ${quote(table)} (${quote("_unpublish_at")})`,
       );
     }
     if (softDelete) {

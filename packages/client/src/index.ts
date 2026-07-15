@@ -247,7 +247,9 @@ export interface CollectionClient<T extends Record<string, unknown>> {
   batch(operations: BatchOperation<T>[], opts?: { atomic?: boolean }): Promise<BatchResponse<T>>;
   publish(id: string): Promise<ItemResponse<T>>;
   unpublish(id: string): Promise<ItemResponse<T>>;
+  archive(id: string): Promise<ItemResponse<T>>;
   schedulePublish(id: string, at: Date | string | null): Promise<ItemResponse<T>>;
+  scheduleUnpublish(id: string, at: Date | string | null): Promise<ItemResponse<T>>;
   /** Check a plaintext against the stored digest of a `hash` field on the row.
    *  The digest never leaves the server; this returns only `{ valid }`.
    *  Requires read permission on the item; the server throttles attempts. */
@@ -1279,12 +1281,24 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       /** Flip a versioned item back to draft (clears any pending schedule). */
       unpublish: (id: string): Promise<ItemResponse<T>> =>
         request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish?unpublish=1`),
+      /** Archive a versioned item — hidden from readers like a draft, but a
+       *  distinct "pulled from publication" state. Leave archived via
+       *  `publish()` (→ published) or `unpublish()` (→ draft). */
+      archive: (id: string): Promise<ItemResponse<T>> =>
+        request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish?archive=1`),
       /** Schedule a versioned item to auto-publish at `at` (the cron tick applies
        *  it when due). Pass `null` to cancel a pending schedule. Requires the
        *  `publish` permission. */
       schedulePublish: (id: string, at: Date | string | null): Promise<ItemResponse<T>> =>
         request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish`, {
           publishAt: at == null ? null : at instanceof Date ? at.toISOString() : at,
+        }),
+      /** Set an expiry: auto-unpublish the item back to draft at `at` (the cron
+       *  tick applies it when due), preserving its current state until then. Pass
+       *  `null` to cancel. Requires the `publish` permission. */
+      scheduleUnpublish: (id: string, at: Date | string | null): Promise<ItemResponse<T>> =>
+        request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish`, {
+          unpublishAt: at == null ? null : at instanceof Date ? at.toISOString() : at,
         }),
       /** Verify a plaintext against a `hash` field's stored digest. */
       verify: (id: string, field: string, value: string): Promise<{ valid: boolean }> =>

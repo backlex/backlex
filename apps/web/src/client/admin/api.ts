@@ -521,11 +521,23 @@ export const itemsApi = {
     api<Envelope<Record<string, unknown>>>(`/api/items/${slug}/${id}/publish?unpublish=1`, {
       method: "POST",
     }),
+  /** Archive — hidden from readers like a draft, but a distinct state. Leaves
+   *  archived via publish/unpublish. */
+  archive: (slug: string, id: string) =>
+    api<Envelope<Record<string, unknown>>>(`/api/items/${slug}/${id}/publish?archive=1`, {
+      method: "POST",
+    }),
   /** Schedule a future publish (ISO), or pass null to cancel a pending one. */
   schedulePublish: (slug: string, id: string, publishAt: string | null) =>
     api<Envelope<Record<string, unknown>>>(`/api/items/${slug}/${id}/publish`, {
       method: "POST",
       body: JSON.stringify({ publishAt }),
+    }),
+  /** Set/clear an expiry (auto-unpublish, ISO), preserving current state. */
+  scheduleUnpublish: (slug: string, id: string, unpublishAt: string | null) =>
+    api<Envelope<Record<string, unknown>>>(`/api/items/${slug}/${id}/publish`, {
+      method: "POST",
+      body: JSON.stringify({ unpublishAt }),
     }),
   /** Bulk-import rows from a raw JSON-array or CSV string. */
   importItems: (slug: string, raw: string, format: "json" | "csv") =>

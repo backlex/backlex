@@ -265,6 +265,24 @@ const CollectionInput = z.object({
     .regex(/^[-+]?[a-z_][a-z0-9_]*(,[-+]?[a-z_][a-z0-9_]*)*$/)
     .nullable()
     .optional(),
+  /** Field the admin Kanban view groups by — a user field name (a
+   *  `dropdown`/`select` field) or the special `_status` lifecycle column on
+   *  versioned collections. Null = auto-detect. Purely an admin-UI preference;
+   *  it never affects the API read/write contract. */
+  kanbanGroupBy: z
+    .string()
+    .regex(/^(_status|[a-z][a-z0-9_]*)$/)
+    .max(120)
+    .nullable()
+    .optional(),
+  /** Maps Kanban group-by dropdown values to lifecycle actions (e.g.
+   *  `{ done: "publish" }`) so moving a card into that column also fires the
+   *  publish/unpublish/archive transition. Admin-UI only; ignored unless the
+   *  collection is versioned and grouped by a user dropdown. */
+  kanbanActionMap: z
+    .record(z.string(), z.enum(["publish", "unpublish", "archive"]))
+    .nullable()
+    .optional(),
   /** Admin grouping: section header on the Collections page + sidebar tree.
    *  Null = ungrouped (rendered last). Header order lives in the
    *  `collectionGroups` app_settings key, written by `POST /layout`. */
@@ -797,6 +815,8 @@ export const collectionsRoutes = new Hono<AppBindings>()
       vectorizeModel: body.vectorizeModel ?? null,
       fts: body.fts,
       defaultSort: body.defaultSort ?? null,
+      kanbanGroupBy: body.kanbanGroupBy ?? null,
+      kanbanActionMap: body.kanbanActionMap ?? null,
       group: body.group ?? null,
       sortOrder: body.sortOrder ?? null,
       adopted: body.adopted,
@@ -846,6 +866,8 @@ export const collectionsRoutes = new Hono<AppBindings>()
       vectorizeModel: body.vectorizeModel ?? null,
       fts: body.fts,
       defaultSort: body.defaultSort ?? null,
+      kanbanGroupBy: body.kanbanGroupBy ?? null,
+      kanbanActionMap: body.kanbanActionMap ?? null,
       group: body.group ?? null,
       sortOrder: body.sortOrder ?? null,
       adopted: body.adopted,
@@ -985,6 +1007,12 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ...(body.fts !== undefined ? { fts: body.fts } : {}),
       ...(body.defaultSort !== undefined
         ? { defaultSort: body.defaultSort ?? null }
+        : {}),
+      ...(body.kanbanGroupBy !== undefined
+        ? { kanbanGroupBy: body.kanbanGroupBy ?? null }
+        : {}),
+      ...(body.kanbanActionMap !== undefined
+        ? { kanbanActionMap: body.kanbanActionMap ?? null }
         : {}),
       ...(body.group !== undefined ? { group: body.group ?? null } : {}),
       ...(body.sortOrder !== undefined

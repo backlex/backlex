@@ -43,9 +43,10 @@ export const deletedFilter = (
  *
  * - non-versioned → `null` (no status filter).
  * - caller WITHOUT publish/update (`canSeeDrafts=false`) → published-only;
- *   drafts and not-yet-due scheduled items are hidden.
- * - caller WITH publish/update → honors an explicit `?status=draft|published`,
- *   defaulting to `all` (no filter) so editors see their drafts.
+ *   drafts, archived, and not-yet-due scheduled items are all hidden.
+ * - caller WITH publish/update → honors an explicit
+ *   `?status=draft|published|archived`, defaulting to `all` (no filter) so
+ *   editors see drafts and archived rows too.
  *
  * The optional `qualifier` table name qualifies `_status` for JOINed queries
  * (the list path's `item_ownership` join), same as `deletedFilter`.
@@ -63,6 +64,7 @@ export const draftFilter = (
   if (!canSeeDrafts) return sql`${col} = 'published'`;
   if (status === "draft") return sql`${col} = 'draft'`;
   if (status === "published") return sql`${col} = 'published'`;
+  if (status === "archived") return sql`${col} = 'archived'`;
   return null; // "all" — privileged default
 };
 

@@ -46,9 +46,10 @@ export interface ListQuery {
   /** Free-text search — `_contains` OR'd across readable text fields. */
   q?: string;
   /** Versioned collections only. `published` (default for unprivileged callers)
-   *  returns published items; `draft` / `all` require `publish`/`update`
-   *  permission, otherwise they're ignored and published-only is enforced. */
-  status?: "draft" | "published" | "all";
+   *  returns published items; `draft` / `archived` / `all` require
+   *  `publish`/`update` permission, otherwise they're ignored and published-only
+   *  is enforced. */
+  status?: "draft" | "published" | "archived" | "all";
 }
 
 /** Per-call options for `from(slug).one(id, ...)`. Mirrors the single-item

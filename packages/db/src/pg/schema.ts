@@ -1139,6 +1139,20 @@ export const collections = pgTable(
      *  e.g. `"-published_at,name"`. Null falls back to `-created_at` if the
      *  collection has that column, otherwise the PK. */
     defaultSort: text("default_sort"),
+    /** Field name the admin Kanban view groups cards by. Stores a user
+     *  field's name (a `dropdown`/`select` field) or the special `_status`
+     *  lifecycle column on versioned collections. Null = auto-detect (a field
+     *  literally named `status`, else the first dropdown). See the
+     *  sqlite/schema.ts twin. */
+    kanbanGroupBy: text("kanban_group_by"),
+    /** Maps a Kanban group-by dropdown *value* to a draft/publish lifecycle
+     *  action (`publish` | `unpublish` | `archive`). When a card on a
+     *  custom-status board moves into a mapped column, backlex sets the field
+     *  AND fires that lifecycle action — e.g. a `done` column that also
+     *  publishes. Only meaningful on a `versioned` collection whose
+     *  `kanbanGroupBy` is a user dropdown. Null/empty = no triggers. See the
+     *  sqlite/schema.ts twin. */
+    kanbanActionMap: jsonb("kanban_action_map").$type<Record<string, string>>(),
     /** Admin grouping: section header this collection sits under on the
      *  Collections page + sidebar tree. Column is `group_name` because
      *  `GROUP` is reserved in both dialects; the JSON key stays `group`.

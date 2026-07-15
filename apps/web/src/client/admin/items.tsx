@@ -97,6 +97,25 @@ export function resolveStatusField(schema?: { fields?: Array<Record<string, unkn
   choices: StatusChoice[];
 } | null {
   const fields = schema?.fields ?? [];
+  const choicesOf = (f?: { options?: { choices?: StatusChoice[]; values?: string[] } }): StatusChoice[] =>
+    f?.options?.choices?.length
+      ? f.options.choices
+      : (f?.options?.values ?? []).map((v) => ({ value: v }));
+
+  // Explicit admin preference wins (Settings → kanban) when it names a real
+  // dropdown field — this resolver drives the table's inline-editable status
+  // column too, so it must stay a writable user field. The `_status` lifecycle
+  // is Kanban-only and handled by `resolveKanbanGroupField`, not here. A
+  // stale/renamed value falls through to auto-detect.
+  const groupBy = (schema as { kanbanGroupBy?: string | null })?.kanbanGroupBy;
+  if (groupBy && groupBy !== "_status") {
+    const picked = fields.find(
+      (f) => (f as { name?: string }).name === groupBy && (f as { interface?: string }).interface === "dropdown",
+    ) as { name?: string; options?: { choices?: StatusChoice[]; values?: string[] } } | undefined;
+    const pickedChoices = choicesOf(picked);
+    if (picked?.name && pickedChoices.length) return { name: picked.name, choices: pickedChoices };
+  }
+
   // Prefer a field literally named "status" so existing presets light up;
   // fall back to any dropdown-interface field.
   const named = fields.find((f) => (f as { name?: string }).name === "status" && (f as { interface?: string }).interface === "dropdown");
@@ -105,11 +124,31 @@ export function resolveStatusField(schema?: { fields?: Array<Record<string, unkn
     | { name?: string; options?: { choices?: StatusChoice[]; values?: string[] } }
     | undefined;
   if (!f?.name) return null;
-  const choices: StatusChoice[] = f.options?.choices?.length
-    ? f.options.choices
-    : (f.options?.values ?? []).map((v) => ({ value: v }));
+  const choices = choicesOf(f);
   if (!choices.length) return null;
   return { name: f.name, choices };
+}
+
+/**
+ * Kanban-only group axis. Extends `resolveStatusField` with the versioned
+ * `_status` lifecycle: when the admin explicitly picks `_status`, the board
+ * groups on the raw system column and drag maps draft↔published through the
+ * publish endpoint (see `changeItemStatus`). Kept separate from
+ * `resolveStatusField` because that one also drives the table's inline-editable
+ * status column, which must stay a writable user field — never `_status`.
+ * Columns: draft / published / archived; dragging fires the matching
+ * publish / unpublish / archive action (see `changeItemStatus`).
+ */
+export function resolveKanbanGroupField(
+  schema?: { fields?: Array<Record<string, unknown>>; kanbanGroupBy?: string | null; versioned?: boolean } | null,
+): { name: string; choices: StatusChoice[] } | null {
+  if (schema?.kanbanGroupBy === "_status" && schema?.versioned) {
+    return {
+      name: "_status",
+      choices: [{ value: "draft" }, { value: "published" }, { value: "archived" }],
+    };
+  }
+  return resolveStatusField(schema);
 }
 
 export function statusVariant(s: string) {

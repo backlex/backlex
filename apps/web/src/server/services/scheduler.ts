@@ -24,7 +24,7 @@ const parseExpression = (
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 import { processJobs } from "./jobs";
 import { sweepExpiredUploads } from "./uploads";
-import { publishDueItems } from "./items/scheduled-publish";
+import { publishDueItems, unpublishDueItems } from "./items/scheduled-publish";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 import { pruneOldSpans } from "./traces";
 import { maybeRunScheduledBackups } from "./backup";
@@ -207,6 +207,14 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     await publishDueItems(ctx);
   } catch (e) {
     console.error("[scheduled-publish] tick failed", e);
+  }
+
+  // Scheduled unpublish (expiry): revert versioned-collection published rows
+  // whose `_unpublish_at` has passed back to `draft`.
+  try {
+    await unpublishDueItems(ctx);
+  } catch (e) {
+    console.error("[scheduled-unpublish] tick failed", e);
   }
 
   // Scheduled backups: run + prune per workspace, throttled so the per-minute

@@ -455,7 +455,7 @@ export function ItemFields({ form }: { form: ItemForm }) {
         height: 13,
         borderRadius: 999,
         flex: "none",
-        background: `conic-gradient(var(--primary) ${Math.round(p * 360)}deg, var(--muted) 0)`,
+        background: `conic-gradient(var(--primary) ${Math.round(p * 360)}deg, color-mix(in oklab, var(--muted-foreground) 45%, transparent) 0)`,
         WebkitMask: "radial-gradient(circle 3px at center, transparent 98%, #000 100%)",
         mask: "radial-gradient(circle 3px at center, transparent 98%, #000 100%)",
       }}
@@ -1529,8 +1529,8 @@ export function ItemFields({ form }: { form: ItemForm }) {
                   title={`${loc.toUpperCase()} — ${n}/${localizedFields.length}`}
                   className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[11.5px] uppercase transition-colors ${
                     on
-                      ? "border-primary/50 bg-primary/10 text-foreground"
-                      : "border-border bg-card text-muted-foreground hover:text-foreground"
+                      ? "border-primary/60 bg-primary/15 text-foreground"
+                      : "border-border bg-card text-foreground/80 hover:border-primary/30 hover:text-foreground"
                   }`}
                 >
                   {localeRing(localizedFields.length ? n / localizedFields.length : 0)}
@@ -1547,32 +1547,24 @@ export function ItemFields({ form }: { form: ItemForm }) {
         ) : (
           <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
             <Trans>Source</Trans>
-            <select
+            <Select
+              size="sm"
               value={cmpSource}
-              onChange={(e) => setCmpSource(e.target.value)}
-              className="rounded-control border border-border bg-card px-2 py-1 text-[12px] normal-case tracking-normal text-foreground"
-            >
-              {i18nLocales.map((l) => (
-                <option key={l} value={l}>
-                  {l.toUpperCase()}
-                </option>
-              ))}
-            </select>
+              onChange={setCmpSource}
+              options={i18nLocales.map((l) => ({ value: l, label: l.toUpperCase() }))}
+              className="w-20"
+            />
             <span aria-hidden>→</span>
             <Trans>Target</Trans>
-            <select
+            <Select
+              size="sm"
               value={cmpTarget}
-              onChange={(e) => setCmpTarget(e.target.value)}
-              className="rounded-control border border-border bg-card px-2 py-1 text-[12px] normal-case tracking-normal text-foreground"
-            >
-              {i18nLocales
+              onChange={setCmpTarget}
+              options={i18nLocales
                 .filter((l) => l !== cmpSource)
-                .map((l) => (
-                  <option key={l} value={l}>
-                    {l.toUpperCase()}
-                  </option>
-                ))}
-            </select>
+                .map((l) => ({ value: l, label: l.toUpperCase() }))}
+              className="w-20"
+            />
           </div>
         )}
         <div

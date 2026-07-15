@@ -5673,6 +5673,11 @@ msgstr "Locales updated."
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
+msgid "Localization applies to text, number, choice, date, and color fields — not relations, files, IDs, or JSON."
+msgstr "Localization applies to text, number, choice, date, and color fields — not relations, files, IDs, or JSON."
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 msgid "Localized"
 msgstr "Localized"
 

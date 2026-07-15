@@ -137,6 +137,29 @@ const isArrayInterface = (f: SchemaField) =>
 // editor.
 const PREVIEWABLE = new Set(["markdown", "richtext"]);
 
+// A field can be localized only when a per-row, per-language value is meaningful
+// AND the item editor can render it (see the `control()` renderer). IDs, file
+// keys, secrets, relations, structured JSON, and multi-value arrays are excluded
+// — translating them is meaningless or lossy. Choice/date/color/number/boolean
+// stay in because the editor preserves their real control per language.
+const NON_LOCALIZABLE_TYPES = new Set(["json", "uuid", "hash", "relation"]);
+const NON_LOCALIZABLE_IFACES = new Set([
+  "relation",
+  "user",
+  "file",
+  "files",
+  "tags",
+  "checkboxes",
+  "dropdown_multiple",
+  "map",
+  "uuid",
+  "hash",
+]);
+export const canLocalize = (f: { type?: string; interface?: string }): boolean =>
+  !!f.type &&
+  !NON_LOCALIZABLE_TYPES.has(f.type) &&
+  !(f.interface && NON_LOCALIZABLE_IFACES.has(f.interface));
+
 const blankFor = (f: SchemaField): unknown => {
   // Localized fields hold a per-locale `{locale: value}` map regardless of type.
   if (f.localized) return {};
@@ -524,8 +547,102 @@ export function ItemFields({ form }: { form: ItemForm }) {
       const isBool = f.type === "boolean";
       const isLong =
         f.type === "longtext" || iface === "markdown" || iface === "richtext" || iface === "code";
+      const locChoices = readChoices(f);
+      const isChoice = (iface === "dropdown" || iface === "radio") && locChoices.length > 0;
+      const isDate = iface === "date" || f.type === "timestamp";
+      const isColor = iface === "color";
       const write = (loc: string, v: unknown) => setField({ ...map, [loc]: v });
       const coerce = (raw: string): unknown => (isNum ? (raw === "" ? undefined : Number(raw)) : raw);
+
+      // Render the real per-interface editor for ONE locale's value, so a
+      // localized choice field stays a dropdown (not free text), a date stays a
+      // date picker, etc. Falls back to a text/number input.
+      const control = (v: unknown, set: (nv: unknown) => void, ph?: string): ReactNode => {
+        if (isBool) {
+          return (
+            <div className="flex items-center rounded-control border border-border bg-card px-3 py-2">
+              <Switch checked={v === true} onChange={set} />
+            </div>
+          );
+        }
+        if (isChoice) {
+          const cur = String(v ?? "");
+          const base = locChoices.map((c) => ({
+            value: c.value,
+            label: c.label ?? c.value,
+            icon: c.color ? (
+              <span
+                style={{ display: "inline-block", width: 8, height: 8, borderRadius: 999, background: c.color }}
+              />
+            ) : undefined,
+          }));
+          const options =
+            cur && !locChoices.some((c) => c.value === cur) ? [...base, { value: cur, label: cur }] : base;
+          return <Select value={cur} onChange={set} options={options} placeholder={ph ?? t`Pick…`} />;
+        }
+        if (isDate) {
+          const iso = typeof v === "string" ? v : "";
+          return (
+            <Input
+              type="date"
+              value={iso ? iso.slice(0, 10) : ""}
+              aria-invalid={!!err || undefined}
+              onChange={(e) =>
+                set(e.target.value ? new Date(`${e.target.value}T00:00:00Z`).toISOString() : undefined)
+              }
+            />
+          );
+        }
+        if (isColor) {
+          const hex = typeof v === "string" ? v : "";
+          return (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="color"
+                value={/^#[0-9a-fA-F]{6}$/.test(hex) ? hex : "#A1A6B8"}
+                onChange={(e) => set(e.target.value)}
+                style={{ height: 36, width: 52, borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", cursor: "pointer", padding: 2 }}
+              />
+              <Input
+                className="font-mono"
+                value={hex}
+                placeholder="#RRGGBB"
+                onChange={(e) => set(e.target.value)}
+                style={{ flex: 1 }}
+              />
+            </div>
+          );
+        }
+        if (isLong) {
+          return (
+            <Textarea
+              rows={4}
+              value={v == null ? "" : String(v)}
+              aria-invalid={!!err || undefined}
+              placeholder={ph}
+              onChange={(e) => set(e.target.value)}
+            />
+          );
+        }
+        return (
+          <Input
+            type={isNum ? "number" : undefined}
+            value={v == null ? "" : String(v)}
+            aria-invalid={!!err || undefined}
+            placeholder={ph}
+            onChange={(e) => set(coerce(e.target.value))}
+          />
+        );
+      };
+
+      // Read-only text of a locale's value (compare source column + single-mode
+      // source-language context line). Choices resolve to their label.
+      const displayText = (v: unknown): string => {
+        if (isChoice) return locChoices.find((c) => c.value === String(v))?.label ?? String(v ?? "");
+        if (isDate) return typeof v === "string" && v ? v.slice(0, 10) : String(v ?? "");
+        if (isBool) return String(v === true);
+        return String(v ?? "");
+      };
 
       // A compact header: field label + the `localized` marker + a right slot.
       const header = (right: ReactNode): ReactNode => (
@@ -567,35 +684,24 @@ export function ItemFields({ form }: { form: ItemForm }) {
             )}
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="flex min-h-9 items-center rounded-control border border-border bg-muted/40 px-3 py-2 text-[13px] text-muted-foreground">
-                {isBool ? (
-                  String(sv === true)
-                ) : notEmpty(sv) ? (
-                  <span className="truncate">{String(sv)}</span>
+                {notEmpty(sv) ? (
+                  isColor ? (
+                    <span className="flex items-center gap-2">
+                      <span
+                        style={{ width: 12, height: 12, borderRadius: 4, background: String(sv), border: "1px solid var(--border)" }}
+                      />
+                      <span className="truncate font-mono">{String(sv)}</span>
+                    </span>
+                  ) : (
+                    <span className="truncate">{displayText(sv)}</span>
+                  )
                 ) : (
                   <span className="opacity-60">
                     <Trans>empty</Trans>
                   </span>
                 )}
               </div>
-              {isBool ? (
-                <div className="flex items-center rounded-control border border-border bg-card px-3 py-2">
-                  <Switch checked={tv === true} onChange={(v) => write(cmpTarget, v)} />
-                </div>
-              ) : isLong ? (
-                <Textarea
-                  rows={3}
-                  value={tv == null ? "" : String(tv)}
-                  aria-invalid={!!err || undefined}
-                  onChange={(e) => write(cmpTarget, e.target.value)}
-                />
-              ) : (
-                <Input
-                  type={isNum ? "number" : undefined}
-                  value={tv == null ? "" : String(tv)}
-                  aria-invalid={!!err || undefined}
-                  onChange={(e) => write(cmpTarget, coerce(e.target.value))}
-                />
-              )}
+              {control(tv, (nv) => write(cmpTarget, nv))}
             </div>
             {errBlock}
           </div>
@@ -626,32 +732,17 @@ export function ItemFields({ form }: { form: ItemForm }) {
               </Badge>
             </>,
           )}
-          {isBool ? (
-            <div className="flex items-center rounded-control border border-border bg-card px-3 py-2">
-              <Switch checked={cur === true} onChange={(v) => write(activeLocale, v)} />
-            </div>
-          ) : isLong ? (
-            <Textarea
-              rows={4}
-              value={cur == null ? "" : String(cur)}
-              aria-invalid={!!err || undefined}
-              onChange={(e) => write(activeLocale, e.target.value)}
-            />
-          ) : (
-            <Input
-              type={isNum ? "number" : undefined}
-              value={cur == null ? "" : String(cur)}
-              aria-invalid={!!err || undefined}
-              placeholder={isBase ? undefined : t`Translate to ${activeLocale.toUpperCase()}…`}
-              onChange={(e) => write(activeLocale, coerce(e.target.value))}
-            />
+          {control(
+            cur,
+            (nv) => write(activeLocale, nv),
+            isBase ? undefined : t`Translate to ${activeLocale.toUpperCase()}…`,
           )}
           {!isBase && notEmpty(baseVal) && !isBool && (
             <div className="flex items-baseline gap-2 text-[11.5px] text-muted-foreground">
               <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground/80">
                 {defaultLocale}
               </span>
-              <span className="truncate">{String(baseVal)}</span>
+              <span className="truncate">{displayText(baseVal)}</span>
             </div>
           )}
           {errBlock}

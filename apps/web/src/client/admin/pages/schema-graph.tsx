@@ -611,6 +611,13 @@ function ErdCanvas({
         availableFields={(editSrc?.fields ?? [])
           .map((f) => f.name)
           .filter((n): n is string => !!n && n !== editField?.name)}
+        groups={[
+          ...new Set(
+            (editSrc?.fields ?? [])
+              .map((f) => (f as { group?: string }).group)
+              .filter((g): g is string => !!g && g.trim().length > 0),
+          ),
+        ]}
         onClose={() => setEditField(null)}
         onSave={async (next) => {
           if (!editSrc || !editField) return;

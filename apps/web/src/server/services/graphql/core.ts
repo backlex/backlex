@@ -153,6 +153,12 @@ const fieldScalar = (
       // Write-only secret: accepted as a String on input, always resolves to
       // null on output (the digest never leaves the DB).
       return GraphQLString;
+    case "divider":
+    case "notice":
+      // Presentational blocks never reach GraphQL — `loadCollection` strips them
+      // before the schema builder sees the fields. This case only keeps the
+      // switch exhaustive over `FieldType`; the value is never used.
+      return GraphQLString;
   }
 };
 

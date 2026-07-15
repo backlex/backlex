@@ -23,7 +23,25 @@ export type FieldType =
    * backup). Filtering/sorting/FTS/vector are rejected — the only way to test
    * a value is the `POST /:slug/:id/verify` endpoint. Stored as TEXT.
    */
-  | "hash";
+  | "hash"
+  /**
+   * Presentational-only field types — they render in the item form (a labeled
+   * rule / an info callout) but own NO physical column and carry NO value. The
+   * items runtime never sees them: {@link loadCollection} strips them before
+   * serialize/write/validate, and the schema applier skips them for DDL. See
+   * {@link isPresentational}.
+   */
+  | "divider"
+  | "notice";
+
+/**
+ * True for field types that are pure layout/presentation — they have no
+ * physical column, take no value, and must be filtered out of every storage,
+ * serialization, and query path. The item-form + schema editor keep them for
+ * rendering. Kept in sync with `PRESENTATIONAL_TYPES` in the admin item-form.
+ */
+export const isPresentational = (field: { type: FieldType }): boolean =>
+  field.type === "divider" || field.type === "notice";
 
 /** Soft validation rules — enforced at the API layer, not at the DB. */
 export interface FieldValidation {
@@ -207,6 +225,26 @@ export interface FieldDef {
   /** Group label for form section rendering. UI only. */
   group?: string;
   /**
+   * Field width in the item form — `"half"` lets two consecutive half fields
+   * share a row (a constrained 2-column grid); anything else is full width.
+   * Pure layout metadata: never affects storage, the API, or validation. UI only.
+   */
+  width?: "full" | "half";
+  /**
+   * Mark this field's form section (see {@link group}) collapsible. Aggregated
+   * across the section — if ANY field in the group sets it, the whole section
+   * folds. `sectionCollapsed` additionally starts it collapsed. UI only.
+   */
+  sectionCollapsible?: boolean;
+  sectionCollapsed?: boolean;
+  /**
+   * Render the form's sections (see {@link group}) as TABS across the top
+   * instead of stacked headings — for records too large for one scroll.
+   * Form-wide + aggregated: if ANY field sets it, the whole grouped form
+   * switches to tabs (one tab per group). UI only.
+   */
+  sectionsAsTabs?: boolean;
+  /**
    * SQL expression for a generated column. When present, the column is
    * created with `GENERATED ALWAYS AS (formula) STORED` and the items
    * routes reject writes to this field. Read-only end-to-end.
@@ -371,6 +409,10 @@ const PG_TYPES: Record<FieldType, string> = {
   file: "text",
   relation_many: "jsonb",
   hash: "text",
+  // Presentational — never reach the DDL (the applier filters them out); these
+  // placeholders only satisfy the exhaustive Record<FieldType> mapping.
+  divider: "text",
+  notice: "text",
 };
 
 const SQLITE_TYPES: Record<FieldType, string> = {
@@ -386,6 +428,9 @@ const SQLITE_TYPES: Record<FieldType, string> = {
   file: "TEXT",
   relation_many: "TEXT",
   hash: "TEXT",
+  // Presentational — see PG_TYPES note; never emitted as DDL.
+  divider: "TEXT",
+  notice: "TEXT",
 };
 
 export const sqlTypeFor = (type: FieldType, dialect: Dialect): string =>
@@ -581,6 +626,29 @@ export const validateFields = (fields: FieldDef[]): void => {
       throw new Error(`Duplicate field name: ${f.name}`);
     }
     seen.add(f.name);
+    // Presentational blocks (divider / notice) own no column, so every
+    // storage-oriented flag is meaningless — reject them so the stored schema
+    // stays honest, then skip the column-shaped checks below.
+    if (isPresentational(f)) {
+      for (const [flag, on] of [
+        ["required", f.required],
+        ["unique", f.unique],
+        ["indexed", f.indexed],
+        ["localized", f.localized],
+        ["searchable", f.searchable],
+        ["vectorize", f.vectorize],
+        ["default", f.default !== undefined],
+        ["computed", !!f.computed],
+        ["to", !!f.to],
+        ["onCreate", !!f.onCreate],
+        ["onUpdate", !!f.onUpdate],
+      ] as const) {
+        if (on) {
+          throw new Error(`Field "${f.name}": "${flag}" is not allowed on a ${f.type} field`);
+        }
+      }
+      continue;
+    }
     if (f.type === "relation" || f.type === "relation_many") {
       if (!f.to) {
         throw new Error(

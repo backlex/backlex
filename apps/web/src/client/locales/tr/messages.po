@@ -2215,6 +2215,11 @@ msgstr "İşbirliği"
 msgid "Collapse collections"
 msgstr "Koleksiyonları daralt"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Collapsible section"
+msgstr "Katlanabilir bölüm"
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/search-playground.tsx
@@ -3586,6 +3591,11 @@ msgstr "Süre"
 msgid "e.g. 30s, 5m, 1h, 2d. ≤ 30s sleeps inline; longer waits persist to the scheduler."
 msgstr "örn. 30s, 5m, 1h, 2d. ≤ 30s satır içi bekler; daha uzun bekleme süresi zamanlayıcıya aktarılır."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "e.g. Content, SEO, Advanced"
+msgstr "örn. İçerik, SEO, Gelişmiş"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "e.g. posts published in the past 7 days, sorted by view_count desc"
 msgstr "örn: son 7 günde yayınlanmış postlar, view_count'a göre azalan"
@@ -4288,6 +4298,11 @@ msgstr "Alanlar"
 msgid "Fields of {0}"
 msgstr "{0} alanları"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Fields sharing a section name are grouped under one heading in the item form. Leave blank to keep it ungrouped."
+msgstr "Aynı bölüm adını paylaşan alanlar, öğe formunda tek bir başlık altında gruplanır. Gruplamamak için boş bırakın."
+
 #: src/client/admin/storage/widgets.tsx
 msgid "File detail"
 msgstr "Dosya detayı"
@@ -4502,6 +4517,11 @@ msgstr "Mevcut canlı şemadan bir dal çatallayın. Değişiklikleri hazırlay�
 msgid "Fork a branch to stage schema changes off to the side."
 msgstr "Şema değişikliklerini ayrı tutmak için bir dal çatallayın."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Form-wide — every section becomes a tab across the top instead of a stacked heading. Best for large records."
+msgstr "Form geneli — her bölüm, üst üste başlık yerine üstte bir sekmeye dönüşür. Büyük kayıtlar için idealdir."
+
 #: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "Format"
@@ -4560,6 +4580,11 @@ msgstr "tam erişim"
 #: src/client/admin/permissions-matrix.tsx
 msgid "Full access"
 msgstr "Tam erişim"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Full width"
+msgstr "Tam genişlik"
 
 #: src/client/admin/pages/search-playground.tsx
 msgid "Full-text"
@@ -4730,6 +4755,11 @@ msgstr "Gruplar, Koleksiyonlar sayfasını ve kenar çubuğunu düzenler. Düzen
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Guards updated"
 msgstr "Koruyucular güncellendi"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Half width"
+msgstr "Yarım genişlik"
 
 #: src/client/admin/parity/database.tsx
 msgid "Hash"
@@ -5456,6 +5486,14 @@ msgstr "Gecikme"
 msgid "Latest"
 msgstr "En geç"
 
+#: src/client/admin/extras.tsx
+msgid "layout"
+msgstr "düzen"
+
+#: src/client/admin/add-field.tsx
+msgid "Layout block — renders in the item form but stores no data and creates no column. Set its text in the <0>Field</0> tab."
+msgstr "Düzen bloğu — öğe formunda görünür ama veri saklamaz ve sütun oluşturmaz. Metnini <0>Alan</0> sekmesinden ayarlayın."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Layout reset to auto-arrange."
 msgstr "Düzen otomatik yerleşime sıfırlandı."
@@ -5546,6 +5584,13 @@ msgstr "Kullanıcıya bırak"
 #: src/client/admin/pages/database-import.tsx
 msgid "legacy production"
 msgstr "eski üretim"
+
+#. placeholder {0}: draft.group.trim()
+#. placeholder {0}: group.trim()
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Let editors fold the \"{0}\" section. Applies to the whole section."
+msgstr "Editörlerin \"{0}\" bölümünü katlamasına izin ver. Tüm bölüme uygulanır."
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "License"
@@ -9357,6 +9402,15 @@ msgstr "gizli"
 msgid "Secret rotated."
 msgstr "Gizli anahtar döndürüldü."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Section <0>(optional)</0>"
+msgstr "Bölüm <0>(isteğe bağlı)</0>"
+
+#: src/client/admin/extras.tsx
+msgid "Section: {grp}"
+msgstr "Bölüm: {grp}"
+
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/advisor.tsx
 msgid "Security"
@@ -9757,6 +9811,11 @@ msgstr "Başlıkları göster ({0})"
 msgid "Show password"
 msgstr "Parolayı göster"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Show sections as tabs"
+msgstr "Bölümleri sekme olarak göster"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Show this option on the sign-in screen."
 msgstr "Bu seçeneği giriş ekranında göster."
@@ -10127,6 +10186,11 @@ msgstr "Hazırlık"
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Start blank"
 msgstr "Boş başla"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Start collapsed"
+msgstr "Katlanmış başlat"
 
 #: src/client/admin/collections-index.tsx
 msgid "Start from"
@@ -10613,6 +10677,11 @@ msgstr "Sorgu aynen çalıştırılır. Yukarıdaki görselleştirme ipucu, süt
 msgid "The row is rejected unless this matches. Reference another field's value with <0>$field.name</0> (e.g. <1>end_date ≥ $field.start_date</1>)."
 msgstr "Bu eşleşmedikçe satır reddedilir. Başka bir alanın değerine <0>$field.name</0> ile referans verin (örn. <1>end_date ≥ $field.start_date</1>)."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "The section opens folded — useful for advanced or rarely-touched fields."
+msgstr "Bölüm katlanmış açılır — gelişmiş veya nadiren kullanılan alanlar için kullanışlıdır."
+
 #: src/client/pages/shared-record.tsx
 msgid "The share link may have been revoked, or the record it pointed to was removed."
 msgstr "Paylaşım bağlantısı iptal edilmiş olabilir ya da işaret ettiği kayıt kaldırılmış olabilir."
@@ -11019,6 +11088,11 @@ msgstr "İki adımlı doğrulamayı kapat."
 #: src/client/admin/account-page.tsx
 msgid "Turning off…"
 msgstr "Kapatılıyor…"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Two consecutive half-width fields sit side by side on one row (stacked on mobile)."
+msgstr "Art arda gelen iki yarım genişlikli alan tek satırda yan yana durur (mobilde alt alta)."
 
 #: src/client/admin/account-page.tsx
 #: src/client/pages/sign-in.tsx
@@ -11627,6 +11701,8 @@ msgstr "panonun kartları hangi alana göre grupladığı"
 msgid "Whole numbers only (no decimals)"
 msgstr "Yalnızca tam sayılar (ondalık yok)"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "Width"
 msgstr "Genişlik"

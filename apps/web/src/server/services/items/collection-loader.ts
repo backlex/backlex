@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { type FieldDef, isLocalized } from "@backlex/db";
+import { type FieldDef, isLocalized, isPresentational } from "@backlex/db";
 import type { Context } from "hono";
 import type { AppBindings } from "../../app";
 import type { Ctx } from "../../context";
@@ -120,7 +120,11 @@ export const loadCollection = async (
     id: r.id as string,
     slug: r.slug as string,
     physicalTable: (r.physicalTable ?? r.physical_table) as string,
-    fields: r.fields as FieldDef[],
+    // Presentational blocks (divider/notice) are layout-only — they carry no
+    // column and no value. Strip them here, at the single loader every items
+    // path (read/write/validate/CSV/GraphQL/expand/FTS/vectorize) funnels
+    // through, so nothing downstream ever treats one as a real column.
+    fields: (r.fields as FieldDef[]).filter((f) => !isPresentational(f)),
     ownerScoped: Boolean(r.ownerScoped ?? r.owner_scoped),
     tenantScoped: r.tenantScoped ?? r.tenant_scoped ?? true ? true : false,
     versioned: Boolean(r.versioned),

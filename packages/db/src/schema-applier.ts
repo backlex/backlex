@@ -7,6 +7,7 @@ import {
   ftsTableName,
   i18nTableName,
   isLocalized,
+  isPresentational,
   quote,
   sidecarColumnDefSql,
   sidecarFields,
@@ -366,8 +367,9 @@ const ensureFieldIndexes = async (
 ): Promise<void> => {
   for (const f of fields) {
     // Localized fields have no base column — a plain index would target a
-    // non-existent column (their index lives on the sidecar).
-    if (isLocalized(f)) continue;
+    // non-existent column (their index lives on the sidecar). Presentational
+    // blocks have no column either.
+    if (isLocalized(f) || isPresentational(f)) continue;
     const wantIndex = f.indexed || f.type === "relation";
     if (!wantIndex || f.unique) continue;
     await exec(
@@ -442,9 +444,12 @@ export const applyCollection = async (
         softDelete,
         def.pkType ?? "uuid",
       ),
-      // `localized` fields live only in the `<table>__i18n` sidecar — never as a
-      // base column.
-      ...def.fields.filter((f) => !isLocalized(f)).map((f) => columnDefSql(f, dialect)),
+      // `localized` fields live only in the `<table>__i18n` sidecar, and
+      // presentational blocks (divider/notice) own no column at all — neither
+      // becomes a base column.
+      ...def.fields
+        .filter((f) => !isLocalized(f) && !isPresentational(f))
+        .map((f) => columnDefSql(f, dialect)),
     ];
     await exec(
       db,
@@ -530,8 +535,9 @@ export const applyCollection = async (
     await ensureVersionedColumns(db, dialect, table);
   }
   for (const f of def.fields) {
-    // Localized fields are added to the sidecar by `ensureSidecar`, never here.
-    if (isLocalized(f)) continue;
+    // Localized fields are added to the sidecar by `ensureSidecar`, never here;
+    // presentational blocks (divider/notice) have no column at all.
+    if (isLocalized(f) || isPresentational(f)) continue;
     if (existing.has(f.name)) continue;
     await exec(
       db,

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { FieldDef, FieldType } from "@backlex/db";
+import { type FieldDef, type FieldType, isPresentational } from "@backlex/db";
 import type { Ctx } from "../context";
 
 type Schema = Record<string, unknown>;
@@ -102,7 +102,9 @@ export const buildDynamicCollectionPaths = async (
   for (const row of rows) {
     const slug = row.slug;
     const tag = `items:${slug}`;
-    const fields = (row.fields ?? []) as FieldDef[];
+    // Presentational blocks (divider/notice) own no column — keep them out of
+    // the generated request/response schemas (they never round-trip via the API).
+    const fields = ((row.fields ?? []) as FieldDef[]).filter((f) => !isPresentational(f));
     const itemSchema = buildItemSchema(slug, fields, { includeId: true });
     const createSchema = buildItemSchema(slug, fields, { includeId: false });
     const patchSchema = buildItemSchema(slug, fields, {

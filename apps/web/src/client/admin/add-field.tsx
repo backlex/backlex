@@ -97,6 +97,11 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [localized, setLocalized] = useState(false);
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
+  const [group, setGroup] = useState("");
+  const [width, setWidth] = useState<"full" | "half">("full");
+  const [sectionCollapsible, setSectionCollapsible] = useState(false);
+  const [sectionCollapsed, setSectionCollapsed] = useState(false);
+  const [sectionsAsTabs, setSectionsAsTabs] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const [autoCreate, setAutoCreate] = useState("");
   const [autoUpdate, setAutoUpdate] = useState("");
@@ -125,6 +130,11 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setLocalized(false);
       setLabel("");
       setDescription("");
+      setGroup("");
+      setWidth("full");
+      setSectionCollapsible(false);
+      setSectionCollapsed(false);
+      setSectionsAsTabs(false);
       setIsPrivate(false);
       setAutoCreate("");
       setAutoUpdate("");
@@ -138,6 +148,18 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
 
   const availableFields = useMemo(
     () => (schema?.fields ?? []).map((f) => (f as { name?: string }).name).filter((n): n is string => !!n),
+    [schema],
+  );
+  // Existing section names on this collection — offered as datalist suggestions
+  // so admins reuse a section instead of coining near-duplicates ("SEO"/"Seo").
+  const existingGroups = useMemo(
+    () => [
+      ...new Set(
+        (schema?.fields ?? [])
+          .map((f) => (f as { group?: string }).group)
+          .filter((g): g is string => !!g && g.trim().length > 0),
+      ),
+    ],
     [schema],
   );
   const addCond = () =>
@@ -155,6 +177,10 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const def = getInterface(interfaceId) ?? FIELD_INTERFACES[0];
   const Icon = (I as Record<string, IconComponent>)[def.icon as IconKey] || I.Code;
   const defaultable = DEFAULTABLE_TYPES.has(def.type);
+  // Presentational blocks (divider/notice) own no column, so the storage
+  // controls (constraints, defaults, DDL) don't apply — the schema tab shows a
+  // hint instead, and the block's text is set via the Field tab (label / note).
+  const presentational = def.type === "divider" || def.type === "notice";
 
   // Server-side auto-fill options valid for this column's storage type.
   const autoFillOpts = (withUuid: boolean) => {
@@ -249,12 +275,16 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       name: safeName,
       type: def.type,
       interface: def.id,
-      required: !nullable,
-      unique,
-      indexed,
-      ...(defVal !== undefined ? { default: defVal } : {}),
+      // Presentational blocks carry no column-level flags.
+      ...(presentational ? {} : { required: !nullable, unique, indexed }),
+      ...(defVal !== undefined && !presentational ? { default: defVal } : {}),
       ...(label.trim() ? { label: label.trim() } : {}),
       ...(description.trim() ? { description: description.trim() } : {}),
+      ...(group.trim() ? { group: group.trim() } : {}),
+      ...(width === "half" ? { width } : {}),
+      ...(group.trim() && sectionCollapsible ? { sectionCollapsible: true } : {}),
+      ...(group.trim() && sectionCollapsible && sectionCollapsed ? { sectionCollapsed: true } : {}),
+      ...(group.trim() && sectionsAsTabs ? { sectionsAsTabs: true } : {}),
       ...(isPrivate ? { private: true } : {}),
       ...(validCreate ? { onCreate: validCreate } : {}),
       ...(validUpdate ? { onUpdate: validUpdate } : {}),
@@ -384,6 +414,13 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   </div>
                 )}
 
+                {presentational && (
+                  <div className="rounded-control bg-muted p-3 text-[12.5px] text-muted-foreground">
+                    <Trans>Layout block — renders in the item form but stores no data and creates no column. Set its text in the <span className="font-medium text-foreground">Field</span> tab.</Trans>
+                  </div>
+                )}
+
+                {!presentational && (
                 <div className="flex flex-col gap-2.5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -450,6 +487,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                     </div>
                   )}
                 </div>
+                )}
 
                 {(createOpts.length > 1 || updateOpts.length > 1) && (
                   <div className="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
@@ -470,10 +508,12 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   </div>
                 )}
 
-                <div className="mt-1.5">
-                  <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>DDL preview</Trans></div>
-                  <AlterPreview table={`c_${schema?.slug || "collection"}`} pendingField={{ name: safeName || "new_field", type: def.type as never, nullable, default: defaultValue }} />
-                </div>
+                {!presentational && (
+                  <div className="mt-1.5">
+                    <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>DDL preview</Trans></div>
+                    <AlterPreview table={`c_${schema?.slug || "collection"}`} pendingField={{ name: safeName || "new_field", type: def.type as never, nullable, default: defaultValue }} />
+                  </div>
+                )}
               </div>
             )}
 
@@ -517,6 +557,62 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder={t`Add a helpful note for editors…`} />
                   <span className="text-[11.5px] text-muted-foreground"><Trans>Inline help text shown beneath the field.</Trans></span>
                 </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Section <span className="text-muted-foreground">(optional)</span></Trans></label>
+                  <Input
+                    value={group}
+                    onChange={(e) => setGroup(e.target.value)}
+                    placeholder={t`e.g. Content, SEO, Advanced`}
+                    list="add-field-section-suggestions"
+                  />
+                  {existingGroups.length > 0 && (
+                    <datalist id="add-field-section-suggestions">
+                      {existingGroups.map((g) => (
+                        <option key={g} value={g} />
+                      ))}
+                    </datalist>
+                  )}
+                  <span className="text-[11.5px] text-muted-foreground"><Trans>Fields sharing a section name are grouped under one heading in the item form. Leave blank to keep it ungrouped.</Trans></span>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Width</Trans></label>
+                  <Select
+                    value={width}
+                    onChange={(v) => setWidth(v as "full" | "half")}
+                    options={[
+                      { value: "full", label: t`Full width` },
+                      { value: "half", label: t`Half width` },
+                    ]}
+                  />
+                  <span className="text-[11.5px] text-muted-foreground"><Trans>Two consecutive half-width fields sit side by side on one row (stacked on mobile).</Trans></span>
+                </div>
+                {group.trim() && (
+                  <div className="flex flex-col gap-2.5 rounded-control bg-muted p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Collapsible section</Trans></div>
+                        <div className="text-[11.5px] text-muted-foreground"><Trans>Let editors fold the "{group.trim()}" section. Applies to the whole section.</Trans></div>
+                      </div>
+                      <Switch checked={sectionCollapsible} onChange={(v) => { setSectionCollapsible(v); if (!v) setSectionCollapsed(false); }} />
+                    </div>
+                    {sectionCollapsible && (
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Start collapsed</Trans></div>
+                          <div className="text-[11.5px] text-muted-foreground"><Trans>The section opens folded — useful for advanced or rarely-touched fields.</Trans></div>
+                        </div>
+                        <Switch checked={sectionCollapsed} onChange={setSectionCollapsed} />
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between gap-3 border-t border-border pt-2.5">
+                      <div>
+                        <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Show sections as tabs</Trans></div>
+                        <div className="text-[11.5px] text-muted-foreground"><Trans>Form-wide — every section becomes a tab across the top instead of a stacked heading. Best for large records.</Trans></div>
+                      </div>
+                      <Switch checked={sectionsAsTabs} onChange={setSectionsAsTabs} />
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Private</Trans></div>

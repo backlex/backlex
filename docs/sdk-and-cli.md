@@ -34,6 +34,9 @@ const list = await wks.from<Posts>("posts").list({
 const one = await wks.from<Posts>("posts").one("uuid");
 const created = await wks.from<Posts>("posts").create({ title: "hi" });
 const updated = await wks.from<Posts>("posts").update("uuid", { views: 42 });
+// Optimistic concurrency: pass the updatedAt you loaded — a concurrent save by
+// someone else then yields 409 CONFLICT instead of being silently overwritten.
+await wks.from<Posts>("posts").update("uuid", { views: 43 }, { ifUnmodifiedSince: one.data.updatedAt as string });
 await wks.from<Posts>("posts").delete("uuid");
 
 // Realtime (SSE)

@@ -9823,8 +9823,12 @@ msgid "Set a password"
 msgstr "Parola belirle"
 
 #: src/client/pages/invite.tsx
-msgid "Set a password to accept the invite and create your account."
-msgstr "Daveti kabul edip hesabını oluşturmak için bir parola belirle."
+#~ msgid "Set a password to accept the invite and create your account."
+#~ msgstr "Daveti kabul edip hesabını oluşturmak için bir parola belirle."
+
+#: src/client/pages/invite.tsx
+msgid "Set a password to create your account — or enter your current password if you already have a backlex account."
+msgstr "Hesabını oluşturmak için bir parola belirle — ya da zaten bir backlex hesabın varsa mevcut parolanı gir."
 
 #: src/client/admin/item-editor.tsx
 msgid "Set auto-unpublish"
@@ -10122,6 +10126,7 @@ msgstr "Kayıt ol"
 msgid "Sign URL"
 msgstr "URL'yi imzala"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Sign-in failed"
 msgstr "Giriş başarısız"
@@ -10787,6 +10792,10 @@ msgstr "Test aracı"
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "Testing…"
 msgstr "Test ediliyor…"
+
+#: src/client/pages/invite.tsx
+msgid "That account exists — enter its current password to accept."
+msgstr "Bu hesap zaten var — kabul etmek için mevcut parolasını gir."
 
 #. placeholder {0}: chosen.provider
 #. placeholder {1}: chosen.key

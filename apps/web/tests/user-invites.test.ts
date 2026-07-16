@@ -113,6 +113,44 @@ describe("users invite: creates a real invite", () => {
     expect((await signUp(h, "dup@example.test")).status).toBe(403);
   });
 
+  test("an EXISTING user accepts an invite into ANOTHER workspace (role binds)", async () => {
+    // The live repro: an address that already has a backlex account (a member
+    // of the default workspace) is invited into a SECOND workspace. Sign-up
+    // 422s "user already exists", so the /invite page falls back to sign-in +
+    // POST /api/tenants/accept — this exercises that server path.
+    await seedAdmin(h, "owner@example.test", "correct-horse-battery", { openSignup: true });
+    const otherSignUp = await signUp(h, "existing@example.test");
+    expect(otherSignUp.ok).toBe(true);
+
+    // Owner mints a second workspace and invites the existing user into it.
+    await signOut(h);
+    await h.fetch("/api/auth/sign-in/email", json({ email: "owner@example.test", password: "correct-horse-battery" }));
+    const wsRes = await h.fetch("/api/tenants", json({ name: "Team Two" }));
+    expect(wsRes.status).toBe(201);
+    const ws = ((await wsRes.json()) as { data: { id: string } }).data;
+    const inviteRes = await h.fetch(
+      `/api/tenants/${ws.id}/members/invite`,
+      json({ email: "existing@example.test", role: "admin" }),
+    );
+    expect(inviteRes.status).toBe(201);
+    const inv = ((await inviteRes.json()) as { data: InviteResult }).data;
+
+    // The existing user signs in and accepts by token (no new account).
+    await signOut(h);
+    await h.fetch("/api/auth/sign-in/email", json({ email: "existing@example.test", password: "correct-horse-battery" }));
+    const accept = await h.fetch("/api/tenants/accept", json({ token: inv.token }));
+    expect(accept.ok).toBe(true);
+    const boundTenant = ((await accept.json()) as { data: { tenantId: string } }).data.tenantId;
+    expect(boundTenant).toBe(ws.id);
+
+    // Membership + admin role in the new workspace are now bound.
+    const members = (await (await h.fetch(`/api/tenants/${ws.id}/members`)).json()) as {
+      data: Array<{ email: string; status: string }>;
+    };
+    const me = members.data.find((m) => m.email === "existing@example.test");
+    expect(me?.status).toBe("active");
+  });
+
   test("members-panel invite reports url + sent for the copy-link UI", async () => {
     await seedAdmin(h, "admin@example.test", "correct-horse-battery", { openSignup: false });
     const tenants = (await (await h.fetch("/api/tenants")).json()) as {

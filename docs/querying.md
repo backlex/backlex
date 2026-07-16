@@ -624,6 +624,44 @@ typed `keyof T | (string & {})` — autocomplete for known columns, dotted
 relation paths still allowed, no codegen. `.toQuery()` returns the plain
 `ListQuery`; `from(slug).list(rawQuery)` remains for hand-built queries.
 
+## Optimistic concurrency (conflict guard)
+
+A plain `PATCH` is last-write-wins: two people saving the same row silently
+overwrite each other. To opt into conflict detection, send the `updatedAt`
+you loaded the row with as a precondition:
+
+```http
+PATCH /api/items/posts/p1
+x-if-unmodified-since: 2026-07-16T12:00:00.000Z
+
+{ "title": "my edit" }
+```
+
+If the row's `updatedAt` still matches, the update applies as usual. If
+someone saved in between, the write is refused:
+
+```json
+// 409
+{ "error": {
+  "code": "CONFLICT",
+  "message": "This record was modified after you loaded it",
+  "details": { "currentUpdatedAt": "2026-07-16T12:03:41.512Z" }
+} }
+```
+
+Timestamps are compared as epoch milliseconds, so any parseable format works.
+An unparseable value is a `422`. The guard is **opt-in and per-request**:
+requests without the header keep last-write-wins, and batch / bulk-update /
+GraphQL writes are unaffected. The SDK exposes it on `update`:
+
+```ts
+await client.from("posts").update(id, patch, { ifUnmodifiedSince: row.updatedAt });
+```
+
+The admin item editor sends the precondition on every save and turns a `409`
+into a conflict banner (reload the latest version, or save anyway to
+overwrite).
+
 ## Batch & transactional writes
 
 `POST /api/items/:slug/batch` runs many create/update/delete operations on one

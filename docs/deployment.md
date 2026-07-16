@@ -27,6 +27,11 @@ constraints you need.
 (publish/subscribe fan out through a Redis stream; subscribe is a bounded long-poll
 that closes and lets `EventSource` reconnect). Verified live on both. Without the
 Upstash vars, realtime falls back to the in-process map — use Bun/Workers instead.
+The admin's live-collaboration channels prefer `ABLY_API_KEY` over the Redis
+fallback on these targets: the browser connects to Ably directly, so awareness
+traffic costs zero function invocations and stays inside Ably's free tier — the
+Redis long-poll burns Upstash commands and function hours continuously. See
+`docs/realtime.md` § Collaboration channels. Verified live on both.
 
 ² Image transforms on Vercel use `sharp`. The Vercel build stages sharp's native
 `@img/*` closure into the function (`scripts/build-vercel-output.ts`); if the binary
@@ -784,6 +789,7 @@ mostly available — SAML, LDAP, SMTP, samlify all load (full
 | `S3_REGION`                  | no        | Defaults to `auto`                           |
 | `R2_PUBLIC_BASE`             | no        | Workers only. Public origin for the R2 bucket; activates cf.image edge resizing for public-ACL files. See `docs/storage.md`. |
 | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` | no | Durable realtime transport for serverless (Vercel/Netlify), where the in-process pub/sub map doesn't survive between invocations. When both are set, realtime publish/subscribe fan out through an Upstash Redis stream per channel. Unset on Bun (in-proc) / Workers (Durable Object). |
+| `ABLY_API_KEY`               | no        | Collaboration transport for serverless (`keyName:keySecret`). The server only mints channel-scoped token requests (`POST /api/realtime/collab-token`); the browser talks to Ably directly, so presence/field-awareness costs zero function invocations. Preferred over the Redis fallback on Vercel/Netlify; ignored where a Durable Object or long-lived process exists. See `docs/realtime.md`. |
 | `CLOUD_REPORT_URL` + `CLOUD_REPORT_SECRET` + `CLOUD_PROJECT_ID` | no | **Managed-cloud only.** Set automatically by the workeros cloud provisioner so a tenant can opt-in report 5xx errors + AI token usage to the control plane. Self-hosted installs leave all three unset and never phone home — the reporting path is a no-op (`server/lib/cloud-report.ts`). |
 
 ## Verifying a deploy

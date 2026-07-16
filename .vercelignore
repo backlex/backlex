@@ -1,0 +1,13 @@
+# CLI deploys upload the working tree — keep it to sources only; the remote
+# build reinstalls deps (`bun install --frozen-lockfile`, see vercel.ts).
+node_modules
+.git
+.wrangler
+.claude
+.netlify
+**/dist
+**/.astro
+**/test-results
+*.log
+apps/web/.dev.vars
+.data

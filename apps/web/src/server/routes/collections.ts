@@ -16,7 +16,7 @@ import {
 } from "@backlex/db";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { and, eq, type SQL, sql } from "drizzle-orm";
+import { and, eq, ne, type SQL, sql } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../app";
@@ -36,6 +36,7 @@ import {
 import { invalidateTenantPermissions } from "../services/permissions-cache";
 import { ifNoneMatch, weakETag } from "../lib/etag";
 import { seedOwnerScopedPermissions } from "../services/seed";
+import { cloneCollection } from "../services/collections";
 import { embedAndUpsertBatch, isVectorizable } from "../services/vectorize";
 import { backfillFts, ftsIndexSignature, isSearchable } from "../services/fts";
 
@@ -244,6 +245,26 @@ const CollectionInput = z.object({
   plural: z.string().nullable().optional(),
   note: z.string().nullable().optional(),
   displayTemplate: z.string().nullable().optional(),
+  /** Admin icon key from the SPA icon set (e.g. `"FileText"`). Presentational. */
+  icon: z.string().max(60).nullable().optional(),
+  /** Admin accent color — a preset token name (`"violet"`) or `#rrggbb` hex. */
+  color: z
+    .string()
+    .regex(/^([a-z]{2,30}|#[0-9a-fA-F]{6})$/)
+    .nullable()
+    .optional(),
+  /** Hidden from the admin sidebar/index. Presentational only — API access
+   *  and permissions are unaffected. */
+  hidden: z.boolean().optional().default(false),
+  /** Preview-URL template with `{{field}}` placeholders, e.g.
+   *  `https://site.com/blog/{{slug}}?preview=1`. Rendered client-side into an
+   *  "Open preview" action on items. Must be absolute http(s). */
+  previewUrl: z
+    .string()
+    .max(500)
+    .regex(/^https?:\/\//)
+    .nullable()
+    .optional(),
   fields: z.array(FieldSchema),
   ownerScoped: z.boolean().optional().default(false),
   /** When true (default), the physical table gets a `tenant_id` column and
@@ -356,6 +377,18 @@ const CollectionPatch = CollectionInput.partial().extend({
   vectorize: z.boolean().optional(),
   fts: z.boolean().optional(),
   adopted: z.boolean().optional(),
+  hidden: z.boolean().optional(),
+  /** Enable/disable the collection. `inactive` keeps it visible + editable in
+   *  the admin but 404s all item traffic (loadCollection only serves
+   *  `active`). `archived` is NOT patchable — it goes through the dedicated
+   *  archive/restore routes. */
+  status: z.enum(["active", "inactive"]).optional(),
+});
+
+/** Body of `POST /:slug/clone` — just the new slug; everything else is
+ *  copied from the source collection. */
+const CloneInput = z.object({
+  slug: z.string().min(1).max(120).regex(/^[a-z][a-z0-9_]*$/),
 });
 
 /** Full-layout write for the Collections page "Edit layout" mode: every
@@ -458,9 +491,11 @@ export const collectionsRoutes = new Hono<AppBindings>()
         .select()
         .from(t)
         .where(
+          // `inactive` collections stay visible (they're admin-manageable —
+          // only item traffic is blocked); only `archived` is hidden here.
           includeArchived
             ? eq(t.tenantId, tenantId)
-            : and(eq(t.tenantId, tenantId), eq(t.status, "active")),
+            : and(eq(t.tenantId, tenantId), ne(t.status, "archived")),
         );
       setCachedCollections({ tenantId, includeArchived }, rows!);
     }
@@ -507,7 +542,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       .where(and(eq(t.tenantId, tenantId), eq(t.slug, c.req.param("slug"))))
       .limit(1);
     if (!row[0]) throw new AppError("NOT_FOUND", "Collection not found");
-    if (!includeArchived && (row[0].status ?? "active") !== "active") {
+    if (!includeArchived && (row[0].status ?? "active") === "archived") {
       throw new AppError("NOT_FOUND", "Collection not found");
     }
     // Same visibility rule as the list: no read grant → the collection's
@@ -561,6 +596,50 @@ export const collectionsRoutes = new Hono<AppBindings>()
       response: { ok: true },
     });
     return c.json({ ok: true });
+  })
+  /**
+   * Clone a collection's schema into a new managed collection. Copies fields
+   * + all metadata (labels, display template, icon/color, flags, kanban
+   * config); never copies data. Adopted sources clone into a managed table
+   * built from their field definitions. Delegates to
+   * `services/collections.ts::cloneCollection` — the single implementation
+   * shared with GraphQL/SDK/CLI.
+   */
+  .post("/:slug/clone", ...DDL_GATE, async (c) => {
+    const sourceSlug = c.req.param("slug");
+    const body = CloneInput.parse(await c.req.json());
+    const { db, dialect } = c.get("ctx");
+    const tenantId = requireTenant(c);
+    try {
+      await cloneCollection({ db, dialect }, tenantId, sourceSlug, body.slug);
+    } catch (e) {
+      const msg = (e as Error).message;
+      if (msg === "SOURCE_NOT_FOUND") {
+        throw new AppError("NOT_FOUND", "Collection not found");
+      }
+      if (msg === "SLUG_TAKEN") {
+        throw new AppError(
+          "CONFLICT",
+          `Collection slug "${body.slug}" already exists in this workspace`,
+        );
+      }
+      throw e;
+    }
+    invalidateTenantCollections(tenantId);
+    const t = tableFor(dialect);
+    const created = await (db as any)
+      .select()
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, body.slug)))
+      .limit(1);
+    await logActivity(c, {
+      action: "create",
+      collection: "system_collections",
+      itemId: body.slug,
+      payload: { clonedFrom: sourceSlug },
+      response: { ok: true },
+    });
+    return c.json({ data: created[0] }, 201);
   })
   /**
    * Unified create — one endpoint for both managed (we own the DDL) and
@@ -818,6 +897,10 @@ export const collectionsRoutes = new Hono<AppBindings>()
       plural: body.plural ?? null,
       note: body.note ?? null,
       displayTemplate: body.displayTemplate ?? null,
+      icon: body.icon ?? null,
+      color: body.color ?? null,
+      hidden: body.hidden,
+      previewUrl: body.previewUrl ?? null,
       fields: body.fields,
       ownerScoped: body.ownerScoped,
       tenantScoped: body.tenantScoped,
@@ -869,6 +952,10 @@ export const collectionsRoutes = new Hono<AppBindings>()
       plural: body.plural ?? null,
       note: body.note ?? null,
       displayTemplate: body.displayTemplate ?? null,
+      icon: body.icon ?? null,
+      color: body.color ?? null,
+      hidden: body.hidden,
+      previewUrl: body.previewUrl ?? null,
       fields: body.fields,
       ownerScoped: body.ownerScoped,
       tenantScoped: body.tenantScoped,
@@ -1004,6 +1091,19 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ...(body.note !== undefined ? { note: body.note } : {}),
       ...(body.displayTemplate !== undefined
         ? { displayTemplate: body.displayTemplate }
+        : {}),
+      ...(body.icon !== undefined ? { icon: body.icon ?? null } : {}),
+      ...(body.color !== undefined ? { color: body.color ?? null } : {}),
+      ...(body.hidden !== undefined ? { hidden: body.hidden } : {}),
+      ...(body.previewUrl !== undefined
+        ? { previewUrl: body.previewUrl ?? null }
+        : {}),
+      // active ⇄ inactive only — archived rows keep their lifecycle (the
+      // dedicated archive/restore routes own that transition, incl. the
+      // permission re-seed on restore).
+      ...(body.status !== undefined &&
+      (existing[0].status ?? "active") !== "archived"
+        ? { status: body.status }
         : {}),
       ...(body.fields ? { fields: body.fields } : {}),
       ...(body.ownerScoped !== undefined

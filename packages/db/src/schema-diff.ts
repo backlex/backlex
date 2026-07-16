@@ -35,6 +35,11 @@ export interface SchemaCollection {
   note?: string | null;
   displayTemplate?: string | null;
   defaultSort?: string | null;
+  icon?: string | null;
+  color?: string | null;
+  previewUrl?: string | null;
+  /** Hidden from the admin sidebar/index. Presentational only — no DDL. */
+  hidden?: boolean;
 }
 
 export type SchemaSnapshot = SchemaCollection[];
@@ -133,7 +138,7 @@ const tableOf = (c: SchemaCollection): string => c.physicalTable ?? `c_${c.slug}
 const isUnsafeAdd = (f: FieldDef): boolean =>
   Boolean(f.required) && f.default === undefined && !f.computed;
 
-const FLAG_KEYS = ["ownerScoped", "tenantScoped", "versioned", "softDelete", "fts", "singleton"] as const;
+const FLAG_KEYS = ["ownerScoped", "tenantScoped", "versioned", "softDelete", "fts", "singleton", "hidden"] as const;
 type FlagKey = (typeof FLAG_KEYS)[number];
 
 /** Flags whose physical effect is an additive column backfill when turned ON.
@@ -355,7 +360,7 @@ const diffFlags = (
   }
 };
 
-const META_KEYS = ["singular", "plural", "note", "displayTemplate", "defaultSort"] as const;
+const META_KEYS = ["singular", "plural", "note", "displayTemplate", "defaultSort", "icon", "color", "previewUrl"] as const;
 
 const diffCollectionMetadata = (
   changes: SchemaChange[],

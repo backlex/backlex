@@ -122,6 +122,10 @@ const rowToSchemaCollection = (r: Record<string, unknown>): SchemaCollection => 
   note: (r.note as string | null) ?? null,
   displayTemplate: (r.displayTemplate as string | null) ?? null,
   defaultSort: (r.defaultSort as string | null) ?? null,
+  icon: (r.icon as string | null) ?? null,
+  color: (r.color as string | null) ?? null,
+  previewUrl: (r.previewUrl as string | null) ?? null,
+  hidden: Boolean(r.hidden),
 });
 
 /** Canonicalize a collection the same way `rowToSchemaCollection` does, so an
@@ -144,6 +148,10 @@ const normalizeCollection = (c: SchemaCollection): SchemaCollection => ({
   note: c.note ?? null,
   displayTemplate: c.displayTemplate ?? null,
   defaultSort: c.defaultSort ?? null,
+  icon: c.icon ?? null,
+  color: c.color ?? null,
+  previewUrl: c.previewUrl ?? null,
+  hidden: Boolean(c.hidden),
 });
 
 const normalizeSnapshot = (snap: SchemaSnapshot): SchemaSnapshot => snap.map(normalizeCollection);
@@ -504,6 +512,10 @@ const upsertMetadata = async (
     singleton: Boolean(tc.singleton),
     fts: Boolean(tc.fts),
     defaultSort: tc.defaultSort ?? null,
+    icon: tc.icon ?? null,
+    color: tc.color ?? null,
+    previewUrl: tc.previewUrl ?? null,
+    hidden: Boolean(tc.hidden),
   };
   if (existing) {
     await ctx.db

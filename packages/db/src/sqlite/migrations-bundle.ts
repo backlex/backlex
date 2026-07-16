@@ -71,6 +71,7 @@ import m64 from "../../drizzle/sqlite/20260703090000_external_migration/migratio
 import m65 from "../../drizzle/sqlite/20260704090000_collection_grouping/migration.sql" with { type: "text" };
 import m66 from "../../drizzle/sqlite/20260714090000_collection_kanban_group_by/migration.sql" with { type: "text" };
 import m67 from "../../drizzle/sqlite/20260715090000_collection_kanban_action_map/migration.sql" with { type: "text" };
+import m68 from "../../drizzle/sqlite/20260716090000_collections_presentation/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -146,4 +147,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260704090000_collection_grouping", sql: m65 },
   { name: "20260714090000_collection_kanban_group_by", sql: m66 },
   { name: "20260715090000_collection_kanban_action_map", sql: m67 },
+  { name: "20260716090000_collections_presentation", sql: m68 },
 ];

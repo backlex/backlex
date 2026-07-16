@@ -7,11 +7,25 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@backlex/ui/components/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@backlex/ui/components/command";
 import { vectorApi, type VectorCapabilities } from "./api";
-import { I } from "./icons";
+import { I, type IconKey } from "./icons";
 import { Select } from "./select";
 import { Button, Switch } from "./ui";
 import { DisplayTemplateEditor } from "./display-template-editor";
+import { COLLECTION_COLORS, resolveCollectionColor } from "./collection-colors";
 
 interface FieldLike {
   name: string;
@@ -36,6 +50,16 @@ interface SchemaLike {
   plural?: string | null;
   note?: string | null;
   displayTemplate?: string | null;
+  /** Admin icon key. Null = the default Database icon. */
+  icon?: string | null;
+  /** Admin accent color — preset token name or `#rrggbb`. */
+  color?: string | null;
+  /** Hidden from the sidebar + Collections index (presentational only). */
+  hidden?: boolean;
+  /** Preview-URL template with `{{field}}` placeholders (absolute http(s)). */
+  previewUrl?: string | null;
+  /** Lifecycle: `active` | `inactive` (admin-visible, item API blocked). */
+  status?: string;
   ownerScoped?: boolean;
   tenantScoped?: boolean;
   versioned?: boolean;
@@ -112,6 +136,10 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
   const [plural, setPlural] = useState(schema.plural ?? "");
   const [note, setNote] = useState(schema.note ?? "");
   const [displayTemplate, setDisplayTemplate] = useState(schema.displayTemplate ?? "");
+  const [previewUrl, setPreviewUrl] = useState(schema.previewUrl ?? "");
+  // Icon picker popover + the custom-hex escape hatch of the color row.
+  const [iconOpen, setIconOpen] = useState(false);
+  const [customColor, setCustomColor] = useState<string | null>(null);
   const [sortClauses, setSortClauses] = useState<SortClause[]>(
     parseDefaultSort(schema.defaultSort),
   );
@@ -150,6 +178,8 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
     setPlural(schema.plural ?? "");
     setNote(schema.note ?? "");
     setDisplayTemplate(schema.displayTemplate ?? "");
+    setPreviewUrl(schema.previewUrl ?? "");
+    setCustomColor(null);
     setSortClauses(parseDefaultSort(schema.defaultSort));
     setKanbanGroupBy(schema.kanbanGroupBy ?? "__auto");
     setActionMap((schema.kanbanActionMap as Record<string, string>) ?? {});
@@ -235,11 +265,24 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
             : null;
   const slugDirty = slugClean !== schema.slug;
 
+  const previewUrlError =
+    previewUrl.trim() && !/^https?:\/\//.test(previewUrl.trim())
+      ? t`Must be an absolute URL (https://…)`
+      : null;
+
   const dirty =
     (schema.singular ?? "") !== singular ||
     (schema.plural ?? "") !== plural ||
     (schema.note ?? "") !== note ||
-    (schema.displayTemplate ?? "") !== displayTemplate;
+    (schema.displayTemplate ?? "") !== displayTemplate ||
+    (schema.previewUrl ?? "") !== previewUrl.trim();
+
+  const accent = resolveCollectionColor(schema.color);
+  const CurrentIcon =
+    (I as Record<string, (p: { size?: number }) => JSX.Element>)[
+      schema.icon as IconKey
+    ] ?? I.Database;
+  const iconKeys = Object.keys(I).sort() as IconKey[];
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -288,6 +331,116 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
             <Input value={plural} onChange={(e) => setPlural(e.target.value)} placeholder="posts" />
             <span className="text-[11.5px] text-muted-foreground"><Trans>Page titles, badges. Falls back to the slug.</Trans></span>
           </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Icon</Trans></label>
+            <Popover open={iconOpen} onOpenChange={setIconOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-9 min-w-0 items-center gap-2 rounded-control border border-border bg-background px-2.5 text-[13px] hover:bg-accent/40"
+                >
+                  <span
+                    className="flex size-6 shrink-0 items-center justify-center rounded-md"
+                    style={{ background: `color-mix(in srgb, ${accent} 14%, transparent)`, color: accent }}
+                  >
+                    <CurrentIcon size={14} />
+                  </span>
+                  <span className="truncate font-mono text-xs">{schema.icon ?? "Database"}</span>
+                  <I.ChevronDown size={12} className="ml-auto shrink-0 text-muted-foreground" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[240px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder={t`Search icons…`} />
+                  <CommandList className="max-h-56">
+                    <CommandEmpty><Trans>No icon found.</Trans></CommandEmpty>
+                    <CommandGroup>
+                      {iconKeys.map((key) => {
+                        const Ic = I[key];
+                        return (
+                          <CommandItem
+                            key={key}
+                            value={key}
+                            onSelect={() => {
+                              onPatch({ icon: key === "Database" ? null : key });
+                              setIconOpen(false);
+                            }}
+                          >
+                            <Ic size={14} />
+                            <span className="font-mono text-xs">{key}</span>
+                            {(schema.icon ?? "Database") === key && (
+                              <I.Check size={12} className="ml-auto" />
+                            )}
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Shown in the sidebar and on the Collections page.</Trans></span>
+          </div>
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Color</Trans></label>
+            <div className="flex h-9 min-w-0 items-center gap-1.5 overflow-x-auto">
+              {COLLECTION_COLORS.map((c) => {
+                const selected = (schema.color ?? "violet") === c.token && customColor === null;
+                return (
+                  <button
+                    key={c.token}
+                    type="button"
+                    title={c.token}
+                    onClick={() => {
+                      setCustomColor(null);
+                      onPatch({ color: c.token === "violet" ? null : c.token });
+                    }}
+                    className={`size-5 shrink-0 rounded-md transition-shadow ${selected ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : "hover:scale-110"}`}
+                    style={{ background: c.hex }}
+                  />
+                );
+              })}
+              {customColor === null ? (
+                <button
+                  type="button"
+                  onClick={() => setCustomColor(schema.color?.startsWith("#") ? schema.color : "#")}
+                  className={`flex h-5 shrink-0 items-center rounded-md border border-border px-1.5 font-mono text-[10px] text-muted-foreground hover:bg-accent/40 ${schema.color?.startsWith("#") ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`}
+                  style={schema.color?.startsWith("#") ? { background: schema.color, color: "#fff", borderColor: "transparent" } : undefined}
+                >
+                  {schema.color?.startsWith("#") ? schema.color : "#"}
+                </button>
+              ) : (
+                <span className="flex h-7 shrink-0 items-center gap-1 rounded-control border border-border bg-background px-1.5">
+                  <input
+                    autoFocus
+                    value={customColor}
+                    onChange={(e) => setCustomColor(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && /^#[0-9a-fA-F]{6}$/.test(customColor)) {
+                        onPatch({ color: customColor.toLowerCase() });
+                        setCustomColor(null);
+                      }
+                      if (e.key === "Escape") setCustomColor(null);
+                    }}
+                    placeholder="#8b5cf6"
+                    className="w-[70px] border-0 bg-transparent font-mono text-[11px] outline-0"
+                  />
+                  <Button
+                    size="xs"
+                    variant="primary"
+                    disabled={!/^#[0-9a-fA-F]{6}$/.test(customColor)}
+                    onClick={() => {
+                      onPatch({ color: customColor.toLowerCase() });
+                      setCustomColor(null);
+                    }}
+                  >
+                    <Trans>Set</Trans>
+                  </Button>
+                </span>
+              )}
+            </div>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Accent for the icon in nav and lists.</Trans></span>
+          </div>
           <div className="col-span-full flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Display template</Trans></label>
             <DisplayTemplateEditor
@@ -298,12 +451,26 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
             />
           </div>
           <div className="col-span-full flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Note</Trans></label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Preview URL</Trans></label>
+            <DisplayTemplateEditor
+              value={previewUrl}
+              onChange={setPreviewUrl}
+              fields={schema.fields ?? []}
+              collections={collections}
+              placeholder="https://example.com/blog/{{slug}}?preview=1"
+              hint={<Trans>Adds an "Open preview" button on items. Use field placeholders for the row's values.</Trans>}
+            />
+            {previewUrlError && (
+              <span className="text-[11.5px] text-destructive">{previewUrlError}</span>
+            )}
+          </div>
+          <div className="col-span-full flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Description</Trans></label>
             <Textarea
               rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder={t`Internal description for teammates.`}
+              placeholder={t`What this collection holds — shown on the Collections page.`}
             />
           </div>
         </div>
@@ -311,11 +478,12 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
           <Button
             variant="primary"
             size="sm"
-            disabled={!dirty}
+            disabled={!dirty || !!previewUrlError}
             onClick={() => onPatch({
               singular: singular || null,
               plural: plural || null,
               displayTemplate: displayTemplate || null,
+              previewUrl: previewUrl.trim() || null,
               note: note || null,
             })}
           >
@@ -330,6 +498,29 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
           <span className="text-[13px] font-medium"><Trans>scoping &amp; lifecycle</Trans></span>
         </div>
         <div className="px-4 py-2.5">
+          <div className="mb-2.5 flex items-center justify-between gap-3 border-b border-border pb-2.5">
+            <div>
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Enabled</Trans></div>
+              <div className="text-[11.5px] text-muted-foreground">
+                <Trans>Turning this off makes the content API return 404 for this collection
+                (REST, GraphQL, SDK, realtime) while it stays editable here. Data is untouched.</Trans>
+              </div>
+            </div>
+            <Switch
+              checked={(schema.status ?? "active") !== "inactive"}
+              onChange={(v) => onPatch({ status: v ? "active" : "inactive" })}
+            />
+          </div>
+          <div className="mb-2.5 flex items-center justify-between gap-3 border-b border-border pb-2.5">
+            <div>
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Hidden</Trans></div>
+              <div className="text-[11.5px] text-muted-foreground">
+                <Trans>Hide from the sidebar and the Collections page ("Show hidden" reveals it).
+                Purely visual — API access and permissions are unaffected.</Trans>
+              </div>
+            </div>
+            <Switch checked={!!schema.hidden} onChange={(v) => onPatch({ hidden: v })} />
+          </div>
           <div className="mb-2.5 flex items-center justify-between gap-3 border-b border-border pb-2.5">
             <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Owner-scoped</Trans></div>

@@ -68,6 +68,10 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "3ad4213ff5caa7be21501276cc28d34f9f8ca23a6341e7a40a7840c7c5e89118": "20260702120000_activity_tenant_created_idx",
   "b60aa2e5c717f49ee8fd05541422a8800254c56a9574f05d1ea4bdc291875712": "20260702150000_collection_pk_type",
   "2a68dcb1d2d24a7e62d729ee23df58eb63905320651787df512fd7d02bc63510": "20260703090000_external_migration",
+  "d70c2700db639012776e68bc294f4ab93fc73c9e176b17733fcd50e741b5d0f7": "20260704090000_collection_grouping",
+  "08a02e91249c3f13a418b4795a71f58c72d01938519e3d34ad891478692d6442": "20260714090000_collection_kanban_group_by",
+  "aea01c59f42c5fa7ddefecd64be22d55f2edeb46e32956809f5cf807ea9e6084": "20260715090000_collection_kanban_action_map",
+  "4353ba3024a185b927c9ab29ff8c34a53139e83ffe875a5bdc9e9f096f136641": "20260716090000_collections_presentation",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -131,4 +135,8 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "535504c207ae370555ea14368d4fd23083ebed34b307823588d7fed07083ee75": "20260702130000_embeddings_per_model",
   "4aeaa3de4be3e12f6dd64e5171a16aa3415c7b44703c5a7d87559af0cbf9fd9b": "20260702150000_collection_pk_type",
   "5fb0e5dedf583c9e4a189684fd86f3a6905015158ed1269b66f9904966e41536": "20260703090000_external_migration",
+  "3cb941023c6d84044d8f2357927d1097b49b3a74e5e0137d1f2253edb84c3a2b": "20260704090000_collection_grouping",
+  "04e05a2089c7d6d7eec5cc0f1f6cef1882653feb863f509e7cbbc0af721ab27d": "20260714090000_collection_kanban_group_by",
+  "40a9a332188a1e2fa2008bd932fc62d78d68615cfd98be9be5069aff056ccdfe": "20260715090000_collection_kanban_action_map",
+  "fbb7a8a95fc19fa03c2371551e80edfbd0b285e809b44d77d5b8659d1b3f7af1": "20260716090000_collections_presentation",
 };

@@ -690,6 +690,10 @@ interface ExtractRow {
   plural: string | null;
   note: string | null;
   displayTemplate: string | null;
+  icon: string | null;
+  color: string | null;
+  hidden: boolean | number;
+  previewUrl: string | null;
   ownerScoped: boolean | number;
   versioned: boolean | number;
   vectorize: boolean | number;
@@ -738,6 +742,10 @@ export async function extractTemplate(
       plural: t.plural,
       note: t.note,
       displayTemplate: t.displayTemplate,
+      icon: t.icon,
+      color: t.color,
+      hidden: t.hidden,
+      previewUrl: t.previewUrl,
       ownerScoped: t.ownerScoped,
       versioned: t.versioned,
       vectorize: t.vectorize,
@@ -885,6 +893,10 @@ export async function extractTemplate(
       ...(r.plural ? { plural: r.plural } : {}),
       ...(r.note ? { note: r.note } : {}),
       ...(r.displayTemplate ? { displayTemplate: r.displayTemplate } : {}),
+      ...(r.icon ? { icon: r.icon } : {}),
+      ...(r.color ? { color: r.color } : {}),
+      ...(r.hidden ? { hidden: true } : {}),
+      ...(r.previewUrl ? { previewUrl: r.previewUrl } : {}),
       ...(r.ownerScoped ? { ownerScoped: true } : {}),
       ...(r.versioned ? { versioned: true } : {}),
       ...(r.vectorize ? { vectorize: true } : {}),
@@ -921,6 +933,13 @@ export const CustomTemplateInput = z.object({
         plural: z.string().max(80).optional(),
         note: z.string().max(500).optional(),
         displayTemplate: z.string().max(200).optional(),
+        icon: z.string().max(60).optional(),
+        color: z
+          .string()
+          .regex(/^([a-z]{2,30}|#[0-9a-fA-F]{6})$/)
+          .optional(),
+        hidden: z.boolean().optional(),
+        previewUrl: z.string().max(500).regex(/^https?:\/\//).optional(),
         ownerScoped: z.boolean().optional(),
         versioned: z.boolean().optional(),
         vectorize: z.boolean().optional(),

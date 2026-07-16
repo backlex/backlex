@@ -32,10 +32,12 @@ interface Collection {
   adopted?: boolean | number;
 }
 
-const COLLECTIONS_HELP = `backlex collections <list|get|export-schema|drop-field|fts-reindex|vectorize>
+const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop-field|fts-reindex|vectorize>
 
   list                              every collection the key can read
   get <slug>                        one collection's fields
+  clone <slug> <new-slug>           duplicate a collection's schema (fields +
+                                    metadata; never copies data)
   export-schema [--out <file>]      full schema as JSON (commit + diff for GitOps)
   drop-field <slug> <field>         drop a column (destructive; managed-only)
   fts-reindex <slug>                rebuild the full-text index for existing rows
@@ -120,6 +122,31 @@ export const runCollections = async (args: string[]): Promise<void> => {
       );
     } catch (e) {
       die(e, "collections get");
+    }
+    return;
+  }
+
+  if (sub === "clone") {
+    const slug = args[1];
+    const newSlug = args[2];
+    if (!slug || !newSlug) {
+      process.stderr.write("collections clone <slug> <new-slug>\n");
+      process.exit(1);
+    }
+    try {
+      const ctx = resolveContext(args.slice(3));
+      const res = await makeClient(ctx).request<{ data: Collection }>(
+        "POST",
+        `/api/collections/${encodeURIComponent(slug)}/clone`,
+        { slug: newSlug },
+      );
+      if (json) {
+        printJson(res.data);
+        return;
+      }
+      process.stderr.write(`✓ cloned ${slug} → ${res.data.slug} (schema only, no data)\n`);
+    } catch (e) {
+      die(e, "collections clone");
     }
     return;
   }

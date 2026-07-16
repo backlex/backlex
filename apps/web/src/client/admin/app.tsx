@@ -324,9 +324,11 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       (metricsQuery.data?.data?.topCollections ?? []).map((s) => [s.slug, s]),
     );
     return listData
+      // `inactive` collections stay in the main view (they're manageable —
+      // only their content API is off); the archived panel shows archived only.
       .filter((c: any) => showArchived
         ? (c.status ?? "active") === "archived"
-        : (c.status ?? "active") === "active",
+        : (c.status ?? "active") !== "archived",
       )
       .map((c: any) => {
         const stats = statsBySlug.get(c.slug);
@@ -340,10 +342,13 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           status: c.status ?? "active",
           archivedAt: c.archivedAt ?? null,
           fields: Array.isArray(c.fields) ? c.fields.length : 0,
-          icon: "Database" as const,
+          icon: (c.icon ?? "Database") as CollectionListItem["icon"],
+          color: c.color ?? null,
+          hidden: !!c.hidden,
+          note: c.note ?? null,
           writes24h: stats?.writes24h ?? 0,
           lastWrite: fmtAgo(stats?.lastWrite ?? null),
-          singleton: false,
+          singleton: !!c.singleton,
           group: c.group ?? null,
           sortOrder: c.sortOrder ?? null,
         } as CollectionListItem;
@@ -490,6 +495,14 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           note: (res.data as any).note ?? null,
           displayTemplate: (res.data as any).displayTemplate ?? null,
           defaultSort: (res.data as any).defaultSort ?? null,
+          // Presentation metadata + lifecycle status — same reseed rule as
+          // above: every SchemaLike key MUST be hydrated here or the Settings
+          // tab silently reverts it on refresh.
+          icon: (res.data as any).icon ?? null,
+          color: (res.data as any).color ?? null,
+          hidden: !!(res.data as any).hidden,
+          previewUrl: (res.data as any).previewUrl ?? null,
+          status: (res.data as any).status ?? "active",
           // Kanban group-by preference — without this the Settings-tab
           // dropdown reseeds from `undefined` and reverts to "Auto" on refresh
           // even though the PATCH persisted the chosen field.
@@ -1236,6 +1249,33 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         </Button>
                       </div>
                     )}
+                    {(schemaState as { status?: string }).status === "inactive" && (
+                      <div className="flex flex-wrap items-center gap-2.5 rounded-surface border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5">
+                        <I.AlertTriangle size={14} className="shrink-0 text-amber-500" />
+                        <span className="min-w-[200px] flex-1 text-[12.5px] text-muted-foreground">
+                          <Trans>This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable.</Trans>
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            const slug = activeCollection || "posts";
+                            const prev = schemaState;
+                            setSchemaState((s) => ({ ...s, status: "active" } as typeof s));
+                            try {
+                              await collectionsApi.patch(slug, { status: "active" } as any);
+                              invalidateCollections();
+                              pushToast(t`Collection enabled.`);
+                            } catch (e) {
+                              setSchemaState(prev);
+                              pushToast((e as Error).message, "error");
+                            }
+                          }}
+                        >
+                          <Trans>Enable</Trans>
+                        </Button>
+                      </div>
+                    )}
                     <Card className="gap-0 overflow-hidden rounded-surface py-0">
                       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
                         <ItemsViewToggle
@@ -1439,6 +1479,10 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                     setSchemaState((s) => ({ ...s, ...patch }));
                     try {
                       const resp = await collectionsApi.patch(slug, patch as any);
+                      // Presentation metadata (icon/color/hidden/status/note)
+                      // renders in the sidebar + Collections index too — bust
+                      // the list cache so they don't lag behind the settings.
+                      invalidateCollections();
                       pushToast(
                         resp.ftsBackfill
                           ? t`Collection settings saved. Search index rebuilt (${resp.ftsBackfill.processed} of ${resp.ftsBackfill.total} rows indexed).`

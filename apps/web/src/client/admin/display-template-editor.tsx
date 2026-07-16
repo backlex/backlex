@@ -6,7 +6,7 @@
 // collection's fields with drill-down into relation targets, so
 // you can build `{{ author.name }}` without typing braces. A raw-mode toggle
 // drops to a plain input for power users / mid-string surgery.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { renderTemplate } from "@backlex/core";
 import { Badge } from "@backlex/ui/components/badge";
@@ -53,6 +53,9 @@ export interface DisplayTemplateEditorProps {
   /** All workspace collections, for relation drill-down (slug → fields). */
   collections: CollectionLike[];
   placeholder?: string;
+  /** Helper line shown when there's no live preview. Defaults to the
+   *  display-template copy; override for other {{ }} templates (preview URL). */
+  hint?: ReactNode;
 }
 
 // System columns that are always present on a row and worth offering even
@@ -98,6 +101,7 @@ export function DisplayTemplateEditor({
   fields,
   collections,
   placeholder = "{{ title }} — {{ status }}",
+  hint,
 }: DisplayTemplateEditorProps) {
   const { t } = useLingui();
   const [segments, setSegments] = useState<Segment[]>(() => seed(value));
@@ -354,7 +358,7 @@ export function DisplayTemplateEditor({
               <span className="font-mono text-foreground">{preview}</span>
             </>
           ) : (
-            <Trans>Mustache-style template for row display in pickers and references.</Trans>
+            hint ?? <Trans>Mustache-style template for row display in pickers and references.</Trans>
           )}
         </span>
         <button

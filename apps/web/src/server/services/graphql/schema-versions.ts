@@ -15,6 +15,8 @@ import {
   listSnapshots as listSchemaSnapshots,
   type SchemaRef,
 } from "../schema-versions";
+import { cloneCollection as cloneCollectionService } from "../collections";
+import { invalidateTenantCollections } from "../collections-cache";
 
 // ── Schema versions (migration diffing / schema branching, #9) ──────────────
 // Mirrors REST `/api/admin/schema` + MCP `schema.*` + SDK `client.schema.*` +
@@ -43,6 +45,45 @@ export const schemaVersionQueryFields: Record<string, GraphQLFieldConfig<unknown
 };
 
 export const schemaVersionMutationFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
+  cloneCollection: {
+    type: new GraphQLNonNull(JSONScalar),
+    description:
+      "Clone a collection's schema (fields + metadata, never data) into a new managed collection (admin-only). Mirrors REST `POST /api/collections/:slug/clone`.",
+    args: {
+      slug: { type: new GraphQLNonNull(GraphQLString) },
+      newSlug: { type: new GraphQLNonNull(GraphQLString) },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireFlowAdmin(gqlCtx);
+      const a = args as { slug: string; newSlug: string };
+      if (!/^[a-z][a-z0-9_]*$/.test(a.newSlug) || a.newSlug.length > 120) {
+        throw new GraphQLError("newSlug must match ^[a-z][a-z0-9_]*$", {
+          extensions: { code: "VALIDATION" },
+        });
+      }
+      try {
+        const res = await cloneCollectionService(
+          { db: gqlCtx.ctx.db, dialect: gqlCtx.ctx.dialect },
+          tenantId,
+          a.slug,
+          a.newSlug,
+        );
+        invalidateTenantCollections(tenantId);
+        return res;
+      } catch (e) {
+        const msg = (e as Error).message;
+        if (msg === "SOURCE_NOT_FOUND") {
+          throw new GraphQLError("Collection not found", { extensions: { code: "NOT_FOUND" } });
+        }
+        if (msg === "SLUG_TAKEN") {
+          throw new GraphQLError(`Collection slug "${a.newSlug}" already exists`, {
+            extensions: { code: "CONFLICT" },
+          });
+        }
+        throw e;
+      }
+    },
+  },
   captureSchemaSnapshot: {
     type: new GraphQLNonNull(JSONScalar),
     description: "Capture the live schema as a named snapshot (admin-only).",

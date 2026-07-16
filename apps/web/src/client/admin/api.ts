@@ -38,6 +38,17 @@ export interface ApiCollection {
   note?: string | null;
   /** Mustache-style row-display template, e.g. `{{ title }} — {{ status }}`. */
   displayTemplate?: string | null;
+  /** Admin icon key from the SPA icon set. Null = default Database icon. */
+  icon?: string | null;
+  /** Admin accent color — a preset token name (`"violet"`) or `#rrggbb`. */
+  color?: string | null;
+  /** Hidden from the sidebar + Collections index (presentational only). */
+  hidden?: boolean;
+  /** Preview-URL template with `{{field}}` placeholders (absolute http(s)). */
+  previewUrl?: string | null;
+  /** Lifecycle: `active` | `inactive` (admin-visible, item API blocked) |
+   *  `archived` (hidden; restore via the Archived panel). */
+  status?: string;
   fields: {
     name: string;
     type: string;
@@ -352,6 +363,13 @@ export const collectionsApi = {
     api<{ ok: true; ftsBackfill?: FtsBackfillResult | null }>(`/api/collections/${slug}`, {
       method: "PATCH",
       body: JSON.stringify(input),
+    }),
+  /** Duplicate a collection's schema (fields + metadata; never data) into a
+   *  new managed collection. */
+  clone: (slug: string, newSlug: string) =>
+    api<Envelope<ApiCollection>>(`/api/collections/${slug}/clone`, {
+      method: "POST",
+      body: JSON.stringify({ slug: newSlug }),
     }),
   /** Rebuild the full-text index for every existing row. Only needed as a
    *  manual recovery — PATCH auto-backfills when the searchable set changes. */

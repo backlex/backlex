@@ -25,10 +25,12 @@ import { SkeletonRow } from "./loading";
 import {
   orderCollections,
   useClearTemplateSamples,
+  useCloneCollection,
   useCollections,
   useSaveCollectionsLayout,
   useTemplatesCatalog,
 } from "./queries";
+import { resolveCollectionColor } from "./collection-colors";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -64,6 +66,25 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
   const [search, setSearch] = useUrlState("q", "");
   const [view, setView] = useState<"grid" | "table">("grid");
   const [adoptOpen, setAdoptOpen] = useState(false);
+  // "Show hidden" — collections flagged `hidden` are dropped from the grid /
+  // table unless this is on (they render dimmed with a badge). Persisted like
+  // the sidebar pins so the preference survives reloads.
+  const [showHidden, setShowHidden] = useState(
+    () => localStorage.getItem("backlex.collections.showHidden") === "1",
+  );
+  const toggleShowHidden = () => {
+    setShowHidden((v) => {
+      localStorage.setItem("backlex.collections.showHidden", v ? "0" : "1");
+      return !v;
+    });
+  };
+  const hiddenCount = useMemo(
+    () => collections.filter((c) => c.hidden).length,
+    [collections],
+  );
+  // Clone dialog target (the source slug) — null when closed.
+  const [cloneSource, setCloneSource] = useState<string | null>(null);
+  const cloneMutation = useCloneCollection();
   // Single entry-point chooser: the create + adopt flows share one backend
   // path (`POST /api/collections` with optional `adopted: true`), and this
   // chooser is the UI counterpart — one button on the page, three distinct
@@ -108,9 +129,12 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return collections;
-    return collections.filter((c) => c.slug.toLowerCase().includes(q) || (c.group || "").toLowerCase().includes(q));
-  }, [collections, search]);
+    // Hidden collections only render when "Show hidden" is on (a search still
+    // won't surface them — hidden means hidden until explicitly revealed).
+    const visible = showHidden ? collections : collections.filter((c) => !c.hidden);
+    if (!q) return visible;
+    return visible.filter((c) => c.slug.toLowerCase().includes(q) || (c.group || "").toLowerCase().includes(q));
+  }, [collections, search, showHidden]);
 
   // Ordered [group, items] sections. Edit mode ignores the search filter so a
   // drop can't silently reorder rows that are filtered out of view; empty
@@ -335,9 +359,41 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
           <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t`Search collections by slug or group…`} />
         </InputGroup>
         <div className="flex-1" />
+        {hiddenCount > 0 && !showArchived && (
+          <Button
+            size="sm"
+            variant={showHidden ? "outline" : "ghost"}
+            icon={I.Eye}
+            onClick={toggleShowHidden}
+            title={showHidden ? t`Hide hidden collections` : t`Show hidden collections`}
+          >
+            {showHidden ? <Trans>Hiding off</Trans> : <Trans>Show hidden ({hiddenCount})</Trans>}
+          </Button>
+        )}
         <Button size="sm" variant={view === "grid" ? "outline" : "ghost"} icon={I.Braces} onClick={() => setView("grid")}><Trans>Grid</Trans></Button>
         <Button size="sm" variant={view === "table" ? "outline" : "ghost"} icon={I.Inbox} onClick={() => setView("table")}><Trans>Table</Trans></Button>
       </div>
+
+      <CloneCollectionDialog
+        source={cloneSource}
+        existingSlugs={collections.map((c) => c.slug)}
+        pending={cloneMutation.isPending}
+        onClose={() => setCloneSource(null)}
+        onClone={(newSlug) => {
+          const src = cloneSource;
+          if (!src) return;
+          // Optimistic — the mutation drops a placeholder row into the list
+          // cache immediately; close the dialog right away.
+          setCloneSource(null);
+          cloneMutation.mutate(
+            { slug: src, newSlug },
+            {
+              onSuccess: () => pushToast?.(t`Cloned ${src} → ${newSlug} (schema only)`),
+              onError: (e) => pushToast?.((e as Error).message, "error"),
+            },
+          );
+        }}
+      />
 
       {!loading && filtered.length === 0 ? (
         // Empty state — a fresh workspace, an empty archive, or a search that
@@ -489,6 +545,7 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
                       onOpen={() => onOpen(c.slug)}
                       onOpenApi={onOpenApi ? () => onOpenApi(c.slug) : undefined}
                       onRestore={canManage && onRestore ? () => onRestore(c.slug) : undefined}
+                      onClone={canManage && !showArchived ? () => setCloneSource(c.slug) : undefined}
                     />
                   </div>
                 ))}
@@ -560,13 +617,21 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
                 ))}
               {filtered.map((c) => {
                 const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
+                const rowAccent = resolveCollectionColor(c.color);
                 return (
-                  <TableRow key={c.slug} onClick={() => onOpen(c.slug)} className="cursor-pointer">
+                  <TableRow key={c.slug} onClick={() => onOpen(c.slug)} className={`cursor-pointer ${c.hidden ? "opacity-60" : ""}`}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className="grid size-6 place-items-center rounded-control bg-muted"><Ic size={12} /></span>
+                        <span
+                          className="grid size-6 place-items-center rounded-control"
+                          style={{ background: `color-mix(in srgb, ${rowAccent} 13%, transparent)`, color: rowAccent }}
+                        ><Ic size={12} /></span>
                         <span className="font-mono text-[13px] font-medium">{c.slug}</span>
                         {c.singleton && <Badge variant="outline"><Trans>singleton</Trans></Badge>}
+                        {c.hidden && <Badge variant="outline"><Trans>hidden</Trans></Badge>}
+                        {(c as { status?: string }).status === "inactive" && (
+                          <Badge variant="secondary" className="text-amber-600 dark:text-amber-400"><Trans>inactive</Trans></Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{c.group ?? "—"}</TableCell>
@@ -584,8 +649,13 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
                         ? canManage && onRestore && (
                             <IconButton icon={I.RotateCcw} title={t`Restore collection`} onClick={() => onRestore(c.slug)} />
                           )
-                        : canManage && onDelete && (
-                            <IconButton icon={I.Trash} title={t`Delete collection`} onClick={() => onDelete(c.slug)} />
+                        : canManage && (
+                            <span className="inline-flex items-center gap-0.5">
+                              <IconButton icon={I.Copy} title={t`Duplicate collection (schema only)`} onClick={() => setCloneSource(c.slug)} />
+                              {onDelete && (
+                                <IconButton icon={I.Trash} title={t`Delete collection`} onClick={() => onDelete(c.slug)} />
+                              )}
+                            </span>
                           )}
                     </TableCell>
                   </TableRow>
@@ -599,8 +669,11 @@ export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew,
   );
 }
 
-function CollectionCard({ c, onOpen, archived, editing, dropTarget, onRestore, onOpenApi }: { c: CollectionListItem; onOpen: () => void; archived?: boolean; editing?: boolean; dropTarget?: boolean; onRestore?: () => void; onOpenApi?: () => void }) {
+function CollectionCard({ c, onOpen, archived, editing, dropTarget, onRestore, onOpenApi, onClone }: { c: CollectionListItem; onOpen: () => void; archived?: boolean; editing?: boolean; dropTarget?: boolean; onRestore?: () => void; onOpenApi?: () => void; onClone?: () => void }) {
+  const { t } = useLingui();
   const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
+  const accent = resolveCollectionColor(c.color);
+  const inactive = (c as { status?: string }).status === "inactive";
   return (
     <Card
       interactive={!editing}
@@ -608,16 +681,32 @@ function CollectionCard({ c, onOpen, archived, editing, dropTarget, onRestore, o
       // card's own rounded-surface border — a ring on the drag wrapper drew at a
       // mismatched radius and spilled outside the corners. The violet hover
       // (border + faint fill) matches the Backlex Console collections design.
-      className={`h-full gap-3 p-4 text-left transition-colors ${archived ? "opacity-90" : ""} ${editing ? "select-none" : ""} ${dropTarget ? "border-primary ring-2 ring-primary/50" : "hover:border-[color-mix(in_oklch,var(--primary)_40%,transparent)] hover:bg-[color-mix(in_oklch,var(--primary)_4%,transparent)]"}`}
+      className={`h-full gap-3 p-4 text-left transition-colors ${archived ? "opacity-90" : ""} ${c.hidden ? "opacity-60" : ""} ${editing ? "select-none" : ""} ${dropTarget ? "border-primary ring-2 ring-primary/50" : "hover:border-[color-mix(in_oklch,var(--primary)_40%,transparent)] hover:bg-[color-mix(in_oklch,var(--primary)_4%,transparent)]"}`}
       onClick={editing ? undefined : onOpen}
     >
       <div className="flex items-center gap-2.5">
         {editing && <I.Grip size={14} className="shrink-0 text-muted-foreground" />}
-        <span className="grid size-[34px] shrink-0 place-items-center rounded-control bg-[color-mix(in_oklch,var(--primary)_12%,transparent)] text-[oklch(from_var(--primary)_0.78_0.15_h)]"><Ic size={14} /></span>
+        <span
+          className="grid size-[34px] shrink-0 place-items-center rounded-control"
+          style={{ background: `color-mix(in srgb, ${accent} 13%, transparent)`, color: accent }}
+        ><Ic size={14} /></span>
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate font-mono text-[13px] text-foreground">c_{c.slug}</span>
-          <span className="truncate text-[11px] text-muted-foreground"><Trans>{c.fields} fields</Trans></span>
+          <span className="truncate text-[11px] text-muted-foreground" title={c.note ?? undefined}>
+            {c.note ? c.note : <Trans>{c.fields} fields</Trans>}
+          </span>
         </div>
+        {c.hidden && !archived && (
+          <Badge variant="outline">
+            <I.Eye size={10} />
+            <span className="ml-1"><Trans>hidden</Trans></span>
+          </Badge>
+        )}
+        {inactive && !archived && (
+          <Badge variant="secondary" className="text-amber-600 dark:text-amber-400">
+            <Trans>inactive</Trans>
+          </Badge>
+        )}
         {archived ? (
           <Badge variant="secondary">
             <I.Archive size={10} />
@@ -653,10 +742,73 @@ function CollectionCard({ c, onOpen, archived, editing, dropTarget, onRestore, o
           <>
             <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onOpen(); }}><Trans>Open</Trans></Button>
             <Button size="sm" variant="ghost" iconRight={I.ExternalLink} onClick={(e) => { e.stopPropagation(); onOpenApi?.(); }}>API</Button>
+            {onClone && (
+              <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
+                <IconButton icon={I.Copy} title={t`Duplicate collection (schema only)`} onClick={onClone} />
+              </span>
+            )}
           </>
         )}
       </div>
     </Card>
+  );
+}
+
+/** "Duplicate collection" mini dialog — asks only for the new slug (prefilled
+ *  `<source>_copy`); everything else is copied server-side. Data never is. */
+function CloneCollectionDialog({ source, existingSlugs, pending, onClose, onClone }: {
+  source: string | null;
+  existingSlugs: string[];
+  pending?: boolean;
+  onClose: () => void;
+  onClone: (newSlug: string) => void;
+}) {
+  const { t } = useLingui();
+  const [slug, setSlug] = useState("");
+  useEffect(() => {
+    if (source) setSlug(`${source}_copy`);
+  }, [source]);
+  const clean = slug.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/^_+|_+$/g, "");
+  const error = !clean
+    ? t`slug is required`
+    : !/^[a-z][a-z0-9_]*$/.test(clean)
+      ? t`must start with a letter; snake_case only`
+      : existingSlugs.includes(clean)
+        ? t`${clean} already exists`
+        : null;
+  const submit = () => {
+    if (error || pending) return;
+    onClone(clean);
+  };
+  return (
+    <Dialog open={source !== null} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-[420px]">
+        <DialogHeader>
+          <DialogTitle><Trans>Duplicate <span className="font-mono">{source}</span></Trans></DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[12.5px] font-medium text-foreground"><Trans>New slug</Trans></label>
+          <Input
+            autoFocus
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+            className="font-mono"
+          />
+          <span className={`text-[11.5px] ${error && slug ? "text-destructive" : "text-muted-foreground"}`}>
+            {error && slug
+              ? error
+              : <Trans>Copies the schema and settings. Content is never copied.</Trans>}
+          </span>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
+          <Button variant="primary" size="sm" disabled={!!error || pending} onClick={submit}>
+            {pending ? <Trans>Duplicating…</Trans> : <Trans>Duplicate</Trans>}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

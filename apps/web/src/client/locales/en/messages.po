@@ -8458,6 +8458,10 @@ msgstr "Relative (3d ago)"
 msgid "Released"
 msgstr "Released"
 
+#: src/client/admin/item-editor.tsx
+msgid "Reload"
+msgstr "Reload"
+
 #: src/client/pages/graphql.tsx
 msgid "Reload schema"
 msgstr "Reload schema"
@@ -9189,6 +9193,10 @@ msgstr "Save and close"
 #: src/client/admin/sheet.tsx
 msgid "Save and continue"
 msgstr "Save and continue"
+
+#: src/client/admin/item-editor.tsx
+msgid "Save anyway"
+msgstr "Save anyway"
 
 #: src/client/admin/storage/index.tsx
 msgid "Save as <0>(optional)</0>"
@@ -10901,6 +10909,10 @@ msgstr "This password reset link is missing its token or has expired. Request a 
 #: src/client/admin/pages/functions.tsx
 msgid "This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone."
 msgstr "This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone."
+
+#: src/client/admin/item-editor.tsx
+msgid "This record was changed by someone else after you opened it. Reload to get the latest version (your edits will be lost), or save anyway to overwrite theirs."
+msgstr "This record was changed by someone else after you opened it. Reload to get the latest version (your edits will be lost), or save anyway to overwrite theirs."
 
 #: src/client/admin/parity/insights.tsx
 msgid "This removes the panel from <0>saved_panels</0> and any dashboards that reference it. The query itself isn't run again. This action can't be undone."

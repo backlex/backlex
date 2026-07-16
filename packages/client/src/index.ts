@@ -200,6 +200,14 @@ export interface WriteLocaleOpts {
 const writeLocaleQuery = (opts: WriteLocaleOpts | undefined): string =>
   opts?.locale ? `?locale=${encodeURIComponent(opts.locale)}` : "";
 
+/** Options for `update()` — locale targeting plus optimistic concurrency. */
+export interface WriteUpdateOpts extends WriteLocaleOpts {
+  /** Optimistic-concurrency precondition: pass the `updatedAt` you loaded the
+   *  row with; the server refuses with 409 CONFLICT when the row was modified
+   *  since (instead of silently last-write-winning). */
+  ifUnmodifiedSince?: string;
+}
+
 // ── Resumable-upload helpers (TUS) ──────────────────────────────────────────
 /** Default PATCH chunk size: 8 MiB (object stores require ≥5 MiB non-final parts). */
 const DEFAULT_CHUNK = 8 * 1024 * 1024;
@@ -250,8 +258,10 @@ export interface CollectionClient<T extends Record<string, unknown>> {
    *  omit it to send full `{locale: value}` maps. */
   create(data: Partial<T>, opts?: WriteLocaleOpts): Promise<ItemResponse<T>>;
   /** Update a row. Pass `{ locale }` to upsert a single locale of the
-   *  `localized` fields in `patch` without disturbing the others. */
-  update(id: string, patch: Partial<T>, opts?: WriteLocaleOpts): Promise<ItemResponse<T>>;
+   *  `localized` fields in `patch` without disturbing the others. Pass
+   *  `{ ifUnmodifiedSince }` (the `updatedAt` you loaded) to get a 409
+   *  CONFLICT instead of overwriting someone else's concurrent save. */
+  update(id: string, patch: Partial<T>, opts?: WriteUpdateOpts): Promise<ItemResponse<T>>;
   delete(id: string): Promise<{ ok: boolean }>;
   createMany(rows: Partial<T>[], opts?: { atomic?: boolean }): Promise<BatchResponse<T>>;
   updateMany(
@@ -1261,11 +1271,14 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         request<ItemResponse<T>>("GET", `/api/items/${slug}/${id}${buildItemSearch(opts)}`),
       create: (data: Partial<T>, opts?: WriteLocaleOpts): Promise<ItemResponse<T>> =>
         request<ItemResponse<T>>("POST", `/api/items/${slug}${writeLocaleQuery(opts)}`, data),
-      update: (id: string, patch: Partial<T>, opts?: WriteLocaleOpts): Promise<ItemResponse<T>> =>
+      update: (id: string, patch: Partial<T>, opts?: WriteUpdateOpts): Promise<ItemResponse<T>> =>
         request<ItemResponse<T>>(
           "PATCH",
           `/api/items/${slug}/${id}${writeLocaleQuery(opts)}`,
           patch,
+          opts?.ifUnmodifiedSince
+            ? { "x-if-unmodified-since": opts.ifUnmodifiedSince }
+            : undefined,
         ),
       delete: (id: string): Promise<{ ok: boolean }> =>
         request<{ ok: boolean }>("DELETE", `/api/items/${slug}/${id}`),

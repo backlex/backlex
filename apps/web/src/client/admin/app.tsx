@@ -1564,6 +1564,13 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
         availableFields={schemaState.fields
           .map((f) => (f as { name?: string }).name)
           .filter((n): n is string => !!n && n !== editFieldName)}
+        groups={[
+          ...new Set(
+            schemaState.fields
+              .map((f) => (f as { group?: string }).group)
+              .filter((g): g is string => !!g && g.trim().length > 0),
+          ),
+        ]}
         onClose={() => setEditFieldName(null)}
         onSave={async (next) => {
           const slug = activeCollection || "posts";

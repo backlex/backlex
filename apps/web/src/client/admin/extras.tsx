@@ -347,6 +347,14 @@ export function SchemaView({
           // never reorderable; dnd handlers only fire for user rows.
           const userIdx = idx < userFields.length ? idx : -1;
           const isUser = !f.system && userIdx >= 0;
+          // Presentational blocks (divider/notice) own no column — they must not
+          // show column-constraint badges (required/unique) or a default.
+          const isPres = f.type === "divider" || f.type === "notice";
+          const grp = isUser
+            ? ((f as { group?: string; options?: { group?: string } }).group ??
+              (f as { options?: { group?: string } }).options?.group ??
+              null)
+            : null;
           const isDragging = dragIndex === userIdx;
           const isOver = overIndex === userIdx && dragIndex !== null && dragIndex !== userIdx;
           return (
@@ -394,8 +402,18 @@ export function SchemaView({
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                 <span className="break-all font-mono text-[12.5px] md:break-normal">{f.name}</span>
                 {f.system && <Badge variant="secondary"><Trans>system</Trans></Badge>}
-                {f.unique && <Badge variant="outline"><Trans>unique</Trans></Badge>}
-                {!f.nullable && !f.system && <Badge variant="outline"><Trans>required</Trans></Badge>}
+                {isPres && <Badge variant="secondary"><Trans>layout</Trans></Badge>}
+                {f.unique && !isPres && <Badge variant="outline"><Trans>unique</Trans></Badge>}
+                {!f.nullable && !f.system && !isPres && <Badge variant="outline"><Trans>required</Trans></Badge>}
+                {grp && (
+                  <span
+                    className="inline-flex min-w-0 max-w-[11rem] items-center gap-1 rounded-sm bg-muted px-1.5 py-0.5 text-[10.5px] text-muted-foreground"
+                    title={t`Section: ${grp}`}
+                  >
+                    <I.Layers size={10} className="shrink-0" />
+                    <span className="truncate">{grp}</span>
+                  </span>
+                )}
               </div>
               <Badge variant="outline" mono>{f.type}</Badge>
               <span className="font-mono text-[11.5px] text-muted-foreground">

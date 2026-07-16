@@ -20,7 +20,10 @@ export type StorageType =
   | "uuid"
   | "relation"
   | "relation_many"
-  | "hash";
+  | "hash"
+  // Presentational-only — render in the form but own no column / value.
+  | "divider"
+  | "notice";
 
 export type InterfaceGroup =
   | "Text & Numbers"
@@ -94,6 +97,8 @@ export const FIELD_INTERFACES: FieldInterfaceDef[] = [
   { id: "email", label: "Email", sub: "Email address", group: "Presentation & Other", icon: "Mail", type: "text", keywords: ["mail", "contact"] },
   { id: "uuid", label: "UUID", sub: "Universally-unique identifier", group: "Presentation & Other", icon: "Shield", type: "uuid", keywords: ["id", "guid"] },
   { id: "hash", label: "Hash", sub: "One-way hashed secret — stored as a digest, never shown again", group: "Presentation & Other", icon: "Shield", type: "hash", keywords: ["password", "secret", "pin", "credential", "scrypt", "token"] },
+  { id: "divider", label: "Divider", sub: "A labeled section rule — layout only, stores no data", group: "Presentation & Other", icon: "Minus", type: "divider", keywords: ["separator", "rule", "hr", "section", "break", "layout", "heading"] },
+  { id: "notice", label: "Notice", sub: "An info callout for editors — layout only, stores no data", group: "Presentation & Other", icon: "Info", type: "notice", keywords: ["callout", "info", "warning", "banner", "message", "hint", "note"] },
 ];
 
 const BY_ID = new Map(FIELD_INTERFACES.map((i) => [i.id, i]));

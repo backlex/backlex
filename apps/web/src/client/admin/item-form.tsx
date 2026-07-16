@@ -37,6 +37,13 @@ export type SchemaField = {
   /** Optional layout group. Fields sharing a group render under one heading;
    *  ungrouped fields render flat. No-op until a collection assigns groups. */
   group?: string;
+  /** `"half"` lets two consecutive half fields share a row; else full width. */
+  width?: "full" | "half";
+  /** Section (group) collapsibility — aggregated across the group's fields. */
+  sectionCollapsible?: boolean;
+  sectionCollapsed?: boolean;
+  /** Render the grouped form as tabs (form-wide, aggregated across fields). */
+  sectionsAsTabs?: boolean;
   options?: {
     choices?: Array<{ value: string; label?: string; color?: string }>;
     values?: string[];
@@ -178,6 +185,12 @@ const readChoices = (
 
 const groupOf = (f: SchemaField): string | null => f.group ?? f.options?.group ?? null;
 
+/** Presentational (non-storage) field types — they render in the form but own
+ *  no physical column and carry no value. See @backlex/db `isPresentational`. */
+export const PRESENTATIONAL_TYPES = new Set(["divider", "notice"]);
+const isPresentational = (f: SchemaField): boolean =>
+  PRESENTATIONAL_TYPES.has(f.type ?? "");
+
 /** Minimal, escaped Markdown → HTML for the inline preview. Intentionally
  *  small: headings, bold/italic, inline code, links, and line breaks. Input is
  *  HTML-escaped first so raw markdown can't inject markup. */
@@ -240,7 +253,13 @@ export function useItemForm({
   const buildDefaults = useRef<() => Record<string, unknown>>(() => ({}));
   buildDefaults.current = () => {
     const d: Record<string, unknown> = {};
-    for (const f of fields) d[f.name] = blankFor(f);
+    // Presentational blocks (divider/notice) carry no value — keep them out of
+    // the draft so they never enter validation or the write payload. They still
+    // render in the form body (which iterates the full `fields`).
+    for (const f of fields) {
+      if (isPresentational(f)) continue;
+      d[f.name] = blankFor(f);
+    }
     return d;
   };
 
@@ -415,6 +434,20 @@ export function ItemFields({ form }: { form: ItemForm }) {
   const { t } = useLingui();
   const { fields, draft, errors, touched } = form;
   const [previews, setPreviews] = useState<Record<string, boolean>>({});
+  // Sections (groups) currently folded. Seeded from any field whose
+  // `sectionCollapsed` marks its group as starting collapsed; the section
+  // header toggles it. Keyed by group label.
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(() => {
+    const s = new Set<string>();
+    for (const f of fields) {
+      const g = f.group ?? f.options?.group;
+      if (g && f.sectionCollapsed) s.add(g);
+    }
+    return s;
+  });
+  // Active tab when the grouped form renders as tabs (`sectionsAsTabs`). Empty
+  // until the body resolves the group order; the body seeds it to the first group.
+  const [activeTab, setActiveTab] = useState<string | null>(null);
 
   // Workspace languages drive the per-locale inputs for `localized` fields.
   // Falls back to `["en"]` until settings load (or if none are configured).
@@ -475,6 +508,34 @@ export function ItemFields({ form }: { form: ItemForm }) {
   );
 
   const renderField = (f: SchemaField, forceRequired = false): ReactNode => {
+    // Presentational blocks — no input, no value. A divider is a labeled rule;
+    // a notice is an info callout whose text comes from the field's note
+    // (`description`), falling back to the display label.
+    if (f.type === "divider") {
+      const text = fieldLabel(f, i18n.locale) || "";
+      return (
+        <div key={f.name} className="flex items-center gap-3 pt-1 first:pt-0">
+          {text && (
+            <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {text}
+            </span>
+          )}
+          <span className="h-px flex-1 bg-border" />
+        </div>
+      );
+    }
+    if (f.type === "notice") {
+      const text = f.description || fieldLabel(f, i18n.locale) || "";
+      return (
+        <div
+          key={f.name}
+          className="flex items-start gap-2.5 rounded-control border border-primary/25 bg-primary/5 p-3 text-[12.5px] text-foreground"
+        >
+          <I.Info size={15} className="mt-px shrink-0 text-primary" />
+          <span className="min-w-0">{text}</span>
+        </div>
+      );
+    }
     const val = draft[f.name];
     const err = errors[f.name];
     const iface = f.interface;
@@ -1564,10 +1625,36 @@ export function ItemFields({ form }: { form: ItemForm }) {
     );
   }
 
+  // Pack a field list into rows, pairing two consecutive `width:"half"` fields
+  // into a 2-column grid (single column on mobile). Presentational blocks and
+  // full-width fields always take their own row and break any half-pair.
+  const isHalf = (f: SchemaField) => f.width === "half" && !isPresentational(f);
+  const packRows = (list: SchemaField[], keyPrefix: string): ReactNode[] => {
+    const rows: ReactNode[] = [];
+    let i = 0;
+    while (i < list.length) {
+      const f = list[i]!;
+      const next = list[i + 1];
+      if (isHalf(f) && next && isHalf(next)) {
+        rows.push(
+          <div key={`${keyPrefix}:row:${i}`} className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+            {renderFieldWrapped(f)}
+            {renderFieldWrapped(next)}
+          </div>,
+        );
+        i += 2;
+      } else {
+        rows.push(renderFieldWrapped(f));
+        i += 1;
+      }
+    }
+    return rows;
+  };
+
   // Group fields only when at least one declares a group; otherwise flat.
   const grouped = fields.some((f) => groupOf(f));
   const body = !grouped ? (
-    <div className="flex flex-col gap-8">{fields.map(renderFieldWrapped)}</div>
+    <div className="flex flex-col gap-8">{packRows(fields, "flat")}</div>
   ) : (
     (() => {
       const groups = new Map<string, SchemaField[]>();
@@ -1577,16 +1664,74 @@ export function ItemFields({ form }: { form: ItemForm }) {
         arr.push(f);
         groups.set(g, arr);
       }
+      const groupNames = [...groups.keys()];
+
+      // Tabs mode — one tab per group; only the active group's fields show.
+      if (fields.some((f) => f.sectionsAsTabs) && groupNames.length > 1) {
+        const active = activeTab && groups.has(activeTab) ? activeTab : groupNames[0]!;
+        return (
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-wrap gap-1 border-b border-border">
+              {groupNames.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  aria-selected={active === g}
+                  onClick={() => setActiveTab(g)}
+                  className={`-mb-px border-b-2 px-3 py-2 text-[12.5px] font-medium transition-colors ${
+                    active === g
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-col gap-4">{packRows(groups.get(active)!, active)}</div>
+          </div>
+        );
+      }
+
       return (
         <div className="flex flex-col gap-7">
-          {[...groups.entries()].map(([g, gf]) => (
-            <section key={g} className="flex flex-col gap-4">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {g}
-              </div>
-              {gf.map(renderFieldWrapped)}
-            </section>
-          ))}
+          {[...groups.entries()].map(([g, gf]) => {
+            const rows = packRows(gf, g);
+            // A section folds when ANY of its fields opts in (aggregated).
+            const collapsible = gf.some((f) => f.sectionCollapsible || f.sectionCollapsed);
+            const collapsed = collapsible && collapsedSections.has(g);
+            if (!collapsible) {
+              return (
+                <section key={g} className="flex flex-col gap-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {g}
+                  </div>
+                  {rows}
+                </section>
+              );
+            }
+            return (
+              <section key={g} className="flex flex-col gap-4">
+                <button
+                  type="button"
+                  aria-expanded={!collapsed}
+                  onClick={() =>
+                    setCollapsedSections((s) => {
+                      const n = new Set(s);
+                      if (n.has(g)) n.delete(g);
+                      else n.add(g);
+                      return n;
+                    })
+                  }
+                  className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <I.ChevronRight size={13} className={`shrink-0 transition-transform ${collapsed ? "" : "rotate-90"}`} />
+                  {g}
+                </button>
+                {!collapsed && rows}
+              </section>
+            );
+          })}
         </div>
       );
     })()

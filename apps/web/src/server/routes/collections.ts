@@ -77,10 +77,18 @@ const FieldSchema = z
       "uuid",
       "relation",
       "relation_many",
+      // Single foreign storage key (relation to system_files), stored as a TEXT
+      // column. Present in `FieldType` (@backlex/db) + the type→column map, so
+      // editing a collection that owns a file field must validate here too.
+      "file",
       // One-way hashed secret. The write path scrypt-hashes the plaintext and
       // stores only the digest; reads return null; verification is via
       // `POST /:slug/:id/verify`. Keep in sync with `FieldType` in @backlex/db.
       "hash",
+      // Presentational-only blocks — no column, no value. `loadCollection`
+      // strips them from every items path; the schema applier skips them.
+      "divider",
+      "notice",
     ]),
     required: z.boolean().optional(),
     unique: z.boolean().optional(),
@@ -174,6 +182,13 @@ const FieldSchema = z
       )
       .optional(),
     group: z.string().optional(),
+    /** Form-layout metadata — pure UI, never touches storage/API/validation.
+     *  `width: "half"` pairs two consecutive fields into a 2-column row; the
+     *  section flags make a `group` collapsible (aggregated across the group). */
+    width: z.enum(["full", "half"]).optional(),
+    sectionCollapsible: z.boolean().optional(),
+    sectionCollapsed: z.boolean().optional(),
+    sectionsAsTabs: z.boolean().optional(),
     /** Include this field in the embed text when the collection has
      *  `vectorize: true`. Only meaningful on text/longtext fields. */
     vectorize: z.boolean().optional(),

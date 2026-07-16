@@ -2215,6 +2215,11 @@ msgstr "Collaboration"
 msgid "Collapse collections"
 msgstr "Collapse collections"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Collapsible section"
+msgstr "Collapsible section"
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/search-playground.tsx
@@ -3586,6 +3591,11 @@ msgstr "Duration"
 msgid "e.g. 30s, 5m, 1h, 2d. ≤ 30s sleeps inline; longer waits persist to the scheduler."
 msgstr "e.g. 30s, 5m, 1h, 2d. ≤ 30s sleeps inline; longer waits persist to the scheduler."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "e.g. Content, SEO, Advanced"
+msgstr "e.g. Content, SEO, Advanced"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "e.g. posts published in the past 7 days, sorted by view_count desc"
 msgstr "e.g. posts published in the past 7 days, sorted by view_count desc"
@@ -4288,6 +4298,11 @@ msgstr "Fields"
 msgid "Fields of {0}"
 msgstr "Fields of {0}"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Fields sharing a section name are grouped under one heading in the item form. Leave blank to keep it ungrouped."
+msgstr "Fields sharing a section name are grouped under one heading in the item form. Leave blank to keep it ungrouped."
+
 #: src/client/admin/storage/widgets.tsx
 msgid "File detail"
 msgstr "File detail"
@@ -4502,6 +4517,11 @@ msgstr "Fork a branch from the current live schema. Stage changes, then apply."
 msgid "Fork a branch to stage schema changes off to the side."
 msgstr "Fork a branch to stage schema changes off to the side."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Form-wide — every section becomes a tab across the top instead of a stacked heading. Best for large records."
+msgstr "Form-wide — every section becomes a tab across the top instead of a stacked heading. Best for large records."
+
 #: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "Format"
@@ -4560,6 +4580,11 @@ msgstr "full access"
 #: src/client/admin/permissions-matrix.tsx
 msgid "Full access"
 msgstr "Full access"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Full width"
+msgstr "Full width"
 
 #: src/client/admin/pages/search-playground.tsx
 msgid "Full-text"
@@ -4730,6 +4755,11 @@ msgstr "Groups organize the Collections page and the sidebar. Rearrange them any
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Guards updated"
 msgstr "Guards updated"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Half width"
+msgstr "Half width"
 
 #: src/client/admin/parity/database.tsx
 msgid "Hash"
@@ -5456,6 +5486,14 @@ msgstr "Latency"
 msgid "Latest"
 msgstr "Latest"
 
+#: src/client/admin/extras.tsx
+msgid "layout"
+msgstr "layout"
+
+#: src/client/admin/add-field.tsx
+msgid "Layout block — renders in the item form but stores no data and creates no column. Set its text in the <0>Field</0> tab."
+msgstr "Layout block — renders in the item form but stores no data and creates no column. Set its text in the <0>Field</0> tab."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Layout reset to auto-arrange."
 msgstr "Layout reset to auto-arrange."
@@ -5546,6 +5584,13 @@ msgstr "Leave to user"
 #: src/client/admin/pages/database-import.tsx
 msgid "legacy production"
 msgstr "legacy production"
+
+#. placeholder {0}: draft.group.trim()
+#. placeholder {0}: group.trim()
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Let editors fold the \"{0}\" section. Applies to the whole section."
+msgstr "Let editors fold the \"{0}\" section. Applies to the whole section."
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "License"
@@ -9357,6 +9402,15 @@ msgstr "secret"
 msgid "Secret rotated."
 msgstr "Secret rotated."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Section <0>(optional)</0>"
+msgstr "Section <0>(optional)</0>"
+
+#: src/client/admin/extras.tsx
+msgid "Section: {grp}"
+msgstr "Section: {grp}"
+
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/advisor.tsx
 msgid "Security"
@@ -9757,6 +9811,11 @@ msgstr "Show headers ({0})"
 msgid "Show password"
 msgstr "Show password"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Show sections as tabs"
+msgstr "Show sections as tabs"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Show this option on the sign-in screen."
 msgstr "Show this option on the sign-in screen."
@@ -10127,6 +10186,11 @@ msgstr "Staging"
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Start blank"
 msgstr "Start blank"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Start collapsed"
+msgstr "Start collapsed"
 
 #: src/client/admin/collections-index.tsx
 msgid "Start from"
@@ -10613,6 +10677,11 @@ msgstr "The query runs verbatim. The visualization hint above explains how its c
 msgid "The row is rejected unless this matches. Reference another field's value with <0>$field.name</0> (e.g. <1>end_date ≥ $field.start_date</1>)."
 msgstr "The row is rejected unless this matches. Reference another field's value with <0>$field.name</0> (e.g. <1>end_date ≥ $field.start_date</1>)."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "The section opens folded — useful for advanced or rarely-touched fields."
+msgstr "The section opens folded — useful for advanced or rarely-touched fields."
+
 #: src/client/pages/shared-record.tsx
 msgid "The share link may have been revoked, or the record it pointed to was removed."
 msgstr "The share link may have been revoked, or the record it pointed to was removed."
@@ -11019,6 +11088,11 @@ msgstr "Turn off two-factor authentication."
 #: src/client/admin/account-page.tsx
 msgid "Turning off…"
 msgstr "Turning off…"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Two consecutive half-width fields sit side by side on one row (stacked on mobile)."
+msgstr "Two consecutive half-width fields sit side by side on one row (stacked on mobile)."
 
 #: src/client/admin/account-page.tsx
 #: src/client/pages/sign-in.tsx
@@ -11627,6 +11701,8 @@ msgstr "which field the board groups cards by"
 msgid "Whole numbers only (no decimals)"
 msgstr "Whole numbers only (no decimals)"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "Width"
 msgstr "Width"

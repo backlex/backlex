@@ -81,6 +81,15 @@ interface FieldDraft {
   label?: string;
   /** Inline help text. */
   description?: string;
+  /** Section label — fields sharing one render under a single heading. */
+  group?: string;
+  /** `"half"` pairs two consecutive fields into a 2-column row. UI only. */
+  width?: "full" | "half";
+  /** Make this field's section collapsible / start it collapsed. UI only. */
+  sectionCollapsible?: boolean;
+  sectionCollapsed?: boolean;
+  /** Render the grouped form as tabs (form-wide, aggregated). UI only. */
+  sectionsAsTabs?: boolean;
   /** Internal column — never returned by the API. */
   private?: boolean;
   /** Server-side auto-fill on insert / update. */
@@ -107,11 +116,13 @@ export interface EditFieldDialogProps {
   field: FieldDraft | null;
   /** Sibling field names, for the condition rule builder's field picker. */
   availableFields?: string[];
+  /** Existing section names on this collection — offered as suggestions. */
+  groups?: string[];
   onClose: () => void;
   onSave: (next: FieldDraft) => void;
 }
 
-export function EditFieldDialog({ open, field, availableFields = [], onClose, onSave }: EditFieldDialogProps) {
+export function EditFieldDialog({ open, field, availableFields = [], groups = [], onClose, onSave }: EditFieldDialogProps) {
   const { t } = useLingui();
   const [draft, setDraft] = useState<FieldDraft | null>(field);
   const [conds, setConds] = useState<CondDraft[]>([]);
@@ -242,6 +253,14 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
       ...draft,
       label: draft.label?.trim() ? draft.label.trim() : undefined,
       description: draft.description?.trim() ? draft.description.trim() : undefined,
+      group: draft.group?.trim() ? draft.group.trim() : undefined,
+      width: draft.width === "half" ? "half" : undefined,
+      // Section-collapse flags are meaningless without a section, and
+      // "start collapsed" without "collapsible" is a no-op — normalize both.
+      sectionCollapsible: draft.group?.trim() && draft.sectionCollapsible ? true : undefined,
+      sectionCollapsed:
+        draft.group?.trim() && draft.sectionCollapsible && draft.sectionCollapsed ? true : undefined,
+      sectionsAsTabs: draft.group?.trim() && draft.sectionsAsTabs ? true : undefined,
       options: wantsChoices
         ? { choices: (draft.options?.choices ?? []).filter((c) => c.value.trim()) }
         : undefined,
@@ -411,6 +430,62 @@ export function EditFieldDialog({ open, field, availableFields = [], onClose, on
                 <Textarea value={draft.description ?? ""} onChange={(e) => setDraft((d) => d ? { ...d, description: e.target.value } : d)} rows={3} placeholder={t`Add a helpful note for editors…`} />
                 <span className="text-[11.5px] text-muted-foreground"><Trans>Inline help text shown beneath the field.</Trans></span>
               </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Section <span className="text-muted-foreground">(optional)</span></Trans></label>
+                <Input
+                  value={draft.group ?? ""}
+                  onChange={(e) => setDraft((d) => d ? { ...d, group: e.target.value } : d)}
+                  placeholder={t`e.g. Content, SEO, Advanced`}
+                  list="edit-field-section-suggestions"
+                />
+                {groups.length > 0 && (
+                  <datalist id="edit-field-section-suggestions">
+                    {[...new Set(groups)].map((g) => (
+                      <option key={g} value={g} />
+                    ))}
+                  </datalist>
+                )}
+                <span className="text-[11.5px] text-muted-foreground"><Trans>Fields sharing a section name are grouped under one heading in the item form. Leave blank to keep it ungrouped.</Trans></span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Width</Trans></label>
+                <Select
+                  value={draft.width === "half" ? "half" : "full"}
+                  onChange={(v) => setDraft((d) => d ? { ...d, width: v as "full" | "half" } : d)}
+                  options={[
+                    { value: "full", label: t`Full width` },
+                    { value: "half", label: t`Half width` },
+                  ]}
+                />
+                <span className="text-[11.5px] text-muted-foreground"><Trans>Two consecutive half-width fields sit side by side on one row (stacked on mobile).</Trans></span>
+              </div>
+              {draft.group?.trim() && (
+                <div className="flex flex-col gap-2.5 rounded-control bg-muted p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Collapsible section</Trans></div>
+                      <div className="text-[11.5px] text-muted-foreground"><Trans>Let editors fold the "{draft.group.trim()}" section. Applies to the whole section.</Trans></div>
+                    </div>
+                    <Switch checked={!!draft.sectionCollapsible} onChange={(v) => setDraft((d) => d ? { ...d, sectionCollapsible: v, sectionCollapsed: v ? d.sectionCollapsed : false } : d)} />
+                  </div>
+                  {draft.sectionCollapsible && (
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Start collapsed</Trans></div>
+                        <div className="text-[11.5px] text-muted-foreground"><Trans>The section opens folded — useful for advanced or rarely-touched fields.</Trans></div>
+                      </div>
+                      <Switch checked={!!draft.sectionCollapsed} onChange={(v) => setDraft((d) => d ? { ...d, sectionCollapsed: v } : d)} />
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-3 border-t border-border pt-2.5">
+                    <div>
+                      <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Show sections as tabs</Trans></div>
+                      <div className="text-[11.5px] text-muted-foreground"><Trans>Form-wide — every section becomes a tab across the top instead of a stacked heading. Best for large records.</Trans></div>
+                    </div>
+                    <Switch checked={!!draft.sectionsAsTabs} onChange={(v) => setDraft((d) => d ? { ...d, sectionsAsTabs: v } : d)} />
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Private</Trans></div>

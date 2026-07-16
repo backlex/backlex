@@ -7,3 +7,4 @@ export * from "./image";
 export * from "./embedding";
 export * from "./saml";
 export * from "./ldap";
+export * from "./realtime";

@@ -426,11 +426,30 @@ export function useItemForm({
   };
 }
 
+/** Live-collaboration wiring for `ItemFields` — supplied by the item editor
+ *  (from `useCollab`) so field editors surface who else is editing what and
+ *  announce this member's own focus. Optional: bulk-edit and the sheet render
+ *  the same fields without collab. */
+export interface ItemFieldsCollab {
+  peersByField: Record<string, { id: string; name: string | null; color: string }[]>;
+  onFieldFocus: (field: string) => void;
+  onFieldBlur: (field: string) => void;
+}
+
+/** Short handle for a collab peer badge — the email's local part. */
+const peerHandle = (p: { name: string | null; id: string }): string => {
+  if (p.name) {
+    const at = p.name.indexOf("@");
+    return at > 0 ? p.name.slice(0, at) : p.name;
+  }
+  return p.id.slice(0, 6);
+};
+
 /**
  * Renders every editable field for a collection row from `form`. Groups fields
  * by their optional `group` when any are assigned; otherwise renders flat.
  */
-export function ItemFields({ form }: { form: ItemForm }) {
+export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFieldsCollab }) {
   const { t } = useLingui();
   const { fields, draft, errors, touched } = form;
   const [previews, setPreviews] = useState<Record<string, boolean>>({});
@@ -1607,10 +1626,44 @@ export function ItemFields({ form }: { form: ItemForm }) {
     const eff = fieldEffects(f, draft);
     if (eff.hidden) return null;
     const node = renderField(f, eff.required);
-    if (!node || !eff.readonly) return node;
-    return (
+    if (!node) return null;
+    const base = !eff.readonly ? (
+      node
+    ) : (
       <div key={f.name} aria-disabled className="pointer-events-none select-none opacity-60">
         {node}
+      </div>
+    );
+    if (!collab || isPresentational(f)) return base;
+    // Field awareness: an outline + name badge when another member holds this
+    // field, and focus/blur capture to announce this member's own position.
+    // Advisory only — the field stays editable.
+    const holders = collab.peersByField[f.name] ?? [];
+    const holder = holders[0];
+    return (
+      <div
+        key={f.name}
+        className="relative rounded-control"
+        style={holder ? { outline: `1.5px solid ${holder.color}`, outlineOffset: 4 } : undefined}
+        onFocusCapture={() => collab.onFieldFocus(f.name)}
+        onBlurCapture={(e) => {
+          // Focus moving within the same field (e.g. input → its clear button)
+          // isn't a blur for awareness purposes.
+          if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+          collab.onFieldBlur(f.name);
+        }}
+      >
+        {holder && (
+          <span
+            className="absolute -top-2.5 right-1 z-10 max-w-[45%] truncate rounded-full px-1.5 text-[10px] font-medium leading-4 text-white"
+            style={{ background: holder.color }}
+            title={t`Currently editing this field`}
+          >
+            {peerHandle(holder)}
+            {holders.length > 1 ? ` +${holders.length - 1}` : ""}
+          </span>
+        )}
+        {base}
       </div>
     );
   };

@@ -2956,6 +2956,10 @@ msgstr "Geçerli çalışma alanı"
 msgid "Current user"
 msgstr "Geçerli kullanıcı"
 
+#: src/client/admin/item-form.tsx
+msgid "Currently editing this field"
+msgstr "Şu anda bu alanı düzenliyor"
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Cursor"

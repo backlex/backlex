@@ -2956,6 +2956,10 @@ msgstr "Current tenant"
 msgid "Current user"
 msgstr "Current user"
 
+#: src/client/admin/item-form.tsx
+msgid "Currently editing this field"
+msgstr "Currently editing this field"
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Cursor"

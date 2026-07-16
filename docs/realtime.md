@@ -115,10 +115,10 @@ curl -X POST /api/realtime/team-chat/publish \
   -d '{"text":"hello"}'
 ```
 
-Free-form channel names (anything not under `items:*`, `collections`, or
-`presence:*`) are open — no auth, no filter. Useful for chat-like or
-notification fan-out where you don't need a permission-bound feed.
-Publishes are rate-limited per `(channel, ip)` via `lib/rate-limit.ts`.
+Free-form channel names (anything not under `items:*`, `collections`,
+`presence:*`, or `collab:*`) are open — no auth, no filter. Useful for
+chat-like or notification fan-out where you don't need a permission-bound
+feed. Publishes are rate-limited per `(channel, ip)` via `lib/rate-limit.ts`.
 
 ## Presence channels (`presence:*`)
 
@@ -135,3 +135,30 @@ es.addEventListener("message", (ev) => {
   const e = JSON.parse(ev.data); // { event: "presence", data: { members: [...] } }
 });
 ```
+
+## Collaboration channels (`collab:item:<slug>:<id>`)
+
+The admin editor's live-collaboration layer (who's viewing a record, who's
+editing which field). Both subscribe **and** publish require a session plus
+`read` permission on the collection. Publish bodies are schema-validated
+(`{ t: "hello"|"focus"|"blur"|"ping"|"bye", field? }` — strict, a
+client-supplied `user` is rejected) and identity is stamped server-side from
+the session, so members can't impersonate each other.
+
+The protocol is stateless: there is no server-side roster. Every client
+derives the member list from the stream (15s `ping` heartbeats, 45s TTL
+sweep), and members reply to a newcomer's `hello` with a jittered `ping` —
+so the messages ride any fan-out transport without membership state.
+
+`GET /api/realtime/collab-config` tells the SPA which pipe to use:
+
+| Transport | When | How |
+|---|---|---|
+| `native` | Durable Object, long-lived process (Bun), or the Upstash Redis fallback | SSE subscribe + REST publish above |
+| `ably` | Stateless serverless with `ABLY_API_KEY` set | Browser connects to Ably directly with a server-minted, channel-scoped TokenRequest (`POST /api/realtime/collab-token`, `clientId` pinned to the session user). Zero function invocations for delivery — the free-tier-friendly path on Vercel/Netlify. |
+| `off` | Stateless serverless with neither key | The admin hides collab affordances |
+
+The Ably key (`ABLY_API_KEY`, `keyName:keySecret` form) never reaches the
+client; the server only signs token requests (WebCrypto HMAC, no SDK in the
+server bundle). On the Ably pipe, receivers trust the Ably-verified
+`clientId` over the message body — only the display name is self-reported.

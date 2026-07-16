@@ -35,6 +35,7 @@ import {
   CollabPublishSchema,
   buildCollabMessage,
   collabConfig,
+  mintAblyTokenRequest,
   parseCollabChannel,
 } from "../services/collab";
 
@@ -463,6 +464,66 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
       },
     }),
     (c) => c.json(collabConfig(c.get("ctx").env)),
+  )
+  // Ably token auth for collab channels: the browser's ably-js authCallback
+  // POSTs the channels it wants; each one passes the same permission gate as a
+  // native subscribe, and the response is a TokenRequest whose capability is
+  // scoped to exactly those channels with `clientId` pinned to the session
+  // user (Ably then enforces the identity on every publish). The API key
+  // secret never leaves the server.
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/collab-token",
+      tags: [TAG],
+      summary: "Mint an Ably TokenRequest scoped to collab channels",
+      security: SECURITY,
+      request: {
+        body: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: z
+                .object({ channels: z.array(z.string()).min(1).max(10) })
+                .openapi("CollabTokenInput"),
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: "Signed Ably TokenRequest for the requested channels",
+          content: {
+            "application/json": {
+              schema: z
+                .object({ tokenRequest: z.record(z.string(), z.unknown()) })
+                .openapi("CollabTokenResponse"),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      if (!ctx.env.ABLY_API_KEY) {
+        throw new AppError("UNAVAILABLE", "Ably is not configured on this deployment");
+      }
+      const { channels } = c.req.valid("json");
+      for (const channel of channels) {
+        if (!channel.startsWith(COLLAB_PREFIX)) {
+          throw new AppError("VALIDATION", "collab-token only covers collab:* channels");
+        }
+        await gateForChannel(ctx, auth, channel, false);
+      }
+      const tokenRequest = await mintAblyTokenRequest(
+        ctx.env.ABLY_API_KEY,
+        auth.userId!,
+        channels,
+      );
+      return c.json({ tokenRequest });
+    },
   )
   // Admin-only synthetic event injector — lets you fire a fake ItemEvent at an
   // `items:*` channel to verify per-subscriber permission filtering / field

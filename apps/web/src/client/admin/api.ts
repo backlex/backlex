@@ -96,15 +96,19 @@ export interface ApiUser {
   id: string;
   email: string;
   name: string | null;
-  status?: "active" | "suspended";
+  status?: "active" | "suspended" | "invited";
   createdAt?: string;
   roles: { id: string; name: string }[];
   /** Auth method: `password`/`github`/`google`/`magic` or a federated
-   *  identity (`saml`/`ldap`/`cloud`). */
+   *  identity (`saml`/`ldap`/`cloud`) — `invite` for pending invite rows. */
   provider?: string;
   lastSeenAt?: number | null;
   /** Whether the user has an authenticator-app (TOTP) second factor enrolled. */
   twoFactorEnabled?: boolean;
+  /** tenant_members row id — present on pending-invite rows (revoke target). */
+  memberId?: string;
+  /** Shareable accept link — present on pending-invite rows. */
+  inviteUrl?: string;
 }
 
 /** A workspace end-user (the `app_users` pool — the customers of the app
@@ -330,10 +334,13 @@ export const tenantsApi = {
   members: (id: string) =>
     api<Envelope<ApiTenantMember[]>>(`/api/tenants/${id}/members`),
   invite: (id: string, input: { email: string; role: string }) =>
-    api<Envelope<{ id: string; token: string }>>(`/api/tenants/${id}/members/invite`, {
-      method: "POST",
-      body: JSON.stringify(input),
-    }),
+    api<Envelope<{ id: string; token: string; url: string; sent: boolean }>>(
+      `/api/tenants/${id}/members/invite`,
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      },
+    ),
   removeMember: (tenantId: string, memberId: string) =>
     api<{ ok: true }>(`/api/tenants/${tenantId}/members/${memberId}`, {
       method: "DELETE",
@@ -607,7 +614,9 @@ export const flagsApi = {
 export const usersApi = {
   list: () => api<Envelope<ApiUser[]>>(`/api/users`),
   invite: (email: string, role?: string) =>
-    api<Envelope<{ email: string; sent: boolean }>>(`/api/users/invite`, {
+    api<
+      Envelope<{ id: string; email: string; token: string; url: string; sent: boolean }>
+    >(`/api/users/invite`, {
       method: "POST",
       body: JSON.stringify({ email, role }),
     }),
@@ -615,6 +624,8 @@ export const usersApi = {
     api<{ ok: true }>(`/api/users/${id}/suspend`, { method: "PATCH" }),
   activate: (id: string) =>
     api<{ ok: true }>(`/api/users/${id}/activate`, { method: "PATCH" }),
+  revokeInvite: (memberId: string) =>
+    api<{ ok: true }>(`/api/users/invite/${memberId}`, { method: "DELETE" }),
   revokeAll: (id: string) =>
     api<{ ok: true }>(`/api/users/${id}/sessions/revoke-all`, { method: "POST" }),
   /** Recover a user locked out of 2FA: clears their TOTP secret + backup

@@ -1,9 +1,9 @@
-import { SYSTEM_ROLES } from "@backlex/core";
+import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { and, eq, isNotNull } from "drizzle-orm";
-import { invalidateTenantMembership } from "./permissions-cache";
-import { assignRoleByName, type DbCtx, ensureSystemRoles } from "./seed";
+import { invalidateTenantMembership, invalidateUserRoles } from "./permissions-cache";
+import { assignRoleByName, type DbCtx, ensureSystemRoles, getRoleByName } from "./seed";
 
 /**
  * Shared workspace-invite logic, used by both the tenants route (`POST /accept`,
@@ -88,6 +88,52 @@ export const findInviteByToken = async (
 export const hasValidInvite = async (ctx: DbCtx, email: string): Promise<boolean> =>
   (await findActiveInviteByEmail(ctx, email)) !== null;
 
+/**
+ * Create a pending workspace invite: `tenant_members` row with status
+ * `invited` + a 7-day one-time token. Single source of truth for BOTH invite
+ * surfaces — `POST /api/tenants/{id}/members/invite` (workspace Members panel)
+ * and `POST /api/users/invite` (Users page) — so the sign-up bypass
+ * (`hasValidInvite`) and the accept flow behave identically no matter where
+ * the invite was minted.
+ *
+ * `role` is stored verbatim. It may be a workspace-membership role
+ * (`owner`/`admin`/`editor`/`member`) or an RBAC role name from the `roles`
+ * table (`authenticated`, custom roles…) — `acceptInviteForUser` first tries
+ * an exact RBAC role-name match, then falls back to the membership mapping.
+ *
+ * Throws `CONFLICT` when the email is already a member of (or invited to)
+ * the workspace.
+ */
+export const createMemberInvite = async (
+  ctx: DbCtx,
+  args: { tenantId: string; email: string; role: string; invitedBy: string | null },
+): Promise<{ id: string; token: string; expiresAt: Date }> => {
+  const t = membersFor(ctx.dialect);
+  const email = args.email.trim().toLowerCase();
+  const existing = (await (ctx.db as any)
+    .select({ id: t.id, email: t.email })
+    .from(t)
+    .where(eq(t.tenantId, args.tenantId))) as { id: string; email: string }[];
+  if (existing.some((r) => r.email.toLowerCase() === email))
+    throw new AppError("CONFLICT", `${email} is already a member or invited`);
+  const id = crypto.randomUUID();
+  const token = crypto.randomUUID().replace(/-/g, "");
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await (ctx.db as any).insert(t).values({
+    id,
+    tenantId: args.tenantId,
+    userId: null,
+    email,
+    role: args.role,
+    status: "invited",
+    invitedBy: args.invitedBy,
+    invitedAt: new Date(),
+    inviteToken: token,
+    inviteExpiresAt: expiresAt,
+  });
+  return { id, token, expiresAt };
+};
+
 /** Bind any active invite for `email` to the user: flip the member row to
  *  active, clear the token, ensure system roles, and assign the RBAC role that
  *  mirrors the membership level. Idempotent (no-op when there's no invite).
@@ -112,12 +158,25 @@ export const acceptInviteForUser = async (
     })
     .where(eq(m.id, inv.id));
   await ensureSystemRoles(ctx, inv.tenantId);
-  const rbacRole =
-    inv.role === "owner" || inv.role === "admin"
+  // The stored role may be an RBAC role name (Users-page invites offer the
+  // real `roles` table: `authenticated`, customs…) — honor an exact match
+  // first, then fall back to the workspace-membership mapping. Either way the
+  // user also gets the implicit `authenticated` baseline the invite dialogs
+  // promise.
+  const named = await getRoleByName(ctx, inv.tenantId, inv.role);
+  const rbacRole = named
+    ? inv.role
+    : inv.role === "owner" || inv.role === "admin"
       ? SYSTEM_ROLES.admin
       : SYSTEM_ROLES.authenticated;
   await assignRoleByName(ctx, inv.tenantId, userId, rbacRole);
-  // Membership row + RBAC role both just changed for this tenant.
+  if (rbacRole !== SYSTEM_ROLES.authenticated)
+    await assignRoleByName(ctx, inv.tenantId, userId, SYSTEM_ROLES.authenticated);
+  // Membership row + RBAC role both just changed for this tenant. Drop the
+  // per-user roles entry too — the sign-up request may have already cached a
+  // pre-invite role set (e.g. just `authenticated`), which would otherwise
+  // mask the invite's role until the cache expires.
   invalidateTenantMembership(inv.tenantId);
+  invalidateUserRoles(inv.tenantId, userId);
   return inv.tenantId;
 };

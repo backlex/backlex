@@ -8,7 +8,7 @@ import type { AppBindings } from "../app";
 import { errorResponses, OkSchema, SECURITY } from "../lib/openapi";
 import { requireUser } from "../middleware/session";
 import { TENANT_COOKIE } from "../middleware/tenant";
-import { findInviteByToken } from "../services/invites";
+import { createMemberInvite, findInviteByToken } from "../services/invites";
 import { invalidateTenantMembership } from "../services/permissions-cache";
 import { assignRoleByName, ensureSystemRoles } from "../services/seed";
 
@@ -357,7 +357,15 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>()
           content: {
             "application/json": {
               schema: z.object({
-                data: z.object({ id: z.string(), token: z.string() }),
+                data: z.object({
+                  id: z.string(),
+                  token: z.string(),
+                  /** Ready-to-share accept link (`{APP_URL}/invite?token=…`). */
+                  url: z.string(),
+                  /** False when the mail only hit the console fallback — the
+                   *  UI should surface `url` for manual sharing instead. */
+                  sent: z.boolean(),
+                }),
               }),
             },
           },
@@ -381,41 +389,28 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>()
         if (!m[0] || !["owner", "admin"].includes(m[0].role))
           throw new AppError("FORBIDDEN", "Only owners/admins may invite");
       }
-      const existing = await (ctx.db as any)
-        .select({ id: t.members.id })
-        .from(t.members)
-        .where(and(eq(t.members.tenantId, id), eq(t.members.email, body.email)))
-        .limit(1);
-      if (existing[0])
-        throw new AppError("CONFLICT", `${body.email} is already a member or invited`);
-      const memberId = crypto.randomUUID();
-      const token = crypto.randomUUID().replace(/-/g, "");
-      const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      await (ctx.db as any).insert(t.members).values({
-        id: memberId,
+      const { id: memberId, token } = await createMemberInvite(ctx, {
         tenantId: id,
-        userId: null,
         email: body.email,
         role: body.role,
-        status: "invited",
-        invitedBy: auth.userId,
-        invitedAt: new Date(),
-        inviteToken: token,
-        inviteExpiresAt: expires,
+        invitedBy: auth.userId ?? null,
       });
-      // Best-effort send through the target workspace's transport. Email adapter
-      // handles dev console.
-      void ctx
+      const url = `${ctx.env.APP_URL}/invite?token=${token}`;
+      // Best-effort send through the target workspace's transport (the console
+      // adapter on deployments without SMTP). `sent` tells the UI whether to
+      // say "emailed" or to lean on the copyable link instead.
+      const sent = await ctx
         .emailFor(id)
-        .then((transport) =>
-          transport.send({
+        .then(async (transport) => {
+          await transport.send({
             to: body.email,
             subject: `You've been invited to a backlex workspace`,
-            text: `Open ${ctx.env.APP_URL}/invite?token=${token} to accept.`,
-          }),
-        )
-        .catch(() => {});
-      return c.json({ data: { id: memberId, token } }, 201);
+            text: `Open ${url} to accept.`,
+          });
+          return transport.provider !== "console";
+        })
+        .catch(() => false);
+      return c.json({ data: { id: memberId, token, url, sent } }, 201);
     },
   )
   /** Remove a member (owner cannot be removed by non-owners). */

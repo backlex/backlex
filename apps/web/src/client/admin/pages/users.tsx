@@ -62,7 +62,7 @@ const PROVIDER_LABEL: Record<string, string> = {
 
 export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
   const { t } = useLingui();
-  type UserRow = { id: string; name: string; email: string; roles: string[]; status: string; provider: string; mfa: boolean; last: string; lastIso: string | null; created: string; sessions: number };
+  type UserRow = { id: string; name: string; email: string; roles: string[]; status: string; provider: string; mfa: boolean; last: string; lastIso: string | null; created: string; sessions: number; memberId?: string; inviteUrl?: string };
   const [users, setUsers] = useState<UserRow[]>([]);
   // First-load gate — drives the page skeleton until the user list lands.
   const [loaded, setLoaded] = useState(false);
@@ -95,6 +95,8 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
               lastIso: lastSeenAt ? new Date(lastSeenAt).toISOString().slice(0, 19).replace("T", " ") : null,
               created: u.createdAt ? String(u.createdAt).slice(0, 10) : "—",
               sessions: 0,
+              memberId: u.memberId,
+              inviteUrl: u.inviteUrl,
             };
           }) as any,
         );
@@ -280,7 +282,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
           <TableBody>
             {filtered.map((u) => {
               return (
-                <TableRow key={u.id} data-selected={selected.has(u.id)} onClick={() => setActiveUser(u)} className="cursor-pointer data-[selected=true]:bg-selected-surface">
+                <TableRow key={u.id} data-selected={selected.has(u.id)} onClick={() => { if (u.status !== "invited") setActiveUser(u); }} className="cursor-pointer data-[selected=true]:bg-selected-surface">
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox checked={selected.has(u.id)} onChange={() => toggle(u.id)} />
                   </TableCell>
@@ -300,10 +302,14 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                   </TableCell>
                   <TableCell>{statusBadge(u.status)}</TableCell>
                   <TableCell>
-                    <span className="inline-flex items-center gap-1.5 text-foreground">
-                      <ProviderGlyph kind={u.provider} />
-                      <span className="text-[12.5px]">{PROVIDER_LABEL[u.provider] ?? u.provider}</span>
-                    </span>
+                    {u.status === "invited" ? (
+                      <span className="font-mono text-[11.5px] text-muted-foreground">—</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-foreground">
+                        <ProviderGlyph kind={u.provider} />
+                        <span className="text-[12.5px]">{PROVIDER_LABEL[u.provider] ?? u.provider}</span>
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="text-center">
                     {u.mfa
@@ -316,6 +322,27 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                       <DropdownMenuTrigger asChild>
                         <IconButton icon={I.More} />
                       </DropdownMenuTrigger>
+                      {u.status === "invited" ? (
+                        <DropdownMenuContent align="end">
+                          {u.inviteUrl && (
+                            <DropdownMenuItem onSelect={() => {
+                              void navigator.clipboard.writeText(u.inviteUrl!).then(
+                                () => pushToast(t`Invite link copied.`),
+                                () => pushToast(u.inviteUrl!),
+                              );
+                            }}><I.Link size={12} /><Trans>Copy invite link</Trans></DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem variant="destructive" onSelect={() => {
+                            const memberId = u.memberId ?? u.id;
+                            const snapshot = users;
+                            setUsers((arr) => arr.filter((x) => x.id !== u.id));
+                            void usersApi.revokeInvite(memberId).then(
+                              () => pushToast(t`Invite to ${u.email} revoked.`),
+                              (e) => { setUsers(snapshot); pushToast((e as Error).message); },
+                            );
+                          }}><I.Trash size={12} /><Trans>Revoke invite</Trans></DropdownMenuItem>
+                        </DropdownMenuContent>
+                      ) : (
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onSelect={() => { setActiveUser(u); }}><I.Eye size={12} /><Trans>View profile</Trans></DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => { pushToast(t`Reset link sent to ${u.email}.`); }}><I.Mail size={12} /><Trans>Send reset link</Trans></DropdownMenuItem>
@@ -356,6 +383,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                           })();
                         }}><I.Trash size={12} /><Trans>Delete</Trans></DropdownMenuItem>
                       </DropdownMenuContent>
+                      )}
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
@@ -376,14 +404,22 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
       </Card>
 
       {activeUser && <UserDrawer user={activeUser} allRoles={allRoles} onClose={() => setActiveUser(null)} onSaved={applyUserPatch} pushToast={pushToast} />}
-      {inviteOpen && <InviteUserDialog roles={roleNames} onClose={() => setInviteOpen(false)} onInvite={async (payload: any) => {
-        try {
-          await usersApi.invite(payload.email, payload.role);
-          pushToast(t`Invite sent to ${payload.email}.`);
-        } catch (e) {
-          pushToast((e as Error).message);
-        }
-        setInviteOpen(false);
+      {inviteOpen && <InviteUserDialog roles={roleNames} onClose={() => setInviteOpen(false)} pushToast={pushToast} onCreated={(inv) => {
+        setUsers((arr) => [...arr, {
+          id: inv.id,
+          name: inv.email.split("@")[0] ?? inv.email,
+          email: inv.email,
+          roles: [inv.role],
+          status: "invited",
+          provider: "invite",
+          mfa: false,
+          last: "—",
+          lastIso: null,
+          created: new Date().toISOString().slice(0, 10),
+          sessions: 0,
+          memberId: inv.id,
+          inviteUrl: inv.url,
+        }]);
       }} />}
     </div>
   );
@@ -631,7 +667,7 @@ const ROLE_HINTS: Record<string, string> = {
   admin: "full access — bypasses permission checks",
   authenticated: "standard signed-in user",
 };
-function InviteUserDialog({ roles, onClose, onInvite }: { roles: string[]; onClose: () => void; onInvite: (data: any) => void }) {
+function InviteUserDialog({ roles, onClose, onCreated, pushToast }: { roles: string[]; onClose: () => void; onCreated: (inv: { id: string; email: string; role: string; url: string }) => void; pushToast: (m: string) => void }) {
   const { t } = useLingui();
   const roleOptions = (roles.length ? roles : ["authenticated"]).map((name) => ({
     value: name,
@@ -642,15 +678,51 @@ function InviteUserDialog({ roles, onClose, onInvite }: { roles: string[]; onClo
   const [role, setRole] = useState(
     roleOptions.some((o) => o.value === "authenticated") ? "authenticated" : roleOptions[0]!.value,
   );
-  const [provider, setProvider] = useState("password");
+  const [busy, setBusy] = useState(false);
+  // After a successful create: the accept link + whether a real email went
+  // out. Deployments without SMTP rely on the admin copying this link.
+  const [created, setCreated] = useState<null | { email: string; url: string; sent: boolean }>(null);
   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const submit = async () => {
+    setBusy(true);
+    try {
+      const r = await usersApi.invite(email.trim().toLowerCase(), role);
+      onCreated({ id: r.data.id, email: r.data.email, role, url: r.data.url });
+      setCreated({ email: r.data.email, url: r.data.url, sent: r.data.sent });
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const copy = (url: string) => {
+    void navigator.clipboard.writeText(url).then(
+      () => pushToast(t`Invite link copied.`),
+      () => pushToast(url),
+    );
+  };
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="flex max-h-[min(86vh,720px)] w-[460px] max-w-[92vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
-          <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Invite user</Trans></DialogTitle>
-          <DialogDescription className="mt-0.5 text-[12.5px]"><Trans>Send an email invite. The user finishes signup themselves.</Trans></DialogDescription>
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">{created ? <Trans>Invite created</Trans> : <Trans>Invite user</Trans>}</DialogTitle>
+          <DialogDescription className="mt-0.5 text-[12.5px]">{created ? <Trans>The invite is valid for 7 days.</Trans> : <Trans>Send an email invite. The user finishes signup themselves.</Trans>}</DialogDescription>
         </DialogHeader>
+        {created ? (
+          <div className="flex flex-col gap-4 px-5 py-[18px]">
+            <div className="flex flex-col gap-1.5">
+              {created.sent ? (
+                <span className="text-[12.5px] text-muted-foreground"><Trans>An invite email was sent to <span className="font-mono text-foreground">{created.email}</span>. You can also share the link directly:</Trans></span>
+              ) : (
+                <span className="text-[12.5px] text-muted-foreground"><Trans>No email service is configured, so nothing was sent to <span className="font-mono text-foreground">{created.email}</span> — share this link with them directly:</Trans></span>
+              )}
+              <div className="flex items-center gap-2">
+                <Input readOnly value={created.url} onFocus={(e) => e.currentTarget.select()} className="font-mono text-[12px]" />
+                <Button variant="outline" size="sm" className="shrink-0" onClick={() => copy(created.url)}><I.Link size={12} /><Trans>Copy link</Trans></Button>
+              </div>
+            </div>
+          </div>
+        ) : (
         <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
@@ -663,16 +735,18 @@ function InviteUserDialog({ roles, onClose, onInvite }: { roles: string[]; onClo
             <Select value={role} onChange={setRole} options={roleOptions} />
             <span className="text-[11.5px] text-muted-foreground"><Trans>Roles come from <strong>Roles &amp; permissions</strong>. The user also implicitly gets <span className="font-mono">authenticated</span>.</Trans></span>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Sign-in method</Trans></label>
-            <Select value={provider} onChange={setProvider}
-              options={[{ value: "password", label: "password", hint: t`set on first login` }, { value: "magic", label: "magic link", hint: t`email-only, no password` }, { value: "github", label: "github SSO", hint: t`OAuth required` }, { value: "google", label: "google SSO", hint: t`OAuth required` }, { value: "saml", label: "SAML SSO", hint: t`configure providers under Authentication` }, { value: "ldap", label: "LDAP / AD", hint: t`configure directory under Authentication` }]} />
-          </div>
         </div>
         </ScrollArea>
+        )}
         <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
-          <Button variant="ghost" onClick={onClose}><Trans>Cancel</Trans></Button>
-          <Button variant="primary" disabled={!valid} onClick={() => onInvite({ email, role, provider })}><Trans>Send invite</Trans></Button>
+          {created ? (
+            <Button variant="primary" onClick={onClose}><Trans>Done</Trans></Button>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={onClose}><Trans>Cancel</Trans></Button>
+              <Button variant="primary" disabled={!valid || busy} onClick={() => void submit()}>{busy ? <Trans>Creating…</Trans> : <Trans>Send invite</Trans>}</Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

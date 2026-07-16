@@ -189,8 +189,7 @@ export const assignRoleByName = async (
   const existing = await (ctx.db as any)
     .select()
     .from(t.userRoles)
-    .where(eq(t.userRoles.userId, userId))
-    .limit(1);
+    .where(eq(t.userRoles.userId, userId));
   if (existing.some((r: { roleId: string }) => r.roleId === role.id)) return;
   await (ctx.db as any).insert(t.userRoles).values({
     userId,

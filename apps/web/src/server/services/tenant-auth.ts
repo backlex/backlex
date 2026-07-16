@@ -195,6 +195,22 @@ export const getTenantAuth = async (
     socialProviders: Object.keys(social).length > 0 ? social : undefined,
     plugins: pluginList,
     hooks: {
+      // Workspace end-user sign-up gate. Only an EXPLICIT
+      // `policy.openSignup === false` closes self-signup — an absent flag
+      // keeps the historical default (open), so existing app planes don't
+      // break when this ships. Invited end-users are unaffected: the invite
+      // accept endpoint writes the credential directly and never runs this
+      // hook. Covers every better-auth creation path (email+password,
+      // social, magic-link, OTP).
+      ...(((storedRow?.policy as Record<string, unknown> | null)?.openSignup ===
+        false)
+        ? {
+            onBeforeUserCreated: () => ({
+              allow: false,
+              reason: "Sign-up is disabled",
+            }),
+          }
+        : {}),
       // Auto-link portal person rows (employees/members/…) whose email
       // matches the new end-user, per the workspace's portalLinks setting.
       // Covers every better-auth creation path (email+password, social,

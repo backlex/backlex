@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { bearer } from "better-auth/plugins/bearer";
 import { magicLink } from "better-auth/plugins/magic-link";
@@ -160,13 +161,32 @@ export const createTenantAuth = (
       cookiePrefix: `wo_${config.tenantSlug}`,
     },
     databaseHooks: {
-      ...(config.hooks?.onUserCreated
+      ...(config.hooks?.onUserCreated || config.hooks?.onBeforeUserCreated
         ? {
             user: {
               create: {
-                after: async (user: { id: string; email: string }) => {
-                  await config.hooks!.onUserCreated!(user);
-                },
+                ...(config.hooks?.onBeforeUserCreated
+                  ? {
+                      before: async (data: { email?: string; name?: string }) => {
+                        const r = await config.hooks!.onBeforeUserCreated!({
+                          email: data.email ?? "",
+                          name: data.name,
+                        });
+                        if (!r.allow)
+                          throw new APIError("FORBIDDEN", {
+                            message: r.reason ?? "Sign-up is disabled",
+                          });
+                        // Returning nothing keeps the original user data.
+                      },
+                    }
+                  : {}),
+                ...(config.hooks?.onUserCreated
+                  ? {
+                      after: async (user: { id: string; email: string }) => {
+                        await config.hooks!.onUserCreated!(user);
+                      },
+                    }
+                  : {}),
               },
             },
           }

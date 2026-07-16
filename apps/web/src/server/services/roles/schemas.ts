@@ -111,8 +111,18 @@ export const UserRow = z
     roles: z.array(UserRoleRef),
     lastSeenAt: z.number().nullable(),
     /** Auth method: a federated identity (`saml`/`ldap`/`cloud`) wins, else the
-     *  better-auth account provider (`password`/`github`/`google`/…). */
+     *  better-auth account provider (`password`/`github`/`google`/…) —
+     *  `invite` for pending invite rows. */
     provider: z.string(),
+    /** `active` / `suspended` (membership state) / `invited` (pending invite
+     *  — no user record yet; `id` is the tenant_members row id). */
+    status: z.string().optional(),
+    /** tenant_members row id — present on pending-invite rows so the client
+     *  can revoke the invite. */
+    memberId: z.string().optional(),
+    /** Shareable accept link — present on pending-invite rows so an admin can
+     *  re-copy it (deployments without SMTP never emailed it). */
+    inviteUrl: z.string().optional(),
   })
   .openapi("UserRow");
 

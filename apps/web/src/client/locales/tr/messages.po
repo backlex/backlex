@@ -1341,6 +1341,11 @@ msgstr "Bu kayıt için etkin bir paylaşım bağlantısı mevcut. Güvenlik ama
 msgid "An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
 msgstr "Bir admin bu örnek için genel kayıt kapatmış. Davet isteyin veya zaten bir hesabınız varsa giriş yapın."
 
+#. placeholder {0}: created.email
+#: src/client/admin/pages/users.tsx
+msgid "An invite email was sent to <0>{0}</0>. You can also share the link directly:"
+msgstr "<0>{0}</0> adresine davet e-postası gönderildi. Linki doğrudan da paylaşabilirsin:"
+
 #: src/client/admin/pages/users.tsx
 msgid "An invite link will be emailed; valid for 7 days."
 msgstr "Bir davet bağlantısı e-posta ile gönderilecek; 7 gün geçerlidir."
@@ -2451,12 +2456,12 @@ msgid "Configure {0}"
 msgstr "{0} yapılandır"
 
 #: src/client/admin/pages/users.tsx
-msgid "configure directory under Authentication"
-msgstr "Kimlik Doğrulama altında dizini yapılandırın"
+#~ msgid "configure directory under Authentication"
+#~ msgstr "Kimlik Doğrulama altında dizini yapılandırın"
 
 #: src/client/admin/pages/users.tsx
-msgid "configure providers under Authentication"
-msgstr "Kimlik Doğrulama altında sağlayıcıları yapılandırın"
+#~ msgid "configure providers under Authentication"
+#~ msgstr "Kimlik Doğrulama altında sağlayıcıları yapılandırın"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Configure sign-in methods, MFA, and session policy. Tokens are signed with <0>$AUTH_SECRET</0>."
@@ -2608,6 +2613,7 @@ msgstr "kopyala"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/item-collaboration.tsx
+#: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/insights.tsx
@@ -2640,9 +2646,17 @@ msgstr "{0} dilinden kopyala"
 msgid "Copy id"
 msgstr "ID'yi kopyala"
 
+#: src/client/admin/pages/users.tsx
+msgid "Copy invite link"
+msgstr "Davet linkini kopyala"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Copy JSON"
 msgstr "JSON'u kopyala"
+
+#: src/client/admin/pages/users.tsx
+msgid "Copy link"
+msgstr "Linki kopyala"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Copy order:"
@@ -2895,6 +2909,7 @@ msgstr "Anahtar oluşturuluyor"
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/schema-versions.tsx
+#: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/storage/index.tsx
@@ -3422,6 +3437,7 @@ msgstr "Bağlantı kesiliyor…"
 msgid "Discovery URL <0>(optional)</0>"
 msgstr "Keşif URL'si <0>(isteğe bağlı)</0>"
 
+#: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/advisor.tsx
 #: src/client/admin/pages/template-onboarding.tsx
 #: src/client/pages/api-keys.tsx
@@ -3487,6 +3503,7 @@ msgstr "Hesabınız yok mu?"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Done"
 msgstr "Tamam"
@@ -3824,8 +3841,8 @@ msgid "EMAIL_FROM set"
 msgstr "EMAIL_FROM ayarlandı"
 
 #: src/client/admin/pages/users.tsx
-msgid "email-only, no password"
-msgstr "yalnızca e-posta, parola yok"
+#~ msgid "email-only, no password"
+#~ msgstr "yalnızca e-posta, parola yok"
 
 #: src/client/admin/pages/users.tsx
 msgid "Emails a one-time link valid for 30 minutes."
@@ -5179,13 +5196,31 @@ msgstr "Davet et"
 msgid "invite by email…"
 msgstr "e-postayla davet et…"
 
+#: src/client/admin/pages/users.tsx
+msgid "Invite created"
+msgstr "Davet oluşturuldu"
+
+#: src/client/admin/members-panel.tsx
+msgid "Invite created — copy the link below."
+msgstr "Davet oluşturuldu — aşağıdaki linki kopyala."
+
 #: src/client/admin/pages/overview.tsx
 msgid "Invite dialog opened."
 msgstr "Davet iletişim kutusu açıldı."
 
+#. placeholder {0}: lastInvite.email
+#: src/client/admin/members-panel.tsx
+msgid "Invite emailed to {0} — link:"
+msgstr "{0} adresine davet e-postalandı — link:"
+
 #: src/client/pages/invite.tsx
 msgid "Invite expired"
 msgstr "Davet süresi doldu"
+
+#: src/client/admin/members-panel.tsx
+#: src/client/admin/pages/users.tsx
+msgid "Invite link copied."
+msgstr "Davet linki kopyalandı."
 
 #: src/client/pages/invite.tsx
 msgid "Invite not found"
@@ -5193,12 +5228,17 @@ msgstr "Davet bulunamadı"
 
 #. placeholder {0}: payload.email
 #: src/client/admin/pages/users.tsx
-msgid "Invite sent to {0}."
-msgstr "Davet {0} adresine gönderildi."
+#~ msgid "Invite sent to {0}."
+#~ msgstr "Davet {0} adresine gönderildi."
 
 #: src/client/admin/members-panel.tsx
 msgid "Invite sent to {email}."
 msgstr "Davet {email} adresine gönderildi."
+
+#. placeholder {0}: u.email
+#: src/client/admin/pages/users.tsx
+msgid "Invite to {0} revoked."
+msgstr "{0} daveti iptal edildi."
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/users.tsx
@@ -6610,6 +6650,16 @@ msgstr "Önceki revizyon yok — mevcut alan değerleri gösteriliyor."
 msgid "No editable fields. Add columns from the Schema tab to capture data on this collection."
 msgstr "Düzenlenebilir alan yok. Bu koleksiyonda veri yakalamak için Şema sekmesinden sütun ekleyin."
 
+#. placeholder {0}: lastInvite.email
+#: src/client/admin/members-panel.tsx
+msgid "No email service configured — share this link with {0}:"
+msgstr "E-posta servisi yapılandırılmamış — bu linki {0} ile paylaş:"
+
+#. placeholder {0}: created.email
+#: src/client/admin/pages/users.tsx
+msgid "No email service is configured, so nothing was sent to <0>{0}</0> — share this link with them directly:"
+msgstr "E-posta servisi yapılandırılmadığı için <0>{0}</0> adresine bir şey gönderilmedi — bu linki kendisiyle doğrudan paylaş:"
+
 #: src/client/admin/collection-settings.tsx
 msgid "No embedding model selected and the deployment sets no<0> EMBEDDING_DEFAULT_MODEL</0> — pick one below."
 msgstr "Seçili embedding modeli yok ve dağıtımda<0> EMBEDDING_DEFAULT_MODEL</0> tanımlı değil — aşağıdan bir model seçin."
@@ -7108,8 +7158,8 @@ msgid "OAuth redirect URI to register with {0}"
 msgstr "{0} ile kaydedilecek OAuth yönlendirme URI'si"
 
 #: src/client/admin/pages/users.tsx
-msgid "OAuth required"
-msgstr "OAuth gerekli"
+#~ msgid "OAuth required"
+#~ msgstr "OAuth gerekli"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "OAuth scope mapping → backlex roles"
@@ -8876,6 +8926,10 @@ msgstr "İptal et"
 msgid "Revoke all sessions"
 msgstr "Tüm oturumları iptal et"
 
+#: src/client/admin/pages/users.tsx
+msgid "Revoke invite"
+msgstr "Daveti iptal et"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Revoke others"
 msgstr "Diğerlerini iptal et"
@@ -9789,8 +9843,8 @@ msgid "Set new password"
 msgstr "Yeni parola belirle"
 
 #: src/client/admin/pages/users.tsx
-msgid "set on first login"
-msgstr "ilk girişte ayarlandı"
+#~ msgid "set on first login"
+#~ msgstr "ilk girişte ayarlandı"
 
 #: src/client/admin/account-page.tsx
 msgid "Set password"
@@ -10073,8 +10127,8 @@ msgid "Sign-in failed"
 msgstr "Giriş başarısız"
 
 #: src/client/admin/pages/users.tsx
-msgid "Sign-in method"
-msgstr "Giriş yöntemi"
+#~ msgid "Sign-in method"
+#~ msgstr "Giriş yöntemi"
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Sign-in screen saved."
@@ -10770,6 +10824,10 @@ msgstr "Yeni bir örneğin ilk hesabı otomatik olarak <0>admin</0> olarak sağl
 msgid "The full secret is shown once after creation — copy it somewhere safe."
 msgstr "Tam gizli anahtar oluşturulduktan sonra yalnızca bir kez gösterilir — güvenli bir yere kopyalayın."
 
+#: src/client/admin/pages/users.tsx
+msgid "The invite is valid for 7 days."
+msgstr "Davet 7 gün geçerlidir."
+
 #. placeholder {0}: k.name
 #: src/client/pages/api-keys.tsx
 msgid "The key \"{0}\" will stop working immediately. This cannot be undone."
@@ -10867,6 +10925,11 @@ msgstr "Bu, panoyu siler ve herkese açık gömmesini kapatır. Panelleri <0>sil
 #: src/client/admin/collection-settings.tsx
 msgid "This deployment has no vector store — connect a Vectorize binding (Cloudflare), pgvector (Postgres), or libSQL before vector search can run."
 msgstr "Bu dağıtımda vektör deposu yok — vektör araması çalışmadan önce bir Vectorize binding'i (Cloudflare), pgvector (Postgres) veya libSQL bağlayın."
+
+#. placeholder {0}: workspace.name
+#: src/client/admin/parity/auth-settings.tsx
+msgid "This governs sign-up for <0>{0}</0>'s end-user apps. Admin-dashboard sign-up is controlled from the <1>Default workspace</1>'s Auth Settings."
+msgstr "Bu ayar <0>{0}</0> çalışma alanının son-kullanıcı uygulamalarındaki kaydı yönetir. Yönetici paneli kaydı <1>Default workspace</1> Auth Settings'ten kontrol edilir."
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx

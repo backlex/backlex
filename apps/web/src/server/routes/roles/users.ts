@@ -15,6 +15,7 @@ import {
   requireAdminMw,
   requireTenant,
 } from "../../services/roles/guards";
+import { createMemberInvite } from "../../services/invites";
 import { ensureRoleInTenant } from "../../services/roles/role-checks";
 import {
   SessionRow,
@@ -63,6 +64,8 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
           name: t.users.name,
           createdAt: t.users.createdAt,
           twoFactorEnabled: t.users.twoFactorEnabled,
+          memberId: t.tenantMembers.id,
+          memberStatus: t.tenantMembers.status,
         })
         .from(t.tenantMembers)
         .innerJoin(t.users, eq(t.tenantMembers.userId, t.users.id))
@@ -72,6 +75,33 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
         name: string | null;
         createdAt: unknown;
         twoFactorEnabled: boolean | null;
+        memberId: string;
+        memberStatus: string | null;
+      }[];
+      // Pending invites (no user row yet) surface in the same list so an
+      // admin sees the invite they just sent — id is the tenant_members row
+      // id (never collides with user ids), actions are limited client-side.
+      const pendingInvites = (await (ctx.db as any)
+        .select({
+          id: t.tenantMembers.id,
+          email: t.tenantMembers.email,
+          role: t.tenantMembers.role,
+          invitedAt: t.tenantMembers.invitedAt,
+          inviteToken: t.tenantMembers.inviteToken,
+        })
+        .from(t.tenantMembers)
+        .where(
+          and(
+            eq(t.tenantMembers.tenantId, tenantId),
+            eq(t.tenantMembers.status, "invited"),
+            isNull(t.tenantMembers.userId),
+          ),
+        )) as {
+        id: string;
+        email: string;
+        role: string;
+        invitedAt: unknown;
+        inviteToken: string | null;
       }[];
       const userIds = users.map((u) => u.id);
       const userRoles = userIds.length
@@ -152,13 +182,31 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
       }
 
       return c.json({
-        data: users.map((u) => ({
-          ...u,
-          roles: byUser.get(u.id) ?? [],
-          lastSeenAt: lastByUser.get(u.id) ?? null,
-          provider: providerByUser.get(u.id) ?? "password",
-          twoFactorEnabled: Boolean(u.twoFactorEnabled),
-        })),
+        data: [
+          ...users.map(({ memberStatus, ...u }) => ({
+            ...u,
+            roles: byUser.get(u.id) ?? [],
+            lastSeenAt: lastByUser.get(u.id) ?? null,
+            provider: providerByUser.get(u.id) ?? "password",
+            twoFactorEnabled: Boolean(u.twoFactorEnabled),
+            status: memberStatus === "suspended" ? "suspended" : "active",
+          })),
+          ...pendingInvites.map((p) => ({
+            id: p.id,
+            email: p.email,
+            name: null,
+            createdAt: p.invitedAt,
+            roles: [{ id: "", name: p.role }],
+            lastSeenAt: null,
+            provider: "invite",
+            twoFactorEnabled: false,
+            status: "invited" as const,
+            memberId: p.id,
+            inviteUrl: p.inviteToken
+              ? `${ctx.env.APP_URL}/invite?token=${p.inviteToken}`
+              : undefined,
+          })),
+        ],
       });
     },
   )
@@ -255,9 +303,13 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
     },
   )
   /**
-   * Email-based invite. Creates a one-time `verification` row consumed by
-   * better-auth on the magic-link endpoint. The actual user record is
-   * created when the invitee clicks through and verifies.
+   * Email-based invite. Creates a real workspace invite (`tenant_members`
+   * row + 7-day token via the shared `createMemberInvite`) so the invitee can
+   * sign up through `/invite?token=…` even while public sign-up is closed —
+   * `hasValidInvite` admits the address and `acceptInviteForUser` binds the
+   * membership + chosen role on account creation. The email itself is
+   * best-effort; the response carries the accept link so no-SMTP deployments
+   * can share it manually.
    */
   .openapi(
     createRoute({
@@ -266,7 +318,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
       tags: USERS_TAG,
       summary: "Email-invite a user",
       description:
-        "Sends an invite email; the actual user record is created when the invitee verifies.",
+        "Creates a pending workspace invite (7-day token) and best-effort mails the accept link. The user record is created when the invitee accepts.",
       security: SECURITY,
       middleware: [requireUser, requireAdminMw],
       request: {
@@ -281,7 +333,16 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
           content: {
             "application/json": {
               schema: z.object({
-                data: z.object({ email: z.string(), sent: z.boolean() }),
+                data: z.object({
+                  id: z.string(),
+                  email: z.string(),
+                  token: z.string(),
+                  /** Ready-to-share accept link (`{APP_URL}/invite?token=…`). */
+                  url: z.string(),
+                  /** False when the mail only hit the console fallback — the
+                   *  UI should surface `url` for manual sharing instead. */
+                  sent: z.boolean(),
+                }),
               }),
             },
           },
@@ -291,17 +352,73 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
     }),
     async (c) => {
       const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const tenantId = requireTenant(c);
       const body = c.req.valid("json");
-      const transport = await ctx.emailFor(c.get("auth")?.tenantId ?? null);
-      const sent = await transport
-        .send({
-          to: body.email,
-          subject: "You've been invited to backlex",
-          text: `Open ${ctx.env.APP_URL}/sign-up?invite=${encodeURIComponent(body.email)} to accept.`,
+      const { id, token } = await createMemberInvite(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          tenantId,
+          email: body.email,
+          role: body.role ?? "authenticated",
+          invitedBy: auth?.userId ?? null,
+        },
+      );
+      const url = `${ctx.env.APP_URL}/invite?token=${token}`;
+      const sent = await ctx
+        .emailFor(tenantId)
+        .then(async (transport) => {
+          await transport.send({
+            to: body.email,
+            subject: "You've been invited to backlex",
+            text: `Open ${url} to accept.`,
+          });
+          return transport.provider !== "console";
         })
-        .then(() => true)
         .catch(() => false);
-      return c.json({ data: { email: body.email, sent } });
+      return c.json({ data: { id, email: body.email, token, url, sent } });
+    },
+  )
+  /** Revoke a pending invite (delete its tenant_members row). Scoped to the
+   *  active workspace and to rows still in `invited` state — active members
+   *  are removed via the tenants members endpoint instead. */
+  .openapi(
+    createRoute({
+      method: "delete",
+      path: "/invite/{memberId}",
+      tags: USERS_TAG,
+      summary: "Revoke a pending invite",
+      description: "Deletes an unaccepted invite. Active members are unaffected.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdminMw],
+      request: { params: z.object({ memberId: z.string() }) },
+      responses: {
+        200: { description: "Revoked", content: { "application/json": { schema: OkSchema } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
+      const { memberId } = c.req.valid("param");
+      const t = tableFor(ctx.dialect);
+      const rows = (await (ctx.db as any)
+        .select({ id: t.tenantMembers.id, status: t.tenantMembers.status })
+        .from(t.tenantMembers)
+        .where(
+          and(
+            eq(t.tenantMembers.id, memberId),
+            eq(t.tenantMembers.tenantId, tenantId),
+          ),
+        )
+        .limit(1)) as { id: string; status: string }[];
+      if (!rows[0]) throw new AppError("NOT_FOUND", "Invite not found");
+      if (rows[0].status !== "invited")
+        throw new AppError("VALIDATION", "Not a pending invite");
+      await (ctx.db as any)
+        .delete(t.tenantMembers)
+        .where(eq(t.tenantMembers.id, memberId));
+      return c.json({ ok: true });
     },
   )
   /** Suspend the user's membership in the active tenant. The global user

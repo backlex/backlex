@@ -579,6 +579,18 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
         // Drop any cached "no roles" entry from the public path so the first
         // protected call after sign-up sees the freshly assigned role.
         invalidateUserRoles(tenantId, user.id);
+        // If this sign-up matches a pending invite, bind that membership now so
+        // the invited user lands as an active member of the inviting workspace
+        // in one step — no separate signed-in `POST /accept` round-trip needed.
+        // MUST run before `ensureTenantMembership`: for an invite into the
+        // default workspace, ensureTenantMembership would otherwise promote
+        // the invited row to `active` first, and the invite (with its role
+        // grant) would no longer match.
+        try {
+          await acceptInviteForUser(dbCtx, user.id, user.email);
+        } catch (e) {
+          console.error("[invite] auto-accept failed", (e as Error).message);
+        }
         await ensureTenantMembership(
           dbCtx,
           tenantId,
@@ -586,14 +598,6 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
           user.email,
           total <= 1 ? "owner" : "member",
         );
-        // If this sign-up matches a pending invite, bind that membership now so
-        // the invited user lands as an active member of the inviting workspace
-        // in one step — no separate signed-in `POST /accept` round-trip needed.
-        try {
-          await acceptInviteForUser(dbCtx, user.id, user.email);
-        } catch (e) {
-          console.error("[invite] auto-accept failed", (e as Error).message);
-        }
         // Fan out to flows + webhooks. `fullCtx` is set at the bottom of
         // buildContext so it's available by the time a hook can fire.
         //

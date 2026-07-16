@@ -381,6 +381,11 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
               <div>
                 <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{r.label}</div>
                 <div className="text-[11.5px] text-muted-foreground">{r.desc}</div>
+                {r.key === "openSignup" && workspace && workspace.slug !== "default" && (
+                  <div className="mt-1 text-[11.5px] text-[oklch(0.62_0.13_75)]">
+                    <Trans>This governs sign-up for <strong>{workspace.name}</strong>'s end-user apps. Admin-dashboard sign-up is controlled from the <strong>Default workspace</strong>'s Auth Settings.</Trans>
+                  </div>
+                )}
               </div>
               <Switch checked={policy[r.key] ?? r.fallback} onChange={(v) => setPolicyFlag(r.key, v)} />
             </div>

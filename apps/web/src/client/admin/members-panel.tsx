@@ -108,6 +108,7 @@ export function MembersPanel({ pushToast }: MembersPanelProps) {
   const [q, setQ] = useUrlState("q", "");
   const [invite, setInvite] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
+  const [lastInvite, setLastInvite] = useState<null | { email: string; url: string; sent: boolean }>(null);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -126,8 +127,11 @@ export function MembersPanel({ pushToast }: MembersPanelProps) {
     if (!tenantId) { pushToast(t`No active workspace.`); return; }
     if (members.find((m) => m.email === email)) { pushToast(t`${email} is already a member.`); return; }
     try {
-      await tenantsApi.invite(tenantId, { email, role: inviteRole });
-      pushToast(t`Invite sent to ${email}.`);
+      const r = await tenantsApi.invite(tenantId, { email, role: inviteRole });
+      // Deployments without SMTP never deliver the email — keep the accept
+      // link on screen so the admin can share it by hand.
+      setLastInvite({ email, url: r.data.url, sent: r.data.sent });
+      pushToast(r.data.sent ? t`Invite sent to ${email}.` : t`Invite created — copy the link below.`);
       setInvite("");
       // Refetch members list (and any other view that observes the same
       // subtree). Tenants list itself didn't change — leave it cached.
@@ -184,6 +188,30 @@ export function MembersPanel({ pushToast }: MembersPanelProps) {
         <Button variant="primary" size="sm" icon={I.Plus} onClick={sendInvite}><Trans>Invite</Trans></Button>
       </div>
 
+      {lastInvite && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-[color-mix(in_oklch,var(--primary)_6%,var(--card))] px-3.5 py-2.5">
+          <I.Link size={13} className="shrink-0 text-muted-foreground" />
+          <span className="text-[12px] text-muted-foreground">
+            {lastInvite.sent
+              ? <Trans>Invite emailed to {lastInvite.email} — link:</Trans>
+              : <Trans>No email service configured — share this link with {lastInvite.email}:</Trans>}
+          </span>
+          <Input
+            readOnly
+            value={lastInvite.url}
+            onFocus={(e) => e.currentTarget.select()}
+            className="h-[26px] min-w-[160px] flex-1 font-mono text-[11px]"
+          />
+          <Button variant="outline" size="xs" className="shrink-0" onClick={() => {
+            void navigator.clipboard.writeText(lastInvite.url).then(
+              () => pushToast(t`Invite link copied.`),
+              () => pushToast(lastInvite.url),
+            );
+          }}><Trans>Copy</Trans></Button>
+          <IconButton icon={I.X} title={t`Dismiss`} onClick={() => setLastInvite(null)} />
+        </div>
+      )}
+
       <ScrollArea className="py-1">
         <div className="grid min-w-[520px] grid-cols-[1.6fr_1fr_1fr_0.8fr_36px] items-center gap-3 border-b border-border bg-[color-mix(in_oklch,var(--muted)_18%,var(--card))] px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
           <span><Trans>Member</Trans></span>
@@ -218,7 +246,14 @@ export function MembersPanel({ pushToast }: MembersPanelProps) {
                 // so the column shape stays consistent with the rest of the
                 // grid until that endpoint lands.
               }}
-              options={WORKSPACE_ROLES.map((r) => ({ value: r, label: r }))}
+              options={[
+                ...WORKSPACE_ROLES.map((r) => ({ value: r as string, label: r as string })),
+                // Users-page invites store RBAC role names (`authenticated`,
+                // customs) — include the row's own value so it still displays.
+                ...(WORKSPACE_ROLES.includes(m.role as (typeof WORKSPACE_ROLES)[number])
+                  ? []
+                  : [{ value: m.role, label: m.role }]),
+              ]}
               size="sm"
               disabled
             />

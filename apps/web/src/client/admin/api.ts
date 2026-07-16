@@ -513,10 +513,15 @@ export const itemsApi = {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  patch: (slug: string, id: string, body: Record<string, unknown>) =>
+  patch: (slug: string, id: string, body: Record<string, unknown>, opts?: { ifUnmodifiedSince?: string }) =>
     api<Envelope<Record<string, unknown>>>(`/api/items/${slug}/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
+      // Optimistic-concurrency precondition — the server answers 409 CONFLICT
+      // when the row's updatedAt no longer matches (someone else saved).
+      ...(opts?.ifUnmodifiedSince
+        ? { headers: { "x-if-unmodified-since": opts.ifUnmodifiedSince } }
+        : {}),
     }),
   remove: (slug: string, id: string) =>
     api<{ ok: true }>(`/api/items/${slug}/${id}`, { method: "DELETE" }),

@@ -277,6 +277,12 @@ export const performUpdate = async (
   id: string,
   patch: Record<string, unknown>,
   perm: ResolvedPerm,
+  opts?: {
+    /** Optimistic-concurrency precondition: the `updatedAt` the caller loaded
+     *  the row with. When set and the row has moved since, the update is
+     *  refused with 409 CONFLICT instead of silently last-write-winning. */
+    ifUnmodifiedSince?: string;
+  },
 ): Promise<WriteResult> => {
   const { ctx, collection } = env;
   const table = collection.physicalTable;
@@ -298,6 +304,25 @@ export const performUpdate = async (
   );
   if (!existing[0]) throw new AppError("NOT_FOUND", "Item not found");
   const beforeRow = deserializeRow(existing[0], collection.fields, ctx.dialect, collection.ownerScoped);
+
+  // Optimistic-concurrency guard: refuse the write when the row moved after
+  // the caller loaded it. Compared as epoch ms so ISO-format differences
+  // between dialects don't matter. Advisory and opt-in — callers that don't
+  // send the precondition keep today's last-write-wins behavior.
+  if (opts?.ifUnmodifiedSince !== undefined && collection.hasUpdatedAt) {
+    const expectedMs = new Date(opts.ifUnmodifiedSince).getTime();
+    if (Number.isNaN(expectedMs)) {
+      throw new AppError("VALIDATION", "Invalid If-Unmodified-Since value — expected a timestamp");
+    }
+    const currentRaw = beforeRow.updatedAt;
+    const currentMs =
+      currentRaw instanceof Date ? currentRaw.getTime() : new Date(String(currentRaw ?? "")).getTime();
+    if (!Number.isNaN(currentMs) && currentMs !== expectedMs) {
+      throw new AppError("CONFLICT", "This record was modified after you loaded it", {
+        currentUpdatedAt: currentRaw ?? null,
+      });
+    }
+  }
 
   // Enforce conditional `required` against the POST-patch row: a rule that
   // references fields the PATCH omits is still judged against the merged result.

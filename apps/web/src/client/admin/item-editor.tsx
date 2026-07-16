@@ -90,6 +90,9 @@ export function ItemEditorPage({
   // unsaved changes; the ConfirmDialog runs it on confirm.
   const [pendingNav, setPendingNav] = useState<(() => void) | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Someone else saved this record after we loaded it (409 on save) — shows
+  // the conflict banner until the user reloads or force-overwrites.
+  const [conflict, setConflict] = useState(false);
 
   const form = useItemForm({ schema, initial: item, active: mode === "create" || !loading });
   const dirty = form.dirty;
@@ -131,7 +134,7 @@ export function ItemEditorPage({
 
   // ── Save ────────────────────────────────────────────────────────────────
   const persist = useCallback(
-    async (opts?: { close?: boolean; silent?: boolean }) => {
+    async (opts?: { close?: boolean; silent?: boolean; force?: boolean }) => {
       if (saving) return false;
       if (!form.validate()) {
         if (!opts?.silent) pushToast(t`Fix the highlighted fields before saving.`, "error");
@@ -150,12 +153,27 @@ export function ItemEditorPage({
           return true;
         }
         if (item) {
-          await itemsApi.patch(slug, item.id, payload);
+          // Optimistic concurrency: send the updatedAt we loaded so a
+          // concurrent save by someone else 409s instead of being overwritten.
+          // `force` (the banner's "Save anyway") skips the precondition.
+          const rec0 = item as unknown as Record<string, unknown>;
+          const baseUpdatedAt = rec0.updatedAt ?? rec0.updated_at;
+          const res = await itemsApi.patch(
+            slug,
+            item.id,
+            payload,
+            !opts?.force && baseUpdatedAt != null
+              ? { ifUnmodifiedSince: String(baseUpdatedAt) }
+              : undefined,
+          );
+          // Merge the server echo last — it carries the authoritative
+          // updatedAt the next save's precondition needs.
           const updated = {
             ...item,
             ...(payload as Partial<Post>),
-            updated_at: new Date().toISOString(),
+            ...(res.data as unknown as Partial<Post>),
           } as Post;
+          setConflict(false);
           setItem(updated);
           onSaved(updated);
           setSavedAt(Date.now());
@@ -166,7 +184,11 @@ export function ItemEditorPage({
         }
         return false;
       } catch (e) {
-        pushToast((e as Error).message, "error");
+        if ((e as { code?: string }).code === "CONFLICT") {
+          setConflict(true);
+        } else {
+          pushToast((e as Error).message, "error");
+        }
         return false;
       } finally {
         setSaving(false);
@@ -175,14 +197,30 @@ export function ItemEditorPage({
     [saving, form, mode, slug, item, onCreated, onSaved, onBack, navigateToItem, pushToast, t],
   );
 
+  // Conflict banner "Reload": refetch the latest row — replacing `item`
+  // re-seeds the form, discarding this member's local edits.
+  const reloadLatest = useCallback(async () => {
+    try {
+      const res = await itemsApi.get(slug, itemId);
+      if (res.data) {
+        setItem(res.data as unknown as Post);
+        setConflict(false);
+        setRevisionsKey((k) => k + 1);
+      }
+    } catch (e) {
+      pushToast((e as Error).message, "error");
+    }
+  }, [slug, itemId, pushToast]);
+
   // ── Autosave (drafts) — debounced, silent, edit-mode only ────────────────
+  // Paused while a conflict is unresolved: retrying would just 409 again.
   useEffect(() => {
-    if (!autosave || mode !== "edit" || !dirty || saving) return;
+    if (!autosave || mode !== "edit" || !dirty || saving || conflict) return;
     const id = setTimeout(() => {
       void persist({ close: false, silent: true });
     }, 1500);
     return () => clearTimeout(id);
-  }, [autosave, dirty, saving, mode, form.draft, persist]);
+  }, [autosave, dirty, saving, mode, conflict, form.draft, persist]);
 
   // ── Unsaved-changes guard ────────────────────────────────────────────────
   useEffect(() => {
@@ -459,6 +497,31 @@ export function ItemEditorPage({
           )}
         </div>
       </div>
+
+      {/* Conflict banner — someone else saved this record after we loaded it. */}
+      {conflict && (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-[12.5px]">
+          {/* Full-width text row on mobile; the buttons wrap below and hug the
+              right edge. On sm+ everything sits on one line. */}
+          <div className="flex min-w-0 basis-full items-start gap-2 sm:basis-auto sm:flex-1 sm:items-center">
+            <I.AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-500 sm:mt-0" />
+            <span className="min-w-0">
+              <Trans>
+                This record was changed by someone else after you opened it. Reload to get the
+                latest version (your edits will be lost), or save anyway to overwrite theirs.
+              </Trans>
+            </span>
+          </div>
+          <div className="ml-auto flex gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => void reloadLatest()}>
+              <Trans>Reload</Trans>
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => void persist({ force: true })}>
+              <Trans>Save anyway</Trans>
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Body: fields + sidebar */}
       <div className="grid grid-cols-[1fr_340px] items-start gap-4 max-[1100px]:grid-cols-1">

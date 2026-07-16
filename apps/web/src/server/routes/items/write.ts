@@ -137,10 +137,15 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>()
         durationMs: () => elapsedMs(c),
         locale: c.req.query("locale") ?? null,
       };
-      const res = await performUpdate(env, id, patch, {
-        whereSql: perm.whereSql,
-        fields: perm.fields,
-      });
+      // Optional optimistic-concurrency precondition (see performUpdate).
+      const ifUnmodifiedSince = c.req.header("x-if-unmodified-since");
+      const res = await performUpdate(
+        env,
+        id,
+        patch,
+        { whereSql: perm.whereSql, fields: perm.fields },
+        ifUnmodifiedSince !== undefined ? { ifUnmodifiedSince } : undefined,
+      );
       for (const fx of res.sideEffects) await fx();
       return c.json({ data: res.data ?? {}, ...(res.warnings ? { warnings: res.warnings } : {}) });
     },

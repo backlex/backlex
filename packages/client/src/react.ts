@@ -17,7 +17,9 @@ import type { BacklexClient } from "./index";
 import type { LiveQueryOptions } from "./live";
 
 export interface UseLiveQueryResult<T> {
-  /** The current result array — replaced (new reference) on every change. */
+  /** The current result array — replaced (new reference) on every change.
+   *  Reset to `[]` while a new subscription (changed `slug`/`opts`) loads, so
+   *  one query's rows are never shown as another query's result. */
   data: T[];
   /** True until the first result (or error) arrives. */
   loading: boolean;
@@ -42,6 +44,10 @@ export function useLiveQuery<T extends Record<string, unknown> = Record<string, 
   const key = JSON.stringify([slug, opts]);
 
   useEffect(() => {
+    // Clear the previous subscription's rows: between teardown and the new
+    // query's first result, stale data would render as the WRONG query's
+    // result. Consumers wanting keep-previous-data can hold their own copy.
+    setData([]);
     setLoading(true);
     setError(null);
     const unsub = client.liveQuery<T>(

@@ -72,20 +72,32 @@ export const ensureDefaultTenant = async (ctx: DbCtx): Promise<string> => {
     setCachedTenantResolve(DEFAULT_TENANT_SLUG, existing[0].id as string);
     return existing[0].id as string;
   }
+  // Two concurrent cold requests can both pass the empty select above
+  // (check-then-insert race) — the slug is UNIQUE, so let the loser no-op
+  // instead of throwing a 500, then read the winner's row back.
   const id = crypto.randomUUID();
-  await (ctx.db as any).insert(t.tenants).values({
-    id,
-    slug: DEFAULT_TENANT_SLUG,
-    name: "Default workspace",
-    project: "default",
-    branch: "main",
-    env: "development",
-    mark: "W",
-    color: colorFor(DEFAULT_TENANT_SLUG),
-    createdBy: null,
-  });
-  setCachedTenantResolve(DEFAULT_TENANT_SLUG, id);
-  return id;
+  await (ctx.db as any)
+    .insert(t.tenants)
+    .values({
+      id,
+      slug: DEFAULT_TENANT_SLUG,
+      name: "Default workspace",
+      project: "default",
+      branch: "main",
+      env: "development",
+      mark: "W",
+      color: colorFor(DEFAULT_TENANT_SLUG),
+      createdBy: null,
+    })
+    .onConflictDoNothing();
+  const winner = await (ctx.db as any)
+    .select({ id: t.tenants.id })
+    .from(t.tenants)
+    .where(eq(t.tenants.slug, DEFAULT_TENANT_SLUG))
+    .limit(1);
+  const resolved = (winner[0]?.id as string | undefined) ?? id;
+  setCachedTenantResolve(DEFAULT_TENANT_SLUG, resolved);
+  return resolved;
 };
 
 export const ensureTenantMembership = async (

@@ -401,6 +401,14 @@ export function ItemEditorPage({
                   +{collab.peers.length - 4}
                 </span>
               )}
+              {/* With one or two viewers there's room to say WHO — the native
+                  title tooltip is invisible on touch and easy to miss. Larger
+                  rosters collapse back to avatars + "+N". */}
+              {collab.peers.length <= 2 && (
+                <span className="ml-1.5 max-w-[160px] truncate text-[11.5px] text-muted-foreground">
+                  {collab.peers.map(collabHandle).join(", ")}
+                </span>
+              )}
             </span>
           )}
           {mode === "edit" && schema.previewUrl && (

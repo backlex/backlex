@@ -1716,6 +1716,116 @@ export const sharedPublicApi = {
     api<Envelope<ApiSharedRecord>>(`/api/shared/${encodeURIComponent(token)}`),
 };
 
+/* ── Public form builder ──────────────────────────────────────────── */
+
+export interface ApiFormFieldConfig {
+  name: string;
+  label?: string;
+  help?: string;
+}
+
+export interface ApiFormSettings {
+  submitLabel?: string;
+  successMessage?: string;
+  redirectUrl?: string;
+  turnstile?: boolean;
+}
+
+export interface ApiForm {
+  id: string;
+  tenantId: string | null;
+  name: string;
+  collection: string;
+  fields: ApiFormFieldConfig[];
+  settings: ApiFormSettings | null;
+  active: boolean;
+  createdBy: string | null;
+  createdAt: unknown;
+  updatedAt: unknown;
+}
+
+export interface ApiFormInput {
+  name: string;
+  collection: string;
+  fields: ApiFormFieldConfig[];
+  settings?: ApiFormSettings | null;
+  active?: boolean;
+}
+
+/** One-time token payload — returned only by create / rotate-token. */
+export interface ApiCreatedForm {
+  form: ApiForm;
+  token: string;
+  url: string;
+  embedUrl: string;
+}
+
+export interface ApiFormEligibleField {
+  name: string;
+  type: string;
+  label: string | null;
+  required: boolean;
+}
+
+export const formsApi = {
+  list: () => api<Envelope<ApiForm[]>>(`/api/admin/forms`),
+  eligibleFields: (collection: string) =>
+    api<Envelope<ApiFormEligibleField[]>>(
+      `/api/admin/forms/eligible-fields/${encodeURIComponent(collection)}`,
+    ),
+  create: (input: ApiFormInput) =>
+    api<Envelope<ApiCreatedForm>>(`/api/admin/forms`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  update: (id: string, patch: Partial<ApiFormInput>) =>
+    api<Envelope<ApiForm>>(`/api/admin/forms/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+  rotateToken: (id: string) =>
+    api<Envelope<{ token: string; url: string; embedUrl: string }>>(
+      `/api/admin/forms/${id}/rotate-token`,
+      { method: "POST" },
+    ),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/admin/forms/${id}`, { method: "DELETE" }),
+};
+
+/** Public form definition (`GET /api/public/forms/:token`). */
+export interface ApiPublicFormField {
+  name: string;
+  type: string;
+  label: string;
+  help: string | null;
+  required: boolean;
+  choices: { value: string; label?: string }[] | null;
+  validation: Record<string, unknown> | null;
+}
+
+export interface ApiPublicForm {
+  name: string;
+  collection: string;
+  fields: ApiPublicFormField[];
+  submitLabel: string | null;
+  successMessage: string | null;
+  redirectUrl: string | null;
+  turnstileSiteKey: string | null;
+}
+
+export const formsPublicApi = {
+  get: (token: string) =>
+    api<Envelope<ApiPublicForm>>(`/api/public/forms/${encodeURIComponent(token)}`),
+  submit: (
+    token: string,
+    body: { data: Record<string, unknown>; turnstileToken?: string; website?: string },
+  ) =>
+    api<Envelope<{ id: string | null; successMessage: string | null; redirectUrl: string | null }>>(
+      `/api/public/forms/${encodeURIComponent(token)}/submit`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+};
+
 /** Advisor finding (`GET /api/admin/advisor`). */
 export interface ApiAdvisorCheck {
   id: string;

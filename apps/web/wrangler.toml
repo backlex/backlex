@@ -68,7 +68,7 @@ EMAIL_FROM = "onboarding@resend.dev"
 directory = "./dist/client"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
-run_worker_first = ["/api/*", "/health", "/health/*", "/mcp", "/embed/*"]
+run_worker_first = ["/api/*", "/health", "/health/*", "/mcp", "/embed/*", "/f/*"]
 # Override these in `.dev.vars` or via `wrangler secret put`:
 # AUTH_SECRET = "..."
 # DATABASE_URL = "postgres://..." # only if you want PG via Hyperdrive

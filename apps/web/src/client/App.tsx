@@ -10,6 +10,7 @@ import { ResetPassword } from "@/pages/reset-password";
 import { MagicLink } from "@/pages/magic-link";
 import { SharedRecord } from "@/pages/shared-record";
 import { EmbedDashboard } from "@/pages/embed-dashboard";
+import { PublicForm } from "@/pages/public-form";
 import { SignIn } from "@/pages/sign-in";
 import { SignUp } from "@/pages/sign-up";
 import { Invite } from "@/pages/invite";
@@ -39,6 +40,9 @@ export const App = () => {
         <Route path="/s/:token" element={<SharedRecord />} />
         {/* Public BI dashboard embed — outside AuthGate; iframe-friendly. */}
         <Route path="/embed/d/:token" element={<EmbedDashboard />} />
+        {/* Public form — outside AuthGate; /embed variant is iframe-friendly. */}
+        <Route path="/f/:token" element={<PublicForm />} />
+        <Route path="/embed/f/:token" element={<PublicForm embed />} />
         <Route
           path="/*"
           element={

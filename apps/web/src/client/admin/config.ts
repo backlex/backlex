@@ -130,6 +130,7 @@ export const NAV_PRIMARY: NavItem[] = [
 // Data — the collection model and the stores behind it.
 export const NAV_DATA: NavItem[] = [
   { id: "collections", icon: "Database" },
+  { id: "forms", icon: "Inbox" },
   { id: "access", icon: "Shield" },
   { id: "database", icon: "Server" },
   { id: "storage", icon: "Folder" },

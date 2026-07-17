@@ -556,6 +556,7 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
   overview: msg`Overview`,
   "ask-ai": msg`Ask AI`,
   collections: msg`Collections`,
+  forms: msg`Forms`,
   access: msg`Access`,
   database: msg`Database`,
   storage: msg`Storage`,

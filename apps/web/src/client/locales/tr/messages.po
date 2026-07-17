@@ -838,6 +838,7 @@ msgstr "İşlem"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Actions"
 msgstr "İşlemler"
@@ -856,6 +857,7 @@ msgid "active"
 msgstr "etkin"
 
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -1943,6 +1945,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/jobs.tsx
@@ -2247,6 +2250,7 @@ msgid "Collapsible section"
 msgstr "Katlanabilir bölüm"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/search-playground.tsx
 #: src/client/admin/parity/insights.tsx
@@ -2557,6 +2561,10 @@ msgstr "Bağlantı URL'i"
 msgid "console (dev)"
 msgstr "konsol (geliştirme)"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Contact us"
+msgstr "Bize ulaşın"
+
 #: src/client/admin/collections-index.tsx
 msgid "Content"
 msgstr "İçerik"
@@ -2603,6 +2611,7 @@ msgstr "JSON kopyalandı."
 msgid "Copied to clipboard."
 msgstr "Panoya kopyalandı."
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Copied."
@@ -2638,6 +2647,14 @@ msgstr "Harici bir Postgres veritabanını koleksiyonlara kopyalayın — birinc
 msgid "Copy curl example for {0}"
 msgstr "{0} için curl örneğini kopyala"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Copy embed snippet"
+msgstr "Gömme kodunu kopyala"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Copy failed — select and copy manually."
+msgstr "Kopyalama başarısız — metni seçip elle kopyalayın."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "Copy fix"
 msgstr "Düzeltmeyi kopyala"
@@ -2659,6 +2676,7 @@ msgstr "Davet linkini kopyala"
 msgid "Copy JSON"
 msgstr "JSON'u kopyala"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/users.tsx
 msgid "Copy link"
 msgstr "Linki kopyala"
@@ -2781,6 +2799,10 @@ msgstr "{slug} oluştur"
 msgid "Create a flag to gate a feature or ship remote config to your apps."
 msgstr "Bir özelliği kapılamak ya da uygulamalarınıza uzaktan yapılandırma göndermek için bayrak oluşturun."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Create a form to collect submissions from visitors — no account or code required on their side."
+msgstr "Ziyaretçilerden kayıt toplamak için bir form oluşturun — karşı tarafta hesap da kod da gerekmez."
+
 #: src/client/pages/api-keys.tsx
 msgid "Create a key to authenticate programmatic access (CI, scripts, third-party apps)."
 msgstr "Programatik erişimi (CI, betikler, üçüncü taraf uygulamalar) doğrulamak için bir anahtar oluşturun."
@@ -2812,6 +2834,10 @@ msgstr "Pano oluştur"
 #: src/client/admin/storage/index.tsx
 msgid "Create folder"
 msgstr "Klasör oluştur"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Create form"
+msgstr "Formu oluştur"
 
 #: src/client/admin/pages/functions.tsx
 msgid "Create function"
@@ -3168,6 +3194,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/schema-versions.tsx
@@ -3232,6 +3259,10 @@ msgstr "\"{0}\" panosu silinsin mi?"
 msgid "Delete end-user"
 msgstr "Son kullanıcıyı sil"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Delete form"
+msgstr "Formu sil"
+
 #: src/client/admin/pages/functions.tsx
 msgid "Delete function"
 msgstr "Fonksiyonu sil"
@@ -3273,6 +3304,10 @@ msgstr "Kaynak silinsin mi?"
 #: src/client/admin/collection-settings.tsx
 msgid "Delete this collection"
 msgstr "Bu koleksiyonu sil"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Delete this form?"
+msgstr "Bu form silinsin mi?"
 
 #: src/client/admin/item-editor.tsx
 msgid "Delete this item?"
@@ -3508,6 +3543,7 @@ msgstr "Hesabınız yok mu?"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Done"
@@ -3693,6 +3729,7 @@ msgstr "düzenle"
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Edit"
 msgstr "Düzenle"
@@ -3742,6 +3779,10 @@ msgstr "Bayrağı düzenle"
 #: src/client/admin/pages/flows.tsx
 msgid "Edit flow"
 msgstr "Akışı düzenle"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Edit form"
+msgstr "Formu düzenle"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/parity/insights.tsx
@@ -3860,6 +3901,10 @@ msgstr "Tüm satırları embed et"
 #: src/client/admin/parity/insights.tsx
 msgid "Embed live"
 msgstr "Gömme aktif"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Embed snippet"
+msgstr "Gömme kodu"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Embed the fields marked <0>vectorize</0> on every write and rank the <1>/search</1> endpoint's vector / hybrid modes by meaning. Existing rows are NOT embedded automatically — run \"Embed all rows\" below (each row is one embedding-provider call)."
@@ -4361,6 +4406,7 @@ msgstr "alanlar"
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/display-template-editor.tsx
 #: src/client/admin/item-editor.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/permission-tester.tsx
 #: src/client/admin/sheet.tsx
 msgid "Fields"
@@ -4590,6 +4636,14 @@ msgstr "Mevcut canlı şemadan bir dal çatallayın. Değişiklikleri hazırlay�
 msgid "Fork a branch to stage schema changes off to the side."
 msgstr "Şema değişikliklerini ayrı tutmak için bir dal çatallayın."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Form"
+msgstr "Form"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Form link ready"
+msgstr "Form bağlantısı hazır"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Form-wide — every section becomes a tab across the top instead of a stacked heading. Best for large records."
@@ -4599,6 +4653,11 @@ msgstr "Form geneli — her bölüm, üst üste başlık yerine üstte bir sekme
 #: src/client/admin/storage/widgets.tsx
 msgid "Format"
 msgstr "Biçim"
+
+#: src/client/admin/pages/forms.tsx
+#: src/client/admin/ui.tsx
+msgid "Forms"
+msgstr "Formlar"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Forward data events to a Sentry project."
@@ -4874,6 +4933,10 @@ msgstr "sağlıklı"
 #: src/client/admin/storage/widgets.tsx
 msgid "Height"
 msgstr "Yükseklik"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Help text"
+msgstr "Yardım metni"
 
 #: src/client/admin/collections-index.tsx
 msgid "hidden"
@@ -5482,6 +5545,10 @@ msgstr "etiket (isteğe bağlı)"
 #: src/client/admin/field-translations-editor.tsx
 msgid "Label in {loc}"
 msgstr "{loc} dilinde etiket"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Label override"
+msgstr "Etiket (özel)"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -6268,6 +6335,7 @@ msgstr "Temam"
 #: src/client/admin/add-field.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/settings/index.tsx
@@ -6297,6 +6365,7 @@ msgid "name is required"
 msgstr "ad zorunludur"
 
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/forms.tsx
 msgid "Name is required."
 msgstr "İsim gerekli."
 
@@ -6319,6 +6388,10 @@ msgstr "<0>Bu çalışma alanı</0> için yerel push aktarımı. Çözümleme s�
 #: src/client/admin/extras.tsx
 msgid "navigate"
 msgstr "gezin"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Needs TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY on the server."
+msgstr "Sunucuda TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY gerektirir."
 
 #: src/client/admin/storage/index.tsx
 msgid "network error"
@@ -6391,6 +6464,10 @@ msgstr "Yeni akış"
 #: src/client/admin/storage/index.tsx
 msgid "New folder"
 msgstr "Yeni klasör"
+
+#: src/client/admin/pages/forms.tsx
+msgid "New form"
+msgstr "Yeni form"
 
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/overview.tsx
@@ -6751,6 +6828,10 @@ msgstr "Henüz klasör yok — yüklemeler <0>uploads/</0> altına gider."
 #: src/client/admin/storage/index.tsx
 msgid "No folders yet. <0>Create one</0>."
 msgstr "Henüz klasör yok. <0>Bir tane oluşturun</0>."
+
+#: src/client/admin/pages/forms.tsx
+msgid "No forms yet"
+msgstr "Henüz form yok"
 
 #: src/client/admin/pages/functions.tsx
 msgid "No function selected"
@@ -7265,6 +7346,10 @@ msgstr "Tek kullanımlık bağlantı, <0>parola</0> gerektirmez."
 msgid "Only needed for self-signed LDAPS; the system trust store handles publicly-signed certs."
 msgstr "Yalnızca öz imzalı LDAPS için gereklidir; sistem güven deposu kamuya açık imzalı sertifikaları yönetir."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Only scalar fields can be exposed. Submissions run the collection's validation and land as drafts on versioned collections."
+msgstr "Yalnızca skaler alanlar formda gösterilebilir. Gönderimler koleksiyonun doğrulamasından geçer; sürümlü koleksiyonlarda taslak olarak kaydedilir."
+
 #: src/client/admin/parity/revisions.tsx
 msgid "Only the current state exists — no edits recorded yet."
 msgstr "Yalnızca mevcut durum var — henüz düzenleme kaydedilmedi."
@@ -7685,7 +7770,12 @@ msgstr "Bir koleksiyon seçin, bir sorgu yazın ve çalıştırın. Tam metin i�
 #~ msgid "Pick a collection, type a query, and run it. Full-text needs the collection's FTS switch on; vector needs an embedding model configured."
 #~ msgstr "Bir koleksiyon seçin, sorgunuzu yazın ve çalıştırın. Tam metin için koleksiyonun FTS anahtarı açık olmalı; vektör için bir embedding modeli yapılandırılmış olmalı."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Pick a collection."
+msgstr "Bir koleksiyon seçin."
+
 #: src/client/admin/add-field.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Pick a collection…"
 msgstr "Koleksiyon seçin…"
@@ -7816,6 +7906,10 @@ msgstr "Bir arayüz seçin, sütunu adlandırın — eklemeli ALTER TABLE, mevcu
 #: src/client/admin/pages/webhooks.tsx
 msgid "pick at least one event"
 msgstr "en az bir olay seçin"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Pick at least one field."
+msgstr "En az bir alan seçin."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Pick collection…"
@@ -7965,6 +8059,10 @@ msgstr "Gönderi kaydedildi."
 #: src/client/admin/pages/webhooks.tsx
 msgid "POST to any HTTPS endpoint when collection events fire."
 msgstr "Koleksiyon olayları tetiklendiğinde herhangi bir HTTPS uç noktasına POST gönderin."
+
+#: src/client/pages/public-form.tsx
+msgid "Powered by backlex"
+msgstr "backlex altyapısıyla"
 
 #: src/client/pages/embed-dashboard.tsx
 msgid "Powered by backlex · this embed can be revoked at any time."
@@ -8150,6 +8248,10 @@ msgstr "Herkese açık gömme etkinleştirildi."
 msgid "public link"
 msgstr "herkese açık bağlantı"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Public link"
+msgstr "Herkese açık bağlantı"
+
 #: src/client/admin/pages/settings/index.tsx
 msgid "Public origin of this Worker — set via <0>wrangler.toml [vars]</0> (or <1>.env</1> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here."
 msgstr "Bu Worker'ın genel origin'i — <0>wrangler.toml [vars]</0> (veya öz barındırmada <1>.env</1>) üzerinden ayarlanır. CORS, OAuth geri çağrıları ve mutlak bağlantılar için kullanılır. Burada salt okunur."
@@ -8161,6 +8263,10 @@ msgstr "herkese açık okuma"
 #: src/client/admin/item-collaboration.tsx
 msgid "Public read-only link"
 msgstr "Herkese açık salt okunur bağlantı"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Public, embeddable forms that write submissions into a collection — share a link or drop the iframe into any site."
+msgstr "Gönderimleri bir koleksiyona yazan herkese açık, gömülebilir formlar — bağlantıyı paylaşın ya da iframe'i herhangi bir siteye ekleyin."
 
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/items.tsx
@@ -8398,6 +8504,10 @@ msgstr "Bu koleksiyonun her okumasını (liste + tekil) <0>Access</0> merceği a
 msgid "Redelivered."
 msgstr "Yeniden teslim edildi."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Redirect URL (optional)"
+msgstr "Yönlendirme URL'si (isteğe bağlı)"
+
 #: src/client/admin/account-page.tsx
 msgid "Redirecting…"
 msgstr "Yönlendiriliyor…"
@@ -8418,6 +8528,7 @@ msgstr "/api/openapi.json yeniden çek"
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/realtime.tsx
@@ -8650,6 +8761,7 @@ msgid "Requests"
 msgstr "İstekler"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/pages/rest-explorer.tsx
 msgid "required"
@@ -9034,9 +9146,14 @@ msgstr "kök"
 msgid "Rotate"
 msgstr "Döndür"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Rotate link"
 msgstr "Bağlantıyı yenile"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Rotate the form link?"
+msgstr "Form bağlantısı yenilensin mi?"
 
 #: src/client/admin/parity/insights.tsx
 msgid "row count (no field needed)"
@@ -9284,6 +9401,10 @@ msgstr "Bayrağı kaydet"
 msgid "Save flow"
 msgstr "Akışı kaydet"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Save form"
+msgstr "Formu kaydet"
+
 #: src/client/components/mcp-key-modal.tsx
 msgid "Save guards"
 msgstr "Korumaları kaydet"
@@ -9347,6 +9468,7 @@ msgstr "MCP korumaları kaydediliyor"
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
@@ -9630,6 +9752,7 @@ msgid "Select environment"
 msgstr "Ortam seçin"
 
 #: src/client/admin/select.tsx
+#: src/client/pages/public-form.tsx
 msgid "Select…"
 msgstr "Seçin…"
 
@@ -9734,6 +9857,10 @@ msgstr "Gönderiliyor…"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Sends a one-time sign-in link by email — requires a configured email adapter (set RESEND_API_KEY + EMAIL_FROM)."
 msgstr "E-posta ile tek kullanımlık giriş bağlantısı gönderir — yapılandırılmış bir e-posta bağdaştırıcısı gerektirir (RESEND_API_KEY + EMAIL_FROM ayarlayın)."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Sends the visitor here after submitting, instead of the message."
+msgstr "Gönderimden sonra ziyaretçiyi mesaj yerine buraya yönlendirir."
 
 #: src/client/admin/item-views.tsx
 msgid "September"
@@ -10531,6 +10658,23 @@ msgstr "Konu"
 msgid "Subject is required."
 msgstr "Konu zorunludur."
 
+#: src/client/pages/public-form.tsx
+msgid "Submission failed — please try again"
+msgstr "Gönderim başarısız — lütfen tekrar deneyin"
+
+#: src/client/admin/pages/forms.tsx
+#: src/client/pages/public-form.tsx
+msgid "Submit"
+msgstr "Gönder"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Submit button label"
+msgstr "Gönder butonu etiketi"
+
+#: src/client/pages/public-form.tsx
+msgid "Submitting…"
+msgstr "Gönderiliyor…"
+
 #: src/client/admin/extras.tsx
 msgid "Subscribed. Waiting for events…"
 msgstr "Abone olundu. Etkinlikler bekleniyor…"
@@ -10543,6 +10687,10 @@ msgstr "Başarılı"
 #: src/client/admin/pages/webhooks.tsx
 msgid "Success"
 msgstr "Başarılı"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Success message"
+msgstr "Başarı mesajı"
 
 #: src/client/admin/pages/flows.tsx
 msgid "Success rate"
@@ -10799,6 +10947,14 @@ msgstr "Test aracı"
 msgid "Testing…"
 msgstr "Test ediliyor…"
 
+#: src/client/pages/public-form.tsx
+msgid "Thank you"
+msgstr "Teşekkürler"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Thanks — we got it!"
+msgstr "Teşekkürler — aldık!"
+
 #: src/client/pages/invite.tsx
 msgid "That account exists — enter its current password to accept."
 msgstr "Bu hesap zaten var — kabul etmek için mevcut parolasını gir."
@@ -10827,6 +10983,10 @@ msgstr "Ajanın kalıcı talimatları — kişiliği, üslubu ve kuralları. Her
 msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 msgstr "İstemci gizli anahtarı bekleme sırasında şifrelenir. Her iki alanı da boş bırakırsanız giriş, <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> ortam değişkenlerine döner. Sağlayıcıda yönlendirme URI'si olarak <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> adresini kaydedin."
 
+#: src/client/admin/pages/forms.tsx
+msgid "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
+msgstr "Mevcut bağlantı anında devre dışı kalır ve yenisi oluşturulur. Eski bağlantının gömülü olduğu her yerin güncellenmesi gerekir."
+
 #: src/client/pages/embed-dashboard.tsx
 msgid "The embed link may have been revoked, or the dashboard was removed."
 msgstr "Gömme bağlantısı iptal edilmiş ya da pano kaldırılmış olabilir."
@@ -10834,6 +10994,10 @@ msgstr "Gömme bağlantısı iptal edilmiş ya da pano kaldırılmış olabilir.
 #: src/client/pages/sign-up.tsx
 msgid "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
 msgstr "Yeni bir örneğin ilk hesabı otomatik olarak <0>admin</0> olarak sağlanır. Daha sonra kendinizi düşürebilirsiniz."
+
+#: src/client/pages/public-form.tsx
+msgid "The form may have been deactivated, or its link replaced."
+msgstr "Form devre dışı bırakılmış ya da bağlantısı değiştirilmiş olabilir."
 
 #: src/client/pages/api-keys.tsx
 msgid "The full secret is shown once after creation — copy it somewhere safe."
@@ -10863,6 +11027,10 @@ msgstr "Sağlayıcı devre dışı olarak eklendi. Sunucu tarafında istemci giz
 #: src/client/admin/parity/insights.tsx
 msgid "The public embed is live. The link was shown once when it was created — rotate it below if you need the URL again."
 msgstr "Herkese açık gömme aktif. Bağlantı oluşturulduğunda yalnızca bir kez gösterildi — URL’ye tekrar ihtiyacınız olursa aşağıdan yenileyin."
+
+#: src/client/admin/pages/forms.tsx
+msgid "The public link stops working immediately. Submitted rows stay in the collection."
+msgstr "Herkese açık bağlantı anında devre dışı kalır. Gönderilen kayıtlar koleksiyonda kalır."
 
 #: src/client/admin/parity/insights.tsx
 msgid "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
@@ -10913,6 +11081,10 @@ msgstr "bu koleksiyon"
 msgid "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
 msgstr "Bu koleksiyonda toplu düzenlemeyi destekleyen alan yok. Yapısal (json / dosya / ilişki listesi / yerelleştirilmiş) ve zengin metin alanları kayıt bazında düzenlenir."
 
+#: src/client/admin/pages/forms.tsx
+msgid "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
+msgstr "Bu koleksiyonda forma uygun alan yok (yalnızca skaler, gizli olmayan alanlar gösterilebilir)."
+
 #: src/client/admin/app.tsx
 msgid "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
 msgstr "Bu koleksiyon devre dışı — içerik API'si 404 döndürür; kayıtlar listelenemez veya düzenlenemez. Şema ve ayarlar düzenlenebilir kalır."
@@ -10940,6 +11112,10 @@ msgstr "Bu, panoyu siler ve herkese açık gömmesini kapatır. Panelleri <0>sil
 #: src/client/admin/collection-settings.tsx
 msgid "This deployment has no vector store — connect a Vectorize binding (Cloudflare), pgvector (Postgres), or libSQL before vector search can run."
 msgstr "Bu dağıtımda vektör deposu yok — vektör araması çalışmadan önce bir Vectorize binding'i (Cloudflare), pgvector (Postgres) veya libSQL bağlayın."
+
+#: src/client/pages/public-form.tsx
+msgid "This form is no longer available"
+msgstr "Bu form artık kullanılamıyor"
 
 #. placeholder {0}: workspace.name
 #: src/client/admin/parity/auth-settings.tsx
@@ -10971,6 +11147,10 @@ msgstr "Bu örneğin ilk kullanıcısı bu."
 #: src/client/pages/shared-record.tsx
 msgid "This link is no longer available"
 msgstr "Bu bağlantı artık kullanılamıyor"
+
+#: src/client/admin/pages/forms.tsx
+msgid "This link is shown once — rotating the token later replaces it and kills the old one."
+msgstr "Bu bağlantı yalnızca bir kez gösterilir — daha sonra yenilerseniz eskisi geçersiz olur."
 
 #: src/client/admin/parity/insights.tsx
 msgid "This link is shown once. Rotate it to invalidate the old one."
@@ -11300,6 +11480,14 @@ msgstr "Kapatılıyor…"
 #: src/client/admin/collection-settings.tsx
 msgid "Turning this off makes the content API return 404 for this collection (REST, GraphQL, SDK, realtime) while it stays editable here. Data is untouched."
 msgstr "Bunu kapatmak bu koleksiyonun içerik API'sinin 404 döndürmesine neden olur (REST, GraphQL, SDK, realtime); burada düzenlenebilir kalır. Veriye dokunulmaz."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Turnstile on"
+msgstr "Turnstile açık"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Turnstile spam protection"
+msgstr "Turnstile spam koruması"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -11909,6 +12097,10 @@ msgstr "Kural satırla eşleştiğinde efektler uygulanır. <0>Zorunlu</0> kayı
 msgid "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
 msgstr "“Test SMS gönder” işleminin nereye iletileceği. Hesabınızın kayıtlı numaralarını kullanmak için boş bırakın."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Where submissions are stored."
+msgstr "Gönderimlerin kaydedileceği yer."
+
 #: src/client/admin/collection-settings.tsx
 msgid "which field the board groups cards by"
 msgstr "panonun kartları hangi alana göre grupladığı"
@@ -12067,6 +12259,10 @@ msgstr "xxxxx-xxxxx"
 msgid "yes"
 msgstr "evet"
 
+#: src/client/pages/public-form.tsx
+msgid "Yes"
+msgstr "Evet"
+
 #: src/client/admin/pages/agents.tsx
 msgid "You are a helpful assistant for our workspace…"
 msgstr "Çalışma alanımız için yardımcı bir asistansınız…"
@@ -12138,3 +12334,7 @@ msgstr "Kişisel profiliniz, tercihleriniz, parolanız, oturumlarınız ve bağl
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Your registered devices"
 msgstr "Kayıtlı cihazlarınız"
+
+#: src/client/pages/public-form.tsx
+msgid "Your submission has been received."
+msgstr "Gönderiminiz alındı."

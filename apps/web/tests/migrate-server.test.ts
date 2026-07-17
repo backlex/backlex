@@ -148,9 +148,15 @@ describe("migrate server-side (sources + runs)", () => {
     expect(del.status).toBe(409);
 
     // Drive the executor like the scheduler would — tiny batches force
-    // several slices and exercise cursor persistence.
-    for (let i = 0; i < 10; i++) {
-      const { advanced } = await processMigrationRuns(ctx, { batchSize: 2, budgetMs: 50 });
+    // several slices and exercise cursor persistence. `now` must advance past
+    // the ~2min lease each slice writes: the due-run query only re-claims
+    // `leaseUntil < now`, so on a slow runner a slice that exhausts its 50ms
+    // budget leaves a live lease behind and a fixed `now` makes every later
+    // sweep a no-op — stranding the run "running" (flaked exactly this way
+    // in CI; fast machines finish in one slice and never hit the re-claim).
+    for (let i = 0; i < 12; i++) {
+      const now = new Date(Date.now() + (i + 1) * 121_000);
+      const { advanced } = await processMigrationRuns(ctx, { batchSize: 2, budgetMs: 50, now });
       if (!advanced) break;
       const r = await h.fetch(`/api/admin/migrate/runs/${runId}`);
       const run = ((await r.json()) as { data: any }).data;
@@ -190,7 +196,10 @@ describe("migrate server-side (sources + runs)", () => {
     const resume = await h.fetch(`/api/admin/migrate/runs/${runId}/resume`, json({}));
     expect(resume.status).toBe(200);
     for (let i = 0; i < 10; i++) {
-      const { advanced } = await processMigrationRuns(ctx, { batchSize: 100 });
+      // Same lease-advancing `now` as above so a budget-exhausted slice can
+      // always be re-claimed on the next iteration.
+      const now = new Date(Date.now() + (i + 1) * 121_000);
+      const { advanced } = await processMigrationRuns(ctx, { batchSize: 100, now });
       if (!advanced) break;
       const r = await h.fetch(`/api/admin/migrate/runs/${runId}`);
       if (["done", "failed"].includes((((await r.json()) as { data: any }).data.status))) break;

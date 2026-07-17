@@ -657,7 +657,19 @@ export const processMigrationRuns = async (
         failed: 0,
         done: false,
       });
-      if (st.done) continue;
+      if (st.done) {
+        // A previous slice may have finished the copy but hit its budget
+        // before the count-verification below ran — skipping here would
+        // leave `sourceCount` unset forever and fail verification on a
+        // clean table. Backfill it, then move on.
+        if (st.sourceCount === undefined) {
+          st.sourceCount = await opened.connector.count(tableName);
+          st.targetTotal ??= st.copied;
+          await saveRun(ctx, runId, { state });
+          if (Date.now() > deadline) return { advanced: runId };
+        }
+        continue;
+      }
 
       await ensureCollection(ctx, tenantId, t, (run.createdBy as string) ?? null);
       const collection = await loadCollection(ctx, tenantId, t.slug);

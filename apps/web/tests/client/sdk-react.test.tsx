@@ -214,6 +214,40 @@ describe("useLiveQuery", () => {
     emitItem(es!, "created", { id: "9", title: "Ghost" });
   });
 
+  test("changing the query clears the previous rows while the new result loads", async () => {
+    // Regression: the old hook kept the previous subscription's `data` during
+    // the transition, rendering one query's rows as another query's result.
+    let deferList: ((r: Response) => void) | null = null;
+    const client = makeClient((url) => {
+      if (url.includes("done")) {
+        // Second query (changed filter): hold the response open.
+        return new Promise<Response>((res) => {
+          deferList = res;
+        });
+      }
+      return json({ data: [{ id: "1", title: "First" }], limit: 50, offset: 0 });
+    });
+
+    const { rerender } = renderWithProviders(<Probe client={client} opts={{}} />);
+    await ready();
+    expect(screen.getByText("First")).toBeTruthy();
+
+    rerender(
+      <Probe client={client} opts={{ filter: { done: { _eq: true } } }} />,
+    );
+
+    // Mid-transition: loading again AND the old rows are gone.
+    await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("loading"));
+    expect(screen.getByTestId("rows").children.length).toBe(0);
+
+    await act(async () => {
+      deferList!(json({ data: [{ id: "2", title: "Second" }], limit: 50, offset: 0 }));
+    });
+    await ready();
+    expect(screen.getByText("Second")).toBeTruthy();
+    expect(screen.queryByText("First")).toBeNull();
+  });
+
   test("a deep-equal (new-reference) opts object does not resubscribe; a changed one does", async () => {
     const client = makeClient(() => json({ data: [], limit: 10, offset: 0 }));
 

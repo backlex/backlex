@@ -17,10 +17,13 @@
  *                             against apps/web/dist/gcp/index.mjs
  *   SMOKE_RUNTIME=azure     → spawns `node serve-azure.mjs` (registration
  *                             capture) against apps/web/dist/azure/index.mjs
+ *   SMOKE_RUNTIME=deno      → spawns `deno run --allow-all` against
+ *                             apps/web/dist/deno/server.mjs with
+ *                             LIBSQL_URL=file:… (temp sqlite)
  *
- *   PORT (default 8787), DATABASE_URL (required for every runtime except bun;
- *     ignored for bun), SMOKE_KEEP_OPEN=1 (don't kill the server after
- *     the contract — useful for manual poking).
+ *   PORT (default 8787), DATABASE_URL (required for the pg bundle runtimes;
+ *     ignored for bun/deno/cloudflare), SMOKE_KEEP_OPEN=1 (don't kill the
+ *     server after the contract — useful for manual poking).
  *
  * Why one orchestrator instead of inline workflow steps:
  *   - Local + CI run the same code (less drift)
@@ -31,9 +34,9 @@
  * Exit code: forwards the contract's exit code (0 ok, 1 failure, 2 misuse).
  */
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { delimiter, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
 import { runSmokeContract } from "./contract";
@@ -54,26 +57,34 @@ interface RuntimeProfile {
   checkSpa: boolean;
 }
 
+// Migrate a fresh temp sqlite file. Shared by the bun + deno profiles — the
+// bun entry opens it via bun:sqlite (SQLITE_PATH), the deno bundle via the
+// libsql local client (LIBSQL_URL=file:…); same dialect, same migrations.
+const migrateTempSqlite = async (): Promise<{
+  dbPath: string;
+  cleanup: () => void;
+}> => {
+  const dir = mkdtempSync(join(tmpdir(), "backlex-smoke-"));
+  const dbPath = join(dir, "smoke.sqlite");
+  // The sqlite migrator reads the DB path from argv[2] (see
+  // packages/db/src/sqlite/migrate.ts), so we invoke it directly
+  // rather than going through `db:migrate:sqlite`.
+  const r = await runOnce(
+    "bun",
+    ["run", "packages/db/src/sqlite/migrate.ts", dbPath],
+    REPO_ROOT,
+    {},
+  );
+  if (r.code !== 0) {
+    throw new Error(`sqlite migration failed (exit ${r.code}):\n${r.output}`);
+  }
+  return { dbPath, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+};
+
 const sqliteProfile: RuntimeProfile = {
   setupDb: async () => {
-    const dir = mkdtempSync(join(tmpdir(), "backlex-smoke-"));
-    const dbPath = join(dir, "smoke.sqlite");
-    // The sqlite migrator reads the DB path from argv[2] (see
-    // packages/db/src/sqlite/migrate.ts), so we invoke it directly
-    // rather than going through `db:migrate:sqlite`.
-    const r = await runOnce(
-      "bun",
-      ["run", "packages/db/src/sqlite/migrate.ts", dbPath],
-      REPO_ROOT,
-      {},
-    );
-    if (r.code !== 0) {
-      throw new Error(`sqlite migration failed (exit ${r.code}):\n${r.output}`);
-    }
-    return {
-      env: { SQLITE_PATH: dbPath },
-      cleanup: () => rmSync(dir, { recursive: true, force: true }),
-    };
+    const { dbPath, cleanup } = await migrateTempSqlite();
+    return { env: { SQLITE_PATH: dbPath }, cleanup };
   },
   spawnServer: (env) =>
     spawn("bun", ["apps/web/src/server/entries/bun.ts"], {
@@ -227,6 +238,48 @@ const cloudflareProfile: RuntimeProfile = {
   checkSpa: false,
 };
 
+// Deno profile — `deno run --allow-all` against the pre-built
+// apps/web/dist/deno/server.mjs (scripts/build-deno.ts). The entry can't use
+// bun:sqlite (aliased to the throwing shim at bundle time), so the same sqlite
+// migrations go into a temp file handed over via LIBSQL_URL=file:… —
+// context.ts selects the libsql client for any LIBSQL_URL, and
+// @libsql/client's local transport opens file: URLs natively (kept external
+// in the bundle; Deno resolves it from node_modules). The entry runs cron via
+// the setInterval scheduler and doesn't register /api/_cron/tick, so
+// checkCron stays off; it mounts the SPA itself (hono/deno serveStatic
+// against apps/web/dist/client), so checkSpa is on.
+const denoBin = (): string => {
+  const onPath = (process.env.PATH ?? "")
+    .split(delimiter)
+    .some((d) => d !== "" && existsSync(join(d, "deno")));
+  return onPath ? "deno" : join(homedir(), ".deno", "bin", "deno");
+};
+const denoProfile: RuntimeProfile = {
+  setupDb: async () => {
+    const { dbPath, cleanup } = await migrateTempSqlite();
+    return { env: { LIBSQL_URL: `file:${dbPath}` }, cleanup };
+  },
+  spawnServer: (env) =>
+    spawn(denoBin(), ["run", "--allow-all", "apps/web/dist/deno/server.mjs"], {
+      // mountSpa resolves `apps/web/dist/client` against the CWD.
+      cwd: REPO_ROOT,
+      env: {
+        ...process.env,
+        ...env,
+        PORT: String(PORT),
+        APP_URL,
+        AUTH_SECRET:
+          process.env.AUTH_SECRET ?? "smoke-secret-not-for-prod-stable",
+        // LIBSQL_URL wins the dialect pick over DATABASE_URL (context.ts),
+        // but clear the job-level pg URL anyway so nothing else grabs it.
+        DATABASE_URL: "",
+      },
+      stdio: "inherit",
+    }),
+  checkCron: false,
+  checkSpa: true,
+};
+
 const profiles: Record<string, RuntimeProfile> = {
   bun: sqliteProfile,
   // vercel/netlify: the PLATFORM serves the static SPA, not the function, so
@@ -260,6 +313,7 @@ const profiles: Record<string, RuntimeProfile> = {
     false,
     true,
   ),
+  deno: denoProfile,
 };
 
 const profile = profiles[RUNTIME];

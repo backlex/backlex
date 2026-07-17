@@ -31,6 +31,7 @@
     "build:lambda": "bun scripts/build-lambda.ts",
     "build:gcp": "bun scripts/build-gcp.ts",
     "build:azure": "bun scripts/build-azure.ts",
+    "build:deno": "bun scripts/build-deno.ts",
     "test": "bun run --cwd apps/web test",
     "lint": "biome lint apps packages",
     "lint:fix": "biome lint --write apps packages",

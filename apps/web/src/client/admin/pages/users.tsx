@@ -1,5 +1,5 @@
 // Users page — workspace user table + role/provider filters + invite + drawer
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, Checkbox, EmptyState, IconButton, PageHeader } from "../ui";
@@ -60,46 +60,57 @@ const PROVIDER_LABEL: Record<string, string> = {
   cloud: "cloud SSO",
 };
 
+type UserRow = { id: string; name: string; email: string; roles: string[]; status: string; provider: string; mfa: boolean; last: string; lastIso: string | null; created: string; sessions: number; memberId?: string; inviteUrl?: string };
+
+const fmtRelative = (ts: number | null): string => {
+  if (!ts) return "—";
+  const ms = Date.now() - ts;
+  if (ms < 60_000) return "just now";
+  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
+  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
+  return `${Math.floor(ms / 86_400_000)}d ago`;
+};
+
+const toUserRow = (u: ApiUser & { lastSeenAt?: number | null }): UserRow => {
+  const lastSeenAt = u.lastSeenAt ?? null;
+  return {
+    id: u.id,
+    name: u.name ?? u.email.split("@")[0]!,
+    email: u.email,
+    roles: u.roles.map((x) => x.name),
+    status: u.status ?? "active",
+    provider: u.provider ?? "password",
+    mfa: u.twoFactorEnabled === true,
+    last: fmtRelative(lastSeenAt),
+    lastIso: lastSeenAt ? new Date(lastSeenAt).toISOString().slice(0, 19).replace("T", " ") : null,
+    created: u.createdAt ? String(u.createdAt).slice(0, 10) : "—",
+    sessions: 0,
+    memberId: u.memberId,
+    inviteUrl: u.inviteUrl,
+  };
+};
+
 export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
   const { t } = useLingui();
-  type UserRow = { id: string; name: string; email: string; roles: string[]; status: string; provider: string; mfa: boolean; last: string; lastIso: string | null; created: string; sessions: number; memberId?: string; inviteUrl?: string };
   const [users, setUsers] = useState<UserRow[]>([]);
   // First-load gate — drives the page skeleton until the user list lands.
   const [loaded, setLoaded] = useState(false);
+  // Reconcile the whole list against the server. Used by the initial load and
+  // after an invite so the optimistic pending row is replaced by server truth
+  // (with the rest of the roster intact — the source of a "list showed only
+  // the new invite until refresh" glitch).
+  const reloadUsers = useCallback(async () => {
+    const r = await usersApi.list();
+    if (!Array.isArray(r.data)) return;
+    setUsers(r.data.map(toUserRow));
+  }, []);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const r = await usersApi.list();
         if (cancelled || !Array.isArray(r.data)) return;
-        const fmt = (ts: number | null): string => {
-          if (!ts) return "—";
-          const ms = Date.now() - ts;
-          if (ms < 60_000) return "just now";
-          if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
-          if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
-          return `${Math.floor(ms / 86_400_000)}d ago`;
-        };
-        setUsers(
-          r.data.map((u: ApiUser & { lastSeenAt?: number | null }) => {
-            const lastSeenAt = u.lastSeenAt ?? null;
-            return {
-              id: u.id,
-              name: u.name ?? u.email.split("@")[0],
-              email: u.email,
-              roles: u.roles.map((x) => x.name),
-              status: u.status ?? "active",
-              provider: u.provider ?? "password",
-              mfa: u.twoFactorEnabled === true,
-              last: fmt(lastSeenAt),
-              lastIso: lastSeenAt ? new Date(lastSeenAt).toISOString().slice(0, 19).replace("T", " ") : null,
-              created: u.createdAt ? String(u.createdAt).slice(0, 10) : "—",
-              sessions: 0,
-              memberId: u.memberId,
-              inviteUrl: u.inviteUrl,
-            };
-          }) as any,
-        );
+        setUsers(r.data.map(toUserRow));
       } catch (e) {
         pushToast?.((e as Error).message);
       } finally {
@@ -405,21 +416,28 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
 
       {activeUser && <UserDrawer user={activeUser} allRoles={allRoles} onClose={() => setActiveUser(null)} onSaved={applyUserPatch} pushToast={pushToast} />}
       {inviteOpen && <InviteUserDialog roles={roleNames} onClose={() => setInviteOpen(false)} pushToast={pushToast} onCreated={(inv) => {
-        setUsers((arr) => [...arr, {
-          id: inv.id,
-          name: inv.email.split("@")[0] ?? inv.email,
-          email: inv.email,
-          roles: [inv.role],
-          status: "invited",
-          provider: "invite",
-          mfa: false,
-          last: "—",
-          lastIso: null,
-          created: new Date().toISOString().slice(0, 10),
-          sessions: 0,
-          memberId: inv.id,
-          inviteUrl: inv.url,
-        }]);
+        // Optimistic: append the pending-invite row immediately (dedupe by
+        // email so a re-invite doesn't double it), then reconcile against the
+        // server so the row carries authoritative fields on the next paint.
+        setUsers((arr) => [
+          ...arr.filter((x) => x.email !== inv.email),
+          {
+            id: inv.id,
+            name: inv.email.split("@")[0] ?? inv.email,
+            email: inv.email,
+            roles: [inv.role],
+            status: "invited",
+            provider: "invite",
+            mfa: false,
+            last: "—",
+            lastIso: null,
+            created: new Date().toISOString().slice(0, 10),
+            sessions: 0,
+            memberId: inv.id,
+            inviteUrl: inv.url,
+          },
+        ]);
+        void reloadUsers().catch(() => {/* keep the optimistic row */});
       }} />}
     </div>
   );

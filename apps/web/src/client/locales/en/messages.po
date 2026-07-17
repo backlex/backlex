@@ -9823,8 +9823,12 @@ msgid "Set a password"
 msgstr "Set a password"
 
 #: src/client/pages/invite.tsx
-msgid "Set a password to accept the invite and create your account."
-msgstr "Set a password to accept the invite and create your account."
+#~ msgid "Set a password to accept the invite and create your account."
+#~ msgstr "Set a password to accept the invite and create your account."
+
+#: src/client/pages/invite.tsx
+msgid "Set a password to create your account — or enter your current password if you already have a backlex account."
+msgstr "Set a password to create your account — or enter your current password if you already have a backlex account."
 
 #: src/client/admin/item-editor.tsx
 msgid "Set auto-unpublish"
@@ -10122,6 +10126,7 @@ msgstr "Sign up"
 msgid "Sign URL"
 msgstr "Sign URL"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Sign-in failed"
 msgstr "Sign-in failed"
@@ -10787,6 +10792,10 @@ msgstr "Tester"
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "Testing…"
 msgstr "Testing…"
+
+#: src/client/pages/invite.tsx
+msgid "That account exists — enter its current password to accept."
+msgstr "That account exists — enter its current password to accept."
 
 #. placeholder {0}: chosen.provider
 #. placeholder {1}: chosen.key

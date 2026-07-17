@@ -8,7 +8,7 @@ import type { AppBindings } from "../app";
 import { errorResponses, OkSchema, SECURITY } from "../lib/openapi";
 import { requireUser } from "../middleware/session";
 import { TENANT_COOKIE } from "../middleware/tenant";
-import { createMemberInvite, findInviteByToken } from "../services/invites";
+import { bindInvite, createMemberInvite, findInviteByToken } from "../services/invites";
 import { invalidateTenantMembership } from "../services/permissions-cache";
 import { assignRoleByName, ensureSystemRoles } from "../services/seed";
 
@@ -538,28 +538,13 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>()
         throw new AppError("VALIDATION", "Invite has expired");
       if (inv.email.toLowerCase() !== (auth.email ?? "").toLowerCase())
         throw new AppError("FORBIDDEN", "Invite email does not match signed-in user");
-      await (ctx.db as any)
-        .update(t.members)
-        .set({
-          userId: auth.userId,
-          status: "active",
-          joinedAt: new Date(),
-          inviteToken: null,
-          inviteExpiresAt: null,
-        })
-        .where(eq(t.members.id, inv.id));
-      // Make sure system roles exist for the workspace (in case it was
-      // created before per-tenant seeding shipped), then bind the invitee
-      // to an RBAC role mirroring their membership level.
-      const dbCtx = { db: ctx.db, dialect: ctx.dialect };
-      await ensureSystemRoles(dbCtx, inv.tenantId);
-      const rbacRole =
-        inv.role === "owner" || inv.role === "admin"
-          ? SYSTEM_ROLES.admin
-          : SYSTEM_ROLES.authenticated;
-      await assignRoleByName(dbCtx, inv.tenantId, auth.userId!, rbacRole);
-      // After both the membership row update and the RBAC role binding.
-      invalidateTenantMembership(inv.tenantId);
-      return c.json({ data: { tenantId: inv.tenantId } });
+      // Same binding path as the sign-up auto-accept — membership flip + role
+      // grant (RBAC name match first) + cache invalidation live in one place.
+      const tenantId = await bindInvite(
+        { db: ctx.db, dialect: ctx.dialect },
+        inv,
+        auth.userId!,
+      );
+      return c.json({ data: { tenantId } });
     },
   );

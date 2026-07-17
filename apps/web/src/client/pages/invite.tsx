@@ -101,19 +101,47 @@ export const Invite = () => {
     }
     setBusy(true);
     const email = state.meta.email;
-    const res = await auth.signUp.email({
-      email,
-      password,
-      name: name.trim() || email.split("@")[0] || "member",
-    });
-    if (res.error) {
+    try {
+      const res = await auth.signUp.email({
+        email,
+        password,
+        name: name.trim() || email.split("@")[0] || "member",
+      });
+      if (res.error) {
+        // The invited address already has a backlex account (e.g. a member of
+        // another workspace). That's not a dead end — sign them in with the
+        // password they just entered and bind the invite to the existing user
+        // via the signed-in accept endpoint.
+        const msg = res.error.message ?? "";
+        if (/exist|registered|taken/i.test(msg)) {
+          const signIn = await auth.signIn.email({ email, password });
+          if (signIn.error) {
+            setBusy(false);
+            notifyError(
+              /password|credential|invalid/i.test(signIn.error.message ?? "")
+                ? t`That account exists — enter its current password to accept.`
+                : (signIn.error.message ?? t`Sign-in failed`),
+            );
+            return;
+          }
+          await api("/api/tenants/accept", {
+            method: "POST",
+            body: JSON.stringify({ token }),
+          });
+          navigate("/", { replace: true });
+          return;
+        }
+        setBusy(false);
+        notifyError(msg || t`Sign-up failed`);
+        return;
+      }
+      // autoSignIn gives a session; the server already bound the workspace
+      // membership in onUserCreated. Land in the admin.
+      navigate("/", { replace: true });
+    } catch (err) {
       setBusy(false);
-      notifyError(res.error.message ?? t`Sign-up failed`);
-      return;
+      notifyError(err instanceof Error ? err.message : t`Sign-up failed`);
     }
-    // autoSignIn gives a session; the server already bound the workspace
-    // membership in onUserCreated. Land in the admin.
-    navigate("/", { replace: true });
   };
 
   return (
@@ -170,7 +198,7 @@ export const Invite = () => {
           <>
             <AuthCardHeader
               title={<Trans>Join {state.meta.workspaceName}</Trans>}
-              description={<Trans>Set a password to accept the invite and create your account.</Trans>}
+              description={<Trans>Set a password to create your account — or enter your current password if you already have a backlex account.</Trans>}
             />
             <AuthCallout icon={<MailCheckIcon size={16} />}>
               <Trans>You're joining as <span className="font-mono">{state.meta.email}</span>.</Trans>

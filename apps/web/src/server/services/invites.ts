@@ -146,6 +146,21 @@ export const acceptInviteForUser = async (
 ): Promise<string | null> => {
   const inv = await findActiveInviteByEmail(ctx, email);
   if (!inv) return null;
+  return bindInvite(ctx, inv, userId);
+};
+
+/**
+ * Bind a resolved invite row to a user: flip the member row to active, clear
+ * the token, and grant the invite's role. Shared by BOTH accept paths — the
+ * sign-up auto-accept (`acceptInviteForUser`) and the signed-in
+ * `POST /api/tenants/accept` (existing users clicking an invite link) — so
+ * role semantics can't drift between them.
+ */
+export const bindInvite = async (
+  ctx: DbCtx,
+  inv: InviteRow,
+  userId: string,
+): Promise<string> => {
   const m = membersFor(ctx.dialect);
   await (ctx.db as any)
     .update(m)
@@ -173,8 +188,8 @@ export const acceptInviteForUser = async (
   if (rbacRole !== SYSTEM_ROLES.authenticated)
     await assignRoleByName(ctx, inv.tenantId, userId, SYSTEM_ROLES.authenticated);
   // Membership row + RBAC role both just changed for this tenant. Drop the
-  // per-user roles entry too — the sign-up request may have already cached a
-  // pre-invite role set (e.g. just `authenticated`), which would otherwise
+  // per-user roles entry too — the requesting session may have already cached
+  // a pre-invite role set (e.g. just `authenticated`), which would otherwise
   // mask the invite's role until the cache expires.
   invalidateTenantMembership(inv.tenantId);
   invalidateUserRoles(inv.tenantId, userId);

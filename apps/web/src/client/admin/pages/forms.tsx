@@ -430,15 +430,21 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
                           const selected = edit.fields.find((f) => f.name === ef.name);
                           return (
                             <div key={ef.name} className="flex flex-col gap-2 border-b border-border px-3 py-2.5 last:border-b-0">
-                              <label className="flex items-center gap-2.5 text-[13px] font-normal">
+                              {/* id+htmlFor (not a wrapping <label>) — a wrapper
+                                  forwards its activation back to the control,
+                                  double-toggling every direct checkbox click. */}
+                              <div className="flex items-center gap-2.5 text-[13px] font-normal">
                                 <Checkbox
+                                  id={`form-field-${ef.name}`}
                                   checked={!!selected}
                                   onCheckedChange={() => toggleField(ef.name)}
                                 />
-                                <span className="font-mono text-[12.5px]">{ef.name}</span>
-                                <span className="text-[11px] text-muted-foreground">{ef.type}</span>
-                                {ef.required && <Badge variant="outline"><Trans>required</Trans></Badge>}
-                              </label>
+                                <label htmlFor={`form-field-${ef.name}`} className="flex min-w-0 cursor-pointer items-center gap-2.5">
+                                  <span className="font-mono text-[12.5px]">{ef.name}</span>
+                                  <span className="text-[11px] text-muted-foreground">{ef.type}</span>
+                                  {ef.required && <Badge variant="outline"><Trans>required</Trans></Badge>}
+                                </label>
+                              </div>
                               {selected && (
                                 <div className="grid grid-cols-2 gap-2 pl-6 max-[520px]:grid-cols-1">
                                   <Input

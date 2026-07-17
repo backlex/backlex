@@ -21,6 +21,7 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { encryptSecret } from "../lib/crypto";
 import { isPlatformSsoEnabled } from "../lib/platform-sso";
+import { defaultHook } from "../lib/openapi-router";
 import {
   PLATFORM_LDAP_ID,
   resolvePlatformLdapAdapter,
@@ -91,7 +92,7 @@ const TestInput = z
 const TAG = ["platform-ldap-admin"];
 const GATE: MiddlewareHandler<AppBindings>[] = [requireUser, gate];
 
-export const platformLdapAdminRoutes = new OpenAPIHono<AppBindings>()
+export const platformLdapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

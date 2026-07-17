@@ -1,5 +1,6 @@
 import { describe, expect, test, afterAll, beforeAll } from "bun:test";
-import { makeHarness, type TestHarness } from "./setup";
+import { Database } from "bun:sqlite";
+import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 /**
  * Internal sandbox RPC bridge — `POST /api/_internal/sandbox-rpc`
@@ -104,14 +105,11 @@ describe("sandbox RPC — token gate + dispatch", () => {
     expect(body.error).toContain("allow-list");
   });
 
-  test("db.list op dispatches too (fails on tenant scoping, not on auth)", async () => {
-    // The RPC body's `auth` schema carries no tenantId (the executor's wire
-    // format only sends userId/email/roles), so the bridge's collection
-    // lookup resolves with a null tenant and every db.* op comes back
-    // "Collection … not found" — even for collections that exist. Pinning
-    // that: a fully-green db.list is not reachable through this bridge
-    // in-harness; if the wire format ever grows a tenantId this should be
-    // upgraded to a real happy path.
+  test("db.list without a tenantId fails closed (back-compat with old executors)", async () => {
+    // Older executors don't send `auth.tenantId`. The schema keeps it
+    // optional, and the bridge's collection lookup resolves against a null
+    // tenant → "Collection … not found", exactly like before the field
+    // existed. No tenantId must never mean "any tenant".
     const res = await rpc(
       h,
       {
@@ -125,5 +123,89 @@ describe("sandbox RPC — token gate + dispatch", () => {
     const body = (await res.json()) as { ok: boolean; error?: string };
     expect(body.ok).toBe(false);
     expect(body.error).toContain('Collection "anything" not found');
+  });
+});
+
+describe("sandbox RPC — db.* ops are tenant-scoped end-to-end", () => {
+  let h: TestHarness;
+  let tenantId: string;
+  let adminId: string;
+  const slug = "rpc_notes";
+
+  beforeAll(async () => {
+    h = makeHarness({ SANDBOX_RPC_TOKEN: TOKEN });
+    await seedAdmin(h);
+
+    const create = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        slug,
+        fields: [{ name: "title", type: "text", required: true }],
+      }),
+    });
+    expect(create.status).toBe(201);
+
+    const item = await h.fetch(`/api/items/${slug}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "via-rpc-bridge" }),
+    });
+    expect(item.status).toBe(201);
+
+    // The RPC subject needs the real workspace id + a user who actually holds
+    // the admin role there (roles resolve from the DB, not the wire array).
+    const client = new Database(h.env.SQLITE_PATH as string);
+    try {
+      tenantId = (
+        client.query("SELECT id FROM tenants WHERE slug = 'default'").get() as {
+          id: string;
+        }
+      ).id;
+      adminId = (client.query("SELECT id FROM users LIMIT 1").get() as { id: string })
+        .id;
+    } finally {
+      client.close();
+    }
+  });
+  afterAll(() => h.cleanup());
+
+  test("db.list with the wire tenantId returns the rows (green happy path)", async () => {
+    const res = await rpc(
+      h,
+      {
+        op: "db.list",
+        args: { slug },
+        auth: { userId: adminId, email: null, roles: ["admin"], tenantId },
+      },
+      { authorization: `Bearer ${TOKEN}` },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ok: boolean;
+      value?: Array<{ title: string }>;
+      error?: string;
+    };
+    expect(body.ok).toBe(true);
+    expect(body.value).toHaveLength(1);
+    expect(body.value![0]!.title).toBe("via-rpc-bridge");
+  });
+
+  test("db.list for the same collection WITHOUT tenantId still fails closed", async () => {
+    // The collection genuinely exists — omitting tenantId (an old executor)
+    // must not fall back to it.
+    const res = await rpc(
+      h,
+      {
+        op: "db.list",
+        args: { slug },
+        auth: { userId: adminId, email: null, roles: ["admin"] },
+      },
+      { authorization: `Bearer ${TOKEN}` },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; error?: string };
+    expect(body.ok).toBe(false);
+    expect(body.error).toContain(`Collection "${slug}" not found`);
   });
 });

@@ -31,7 +31,15 @@ const PORT = Number(globalThis.process?.env?.PORT ?? 8790);
 interface RunBody {
   code: string;
   data: unknown;
-  user: { id: string | null; email: string | null; roles: string[] };
+  user: {
+    id: string | null;
+    email: string | null;
+    roles: string[];
+    /** Workspace scope — echoed back verbatim in sandbox-rpc callbacks so
+     *  tenant-scoped ops (ctx.db / ctx.email) hit the right workspace.
+     *  Absent from older main apps → the bridge fails closed ("not found"). */
+    tenantId?: string | null;
+  };
   timeoutMs: number;
   mainOrigin: string | null;
   rpcToken: string | null;
@@ -63,6 +71,15 @@ const buildRpc = (
     };
   }
   const url = `${mainOrigin.replace(/\/$/, "")}/api/_internal/sandbox-rpc`;
+  // The RPC body's `auth` uses `userId` (AuthSubject shape), while the /run
+  // wire format's `user` uses `id` — map explicitly so the main app's Zod
+  // gate accepts the callback.
+  const auth = {
+    userId: user.id,
+    email: user.email,
+    roles: user.roles,
+    tenantId: user.tenantId ?? null,
+  };
   return async (op: string, args: unknown): Promise<unknown> => {
     const res = await fetch(url, {
       method: "POST",
@@ -70,7 +87,7 @@ const buildRpc = (
         "content-type": "application/json",
         authorization: `Bearer ${rpcToken}`,
       },
-      body: JSON.stringify({ op, args, auth: user }),
+      body: JSON.stringify({ op, args, auth }),
     });
     if (!res.ok) throw new Error(`sandbox-rpc http ${res.status}`);
     const reply = (await res.json()) as {

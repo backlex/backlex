@@ -3,6 +3,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { dispatchPush, dispatchSms } from "../services/messaging";
+import { defaultHook } from "../lib/openapi-router";
 
 const SendSmsInput = z
   .object({
@@ -36,7 +37,7 @@ const TAGS = ["messaging"];
  * validation, and admin-or-self target gate all live in `services/messaging`
  * so the GraphQL mutations stay in lockstep.
  */
-export const messagingRoutes = new OpenAPIHono<AppBindings>()
+export const messagingRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "post",

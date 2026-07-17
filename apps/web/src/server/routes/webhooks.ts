@@ -15,6 +15,7 @@ import {
 import { logActivity } from "../services/activity";
 import { parsePagination } from "../lib/pagination";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 
 const WebhookInput = z
   .object({
@@ -85,7 +86,7 @@ const requireTenant = (c: { get: (k: string) => any }): string => {
 
 const tags = ["webhooks"];
 
-export const webhooksRoutes = new OpenAPIHono<AppBindings>()
+export const webhooksRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

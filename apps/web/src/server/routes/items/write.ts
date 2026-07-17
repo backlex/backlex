@@ -21,6 +21,7 @@ import {
   type WriteEnv,
 } from "../../services/items/write";
 import { verifyHashField } from "../../services/items/verify";
+import { defaultHook } from "../../lib/openapi-router";
 import {
   execute,
   fromOf,
@@ -37,7 +38,7 @@ import {
   TAGS,
 } from "../../services/items/schemas";
 
-export const itemsWriteRoutes = new OpenAPIHono<AppBindings>()
+export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "post",

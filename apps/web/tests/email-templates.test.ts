@@ -121,13 +121,13 @@ describe("/api/admin/email-templates", () => {
       "/api/admin/email-templates",
       json("POST", { ...TEMPLATE, fromAddress: "not-an-email" }),
     );
-    expect(badFrom.status).toBe(400);
+    expect(badFrom.status).toBe(422);
     const { subject: _omit, ...noSubject } = TEMPLATE;
     const missing = await h.fetch(
       "/api/admin/email-templates",
       json("POST", noSubject),
     );
-    expect(missing.status).toBe(400);
+    expect(missing.status).toBe(422);
   });
 
   test("send-test succeeds through the default (console) transport", async () => {

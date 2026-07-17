@@ -8,6 +8,7 @@ import { requireUser } from "../middleware/session";
 import { parsePagination } from "../lib/pagination";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { sendPushToUsers } from "../services/push";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.notifications : sqlite.schema.notifications;
@@ -56,7 +57,7 @@ const TAGS = ["notifications"];
  * internal write path); admin POST here is for ad-hoc test or manual
  * admin actions.
  */
-export const notificationsRoutes = new OpenAPIHono<AppBindings>()
+export const notificationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

@@ -42,7 +42,7 @@ describe("SMS messaging", () => {
 
   test("registration rejects a non-E.164 number", async () => {
     const res = await h.fetch("/api/phone-numbers", json({ phoneNumber: "5551234" }));
-    expect(res.status).toBe(400); // zod schema rejection
+    expect(res.status).toBe(422); // zod schema rejection
   });
 
   test("sms-config test send reaches the caller's number (console adapter)", async () => {

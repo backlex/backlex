@@ -3,6 +3,7 @@ import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { PUBLIC_SECURITY, errorResponses } from "../lib/openapi";
 import { resolveEmbedToken, runDashboardPublic } from "../services/dashboards";
+import { defaultHook } from "../lib/openapi-router";
 
 const PublicPanel = z
   .object({
@@ -37,7 +38,7 @@ const PublicDashboard = z
  * hasn't been migrated yet (`resolveEmbedToken` swallows the missing-table
  * error and returns null), mirroring `routes/shared-public.ts`.
  */
-export const dashboardsPublicRoutes = new OpenAPIHono<AppBindings>().openapi(
+export const dashboardsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).openapi(
   createRoute({
     method: "get",
     path: "/{token}",

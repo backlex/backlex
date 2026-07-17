@@ -6,6 +6,7 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { enforceIpRateLimit } from "../lib/auth-rate-limit";
 import { findByName } from "../services/functions";
+import { defaultHook } from "../lib/openapi-router";
 import {
   cancelJob,
   enqueueJob,
@@ -78,7 +79,7 @@ const JobSchema = z
 
 const tags = ["jobs"];
 
-export const jobsRoutes = new OpenAPIHono<AppBindings>()
+export const jobsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "post",

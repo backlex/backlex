@@ -18,8 +18,9 @@ import {
   TAGS,
 } from "../../services/items/schemas";
 import { auditRead, canSeeDraftsFor } from "./shared";
+import { defaultHook } from "../../lib/openapi-router";
 
-export const itemsQueryRoutes = new OpenAPIHono<AppBindings>()
+export const itemsQueryRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "post",

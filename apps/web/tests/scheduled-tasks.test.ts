@@ -228,4 +228,50 @@ describe("scheduled-tasks — cronTick drains flow continuations", () => {
 
     await deleteTask(ctx, id); // leave the table clean for other tests
   });
+
+  test("a failed resume leaves the row claimed (not deleted, not re-run)", async () => {
+    // The continuation's target collection doesn't exist (e.g. it was deleted
+    // during the delay window), so `resumeContinuation` → `runFlowOps` reports
+    // {ok:false}. cronTick must NOT delete the row — it stays claimed so a
+    // human can inspect / re-queue, and the claim mark stops any re-run.
+    const { id } = await enqueueTask(ctx, {
+      tenantId,
+      runAt: new Date(Date.now() - 1_000),
+      payload: {
+        kind: "flow-continuation",
+        flowName: "doomed-resume",
+        remainingOps: [
+          {
+            type: "item.create",
+            collection: "deleted_mid_delay",
+            data: { title: "never-lands" },
+          } as any,
+        ],
+        data: {},
+        authSubject: { userId: null, email: null, roles: [], tenantId },
+        last: null,
+      },
+    });
+
+    await cronTick(h.env);
+
+    // The row survives the failed resume, marked claimed.
+    let rows = taskRows(h.env.SQLITE_PATH as string);
+    expect(rows.map((r) => r.id)).toEqual([id]);
+    expect(rows[0]!.claimedAt).not.toBeNull();
+
+    // No side effect landed anywhere — the existing collection is untouched.
+    const res = await h.fetch(`/api/items/${slug}`);
+    const items = ((await res.json()) as { data: Array<{ title: string }> }).data;
+    expect(items.some((r) => r.title === "never-lands")).toBe(false);
+
+    // A second tick must not re-claim / re-run the row — it stays exactly
+    // as the first tick left it.
+    await cronTick(h.env);
+    rows = taskRows(h.env.SQLITE_PATH as string);
+    expect(rows.map((r) => r.id)).toEqual([id]);
+    expect(rows[0]!.claimedAt).not.toBeNull();
+
+    await deleteTask(ctx, id); // leave the table clean
+  });
 });

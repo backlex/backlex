@@ -9,6 +9,7 @@ import { requireUser } from "../middleware/session";
 import { getRequestPermCache, requirePermission } from "../middleware/permission";
 import { resolvePermission } from "../services/permissions";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 
 /** Comments are workspace-scoped — every query must pin the active tenant so a
  *  signed-in user from tenant A can never read or delete tenant B's threads.
@@ -55,7 +56,7 @@ const TAGS = ["comments"];
  * Creating/listing needs collection `read`; deleting is further restricted to
  * the comment's author or an admin.
  */
-export const commentsRoutes = new OpenAPIHono<AppBindings>()
+export const commentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

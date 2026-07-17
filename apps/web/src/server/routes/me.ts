@@ -7,6 +7,7 @@ import type { AppBindings } from "../app";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { listReadableCollections } from "../services/permissions";
 import { FILES_COLLECTION } from "./storage";
+import { defaultHook } from "../lib/openapi-router";
 
 const MeRow = z
   .object({
@@ -33,7 +34,7 @@ const MeRow = z
  * resolver uses server-side; `isAdmin` is precomputed so callers can render
  * a badge in one cycle.
  */
-export const meRoutes = new OpenAPIHono<AppBindings>().openapi(
+export const meRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).openapi(
   createRoute({
     method: "get",
     path: "/",

@@ -25,8 +25,9 @@ import {
   SYSTEM_ROLE_NAMES,
 } from "../../services/roles/schemas";
 import { tableFor } from "../../services/roles/tables";
+import { defaultHook } from "../../lib/openapi-router";
 
-export const rolesRoutes = new OpenAPIHono<AppBindings>()
+export const rolesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

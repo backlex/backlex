@@ -43,8 +43,8 @@ describe("ERD: erdLayout setting round-trip", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ erdLayout: { posts: { x: "nope", y: 0 } } }),
     });
-    // @hono/zod-openapi rejects the malformed body at the validation layer (400).
-    expect(res.status).toBe(400);
+    // Zod rejects the malformed body; the shared defaultHook maps it to 422.
+    expect(res.status).toBe(422);
   });
 });
 

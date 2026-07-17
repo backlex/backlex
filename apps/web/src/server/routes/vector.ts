@@ -10,6 +10,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { reportToCloud } from "../lib/cloud-report";
+import { defaultHook } from "../lib/openapi-router";
 
 /**
  * Tenant-scope the caller-supplied namespace. In a single-worker multi-tenant
@@ -127,7 +128,7 @@ const Capabilities = z
   })
   .openapi("VectorCapabilities");
 
-export const vectorRoutes = new OpenAPIHono<AppBindings>()
+export const vectorRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   /**
    * What vector search can do on this deployment — which embedding models
    * are usable (provider configured + store ready) and which store holds

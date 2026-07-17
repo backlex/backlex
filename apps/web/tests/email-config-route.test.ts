@@ -123,7 +123,7 @@ describe("/api/admin/email-config", () => {
       "/api/admin/email-config",
       json("PUT", { provider: "carrier-pigeon" }),
     );
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   test("POST /test sends through the default console transport", async () => {

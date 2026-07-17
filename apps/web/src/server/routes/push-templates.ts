@@ -8,6 +8,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { sendPushToUsers } from "../services/push";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.pushTemplates : sqlite.schema.pushTemplates;
@@ -64,7 +65,7 @@ const idScopedToTenant = (t: ReturnType<typeof tableFor>, id: string, tenantId: 
 const tags = ["push-templates"];
 const adminGate = [requireUser, requireAdmin];
 
-export const pushTemplatesRoutes = new OpenAPIHono<AppBindings>()
+export const pushTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

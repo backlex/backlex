@@ -13,6 +13,7 @@ import { SMS_PROVIDER_IDS } from "../lib/sms-select";
 import { GLOBAL_SMS_CONFIG_ID, SMS_SECRET_KEYS } from "../services/sms-config";
 import { sendSmsToUsers } from "../services/sms";
 import { invalidateAllSmsCaches, invalidateSmsCache } from "../context";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.smsConfig : sqlite.schema.smsConfig;
@@ -62,7 +63,7 @@ const secretsSet = (
 const tags = ["sms-config"];
 const adminGate = [requireUser, requireAdmin];
 
-export const smsConfigRoutes = new OpenAPIHono<AppBindings>()
+export const smsConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

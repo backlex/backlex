@@ -9,6 +9,7 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { invalidateUserRoles } from "../services/permissions-cache";
 import { inviteAppUser, resolveAssignableRoles } from "../services/app-user-invites";
+import { defaultHook } from "../lib/openapi-router";
 
 /**
  * Manage the workspace end-user pool (`app_users`) — the customers of the
@@ -107,7 +108,7 @@ const requireAppUser = async (
   if (!rows[0]) throw new AppError("NOT_FOUND", "End-user not found in this workspace");
 };
 
-export const appUsersRoutes = new OpenAPIHono<AppBindings>()
+export const appUsersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

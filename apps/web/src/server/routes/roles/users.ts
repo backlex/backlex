@@ -26,8 +26,9 @@ import {
   UserUpdateInput,
 } from "../../services/roles/schemas";
 import { tableFor } from "../../services/roles/tables";
+import { defaultHook } from "../../lib/openapi-router";
 
-export const usersRoutes = new OpenAPIHono<AppBindings>()
+export const usersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

@@ -31,6 +31,6 @@ describe("listColumns setting round-trip", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ listColumns: { posts: [1, 2, 3] } }),
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 });

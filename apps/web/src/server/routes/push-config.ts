@@ -13,6 +13,7 @@ import { PUSH_PROVIDER_IDS } from "../lib/push-select";
 import { GLOBAL_PUSH_CONFIG_ID, PUSH_SECRET_KEYS } from "../services/push-config";
 import { sendPushToUsers } from "../services/push";
 import { invalidateAllPushCaches, invalidatePushCache } from "../context";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.pushConfig : sqlite.schema.pushConfig;
@@ -57,7 +58,7 @@ const secretsSet = (
 const tags = ["push-config"];
 const adminGate = [requireUser, requireAdmin];
 
-export const pushConfigRoutes = new OpenAPIHono<AppBindings>()
+export const pushConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

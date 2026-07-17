@@ -16,6 +16,7 @@ import {
 } from "../services/api-keys";
 import { allTools } from "../mcp/tools";
 import { resolveKind } from "../mcp/kind";
+import { defaultHook } from "../lib/openapi-router";
 
 /** Tool names classified as reads — the allowlist a read-only role derives. */
 const READ_TOOL_NAMES = allTools
@@ -148,7 +149,7 @@ const sanitize = (
   mcpReadOnly: Boolean(row.mcpReadOnly),
 });
 
-export const apiKeysRoutes = new OpenAPIHono<AppBindings>()
+export const apiKeysRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

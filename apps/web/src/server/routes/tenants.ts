@@ -11,6 +11,7 @@ import { TENANT_COOKIE } from "../middleware/tenant";
 import { bindInvite, createMemberInvite, findInviteByToken } from "../services/invites";
 import { invalidateTenantMembership } from "../services/permissions-cache";
 import { assignRoleByName, ensureSystemRoles } from "../services/seed";
+import { defaultHook } from "../lib/openapi-router";
 
 const tablesFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"
@@ -75,7 +76,7 @@ const AcceptInput = z
 
 const TAG = "tenants";
 
-export const tenantsRoutes = new OpenAPIHono<AppBindings>()
+export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   /** List workspaces the caller belongs to. */
   .openapi(
     createRoute({

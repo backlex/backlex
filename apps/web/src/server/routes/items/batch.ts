@@ -9,6 +9,7 @@ import {
 } from "../../services/items/collection-loader";
 import { runBatch, BATCH_MAX } from "../../services/items/batch";
 import { runBulkUpdate, BULK_UPDATE_MAX } from "../../services/items/bulk";
+import { defaultHook } from "../../lib/openapi-router";
 import {
   TAGS,
 } from "../../services/items/schemas";
@@ -36,7 +37,7 @@ const BulkUpdateInput = z
   })
   .openapi("BulkUpdateInput");
 
-export const itemsBatchRoutes = new OpenAPIHono<AppBindings>()
+export const itemsBatchRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "post",

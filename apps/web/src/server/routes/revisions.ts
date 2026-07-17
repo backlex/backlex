@@ -15,6 +15,7 @@ import {
   recordRevision,
 } from "../services/revisions";
 import { and, eq } from "drizzle-orm";
+import { defaultHook } from "../lib/openapi-router";
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
@@ -68,7 +69,7 @@ const _RevisionRow = z
   })
   .openapi("RevisionRow");
 
-export const revisionsRoutes = new OpenAPIHono<AppBindings>()
+export const revisionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

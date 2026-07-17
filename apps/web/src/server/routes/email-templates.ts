@@ -7,6 +7,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.emailTemplates : sqlite.schema.emailTemplates;
@@ -81,7 +82,7 @@ const idScopedToTenant = (
 const tags = ["email-templates"];
 const adminGate = [requireUser, requireAdmin];
 
-export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>()
+export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

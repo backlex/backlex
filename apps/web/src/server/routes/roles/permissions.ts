@@ -20,8 +20,9 @@ import {
   PermissionSimulateInput,
 } from "../../services/roles/schemas";
 import { tableFor } from "../../services/roles/tables";
+import { defaultHook } from "../../lib/openapi-router";
 
-export const permissionsRoutes = new OpenAPIHono<AppBindings>().openapi(
+export const permissionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).openapi(
   createRoute({
     method: "delete",
     path: "/{id}",

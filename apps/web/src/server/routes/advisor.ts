@@ -5,6 +5,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { runAdvisorChecks } from "../services/advisor";
+import { defaultHook } from "../lib/openapi-router";
 
 const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
@@ -36,7 +37,7 @@ const AdvisorCheckSchema = z
  * `services/advisor.ts`; this route just resolves the tenant scope and
  * delegates.
  */
-export const advisorRoutes = new OpenAPIHono<AppBindings>().openapi(
+export const advisorRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).openapi(
   createRoute({
     method: "get",
     path: "/",

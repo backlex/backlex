@@ -7,6 +7,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { isPrivateHost } from "../services/storage/hosts";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.deviceTokens : sqlite.schema.deviceTokens;
@@ -46,7 +47,7 @@ const TAGS = ["device-tokens"];
  * same token revives it (`is_active`) and refreshes `last_seen_at` rather than
  * duplicating. Callers only ever see / mutate their own devices.
  */
-export const deviceTokensRoutes = new OpenAPIHono<AppBindings>()
+export const deviceTokensRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

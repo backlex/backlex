@@ -77,10 +77,10 @@ describe("functions CRUD", () => {
   });
 
   test("rejects invalid names and out-of-range timeouts", async () => {
-    expect((await createFn({ name: "Bad Name!", code: "return 1" })).status).toBe(400);
+    expect((await createFn({ name: "Bad Name!", code: "return 1" })).status).toBe(422);
     expect(
       (await createFn({ name: "too_slow", code: "return 1", timeoutMs: 120_000 })).status,
-    ).toBe(400);
+    ).toBe(422);
   });
 });
 

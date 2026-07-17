@@ -5,10 +5,12 @@ import { AppError } from "@backlex/core";
  * Anthropic Messages API. We hit the HTTP endpoint directly so the Workers
  * runtime doesn't need an SDK dependency.
  *
- * Returns the translations in the same order as the input. If the model
- * returns an object that doesn't parse or doesn't cover every key, the
- * missing slots are filled with the source value as a fallback (caller
- * decides whether to upsert that — typically you'd skip identical rows).
+ * Returns one entry per input the model actually translated, in input order.
+ * Slots the model omitted (or answered with an empty string) are DROPPED, not
+ * filled with the source value — writing the source text into the target
+ * locale would create a row that `onlyMissing` then treats as done, silently
+ * pinning the untranslated string forever. Dropped keys stay missing and get
+ * retried on the next run.
  */
 export const autoTranslateBatch = async (params: {
   apiKey: string;
@@ -74,7 +76,7 @@ export const autoTranslateBatch = async (params: {
 
   // The model is asked for raw JSON, but tolerate fenced code just in case.
   const json = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");
-  let parsed: Record<string, unknown>;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(json);
   } catch {
@@ -83,12 +85,22 @@ export const autoTranslateBatch = async (params: {
       `Translator returned malformed JSON: ${text.slice(0, 200)}`,
     );
   }
+  // Valid JSON that isn't a plain object ({"1": …}) is just as malformed —
+  // without this guard `null`/arrays fall through to a raw TypeError below.
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new AppError(
+      "INTERNAL",
+      `Translator returned malformed JSON: ${text.slice(0, 200)}`,
+    );
+  }
+  const byIndex = parsed as Record<string, unknown>;
 
-  return items.map((it, i) => {
-    const v = parsed[String(i + 1)];
-    return {
-      key: it.key,
-      value: typeof v === "string" && v.length > 0 ? v : it.value,
-    };
-  });
+  const out: { key: string; value: string }[] = [];
+  for (const [i, it] of items.entries()) {
+    const v = byIndex[String(i + 1)];
+    if (typeof v === "string" && v.length > 0) {
+      out.push({ key: it.key, value: v });
+    }
+  }
+  return out;
 };

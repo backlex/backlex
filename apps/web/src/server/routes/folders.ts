@@ -7,6 +7,7 @@ import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { FILES_COLLECTION } from "./storage";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.folders : sqlite.schema.folders;
@@ -39,7 +40,7 @@ const requireTenantId = (auth: { tenantId?: string | null }): string => {
 
 const tags = ["folders"];
 
-export const foldersRoutes = new OpenAPIHono<AppBindings>()
+export const foldersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

@@ -4,6 +4,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { getTrace, listTraces } from "../services/traces";
+import { defaultHook } from "../lib/openapi-router";
 
 const TraceSummary = z
   .object({
@@ -41,7 +42,7 @@ const requireAdmin = (roles: string[]): void => {
   }
 };
 
-export const tracesRoutes = new OpenAPIHono<AppBindings>()
+export const tracesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

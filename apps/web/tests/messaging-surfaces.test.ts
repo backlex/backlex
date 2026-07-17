@@ -68,7 +68,7 @@ describe("messaging — REST surface", () => {
 
   test("POST /api/messaging/push validates title/body", async () => {
     const res = await h.fetch("/api/messaging/push", json({ userId: adminId, title: "" }));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   test("a recipient with no devices is a silent no-op (sent: 0)", async () => {

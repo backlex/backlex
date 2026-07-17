@@ -37,6 +37,7 @@ import {
   TAGS,
 } from "../../services/items/schemas";
 import { auditRead, canSeeDraftsFor } from "./shared";
+import { defaultHook } from "../../lib/openapi-router";
 
 
 /** Cap a single import call so a stray multi-MB file can't tie up the worker.
@@ -119,7 +120,7 @@ const coerceCsvRow = (
   return out;
 };
 
-export const itemsCsvRoutes = new OpenAPIHono<AppBindings>()
+export const itemsCsvRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

@@ -14,6 +14,7 @@ import {
   type WorkspaceConfigRow,
 } from "../services/workspace-config";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.workspaceConfig : sqlite.schema.workspaceConfig;
@@ -89,7 +90,7 @@ const normalizeNullable = (v: string | null | undefined): string | null | undefi
 
 const TAG = "workspace-config";
 
-export const workspaceConfigRoutes = new OpenAPIHono<AppBindings>()
+export const workspaceConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   /**
    * Resolved view of the active workspace's branding — public so the login
    * page and other unauthenticated screens can pick up the logo/title. The

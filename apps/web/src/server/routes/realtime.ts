@@ -30,6 +30,7 @@ import {
 } from "../services/realtime-redis";
 import { rateLimitOk } from "../lib/rate-limit";
 import { isStatelessEdge } from "../lib/runtime";
+import { defaultHook } from "../lib/openapi-router";
 import {
   COLLAB_PREFIX,
   CollabPublishSchema,
@@ -381,7 +382,7 @@ const TestPublishInput = z
 
 const TAG = "realtime";
 
-export const realtimeRoutes = new OpenAPIHono<AppBindings>()
+export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "post",

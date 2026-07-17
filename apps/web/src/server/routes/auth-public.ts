@@ -2,6 +2,7 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { AppBindings } from "../app";
 import { errorResponses } from "../lib/openapi";
 import { resolvePlatformAuthSurface } from "../services/auth-config";
+import { defaultHook } from "../lib/openapi-router";
 
 /**
  * Public, unauthenticated discovery endpoint for a workspace's auth surface —
@@ -34,7 +35,7 @@ const AuthSurface = z
   .passthrough()
   .openapi("AuthSurface");
 
-export const authPublicRoutes = new OpenAPIHono<AppBindings>().openapi(
+export const authPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).openapi(
   createRoute({
     method: "get",
     path: "/providers",

@@ -179,6 +179,12 @@ export interface Env {
   // Generic SMTP (via nodemailer). Works on Bun / Vercel / Netlify / self-host
   // — NOT on Cloudflare Workers (no raw TCP sockets). `SMTP_SECURE=true` for
   // implicit TLS (port 465); leave false for 587/25 (STARTTLS auto-upgraded).
+  // Cloudflare Turnstile — spam guard for public form submissions. The site
+  // key is public (returned to the form page so it can render the widget);
+  // the secret key verifies challenge responses server-side. A form with
+  // turnstile enabled fails closed when the secret is missing.
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET_KEY?: string;
   SMTP_HOST?: string;
   SMTP_PORT?: string;
   SMTP_USER?: string;
@@ -411,6 +417,8 @@ export const STRING_ENV_KEYS = [
   "SES_REGION",
   "SES_ACCESS_KEY_ID",
   "SES_SECRET_ACCESS_KEY",
+  "TURNSTILE_SITE_KEY",
+  "TURNSTILE_SECRET_KEY",
   "SMTP_HOST",
   "SMTP_PORT",
   "SMTP_USER",

@@ -63,6 +63,8 @@ import { panelsRoutes } from "./routes/panels";
 import { dashboardsRoutes } from "./routes/dashboards";
 import { schemaVersionsRoutes } from "./routes/schema-versions";
 import { dashboardsPublicRoutes } from "./routes/dashboards-public";
+import { formsRoutes } from "./routes/forms";
+import { formsPublicRoutes } from "./routes/forms-public";
 import { realtimeRoutes } from "./routes/realtime";
 import { realtimeAdminRoutes } from "./routes/realtime-admin";
 import { revisionsRoutes } from "./routes/revisions";
@@ -707,6 +709,10 @@ export const createApp = (env: Env) => {
   // Public, unauthenticated record-share resolution — no `requireUser`.
   app.route("/api/shared", sharedPublicRoutes);
   app.route("/api/public/dashboards", dashboardsPublicRoutes);
+  app.route("/api/admin/forms", formsRoutes);
+  // Public form definition + submit — no `requireUser`; the `/api/public/`
+  // prefix inherits the framable CSP + XFO-strip for the iframe embed page.
+  app.route("/api/public/forms", formsPublicRoutes);
 
   // Public dashboard embed page. `/embed/*` is in `run_worker_first`, so the
   // Worker (not CF Static Assets) serves the SPA shell here — which lets the

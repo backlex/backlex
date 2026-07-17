@@ -376,6 +376,17 @@ function WebhooksSkeletonImpl() {
   );
 }
 
+/** Forms — header (refresh + new form), then the forms table card
+ *  (name / collection / fields / active / actions). */
+function FormsSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-4.5">
+      <HeaderSkeleton actions={2} />
+      <TableCardSkeleton rows={5} cols={5} />
+    </div>
+  );
+}
+
 /** Search playground — header, the controls card (collection / query / mode /
  *  button row), then the empty-state area where results land. */
 function SearchPlaygroundSkeletonImpl() {
@@ -819,6 +830,7 @@ export const DatabaseSkeleton = withSkeletonDelay(DatabaseSkeletonImpl);
 export const FlowsSkeleton = withSkeletonDelay(FlowsSkeletonImpl);
 export const FunctionsSkeleton = withSkeletonDelay(FunctionsSkeletonImpl);
 export const WebhooksSkeleton = withSkeletonDelay(WebhooksSkeletonImpl);
+export const FormsSkeleton = withSkeletonDelay(FormsSkeletonImpl);
 export const RealtimeSkeleton = withSkeletonDelay(RealtimeSkeletonImpl);
 export const SearchPlaygroundSkeleton = withSkeletonDelay(SearchPlaygroundSkeletonImpl);
 export const AdvisorSkeleton = withSkeletonDelay(AdvisorSkeletonImpl);
@@ -878,6 +890,8 @@ export function PageSkeleton({ nav }: { nav: string }) {
     case "webhooks":
     case "integrations":
       return <WebhooksSkeleton />;
+    case "forms":
+      return <FormsSkeleton />;
     case "realtime":
       return <RealtimeSkeleton />;
     case "search":

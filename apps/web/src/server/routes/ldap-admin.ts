@@ -31,6 +31,7 @@ import {
   type LdapConfigRow,
 } from "../services/ldap-config";
 import { invalidateTenantAuth } from "../services/tenant-auth";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.ldapConfigs : sqlite.schema.ldapConfigs;
@@ -119,7 +120,7 @@ const LdapConfigRowSchema = z
 const TAGS = ["ldap-admin"];
 const GATE: MiddlewareHandler<AppBindings>[] = [requireUser, requireAdminTenantGate];
 
-export const ldapAdminRoutes = new OpenAPIHono<AppBindings>()
+export const ldapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   /** Read the active workspace's LDAP config (sanitized — no ciphertext). */
   .openapi(
     createRoute({

@@ -4,6 +4,7 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 import {
   deleteFlag,
   evaluateFlags,
@@ -48,7 +49,7 @@ const FlagInput = z
 const tags = ["feature-flags"];
 
 /** Public, caller-scoped flag evaluation — what client apps read. */
-export const flagsPublicRoutes = new OpenAPIHono<AppBindings>().openapi(
+export const flagsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).openapi(
   createRoute({
     method: "get",
     path: "/",
@@ -74,7 +75,7 @@ export const flagsPublicRoutes = new OpenAPIHono<AppBindings>().openapi(
 );
 
 /** Admin CRUD for flag definitions. */
-export const flagsAdminRoutes = new OpenAPIHono<AppBindings>()
+export const flagsAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

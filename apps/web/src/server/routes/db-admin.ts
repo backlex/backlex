@@ -14,6 +14,7 @@ import {
   saveBackupConfig,
 } from "../services/backup";
 import { SECURITY, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 
 const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
@@ -123,7 +124,7 @@ const BackupConfigSchema = z
   })
   .openapi("BackupConfig");
 
-export const dbAdminRoutes = new OpenAPIHono<AppBindings>()
+export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "post",

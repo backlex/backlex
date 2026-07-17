@@ -7,6 +7,7 @@ import { requireUser } from "../middleware/session";
 import { connectIntegration, disconnectIntegration, listIntegrations } from "../services/integrations";
 import { logActivity } from "../services/activity";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 
 const IntegrationView = z
   .object({
@@ -56,7 +57,7 @@ const tags = ["integrations"];
 
 /** Admin REST surface for workspace integrations (Slack/Discord/Datadog/GitHub).
  *  Secrets are encrypted at rest and never returned (masked). */
-export const integrationsRoutes = new OpenAPIHono<AppBindings>()
+export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

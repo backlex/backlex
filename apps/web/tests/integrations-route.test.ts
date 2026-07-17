@@ -137,7 +137,7 @@ describe("/api/admin/integrations", () => {
       "/api/admin/integrations",
       json("POST", { kind: "mailchimp", config: {} }),
     );
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   test("admin-only: 401 without a session, 403 for a non-admin user", async () => {

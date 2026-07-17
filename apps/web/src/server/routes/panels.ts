@@ -8,6 +8,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 import {
   runItemsAggregate,
 } from "../services/items/aggregate";
@@ -136,7 +137,7 @@ const queryAll = async <T>(
 const TAGS = ["panels"];
 const ADMIN_GATE = [requireUser, requireAdminMiddleware];
 
-export const panelsRoutes = new OpenAPIHono<AppBindings>()
+export const panelsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

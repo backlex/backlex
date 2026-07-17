@@ -521,18 +521,21 @@ const logFlowRun = async (
 
 /** Resume a previously checkpointed flow. Called by the scheduler tick
  *  after `claimDueTasks` returns a row. The continuation re-enters the
- *  same delay-aware runner so chained delays still checkpoint cleanly. */
+ *  same delay-aware runner so chained delays still checkpoint cleanly.
+ *  Returns the run outcome — `ok: false` means the continuation halted on
+ *  an unhandled op error, and the caller must NOT delete the task row
+ *  (leave it claimed for inspection / manual re-queue). */
 export const resumeContinuation = async (
   ctx: Ctx,
   payload: ResumePayload,
-): Promise<void> => {
+): Promise<FlowRunResult> => {
   const runCtx: RunCtx = {
     data: payload.data,
     authSubject: payload.authSubject,
     ctx,
     last: payload.last,
   };
-  await runFlowOps(
+  return runFlowOps(
     {
       name: payload.flowName ?? "(scheduled)",
       operations: payload.remainingOps,

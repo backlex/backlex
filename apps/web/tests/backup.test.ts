@@ -197,7 +197,7 @@ describe("backup schedule config", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ schedule: "hourly" }),
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 });
 

@@ -175,7 +175,17 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
           await deleteTask(ctx, task.id);
           return;
         }
-        await resumeContinuation(ctx, task.payload);
+        const result = await resumeContinuation(ctx, task.payload);
+        if (!result.ok) {
+          // runFlowOps reports op failures as {ok:false} instead of throwing —
+          // leave the row claimed (it won't be re-claimed) so a human can
+          // inspect / re-queue manually; deleting here would silently discard
+          // the continuation.
+          console.error(
+            `[scheduled-task:${task.id}] resume failed: ${result.error}`,
+          );
+          return;
+        }
         await deleteTask(ctx, task.id);
       } catch (e) {
         console.error(`[scheduled-task:${task.id}] resume failed`, e);

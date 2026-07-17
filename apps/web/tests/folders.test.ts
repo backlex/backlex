@@ -87,15 +87,15 @@ describe("folders REST", () => {
     expect(byId.get(childId)?.parentId).toBe(parentId);
   });
 
-  test("POST / rejects an empty name with 400", async () => {
-    // OpenAPIHono's built-in zod validator answers 400 (not the AppError
-    // handler's 422) for schema failures.
+  test("POST / rejects an empty name with 422", async () => {
+    // Schema failures flow through the shared defaultHook → AppError
+    // handler → uniform 422 VALIDATION envelope.
     const res = await h.fetch("/api/folders", {
       method: "POST",
       headers: JSON_HEADERS,
       body: JSON.stringify({ name: "" }),
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   test("PATCH /{id} renames and re-parents", async () => {

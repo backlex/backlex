@@ -60,6 +60,10 @@ export const remoteHttpProvider: SandboxProvider = {
             id: bindings.auth.userId,
             email: bindings.auth.email,
             roles: bindings.auth.roles,
+            // Workspace scope — the executor echoes this back verbatim in its
+            // sandbox-rpc callbacks so tenant-scoped ops (ctx.db / ctx.email /
+            // ctx.push) resolve against the right workspace.
+            tenantId: bindings.auth.tenantId ?? null,
           },
           timeoutMs: limit,
           mainOrigin,

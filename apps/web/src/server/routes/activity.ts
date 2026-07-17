@@ -6,6 +6,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.activity : sqlite.schema.activity;
@@ -27,7 +28,7 @@ const ActivityRow = z
   })
   .openapi("ActivityRow");
 
-export const activityRoutes = new OpenAPIHono<AppBindings>().openapi(
+export const activityRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).openapi(
   createRoute({
     method: "get",
     path: "/",

@@ -21,6 +21,7 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { isPlatformSsoEnabled } from "../lib/platform-sso";
 import { parseMetadataXml } from "./saml-admin";
+import { defaultHook } from "../lib/openapi-router";
 import {
   buildPlatformAcsAndMetadataUrls,
   createPlatformSamlProvider,
@@ -100,7 +101,7 @@ const GATE: MiddlewareHandler<AppBindings>[] = [requireUser, gate];
 const pickMapped = (attrs: Record<string, string[]>, key: string): string | null =>
   attrs[key]?.[0] ?? null;
 
-export const platformSamlAdminRoutes = new OpenAPIHono<AppBindings>()
+export const platformSamlAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

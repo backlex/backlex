@@ -7,6 +7,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { loadAppSettings } from "../services/settings";
+import { defaultHook } from "../lib/openapi-router";
 import {
   DEFAULT_LOCALE,
   DEFAULT_TIMEZONE,
@@ -104,7 +105,7 @@ const sniffImageType = (b: Uint8Array): string | null => {
  * to the workspace defaults (`app_settings`) when unset. The admin SPA reads
  * the resolved view to format dates and pick a UI language.
  */
-export const accountRoutes = new OpenAPIHono<AppBindings>()
+export const accountRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

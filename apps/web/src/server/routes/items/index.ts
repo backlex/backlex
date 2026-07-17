@@ -14,8 +14,9 @@ import { itemsChangesRoutes } from "./changes";
 import { itemsReadRoutes } from "./read";
 import { itemsWriteRoutes } from "./write";
 import { itemsBatchRoutes } from "./batch";
+import { defaultHook } from "../../lib/openapi-router";
 
-export const itemsRoutes = new OpenAPIHono<AppBindings>()
+export const itemsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .route("/", itemsListRoutes)
   .route("/", itemsQueryRoutes)
   .route("/", itemsCsvRoutes)

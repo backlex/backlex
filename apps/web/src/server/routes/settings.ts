@@ -14,6 +14,7 @@ import {
   SIGN_IN_BRANDING_KEYS,
 } from "../services/settings";
 import { timeZoneCode } from "../lib/locale";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.appSettings : sqlite.schema.appSettings;
@@ -133,7 +134,7 @@ const RuntimeInfo = z
 
 const TAG = "settings";
 
-export const settingsRoutes = new OpenAPIHono<AppBindings>()
+export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   /** Returns the active tenant's settings plus the env-derived values the
    *  UI shows read-only (`appUrl`, `emailFrom`). */
   .openapi(

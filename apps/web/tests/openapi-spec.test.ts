@@ -87,13 +87,6 @@ describe("openapi spec endpoints", () => {
 
     // Sub-app mounts composed with their route paths (mount + "/" collapses
     // to the bare mount) — spot-check a few core surfaces.
-    //
-    // KNOWN GAPS (asserting current behavior, see buildStaticDoc's warn path):
-    // - `/api/collections` and `/api/admin/adopt` are plain `Hono` apps with
-    //   no openAPIRegistry, so their mounts are skipped entirely — the spec
-    //   never documents POST /api/collections.
-    // - `/api/flows` fails generation with "Maximum call stack size exceeded"
-    //   (the recursive `OperationsSchema` z.lazy union) and is skipped too.
     expect(doc.paths["/api/api-keys"]).toBeDefined();
     expect(doc.paths["/api/admin/i18n"]).toBeDefined();
     expect(doc.paths["/api/admin/i18n"]?.put).toBeDefined();
@@ -102,6 +95,28 @@ describe("openapi spec endpoints", () => {
     // Generic (static) items surface — distinct from the per-collection
     // dynamic paths asserted in the next test.
     expect(doc.paths["/api/items/{slug}"]).toBeDefined();
+
+    // `/api/flows` — the recursive Operation tree used to blow the generator
+    // ("Maximum call stack size exceeded") and the whole mount was skipped.
+    // Fixed by registering the lazy schemas under explicit ref ids
+    // (FlowOperation / FlowCondition) so self-references emit $ref.
+    expect(doc.paths["/api/flows"]?.get).toBeDefined();
+    expect(doc.paths["/api/flows"]?.post).toBeDefined();
+    expect(doc.paths["/api/flows/{id}"]?.patch).toBeDefined();
+    expect(doc.paths["/api/flows/{id}/run"]?.post).toBeDefined();
+    expect(doc.components?.schemas?.FlowOperation).toBeDefined();
+
+    // `/api/collections` + `/api/admin/adopt` are plain `Hono` apps (no
+    // openAPIRegistry); their paths come from the hand-authored sibling
+    // metadata files (collections.openapi.ts / adopt.openapi.ts).
+    expect(doc.paths["/api/collections"]?.get).toBeDefined();
+    expect(doc.paths["/api/collections"]?.post).toBeDefined();
+    expect(doc.paths["/api/collections/{slug}"]?.get).toBeDefined();
+    expect(doc.paths["/api/collections/{slug}"]?.patch).toBeDefined();
+    expect(doc.paths["/api/collections/{slug}"]?.delete).toBeDefined();
+    expect(doc.paths["/api/collections/{slug}/fields/{name}"]?.delete).toBeDefined();
+    expect(doc.paths["/api/admin/adopt/tables"]?.get).toBeDefined();
+    expect(doc.paths["/api/admin/adopt/inspect"]?.post).toBeDefined();
   });
 
   test("a new collection shows up as dynamic /api/items paths on the next fetch", async () => {

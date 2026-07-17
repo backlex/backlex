@@ -81,21 +81,21 @@ describe("account preferences + workspace locale/timezone", () => {
       "/api/account/preferences",
       patch({ timezone: "Mars/Olympus" }),
     );
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   test("rejects a malformed locale code", async () => {
     h = makeHarness();
     await seedAdmin(h);
     const res = await h.fetch("/api/account/preferences", patch({ locale: "!!" }));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   test("rejects unknown keys (strict body)", async () => {
     h = makeHarness();
     await seedAdmin(h);
     const res = await h.fetch("/api/account/preferences", patch({ nope: 1 }));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   test("workspace time zone flows into a user's effective values", async () => {
@@ -125,7 +125,7 @@ describe("account preferences + workspace locale/timezone", () => {
     h = makeHarness();
     await seedAdmin(h);
     const res = await h.fetch("/api/admin/settings", patch({ timezone: "Not/AZone" }));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   test("the workspace language list round-trips and drives the default", async () => {
@@ -150,6 +150,6 @@ describe("account preferences + workspace locale/timezone", () => {
       "/api/admin/settings",
       patch({ i18nLocales: ["en", "tr"], i18nDefaultLocale: "ja" }),
     );
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 });

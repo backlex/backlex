@@ -155,7 +155,7 @@ describe("/api/workspace-config", () => {
       "/api/workspace-config",
       put({ primaryColor: "red; } </style><script>alert(1)</script>" }),
     );
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
     // And the invalid value never landed.
     const { data } = (
       (await (await h.fetch("/api/workspace-config")).json()) as {
@@ -169,7 +169,7 @@ describe("/api/workspace-config", () => {
     h = makeHarness();
     await seedAdmin(h);
     const res = await h.fetch("/api/workspace-config", put({ defaultTheme: "blue" }));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   test("GET /raw requires a session (401) and PUT is admin-only (403)", async () => {
@@ -206,6 +206,6 @@ describe("/api/workspace-config", () => {
     h = makeHarness();
     await seedAdmin(h);
     const res = await h.fetch("/api/workspace-config/asset/banner");
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 });

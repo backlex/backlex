@@ -6,6 +6,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.phoneNumbers : sqlite.schema.phoneNumbers;
@@ -42,7 +43,7 @@ const TAGS = ["phone-numbers"];
  * number revives it (`is_active`) and refreshes `last_seen_at` rather than
  * duplicating. Callers only ever see / mutate their own numbers.
  */
-export const phoneNumbersRoutes = new OpenAPIHono<AppBindings>()
+export const phoneNumbersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

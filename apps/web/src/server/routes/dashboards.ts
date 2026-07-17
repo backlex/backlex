@@ -4,6 +4,7 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 import {
   createDashboard,
   deleteDashboard,
@@ -81,7 +82,7 @@ const publicRow = (row: any) => ({
 const TAGS = ["dashboards"];
 const ADMIN_GATE = [requireUser, requireAdminMiddleware];
 
-export const dashboardsRoutes = new OpenAPIHono<AppBindings>()
+export const dashboardsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

@@ -15,6 +15,7 @@ import {
   whereOf,
 } from "../services/items/sql-helpers";
 import { resolveSharedLink } from "../services/shared-links";
+import { defaultHook } from "../lib/openapi-router";
 
 const TAGS = ["shared-links"];
 
@@ -46,7 +47,7 @@ const PublicSharedRecord = z
  * `resolveSharedLink` swallows the missing-table error and returns null, so
  * the route just answers 404.
  */
-export const sharedPublicRoutes = new OpenAPIHono<AppBindings>().openapi(
+export const sharedPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).openapi(
   createRoute({
     method: "get",
     path: "/{token}",

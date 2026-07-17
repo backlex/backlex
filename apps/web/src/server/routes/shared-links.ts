@@ -4,6 +4,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { resolvePermission } from "../services/permissions";
+import { defaultHook } from "../lib/openapi-router";
 import {
   createSharedLink,
   getSharedLinkById,
@@ -49,7 +50,7 @@ const SharedLinkSummary = z
  * `admin` role when the resolver can't grant access. In practice the admin
  * SPA's edit sheet is always reached by users who can read the collection.
  */
-export const sharedLinksRoutes = new OpenAPIHono<AppBindings>()
+export const sharedLinksRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "post",

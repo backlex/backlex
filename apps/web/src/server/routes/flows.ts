@@ -1,7 +1,8 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { and, eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
-import { AppError, OperationsSchema, SYSTEM_ROLES } from "@backlex/core";
+import { AppError, ConditionSchema, OperationSchema, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
@@ -9,9 +10,57 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { runFlowById } from "../services/flows";
 import { logActivity } from "../services/activity";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.flows : sqlite.schema.flows;
+
+// `OperationSchema` / `ConditionSchema` come from @backlex/core, which builds
+// them with plain `zod`. When that resolves to the same module instance as
+// @hono/zod-openapi's zod, `.openapi` is already on the shared prototype; under
+// bun-test resolution core can get its OWN zod instance, so extend the class
+// the core schemas are actually built from (both are ZodLazy). The call is a
+// no-op when the prototype already has `.openapi` — extendZodWithOpenApi only
+// assigns that one method, nothing else, so this is safe on a subclass.
+extendZodWithOpenApi({
+  ZodType: OperationSchema.constructor,
+} as unknown as Parameters<typeof extendZodWithOpenApi>[0]);
+
+// The operation tree is recursive (every operation nests `onSuccess`/`onError`
+// arrays of operations, `condition` adds `then`/`else`). zod-to-openapi cannot
+// inline that — walking the lazy schema without a ref id recurses forever
+// ("Maximum call stack size exceeded") and the whole /api/flows mount used to
+// be skipped from the generated spec. Registering the schema under an explicit
+// ref id makes the generator emit `$ref: #/components/schemas/FlowOperation`
+// at every self-reference instead of inlining. `.openapi(refId)` on a ZodLazy
+// deliberately tags the ORIGINAL schema object too (library special-case), so
+// the self-references inside the tree — which point at the original — resolve
+// to the ref. Runtime validation is byte-identical to core's OperationsSchema:
+// same schema tree, same error shapes.
+// `condition` operations embed a second recursive lazy schema (`filter` is a
+// `$and`/`$or`/`$not` condition tree) — it needs its own ref id for the same
+// reason. The call's side effect tags the original schema object, which is
+// what the tree references.
+ConditionSchema.openapi("FlowCondition", {
+  description:
+    "Permission-DSL condition tree. Recursive: `$and` / `$or` hold arrays of " +
+    "FlowCondition, `$not` holds one; leaves are `{ field: { _op: value } }` " +
+    "objects.",
+});
+
+const FlowOperation = OperationSchema.openapi("FlowOperation", {
+  description:
+    "One flow operation (`log`, `webhook`, `request`, `email`, `transform`, " +
+    "`run-script`, `condition`, `notification`, `push`, `function`, " +
+    "`item.create`, `item.update`, `delay`). Recursive: `onSuccess` / " +
+    "`onError` (and `condition`'s `then` / `else`) hold nested arrays of " +
+    "FlowOperation.",
+});
+
+const FlowOperations = z
+  .array(FlowOperation)
+  .min(1)
+  .openapi({ description: "Operation tree, executed in order." });
 
 const FlowInput = z
   .object({
@@ -19,7 +68,7 @@ const FlowInput = z
     trigger: z.string().min(1).openapi({
       description: "Trigger key (`event:items.created`, `cron`, `manual`, etc.).",
     }),
-    operations: OperationsSchema,
+    operations: FlowOperations,
     layout: z.unknown().optional().openapi({
       description: "Builder graph snapshot — purely presentational.",
     }),
@@ -56,7 +105,7 @@ const requireTenant = (c: { get: (k: string) => any }): string => {
 const tags = ["flows"];
 const adminGate = [requireUser, requireAdmin];
 
-export const flowsRoutes = new OpenAPIHono<AppBindings>()
+export const flowsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

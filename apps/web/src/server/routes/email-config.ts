@@ -13,6 +13,7 @@ import { EMAIL_PROVIDER_IDS } from "../lib/email-select";
 import { GLOBAL_EMAIL_CONFIG_ID } from "../services/email-config";
 import { invalidateTenantAuth } from "../services/tenant-auth";
 import { invalidateAllEmailCaches, invalidateEmailCache } from "../context";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.emailConfig : sqlite.schema.emailConfig;
@@ -105,7 +106,7 @@ const secretsSet = (
 const tags = ["email-config"];
 const adminGate = [requireUser, requireAdmin];
 
-export const emailConfigRoutes = new OpenAPIHono<AppBindings>()
+export const emailConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

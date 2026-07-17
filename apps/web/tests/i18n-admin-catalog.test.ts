@@ -126,19 +126,19 @@ describe("i18n — admin catalog + public bundle", () => {
     expect(matrix.data.farewell?.tr).toBe("Hoşça kal");
   });
 
-  test("POST /_auto-translate without any AI config fails cleanly (AppError JSON, no crash)", async () => {
+  test("POST /_auto-translate without any AI config is 503 UNAVAILABLE with a setup hint", async () => {
     // No ANTHROPIC_API_KEY in the harness env and no workspace AI override —
-    // the route throws AppError("INTERNAL", …) with a setup hint. Note: this
-    // surfaces as HTTP 500, not a 4xx, even though it's a configuration
-    // precondition — asserting current behavior.
+    // missing AI config is a deployment precondition, not a server fault, so
+    // the route throws AppError("UNAVAILABLE", …) → 503 (same convention as
+    // the AI gateway / MCP AI tools), keeping the helpful message.
     const res = await h.fetch("/api/admin/i18n/_auto-translate", {
       method: "POST",
       headers: JSON_HEADERS,
       body: JSON.stringify({ targetLocale: "de" }),
     });
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(503);
     const body = (await res.json()) as { error: { code: string; message: string } };
-    expect(body.error.code).toBe("INTERNAL");
+    expect(body.error.code).toBe("UNAVAILABLE");
     expect(body.error.message).toContain("Anthropic");
   });
 

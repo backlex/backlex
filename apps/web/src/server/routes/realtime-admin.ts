@@ -13,6 +13,7 @@ import {
   getLocalChannelStats,
 } from "../services/events";
 import { isStatelessEdge } from "../lib/runtime";
+import { defaultHook } from "../lib/openapi-router";
 
 /**
  * Read-only diagnostics for the realtime layer. Surfaces per-channel state
@@ -97,7 +98,7 @@ const fetchStats = async (
 const collectionsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
 
-export const realtimeAdminRoutes = new OpenAPIHono<AppBindings>()
+export const realtimeAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

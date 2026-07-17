@@ -33,6 +33,7 @@ import {
   buildAcsAndMetadataUrls,
 } from "../services/saml-providers";
 import { invalidateTenantAuth } from "../services/tenant-auth";
+import { defaultHook } from "../lib/openapi-router";
 
 const requireAdmin = (auth: { roles: string[] }) => {
   if (!auth.roles.includes(SYSTEM_ROLES.admin))
@@ -187,7 +188,7 @@ export const parseMetadataXml = (xml: string): ImportedMetadata => {
 
 const TAG = "saml-admin";
 
-export const samlAdminRoutes = new OpenAPIHono<AppBindings>()
+export const samlAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   /** List all SAML providers in the active workspace (sanitized). */
   .openapi(
     createRoute({

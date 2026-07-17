@@ -17,6 +17,7 @@ import { autoTranslateBatch } from "../services/i18n-translate";
 import { loadAppSettings } from "../services/settings";
 import { GLOBAL_AI_CONFIG_ID, resolveAiOverride } from "../services/ai-config";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.i18nStrings : sqlite.schema.i18nStrings;
@@ -82,7 +83,7 @@ interface I18nRowDb {
 
 const tags = ["i18n"];
 
-export const i18nRoutes = new OpenAPIHono<AppBindings>()
+export const i18nRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   /** Returns rows in row form. The UI pivots them into a key×locale table. */
   .openapi(
     createRoute({
@@ -233,7 +234,7 @@ export const i18nRoutes = new OpenAPIHono<AppBindings>()
       tags,
       summary: "AI auto-translate into a target locale",
       description:
-        "Requires `ANTHROPIC_API_KEY`. Caps a single request to 50 keys; loops are caller-driven.",
+        "Requires an Anthropic key (Settings → AI or `ANTHROPIC_API_KEY`) — responds 503 UNAVAILABLE when none is configured. Caps a single request to 50 keys; loops are caller-driven.",
       security: SECURITY,
       middleware: adminGate,
       request: {
@@ -273,8 +274,11 @@ export const i18nRoutes = new OpenAPIHono<AppBindings>()
       const apiKey =
         override?.provider === "anthropic" ? override.key : ctx.env.ANTHROPIC_API_KEY;
       if (!apiKey) {
+        // Missing AI config is a deployment precondition, not a server fault —
+        // surface it as 503 UNAVAILABLE (same convention as the AI gateway /
+        // MCP AI tools), keeping the setup hint.
         throw new AppError(
-          "INTERNAL",
+          "UNAVAILABLE",
           "Add an Anthropic key in Settings → AI (or set ANTHROPIC_API_KEY in env) to enable AI auto-translate.",
         );
       }

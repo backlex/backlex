@@ -44,6 +44,7 @@ import {
   patchFileScoped,
 } from "../services/storage/files";
 import { FILES_COLLECTION } from "../services/storage/constants";
+import { defaultHook } from "../lib/openapi-router";
 
 export { FILES_COLLECTION };
 
@@ -55,7 +56,7 @@ const filesCollection = () => FILES_COLLECTION;
 // segment) while the underlying Hono router still accepts slashes via the
 // `.put()/.get()/.delete()/.patch()` calls below. See the per-route docs.
 
-export const storageRoutes = new OpenAPIHono<AppBindings>()
+export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   /**
    * Paginated listing for this tenant. Defaults are friendly to the admin
    * UI; the response stays the same shape (`{ data, meta }`) for clients

@@ -101,7 +101,7 @@ describe("account list-columns", () => {
       headers: JSON_HEADERS,
       body: JSON.stringify({ listColumns: {}, nope: 1 }),
     });
-    expect(extra.status).toBe(400);
+    expect(extra.status).toBe(422);
 
     // Per-collection column list is capped at 60 names.
     const tooMany = await h.fetch("/api/account/list-columns", {
@@ -111,7 +111,7 @@ describe("account list-columns", () => {
         listColumns: { posts: Array.from({ length: 61 }, (_, i) => `f${i}`) },
       }),
     });
-    expect(tooMany.status).toBe(400);
+    expect(tooMany.status).toBe(422);
   });
 
   it("requires a session", async () => {

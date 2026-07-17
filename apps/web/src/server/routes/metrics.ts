@@ -5,6 +5,7 @@ import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 
 const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
@@ -196,7 +197,7 @@ const TAGS = ["metrics"];
  * analytics pipeline. For mature deploys this can move to CF Analytics
  * Engine; for now this is enough to power the four cards + sparklines.
  */
-export const metricsRoutes = new OpenAPIHono<AppBindings>()
+export const metricsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

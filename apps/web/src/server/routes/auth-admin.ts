@@ -9,6 +9,7 @@ import { requireUser } from "../middleware/session";
 import { encryptSecret } from "../lib/crypto";
 import { invalidateTenantAuth } from "../services/tenant-auth";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"
@@ -175,7 +176,7 @@ function envAuthDefaults(env: any) {
   };
 }
 
-export const authAdminRoutes = new OpenAPIHono<AppBindings>()
+export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

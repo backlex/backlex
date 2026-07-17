@@ -12,6 +12,11 @@ const Body = z.object({
     userId: z.string().nullable(),
     email: z.string().nullable(),
     roles: z.array(z.string()),
+    // Workspace scope for tenant-scoped ops (db.*, email.send, push.send).
+    // Optional for back-compat with older executors that don't send it —
+    // those fail closed exactly like before (collection lookups resolve
+    // against a null tenant and answer "not found").
+    tenantId: z.string().nullable().optional(),
   }),
 });
 

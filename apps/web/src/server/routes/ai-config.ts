@@ -11,6 +11,7 @@ import { enforceIpRateLimit } from "../lib/auth-rate-limit";
 import { encryptSecret } from "../lib/crypto";
 import { cloudConfigured } from "../lib/cloud-report";
 import { callClaude } from "../mcp/ai-client";
+import { defaultHook } from "../lib/openapi-router";
 import {
   AI_SECRET_KEYS,
   GLOBAL_AI_CONFIG_ID,
@@ -66,7 +67,7 @@ const secretsSet = (
 const tags = ["ai-config"];
 const adminGate = [requireUser, requireAdmin];
 
-export const aiConfigRoutes = new OpenAPIHono<AppBindings>()
+export const aiConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "get",

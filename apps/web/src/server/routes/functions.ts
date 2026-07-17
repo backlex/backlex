@@ -14,6 +14,7 @@ import {
   type FunctionRow,
 } from "../services/functions";
 import { logActivity } from "../services/activity";
+import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
@@ -71,7 +72,7 @@ const requireTenant = (c: { get: (k: string) => any }): string => {
 const tags = ["functions"];
 const adminGate = [requireUser, requireAdmin];
 
-export const functionsRoutes = new OpenAPIHono<AppBindings>()
+export const functionsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
   .openapi(
     createRoute({
       method: "post",

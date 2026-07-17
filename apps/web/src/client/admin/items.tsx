@@ -13,6 +13,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { getAuthors, subscribeAuthors } from "./authors-cache";
+import { type CollabPeer, collabHandle, useListCollab } from "./collab";
 import { i18n } from "@lingui/core";
 import { fieldLabel, formatFieldValue } from "./format-value";
 import { useListColumns } from "./list-columns";
@@ -735,6 +736,39 @@ function fieldChoices(f: { interface?: string; options?: { choices?: StatusChoic
   return choices.length ? choices : undefined;
 }
 
+/** Row presence — who is on this record right now, straight from the
+ *  collection-wide collab channel. Quiet by default: rows with nobody render
+ *  nothing. A peer holding a field (actively editing) gets an amber ring;
+ *  a single viewer also gets their handle spelled out (desktop only). */
+function RowPresence({ peers }: { peers: CollabPeer[] }) {
+  const { t } = useLingui();
+  const editing = peers.some((p) => p.field);
+  return (
+    <span
+      className="inline-flex items-center"
+      title={peers.map((p) => (p.field ? t`${collabHandle(p)} is editing` : collabHandle(p))).join(", ")}
+    >
+      {peers.slice(0, 3).map((p, i) => (
+        <span
+          key={p.id}
+          className={`flex size-5 items-center justify-center rounded-full border-2 border-card text-[9px] font-semibold text-white ${i > 0 ? "-ml-1.5" : ""} ${p.field ? "outline-2 outline-offset-1 outline-[oklch(0.72_0.15_65)]" : ""}`}
+          style={{ background: p.color }}
+        >
+          {collabHandle(p).slice(0, 1).toUpperCase()}
+        </span>
+      ))}
+      {peers.length > 3 && (
+        <span className="ml-1 text-[10.5px] tabular-nums text-muted-foreground">+{peers.length - 3}</span>
+      )}
+      {peers.length === 1 && peers[0] && (
+        <span className={`ml-1.5 max-w-[90px] truncate text-[11px] max-sm:hidden ${editing ? "text-[oklch(0.72_0.15_65)]" : "text-muted-foreground"}`}>
+          {collabHandle(peers[0])}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit, schema, onCellError }: ItemsTableProps) {
   const { t } = useLingui();
   // Workspace default content language — `localized` cells collapse to it
@@ -746,6 +780,9 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
       | undefined) || undefined;
   // Subscribe so the table re-renders when authors-cache populates.
   useSyncExternalStore(subscribeAuthors, getAuthors, getAuthors);
+  // Live row presence — one collection-wide subscription; `active` is false
+  // on deployments without a collab transport, hiding the column entirely.
+  const { byItem: collabByItem, active: collabActive } = useListCollab(schema?.slug ?? null);
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
   const someSelected = rows.some((r) => selected.has(r.id)) && !allSelected;
 
@@ -949,6 +986,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
             </>
           )}
           <SortHead id="updated_at" label={t`Updated`} sort={sort} setSort={setSort} />
+          {collabActive && <TableHead className="w-[110px] text-right"><Trans>Live</Trans></TableHead>}
           <TableHead className="sticky right-0 w-[60px] bg-card text-right" />
         </TableRow>
       </TableHeader>
@@ -1111,6 +1149,13 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                 </>
               )}
               <TableCell className="font-mono tabular-nums text-muted-foreground">{fmtDate(r.updated_at ?? r.updatedAt)}</TableCell>
+              {collabActive && (
+                <TableCell className="text-right">
+                  {collabByItem[String(r.id)]?.length ? (
+                    <RowPresence peers={collabByItem[String(r.id)]!} />
+                  ) : null}
+                </TableCell>
+              )}
               <TableCell className={`sticky right-0 text-right ${STICKY_BG}`} onClick={(e) => e.stopPropagation()}>
                 <IconButton icon={I.Pencil} onClick={() => onEdit(r)} title={t`Edit`} />
               </TableCell>

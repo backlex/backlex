@@ -177,6 +177,86 @@ describe("collab channels", () => {
     ac.abort();
   });
 
+  test("list channel: same gate — session + read permission", async () => {
+    // Unauthenticated → 401.
+    expect((await request(`/api/realtime/collab:list:${slug}/subscribe`)).status).toBe(401);
+    // Signed-in without read permission → 403.
+    const su = await request("/api/auth/sign-up/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: `list-viewer-${Date.now()}@example.test`,
+        password: "correct-horse-battery",
+        name: "Viewer",
+      }),
+    });
+    expect(su.ok).toBe(true);
+    const cookies = (su.headers.getSetCookie?.() ?? [])
+      .map((sc) => sc.split(";")[0]!)
+      .join("; ");
+    expect(
+      (await request(`/api/realtime/collab:list:${slug}/subscribe`, {}, cookies)).status,
+    ).toBe(403);
+  });
+
+  test("malformed list channels are rejected", async () => {
+    for (const bad of ["collab:list:", "collab:list:a:b"]) {
+      const res = await request(`/api/realtime/${encodeURIComponent(bad)}/subscribe`, {}, adminCookie);
+      expect(res.status).toBe(422);
+    }
+  });
+
+  test("list channel: editor messages carry their record id; observer hello has none", async () => {
+    const ac = new AbortController();
+    const res = await request(
+      `/api/realtime/collab:list:${slug}/subscribe`,
+      { signal: ac.signal },
+      adminCookie,
+    );
+    expect(res.status).toBe(200);
+    const gen = readSSE(res);
+    // Collect both frames in ONE pass — `return` inside a for-await closes the
+    // generator (and the reader lock with it), so firstMessage can't be
+    // called twice on the same stream.
+    const messagesP = (async () => {
+      const out: SSEFrame[] = [];
+      for await (const frame of gen) {
+        if (frame.event !== "message") continue;
+        out.push(frame);
+        if (out.length === 2) break;
+      }
+      return out;
+    })();
+
+    // Editor ping: item + field pass through, identity is server-stamped.
+    const pub = await request(`/api/realtime/collab:list:${slug}/publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ t: "ping", item: "row9", field: "title" }),
+    }, adminCookie);
+    expect(pub.status).toBe(200);
+    // Observer hello (a list view announcing itself): no item, still valid.
+    const hello = await request(`/api/realtime/collab:list:${slug}/publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ t: "hello" }),
+    }, adminCookie);
+    expect(hello.status).toBe(200);
+
+    const [first, second] = await messagesP;
+    const editorMsg = JSON.parse(first!.data) as {
+      t: string; item?: string; field?: string; user: { id: string };
+    };
+    expect(editorMsg.t).toBe("ping");
+    expect(editorMsg.item).toBe("row9");
+    expect(editorMsg.field).toBe("title");
+    expect(editorMsg.user.id).toBe(adminId);
+    const helloMsg = JSON.parse(second!.data) as { t: string; item?: string };
+    expect(helloMsg.t).toBe("hello");
+    expect(helloMsg.item).toBeUndefined();
+    ac.abort();
+  });
+
   test("field is dropped from messages where it makes no sense", async () => {
     const ac = new AbortController();
     const res = await request(

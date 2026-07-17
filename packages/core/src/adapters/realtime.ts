@@ -36,6 +36,12 @@ export interface CollabUser {
 export interface CollabMessage {
   t: CollabMessageType;
   user: CollabUser;
+  /** Record id the sender is on. Collab rides ONE channel per collection
+   *  (`collab:list:<slug>`), so every editor message carries its record —
+   *  the editor roster filters on it and the list view groups rows by it.
+   *  Absent on an observer `hello` (a list view announcing itself so editors
+   *  reply with state); observers are never added to rosters. */
+  item?: string;
   /** Focused field name — present on `focus`, and on `ping` while a field is
    *  held. Absent means "no field focused". */
   field?: string;
@@ -47,6 +53,7 @@ export interface CollabMessage {
  *  and timestamp are added by the server. */
 export interface CollabPublishInput {
   t: CollabMessageType;
+  item?: string;
   field?: string;
 }
 

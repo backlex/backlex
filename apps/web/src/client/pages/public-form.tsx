@@ -43,6 +43,14 @@ declare global {
 
 const TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 
+/** Humanize a raw field name (snake/camel → Title Case) — used when neither
+ *  the form config nor the collection field defines a display label. */
+const humanizeLabel = (name: string): string =>
+  name
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/^\w/, (ch) => ch.toUpperCase());
+
 /** Load the Turnstile script once and render the widget into a div. */
 function TurnstileWidget({ siteKey, onToken }: { siteKey: string; onToken: (t: string | null) => void }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -326,7 +334,7 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
             {def.fields.map((f) => (
               <div key={f.name} className="flex min-w-0 flex-col gap-1.5">
                 <Label htmlFor={`pf-${f.name}`} className="text-[13px]">
-                  {f.label}
+                  {f.label === f.name ? humanizeLabel(f.name) : f.label}
                   {f.required && <span className="text-destructive"> *</span>}
                 </Label>
                 <FieldInput

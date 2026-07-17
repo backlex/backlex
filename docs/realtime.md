@@ -136,19 +136,29 @@ es.addEventListener("message", (ev) => {
 });
 ```
 
-## Collaboration channels (`collab:item:<slug>:<id>`)
+## Collaboration channels (`collab:list:<slug>`)
 
-The admin editor's live-collaboration layer (who's viewing a record, who's
-editing which field). Both subscribe **and** publish require a session plus
-`read` permission on the collection. Publish bodies are schema-validated
-(`{ t: "hello"|"focus"|"blur"|"ping"|"bye", field? }` — strict, a
+The admin's live-collaboration layer (who's viewing a record, who's editing
+which field — in the editor header AND on the items table's "Live" column).
+Collab rides **one channel per collection**: every editor message carries its
+record id in the body (`item`), the record editor filters the stream on it,
+and the list view groups rows by it — a 50-row table costs one subscription
+instead of fifty. The legacy per-record shape (`collab:item:<slug>:<id>`)
+still parses for older SPA bundles mid-deploy, but nothing publishes to it.
+
+Both subscribe **and** publish require a session plus `read` permission on
+the collection. Publish bodies are schema-validated
+(`{ t: "hello"|"focus"|"blur"|"ping"|"bye", item?, field? }` — strict, a
 client-supplied `user` is rejected) and identity is stamped server-side from
 the session, so members can't impersonate each other.
 
 The protocol is stateless: there is no server-side roster. Every client
 derives the member list from the stream (15s `ping` heartbeats, 45s TTL
-sweep), and members reply to a newcomer's `hello` with a jittered `ping` —
-so the messages ride any fan-out transport without membership state.
+sweep), and editors reply to any `hello` with a jittered `ping` — so the
+messages ride any fan-out transport without membership state. A list view
+announces itself with a single **observer hello** (no `item`): editors answer
+with their state, the observer never publishes again, and observers are never
+added to rosters — an open table costs nothing recurring.
 
 `GET /api/realtime/collab-config` tells the SPA which pipe to use:
 

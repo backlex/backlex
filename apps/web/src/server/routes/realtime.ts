@@ -266,7 +266,7 @@ const gateForChannel = async (
     // email, field name), and identity is stamped server-side at publish.
     const parsed = parseCollabChannel(channel);
     if (!parsed) {
-      throw new AppError("VALIDATION", "Malformed collab channel — expected collab:item:<slug>:<id>");
+      throw new AppError("VALIDATION", "Malformed collab channel — expected collab:list:<slug> or collab:item:<slug>:<id>");
     }
     if (!auth.userId) {
       throw new AppError("UNAUTHORIZED", "Sign in required for collab channels");
@@ -428,7 +428,7 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
         // impersonate another (the gate guarantees userId is set).
         const parsed = CollabPublishSchema.safeParse(payload);
         if (!parsed.success) {
-          throw new AppError("VALIDATION", "Invalid collab message — expected { t, field? }");
+          throw new AppError("VALIDATION", "Invalid collab message — expected { t, item?, field? }");
         }
         payload = buildCollabMessage(parsed.data, {
           userId: auth.userId!,

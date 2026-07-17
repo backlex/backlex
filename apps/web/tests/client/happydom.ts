@@ -44,7 +44,10 @@ const native: Record<string, unknown> = {};
 for (const k of NATIVE_KEYS) native[k] = g[k];
 
 if (!(globalThis as { document?: unknown }).document) {
-  GlobalRegistrator.register();
+  // A real URL matters: modules created at import time read
+  // `window.location.origin` (e.g. the better-auth client in lib/auth.ts),
+  // and happy-dom's default about:blank yields the literal string "null".
+  GlobalRegistrator.register({ url: "http://localhost:5173" });
 }
 
 for (const k of NATIVE_KEYS) {

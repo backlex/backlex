@@ -1,14 +1,18 @@
 /**
- * Live collaboration client for the item editor — record-level presence and
- * field awareness over the `collab:item:<slug>:<id>` channel.
+ * Live collaboration client — presence and field awareness over ONE channel
+ * per collection: `collab:list:<slug>`.
  *
- * Protocol (stateless, transport-agnostic): every member announces itself
- * with `hello` on join, heartbeats with `ping` every 15s (carrying its focused
- * field), claims/releases fields with `focus`/`blur`, and says `bye` on leave.
+ * Protocol (stateless, transport-agnostic): every editor announces itself
+ * with `hello` on join, heartbeats with `ping` every 15s (carrying its record
+ * id + focused field), claims/releases fields with `focus`/`blur`, and says
+ * `bye` on leave. Every editor message carries `item` (the record id) so the
+ * record editor's roster filters on it and the list view groups rows by it.
  * The roster is derived client-side from that stream with a 45s TTL sweep —
- * no server-side membership exists. On receiving another member's `hello`,
- * each member replies with a jittered `ping` so newcomers build the roster
- * within ~half a second instead of waiting a full heartbeat cycle.
+ * no server-side membership exists. On receiving another member's `hello`
+ * (an editor's, or an OBSERVER hello from a list view — no `item`), each
+ * editor replies with a jittered `ping` so newcomers build state within
+ * ~half a second instead of waiting a full heartbeat cycle. Observers never
+ * publish beyond that single hello, so an open table costs nothing recurring.
  *
  * Two pipes, one protocol. `GET /api/realtime/collab-config` picks the pipe:
  *  - `native` — SSE subscribe + REST publish through the backlex API; identity
@@ -17,8 +21,9 @@
  *    channel-scoped TokenRequest (`POST /api/realtime/collab-token`). Ably
  *    pins the connection to the session user's `clientId`, and receivers trust
  *    that verified `clientId` over anything in the message body — only the
- *    display name is self-reported there.
- *  - `off` — no viable transport; the hook stays inert and the UI shows no
+ *    display name is self-reported there. One channel per collection also
+ *    means the token stays valid while navigating between records.
+ *  - `off` — no viable transport; the hooks stay inert and the UI shows no
  *    collab affordances.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -85,9 +90,15 @@ const collabTransport = (): Promise<CollabTransportKind> => {
   return transportPromise;
 };
 
+/** Body of an outbound frame — record id + focused field, both optional. */
+interface CollabBody {
+  item?: string;
+  field?: string;
+}
+
 /** A connected send/receive channel — same protocol either way. */
 interface CollabPipe {
-  publish: (t: CollabMessage["t"], field?: string) => void;
+  publish: (t: CollabMessage["t"], body?: CollabBody) => void;
   close: () => void;
 }
 
@@ -112,12 +123,16 @@ const openNativePipe = (
     }
   });
   return {
-    publish: (t, field) => {
+    publish: (t, body) => {
       void fetch(`${base}/publish`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(field ? { t, field } : { t }),
+        body: JSON.stringify({
+          t,
+          ...(body?.item ? { item: body.item } : {}),
+          ...(body?.field ? { field: body.field } : {}),
+        }),
         // `bye` fires during teardown/unload — keepalive lets it outlive the page.
         keepalive: t === "bye",
       }).catch(() => {
@@ -167,11 +182,12 @@ const openAblyPipe = async (
       onMessage(data);
     });
     return {
-      publish: (t, field) => {
+      publish: (t, body) => {
         void ch
           .publish("collab", {
             t,
-            ...(field ? { field } : {}),
+            ...(body?.item ? { item: body.item } : {}),
+            ...(body?.field ? { field: body.field } : {}),
             user: self,
             at: Date.now(),
           })
@@ -184,6 +200,19 @@ const openAblyPipe = async (
   } catch {
     return null; // ably failed to load/connect — degrade to no collab
   }
+};
+
+/** Resolve the transport and open the matching pipe for a collection channel. */
+const openCollabPipe = async (
+  channel: string,
+  self: { id: string; name: string | null },
+  onMessage: (msg: CollabMessage) => void,
+): Promise<CollabPipe | null> => {
+  const kind = await collabTransport();
+  if (kind === "off") return null;
+  return kind === "ably"
+    ? openAblyPipe(channel, self, onMessage)
+    : openNativePipe(channel, onMessage);
 };
 
 export interface UseCollabResult {
@@ -214,7 +243,7 @@ export function useCollab(slug: string | null, itemId: string): UseCollabResult 
     publishRef.current = null;
     if (!slug || itemId === "new" || !selfId) return;
 
-    const channel = `collab:item:${slug}:${itemId}`;
+    const channel = `collab:list:${slug}`;
     let disposed = false;
     let pipe: CollabPipe | null = null;
     let pingTimer: ReturnType<typeof setInterval> | null = null;
@@ -231,18 +260,21 @@ export function useCollab(slug: string | null, itemId: string): UseCollabResult 
       }));
     };
 
+    // The channel is collection-wide: only messages for THIS record join the
+    // roster. Any hello (another editor's, or an observer hello from a list
+    // view) still gets a jittered ping reply so newcomers learn our state.
     const onMessage = (msg: CollabMessage) => {
       if (!msg || typeof msg !== "object" || !msg.user?.id || msg.user.id === selfId) return;
+      if (msg.t === "hello") {
+        setTimeout(() => {
+          if (!disposed)
+            pipe?.publish("ping", { item: itemId, field: myFieldRef.current ?? undefined });
+        }, 100 + Math.random() * 400);
+      }
+      if (msg.item !== itemId) return;
       const name = msg.user.name ?? null;
       switch (msg.t) {
         case "hello":
-          upsert(msg.user.id, { name, field: msg.field ?? null });
-          // Reply with a jittered ping so the newcomer sees us (and our held
-          // field) immediately — this replaces any transport-level replay.
-          setTimeout(() => {
-            if (!disposed) pipe?.publish("ping", myFieldRef.current ?? undefined);
-          }, 100 + Math.random() * 400);
-          break;
         case "ping":
         case "focus":
           upsert(msg.user.id, { name, field: msg.field ?? null });
@@ -261,23 +293,21 @@ export function useCollab(slug: string | null, itemId: string): UseCollabResult 
       }
     };
 
-    const sayBye = () => pipe?.publish("bye");
+    const sayBye = () => pipe?.publish("bye", { item: itemId });
 
-    void collabTransport().then(async (kind) => {
-      if (disposed || kind === "off") return;
-      const opened =
-        kind === "ably"
-          ? await openAblyPipe(channel, { id: selfId, name: selfEmail }, onMessage)
-          : openNativePipe(channel, onMessage);
+    void openCollabPipe(channel, { id: selfId, name: selfEmail }, onMessage).then((opened) => {
       if (!opened) return;
       if (disposed) {
         opened.close();
         return;
       }
       pipe = opened;
-      publishRef.current = (t, field) => pipe?.publish(t, field);
-      pipe.publish("hello");
-      pingTimer = setInterval(() => pipe?.publish("ping", myFieldRef.current ?? undefined), PING_MS);
+      publishRef.current = (t, field) => pipe?.publish(t, { item: itemId, field });
+      pipe.publish("hello", { item: itemId });
+      pingTimer = setInterval(
+        () => pipe?.publish("ping", { item: itemId, field: myFieldRef.current ?? undefined }),
+        PING_MS,
+      );
       sweepTimer = setInterval(() => {
         const cutoff = Date.now() - PEER_TTL_MS;
         setPeerMap((prev) => {
@@ -333,4 +363,118 @@ export function useCollab(slug: string | null, itemId: string): UseCollabResult 
   }, [peers]);
 
   return { peers, peersByField, onFieldFocus, onFieldBlur };
+}
+
+export interface UseListCollabResult {
+  /** Editors currently on records of this collection, grouped by record id
+   *  (self excluded, stable-sorted). Rows with nobody present are absent. */
+  byItem: Record<string, CollabPeer[]>;
+  /** False until the transport probe answers with a viable pipe — lets the
+   *  table skip rendering the presence column entirely on `off` deployments. */
+  active: boolean;
+}
+
+/**
+ * Collection-wide presence for the items LIST view — who is on which record,
+ * without opening it. Subscribes to the same `collab:list:<slug>` channel the
+ * editors publish on, announces itself once with an OBSERVER hello (no `item`,
+ * so editors reply with their state but never roster the observer), and from
+ * then on only listens. An open table therefore costs one subscription and a
+ * single message — no heartbeat.
+ */
+export function useListCollab(slug: string | null): UseListCollabResult {
+  const session = auth.useSession();
+  const sessionUser =
+    (session.data as { user?: { id?: string; email?: string | null } } | null)?.user ?? null;
+  const selfId = sessionUser?.id ?? null;
+  const selfEmail = sessionUser?.email ?? null;
+
+  // Peers keyed by `userId:itemId` — one editor can hold two records in two
+  // tabs, and moving between records resolves via bye + TTL.
+  const [peerMap, setPeerMap] = useState<Record<string, PeerState & { item: string }>>({});
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    setPeerMap({});
+    if (!slug || !selfId) return;
+
+    const channel = `collab:list:${slug}`;
+    let disposed = false;
+    let pipe: CollabPipe | null = null;
+    let sweepTimer: ReturnType<typeof setInterval> | null = null;
+
+    const onMessage = (msg: CollabMessage) => {
+      if (!msg || typeof msg !== "object" || !msg.user?.id || msg.user.id === selfId) return;
+      // Observer hellos (no item) and anything malformed carry no row info.
+      if (!msg.item) return;
+      const key = `${msg.user.id}:${msg.item}`;
+      if (msg.t === "bye") {
+        setPeerMap((prev) => {
+          if (!(key in prev)) return prev;
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        return;
+      }
+      const name = msg.user.name ?? null;
+      setPeerMap((prev) => ({
+        ...prev,
+        [key]: {
+          item: msg.item!,
+          field:
+            msg.t === "blur" ? null : msg.field !== undefined ? msg.field : (prev[key]?.field ?? null),
+          name: name ?? prev[key]?.name ?? null,
+          lastSeen: Date.now(),
+        },
+      }));
+    };
+
+    void openCollabPipe(channel, { id: selfId, name: selfEmail }, onMessage).then((opened) => {
+      if (!opened) return;
+      if (disposed) {
+        opened.close();
+        return;
+      }
+      pipe = opened;
+      setActive(true);
+      // Observer hello: editors reply with a jittered ping, so the table
+      // fills within ~half a second instead of waiting a heartbeat cycle.
+      pipe.publish("hello");
+      sweepTimer = setInterval(() => {
+        const cutoff = Date.now() - PEER_TTL_MS;
+        setPeerMap((prev) => {
+          const stale = Object.entries(prev).filter(([, p]) => p.lastSeen < cutoff);
+          if (stale.length === 0) return prev;
+          const next = { ...prev };
+          for (const [id] of stale) delete next[id];
+          return next;
+        });
+      }, SWEEP_MS);
+    });
+
+    return () => {
+      disposed = true;
+      if (sweepTimer) clearInterval(sweepTimer);
+      pipe?.close();
+      pipe = null;
+    };
+  }, [slug, selfId, selfEmail]);
+
+  const byItem = useMemo<Record<string, CollabPeer[]>>(() => {
+    const out: Record<string, CollabPeer[]> = {};
+    for (const [key, p] of Object.entries(peerMap)) {
+      const userId = key.slice(0, key.length - p.item.length - 1);
+      (out[p.item] ??= []).push({
+        id: userId,
+        name: p.name,
+        field: p.field,
+        color: collabColor(userId),
+      });
+    }
+    for (const list of Object.values(out)) list.sort((a, b) => a.id.localeCompare(b.id));
+    return out;
+  }, [peerMap]);
+
+  return { byItem, active };
 }

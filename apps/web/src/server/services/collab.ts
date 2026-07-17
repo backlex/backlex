@@ -21,17 +21,31 @@ import { isNetlify, isStatelessEdge, isVercel } from "../lib/runtime";
 
 export const COLLAB_PREFIX = "collab:";
 const COLLAB_ITEM_PREFIX = "collab:item:";
+const COLLAB_LIST_PREFIX = "collab:list:";
 
-export interface CollabItemChannel {
+export interface CollabChannelScope {
   slug: string;
-  itemId: string;
+  /** Set for the legacy per-record shape (`collab:item:<slug>:<id>`); absent
+   *  for the collection-wide shape (`collab:list:<slug>`). */
+  itemId?: string;
 }
 
-/** Parse `collab:item:<slug>:<id>` → `{slug, itemId}`, or null when the
- *  channel isn't a well-formed collab channel. Only the `item` scope exists
- *  today; unknown `collab:*` shapes are rejected (null), not treated as
- *  free-form channels. */
-export const parseCollabChannel = (channel: string): CollabItemChannel | null => {
+/** Parse a collab channel name → its collection scope, or null when the
+ *  channel isn't well-formed. Two shapes are accepted:
+ *   - `collab:list:<slug>` — ONE channel per collection; every message carries
+ *     its record id in the body (`item`). This is what the SPA uses: the item
+ *     editor and the list view share the subscription, so a 50-row table costs
+ *     one channel instead of fifty.
+ *   - `collab:item:<slug>:<id>` — the original per-record shape, kept so SPA
+ *     bundles from before the switch keep working across a deploy.
+ *  Unknown `collab:*` shapes are rejected (null), not treated as free-form
+ *  channels. */
+export const parseCollabChannel = (channel: string): CollabChannelScope | null => {
+  if (channel.startsWith(COLLAB_LIST_PREFIX)) {
+    const slug = channel.slice(COLLAB_LIST_PREFIX.length);
+    if (!slug || slug.includes(":")) return null;
+    return { slug };
+  }
   if (!channel.startsWith(COLLAB_ITEM_PREFIX)) return null;
   const rest = channel.slice(COLLAB_ITEM_PREFIX.length);
   const sep = rest.indexOf(":");
@@ -42,6 +56,7 @@ export const parseCollabChannel = (channel: string): CollabItemChannel | null =>
 export const CollabPublishSchema = z
   .object({
     t: z.enum(["hello", "focus", "blur", "ping", "bye"]),
+    item: z.string().min(1).max(128).optional(),
     field: z.string().min(1).max(128).optional(),
   })
   .strict()
@@ -55,6 +70,9 @@ export const buildCollabMessage = (
 ): CollabMessage => ({
   t: input.t,
   user: { id: auth.userId, name: auth.email },
+  // Which record the sender is on — every editor message carries it on the
+  // collection-wide channel. Absent on an observer hello (list view).
+  ...(input.item ? { item: input.item } : {}),
   // `field` only makes sense on focus (claim) and ping (held-field heartbeat).
   ...(input.field && (input.t === "focus" || input.t === "ping")
     ? { field: input.field }

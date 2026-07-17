@@ -306,6 +306,11 @@ msgstr "{0} alan"
 msgid "{0} files"
 msgstr "{0} dosya"
 
+#. placeholder {0}: collabHandle(p)
+#: src/client/admin/items.tsx
+msgid "{0} is editing"
+msgstr "{0} düzenliyor"
+
 #. placeholder {0}: f.name
 #: src/client/admin/item-form.tsx
 msgid "{0} is required"
@@ -5763,6 +5768,7 @@ msgid "live"
 msgstr "canlı"
 
 #: src/client/admin/app.tsx
+#: src/client/admin/items.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/traces.tsx
 msgid "Live"

@@ -10,6 +10,7 @@
 //   - functions.pattern                 (`items:<slug>...` triggers)
 //   - flows.operations[].collection     (item.{create,update,delete} steps)
 //   - flows.trigger                     (`items:<slug>...` if event-triggered)
+//   - collections.fields[].to           (relation fields targeting the slug)
 //
 // JSON columns are read, mutated in JS, and written back row-by-row so the
 // transformation logic stays portable across PG and SQLite (neither dialect
@@ -31,6 +32,7 @@ export interface RenameCounts {
   webhooks: number;
   functions: number;
   flows: number;
+  relations: number;
 }
 
 const t = (dialect: Dialect) => (dialect === "pg" ? pg.schema : sqlite.schema);
@@ -92,6 +94,7 @@ export const cascadeSlugRename = async (
     webhooks: 0,
     functions: 0,
     flows: 0,
+    relations: 0,
   };
 
   // 1) permissions: no tenant column, scoped via role. A role only ever
@@ -200,7 +203,33 @@ export const cascadeSlugRename = async (
     }
   }
 
-  // 8) template seed manifest (`templateSampleSeeds` app_settings): keyed by
+  // 8) relation fields on other collections: `fields[].to` stores the target
+  //    slug as data, so without this rewrite every relation pointing at the
+  //    renamed collection keeps a dead slug and expansion/lookups go blind.
+  //    Counted per collection row touched (includes self-relations).
+  const colRows = await db
+    .select({ id: s.collections.id, fields: s.collections.fields })
+    .from(s.collections)
+    .where(eq(s.collections.tenantId, tenantId));
+  for (const col of colRows) {
+    const fields = Array.isArray(col.fields) ? (col.fields as unknown[]) : [];
+    let changed = false;
+    const next = fields.map((field) => {
+      if (!field || typeof field !== "object") return field;
+      const f = field as Record<string, unknown>;
+      if (f.type === "relation" && f.to === oldSlug) {
+        changed = true;
+        return { ...f, to: newSlug };
+      }
+      return field;
+    });
+    if (changed) {
+      await db.update(s.collections).set({ fields: next }).where(eq(s.collections.id, col.id));
+      counts.relations++;
+    }
+  }
+
+  // 9) template seed manifest (`templateSampleSeeds` app_settings): keyed by
   //    slug, so a rename must move the key or clear-samples silently orphans
   //    the seeded rows. Not counted — internal bookkeeping, not user data.
   const manifestRows = await db

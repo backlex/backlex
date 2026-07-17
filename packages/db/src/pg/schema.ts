@@ -1543,6 +1543,37 @@ export const dashboards = pgTable(
   ],
 );
 
+/**
+ * Public form definitions — embeddable, unauthenticated forms whose
+ * submissions are written into a collection through the items write core.
+ * The plaintext token (`frm_<hex>`) is shown once on creation; only its
+ * SHA-256 hash is stored (mirrors `shared_links` / `dashboards` embed).
+ */
+export const forms = pgTable(
+  "forms",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    collection: text("collection").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    /** Ordered exposed fields: [{ name, label?, help? }]. */
+    fields: jsonb("fields").$type<Array<Record<string, unknown>>>().notNull(),
+    /** Behaviour knobs: submit label, success message/redirect, turnstile. */
+    settings: jsonb("settings").$type<Record<string, unknown> | null>(),
+    /** Inactive forms 404 on the public endpoints without being deleted. */
+    active: boolean("active").notNull().default(true),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("forms_token_idx").on(t.tokenHash),
+    index("forms_tenant_idx").on(t.tenantId),
+    index("forms_collection_idx").on(t.collection),
+  ],
+);
+
 export const authConfig = pgTable(
   "auth_config",
   {

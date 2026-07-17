@@ -1347,6 +1347,37 @@ export const dashboards = sqliteTable(
   ],
 );
 
+/**
+ * Public form definitions — embeddable, unauthenticated forms whose
+ * submissions are written into a collection through the items write core.
+ * The plaintext token (`frm_<hex>`) is shown once on creation; only its
+ * SHA-256 hash is stored (mirrors `shared_links` / `dashboards` embed).
+ */
+export const forms = sqliteTable(
+  "forms",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    collection: text("collection").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    /** Ordered exposed fields: [{ name, label?, help? }]. */
+    fields: text("fields", { mode: "json" }).$type<Array<Record<string, unknown>>>().notNull(),
+    /** Behaviour knobs: submit label, success message/redirect, turnstile. */
+    settings: text("settings", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    /** Inactive forms 404 on the public endpoints without being deleted. */
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("forms_token_idx").on(t.tokenHash),
+    index("forms_tenant_idx").on(t.tenantId),
+    index("forms_collection_idx").on(t.collection),
+  ],
+);
+
 export const authConfig = sqliteTable(
   "auth_config",
   {

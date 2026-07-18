@@ -97,8 +97,8 @@ msgid "· optional"
 msgstr "· isteğe bağlı"
 
 #: src/client/admin/pages/forms.tsx
-msgid "· the field stays in the collection"
-msgstr "· alan koleksiyonda kalır"
+#~ msgid "· the field stays in the collection"
+#~ msgstr "· alan koleksiyonda kalır"
 
 #. placeholder {0}: agg.groupBy
 #: src/client/admin/parity/insights.tsx
@@ -948,6 +948,10 @@ msgstr "Bağlamalar/env'den adaptör otomatik seçildi."
 #: src/client/admin/storage/index.tsx
 msgid "Adapter auto-selected: R2 binding → R2; S3 env vars → S3; else local filesystem (Bun dev). Public folders are served at <0>/storage/<key></0>; private require a signed URL."
 msgstr "Adaptör otomatik seçildi: R2 bağlaması → R2; S3 ortam değişkenleri → S3; aksi halde yerel dosya sistemi (Bun dev). Genel klasörler <0>/storage/<key></0> adresinden sunulur; özel olanlar imzalı URL gerektirir."
+
+#: src/client/admin/pages/forms.tsx
+msgid "add"
+msgstr "ekle"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
@@ -3687,6 +3691,10 @@ msgstr "İlişki oluşturmak için başka bir koleksiyona sürükleyin"
 msgid "Drag to move"
 msgstr "Taşımak için sürükleyin"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Drag to reorder"
+msgstr "Sürükleyerek sırala"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to resize"
 msgstr "Yeniden boyutlandırmak için sürükleyin"
@@ -4940,6 +4948,10 @@ msgstr "Yeni bir token üretir ve mevcut bağlantıyı anında geçersiz kılar.
 msgid "Generating…"
 msgstr "Oluşturuluyor…"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Get a new link"
+msgstr "Yeni bağlantı al"
+
 #: src/client/admin/pages/settings/index.tsx
 msgid "GitHub"
 msgstr "GitHub"
@@ -5722,8 +5734,8 @@ msgid "Language"
 msgstr "Dil"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Language code (e.g. tr, de, fr):"
-msgstr "Dil kodu (örn. tr, de, fr):"
+#~ msgid "Language code (e.g. tr, de, fr):"
+#~ msgstr "Dil kodu (örn. tr, de, fr):"
 
 #: src/client/admin/pages/forms.tsx
 msgid "languages"
@@ -7093,6 +7105,10 @@ msgstr "İş yok"
 #: src/client/pages/rest-explorer.tsx
 msgid "No JSON content defined."
 msgstr "JSON içeriği tanımlanmamış."
+
+#: src/client/admin/pages/forms.tsx
+msgid "No language found."
+msgstr "Dil bulunamadı."
 
 #: src/client/admin/pages/ask-ai/shared.tsx
 msgid "No live keys — create one on the <0>API Keys</0> page first."
@@ -9414,8 +9430,8 @@ msgid "Rotate the form link?"
 msgstr "Form bağlantısı yenilensin mi?"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Rotate the token to mint a fresh embed snippet."
-msgstr "Yeni bir gömme kodu için token'ı yenileyin."
+#~ msgid "Rotate the token to mint a fresh embed snippet."
+#~ msgstr "Yeni bir gömme kodu için token'ı yenileyin."
 
 #: src/client/admin/pages/forms.tsx
 msgid "Rotate token"
@@ -9941,6 +9957,10 @@ msgstr "Arama indeksi yeniden oluşturuldu: {0} indekslendi, toplam {1}."
 #: src/client/admin/storage/index.tsx
 msgid "Search keys…"
 msgstr "Anahtarları ara…"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Search languages…"
+msgstr "Dil ara…"
 
 #: src/client/admin/pages/logs.tsx
 msgid "search loaded rows — path, action, user, message…"
@@ -11345,6 +11365,10 @@ msgstr "Mevcut bağlantı anında devre dışı kalır ve yenisi oluşturulur. E
 msgid "The embed link may have been revoked, or the dashboard was removed."
 msgstr "Gömme bağlantısı iptal edilmiş ya da pano kaldırılmış olabilir."
 
+#: src/client/admin/pages/forms.tsx
+msgid "the field stays in the collection"
+msgstr "alan koleksiyonda kalır"
+
 #: src/client/pages/sign-up.tsx
 msgid "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
 msgstr "Yeni bir örneğin ilk hesabı otomatik olarak <0>admin</0> olarak sağlanır. Daha sonra kendinizi düşürebilirsiniz."
@@ -11367,8 +11391,12 @@ msgid "The key \"{0}\" will stop working immediately. This cannot be undone."
 msgstr "\"{0}\" anahtarı hemen çalışmayı durduracak. Bu geri alınamaz."
 
 #: src/client/admin/pages/forms.tsx
-msgid "The link was shown once when it was minted. Rotate the token to get a new one."
-msgstr "Bağlantı yalnızca oluşturulduğunda bir kez gösterildi. Yenisi için token'ı yenileyin."
+msgid "The link was shown once when it was minted. Generate a new one to see it here — the old link stops working."
+msgstr "Bağlantı yalnızca oluşturulduğunda bir kez gösterildi. Burada görmek için yenisini üretin — eski bağlantı çalışmayı durdurur."
+
+#: src/client/admin/pages/forms.tsx
+#~ msgid "The link was shown once when it was minted. Rotate the token to get a new one."
+#~ msgstr "Bağlantı yalnızca oluşturulduğunda bir kez gösterildi. Yenisi için token'ı yenileyin."
 
 #: src/client/admin/app.tsx
 msgid "The physical table and all rows are dropped. This is irreversible."
@@ -12095,6 +12123,10 @@ msgstr "URL:"
 #: src/client/admin/adopt-wizard.tsx
 msgid "Use \"{label}\" column"
 msgstr "\"{label}\" sütununu kullan"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Use \"Get a new link\" above — the embed snippet is minted together with it."
+msgstr "Yukarıdaki \"Yeni bağlantı al\" düğmesini kullanın — gömme kodu onunla birlikte üretilir."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Use \"owner_id\" column"

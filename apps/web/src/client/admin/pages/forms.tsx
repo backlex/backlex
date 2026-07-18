@@ -28,7 +28,20 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@backlex/ui/components/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@backlex/ui/components/command";
 import { Card } from "@backlex/ui/components/card";
+import { ColorPicker } from "@backlex/ui/components/color-picker";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { ConfirmDialog } from "../sheet";
 import {
@@ -67,7 +80,16 @@ const relTime = (v: unknown): string => {
   return `${Math.floor(mins / (60 * 24))}d`;
 };
 
-const ACCENTS = ["#8B6CFF", "#FF8A5C", "#34C79A", "#4FB7E8", "#E85CA8"];
+const ACCENTS = [
+  "#8B6CFF",
+  "#FF8A5C",
+  "#34C79A",
+  "#4FB7E8",
+  "#E85CA8",
+  "#F2C14E",
+  "#E5484D",
+  "#5B8DEF",
+];
 
 const blockIcon = (ef: ApiFormEligibleField | null | undefined, block: ApiFormBlock) => {
   if ((block.kind ?? "field") === "step") return I.Layers;
@@ -94,6 +116,92 @@ const blockIcon = (ef: ApiFormEligibleField | null | undefined, block: ApiFormBl
 /** Session-only cache of the last-minted public URLs per form id — the token
  *  is stored hashed server-side, so a reload legitimately loses these. */
 const tokenCache = new Map<string, { url: string; embedUrl: string }>();
+
+/** Common form locales offered by the add-language picker (code + native name). */
+const LANGUAGE_OPTIONS: Array<{ code: string; name: string }> = [
+  { code: "en", name: "English" },
+  { code: "tr", name: "Türkçe" },
+  { code: "de", name: "Deutsch" },
+  { code: "fr", name: "Français" },
+  { code: "es", name: "Español" },
+  { code: "it", name: "Italiano" },
+  { code: "pt", name: "Português" },
+  { code: "nl", name: "Nederlands" },
+  { code: "pl", name: "Polski" },
+  { code: "sv", name: "Svenska" },
+  { code: "da", name: "Dansk" },
+  { code: "nb", name: "Norsk" },
+  { code: "fi", name: "Suomi" },
+  { code: "cs", name: "Čeština" },
+  { code: "ro", name: "Română" },
+  { code: "hu", name: "Magyar" },
+  { code: "el", name: "Ελληνικά" },
+  { code: "ru", name: "Русский" },
+  { code: "uk", name: "Українська" },
+  { code: "ar", name: "العربية" },
+  { code: "fa", name: "فارسی" },
+  { code: "hi", name: "हिन्दी" },
+  { code: "id", name: "Bahasa Indonesia" },
+  { code: "vi", name: "Tiếng Việt" },
+  { code: "th", name: "ไทย" },
+  { code: "ja", name: "日本語" },
+  { code: "ko", name: "한국어" },
+  { code: "zh", name: "中文" },
+  { code: "az", name: "Azərbaycanca" },
+];
+
+/** shadcn combobox (Popover + Command) for adding a form locale. */
+function AddLanguagePopover({
+  languages,
+  onAdd,
+  compact,
+}: {
+  languages: string[];
+  onAdd: (code: string) => void;
+  compact?: boolean;
+}) {
+  const { t } = useLingui();
+  const [open, setOpen] = useState(false);
+  const available = LANGUAGE_OPTIONS.filter((l) => !languages.includes(l.code));
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title={t`Add language`}
+          className={
+            compact
+              ? "rounded-full border border-dashed border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground hover:border-primary hover:text-primary"
+              : "flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 font-mono text-[10px] uppercase text-muted-foreground hover:border-primary hover:text-primary"
+          }
+        >
+          {compact ? "+" : <><I.Plus size={9} /> {t`add`}</>}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-0" align="end">
+        <Command>
+          <CommandInput placeholder={t`Search languages…`} />
+          <CommandList>
+            <CommandEmpty><Trans>No language found.</Trans></CommandEmpty>
+            {available.map((l) => (
+              <CommandItem
+                key={l.code}
+                value={`${l.code} ${l.name}`}
+                onSelect={() => {
+                  onAdd(l.code);
+                  setOpen(false);
+                }}
+              >
+                <span className="font-mono text-[10.5px] uppercase text-muted-foreground">{l.code}</span>
+                <span>{l.name}</span>
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 /* ── token reveal ──────────────────────────────────────────────────── */
 
@@ -266,11 +374,13 @@ function CanvasFieldPreview({
   const loc = locale !== base ? block.i18n?.[locale] : undefined;
   const ph = loc?.placeholder || block.placeholder || "";
   if (!ef) return null;
+  const LeadIcon = blockIcon(ef, block);
   if (ef.choices) {
     return (
-      <div className="flex h-9 items-center justify-between rounded-control border border-border bg-background/60 px-3 text-[13px] text-muted-foreground">
+      <div className="flex h-9 items-center gap-2 rounded-control border border-border bg-background/60 px-3 text-[13px] text-muted-foreground">
+        <LeadIcon size={13} />
         <span>{t`Select one…`}</span>
-        <I.ChevronDown size={14} />
+        <span className="ml-auto"><I.ChevronDown size={14} /></span>
       </div>
     );
   }
@@ -294,13 +404,15 @@ function CanvasFieldPreview({
   }
   if (ef.type === "longtext") {
     return (
-      <div className="h-[74px] rounded-control border border-border bg-background/60 px-3 py-2 text-[13px] text-muted-foreground/60">
+      <div className="flex h-[74px] items-start gap-2 rounded-control border border-border bg-background/60 px-3 py-2 text-[13px] text-muted-foreground/60">
+        <span className="mt-0.5 text-muted-foreground"><LeadIcon size={13} /></span>
         {ph}
       </div>
     );
   }
   return (
-    <div className="flex h-9 items-center rounded-control border border-border bg-background/60 px-3 text-[13px] text-muted-foreground/60">
+    <div className="flex h-9 items-center gap-2 rounded-control border border-border bg-background/60 px-3 text-[13px] text-muted-foreground/60">
+      <span className="text-muted-foreground"><LeadIcon size={13} /></span>
       {ph || (ef.type === "timestamp" ? "YYYY-MM-DD" : "")}
     </div>
   );
@@ -342,6 +454,21 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
   const [eligible, setEligible] = useState<ApiFormEligibleField[]>([]);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
   const [insertAt, setInsertAt] = useState<number | null>(null);
+  // Drag-reorder state: the block being dragged and the index the pointer is
+  // currently over (drop position, 0..fields.length). Refs mirror the state so
+  // the synchronous dragover→drop event chain never reads a stale value.
+  const [dragId, setDragIdState] = useState<string | null>(null);
+  const [dropIdx, setDropIdxState] = useState<number | null>(null);
+  const dragIdRef = useRef<string | null>(null);
+  const dropIdxRef = useRef<number | null>(null);
+  const setDragId = (v: string | null) => {
+    dragIdRef.current = v;
+    setDragIdState(v);
+  };
+  const setDropIdx = (v: number | null) => {
+    dropIdxRef.current = v;
+    setDropIdxState(v);
+  };
   const [reveal, setReveal] = useState<{ url: string; embedUrl: string } | null>(null);
   const [confirm, setConfirm] = useState<"delete" | "rotate" | null>(null);
   const [newOpen, setNewOpen] = useState(false);
@@ -516,6 +643,23 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
     [scheduleSave],
   );
 
+  /** Move a block to an absolute drop position (indices are pre-removal). */
+  const moveBlockTo = useCallback(
+    (id: string, to: number) => {
+      setForm((prev) => {
+        if (!prev) return prev;
+        const idx = prev.fields.findIndex((b) => b.id === id);
+        if (idx < 0) return prev;
+        const next = [...prev.fields];
+        const [b] = next.splice(idx, 1);
+        next.splice(to > idx ? to - 1 : to, 0, b!);
+        return { ...prev, fields: next };
+      });
+      scheduleSave();
+    },
+    [scheduleSave],
+  );
+
   const removeBlock = useCallback(
     (id: string) => {
       setForm((prev) =>
@@ -630,19 +774,23 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
           <div className="truncate text-[14.5px] font-semibold">{form.name}</div>
           <div className="truncate font-mono text-[11px] text-muted-foreground">→ {form.collection}</div>
         </div>
-        <div className="mx-auto flex items-center rounded-control border border-border bg-card p-0.5">
+        {/* Design tokens: active tab = accent-tinted pill w/ inset ring and
+            near-white label; inactive = muted text on the frosted strip. */}
+        <div className="mx-auto flex items-center gap-0.5 rounded-[10px] border border-white/10 bg-white/5 p-[3px]">
           {(["edit", "share", "submissions"] as BuilderTab[]).map((tb) => (
             <button
               key={tb}
               type="button"
               onClick={() => setTab(tb)}
-              className={`flex items-center gap-1.5 rounded-[7px] px-3.5 py-1.5 text-[12.5px] font-medium transition-colors ${
-                tab === tb ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
+              className={`flex items-center gap-1.5 rounded-[8px] px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
+                tab === tb
+                  ? "bg-primary/20 text-foreground ring-1 ring-inset ring-primary/40"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {tb === "edit" ? <Trans>Edit</Trans> : tb === "share" ? <Trans>Share</Trans> : <Trans>Submissions</Trans>}
               {tb === "submissions" && (
-                <span className="rounded-full bg-muted px-1.5 text-[10.5px] tabular-nums">
+                <span className={`font-mono text-[10px] tabular-nums ${tab === tb ? "text-primary" : ""}`}>
                   {form.submissionCount}
                 </span>
               )}
@@ -701,19 +849,14 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
                     {l}
                   </button>
                 ))}
-                <button
-                  type="button"
-                  title={t`Add language`}
-                  onClick={() => {
-                    const code = window.prompt(t`Language code (e.g. tr, de, fr):`)?.trim().toLowerCase();
-                    if (!code || languages.includes(code)) return;
+                <AddLanguagePopover
+                  compact
+                  languages={languages}
+                  onAdd={(code) => {
                     patchSettings({ languages: [...languages, code] });
                     setLocale(code);
                   }}
-                  className="rounded-full border border-dashed border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground hover:border-primary hover:text-primary"
-                >
-                  +
-                </button>
+                />
               </div>
             </div>
             {locale !== base && (
@@ -764,16 +907,52 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
                   if (missing) return null;
                   return (
                     <div key={b.id}>
+                      {dropIdx === i && dragId && (
+                        <div className="h-0.5 rounded-full bg-primary" />
+                      )}
                       <div
                         role="button"
                         tabIndex={0}
+                        draggable
+                        onDragStart={(e) => {
+                          setDragId(b.id!);
+                          e.dataTransfer.effectAllowed = "move";
+                          e.dataTransfer.setData("text/plain", b.id!);
+                        }}
+                        onDragEnd={() => {
+                          setDragId(null);
+                          setDropIdx(null);
+                        }}
+                        onDragOver={(e) => {
+                          if (!dragIdRef.current) return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                          const r = e.currentTarget.getBoundingClientRect();
+                          setDropIdx(e.clientY < r.top + r.height / 2 ? i : i + 1);
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (dragIdRef.current && dropIdxRef.current !== null)
+                            moveBlockTo(dragIdRef.current, dropIdxRef.current);
+                          setDragId(null);
+                          setDropIdx(null);
+                        }}
                         onClick={() => setSel({ kind: "block", id: b.id! })}
                         onKeyDown={(e) => e.key === "Enter" && setSel({ kind: "block", id: b.id! })}
-                        className={`group/blk relative cursor-pointer rounded-surface border px-4 py-3 transition-colors ${
-                          selected ? "border-primary/60 bg-primary/5" : "border-transparent hover:border-border"
-                        }`}
+                        className={`group/blk relative -mx-6 cursor-pointer rounded-[11px] px-6 py-2.5 transition-colors hover:bg-foreground/[0.04] sm:-mx-8 sm:px-8 ${
+                          selected ? "ring-[1.5px] ring-primary shadow-[0_0_14px_-2px] shadow-primary/40" : ""
+                        } ${dragId === b.id ? "opacity-40" : ""}`}
                       >
-                        <div className="absolute -left-1 top-1/2 flex -translate-y-1/2 flex-col opacity-0 transition-opacity group-hover/blk:opacity-100">
+                        {b.cond && (
+                          <span className="pointer-events-none absolute -top-2 right-3 flex items-center gap-1 rounded-full border border-primary/50 bg-card px-2 py-0.5 font-mono text-[9.5px] text-primary">
+                            <I.Network size={9} />
+                            {t`if`} {b.cond.field} {b.cond.op === "is" ? "=" : "≠"} {b.cond.value}
+                          </span>
+                        )}
+                        {/* chevron · grip · chevron — the design's hover rail
+                            inside the row gutter; the whole row drags, the
+                            grip is the affordance. */}
+                        <div className="absolute left-1 top-1/2 flex -translate-y-1/2 flex-col items-center opacity-0 transition-opacity group-hover/blk:opacity-100">
                           <button
                             type="button"
                             title={t`Move up`}
@@ -781,10 +960,16 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
                               e.stopPropagation();
                               moveBlock(b.id!, -1);
                             }}
-                            className="grid size-5 place-items-center rounded text-muted-foreground hover:text-foreground"
+                            className="grid size-4.5 place-items-center rounded text-muted-foreground hover:text-foreground"
                           >
-                            <I.ChevronUp size={12} />
+                            <I.ChevronUp size={11} />
                           </button>
+                          <span
+                            title={t`Drag to reorder`}
+                            className="grid size-4.5 cursor-grab place-items-center text-muted-foreground active:cursor-grabbing"
+                          >
+                            <I.Grip size={11} />
+                          </span>
                           <button
                             type="button"
                             title={t`Move down`}
@@ -792,9 +977,9 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
                               e.stopPropagation();
                               moveBlock(b.id!, 1);
                             }}
-                            className="grid size-5 place-items-center rounded text-muted-foreground hover:text-foreground"
+                            className="grid size-4.5 place-items-center rounded text-muted-foreground hover:text-foreground"
                           >
-                            <I.ChevronDown size={12} />
+                            <I.ChevronDown size={11} />
                           </button>
                         </div>
                         {kind === "step" ? (
@@ -812,12 +997,6 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
                             <div className="flex items-center gap-1.5 text-[13px] font-medium">
                               <span>{label}</span>
                               {ef?.required && <span className="text-primary">*</span>}
-                              {b.cond && (
-                                <span className="ml-1 flex items-center gap-1 rounded-full border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-                                  <I.Network size={10} />
-                                  {t`if`} {b.cond.field} {b.cond.op === "is" ? "=" : "≠"} {b.cond.value}
-                                </span>
-                              )}
                               {locale !== base && (
                                 <span className="ml-auto font-mono text-[9.5px] uppercase text-muted-foreground/70">
                                   {loc?.label ? locale : base}
@@ -838,10 +1017,25 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
                   );
                 })}
 
-                {/* ending */}
+                {dropIdx === form.fields.length && dragId && (
+                  <div className="h-0.5 rounded-full bg-primary" />
+                )}
+
+                {/* ending — also a drop target for "move to the end" */}
                 <div
                   role="button"
                   tabIndex={0}
+                  onDragOver={(e) => {
+                    if (!dragIdRef.current) return;
+                    e.preventDefault();
+                    setDropIdx(form.fields.length);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragIdRef.current) moveBlockTo(dragIdRef.current, form.fields.length);
+                    setDragId(null);
+                    setDropIdx(null);
+                  }}
                   onClick={() => setSel({ kind: "ending" })}
                   onKeyDown={(e) => e.key === "Enter" && setSel({ kind: "ending" })}
                   className={`mt-2 cursor-pointer rounded-surface border px-4 py-4 transition-colors ${
@@ -870,8 +1064,9 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
             </p>
           </div>
 
-          {/* right panel */}
-          <div className="flex flex-col gap-3">
+          {/* right panel — sticky beside the canvas so settings stay in view
+              while scrolling long forms; static when stacked (<980px). */}
+          <div className="flex flex-col gap-3 self-start min-[980px]:sticky min-[980px]:top-4 min-[980px]:w-[300px]">
             {selBlock ? (
               <BlockPanel
                 block={selBlock}
@@ -1136,7 +1331,7 @@ function DesignPanel({
         </div>
         <div className="flex flex-col gap-1.5">
           <PanelLabel><Trans>accent</Trans></PanelLabel>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {ACCENTS.map((c) => (
               <button
                 key={c}
@@ -1147,6 +1342,12 @@ function DesignPanel({
                 style={{ background: c }}
               />
             ))}
+            {/* custom color — the design-system picker, shown as a swatch */}
+            <ColorPicker
+              value={ACCENTS.includes(accent) ? "" : accent}
+              onChange={(hex) => onPatch({ accent: hex })}
+              triggerSize={24}
+            />
           </div>
           <span className="font-mono text-[10.5px] text-muted-foreground">{accent}</span>
         </div>
@@ -1183,6 +1384,10 @@ function DesignPanel({
                 )}
               </span>
             ))}
+            <AddLanguagePopover
+              languages={languages}
+              onAdd={(code) => onPatch({ languages: [...languages, code] })}
+            />
           </div>
           <span className="text-[11px] leading-relaxed text-muted-foreground">
             <Trans>Visitors get their browser language; <span className="font-mono">?lang={languages[1] ?? "tr"}</span> forces
@@ -1387,9 +1592,9 @@ function BlockPanel({
                   },
                 });
               }}
-              className="flex items-center gap-1 self-start text-[11.5px] text-primary hover:underline"
+              className="flex w-full items-center justify-center gap-2 rounded-control border border-dashed border-primary/40 px-3 py-2.5 text-[13px] font-medium text-primary transition-colors hover:border-primary hover:bg-primary/5"
             >
-              <I.Plus size={11} />
+              <I.Plus size={13} />
               <Trans>Show conditionally</Trans>
             </button>
           ) : (
@@ -1407,17 +1612,21 @@ function BlockPanel({
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={() => onRemove(block.id!)}
-        className="flex items-center gap-1.5 self-start border-t border-border pt-3 text-[12px] text-destructive hover:underline"
-      >
-        <I.Trash size={12} />
-        <Trans>Remove from form</Trans>
+      <div className="flex flex-col gap-1.5">
+        <button
+          type="button"
+          onClick={() => onRemove(block.id!)}
+          className="flex w-full items-center justify-center gap-2 rounded-control border border-orange-300/40 bg-orange-300/5 px-3 py-2.5 text-[13px] font-medium text-orange-300 transition-colors hover:border-orange-300/70 hover:bg-orange-300/10"
+        >
+          <I.Trash size={13} />
+          <Trans>Remove from form</Trans>
+        </button>
         {!isStep && (
-          <span className="text-[10.5px] text-muted-foreground"><Trans>· the field stays in the collection</Trans></span>
+          <span className="text-center text-[11px] text-muted-foreground">
+            <Trans>the field stays in the collection</Trans>
+          </span>
         )}
-      </button>
+      </div>
     </PanelCard>
   );
 }
@@ -1525,10 +1734,15 @@ function ShareTab({
               <IconButton icon={I.ExternalLink} title={t`Open form`} onClick={() => window.open(absolute, "_blank")} />
             </div>
           ) : (
-            <p className="rounded-control border border-dashed border-border px-3 py-2.5 text-[12px] text-muted-foreground">
-              <Trans>The link was shown once when it was minted. Rotate the token to get a
-              new one.</Trans>
-            </p>
+            <div className="flex flex-col gap-2.5 rounded-control border border-dashed border-border px-3 py-3">
+              <p className="text-[12px] text-muted-foreground">
+                <Trans>The link was shown once when it was minted. Generate a new one to
+                see it here — the old link stops working.</Trans>
+              </p>
+              <Button variant="primary" icon={I.Refresh} onClick={onRotate} className="self-start">
+                <Trans>Get a new link</Trans>
+              </Button>
+            </div>
           )}
         </PanelCard>
         <PanelCard icon={I.Code} title={<Trans>Embed</Trans>}>
@@ -1542,7 +1756,8 @@ function ShareTab({
             </div>
           ) : (
             <p className="rounded-control border border-dashed border-border px-3 py-2.5 text-[12px] text-muted-foreground">
-              <Trans>Rotate the token to mint a fresh embed snippet.</Trans>
+              <Trans>Use "Get a new link" above — the embed snippet is minted together
+              with it.</Trans>
             </p>
           )}
         </PanelCard>
@@ -1605,9 +1820,26 @@ function SubmissionsTab({ form, fieldBlocks }: { form: ApiForm; fieldBlocks: Api
   const [rows, setRows] = useState<Record<string, unknown>[] | null>(null);
   const [filter, setFilter] = useState<"all" | "draft" | "published">("all");
   const [total, setTotal] = useState<number | null>(null);
+  const [versioned, setVersioned] = useState(false);
 
   const cols = fieldBlocks.slice(0, 4).map((b) => b.name!).filter(Boolean);
-  const versioned = rows?.some((r) => r._status !== undefined) ?? false;
+
+  // The draft/published filter follows the collection's `versioned` flag (not
+  // row sniffing — an empty versioned collection must still show it).
+  useEffect(() => {
+    let cancelled = false;
+    collectionsApi
+      .get(form.collection)
+      .then((r) => {
+        if (!cancelled) setVersioned(Boolean(r.data.versioned));
+      })
+      .catch(() => {
+        if (!cancelled) setVersioned(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.collection]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1710,14 +1942,21 @@ function SubmissionsTab({ form, fieldBlocks }: { form: ApiForm; fieldBlocks: Api
                   className="grid items-center gap-3 border-b border-border px-3.5 py-[10px] text-[12.5px] last:border-b-0"
                   style={{ gridTemplateColumns: `110px repeat(${cols.length}, 1fr) ${versioned ? "90px" : ""}` }}
                 >
-                  <span className="font-mono text-[11px] text-muted-foreground">{relTime(r.created_at)}</span>
+                  {/* serialized rows expose camelCase system keys (createdAt) */}
+                  <span className="font-mono text-[11px] text-muted-foreground">{relTime(r.createdAt ?? r.created_at)}</span>
                   {cols.map((c) => (
                     <span key={c} className="truncate">{r[c] === null || r[c] === undefined ? "—" : String(r[c])}</span>
                   ))}
                   {versioned && (
-                    <Badge variant={r._status === "published" ? "default" : "secondary"}>
-                      {String(r._status ?? "—")}
-                    </Badge>
+                    <span
+                      className={`justify-self-start rounded-full border px-2 py-0.5 font-mono text-[10.5px] ${
+                        r._status === "published"
+                          ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400"
+                          : "border-amber-400/30 bg-amber-400/10 text-amber-400"
+                      }`}
+                    >
+                      {String(r._status ?? "draft")}
+                    </span>
                   )}
                 </div>
               ))}

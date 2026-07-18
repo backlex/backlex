@@ -62,6 +62,11 @@ TEST_ADMIN_PASSWORD = "correct-horse-battery"
 # SES_REGION = "us-east-1"
 # SES_ACCESS_KEY_ID = "AKIA..."
 # SES_SECRET_ACCESS_KEY = "..."
+# Cloudflare Turnstile — spam guard for public form submissions (Data → Forms).
+# The site key is public (rendered into the form page); the secret verifies
+# challenges server-side. A turnstile-enabled form fails closed without the secret.
+# TURNSTILE_SITE_KEY = "0x..."
+# TURNSTILE_SECRET_KEY = "0x..."
 # SMTP — NOTE: works on Bun / Vercel / Netlify / self-host, NOT Cloudflare
 # Workers (no raw TCP). SMTP_SECURE=true for implicit TLS on 465; leave unset
 # for 587/25 (STARTTLS auto-negotiated).

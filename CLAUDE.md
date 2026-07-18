@@ -204,6 +204,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Backup / restore + per-collection export-import | `docs/backup-restore.md` |
 | Draft / publish + scheduled publishing | `docs/draft-publish.md` |
 | Feature flags + remote config | `docs/feature-flags.md` |
+| Public form builder (embeddable forms) | `docs/forms.md` |
 | Embedded BI dashboards (panels + public embed) | `docs/embedded-dashboards.md` |
 | Advisor rules | `docs/advisor.md` |
 | Auth planes (admin vs workspace end-users) | `docs/auth-planes.md` |

@@ -224,7 +224,20 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       ]),
     [extensionPanels],
   );
-  const segs = location.pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+  // Decode each segment: browsers percent-encode `:` in the first path
+  // segment (scheme ambiguity), so a direct visit to /ext:name:panel arrives
+  // as /ext%3Aname%3Apanel and would miss the NAV_IDS check undecoded.
+  const segs = location.pathname
+    .replace(/^\/+|\/+$/g, "")
+    .split("/")
+    .filter(Boolean)
+    .map((s) => {
+      try {
+        return decodeURIComponent(s);
+      } catch {
+        return s;
+      }
+    });
   const activeNav = segs[0] && NAV_IDS.has(segs[0]) ? segs[0] : initialNav;
   // Navigate inside a view transition. Warms the target's lazy chunk first (so
   // the transition snapshots the page, not its skeleton), then commits through

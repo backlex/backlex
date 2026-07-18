@@ -747,6 +747,34 @@ export const createApp = (env: Env) => {
   // returns the shell — and in dev `@cloudflare/vite-plugin` serves it through
   // Vite's HTML transform (with the React-refresh preamble) instead of the raw
   // file, which would otherwise white-screen the page.
+  // Script embed loader — the modern alternative to a hand-written iframe:
+  //   <div data-backlex-form="frm_…"></div>
+  //   <script src="https://…/embed/form.js" async></script>
+  // It mounts a sandboxed iframe per marker and auto-sizes it from the form
+  // page's height postMessages, so embeds never need a fixed height. Served
+  // from the worker (before the /embed/* shell route) so every runtime has it.
+  app.get("/embed/form.js", (c) => {
+    const js = `(function(){
+var S=document.currentScript,O=new URL(S.src).origin;
+function mount(el){if(el.__bx)return;el.__bx=1;
+var t=el.getAttribute("data-backlex-form"),l=el.getAttribute("data-lang");
+var f=document.createElement("iframe");
+f.src=O+"/embed/f/"+encodeURIComponent(t)+(l?"?lang="+encodeURIComponent(l):"");
+f.style.cssText="width:100%;border:0;display:block;transition:height .15s ease";
+f.height="480";f.setAttribute("title","Form");f.setAttribute("loading","lazy");
+el.appendChild(f);
+window.addEventListener("message",function(e){
+if(e.origin!==O||!e.data||e.data.type!=="backlex-form-height")return;
+if(e.source===f.contentWindow)f.style.height=e.data.height+"px";});}
+function scan(){document.querySelectorAll("[data-backlex-form]").forEach(mount);}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",scan);else scan();
+})();`;
+    return c.body(js, 200, {
+      "content-type": "application/javascript; charset=utf-8",
+      "cache-control": "public, max-age=3600",
+    });
+  });
+
   if (env.ASSETS) {
     // `/f/*` (standalone public form page) shares the worker-served-shell path
     // with `/embed/*`: both are in `run_worker_first` so the header middleware

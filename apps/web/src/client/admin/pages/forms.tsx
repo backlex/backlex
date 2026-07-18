@@ -86,11 +86,13 @@ const relTime = (v: unknown): string => {
 
 /* The canvas is "what visitors see": it renders with the FORM's theme, accent
    and font (same palettes as the public page), not the admin theme. */
+// Mirrors the public page's DARK palette (and the admin card surface) so the
+// canvas shows exactly the card visitors get.
 const CANVAS_DARK = {
-  bg: "#12101F",
+  bg: "#0E0C18",
   text: "#ECEAF7",
-  muted: "#8983A6",
-  border: "rgba(255,255,255,0.1)",
+  muted: "#A6A1C2",
+  border: "rgba(255,255,255,0.09)",
   inputBg: "rgba(255,255,255,0.03)",
 };
 const CANVAS_LIGHT = {
@@ -101,6 +103,19 @@ const CANVAS_LIGHT = {
   inputBg: "rgba(20,15,45,0.03)",
 };
 type CanvasPalette = typeof CANVAS_DARK;
+
+
+/** Readable text color on the accent: relative luminance picks dark ink on
+ *  light accents, white on dark ones — no manual contrast knob needed. */
+const accentInk = (hex: string): string => {
+  const n = hex.replace("#", "");
+  const ch = (i: number) => {
+    const c = parseInt(n.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const L = 0.2126 * ch(0) + 0.7152 * ch(2) + 0.0722 * ch(4);
+  return L > 0.45 ? "#17141F" : "#FFFFFF";
+};
 
 const canvasFont = (font: "sans" | "lexend" | "mono" | "system" | undefined): string =>
   font === "lexend"
@@ -819,7 +834,9 @@ export function FormsPage({
     try {
       const r = await formsApi.rotateToken(form.id);
       tokenCache.set(form.id, { url: r.data.url, embedUrl: r.data.embedUrl });
-      setReveal({ url: r.data.url, embedUrl: r.data.embedUrl });
+      // No modal: the Share tab's amber reveal state shows the new link inline.
+      setTab("share");
+      bumpTokenCache((x) => x + 1);
     } catch (e) {
       pushToast((e as Error).message);
     }
@@ -965,7 +982,7 @@ export function FormsPage({
               <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
                 <Trans>canvas · what visitors see</Trans>
               </span>
-              <div className="ml-auto flex items-center gap-0.5 rounded-full border border-border bg-card p-0.5">
+              <div className="ml-auto flex items-center gap-0.5 rounded-full border border-white/10 bg-white/5 p-0.5">
                 {languages.map((l) => (
                   <button
                     key={l}
@@ -973,7 +990,7 @@ export function FormsPage({
                     onClick={() => setLocale(l)}
                     className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] uppercase ${
                       locale === l
-                        ? "bg-primary/20 text-primary ring-1 ring-inset ring-primary/40"
+                        ? "bg-primary/20 text-foreground ring-1 ring-inset ring-primary/40"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -999,7 +1016,7 @@ export function FormsPage({
               </div>
             )}
             <div
-              className="rounded-[20px] border p-6 shadow-[0_24px_70px_rgba(0,0,0,0.35)] transition-colors sm:p-8"
+              className="rounded-[20px] border p-7 shadow-[0_24px_70px_rgba(0,0,0,0.35)] transition-colors sm:p-[52px] sm:pb-10"
               style={{ background: cp.bg, borderColor: cp.border, color: cp.text, fontFamily: family }}
             >
               <input
@@ -1132,8 +1149,8 @@ export function FormsPage({
                         {kind === "step" ? (
                           <div className="flex items-center gap-3 py-1">
                             <span
-                              className="rounded-[10px] px-4 py-2 text-[12.5px] font-bold text-white opacity-90"
-                              style={{ background: accent }}
+                              className="rounded-[10px] px-4 py-2 text-[12.5px] font-bold opacity-90"
+                              style={{ background: accent, color: accentInk(accent) }}
                             >
                               <Trans>Next →</Trans>
                             </span>
@@ -1216,8 +1233,8 @@ export function FormsPage({
                   }
                 >
                   <span
-                    className="inline-block rounded-[10px] px-5 py-2.5 text-[13px] font-bold text-white opacity-90"
-                    style={{ background: accent }}
+                    className="inline-block rounded-[10px] px-5 py-2.5 text-[13px] font-bold opacity-90"
+                    style={{ background: accent, color: accentInk(accent) }}
                   >
                     {(locale !== base ? settings.i18n?.[locale]?.submitLabel : undefined) ||
                       settings.submitLabel ||
@@ -1282,6 +1299,7 @@ export function FormsPage({
         <ShareTab
           form={form}
           urls={tokenCache.get(form.id) ?? null}
+          languages={languages}
           onRotate={() => setConfirm("rotate")}
           onHideLink={() => {
             tokenCache.delete(form.id);
@@ -1545,19 +1563,26 @@ function DesignPanel({
                 center dot, backed by an invisible native color input (mock). */}
             <label
               title={t`Custom color`}
-              className="relative grid size-[26px] cursor-pointer place-items-center overflow-hidden rounded-full border-2"
+              className="relative grid size-[26px] cursor-pointer place-items-center overflow-hidden rounded-full"
               style={{
-                background: "conic-gradient(#ff6b6b,#ffc46e,#7CE6C0,#6CB8FF,#8B6CFF,#ff6b6b)",
-                borderColor: ACCENTS.some((c) => c.toLowerCase() === accent.toLowerCase())
-                  ? "transparent"
-                  : "rgba(255,255,255,0.9)",
                 boxShadow: ACCENTS.some((c) => c.toLowerCase() === accent.toLowerCase())
                   ? "none"
-                  : `0 0 10px ${accent}`,
+                  : `0 0 0 2px rgba(255,255,255,0.9), 0 0 10px ${accent}`,
               }}
             >
+              {/* blurred, over-scaled sweep hides the conic seam → seamless ring */}
               <span
-                className="size-3 rounded-full border-[1.5px] border-white/80"
+                aria-hidden
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background:
+                    "conic-gradient(from 210deg, #ff6b6b, #ffc46e, #7CE6C0, #6CB8FF, #8B6CFF, #E85CA8, #ff6b6b)",
+                  filter: "blur(3px)",
+                  transform: "scale(1.45)",
+                }}
+              />
+              <span
+                className="relative size-3 rounded-full border-[1.5px] border-white/80"
                 style={{ background: accent }}
               />
               <input
@@ -1921,6 +1946,7 @@ function EndingPanel({
 function ShareTab({
   form,
   urls,
+  languages,
   onRotate,
   onHideLink,
   onToggleActive,
@@ -1929,6 +1955,7 @@ function ShareTab({
 }: {
   form: ApiForm;
   urls: { url: string; embedUrl: string } | null;
+  languages: string[];
   onRotate: () => void;
   onHideLink: () => void;
   onToggleActive: (v: boolean) => void;
@@ -1937,9 +1964,17 @@ function ShareTab({
 }) {
   const { t } = useLingui();
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const absolute = urls ? `${origin}${urls.url}` : null;
+  // Share-time language pin: null = auto (visitor's browser language);
+  // a code appends ?lang=xx to both the link and the embed src.
+  const [shareLang, setShareLang] = useState<string | null>(null);
+  const [embedMode, setEmbedMode] = useState<"script" | "iframe">("script");
+  const langQs = shareLang ? `?lang=${encodeURIComponent(shareLang)}` : "";
+  const absolute = urls ? `${origin}${urls.url}${langQs}` : null;
+  const token = urls?.url.split("/f/")[1] ?? null;
   const iframe = urls
-    ? `<iframe src="${origin}${urls.embedUrl}" width="100%" height="620" frameborder="0"></iframe>`
+    ? embedMode === "script"
+      ? `<div data-backlex-form="${token}"${shareLang ? ` data-lang="${shareLang}"` : ""}></div>\n<script src="${origin}/embed/form.js" async></script>`
+      : `<iframe src="${origin}${urls.embedUrl}${langQs}" width="100%" height="620" frameborder="0"></iframe>`
     : null;
   const copy = async (text: string) => {
     try {
@@ -1966,6 +2001,43 @@ function ShareTab({
             credential. It's stored hashed, so it can only be shown{" "}
             <span className="text-amber-400">once</span>.</Trans>
           </p>
+          {absolute && languages.length > 1 && (
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-muted-foreground">
+                <Trans>language</Trans>
+              </span>
+              <div className="flex items-center gap-0.5 rounded-full border border-white/10 bg-white/5 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setShareLang(null)}
+                  className={`rounded-full px-2 py-0.5 font-mono text-[10px] uppercase ${
+                    shareLang === null
+                      ? "bg-primary/20 text-foreground ring-1 ring-inset ring-primary/40"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Trans>auto</Trans>
+                </button>
+                {languages.map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => setShareLang(l)}
+                    className={`rounded-full px-2 py-0.5 font-mono text-[10px] uppercase ${
+                      shareLang === l
+                        ? "bg-primary/20 text-foreground ring-1 ring-inset ring-primary/40"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[10.5px] text-muted-foreground">
+                {shareLang === null ? <Trans>visitor's browser language</Trans> : <Trans>link pins this language</Trans>}
+              </span>
+            </div>
+          )}
           {absolute ? (
             <>
               <div className="flex items-center gap-2 rounded-control border border-amber-400/30 bg-amber-400/5 px-3 py-2 font-mono text-[10.5px] text-amber-400">
@@ -2030,8 +2102,38 @@ function ShareTab({
             </span>
           }
         >
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5 rounded-full border border-white/10 bg-white/5 p-0.5">
+              {(
+                [
+                  { value: "script", label: t`Script` },
+                  { value: "iframe", label: "iframe" },
+                ] as const
+              ).map((o) => (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => setEmbedMode(o.value)}
+                  className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] uppercase ${
+                    embedMode === o.value
+                      ? "bg-primary/20 text-foreground ring-1 ring-inset ring-primary/40"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <span className="text-[10.5px] text-muted-foreground">
+              {embedMode === "script" ? (
+                <Trans>auto-sizes to the form's height — recommended</Trans>
+              ) : (
+                <Trans>fixed height, zero JavaScript</Trans>
+              )}
+            </span>
+          </div>
           <p className="text-[11.5px] text-muted-foreground">
-            <Trans>Drop the iframe into any site — the form keeps its own theme.</Trans>
+            <Trans>Drop it into any site — the form keeps its own theme.</Trans>
           </p>
           {iframe ? (
             <ScrollArea className="w-full rounded-control border border-border bg-background/60">
@@ -2300,8 +2402,35 @@ function SubmissionsTab({
   const [filter, setFilter] = useState<"all" | "draft" | "published">("all");
   const [total, setTotal] = useState<number | null>(null);
   const [selRow, setSelRow] = useState<Record<string, unknown> | null>(null);
+  const [counts, setCounts] = useState<{ all: number; draft: number; published: number } | null>(null);
 
   const cols = fieldBlocks.slice(0, 4).map((b) => b.name!).filter(Boolean);
+
+  // Per-status counts for the filter strip (versioned collections only).
+  useEffect(() => {
+    if (!versioned) {
+      setCounts(null);
+      return;
+    }
+    let cancelled = false;
+    const count = (status?: string) =>
+      itemsApi
+        .list(form.collection, {
+          limit: 1,
+          meta: "filter_count",
+          ...(status ? { status } : {}),
+        })
+        .then((r) => r.meta?.filter_count ?? 0)
+        .catch(() => 0);
+    void Promise.all([count(), count("draft"), count("published")]).then(
+      ([all, draft, published]) => {
+        if (!cancelled) setCounts({ all, draft, published });
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [form.collection, versioned, rows?.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2346,25 +2475,42 @@ function SubmissionsTab({
 
       <div className="flex flex-wrap items-center gap-2">
         {versioned && (
-          <Segmented
-            value={filter}
-            onChange={setFilter}
-            options={[
-              { value: "all", label: t`All` },
-              { value: "draft", label: t`Drafts` },
-              { value: "published", label: t`Published` },
-            ]}
-          />
+          <div className="flex items-center gap-0.5 rounded-[12px] border border-white/10 bg-white/5 p-[3px]">
+            {(
+              [
+                { value: "all", label: t`All`, n: counts?.all },
+                { value: "draft", label: t`Drafts`, n: counts?.draft },
+                { value: "published", label: t`Published`, n: counts?.published },
+              ] as const
+            ).map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => setFilter(o.value)}
+                className={`flex items-center gap-1.5 rounded-[9px] px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
+                  filter === o.value
+                    ? "bg-primary/20 text-foreground ring-1 ring-inset ring-primary/40"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {o.label}
+                {o.n !== undefined && (
+                  <span className={`font-mono text-[10.5px] tabular-nums ${filter === o.value ? "text-primary" : "text-muted-foreground/70"}`}>
+                    {o.n}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         )}
-        <div className="ml-auto">
-          <Button
-            variant="ghost"
-            icon={I.Download}
-            onClick={() => window.open(`/api/items/${form.collection}/export?format=csv`, "_blank")}
-          >
-            <Trans>Export CSV</Trans>
-          </Button>
-        </div>
+        <button
+          type="button"
+          onClick={() => window.open(`/api/items/${form.collection}/export?format=csv`, "_blank")}
+          className="ml-auto flex items-center gap-2 rounded-[12px] border border-white/10 bg-white/[0.03] px-4 py-2 text-[12.5px] font-semibold text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/15 hover:text-foreground"
+        >
+          <I.Download size={14} />
+          <Trans>Export CSV</Trans>
+        </button>
       </div>
 
       <Card className="gap-0 py-0">

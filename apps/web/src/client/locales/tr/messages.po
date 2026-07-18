@@ -1653,6 +1653,7 @@ msgstr "Kimlik doğrulama başarılı"
 msgid "Author"
 msgstr "Yazar"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "auto"
 msgstr "otomatik"
@@ -1693,6 +1694,10 @@ msgstr "otomatik kapatıldı"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "auto-run reads"
 msgstr "okumaları otomatik çalıştır"
+
+#: src/client/admin/pages/forms.tsx
+msgid "auto-sizes to the form's height — recommended"
+msgstr "formun yüksekliğine göre kendini boyutlandırır — önerilen"
 
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Auto-snapshot"
@@ -3757,8 +3762,12 @@ msgid "Drop in a workspace API key (<0>pak_…</0>) before running."
 msgstr "Çalıştırmadan önce bir çalışma alanı API anahtarı (<0>pak_…</0>) girin."
 
 #: src/client/admin/pages/forms.tsx
-msgid "Drop the iframe into any site — the form keeps its own theme."
-msgstr "iframe'i herhangi bir siteye ekleyin — form kendi temasını korur."
+msgid "Drop it into any site — the form keeps its own theme."
+msgstr "Herhangi bir siteye ekleyin — form kendi temasını korur."
+
+#: src/client/admin/pages/forms.tsx
+#~ msgid "Drop the iframe into any site — the form keeps its own theme."
+#~ msgstr "iframe'i herhangi bir siteye ekleyin — form kendi temasını korur."
 
 #: src/client/admin/collection-settings.tsx
 msgid "Drops the physical table and all rows. Permissions and revisions tied to the slug are removed too. This is irreversible."
@@ -4672,6 +4681,10 @@ msgstr "Düzeltme panoya kopyalandı."
 #: src/client/admin/item-editor.tsx
 msgid "Fix the highlighted fields before saving."
 msgstr "Kaydetmeden önce işaretli alanları düzeltin."
+
+#: src/client/admin/pages/forms.tsx
+msgid "fixed height, zero JavaScript"
+msgstr "sabit yükseklik, sıfır JavaScript"
 
 #. placeholder {0}: fkColumnConflicts.map((c) => c.column).join(", ")
 #: src/client/admin/adopt-wizard.tsx
@@ -5764,6 +5777,10 @@ msgstr "Öğe formunda gösterilen etiket. Ayarlanmazsa sütun adına döner."
 msgid "Lands in {pending}"
 msgstr "{pending} içine düşer"
 
+#: src/client/admin/pages/forms.tsx
+msgid "language"
+msgstr "dil"
+
 #: src/client/admin/account-page.tsx
 msgid "Language"
 msgstr "Dil"
@@ -6023,6 +6040,10 @@ msgstr "Doğrulanmış e-postayla bağla"
 #: src/client/admin/parity/insights.tsx
 msgid "Link copied."
 msgstr "Bağlantı kopyalandı."
+
+#: src/client/admin/pages/forms.tsx
+msgid "link pins this language"
+msgstr "bağlantı bu dili sabitler"
 
 #: src/client/admin/account-page.tsx
 msgid "Linked — you can sign in with this provider."
@@ -9938,6 +9959,10 @@ msgstr "Role göre kapsama al"
 msgid "scoping & lifecycle"
 msgstr "kapsam ve yaşam döngüsü"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Script"
+msgstr "Script"
+
 #: src/client/admin/pages/search-playground.tsx
 #: src/client/admin/ui.tsx
 msgid "Search"
@@ -12463,6 +12488,10 @@ msgstr "Profili görüntüle"
 #: src/client/admin/items.tsx
 msgid "Views"
 msgstr "Görünümler"
+
+#: src/client/admin/pages/forms.tsx
+msgid "visitor's browser language"
+msgstr "ziyaretçinin tarayıcı dili"
 
 #. placeholder {0}: languages[1] ?? "tr"
 #: src/client/admin/pages/forms.tsx

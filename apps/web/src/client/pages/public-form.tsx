@@ -640,34 +640,78 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
           <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 18, marginTop: 22 }}>
             {(current?.blocks ?? []).map((b) =>
               b.consent ? (
-                <div key={b.name} style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
-                  <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: 13.5, lineHeight: 1.5 }}>
-                    <input
-                      type="checkbox"
-                      checked={values[b.name!] === true}
-                      onChange={(e) => b.name && setValue(b.name, e.target.checked)}
-                      style={{ width: 16, height: 16, marginTop: 2, accentColor: accent, flexShrink: 0 }}
-                    />
-                    <span>
-                      {b.label === b.name ? humanizeLabel(b.name ?? "") : b.label}
-                      <span style={{ color: accent }}> *</span>
+                <label
+                  key={b.name}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                    cursor: "pointer",
+                    border: `1px solid ${accent}52`,
+                    background: `${accent}0f`,
+                    borderRadius: 10,
+                    padding: "11px 13px",
+                    minWidth: 0,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={values[b.name!] === true}
+                    onChange={(e) => b.name && setValue(b.name, e.target.checked)}
+                    style={{
+                      width: 19,
+                      height: 19,
+                      marginTop: 1,
+                      accentColor: accent,
+                      flexShrink: 0,
+                      borderRadius: 6,
+                    }}
+                  />
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: "flex", alignItems: "baseline", gap: 5, fontSize: 13.5, lineHeight: 1.5 }}>
+                      <span style={{ minWidth: 0, flex: 1 }}>
+                        {b.label === b.name ? humanizeLabel(b.name ?? "") : b.label}
+                      </span>
+                      <span style={{ color: accent, fontWeight: 700 }}>*</span>
+                    </span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5, fontSize: 11, color: p.muted }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 22s8-3 8-10V5l-8-3-8 3v7c0 7 8 10 8 10z" />
+                      </svg>
+                      <Trans>must be accepted to submit</Trans>
                       {b.policyUrl && (
                         <>
-                          {" "}
+                          <span>·</span>
                           <a
                             href={b.policyUrl}
                             target="_blank"
                             rel="noreferrer noopener"
                             onClick={(e) => e.stopPropagation()}
-                            style={{ color: accent, textDecoration: "underline", textUnderlineOffset: 3 }}
+                            style={{ color: accent, textDecoration: "underline", textUnderlineOffset: 2 }}
                           >
-                            <Trans>Read the full text ↗</Trans>
+                            <Trans>read the full text</Trans>
                           </a>
                         </>
                       )}
                     </span>
+                    {b.help && <span style={{ display: "block", fontSize: 11.5, color: p.faint, marginTop: 4 }}>{b.help}</span>}
+                  </span>
+                </label>
+              ) : b.type === "boolean" ? (
+                <div key={b.name} style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13.5, lineHeight: 1.5 }}>
+                    <input
+                      type="checkbox"
+                      checked={values[b.name!] === true}
+                      onChange={(e) => b.name && setValue(b.name, e.target.checked)}
+                      style={{ width: 19, height: 19, accentColor: accent, flexShrink: 0 }}
+                    />
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      {b.label === b.name ? humanizeLabel(b.name ?? "") : b.label}
+                    </span>
+                    {b.required && <span style={{ color: accent, fontWeight: 700 }}>*</span>}
                   </label>
-                  {b.help && <p style={{ fontSize: 11.5, color: p.faint, margin: 0, paddingLeft: 26 }}>{b.help}</p>}
+                  {b.help && <p style={{ fontSize: 11.5, color: p.faint, margin: 0, paddingLeft: 29 }}>{b.help}</p>}
                 </div>
               ) : (
               <div key={b.name} style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>

@@ -2645,6 +2645,10 @@ msgstr "Bağlantı URL'i"
 msgid "Consent checkbox"
 msgstr "Onay kutusu"
 
+#: src/client/admin/pages/forms.tsx
+msgid "consent must be accepted — always required"
+msgstr "onay kabul edilmek zorunda — her zaman zorunlu"
+
 #: src/client/admin/pages/overview.tsx
 msgid "console (dev)"
 msgstr "konsol (geliştirme)"
@@ -6541,8 +6545,13 @@ msgid "Must be a JSON object."
 msgstr "Bir JSON nesnesi olmalıdır."
 
 #: src/client/admin/pages/forms.tsx
-msgid "must be accepted"
-msgstr "kabul edilmesi zorunlu"
+#~ msgid "must be accepted"
+#~ msgstr "kabul edilmesi zorunlu"
+
+#: src/client/admin/pages/forms.tsx
+#: src/client/pages/public-form.tsx
+msgid "must be accepted to submit"
+msgstr "göndermek için kabul edilmeli"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Must be an absolute URL (https://…)"
@@ -8763,9 +8772,14 @@ msgstr "Oku"
 msgid "Read & write"
 msgstr "Okuma ve yazma"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/pages/public-form.tsx
-msgid "Read the full text ↗"
-msgstr "Metnin tamamını oku ↗"
+msgid "read the full text"
+msgstr "metnin tamamını oku"
+
+#: src/client/pages/public-form.tsx
+#~ msgid "Read the full text ↗"
+#~ msgstr "Metnin tamamını oku ↗"
 
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/parity/database.tsx
@@ -12820,7 +12834,6 @@ msgstr "xxxxx-xxxxx"
 msgid "yes"
 msgstr "evet"
 
-#: src/client/admin/pages/forms.tsx
 #: src/client/pages/public-form.tsx
 msgid "Yes"
 msgstr "Evet"

@@ -1954,6 +1954,62 @@ export const tracesApi = {
     ),
 };
 
+// ── Usage metering (#12) ─────────────────────────────────────────────────────
+
+export interface ApiUsageLimits {
+  mode: "off" | "soft" | "hard";
+  maxRequestsPerMonth: number | null;
+  maxStorageBytes: number | null;
+  maxDbRows: number | null;
+}
+
+export interface ApiUsageOverview {
+  month: string;
+  days: number;
+  series: { day: string; requests: number; errors: number }[];
+  monthTotals: { requests: number; errors: number };
+  byKey: {
+    /** Empty id = the session / no-API-key traffic bucket. */
+    id: string;
+    name: string;
+    prefix: string | null;
+    revoked: boolean;
+    rateLimitPerMinute: number | null;
+    monthlyQuota: number | null;
+    monthRequests: number;
+    monthErrors: number;
+  }[];
+  gauges: {
+    storageBytes: number | null;
+    dbRows: number | null;
+    measuredAt: number | null;
+  };
+  limits: ApiUsageLimits;
+  settingsLimits: ApiUsageLimits;
+  envPinned: ("mode" | "maxRequestsPerMonth" | "maxStorageBytes" | "maxDbRows")[];
+  over: ("requests" | "storage" | "rows")[];
+}
+
+export const usageApi = {
+  overview: (days?: number) =>
+    api<Envelope<ApiUsageOverview>>(
+      `/api/admin/usage/overview${days ? `?days=${days}` : ""}`,
+    ),
+  setLimits: (limits: ApiUsageLimits) =>
+    api<{ ok: boolean }>(`/api/admin/usage/limits`, {
+      method: "PUT",
+      body: JSON.stringify(limits),
+    }),
+  setKeyLimits: (
+    id: string,
+    patch: { rateLimitPerMinute?: number | null; monthlyQuota?: number | null },
+  ) =>
+    api<{ ok: boolean }>(`/api/api-keys/${encodeURIComponent(id)}/limits`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+};
+
 // ── External-DB migration (docs/migrating-in.md) ─────────────────────────────
 
 export interface ApiMigrateSource {

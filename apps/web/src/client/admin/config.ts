@@ -156,6 +156,7 @@ export const NAV_AUTOMATION: NavItem[] = [
 export const NAV_OBSERVABILITY: NavItem[] = [
   { id: "logs", icon: "ScrollText" },
   { id: "traces", icon: "Activity" },
+  { id: "usage", icon: "Gauge" },
   { id: "advisor", icon: "ShieldAlert" },
   { id: "insights", icon: "BarChart" },
   { id: "revisions", icon: "History" },

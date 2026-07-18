@@ -50,6 +50,7 @@ import {
   templatesApi,
   tenantsApi,
   tracesApi,
+  usageApi,
 } from "./api";
 import type { Post } from "./config";
 import { type ItemsQueryParams, reconcileBulkUpdate } from "./items-query-params";
@@ -106,6 +107,8 @@ export const queryKeys = {
   traces: (filters: TracesFilters) => ["traces", filters] as const,
   /** One trace's spans (waterfall detail). */
   trace: (traceId: string) => ["trace", traceId] as const,
+  /** Usage-metering overview (admin Usage page). Keyed by the series window. */
+  usage: (days: number) => ["usage", days] as const,
 };
 
 /** Server-side filters that key the traces query. */
@@ -441,6 +444,14 @@ export function useTrace(traceId: string | null) {
     queryKey: queryKeys.trace(traceId ?? ""),
     queryFn: () => tracesApi.get(traceId as string),
     enabled: !!traceId,
+  });
+}
+
+/** Usage-metering overview for the admin Usage page. */
+export function useUsageOverview(days: number) {
+  return useQuery({
+    queryKey: queryKeys.usage(days),
+    queryFn: () => usageApi.overview(days),
   });
 }
 

@@ -111,6 +111,7 @@ const IntegrationsPage = lazy(() => import("./pages/integrations").then((m) => (
 const RealtimePage = lazy(() => import("./pages/realtime").then((m) => ({ default: m.RealtimePage })));
 const LogsPage = lazy(() => import("./pages/logs").then((m) => ({ default: m.LogsPage })));
 const TracesPage = lazy(() => import("./pages/traces").then((m) => ({ default: m.TracesPage })));
+const UsagePage = lazy(() => import("./pages/usage").then((m) => ({ default: m.UsagePage })));
 const AdvisorPage = lazy(() => import("./pages/advisor").then((m) => ({ default: m.AdvisorPage })));
 const SchemaGraphPage = lazy(() => import("./pages/schema-graph").then((m) => ({ default: m.SchemaGraphPage })));
 const SearchPlaygroundPage = lazy(() => import("./pages/search-playground").then((m) => ({ default: m.SearchPlaygroundPage })));
@@ -1027,6 +1028,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "realtime" && <RealtimePage events={events} active={realtimeChannel} onActiveChange={setRealtimeChannel} pushToast={pushToast} />}
             {activeNav === "logs" && <LogsPage pushToast={pushToast} />}
             {activeNav === "traces" && <TracesPage pushToast={pushToast} />}
+            {activeNav === "usage" && <UsagePage pushToast={pushToast} />}
             {activeNav === "advisor" && <AdvisorPage pushToast={pushToast} />}
             {activeNav === "schema-graph" && <SchemaGraphPage pushToast={pushToast} />}
             {activeNav === "search" && <SearchPlaygroundPage pushToast={pushToast} />}

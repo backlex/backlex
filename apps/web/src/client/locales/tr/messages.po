@@ -545,6 +545,10 @@ msgstr "{clean} zaten var"
 msgid "{count} selected"
 msgstr "{count} seçildi"
 
+#: src/client/admin/pages/usage.tsx
+msgid "{d} days"
+msgstr "{d} gün"
+
 #. placeholder {0}: tablesState.length
 #: src/client/admin/pages/database-import.tsx
 msgid "{doneTables}/{0} tables · {copied} rows"
@@ -724,6 +728,10 @@ msgstr "4:5 dikey"
 #: src/client/admin/pages/functions.tsx
 msgid "5-field cron (minute hour day month weekday)."
 msgstr "5 alanlı cron (dakika saat gün ay haftanın günü)."
+
+#: src/client/admin/pages/usage.tsx
+msgid "5xx responses"
+msgstr "5xx yanıtlar"
 
 #: src/client/pages/api-keys.tsx
 msgid "7 days"
@@ -2020,6 +2028,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/template-onboarding.tsx
+#: src/client/admin/pages/usage.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -2144,6 +2153,10 @@ msgstr "Kanallar yenilendi."
 #: src/client/pages/sign-up.tsx
 msgid "Check your inbox"
 msgstr "Gelen kutunuzu kontrol edin"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Checked against the half-hourly row gauge — approximate by design."
+msgstr "Yarım saatlik satır göstergesine göre denetlenir — tasarım gereği yaklaşıktır."
 
 #: src/client/pages/invite.tsx
 msgid "Checking your invite…"
@@ -2653,6 +2666,10 @@ msgstr "onay kabul edilmek zorunda — her zaman zorunlu"
 msgid "console (dev)"
 msgstr "konsol (geliştirme)"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Consumer"
+msgstr "Tüketici"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Contact us"
 msgstr "Bize ulaşın"
@@ -2858,13 +2875,25 @@ msgstr "Şablon kataloğu yüklenemedi."
 msgid "Couldn't load traces"
 msgstr "İzler yüklenemedi"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Couldn't load usage"
+msgstr "Kullanım yüklenemedi"
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Couldn't reset layout."
 msgstr "Düzen sıfırlanamadı."
 
+#: src/client/admin/pages/usage.tsx
+msgid "Couldn't save key limits."
+msgstr "Anahtar limitleri kaydedilemedi."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Couldn't save layout."
 msgstr "Düzen kaydedilemedi."
+
+#: src/client/admin/pages/usage.tsx
+msgid "Couldn't save limits."
+msgstr "Limitler kaydedilemedi."
 
 #: src/client/admin/parity/insights.tsx
 msgid "count / sum / average over a collection — no SQL"
@@ -3918,6 +3947,10 @@ msgstr "Akışı düzenle"
 #~ msgid "Edit form"
 #~ msgstr "Formu düzenle"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Edit key limits"
+msgstr "Anahtar limitlerini düzenle"
+
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Edit layout"
@@ -4163,9 +4196,17 @@ msgstr "Uç nokta URL'si"
 msgid "Endpoints"
 msgstr "Uç noktalar"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Enforced even where the global API limiter is off."
+msgstr "Global API sınırlayıcı kapalı olsa bile uygulanır."
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "enforced on save (422)"
 msgstr "kayıtta uygulanır (422)"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Enforcement"
+msgstr "Uygulama"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Enqueue"
@@ -4298,9 +4339,15 @@ msgstr "hata: {0}"
 msgid "errors"
 msgstr "hatalar"
 
+#: src/client/admin/pages/usage.tsx
 #: src/client/pages/graphql.tsx
 msgid "Errors"
 msgstr "Hatalar"
+
+#. placeholder {0}: overview?.month ?? ""
+#: src/client/admin/pages/usage.tsx
+msgid "Errors · {0}"
+msgstr "Hatalar · {0}"
 
 #: src/client/admin/pages/traces.tsx
 msgid "Errors only"
@@ -4964,6 +5011,11 @@ msgstr "FUNCTIONS_EXEC_URL ayarlandı"
 msgid "Gallery"
 msgstr "Galeri"
 
+#. placeholder {0}: new Date(overview.gauges.measuredAt).toLocaleString()
+#: src/client/admin/pages/usage.tsx
+msgid "gauges measured {0}"
+msgstr "göstergeler {0} tarihinde ölçüldü"
+
 #: src/client/admin/item-form.tsx
 #: src/client/admin/pages/settings/index.tsx
 msgid "General"
@@ -5083,6 +5135,10 @@ msgstr "Koruyucular güncellendi"
 #: src/client/admin/edit-field.tsx
 msgid "Half width"
 msgstr "Yarım genişlik"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Hard"
+msgstr "Katı"
 
 #: src/client/admin/parity/database.tsx
 msgid "Hash"
@@ -5729,6 +5785,10 @@ msgstr "\"{key}\" anahtarı eklendi."
 msgid "Key is required."
 msgstr "Anahtar gerekli."
 
+#: src/client/admin/pages/usage.tsx
+msgid "Key limits saved."
+msgstr "Anahtar limitleri kaydedildi."
+
 #: src/client/admin/parity/translations.tsx
 msgid "Key must be 120 characters or fewer."
 msgstr "Anahtar en fazla 120 karakter olmalıdır."
@@ -6033,6 +6093,23 @@ msgstr "Açık"
 #: src/client/admin/parity/insights.tsx
 msgid "Limit"
 msgstr "Sınır"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Limits"
+msgstr "Limitler"
+
+#: src/client/admin/pages/usage.tsx
+msgid "limits are not evaluated"
+msgstr "limitler değerlendirilmez"
+
+#. placeholder {0}: keyRow?.name
+#: src/client/admin/pages/usage.tsx
+msgid "Limits for {0}"
+msgstr "{0} limitleri"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Limits must be positive numbers (or empty for unlimited)."
+msgstr "Limitler pozitif sayı olmalı (sınırsız için boş bırakın)."
 
 #: src/client/admin/account-page.tsx
 msgid "Link"
@@ -6342,6 +6419,14 @@ msgstr "Maksimum deneme"
 msgid "Max length"
 msgstr "Maks uzunluk"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Max requests / month"
+msgstr "Aylık maksimum istek"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Max rows"
+msgstr "Maksimum satır"
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "Max selected"
 msgstr "Maks seçili"
@@ -6349,6 +6434,10 @@ msgstr "Maks seçili"
 #: src/client/admin/pages/agents.tsx
 msgid "Max steps"
 msgstr "Maksimum adım"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Max storage (bytes)"
+msgstr "Maksimum depolama (bayt)"
 
 #: src/client/admin/item-views.tsx
 msgid "May"
@@ -6432,6 +6521,10 @@ msgstr "Metadata URL'si"
 msgid "Metadata XML"
 msgstr "Metadata XML"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Metered API traffic per workspace and API key, storage and row footprints, and the plan limits enforced against them."
+msgstr "Çalışma alanı ve API anahtarı başına ölçülen API trafiği, depolama ve satır ayak izleri ile bunlara uygulanan plan limitleri."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Method"
 msgstr "Yöntem"
@@ -6489,6 +6582,10 @@ msgstr "Model"
 #: src/client/admin/item-views.tsx
 msgid "Mon"
 msgstr "Pzt"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Monthly request quota"
+msgstr "Aylık istek kotası"
 
 #: src/client/admin/pages/flows.tsx
 #: src/client/admin/pages/forms.tsx
@@ -7189,6 +7286,10 @@ msgstr "JSON içeriği tanımlanmamış."
 msgid "No language found."
 msgstr "Dil bulunamadı."
 
+#: src/client/admin/pages/usage.tsx
+msgid "no limit"
+msgstr "limit yok"
+
 #: src/client/admin/pages/ask-ai/shared.tsx
 msgid "No live keys — create one on the <0>API Keys</0> page first."
 msgstr "Canlı anahtar yok — önce <0>API Anahtarları</0> sayfasından bir tane oluşturun."
@@ -7222,6 +7323,10 @@ msgstr "\"{q}\" ile eşleşen üye yok."
 #: src/client/admin/members-panel.tsx
 msgid "No members yet."
 msgstr "Henüz üye yok."
+
+#: src/client/admin/pages/usage.tsx
+msgid "No metered traffic yet"
+msgstr "Henüz ölçülen trafik yok"
 
 #: src/client/admin/parity/database.tsx
 msgid "No migrations applied yet."
@@ -7564,6 +7669,13 @@ msgstr "Gözlemlenebilirlik"
 msgid "October"
 msgstr "Ekim"
 
+#. placeholder {0}: fmtBytes(limits.maxStorageBytes)
+#. placeholder {0}: fmtCount(limits.maxDbRows)
+#. placeholder {0}: fmtCount(limits.maxRequestsPerMonth)
+#: src/client/admin/pages/usage.tsx
+msgid "of {0}"
+msgstr "/ {0}"
+
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/database.tsx
@@ -7572,6 +7684,7 @@ msgstr "kapalı"
 
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/schema-versions.tsx
+#: src/client/admin/pages/usage.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Off"
 msgstr "Kapalı"
@@ -7783,6 +7896,28 @@ msgstr "Koleksiyon olaylarında giden HTTP. Başarısız teslimatlar üstel geri
 #: src/client/admin/pages/webhooks.tsx
 msgid "Outgoing webhook deliveries will show up here once a collection event fires."
 msgstr "Koleksiyon olayı tetiklendiğinde giden webhook teslimatları burada görünecek."
+
+#. placeholder {0}: over.join(", ")
+#: src/client/admin/pages/usage.tsx
+msgid "Over limit: {0}. Hard enforcement is on — over-budget traffic is being rejected."
+msgstr "Limit aşıldı: {0}. Katı uygulama açık — bütçeyi aşan trafik reddediliyor."
+
+#. placeholder {0}: over.join(", ")
+#: src/client/admin/pages/usage.tsx
+msgid "Over limit: {0}. Soft mode — nothing is blocked, but the budget is exhausted."
+msgstr "Limit aşıldı: {0}. Esnek mod — hiçbir şey engellenmiyor ama bütçe tükendi."
+
+#: src/client/admin/pages/usage.tsx
+msgid "over-budget traffic gets 429"
+msgstr "bütçeyi aşan trafik 429 alır"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Over-quota calls get 429 until the month rolls over."
+msgstr "Kota aşan çağrılar ay yenilenene kadar 429 alır."
+
+#: src/client/admin/pages/usage.tsx
+msgid "overage is reported, nothing is blocked"
+msgstr "aşım raporlanır, hiçbir şey engellenmez"
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Overrides the `--primary` token used across the admin and any published surfaces."
@@ -8296,6 +8431,10 @@ msgstr "Üste sabitle"
 msgid "Pinned"
 msgstr "Sabitlenmiş"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Pinned by the platform plan (env) — the pinned value wins."
+msgstr "Platform planı (env) tarafından sabitlendi — sabitlenen değer geçerlidir."
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "Pipe collection events to Slack, your API, or any HTTPS endpoint."
 msgstr "Koleksiyon olaylarını Slack'e, API'nize veya herhangi bir HTTPS uç noktasına iletin."
@@ -8699,6 +8838,10 @@ msgstr "Kuyruk"
 msgid "Queue durable background work. Function jobs run a named function; jobs retry with backoff and dead-letter."
 msgstr "Dayanıklı arka plan işlerini kuyruğa alın. Fonksiyon işleri adlandırılmış bir fonksiyon çalıştırır; işler geri çekilmeyle yeniden denenir ve ölü mektuba düşer."
 
+#: src/client/admin/pages/usage.tsx
+msgid "Quota"
+msgstr "Kota"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Qwen flagship · 1M context · strong multilingual"
 msgstr "Qwen amiral · 1M bağlam · çok dilli güçlü"
@@ -8719,6 +8862,10 @@ msgstr "Hız limiti"
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Rate limit (per email / minute)"
 msgstr "Hız sınırı (e-posta başına / dakika)"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Rate/min"
+msgstr "İstek/dk"
 
 #: src/client/admin/display-template-editor.tsx
 #: src/client/pages/graphql.tsx
@@ -8905,6 +9052,7 @@ msgstr "/api/openapi.json yeniden çek"
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/traces.tsx
+#: src/client/admin/pages/usage.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Refresh"
@@ -9136,8 +9284,26 @@ msgid "Request a new link"
 msgstr "Yeni bir bağlantı iste"
 
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/usage.tsx
 msgid "Requests"
 msgstr "İstekler"
+
+#. placeholder {0}: overview?.month ?? ""
+#: src/client/admin/pages/usage.tsx
+msgid "Requests · {0}"
+msgstr "İstekler · {0}"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Requests are counted per workspace and API key as they arrive. Make an API call, then refresh."
+msgstr "İstekler geldikçe çalışma alanı ve API anahtarı başına sayılır. Bir API çağrısı yapıp yenileyin."
+
+#: src/client/admin/pages/usage.tsx
+msgid "Requests per day"
+msgstr "Günlük istekler"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Requests per minute"
+msgstr "Dakika başına istek"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/forms.tsx
@@ -9444,6 +9610,7 @@ msgstr "Diğerlerini iptal et"
 msgid "Revoke this API key?"
 msgstr "Bu API anahtarı iptal edilsin mi?"
 
+#: src/client/admin/pages/usage.tsx
 #: src/client/pages/api-keys.tsx
 msgid "revoked"
 msgstr "iptal edildi"
@@ -9571,6 +9738,7 @@ msgstr "satır"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/usage.tsx
 msgid "Rows"
 msgstr "Satırlar"
 
@@ -9759,6 +9927,7 @@ msgstr "Cmt"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/pages/usage.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/parity/email-templates.tsx
@@ -9829,6 +9998,10 @@ msgstr "Kanban'ı kaydet"
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Save LDAP config"
 msgstr "LDAP yapılandırmasını kaydet"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Save limits"
+msgstr "Limitleri kaydet"
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Save metadata"
@@ -10369,6 +10542,10 @@ msgstr "oturumlar"
 msgid "Sessions"
 msgstr "Oturumlar"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Sessions & admin"
+msgstr "Oturumlar ve yönetici"
+
 #. placeholder {0}: user.email
 #: src/client/admin/pages/users.tsx
 msgid "Sessions revoked for {0}."
@@ -10504,6 +10681,10 @@ msgstr "Herkese açık bağlantıyı paylaşın — satırlar geldikçe buraya (
 #: src/client/admin/item-collaboration.tsx
 msgid "share this record"
 msgstr "bu kaydı paylaş"
+
+#: src/client/admin/pages/usage.tsx
+msgid "shared global budget"
+msgstr "paylaşılan global bütçe"
 
 #: src/client/pages/shared-record.tsx
 msgid "Shared record"
@@ -10904,6 +11085,10 @@ msgstr "Sosyal giriş"
 msgid "Social sign-in plugin not enabled"
 msgstr "Sosyal giriş eklentisi etkin değil"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Soft"
+msgstr "Esnek"
+
 #: src/client/admin/collections-index.tsx
 msgid "Soft delete"
 msgstr "Geçici silme"
@@ -11065,6 +11250,7 @@ msgid "Steps"
 msgstr "Adımlar"
 
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/usage.tsx
 #: src/client/admin/storage/index.tsx
 #: src/client/admin/ui.tsx
 msgid "Storage"
@@ -11580,6 +11766,10 @@ msgstr "Token tekrar gösterilemez — yeni bir bağlantı üretmek tek yoldur. 
 #: src/client/admin/pages/traces.tsx
 msgid "The traces endpoint returned an error. Refresh to try again."
 msgstr "İzler uç noktası hata döndürdü. Yeniden denemek için yenileyin."
+
+#: src/client/admin/pages/usage.tsx
+msgid "The usage endpoint returned an error. Refresh to try again."
+msgstr "Kullanım uç noktası hata döndürdü. Tekrar denemek için yenileyin."
 
 #: src/client/admin/relational-pickers.tsx
 msgid "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
@@ -12120,6 +12310,10 @@ msgstr "bilinmeyen ajan"
 msgid "Unknown device"
 msgstr "Bilinmeyen cihaz"
 
+#: src/client/admin/pages/usage.tsx
+msgid "unlimited"
+msgstr "sınırsız"
+
 #: src/client/admin/account-page.tsx
 msgid "Unlink"
 msgstr "Bağlantıyı kaldır"
@@ -12128,6 +12322,10 @@ msgstr "Bağlantıyı kaldır"
 #: src/client/admin/account-page.tsx
 msgid "Unlinked {0}."
 msgstr "{0} bağlantısı kaldırıldı."
+
+#: src/client/admin/pages/usage.tsx
+msgid "unmetered"
+msgstr "ölçülmüyor"
 
 #: src/client/admin/account-page.tsx
 msgid "Unnamed passkey"
@@ -12231,6 +12429,10 @@ msgstr "Yükleniyor…"
 msgid "Uploads"
 msgstr "Yüklemeler"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Uploads are rejected once stored bytes reach this. 1 GB = 1073741824."
+msgstr "Depolanan bayt bu değere ulaşınca yüklemeler reddedilir. 1 GB = 1073741824."
+
 #: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/flow-builder.tsx
 msgid "URL"
@@ -12261,6 +12463,19 @@ msgstr "URL zorunludur."
 #: src/client/admin/ui.tsx
 msgid "URL:"
 msgstr "URL:"
+
+#: src/client/admin/pages/usage.tsx
+#: src/client/admin/ui.tsx
+msgid "Usage"
+msgstr "Kullanım"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Usage limits saved."
+msgstr "Kullanım limitleri kaydedildi."
+
+#: src/client/admin/pages/usage.tsx
+msgid "Usage refreshed."
+msgstr "Kullanım yenilendi."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Use \"{label}\" column"
@@ -12776,6 +12991,10 @@ msgstr "çalışma alanı logosu"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Workspace name"
 msgstr "Çalışma alanı adı"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Workspace usage limits"
+msgstr "Çalışma alanı kullanım limitleri"
 
 #: src/client/admin/ui.tsx
 msgid "Workspaces"

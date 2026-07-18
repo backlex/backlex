@@ -42,6 +42,7 @@ import { emailTemplatesRoutes } from "./routes/email-templates";
 import { flowsRoutes } from "./routes/flows";
 import { foldersRoutes } from "./routes/folders";
 import { functionsRoutes } from "./routes/functions";
+import { extensionsRoutes } from "./routes/extensions";
 import { i18nRoutes } from "./routes/i18n";
 import { i18nPublicRoutes } from "./routes/i18n-public";
 import { integrationsRoutes } from "./routes/integrations";
@@ -831,6 +832,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
   app.route("/api/users", usersRoutes);
   app.route("/api/app-users", appUsersRoutes);
   app.route("/api/functions", functionsRoutes);
+  app.route("/api/extensions", extensionsRoutes);
   // Lazy: the GraphQL subsystem (graphql-yoga + graphql + @graphql-tools) is a
   // large slice of the bundle that most requests never touch. Dynamic-import it
   // on first hit so it stays out of the worker's cold-start eval path.

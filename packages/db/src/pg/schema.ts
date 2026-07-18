@@ -423,6 +423,41 @@ export const functions = pgTable(
 );
 
 /**
+ * Installed extensions (#13). One row per installed package; the manifest
+ * column holds the validated `backlex-extension.json` (panels, fieldEditors,
+ * hooks, permissions). UI entry files and server hook code live in
+ * `extension_assets`, keyed by their path inside the package.
+ */
+export const extensions = pgTable(
+  "extensions",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    version: text("version").notNull(),
+    source: text("source").notNull(),
+    npmPackage: text("npm_package"),
+    manifest: jsonb("manifest").$type<unknown>().notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("extensions_tenant_name_idx").on(t.tenantId, t.name)],
+);
+
+export const extensionAssets = pgTable(
+  "extension_assets",
+  {
+    id: text("id").primaryKey(),
+    extensionId: text("extension_id").notNull(),
+    path: text("path").notNull(),
+    content: text("content").notNull(),
+    contentType: text("content_type").notNull(),
+  },
+  (t) => [uniqueIndex("extension_assets_path_idx").on(t.extensionId, t.path)],
+);
+
+/**
  * Persistent task queue for delayed flow continuations. The flow runtime
  * pauses on `delay` ops longer than ~30s by enqueuing the remaining ops
  * and resuming on the next scheduler tick whose clock has caught up.

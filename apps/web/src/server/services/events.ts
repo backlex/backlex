@@ -12,6 +12,7 @@ import { dispatchWebhooks } from "./webhooks";
 import { dispatchIntegrations } from "./integrations";
 import { runFlows } from "./flows";
 import { runEventFunctions } from "./functions";
+import { runExtensionEventHooks } from "./extensions";
 import { redisPublish, redisRealtimeEnabled } from "./realtime-redis";
 
 export interface ItemEventPayload {
@@ -308,6 +309,13 @@ export const publishEvent = async (
         evt,
         // Functions triggered by events run with the system principal — admin
         // can toggle the function active flag for trust gating.
+        { userId: null, email: null, roles: [], tenantId: serverCtx.tenantId ?? null },
+      );
+      void runExtensionEventHooks(
+        serverCtx.fullCtx,
+        serverCtx.tenantId ?? null,
+        channel,
+        evt,
         { userId: null, email: null, roles: [], tenantId: serverCtx.tenantId ?? null },
       );
     }

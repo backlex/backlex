@@ -446,6 +446,80 @@ describe("public forms — blocks, i18n, steps, counters", () => {
   });
 });
 
+describe("public forms — consent blocks", () => {
+  let h: TestHarness;
+  const slug = `consent_${Date.now()}`;
+  let token = "";
+
+  const publicFetch = (path: string, init?: RequestInit) =>
+    h.app.fetch(new Request(`${h.env.APP_URL}${path}`, init));
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const col = await h.fetch(
+      "/api/collections",
+      json({
+        slug,
+        fields: [
+          { name: "email", type: "text", required: true },
+          { name: "privacy_ok", type: "boolean" },
+        ],
+      }),
+    );
+    expect(col.status).toBe(201);
+    const created = await h.fetch(
+      "/api/admin/forms",
+      json({
+        name: "Consent",
+        collection: slug,
+        fields: [
+          { kind: "field", name: "email" },
+          {
+            kind: "field",
+            name: "privacy_ok",
+            label: "I accept the privacy policy",
+            consent: true,
+            policyUrl: "https://example.com/privacy",
+          },
+        ],
+      }),
+    );
+    expect(created.status).toBe(201);
+    token = ((await created.json()) as { data: { token: string } }).data.token;
+  });
+  afterAll(() => h.cleanup());
+
+  test("definition marks the consent block required with its policy URL", async () => {
+    const res = await publicFetch(`/api/public/forms/${token}`);
+    const { data } = (await res.json()) as { data: { blocks: Record<string, unknown>[] } };
+    const consent = data.blocks.find((b) => b.name === "privacy_ok")!;
+    expect(consent.consent).toBe(true);
+    expect(consent.required).toBe(true);
+    expect(consent.policyUrl).toBe("https://example.com/privacy");
+  });
+
+  test("submit is rejected unless the consent value is exactly true", async () => {
+    const missing = await publicFetch(
+      `/api/public/forms/${token}/submit`,
+      json({ data: { email: "a@b.co" } }),
+    );
+    expect(missing.status).toBe(422);
+
+    const falsy = await publicFetch(
+      `/api/public/forms/${token}/submit`,
+      json({ data: { email: "a@b.co", privacy_ok: false } }),
+    );
+    expect(falsy.status).toBe(422);
+
+    const ok = await publicFetch(
+      `/api/public/forms/${token}/submit`,
+      json({ data: { email: "a@b.co", privacy_ok: true } }),
+    );
+    expect(ok.status).toBe(201);
+  });
+});
+
 describe("public forms — script embed loader", () => {
   let h: TestHarness;
   beforeAll(async () => {

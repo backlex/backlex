@@ -11,6 +11,7 @@ import {
   type WriteEnv,
 } from "../services/items/write";
 import {
+  assertConsents,
   exposedFieldNames,
   publicFormDefinition,
   recordFormBlocked,
@@ -38,6 +39,8 @@ const PublicFormBlockSchema = z
     help: z.string().nullable(),
     required: z.boolean(),
     rating: z.boolean(),
+    consent: z.boolean(),
+    policyUrl: z.string().nullable(),
     choices: z
       .array(z.object({ value: z.string(), label: z.string().optional() }))
       .nullable(),
@@ -243,6 +246,8 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       for (const [key, value] of Object.entries(body.data)) {
         if (exposed.has(key)) data[key] = value;
       }
+
+      assertConsents(form, collection, data);
 
       const env: WriteEnv = {
         ctx,

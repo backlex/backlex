@@ -2641,6 +2641,10 @@ msgstr "Connection failed."
 msgid "Connection URL"
 msgstr "Connection URL"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Consent checkbox"
+msgstr "Consent checkbox"
+
 #: src/client/admin/pages/overview.tsx
 msgid "console (dev)"
 msgstr "console (dev)"
@@ -6536,6 +6540,10 @@ msgstr "Must be a full http(s) URL."
 msgid "Must be a JSON object."
 msgstr "Must be a JSON object."
 
+#: src/client/admin/pages/forms.tsx
+msgid "must be accepted"
+msgstr "must be accepted"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Must be an absolute URL (https://…)"
 msgstr "Must be an absolute URL (https://…)"
@@ -8327,6 +8335,11 @@ msgstr "Platform SSO is not enabled on this instance. It's available on plans wi
 
 #. placeholder {0}: b.label || humanizeLabel(b.name)
 #: src/client/pages/public-form.tsx
+msgid "Please accept \"{0}\""
+msgstr "Please accept \"{0}\""
+
+#. placeholder {0}: b.label || humanizeLabel(b.name)
+#: src/client/pages/public-form.tsx
 msgid "Please fill in \"{0}\""
 msgstr "Please fill in \"{0}\""
 
@@ -8350,6 +8363,10 @@ msgstr "PNG, JPG, SVG or WebP — square images display best. Replaces any previ
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Policy"
 msgstr "Policy"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Policy URL"
+msgstr "Policy URL"
 
 #. placeholder {0}: (nu.title ?? "").slice(0, 38)
 #. placeholder {1}: (nu.title ?? "").length > 38 ? "…" : ""
@@ -8745,6 +8762,10 @@ msgstr "Read"
 #: src/client/pages/api-keys.tsx
 msgid "Read & write"
 msgstr "Read & write"
+
+#: src/client/pages/public-form.tsx
+msgid "Read the full text ↗"
+msgstr "Read the full text ↗"
 
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/parity/database.tsx
@@ -10585,6 +10606,10 @@ msgstr "Showing the 100 most recently updated rows. Use search to narrow down."
 #: src/client/admin/storage/widgets.tsx
 msgid "Showing the original above. Toggle <0>Public</0> to enable edge resizing for this file."
 msgstr "Showing the original above. Toggle <0>Public</0> to enable edge resizing for this file."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Shown as a \"read the full text\" link next to the checkbox."
+msgstr "Shown as a \"read the full text\" link next to the checkbox."
 
 #: src/client/admin/parity/insights.tsx
 msgid "Shown as the panel title on the dashboard."
@@ -12492,6 +12517,10 @@ msgstr "visitor's browser language"
 #: src/client/admin/pages/forms.tsx
 msgid "Visitors get their browser language; <0>?lang={0}</0> forces one. Missing strings fall back to the base language."
 msgstr "Visitors get their browser language; <0>?lang={0}</0> forces one. Missing strings fall back to the base language."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Visitors must tick it to submit — enforced server-side. Put the consent sentence in the Label."
+msgstr "Visitors must tick it to submit — enforced server-side. Put the consent sentence in the Label."
 
 #: src/client/admin/display-template-editor.tsx
 msgid "Visual"

@@ -1733,6 +1733,8 @@ export interface ApiFormBlock {
   placeholder?: string;
   help?: string;
   rating?: boolean;
+  consent?: boolean;
+  policyUrl?: string;
   cond?: { field: string; op: "is" | "is_not"; value: string };
   i18n?: Record<string, ApiFormBlockI18n>;
 }
@@ -1833,6 +1835,8 @@ export interface ApiPublicFormBlock {
   help: string | null;
   required: boolean;
   rating: boolean;
+  consent: boolean;
+  policyUrl: string | null;
   choices: { value: string; label?: string }[] | null;
   validation: Record<string, unknown> | null;
   cond: { field: string; op: string; value: string } | null;

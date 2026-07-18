@@ -545,6 +545,10 @@ msgstr "{clean} already exists"
 msgid "{count} selected"
 msgstr "{count} selected"
 
+#: src/client/admin/pages/usage.tsx
+msgid "{d} days"
+msgstr "{d} days"
+
 #. placeholder {0}: tablesState.length
 #: src/client/admin/pages/database-import.tsx
 msgid "{doneTables}/{0} tables · {copied} rows"
@@ -724,6 +728,10 @@ msgstr "4:5 portrait"
 #: src/client/admin/pages/functions.tsx
 msgid "5-field cron (minute hour day month weekday)."
 msgstr "5-field cron (minute hour day month weekday)."
+
+#: src/client/admin/pages/usage.tsx
+msgid "5xx responses"
+msgstr "5xx responses"
 
 #: src/client/pages/api-keys.tsx
 msgid "7 days"
@@ -2020,6 +2028,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/template-onboarding.tsx
+#: src/client/admin/pages/usage.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -2144,6 +2153,10 @@ msgstr "Channels refreshed."
 #: src/client/pages/sign-up.tsx
 msgid "Check your inbox"
 msgstr "Check your inbox"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Checked against the half-hourly row gauge — approximate by design."
+msgstr "Checked against the half-hourly row gauge — approximate by design."
 
 #: src/client/pages/invite.tsx
 msgid "Checking your invite…"
@@ -2653,6 +2666,10 @@ msgstr "consent must be accepted — always required"
 msgid "console (dev)"
 msgstr "console (dev)"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Consumer"
+msgstr "Consumer"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Contact us"
 msgstr "Contact us"
@@ -2858,13 +2875,25 @@ msgstr "Couldn't load the template catalog."
 msgid "Couldn't load traces"
 msgstr "Couldn't load traces"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Couldn't load usage"
+msgstr "Couldn't load usage"
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Couldn't reset layout."
 msgstr "Couldn't reset layout."
 
+#: src/client/admin/pages/usage.tsx
+msgid "Couldn't save key limits."
+msgstr "Couldn't save key limits."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Couldn't save layout."
 msgstr "Couldn't save layout."
+
+#: src/client/admin/pages/usage.tsx
+msgid "Couldn't save limits."
+msgstr "Couldn't save limits."
 
 #: src/client/admin/parity/insights.tsx
 msgid "count / sum / average over a collection — no SQL"
@@ -3918,6 +3947,10 @@ msgstr "Edit flow"
 #~ msgid "Edit form"
 #~ msgstr "Edit form"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Edit key limits"
+msgstr "Edit key limits"
+
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Edit layout"
@@ -4163,9 +4196,17 @@ msgstr "Endpoint URL"
 msgid "Endpoints"
 msgstr "Endpoints"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Enforced even where the global API limiter is off."
+msgstr "Enforced even where the global API limiter is off."
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "enforced on save (422)"
 msgstr "enforced on save (422)"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Enforcement"
+msgstr "Enforcement"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Enqueue"
@@ -4298,9 +4339,15 @@ msgstr "error: {0}"
 msgid "errors"
 msgstr "errors"
 
+#: src/client/admin/pages/usage.tsx
 #: src/client/pages/graphql.tsx
 msgid "Errors"
 msgstr "Errors"
+
+#. placeholder {0}: overview?.month ?? ""
+#: src/client/admin/pages/usage.tsx
+msgid "Errors · {0}"
+msgstr "Errors · {0}"
 
 #: src/client/admin/pages/traces.tsx
 msgid "Errors only"
@@ -4964,6 +5011,11 @@ msgstr "FUNCTIONS_EXEC_URL set"
 msgid "Gallery"
 msgstr "Gallery"
 
+#. placeholder {0}: new Date(overview.gauges.measuredAt).toLocaleString()
+#: src/client/admin/pages/usage.tsx
+msgid "gauges measured {0}"
+msgstr "gauges measured {0}"
+
 #: src/client/admin/item-form.tsx
 #: src/client/admin/pages/settings/index.tsx
 msgid "General"
@@ -5083,6 +5135,10 @@ msgstr "Guards updated"
 #: src/client/admin/edit-field.tsx
 msgid "Half width"
 msgstr "Half width"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Hard"
+msgstr "Hard"
 
 #: src/client/admin/parity/database.tsx
 msgid "Hash"
@@ -5729,6 +5785,10 @@ msgstr "Key \"{key}\" added."
 msgid "Key is required."
 msgstr "Key is required."
 
+#: src/client/admin/pages/usage.tsx
+msgid "Key limits saved."
+msgstr "Key limits saved."
+
 #: src/client/admin/parity/translations.tsx
 msgid "Key must be 120 characters or fewer."
 msgstr "Key must be 120 characters or fewer."
@@ -6033,6 +6093,23 @@ msgstr "Light"
 #: src/client/admin/parity/insights.tsx
 msgid "Limit"
 msgstr "Limit"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Limits"
+msgstr "Limits"
+
+#: src/client/admin/pages/usage.tsx
+msgid "limits are not evaluated"
+msgstr "limits are not evaluated"
+
+#. placeholder {0}: keyRow?.name
+#: src/client/admin/pages/usage.tsx
+msgid "Limits for {0}"
+msgstr "Limits for {0}"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Limits must be positive numbers (or empty for unlimited)."
+msgstr "Limits must be positive numbers (or empty for unlimited)."
 
 #: src/client/admin/account-page.tsx
 msgid "Link"
@@ -6342,6 +6419,14 @@ msgstr "Max attempts"
 msgid "Max length"
 msgstr "Max length"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Max requests / month"
+msgstr "Max requests / month"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Max rows"
+msgstr "Max rows"
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "Max selected"
 msgstr "Max selected"
@@ -6349,6 +6434,10 @@ msgstr "Max selected"
 #: src/client/admin/pages/agents.tsx
 msgid "Max steps"
 msgstr "Max steps"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Max storage (bytes)"
+msgstr "Max storage (bytes)"
 
 #: src/client/admin/item-views.tsx
 msgid "May"
@@ -6432,6 +6521,10 @@ msgstr "Metadata URL"
 msgid "Metadata XML"
 msgstr "Metadata XML"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Metered API traffic per workspace and API key, storage and row footprints, and the plan limits enforced against them."
+msgstr "Metered API traffic per workspace and API key, storage and row footprints, and the plan limits enforced against them."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Method"
 msgstr "Method"
@@ -6489,6 +6582,10 @@ msgstr "Model"
 #: src/client/admin/item-views.tsx
 msgid "Mon"
 msgstr "Mon"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Monthly request quota"
+msgstr "Monthly request quota"
 
 #: src/client/admin/pages/flows.tsx
 #: src/client/admin/pages/forms.tsx
@@ -7189,6 +7286,10 @@ msgstr "No JSON content defined."
 msgid "No language found."
 msgstr "No language found."
 
+#: src/client/admin/pages/usage.tsx
+msgid "no limit"
+msgstr "no limit"
+
 #: src/client/admin/pages/ask-ai/shared.tsx
 msgid "No live keys — create one on the <0>API Keys</0> page first."
 msgstr "No live keys — create one on the <0>API Keys</0> page first."
@@ -7222,6 +7323,10 @@ msgstr "No members match \"{q}\"."
 #: src/client/admin/members-panel.tsx
 msgid "No members yet."
 msgstr "No members yet."
+
+#: src/client/admin/pages/usage.tsx
+msgid "No metered traffic yet"
+msgstr "No metered traffic yet"
 
 #: src/client/admin/parity/database.tsx
 msgid "No migrations applied yet."
@@ -7564,6 +7669,13 @@ msgstr "Observability"
 msgid "October"
 msgstr "October"
 
+#. placeholder {0}: fmtBytes(limits.maxStorageBytes)
+#. placeholder {0}: fmtCount(limits.maxDbRows)
+#. placeholder {0}: fmtCount(limits.maxRequestsPerMonth)
+#: src/client/admin/pages/usage.tsx
+msgid "of {0}"
+msgstr "of {0}"
+
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/database.tsx
@@ -7572,6 +7684,7 @@ msgstr "off"
 
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/schema-versions.tsx
+#: src/client/admin/pages/usage.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Off"
 msgstr "Off"
@@ -7783,6 +7896,28 @@ msgstr "Outgoing HTTP on collection events. Failed deliveries retry with exponen
 #: src/client/admin/pages/webhooks.tsx
 msgid "Outgoing webhook deliveries will show up here once a collection event fires."
 msgstr "Outgoing webhook deliveries will show up here once a collection event fires."
+
+#. placeholder {0}: over.join(", ")
+#: src/client/admin/pages/usage.tsx
+msgid "Over limit: {0}. Hard enforcement is on — over-budget traffic is being rejected."
+msgstr "Over limit: {0}. Hard enforcement is on — over-budget traffic is being rejected."
+
+#. placeholder {0}: over.join(", ")
+#: src/client/admin/pages/usage.tsx
+msgid "Over limit: {0}. Soft mode — nothing is blocked, but the budget is exhausted."
+msgstr "Over limit: {0}. Soft mode — nothing is blocked, but the budget is exhausted."
+
+#: src/client/admin/pages/usage.tsx
+msgid "over-budget traffic gets 429"
+msgstr "over-budget traffic gets 429"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Over-quota calls get 429 until the month rolls over."
+msgstr "Over-quota calls get 429 until the month rolls over."
+
+#: src/client/admin/pages/usage.tsx
+msgid "overage is reported, nothing is blocked"
+msgstr "overage is reported, nothing is blocked"
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Overrides the `--primary` token used across the admin and any published surfaces."
@@ -8296,6 +8431,10 @@ msgstr "Pin to top"
 msgid "Pinned"
 msgstr "Pinned"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Pinned by the platform plan (env) — the pinned value wins."
+msgstr "Pinned by the platform plan (env) — the pinned value wins."
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "Pipe collection events to Slack, your API, or any HTTPS endpoint."
 msgstr "Pipe collection events to Slack, your API, or any HTTPS endpoint."
@@ -8699,6 +8838,10 @@ msgstr "Queue"
 msgid "Queue durable background work. Function jobs run a named function; jobs retry with backoff and dead-letter."
 msgstr "Queue durable background work. Function jobs run a named function; jobs retry with backoff and dead-letter."
 
+#: src/client/admin/pages/usage.tsx
+msgid "Quota"
+msgstr "Quota"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Qwen flagship · 1M context · strong multilingual"
 msgstr "Qwen flagship · 1M context · strong multilingual"
@@ -8719,6 +8862,10 @@ msgstr "Rate limit"
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Rate limit (per email / minute)"
 msgstr "Rate limit (per email / minute)"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Rate/min"
+msgstr "Rate/min"
 
 #: src/client/admin/display-template-editor.tsx
 #: src/client/pages/graphql.tsx
@@ -8905,6 +9052,7 @@ msgstr "Refetch /api/openapi.json"
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/traces.tsx
+#: src/client/admin/pages/usage.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Refresh"
@@ -9136,8 +9284,26 @@ msgid "Request a new link"
 msgstr "Request a new link"
 
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/usage.tsx
 msgid "Requests"
 msgstr "Requests"
+
+#. placeholder {0}: overview?.month ?? ""
+#: src/client/admin/pages/usage.tsx
+msgid "Requests · {0}"
+msgstr "Requests · {0}"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Requests are counted per workspace and API key as they arrive. Make an API call, then refresh."
+msgstr "Requests are counted per workspace and API key as they arrive. Make an API call, then refresh."
+
+#: src/client/admin/pages/usage.tsx
+msgid "Requests per day"
+msgstr "Requests per day"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Requests per minute"
+msgstr "Requests per minute"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/forms.tsx
@@ -9444,6 +9610,7 @@ msgstr "Revoke others"
 msgid "Revoke this API key?"
 msgstr "Revoke this API key?"
 
+#: src/client/admin/pages/usage.tsx
 #: src/client/pages/api-keys.tsx
 msgid "revoked"
 msgstr "revoked"
@@ -9571,6 +9738,7 @@ msgstr "rows"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/usage.tsx
 msgid "Rows"
 msgstr "Rows"
 
@@ -9759,6 +9927,7 @@ msgstr "Sat"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/pages/usage.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/parity/email-templates.tsx
@@ -9829,6 +9998,10 @@ msgstr "Save kanban"
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Save LDAP config"
 msgstr "Save LDAP config"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Save limits"
+msgstr "Save limits"
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Save metadata"
@@ -10369,6 +10542,10 @@ msgstr "sessions"
 msgid "Sessions"
 msgstr "Sessions"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Sessions & admin"
+msgstr "Sessions & admin"
+
 #. placeholder {0}: user.email
 #: src/client/admin/pages/users.tsx
 msgid "Sessions revoked for {0}."
@@ -10504,6 +10681,10 @@ msgstr "Share the public link — rows land here (and in the collection) as they
 #: src/client/admin/item-collaboration.tsx
 msgid "share this record"
 msgstr "share this record"
+
+#: src/client/admin/pages/usage.tsx
+msgid "shared global budget"
+msgstr "shared global budget"
 
 #: src/client/pages/shared-record.tsx
 msgid "Shared record"
@@ -10904,6 +11085,10 @@ msgstr "Social sign-in"
 msgid "Social sign-in plugin not enabled"
 msgstr "Social sign-in plugin not enabled"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Soft"
+msgstr "Soft"
+
 #: src/client/admin/collections-index.tsx
 msgid "Soft delete"
 msgstr "Soft delete"
@@ -11065,6 +11250,7 @@ msgid "Steps"
 msgstr "Steps"
 
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/usage.tsx
 #: src/client/admin/storage/index.tsx
 #: src/client/admin/ui.tsx
 msgid "Storage"
@@ -11580,6 +11766,10 @@ msgstr "The token can't be shown again — generating a new link is the only way
 #: src/client/admin/pages/traces.tsx
 msgid "The traces endpoint returned an error. Refresh to try again."
 msgstr "The traces endpoint returned an error. Refresh to try again."
+
+#: src/client/admin/pages/usage.tsx
+msgid "The usage endpoint returned an error. Refresh to try again."
+msgstr "The usage endpoint returned an error. Refresh to try again."
 
 #: src/client/admin/relational-pickers.tsx
 msgid "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
@@ -12120,6 +12310,10 @@ msgstr "unknown agent"
 msgid "Unknown device"
 msgstr "Unknown device"
 
+#: src/client/admin/pages/usage.tsx
+msgid "unlimited"
+msgstr "unlimited"
+
 #: src/client/admin/account-page.tsx
 msgid "Unlink"
 msgstr "Unlink"
@@ -12128,6 +12322,10 @@ msgstr "Unlink"
 #: src/client/admin/account-page.tsx
 msgid "Unlinked {0}."
 msgstr "Unlinked {0}."
+
+#: src/client/admin/pages/usage.tsx
+msgid "unmetered"
+msgstr "unmetered"
 
 #: src/client/admin/account-page.tsx
 msgid "Unnamed passkey"
@@ -12231,6 +12429,10 @@ msgstr "Uploading…"
 msgid "Uploads"
 msgstr "Uploads"
 
+#: src/client/admin/pages/usage.tsx
+msgid "Uploads are rejected once stored bytes reach this. 1 GB = 1073741824."
+msgstr "Uploads are rejected once stored bytes reach this. 1 GB = 1073741824."
+
 #: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/flow-builder.tsx
 msgid "URL"
@@ -12261,6 +12463,19 @@ msgstr "URL is required."
 #: src/client/admin/ui.tsx
 msgid "URL:"
 msgstr "URL:"
+
+#: src/client/admin/pages/usage.tsx
+#: src/client/admin/ui.tsx
+msgid "Usage"
+msgstr "Usage"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Usage limits saved."
+msgstr "Usage limits saved."
+
+#: src/client/admin/pages/usage.tsx
+msgid "Usage refreshed."
+msgstr "Usage refreshed."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Use \"{label}\" column"
@@ -12776,6 +12991,10 @@ msgstr "workspace logo"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Workspace name"
 msgstr "Workspace name"
+
+#: src/client/admin/pages/usage.tsx
+msgid "Workspace usage limits"
+msgstr "Workspace usage limits"
 
 #: src/client/admin/ui.tsx
 msgid "Workspaces"

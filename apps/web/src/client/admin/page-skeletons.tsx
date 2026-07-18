@@ -264,6 +264,30 @@ function OverviewSkeletonImpl() {
 /** Logs — the unified log explorer: header with the Stream/Table view switch,
  *  a search + range-filter row, the source-tab + export toolbar, the volume /
  *  level summary card, then the log-row stream. */
+/** Usage page: header (window select + Limits + Refresh), 2×2→4-up stat
+ *  tiles with limit bars, the per-day chart card, then the per-key table. */
+function UsageSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-[18px]">
+      <HeaderSkeleton actions={3} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i} className="gap-2 px-[15px] py-3.5">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-7 w-16" />
+            <Skeleton className="h-3 w-20" />
+          </Card>
+        ))}
+      </div>
+      <Card className="gap-2 px-4 py-3.5">
+        <Skeleton className="h-3 w-32" />
+        <Skeleton className="h-[120px] w-full" />
+      </Card>
+      <TableCardSkeleton rows={4} cols={5} />
+    </div>
+  );
+}
+
 function LogsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-[18px]">
@@ -826,6 +850,7 @@ function GenericSkeletonImpl() {
 export const OverviewSkeleton = withSkeletonDelay(OverviewSkeletonImpl);
 export const AskAiSkeleton = withSkeletonDelay(AskAiSkeletonImpl);
 export const LogsSkeleton = withSkeletonDelay(LogsSkeletonImpl);
+export const UsageSkeleton = withSkeletonDelay(UsageSkeletonImpl);
 export const DatabaseSkeleton = withSkeletonDelay(DatabaseSkeletonImpl);
 export const FlowsSkeleton = withSkeletonDelay(FlowsSkeletonImpl);
 export const FunctionsSkeleton = withSkeletonDelay(FunctionsSkeletonImpl);
@@ -898,6 +923,8 @@ export function PageSkeleton({ nav }: { nav: string }) {
       return <SearchPlaygroundSkeleton />;
     case "logs":
       return <LogsSkeleton />;
+    case "usage":
+      return <UsageSkeleton />;
     case "advisor":
       return <AdvisorSkeleton />;
     case "schema-graph":

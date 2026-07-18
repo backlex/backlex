@@ -177,6 +177,43 @@ export const monthUsage = async (
   return value;
 };
 
+/** Per-key request totals for the current UTC month (uncached — admin UI
+ *  read, not a hot path). Key `""` is the session/no-key bucket. */
+export const monthUsageByKey = async (
+  ctx: UsageDbCtx,
+  tenantId: string,
+): Promise<Map<string, { requests: number; errors: number }>> => {
+  const month = utcMonth();
+  const t = tableFor(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select({
+      apiKeyId: t.apiKeyId,
+      requests: sql<number>`COALESCE(SUM(${t.requests}), 0)`,
+      errors: sql<number>`COALESCE(SUM(${t.errors}), 0)`,
+    })
+    .from(t)
+    .where(
+      and(
+        eq(t.tenantId, tenantId),
+        gte(t.day, `${month}-01`),
+        lte(t.day, `${month}-31`),
+      ),
+    )
+    .groupBy(t.apiKeyId)) as {
+    apiKeyId: string;
+    requests: number | string;
+    errors: number | string;
+  }[];
+  const out = new Map<string, { requests: number; errors: number }>();
+  for (const r of rows) {
+    out.set(r.apiKeyId, {
+      requests: Number(r.requests),
+      errors: Number(r.errors),
+    });
+  }
+  return out;
+};
+
 /* ── Read path: admin series + gauges ──────────────────────────────────── */
 
 export interface UsageCounterRow {
@@ -325,6 +362,158 @@ export const saveUsageLimits = async (
       set: { value, updatedAt },
     });
   invalidateUsageLimits(tenantId);
+};
+
+/* ── Admin overview (shared by REST / GraphQL / MCP / SDK / CLI) ───────── */
+
+export interface UsageOverview {
+  month: string;
+  days: number;
+  series: { day: string; requests: number; errors: number }[];
+  monthTotals: { requests: number; errors: number };
+  byKey: {
+    id: string;
+    name: string;
+    prefix: string | null;
+    revoked: boolean;
+    rateLimitPerMinute: number | null;
+    monthlyQuota: number | null;
+    monthRequests: number;
+    monthErrors: number;
+  }[];
+  gauges: { storageBytes: number | null; dbRows: number | null; measuredAt: number | null };
+  limits: UsageLimits;
+  settingsLimits: UsageLimits;
+  envPinned: ("mode" | "maxRequestsPerMonth" | "maxStorageBytes" | "maxDbRows")[];
+  over: ("requests" | "storage" | "rows")[];
+}
+
+/**
+ * The one shared assembly every admin surface (REST, GraphQL, MCP; SDK/CLI
+ * ride REST) uses — day series, per-key month totals, gauges, effective
+ * limits + env pinning, and which dimensions are currently over budget.
+ */
+export const usageOverview = async (
+  ctx: UsageDbCtx & { env: Env },
+  tenantId: string,
+  days: number,
+  keys: {
+    id: string;
+    name: string;
+    prefix: string;
+    revokedAt: unknown;
+    rateLimitPerMinute: number | null;
+    monthlyQuota: number | null;
+  }[],
+): Promise<UsageOverview> => {
+  const [rows, byKeyMonth, gauges, settings] = await Promise.all([
+    usageRows(ctx, tenantId, days),
+    monthUsageByKey(ctx, tenantId),
+    latestGauges(ctx, tenantId),
+    loadAppSettings(ctx.db as any, ctx.dialect, tenantId),
+  ]);
+
+  const byDay = new Map<string, { requests: number; errors: number }>();
+  for (const r of rows) {
+    const cur = byDay.get(r.day) ?? { requests: 0, errors: 0 };
+    cur.requests += r.requests;
+    cur.errors += r.errors;
+    byDay.set(r.day, cur);
+  }
+  const series = [...byDay.entries()]
+    .map(([day, v]) => ({ day, ...v }))
+    .sort((a, b) => (a.day < b.day ? -1 : 1));
+
+  const keyById = new Map(keys.map((k) => [k.id, k]));
+  const byKey: UsageOverview["byKey"] = [];
+  const seen = new Set<string>();
+  const pushKey = (id: string) => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    const usage = byKeyMonth.get(id) ?? { requests: 0, errors: 0 };
+    if (id === "") {
+      byKey.push({
+        id: "",
+        name: "Sessions & admin",
+        prefix: null,
+        revoked: false,
+        rateLimitPerMinute: null,
+        monthlyQuota: null,
+        monthRequests: usage.requests,
+        monthErrors: usage.errors,
+      });
+      return;
+    }
+    const key = keyById.get(id);
+    byKey.push({
+      id,
+      name: key?.name ?? "(deleted key)",
+      prefix: key?.prefix ?? null,
+      revoked: Boolean(key?.revokedAt),
+      rateLimitPerMinute: key?.rateLimitPerMinute ?? null,
+      monthlyQuota: key?.monthlyQuota ?? null,
+      monthRequests: usage.requests,
+      monthErrors: usage.errors,
+    });
+  };
+  // Session bucket first; then keys with usage this month; then live keys
+  // with no usage yet (so a freshly quota'd key still shows its budget).
+  pushKey("");
+  for (const id of byKeyMonth.keys()) pushKey(id);
+  for (const k of keys) if (!k.revokedAt) pushKey(k.id);
+  byKey.sort((a, b) =>
+    a.id === "" ? -1 : b.id === "" ? 1 : b.monthRequests - a.monthRequests,
+  );
+
+  const limits = resolveUsageLimits(ctx.env, settings.usageLimits);
+  const envPinned: UsageOverview["envPinned"] = [];
+  if (
+    ctx.env.USAGE_LIMIT_MODE === "off" ||
+    ctx.env.USAGE_LIMIT_MODE === "soft" ||
+    ctx.env.USAGE_LIMIT_MODE === "hard"
+  )
+    envPinned.push("mode");
+  if (ctx.env.USAGE_LIMIT_REQUESTS_MONTH) envPinned.push("maxRequestsPerMonth");
+  if (ctx.env.USAGE_LIMIT_STORAGE_BYTES) envPinned.push("maxStorageBytes");
+  if (ctx.env.USAGE_LIMIT_DB_ROWS) envPinned.push("maxDbRows");
+
+  let monthRequests = 0;
+  let monthErrors = 0;
+  for (const v of byKeyMonth.values()) {
+    monthRequests += v.requests;
+    monthErrors += v.errors;
+  }
+
+  const over: UsageOverview["over"] = [];
+  if (limits.mode !== "off") {
+    if (limits.maxRequestsPerMonth != null && monthRequests >= limits.maxRequestsPerMonth)
+      over.push("requests");
+    if (
+      limits.maxStorageBytes != null &&
+      gauges.storageBytes != null &&
+      gauges.storageBytes >= limits.maxStorageBytes
+    )
+      over.push("storage");
+    if (
+      limits.maxDbRows != null &&
+      gauges.dbRows != null &&
+      gauges.dbRows >= limits.maxDbRows
+    )
+      over.push("rows");
+  }
+
+  return {
+    month: utcMonth(),
+    days,
+    series,
+    monthTotals: { requests: monthRequests, errors: monthErrors },
+    byKey,
+    gauges,
+    limits,
+    settingsLimits: settings.usageLimits,
+    envPinned,
+    over,
+  };
 };
 
 /* ── Hard-cap enforcement helpers (storage / rows) ─────────────────────── */

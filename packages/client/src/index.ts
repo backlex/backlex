@@ -816,6 +816,54 @@ export interface FormsClient {
   delete(id: string): Promise<{ ok: boolean }>;
 }
 
+/** Workspace usage-limit knobs. `null` = unlimited for that dimension. */
+export interface UsageLimits {
+  mode: "off" | "soft" | "hard";
+  maxRequestsPerMonth: number | null;
+  maxStorageBytes: number | null;
+  maxDbRows: number | null;
+}
+
+/** Admin usage overview — mirrors `GET /api/admin/usage/overview`. */
+export interface UsageOverview {
+  /** Current UTC month, `YYYY-MM`. */
+  month: string;
+  days: number;
+  series: { day: string; requests: number; errors: number }[];
+  monthTotals: { requests: number; errors: number };
+  byKey: {
+    /** API key id; empty string = the session / no-key traffic bucket. */
+    id: string;
+    name: string;
+    prefix: string | null;
+    revoked: boolean;
+    rateLimitPerMinute: number | null;
+    monthlyQuota: number | null;
+    monthRequests: number;
+    monthErrors: number;
+  }[];
+  gauges: {
+    storageBytes: number | null;
+    dbRows: number | null;
+    measuredAt: number | null;
+  };
+  /** Effective limits — `USAGE_LIMIT_*` env overrides already applied. */
+  limits: UsageLimits;
+  /** The admin-editable setting values, before env overrides. */
+  settingsLimits: UsageLimits;
+  /** Limit fields pinned by env (read-only — the platform plan wins). */
+  envPinned: ("mode" | "maxRequestsPerMonth" | "maxStorageBytes" | "maxDbRows")[];
+  /** Dimensions currently over their effective limit. */
+  over: ("requests" | "storage" | "rows")[];
+}
+
+export interface UsageClient {
+  /** Usage overview: day series, per-key month totals, gauges, limits. */
+  overview(opts?: { days?: number }): Promise<{ data: UsageOverview }>;
+  /** Persist the workspace's admin-editable usage limits. */
+  setLimits(limits: UsageLimits): Promise<{ ok: boolean }>;
+}
+
 /** One backup tracking row. `status` moves queued → running → done/failed. */
 export interface BackupRecord {
   id: string;
@@ -1226,6 +1274,8 @@ export interface BacklexClient {
   /** Embedded BI dashboards. */
   dashboards: DashboardsClient;
   forms: FormsClient;
+  /** Usage metering — per-day/per-key counters + workspace limits. */
+  usage: UsageClient;
   /** Backup / restore + the automatic-backup schedule. */
   backups: BackupsClient;
   /** AI agents (definitions, threads, and running turns). */
@@ -1923,6 +1973,17 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     delete: (id: string) => request<{ ok: boolean }>("DELETE", formPath(id)),
   };
 
+  // Usage metering. Admin-scoped over `/api/admin/usage`.
+  const usage: UsageClient = {
+    overview: (opts?: { days?: number }) =>
+      request<{ data: UsageOverview }>(
+        "GET",
+        `/api/admin/usage/overview${opts?.days ? `?days=${Math.floor(opts.days)}` : ""}`,
+      ),
+    setLimits: (limits: UsageLimits) =>
+      request<{ ok: boolean }>("PUT", "/api/admin/usage/limits", limits),
+  };
+
   // Backup / restore. Admin-scoped over `/api/admin/db/backups*`; `run` blocks
   // until the dump finishes, `restore` carries the confirm header the REST
   // endpoint requires (the restore itself is additive — never overwrites).
@@ -2206,6 +2267,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     flows,
     dashboards,
     forms,
+    usage,
     backups,
     agents,
     permissions,

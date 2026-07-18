@@ -97,8 +97,8 @@ msgid "· optional"
 msgstr "· optional"
 
 #: src/client/admin/pages/forms.tsx
-msgid "· the field stays in the collection"
-msgstr "· the field stays in the collection"
+#~ msgid "· the field stays in the collection"
+#~ msgstr "· the field stays in the collection"
 
 #. placeholder {0}: agg.groupBy
 #: src/client/admin/parity/insights.tsx
@@ -948,6 +948,10 @@ msgstr "Adapter auto-selected from bindings/env."
 #: src/client/admin/storage/index.tsx
 msgid "Adapter auto-selected: R2 binding → R2; S3 env vars → S3; else local filesystem (Bun dev). Public folders are served at <0>/storage/<key></0>; private require a signed URL."
 msgstr "Adapter auto-selected: R2 binding → R2; S3 env vars → S3; else local filesystem (Bun dev). Public folders are served at <0>/storage/<key></0>; private require a signed URL."
+
+#: src/client/admin/pages/forms.tsx
+msgid "add"
+msgstr "add"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
@@ -3687,6 +3691,10 @@ msgstr "Drag to another collection to create a relation"
 msgid "Drag to move"
 msgstr "Drag to move"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Drag to reorder"
+msgstr "Drag to reorder"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to resize"
 msgstr "Drag to resize"
@@ -4940,6 +4948,10 @@ msgstr "Generates a new token and kills the current link immediately. Every embe
 msgid "Generating…"
 msgstr "Generating…"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Get a new link"
+msgstr "Get a new link"
+
 #: src/client/admin/pages/settings/index.tsx
 msgid "GitHub"
 msgstr "GitHub"
@@ -5722,8 +5734,8 @@ msgid "Language"
 msgstr "Language"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Language code (e.g. tr, de, fr):"
-msgstr "Language code (e.g. tr, de, fr):"
+#~ msgid "Language code (e.g. tr, de, fr):"
+#~ msgstr "Language code (e.g. tr, de, fr):"
 
 #: src/client/admin/pages/forms.tsx
 msgid "languages"
@@ -7093,6 +7105,10 @@ msgstr "No jobs"
 #: src/client/pages/rest-explorer.tsx
 msgid "No JSON content defined."
 msgstr "No JSON content defined."
+
+#: src/client/admin/pages/forms.tsx
+msgid "No language found."
+msgstr "No language found."
 
 #: src/client/admin/pages/ask-ai/shared.tsx
 msgid "No live keys — create one on the <0>API Keys</0> page first."
@@ -9414,8 +9430,8 @@ msgid "Rotate the form link?"
 msgstr "Rotate the form link?"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Rotate the token to mint a fresh embed snippet."
-msgstr "Rotate the token to mint a fresh embed snippet."
+#~ msgid "Rotate the token to mint a fresh embed snippet."
+#~ msgstr "Rotate the token to mint a fresh embed snippet."
 
 #: src/client/admin/pages/forms.tsx
 msgid "Rotate token"
@@ -9941,6 +9957,10 @@ msgstr "Search index rebuilt: {0} indexed, {1} total."
 #: src/client/admin/storage/index.tsx
 msgid "Search keys…"
 msgstr "Search keys…"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Search languages…"
+msgstr "Search languages…"
 
 #: src/client/admin/pages/logs.tsx
 msgid "search loaded rows — path, action, user, message…"
@@ -11345,6 +11365,10 @@ msgstr "The current link stops working immediately and a new one is generated. A
 msgid "The embed link may have been revoked, or the dashboard was removed."
 msgstr "The embed link may have been revoked, or the dashboard was removed."
 
+#: src/client/admin/pages/forms.tsx
+msgid "the field stays in the collection"
+msgstr "the field stays in the collection"
+
 #: src/client/pages/sign-up.tsx
 msgid "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
 msgstr "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
@@ -11367,8 +11391,12 @@ msgid "The key \"{0}\" will stop working immediately. This cannot be undone."
 msgstr "The key \"{0}\" will stop working immediately. This cannot be undone."
 
 #: src/client/admin/pages/forms.tsx
-msgid "The link was shown once when it was minted. Rotate the token to get a new one."
-msgstr "The link was shown once when it was minted. Rotate the token to get a new one."
+msgid "The link was shown once when it was minted. Generate a new one to see it here — the old link stops working."
+msgstr "The link was shown once when it was minted. Generate a new one to see it here — the old link stops working."
+
+#: src/client/admin/pages/forms.tsx
+#~ msgid "The link was shown once when it was minted. Rotate the token to get a new one."
+#~ msgstr "The link was shown once when it was minted. Rotate the token to get a new one."
 
 #: src/client/admin/app.tsx
 msgid "The physical table and all rows are dropped. This is irreversible."
@@ -12095,6 +12123,10 @@ msgstr "URL:"
 #: src/client/admin/adopt-wizard.tsx
 msgid "Use \"{label}\" column"
 msgstr "Use \"{label}\" column"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Use \"Get a new link\" above — the embed snippet is minted together with it."
+msgstr "Use \"Get a new link\" above — the embed snippet is minted together with it."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Use \"owner_id\" column"

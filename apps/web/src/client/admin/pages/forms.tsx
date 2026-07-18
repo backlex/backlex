@@ -468,6 +468,19 @@ function CanvasFieldPreview({
     );
   }
   if (ef.type === "boolean") {
+    if (block.consent) {
+      return (
+        <div className="flex items-start gap-2 text-[13px]" style={{ color: p.muted }}>
+          <span className="mt-0.5 size-4 shrink-0 rounded-sm border" style={{ borderColor: p.border, background: p.inputBg }} />
+          <span>
+            <Trans>must be accepted</Trans>
+            {block.policyUrl && (
+              <span className="underline underline-offset-2"> · {new URL(block.policyUrl).hostname}</span>
+            )}
+          </span>
+        </div>
+      );
+    }
     return (
       <div className="flex items-center gap-2 text-[13px]" style={{ color: p.muted }}>
         <span className="size-4 rounded-sm border" style={{ borderColor: p.border, background: p.inputBg }} />
@@ -1775,6 +1788,34 @@ function BlockPanel({
         <div className="flex items-center justify-between text-[12px] font-medium">
           <span className="flex items-center gap-1.5"><I.Star size={12} /><Trans>Star rating (1–5)</Trans></span>
           <Switch checked={Boolean(block.rating)} onChange={(v) => onPatch(block.id!, { rating: v })} />
+        </div>
+      )}
+
+      {!isStep && ef?.type === "boolean" && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between text-[12px] font-medium">
+            <span className="flex items-center gap-1.5"><I.Shield size={12} /><Trans>Consent checkbox</Trans></span>
+            <Switch checked={Boolean(block.consent)} onChange={(v) => onPatch(block.id!, { consent: v })} />
+          </div>
+          {block.consent && (
+            <>
+              <span className="text-[11px] text-muted-foreground">
+                <Trans>Visitors must tick it to submit — enforced server-side. Put the
+                consent sentence in the Label.</Trans>
+              </span>
+              <label className="flex flex-col gap-1 text-[12px] font-medium">
+                <Trans>Policy URL</Trans>
+                <Input
+                  value={block.policyUrl ?? ""}
+                  placeholder="https://example.com/privacy"
+                  onChange={(e) => onPatch(block.id!, { policyUrl: e.target.value || undefined })}
+                />
+                <span className="text-[11px] font-normal text-muted-foreground">
+                  <Trans>Shown as a "read the full text" link next to the checkbox.</Trans>
+                </span>
+              </label>
+            </>
+          )}
         </div>
       )}
 

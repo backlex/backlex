@@ -533,6 +533,10 @@ export interface PublicFormBlockConfig {
   help?: string;
   /** Integer fields only: render as a 1–5 star rating. */
   rating?: boolean;
+  /** Boolean fields only: consent checkbox — submits must carry `true`. */
+  consent?: boolean;
+  /** Optional "read the full text" URL shown next to a consent block. */
+  policyUrl?: string;
   /** Show-condition: render only when another field's answer matches. */
   cond?: { field: string; op: "is" | "is_not"; value: string };
   /** Per-locale string overrides; missing strings fall back to the base. */

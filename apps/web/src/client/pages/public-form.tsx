@@ -411,6 +411,10 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
     for (const b of blocks) {
       if (b.kind !== "field" || !b.name || !b.required) continue;
       const v = values[b.name];
+      if (b.consent) {
+        if (v !== true) return t`Please accept "${b.label || humanizeLabel(b.name)}"`;
+        continue;
+      }
       if (v === undefined || v === null || v === "") {
         return t`Please fill in "${b.label || humanizeLabel(b.name)}"`;
       }
@@ -634,7 +638,38 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
           )}
 
           <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 18, marginTop: 22 }}>
-            {(current?.blocks ?? []).map((b) => (
+            {(current?.blocks ?? []).map((b) =>
+              b.consent ? (
+                <div key={b.name} style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: 13.5, lineHeight: 1.5 }}>
+                    <input
+                      type="checkbox"
+                      checked={values[b.name!] === true}
+                      onChange={(e) => b.name && setValue(b.name, e.target.checked)}
+                      style={{ width: 16, height: 16, marginTop: 2, accentColor: accent, flexShrink: 0 }}
+                    />
+                    <span>
+                      {b.label === b.name ? humanizeLabel(b.name ?? "") : b.label}
+                      <span style={{ color: accent }}> *</span>
+                      {b.policyUrl && (
+                        <>
+                          {" "}
+                          <a
+                            href={b.policyUrl}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ color: accent, textDecoration: "underline", textUnderlineOffset: 3 }}
+                          >
+                            <Trans>Read the full text ↗</Trans>
+                          </a>
+                        </>
+                      )}
+                    </span>
+                  </label>
+                  {b.help && <p style={{ fontSize: 11.5, color: p.faint, margin: 0, paddingLeft: 26 }}>{b.help}</p>}
+                </div>
+              ) : (
               <div key={b.name} style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
                 <label style={{ fontSize: 13.5, fontWeight: 500 }}>
                   {b.label === b.name ? humanizeLabel(b.name ?? "") : b.label}
@@ -649,7 +684,8 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
                 />
                 {b.help && <p style={{ fontSize: 11.5, color: p.faint, margin: 0 }}>{b.help}</p>}
               </div>
-            ))}
+              ),
+            )}
 
             {/* Honeypot — humans never see it; bots fill it. */}
             <input

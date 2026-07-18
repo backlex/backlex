@@ -83,6 +83,11 @@ export interface FormBlock {
   help?: string;
   /** Integer fields only: render as a 1–5 star rating on the public page. */
   rating?: boolean;
+  /** Boolean fields only: consent checkbox (privacy policy / terms). The
+   *  submit is rejected server-side unless the value is exactly `true`. */
+  consent?: boolean;
+  /** Optional "read the full text" URL rendered next to a consent block. */
+  policyUrl?: string;
   cond?: FormBlockCond;
   i18n?: Record<string, FormBlockI18n>;
 }
@@ -385,6 +390,8 @@ export interface PublicFormBlock {
   help: string | null;
   required: boolean;
   rating: boolean;
+  consent: boolean;
+  policyUrl: string | null;
   choices: Array<{ value: string; label?: string }> | null;
   validation: {
     regex?: string;
@@ -483,6 +490,8 @@ export const publicFormDefinition = (
           help: null,
           required: false,
           rating: false,
+          consent: false,
+          policyUrl: null,
           choices: null,
           validation: null,
           cond: block.cond ?? null,
@@ -501,6 +510,7 @@ export const publicFormDefinition = (
           }
         : null;
       const choices = getChoices(def);
+      const consent = Boolean(block.consent && def.type === "boolean");
       return {
         kind: "field",
         name: def.name,
@@ -508,8 +518,11 @@ export const publicFormDefinition = (
         label: blockI18n.label || block.label || def.label || def.name,
         placeholder: blockI18n.placeholder || block.placeholder || null,
         help: blockI18n.help || block.help || def.description || null,
-        required: Boolean(def.required),
+        // A consent checkbox is inherently required — unchecked can't submit.
+        required: Boolean(def.required) || consent,
         rating: Boolean(block.rating && def.type === "integer"),
+        consent,
+        policyUrl: consent ? (block.policyUrl ?? null) : null,
         choices: choices.length > 0 ? choices : null,
         validation:
           validation && Object.keys(validation).length > 0 ? validation : null,
@@ -536,6 +549,27 @@ export const publicFormDefinition = (
     locale,
     turnstileSiteKey: settings.turnstile ? turnstileSiteKey : null,
   };
+};
+
+/**
+ * Enforce consent blocks on a clamped submit payload: every exposed consent
+ * checkbox must be exactly `true`. Runs server-side so a hand-crafted POST
+ * can't skip the checkbox the page renders.
+ */
+export const assertConsents = (
+  form: FormRow,
+  collection: CollectionRow,
+  data: Record<string, unknown>,
+): void => {
+  for (const { block, def } of exposedBlocks(form, collection)) {
+    if (!def || !block.consent || def.type !== "boolean") continue;
+    if (data[def.name] !== true) {
+      throw new AppError(
+        "VALIDATION",
+        `Consent required: "${block.label || def.label || def.name}" must be accepted`,
+      );
+    }
+  }
 };
 
 /**

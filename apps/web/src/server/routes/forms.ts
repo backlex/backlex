@@ -36,6 +36,8 @@ const FormBlockSchema = z
     placeholder: z.string().max(300).optional(),
     help: z.string().max(500).optional(),
     rating: z.boolean().optional(),
+    consent: z.boolean().optional(),
+    policyUrl: z.string().url().max(2000).optional(),
     cond: z
       .object({
         field: z.string().min(1),

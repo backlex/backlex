@@ -2641,6 +2641,10 @@ msgstr "Bağlantı başarısız."
 msgid "Connection URL"
 msgstr "Bağlantı URL'i"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Consent checkbox"
+msgstr "Onay kutusu"
+
 #: src/client/admin/pages/overview.tsx
 msgid "console (dev)"
 msgstr "konsol (geliştirme)"
@@ -6536,6 +6540,10 @@ msgstr "Tam bir http(s) URL'si olmalıdır."
 msgid "Must be a JSON object."
 msgstr "Bir JSON nesnesi olmalıdır."
 
+#: src/client/admin/pages/forms.tsx
+msgid "must be accepted"
+msgstr "kabul edilmesi zorunlu"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Must be an absolute URL (https://…)"
 msgstr "Mutlak bir URL olmalı (https://…)"
@@ -8327,6 +8335,11 @@ msgstr "Bu örnekte Platform SSO etkin değil. Kurumsal SSO içeren planlarda ve
 
 #. placeholder {0}: b.label || humanizeLabel(b.name)
 #: src/client/pages/public-form.tsx
+msgid "Please accept \"{0}\""
+msgstr "Lütfen \"{0}\" onayını işaretleyin"
+
+#. placeholder {0}: b.label || humanizeLabel(b.name)
+#: src/client/pages/public-form.tsx
 msgid "Please fill in \"{0}\""
 msgstr "Lütfen \\\"{0}\\\" alanını doldurun"
 
@@ -8350,6 +8363,10 @@ msgstr "PNG, JPG, SVG veya WebP — kare görseller en iyi görüntülenir. Önc
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Policy"
 msgstr "Politika"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Policy URL"
+msgstr "Sözleşme URL'si"
 
 #. placeholder {0}: (nu.title ?? "").slice(0, 38)
 #. placeholder {1}: (nu.title ?? "").length > 38 ? "…" : ""
@@ -8745,6 +8762,10 @@ msgstr "Oku"
 #: src/client/pages/api-keys.tsx
 msgid "Read & write"
 msgstr "Okuma ve yazma"
+
+#: src/client/pages/public-form.tsx
+msgid "Read the full text ↗"
+msgstr "Metnin tamamını oku ↗"
 
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/parity/database.tsx
@@ -10585,6 +10606,10 @@ msgstr "En son güncellenen 100 satır gösteriliyor. Daraltmak için arama yap�
 #: src/client/admin/storage/widgets.tsx
 msgid "Showing the original above. Toggle <0>Public</0> to enable edge resizing for this file."
 msgstr "Yukarıda orijinal gösteriliyor. Bu dosya için kenar yeniden boyutlandırmayı etkinleştirmek için <0>Herkese açık</0> seçeneğini açın."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Shown as a \"read the full text\" link next to the checkbox."
+msgstr "Onay kutusunun yanında \"metnin tamamını oku\" bağlantısı olarak gösterilir."
 
 #: src/client/admin/parity/insights.tsx
 msgid "Shown as the panel title on the dashboard."
@@ -12492,6 +12517,10 @@ msgstr "ziyaretçinin tarayıcı dili"
 #: src/client/admin/pages/forms.tsx
 msgid "Visitors get their browser language; <0>?lang={0}</0> forces one. Missing strings fall back to the base language."
 msgstr "Ziyaretçiler tarayıcı dilini görür; <0>?lang={0}</0> belirli bir dili zorlar. Eksik metinler ana dile düşer."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Visitors must tick it to submit — enforced server-side. Put the consent sentence in the Label."
+msgstr "Ziyaretçi işaretlemeden gönderemez — sunucu tarafında da zorunlu. Onay cümlesini Etiket alanına yazın."
 
 #: src/client/admin/display-template-editor.tsx
 msgid "Visual"

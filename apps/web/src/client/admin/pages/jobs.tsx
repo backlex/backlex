@@ -133,6 +133,7 @@ export function JobsPage({ pushToast }: { pushToast: (m: string) => void }) {
           </div>
         ) : jobs.length === 0 ? (
           <EmptyState
+            bare
             size="md"
             icon={I.Clock}
             title={<Trans>No jobs</Trans>}

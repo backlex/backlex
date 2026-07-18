@@ -296,19 +296,18 @@ function FormCards({
   }
   if (forms.length === 0) {
     return (
-      <Card className="py-0">
-        <EmptyState
-          size="md"
-          icon={I.Form}
-          title={<Trans>No forms yet</Trans>}
-          description={<Trans>Create a form to collect submissions from visitors — no account or code required on their side.</Trans>}
-          action={
-            <Button variant="primary" icon={I.Plus} onClick={onNew}>
-              <Trans>New form</Trans>
-            </Button>
-          }
-        />
-      </Card>
+      // EmptyState renders its own Card — no wrapper, or it double-borders.
+      <EmptyState
+        size="md"
+        icon={I.Form}
+        title={<Trans>No forms yet</Trans>}
+        description={<Trans>Create a form to collect submissions from visitors — no account or code required on their side.</Trans>}
+        action={
+          <Button variant="primary" icon={I.Plus} onClick={onNew}>
+            <Trans>New form</Trans>
+          </Button>
+        }
+      />
     );
   }
   return (
@@ -2478,6 +2477,7 @@ function SubmissionsTab({
           </div>
         ) : rows.length === 0 ? (
           <EmptyState
+            bare
             size="md"
             icon={I.Form}
             title={<Trans>No submissions yet</Trans>}

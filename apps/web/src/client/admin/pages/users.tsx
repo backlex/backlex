@@ -274,6 +274,15 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
         </div>
       )}
 
+      {filtered.length === 0 ? (
+        // Outside the table on purpose — an in-table empty state centers
+        // inside the horizontal scroller and hangs off-screen on mobile.
+        <EmptyState
+          icon={I.Users}
+          title={<Trans>No users match</Trans>}
+          description={<Trans>Adjust your filters or invite a new teammate.</Trans>}
+        />
+      ) : (
       <Card className="py-0 gap-0">
         <Table className="[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">
           <TableHeader>
@@ -400,19 +409,10 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                 </TableRow>
               );
             })}
-            {filtered.length === 0 && (
-              <TableRow><TableCell colSpan={8}>
-                <EmptyState
-                  bare
-                  icon={I.Users}
-                  title={<Trans>No users match</Trans>}
-                  description={<Trans>Adjust your filters or invite a new teammate.</Trans>}
-                />
-              </TableCell></TableRow>
-            )}
           </TableBody>
         </Table>
       </Card>
+      )}
 
       {activeUser && <UserDrawer user={activeUser} allRoles={allRoles} onClose={() => setActiveUser(null)} onSaved={applyUserPatch} pushToast={pushToast} />}
       {inviteOpen && <InviteUserDialog roles={roleNames} onClose={() => setInviteOpen(false)} pushToast={pushToast} onCreated={(inv) => {

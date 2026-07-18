@@ -152,6 +152,7 @@ export function FeatureFlagsPage({ pushToast }: { pushToast: (m: string) => void
           </div>
         ) : flags.length === 0 ? (
           <EmptyState
+            bare
             size="md"
             icon={I.ToggleLeft}
             title={<Trans>No feature flags</Trans>}

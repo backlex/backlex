@@ -290,7 +290,10 @@ export function SchemaVersionsPage({
 
       <Card className="overflow-hidden">
         {isEmpty ? (
+          // bare — a non-bare EmptyState renders its own Card, which nests a
+          // card inside this card (double border).
           <EmptyState
+            bare
             icon={tab === "snapshots" ? I.History : I.Network}
             title={tab === "snapshots" ? t`No snapshots yet` : t`No branches yet`}
             description={

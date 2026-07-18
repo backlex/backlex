@@ -2645,6 +2645,10 @@ msgstr "Connection URL"
 msgid "Consent checkbox"
 msgstr "Consent checkbox"
 
+#: src/client/admin/pages/forms.tsx
+msgid "consent must be accepted — always required"
+msgstr "consent must be accepted — always required"
+
 #: src/client/admin/pages/overview.tsx
 msgid "console (dev)"
 msgstr "console (dev)"
@@ -6541,8 +6545,13 @@ msgid "Must be a JSON object."
 msgstr "Must be a JSON object."
 
 #: src/client/admin/pages/forms.tsx
-msgid "must be accepted"
-msgstr "must be accepted"
+#~ msgid "must be accepted"
+#~ msgstr "must be accepted"
+
+#: src/client/admin/pages/forms.tsx
+#: src/client/pages/public-form.tsx
+msgid "must be accepted to submit"
+msgstr "must be accepted to submit"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Must be an absolute URL (https://…)"
@@ -8763,9 +8772,14 @@ msgstr "Read"
 msgid "Read & write"
 msgstr "Read & write"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/pages/public-form.tsx
-msgid "Read the full text ↗"
-msgstr "Read the full text ↗"
+msgid "read the full text"
+msgstr "read the full text"
+
+#: src/client/pages/public-form.tsx
+#~ msgid "Read the full text ↗"
+#~ msgstr "Read the full text ↗"
 
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/parity/database.tsx
@@ -12820,7 +12834,6 @@ msgstr "xxxxx-xxxxx"
 msgid "yes"
 msgstr "yes"
 
-#: src/client/admin/pages/forms.tsx
 #: src/client/pages/public-form.tsx
 msgid "Yes"
 msgstr "Yes"

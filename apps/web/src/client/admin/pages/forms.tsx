@@ -467,27 +467,6 @@ function CanvasFieldPreview({
       </>
     );
   }
-  if (ef.type === "boolean") {
-    if (block.consent) {
-      return (
-        <div className="flex items-start gap-2 text-[13px]" style={{ color: p.muted }}>
-          <span className="mt-0.5 size-4 shrink-0 rounded-sm border" style={{ borderColor: p.border, background: p.inputBg }} />
-          <span>
-            <Trans>must be accepted</Trans>
-            {block.policyUrl && (
-              <span className="underline underline-offset-2"> · {new URL(block.policyUrl).hostname}</span>
-            )}
-          </span>
-        </div>
-      );
-    }
-    return (
-      <div className="flex items-center gap-2 text-[13px]" style={{ color: p.muted }}>
-        <span className="size-4 rounded-sm border" style={{ borderColor: p.border, background: p.inputBg }} />
-        <Trans>Yes</Trans>
-      </div>
-    );
-  }
   if (ef.type === "integer" && block.rating) {
     return (
       <div className="flex items-center gap-1" style={{ color: p.muted }}>
@@ -1172,6 +1151,45 @@ export function FormsPage({
                             </span>
                             <span className="text-[14px] font-semibold">{label}</span>
                           </div>
+                        ) : ef?.type === "boolean" && !b.consent ? (
+                          <div className="flex items-center gap-2.5 py-0.5 text-[13.5px]">
+                            <span
+                              className="size-[19px] shrink-0 rounded-[6px] border-[1.5px]"
+                              style={{ borderColor: cp.border, background: cp.inputBg }}
+                            />
+                            <span className="min-w-0 flex-1">{label}</span>
+                            {ef.required && (
+                              <span className="font-bold" style={{ color: accent }}>*</span>
+                            )}
+                          </div>
+                        ) : b.consent && ef?.type === "boolean" ? (
+                          <div
+                            className="flex items-start gap-2.5 rounded-[10px] border px-3.5 py-3"
+                            style={{ borderColor: `${accent}52`, background: `${accent}0f` }}
+                          >
+                            <span
+                              className="mt-0.5 size-[19px] shrink-0 rounded-[6px] border-[1.5px]"
+                              style={{ borderColor: accent, background: cp.inputBg }}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-baseline gap-1.5 text-[13.5px]">
+                                <span className="min-w-0 flex-1">{label}</span>
+                                <span className="font-bold" style={{ color: accent }}>*</span>
+                              </div>
+                              <div className="mt-1 flex items-center gap-1.5 text-[11px]" style={{ color: cp.muted }}>
+                                <I.Shield size={10} />
+                                <Trans>must be accepted to submit</Trans>
+                                {b.policyUrl && (
+                                  <>
+                                    <span>·</span>
+                                    <span className="underline underline-offset-2" style={{ color: accent }}>
+                                      <Trans>read the full text</Trans>
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         ) : (
                           <div className="flex flex-col gap-1.5">
                             <div className="flex items-center gap-1.5 text-[13.5px] font-medium">
@@ -1771,16 +1789,28 @@ function BlockPanel({
       )}
 
       {!isStep && ef && (
-        <div className="flex items-center justify-between text-[12px] font-medium">
-          <Trans>Required</Trans>
-          {ef.required ? (
-            <span className="flex items-center gap-1 text-[11px] font-normal text-muted-foreground">
-              <I.Lock size={10} />
-              <Trans>required by the collection schema</Trans>
+        <div className="flex items-center justify-between gap-2 text-[12px] font-medium">
+          <div className="min-w-0">
+            <Trans>Required</Trans>
+            {block.consent && ef.type === "boolean" ? (
+              <div className="mt-0.5 flex items-center gap-1 text-[10.5px] font-normal text-muted-foreground">
+                <I.Shield size={10} />
+                <Trans>consent must be accepted — always required</Trans>
+              </div>
+            ) : ef.required ? (
+              <div className="mt-0.5 flex items-center gap-1 text-[10.5px] font-normal text-muted-foreground">
+                <I.Lock size={10} />
+                <Trans>required by the collection schema</Trans>
+              </div>
+            ) : (
+              <div className="mt-0.5 text-[10.5px] font-normal text-muted-foreground"><Trans>optional</Trans></div>
+            )}
+          </div>
+          {(block.consent && ef.type === "boolean") || ef.required ? (
+            <span className="pointer-events-none opacity-55">
+              <Switch checked onChange={() => {}} />
             </span>
-          ) : (
-            <span className="text-[11px] font-normal text-muted-foreground"><Trans>optional</Trans></span>
-          )}
+          ) : null}
         </div>
       )}
 

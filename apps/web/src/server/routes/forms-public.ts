@@ -11,41 +11,57 @@ import {
   type WriteEnv,
 } from "../services/items/write";
 import {
-  exposedFields,
+  exposedFieldNames,
   publicFormDefinition,
+  recordFormBlocked,
+  recordFormSubmission,
+  resolveFormLocale,
   resolveFormToken,
   verifyTurnstile,
+  type FormRow,
 } from "../services/forms";
 
 const TAGS = ["forms"];
 
 /** Per-form, per-IP submit budget — separate from the global API limiter so a
  *  flooded form can't eat the workspace's overall request budget. */
-const SUBMIT_MAX_PER_MINUTE = 10;
+export const SUBMIT_MAX_PER_MINUTE = 10;
 const SUBMIT_WINDOW_MS = 60_000;
 
-const PublicFormFieldSchema = z
+const PublicFormBlockSchema = z
   .object({
-    name: z.string(),
-    type: z.string(),
+    kind: z.string(),
+    name: z.string().optional(),
+    type: z.string().optional(),
     label: z.string(),
+    placeholder: z.string().nullable(),
     help: z.string().nullable(),
     required: z.boolean(),
+    rating: z.boolean(),
     choices: z
       .array(z.object({ value: z.string(), label: z.string().optional() }))
       .nullable(),
     validation: z.record(z.string(), z.unknown()).nullable(),
+    cond: z
+      .object({ field: z.string(), op: z.string(), value: z.string() })
+      .nullable(),
   })
-  .openapi("PublicFormField");
+  .openapi("PublicFormBlock");
 
 const PublicFormSchema = z
   .object({
     name: z.string(),
+    description: z.string().nullable(),
     collection: z.string(),
-    fields: z.array(PublicFormFieldSchema),
+    blocks: z.array(PublicFormBlockSchema),
     submitLabel: z.string().nullable(),
     successMessage: z.string().nullable(),
     redirectUrl: z.string().nullable(),
+    theme: z.enum(["dark", "light"]),
+    accent: z.string().nullable(),
+    font: z.enum(["sans", "lexend", "mono"]),
+    languages: z.array(z.string()),
+    locale: z.string(),
     turnstileSiteKey: z.string().nullable(),
   })
   .openapi("PublicForm");
@@ -70,6 +86,14 @@ const SubmitResult = z
   .openapi("PublicFormSubmitResult");
 
 const NOT_AVAILABLE = "This form is no longer available";
+const PAUSED = "This form is not accepting submissions right now";
+
+/** 404 unknown token; 410 known-but-paused (embedders can tell them apart). */
+const requireLiveForm = (form: FormRow | null): FormRow => {
+  if (!form) throw new AppError("NOT_FOUND", NOT_AVAILABLE);
+  if (!form.active) throw new AppError("GONE", PAUSED);
+  return form;
+};
 
 /**
  * Public, unauthenticated form endpoints. Mounted at `/api/public/forms` with
@@ -90,9 +114,12 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags: TAGS,
       summary: "Resolve a public form token to its definition",
       description:
-        "PUBLIC — no auth. Returns the form's exposed fields (labels, types, choices, validation hints) so the form page can render inputs. Never exposes non-listed fields.",
+        "PUBLIC — no auth. Returns the form's blocks (labels, types, choices, validation hints, step breaks, show-conditions) resolved for `?lang=` so the form page can render inputs. Never exposes non-listed fields. Paused forms answer 410.",
       security: PUBLIC_SECURITY,
-      request: { params: z.object({ token: z.string() }) },
+      request: {
+        params: z.object({ token: z.string() }),
+        query: z.object({ lang: z.string().optional() }),
+      },
       responses: {
         200: {
           description: "OK",
@@ -104,8 +131,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const ctx = c.get("ctx");
       const { token } = c.req.valid("param");
-      const form = await resolveFormToken(ctx, token);
-      if (!form) throw new AppError("NOT_FOUND", NOT_AVAILABLE);
+      const form = requireLiveForm(await resolveFormToken(ctx, token));
 
       let collection;
       try {
@@ -119,6 +145,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           form,
           collection,
           ctx.env.TURNSTILE_SITE_KEY ?? null,
+          c.req.query("lang") ?? null,
         ),
       });
     },
@@ -134,6 +161,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       security: PUBLIC_SECURITY,
       request: {
         params: z.object({ token: z.string() }),
+        query: z.object({ lang: z.string().optional() }),
         body: {
           required: true,
           content: { "application/json": { schema: SubmitBody } },
@@ -151,12 +179,14 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const { token } = c.req.valid("param");
       const body = c.req.valid("json");
-      const form = await resolveFormToken(ctx, token);
-      if (!form) throw new AppError("NOT_FOUND", NOT_AVAILABLE);
+      const form = requireLiveForm(await resolveFormToken(ctx, token));
 
       const settings = form.settings ?? {};
+      const locale = resolveFormLocale(form, c.req.query("lang") ?? null);
+      const base = (settings.languages?.length ? settings.languages : ["en"])[0];
+      const i18n = locale !== base ? (settings.i18n?.[locale] ?? {}) : {};
       const success = {
-        successMessage: settings.successMessage ?? null,
+        successMessage: i18n.successMessage || settings.successMessage || null,
         redirectUrl: settings.redirectUrl ?? null,
       };
 
@@ -164,6 +194,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // with the exact success shape (id kept null on the real path too) so
       // automated probes can't distinguish a dropped submission.
       if (body.website) {
+        await recordFormBlocked(ctx, form.id);
         return c.json({ data: { id: null, ...success } }, 201);
       }
 
@@ -176,6 +207,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         SUBMIT_WINDOW_MS,
       );
       if (!allowed) {
+        await recordFormBlocked(ctx, form.id);
         throw new AppError(
           "RATE_LIMITED",
           "Too many submissions — please wait a minute and try again",
@@ -183,11 +215,16 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       }
 
       if (settings.turnstile) {
-        await verifyTurnstile(
-          ctx.env.TURNSTILE_SECRET_KEY,
-          body.turnstileToken,
-          meta.ip,
-        );
+        try {
+          await verifyTurnstile(
+            ctx.env.TURNSTILE_SECRET_KEY,
+            body.turnstileToken,
+            meta.ip,
+          );
+        } catch (e) {
+          await recordFormBlocked(ctx, form.id);
+          throw e;
+        }
       }
 
       let collection;
@@ -201,9 +238,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // Unknown/extra keys are dropped up front (bots pad payloads; that must
       // not 422 a legitimate-looking submit), and the same set doubles as the
       // permission field clamp inside performCreate for defense in depth.
-      const exposed = new Set(
-        exposedFields(form, collection).map((e) => e.def.name),
-      );
+      const exposed = exposedFieldNames(form, collection);
       const data: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(body.data)) {
         if (exposed.has(key)) data[key] = value;
@@ -225,6 +260,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         fields: exposed,
       });
       for (const fx of res.sideEffects) await fx();
+      await recordFormSubmission(ctx, form.id);
 
       // The row id stays private — a public submitter has no read path to the
       // record, so leaking its id would only aid enumeration.

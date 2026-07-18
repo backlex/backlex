@@ -19,7 +19,7 @@ import {
   listForms,
   rotateFormToken,
   updateForm,
-  type FormFieldConfig,
+  type FormBlock,
   type FormInput,
   type FormSettings,
 } from "../forms";
@@ -108,7 +108,7 @@ const urls = (token: string) => ({
 const parseInput = (data: Record<string, unknown>): Partial<FormInput> => ({
   ...(data.name !== undefined ? { name: data.name as string } : {}),
   ...(data.collection !== undefined ? { collection: data.collection as string } : {}),
-  ...(data.fields !== undefined ? { fields: data.fields as FormFieldConfig[] } : {}),
+  ...(data.fields !== undefined ? { fields: data.fields as FormBlock[] } : {}),
   ...(data.settings !== undefined ? { settings: data.settings as FormSettings | null } : {}),
   ...(data.active !== undefined ? { active: Boolean(data.active) } : {}),
 });

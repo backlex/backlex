@@ -9,14 +9,19 @@
  * Every read degrades gracefully (try/catch → null/[]) when the `forms` table
  * hasn't been migrated yet, the same posture as shared-links/dashboards.
  *
+ * A form is a list of BLOCKS. `kind: "field"` blocks expose one collection
+ * field (label/placeholder/help overrides, optional show-condition, per-locale
+ * strings); `kind: "step"` blocks are presentation-only page breaks that turn
+ * the public form into a multi-step flow. Legacy configs (plain
+ * `{ name, label?, help? }` rows) parse as field blocks unchanged.
+ *
  * v1 scope fence: only scalar field types (text/longtext/integer/number/
- * boolean/timestamp — dropdowns are `text` + choices) can be exposed on a
- * form. Relation/file/hash/json/localized/computed/private/auto-filled fields
- * are rejected at definition time AND re-filtered at read/submit time, so a
- * stale form definition can never leak or write a field that later became
- * ineligible.
+ * boolean/timestamp — dropdowns are `text` + choices) can be exposed. Relation/
+ * file/hash/json/localized/computed/private/auto-filled fields are rejected at
+ * definition time AND re-filtered at read/submit time, so a stale form
+ * definition can never leak or write a field that later became ineligible.
  */
-import { and, desc, eq, isNull, or } from "drizzle-orm";
+import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
@@ -48,16 +53,51 @@ const ALLOWED_TYPES = new Set<string>([
   "timestamp",
 ]);
 
-export interface FormFieldConfig {
-  /** Collection field name — must be form-eligible at definition time. */
-  name: string;
-  /** Display label override; falls back to the field's own label/name. */
+/** Per-locale overrides for one block. Empty/missing strings fall back to the
+ *  base-language value. */
+export interface FormBlockI18n {
   label?: string;
-  /** Help text override shown beneath the input. */
+  placeholder?: string;
   help?: string;
 }
 
+/** Show-condition: the block renders only when another exposed field's current
+ *  answer matches. Evaluated client-side for display AND ignored server-side
+ *  for validation clamps (a hidden block's field is simply not required). */
+export interface FormBlockCond {
+  field: string;
+  op: "is" | "is_not";
+  value: string;
+}
+
+export interface FormBlock {
+  /** Stable client id for canvas selection/reorder. Optional; preserved. */
+  id?: string;
+  /** "field" (default — legacy rows omit it) or the "step" page break. */
+  kind?: "field" | "step";
+  /** Collection field name — required for field blocks. */
+  name?: string;
+  /** Display label override; step blocks use it as the step title. */
+  label?: string;
+  placeholder?: string;
+  help?: string;
+  /** Integer fields only: render as a 1–5 star rating on the public page. */
+  rating?: boolean;
+  cond?: FormBlockCond;
+  i18n?: Record<string, FormBlockI18n>;
+}
+
+/** Per-locale overrides for the form-level strings. */
+export interface FormI18n {
+  title?: string;
+  description?: string;
+  submitLabel?: string;
+  successMessage?: string;
+}
+
 export interface FormSettings {
+  /** Sub-heading under the form title on the public page. */
+  description?: string;
   /** Submit button label. Default: "Submit". */
   submitLabel?: string;
   /** Message shown after a successful submission. */
@@ -66,6 +106,14 @@ export interface FormSettings {
   redirectUrl?: string;
   /** Require a Cloudflare Turnstile pass on submit. Needs TURNSTILE_SECRET_KEY. */
   turnstile?: boolean;
+  /** Public page appearance. */
+  theme?: "dark" | "light";
+  accent?: string;
+  font?: "sans" | "lexend" | "mono";
+  /** Offered locales, base language first (default ["en"]). Visitors get
+   *  their browser language when offered; `?lang=xx` forces one. */
+  languages?: string[];
+  i18n?: Record<string, FormI18n>;
 }
 
 export interface FormRow {
@@ -74,9 +122,12 @@ export interface FormRow {
   name: string;
   collection: string;
   tokenHash: string;
-  fields: FormFieldConfig[];
+  fields: FormBlock[];
   settings: FormSettings | null;
   active: boolean;
+  submissionCount: number;
+  blockedCount: number;
+  lastSubmissionAt: Date | number | null;
   createdBy: string | null;
   createdAt: Date | number | null;
   updatedAt: Date | number | null;
@@ -85,7 +136,7 @@ export interface FormRow {
 export interface FormInput {
   name: string;
   collection: string;
-  fields: FormFieldConfig[];
+  fields: FormBlock[];
   settings?: FormSettings | null;
   active?: boolean;
 }
@@ -106,19 +157,20 @@ export const isFormEligible = (f: FieldDef): boolean =>
 export const formEligibleFields = (collection: CollectionRow): FieldDef[] =>
   (collection.fields as FieldDef[]).filter(isFormEligible);
 
-/** Throws VALIDATION unless every configured field is eligible right now. */
+/** Throws VALIDATION unless every field block references an eligible field. */
 const assertFieldsEligible = (
   collection: CollectionRow,
-  fields: FormFieldConfig[],
+  blocks: FormBlock[],
 ): void => {
-  if (fields.length === 0)
+  const fieldBlocks = blocks.filter((b) => (b.kind ?? "field") === "field");
+  if (fieldBlocks.length === 0)
     throw new AppError("VALIDATION", "A form needs at least one field");
   const eligible = new Set(formEligibleFields(collection).map((f) => f.name));
-  for (const f of fields) {
-    if (!eligible.has(f.name)) {
+  for (const b of fieldBlocks) {
+    if (!b.name || !eligible.has(b.name)) {
       throw new AppError(
         "VALIDATION",
-        `Field "${f.name}" cannot be exposed on a public form (only scalar, non-private, non-computed fields are allowed)`,
+        `Field "${b.name ?? "?"}" cannot be exposed on a public form (only scalar, non-private, non-computed fields are allowed)`,
       );
     }
   }
@@ -127,17 +179,27 @@ const assertFieldsEligible = (
 const tenantScope = (t: any, tenantId: string | null) =>
   tenantId ? or(eq(t.tenantId, tenantId), isNull(t.tenantId)) : isNull(t.tenantId);
 
+/** Coerce a raw DB row into the API shape (sqlite 0/1 → boolean, null counts). */
+const normalizeRow = (r: any): FormRow => ({
+  ...r,
+  active: Boolean(r.active),
+  submissionCount: Number(r.submissionCount ?? 0),
+  blockedCount: Number(r.blockedCount ?? 0),
+  fields: Array.isArray(r.fields) ? r.fields : [],
+});
+
 export const listForms = async (
   ctx: Ctx,
   tenantId: string | null,
 ): Promise<FormRow[]> => {
   const t = formTable(ctx.dialect);
   try {
-    return (await (ctx.db as any)
+    const rows = (await (ctx.db as any)
       .select()
       .from(t)
       .where(tenantScope(t, tenantId))
-      .orderBy(desc(t.createdAt))) as FormRow[];
+      .orderBy(desc(t.createdAt))) as any[];
+    return rows.map(normalizeRow);
   } catch {
     return [];
   }
@@ -154,8 +216,8 @@ export const getForm = async (
       .select()
       .from(t)
       .where(and(eq(t.id, id), tenantScope(t, tenantId)))
-      .limit(1)) as FormRow[];
-    return rows[0] ?? null;
+      .limit(1)) as any[];
+    return rows[0] ? normalizeRow(rows[0]) : null;
   } catch {
     return null;
   }
@@ -184,6 +246,9 @@ export const createForm = async (
     fields: input.fields,
     settings: input.settings ?? null,
     active: input.active ?? true,
+    submissionCount: 0,
+    blockedCount: 0,
+    lastSubmissionAt: null,
     createdBy: input.createdBy,
     createdAt: now,
     updatedAt: now,
@@ -203,7 +268,7 @@ export const updateForm = async (
 
   const collectionSlug = patch.collection ?? existing.collection;
   const fields = patch.fields ?? existing.fields;
-  // Re-validate whenever the target collection or the field set changes.
+  // Re-validate whenever the target collection or the block set changes.
   if (patch.collection !== undefined || patch.fields !== undefined) {
     const collection = await loadCollection(ctx, tenantId, collectionSlug);
     assertFieldsEligible(collection, fields);
@@ -253,8 +318,9 @@ export const rotateFormToken = async (
 };
 
 /**
- * Resolve a plaintext token to its ACTIVE form row. Null when unknown,
- * inactive, or the table hasn't been migrated yet.
+ * Resolve a plaintext token to its form row — ACTIVE OR PAUSED (callers map
+ * paused to 410 so embedders can tell "switched off" from "never existed").
+ * Null when unknown or the table hasn't been migrated yet.
  */
 export const resolveFormToken = async (
   ctx: Ctx,
@@ -268,23 +334,57 @@ export const resolveFormToken = async (
       .select()
       .from(t)
       .where(eq(t.tokenHash, tokenHash))
-      .limit(1)) as FormRow[];
-    const row = rows[0];
-    if (!row || !row.active) return null;
-    return row;
+      .limit(1)) as any[];
+    return rows[0] ? normalizeRow(rows[0]) : null;
   } catch {
     return null;
   }
 };
 
-/** Public metadata for one exposed field — everything the form page needs to
- *  render an input, and nothing else (no conditions, no storage details). */
-export interface PublicFormField {
-  name: string;
-  type: string;
+/** Best-effort submission counters — never allowed to fail the request. */
+export const recordFormSubmission = async (ctx: Ctx, id: string): Promise<void> => {
+  const t = formTable(ctx.dialect);
+  const now = ctx.dialect === "pg" ? new Date() : Date.now();
+  try {
+    await (ctx.db as any)
+      .update(t)
+      .set({
+        submissionCount: sql`${t.submissionCount} + 1`,
+        lastSubmissionAt: now,
+      })
+      .where(eq(t.id, id));
+  } catch {
+    // Counter loss is acceptable; the row write already succeeded.
+  }
+};
+
+export const recordFormBlocked = async (ctx: Ctx, id: string): Promise<void> => {
+  const t = formTable(ctx.dialect);
+  try {
+    await (ctx.db as any)
+      .update(t)
+      .set({ blockedCount: sql`${t.blockedCount} + 1` })
+      .where(eq(t.id, id));
+  } catch {
+    // Best-effort.
+  }
+};
+
+/* ── Public definition ─────────────────────────────────────────────── */
+
+/** Public metadata for one block — everything the form page needs to render,
+ *  and nothing else (no conditions on hidden internals, no storage details). */
+export interface PublicFormBlock {
+  kind: string;
+  /** Field name (field blocks) — absent on step blocks. */
+  name?: string;
+  /** Storage type of the underlying field (field blocks). */
+  type?: string;
   label: string;
+  placeholder: string | null;
   help: string | null;
   required: boolean;
+  rating: boolean;
   choices: Array<{ value: string; label?: string }> | null;
   validation: {
     regex?: string;
@@ -295,38 +395,68 @@ export interface PublicFormField {
     format?: "email" | "url";
     integer?: boolean;
   } | null;
+  cond: FormBlockCond | null;
 }
 
 export interface PublicFormDefinition {
   name: string;
+  description: string | null;
   collection: string;
-  fields: PublicFormField[];
+  blocks: PublicFormBlock[];
   submitLabel: string | null;
   successMessage: string | null;
   redirectUrl: string | null;
+  theme: "dark" | "light";
+  accent: string | null;
+  font: "sans" | "lexend" | "mono";
+  /** Offered locales, base first; `locale` is the one this payload resolved. */
+  languages: string[];
+  locale: string;
   /** Non-null ⇒ the page must render the Turnstile widget with this site key. */
   turnstileSiteKey: string | null;
 }
 
 /**
- * The exposed field set, re-derived against the CURRENT collection schema —
- * the stored config is intersected with today's eligible fields, so a field
- * that was dropped or became ineligible silently disappears from the form.
- * Used by both the public GET (render) and the submit clamp.
+ * The exposed field-block set, re-derived against the CURRENT collection
+ * schema — the stored config is intersected with today's eligible fields, so
+ * a field that was dropped or became ineligible silently disappears from the
+ * form. Used by both the public GET (render) and the submit clamp.
  */
-export const exposedFields = (
+export const exposedBlocks = (
   form: FormRow,
   collection: CollectionRow,
-): Array<{ def: FieldDef; config: FormFieldConfig }> => {
-  const byName = new Map(
-    formEligibleFields(collection).map((f) => [f.name, f]),
-  );
-  const out: Array<{ def: FieldDef; config: FormFieldConfig }> = [];
-  for (const config of form.fields) {
-    const def = byName.get(config.name);
-    if (def) out.push({ def, config });
+): Array<{ block: FormBlock; def: FieldDef | null }> => {
+  const byName = new Map(formEligibleFields(collection).map((f) => [f.name, f]));
+  const out: Array<{ block: FormBlock; def: FieldDef | null }> = [];
+  for (const block of form.fields) {
+    const kind = block.kind ?? "field";
+    if (kind === "step") {
+      out.push({ block, def: null });
+      continue;
+    }
+    const def = block.name ? byName.get(block.name) : undefined;
+    if (def) out.push({ block, def });
   }
   return out;
+};
+
+/** The submit clamp: names of the currently-exposed field blocks. */
+export const exposedFieldNames = (
+  form: FormRow,
+  collection: CollectionRow,
+): Set<string> =>
+  new Set(
+    exposedBlocks(form, collection)
+      .filter((e) => e.def)
+      .map((e) => e.def!.name),
+  );
+
+/** Resolve the payload locale: `?lang=` wins when offered, else the base. */
+export const resolveFormLocale = (form: FormRow, lang: string | null): string => {
+  const languages = form.settings?.languages?.length ? form.settings.languages : ["en"];
+  const base = languages[0] ?? "en";
+  if (lang && languages.includes(lang)) return lang;
+  return base;
 };
 
 /** Build the public definition payload for the form page. */
@@ -334,39 +464,76 @@ export const publicFormDefinition = (
   form: FormRow,
   collection: CollectionRow,
   turnstileSiteKey: string | null,
+  lang: string | null = null,
 ): PublicFormDefinition => {
   const settings = form.settings ?? {};
-  const fields = exposedFields(form, collection).map(({ def, config }): PublicFormField => {
-    const v = def.validation;
-    const validation = v
-      ? {
-          ...(v.regex !== undefined ? { regex: v.regex } : {}),
-          ...(v.min !== undefined ? { min: v.min } : {}),
-          ...(v.max !== undefined ? { max: v.max } : {}),
-          ...(v.minLength !== undefined ? { minLength: v.minLength } : {}),
-          ...(v.maxLength !== undefined ? { maxLength: v.maxLength } : {}),
-          ...(v.format !== undefined ? { format: v.format } : {}),
-          ...(v.integer !== undefined ? { integer: v.integer } : {}),
-        }
-      : null;
-    const choices = getChoices(def);
-    return {
-      name: def.name,
-      type: def.type,
-      label: config.label ?? def.label ?? def.name,
-      help: config.help ?? def.description ?? null,
-      required: Boolean(def.required),
-      choices: choices.length > 0 ? choices : null,
-      validation: validation && Object.keys(validation).length > 0 ? validation : null,
-    };
-  });
+  const languages = settings.languages?.length ? settings.languages : ["en"];
+  const base = languages[0] ?? "en";
+  const locale = resolveFormLocale(form, lang);
+  const formI18n = locale !== base ? (settings.i18n?.[locale] ?? {}) : {};
+
+  const blocks = exposedBlocks(form, collection).map(
+    ({ block, def }): PublicFormBlock => {
+      const blockI18n = locale !== base ? (block.i18n?.[locale] ?? {}) : {};
+      if (!def) {
+        return {
+          kind: "step",
+          label: blockI18n.label || block.label || "",
+          placeholder: null,
+          help: null,
+          required: false,
+          rating: false,
+          choices: null,
+          validation: null,
+          cond: block.cond ?? null,
+        };
+      }
+      const v = def.validation;
+      const validation = v
+        ? {
+            ...(v.regex !== undefined ? { regex: v.regex } : {}),
+            ...(v.min !== undefined ? { min: v.min } : {}),
+            ...(v.max !== undefined ? { max: v.max } : {}),
+            ...(v.minLength !== undefined ? { minLength: v.minLength } : {}),
+            ...(v.maxLength !== undefined ? { maxLength: v.maxLength } : {}),
+            ...(v.format !== undefined ? { format: v.format } : {}),
+            ...(v.integer !== undefined ? { integer: v.integer } : {}),
+          }
+        : null;
+      const choices = getChoices(def);
+      return {
+        kind: "field",
+        name: def.name,
+        type: def.type,
+        label: blockI18n.label || block.label || def.label || def.name,
+        placeholder: blockI18n.placeholder || block.placeholder || null,
+        help: blockI18n.help || block.help || def.description || null,
+        required: Boolean(def.required),
+        rating: Boolean(block.rating && def.type === "integer"),
+        choices: choices.length > 0 ? choices : null,
+        validation:
+          validation && Object.keys(validation).length > 0 ? validation : null,
+        cond: block.cond ?? null,
+      };
+    },
+  );
+
   return {
-    name: form.name,
+    name: formI18n.title || form.name,
+    description: formI18n.description || settings.description || null,
     collection: form.collection,
-    fields,
-    submitLabel: settings.submitLabel ?? null,
-    successMessage: settings.successMessage ?? null,
+    blocks,
+    submitLabel: formI18n.submitLabel || settings.submitLabel || null,
+    successMessage: formI18n.successMessage || settings.successMessage || null,
     redirectUrl: settings.redirectUrl ?? null,
+    theme: settings.theme === "light" ? "light" : "dark",
+    accent: settings.accent ?? null,
+    font:
+      settings.font === "lexend" || settings.font === "mono"
+        ? settings.font
+        : "sans",
+    languages,
+    locale,
     turnstileSiteKey: settings.turnstile ? turnstileSiteKey : null,
   };
 };

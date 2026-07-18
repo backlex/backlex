@@ -1365,8 +1365,13 @@ export const forms = sqliteTable(
     fields: text("fields", { mode: "json" }).$type<Array<Record<string, unknown>>>().notNull(),
     /** Behaviour knobs: submit label, success message/redirect, turnstile. */
     settings: text("settings", { mode: "json" }).$type<Record<string, unknown> | null>(),
-    /** Inactive forms 404 on the public endpoints without being deleted. */
+    /** Paused forms answer 410 on the public endpoints without being deleted. */
     active: integer("active", { mode: "boolean" }).notNull().default(true),
+    /** All-time accepted submissions (incremented per successful submit). */
+    submissionCount: integer("submission_count").notNull().default(0),
+    /** Submissions rejected by honeypot / Turnstile / rate limit. */
+    blockedCount: integer("blocked_count").notNull().default(0),
+    lastSubmissionAt: integer("last_submission_at", { mode: "timestamp_ms" }),
     createdBy: text("created_by"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),

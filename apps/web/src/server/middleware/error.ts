@@ -103,7 +103,7 @@ export const errorHandler = (err: Error, c: Context) => {
   // every response (success or failure) then carries `x-request-id`.
   if (requestId) c.header("x-request-id", requestId);
   if (isAppError(err)) {
-    const status = err.status as 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500;
+    const status = err.status as 400 | 401 | 403 | 404 | 409 | 410 | 422 | 429 | 500;
     markError(c, err.code);
     logServerError(c, status, err.code, err.message);
     return c.json(

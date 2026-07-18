@@ -170,12 +170,24 @@ const assertFieldsEligible = (
   const fieldBlocks = blocks.filter((b) => (b.kind ?? "field") === "field");
   if (fieldBlocks.length === 0)
     throw new AppError("VALIDATION", "A form needs at least one field");
-  const eligible = new Set(formEligibleFields(collection).map((f) => f.name));
+  const eligibleFields = formEligibleFields(collection);
+  const eligible = new Set(eligibleFields.map((f) => f.name));
   for (const b of fieldBlocks) {
     if (!b.name || !eligible.has(b.name)) {
       throw new AppError(
         "VALIDATION",
         `Field "${b.name ?? "?"}" cannot be exposed on a public form (only scalar, non-private, non-computed fields are allowed)`,
+      );
+    }
+  }
+  // Schema-required fields can't be left off: the write path would reject
+  // every submission anyway, so fail loudly at design time instead.
+  const present = new Set(fieldBlocks.map((b) => b.name));
+  for (const f of eligibleFields) {
+    if (f.required && !present.has(f.name)) {
+      throw new AppError(
+        "VALIDATION",
+        `Required field "${f.name}" must be on the form — submissions would always fail without it`,
       );
     }
   }

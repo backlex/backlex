@@ -150,9 +150,11 @@ export interface FormInput {
  * True when a collection field may appear on a public form: scalar type, not
  * computed/private/localized, and not server-auto-filled. Presentational
  * types (divider/notice) are excluded implicitly by the type allow-list.
+ * `json` fields qualify ONLY when they define choices — that's the
+ * multi-select shape (stored as an array of the chosen values).
  */
 export const isFormEligible = (f: FieldDef): boolean =>
-  ALLOWED_TYPES.has(f.type) &&
+  (ALLOWED_TYPES.has(f.type) || (f.type === "json" && getChoices(f).length > 0)) &&
   !f.computed &&
   !f.private &&
   !f.localized &&
@@ -413,6 +415,8 @@ export interface PublicFormBlock {
     maxLength?: number;
     format?: "email" | "url";
     integer?: boolean;
+    minSelect?: number;
+    maxSelect?: number;
   } | null;
   cond: FormBlockCond | null;
 }
@@ -519,6 +523,8 @@ export const publicFormDefinition = (
             ...(v.maxLength !== undefined ? { maxLength: v.maxLength } : {}),
             ...(v.format !== undefined ? { format: v.format } : {}),
             ...(v.integer !== undefined ? { integer: v.integer } : {}),
+            ...(v.minSelect !== undefined ? { minSelect: v.minSelect } : {}),
+            ...(v.maxSelect !== undefined ? { maxSelect: v.maxSelect } : {}),
           }
         : null;
       const choices = getChoices(def);

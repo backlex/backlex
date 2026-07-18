@@ -205,6 +205,29 @@ function BlockInput({
     outline: "none",
     boxSizing: "border-box",
   };
+  if (block.choices && block.choices.length > 0 && block.type === "json") {
+    const arr = Array.isArray(value) ? (value as string[]) : [];
+    const toggle = (v: string) =>
+      onChange(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {block.choices.map((ch) => (
+          <label
+            key={ch.value}
+            style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontSize: 13.5 }}
+          >
+            <input
+              type="checkbox"
+              checked={arr.includes(ch.value)}
+              onChange={() => toggle(ch.value)}
+              style={{ width: 17, height: 17, accentColor: accent, flexShrink: 0 }}
+            />
+            <span>{ch.label ?? ch.value}</span>
+          </label>
+        ))}
+      </div>
+    );
+  }
   if (block.choices && block.choices.length > 0) {
     return (
       <select
@@ -313,6 +336,8 @@ function buildPayload(
       if (!Number.isNaN(n)) data[b.name] = n;
     } else if (b.type === "boolean") {
       data[b.name] = raw === true;
+    } else if (b.type === "json") {
+      if (Array.isArray(raw) && raw.length > 0) data[b.name] = raw;
     } else if (b.type === "timestamp" && typeof raw === "string") {
       const d = new Date(raw);
       if (!Number.isNaN(d.getTime())) data[b.name] = d.toISOString();
@@ -413,6 +438,11 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
       const v = values[b.name];
       if (b.consent) {
         if (v !== true) return t`Please accept "${b.label || humanizeLabel(b.name)}"`;
+        continue;
+      }
+      if (b.type === "json") {
+        if (!Array.isArray(v) || v.length === 0)
+          return t`Please fill in "${b.label || humanizeLabel(b.name)}"`;
         continue;
       }
       if (v === undefined || v === null || v === "") {

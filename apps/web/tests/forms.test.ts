@@ -458,6 +458,73 @@ describe("public forms — blocks, i18n, steps, counters", () => {
   });
 });
 
+describe("public forms — multi-select (json + choices)", () => {
+  let h: TestHarness;
+  const slug = `multi_${Date.now()}`;
+  let token = "";
+
+  const publicFetch = (path: string, init?: RequestInit) =>
+    h.app.fetch(new Request(`${h.env.APP_URL}${path}`, init));
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const col = await h.fetch(
+      "/api/collections",
+      json({
+        slug,
+        fields: [
+          { name: "email", type: "text", required: true },
+          {
+            name: "interests",
+            type: "json",
+            options: { choices: [{ value: "frontend" }, { value: "backend" }, { value: "design" }] },
+          },
+          { name: "notes_raw", type: "json" },
+        ],
+      }),
+    );
+    expect(col.status).toBe(201);
+  });
+  afterAll(() => h.cleanup());
+
+  test("json WITH choices is eligible (multi-select); bare json stays fenced out", async () => {
+    const res = await h.fetch(`/api/admin/forms/eligible-fields/${slug}`);
+    const names = ((await res.json()) as { data: { name: string }[] }).data.map((f) => f.name);
+    expect(names).toContain("interests");
+    expect(names).not.toContain("notes_raw");
+  });
+
+  test("definition carries choices; submitted array round-trips into the row", async () => {
+    const created = await h.fetch(
+      "/api/admin/forms",
+      json({
+        name: "multi",
+        collection: slug,
+        fields: [{ name: "email" }, { name: "interests" }],
+      }),
+    );
+    expect(created.status).toBe(201);
+    token = ((await created.json()) as { data: { token: string } }).data.token;
+
+    const def = await publicFetch(`/api/public/forms/${token}`);
+    const { data } = (await def.json()) as { data: { blocks: Record<string, any>[] } };
+    const multi = data.blocks.find((b) => b.name === "interests")!;
+    expect(multi.type).toBe("json");
+    expect(multi.choices.map((c: any) => c.value)).toEqual(["frontend", "backend", "design"]);
+
+    const submit = await publicFetch(
+      `/api/public/forms/${token}/submit`,
+      json({ data: { email: "m@x.co", interests: ["frontend", "design"] } }),
+    );
+    expect(submit.status).toBe(201);
+
+    const rows = await h.fetch(`/api/items/${slug}`);
+    const items = ((await rows.json()) as { data: Record<string, unknown>[] }).data;
+    expect(items[0]!.interests).toEqual(["frontend", "design"]);
+  });
+});
+
 describe("public forms — consent blocks", () => {
   let h: TestHarness;
   const slug = `consent_${Date.now()}`;

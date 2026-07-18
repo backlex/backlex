@@ -35,10 +35,12 @@ import {
   activityApi,
   advisorApi,
   type ApiCollection,
+  type ApiExtension,
   type CollectionsLayoutInput,
   collectionsApi,
   accountApi,
   commentsApi,
+  extensionsApi,
   itemsApi,
   meApi,
   metricsApi,
@@ -109,6 +111,10 @@ export const queryKeys = {
   trace: (traceId: string) => ["trace", traceId] as const,
   /** Usage-metering overview (admin Usage page). Keyed by the series window. */
   usage: (days: number) => ["usage", days] as const,
+  /** Enabled extensions — drives dynamic sidebar panels + extension field
+   *  editors. Shares the `["extensions"]` prefix with the admin page's list
+   *  query so one invalidate refreshes both. */
+  extensionsEnabled: () => ["extensions", "enabled"] as const,
 };
 
 /** Server-side filters that key the traces query. */
@@ -444,6 +450,28 @@ export function useTrace(traceId: string | null) {
     queryKey: queryKeys.trace(traceId ?? ""),
     queryFn: () => tracesApi.get(traceId as string),
     enabled: !!traceId,
+  });
+}
+
+/**
+ * Enabled extensions (`GET /api/extensions/enabled`) — the source for dynamic
+ * sidebar panels, the item-form field-editor injection, and the interface
+ * picker's "Extensions" group. The endpoint only needs a signed-in session, so
+ * the hook is safe for non-admins; any failure (older server, network, 401
+ * race) resolves to an empty list so every consumer degrades to the built-in
+ * behaviour instead of throwing.
+ */
+export function useEnabledExtensions() {
+  return useQuery({
+    queryKey: queryKeys.extensionsEnabled(),
+    queryFn: async (): Promise<{ data: ApiExtension[] }> => {
+      try {
+        return await extensionsApi.enabled();
+      } catch {
+        return { data: [] };
+      }
+    },
+    staleTime: 5 * 60 * 1000,
   });
 }
 

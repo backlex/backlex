@@ -422,6 +422,9 @@ export const createApp = (env: Env) => {
     const isGraphiql = c.req.method === "GET" && path === "/api/graphql";
     const isEmbed = path.startsWith("/embed/") || path.startsWith("/api/public/");
     const isFormPage = path.startsWith("/f/") || path.startsWith("/embed/f/");
+    // Extension iframe entries set their own inline-only CSP in the route
+    // (default-src 'none'; script-src 'unsafe-inline') — don't overwrite it.
+    if (/^\/api\/extensions\/[^/]+\/assets\//.test(path)) return;
     if (isDevServer && (path.startsWith("/embed/") || path.startsWith("/f/"))) {
       // Dev-only: the Worker-served SPA shell carries Vite's inline
       // React-refresh preamble, which `script-src 'self'` would block.

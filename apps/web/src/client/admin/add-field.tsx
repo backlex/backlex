@@ -27,9 +27,11 @@ import { FieldTabLayout, type FieldTabItem } from "./field-editor-tabs";
 import {
   FIELD_INTERFACES,
   INTERFACE_GROUPS,
+  extensionFieldInterfaces,
   getInterface,
   matchesInterfaceQuery,
 } from "./interfaces";
+import { useEnabledExtensions } from "./queries";
 import {
   type GroupNode,
   newGroup,
@@ -174,7 +176,16 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   );
   const nameTaken = schema?.fields?.some((f) => f.name === safeName);
 
-  const def = getInterface(interfaceId) ?? FIELD_INTERFACES[0];
+  // Field editors contributed by enabled extensions — merged additively into
+  // the picker under an "Extensions" group. Empty for non-admins / no installs.
+  const extensionsQuery = useEnabledExtensions();
+  const extDefs = useMemo(
+    () => extensionFieldInterfaces(extensionsQuery.data?.data ?? []),
+    [extensionsQuery.data],
+  );
+
+  const def =
+    getInterface(interfaceId) ?? extDefs.find((d) => d.id === interfaceId) ?? FIELD_INTERFACES[0];
   const Icon = (I as Record<string, IconComponent>)[def.icon as IconKey] || I.Code;
   const defaultable = DEFAULTABLE_TYPES.has(def.type);
   // Presentational blocks (divider/notice) own no column, so the storage
@@ -227,12 +238,12 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const valid = !nameInvalid && !missingChoices && !missingRelation;
 
   const groups = useMemo(() => {
-    const filtered = FIELD_INTERFACES.filter((i) => matchesInterfaceQuery(i, query));
+    const filtered = [...FIELD_INTERFACES, ...extDefs].filter((i) => matchesInterfaceQuery(i, query));
     return INTERFACE_GROUPS.map((g) => ({
       group: g,
       items: filtered.filter((i) => i.group === g),
     })).filter((g) => g.items.length > 0);
-  }, [query]);
+  }, [query, extDefs]);
 
   const setChoice = (i: number, patch: Partial<(typeof choices)[number]>) =>
     setChoices((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)));

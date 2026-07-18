@@ -23,7 +23,8 @@ import {
 } from "@backlex/ui/components/dialog";
 import { Select } from "./select";
 import { FieldTabLayout, type FieldTabItem } from "./field-editor-tabs";
-import { getInterface, interfacesForType } from "./interfaces";
+import { extensionInterfacesForType, getInterface, interfacesForType } from "./interfaces";
+import { useEnabledExtensions } from "./queries";
 import {
   type GroupNode,
   newGroup,
@@ -177,9 +178,15 @@ export function EditFieldDialog({ open, field, availableFields = [], groups = []
   // Interface-override options: "Default (auto)" plus every catalog interface
   // whose storage type matches this column. Always keep the field's current
   // interface available even if it predates the catalog.
+  // Extension-contributed editors join the override list when their `types`
+  // restriction (absent = any) admits this column's storage type.
+  const extensionsQuery = useEnabledExtensions();
   const interfaceOpts = useMemo(() => {
     if (!draft) return [{ value: "", label: t`Default (auto)` }];
-    const compatible = interfacesForType(draft.type);
+    const compatible = [
+      ...interfacesForType(draft.type),
+      ...extensionInterfacesForType(extensionsQuery.data?.data ?? [], draft.type),
+    ];
     const cur = draft.interface ? getInterface(draft.interface) : undefined;
     const all = cur && !compatible.some((i) => i.id === cur.id) ? [cur, ...compatible] : compatible;
     return [
@@ -192,7 +199,7 @@ export function EditFieldDialog({ open, field, availableFields = [], groups = []
         ...(i.hasChoices ? { badge: <Badge variant="secondary">choices</Badge> } : {}),
       })),
     ];
-  }, [draft?.type, draft?.interface]);
+  }, [draft?.type, draft?.interface, extensionsQuery.data]);
 
   const isRelation = draft?.type === "relation" || draft?.type === "relation_many";
 

@@ -60,11 +60,12 @@ import { loadAuthors } from "./authors-cache";
 import { CollectionsIndex, NewCollectionDialog } from "./collections-index";
 import { EditFieldDialog } from "./edit-field";
 import { CollectionSettings } from "./collection-settings";
-import { collectionsApi, itemsApi, settingsApi } from "./api";
+import { type ApiExtension, collectionsApi, itemsApi, settingsApi } from "./api";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   buildItemsParams,
   useCollections,
+  useEnabledExtensions,
   useItemCreate,
   useItemPatch,
   useItemPublish,
@@ -75,6 +76,7 @@ import {
   useLiveCollection,
   useMetricsOverview,
 } from "./queries";
+import { ExtensionFrame } from "./extension-frame";
 import { api } from "@/lib/api";
 import { useUrlState, useUrlStateJson } from "@/lib/use-url-state";
 import { useTheme } from "@/components/theme-provider";
@@ -119,6 +121,7 @@ const SchemaVersionsPage = lazy(() => import("./pages/schema-versions").then((m)
 const DatabaseImportPage = lazy(() => import("./pages/database-import").then((m) => ({ default: m.DatabaseImportPage })));
 const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
 const SettingsPage = lazy(() => import("./pages/settings").then((m) => ({ default: m.SettingsPage })));
+const ExtensionsPage = lazy(() => import("./pages/extensions").then((m) => ({ default: m.ExtensionsPage })));
 
 import { PageSkeleton, CollectionItemsSkeleton } from "./page-skeletons";
 
@@ -186,16 +189,40 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   // Shared React Query client — used to invalidate cached server reads
   // (collections list, metrics) after mutations.
   const qc = useQueryClient();
+  // Enabled extensions — each contributed panel becomes a dynamic sidebar
+  // entry (`ext:<extension>:<panel>`) in the Developers group plus a routed
+  // page hosting the sandboxed iframe. Admin-only in v1: the ids aren't in
+  // NON_ADMIN_NAV_IDS, so `isNavVisible` hides them and the non-admin
+  // redirect below bounces off them, same as every other admin page.
+  const extensionsQuery = useEnabledExtensions();
+  const extensionPanels = useMemo(() => {
+    const out: { id: string; label: string; icon: string; extension: ApiExtension; entry: string }[] = [];
+    for (const ext of extensionsQuery.data?.data ?? []) {
+      for (const p of ext.manifest?.contributes?.panels ?? []) {
+        out.push({
+          id: `ext:${ext.name}:${p.id}`,
+          label: p.title,
+          icon: p.icon && p.icon in I ? p.icon : "Puzzle",
+          extension: ext,
+          entry: p.entry,
+        });
+      }
+    }
+    return out;
+  }, [extensionsQuery.data]);
   const NAV_IDS = useMemo(
     () =>
       new Set<string>([
         ...NAV_ITEMS.map((n) => n.id),
         ...NAV_DEVELOPERS.map((n) => n.id),
         ...NAV_SETTINGS.map((n) => n.id),
+        // Dynamic extension-panel pages — validated like any other nav id so
+        // the URL router accepts deep links once the enabled list resolves.
+        ...extensionPanels.map((p) => p.id),
         // Reachable only via the header avatar dropdown — not in the sidebar.
         "account",
       ]),
-    [],
+    [extensionPanels],
   );
   const segs = location.pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
   const activeNav = segs[0] && NAV_IDS.has(segs[0]) ? segs[0] : initialNav;
@@ -990,7 +1017,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       className="relative z-10 h-svh bg-transparent"
       data-density={tweaks.density}
     >
-      <Sidebar activeNav={activeNav} setActiveNav={navTo} pushToast={pushToast} collectionsCount={collections.length} activeCollection={activeCollection} isAdmin={me ? me.isAdmin : null} navGrants={me?.nav ?? null} />
+      <Sidebar activeNav={activeNav} setActiveNav={navTo} pushToast={pushToast} collectionsCount={collections.length} activeCollection={activeCollection} isAdmin={me ? me.isAdmin : null} navGrants={me?.nav ?? null} extensionPanels={extensionPanels.map(({ id, label, icon }) => ({ id, label, icon }))} />
 
       <SidebarInset className="min-h-0 min-w-0 bg-transparent">
         <Topbar
@@ -1044,6 +1071,27 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "api-keys" && <ApiKeys />}
             {activeNav === "email-templates" && <EmailTemplatesPage pushToast={pushToast} />}
             {activeNav === "settings" && <SettingsPage adapter={tweaks.adapter} pushToast={pushToast} />}
+            {activeNav === "extensions" && <ExtensionsPage pushToast={pushToast} />}
+            {/* Extension-contributed panel pages — a sandboxed iframe host per
+                enabled panel, routed like any static page via NAV_IDS. */}
+            {activeNav.startsWith("ext:") && (() => {
+              const panel = extensionPanels.find((p) => p.id === activeNav);
+              if (!panel) return null;
+              return (
+                <div className="flex min-h-[calc(100svh-8rem)] flex-col gap-4.5">
+                  <PageHeader
+                    title={panel.label}
+                    description={t`Extension panel · ${panel.extension.name} v${panel.extension.version}`}
+                  />
+                  <ExtensionFrame
+                    extension={panel.extension}
+                    entry={panel.entry}
+                    mode="panel"
+                    className="min-h-[420px] flex-1"
+                  />
+                </div>
+              );
+            })()}
             {activeNav === "account" && <AccountPage pushToast={pushToast} />}
             {activeNav === "access" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>

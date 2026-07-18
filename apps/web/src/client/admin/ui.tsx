@@ -18,7 +18,7 @@ import { msg } from "@lingui/core/macro";
 import type { MessageDescriptor } from "@lingui/core";
 import { cn } from "@backlex/ui/lib/utils";
 import { I, type IconComponent, type IconKey } from "./icons";
-import { NAV_PRIMARY, NAV_DATA, NAV_AUTOMATION, NAV_OBSERVABILITY, NAV_SETTINGS, NAV_DEVELOPERS, isNavVisible, type MeNav } from "./config";
+import { NAV_PRIMARY, NAV_DATA, NAV_AUTOMATION, NAV_OBSERVABILITY, NAV_SETTINGS, NAV_DEVELOPERS, isNavVisible, type MeNav, type NavItem } from "./config";
 import { prefetchPage } from "./lib/page-prefetch";
 import { resolveCollectionColor } from "./collection-colors";
 import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
@@ -341,7 +341,16 @@ export interface SidebarProps {
   /** Per-permission nav grants from `/api/me` — narrows the non-admin
    *  allow-list to pages the user holds an actual read grant for. */
   navGrants?: MeNav | null;
+  /** Dynamic nav entries contributed by enabled extensions' panels — appended
+   *  to the Developers group. Labels come from the panel manifest (not the
+   *  Lingui nav-label map); the `ext:<name>:<panel>` ids fail the non-admin
+   *  allow-list, so `isNavVisible` hides them for non-admins automatically. */
+  extensionPanels?: { id: string; label: string; icon: string }[];
 }
+
+/** A sidebar row: a static nav def, optionally carrying a dynamic display
+ *  label (extension panels — their titles aren't in the Lingui catalog). */
+type SidebarNavEntry = NavItem & { label?: string };
 
 /** Collapsed-state of sidebar collection groups. Per-device UI state —
  *  localStorage, not the server (a chevron click shouldn't be a write). */
@@ -582,6 +591,7 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
   "rest-explorer": msg`REST Explorer`,
   graphql: msg`GraphQL`,
   openapi: msg`OpenAPI`,
+  extensions: msg`Extensions`,
   authentication: msg`Authentication`,
   "platform-sso": msg`Platform SSO`,
   users: msg`Team`,
@@ -595,9 +605,10 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
 export const navLabel = (id: string): MessageDescriptor =>
   NAV_LABELS[id] ?? { id };
 
-export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, activeCollection, isAdmin, navGrants }: SidebarProps) {
+export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, activeCollection, isAdmin, navGrants, extensionPanels }: SidebarProps) {
   const settings = NAV_SETTINGS;
-  const developers = NAV_DEVELOPERS;
+  // Enabled extensions' panels ride along after the static Developers entries.
+  const developers: SidebarNavEntry[] = [...NAV_DEVELOPERS, ...(extensionPanels ?? [])];
   const { t, i18n } = useLingui();
   const { isMobile, openMobile, setOpenMobile } = useSidebar();
   const branding = useWorkspaceBranding();
@@ -762,14 +773,14 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, 
       </SidebarHeader>
 
       <SidebarContent className="group-data-[collapsible=icon]:overflow-y-auto!">
-        {[
-          { key: "primary", label: null, entries: NAV_PRIMARY },
-          { key: "data", label: <Trans>Data</Trans>, entries: NAV_DATA },
-          { key: "automation", label: <Trans>Automation</Trans>, entries: NAV_AUTOMATION },
-          { key: "observability", label: <Trans>Observability</Trans>, entries: NAV_OBSERVABILITY },
+        {([
+          { key: "primary", label: null, entries: NAV_PRIMARY as SidebarNavEntry[] },
+          { key: "data", label: <Trans>Data</Trans>, entries: NAV_DATA as SidebarNavEntry[] },
+          { key: "automation", label: <Trans>Automation</Trans>, entries: NAV_AUTOMATION as SidebarNavEntry[] },
+          { key: "observability", label: <Trans>Observability</Trans>, entries: NAV_OBSERVABILITY as SidebarNavEntry[] },
           { key: "developers", label: <Trans>Developers</Trans>, entries: developers },
-          { key: "admin", label: <Trans>Admin</Trans>, entries: settings },
-        ].map((group) => ({
+          { key: "admin", label: <Trans>Admin</Trans>, entries: settings as SidebarNavEntry[] },
+        ]).map((group) => ({
           ...group,
           // Non-admins only get the entries whose pages they can actually
           // use; empty groups drop out below (Docs keeps "developers" alive).
@@ -783,6 +794,9 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, 
                 // Collections gets a live badge from the parent; other items use
                 // the (currently empty) static `badge` field on the nav def.
                 const liveBadge = it.id === "collections" ? collectionsCount : it.badge;
+                // Extension panels carry their own manifest title; static
+                // entries resolve through the Lingui nav-label map.
+                const displayLabel = it.label ?? i18n._(navLabel(it.id));
                 return (
                   <SidebarMenuItem key={it.id}>
                     <SidebarMenuButton
@@ -795,10 +809,10 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount, 
                       // transition opens instantly instead of flashing a skeleton.
                       onMouseEnter={() => prefetchPage(it.id)}
                       onFocus={() => prefetchPage(it.id)}
-                      tooltip={i18n._(navLabel(it.id))}
+                      tooltip={displayLabel}
                     >
                       {IconComp && <IconComp size={15} />}
-                      <span>{i18n._(navLabel(it.id))}</span>
+                      <span>{displayLabel}</span>
                     </SidebarMenuButton>
                     {liveBadge != null && (
                       <SidebarMenuBadge className={cn("top-2! rounded-control bg-white/8 px-1.5 font-mono text-[10.5px] tabular-nums text-muted-foreground", it.id === "collections" && "right-7")}>{liveBadge}</SidebarMenuBadge>

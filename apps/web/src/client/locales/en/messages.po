@@ -2741,8 +2741,8 @@ msgid "Copy curl example for {0}"
 msgstr "Copy curl example for {0}"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Copy embed snippet"
-msgstr "Copy embed snippet"
+#~ msgid "Copy embed snippet"
+#~ msgstr "Copy embed snippet"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Copy failed — select and copy manually."
@@ -3658,7 +3658,6 @@ msgstr "Don't have an account?"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/database-import.tsx
-#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Done"
@@ -4054,8 +4053,8 @@ msgid "Embed live"
 msgstr "Embed live"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Embed snippet"
-msgstr "Embed snippet"
+#~ msgid "Embed snippet"
+#~ msgstr "Embed snippet"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Embed the fields marked <0>vectorize</0> on every write and rank the <1>/search</1> endpoint's vector / hybrid modes by meaning. Existing rows are NOT embedded automatically — run \"Embed all rows\" below (each row is one embedding-provider call)."
@@ -4813,8 +4812,8 @@ msgid "Form design"
 msgstr "Form design"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Form link ready"
-msgstr "Form link ready"
+#~ msgid "Form link ready"
+#~ msgstr "Form link ready"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Form title"
@@ -9158,6 +9157,10 @@ msgstr "Required"
 msgid "required by the collection schema"
 msgstr "required by the collection schema"
 
+#: src/client/admin/pages/forms.tsx
+msgid "required by the schema — can't be removed from the form"
+msgstr "required by the schema — can't be removed from the form"
+
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Required for every provider — must be a verified sender/domain for the chosen transport."
 msgstr "Required for every provider — must be a verified sender/domain for the chosen transport."
@@ -11682,8 +11685,8 @@ msgid "This link is no longer available"
 msgstr "This link is no longer available"
 
 #: src/client/admin/pages/forms.tsx
-msgid "This link is shown once — rotating the token later replaces it and kills the old one."
-msgstr "This link is shown once — rotating the token later replaces it and kills the old one."
+#~ msgid "This link is shown once — rotating the token later replaces it and kills the old one."
+#~ msgstr "This link is shown once — rotating the token later replaces it and kills the old one."
 
 #: src/client/admin/parity/insights.tsx
 msgid "This link is shown once. Rotate it to invalidate the old one."

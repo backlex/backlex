@@ -265,62 +265,6 @@ function LivePill({ active }: { active: boolean }) {
   );
 }
 
-/* ── token reveal ──────────────────────────────────────────────────── */
-
-function TokenRevealDialog({
-  reveal,
-  onClose,
-  pushToast,
-}: {
-  reveal: { url: string; embedUrl: string } | null;
-  onClose: () => void;
-  pushToast: (m: string) => void;
-}) {
-  const { t } = useLingui();
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const absolute = `${origin}${reveal?.url ?? ""}`;
-  const iframe = `<iframe src="${origin}${reveal?.embedUrl ?? ""}" width="100%" height="620" frameborder="0"></iframe>`;
-  const copy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      pushToast(t`Copied.`);
-    } catch {
-      pushToast(t`Copy failed — select and copy manually.`);
-    }
-  };
-  return (
-    <Dialog open={!!reveal} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg flex flex-col overflow-hidden">
-        <DialogHeader>
-          <DialogTitle><Trans>Form link ready</Trans></DialogTitle>
-          <DialogDescription>
-            <Trans>This link is shown once — rotating the token later replaces it and
-            kills the old one.</Trans>
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-3.5 py-1">
-          <div className="flex flex-col gap-1 text-[12.5px] font-medium">
-            <Trans>Public link</Trans>
-            <div className="flex items-center gap-1.5">
-              <Input readOnly value={absolute} className="font-mono text-[12px]" />
-              <IconButton icon={I.Copy} title={t`Copy link`} onClick={() => void copy(absolute)} />
-            </div>
-          </div>
-          <div className="flex flex-col gap-1 text-[12.5px] font-medium">
-            <Trans>Embed snippet</Trans>
-            <div className="flex items-start gap-1.5">
-              <Textarea readOnly rows={3} value={iframe} className="font-mono text-[11.5px]" />
-              <IconButton icon={I.Copy} title={t`Copy embed snippet`} onClick={() => void copy(iframe)} />
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="primary" onClick={onClose}><Trans>Done</Trans></Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 /* ── list view ─────────────────────────────────────────────────────── */
 
@@ -553,7 +497,6 @@ export function FormsPage({
     dropIdxRef.current = v;
     setDropIdxState(v);
   };
-  const [reveal, setReveal] = useState<{ url: string; embedUrl: string } | null>(null);
   const [confirm, setConfirm] = useState<"delete" | "rotate" | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   // Bumped when the session-cached share link is hidden/cleared so dependent
@@ -872,11 +815,9 @@ export function FormsPage({
             tokenCache.set(created.id, urls);
             setForms((prev) => [created, ...prev]);
             setNewOpen(false);
-            setReveal(urls);
             openForm(created);
           }}
         />
-        <TokenRevealDialog reveal={reveal} onClose={() => setReveal(null)} pushToast={pushToast} />
       </div>
     );
   }
@@ -1365,7 +1306,6 @@ export function FormsPage({
         }}
       />
 
-      <TokenRevealDialog reveal={reveal} onClose={() => setReveal(null)} pushToast={pushToast} />
       <ConfirmDialog
         open={confirm === "delete"}
         title={t`Delete this form?`}
@@ -1934,21 +1874,28 @@ function BlockPanel({
         </p>
       )}
 
-      <div className="flex flex-col gap-1.5">
-        <button
-          type="button"
-          onClick={() => onRemove(block.id!)}
-          className="flex w-full items-center justify-center gap-2 rounded-control border border-orange-300/40 bg-orange-300/5 px-3 py-2.5 text-[13px] font-medium text-orange-300 transition-colors hover:border-orange-300/70 hover:bg-orange-300/10"
-        >
-          <I.Trash size={13} />
-          <Trans>Remove from form</Trans>
-        </button>
-        {!isStep && (
-          <span className="text-center text-[11px] text-muted-foreground">
-            <Trans>the field stays in the collection</Trans>
-          </span>
-        )}
-      </div>
+      {!isStep && ef?.required ? (
+        <div className="flex items-center justify-center gap-1.5 rounded-control border border-dashed border-border px-3 py-2.5 text-[11.5px] text-muted-foreground">
+          <I.Lock size={11} />
+          <Trans>required by the schema — can't be removed from the form</Trans>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          <button
+            type="button"
+            onClick={() => onRemove(block.id!)}
+            className="flex w-full items-center justify-center gap-2 rounded-control border border-orange-300/40 bg-orange-300/5 px-3 py-2.5 text-[13px] font-medium text-orange-300 transition-colors hover:border-orange-300/70 hover:bg-orange-300/10"
+          >
+            <I.Trash size={13} />
+            <Trans>Remove from form</Trans>
+          </button>
+          {!isStep && (
+            <span className="text-center text-[11px] text-muted-foreground">
+              <Trans>the field stays in the collection</Trans>
+            </span>
+          )}
+        </div>
+      )}
     </PanelCard>
   );
 }

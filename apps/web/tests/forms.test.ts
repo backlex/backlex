@@ -81,6 +81,18 @@ describe("public forms", () => {
     expect(res.status).toBe(422);
   });
 
+  test("schema-required fields cannot be left off the form", async () => {
+    // full_name is required in the collection — a form without it is rejected
+    // at design time (submissions would always 422 otherwise).
+    const res = await h.fetch(
+      "/api/admin/forms",
+      json({ name: "no-required", collection: slug, fields: [{ name: "email" }] }),
+    );
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toContain("full_name");
+  });
+
   test("create mints a one-time frm_ token with public URLs", async () => {
     const res = await h.fetch(
       "/api/admin/forms",

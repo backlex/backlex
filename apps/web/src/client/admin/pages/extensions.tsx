@@ -143,6 +143,17 @@ export function ExtensionsPage({ pushToast }: { pushToast: (m: string, type?: "s
         actions={<Button variant="primary" icon={I.Plus} onClick={() => setInstallOpen(true)}><Trans>Install extension</Trans></Button>}
       />
 
+      {rows.length === 0 ? (
+        // Outside the table on purpose: the header columns force a min table
+        // width wider than a phone viewport, so an in-table empty state would
+        // center inside the horizontal scroller and hang off-screen.
+        <EmptyState
+          icon={I.Puzzle}
+          title={<Trans>No extensions installed</Trans>}
+          description={<Trans>Extensions add sandboxed admin panels, custom field editors, and server hooks. Install any npm package that ships a backlex-extension.json manifest.</Trans>}
+          action={<Button variant="primary" icon={I.Plus} onClick={() => setInstallOpen(true)}><Trans>Install extension</Trans></Button>}
+        />
+      ) : (
       <Card className="py-0 gap-0">
         <Table className={ADMIN_TABLE_CLS}>
           <TableHeader>
@@ -211,20 +222,10 @@ export function ExtensionsPage({ pushToast }: { pushToast: (m: string, type?: "s
                 </TableCell>
               </TableRow>
             ))}
-            {rows.length === 0 && (
-              <TableRow><TableCell colSpan={5}>
-                <EmptyState
-                  bare
-                  icon={I.Puzzle}
-                  title={<Trans>No extensions installed</Trans>}
-                  description={<Trans>Extensions add sandboxed admin panels, custom field editors, and server hooks. Install any npm package that ships a backlex-extension.json manifest.</Trans>}
-                  action={<Button variant="primary" icon={I.Plus} onClick={() => setInstallOpen(true)}><Trans>Install extension</Trans></Button>}
-                />
-              </TableCell></TableRow>
-            )}
           </TableBody>
         </Table>
       </Card>
+      )}
 
       {installOpen && (
         <InstallExtensionDialog

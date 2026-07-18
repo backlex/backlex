@@ -364,6 +364,12 @@ msgstr "{0} of {1}"
 msgid "{0} of {1} columns mapped"
 msgstr "{0} of {1} columns mapped"
 
+#. placeholder {0}: res.failed
+#. placeholder {1}: res.total
+#: src/client/admin/grid-edit.tsx
+msgid "{0} of {1} rows could not be updated."
+msgstr "{0} of {1} rows could not be updated."
+
 #. placeholder {0}: allowlist.size
 #. placeholder {1}: tools?.length ?? 0
 #: src/client/components/mcp-guards-fields.tsx
@@ -614,6 +620,10 @@ msgstr "{r} may update rows matching this rule."
 #: src/client/admin/collections-index.tsx
 msgid "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
 msgstr "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
+
+#: src/client/admin/grid-edit.tsx
+msgid "{skipped} cells skipped (read-only or invalid value)."
+msgstr "{skipped} cells skipped (read-only or invalid value)."
 
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/collections-index.tsx
@@ -2247,6 +2257,10 @@ msgstr "Claiming…"
 msgid "Claude Desktop"
 msgstr "Claude Desktop"
 
+#: src/client/admin/app.tsx
+msgid "clear"
+msgstr "clear"
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
@@ -2782,6 +2796,10 @@ msgstr "copy"
 #: src/client/pages/openapi-export.tsx
 msgid "Copy"
 msgstr "Copy"
+
+#: src/client/admin/app.tsx
+msgid "copy / paste"
+msgstr "copy / paste"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Copy an external Postgres database into collections — primary keys preserved, relations intact, resumable. For databases the server can't reach, use the backlex import-db CLI."
@@ -4273,6 +4291,10 @@ msgstr "Enrol a passkey now"
 msgid "enrolled"
 msgstr "enrolled"
 
+#: src/client/admin/app.tsx
+msgid "Enter — edit"
+msgstr "Enter — edit"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Enter a name to continue."
@@ -4749,6 +4771,10 @@ msgstr "Files"
 msgid "Files are read as text in your browser and sent to the server. Files over 1 MB, dotfiles, and node_modules are skipped."
 msgstr "Files are read as text in your browser and sent to the server. Files over 1 MB, dotfiles, and node_modules are skipped."
 
+#: src/client/admin/app.tsx
+msgid "fill down"
+msgstr "fill down"
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Fill the required fields."
 msgstr "Fill the required fields."
@@ -5199,6 +5225,14 @@ msgstr "GraphQL"
 #: src/client/admin/storage/index.tsx
 msgid "Grid"
 msgstr "Grid"
+
+#: src/client/admin/app.tsx
+msgid "Grid edit"
+msgstr "Grid edit"
+
+#: src/client/admin/app.tsx
+msgid "Grid edit — select cells, type to edit, copy/paste, fill down"
+msgstr "Grid edit — select cells, type to edit, copy/paste, fill down"
 
 #: src/client/admin/collections-index.tsx
 msgid "Group"
@@ -7746,6 +7780,10 @@ msgstr "Nothing landed in the last {range}. Widen the range, or wait for request
 msgid "Nothing new — all {0} collections already exist"
 msgstr "Nothing new — all {0} collections already exist"
 
+#: src/client/admin/grid-edit.tsx
+msgid "Nothing pasted — the target cells are read-only or the values don't fit."
+msgstr "Nothing pasted — the target cells are read-only or the values don't fit."
+
 #: src/client/admin/pages/search-playground.tsx
 msgid "Nothing ranked for that query — try different words or another mode."
 msgstr "Nothing ranked for that query — try different words or another mode."
@@ -7766,6 +7804,10 @@ msgstr "Nothing selected yet"
 #: src/client/admin/pages/logs.tsx
 msgid "Nothing to export — the current view is empty."
 msgstr "Nothing to export — the current view is empty."
+
+#: src/client/admin/grid-edit.tsx
+msgid "Nothing to paste."
+msgstr "Nothing to paste."
 
 #: src/client/admin/ui.tsx
 msgid "Notifications"
@@ -10561,6 +10603,10 @@ msgstr "Selected <0>{0}</0>"
 msgid "Selected <0>{selected}</0>"
 msgstr "Selected <0>{selected}</0>"
 
+#: src/client/admin/grid-edit.tsx
+msgid "Selected columns are read-only."
+msgstr "Selected columns are read-only."
+
 #: src/client/admin/pages/settings/index.tsx
 msgid "Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values."
 msgstr "Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values."
@@ -12462,6 +12508,10 @@ msgstr "unbound"
 #: src/client/admin/parity/revisions.tsx
 msgid "unchanged"
 msgstr "unchanged"
+
+#: src/client/admin/app.tsx
+msgid "undo"
+msgstr "undo"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/parity/insights.tsx

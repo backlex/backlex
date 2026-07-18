@@ -756,6 +756,45 @@ export function useItemsBulkUpdate(collection: string | null) {
   });
 }
 
+/** Grid (spreadsheet) writes — N rows each with their own patch. A uniform
+ *  patch (fill-down, single-value paste) collapses to one bulk-update call;
+ *  mixed patches go through `/batch` update ops. Optimistic across every
+ *  cached list variant; transport errors roll back, per-row failures are
+ *  reported in the result and reconciled by the settled refetch. */
+export function useItemsGridWrite(collection: string | null) {
+  const qc = useQueryClient();
+  const slug = collection || "posts";
+  return useMutation({
+    mutationFn: async (vars: { changes: Array<{ id: string; data: Record<string, unknown> }> }) => {
+      const { changes } = vars;
+      const firstData = JSON.stringify(changes[0]?.data ?? {});
+      const uniform = changes.length > 1 && changes.every((ch) => JSON.stringify(ch.data) === firstData);
+      if (uniform) {
+        const res = await itemsApi.bulkUpdate(slug, changes.map((ch) => ch.id), changes[0]!.data);
+        return { total: changes.length, failed: res.data.failed ?? res.data.results.filter((r) => !r.ok).length };
+      }
+      if (changes.length === 1) {
+        const only = changes[0]!;
+        await itemsApi.patch(slug, only.id, only.data);
+        return { total: 1, failed: 0 };
+      }
+      const res = await itemsApi.batch(slug, changes.map((ch) => ({ op: "update" as const, id: ch.id, data: ch.data })));
+      return { total: changes.length, failed: res.data.failed ?? 0 };
+    },
+    onMutate: (vars) => {
+      const snap = snapshotItems(qc, slug);
+      const now = nowIso();
+      const byId = new Map(vars.changes.map((ch) => [ch.id, ch.data]));
+      patchItemRows(qc, slug, (rows) =>
+        rows.map((r) => (byId.has(r.id) ? ({ ...r, ...byId.get(r.id), updated_at: now } as Post) : r)),
+      );
+      return { snap };
+    },
+    onError: (_e, _v, ctx) => ctx && restoreItems(qc, ctx.snap),
+    onSettled: () => invalidateItems(qc, slug),
+  });
+}
+
 /** Bulk publish via `Promise.allSettled` — partial-success aware. Returns
  *  `{ okIds, failed }` so callers can toast the counts. */
 export function useItemsBulkPublish(collection: string | null) {

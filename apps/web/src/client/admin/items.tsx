@@ -1,7 +1,8 @@
 // @ts-nocheck
 // Filter DSL builder + Items DataTable for the backlex admin design.
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { useItemPatch } from "./queries";
+import { useItemPatch, useItemsGridWrite } from "./queries";
+import { useGridEdit, type GridColumn } from "./grid-edit";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { renderTemplate } from "@backlex/core";
 import { I } from "./icons";
@@ -489,6 +490,11 @@ export interface ItemsTableProps {
   schema?: CollectionSchema;
   /** Surfaces inline-edit PATCH failures (the cache already rolled back). */
   onCellError?: (e: unknown) => void;
+  /** Spreadsheet mode: clicks select cells (row click no longer opens the
+   *  editor), keyboard navigates, copy/paste/fill-down write in bulk. */
+  gridMode?: boolean;
+  /** Grid result toasts ("3 cells skipped…", bulk failures). */
+  onNotice?: (msg: string, kind?: "error") => void;
 }
 
 /** Drag-to-reorder context threaded into draggable column headers. */
@@ -569,16 +575,23 @@ function SortHead({ id, label, num, sort, setSort, dragCtx, className }: {
   );
 }
 
+/** How a commit happened — the grid steps focus down on Enter and right on
+ *  Tab, and stays put on blur / dropdown change. */
+export type CommitVia = "enter" | "tab" | "blur" | "change";
+
 /** Inline cell editor — Atlassian inline-edit semantics: Enter or blur
- *  commits, Esc cancels. Dropdowns and booleans commit on change directly. */
-function CellEditor({ field, value, choices, onCommit, onCancel }: {
+ *  commits, Esc cancels. Dropdowns and booleans commit on change directly.
+ *  `seed` replaces the initial text (grid type-to-edit starts from the typed
+ *  character, like a spreadsheet). */
+function CellEditor({ field, value, choices, seed, onCommit, onCancel }: {
   field: { name: string; type?: string };
   value: unknown;
   choices?: StatusChoice[];
-  onCommit: (v: unknown) => void;
+  seed?: string;
+  onCommit: (v: unknown, via: CommitVia) => void;
   onCancel: () => void;
 }) {
-  const [raw, setRaw] = useState(value == null ? "" : String(value));
+  const [raw, setRaw] = useState(seed ?? (value == null ? "" : String(value)));
   // Guards the Esc→blur double-fire: cancelling unmounts the input, whose
   // blur would otherwise commit the value straight back.
   const done = useRef(false);
@@ -620,7 +633,7 @@ function CellEditor({ field, value, choices, onCommit, onCancel }: {
       >
         <Select
           value={value == null ? undefined : String(value)}
-          onChange={(v) => finish(() => onCommit(v))}
+          onChange={(v) => finish(() => onCommit(v, "change"))}
           options={choices.map((c) => ({ value: c.value, label: c.label ?? c.value }))}
           size="sm"
           className="min-w-[110px]"
@@ -638,34 +651,37 @@ function CellEditor({ field, value, choices, onCommit, onCancel }: {
           if (e.key === "Escape") finish(onCancel);
         }}
       >
-        <Checkbox checked={on} onChange={() => finish(() => onCommit(!on))} />
+        <Checkbox checked={on} onChange={() => finish(() => onCommit(!on, "change"))} />
       </span>
     );
   }
   const isNum = field.type === "integer" || field.type === "number";
-  const commitText = () => {
+  const commitText = (via: CommitVia) => {
     if (isNum) {
       const trimmed = raw.trim();
-      if (trimmed === "") return onCommit(null);
+      if (trimmed === "") return onCommit(null, via);
       const n = Number(trimmed);
       if (!Number.isFinite(n)) return onCancel();
-      return onCommit(field.type === "integer" ? Math.trunc(n) : n);
+      return onCommit(field.type === "integer" ? Math.trunc(n) : n, via);
     }
-    onCommit(raw);
+    onCommit(raw, via);
   };
   return (
     <Input
       autoFocus
       value={raw}
       onChange={(e) => setRaw(e.target.value)}
-      onFocus={(e) => e.currentTarget.select()}
+      // Seeded (type-to-edit) editors keep the caret after the typed char;
+      // plain open selects the whole current value for overwrite.
+      onFocus={seed === undefined ? (e) => e.currentTarget.select() : undefined}
       inputMode={isNum ? "decimal" : undefined}
       className={`h-7 min-w-[110px] px-2 text-[13px] ${isNum ? "text-right" : ""}`}
       onKeyDown={(e) => {
-        if (e.key === "Enter") finish(commitText);
+        if (e.key === "Enter") finish(() => commitText("enter"));
+        else if (e.key === "Tab") { e.preventDefault(); finish(() => commitText("tab")); }
         else if (e.key === "Escape") finish(onCancel);
       }}
-      onBlur={() => finish(commitText)}
+      onBlur={() => finish(() => commitText("blur"))}
     />
   );
 }
@@ -675,7 +691,16 @@ function CellEditor({ field, value, choices, onCommit, onCancel }: {
  *  tinted — greyed-out pencils get overlooked) or a double-click edits the
  *  single cell in place. Hover-only affordance, so touch devices keep the
  *  row-tap → detail-editor flow. */
-function EditCell({ editable, editing, num, className, field, value, choices, display, onStart, onCommit, onCancel }: {
+/** Selection visuals + mouse handlers the grid layer attaches to a cell. */
+export interface GridCellProps {
+  style?: React.CSSProperties;
+  onMouseDown?: React.MouseEventHandler;
+  onMouseEnter?: React.MouseEventHandler;
+  "data-grid-selected"?: string;
+  "data-grid-focused"?: string;
+}
+
+function EditCell({ editable, editing, num, className, field, value, choices, seed, display, grid, onStart, onCommit, onCancel }: {
   editable: boolean;
   editing: boolean;
   num?: boolean;
@@ -683,15 +708,20 @@ function EditCell({ editable, editing, num, className, field, value, choices, di
   field: { name: string; type?: string };
   value: unknown;
   choices?: StatusChoice[];
+  seed?: string;
   display: React.ReactNode;
+  /** Grid-mode selection props; never applied while the editor is open (a
+   *  preventDefault-ing mousedown would steal focus from the input). */
+  grid?: GridCellProps;
   onStart: () => void;
-  onCommit: (v: unknown) => void;
+  onCommit: (v: unknown, via: CommitVia) => void;
   onCancel: () => void;
 }) {
   const { t } = useLingui();
   return (
     <TableCell
       className={`group/cell ${num ? "text-right tabular-nums" : ""} ${className ?? ""}`}
+      {...(editing ? { style: grid?.style } : grid ?? {})}
       onDoubleClick={editable && !editing ? (e) => {
         e.stopPropagation();
         onStart();
@@ -699,7 +729,7 @@ function EditCell({ editable, editing, num, className, field, value, choices, di
       onClick={editing ? (e) => e.stopPropagation() : undefined}
     >
       {editing ? (
-        <CellEditor field={field} value={value} choices={choices} onCommit={onCommit} onCancel={onCancel} />
+        <CellEditor field={field} value={value} choices={choices} seed={seed} onCommit={onCommit} onCancel={onCancel} />
       ) : (
         <span className={`flex max-w-full items-center gap-1 ${num ? "justify-end" : ""}`}>
           <span className="min-w-0 truncate">{display}</span>
@@ -769,7 +799,7 @@ function RowPresence({ peers }: { peers: CollabPeer[] }) {
   );
 }
 
-export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit, schema, onCellError }: ItemsTableProps) {
+export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit, schema, onCellError, gridMode, onNotice }: ItemsTableProps) {
   const { t } = useLingui();
   // Workspace default content language — `localized` cells collapse to it
   // (then English) instead of always showing English.
@@ -868,19 +898,11 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   const dragCtx: HeaderDragCtx = { dragCol, overCol, setDragCol, setOverCol, order: baseCols, move: moveColumn };
 
   // Inline cell editing — one cell at a time; optimistic PATCH through the
-  // shared items cache (rollback + onCellError toast on failure).
-  const [editCell, setEditCell] = useState<{ id: string; field: string } | null>(null);
+  // shared items cache (rollback + onCellError toast on failure). `seed`
+  // carries the grid's type-to-edit character into the editor.
+  const [editCell, setEditCell] = useState<{ id: string; field: string; seed?: string } | null>(null);
   const patchItem = useItemPatch(schema?.slug ?? null);
   const isEditing = (rowId: string, name: string) => editCell?.id === rowId && editCell.field === name;
-  const commitCell = (rowId: string, name: string, prev: unknown, next: unknown) => {
-    setEditCell(null);
-    const same = prev === next || (prev == null && (next == null || next === "")) || String(prev ?? "") === String(next ?? "");
-    if (same) return;
-    patchItem.mutate(
-      { id: rowId, patch: { [name]: next } },
-      { onError: (e) => onCellError?.(e) },
-    );
-  };
 
   // Sticky columns: checkbox + Title pin left (desktop only — on a phone the
   // title column would swallow most of the viewport), actions stay pinned
@@ -930,6 +952,85 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   const useDynamic = dynFields.length > 0;
   const isNumF = (ty?: string) => ty === "integer" || ty === "number";
 
+  // --- spreadsheet grid layer -------------------------------------------
+  // Ordered column model mirroring the rendered data cells exactly (identity,
+  // then the dynamic/curated set, then Updated). Read-only columns stay
+  // selectable/copyable; writes skip them. Recomputed per render on purpose —
+  // it tracks dynFields, which is itself derived fresh each render.
+  const gridCols: GridColumn[] = [];
+  if (identity) {
+    gridCols.push({
+      name: "__identity",
+      editable: false,
+      raw: (r) =>
+        identity.template
+          ? renderTemplate(identity.template, r).trim()
+          : ((r as Record<string, unknown>)[identity.sortId!] ?? null),
+    });
+  }
+  if (useDynamic) {
+    for (const f of dynFields) {
+      const choices = statusField && f.name === statusField.name ? statusField.choices : fieldChoices(f);
+      gridCols.push({
+        name: f.name,
+        type: f.type,
+        editable: !f.dot && (!!choices || INLINE_TYPES.has(f.type ?? "")),
+        choices,
+        raw: (r) =>
+          f.dot
+            ? ((r[f.dot.head] as Record<string, unknown> | null | undefined)?.[f.dot.sub] ?? null)
+            : (r[f.name] ?? null),
+      });
+    }
+  } else {
+    if (has.status) gridCols.push({ name: statusField!.name, type: "text", editable: true, choices: statusField!.choices, raw: (r) => r[statusField!.name] ?? null });
+    if (has.author) gridCols.push({ name: "author", editable: false, raw: (r) => r.author ?? null });
+    if (has.words) gridCols.push({ name: "word_count", type: "integer", editable: true, raw: (r) => r.word_count ?? null });
+    if (has.views) gridCols.push({ name: "view_count", type: "integer", editable: true, raw: (r) => r.view_count ?? null });
+  }
+  gridCols.push({ name: "updated_at", editable: false, raw: (r) => r.updated_at ?? r.updatedAt ?? null });
+  const colIdx = new Map(gridCols.map((c, i) => [c.name, i]));
+
+  const gridWrite = useItemsGridWrite(schema?.slug ?? null);
+  const grid = useGridEdit({
+    enabled: !!gridMode,
+    rows: rows as unknown as Array<Record<string, unknown>>,
+    cols: gridCols,
+    editing: !!editCell,
+    onStartEdit: (r, c, seed) => {
+      const row = rows[r];
+      const col = gridCols[c];
+      if (!row || !col) return;
+      setEditCell({ id: row.id, field: col.name, seed });
+    },
+    onWrite: (changes) => gridWrite.mutateAsync({ changes }),
+    onNotice: (msg, kind) => {
+      if (kind === "error" && onCellError) onCellError(new Error(msg));
+      else onNotice?.(msg, kind);
+    },
+  });
+  /** Per-cell grid props by (row index, column name) — no-op when off. */
+  const gp = (ri: number, name: string): GridCellProps | undefined => {
+    if (!gridMode) return undefined;
+    const c = colIdx.get(name);
+    return c === undefined ? undefined : grid.cellProps(ri, c);
+  };
+
+  const commitCell = (rowId: string, name: string, prev: unknown, next: unknown, via: CommitVia) => {
+    setEditCell(null);
+    if (gridMode) grid.afterEdit(via === "enter" ? "down" : via === "tab" ? "right" : null);
+    const same = prev === next || (prev == null && (next == null || next === "")) || String(prev ?? "") === String(next ?? "");
+    if (same) return;
+    patchItem.mutate(
+      { id: rowId, patch: { [name]: next } },
+      { onError: (e) => onCellError?.(e) },
+    );
+  };
+  const cancelCell = () => {
+    setEditCell(null);
+    if (gridMode) grid.afterEdit(null);
+  };
+
   // Relation columns render the target row's display-template label instead
   // of the raw FK id (one `_in` fetch per relation column per page).
   const relLabels = useRelationLabels(
@@ -947,6 +1048,15 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   const IDENTITY_TH = "bg-card sm:sticky sm:left-[37px] sm:z-[2]";
 
   return (
+    // Grid mode focus target — keyboard nav + native copy/paste land here.
+    <div
+      ref={grid.containerRef}
+      tabIndex={gridMode ? 0 : undefined}
+      onKeyDown={grid.onKeyDown}
+      onCopy={grid.onCopy}
+      onPaste={grid.onPaste}
+      className="outline-none"
+    >
     <Table className={ADMIN_TABLE_CLS}>
       <TableHeader>
         <TableRow className="bg-white/[0.02] hover:bg-white/[0.02]">
@@ -991,7 +1101,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((r) => {
+        {rows.map((r, ri) => {
           const a = authorById(r.author);
           // Identity cell text: the display template (e.g. `{{ city }}`) when
           // set — matching what the Settings tab promises — else the resolved
@@ -1010,12 +1120,12 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
           const displayStatus = rawStatus != null ? String(rawStatus) : null;
           const choice = displayStatus ? choiceByValue.get(displayStatus) : null;
           return (
-            <TableRow key={r.id} data-selected={selected.has(r.id)} onClick={() => onEdit(r)} className="group/row cursor-pointer data-[selected=true]:bg-selected-surface">
+            <TableRow key={r.id} data-selected={selected.has(r.id)} onClick={gridMode ? undefined : () => onEdit(r)} className={`group/row data-[selected=true]:bg-selected-surface ${gridMode ? "" : "cursor-pointer"}`}>
               <TableCell onClick={(e) => e.stopPropagation()} className={`min-w-[38px] sm:left-0 ${STICKY_BOX}`}>
                 <Checkbox checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
               </TableCell>
               {identity && (
-                <TableCell className={`sm:left-[37px] sm:max-w-[320px] ${STICKY_BOX}`}>
+                <TableCell className={`sm:left-[37px] sm:max-w-[320px] ${STICKY_BOX}`} {...(gp(ri, "__identity") ?? {})}>
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate font-medium text-foreground">{cellText(displayTitle, defaultLocale)}</span>
                     {displaySlug && <span className="truncate font-mono text-[11px] text-muted-foreground">/{String(displaySlug).slice(0, 24)}</span>}
@@ -1043,14 +1153,16 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                         field={f}
                         value={rawV}
                         choices={statusField.choices}
+                        seed={editCell?.seed}
+                        grid={gp(ri, f.name)}
                         display={svStr ? (
                           <StatusBadge value={svStr} label={ch?.label} color={ch?.color} />
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
                         onStart={() => setEditCell({ id: r.id, field: f.name })}
-                        onCommit={(v) => commitCell(r.id, f.name, rawV, v)}
-                        onCancel={() => setEditCell(null)}
+                        onCommit={(v, via) => commitCell(r.id, f.name, rawV, v, via)}
+                        onCancel={cancelCell}
                       />
                     );
                   }
@@ -1085,10 +1197,12 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                       field={f}
                       value={rawV}
                       choices={choices}
+                      seed={editCell?.seed}
+                      grid={gp(ri, f.name)}
                       display={txt || <span className="text-muted-foreground">—</span>}
                       onStart={() => setEditCell({ id: r.id, field: f.name })}
-                      onCommit={(v) => commitCell(r.id, f.name, rawV, v)}
-                      onCancel={() => setEditCell(null)}
+                      onCommit={(v, via) => commitCell(r.id, f.name, rawV, v, via)}
+                      onCancel={cancelCell}
                     />
                   );
                 })
@@ -1101,18 +1215,20 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                       field={{ name: statusField!.name, type: "text" }}
                       value={rawStatus}
                       choices={statusField!.choices}
+                      seed={editCell?.seed}
+                      grid={gp(ri, statusField!.name)}
                       display={displayStatus ? (
                         <StatusBadge value={displayStatus} label={choice?.label} color={choice?.color} />
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
                       onStart={() => setEditCell({ id: r.id, field: statusField!.name })}
-                      onCommit={(v) => commitCell(r.id, statusField!.name, rawStatus, v)}
-                      onCancel={() => setEditCell(null)}
+                      onCommit={(v, via) => commitCell(r.id, statusField!.name, rawStatus, v, via)}
+                      onCancel={cancelCell}
                     />
                   )}
                   {has.author && (
-                    <TableCell>
+                    <TableCell {...(gp(ri, "author") ?? {})}>
                       <div className="flex items-center gap-2">
                         <div className="grid size-[22px] place-items-center rounded-full bg-[linear-gradient(135deg,oklch(from_var(--primary)_0.78_0.18_h),oklch(from_var(--primary)_0.55_0.18_calc(h+15)))] text-[10px] font-semibold text-[oklch(from_var(--primary)_0.18_0.05_h)]">{a.initials}</div>
                         <span className="font-mono text-xs">{a.name}</span>
@@ -1126,10 +1242,12 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                       num
                       field={{ name: "word_count", type: "integer" }}
                       value={r.word_count}
+                      seed={editCell?.seed}
+                      grid={gp(ri, "word_count")}
                       display={r.word_count ?? "—"}
                       onStart={() => setEditCell({ id: r.id, field: "word_count" })}
-                      onCommit={(v) => commitCell(r.id, "word_count", r.word_count, v)}
-                      onCancel={() => setEditCell(null)}
+                      onCommit={(v, via) => commitCell(r.id, "word_count", r.word_count, v, via)}
+                      onCancel={cancelCell}
                     />
                   )}
                   {has.views && (
@@ -1140,15 +1258,17 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                       className={r.view_count ? "text-foreground" : "text-muted-foreground"}
                       field={{ name: "view_count", type: "integer" }}
                       value={r.view_count}
+                      seed={editCell?.seed}
+                      grid={gp(ri, "view_count")}
                       display={r.view_count ? Number(r.view_count).toLocaleString() : "—"}
                       onStart={() => setEditCell({ id: r.id, field: "view_count" })}
-                      onCommit={(v) => commitCell(r.id, "view_count", r.view_count, v)}
-                      onCancel={() => setEditCell(null)}
+                      onCommit={(v, via) => commitCell(r.id, "view_count", r.view_count, v, via)}
+                      onCancel={cancelCell}
                     />
                   )}
                 </>
               )}
-              <TableCell className="font-mono tabular-nums text-muted-foreground">{fmtDate(r.updated_at ?? r.updatedAt)}</TableCell>
+              <TableCell className="font-mono tabular-nums text-muted-foreground" {...(gp(ri, "updated_at") ?? {})}>{fmtDate(r.updated_at ?? r.updatedAt)}</TableCell>
               {collabActive && (
                 <TableCell className="text-right">
                   {collabByItem[String(r.id)]?.length ? (
@@ -1164,6 +1284,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
         })}
       </TableBody>
     </Table>
+    </div>
   );
 }
 

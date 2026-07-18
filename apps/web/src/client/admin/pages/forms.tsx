@@ -1316,7 +1316,6 @@ export function FormsPage({
           form={form}
           fieldBlocks={fieldBlocks}
           efByName={efByName}
-          versioned={collVersioned}
           pushToast={pushToast}
           onOpenCollection={() => setActiveNav?.("collections/" + form.collection)}
         />
@@ -2194,9 +2193,7 @@ function SubmissionDrawer({
   fieldBlocks,
   efByName,
   row,
-  versioned,
   onClose,
-  onPublished,
   onDeleted,
   onOpenCollection,
   pushToast,
@@ -2205,9 +2202,7 @@ function SubmissionDrawer({
   fieldBlocks: ApiFormBlock[];
   efByName: Map<string, ApiFormEligibleField>;
   row: Record<string, unknown> | null;
-  versioned: boolean;
   onClose: () => void;
-  onPublished: (id: string) => void;
   onDeleted: (id: string) => void;
   onOpenCollection: () => void;
   pushToast: (m: string) => void;
@@ -2218,7 +2213,6 @@ function SubmissionDrawer({
   if (!row) return null;
 
   const id = String(row.id ?? "");
-  const isDraft = versioned && row._status !== "published";
   // Headline: first text-ish answer; subline: first email-format answer.
   const nameField = fieldBlocks.find((b) => {
     const ef = efByName.get(b.name ?? "");
@@ -2234,19 +2228,6 @@ function SubmissionDrawer({
     .join("")
     .slice(0, 2)
     .toUpperCase();
-
-  const publish = async () => {
-    setBusy(true);
-    try {
-      await itemsApi.publish(form.collection, id);
-      onPublished(id);
-      pushToast(t`Published.`);
-    } catch (e) {
-      pushToast((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const remove = async () => {
     setConfirmDelete(false);
@@ -2286,17 +2267,6 @@ function SubmissionDrawer({
               </div>
             )}
           </div>
-          {versioned && (
-            <span
-              className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10.5px] ${
-                isDraft
-                  ? "border-amber-400/30 bg-amber-400/10 text-amber-400"
-                  : "border-emerald-400/30 bg-emerald-400/10 text-emerald-400"
-              }`}
-            >
-              {isDraft ? t`draft` : t`published`}
-            </span>
-          )}
         </div>
         {/* meta grid */}
         <div className="grid shrink-0 grid-cols-2 gap-x-3.5 gap-y-2 border-b border-border px-4.5 py-3 text-[11px]">
@@ -2347,11 +2317,6 @@ function SubmissionDrawer({
         </ScrollArea>
         {/* footer */}
         <div className="flex shrink-0 items-center gap-2 border-t border-border bg-background/60 px-4.5 py-3.5">
-          {isDraft && (
-            <Button variant="primary" icon={I.Check} disabled={busy} onClick={() => void publish()}>
-              <Trans>Publish</Trans>
-            </Button>
-          )}
           <Button variant="ghost" icon={I.ExternalLink} onClick={onOpenCollection}>
             <Trans>Open in {form.collection}</Trans>
           </Button>
@@ -2386,57 +2351,29 @@ function SubmissionsTab({
   form,
   fieldBlocks,
   efByName,
-  versioned,
   pushToast,
   onOpenCollection,
 }: {
   form: ApiForm;
   fieldBlocks: ApiFormBlock[];
   efByName: Map<string, ApiFormEligibleField>;
-  versioned: boolean;
   pushToast: (m: string) => void;
   onOpenCollection: () => void;
 }) {
   const { t } = useLingui();
   const [rows, setRows] = useState<Record<string, unknown>[] | null>(null);
-  const [filter, setFilter] = useState<"all" | "draft" | "published">("all");
   const [total, setTotal] = useState<number | null>(null);
   const [selRow, setSelRow] = useState<Record<string, unknown> | null>(null);
-  const [counts, setCounts] = useState<{ all: number; draft: number; published: number } | null>(null);
 
+  // Row lifecycle (draft/published) is the COLLECTION's concern, not the
+  // form's — moderate it in the collection view. This tab only shows what
+  // arrived. The form's own status (live/paused) lives on the list cards.
   const cols = fieldBlocks.slice(0, 4).map((b) => b.name!).filter(Boolean);
-
-  // Per-status counts for the filter strip (versioned collections only).
-  useEffect(() => {
-    if (!versioned) {
-      setCounts(null);
-      return;
-    }
-    let cancelled = false;
-    const count = (status?: string) =>
-      itemsApi
-        .list(form.collection, {
-          limit: 1,
-          meta: "filter_count",
-          ...(status ? { status } : {}),
-        })
-        .then((r) => r.meta?.filter_count ?? 0)
-        .catch(() => 0);
-    void Promise.all([count(), count("draft"), count("published")]).then(
-      ([all, draft, published]) => {
-        if (!cancelled) setCounts({ all, draft, published });
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [form.collection, versioned, rows?.length]);
 
   useEffect(() => {
     let cancelled = false;
     setRows(null);
     const query: Record<string, string | number> = { limit: 50, sort: "-created_at", meta: "filter_count" };
-    if (filter !== "all") query.status = filter;
     itemsApi
       .list(form.collection, query)
       .then((r) => {
@@ -2450,7 +2387,7 @@ function SubmissionsTab({
     return () => {
       cancelled = true;
     };
-  }, [form.collection, filter]);
+  }, [form.collection]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -2474,35 +2411,6 @@ function SubmissionsTab({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {versioned && (
-          <div className="flex items-center gap-0.5 rounded-[12px] border border-white/10 bg-white/5 p-[3px]">
-            {(
-              [
-                { value: "all", label: t`All`, n: counts?.all },
-                { value: "draft", label: t`Drafts`, n: counts?.draft },
-                { value: "published", label: t`Published`, n: counts?.published },
-              ] as const
-            ).map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                onClick={() => setFilter(o.value)}
-                className={`flex items-center gap-1.5 rounded-[9px] px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors ${
-                  filter === o.value
-                    ? "bg-primary/20 text-foreground ring-1 ring-inset ring-primary/40"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {o.label}
-                {o.n !== undefined && (
-                  <span className={`font-mono text-[10.5px] tabular-nums ${filter === o.value ? "text-primary" : "text-muted-foreground/70"}`}>
-                    {o.n}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
         <button
           type="button"
           onClick={() => window.open(`/api/items/${form.collection}/export?format=csv`, "_blank")}
@@ -2536,13 +2444,12 @@ function SubmissionsTab({
             <div className="min-w-[720px]">
               <div
                 className="grid items-center gap-3 border-b border-border px-3.5 py-2.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground"
-                style={{ gridTemplateColumns: `110px repeat(${cols.length}, 1fr) ${versioned ? "90px" : ""}` }}
+                style={{ gridTemplateColumns: `110px repeat(${cols.length}, 1fr)` }}
               >
                 <span><Trans>When</Trans></span>
                 {cols.map((c) => (
                   <span key={c} className="truncate">{c}</span>
                 ))}
-                {versioned && <span><Trans>Status</Trans></span>}
               </div>
               {rows.map((r, i) => (
                 <div
@@ -2552,24 +2459,13 @@ function SubmissionsTab({
                   onClick={() => setSelRow(r)}
                   onKeyDown={(e) => e.key === "Enter" && setSelRow(r)}
                   className="grid cursor-pointer items-center gap-3 border-b border-border px-3.5 py-[10px] text-[12.5px] transition-colors last:border-b-0 hover:bg-accent/40"
-                  style={{ gridTemplateColumns: `110px repeat(${cols.length}, 1fr) ${versioned ? "90px" : ""}` }}
+                  style={{ gridTemplateColumns: `110px repeat(${cols.length}, 1fr)` }}
                 >
                   {/* serialized rows expose camelCase system keys (createdAt) */}
                   <span className="font-mono text-[11px] text-muted-foreground">{relTime(r.createdAt ?? r.created_at)}</span>
                   {cols.map((c) => (
                     <span key={c} className="truncate">{r[c] === null || r[c] === undefined ? "—" : String(r[c])}</span>
                   ))}
-                  {versioned && (
-                    <span
-                      className={`justify-self-start rounded-full border px-2 py-0.5 font-mono text-[10.5px] ${
-                        r._status === "published"
-                          ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400"
-                          : "border-amber-400/30 bg-amber-400/10 text-amber-400"
-                      }`}
-                    >
-                      {String(r._status ?? "draft")}
-                    </span>
-                  )}
                 </div>
               ))}
             </div>
@@ -2590,14 +2486,7 @@ function SubmissionsTab({
         fieldBlocks={fieldBlocks}
         efByName={efByName}
         row={selRow}
-        versioned={versioned}
         onClose={() => setSelRow(null)}
-        onPublished={(id) => {
-          setRows((prev) =>
-            prev ? prev.map((r) => (String(r.id) === id ? { ...r, _status: "published" } : r)) : prev,
-          );
-          setSelRow((prev) => (prev && String(prev.id) === id ? { ...prev, _status: "published" } : prev));
-        }}
         onDeleted={(id) => {
           setRows((prev) => (prev ? prev.filter((r) => String(r.id) !== id) : prev));
           setTotal((prev) => (prev === null ? prev : Math.max(0, prev - 1)));

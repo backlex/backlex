@@ -1280,7 +1280,6 @@ msgid "alice"
 msgstr "alice"
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
-#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/ui.tsx
@@ -3685,7 +3684,6 @@ msgid "Downloading…"
 msgstr "İndiriliyor…"
 
 #: src/client/admin/flow-builder.tsx
-#: src/client/admin/pages/forms.tsx
 msgid "draft"
 msgstr "taslak"
 
@@ -3704,8 +3702,8 @@ msgid "drafts"
 msgstr "taslaklar"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Drafts"
-msgstr "Taslaklar"
+#~ msgid "Drafts"
+#~ msgstr "Taslaklar"
 
 #: src/client/admin/collections-index.tsx
 msgid "Drag collections here"
@@ -8593,7 +8591,6 @@ msgstr "Doğrudan bir koleksiyona yazan herkese açık, gömülebilir formlar �
 
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/items.tsx
-#: src/client/admin/pages/forms.tsx
 #: src/client/admin/sheet.tsx
 msgid "Publish"
 msgstr "Yayınla"
@@ -8616,12 +8613,11 @@ msgid "Publish this dashboard to a public, unauthenticated embed URL. Anyone wit
 msgstr "Bu panoyu herkese açık, kimlik doğrulaması gerektirmeyen bir gömme URL’sinde yayınlayın. Bağlantıya sahip olan herkes görüntüleyebilir — kendi sitenizde bir iframe içine gömün."
 
 #: src/client/admin/pages/forms.tsx
-msgid "published"
-msgstr "yayında"
+#~ msgid "published"
+#~ msgstr "yayında"
 
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/item-views.tsx
-#: src/client/admin/pages/forms.tsx
 #: src/client/admin/sheet.tsx
 msgid "Published"
 msgstr "Yayınlandı"
@@ -8635,8 +8631,8 @@ msgid "Published posts past week"
 msgstr "Son haftada yayınlanmış postlar"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Published."
-msgstr "Yayınlandı."
+#~ msgid "Published."
+#~ msgstr "Yayınlandı."
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Push"
@@ -10984,7 +10980,6 @@ msgstr "statik paneller yapılandırma nesnelerini aynen işler — panel oluşt
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/members-panel.tsx
-#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/traces.tsx

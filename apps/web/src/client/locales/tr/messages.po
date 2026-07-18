@@ -2141,6 +2141,10 @@ msgstr "Gelen kutunuzu kontrol edin"
 msgid "Checking your invite…"
 msgstr "Davetin kontrol ediliyor…"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Checks"
+msgstr "Kontroller"
+
 #: src/client/admin/edit-field.tsx
 msgid "Choice color"
 msgstr "Seçenek rengi"
@@ -2701,6 +2705,7 @@ msgstr "kopyala"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -3088,6 +3093,10 @@ msgstr "Cursor"
 msgid "Custom CA PEM (optional)"
 msgstr "Özel CA PEM (isteğe bağlı)"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Custom color"
+msgstr "Özel renk"
+
 #: src/client/pages/api-keys.tsx
 msgid "Custom date…"
 msgstr "Özel tarih…"
@@ -3268,6 +3277,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/schema-versions.tsx
@@ -3374,6 +3384,10 @@ msgstr "Kaynağı sil"
 msgid "Delete source?"
 msgstr "Kaynak silinsin mi?"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Delete submission"
+msgstr "Gönderimi sil"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Delete this collection"
 msgstr "Bu koleksiyonu sil"
@@ -3390,6 +3404,10 @@ msgstr "Bu öğe silinsin mi?"
 #: src/client/admin/edit-field.tsx
 msgid "Delete this row too (cascade)"
 msgstr "Bu satırı da sil (art arda)"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Delete this submission?"
+msgstr "Bu gönderim silinsin mi?"
 
 #: src/client/admin/pages/users.tsx
 msgid "Delete user"
@@ -3658,6 +3676,7 @@ msgid "Downloading…"
 msgstr "İndiriliyor…"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/forms.tsx
 msgid "draft"
 msgstr "taslak"
 
@@ -4936,21 +4955,25 @@ msgstr "Oluştur"
 msgid "Generate keypair"
 msgstr "Anahtar çifti üret"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Generate new link"
+msgstr "Yeni bağlantı üret"
+
 #: src/client/admin/role-editor.tsx
 msgid "Generated DSL — saved to <0>role_permissions</0> on save."
 msgstr "Oluşturulan DSL — kayıt sırasında <0>role_permissions</0> tablosuna kaydedilir."
 
 #: src/client/admin/pages/forms.tsx
-msgid "Generates a new token and kills the current link immediately. Every embed of the old link must be updated — the new link is shown exactly once."
-msgstr "Yeni bir token üretir ve mevcut bağlantıyı anında geçersiz kılar. Eski bağlantının gömülü olduğu her yer güncellenmelidir — yeni bağlantı yalnızca bir kez gösterilir."
+#~ msgid "Generates a new token and kills the current link immediately. Every embed of the old link must be updated — the new link is shown exactly once."
+#~ msgstr "Yeni bir token üretir ve mevcut bağlantıyı anında geçersiz kılar. Eski bağlantının gömülü olduğu her yer güncellenmelidir — yeni bağlantı yalnızca bir kez gösterilir."
 
 #: src/client/admin/account-page.tsx
 msgid "Generating…"
 msgstr "Oluşturuluyor…"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Get a new link"
-msgstr "Yeni bağlantı al"
+#~ msgid "Get a new link"
+#~ msgstr "Yeni bağlantı al"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "GitHub"
@@ -5158,6 +5181,10 @@ msgstr "Hibrit"
 #: src/client/pages/sign-up.tsx
 msgid "I agree to the <0>Terms</0> and <1>Privacy</1>."
 msgstr "<0>Şartlar</0>'ı ve <1>Gizlilik Politikası</1>'nı kabul ediyorum."
+
+#: src/client/admin/pages/forms.tsx
+msgid "I copied it — hide the link"
+msgstr "Kopyaladım — bağlantıyı gizle"
 
 #: src/client/admin/pages/schema-versions.tsx
 msgid "I understand this drops columns/tables or changes types and will lose data."
@@ -6407,6 +6434,10 @@ msgstr "Min seçili"
 msgid "Mint a public link that shows this record read-only — no sign-in required to view it."
 msgstr "Bu kaydı salt okunur olarak gösteren bir genel bağlantı oluşturun — görüntülemek için giriş gerekmez."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Mints a new token; the current link stops working"
+msgstr "Yeni bir token üretir; mevcut bağlantı çalışmayı durdurur"
+
 #. placeholder {0}: data.filter((r) => locales.some((l) => !r[l])).length
 #: src/client/admin/parity/translations.tsx
 msgid "Missing ({0})"
@@ -6826,8 +6857,12 @@ msgid "No archived collections"
 msgstr "Arşivlenmiş koleksiyon yok"
 
 #: src/client/admin/pages/forms.tsx
-msgid "No auth on the visitor's side — the token in the URL is the credential."
-msgstr "Ziyaretçi tarafında oturum yok — URL'deki token kimlik bilgisidir."
+#~ msgid "No auth on the visitor's side — the token in the URL is the credential."
+#~ msgstr "Ziyaretçi tarafında oturum yok — URL'deki token kimlik bilgisidir."
+
+#: src/client/admin/pages/forms.tsx
+msgid "No auth on the visitor's side — the token in the URL is the credential. It's stored hashed, so it can only be shown <0>once</0>."
+msgstr "Ziyaretçi tarafında oturum yok — URL'deki token kimlik bilgisidir. Hash'lenerek saklanır, bu yüzden yalnızca <0>bir kez</0> gösterilebilir."
 
 #: src/client/admin/pages/forms.tsx
 msgid "No blocks match \"{q}\""
@@ -7603,6 +7638,11 @@ msgstr "Koleksiyonu aç"
 #: src/client/admin/pages/forms.tsx
 msgid "Open form"
 msgstr "Formu aç"
+
+#. placeholder {0}: form.collection
+#: src/client/admin/pages/forms.tsx
+msgid "Open in {0}"
+msgstr "{0} içinde aç"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Open resource"
@@ -8522,6 +8562,7 @@ msgstr "Doğrudan bir koleksiyona yazan herkese açık, gömülebilir formlar �
 
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/items.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/sheet.tsx
 msgid "Publish"
 msgstr "Yayınla"
@@ -8543,6 +8584,10 @@ msgstr "Yayın zamanlandı."
 msgid "Publish this dashboard to a public, unauthenticated embed URL. Anyone with the link can view it — embed it in an iframe on your own site."
 msgstr "Bu panoyu herkese açık, kimlik doğrulaması gerektirmeyen bir gömme URL’sinde yayınlayın. Bağlantıya sahip olan herkes görüntüleyebilir — kendi sitenizde bir iframe içine gömün."
 
+#: src/client/admin/pages/forms.tsx
+msgid "published"
+msgstr "yayında"
+
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/item-views.tsx
 #: src/client/admin/pages/forms.tsx
@@ -8557,6 +8602,10 @@ msgstr "yalnızca yayınlananlar"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Published posts past week"
 msgstr "Son haftada yayınlanmış postlar"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Published."
+msgstr "Yayınlandı."
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Push"
@@ -9436,6 +9485,10 @@ msgstr "Form bağlantısı yenilensin mi?"
 #: src/client/admin/pages/forms.tsx
 msgid "Rotate token"
 msgstr "Token'ı yenile"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Row"
+msgstr "Satır"
 
 #: src/client/admin/parity/insights.tsx
 msgid "row count (no field needed)"
@@ -10526,6 +10579,10 @@ msgstr "Varsayılan mesaj yerine gösterilir"
 msgid "Shown instead of the label when the admin UI is in that language."
 msgstr "Admin arayüzü o dildeyken etiket yerine gösterilir."
 
+#: src/client/admin/pages/forms.tsx
+msgid "shown once — copy it now, it won't appear again"
+msgstr "bir kez gösterilir — şimdi kopyalayın, tekrar görünmeyecek"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Side-table (item_ownership)"
 msgstr "Yan tablo (item_ownership)"
@@ -11045,6 +11102,10 @@ msgstr "Gönder"
 msgid "Submit button label"
 msgstr "Gönder butonu etiketi"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Submitted"
+msgstr "Gönderildi"
+
 #: src/client/pages/public-form.tsx
 msgid "Submitting…"
 msgstr "Gönderiliyor…"
@@ -11391,8 +11452,8 @@ msgid "The key \"{0}\" will stop working immediately. This cannot be undone."
 msgstr "\"{0}\" anahtarı hemen çalışmayı durduracak. Bu geri alınamaz."
 
 #: src/client/admin/pages/forms.tsx
-msgid "The link was shown once when it was minted. Generate a new one to see it here — the old link stops working."
-msgstr "Bağlantı yalnızca oluşturulduğunda bir kez gösterildi. Burada görmek için yenisini üretin — eski bağlantı çalışmayı durdurur."
+#~ msgid "The link was shown once when it was minted. Generate a new one to see it here — the old link stops working."
+#~ msgstr "Bağlantı yalnızca oluşturulduğunda bir kez gösterildi. Burada görmek için yenisini üretin — eski bağlantı çalışmayı durdurur."
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "The link was shown once when it was minted. Rotate the token to get a new one."
@@ -11426,6 +11487,10 @@ msgstr "Sorgu aynen çalıştırılır. Yukarıdaki görselleştirme ipucu, süt
 msgid "The row is rejected unless this matches. Reference another field's value with <0>$field.name</0> (e.g. <1>end_date ≥ $field.start_date</1>)."
 msgstr "Bu eşleşmedikçe satır reddedilir. Başka bir alanın değerine <0>$field.name</0> ile referans verin (örn. <1>end_date ≥ $field.start_date</1>)."
 
+#: src/client/admin/pages/forms.tsx
+msgid "The row is removed from the collection. This can't be undone."
+msgstr "Satır koleksiyondan kaldırılır. Bu işlem geri alınamaz."
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "The section opens folded — useful for advanced or rarely-touched fields."
@@ -11434,6 +11499,10 @@ msgstr "Bölüm katlanmış açılır — gelişmiş veya nadiren kullanılan al
 #: src/client/pages/shared-record.tsx
 msgid "The share link may have been revoked, or the record it pointed to was removed."
 msgstr "Paylaşım bağlantısı iptal edilmiş olabilir ya da işaret ettiği kayıt kaldırılmış olabilir."
+
+#: src/client/admin/pages/forms.tsx
+msgid "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
+msgstr "Token tekrar gösterilemez — yeni bir bağlantı üretmek tek yoldur. Eski bağlantı anında çalışmayı durdurur; gömülü kullanımları güncelleyin."
 
 #: src/client/admin/pages/traces.tsx
 msgid "The traces endpoint returned an error. Refresh to try again."
@@ -12125,8 +12194,12 @@ msgid "Use \"{label}\" column"
 msgstr "\"{label}\" sütununu kullan"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Use \"Get a new link\" above — the embed snippet is minted together with it."
-msgstr "Yukarıdaki \"Yeni bağlantı al\" düğmesini kullanın — gömme kodu onunla birlikte üretilir."
+msgid "Use \"Generate new link\" above — the embed snippet is minted together with it."
+msgstr "Yukarıdaki \"Yeni bağlantı üret\" düğmesini kullanın — gömme kodu onunla birlikte üretilir."
+
+#: src/client/admin/pages/forms.tsx
+#~ msgid "Use \"Get a new link\" above — the embed snippet is minted together with it."
+#~ msgstr "Yukarıdaki \"Yeni bağlantı al\" düğmesini kullanın — gömme kodu onunla birlikte üretilir."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Use \"owner_id\" column"

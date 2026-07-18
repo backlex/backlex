@@ -1018,7 +1018,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "functions" && <FunctionsPage pushToast={pushToast} />}
             {activeNav === "jobs" && <JobsPage pushToast={pushToast} />}
             {activeNav === "feature-flags" && <FeatureFlagsPage pushToast={pushToast} />}
-            {activeNav === "forms" && <FormsPage pushToast={pushToast} />}
+            {activeNav === "forms" && <FormsPage pushToast={pushToast} setActiveNav={setActiveNav} />}
             {activeNav === "webhooks" && <WebhooksPage pushToast={pushToast} />}
             {activeNav === "integrations" && <IntegrationsPage pushToast={pushToast} />}
             {activeNav === "graphql" && <GraphqlPage />}

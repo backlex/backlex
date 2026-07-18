@@ -2141,6 +2141,10 @@ msgstr "Check your inbox"
 msgid "Checking your invite…"
 msgstr "Checking your invite…"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Checks"
+msgstr "Checks"
+
 #: src/client/admin/edit-field.tsx
 msgid "Choice color"
 msgstr "Choice color"
@@ -2701,6 +2705,7 @@ msgstr "copy"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -3088,6 +3093,10 @@ msgstr "Cursor"
 msgid "Custom CA PEM (optional)"
 msgstr "Custom CA PEM (optional)"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Custom color"
+msgstr "Custom color"
+
 #: src/client/pages/api-keys.tsx
 msgid "Custom date…"
 msgstr "Custom date…"
@@ -3268,6 +3277,7 @@ msgstr "Defaults to the URL's filename"
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/schema-versions.tsx
@@ -3374,6 +3384,10 @@ msgstr "Delete source"
 msgid "Delete source?"
 msgstr "Delete source?"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Delete submission"
+msgstr "Delete submission"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Delete this collection"
 msgstr "Delete this collection"
@@ -3390,6 +3404,10 @@ msgstr "Delete this item?"
 #: src/client/admin/edit-field.tsx
 msgid "Delete this row too (cascade)"
 msgstr "Delete this row too (cascade)"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Delete this submission?"
+msgstr "Delete this submission?"
 
 #: src/client/admin/pages/users.tsx
 msgid "Delete user"
@@ -3658,6 +3676,7 @@ msgid "Downloading…"
 msgstr "Downloading…"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/forms.tsx
 msgid "draft"
 msgstr "draft"
 
@@ -4936,21 +4955,25 @@ msgstr "Generate"
 msgid "Generate keypair"
 msgstr "Generate keypair"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Generate new link"
+msgstr "Generate new link"
+
 #: src/client/admin/role-editor.tsx
 msgid "Generated DSL — saved to <0>role_permissions</0> on save."
 msgstr "Generated DSL — saved to <0>role_permissions</0> on save."
 
 #: src/client/admin/pages/forms.tsx
-msgid "Generates a new token and kills the current link immediately. Every embed of the old link must be updated — the new link is shown exactly once."
-msgstr "Generates a new token and kills the current link immediately. Every embed of the old link must be updated — the new link is shown exactly once."
+#~ msgid "Generates a new token and kills the current link immediately. Every embed of the old link must be updated — the new link is shown exactly once."
+#~ msgstr "Generates a new token and kills the current link immediately. Every embed of the old link must be updated — the new link is shown exactly once."
 
 #: src/client/admin/account-page.tsx
 msgid "Generating…"
 msgstr "Generating…"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Get a new link"
-msgstr "Get a new link"
+#~ msgid "Get a new link"
+#~ msgstr "Get a new link"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "GitHub"
@@ -5158,6 +5181,10 @@ msgstr "Hybrid"
 #: src/client/pages/sign-up.tsx
 msgid "I agree to the <0>Terms</0> and <1>Privacy</1>."
 msgstr "I agree to the <0>Terms</0> and <1>Privacy</1>."
+
+#: src/client/admin/pages/forms.tsx
+msgid "I copied it — hide the link"
+msgstr "I copied it — hide the link"
 
 #: src/client/admin/pages/schema-versions.tsx
 msgid "I understand this drops columns/tables or changes types and will lose data."
@@ -6407,6 +6434,10 @@ msgstr "Min selected"
 msgid "Mint a public link that shows this record read-only — no sign-in required to view it."
 msgstr "Mint a public link that shows this record read-only — no sign-in required to view it."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Mints a new token; the current link stops working"
+msgstr "Mints a new token; the current link stops working"
+
 #. placeholder {0}: data.filter((r) => locales.some((l) => !r[l])).length
 #: src/client/admin/parity/translations.tsx
 msgid "Missing ({0})"
@@ -6826,8 +6857,12 @@ msgid "No archived collections"
 msgstr "No archived collections"
 
 #: src/client/admin/pages/forms.tsx
-msgid "No auth on the visitor's side — the token in the URL is the credential."
-msgstr "No auth on the visitor's side — the token in the URL is the credential."
+#~ msgid "No auth on the visitor's side — the token in the URL is the credential."
+#~ msgstr "No auth on the visitor's side — the token in the URL is the credential."
+
+#: src/client/admin/pages/forms.tsx
+msgid "No auth on the visitor's side — the token in the URL is the credential. It's stored hashed, so it can only be shown <0>once</0>."
+msgstr "No auth on the visitor's side — the token in the URL is the credential. It's stored hashed, so it can only be shown <0>once</0>."
 
 #: src/client/admin/pages/forms.tsx
 msgid "No blocks match \"{q}\""
@@ -7603,6 +7638,11 @@ msgstr "Open collection"
 #: src/client/admin/pages/forms.tsx
 msgid "Open form"
 msgstr "Open form"
+
+#. placeholder {0}: form.collection
+#: src/client/admin/pages/forms.tsx
+msgid "Open in {0}"
+msgstr "Open in {0}"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Open resource"
@@ -8522,6 +8562,7 @@ msgstr "Public, embeddable forms that write straight into a collection — share
 
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/items.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/sheet.tsx
 msgid "Publish"
 msgstr "Publish"
@@ -8543,6 +8584,10 @@ msgstr "Publish scheduled."
 msgid "Publish this dashboard to a public, unauthenticated embed URL. Anyone with the link can view it — embed it in an iframe on your own site."
 msgstr "Publish this dashboard to a public, unauthenticated embed URL. Anyone with the link can view it — embed it in an iframe on your own site."
 
+#: src/client/admin/pages/forms.tsx
+msgid "published"
+msgstr "published"
+
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/item-views.tsx
 #: src/client/admin/pages/forms.tsx
@@ -8557,6 +8602,10 @@ msgstr "published only"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Published posts past week"
 msgstr "Published posts past week"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Published."
+msgstr "Published."
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Push"
@@ -9436,6 +9485,10 @@ msgstr "Rotate the form link?"
 #: src/client/admin/pages/forms.tsx
 msgid "Rotate token"
 msgstr "Rotate token"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Row"
+msgstr "Row"
 
 #: src/client/admin/parity/insights.tsx
 msgid "row count (no field needed)"
@@ -10526,6 +10579,10 @@ msgstr "Shown instead of the default message"
 msgid "Shown instead of the label when the admin UI is in that language."
 msgstr "Shown instead of the label when the admin UI is in that language."
 
+#: src/client/admin/pages/forms.tsx
+msgid "shown once — copy it now, it won't appear again"
+msgstr "shown once — copy it now, it won't appear again"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Side-table (item_ownership)"
 msgstr "Side-table (item_ownership)"
@@ -11045,6 +11102,10 @@ msgstr "Submit"
 msgid "Submit button label"
 msgstr "Submit button label"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Submitted"
+msgstr "Submitted"
+
 #: src/client/pages/public-form.tsx
 msgid "Submitting…"
 msgstr "Submitting…"
@@ -11391,8 +11452,8 @@ msgid "The key \"{0}\" will stop working immediately. This cannot be undone."
 msgstr "The key \"{0}\" will stop working immediately. This cannot be undone."
 
 #: src/client/admin/pages/forms.tsx
-msgid "The link was shown once when it was minted. Generate a new one to see it here — the old link stops working."
-msgstr "The link was shown once when it was minted. Generate a new one to see it here — the old link stops working."
+#~ msgid "The link was shown once when it was minted. Generate a new one to see it here — the old link stops working."
+#~ msgstr "The link was shown once when it was minted. Generate a new one to see it here — the old link stops working."
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "The link was shown once when it was minted. Rotate the token to get a new one."
@@ -11426,6 +11487,10 @@ msgstr "The query runs verbatim. The visualization hint above explains how its c
 msgid "The row is rejected unless this matches. Reference another field's value with <0>$field.name</0> (e.g. <1>end_date ≥ $field.start_date</1>)."
 msgstr "The row is rejected unless this matches. Reference another field's value with <0>$field.name</0> (e.g. <1>end_date ≥ $field.start_date</1>)."
 
+#: src/client/admin/pages/forms.tsx
+msgid "The row is removed from the collection. This can't be undone."
+msgstr "The row is removed from the collection. This can't be undone."
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "The section opens folded — useful for advanced or rarely-touched fields."
@@ -11434,6 +11499,10 @@ msgstr "The section opens folded — useful for advanced or rarely-touched field
 #: src/client/pages/shared-record.tsx
 msgid "The share link may have been revoked, or the record it pointed to was removed."
 msgstr "The share link may have been revoked, or the record it pointed to was removed."
+
+#: src/client/admin/pages/forms.tsx
+msgid "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
+msgstr "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
 
 #: src/client/admin/pages/traces.tsx
 msgid "The traces endpoint returned an error. Refresh to try again."
@@ -12125,8 +12194,12 @@ msgid "Use \"{label}\" column"
 msgstr "Use \"{label}\" column"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Use \"Get a new link\" above — the embed snippet is minted together with it."
-msgstr "Use \"Get a new link\" above — the embed snippet is minted together with it."
+msgid "Use \"Generate new link\" above — the embed snippet is minted together with it."
+msgstr "Use \"Generate new link\" above — the embed snippet is minted together with it."
+
+#: src/client/admin/pages/forms.tsx
+#~ msgid "Use \"Get a new link\" above — the embed snippet is minted together with it."
+#~ msgstr "Use \"Get a new link\" above — the embed snippet is minted together with it."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Use \"owner_id\" column"

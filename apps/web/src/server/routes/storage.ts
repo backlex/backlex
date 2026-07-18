@@ -44,6 +44,7 @@ import {
   patchFileScoped,
 } from "../services/storage/files";
 import { FILES_COLLECTION } from "../services/storage/constants";
+import { assertStorageWithinLimit } from "../services/usage";
 import { defaultHook } from "../lib/openapi-router";
 
 export { FILES_COLLECTION };
@@ -355,6 +356,12 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       }
 
       const key = physicalKey(tenantId, logicalKey);
+      await assertStorageWithinLimit(
+        ctx,
+        ctx.env,
+        tenantId,
+        Number(contentLengthHeader ?? 0) || 0,
+      );
       const obj = await ctx.storage.put({ key, body: resp.body, contentType });
       const t = filesTable(ctx.dialect);
       const aclValue = body.acl === "public" ? "public" : "private";
@@ -478,6 +485,15 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }
     const body = c.req.raw.body;
     if (!body) throw new AppError("BAD_REQUEST", "Empty body");
+    // Hard storage cap (#12). Content-Length is advisory (absent on chunked
+    // bodies) — the post-upload `files` row still records the true size, so
+    // an under-declared body only overshoots by one file.
+    await assertStorageWithinLimit(
+      ctx,
+      ctx.env,
+      tenantId,
+      Number(c.req.header("content-length") ?? 0) || 0,
+    );
     const obj = await ctx.storage.put({ key, body, contentType });
     const t = filesTable(ctx.dialect);
     await (ctx.db as any)

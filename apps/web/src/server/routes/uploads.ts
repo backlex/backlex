@@ -23,6 +23,7 @@ import {
   type UploadStatus,
 } from "../services/uploads";
 import { FILES_COLLECTION } from "./storage";
+import { assertStorageWithinLimit } from "../services/usage";
 
 export const TUS_VERSION = "1.0.0";
 const TUS_EXTENSIONS = "creation,creation-with-upload,termination,expiration";
@@ -112,6 +113,9 @@ export const uploadsRoutes = new Hono<AppBindings>()
     if (size > policy.maxBytes) {
       return c.body(null, 413, { "Tus-Resumable": TUS_VERSION });
     }
+    // Hard workspace storage cap (#12) — TUS declares the full size up front,
+    // so the check here is exact.
+    await assertStorageWithinLimit(ctx, ctx.env, tenantId, size);
 
     const meta = parseUploadMetadata(c.req.header("upload-metadata"));
     const logicalKey = (meta.key || meta.filename || "").trim();

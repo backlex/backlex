@@ -7,6 +7,7 @@ import { secureHeaders } from "hono/secure-headers";
 import { buildContext, type Ctx } from "./context";
 import type { Env } from "./env";
 import { apiRateLimitMiddleware } from "./lib/api-rate-limit";
+import { usageMeterMiddleware } from "./lib/usage-meter";
 import { authLockoutMiddleware, authRateLimitMiddleware } from "./lib/auth-rate-limit";
 import { configureLogLevel, levelForStatus, log } from "./lib/log";
 import {
@@ -140,6 +141,14 @@ export type AppBindings = {
        *  (insert / update / delete / grant / revoke / invoke / assign / etc.).
        *  REST routes are unaffected. */
       apiKeyMcpReadOnly?: boolean;
+      /** Per-key requests-per-minute cap from `api_keys.rate_limit_per_minute`.
+       *  Null/absent = the shared global budget. Enforced by the global API
+       *  limiter even on deploys where that limiter is otherwise disabled. */
+      apiKeyRateLimit?: number | null;
+      /** Per-key monthly request quota from `api_keys.monthly_quota`. Checked
+       *  by the usage meter against the `usage_counters` ledger; over-quota
+       *  requests get 429 QUOTA_EXCEEDED. Null/absent = unmetered. */
+      apiKeyMonthlyQuota?: number | null;
       /** Set by sessionMiddleware when the request authenticates with a
        *  workspace end-user bearer token (plane = "app"). The session row
        *  carries the issuing workspace; we pin the request to it so the
@@ -592,6 +601,12 @@ export const createApp = (env: Env) => {
   // managed cloud) — see lib/api-rate-limit.ts. Skips `/api/auth/*` internally,
   // which the dedicated auth limiter already covers.
   app.use("/api/*", apiRateLimitMiddleware);
+
+  // Usage metering (#12): counts every metered response into the per-day
+  // `usage_counters` ledger and enforces per-key monthly quotas + workspace
+  // hard request caps. Sits INSIDE the rate limiter so throttled 429s are
+  // neither counted nor billed. Skips `/api/auth/*` like the limiter.
+  app.use("/api/*", usageMeterMiddleware);
 
   // `version` is the worker-template version baked in at build time (see
   // vite.config `define`). Lets the cloud control-plane + ops verify which

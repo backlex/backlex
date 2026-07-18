@@ -19,6 +19,7 @@ import {
   validateRelations,
 } from "./validate";
 import { hashIncomingFields, scrubHashFields, scrubPrivateFields } from "./hash-fields";
+import { assertRowsWithinLimit } from "../usage";
 import { enforceOnDeleteTriggers } from "./on-delete";
 import {
   echoLocalized,
@@ -122,6 +123,11 @@ export const performCreate = async (
 ): Promise<WriteResult> => {
   const { ctx, collection } = env;
   const table = collection.physicalTable;
+  // Hard workspace row cap (#12) — checked against the half-hourly sweep
+  // gauge, so it's approximate by design (a burst can overshoot until the
+  // next sweep). Single chokepoint: REST, batch, GraphQL, and MCP all create
+  // through here.
+  if (env.tenantId) await assertRowsWithinLimit(ctx, ctx.env, env.tenantId);
   let id: string;
   // Integer-keyed managed collections (external-DB migration creates these)
   // share the adopted contract: backlex never invents numeric keys, so the

@@ -40,7 +40,44 @@ export interface AppSettings {
   /** How many `scheduled` snapshots to retain — older ones are pruned by the
    *  same tick. Manual/branch/auto snapshots are never pruned. */
   schemaSnapshotKeepLast: number;
+  /** Workspace usage limits (#12). Admin-editable via the Usage page; on
+   *  managed cloud the `USAGE_LIMIT_*` env keys override field-by-field
+   *  (plan injection) — see `services/usage.ts::resolveUsageLimits`. */
+  usageLimits: UsageLimits;
 }
+
+/** Workspace usage-limit knobs. `null` = unlimited for that dimension. */
+export interface UsageLimits {
+  /** `off` = not even surfaced; `soft` = overage reported in the usage API/UI
+   *  but never blocked; `hard` = over-limit traffic gets 429 QUOTA_EXCEEDED
+   *  (requests) / 422 (storage + rows at their write sites). */
+  mode: "off" | "soft" | "hard";
+  maxRequestsPerMonth: number | null;
+  maxStorageBytes: number | null;
+  maxDbRows: number | null;
+}
+
+export const USAGE_LIMITS_DEFAULTS: UsageLimits = {
+  mode: "off",
+  maxRequestsPerMonth: null,
+  maxStorageBytes: null,
+  maxDbRows: null,
+};
+
+const nullablePosInt = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : null;
+
+export const parseUsageLimits = (v: unknown): UsageLimits => {
+  if (!v || typeof v !== "object" || Array.isArray(v))
+    return { ...USAGE_LIMITS_DEFAULTS };
+  const o = v as Record<string, unknown>;
+  return {
+    mode: o.mode === "soft" || o.mode === "hard" ? o.mode : "off",
+    maxRequestsPerMonth: nullablePosInt(o.maxRequestsPerMonth),
+    maxStorageBytes: nullablePosInt(o.maxStorageBytes),
+    maxDbRows: nullablePosInt(o.maxDbRows),
+  };
+};
 
 export const APP_SETTINGS_DEFAULTS: AppSettings = {
   i18nLocales: ["en", "tr", "de", "es", "fr", "ja"],
@@ -51,6 +88,7 @@ export const APP_SETTINGS_DEFAULTS: AppSettings = {
   collectionGroups: [],
   schemaSnapshotSchedule: "off",
   schemaSnapshotKeepLast: 7,
+  usageLimits: { ...USAGE_LIMITS_DEFAULTS },
 };
 
 const isStringArray = (v: unknown): v is string[] =>
@@ -118,6 +156,7 @@ export const loadAppSettings = async (
         Number.isFinite(r.value)
       )
         out.schemaSnapshotKeepLast = Math.min(50, Math.max(1, Math.floor(r.value)));
+      else if (r.key === "usageLimits") out.usageLimits = parseUsageLimits(r.value);
     }
     if (!out.i18nLocales.includes(out.i18nDefaultLocale)) {
       out.i18nDefaultLocale = out.i18nLocales[0] ?? "en";

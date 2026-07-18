@@ -6,6 +6,7 @@ import {
   boolean,
   jsonb,
   integer,
+  bigint,
   index,
   uniqueIndex,
   customType,
@@ -1030,6 +1031,35 @@ export const spans = pgTable(
   ],
 );
 
+/**
+ * Per-day usage ledger — one row per (workspace, API key, UTC day). Request
+ * counts are incremented by the usage middleware via buffered upserts
+ * (`services/usage.ts`); `api_key_id = ''` is the bucket for session /
+ * unauthenticated traffic so the composite key never needs a nullable column.
+ * `storage_bytes` / `db_rows` are point-in-time gauges refreshed by the cron
+ * sweep and only ever written on the `''` row of the current day. No FKs on
+ * purpose: usage history must survive key revocation and stay cheap to write.
+ */
+export const usageCounters = pgTable(
+  "usage_counters",
+  {
+    tenantId: text("tenant_id").notNull(),
+    /** `''` = traffic not attributed to an API key (admin sessions, app users). */
+    apiKeyId: text("api_key_id").notNull().default(""),
+    /** UTC calendar day, `YYYY-MM-DD`. */
+    day: text("day").notNull(),
+    requests: integer("requests").notNull().default(0),
+    /** 5xx responses — a server-fault subset of `requests`, not additional. */
+    errors: integer("errors").notNull().default(0),
+    /** Gauge: total stored file bytes for the workspace at last sweep. */
+    storageBytes: bigint("storage_bytes", { mode: "number" }),
+    /** Gauge: total rows across the workspace's collections at last sweep. */
+    dbRows: bigint("db_rows", { mode: "number" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("usage_counters_pk").on(t.tenantId, t.apiKeyId, t.day)],
+);
+
 export const apiKeys = pgTable(
   "api_keys",
   {
@@ -1066,6 +1096,14 @@ export const apiKeys = pgTable(
      *  production workspace. The underlying REST endpoints stay open to the
      *  same identity; the lock is enforced only on the MCP surface. */
     mcpReadOnly: boolean("mcp_read_only").notNull().default(false),
+    /** Per-key requests-per-minute cap. NULL = the shared global budget
+     *  (`lib/api-rate-limit.ts`). A set value is enforced even on deploys
+     *  where the global limiter is disabled — explicit config always wins. */
+    rateLimitPerMinute: integer("rate_limit_per_minute"),
+    /** Per-key requests-per-UTC-month quota, checked against the usage
+     *  ledger (`usage_counters`). NULL = unmetered. Over-quota requests get
+     *  429 QUOTA_EXCEEDED until the month rolls over. */
+    monthlyQuota: integer("monthly_quota"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

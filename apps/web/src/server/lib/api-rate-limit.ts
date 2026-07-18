@@ -106,7 +106,21 @@ export const apiRateLimitMiddleware: MiddlewareHandler<AppBindings> = async (
     return;
   }
   const cfg = apiRateLimitConfig(env);
-  if (!cfg.enabled) {
+  // A key-level cap (`api_keys.rate_limit_per_minute`) is explicit operator
+  // config, so it's enforced even on self-host deploys where the global
+  // limiter is off. It always rides a fixed 60s window — the column is
+  // literally "per minute" — regardless of the global window override.
+  let auth: AppBindings["Variables"]["auth"] | undefined;
+  try {
+    auth = c.get("auth");
+  } catch {
+    auth = undefined;
+  }
+  const perKeyMax =
+    auth?.apiKeyId && auth.apiKeyRateLimit != null && auth.apiKeyRateLimit > 0
+      ? auth.apiKeyRateLimit
+      : null;
+  if (!cfg.enabled && perKeyMax == null) {
     await next();
     return;
   }
@@ -115,6 +129,8 @@ export const apiRateLimitMiddleware: MiddlewareHandler<AppBindings> = async (
     await next();
     return;
   }
+  const max = perKeyMax ?? cfg.max;
+  const windowMs = perKeyMax != null ? 60_000 : cfg.windowMs;
 
   // Non-blocking: verdict from the last DO snapshot; the DO sync (which also
   // counts this request) runs in waitUntil. `c.executionCtx` is a getter that
@@ -123,8 +139,8 @@ export const apiRateLimitMiddleware: MiddlewareHandler<AppBindings> = async (
   const r = rateLimitCheckDeferred(
     env,
     keyForRequest(c),
-    cfg.max,
-    cfg.windowMs,
+    max,
+    windowMs,
     (work) => {
       try {
         c.executionCtx?.waitUntil?.(work);

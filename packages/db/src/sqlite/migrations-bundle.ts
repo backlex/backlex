@@ -74,6 +74,7 @@ import m67 from "../../drizzle/sqlite/20260715090000_collection_kanban_action_ma
 import m68 from "../../drizzle/sqlite/20260716090000_collections_presentation/migration.sql" with { type: "text" };
 import m69 from "../../drizzle/sqlite/20260718090000_forms/migration.sql" with { type: "text" };
 import m70 from "../../drizzle/sqlite/20260719090000_forms_stats/migration.sql" with { type: "text" };
+import m71 from "../../drizzle/sqlite/20260720090000_usage_metering/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -152,4 +153,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260716090000_collections_presentation", sql: m68 },
   { name: "20260718090000_forms", sql: m69 },
   { name: "20260719090000_forms_stats", sql: m70 },
+  { name: "20260720090000_usage_metering", sql: m71 },
 ];

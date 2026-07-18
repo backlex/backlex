@@ -125,6 +125,7 @@ export default defineConfig({
             { slug: "backup-restore" },
             { slug: "advisor" },
             { slug: "tracing" },
+            { slug: "usage-metering" },
             { slug: "audit-logs" },
           ],
         },

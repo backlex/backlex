@@ -67,6 +67,13 @@ TEST_ADMIN_PASSWORD = "correct-horse-battery"
 # challenges server-side. A turnstile-enabled form fails closed without the secret.
 # TURNSTILE_SITE_KEY = "0x..."
 # TURNSTILE_SECRET_KEY = "0x..."
+# Usage limits (docs/usage-metering.md) — platform-side plan pins. Each key
+# set here OVERRIDES the admin-editable usageLimits setting field-by-field
+# (this is how managed cloud injects a tenant's plan). All optional.
+# USAGE_LIMIT_MODE = "hard"               # off | soft | hard
+# USAGE_LIMIT_REQUESTS_MONTH = "100000"
+# USAGE_LIMIT_STORAGE_BYTES = "1073741824"
+# USAGE_LIMIT_DB_ROWS = "50000"
 # SMTP — NOTE: works on Bun / Vercel / Netlify / self-host, NOT Cloudflare
 # Workers (no raw TCP). SMTP_SECURE=true for implicit TLS on 465; leave unset
 # for 587/25 (STARTTLS auto-negotiated).

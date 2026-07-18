@@ -404,7 +404,11 @@ export function SchemaView({
                 {f.system && <Badge variant="secondary"><Trans>system</Trans></Badge>}
                 {isPres && <Badge variant="secondary"><Trans>layout</Trans></Badge>}
                 {f.unique && !isPres && <Badge variant="outline"><Trans>unique</Trans></Badge>}
-                {!f.nullable && !f.system && !isPres && <Badge variant="outline"><Trans>required</Trans></Badge>}
+                {/* metadata fields have no `nullable` key — `!f.nullable` badged
+                    EVERY field as required. Same oracle as item-form.tsx. */}
+                {((f as { required?: boolean }).required || f.nullable === false) && !f.system && !isPres && (
+                  <Badge variant="outline"><Trans>required</Trans></Badge>
+                )}
                 {grp && (
                   <span
                     className="inline-flex min-w-0 max-w-[11rem] items-center gap-1 rounded-sm bg-muted px-1.5 py-0.5 text-[10.5px] text-muted-foreground"

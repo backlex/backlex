@@ -1718,17 +1718,43 @@ export const sharedPublicApi = {
 
 /* ── Public form builder ──────────────────────────────────────────── */
 
-export interface ApiFormFieldConfig {
-  name: string;
+export interface ApiFormBlockI18n {
   label?: string;
+  placeholder?: string;
   help?: string;
 }
 
+/** One form block: a collection field or a "step" page break. */
+export interface ApiFormBlock {
+  id?: string;
+  kind?: "field" | "step";
+  name?: string;
+  label?: string;
+  placeholder?: string;
+  help?: string;
+  rating?: boolean;
+  cond?: { field: string; op: "is" | "is_not"; value: string };
+  i18n?: Record<string, ApiFormBlockI18n>;
+}
+
+export interface ApiFormI18n {
+  title?: string;
+  description?: string;
+  submitLabel?: string;
+  successMessage?: string;
+}
+
 export interface ApiFormSettings {
+  description?: string;
   submitLabel?: string;
   successMessage?: string;
   redirectUrl?: string;
   turnstile?: boolean;
+  theme?: "dark" | "light";
+  accent?: string;
+  font?: "sans" | "lexend" | "mono";
+  languages?: string[];
+  i18n?: Record<string, ApiFormI18n>;
 }
 
 export interface ApiForm {
@@ -1736,9 +1762,12 @@ export interface ApiForm {
   tenantId: string | null;
   name: string;
   collection: string;
-  fields: ApiFormFieldConfig[];
+  fields: ApiFormBlock[];
   settings: ApiFormSettings | null;
   active: boolean;
+  submissionCount: number;
+  blockedCount: number;
+  lastSubmissionAt: unknown;
   createdBy: string | null;
   createdAt: unknown;
   updatedAt: unknown;
@@ -1747,7 +1776,7 @@ export interface ApiForm {
 export interface ApiFormInput {
   name: string;
   collection: string;
-  fields: ApiFormFieldConfig[];
+  fields: ApiFormBlock[];
   settings?: ApiFormSettings | null;
   active?: boolean;
 }
@@ -1765,6 +1794,8 @@ export interface ApiFormEligibleField {
   type: string;
   label: string | null;
   required: boolean;
+  choices: string[] | null;
+  format: string | null;
 }
 
 export const formsApi = {
@@ -1793,35 +1824,48 @@ export const formsApi = {
 };
 
 /** Public form definition (`GET /api/public/forms/:token`). */
-export interface ApiPublicFormField {
-  name: string;
-  type: string;
+export interface ApiPublicFormBlock {
+  kind: string;
+  name?: string;
+  type?: string;
   label: string;
+  placeholder: string | null;
   help: string | null;
   required: boolean;
+  rating: boolean;
   choices: { value: string; label?: string }[] | null;
   validation: Record<string, unknown> | null;
+  cond: { field: string; op: string; value: string } | null;
 }
 
 export interface ApiPublicForm {
   name: string;
+  description: string | null;
   collection: string;
-  fields: ApiPublicFormField[];
+  blocks: ApiPublicFormBlock[];
   submitLabel: string | null;
   successMessage: string | null;
   redirectUrl: string | null;
+  theme: "dark" | "light";
+  accent: string | null;
+  font: "sans" | "lexend" | "mono";
+  languages: string[];
+  locale: string;
   turnstileSiteKey: string | null;
 }
 
 export const formsPublicApi = {
-  get: (token: string) =>
-    api<Envelope<ApiPublicForm>>(`/api/public/forms/${encodeURIComponent(token)}`),
+  get: (token: string, lang?: string) =>
+    api<Envelope<ApiPublicForm>>(
+      `/api/public/forms/${encodeURIComponent(token)}${lang ? `?lang=${encodeURIComponent(lang)}` : ""}`,
+    ),
   submit: (
     token: string,
     body: { data: Record<string, unknown>; turnstileToken?: string; website?: string },
+    lang?: string,
   ) =>
     api<Envelope<{ id: string | null; successMessage: string | null; redirectUrl: string | null }>>(
-      `/api/public/forms/${encodeURIComponent(token)}/submit`,
+      `/api/public/forms/${encodeURIComponent(token)}/submit${lang ? `?lang=${encodeURIComponent(lang)}` : ""}`,
       { method: "POST", body: JSON.stringify(body) },
     ),
 };

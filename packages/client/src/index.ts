@@ -517,22 +517,49 @@ export interface DashboardShareResult {
   url: string;
 }
 
-/** One exposed field on a public form (order = render order). */
-export interface PublicFormFieldConfig {
-  name: string;
-  /** Display label override; falls back to the collection field's label. */
+/** One block on a public form (order = render order). `kind: "field"` exposes
+ *  a collection field; `kind: "step"` is a presentation-only page break. */
+export interface PublicFormBlockConfig {
+  /** Stable client id for builder selection/reorder. Optional; preserved. */
+  id?: string;
+  /** Defaults to "field" when omitted (legacy configs). */
+  kind?: "field" | "step";
+  /** Collection field name — required for field blocks. */
+  name?: string;
+  /** Display label override; step blocks use it as the step title. */
   label?: string;
+  placeholder?: string;
   /** Help text override shown beneath the input. */
   help?: string;
+  /** Integer fields only: render as a 1–5 star rating. */
+  rating?: boolean;
+  /** Show-condition: render only when another field's answer matches. */
+  cond?: { field: string; op: "is" | "is_not"; value: string };
+  /** Per-locale string overrides; missing strings fall back to the base. */
+  i18n?: Record<string, { label?: string; placeholder?: string; help?: string }>;
 }
 
-/** Behaviour knobs for a public form. */
+/** @deprecated Renamed to {@link PublicFormBlockConfig}. */
+export type PublicFormFieldConfig = PublicFormBlockConfig;
+
+/** Behaviour + appearance knobs for a public form. */
 export interface PublicFormSettings {
+  /** Sub-heading under the form title on the public page. */
+  description?: string;
   submitLabel?: string;
   successMessage?: string;
   redirectUrl?: string;
   /** Require a Cloudflare Turnstile pass on submit (server needs the secret). */
   turnstile?: boolean;
+  theme?: "dark" | "light";
+  accent?: string;
+  font?: "sans" | "lexend" | "mono";
+  /** Offered locales, base language first. `?lang=xx` forces one publicly. */
+  languages?: string[];
+  i18n?: Record<
+    string,
+    { title?: string; description?: string; submitLabel?: string; successMessage?: string }
+  >;
 }
 
 /** A public form definition. Mirrors `/api/admin/forms`. The public token is
@@ -542,16 +569,21 @@ export interface PublicForm {
   tenantId?: string | null;
   name: string;
   collection: string;
-  fields: PublicFormFieldConfig[];
+  fields: PublicFormBlockConfig[];
   settings: PublicFormSettings | null;
   active: boolean;
+  /** All-time accepted submissions. */
+  submissionCount: number;
+  /** Submissions rejected by honeypot / Turnstile / rate limit. */
+  blockedCount: number;
+  lastSubmissionAt: unknown;
 }
 
 /** Create/update payload for a public form. */
 export interface PublicFormInput {
   name: string;
   collection: string;
-  fields: PublicFormFieldConfig[];
+  fields: PublicFormBlockConfig[];
   settings?: PublicFormSettings | null;
   active?: boolean;
 }
@@ -570,6 +602,10 @@ export interface PublicFormEligibleField {
   type: string;
   label: string | null;
   required: boolean;
+  /** Dropdown choice values, when the field defines them. */
+  choices: string[] | null;
+  /** email/url format hint from the field's validation rules. */
+  format: string | null;
 }
 
 /** An AI agent definition. Mirrors `/api/agents`. */

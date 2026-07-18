@@ -1561,8 +1561,13 @@ export const forms = pgTable(
     fields: jsonb("fields").$type<Array<Record<string, unknown>>>().notNull(),
     /** Behaviour knobs: submit label, success message/redirect, turnstile. */
     settings: jsonb("settings").$type<Record<string, unknown> | null>(),
-    /** Inactive forms 404 on the public endpoints without being deleted. */
+    /** Paused forms answer 410 on the public endpoints without being deleted. */
     active: boolean("active").notNull().default(true),
+    /** All-time accepted submissions (incremented per successful submit). */
+    submissionCount: integer("submission_count").notNull().default(0),
+    /** Submissions rejected by honeypot / Turnstile / rate limit. */
+    blockedCount: integer("blocked_count").notNull().default(0),
+    lastSubmissionAt: timestamp("last_submission_at", { withTimezone: true }),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

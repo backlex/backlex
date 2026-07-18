@@ -68,6 +68,7 @@ import m61 from "../../drizzle/pg/20260714090000_collection_kanban_group_by/migr
 import m62 from "../../drizzle/pg/20260715090000_collection_kanban_action_map/migration.sql" with { type: "text" };
 import m63 from "../../drizzle/pg/20260716090000_collections_presentation/migration.sql" with { type: "text" };
 import m64 from "../../drizzle/pg/20260718090000_forms/migration.sql" with { type: "text" };
+import m65 from "../../drizzle/pg/20260719090000_forms_stats/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -140,4 +141,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260715090000_collection_kanban_action_map", sql: m62 },
   { name: "20260716090000_collections_presentation", sql: m63 },
   { name: "20260718090000_forms", sql: m64 },
+  { name: "20260719090000_forms_stats", sql: m65 },
 ];

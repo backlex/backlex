@@ -4,6 +4,7 @@ export type ErrorCode =
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
+  | "GONE"
   | "VALIDATION"
   | "RATE_LIMITED"
   | "INTERNAL"
@@ -15,6 +16,8 @@ const STATUS: Record<ErrorCode, number> = {
   FORBIDDEN: 403,
   NOT_FOUND: 404,
   CONFLICT: 409,
+  /** The resource existed but was deliberately switched off (paused form). */
+  GONE: 410,
   VALIDATION: 422,
   RATE_LIMITED: 429,
   INTERNAL: 500,

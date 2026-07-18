@@ -135,10 +135,10 @@ describe("forms — SDK surface + public round-trip", () => {
     );
     expect(def.status).toBe(200);
     const defBody = (await def.json()) as {
-      data: { fields: { name: string; label: string }[]; successMessage: string | null };
+      data: { blocks: { name?: string; label: string }[]; successMessage: string | null };
     };
-    expect(defBody.data.fields.map((f) => f.name)).toEqual(["title", "note"]);
-    expect(defBody.data.fields[0]!.label).toBe("Title");
+    expect(defBody.data.blocks.map((f) => f.name)).toEqual(["title", "note"]);
+    expect(defBody.data.blocks[0]!.label).toBe("Title");
     expect(defBody.data.successMessage).toBe("ok!");
 
     const submit = await h.app.fetch(

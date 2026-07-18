@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
+import { getChoices } from "@backlex/db";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
@@ -19,20 +20,55 @@ import {
 
 const TAGS = ["forms"];
 
-const FormFieldConfigSchema = z
+const FormBlockI18nSchema = z.object({
+  label: z.string().max(300).optional(),
+  placeholder: z.string().max(300).optional(),
+  help: z.string().max(500).optional(),
+});
+
+const FormBlockSchema = z
   .object({
-    name: z.string().min(1),
-    label: z.string().max(200).optional(),
+    id: z.string().max(40).optional(),
+    /** "field" (default) or the "step" page break. */
+    kind: z.enum(["field", "step"]).optional(),
+    name: z.string().min(1).optional(),
+    label: z.string().max(300).optional(),
+    placeholder: z.string().max(300).optional(),
     help: z.string().max(500).optional(),
+    rating: z.boolean().optional(),
+    cond: z
+      .object({
+        field: z.string().min(1),
+        op: z.enum(["is", "is_not"]),
+        value: z.string().max(300),
+      })
+      .optional(),
+    i18n: z.record(z.string(), FormBlockI18nSchema).optional(),
   })
-  .openapi("FormFieldConfig");
+  .openapi("FormBlock");
+
+const FormI18nSchema = z.object({
+  title: z.string().max(200).optional(),
+  description: z.string().max(1000).optional(),
+  submitLabel: z.string().max(80).optional(),
+  successMessage: z.string().max(1000).optional(),
+});
 
 const FormSettingsSchema = z
   .object({
+    description: z.string().max(1000).optional(),
     submitLabel: z.string().max(80).optional(),
     successMessage: z.string().max(1000).optional(),
     redirectUrl: z.string().url().max(2000).optional(),
     turnstile: z.boolean().optional(),
+    theme: z.enum(["dark", "light"]).optional(),
+    accent: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
+    font: z.enum(["sans", "lexend", "mono"]).optional(),
+    languages: z.array(z.string().min(2).max(8)).max(12).optional(),
+    i18n: z.record(z.string(), FormI18nSchema).optional(),
   })
   .openapi("FormSettings");
 
@@ -40,7 +76,7 @@ const FormInputSchema = z
   .object({
     name: z.string().min(1).max(120),
     collection: z.string().min(1),
-    fields: z.array(FormFieldConfigSchema).min(1).max(100),
+    fields: z.array(FormBlockSchema).min(1).max(100),
     settings: FormSettingsSchema.nullable().optional(),
     active: z.boolean().optional(),
   })
@@ -54,9 +90,12 @@ const FormRowSchema = z
     tenantId: z.string().nullable(),
     name: z.string(),
     collection: z.string(),
-    fields: z.array(FormFieldConfigSchema),
+    fields: z.array(FormBlockSchema),
     settings: FormSettingsSchema.nullable(),
     active: z.boolean(),
+    submissionCount: z.number(),
+    blockedCount: z.number(),
+    lastSubmissionAt: z.unknown().nullable(),
     createdBy: z.string().nullable(),
     createdAt: z.unknown().nullable(),
     updatedAt: z.unknown().nullable(),
@@ -84,6 +123,10 @@ const EligibleField = z
     type: z.string(),
     label: z.string().nullable(),
     required: z.boolean(),
+    /** Dropdown choice values, when the field defines them (canvas preview). */
+    choices: z.array(z.string()).nullable(),
+    /** email/url format hint from the field's validation rules. */
+    format: z.string().nullable(),
   })
   .openapi("FormEligibleField");
 
@@ -103,6 +146,9 @@ const serializeForm = (row: FormRow) => ({
   fields: row.fields,
   settings: row.settings,
   active: row.active,
+  submissionCount: row.submissionCount,
+  blockedCount: row.blockedCount,
+  lastSubmissionAt: row.lastSubmissionAt,
   createdBy: row.createdBy,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
@@ -174,12 +220,17 @@ export const formsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         auth.tenantId,
         c.req.valid("param").collection,
       );
-      const data = formEligibleFields(collection).map((f) => ({
-        name: f.name,
-        type: f.type,
-        label: f.label ?? null,
-        required: Boolean(f.required),
-      }));
+      const data = formEligibleFields(collection).map((f) => {
+        const choices = getChoices(f).map((ch) => ch.value);
+        return {
+          name: f.name,
+          type: f.type,
+          label: f.label ?? null,
+          required: Boolean(f.required),
+          choices: choices.length > 0 ? choices : null,
+          format: f.validation?.format ?? null,
+        };
+      });
       return c.json({ data });
     },
   )

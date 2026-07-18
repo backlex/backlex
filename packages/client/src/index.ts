@@ -517,6 +517,61 @@ export interface DashboardShareResult {
   url: string;
 }
 
+/** One exposed field on a public form (order = render order). */
+export interface PublicFormFieldConfig {
+  name: string;
+  /** Display label override; falls back to the collection field's label. */
+  label?: string;
+  /** Help text override shown beneath the input. */
+  help?: string;
+}
+
+/** Behaviour knobs for a public form. */
+export interface PublicFormSettings {
+  submitLabel?: string;
+  successMessage?: string;
+  redirectUrl?: string;
+  /** Require a Cloudflare Turnstile pass on submit (server needs the secret). */
+  turnstile?: boolean;
+}
+
+/** A public form definition. Mirrors `/api/admin/forms`. The public token is
+ *  never present — it is returned once by `create` / `rotateToken`. */
+export interface PublicForm {
+  id: string;
+  tenantId?: string | null;
+  name: string;
+  collection: string;
+  fields: PublicFormFieldConfig[];
+  settings: PublicFormSettings | null;
+  active: boolean;
+}
+
+/** Create/update payload for a public form. */
+export interface PublicFormInput {
+  name: string;
+  collection: string;
+  fields: PublicFormFieldConfig[];
+  settings?: PublicFormSettings | null;
+  active?: boolean;
+}
+
+/** Outcome of minting/rotating a form token. `token` is shown exactly once;
+ *  `url`/`embedUrl` are the relative public page paths. */
+export interface PublicFormToken {
+  token: string;
+  url: string;
+  embedUrl: string;
+}
+
+/** A collection field that may be exposed on a public form. */
+export interface PublicFormEligibleField {
+  name: string;
+  type: string;
+  label: string | null;
+  required: boolean;
+}
+
 /** An AI agent definition. Mirrors `/api/agents`. */
 export interface Agent {
   id: string;
@@ -702,6 +757,23 @@ export interface DashboardsClient {
   share(id: string, opts?: { roleId?: string | null }): Promise<DashboardShareResult>;
   /** Disable the public embed and forget the token. */
   revoke(id: string): Promise<{ ok: boolean }>;
+}
+
+export interface FormsClient {
+  /** List every public form in the active workspace. */
+  list(): Promise<{ data: PublicForm[] }>;
+  /** Fetch a single form by id. */
+  get(id: string): Promise<{ data: PublicForm }>;
+  /** A collection's form-eligible fields (scalar, non-private, non-computed). */
+  eligibleFields(collection: string): Promise<{ data: PublicFormEligibleField[] }>;
+  /** Create a form; returns the one-time plaintext token + public URLs. */
+  create(input: PublicFormInput): Promise<{ data: { form: PublicForm } & PublicFormToken }>;
+  /** Partial update of a form by id. */
+  update(id: string, patch: Partial<PublicFormInput>): Promise<{ data: PublicForm }>;
+  /** Replace the public token — the old link dies immediately. */
+  rotateToken(id: string): Promise<{ data: PublicFormToken }>;
+  /** Delete a form; its link stops working immediately. */
+  delete(id: string): Promise<{ ok: boolean }>;
 }
 
 /** One backup tracking row. `status` moves queued → running → done/failed. */
@@ -1113,6 +1185,7 @@ export interface BacklexClient {
   flows: FlowsClient;
   /** Embedded BI dashboards. */
   dashboards: DashboardsClient;
+  forms: FormsClient;
   /** Backup / restore + the automatic-backup schedule. */
   backups: BackupsClient;
   /** AI agents (definitions, threads, and running turns). */
@@ -1786,6 +1859,30 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     revoke: (id: string) => request<{ ok: boolean }>("DELETE", `${dash(id)}/share`),
   };
 
+  // Public form builder. Admin-scoped over `/api/admin/forms`; the plaintext
+  // token only ever appears in `create` / `rotateToken` responses.
+  const formPath = (id: string) => `/api/admin/forms/${encodeURIComponent(id)}`;
+  const forms: FormsClient = {
+    list: () => request<{ data: PublicForm[] }>("GET", "/api/admin/forms"),
+    get: (id: string) => request<{ data: PublicForm }>("GET", formPath(id)),
+    eligibleFields: (collection: string) =>
+      request<{ data: PublicFormEligibleField[] }>(
+        "GET",
+        `/api/admin/forms/eligible-fields/${encodeURIComponent(collection)}`,
+      ),
+    create: (input: PublicFormInput) =>
+      request<{ data: { form: PublicForm } & PublicFormToken }>(
+        "POST",
+        "/api/admin/forms",
+        input,
+      ),
+    update: (id: string, patch: Partial<PublicFormInput>) =>
+      request<{ data: PublicForm }>("PATCH", formPath(id), patch),
+    rotateToken: (id: string) =>
+      request<{ data: PublicFormToken }>("POST", `${formPath(id)}/rotate-token`),
+    delete: (id: string) => request<{ ok: boolean }>("DELETE", formPath(id)),
+  };
+
   // Backup / restore. Admin-scoped over `/api/admin/db/backups*`; `run` blocks
   // until the dump finishes, `restore` carries the confirm header the REST
   // endpoint requires (the restore itself is additive — never overwrites).
@@ -2068,6 +2165,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     jobs,
     flows,
     dashboards,
+    forms,
     backups,
     agents,
     permissions,

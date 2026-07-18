@@ -11,6 +11,7 @@ import { runPermissions } from "../src/permissions";
 import { runFunctions } from "../src/functions";
 import { runFlows } from "../src/flows";
 import { runDashboards } from "../src/dashboards";
+import { runForms } from "../src/forms";
 import { runSchema } from "../src/schema";
 import { runAgents } from "../src/agents";
 import { runTemplates } from "../src/templates";
@@ -87,6 +88,9 @@ Usage:
 
   backlex dashboards <list|get|run|create|delete|share|revoke>
       Embedded BI dashboards. \`share <id>\` mints a public embed token.
+
+  backlex forms <list|get|fields|create|update|rotate-token|delete>
+      Public form builder. \`create\`/\`rotate-token\` print the one-time link.
 
   backlex schema <snapshots|capture|import|branches|create-branch|diff|apply|…>
       Migration diffing / schema branching. \`diff\`/\`apply\` take refs:
@@ -223,6 +227,10 @@ const run = async () => {
     case "dashboards":
     case "dashboard":
       await runDashboards(rest);
+      return;
+    case "forms":
+    case "form":
+      await runForms(rest);
       return;
     case "schema":
       await runSchema(rest);

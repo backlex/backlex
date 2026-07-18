@@ -23,6 +23,7 @@ import {
 import { flowQueryFields, flowMutationFields } from "./flows";
 import { messagingMutationFields } from "./messaging";
 import { dashboardQueryFields, dashboardMutationFields } from "./dashboards";
+import { formQueryFields, formMutationFields } from "./forms";
 import { backupQueryFields, backupMutationFields } from "./backups";
 import { webhookQueryFields, webhookMutationFields } from "./webhooks";
 import { i18nQueryFields, i18nMutationFields } from "./i18n";
@@ -67,6 +68,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           },
           ...flowQueryFields,
           ...dashboardQueryFields,
+          ...formQueryFields,
           ...backupQueryFields,
           ...webhookQueryFields,
           ...i18nQueryFields,
@@ -83,6 +85,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
         fields: {
           ...flowMutationFields,
           ...dashboardMutationFields,
+          ...formMutationFields,
           ...backupMutationFields,
           ...webhookMutationFields,
           ...i18nMutationFields,
@@ -101,6 +104,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
   const queryFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
     ...flowQueryFields,
     ...dashboardQueryFields,
+    ...formQueryFields,
     ...backupQueryFields,
     ...webhookQueryFields,
     ...i18nQueryFields,
@@ -114,6 +118,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
   const mutationFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
     ...flowMutationFields,
     ...dashboardMutationFields,
+    ...formMutationFields,
     ...backupMutationFields,
     ...webhookMutationFields,
     ...i18nMutationFields,

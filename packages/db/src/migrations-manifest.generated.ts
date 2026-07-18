@@ -74,6 +74,7 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "4353ba3024a185b927c9ab29ff8c34a53139e83ffe875a5bdc9e9f096f136641": "20260716090000_collections_presentation",
   "a2895ae7d907ab5c18deeb32ce6d596cfffce7db307b90a007d53c919e0a43a7": "20260718090000_forms",
   "099dedbb64ef484d686d7fd827eb2d4d5576066a804c562644e6978413d8f492": "20260719090000_forms_stats",
+  "433cc70e4ff42fcd14d8d6ca9c1cd65ce515edfb2d086f8978679f8cc8dfc4ac": "20260720090000_usage_metering",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -143,4 +144,5 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "fbb7a8a95fc19fa03c2371551e80edfbd0b285e809b44d77d5b8659d1b3f7af1": "20260716090000_collections_presentation",
   "a79e5ea692195be3dae985b17ed59eb3ad54d73e596cd931e2d7760396480cb8": "20260718090000_forms",
   "488d701188252e9db5f03f51e1097ddaed7b0b5465ef6c9ebbb13c484bd011e2": "20260719090000_forms_stats",
+  "81f95847e65b5052d852f0af984dbd1dfb44e37eb8478da49e5d1eb89c425c94": "20260720090000_usage_metering",
 };

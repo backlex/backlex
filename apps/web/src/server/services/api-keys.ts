@@ -50,6 +50,10 @@ export interface ApiKeyRow {
   /** When true, MCP refuses every write tool for this key regardless of
    *  the permissions DSL. REST surface for the same identity is unaffected. */
   mcpReadOnly: boolean | number;
+  /** Per-key requests-per-minute cap; null = shared global budget. */
+  rateLimitPerMinute: number | null;
+  /** Per-key requests-per-UTC-month quota; null = unmetered. */
+  monthlyQuota: number | null;
 }
 
 /**
@@ -153,6 +157,8 @@ export const createApiKey = async (
     expiresAt?: Date | null;
     mcpTools?: string[] | null;
     mcpReadOnly?: boolean;
+    rateLimitPerMinute?: number | null;
+    monthlyQuota?: number | null;
   },
 ): Promise<{ row: ApiKeyRow; secret: string }> => {
   const prefix = `${KEY_PREFIX}_${randomHex(PREFIX_LEN / 2)}`;
@@ -174,6 +180,8 @@ export const createApiKey = async (
   // Existing pre-default keys with stored NULL keep their permissive shape.
   const mcpTools = input.mcpTools === undefined ? [] : input.mcpTools;
   const mcpReadOnly = input.mcpReadOnly ?? false;
+  const rateLimitPerMinute = input.rateLimitPerMinute ?? null;
+  const monthlyQuota = input.monthlyQuota ?? null;
   await (ctx.db as any).insert(t).values({
     id,
     tenantId: input.tenantId,
@@ -185,6 +193,8 @@ export const createApiKey = async (
     expiresAt,
     mcpTools,
     mcpReadOnly,
+    rateLimitPerMinute,
+    monthlyQuota,
   });
   return {
     row: {
@@ -200,9 +210,32 @@ export const createApiKey = async (
       revokedAt: null,
       mcpTools,
       mcpReadOnly,
+      rateLimitPerMinute,
+      monthlyQuota,
     },
     secret: fullKey,
   };
+};
+
+/** Update a key's usage-limit knobs. `null` clears (back to unlimited /
+ *  global budget); `undefined` leaves the field untouched. Owner scoping is
+ *  enforced in the route layer, mirroring `updateApiKeyMcpGuards`. */
+export const updateApiKeyLimits = async (
+  ctx: DbCtx,
+  tenantId: string,
+  id: string,
+  patch: { rateLimitPerMinute?: number | null; monthlyQuota?: number | null },
+): Promise<void> => {
+  const t = tableFor(ctx.dialect);
+  const set: Record<string, unknown> = {};
+  if (patch.rateLimitPerMinute !== undefined)
+    set.rateLimitPerMinute = patch.rateLimitPerMinute;
+  if (patch.monthlyQuota !== undefined) set.monthlyQuota = patch.monthlyQuota;
+  if (Object.keys(set).length === 0) return;
+  await (ctx.db as any)
+    .update(t)
+    .set(set)
+    .where(and(eq(t.tenantId, tenantId), eq(t.id, id)));
 };
 
 /** Update the MCP guardrails on an existing key. Either field can be

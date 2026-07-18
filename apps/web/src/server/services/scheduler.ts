@@ -30,6 +30,7 @@ import { pruneOldSpans } from "./traces";
 import { maybeRunScheduledBackups } from "./backup";
 import { runScheduledSnapshots } from "./schema-versions";
 import { processMigrationRuns } from "./migrate";
+import { flushUsage, sweepUsageGauges } from "./usage";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
@@ -62,6 +63,10 @@ const BACKUP_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
 // re-checks each workspace's daily/weekly interval so this only bounds cost.
 let lastSchemaSnapshotSweepAt: number = 0;
 const SCHEMA_SNAPSHOT_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
+// Usage gauge sweep (#12) — per-workspace SUM/COUNT measurements; a coarse
+// half-hourly cadence is plenty for "how big is this workspace" gauges.
+let lastUsageGaugeSweepAt: number = 0;
+const USAGE_GAUGE_SWEEP_INTERVAL_MS = 30 * 60 * 1000;
 const DEFAULT_ACTIVITY_RETENTION_DAYS = 90;
 const DEFAULT_TRACES_RETENTION_DAYS = 7;
 // Sensitive-read audit rows (`access.*`) are opt-in but higher-volume, so they
@@ -247,6 +252,23 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
       await runScheduledSnapshots({ db: ctx.db, dialect: ctx.dialect }, now);
     } catch (e) {
       console.error("[schema-auto-snapshot] sweep failed", e);
+    }
+  }
+
+  // Usage metering: drain any buffered request counts (a low-traffic isolate
+  // may not hit the buffer's own flush thresholds between requests) and,
+  // half-hourly, refresh the per-workspace storage/rows gauges.
+  try {
+    await flushUsage(ctx);
+  } catch (e) {
+    console.error("[usage] flush failed", e);
+  }
+  if (now.getTime() - lastUsageGaugeSweepAt >= USAGE_GAUGE_SWEEP_INTERVAL_MS) {
+    lastUsageGaugeSweepAt = now.getTime();
+    try {
+      await sweepUsageGauges(ctx, now);
+    } catch (e) {
+      console.error("[usage-gauges] sweep failed", e);
     }
   }
 

@@ -255,6 +255,20 @@ export interface Env {
   /** Force the global API limiter OFF even where it would auto-enable (managed
    *  cloud). Truthy = disabled. Self-host is off by default regardless. */
   API_RATE_LIMIT_DISABLED?: string;
+  // Workspace usage limits (#12). Env values are platform-set overrides — on
+  // managed cloud the control plane injects the tenant's plan here; when a key
+  // is present it WINS over the admin-editable `usageLimits` app-setting.
+  // All optional; a missing key falls through to settings, then to unlimited.
+  /** `off` | `soft` | `hard`. `hard` blocks over-limit traffic with 429
+   *  QUOTA_EXCEEDED; `soft` only surfaces the overage in the usage API/UI. */
+  USAGE_LIMIT_MODE?: string;
+  /** Max metered `/api/*` requests per workspace per UTC month. */
+  USAGE_LIMIT_REQUESTS_MONTH?: string;
+  /** Max total stored file bytes per workspace (enforced on upload). */
+  USAGE_LIMIT_STORAGE_BYTES?: string;
+  /** Max total collection rows per workspace (enforced on item create,
+   *  against the sweep gauge — approximate by design). */
+  USAGE_LIMIT_DB_ROWS?: string;
   // Failed-login account lockout (abuse protection). Layered on top of the
   // per-IP auth rate limiter: tracks failed password attempts per identifier
   // and temporarily locks that account (across IPs) after MAX_FAILS failures
@@ -455,6 +469,10 @@ export const STRING_ENV_KEYS = [
   "API_RATE_LIMIT_MAX",
   "API_RATE_LIMIT_WINDOW_MS",
   "API_RATE_LIMIT_DISABLED",
+  "USAGE_LIMIT_MODE",
+  "USAGE_LIMIT_REQUESTS_MONTH",
+  "USAGE_LIMIT_STORAGE_BYTES",
+  "USAGE_LIMIT_DB_ROWS",
   "AUTH_LOCKOUT_DISABLED",
   "AUTH_LOCKOUT_MAX_FAILS",
   "AUTH_LOCKOUT_WINDOW_MS",

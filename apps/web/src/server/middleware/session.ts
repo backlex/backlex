@@ -204,6 +204,8 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   let apiKeyId: string | null = null;
   let apiKeyMcpTools: string[] | null = null;
   let apiKeyMcpReadOnly = false;
+  let apiKeyRateLimit: number | null = null;
+  let apiKeyMonthlyQuota: number | null = null;
   // Workspace end-user sessions (`Authorization: Bearer <app-session-token>`)
   // similarly pin the request to the workspace that issued the session — the
   // app's frontend doesn't send a tenant header, it just uses its token.
@@ -259,6 +261,8 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
         apiKeyId = key.id;
         apiKeyMcpTools = key.mcpTools ?? null;
         apiKeyMcpReadOnly = Boolean(key.mcpReadOnly);
+        apiKeyRateLimit = key.rateLimitPerMinute ?? null;
+        apiKeyMonthlyQuota = key.monthlyQuota ?? null;
         // best-effort last-used bump, debounced to one write per key per 5 min
         touchLastUsedDebounced(c, ctx, key.id);
       }
@@ -306,6 +310,8 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
     apiKeyId,
     apiKeyMcpTools,
     apiKeyMcpReadOnly,
+    apiKeyRateLimit,
+    apiKeyMonthlyQuota,
     appSessionTenantId,
   });
   await next();

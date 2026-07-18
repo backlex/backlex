@@ -7,6 +7,7 @@ export type ErrorCode =
   | "GONE"
   | "VALIDATION"
   | "RATE_LIMITED"
+  | "QUOTA_EXCEEDED"
   | "INTERNAL"
   | "UNAVAILABLE";
 
@@ -20,6 +21,10 @@ const STATUS: Record<ErrorCode, number> = {
   GONE: 410,
   VALIDATION: 422,
   RATE_LIMITED: 429,
+  /** A metered usage limit (per-key monthly quota or workspace plan limit)
+   *  is exhausted. Unlike RATE_LIMITED this doesn't clear in seconds — the
+   *  budget resets on the next UTC month (or when an admin raises it). */
+  QUOTA_EXCEEDED: 429,
   INTERNAL: 500,
   /** Feature is configured but the runtime can't serve it (e.g. LDAP on
    *  Cloudflare Workers — no raw TCP). */

@@ -38,7 +38,8 @@ An extension is a plain npm package (or directory) containing
       { "interface": "color-swatch", "title": "Color Swatch", "types": ["text"], "entry": "editor.html" }
     ],
     "hooks": [
-      { "id": "normalize", "trigger": "event", "pattern": "items:products", "entry": "hooks/normalize.js", "timeoutMs": 5000 }
+      { "id": "normalize", "trigger": "event", "pattern": "items:products", "entry": "hooks/normalize.js", "timeoutMs": 5000 },
+      { "id": "digest", "trigger": "cron", "pattern": "0 8 * * *", "entry": "hooks/digest.js" }
     ]
   },
   "permissions": {
@@ -53,15 +54,21 @@ Rules:
 - `entry` files are **relative paths inside the package**; each must exist or
   the install is rejected. Only referenced entries are stored (1 MB/file cap;
   5 MB tarball cap).
-- UI entries (`panel.html`, `editor.html`) must be **self-contained HTML
-  documents** — inline `<script>`/`<style>` only. They render inside a
-  sandboxed iframe with a `default-src 'none'` CSP, so external scripts,
-  stylesheets and fetches are blocked by design.
+- UI entries (`panel.html`, `editor.html`) render inside a sandboxed iframe
+  with a `default-src 'none'` CSP — inline `<script>`/`<style>` only at
+  runtime. You can still split source across files: same-package
+  `<script src="./app.js">` and `<link rel="stylesheet" href="./base.css">`
+  references are **inlined at install time** (external URLs and refs outside
+  the package are left alone and blocked by the CSP by design). The inlined
+  document must stay under the 1 MB cap.
 - Hook entries are plain JS in the functions-sandbox dialect: no imports, the
   payload arrives as `ctx.data`, `return` a JSON-serializable value. Event
   hooks run with the system principal when a matching item event fires
   (`pattern` uses the same `items:<slug>:<event>` wildcard matching as event
-  functions); `manual` hooks run via the invoke endpoint/CLI/SDK/MCP.
+  functions); `cron` hooks fire from the scheduler tick on their cron
+  `pattern` (payload: `{firedAt, pattern}`, system principal, at-most-once
+  per minute — same window semantics as cron functions); `manual` hooks run
+  via the invoke endpoint/CLI/SDK/MCP or the page's Run-hook dialog.
 
 ## Installing
 
@@ -78,7 +85,9 @@ bun backlex extensions uninstall color-swatch
 bun backlex extensions invoke color-swatch normalize --data '{"a":1}'
 ```
 
-Reinstalling an already-installed name upgrades it in place. Installs go
+The admin install dialog offers the same two paths — npm package name or a
+local folder upload. Reinstalling an already-installed name upgrades it in
+place. Installs go
 through `POST /api/extensions/install` (npm) or `/upload` (file map) — the
 server fetches the tarball itself, so the registry must be reachable from the
 API runtime. Self-hosters can pin a private mirror with
@@ -161,8 +170,8 @@ internals (manifest validation, tar reader, bridge allow-list, asset CSP) by
 
 ## Limits & backlog
 
-- Cron-triggered hooks aren't supported yet (`trigger: "event" | "manual"`);
-  use a sandbox function or flow for schedules.
-- UI entries can't load sibling files — keep panels/editors single-file.
-- No dependency resolution: packages must ship prebuilt, self-contained
-  entries (bundle before publishing if you use a framework).
+- No dependency resolution: packages must ship prebuilt entries (bundle
+  before publishing if you use a framework); only same-package script/style
+  refs are resolved, at install time.
+- Sibling assets other than scripts/styles (images, fonts) must be `data:`
+  URIs inside the entry document.

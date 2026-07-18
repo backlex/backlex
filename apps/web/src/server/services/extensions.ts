@@ -42,13 +42,23 @@ const FieldEditorSchema = z.object({
   entry: entryPath,
 });
 
-const HookSchema = z.object({
-  id: z.string().regex(SLUG_RE),
-  trigger: z.enum(["event", "manual"]),
-  pattern: z.string().max(200).optional(),
-  entry: entryPath,
-  timeoutMs: z.number().int().min(50).max(60000).optional(),
-});
+const HookSchema = z
+  .object({
+    id: z.string().regex(SLUG_RE),
+    trigger: z.enum(["event", "manual", "cron"]),
+    pattern: z.string().max(200).optional(),
+    entry: entryPath,
+    timeoutMs: z.number().int().min(50).max(60000).optional(),
+  })
+  .superRefine((h, ctx) => {
+    if (h.trigger === "cron" && !h.pattern) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["pattern"],
+        message: "cron hooks require a cron pattern",
+      });
+    }
+  });
 
 export const ManifestSchema = z.object({
   name: z.string().regex(SLUG_RE),
@@ -193,11 +203,65 @@ export const contentTypeFor = (path: string): string => {
 const NPM_NAME_RE =
   /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
 
+/** Resolve `ref` relative to the directory of `from` inside the package.
+ *  Returns null when the ref escapes the package root or is absolute/remote. */
+const resolvePackagePath = (from: string, ref: string): string | null => {
+  if (/^[a-z][a-z0-9+.-]*:|^\/\/|^\//i.test(ref)) return null;
+  const base = from.split("/").slice(0, -1);
+  for (const seg of ref.split("/")) {
+    if (seg === "" || seg === ".") continue;
+    if (seg === "..") {
+      if (base.length === 0) return null;
+      base.pop();
+      continue;
+    }
+    base.push(seg);
+  }
+  return base.join("/");
+};
+
+/**
+ * Inline same-package `<script src>` / `<link rel="stylesheet">` references
+ * into an entry document. Entries render inside a sandboxed iframe whose CSP
+ * only permits inline script/style — install-time inlining is what makes
+ * multi-file extension UIs work without relaxing that policy (subresource
+ * fetches from the opaque-origin iframe would be uncredentialed anyway).
+ * External URLs and refs that don't resolve to a package file are left
+ * untouched (the CSP blocks them at render time, by design).
+ */
+export const inlineEntryAssets = (
+  files: Record<string, string>,
+  entryPath0: string,
+  html: string,
+): string => {
+  const scriptRe =
+    /<script\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>\s*<\/script>/gi;
+  const linkRe = /<link\b[^>]*>/gi;
+  let out = html.replace(scriptRe, (tag, src: string) => {
+    const resolved = resolvePackagePath(entryPath0, src);
+    const content = resolved !== null ? files[resolved] : undefined;
+    if (content === undefined) return tag;
+    return `<script>\n${content.replace(/<\/script/gi, "<\\/script")}\n</script>`;
+  });
+  out = out.replace(linkRe, (tag) => {
+    if (!/\brel\s*=\s*["']stylesheet["']/i.test(tag)) return tag;
+    const href = /\bhref\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1];
+    if (!href) return tag;
+    const resolved = resolvePackagePath(entryPath0, href);
+    const content = resolved !== null ? files[resolved] : undefined;
+    if (content === undefined) return tag;
+    return `<style>\n${content}\n</style>`;
+  });
+  return out;
+};
+
 /**
  * Validate a raw file map (path → content) as an extension package and return
  * the parsed manifest plus the subset of files the manifest actually
  * references. Shared by the npm and upload install paths, so every entry file
  * is guaranteed present and size-capped no matter how the package arrived.
+ * HTML entries get their same-package script/style refs inlined (see
+ * inlineEntryAssets) and are re-capped afterwards.
  */
 export const validatePackage = (
   files: Record<string, string>,
@@ -229,9 +293,12 @@ export const validatePackage = (
   ]);
   const assets: Record<string, string> = {};
   for (const entry of entries) {
-    const content = files[entry];
+    let content = files[entry];
     if (content === undefined) {
       throw new AppError("VALIDATION", `manifest references missing file: ${entry}`);
+    }
+    if (/\.html?$/i.test(entry)) {
+      content = inlineEntryAssets(files, entry, content);
     }
     if (content.length > MAX_ASSET_BYTES) {
       throw new AppError("VALIDATION", `entry file too large: ${entry}`);
@@ -496,6 +563,32 @@ export const invokeExtensionHook = async (
     data,
     hook.timeoutMs ?? 5000,
   );
+};
+
+/** A cron-triggered hook of an enabled extension, across ALL workspaces —
+ *  the scheduler tick consumes this and carries each row's own tenantId into
+ *  the invocation, mirroring the cron-functions scan. */
+export const listCronExtensionHooks = async (
+  ctx: DbCtx,
+): Promise<
+  { row: ExtensionRow; hook: { id: string; pattern?: string; timeoutMs?: number } }[]
+> => {
+  const t = tableFor(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(eq(t.enabled, true))) as ExtensionRow[];
+  const out: {
+    row: ExtensionRow;
+    hook: { id: string; pattern?: string; timeoutMs?: number };
+  }[] = [];
+  for (const raw of rows) {
+    const row = parseManifest(raw);
+    for (const hook of row.manifest.contributes.hooks ?? []) {
+      if (hook.trigger === "cron") out.push({ row, hook });
+    }
+  }
+  return out;
 };
 
 /**

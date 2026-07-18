@@ -310,6 +310,17 @@ msgstr "{0} alan"
 msgid "{0} files"
 msgstr "{0} dosya"
 
+#. placeholder {0}: upload.count
+#. placeholder {1}: upload.folder
+#: src/client/admin/pages/extensions.tsx
+msgid "{0} files selected from \"{1}\"."
+msgstr "\"{1}\" klasöründen {0} dosya seçildi."
+
+#. placeholder {0}: upload.count
+#: src/client/admin/pages/extensions.tsx
+msgid "{0} files selected."
+msgstr "{0} dosya seçildi."
+
 #. placeholder {0}: collabHandle(p)
 #: src/client/admin/items.tsx
 msgid "{0} is editing"
@@ -335,6 +346,11 @@ msgstr "{0} yüklendi"
 #: src/client/admin/pages/logs.tsx
 msgid "{0} match · {1} loaded"
 msgstr "{0} eşleşme · {1} yüklendi"
+
+#. placeholder {0}: result.durationMs
+#: src/client/admin/pages/extensions.tsx
+msgid "{0} ms"
+msgstr "{0} ms"
 
 #. placeholder {0}: filtered.length
 #. placeholder {1}: users.length
@@ -414,6 +430,11 @@ msgstr "{0} gösteriliyor · {1} yüklendi"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "{0} signs users in without asking for their authenticator code — it bypasses TOTP two-factor for anyone who has it enabled. Their account is then only as secure as their email inbox. Enable it anyway?"
 msgstr "{0} kullanıcıları doğrulayıcı kodunu sormadan oturum açtırır — etkinleştirmiş olan herkes için TOTP iki adımlı doğrulamayı atlar. Hesapları o zaman yalnızca e-posta kutuları kadar güvenli olur. Yine de etkinleştirilsin mi?"
+
+#. placeholder {0}: upload.skipped
+#: src/client/admin/pages/extensions.tsx
+msgid "{0} skipped."
+msgstr "{0} atlandı."
 
 #. placeholder {0}: snapshots.length
 #: src/client/admin/pages/schema-versions.tsx
@@ -2180,9 +2201,17 @@ msgstr "Seçenekler"
 msgid "choices · from schema enum"
 msgstr "seçenekler · şema enum'ından"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Choose a different folder"
+msgstr "Farklı bir klasör seç"
+
 #: src/client/pages/reset-password.tsx
 msgid "Choose a new password"
 msgstr "Yeni parola seçin"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Choose folder…"
+msgstr "Klasör seç…"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Choosing <0>_status</0> tracks the draft/published lifecycle."
@@ -2310,6 +2339,7 @@ msgstr "kapat"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/users.tsx
@@ -4326,6 +4356,7 @@ msgid "err"
 msgstr "hata"
 
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/extensions.tsx
 msgid "Error"
 msgstr "Hata"
 
@@ -4373,6 +4404,10 @@ msgstr "Mevcut adım bağlamına göre değerlendirir. Enterpolasyon için <0>{{
 #: src/client/admin/pages/webhooks.tsx
 msgid "Event"
 msgstr "Olay"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Event hooks also fire on their matching pattern; running one here executes it once with your payload."
+msgstr "Olay kancaları eşleşen desenlerinde de tetiklenir; burada çalıştırmak yalnızca sizin yükünüzle bir kez yürütür."
 
 #: src/client/admin/pages/functions.tsx
 msgid "Event pattern"
@@ -4514,6 +4549,10 @@ msgstr "\"{name}\" eklentisi etkinleştirildi."
 msgid "Extension \"{name}\" uninstalled."
 msgstr "\"{name}\" eklentisi kaldırıldı."
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension folder"
+msgstr "Eklenti klasörü"
+
 #. placeholder {0}: panel.extension.name
 #. placeholder {1}: panel.extension.version
 #: src/client/admin/app.tsx
@@ -4538,6 +4577,7 @@ msgid "Fail flow"
 msgstr "Akışı hata ile sonlandır"
 
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/storage/index.tsx
 msgid "failed"
@@ -4704,6 +4744,10 @@ msgstr "dosyalar"
 #: src/client/admin/pages/overview.tsx
 msgid "Files"
 msgstr "Dosyalar"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Files are read as text in your browser and sent to the server. Files over 1 MB, dotfiles, and node_modules are skipped."
+msgstr "Dosyalar tarayıcınızda metin olarak okunur ve sunucuya gönderilir. 1 MB üzeri dosyalar, nokta dosyaları ve node_modules atlanır."
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Fill the required fields."
@@ -5305,6 +5349,7 @@ msgstr "Geçmiş"
 msgid "Honeypot"
 msgstr "Honeypot"
 
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Hook"
 msgstr "Hook"
@@ -5673,6 +5718,10 @@ msgstr "Davetler 7 gün geçerlidir. Bir yöneticiden yenisini göndermesini ist
 msgid "invocations · p95"
 msgstr "çağrılar · p95"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Invoke one of this extension's server-side hooks with a JSON payload and inspect the sandbox result."
+msgstr "Bu eklentinin sunucu tarafı kancalarından birini JSON yüküyle çalıştırın ve sandbox sonucunu inceleyin."
+
 #. placeholder {0}: active.name
 #: src/client/admin/pages/functions.tsx
 msgid "invoking {0}…"
@@ -5805,6 +5854,10 @@ msgstr "<0>Ekibe</0> katıl."
 #: src/client/admin/condition-editor.tsx
 msgid "JSON"
 msgstr "JSON"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "JSON body passed to the hook as its input."
+msgstr "Kancaya girdi olarak iletilen JSON gövdesi."
 
 #: src/client/admin/flow-builder.tsx
 msgid "JSON object — template strings are interpolated before insert/update."
@@ -6362,6 +6415,7 @@ msgstr "Veritabanında mantıksal gruplama. Nesnenin depolama anahtarı değişm
 msgid "Logo"
 msgstr "Logo"
 
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/ui.tsx
@@ -7725,6 +7779,10 @@ msgstr "Kasım"
 msgid "npm package"
 msgstr "npm paketi"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "npm registry"
+msgstr "npm kayıt deposu"
+
 #: src/client/admin/parity/insights.tsx
 msgid "numeric column average"
 msgstr "sayısal sütun ortalaması"
@@ -7795,6 +7853,7 @@ msgid "Off keeps the provider configured but hidden from sign-in."
 msgstr "Kapalı, sağlayıcıyı yapılandırılmış tutar ancak girişte gizler."
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/pages/graphql.tsx
 msgid "ok"
 msgstr "tamam"
@@ -8202,6 +8261,7 @@ msgid "payload"
 msgstr "yük"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Payload"
 msgstr "Yük"
@@ -8209,6 +8269,10 @@ msgstr "Yük"
 #: src/client/admin/pages/jobs.tsx
 msgid "Payload (JSON)"
 msgstr "Yük (JSON)"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Payload must be valid JSON."
+msgstr "Yük geçerli JSON olmalıdır."
 
 #: src/client/admin/members-panel.tsx
 msgid "pending"
@@ -9051,6 +9115,10 @@ msgstr "Salt-okunur mod"
 msgid "read-only SELECT against the workspace database"
 msgstr "çalışma alanı veritabanına karşı salt okunur SELECT"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Reading files…"
+msgstr "Dosyalar okunuyor…"
+
 #: src/client/admin/add-field.tsx
 msgid "Reading time"
 msgstr "Okuma süresi"
@@ -9886,6 +9954,7 @@ msgstr "kurallar"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Run"
@@ -9910,6 +9979,10 @@ msgstr "Çalışma zamanı (isteğe bağlı)"
 #: src/client/admin/pages/database-import.tsx
 msgid "Run cancelled. Progress is kept — resume any time."
 msgstr "Çalıştırma iptal edildi. İlerleme korunur — istediğiniz zaman devam edin."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Run hook"
+msgstr "Kanca çalıştır"
 
 #: src/client/admin/pages/flows.tsx
 msgid "Run now"
@@ -9938,6 +10011,7 @@ msgstr "Çalışıyor"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/parity/insights.tsx
@@ -11865,6 +11939,10 @@ msgstr "Satır koleksiyondan kaldırılır. Bu işlem geri alınamaz."
 msgid "The section opens folded — useful for advanced or rarely-touched fields."
 msgstr "Bölüm katlanmış açılır — gelişmiş veya nadiren kullanılan alanlar için kullanışlıdır."
 
+#: src/client/admin/pages/extensions.tsx
+msgid "The selected folder has no backlex-extension.json at its root."
+msgstr "Seçilen klasörün kökünde backlex-extension.json yok."
+
 #: src/client/pages/shared-record.tsx
 msgid "The share link may have been revoked, or the record it pointed to was removed."
 msgstr "Paylaşım bağlantısı iptal edilmiş olabilir ya da işaret ettiği kayıt kaldırılmış olabilir."
@@ -12534,9 +12612,21 @@ msgstr "yükleme"
 msgid "Upload"
 msgstr "Yükle"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Upload & install"
+msgstr "Yükle ve kur"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Upload a local folder — the fast dev loop, no publish needed. The folder must ship a backlex-extension.json manifest at its root."
+msgstr "Yerel bir klasör yükleyin — yayınlamaya gerek olmayan hızlı geliştirme döngüsü. Klasörün kökünde bir backlex-extension.json manifestosu bulunmalıdır."
+
 #: src/client/admin/storage/index.tsx
 msgid "upload failed"
 msgstr "yükleme başarısız"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Upload folder"
+msgstr "Klasör yükle"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "uploaded"
@@ -12551,6 +12641,7 @@ msgid "uploading…"
 msgstr "yükleniyor…"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Uploading…"
 msgstr "Yükleniyor…"
@@ -12732,6 +12823,7 @@ msgid "value"
 msgstr "değer"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Value"
 msgstr "Değer"

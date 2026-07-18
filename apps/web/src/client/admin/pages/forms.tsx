@@ -142,6 +142,7 @@ const ACCENTS = [
 const blockIcon = (ef: ApiFormEligibleField | null | undefined, block: ApiFormBlock) => {
   if ((block.kind ?? "field") === "step") return I.Layers;
   if (!ef) return I.Type;
+  if (ef.choices && ef.type === "json") return I.CheckCircle;
   if (ef.choices) return I.LayoutList;
   if (ef.format === "email") return I.Mail;
   if (ef.format === "url") return I.Link;
@@ -381,6 +382,23 @@ function CanvasFieldPreview({
     background: p.inputBg,
     color: p.muted,
   };
+  if (ef.choices && ef.type === "json") {
+    return (
+      <div className="flex flex-col gap-2">
+        {ef.choices.slice(0, 4).map((c) => (
+          <div key={c} className="flex items-center gap-2.5 text-[13.5px]" style={{ color: p.muted }}>
+            <span className="size-[17px] shrink-0 rounded-[5px] border-[1.5px]" style={{ borderColor: p.border, background: p.inputBg }} />
+            {c}
+          </div>
+        ))}
+        {ef.choices.length > 4 && (
+          <span className="self-start rounded-full border border-dashed px-2.5 py-1 text-[11.5px]" style={{ borderColor: p.border, color: p.muted }}>
+            + {ef.choices.length - 4} <Trans>more</Trans>
+          </span>
+        )}
+      </div>
+    );
+  }
   if (ef.choices) {
     return (
       <>

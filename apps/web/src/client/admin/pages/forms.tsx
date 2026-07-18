@@ -1352,11 +1352,19 @@ function NewFormDialog({
     if (!collection) return pushToast(t`Pick a collection.`);
     setCreating(true);
     try {
-      // Start with the collection's required eligible fields (or the first
-      // one) so the form is valid immediately; the builder does the rest.
+      // Start with the collection's required eligible fields so the form is
+      // valid immediately; the builder does the rest. When nothing is
+      // required, seed ONE sensible field — preferring human-facing names and
+      // skipping identifier-ish ones (slug/id/code…) a visitor shouldn't type.
       const ef = await formsApi.eligibleFields(collection);
       const seed = ef.data.filter((f) => f.required);
-      const initial = (seed.length > 0 ? seed : ef.data.slice(0, 1)).map((f) => ({
+      const IDENTIFIER_RE = /^(slug|id|uuid|key|code|sort([-_]?order)?|position|order|external[-_]?id)$/i;
+      const PREFERRED_RE = /^(name|full[-_]?name|title|email|subject|message)$/i;
+      const fallback =
+        ef.data.find((f) => PREFERRED_RE.test(f.name)) ??
+        ef.data.find((f) => !IDENTIFIER_RE.test(f.name)) ??
+        ef.data[0];
+      const initial = (seed.length > 0 ? seed : fallback ? [fallback] : []).map((f) => ({
         id: newBlockId(),
         kind: "field" as const,
         name: f.name,

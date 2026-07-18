@@ -12,6 +12,7 @@ import { runFunctions } from "../src/functions";
 import { runFlows } from "../src/flows";
 import { runDashboards } from "../src/dashboards";
 import { runForms } from "../src/forms";
+import { runUsage } from "../src/usage";
 import { runSchema } from "../src/schema";
 import { runAgents } from "../src/agents";
 import { runTemplates } from "../src/templates";
@@ -91,6 +92,9 @@ Usage:
 
   backlex forms <list|get|fields|create|update|rotate-token|delete>
       Public form builder. \`create\`/\`rotate-token\` print the one-time link.
+
+  backlex usage <overview|series|limits|set-limits>
+      Workspace usage metering: per-key request counts, gauges, plan limits.
 
   backlex schema <snapshots|capture|import|branches|create-branch|diff|apply|…>
       Migration diffing / schema branching. \`diff\`/\`apply\` take refs:
@@ -231,6 +235,9 @@ const run = async () => {
     case "forms":
     case "form":
       await runForms(rest);
+      return;
+    case "usage":
+      await runUsage(rest);
       return;
     case "schema":
       await runSchema(rest);

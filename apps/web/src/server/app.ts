@@ -50,6 +50,7 @@ import { ldapAdminRoutes } from "./routes/ldap-admin";
 import { adminMcpRoutes, tenantMcpRoutes } from "./routes/mcp";
 import { meRoutes } from "./routes/me";
 import { metricsRoutes } from "./routes/metrics";
+import { usageRoutes } from "./routes/usage";
 import { notificationsRoutes } from "./routes/notifications";
 import { deviceTokensRoutes } from "./routes/device-tokens";
 import { pushConfigRoutes } from "./routes/push-config";
@@ -718,6 +719,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/settings", settingsRoutes);
   app.route("/api/admin/db", dbAdminRoutes);
   app.route("/api/admin/metrics", metricsRoutes);
+  app.route("/api/admin/usage", usageRoutes);
   app.route("/api/admin/realtime", realtimeAdminRoutes);
   app.route("/api/admin/advisor", advisorRoutes);
   app.route("/api/api-keys", apiKeysRoutes);

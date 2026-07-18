@@ -12,6 +12,7 @@ import {
   listApiKeys,
   revokeApiKey,
   roleMcpProfile,
+  updateApiKeyLimits,
   updateApiKeyMcpGuards,
 } from "../services/api-keys";
 import { allTools } from "../mcp/tools";
@@ -58,6 +59,14 @@ const ApiKeyInput = z
       description:
         "When true, MCP refuses every write tool (insert / update / delete / grant / revoke / invoke / assign / …) for requests authenticated with this key. REST surface for the same identity is unaffected.",
     }),
+    rateLimitPerMinute: z.number().int().min(1).max(1_000_000).nullable().optional().openapi({
+      description:
+        "Admin-only. Requests-per-minute cap for this key; enforced even on deploys where the global API limiter is off. Null/omit = the shared global budget.",
+    }),
+    monthlyQuota: z.number().int().min(1).nullable().optional().openapi({
+      description:
+        "Admin-only. Requests-per-UTC-month quota for this key; over-quota calls get 429 QUOTA_EXCEEDED until the month rolls over. Null/omit = unmetered.",
+    }),
   })
   .openapi("ApiKeyInput");
 
@@ -76,6 +85,8 @@ const ApiKeyRow = z
     createdAt: z.unknown().nullable(),
     mcpTools: z.array(z.string()).nullable(),
     mcpReadOnly: z.boolean(),
+    rateLimitPerMinute: z.number().int().nullable(),
+    monthlyQuota: z.number().int().nullable(),
   })
   .openapi("ApiKeyRow");
 
@@ -85,6 +96,13 @@ const McpGuardsPatch = z
     mcpReadOnly: z.boolean().optional(),
   })
   .openapi("McpGuardsPatch");
+
+const ApiKeyLimitsPatch = z
+  .object({
+    rateLimitPerMinute: z.number().int().min(1).max(1_000_000).nullable().optional(),
+    monthlyQuota: z.number().int().min(1).nullable().optional(),
+  })
+  .openapi("ApiKeyLimitsPatch");
 
 const ApiKeyCreatedRow = ApiKeyRow.extend({
   secret: z.string().openapi({
@@ -131,6 +149,8 @@ const sanitize = (
     createdAt?: unknown;
     mcpTools?: string[] | null;
     mcpReadOnly?: boolean | number | null;
+    rateLimitPerMinute?: number | null;
+    monthlyQuota?: number | null;
   },
   roleNames: Map<string, string>,
 ) => ({
@@ -147,6 +167,8 @@ const sanitize = (
   createdAt: row.createdAt,
   mcpTools: row.mcpTools ?? null,
   mcpReadOnly: Boolean(row.mcpReadOnly),
+  rateLimitPerMinute: row.rateLimitPerMinute ?? null,
+  monthlyQuota: row.monthlyQuota ?? null,
 });
 
 export const apiKeysRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
@@ -310,6 +332,12 @@ export const apiKeysRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (expiresAt && expiresAt.getTime() <= Date.now()) {
         throw new AppError("VALIDATION", "expiresAt must be in the future");
       }
+      // Usage-limit knobs are governance config — a non-admin owner could
+      // otherwise mint a key with a per-key rate limit far above the global
+      // budget (per-key overrides it by design).
+      if (body.rateLimitPerMinute !== undefined || body.monthlyQuota !== undefined) {
+        requireAdmin(auth);
+      }
       const { row, secret } = await createApiKey(ctx, {
         name: body.name?.trim() || defaultName(),
         userId: targetUserId,
@@ -321,6 +349,8 @@ export const apiKeysRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         // default-deny (`[]`) takes effect.
         mcpTools: body.mcpTools,
         mcpReadOnly: body.mcpReadOnly ?? false,
+        rateLimitPerMinute: body.rateLimitPerMinute ?? null,
+        monthlyQuota: body.monthlyQuota ?? null,
       });
       const roleNames = new Map<string, string>();
       if (row.roleId) {
@@ -375,6 +405,43 @@ export const apiKeysRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       }
       const body = c.req.valid("json");
       await updateApiKeyMcpGuards(ctx, tenantId, id, body);
+      return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "patch",
+      path: "/{id}/limits",
+      tags: ["api-keys"],
+      summary: "Update a key's usage limits (rate limit + monthly quota)",
+      description:
+        "Admin-only. Set or clear the per-key requests-per-minute cap and/or the monthly request quota. Null clears a field back to unlimited / the shared global budget; an omitted field is left untouched.",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: {
+        params: z.object({ id: z.string() }),
+        body: {
+          required: true,
+          content: { "application/json": { schema: ApiKeyLimitsPatch } },
+        },
+      },
+      responses: {
+        200: { description: "Updated", content: { "application/json": { schema: OkSchema } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const tenantId = requireTenant(c);
+      requireAdmin(auth); // governance knobs — see the create handler's rationale
+      const { id } = c.req.valid("param");
+      const visible = await listApiKeys(ctx, tenantId, null);
+      if (!visible.some((k) => k.id === id)) {
+        throw new AppError("NOT_FOUND", "API key not found");
+      }
+      const body = c.req.valid("json");
+      await updateApiKeyLimits(ctx, tenantId, id, body);
       return c.json({ ok: true });
     },
   )

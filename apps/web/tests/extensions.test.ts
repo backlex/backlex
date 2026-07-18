@@ -3,6 +3,7 @@ import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 import {
   ManifestSchema,
   apiPermits,
+  inlineEntryAssets,
   untar,
   validatePackage,
 } from "../src/server/services/extensions";
@@ -119,6 +120,66 @@ describe("extensions — units", () => {
     expect(() =>
       validatePackage({ "backlex-extension.json": JSON.stringify(manifest) }),
     ).toThrow(/missing file/);
+  });
+
+  test("inlineEntryAssets inlines same-package script/style refs only", () => {
+    const files = {
+      "ui/panel.html":
+        '<script src="./app.js"></script>' +
+        '<link rel="stylesheet" href="../shared/base.css">' +
+        '<script src="https://evil.example/x.js"></script>' +
+        '<link rel="icon" href="./fav.svg">' +
+        '<script src="../../escape.js"></script>',
+      "ui/app.js": 'console.log("</script> breaker");',
+      "shared/base.css": "body { color: red }",
+      "escape.js": "nope()",
+    };
+    const out = inlineEntryAssets(files, "ui/panel.html", files["ui/panel.html"]);
+    expect(out).toContain('console.log("<\\/script> breaker")');
+    expect(out).toContain("body { color: red }");
+    // External URL + escaping ref stay as-is (CSP blocks them at render time).
+    expect(out).toContain("https://evil.example/x.js");
+    expect(out).toContain("../../escape.js");
+    expect(out).toContain('rel="icon"');
+    expect(out).not.toContain("nope()");
+  });
+
+  test("validatePackage inlines html entries in the stored asset", () => {
+    const files = {
+      "backlex-extension.json": JSON.stringify({
+        name: "inline-ext",
+        version: "1.0.0",
+        title: "Inline",
+        contributes: { panels: [{ id: "p", title: "P", entry: "panel.html" }] },
+      }),
+      "panel.html": '<h1>hi</h1><script src="./app.js"></script>',
+      "app.js": "boot()",
+    };
+    const { assets } = validatePackage(files);
+    expect(assets["panel.html"]).toContain("boot()");
+    expect(assets["panel.html"]).not.toContain('src="./app.js"');
+  });
+
+  test("cron hooks require a pattern; valid cron hooks pass", () => {
+    const base = {
+      name: "cron-ext",
+      version: "1.0.0",
+      title: "Cron",
+      contributes: {
+        hooks: [{ id: "tick", trigger: "cron", entry: "tick.js" }],
+      },
+    };
+    expect(ManifestSchema.safeParse(base).success).toBe(false);
+    expect(
+      ManifestSchema.safeParse({
+        ...base,
+        contributes: {
+          hooks: [
+            { id: "tick", trigger: "cron", pattern: "*/5 * * * *", entry: "tick.js" },
+          ],
+        },
+      }).success,
+    ).toBe(true);
   });
 
   test("manifest schema refuses traversal entries and bad slugs", () => {

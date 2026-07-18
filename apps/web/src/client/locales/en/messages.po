@@ -310,6 +310,17 @@ msgstr "{0} fields"
 msgid "{0} files"
 msgstr "{0} files"
 
+#. placeholder {0}: upload.count
+#. placeholder {1}: upload.folder
+#: src/client/admin/pages/extensions.tsx
+msgid "{0} files selected from \"{1}\"."
+msgstr "{0} files selected from \"{1}\"."
+
+#. placeholder {0}: upload.count
+#: src/client/admin/pages/extensions.tsx
+msgid "{0} files selected."
+msgstr "{0} files selected."
+
 #. placeholder {0}: collabHandle(p)
 #: src/client/admin/items.tsx
 msgid "{0} is editing"
@@ -335,6 +346,11 @@ msgstr "{0} loaded"
 #: src/client/admin/pages/logs.tsx
 msgid "{0} match · {1} loaded"
 msgstr "{0} match · {1} loaded"
+
+#. placeholder {0}: result.durationMs
+#: src/client/admin/pages/extensions.tsx
+msgid "{0} ms"
+msgstr "{0} ms"
 
 #. placeholder {0}: filtered.length
 #. placeholder {1}: users.length
@@ -414,6 +430,11 @@ msgstr "{0} shown · {1} loaded"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "{0} signs users in without asking for their authenticator code — it bypasses TOTP two-factor for anyone who has it enabled. Their account is then only as secure as their email inbox. Enable it anyway?"
 msgstr "{0} signs users in without asking for their authenticator code — it bypasses TOTP two-factor for anyone who has it enabled. Their account is then only as secure as their email inbox. Enable it anyway?"
+
+#. placeholder {0}: upload.skipped
+#: src/client/admin/pages/extensions.tsx
+msgid "{0} skipped."
+msgstr "{0} skipped."
 
 #. placeholder {0}: snapshots.length
 #: src/client/admin/pages/schema-versions.tsx
@@ -2180,9 +2201,17 @@ msgstr "Choices"
 msgid "choices · from schema enum"
 msgstr "choices · from schema enum"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Choose a different folder"
+msgstr "Choose a different folder"
+
 #: src/client/pages/reset-password.tsx
 msgid "Choose a new password"
 msgstr "Choose a new password"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Choose folder…"
+msgstr "Choose folder…"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Choosing <0>_status</0> tracks the draft/published lifecycle."
@@ -2310,6 +2339,7 @@ msgstr "close"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/users.tsx
@@ -4326,6 +4356,7 @@ msgid "err"
 msgstr "err"
 
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/extensions.tsx
 msgid "Error"
 msgstr "Error"
 
@@ -4373,6 +4404,10 @@ msgstr "Evaluates against current step context. Use <0>{{ var }}</0> for interpo
 #: src/client/admin/pages/webhooks.tsx
 msgid "Event"
 msgstr "Event"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Event hooks also fire on their matching pattern; running one here executes it once with your payload."
+msgstr "Event hooks also fire on their matching pattern; running one here executes it once with your payload."
 
 #: src/client/admin/pages/functions.tsx
 msgid "Event pattern"
@@ -4514,6 +4549,10 @@ msgstr "Extension \"{name}\" enabled."
 msgid "Extension \"{name}\" uninstalled."
 msgstr "Extension \"{name}\" uninstalled."
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension folder"
+msgstr "Extension folder"
+
 #. placeholder {0}: panel.extension.name
 #. placeholder {1}: panel.extension.version
 #: src/client/admin/app.tsx
@@ -4538,6 +4577,7 @@ msgid "Fail flow"
 msgstr "Fail flow"
 
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/storage/index.tsx
 msgid "failed"
@@ -4704,6 +4744,10 @@ msgstr "files"
 #: src/client/admin/pages/overview.tsx
 msgid "Files"
 msgstr "Files"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Files are read as text in your browser and sent to the server. Files over 1 MB, dotfiles, and node_modules are skipped."
+msgstr "Files are read as text in your browser and sent to the server. Files over 1 MB, dotfiles, and node_modules are skipped."
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Fill the required fields."
@@ -5305,6 +5349,7 @@ msgstr "History"
 msgid "Honeypot"
 msgstr "Honeypot"
 
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Hook"
 msgstr "Hook"
@@ -5673,6 +5718,10 @@ msgstr "Invites are valid for 7 days. Ask an admin to send a new one."
 msgid "invocations · p95"
 msgstr "invocations · p95"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Invoke one of this extension's server-side hooks with a JSON payload and inspect the sandbox result."
+msgstr "Invoke one of this extension's server-side hooks with a JSON payload and inspect the sandbox result."
+
 #. placeholder {0}: active.name
 #: src/client/admin/pages/functions.tsx
 msgid "invoking {0}…"
@@ -5805,6 +5854,10 @@ msgstr "Join the <0>team</0>."
 #: src/client/admin/condition-editor.tsx
 msgid "JSON"
 msgstr "JSON"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "JSON body passed to the hook as its input."
+msgstr "JSON body passed to the hook as its input."
 
 #: src/client/admin/flow-builder.tsx
 msgid "JSON object — template strings are interpolated before insert/update."
@@ -6362,6 +6415,7 @@ msgstr "Logical grouping in the DB. The object's storage key doesn't change."
 msgid "Logo"
 msgstr "Logo"
 
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/ui.tsx
@@ -7725,6 +7779,10 @@ msgstr "November"
 msgid "npm package"
 msgstr "npm package"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "npm registry"
+msgstr "npm registry"
+
 #: src/client/admin/parity/insights.tsx
 msgid "numeric column average"
 msgstr "numeric column average"
@@ -7795,6 +7853,7 @@ msgid "Off keeps the provider configured but hidden from sign-in."
 msgstr "Off keeps the provider configured but hidden from sign-in."
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/pages/graphql.tsx
 msgid "ok"
 msgstr "ok"
@@ -8202,6 +8261,7 @@ msgid "payload"
 msgstr "payload"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Payload"
 msgstr "Payload"
@@ -8209,6 +8269,10 @@ msgstr "Payload"
 #: src/client/admin/pages/jobs.tsx
 msgid "Payload (JSON)"
 msgstr "Payload (JSON)"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Payload must be valid JSON."
+msgstr "Payload must be valid JSON."
 
 #: src/client/admin/members-panel.tsx
 msgid "pending"
@@ -9051,6 +9115,10 @@ msgstr "Read-only mode"
 msgid "read-only SELECT against the workspace database"
 msgstr "read-only SELECT against the workspace database"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Reading files…"
+msgstr "Reading files…"
+
 #: src/client/admin/add-field.tsx
 msgid "Reading time"
 msgstr "Reading time"
@@ -9886,6 +9954,7 @@ msgstr "rules"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Run"
@@ -9910,6 +9979,10 @@ msgstr "Run at (optional)"
 #: src/client/admin/pages/database-import.tsx
 msgid "Run cancelled. Progress is kept — resume any time."
 msgstr "Run cancelled. Progress is kept — resume any time."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Run hook"
+msgstr "Run hook"
 
 #: src/client/admin/pages/flows.tsx
 msgid "Run now"
@@ -9938,6 +10011,7 @@ msgstr "Running"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/parity/insights.tsx
@@ -11865,6 +11939,10 @@ msgstr "The row is removed from the collection. This can't be undone."
 msgid "The section opens folded — useful for advanced or rarely-touched fields."
 msgstr "The section opens folded — useful for advanced or rarely-touched fields."
 
+#: src/client/admin/pages/extensions.tsx
+msgid "The selected folder has no backlex-extension.json at its root."
+msgstr "The selected folder has no backlex-extension.json at its root."
+
 #: src/client/pages/shared-record.tsx
 msgid "The share link may have been revoked, or the record it pointed to was removed."
 msgstr "The share link may have been revoked, or the record it pointed to was removed."
@@ -12534,9 +12612,21 @@ msgstr "upload"
 msgid "Upload"
 msgstr "Upload"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Upload & install"
+msgstr "Upload & install"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Upload a local folder — the fast dev loop, no publish needed. The folder must ship a backlex-extension.json manifest at its root."
+msgstr "Upload a local folder — the fast dev loop, no publish needed. The folder must ship a backlex-extension.json manifest at its root."
+
 #: src/client/admin/storage/index.tsx
 msgid "upload failed"
 msgstr "upload failed"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Upload folder"
+msgstr "Upload folder"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "uploaded"
@@ -12551,6 +12641,7 @@ msgid "uploading…"
 msgstr "uploading…"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Uploading…"
 msgstr "Uploading…"
@@ -12732,6 +12823,7 @@ msgid "value"
 msgstr "value"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Value"
 msgstr "Value"

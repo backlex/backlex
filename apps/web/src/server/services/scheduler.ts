@@ -31,6 +31,7 @@ import { maybeRunScheduledBackups } from "./backup";
 import { runScheduledSnapshots } from "./schema-versions";
 import { processMigrationRuns } from "./migrate";
 import { flushUsage, sweepUsageGauges } from "./usage";
+import { invokeExtensionHook, listCronExtensionHooks } from "./extensions";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
@@ -127,6 +128,45 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
         }
       } catch (e) {
         console.error(`[cron:${fn.name}] crashed`, e);
+      }
+    }),
+  );
+
+  // Cron-triggered extension hooks: same prev/now window, each invocation
+  // carries its own extension row's tenantId (rows span every workspace).
+  const cronHooks = await listCronExtensionHooks(ctx);
+  const dueHooks = cronHooks.filter(({ row, hook }) => {
+    if (!hook.pattern) return false;
+    try {
+      const interval = parseExpression(hook.pattern, { currentDate: now });
+      const prevFire = interval.prev().toDate();
+      return prevFire > prev && prevFire <= now;
+    } catch (e) {
+      console.error(
+        `[cron] bad pattern for ext ${row.name}:${hook.id}: ${(e as Error).message}`,
+      );
+      return false;
+    }
+  });
+  await Promise.all(
+    dueHooks.map(async ({ row, hook }) => {
+      try {
+        const result = await invokeExtensionHook(
+          ctx,
+          row,
+          hook.id,
+          { ...SYSTEM_AUTH, tenantId: row.tenantId },
+          { firedAt: now.toISOString(), pattern: hook.pattern },
+        );
+        if (!result.ok) {
+          console.error(`[cron:ext:${row.name}:${hook.id}] error: ${result.error}`);
+        } else if (result.logs.length > 0) {
+          console.log(
+            `[cron:ext:${row.name}:${hook.id}] logs:\n${result.logs.join("\n")}`,
+          );
+        }
+      } catch (e) {
+        console.error(`[cron:ext:${row.name}:${hook.id}] crashed`, e);
       }
     }),
   );

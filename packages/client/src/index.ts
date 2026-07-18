@@ -553,7 +553,7 @@ export interface PublicFormSettings {
   turnstile?: boolean;
   theme?: "dark" | "light";
   accent?: string;
-  font?: "sans" | "lexend" | "mono";
+  font?: "sans" | "lexend" | "mono" | "system";
   /** Offered locales, base language first. `?lang=xx` forces one publicly. */
   languages?: string[];
   i18n?: Record<

@@ -11205,6 +11205,7 @@ msgid "system"
 msgstr "system"
 
 #: src/client/admin/display-template-editor.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "System"
 msgstr "System"

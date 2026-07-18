@@ -66,7 +66,7 @@ const FormSettingsSchema = z
       .string()
       .regex(/^#[0-9a-fA-F]{6}$/)
       .optional(),
-    font: z.enum(["sans", "lexend", "mono"]).optional(),
+    font: z.enum(["sans", "lexend", "mono", "system"]).optional(),
     languages: z.array(z.string().min(2).max(8)).max(12).optional(),
     i18n: z.record(z.string(), FormI18nSchema).optional(),
   })

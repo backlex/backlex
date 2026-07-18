@@ -1752,7 +1752,7 @@ export interface ApiFormSettings {
   turnstile?: boolean;
   theme?: "dark" | "light";
   accent?: string;
-  font?: "sans" | "lexend" | "mono";
+  font?: "sans" | "lexend" | "mono" | "system";
   languages?: string[];
   i18n?: Record<string, ApiFormI18n>;
 }
@@ -1848,7 +1848,7 @@ export interface ApiPublicForm {
   redirectUrl: string | null;
   theme: "dark" | "light";
   accent: string | null;
-  font: "sans" | "lexend" | "mono";
+  font: "sans" | "lexend" | "mono" | "system";
   languages: string[];
   locale: string;
   turnstileSiteKey: string | null;

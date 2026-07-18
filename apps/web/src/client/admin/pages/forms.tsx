@@ -102,12 +102,14 @@ const CANVAS_LIGHT = {
 };
 type CanvasPalette = typeof CANVAS_DARK;
 
-const canvasFont = (font: "sans" | "lexend" | "mono" | undefined): string =>
+const canvasFont = (font: "sans" | "lexend" | "mono" | "system" | undefined): string =>
   font === "lexend"
     ? "'Lexend','Manrope',system-ui,sans-serif"
     : font === "mono"
       ? "'JetBrains Mono',ui-monospace,monospace"
-      : "'Manrope',system-ui,sans-serif";
+      : font === "system"
+        ? "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        : "'Manrope',system-ui,sans-serif";
 
 const CANVAS_FONTS_HREF =
   "https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap";
@@ -234,6 +236,20 @@ function AddLanguagePopover({
   );
 }
 
+/** Design live/paused chip: mono uppercase, dotted, tinted border. */
+function LivePill({ active }: { active: boolean }) {
+  return active ? (
+    <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.08em] text-emerald-400">
+      <span className="size-[5px] rounded-full bg-emerald-400" />
+      <Trans>live</Trans>
+    </span>
+  ) : (
+    <span className="shrink-0 rounded-full border border-border bg-white/5 px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.08em] text-muted-foreground">
+      <Trans>paused</Trans>
+    </span>
+  );
+}
+
 /* ── token reveal ──────────────────────────────────────────────────── */
 
 function TokenRevealDialog({
@@ -323,7 +339,7 @@ function FormCards({
       <Card className="py-0">
         <EmptyState
           size="md"
-          icon={I.Inbox}
+          icon={I.Form}
           title={<Trans>No forms yet</Trans>}
           description={<Trans>Create a form to collect submissions from visitors — no account or code required on their side.</Trans>}
           action={
@@ -347,8 +363,8 @@ function FormCards({
             className="flex flex-col gap-3 rounded-surface border border-border bg-card p-4 text-left transition-colors hover:border-primary/50"
           >
             <div className="flex w-full items-center gap-2.5">
-              <span className="grid size-8 shrink-0 place-items-center rounded-control bg-primary/10 text-primary">
-                <I.Inbox size={15} />
+              <span className="grid size-[34px] shrink-0 place-items-center rounded-[9px] bg-primary/10 text-primary">
+                <I.Form size={16} />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[13.5px] font-semibold">{f.name}</div>
@@ -356,14 +372,7 @@ function FormCards({
                   → {f.collection}
                 </div>
               </div>
-              {f.active ? (
-                <Badge variant="secondary" className="text-emerald-400">
-                  <span className="mr-1 inline-block size-1.5 rounded-full bg-emerald-400" />
-                  <Trans>live</Trans>
-                </Badge>
-              ) : (
-                <Badge variant="outline"><Trans>paused</Trans></Badge>
-              )}
+              <LivePill active={f.active} />
             </div>
             <div className="flex w-full items-center justify-between border-t border-border pt-2.5 text-[13px]">
               <div>
@@ -477,32 +486,22 @@ function CanvasFieldPreview({
   );
 }
 
-function InsertDot({
-  onClick,
-  accent,
-  bg,
-}: {
-  onClick: () => void;
-  accent: string;
-  bg: string;
-}) {
+function InsertDot({ onClick, bg }: { onClick: () => void; bg: string }) {
   const { t } = useLingui();
+  // Editor chrome — always the admin primary, never the form's accent (this
+  // control isn't part of the published form).
   return (
     <button
       type="button"
       title={t`Add block`}
       onClick={onClick}
-      className="-mx-6 flex h-3.5 w-[calc(100%+3rem)] items-center gap-2 px-3.5 opacity-60 transition-opacity hover:opacity-100 sm:-mx-8 sm:w-[calc(100%+4rem)]"
-      style={{ color: accent }}
+      className="-mx-6 flex h-6 w-[calc(100%+3rem)] items-center gap-2 px-3.5 text-primary opacity-60 transition-opacity hover:opacity-100 sm:-mx-8 sm:w-[calc(100%+4rem)]"
     >
-      <span className="h-px flex-1" style={{ background: `${accent}73` }} />
-      <span
-        className="grid size-[18px] place-items-center rounded-full border"
-        style={{ borderColor: `${accent}8c`, background: bg }}
-      >
+      <span className="h-px flex-1 bg-primary/45" />
+      <span className="grid size-[18px] place-items-center rounded-full border border-primary/55" style={{ background: bg }}>
         <I.Plus size={10} />
       </span>
-      <span className="h-px flex-1" style={{ background: `${accent}73` }} />
+      <span className="h-px flex-1 bg-primary/45" />
     </button>
   );
 }
@@ -882,7 +881,14 @@ export function FormsPage({
     <div className="flex flex-col gap-4">
       {/* toolbar */}
       <div className="flex flex-wrap items-center gap-2.5">
-        <IconButton icon={I.ChevronLeft} title={t`Back to forms`} onClick={closeBuilder} />
+        <button
+          type="button"
+          title={t`Back to forms`}
+          onClick={closeBuilder}
+          className="grid size-[30px] shrink-0 place-items-center rounded-[8px] border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+        >
+          <I.ChevronLeft size={14} />
+        </button>
         <div className="min-w-0">
           <div className="truncate text-[14.5px] font-semibold">{form.name}</div>
           <div className="truncate font-mono text-[11px] text-muted-foreground">→ {form.collection}</div>
@@ -927,7 +933,14 @@ export function FormsPage({
           <span className="text-[11.5px] text-muted-foreground">{form.active ? t`live` : t`paused`}</span>
           <Switch checked={form.active} onChange={(v) => patchForm({ active: v })} />
         </div>
-        <IconButton icon={I.Trash} title={t`Delete form`} onClick={() => setConfirm("delete")} />
+        <button
+          type="button"
+          title={t`Delete form`}
+          onClick={() => setConfirm("delete")}
+          className="grid size-[30px] shrink-0 place-items-center rounded-[8px] border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+        >
+          <I.Trash size={14} />
+        </button>
         <Button
           variant="primary"
           icon={I.ExternalLink}
@@ -1017,7 +1030,7 @@ export function FormsPage({
               />
 
               <div className="mt-5 flex flex-col">
-                <InsertDot accent={accent} bg={cp.bg} onClick={() => setInsertAt(0)} />
+                <InsertDot bg={cp.bg} onClick={() => setInsertAt(0)} />
                 {form.fields.map((b, i) => {
                   const kind = b.kind ?? "field";
                   const ef = kind === "field" ? efByName.get(b.name ?? "") ?? null : null;
@@ -1065,19 +1078,19 @@ export function FormsPage({
                         }}
                         onClick={() => setSel({ kind: "block", id: b.id! })}
                         onKeyDown={(e) => e.key === "Enter" && setSel({ kind: "block", id: b.id! })}
-                        className={`group/blk relative -mx-6 cursor-pointer rounded-[11px] px-6 py-2.5 transition-colors sm:-mx-8 sm:px-8 ${
+                        className={`group/blk relative -mx-6 my-0.5 cursor-pointer rounded-[11px] px-6 py-3.5 transition-colors sm:-mx-8 sm:px-8 ${
                           settings.theme === "light" ? "hover:bg-black/[0.04]" : "hover:bg-white/[0.04]"
                         } ${dragId === b.id ? "opacity-40" : ""}`}
                         style={
                           selected
-                            ? { boxShadow: `0 0 0 1.5px ${accent}, 0 0 14px ${accent}40` }
+                            ? { boxShadow: "0 0 0 1.5px var(--primary), 0 0 14px color-mix(in oklab, var(--primary) 25%, transparent)" }
                             : undefined
                         }
                       >
                         {b.cond && (
                           <span
-                            className="pointer-events-none absolute -top-2 right-3 flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9.5px]"
-                            style={{ background: cp.bg, borderColor: `${accent}80`, color: accent }}
+                            className="pointer-events-none absolute -top-2 right-3 flex items-center gap-1 rounded-full border border-primary/50 px-2 py-0.5 font-mono text-[9.5px] text-primary"
+                            style={{ background: cp.bg }}
                           >
                             <I.Network size={9} />
                             {t`if`} {b.cond.field} {b.cond.op === "is" ? "=" : "≠"} {b.cond.value}
@@ -1124,7 +1137,7 @@ export function FormsPage({
                             >
                               <Trans>Next →</Trans>
                             </span>
-                            <span className="font-mono text-[10px] uppercase tracking-wide" style={{ color: accent }}>
+                            <span className="font-mono text-[10px] uppercase tracking-wide text-primary">
                               <Trans>step {stepNo}</Trans>
                             </span>
                             <span className="text-[14px] font-semibold">{label}</span>
@@ -1151,13 +1164,13 @@ export function FormsPage({
                           </div>
                         )}
                       </div>
-                      <InsertDot accent={accent} bg={cp.bg} onClick={() => setInsertAt(i + 1)} />
+                      <InsertDot bg={cp.bg} onClick={() => setInsertAt(i + 1)} />
                     </div>
                   );
                 })}
 
                 {dropIdx === form.fields.length && dragId && (
-                  <div className="h-0.5 rounded-full" style={{ background: accent }} />
+                  <div className="h-0.5 rounded-full bg-primary" />
                 )}
 
                 <button
@@ -1198,7 +1211,7 @@ export function FormsPage({
                   className="-mx-2 cursor-pointer rounded-[11px] px-2 py-1 transition-shadow"
                   style={
                     sel?.kind === "ending"
-                      ? { boxShadow: `0 0 0 1.5px ${accent}, 0 0 14px ${accent}40` }
+                      ? { boxShadow: "0 0 0 1.5px var(--primary), 0 0 14px color-mix(in oklab, var(--primary) 25%, transparent)" }
                       : undefined
                   }
                 >
@@ -1566,6 +1579,7 @@ function DesignPanel({
               { value: "sans", label: "Manrope" },
               { value: "lexend", label: "Lexend" },
               { value: "mono", label: <span className="font-mono">Mono</span> },
+              { value: "system", label: t`System` },
             ]}
           />
         </div>
@@ -1943,14 +1957,7 @@ function ShareTab({
           title={
             <span className="flex w-full items-center gap-2">
               <Trans>Public link</Trans>
-              {form.active ? (
-                <Badge variant="secondary" className="ml-auto text-emerald-400">
-                  <span className="mr-1 inline-block size-1.5 rounded-full bg-emerald-400" />
-                  <Trans>live</Trans>
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="ml-auto"><Trans>paused</Trans></Badge>
-              )}
+              <span className="ml-auto"><LivePill active={form.active} /></span>
             </span>
           }
         >
@@ -2374,7 +2381,7 @@ function SubmissionsTab({
         ) : rows.length === 0 ? (
           <EmptyState
             size="md"
-            icon={I.Inbox}
+            icon={I.Form}
             title={<Trans>No submissions yet</Trans>}
             description={<Trans>Share the public link — rows land here (and in the collection) as they arrive.</Trans>}
           />

@@ -72,12 +72,14 @@ const LIGHT: Palette = {
   inputBg: "rgba(20,15,45,0.03)",
 };
 
-const fontStack = (font: "sans" | "lexend" | "mono"): string =>
+const fontStack = (font: "sans" | "lexend" | "mono" | "system"): string =>
   font === "lexend"
     ? "'Lexend','Manrope',system-ui,sans-serif"
     : font === "mono"
       ? "'JetBrains Mono',ui-monospace,monospace"
-      : "'Manrope',system-ui,sans-serif";
+      : font === "system"
+        ? "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+        : "'Manrope',system-ui,sans-serif";
 
 /** Load the shared Google Fonts stylesheet once (CSP already allows it). */
 const useFonts = () => {

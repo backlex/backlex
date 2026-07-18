@@ -109,7 +109,7 @@ export interface FormSettings {
   /** Public page appearance. */
   theme?: "dark" | "light";
   accent?: string;
-  font?: "sans" | "lexend" | "mono";
+  font?: "sans" | "lexend" | "mono" | "system";
   /** Offered locales, base language first (default ["en"]). Visitors get
    *  their browser language when offered; `?lang=xx` forces one. */
   languages?: string[];
@@ -408,7 +408,7 @@ export interface PublicFormDefinition {
   redirectUrl: string | null;
   theme: "dark" | "light";
   accent: string | null;
-  font: "sans" | "lexend" | "mono";
+  font: "sans" | "lexend" | "mono" | "system";
   /** Offered locales, base first; `locale` is the one this payload resolved. */
   languages: string[];
   locale: string;
@@ -529,7 +529,7 @@ export const publicFormDefinition = (
     theme: settings.theme === "light" ? "light" : "dark",
     accent: settings.accent ?? null,
     font:
-      settings.font === "lexend" || settings.font === "mono"
+      settings.font === "lexend" || settings.font === "mono" || settings.font === "system"
         ? settings.font
         : "sans",
     languages,

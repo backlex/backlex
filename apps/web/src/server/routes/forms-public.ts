@@ -59,7 +59,7 @@ const PublicFormSchema = z
     redirectUrl: z.string().nullable(),
     theme: z.enum(["dark", "light"]),
     accent: z.string().nullable(),
-    font: z.enum(["sans", "lexend", "mono"]),
+    font: z.enum(["sans", "lexend", "mono", "system"]),
     languages: z.array(z.string()),
     locale: z.string(),
     turnstileSiteKey: z.string().nullable(),

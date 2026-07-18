@@ -41,7 +41,11 @@ import {
   CommandList,
 } from "@backlex/ui/components/command";
 import { Card } from "@backlex/ui/components/card";
-import { ColorPicker } from "@backlex/ui/components/color-picker";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@backlex/ui/components/sheet";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { ConfirmDialog } from "../sheet";
 import {
@@ -88,7 +92,6 @@ const ACCENTS = [
   "#E85CA8",
   "#F2C14E",
   "#E5484D",
-  "#5B8DEF",
 ];
 
 const blockIcon = (ef: ApiFormEligibleField | null | undefined, block: ApiFormBlock) => {
@@ -440,7 +443,13 @@ function InsertDot({ onClick }: { onClick: () => void }) {
 type BuilderTab = "edit" | "share" | "submissions";
 type Selection = { kind: "block"; id: string } | { kind: "ending" } | null;
 
-export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function FormsPage({
+  pushToast,
+  setActiveNav,
+}: {
+  pushToast: (m: string) => void;
+  setActiveNav?: (nav: string) => void;
+}) {
   const { t } = useLingui();
   const [forms, setForms] = useState<ApiForm[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -472,6 +481,9 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
   const [reveal, setReveal] = useState<{ url: string; embedUrl: string } | null>(null);
   const [confirm, setConfirm] = useState<"delete" | "rotate" | null>(null);
   const [newOpen, setNewOpen] = useState(false);
+  // Bumped when the session-cached share link is hidden/cleared so dependent
+  // UI re-renders (tokenCache is a module-level Map, not state).
+  const [, bumpTokenCache] = useState(0);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const formRef = useRef<ApiForm | null>(null);
@@ -797,7 +809,8 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
             </button>
           ))}
         </div>
-        <span className="flex items-center gap-1 text-[11.5px] text-muted-foreground">
+        {/* fixed width so saved↔saving… can't shift the centered tab strip */}
+        <span className="flex w-[76px] shrink-0 items-center justify-end gap-1 text-[11.5px] text-muted-foreground">
           {saveState === "saving" ? (
             <Trans>saving…</Trans>
           ) : saveState === "error" ? (
@@ -1108,13 +1121,25 @@ export function FormsPage({ pushToast }: { pushToast: (m: string) => void }) {
           form={form}
           urls={tokenCache.get(form.id) ?? null}
           onRotate={() => setConfirm("rotate")}
+          onHideLink={() => {
+            tokenCache.delete(form.id);
+            bumpTokenCache((x) => x + 1);
+          }}
           onToggleActive={(v) => patchForm({ active: v })}
           onToggleTurnstile={(v) => patchSettings({ turnstile: v })}
           pushToast={pushToast}
         />
       )}
 
-      {tab === "submissions" && <SubmissionsTab form={form} fieldBlocks={fieldBlocks} />}
+      {tab === "submissions" && (
+        <SubmissionsTab
+          form={form}
+          fieldBlocks={fieldBlocks}
+          efByName={efByName}
+          pushToast={pushToast}
+          onOpenCollection={() => setActiveNav?.("collections/" + form.collection)}
+        />
+      )}
 
       <InsertPalette
         open={insertAt !== null}
@@ -1331,25 +1356,52 @@ function DesignPanel({
         </div>
         <div className="flex flex-col gap-1.5">
           <PanelLabel><Trans>accent</Trans></PanelLabel>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {ACCENTS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                title={c}
-                onClick={() => onPatch({ accent: c })}
-                className={`size-6 rounded-full border-2 ${accent === c ? "border-foreground" : "border-transparent"}`}
-                style={{ background: c }}
+          <div className="flex items-center gap-2">
+            {ACCENTS.map((c) => {
+              const selected = accent.toLowerCase() === c.toLowerCase();
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  title={c}
+                  onClick={() => onPatch({ accent: c })}
+                  className="size-[26px] rounded-full border-2 transition-shadow"
+                  style={{
+                    background: c,
+                    borderColor: selected ? "rgba(255,255,255,0.9)" : "transparent",
+                    boxShadow: selected ? `0 0 10px ${c}` : "none",
+                  }}
+                />
+              );
+            })}
+            {/* custom color — conic rainbow ring with the current accent as a
+                center dot, backed by an invisible native color input (mock). */}
+            <label
+              title={t`Custom color`}
+              className="relative grid size-[26px] cursor-pointer place-items-center overflow-hidden rounded-full border-2"
+              style={{
+                background: "conic-gradient(#ff6b6b,#ffc46e,#7CE6C0,#6CB8FF,#8B6CFF,#ff6b6b)",
+                borderColor: ACCENTS.some((c) => c.toLowerCase() === accent.toLowerCase())
+                  ? "transparent"
+                  : "rgba(255,255,255,0.9)",
+                boxShadow: ACCENTS.some((c) => c.toLowerCase() === accent.toLowerCase())
+                  ? "none"
+                  : `0 0 10px ${accent}`,
+              }}
+            >
+              <span
+                className="size-3 rounded-full border-[1.5px] border-white/80"
+                style={{ background: accent }}
               />
-            ))}
-            {/* custom color — the design-system picker, shown as a swatch */}
-            <ColorPicker
-              value={ACCENTS.includes(accent) ? "" : accent}
-              onChange={(hex) => onPatch({ accent: hex })}
-              triggerSize={24}
-            />
+              <input
+                type="color"
+                value={accent}
+                onChange={(e) => onPatch({ accent: e.target.value })}
+                className="absolute inset-0 cursor-pointer border-0 p-0 opacity-0"
+              />
+            </label>
           </div>
-          <span className="font-mono text-[10.5px] text-muted-foreground">{accent}</span>
+          <span className="-mt-0.5 font-mono text-[10.5px] text-muted-foreground">{accent}</span>
         </div>
         <div className="flex flex-col gap-1.5">
           <PanelLabel><Trans>font</Trans></PanelLabel>
@@ -1695,6 +1747,7 @@ function ShareTab({
   form,
   urls,
   onRotate,
+  onHideLink,
   onToggleActive,
   onToggleTurnstile,
   pushToast,
@@ -1702,6 +1755,7 @@ function ShareTab({
   form: ApiForm;
   urls: { url: string; embedUrl: string } | null;
   onRotate: () => void;
+  onHideLink: () => void;
   onToggleActive: (v: boolean) => void;
   onToggleTurnstile: (v: boolean) => void;
   pushToast: (m: string) => void;
@@ -1721,59 +1775,107 @@ function ShareTab({
     }
   };
   return (
-    <div className="grid grid-cols-2 gap-4 max-[900px]:grid-cols-1">
+    <div className="grid grid-cols-[1.25fr_1fr] gap-4 max-[900px]:grid-cols-1">
       <div className="flex flex-col gap-4">
-        <PanelCard icon={I.Link} title={<Trans>Public link</Trans>}>
+        <PanelCard
+          icon={I.Link}
+          title={
+            <span className="flex w-full items-center gap-2">
+              <Trans>Public link</Trans>
+              {form.active ? (
+                <Badge variant="secondary" className="ml-auto text-emerald-400">
+                  <span className="mr-1 inline-block size-1.5 rounded-full bg-emerald-400" />
+                  <Trans>live</Trans>
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="ml-auto"><Trans>paused</Trans></Badge>
+              )}
+            </span>
+          }
+        >
           <p className="text-[11.5px] text-muted-foreground">
-            <Trans>No auth on the visitor's side — the token in the URL is the credential.</Trans>
+            <Trans>No auth on the visitor's side — the token in the URL is the
+            credential. It's stored hashed, so it can only be shown{" "}
+            <span className="text-amber-400">once</span>.</Trans>
           </p>
           {absolute ? (
-            <div className="flex items-center gap-1.5">
-              <Input readOnly value={absolute} className="font-mono text-[12px]" />
-              <IconButton icon={I.Copy} title={t`Copy link`} onClick={() => void copy(absolute)} />
-              <IconButton icon={I.ExternalLink} title={t`Open form`} onClick={() => window.open(absolute, "_blank")} />
-            </div>
+            <>
+              <div className="flex items-center gap-2 rounded-control border border-amber-400/30 bg-amber-400/5 px-3 py-2 font-mono text-[10.5px] text-amber-400">
+                <I.Lock size={11} />
+                <Trans>shown once — copy it now, it won't appear again</Trans>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Input readOnly value={absolute} className="border-amber-400/35 font-mono text-[12px]" />
+                <IconButton icon={I.Copy} title={t`Copy link`} onClick={() => void copy(absolute)} />
+                <IconButton icon={I.ExternalLink} title={t`Open form`} onClick={() => window.open(absolute, "_blank")} />
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={onHideLink}
+                  className="text-[11.5px] font-medium text-muted-foreground underline underline-offset-2 hover:text-primary"
+                >
+                  <Trans>I copied it — hide the link</Trans>
+                </button>
+                <button
+                  type="button"
+                  title={t`Mints a new token; the current link stops working`}
+                  onClick={onRotate}
+                  className="flex items-center gap-1.5 rounded-control border border-orange-300/40 bg-orange-300/5 px-3 py-1.5 text-[12px] font-medium text-orange-300 hover:bg-orange-300/10"
+                >
+                  <I.Refresh size={12} />
+                  <Trans>Rotate token</Trans>
+                </button>
+              </div>
+            </>
           ) : (
-            <div className="flex flex-col gap-2.5 rounded-control border border-dashed border-border px-3 py-3">
-              <p className="text-[12px] text-muted-foreground">
-                <Trans>The link was shown once when it was minted. Generate a new one to
-                see it here — the old link stops working.</Trans>
+            <>
+              <div className="flex items-center gap-1.5">
+                <div className="flex min-w-0 flex-1 items-center gap-2 truncate rounded-control border border-border bg-background/40 px-3 py-2 font-mono text-[12px] text-muted-foreground">
+                  <I.Lock size={12} />
+                  {origin}/f/frm_{"•".repeat(12)}
+                </div>
+                <Button variant="primary" icon={I.Refresh} onClick={onRotate}>
+                  <Trans>Generate new link</Trans>
+                </Button>
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <Trans>The token can't be shown again — generating a new link is the
+                only way to get one. The old link stops working instantly; update any
+                embeds.</Trans>
               </p>
-              <Button variant="primary" icon={I.Refresh} onClick={onRotate} className="self-start">
-                <Trans>Get a new link</Trans>
-              </Button>
-            </div>
+            </>
           )}
         </PanelCard>
-        <PanelCard icon={I.Code} title={<Trans>Embed</Trans>}>
+        <PanelCard
+          icon={I.Code}
+          title={
+            <span className="flex w-full items-center gap-2">
+              <Trans>Embed</Trans>
+              {iframe && (
+                <span className="ml-auto">
+                  <Button variant="ghost" icon={I.Copy} onClick={() => void copy(iframe)}>
+                    <Trans>Copy</Trans>
+                  </Button>
+                </span>
+              )}
+            </span>
+          }
+        >
           <p className="text-[11.5px] text-muted-foreground">
             <Trans>Drop the iframe into any site — the form keeps its own theme.</Trans>
           </p>
           {iframe ? (
-            <div className="flex items-start gap-1.5">
-              <Textarea readOnly rows={4} value={iframe} className="font-mono text-[11.5px]" />
-              <IconButton icon={I.Copy} title={t`Copy embed snippet`} onClick={() => void copy(iframe)} />
-            </div>
+            <ScrollArea className="w-full rounded-control border border-border bg-background/60">
+              <pre className="whitespace-pre px-3.5 py-3 font-mono text-[11.5px] leading-relaxed text-muted-foreground">{iframe.replace(/" /g, '"\n  ')}</pre>
+            </ScrollArea>
           ) : (
             <p className="rounded-control border border-dashed border-border px-3 py-2.5 text-[12px] text-muted-foreground">
-              <Trans>Use "Get a new link" above — the embed snippet is minted together
-              with it.</Trans>
+              <Trans>Use "Generate new link" above — the embed snippet is minted
+              together with it.</Trans>
             </p>
           )}
         </PanelCard>
-        <Card className="gap-2.5 border-destructive/40 p-4">
-          <div className="flex items-center gap-2 text-[13px] font-semibold text-destructive">
-            <I.Refresh size={13} />
-            <Trans>Rotate link</Trans>
-          </div>
-          <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-            <Trans>Generates a new token and kills the current link immediately. Every
-            embed of the old link must be updated — the new link is shown exactly once.</Trans>
-          </p>
-          <Button variant="ghost" icon={I.Refresh} onClick={onRotate} className="self-start text-destructive">
-            <Trans>Rotate token</Trans>
-          </Button>
-        </Card>
       </div>
       <div className="flex flex-col gap-4">
         <PanelCard icon={I.Shield} title={<Trans>Delivery</Trans>}>
@@ -1813,14 +1915,222 @@ function ShareTab({
   );
 }
 
+/* ── submission detail drawer ──────────────────────────────────────── */
+
+const MONO_TYPES = new Set(["integer", "number", "timestamp", "uuid"]);
+
+function SubmissionDrawer({
+  form,
+  fieldBlocks,
+  efByName,
+  row,
+  versioned,
+  onClose,
+  onPublished,
+  onDeleted,
+  onOpenCollection,
+  pushToast,
+}: {
+  form: ApiForm;
+  fieldBlocks: ApiFormBlock[];
+  efByName: Map<string, ApiFormEligibleField>;
+  row: Record<string, unknown> | null;
+  versioned: boolean;
+  onClose: () => void;
+  onPublished: (id: string) => void;
+  onDeleted: (id: string) => void;
+  onOpenCollection: () => void;
+  pushToast: (m: string) => void;
+}) {
+  const { t } = useLingui();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (!row) return null;
+
+  const id = String(row.id ?? "");
+  const isDraft = versioned && row._status !== "published";
+  // Headline: first text-ish answer; subline: first email-format answer.
+  const nameField = fieldBlocks.find((b) => {
+    const ef = efByName.get(b.name ?? "");
+    return ef && (ef.type === "text" || ef.type === "longtext") && ef.format !== "email" && row[b.name!];
+  });
+  const emailField = fieldBlocks.find(
+    (b) => efByName.get(b.name ?? "")?.format === "email" && row[b.name!],
+  );
+  const headline = String((nameField && row[nameField.name!]) ?? id);
+  const initials = headline
+    .split(/\s+/)
+    .map((w) => w[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const publish = async () => {
+    setBusy(true);
+    try {
+      await itemsApi.publish(form.collection, id);
+      onPublished(id);
+      pushToast(t`Published.`);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    setConfirmDelete(false);
+    setBusy(true);
+    try {
+      await itemsApi.remove(form.collection, id);
+      onDeleted(id);
+      onClose();
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Sheet open={!!row} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent
+        side="right"
+        aria-describedby={undefined}
+        className="flex flex-col gap-0 border-l border-primary/30 p-0"
+        style={{ width: 434, maxWidth: "92vw" }}
+      >
+        {/* header */}
+        <div className="flex shrink-0 items-center gap-3 border-b border-border px-4.5 py-4">
+          <div
+            className="grid size-9 shrink-0 place-items-center rounded-full text-[13px] font-bold text-white"
+            style={{ background: "linear-gradient(135deg,#8B6CFF,#ff9d83)" }}
+          >
+            {initials || "•"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <SheetTitle className="truncate text-[14.5px] font-bold">{headline}</SheetTitle>
+            {emailField && (
+              <div className="truncate font-mono text-[11px] text-muted-foreground">
+                {String(row[emailField.name!])}
+              </div>
+            )}
+          </div>
+          {versioned && (
+            <span
+              className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[10.5px] ${
+                isDraft
+                  ? "border-amber-400/30 bg-amber-400/10 text-amber-400"
+                  : "border-emerald-400/30 bg-emerald-400/10 text-emerald-400"
+              }`}
+            >
+              {isDraft ? t`draft` : t`published`}
+            </span>
+          )}
+        </div>
+        {/* meta grid */}
+        <div className="grid shrink-0 grid-cols-2 gap-x-3.5 gap-y-2 border-b border-border px-4.5 py-3 text-[11px]">
+          <div>
+            <span className="text-muted-foreground/70"><Trans>Submitted</Trans></span>
+            <div className="mt-0.5 font-mono text-[11.5px]">{relTime(row.createdAt ?? row.created_at)}</div>
+          </div>
+          <div>
+            <span className="text-muted-foreground/70"><Trans>Row</Trans></span>
+            <div className="mt-0.5 truncate font-mono text-[11.5px] text-primary">{id}</div>
+          </div>
+          <div>
+            <span className="text-muted-foreground/70"><Trans>Checks</Trans></span>
+            <div className="mt-0.5 font-mono text-[11.5px] text-emerald-400">
+              honeypot ✓{form.settings?.turnstile ? " turnstile ✓" : ""}
+            </div>
+          </div>
+          <div>
+            <span className="text-muted-foreground/70"><Trans>Collection</Trans></span>
+            <div className="mt-0.5 truncate font-mono text-[11.5px]">{form.collection}</div>
+          </div>
+        </div>
+        {/* answers */}
+        <ScrollArea className="min-h-0 flex-1" viewportClassName="h-full">
+          <div className="flex flex-col px-4.5 pb-3.5 pt-1.5">
+            {fieldBlocks
+              .filter((b) => b.name)
+              .map((b) => {
+                const ef = efByName.get(b.name!);
+                const v = row[b.name!];
+                const mono = ef ? MONO_TYPES.has(ef.type) || Boolean(ef.format) : false;
+                return (
+                  <div key={b.name} className="border-b border-border/60 py-2.5 last:border-b-0">
+                    <div className="mb-1 font-mono text-[9.5px] uppercase tracking-[0.1em] text-muted-foreground/70">
+                      {b.name}
+                    </div>
+                    {v === null || v === undefined || v === "" ? (
+                      <div className="text-[13px] text-muted-foreground/50">—</div>
+                    ) : mono ? (
+                      <div className="break-all font-mono text-[12.5px] text-muted-foreground">{String(v)}</div>
+                    ) : (
+                      <div className="text-[13px] leading-relaxed">{String(v)}</div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        </ScrollArea>
+        {/* footer */}
+        <div className="flex shrink-0 items-center gap-2 border-t border-border bg-background/60 px-4.5 py-3.5">
+          {isDraft && (
+            <Button variant="primary" icon={I.Check} disabled={busy} onClick={() => void publish()}>
+              <Trans>Publish</Trans>
+            </Button>
+          )}
+          <Button variant="ghost" icon={I.ExternalLink} onClick={onOpenCollection}>
+            <Trans>Open in {form.collection}</Trans>
+          </Button>
+          <div className="flex-1" />
+          <button
+            type="button"
+            title={t`Delete submission`}
+            disabled={busy}
+            onClick={() => setConfirmDelete(true)}
+            className="grid size-8 place-items-center rounded-control border border-orange-300/40 bg-orange-300/5 text-orange-300 hover:bg-orange-300/10"
+          >
+            <I.Trash size={14} />
+          </button>
+        </div>
+        <ConfirmDialog
+          open={confirmDelete}
+          title={t`Delete this submission?`}
+          description={t`The row is removed from the collection. This can't be undone.`}
+          actionLabel={t`Delete`}
+          destructive
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => void remove()}
+        />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 /* ── submissions tab ───────────────────────────────────────────────── */
 
-function SubmissionsTab({ form, fieldBlocks }: { form: ApiForm; fieldBlocks: ApiFormBlock[] }) {
+function SubmissionsTab({
+  form,
+  fieldBlocks,
+  efByName,
+  pushToast,
+  onOpenCollection,
+}: {
+  form: ApiForm;
+  fieldBlocks: ApiFormBlock[];
+  efByName: Map<string, ApiFormEligibleField>;
+  pushToast: (m: string) => void;
+  onOpenCollection: () => void;
+}) {
   const { t } = useLingui();
   const [rows, setRows] = useState<Record<string, unknown>[] | null>(null);
   const [filter, setFilter] = useState<"all" | "draft" | "published">("all");
   const [total, setTotal] = useState<number | null>(null);
   const [versioned, setVersioned] = useState(false);
+  const [selRow, setSelRow] = useState<Record<string, unknown> | null>(null);
 
   const cols = fieldBlocks.slice(0, 4).map((b) => b.name!).filter(Boolean);
 
@@ -1939,7 +2249,11 @@ function SubmissionsTab({ form, fieldBlocks }: { form: ApiForm; fieldBlocks: Api
               {rows.map((r, i) => (
                 <div
                   key={String(r.id ?? i)}
-                  className="grid items-center gap-3 border-b border-border px-3.5 py-[10px] text-[12.5px] last:border-b-0"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelRow(r)}
+                  onKeyDown={(e) => e.key === "Enter" && setSelRow(r)}
+                  className="grid cursor-pointer items-center gap-3 border-b border-border px-3.5 py-[10px] text-[12.5px] transition-colors last:border-b-0 hover:bg-accent/40"
                   style={{ gridTemplateColumns: `110px repeat(${cols.length}, 1fr) ${versioned ? "90px" : ""}` }}
                 >
                   {/* serialized rows expose camelCase system keys (createdAt) */}
@@ -1972,6 +2286,27 @@ function SubmissionsTab({ form, fieldBlocks }: { form: ApiForm; fieldBlocks: Api
           </div>
         )}
       </Card>
+
+      <SubmissionDrawer
+        form={form}
+        fieldBlocks={fieldBlocks}
+        efByName={efByName}
+        row={selRow}
+        versioned={versioned}
+        onClose={() => setSelRow(null)}
+        onPublished={(id) => {
+          setRows((prev) =>
+            prev ? prev.map((r) => (String(r.id) === id ? { ...r, _status: "published" } : r)) : prev,
+          );
+          setSelRow((prev) => (prev && String(prev.id) === id ? { ...prev, _status: "published" } : prev));
+        }}
+        onDeleted={(id) => {
+          setRows((prev) => (prev ? prev.filter((r) => String(r.id) !== id) : prev));
+          setTotal((prev) => (prev === null ? prev : Math.max(0, prev - 1)));
+        }}
+        onOpenCollection={onOpenCollection}
+        pushToast={pushToast}
+      />
     </div>
   );
 }

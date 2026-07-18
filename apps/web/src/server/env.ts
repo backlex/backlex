@@ -323,6 +323,10 @@ export interface Env {
    *  Workers / Vercel Edge / Netlify Edge) while still offering DB-aware
    *  functions. Pairs with `SANDBOX_RPC_TOKEN` + `SELF_URL` for `ctx.*`. */
   FUNCTIONS_EXEC_URL?: string;
+  /** npm registry base URL extension installs resolve against. Defaults to
+   *  https://registry.npmjs.org; point at a private registry mirror to gate
+   *  which packages `POST /api/extensions/install` may pull. */
+  EXTENSIONS_NPM_REGISTRY?: string;
   /** Shared secret authenticating executor → main Worker RPC calls
    *  (`/api/_internal/sandbox-rpc`). Required for the `remote-http`
    *  provider's ctx.* host bridge. Generate with `openssl rand -hex 32`. */
@@ -491,6 +495,7 @@ export const STRING_ENV_KEYS = [
   "EXTRA_TRUSTED_ORIGINS",
   "FUNCTIONS_FETCH_ALLOW",
   "FUNCTIONS_EXEC_URL",
+  "EXTENSIONS_NPM_REGISTRY",
   "SANDBOX_RPC_TOKEN",
   "SELF_URL",
   "R2_PUBLIC_BASE",

@@ -70,6 +70,7 @@ import m63 from "../../drizzle/pg/20260716090000_collections_presentation/migrat
 import m64 from "../../drizzle/pg/20260718090000_forms/migration.sql" with { type: "text" };
 import m65 from "../../drizzle/pg/20260719090000_forms_stats/migration.sql" with { type: "text" };
 import m66 from "../../drizzle/pg/20260720090000_usage_metering/migration.sql" with { type: "text" };
+import m67 from "../../drizzle/pg/20260721090000_extensions/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -144,4 +145,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260718090000_forms", sql: m64 },
   { name: "20260719090000_forms_stats", sql: m65 },
   { name: "20260720090000_usage_metering", sql: m66 },
+  { name: "20260721090000_extensions", sql: m67 },
 ];

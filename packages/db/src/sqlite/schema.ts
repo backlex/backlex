@@ -381,6 +381,41 @@ export const functions = sqliteTable(
   ],
 );
 
+/**
+ * Installed extensions (#13). One row per installed package; the manifest
+ * column holds the validated `backlex-extension.json` (panels, fieldEditors,
+ * hooks, permissions). UI entry files and server hook code live in
+ * `extension_assets`, keyed by their path inside the package.
+ */
+export const extensions = sqliteTable(
+  "extensions",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    version: text("version").notNull(),
+    source: text("source").notNull(),
+    npmPackage: text("npm_package"),
+    manifest: text("manifest", { mode: "json" }).$type<unknown>().notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [uniqueIndex("extensions_tenant_name_idx").on(t.tenantId, t.name)],
+);
+
+export const extensionAssets = sqliteTable(
+  "extension_assets",
+  {
+    id: text("id").primaryKey(),
+    extensionId: text("extension_id").notNull(),
+    path: text("path").notNull(),
+    content: text("content").notNull(),
+    contentType: text("content_type").notNull(),
+  },
+  (t) => [uniqueIndex("extension_assets_path_idx").on(t.extensionId, t.path)],
+);
+
 export const scheduledTasks = sqliteTable(
   "scheduled_tasks",
   {

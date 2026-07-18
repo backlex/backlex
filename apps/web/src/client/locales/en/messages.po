@@ -1022,6 +1022,10 @@ msgid "Add at least one step before saving"
 msgstr "Add at least one step before saving"
 
 #: src/client/admin/pages/forms.tsx
+msgid "add block"
+msgstr "add block"
+
+#: src/client/admin/pages/forms.tsx
 msgid "Add block"
 msgstr "Add block"
 
@@ -4951,6 +4955,10 @@ msgstr "General"
 msgid "Generate"
 msgstr "Generate"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Generate a link first — the token is only shown once."
+msgstr "Generate a link first — the token is only shown once."
+
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Generate keypair"
 msgstr "Generate keypair"
@@ -6457,6 +6465,7 @@ msgid "Mon"
 msgstr "Mon"
 
 #: src/client/admin/pages/flows.tsx
+#: src/client/admin/pages/forms.tsx
 msgid "more"
 msgstr "more"
 
@@ -7631,6 +7640,7 @@ msgstr "open"
 msgid "Open"
 msgstr "Open"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Open collection"
 msgstr "Open collection"
@@ -12412,6 +12422,10 @@ msgstr "Verifying…"
 #: src/client/pages/openapi-export.tsx
 msgid "Version"
 msgstr "Version"
+
+#: src/client/admin/pages/forms.tsx
+msgid "versioned"
+msgstr "versioned"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Versioned (draft / published)"

@@ -1022,6 +1022,10 @@ msgid "Add at least one step before saving"
 msgstr "Kaydetmeden önce en az bir adım ekleyin"
 
 #: src/client/admin/pages/forms.tsx
+msgid "add block"
+msgstr "blok ekle"
+
+#: src/client/admin/pages/forms.tsx
 msgid "Add block"
 msgstr "Blok ekle"
 
@@ -4951,6 +4955,10 @@ msgstr "Genel"
 msgid "Generate"
 msgstr "Oluştur"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Generate a link first — the token is only shown once."
+msgstr "Önce bir bağlantı üretin — token yalnızca bir kez gösterilir."
+
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Generate keypair"
 msgstr "Anahtar çifti üret"
@@ -6457,6 +6465,7 @@ msgid "Mon"
 msgstr "Pzt"
 
 #: src/client/admin/pages/flows.tsx
+#: src/client/admin/pages/forms.tsx
 msgid "more"
 msgstr "daha fazla"
 
@@ -7631,6 +7640,7 @@ msgstr "aç"
 msgid "Open"
 msgstr "Aç"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Open collection"
 msgstr "Koleksiyonu aç"
@@ -12412,6 +12422,10 @@ msgstr "Doğrulanıyor…"
 #: src/client/pages/openapi-export.tsx
 msgid "Version"
 msgstr "Sürüm"
+
+#: src/client/admin/pages/forms.tsx
+msgid "versioned"
+msgstr "sürümlü"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Versioned (draft / published)"

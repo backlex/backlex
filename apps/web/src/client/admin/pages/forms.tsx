@@ -84,6 +84,34 @@ const relTime = (v: unknown): string => {
   return `${Math.floor(mins / (60 * 24))}d`;
 };
 
+/* The canvas is "what visitors see": it renders with the FORM's theme, accent
+   and font (same palettes as the public page), not the admin theme. */
+const CANVAS_DARK = {
+  bg: "#12101F",
+  text: "#ECEAF7",
+  muted: "#8983A6",
+  border: "rgba(255,255,255,0.1)",
+  inputBg: "rgba(255,255,255,0.03)",
+};
+const CANVAS_LIGHT = {
+  bg: "#FFFFFF",
+  text: "#17141F",
+  muted: "#5F5A73",
+  border: "rgba(20,15,45,0.12)",
+  inputBg: "rgba(20,15,45,0.03)",
+};
+type CanvasPalette = typeof CANVAS_DARK;
+
+const canvasFont = (font: "sans" | "lexend" | "mono" | undefined): string =>
+  font === "lexend"
+    ? "'Lexend','Manrope',system-ui,sans-serif"
+    : font === "mono"
+      ? "'JetBrains Mono',ui-monospace,monospace"
+      : "'Manrope',system-ui,sans-serif";
+
+const CANVAS_FONTS_HREF =
+  "https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap";
+
 const ACCENTS = [
   "#8B6CFF",
   "#FF8A5C",
@@ -367,37 +395,65 @@ function CanvasFieldPreview({
   ef,
   locale,
   base,
+  p,
 }: {
   block: ApiFormBlock;
   ef: ApiFormEligibleField | null;
   locale: string;
   base: string;
+  p: CanvasPalette;
 }) {
   const { t } = useLingui();
   const loc = locale !== base ? block.i18n?.[locale] : undefined;
   const ph = loc?.placeholder || block.placeholder || "";
   if (!ef) return null;
   const LeadIcon = blockIcon(ef, block);
+  const boxStyle: React.CSSProperties = {
+    borderColor: p.border,
+    background: p.inputBg,
+    color: p.muted,
+  };
   if (ef.choices) {
     return (
-      <div className="flex h-9 items-center gap-2 rounded-control border border-border bg-background/60 px-3 text-[13px] text-muted-foreground">
-        <LeadIcon size={13} />
-        <span>{t`Select one…`}</span>
-        <span className="ml-auto"><I.ChevronDown size={14} /></span>
-      </div>
+      <>
+        <div className="flex h-10 items-center gap-2 rounded-[10px] border px-3 text-[13.5px]" style={boxStyle}>
+          <LeadIcon size={13} />
+          <span>{t`Select one…`}</span>
+          <span className="ml-auto"><I.ChevronDown size={14} /></span>
+        </div>
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
+          {ef.choices.slice(0, 4).map((c) => (
+            <span
+              key={c}
+              className="rounded-full border px-2.5 py-1 text-[11.5px]"
+              style={{ borderColor: p.border, color: p.muted }}
+            >
+              {c}
+            </span>
+          ))}
+          {ef.choices.length > 4 && (
+            <span
+              className="rounded-full border border-dashed px-2.5 py-1 text-[11.5px]"
+              style={{ borderColor: p.border, color: p.muted }}
+            >
+              + {ef.choices.length - 4} <Trans>more</Trans>
+            </span>
+          )}
+        </div>
+      </>
     );
   }
   if (ef.type === "boolean") {
     return (
-      <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-        <span className="size-4 rounded-sm border border-border bg-background/60" />
+      <div className="flex items-center gap-2 text-[13px]" style={{ color: p.muted }}>
+        <span className="size-4 rounded-sm border" style={{ borderColor: p.border, background: p.inputBg }} />
         <Trans>Yes</Trans>
       </div>
     );
   }
   if (ef.type === "integer" && block.rating) {
     return (
-      <div className="flex items-center gap-1 text-muted-foreground">
+      <div className="flex items-center gap-1" style={{ color: p.muted }}>
         {[1, 2, 3, 4, 5].map((n) => (
           <I.Star key={n} size={17} />
         ))}
@@ -407,34 +463,47 @@ function CanvasFieldPreview({
   }
   if (ef.type === "longtext") {
     return (
-      <div className="flex h-[74px] items-start gap-2 rounded-control border border-border bg-background/60 px-3 py-2 text-[13px] text-muted-foreground/60">
-        <span className="mt-0.5 text-muted-foreground"><LeadIcon size={13} /></span>
-        {ph}
+      <div className="flex h-[74px] items-start gap-2 rounded-[10px] border px-3 py-2.5 text-[13.5px]" style={boxStyle}>
+        <span className="mt-0.5"><LeadIcon size={13} /></span>
+        <span className="opacity-70">{ph}</span>
       </div>
     );
   }
   return (
-    <div className="flex h-9 items-center gap-2 rounded-control border border-border bg-background/60 px-3 text-[13px] text-muted-foreground/60">
-      <span className="text-muted-foreground"><LeadIcon size={13} /></span>
-      {ph || (ef.type === "timestamp" ? "YYYY-MM-DD" : "")}
+    <div className="flex h-10 items-center gap-2 rounded-[10px] border px-3 text-[13.5px]" style={boxStyle}>
+      <LeadIcon size={13} />
+      <span className="opacity-70">{ph || (ef.type === "timestamp" ? "YYYY-MM-DD" : "")}</span>
     </div>
   );
 }
 
-function InsertDot({ onClick }: { onClick: () => void }) {
+function InsertDot({
+  onClick,
+  accent,
+  bg,
+}: {
+  onClick: () => void;
+  accent: string;
+  bg: string;
+}) {
   const { t } = useLingui();
   return (
-    <div className="group/ins relative flex h-4 items-center justify-center">
-      <div className="h-px w-full bg-transparent transition-colors group-hover/ins:bg-primary/30" />
-      <button
-        type="button"
-        title={t`Add block`}
-        onClick={onClick}
-        className="absolute grid size-5 place-items-center rounded-full border border-border bg-card text-muted-foreground opacity-0 transition-opacity hover:border-primary hover:text-primary group-hover/ins:opacity-100"
+    <button
+      type="button"
+      title={t`Add block`}
+      onClick={onClick}
+      className="-mx-6 flex h-3.5 w-[calc(100%+3rem)] items-center gap-2 px-3.5 opacity-60 transition-opacity hover:opacity-100 sm:-mx-8 sm:w-[calc(100%+4rem)]"
+      style={{ color: accent }}
+    >
+      <span className="h-px flex-1" style={{ background: `${accent}73` }} />
+      <span
+        className="grid size-[18px] place-items-center rounded-full border"
+        style={{ borderColor: `${accent}8c`, background: bg }}
       >
-        <I.Plus size={11} />
-      </button>
-    </div>
+        <I.Plus size={10} />
+      </span>
+      <span className="h-px flex-1" style={{ background: `${accent}73` }} />
+    </button>
   );
 }
 
@@ -537,6 +606,38 @@ export function FormsPage({
   const settings: ApiFormSettings = form?.settings ?? {};
   const languages = settings.languages?.length ? settings.languages : ["en"];
   const base = languages[0] ?? "en";
+  const cp: CanvasPalette = settings.theme === "light" ? CANVAS_LIGHT : CANVAS_DARK;
+  const accent = settings.accent ?? ACCENTS[0]!;
+  const family = canvasFont(settings.font);
+
+  // The canvas renders in the form's own fonts — load them once.
+  useEffect(() => {
+    if (document.querySelector(`link[href="${CANVAS_FONTS_HREF}"]`)) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = CANVAS_FONTS_HREF;
+    document.head.appendChild(link);
+  }, []);
+
+  // Collection meta for the open form (versioned drives the submissions
+  // filter + the source-collection caption).
+  const [collVersioned, setCollVersioned] = useState(false);
+  useEffect(() => {
+    if (!form?.collection) return;
+    let cancelled = false;
+    collectionsApi
+      .get(form.collection)
+      .then((r) => {
+        if (!cancelled) setCollVersioned(Boolean(r.data.versioned));
+      })
+      .catch(() => {
+        if (!cancelled) setCollVersioned(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form?.collection]);
 
   /* autosave — debounce every mutation of the working copy */
   const scheduleSave = useCallback(() => {
@@ -826,17 +927,21 @@ export function FormsPage({
           <span className="text-[11.5px] text-muted-foreground">{form.active ? t`live` : t`paused`}</span>
           <Switch checked={form.active} onChange={(v) => patchForm({ active: v })} />
         </div>
-        {tokenCache.has(form.id) ? (
-          <Button
-            variant="primary"
-            icon={I.ExternalLink}
-            onClick={() => window.open(tokenCache.get(form.id)!.url, "_blank")}
-          >
-            <Trans>Open form</Trans>
-          </Button>
-        ) : (
-          <IconButton icon={I.Trash} title={t`Delete form`} onClick={() => setConfirm("delete")} />
-        )}
+        <IconButton icon={I.Trash} title={t`Delete form`} onClick={() => setConfirm("delete")} />
+        <Button
+          variant="primary"
+          icon={I.ExternalLink}
+          onClick={() => {
+            const cached = tokenCache.get(form.id);
+            if (cached) window.open(cached.url, "_blank");
+            else {
+              setTab("share");
+              pushToast(t`Generate a link first — the token is only shown once.`);
+            }
+          }}
+        >
+          <Trans>Open form</Trans>
+        </Button>
       </div>
 
       {tab === "edit" && (
@@ -847,16 +952,16 @@ export function FormsPage({
               <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
                 <Trans>canvas · what visitors see</Trans>
               </span>
-              <div className="ml-auto flex items-center gap-1">
+              <div className="ml-auto flex items-center gap-0.5 rounded-full border border-border bg-card p-0.5">
                 {languages.map((l) => (
                   <button
                     key={l}
                     type="button"
                     onClick={() => setLocale(l)}
-                    className={`rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase ${
+                    className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] uppercase ${
                       locale === l
-                        ? "border-primary bg-primary/15 text-primary"
-                        : "border-border text-muted-foreground hover:text-foreground"
+                        ? "bg-primary/20 text-primary ring-1 ring-inset ring-primary/40"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {l}
@@ -871,13 +976,19 @@ export function FormsPage({
                   }}
                 />
               </div>
+              <span className="font-mono text-[10px] text-muted-foreground/70">
+                theme: {settings.theme ?? "dark"} · {accent.toLowerCase()}
+              </span>
             </div>
             {locale !== base && (
               <div className="mb-2 rounded-control border border-primary/30 bg-primary/10 px-3 py-1.5 text-[11.5px] text-primary">
                 <Trans>editing {locale.toUpperCase()} — empty strings fall back to {base.toUpperCase()}</Trans>
               </div>
             )}
-            <Card className="gap-0 p-6 sm:p-8">
+            <div
+              className="rounded-[20px] border p-6 shadow-[0_24px_70px_rgba(0,0,0,0.35)] transition-colors sm:p-8"
+              style={{ background: cp.bg, borderColor: cp.border, color: cp.text, fontFamily: family }}
+            >
               <input
                 value={
                   locale === base
@@ -886,7 +997,8 @@ export function FormsPage({
                 }
                 placeholder={locale === base ? t`Form title` : form.name}
                 onChange={(e) => patchFormText("title", e.target.value)}
-                className="w-full bg-transparent text-[24px] font-semibold tracking-tight outline-none placeholder:text-muted-foreground/40"
+                className="w-full bg-transparent text-[28px] font-medium tracking-tight outline-none placeholder:opacity-40"
+                style={{ color: cp.text, fontFamily: `'Lexend',${family}` }}
               />
               <input
                 value={
@@ -900,11 +1012,12 @@ export function FormsPage({
                     : settings.description ?? t`Add a description…`
                 }
                 onChange={(e) => patchFormText("description", e.target.value)}
-                className="mt-1 w-full bg-transparent text-[13.5px] text-muted-foreground outline-none placeholder:text-muted-foreground/40"
+                className="mt-1 w-full bg-transparent text-[13.5px] outline-none placeholder:opacity-40"
+                style={{ color: cp.muted }}
               />
 
               <div className="mt-5 flex flex-col">
-                <InsertDot onClick={() => setInsertAt(0)} />
+                <InsertDot accent={accent} bg={cp.bg} onClick={() => setInsertAt(0)} />
                 {form.fields.map((b, i) => {
                   const kind = b.kind ?? "field";
                   const ef = kind === "field" ? efByName.get(b.name ?? "") ?? null : null;
@@ -952,12 +1065,20 @@ export function FormsPage({
                         }}
                         onClick={() => setSel({ kind: "block", id: b.id! })}
                         onKeyDown={(e) => e.key === "Enter" && setSel({ kind: "block", id: b.id! })}
-                        className={`group/blk relative -mx-6 cursor-pointer rounded-[11px] px-6 py-2.5 transition-colors hover:bg-foreground/[0.04] sm:-mx-8 sm:px-8 ${
-                          selected ? "ring-[1.5px] ring-primary shadow-[0_0_14px_-2px] shadow-primary/40" : ""
+                        className={`group/blk relative -mx-6 cursor-pointer rounded-[11px] px-6 py-2.5 transition-colors sm:-mx-8 sm:px-8 ${
+                          settings.theme === "light" ? "hover:bg-black/[0.04]" : "hover:bg-white/[0.04]"
                         } ${dragId === b.id ? "opacity-40" : ""}`}
+                        style={
+                          selected
+                            ? { boxShadow: `0 0 0 1.5px ${accent}, 0 0 14px ${accent}40` }
+                            : undefined
+                        }
                       >
                         {b.cond && (
-                          <span className="pointer-events-none absolute -top-2 right-3 flex items-center gap-1 rounded-full border border-primary/50 bg-card px-2 py-0.5 font-mono text-[9.5px] text-primary">
+                          <span
+                            className="pointer-events-none absolute -top-2 right-3 flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9.5px]"
+                            style={{ background: cp.bg, borderColor: `${accent}80`, color: accent }}
+                          >
                             <I.Network size={9} />
                             {t`if`} {b.cond.field} {b.cond.op === "is" ? "=" : "≠"} {b.cond.value}
                           </span>
@@ -997,42 +1118,65 @@ export function FormsPage({
                         </div>
                         {kind === "step" ? (
                           <div className="flex items-center gap-3 py-1">
-                            <span className="rounded-control bg-primary/90 px-3 py-1.5 text-[12.5px] font-semibold text-primary-foreground">
+                            <span
+                              className="rounded-[10px] px-4 py-2 text-[12.5px] font-bold text-white opacity-90"
+                              style={{ background: accent }}
+                            >
                               <Trans>Next →</Trans>
                             </span>
-                            <span className="font-mono text-[10px] uppercase tracking-wide text-primary">
+                            <span className="font-mono text-[10px] uppercase tracking-wide" style={{ color: accent }}>
                               <Trans>step {stepNo}</Trans>
                             </span>
                             <span className="text-[14px] font-semibold">{label}</span>
                           </div>
                         ) : (
                           <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center gap-1.5 text-[13px] font-medium">
+                            <div className="flex items-center gap-1.5 text-[13.5px] font-medium">
                               <span>{label}</span>
-                              {ef?.required && <span className="text-primary">*</span>}
                               {locale !== base && (
-                                <span className="ml-auto font-mono text-[9.5px] uppercase text-muted-foreground/70">
+                                <span className="ml-1 font-mono text-[9.5px] uppercase opacity-50">
                                   {loc?.label ? locale : base}
                                 </span>
                               )}
+                              {ef?.required && (
+                                <span className="ml-auto" style={{ color: accent }}>*</span>
+                              )}
                             </div>
-                            <CanvasFieldPreview block={b} ef={ef} locale={locale} base={base} />
+                            <CanvasFieldPreview block={b} ef={ef} locale={locale} base={base} p={cp} />
                             {(loc?.help || b.help) && (
-                              <span className="text-[11.5px] text-muted-foreground">
+                              <span className="text-[12px]" style={{ color: cp.muted }}>
                                 {loc?.help || b.help}
                               </span>
                             )}
                           </div>
                         )}
                       </div>
-                      <InsertDot onClick={() => setInsertAt(i + 1)} />
+                      <InsertDot accent={accent} bg={cp.bg} onClick={() => setInsertAt(i + 1)} />
                     </div>
                   );
                 })}
 
                 {dropIdx === form.fields.length && dragId && (
-                  <div className="h-0.5 rounded-full bg-primary" />
+                  <div className="h-0.5 rounded-full" style={{ background: accent }} />
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => setInsertAt(form.fields.length)}
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-[11px] border border-dashed py-2.5 font-mono text-[11.5px] transition-colors"
+                  style={{ borderColor: cp.border, color: cp.muted }}
+                >
+                  <I.Plus size={12} />
+                  <Trans>add block</Trans>
+                </button>
+
+                <div className="mb-3 mt-6 flex items-center gap-2.5">
+                  <span className="h-px flex-1" style={{ background: cp.border }} />
+                  <span className="font-mono text-[9.5px] uppercase tracking-[0.14em]" style={{ color: cp.muted }}>
+                    <Trans>ending</Trans>
+                  </span>
+                  <span className="h-px flex-1" style={{ background: cp.border }} />
+                </div>
 
                 {/* ending — also a drop target for "move to the end" */}
                 <div
@@ -1051,26 +1195,29 @@ export function FormsPage({
                   }}
                   onClick={() => setSel({ kind: "ending" })}
                   onKeyDown={(e) => e.key === "Enter" && setSel({ kind: "ending" })}
-                  className={`mt-2 cursor-pointer rounded-surface border px-4 py-4 transition-colors ${
-                    sel?.kind === "ending" ? "border-primary/60 bg-primary/5" : "border-transparent hover:border-border"
-                  }`}
+                  className="-mx-2 cursor-pointer rounded-[11px] px-2 py-1 transition-shadow"
+                  style={
+                    sel?.kind === "ending"
+                      ? { boxShadow: `0 0 0 1.5px ${accent}, 0 0 14px ${accent}40` }
+                      : undefined
+                  }
                 >
-                  <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                    <Trans>ending</Trans>
-                  </span>
-                  <span className="inline-block rounded-control bg-primary/90 px-4 py-2 text-[13px] font-semibold text-primary-foreground">
+                  <span
+                    className="inline-block rounded-[10px] px-5 py-2.5 text-[13px] font-bold text-white opacity-90"
+                    style={{ background: accent }}
+                  >
                     {(locale !== base ? settings.i18n?.[locale]?.submitLabel : undefined) ||
                       settings.submitLabel ||
                       t`Submit`}
                   </span>
-                  <p className="mt-2 text-[12.5px] text-muted-foreground">
+                  <p className="mt-2.5 text-[12.5px]" style={{ color: cp.muted }}>
                     {(locale !== base ? settings.i18n?.[locale]?.successMessage : undefined) ||
                       settings.successMessage ||
                       t`Your submission has been received.`}
                   </p>
                 </div>
               </div>
-            </Card>
+            </div>
             <p className="mt-2 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
               <I.Lock size={11} />
               <Trans>submissions run collection validation · versioned collections land as drafts</Trans>
@@ -1109,6 +1256,8 @@ export function FormsPage({
                 languages={languages}
                 collection={form.collection}
                 eligibleCount={eligible.length}
+                versioned={collVersioned}
+                onOpenCollection={() => setActiveNav?.("collections/" + form.collection)}
                 onPatch={patchSettings}
               />
             )}
@@ -1136,6 +1285,7 @@ export function FormsPage({
           form={form}
           fieldBlocks={fieldBlocks}
           efByName={efByName}
+          versioned={collVersioned}
           pushToast={pushToast}
           onOpenCollection={() => setActiveNav?.("collections/" + form.collection)}
         />
@@ -1330,12 +1480,16 @@ function DesignPanel({
   languages,
   collection,
   eligibleCount,
+  versioned,
+  onOpenCollection,
   onPatch,
 }: {
   settings: ApiFormSettings;
   languages: string[];
   collection: string;
   eligibleCount: number;
+  versioned: boolean;
+  onOpenCollection: () => void;
   onPatch: (p: Partial<ApiFormSettings>) => void;
 }) {
   const { t } = useLingui();
@@ -1446,19 +1600,26 @@ function DesignPanel({
             one. Missing strings fall back to the base language.</Trans>
           </span>
         </div>
-      </PanelCard>
-      <PanelCard icon={I.Database} title={<Trans>source collection</Trans>}>
-        <div className="flex items-center gap-2 rounded-control border border-border bg-background/50 px-3 py-2">
-          <I.Database size={13} />
-          <span className="font-mono text-[12px]">{collection}</span>
-          <span className="ml-auto text-[10.5px] text-muted-foreground">
-            <Trans>{eligibleCount} eligible fields</Trans>
-          </span>
+        <div className="flex flex-col gap-1.5 border-t border-border pt-3">
+          <PanelLabel><Trans>source collection</Trans></PanelLabel>
+          <div className="flex items-center gap-2 rounded-control border border-border bg-background/50 px-3 py-2.5">
+            <span className="grid size-6 shrink-0 place-items-center rounded-[7px] bg-primary/10 text-primary">
+              <I.Database size={12} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-mono text-[12px]">{collection}</div>
+              <div className="truncate text-[10.5px] text-muted-foreground">
+                <Trans>{eligibleCount} eligible fields</Trans>
+                {versioned && <span> · <Trans>versioned</Trans></span>}
+              </div>
+            </div>
+            <IconButton icon={I.ExternalLink} title={t`Open collection`} onClick={onOpenCollection} />
+          </div>
+          <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+            <Trans>Select a block on the canvas to edit its settings. Only scalar,
+            non-private fields can be exposed.</Trans>
+          </p>
         </div>
-        <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-          <Trans>Select a block on the canvas to edit its settings. Only scalar,
-          non-private fields can be exposed.</Trans>
-        </p>
       </PanelCard>
     </>
   );
@@ -2116,12 +2277,14 @@ function SubmissionsTab({
   form,
   fieldBlocks,
   efByName,
+  versioned,
   pushToast,
   onOpenCollection,
 }: {
   form: ApiForm;
   fieldBlocks: ApiFormBlock[];
   efByName: Map<string, ApiFormEligibleField>;
+  versioned: boolean;
   pushToast: (m: string) => void;
   onOpenCollection: () => void;
 }) {
@@ -2129,27 +2292,9 @@ function SubmissionsTab({
   const [rows, setRows] = useState<Record<string, unknown>[] | null>(null);
   const [filter, setFilter] = useState<"all" | "draft" | "published">("all");
   const [total, setTotal] = useState<number | null>(null);
-  const [versioned, setVersioned] = useState(false);
   const [selRow, setSelRow] = useState<Record<string, unknown> | null>(null);
 
   const cols = fieldBlocks.slice(0, 4).map((b) => b.name!).filter(Boolean);
-
-  // The draft/published filter follows the collection's `versioned` flag (not
-  // row sniffing — an empty versioned collection must still show it).
-  useEffect(() => {
-    let cancelled = false;
-    collectionsApi
-      .get(form.collection)
-      .then((r) => {
-        if (!cancelled) setVersioned(Boolean(r.data.versioned));
-      })
-      .catch(() => {
-        if (!cancelled) setVersioned(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [form.collection]);
 
   useEffect(() => {
     let cancelled = false;

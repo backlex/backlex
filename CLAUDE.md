@@ -198,6 +198,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Storage + transforms | `docs/storage.md` |
 | Resumable uploads (TUS) | `docs/resumable-uploads.md` |
 | Functions sandbox | `docs/sandbox.md` |
+| Extensions (installable panels/field editors/hooks) | `docs/extensions.md` |
 | Durable job queue (retry / DLQ / scheduled) | `docs/jobs.md` |
 | Flows (event/cron/manual/webhook automation) | `docs/flows.md` |
 | AI agents (reason→act loop + tools + memory) | `docs/agents.md` |

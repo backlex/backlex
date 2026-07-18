@@ -143,6 +143,7 @@ export default defineConfig({
             { slug: "graphql" },
             { slug: "webhooks" },
             { slug: "sandbox" },
+            { slug: "extensions" },
             { slug: "sdk-and-cli" },
             { slug: "client-sdks" },
             { slug: "mcp" },

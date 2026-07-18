@@ -9,6 +9,7 @@ import { runBackup } from "../src/backup";
 import { runUsers, runRoles, runFlags, runSettings } from "../src/admin";
 import { runPermissions } from "../src/permissions";
 import { runFunctions } from "../src/functions";
+import { runExtensions } from "../src/extensions";
 import { runFlows } from "../src/flows";
 import { runDashboards } from "../src/dashboards";
 import { runForms } from "../src/forms";
@@ -86,6 +87,10 @@ Usage:
 
   backlex flows <list|get|run|create|delete>
       Visual workflow builder (definitions as JSON).
+
+  backlex extensions <list|install|push|enable|disable|uninstall|invoke>
+      Extension packages. \`install <pkg>\` pulls from npm; \`push <dir>\` uploads
+      a local extension for development.
 
   backlex dashboards <list|get|run|create|delete|share|revoke>
       Embedded BI dashboards. \`share <id>\` mints a public embed token.
@@ -227,6 +232,11 @@ const run = async () => {
     case "flows":
     case "flow":
       await runFlows(rest);
+      return;
+    case "extensions":
+    case "extension":
+    case "ext":
+      await runExtensions(rest);
       return;
     case "dashboards":
     case "dashboard":

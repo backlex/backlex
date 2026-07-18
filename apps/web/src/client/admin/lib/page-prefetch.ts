@@ -22,6 +22,7 @@ const LOADERS: Record<string, () => Promise<unknown>> = {
   "schema-graph": () => import("../pages/schema-graph"),
   users: () => import("../pages/users"),
   settings: () => import("../pages/settings"),
+  extensions: () => import("../pages/extensions"),
   "rest-explorer": () => import("@/pages/rest-explorer"),
 };
 

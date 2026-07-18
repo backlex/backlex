@@ -16,7 +16,10 @@ import { Textarea } from "@backlex/ui/components/textarea";
 import { Select } from "./select";
 import { DatePicker } from "@/components/date-picker";
 import { RelationPicker, AppUserPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
-import { useSettings } from "./queries";
+import { useEnabledExtensions, useSettings } from "./queries";
+import { ExtensionFrame } from "./extension-frame";
+import { getInterface } from "./interfaces";
+import type { ApiExtension } from "./api";
 
 export type SchemaField = {
   name: string;
@@ -468,6 +471,24 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
   // until the body resolves the group order; the body seeds it to the first group.
   const [activeTab, setActiveTab] = useState<string | null>(null);
 
+  // Field editors contributed by enabled extensions, keyed by interface id.
+  // When a field's `interface` matches, a sandboxed `ExtensionFrame` replaces
+  // the built-in editor (same label/error chrome). Built-in catalog ids are
+  // skipped so an extension can never shadow `input`/`dropdown`/etc.; across
+  // extensions, first contribution wins on duplicate ids.
+  const extensionsQuery = useEnabledExtensions();
+  const extFieldEditors = useMemo(() => {
+    const map = new Map<string, { extension: ApiExtension; entry: string }>();
+    for (const ext of extensionsQuery.data?.data ?? []) {
+      for (const ed of ext.manifest?.contributes?.fieldEditors ?? []) {
+        if (ed.interface && !getInterface(ed.interface) && !map.has(ed.interface)) {
+          map.set(ed.interface, { extension: ext, entry: ed.entry });
+        }
+      }
+    }
+    return map;
+  }, [extensionsQuery.data]);
+
   // Workspace languages drive the per-locale inputs for `localized` fields.
   // Falls back to `["en"]` until settings load (or if none are configured).
   const settings = useSettings();
@@ -601,6 +622,29 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
         ) : null}
       </>
     );
+
+    // ── Extension-contributed field editors ───────────────────────────────
+    // Runs ahead of every built-in interface branch: when the field's
+    // persisted `interface` matches an enabled extension's fieldEditors
+    // contribution, a sandboxed iframe owns the input. Wrapped in the same
+    // label + error chrome as the built-ins so the form layout stays uniform.
+    const extEditor = iface ? extFieldEditors.get(iface) : undefined;
+    if (extEditor) {
+      return (
+        <div key={f.name} className="flex flex-col gap-1.5">
+          {label}
+          <ExtensionFrame
+            extension={extEditor.extension}
+            entry={extEditor.entry}
+            mode="field-editor"
+            value={val}
+            field={f}
+            onValueChange={setField}
+          />
+          {errBlock}
+        </div>
+      );
+    }
 
     // ── Localized (sidecar) fields ────────────────────────────────────────
     // Any type can be `localized`; the value is a `{locale: value}` map. Instead

@@ -746,6 +746,94 @@ export const functionsApi = {
   list: () => api<Envelope<ApiFunction[]>>(`/api/functions`),
 };
 
+// ── Extensions (installable admin add-ons, #13) ─────────────────────────────
+export interface ApiExtensionPanel {
+  id: string;
+  title: string;
+  icon?: string;
+  entry: string;
+}
+
+export interface ApiExtensionFieldEditor {
+  /** Interface id persisted as `field.interface` when an admin picks it. */
+  interface: string;
+  title: string;
+  /** Storage types this editor accepts; absent = any type. */
+  types?: string[];
+  entry: string;
+}
+
+export interface ApiExtensionHook {
+  id: string;
+  trigger: "event" | "manual";
+  pattern?: string;
+  entry: string;
+  timeoutMs?: number;
+}
+
+export interface ApiExtensionManifest {
+  name: string;
+  version: string;
+  title: string;
+  description?: string;
+  contributes: {
+    panels?: ApiExtensionPanel[];
+    fieldEditors?: ApiExtensionFieldEditor[];
+    hooks?: ApiExtensionHook[];
+  };
+  /** API allow-list for the iframe bridge, e.g. `"GET /api/items/posts"`,
+   *  `"* /api/items/*"`. Enforced client- AND server-side. */
+  permissions?: { api?: string[] };
+}
+
+export interface ApiExtension {
+  id: string;
+  name: string;
+  version: string;
+  source: "npm" | "upload";
+  npmPackage: string | null;
+  enabled: boolean;
+  manifest: ApiExtensionManifest;
+}
+
+/** SandboxResult shape returned by the manual hook-invoke endpoint. */
+export interface ApiExtensionHookResult {
+  ok: boolean;
+  logs: string[];
+  error?: string;
+  durationMs: number;
+  value?: unknown;
+}
+
+export const extensionsApi = {
+  list: () => api<Envelope<ApiExtension[]>>(`/api/extensions`),
+  /** Enabled extensions only — readable by any signed-in user (drives the
+   *  sidebar panels + field-editor injection, not just the admin page). */
+  enabled: () => api<Envelope<ApiExtension[]>>(`/api/extensions/enabled`),
+  install: (pkg: string, version?: string) =>
+    api<Envelope<ApiExtension>>(`/api/extensions/install`, {
+      method: "POST",
+      body: JSON.stringify({ package: pkg, ...(version ? { version } : {}) }),
+    }),
+  upload: (files: Record<string, string>) =>
+    api<Envelope<ApiExtension>>(`/api/extensions/upload`, {
+      method: "POST",
+      body: JSON.stringify({ files }),
+    }),
+  setEnabled: (name: string, enabled: boolean) =>
+    api<Envelope<ApiExtension>>(`/api/extensions/${encodeURIComponent(name)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ enabled }),
+    }),
+  uninstall: (name: string) =>
+    api<{ ok: true }>(`/api/extensions/${encodeURIComponent(name)}`, { method: "DELETE" }),
+  invokeHook: (name: string, hookId: string, body: unknown) =>
+    api<ApiExtensionHookResult>(
+      `/api/extensions/${encodeURIComponent(name)}/hooks/${encodeURIComponent(hookId)}/invoke`,
+      { method: "POST", body: JSON.stringify(body ?? {}) },
+    ),
+};
+
 export type ApiJobStatus =
   | "pending"
   | "active"

@@ -2020,6 +2020,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
@@ -2690,6 +2691,10 @@ msgstr "Continue"
 #: src/client/components/platform-sso.tsx
 msgid "Continue with {0}"
 msgstr "Continue with {0}"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Contributes"
+msgstr "Contributes"
 
 #: src/client/pages/api-keys.tsx
 msgid "Controls what this key can do through the MCP server only — REST authorization is unaffected. You can change all of this later from the key’s Connect MCP panel."
@@ -3581,6 +3586,10 @@ msgstr "Direct access to the underlying engine. Adapter: <0>{0}</0>. SQL editor 
 msgid "Direct Streamable HTTP — useful for CI agents and smoke tests."
 msgstr "Direct Streamable HTTP — useful for CI agents and smoke tests."
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Disable"
+msgstr "Disable"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Disable embed"
 msgstr "Disable embed"
@@ -4129,6 +4138,7 @@ msgstr "Empty collection"
 #~ msgstr "Empty or template"
 
 #: src/client/admin/app.tsx
+#: src/client/admin/pages/extensions.tsx
 msgid "Enable"
 msgstr "Enable"
 
@@ -4146,6 +4156,7 @@ msgid "enabled"
 msgstr "enabled"
 
 #: src/client/admin/collection-settings.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
@@ -4384,6 +4395,10 @@ msgstr "Every write is versioned. Inspect, diff, or revert any prior state."
 msgid "everyone"
 msgstr "everyone"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Exact package name as published on npm."
+msgstr "Exact package name as published on npm."
+
 #: src/client/admin/pages/functions.tsx
 msgid "Examples: items:posts:created, items:posts:*, items:*:*"
 msgstr "Examples: items:posts:created, items:posts:*, items:*:*"
@@ -4472,6 +4487,48 @@ msgstr "Exported result.csv."
 msgid "Exported translations.json."
 msgstr "Exported translations.json."
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension"
+msgstr "Extension"
+
+#. placeholder {0}: installed.name
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension \"{0}\" installed."
+msgstr "Extension \"{0}\" installed."
+
+#. placeholder {0}: ext.name
+#. placeholder {1}: r.data.version
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension \"{0}\" updated to v{1}."
+msgstr "Extension \"{0}\" updated to v{1}."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension \"{name}\" disabled."
+msgstr "Extension \"{name}\" disabled."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension \"{name}\" enabled."
+msgstr "Extension \"{name}\" enabled."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension \"{name}\" uninstalled."
+msgstr "Extension \"{name}\" uninstalled."
+
+#. placeholder {0}: panel.extension.name
+#. placeholder {1}: panel.extension.version
+#: src/client/admin/app.tsx
+msgid "Extension panel · {0} v{1}"
+msgstr "Extension panel · {0} v{1}"
+
+#: src/client/admin/pages/extensions.tsx
+#: src/client/admin/ui.tsx
+msgid "Extensions"
+msgstr "Extensions"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Extensions add sandboxed admin panels, custom field editors, and server hooks. Install any npm package that ships a backlex-extension.json manifest."
+msgstr "Extensions add sandboxed admin panels, custom field editors, and server hooks. Install any npm package that ships a backlex-extension.json manifest."
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "External identity rows are kept as an audit trail."
 msgstr "External identity rows are kept as an audit trail."
@@ -4548,6 +4605,10 @@ msgstr "February"
 msgid "Fetch & parse"
 msgstr "Fetch & parse"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Fetched from the npm registry. The package must ship a backlex-extension.json manifest at its root."
+msgstr "Fetched from the npm registry. The package must ship a backlex-extension.json manifest at its root."
+
 #: src/client/admin/items.tsx
 msgid "Fetching subfields…"
 msgstr "Fetching subfields…"
@@ -4580,6 +4641,10 @@ msgstr "Field \"{0}\" updated."
 #: src/client/admin/app.tsx
 msgid "Field \"{0}\" updated. Search index rebuilt ({1} of {2} rows indexed)."
 msgstr "Field \"{0}\" updated. Search index rebuilt ({1} of {2} rows indexed)."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "field editors"
+msgstr "field editors"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Field name"
@@ -5244,6 +5309,10 @@ msgstr "Honeypot"
 msgid "Hook"
 msgstr "Hook"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "hooks"
+msgstr "hooks"
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Hosted Claude"
 msgstr "Hosted Claude"
@@ -5471,6 +5540,22 @@ msgstr "Inspect failed: {inspectError}"
 msgid "Inspecting…"
 msgstr "Inspecting…"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Install"
+msgstr "Install"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Install extension"
+msgstr "Install extension"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Installable add-ons — sandboxed panels, field editors, and hooks from npm packages."
+msgstr "Installable add-ons — sandboxed panels, field editors, and hooks from npm packages."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Installing…"
+msgstr "Installing…"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Integer between 1 and 200."
 msgstr "Integer between 1 and 200."
@@ -5674,6 +5759,10 @@ msgstr "Items matching this rule are allowed for {r}."
 #: src/client/admin/app.tsx
 msgid "Items refreshed."
 msgstr "Items refreshed."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Its panels, field editors, and hooks stop working immediately. Fields using its editors fall back to the default editor for their type. This can't be undone — reinstall to bring it back."
+msgstr "Its panels, field editors, and hooks stop working immediately. Fields using its editors fall back to the default editor for their type. This can't be undone — reinstall to bring it back."
 
 #: src/client/admin/item-views.tsx
 msgid "January"
@@ -6049,6 +6138,10 @@ msgstr "Leave blank to use the URL's last path segment. Slashes auto-create fold
 #: src/client/admin/flow-builder.tsx
 msgid "leave empty for admins"
 msgstr "leave empty for admins"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Leave empty for the latest published version."
+msgstr "Leave empty for the latest published version."
 
 #: src/client/admin/flow-builder.tsx
 msgid "leave empty to pass the trigger payload"
@@ -7160,6 +7253,10 @@ msgstr "No errors recorded."
 msgid "No errors."
 msgstr "No errors."
 
+#: src/client/admin/pages/extensions.tsx
+msgid "No extensions installed"
+msgstr "No extensions installed"
+
 #: src/client/admin/pages/feature-flags.tsx
 msgid "No feature flags"
 msgstr "No feature flags"
@@ -7624,6 +7721,10 @@ msgstr "Notifications"
 msgid "November"
 msgstr "November"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "npm package"
+msgstr "npm package"
+
 #: src/client/admin/parity/insights.tsx
 msgid "numeric column average"
 msgstr "numeric column average"
@@ -7986,6 +8087,10 @@ msgstr "Panel \"{name}\" saved."
 #: src/client/admin/parity/insights.tsx
 msgid "panel data limited to this role's read permission"
 msgstr "panel data limited to this role's read permission"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "panels"
+msgstr "panels"
 
 #: src/client/admin/parity/insights.tsx
 msgid "panels run with full read access — for fully public stats"
@@ -9091,6 +9196,10 @@ msgstr "Register a physical table as a backlex collection. No DDL is run on the 
 #: src/client/admin/collections-index.tsx
 msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
 msgstr "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Reinstall / upgrade"
+msgstr "Reinstall / upgrade"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Reject"
@@ -11094,6 +11203,7 @@ msgid "Soft delete"
 msgstr "Soft delete"
 
 #: src/client/admin/item-form.tsx
+#: src/client/admin/pages/extensions.tsx
 msgid "Source"
 msgstr "Source"
 
@@ -12284,6 +12394,18 @@ msgstr "Ungrouped"
 msgid "Unified log explorer over the activity audit store. Switch between the Stream lens (HTTP, data, automation, functions, storage) and the Table audit trail — both read the same rows."
 msgstr "Unified log explorer over the activity audit store. Switch between the Stream lens (HTTP, data, automation, functions, storage) and the Table audit trail — both read the same rows."
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Uninstall"
+msgstr "Uninstall"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Uninstall extension"
+msgstr "Uninstall extension"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Uninstall extension?"
+msgstr "Uninstall extension?"
+
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/schema-graph.tsx
 msgid "unique"
@@ -12396,6 +12518,14 @@ msgstr "Update password"
 #: src/client/admin/storage/widgets.tsx
 msgid "Updated"
 msgstr "Updated"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Updating…"
+msgstr "Updating…"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "upload"
+msgstr "upload"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
@@ -12700,6 +12830,10 @@ msgstr "Verifying…"
 #: src/client/pages/openapi-export.tsx
 msgid "Version"
 msgstr "Version"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Version <0>(optional)</0>"
+msgstr "Version <0>(optional)</0>"
 
 #: src/client/admin/pages/forms.tsx
 msgid "versioned"

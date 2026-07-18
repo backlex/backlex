@@ -101,3 +101,7 @@ TEST_ADMIN_PASSWORD = "correct-horse-battery"
 # OAUTH_GITHUB_CLIENT_SECRET = "..."
 # OAUTH_APPLE_CLIENT_ID = "..."          # Service ID (e.g. com.example.signin)
 # OAUTH_APPLE_CLIENT_SECRET = "..."      # Generated JWT signed with the Apple key
+
+# Extension installs resolve npm packages against this registry. Defaults to
+# the public registry; point at a private mirror to gate what admins can pull.
+# EXTENSIONS_NPM_REGISTRY = "https://registry.npmjs.org"

@@ -400,6 +400,17 @@ function WebhooksSkeletonImpl() {
   );
 }
 
+/** Extensions — header (install), then the extensions table card
+ *  (extension / source / contributes / enabled / actions). */
+function ExtensionsSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-4.5">
+      <HeaderSkeleton actions={1} />
+      <TableCardSkeleton rows={4} cols={5} />
+    </div>
+  );
+}
+
 /** Forms — header (refresh + new form), then the forms table card
  *  (name / collection / fields / active / actions). */
 function FormsSkeletonImpl() {
@@ -855,6 +866,7 @@ export const DatabaseSkeleton = withSkeletonDelay(DatabaseSkeletonImpl);
 export const FlowsSkeleton = withSkeletonDelay(FlowsSkeletonImpl);
 export const FunctionsSkeleton = withSkeletonDelay(FunctionsSkeletonImpl);
 export const WebhooksSkeleton = withSkeletonDelay(WebhooksSkeletonImpl);
+export const ExtensionsSkeleton = withSkeletonDelay(ExtensionsSkeletonImpl);
 export const FormsSkeleton = withSkeletonDelay(FormsSkeletonImpl);
 export const RealtimeSkeleton = withSkeletonDelay(RealtimeSkeletonImpl);
 export const SearchPlaygroundSkeleton = withSkeletonDelay(SearchPlaygroundSkeletonImpl);
@@ -915,6 +927,8 @@ export function PageSkeleton({ nav }: { nav: string }) {
     case "webhooks":
     case "integrations":
       return <WebhooksSkeleton />;
+    case "extensions":
+      return <ExtensionsSkeleton />;
     case "forms":
       return <FormsSkeleton />;
     case "realtime":

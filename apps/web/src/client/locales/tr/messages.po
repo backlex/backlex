@@ -2020,6 +2020,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
@@ -2690,6 +2691,10 @@ msgstr "Devam et"
 #: src/client/components/platform-sso.tsx
 msgid "Continue with {0}"
 msgstr "{0} ile devam et"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Contributes"
+msgstr "Katkılar"
 
 #: src/client/pages/api-keys.tsx
 msgid "Controls what this key can do through the MCP server only — REST authorization is unaffected. You can change all of this later from the key’s Connect MCP panel."
@@ -3581,6 +3586,10 @@ msgstr "Altta yatan motora doğrudan erişim. Adaptör: <0>{0}</0>. SQL editör�
 msgid "Direct Streamable HTTP — useful for CI agents and smoke tests."
 msgstr "Doğrudan Streamable HTTP — CI ajanları ve duman testleri için kullanışlı."
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Disable"
+msgstr "Devre dışı bırak"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Disable embed"
 msgstr "Gömmeyi kapat"
@@ -4129,6 +4138,7 @@ msgstr "Boş koleksiyon"
 #~ msgstr "Boş veya şablon"
 
 #: src/client/admin/app.tsx
+#: src/client/admin/pages/extensions.tsx
 msgid "Enable"
 msgstr "Etkinleştir"
 
@@ -4146,6 +4156,7 @@ msgid "enabled"
 msgstr "etkin"
 
 #: src/client/admin/collection-settings.tsx
+#: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
@@ -4384,6 +4395,10 @@ msgstr "Her yazma işlemi sürümlenir. Önceki herhangi bir durumu inceleyin, k
 msgid "everyone"
 msgstr "herkes"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Exact package name as published on npm."
+msgstr "npm'de yayınlandığı haliyle tam paket adı."
+
 #: src/client/admin/pages/functions.tsx
 msgid "Examples: items:posts:created, items:posts:*, items:*:*"
 msgstr "Örnekler: items:posts:created, items:posts:*, items:*:*"
@@ -4472,6 +4487,48 @@ msgstr "result.csv dışa aktarıldı."
 msgid "Exported translations.json."
 msgstr "translations.json dışa aktarıldı."
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension"
+msgstr "Eklenti"
+
+#. placeholder {0}: installed.name
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension \"{0}\" installed."
+msgstr "\"{0}\" eklentisi kuruldu."
+
+#. placeholder {0}: ext.name
+#. placeholder {1}: r.data.version
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension \"{0}\" updated to v{1}."
+msgstr "\"{0}\" eklentisi v{1} sürümüne güncellendi."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension \"{name}\" disabled."
+msgstr "\"{name}\" eklentisi devre dışı bırakıldı."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension \"{name}\" enabled."
+msgstr "\"{name}\" eklentisi etkinleştirildi."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Extension \"{name}\" uninstalled."
+msgstr "\"{name}\" eklentisi kaldırıldı."
+
+#. placeholder {0}: panel.extension.name
+#. placeholder {1}: panel.extension.version
+#: src/client/admin/app.tsx
+msgid "Extension panel · {0} v{1}"
+msgstr "Eklenti paneli · {0} v{1}"
+
+#: src/client/admin/pages/extensions.tsx
+#: src/client/admin/ui.tsx
+msgid "Extensions"
+msgstr "Eklentiler"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Extensions add sandboxed admin panels, custom field editors, and server hooks. Install any npm package that ships a backlex-extension.json manifest."
+msgstr "Eklentiler; korumalı yönetim panelleri, özel alan editörleri ve sunucu kancaları ekler. backlex-extension.json manifestosu içeren herhangi bir npm paketini kurabilirsiniz."
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "External identity rows are kept as an audit trail."
 msgstr "Harici kimlik satırları denetim kaydı olarak tutulur."
@@ -4548,6 +4605,10 @@ msgstr "Şubat"
 msgid "Fetch & parse"
 msgstr "Getir ve ayrıştır"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Fetched from the npm registry. The package must ship a backlex-extension.json manifest at its root."
+msgstr "npm kayıt deposundan indirilir. Paketin kökünde bir backlex-extension.json manifestosu bulunmalıdır."
+
 #: src/client/admin/items.tsx
 msgid "Fetching subfields…"
 msgstr "Alt alanlar getiriliyor…"
@@ -4580,6 +4641,10 @@ msgstr "\"{0}\" alanı güncellendi."
 #: src/client/admin/app.tsx
 msgid "Field \"{0}\" updated. Search index rebuilt ({1} of {2} rows indexed)."
 msgstr "\"{0}\" alanı güncellendi. Arama indeksi yeniden oluşturuldu ({2} satırın {1} tanesi indekslendi)."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "field editors"
+msgstr "alan editörü"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Field name"
@@ -5244,6 +5309,10 @@ msgstr "Honeypot"
 msgid "Hook"
 msgstr "Hook"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "hooks"
+msgstr "kanca"
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Hosted Claude"
 msgstr "Barındırılan Claude"
@@ -5471,6 +5540,22 @@ msgstr "İnceleme başarısız: {inspectError}"
 msgid "Inspecting…"
 msgstr "İnceleniyor…"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Install"
+msgstr "Kur"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Install extension"
+msgstr "Eklenti kur"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Installable add-ons — sandboxed panels, field editors, and hooks from npm packages."
+msgstr "Kurulabilir eklentiler — npm paketlerinden korumalı paneller, alan editörleri ve kancalar."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Installing…"
+msgstr "Kuruluyor…"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Integer between 1 and 200."
 msgstr "1 ile 200 arasında tam sayı."
@@ -5674,6 +5759,10 @@ msgstr "Bu kuralla eşleşen öğeler {r} için izin verildi."
 #: src/client/admin/app.tsx
 msgid "Items refreshed."
 msgstr "Öğeler yenilendi."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Its panels, field editors, and hooks stop working immediately. Fields using its editors fall back to the default editor for their type. This can't be undone — reinstall to bring it back."
+msgstr "Panelleri, alan editörleri ve kancaları anında çalışmayı durdurur. Editörlerini kullanan alanlar kendi türlerinin varsayılan editörüne döner. Bu işlem geri alınamaz — geri getirmek için yeniden kurun."
 
 #: src/client/admin/item-views.tsx
 msgid "January"
@@ -6049,6 +6138,10 @@ msgstr "URL'nin son yol segmentini kullanmak için boş bırakın. Eğik çizgil
 #: src/client/admin/flow-builder.tsx
 msgid "leave empty for admins"
 msgstr "yöneticiler için boş bırakın"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Leave empty for the latest published version."
+msgstr "Son yayınlanan sürüm için boş bırakın."
 
 #: src/client/admin/flow-builder.tsx
 msgid "leave empty to pass the trigger payload"
@@ -7160,6 +7253,10 @@ msgstr "Hata kaydedilmedi."
 msgid "No errors."
 msgstr "Hata yok."
 
+#: src/client/admin/pages/extensions.tsx
+msgid "No extensions installed"
+msgstr "Kurulu eklenti yok"
+
 #: src/client/admin/pages/feature-flags.tsx
 msgid "No feature flags"
 msgstr "Özellik bayrağı yok"
@@ -7624,6 +7721,10 @@ msgstr "Bildirimler"
 msgid "November"
 msgstr "Kasım"
 
+#: src/client/admin/pages/extensions.tsx
+msgid "npm package"
+msgstr "npm paketi"
+
 #: src/client/admin/parity/insights.tsx
 msgid "numeric column average"
 msgstr "sayısal sütun ortalaması"
@@ -7986,6 +8087,10 @@ msgstr "\"{name}\" paneli kaydedildi."
 #: src/client/admin/parity/insights.tsx
 msgid "panel data limited to this role's read permission"
 msgstr "panel verisi bu rolün okuma iznine göre sınırlanır"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "panels"
+msgstr "panel"
 
 #: src/client/admin/parity/insights.tsx
 msgid "panels run with full read access — for fully public stats"
@@ -9091,6 +9196,10 @@ msgstr "Fiziksel bir tabloyu backlex koleksiyonu olarak kaydet. Tabloda hiç DDL
 #: src/client/admin/collections-index.tsx
 msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
 msgstr "Veritabanınızda zaten var olan bir tabloyu kaydet. Tabloda hiç DDL çalıştırılmaz — backlex yalnızca kendi meta verilerini yazar."
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Reinstall / upgrade"
+msgstr "Yeniden kur / yükselt"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Reject"
@@ -11094,6 +11203,7 @@ msgid "Soft delete"
 msgstr "Geçici silme"
 
 #: src/client/admin/item-form.tsx
+#: src/client/admin/pages/extensions.tsx
 msgid "Source"
 msgstr "Kaynak"
 
@@ -12284,6 +12394,18 @@ msgstr "Gruplanmamış"
 msgid "Unified log explorer over the activity audit store. Switch between the Stream lens (HTTP, data, automation, functions, storage) and the Table audit trail — both read the same rows."
 msgstr "Etkinlik denetim deposu üzerinde birleşik günlük gezgini. Akış görünümü (HTTP, veri, otomasyon, fonksiyonlar, depolama) ile Tablo denetim izi arasında geçiş yapın — her ikisi de aynı satırları okur."
 
+#: src/client/admin/pages/extensions.tsx
+msgid "Uninstall"
+msgstr "Kaldır"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Uninstall extension"
+msgstr "Eklentiyi kaldır"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Uninstall extension?"
+msgstr "Eklenti kaldırılsın mı?"
+
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/schema-graph.tsx
 msgid "unique"
@@ -12396,6 +12518,14 @@ msgstr "Parolayı güncelle"
 #: src/client/admin/storage/widgets.tsx
 msgid "Updated"
 msgstr "Güncellendi"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Updating…"
+msgstr "Güncelleniyor…"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "upload"
+msgstr "yükleme"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
@@ -12700,6 +12830,10 @@ msgstr "Doğrulanıyor…"
 #: src/client/pages/openapi-export.tsx
 msgid "Version"
 msgstr "Sürüm"
+
+#: src/client/admin/pages/extensions.tsx
+msgid "Version <0>(optional)</0>"
+msgstr "Sürüm <0>(isteğe bağlı)</0>"
 
 #: src/client/admin/pages/forms.tsx
 msgid "versioned"

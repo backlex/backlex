@@ -864,6 +864,73 @@ export interface UsageClient {
   setLimits(limits: UsageLimits): Promise<{ ok: boolean }>;
 }
 
+/** Validated `backlex-extension.json` of an installed extension. */
+export interface ExtensionManifest {
+  name: string;
+  version: string;
+  title: string;
+  description?: string;
+  contributes: {
+    panels?: { id: string; title: string; icon?: string; entry: string }[];
+    fieldEditors?: {
+      interface: string;
+      title: string;
+      types?: string[];
+      entry: string;
+    }[];
+    hooks?: {
+      id: string;
+      trigger: "event" | "manual";
+      pattern?: string;
+      entry: string;
+      timeoutMs?: number;
+    }[];
+  };
+  permissions?: { api?: string[] };
+}
+
+/** One installed extension row. */
+export interface Extension {
+  id: string;
+  name: string;
+  version: string;
+  source: "npm" | "upload" | string;
+  npmPackage: string | null;
+  manifest: ExtensionManifest;
+  enabled: boolean;
+}
+
+/** Result of running an extension hook in the functions sandbox. */
+export interface ExtensionInvokeResult {
+  ok: boolean;
+  logs: unknown[];
+  error?: string;
+  durationMs: number;
+  value?: unknown;
+}
+
+/** Extension system (admin-scoped). Mirrors `/api/extensions`. */
+export interface ExtensionsClient {
+  /** List every installed extension in the active workspace. */
+  list(): Promise<{ data: Extension[] }>;
+  /** Enabled extensions only — what the admin SPA mounts. Any signed-in user. */
+  enabled(): Promise<{ data: Extension[] }>;
+  /** Install (or upgrade) an extension from the npm registry. */
+  install(pkg: string, version?: string): Promise<{ data: Extension }>;
+  /** Install from a `path → content` file map (local development). */
+  upload(files: Record<string, string>): Promise<{ data: Extension }>;
+  /** Enable or disable an installed extension. */
+  setEnabled(name: string, enabled: boolean): Promise<{ data: Extension }>;
+  /** Uninstall an extension and delete its stored assets. */
+  uninstall(name: string): Promise<{ ok: boolean }>;
+  /** Run one of the extension's hooks with an arbitrary input payload. */
+  invokeHook(
+    name: string,
+    hookId: string,
+    input?: Record<string, unknown>,
+  ): Promise<ExtensionInvokeResult>;
+}
+
 /** One backup tracking row. `status` moves queued → running → done/failed. */
 export interface BackupRecord {
   id: string;
@@ -1271,6 +1338,7 @@ export interface BacklexClient {
   jobs: JobsClient;
   /** Visual workflows (flows). */
   flows: FlowsClient;
+  extensions: ExtensionsClient;
   /** Embedded BI dashboards. */
   dashboards: DashboardsClient;
   forms: FormsClient;
@@ -1973,6 +2041,30 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     delete: (id: string) => request<{ ok: boolean }>("DELETE", formPath(id)),
   };
 
+  // Extension system. Admin-scoped over `/api/extensions`; `enabled` is open
+  // to any signed-in user so UIs can discover mountable contributions.
+  const extPath = (name: string) => `/api/extensions/${encodeURIComponent(name)}`;
+  const extensions: ExtensionsClient = {
+    list: () => request<{ data: Extension[] }>("GET", "/api/extensions"),
+    enabled: () => request<{ data: Extension[] }>("GET", "/api/extensions/enabled"),
+    install: (pkg: string, version?: string) =>
+      request<{ data: Extension }>("POST", "/api/extensions/install", {
+        package: pkg,
+        ...(version ? { version } : {}),
+      }),
+    upload: (files: Record<string, string>) =>
+      request<{ data: Extension }>("POST", "/api/extensions/upload", { files }),
+    setEnabled: (name: string, enabled: boolean) =>
+      request<{ data: Extension }>("PATCH", extPath(name), { enabled }),
+    uninstall: (name: string) => request<{ ok: boolean }>("DELETE", extPath(name)),
+    invokeHook: (name: string, hookId: string, input?: Record<string, unknown>) =>
+      request<ExtensionInvokeResult>(
+        "POST",
+        `${extPath(name)}/hooks/${encodeURIComponent(hookId)}/invoke`,
+        input ?? {},
+      ),
+  };
+
   // Usage metering. Admin-scoped over `/api/admin/usage`.
   const usage: UsageClient = {
     overview: (opts?: { days?: number }) =>
@@ -2265,6 +2357,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     messaging,
     jobs,
     flows,
+    extensions,
     dashboards,
     forms,
     usage,

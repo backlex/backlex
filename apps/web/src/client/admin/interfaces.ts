@@ -29,7 +29,10 @@ export type InterfaceGroup =
   | "Text & Numbers"
   | "Selection"
   | "Relational"
-  | "Presentation & Other";
+  | "Presentation & Other"
+  // Dynamic — populated from enabled extensions' `fieldEditors` contributions
+  // (see `extensionFieldInterfaces` below), never from the static catalog.
+  | "Extensions";
 
 export interface FieldInterfaceDef {
   /** Persisted as `field.interface`. Unique across the catalog. */
@@ -54,6 +57,7 @@ export const INTERFACE_GROUPS: InterfaceGroup[] = [
   "Selection",
   "Relational",
   "Presentation & Other",
+  "Extensions",
 ];
 
 export const FIELD_INTERFACES: FieldInterfaceDef[] = [
@@ -117,6 +121,80 @@ export const defaultInterfaceFor = (type: string): FieldInterfaceDef => {
  *  dialog's interface-override list (type is immutable once created). */
 export const interfacesForType = (type: string): FieldInterfaceDef[] =>
   FIELD_INTERFACES.filter((i) => i.type === type);
+
+// ── Extension-contributed interfaces ─────────────────────────────────────────
+// Enabled extensions can ship `fieldEditors` (sandboxed iframe editors). The
+// helpers below turn those contributions into catalog-shaped defs so the Add
+// Field / Edit Field pickers can merge them additively — the static catalog
+// above never changes.
+
+/** Structural view of an enabled extension row — kept local so this module
+ *  stays free of api-client imports. `ApiExtension` satisfies it. */
+export interface ExtensionInterfaceSource {
+  name: string;
+  manifest: {
+    contributes?: {
+      fieldEditors?: { interface: string; title: string; types?: string[]; entry: string }[];
+    };
+  };
+}
+
+const STORAGE_TYPE_SET: ReadonlySet<string> = new Set([
+  "text", "longtext", "integer", "number", "boolean", "json", "timestamp",
+  "uuid", "relation", "relation_many", "hash",
+]);
+
+/**
+ * Catalog-shaped defs for every field editor contributed by enabled
+ * extensions, grouped under "Extensions". Built-in ids win on collision (an
+ * extension can't shadow `input`); across extensions, first contribution wins.
+ * The def's storage `type` (the column Add Field creates) is the editor's
+ * first declared type, falling back to `json` when unrestricted.
+ */
+export const extensionFieldInterfaces = (
+  extensions: ExtensionInterfaceSource[],
+): FieldInterfaceDef[] => {
+  const out: FieldInterfaceDef[] = [];
+  const seen = new Set<string>(FIELD_INTERFACES.map((i) => i.id));
+  for (const ext of extensions) {
+    for (const ed of ext.manifest?.contributes?.fieldEditors ?? []) {
+      if (!ed.interface || seen.has(ed.interface)) continue;
+      seen.add(ed.interface);
+      const storage = (ed.types ?? []).find((x) => STORAGE_TYPE_SET.has(x)) as
+        | StorageType
+        | undefined;
+      out.push({
+        id: ed.interface,
+        label: ed.title,
+        sub: `Custom editor from the "${ext.name}" extension`,
+        group: "Extensions",
+        icon: "Puzzle",
+        type: storage ?? "json",
+        keywords: ["extension", ext.name],
+      });
+    }
+  }
+  return out;
+};
+
+/** Extension interfaces usable on a column of storage `type` — an editor with
+ *  no `types` restriction accepts every type. Used by the Edit Field
+ *  interface-override list (the type is immutable there). */
+export const extensionInterfacesForType = (
+  extensions: ExtensionInterfaceSource[],
+  type: string,
+): FieldInterfaceDef[] => {
+  const restrictions = new Map<string, string[] | undefined>();
+  for (const ext of extensions) {
+    for (const ed of ext.manifest?.contributes?.fieldEditors ?? []) {
+      if (!restrictions.has(ed.interface)) restrictions.set(ed.interface, ed.types);
+    }
+  }
+  return extensionFieldInterfaces(extensions).filter((d) => {
+    const ts = restrictions.get(d.id);
+    return !ts || ts.length === 0 || ts.includes(type);
+  });
+};
 
 /** Case-insensitive match against label, id and keywords. */
 export const matchesInterfaceQuery = (i: FieldInterfaceDef, q: string): boolean => {

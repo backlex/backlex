@@ -179,6 +179,9 @@ export const NAV_DEVELOPERS: NavItem[] = [
   { id: "rest-explorer", icon: "Braces" },
   { id: "graphql", icon: "Code" },
   { id: "openapi", icon: "Download" },
+  // Admin-only (not in NON_ADMIN_NAV_IDS). Enabled extensions additionally
+  // append their contributed panels after this group's entries (see app.tsx).
+  { id: "extensions", icon: "Puzzle" },
 ];
 
 export const NAV_SETTINGS: NavItem[] = [

@@ -11,6 +11,7 @@ import { featureFlagsTools } from "./feature-flags";
 import { storageTools } from "./storage";
 import { uploadsTools } from "./uploads";
 import { functionsTools } from "./functions";
+import { extensionsTools } from "./extensions";
 import { vectorTools } from "./vector";
 import { graphqlTools } from "./graphql";
 import { permissionsTools } from "./permissions";
@@ -61,6 +62,7 @@ export const allTools: McpTool[] = [
   ...vectorTools,
   ...graphqlTools,
   ...functionsTools,
+  ...extensionsTools,
   ...permissionsTools,
   ...rolesTools,
   ...apiKeysTools,

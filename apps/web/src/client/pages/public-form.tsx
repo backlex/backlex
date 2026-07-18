@@ -72,6 +72,19 @@ const LIGHT: Palette = {
   inputBg: "rgba(20,15,45,0.03)",
 };
 
+
+/** Readable text color on the accent: relative luminance picks dark ink on
+ *  light accents, white on dark ones — no manual contrast knob needed. */
+const accentInk = (hex: string): string => {
+  const n = hex.replace("#", "");
+  const ch = (i: number) => {
+    const c = parseInt(n.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const L = 0.2126 * ch(0) + 0.7152 * ch(2) + 0.0722 * ch(4);
+  return L > 0.45 ? "#17141F" : "#FFFFFF";
+};
+
 const fontStack = (font: "sans" | "lexend" | "mono" | "system"): string =>
   font === "lexend"
     ? "'Lexend','Manrope',system-ui,sans-serif"
@@ -328,6 +341,22 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
   const [params, setParams] = useSearchParams();
   const { t } = useLingui();
   useFonts();
+
+  // Script-embed support: report our content height to the parent so the
+  // loader (/embed/form.js) can auto-size the iframe — no fixed heights.
+  useEffect(() => {
+    if (!embed || typeof window === "undefined" || window.parent === window) return;
+    const report = () => {
+      window.parent.postMessage(
+        { type: "backlex-form-height", height: document.documentElement.scrollHeight },
+        "*",
+      );
+    };
+    report();
+    const ro = new ResizeObserver(report);
+    ro.observe(document.body);
+    return () => ro.disconnect();
+  }, [embed]);
 
   // Language: explicit ?lang= wins; else the browser language when offered.
   const requestedLang =
@@ -676,7 +705,7 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
                   borderRadius: 10,
                   border: 0,
                   background: accent,
-                  color: "#fff",
+                  color: accentInk(accent),
                   fontSize: 13.5,
                   fontWeight: 600,
                   fontFamily: "inherit",

@@ -1653,6 +1653,7 @@ msgstr "Authentication succeeded"
 msgid "Author"
 msgstr "Author"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "auto"
 msgstr "auto"
@@ -1693,6 +1694,10 @@ msgstr "auto-disabled"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "auto-run reads"
 msgstr "auto-run reads"
+
+#: src/client/admin/pages/forms.tsx
+msgid "auto-sizes to the form's height — recommended"
+msgstr "auto-sizes to the form's height — recommended"
 
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Auto-snapshot"
@@ -3757,8 +3762,12 @@ msgid "Drop in a workspace API key (<0>pak_…</0>) before running."
 msgstr "Drop in a workspace API key (<0>pak_…</0>) before running."
 
 #: src/client/admin/pages/forms.tsx
-msgid "Drop the iframe into any site — the form keeps its own theme."
-msgstr "Drop the iframe into any site — the form keeps its own theme."
+msgid "Drop it into any site — the form keeps its own theme."
+msgstr "Drop it into any site — the form keeps its own theme."
+
+#: src/client/admin/pages/forms.tsx
+#~ msgid "Drop the iframe into any site — the form keeps its own theme."
+#~ msgstr "Drop the iframe into any site — the form keeps its own theme."
 
 #: src/client/admin/collection-settings.tsx
 msgid "Drops the physical table and all rows. Permissions and revisions tied to the slug are removed too. This is irreversible."
@@ -4672,6 +4681,10 @@ msgstr "Fix copied to clipboard."
 #: src/client/admin/item-editor.tsx
 msgid "Fix the highlighted fields before saving."
 msgstr "Fix the highlighted fields before saving."
+
+#: src/client/admin/pages/forms.tsx
+msgid "fixed height, zero JavaScript"
+msgstr "fixed height, zero JavaScript"
 
 #. placeholder {0}: fkColumnConflicts.map((c) => c.column).join(", ")
 #: src/client/admin/adopt-wizard.tsx
@@ -5764,6 +5777,10 @@ msgstr "Label shown in the item form. Falls back to the column name."
 msgid "Lands in {pending}"
 msgstr "Lands in {pending}"
 
+#: src/client/admin/pages/forms.tsx
+msgid "language"
+msgstr "language"
+
 #: src/client/admin/account-page.tsx
 msgid "Language"
 msgstr "Language"
@@ -6023,6 +6040,10 @@ msgstr "Link by verified email"
 #: src/client/admin/parity/insights.tsx
 msgid "Link copied."
 msgstr "Link copied."
+
+#: src/client/admin/pages/forms.tsx
+msgid "link pins this language"
+msgstr "link pins this language"
 
 #: src/client/admin/account-page.tsx
 msgid "Linked — you can sign in with this provider."
@@ -9938,6 +9959,10 @@ msgstr "Scope to role"
 msgid "scoping & lifecycle"
 msgstr "scoping & lifecycle"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Script"
+msgstr "Script"
+
 #: src/client/admin/pages/search-playground.tsx
 #: src/client/admin/ui.tsx
 msgid "Search"
@@ -12463,6 +12488,10 @@ msgstr "View profile"
 #: src/client/admin/items.tsx
 msgid "Views"
 msgstr "Views"
+
+#: src/client/admin/pages/forms.tsx
+msgid "visitor's browser language"
+msgstr "visitor's browser language"
 
 #. placeholder {0}: languages[1] ?? "tr"
 #: src/client/admin/pages/forms.tsx

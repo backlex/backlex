@@ -446,6 +446,23 @@ describe("public forms — blocks, i18n, steps, counters", () => {
   });
 });
 
+describe("public forms — script embed loader", () => {
+  let h: TestHarness;
+  beforeAll(async () => {
+    h = makeHarness();
+  });
+  afterAll(() => h.cleanup());
+
+  test("GET /embed/form.js serves the auto-height loader without auth", async () => {
+    const res = await h.app.fetch(new Request(`${h.env.APP_URL}/embed/form.js`));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("javascript");
+    const body = await res.text();
+    expect(body).toContain("data-backlex-form");
+    expect(body).toContain("backlex-form-height");
+  });
+});
+
 describe("public forms — versioned collections", () => {
   let h: TestHarness;
   const slug = `applications_${Date.now()}`;

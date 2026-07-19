@@ -115,8 +115,12 @@ body {
    * Without the blur, any translucency ghosts the page content that scrolls
    * under the bar, so it must be fully opaque — a translucent tint alone reads
    * as the content bleeding through the chrome. */
-  background: rgb(6, 5, 13);
+  background: var(--background);
 }
+/* Cosmos design: the dark topbar is a near-black strip sitting slightly below
+ * the page background. Scoped to .dark — in light theme the hard-coded value
+ * rendered as an illegible black bar over the white page. */
+.dark .topbar { background: rgb(6, 5, 13); }
 .crumbs { display: flex; align-items: center; gap: 2px; font-size: 13px; color: var(--muted-foreground); }
 .crumbs.path { font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace); }
 .crumbs .here { color: var(--foreground); font-weight: 500; }
@@ -128,16 +132,23 @@ body {
   gap: 8px;
   padding: 0 11px;
   height: 32px;
-  /* Per design: subtle hairline border on a faint translucent fill. */
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border);
   border-radius: var(--radius-control);
-  color: #8580a2;
+  color: var(--muted-foreground);
   font-size: 12.5px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--muted);
   cursor: pointer;
   min-width: 280px;
 }
-.kbar:hover { background: rgba(255, 255, 255, 0.05); }
+.kbar:hover { background: var(--accent); }
+/* Per design (dark): subtle white hairline border on a faint translucent fill —
+ * invisible on the light background, hence the .dark scope. */
+.dark .kbar {
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #8580a2;
+  background: rgba(255, 255, 255, 0.03);
+}
+.dark .kbar:hover { background: rgba(255, 255, 255, 0.05); }
 .kbar .kbd { margin-left: auto; padding: 2px 6px; font-family: 'Geist Mono', monospace; font-size: 11px; background: var(--muted); border-radius: var(--radius-sm); border: 1px solid var(--border); color: var(--muted-foreground); }
 
 /* Sidebar nav items — text + icon colors per the cosmos Console design.

@@ -382,7 +382,14 @@ export const createApp = (env: Env) => {
   // route gets a relaxed policy.
   const STRICT_CSP = [
     "default-src 'self'",
-    "script-src 'self'",
+    // static.cloudflareinsights.com: Cloudflare Web Analytics (RUM) is
+    // auto-injected at the zone proxy on Cloudflare-fronted deploys (e.g. the
+    // playground + cloud tenants on the backlex.com zone); without the
+    // allowance the beacon is blocked and every page logs CSP errors. The
+    // origin serves only CF's own beacon script, so the stored-XSS posture of
+    // 'self'-only is unchanged. Inert on non-Cloudflare deploys. (CF's inline
+    // iframe-fallback loader stays blocked — per-response hash, harmless.)
+    "script-src 'self' https://static.cloudflareinsights.com",
     // 'unsafe-inline' for styles: React/Tailwind set style attributes. Google
     // Fonts stylesheet host is allow-listed (the admin loads Geist from it).
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",

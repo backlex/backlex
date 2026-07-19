@@ -6,14 +6,18 @@
  */
 export const COLLECTION_COLORS: { token: string; hex: string }[] = [
   { token: "violet", hex: "#6C5CE7" },
+  { token: "indigo", hex: "#4F46E5" },
   { token: "blue", hex: "#2563EB" },
+  { token: "sky", hex: "#0284C7" },
   { token: "cyan", hex: "#0891B2" },
   { token: "teal", hex: "#0D9488" },
   { token: "green", hex: "#16A34A" },
+  { token: "lime", hex: "#65A30D" },
   { token: "amber", hex: "#D97706" },
   { token: "orange", hex: "#EA580C" },
   { token: "rose", hex: "#E11D48" },
   { token: "pink", hex: "#DB2777" },
+  { token: "fuchsia", hex: "#C026D3" },
   { token: "slate", hex: "#64748B" },
 ];
 

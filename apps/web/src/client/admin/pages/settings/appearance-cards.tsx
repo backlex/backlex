@@ -12,7 +12,7 @@ import { useTheme } from "@/components/theme-provider";
 import { applyPrimaryColor } from "@/main";
 import { refreshBranding } from "@/lib/branding";
 import { Card } from "@backlex/ui/components/card";
-import { ColorPicker } from "@backlex/ui/components/color-picker";
+import { ColorSwatchPicker } from "@/components/color-swatch-picker";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 
@@ -33,10 +33,12 @@ const PRIMARY_PRESETS: { label: string; value: string }[] = [
   { label: "Blue", value: "oklch(0.7 0.2 255)" },
   { label: "Indigo", value: "oklch(0.65 0.22 280)" },
   { label: "Violet", value: "oklch(0.68 0.24 305)" },
+  { label: "Fuchsia", value: "oklch(0.7 0.25 330)" },
   { label: "Pink", value: "oklch(0.75 0.23 350)" },
   { label: "Rose", value: "oklch(0.7 0.24 15)" },
   { label: "Orange", value: "oklch(0.78 0.2 50)" },
   { label: "Amber", value: "oklch(0.85 0.18 85)" },
+  { label: "Lime", value: "oklch(0.85 0.21 125)" },
   { label: "Slate", value: "oklch(0.55 0.04 250)" },
 ];
 
@@ -301,30 +303,18 @@ export function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) =
       </div>
       <div className="flex flex-col gap-1.5 border-t border-border pt-3.5">
         <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Primary color</Trans></label>
-        <div className="mb-2.5 flex flex-wrap gap-2">
-          {PRIMARY_PRESETS.map((p) => {
-            const active = primaryColor.trim() === p.value;
-            return (
-              <button
-                key={p.value}
-                type="button"
-                title={p.label}
-                aria-label={t`Use ${p.label} palette`}
-                aria-pressed={active}
-                disabled={loading}
-                onClick={() => commitPrimary(p.value)}
-                className={`size-7 rounded-full border border-border p-0 ${loading ? "cursor-default" : "cursor-pointer"} ${active ? "shadow-[0_0_0_2px_var(--background),0_0_0_4px_var(--foreground)]" : ""}`}
-                style={{ background: p.value || "var(--primary)" }}
-              />
-            );
-          })}
-        </div>
+        <ColorSwatchPicker
+          className="mb-2.5"
+          options={PRIMARY_PRESETS.map((p) => ({
+            value: p.value,
+            swatch: p.value || "var(--primary)",
+            label: p.label,
+          }))}
+          value={primaryColor}
+          onChange={commitPrimary}
+          disabled={loading}
+        />
         <div className="flex items-center gap-2.5">
-          <ColorPicker
-            value={primaryColorOk && primaryColor.trim() ? primaryColor : ""}
-            disabled={loading}
-            onChange={(hex) => commitPrimary(hex)}
-          />
           <Input
             value={primaryColor}
             placeholder="#3b82f6 or oklch(0.84 0.23 128.85)"

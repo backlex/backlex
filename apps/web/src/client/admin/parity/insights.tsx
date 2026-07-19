@@ -6,6 +6,7 @@ import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { Card } from "@backlex/ui/components/card";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import {
   Dialog,
   DialogContent,
@@ -417,19 +418,25 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
 
       {/* Dashboard picker — All / each dashboard / ungrouped + New. */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <PickerTab active={selected === ""} onClick={() => setSelected("")}>
-          <Trans>All</Trans>
-          <span className="ml-1.5 tabular-nums text-muted-foreground">{panels.length}</span>
-        </PickerTab>
-        {dashboards.map((d) => (
-          <PickerTab key={d.id} active={selected === d.id} onClick={() => setSelected(d.id)}>
-            {d.name}
-            {d.embedEnabled && <I.Link size={11} className="ml-1.5 text-primary" />}
-          </PickerTab>
-        ))}
-        <PickerTab active={selected === "none"} onClick={() => setSelected("none")}>
-          <Trans>Ungrouped</Trans>
-        </PickerTab>
+        <Tabs className="min-w-0" value={selected} onValueChange={setSelected}>
+          <TabsList className="h-auto! w-full flex-wrap sm:w-fit">
+            <TabsTrigger value="">
+              <Trans>All</Trans>
+              <span className="rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground">
+                {panels.length}
+              </span>
+            </TabsTrigger>
+            {dashboards.map((d) => (
+              <TabsTrigger key={d.id} value={d.id}>
+                {d.name}
+                {d.embedEnabled && <I.Link size={11} className="text-primary" />}
+              </TabsTrigger>
+            ))}
+            <TabsTrigger value="none">
+              <Trans>Ungrouped</Trans>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
         <Button size="sm" variant="ghost" icon={I.Plus} onClick={() => setNewDashOpen(true)}>
           <Trans>New dashboard</Trans>
         </Button>
@@ -1324,31 +1331,6 @@ function Panel({
       </div>
       {children}
     </Card>
-  );
-}
-
-/** A single tab in the dashboard picker strip. */
-function PickerTab({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex items-center rounded-control border px-2.5 py-1 text-[12.5px] font-medium transition-colors ${
-        active
-          ? "border-primary bg-[color-mix(in_oklch,var(--primary)_12%,var(--card))] text-foreground"
-          : "border-border text-muted-foreground hover:bg-muted"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 

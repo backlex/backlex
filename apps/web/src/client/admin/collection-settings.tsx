@@ -26,6 +26,7 @@ import { Select } from "./select";
 import { Button, Switch } from "./ui";
 import { DisplayTemplateEditor } from "./display-template-editor";
 import { COLLECTION_COLORS, resolveCollectionColor } from "./collection-colors";
+import { ColorSwatchPicker } from "@/components/color-swatch-picker";
 
 interface FieldLike {
   name: string;
@@ -140,9 +141,8 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
   const [note, setNote] = useState(schema.note ?? "");
   const [displayTemplate, setDisplayTemplate] = useState(schema.displayTemplate ?? "");
   const [previewUrl, setPreviewUrl] = useState(schema.previewUrl ?? "");
-  // Icon picker popover + the custom-hex escape hatch of the color row.
+  // Icon picker popover.
   const [iconOpen, setIconOpen] = useState(false);
-  const [customColor, setCustomColor] = useState<string | null>(null);
   const [sortClauses, setSortClauses] = useState<SortClause[]>(
     parseDefaultSort(schema.defaultSort),
   );
@@ -182,7 +182,6 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
     setNote(schema.note ?? "");
     setDisplayTemplate(schema.displayTemplate ?? "");
     setPreviewUrl(schema.previewUrl ?? "");
-    setCustomColor(null);
     setSortClauses(parseDefaultSort(schema.defaultSort));
     setKanbanGroupBy(schema.kanbanGroupBy ?? "__auto");
     setActionMap((schema.kanbanActionMap as Record<string, string>) ?? {});
@@ -386,62 +385,13 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
           </div>
           <div className="flex min-w-0 flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Color</Trans></label>
-            <div className="flex h-9 min-w-0 items-center gap-1.5 overflow-x-auto">
-              {COLLECTION_COLORS.map((c) => {
-                const selected = (schema.color ?? "violet") === c.token && customColor === null;
-                return (
-                  <button
-                    key={c.token}
-                    type="button"
-                    title={c.token}
-                    onClick={() => {
-                      setCustomColor(null);
-                      onPatch({ color: c.token === "violet" ? null : c.token });
-                    }}
-                    className={`size-5 shrink-0 rounded-md transition-shadow ${selected ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : "hover:scale-110"}`}
-                    style={{ background: c.hex }}
-                  />
-                );
-              })}
-              {customColor === null ? (
-                <button
-                  type="button"
-                  onClick={() => setCustomColor(schema.color?.startsWith("#") ? schema.color : "#")}
-                  className={`flex h-5 shrink-0 items-center rounded-md border border-border px-1.5 font-mono text-[10px] text-muted-foreground hover:bg-accent/40 ${schema.color?.startsWith("#") ? "ring-2 ring-ring ring-offset-2 ring-offset-background" : ""}`}
-                  style={schema.color?.startsWith("#") ? { background: schema.color, color: "#fff", borderColor: "transparent" } : undefined}
-                >
-                  {schema.color?.startsWith("#") ? schema.color : "#"}
-                </button>
-              ) : (
-                <span className="flex h-7 shrink-0 items-center gap-1 rounded-control border border-border bg-background px-1.5">
-                  <input
-                    autoFocus
-                    value={customColor}
-                    onChange={(e) => setCustomColor(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && /^#[0-9a-fA-F]{6}$/.test(customColor)) {
-                        onPatch({ color: customColor.toLowerCase() });
-                        setCustomColor(null);
-                      }
-                      if (e.key === "Escape") setCustomColor(null);
-                    }}
-                    placeholder="#8b5cf6"
-                    className="w-[70px] border-0 bg-transparent font-mono text-[11px] outline-0"
-                  />
-                  <Button
-                    size="xs"
-                    variant="primary"
-                    disabled={!/^#[0-9a-fA-F]{6}$/.test(customColor)}
-                    onClick={() => {
-                      onPatch({ color: customColor.toLowerCase() });
-                      setCustomColor(null);
-                    }}
-                  >
-                    <Trans>Set</Trans>
-                  </Button>
-                </span>
-              )}
-            </div>
+            <ColorSwatchPicker
+              options={COLLECTION_COLORS.map((c) => ({ value: c.token, swatch: c.hex, label: c.token }))}
+              value={schema.color ?? "violet"}
+              onChange={(v) =>
+                onPatch({ color: v === "violet" ? null : v.startsWith("#") ? v.toLowerCase() : v })
+              }
+            />
             <span className="text-[11.5px] text-muted-foreground"><Trans>Accent for the icon in nav and lists.</Trans></span>
           </div>
           <div className="col-span-full flex flex-col gap-1.5">

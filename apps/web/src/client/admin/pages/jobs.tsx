@@ -25,6 +25,7 @@ import {
 } from "@backlex/ui/components/dialog";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Card } from "@backlex/ui/components/card";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { DatePicker } from "@/components/date-picker";
 import { jobsApi, functionsApi, type ApiFunction, type ApiJob, type ApiJobStatus } from "../api";
@@ -103,23 +104,20 @@ export function JobsPage({ pushToast }: { pushToast: (m: string) => void }) {
         }
       />
 
-      {/* Status filter strip — full width on mobile, decluttered. */}
-      <div className="flex flex-wrap gap-1.5">
-        {STATUS_FILTERS.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setStatus(s)}
-            className={`rounded-full border px-3 py-1 text-[12.5px] ${
-              status === s
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground hover:bg-accent"
-            }`}
-          >
-            {statusLabel(s)}
-          </button>
-        ))}
-      </div>
+      {/* Status filter strip — shared pill tabs, wraps on mobile. */}
+      <Tabs
+        className="min-w-0"
+        value={status}
+        onValueChange={(v) => setStatus(v as ApiJobStatus | "all")}
+      >
+        <TabsList className="h-auto! w-full flex-wrap sm:w-fit">
+          {STATUS_FILTERS.map((s) => (
+            <TabsTrigger key={s} value={s}>
+              {statusLabel(s)}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       <Card className="py-0 gap-0">
         {!loaded ? (

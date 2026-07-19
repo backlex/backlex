@@ -3222,7 +3222,7 @@ msgstr "Cursor"
 msgid "Custom CA PEM (optional)"
 msgstr "Custom CA PEM (optional)"
 
-#: src/client/admin/pages/forms.tsx
+#: src/client/components/color-swatch-picker.tsx
 msgid "Custom color"
 msgstr "Custom color"
 
@@ -10909,8 +10909,8 @@ msgid "set"
 msgstr "set"
 
 #: src/client/admin/collection-settings.tsx
-msgid "Set"
-msgstr "Set"
+#~ msgid "Set"
+#~ msgstr "Set"
 
 #: src/client/pages/sign-up.tsx
 msgid "Set <0>openSignup</0> to <1>true</1> in admin → Auth Settings to re-open."
@@ -12952,8 +12952,8 @@ msgstr "Use {0} file{1}"
 
 #. placeholder {0}: p.label
 #: src/client/admin/pages/settings/appearance-cards.tsx
-msgid "Use {0} palette"
-msgstr "Use {0} palette"
+#~ msgid "Use {0} palette"
+#~ msgstr "Use {0} palette"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Use <0>ldaps://</0> in production; <1>ldap://</1> only on a trusted network."

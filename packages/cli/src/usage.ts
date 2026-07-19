@@ -19,6 +19,7 @@ interface UsageOverviewData {
   month: string;
   days: number;
   series: { day: string; requests: number; errors: number }[];
+  keySeries: { day: string; apiKeyId: string; requests: number; errors: number }[];
   monthTotals: { requests: number; errors: number };
   byKey: {
     id: string;
@@ -41,10 +42,13 @@ interface UsageOverviewData {
   over: string[];
 }
 
-const HELP = `backlex usage <overview|series|limits|set-limits>
+const HELP = `backlex usage <overview|series|export|limits|set-limits>
 
   overview [--days N]             month totals, per-key usage, gauges (default 30d window)
   series [--days N]               per-day request/error counts
+  export [--from D] [--to D]      raw billing ledger — one row per (day, key);
+                                  CSV on stdout (--json for JSON), defaults to
+                                  the current UTC month-to-date, D = YYYY-MM-DD
   limits                          effective workspace limits (env pins marked)
   set-limits --data <json|@file|->  persist limits, e.g.
                                   '{"mode":"hard","maxRequestsPerMonth":100000,
@@ -131,6 +135,49 @@ export const runUsage = async (args: string[]): Promise<void> => {
               errors: String(p.errors),
             })),
           );
+        break;
+      }
+      case "export": {
+        const qs = new URLSearchParams();
+        const from = flag(rest, "--from");
+        const to = flag(rest, "--to");
+        if (from) qs.set("from", from);
+        if (to) qs.set("to", to);
+        const { data } = await client.request<{
+          data: {
+            from: string;
+            to: string;
+            rows: {
+              day: string;
+              apiKeyId: string;
+              keyName: string;
+              keyPrefix: string | null;
+              requests: number;
+              errors: number;
+              storageBytes: number | null;
+              dbRows: number | null;
+            }[];
+          };
+        }>("GET", `${BASE}/export${qs.size > 0 ? `?${qs}` : ""}`);
+        if (json) {
+          printJson(data);
+          break;
+        }
+        // RFC 4180 CSV to stdout — pipe into a file / billing pipeline.
+        const cols = [
+          "day",
+          "apiKeyId",
+          "keyName",
+          "keyPrefix",
+          "requests",
+          "errors",
+          "storageBytes",
+          "dbRows",
+        ] as const;
+        const cell = (v: unknown): string => `"${String(v ?? "").replace(/"/g, '""')}"`;
+        process.stdout.write(`${cols.map(cell).join(",")}\r\n`);
+        for (const r of data.rows)
+          process.stdout.write(`${cols.map((c) => cell(r[c])).join(",")}\r\n`);
         break;
       }
       case "limits": {

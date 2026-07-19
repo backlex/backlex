@@ -34,6 +34,40 @@ export const usageOverview: McpTool = {
   },
 };
 
+export const usageExport: McpTool = {
+  name: "usage.export",
+  // "export" isn't a recognized read verb either — pin the kind so read-only
+  // keys can pull the ledger.
+  kind: "read",
+  description:
+    "Export raw usage-ledger rows (admin-only) — one per (day, API key), " +
+    "with key names resolved and the in-memory counter buffer flushed first. " +
+    "Defaults to the current UTC month-to-date. For billing reconciliation.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      from: {
+        type: "string",
+        description: "First UTC day, YYYY-MM-DD (default: first of the current month).",
+      },
+      to: {
+        type: "string",
+        description: "Last UTC day inclusive, YYYY-MM-DD (default: today).",
+      },
+    },
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const qs = new URLSearchParams();
+    if (typeof args.from === "string") qs.set("from", args.from);
+    if (typeof args.to === "string") qs.set("to", args.to);
+    const suffix = qs.size > 0 ? `?${qs}` : "";
+    const res = await ctx.fetchInternal(`/api/admin/usage/export${suffix}`);
+    const body = await readJson<unknown>(res);
+    return textResult(body);
+  },
+};
+
 export const usageSetLimits: McpTool = {
   name: "usage.set_limits",
   description:
@@ -67,4 +101,4 @@ export const usageSetLimits: McpTool = {
   },
 };
 
-export const usageTools: McpTool[] = [usageOverview, usageSetLimits];
+export const usageTools: McpTool[] = [usageOverview, usageExport, usageSetLimits];

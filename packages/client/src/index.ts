@@ -836,6 +836,8 @@ export interface UsageOverview {
   month: string;
   days: number;
   series: { day: string; requests: number; errors: number }[];
+  /** Per-key day points (only days with traffic). `apiKeyId: ""` = sessions. */
+  keySeries: { day: string; apiKeyId: string; requests: number; errors: number }[];
   monthTotals: { requests: number; errors: number };
   byKey: {
     /** API key id; empty string = the session / no-key traffic bucket. */
@@ -863,9 +865,31 @@ export interface UsageOverview {
   over: ("requests" | "storage" | "rows")[];
 }
 
+/** One raw ledger row from `GET /api/admin/usage/export`. */
+export interface UsageExportRow {
+  day: string;
+  /** API key id; empty string = the session / no-key traffic bucket. */
+  apiKeyId: string;
+  keyName: string;
+  keyPrefix: string | null;
+  requests: number;
+  errors: number;
+  storageBytes: number | null;
+  dbRows: number | null;
+}
+
+export interface UsageExport {
+  from: string;
+  to: string;
+  rows: UsageExportRow[];
+}
+
 export interface UsageClient {
   /** Usage overview: day series, per-key month totals, gauges, limits. */
   overview(opts?: { days?: number }): Promise<{ data: UsageOverview }>;
+  /** Raw ledger export for billing reconciliation — one row per (day, key).
+   *  Defaults to the current UTC month-to-date. */
+  export(opts?: { from?: string; to?: string }): Promise<{ data: UsageExport }>;
   /** Persist the workspace's admin-editable usage limits. */
   setLimits(limits: UsageLimits): Promise<{ ok: boolean }>;
 }
@@ -2087,6 +2111,13 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         "GET",
         `/api/admin/usage/overview${opts?.days ? `?days=${Math.floor(opts.days)}` : ""}`,
       ),
+    export: (opts?: { from?: string; to?: string }) => {
+      const qs = new URLSearchParams();
+      if (opts?.from) qs.set("from", opts.from);
+      if (opts?.to) qs.set("to", opts.to);
+      const suffix = qs.size > 0 ? `?${qs}` : "";
+      return request<{ data: UsageExport }>("GET", `/api/admin/usage/export${suffix}`);
+    },
     setLimits: (limits: UsageLimits) =>
       request<{ ok: boolean }>("PUT", "/api/admin/usage/limits", limits),
   };

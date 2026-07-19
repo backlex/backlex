@@ -2091,6 +2091,8 @@ export interface ApiUsageOverview {
   month: string;
   days: number;
   series: { day: string; requests: number; errors: number }[];
+  /** Per-key day points (only days with traffic). `apiKeyId: ""` = sessions. */
+  keySeries: { day: string; apiKeyId: string; requests: number; errors: number }[];
   monthTotals: { requests: number; errors: number };
   byKey: {
     /** Empty id = the session / no-API-key traffic bucket. */

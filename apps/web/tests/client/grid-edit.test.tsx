@@ -67,13 +67,14 @@ const SCHEMA = {
   fields: [
     { name: "label", type: "text" },
     { name: "count", type: "integer" },
+    { name: "done", type: "boolean" },
   ],
 } as never;
 
 const ROWS = [
-  { id: "r1", label: "Alpha", count: 1, updated_at: "2026-07-01T00:00:00Z" },
-  { id: "r2", label: "Beta", count: 2, updated_at: "2026-07-01T00:00:00Z" },
-  { id: "r3", label: "Gamma", count: 3, updated_at: "2026-07-01T00:00:00Z" },
+  { id: "r1", label: "Alpha", count: 1, done: false, updated_at: "2026-07-01T00:00:00Z" },
+  { id: "r2", label: "Beta", count: 2, done: true, updated_at: "2026-07-01T00:00:00Z" },
+  { id: "r3", label: "Gamma", count: 3, done: false, updated_at: "2026-07-01T00:00:00Z" },
 ] as never[];
 
 /** Every network call the table makes (settings, session, writes) lands here. */
@@ -188,6 +189,40 @@ describe("ItemsTable grid mode", () => {
     fireEvent.keyDown(container(r), { key: "Z" });
     const input = (await screen.findByDisplayValue("Z")) as HTMLInputElement;
     expect(input.tagName).toBe("INPUT");
+  });
+
+  test("Enter on a boolean cell toggles it directly — no editor", async () => {
+    const r = renderGrid();
+    // Alpha's `done` cell renders "No" (or a dash/badge) — target by position:
+    // row 1, third data column. Navigate there with arrows from the seeded
+    // (0,0) selection instead of text-matching the boolean rendering.
+    fireEvent.mouseDown(cellOf("Alpha"));
+    fireEvent.keyDown(container(r), { key: "ArrowRight" });
+    fireEvent.keyDown(container(r), { key: "ArrowRight" });
+    fireEvent.keyDown(container(r), { key: "Enter" });
+    await waitFor(() => {
+      expect(calls.some((c) => c.url.includes("/api/items/t/r1"))).toBe(true);
+    });
+    const call = calls.find((c) => c.url.includes("/api/items/t/r1"))!;
+    expect(call.body).toEqual({ done: true });
+    // No inline input opened.
+    expect(document.querySelector("tbody input")).toBeNull();
+  });
+
+  test("entering grid mode auto-focuses the first cell", async () => {
+    renderGrid();
+    await waitFor(() => {
+      expect(cellOf("Alpha").hasAttribute("data-grid-focused")).toBe(true);
+    });
+  });
+
+  test("clicking inside the open text editor does not close it", async () => {
+    const r = renderGrid();
+    fireEvent.mouseDown(cellOf("Alpha"));
+    fireEvent.keyDown(container(r), { key: "Enter" });
+    const input = (await screen.findByDisplayValue("Alpha")) as HTMLInputElement;
+    fireEvent.pointerDown(input);
+    expect(screen.queryByDisplayValue("Alpha")).not.toBeNull();
   });
 
   test("⌫ clears the selected cells (uniform null → one bulk-update)", async () => {

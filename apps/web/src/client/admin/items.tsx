@@ -602,25 +602,41 @@ function CellEditor({ field, value, choices, seed, onCommit, onCancel }: {
     fn();
   };
   doneRef.current = finish;
-  // Select/boolean editors have no blur-to-close of their own — dismiss them
-  // (cancel) when the user clicks anywhere outside the editor. The input's
-  // own blur commit races this harmlessly: `finish` is idempotent. Radix
-  // portals the Select listbox to <body>, so clicks inside it count as
+  // Clicking outside the editor closes it: Select/boolean editors dismiss
+  // (they have no blur of their own), the text input COMMITS what was typed —
+  // in grid mode the next cell's mousedown calls preventDefault (so no blur
+  // ever fires) and users expect click-away to keep their edit, not eat it.
+  // The root ref wraps EVERY branch (a bare input used to cancel itself when
+  // clicked, because the pointerdown listener couldn't tell it was inside).
+  // Radix portals the Select listbox to <body>, so clicks inside it count as
   // inside the editor.
   const rootRef = useRef<HTMLSpanElement | null>(null);
-  const cancelRef = useRef(onCancel);
-  cancelRef.current = onCancel;
+  const outsideActRef = useRef<() => void>(() => {});
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
       const t = e.target as HTMLElement | null;
       if (!t) return;
       if (rootRef.current?.contains(t)) return;
       if (t.closest('[data-slot="select-content"]')) return;
-      doneRef.current(() => cancelRef.current());
+      doneRef.current(() => outsideActRef.current());
     };
     document.addEventListener("pointerdown", onDown, true);
     return () => document.removeEventListener("pointerdown", onDown, true);
   }, []);
+
+  const isNum = field.type === "integer" || field.type === "number";
+  const commitText = (via: CommitVia) => {
+    if (isNum) {
+      const trimmed = raw.trim();
+      if (trimmed === "") return onCommit(null, via);
+      const n = Number(trimmed);
+      if (!Number.isFinite(n)) return onCancel();
+      return onCommit(field.type === "integer" ? Math.trunc(n) : n, via);
+    }
+    onCommit(raw, via);
+  };
+  const isTextEditor = !choices?.length && field.type !== "boolean";
+  outsideActRef.current = isTextEditor ? () => commitText("blur") : () => onCancel();
 
   if (choices?.length) {
     return (
@@ -655,34 +671,25 @@ function CellEditor({ field, value, choices, seed, onCommit, onCancel }: {
       </span>
     );
   }
-  const isNum = field.type === "integer" || field.type === "number";
-  const commitText = (via: CommitVia) => {
-    if (isNum) {
-      const trimmed = raw.trim();
-      if (trimmed === "") return onCommit(null, via);
-      const n = Number(trimmed);
-      if (!Number.isFinite(n)) return onCancel();
-      return onCommit(field.type === "integer" ? Math.trunc(n) : n, via);
-    }
-    onCommit(raw, via);
-  };
   return (
-    <Input
-      autoFocus
-      value={raw}
-      onChange={(e) => setRaw(e.target.value)}
-      // Seeded (type-to-edit) editors keep the caret after the typed char;
-      // plain open selects the whole current value for overwrite.
-      onFocus={seed === undefined ? (e) => e.currentTarget.select() : undefined}
-      inputMode={isNum ? "decimal" : undefined}
-      className={`h-7 min-w-[110px] px-2 text-[13px] ${isNum ? "text-right" : ""}`}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") finish(() => commitText("enter"));
-        else if (e.key === "Tab") { e.preventDefault(); finish(() => commitText("tab")); }
-        else if (e.key === "Escape") finish(onCancel);
-      }}
-      onBlur={() => finish(() => commitText("blur"))}
-    />
+    <span ref={rootRef} className="contents">
+      <Input
+        autoFocus
+        value={raw}
+        onChange={(e) => setRaw(e.target.value)}
+        // Seeded (type-to-edit) editors keep the caret after the typed char;
+        // plain open selects the whole current value for overwrite.
+        onFocus={seed === undefined ? (e) => e.currentTarget.select() : undefined}
+        inputMode={isNum ? "decimal" : undefined}
+        className={`h-7 min-w-[110px] px-2 text-[13px] ${isNum ? "text-right" : ""}`}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") finish(() => commitText("enter"));
+          else if (e.key === "Tab") { e.preventDefault(); finish(() => commitText("tab")); }
+          else if (e.key === "Escape") finish(onCancel);
+        }}
+        onBlur={() => finish(() => commitText("blur"))}
+      />
+    </span>
   );
 }
 

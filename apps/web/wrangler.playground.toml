@@ -16,8 +16,14 @@ main = "src/server/entries/worker.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+# A zone ROUTE, not a custom domain: the cloud-admin dispatcher owns
+# `*.backlex.com/*` and Cloudflare gives routes precedence over custom
+# domains, so a custom domain here would be shadowed (the dispatcher would
+# 404 with "No instance for play"). A more-specific route out-ranks the
+# wildcard. DNS: the proxied `play` record created by the initial
+# custom-domain attach stays in place and serves this route.
 routes = [
-  { pattern = "play.backlex.com", custom_domain = true },
+  { pattern = "play.backlex.com/*", zone_name = "backlex.com" },
 ]
 
 [observability]

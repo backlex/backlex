@@ -174,35 +174,56 @@ export function ConnectTab({
           <Badge
             variant="outline"
             mono
-            className="ml-1 border-amber-500/40 text-amber-700 dark:text-amber-300"
+            className="ml-1 border-sky-500/40 text-sky-700 dark:text-sky-300"
           >
-            roadmap
+            oauth
           </Badge>
         </div>
-        <div className="px-5 pb-4 text-[12.5px] text-muted-foreground">
+        <div className="flex flex-col gap-3 px-5 pb-4 text-[12.5px] text-muted-foreground">
           <Trans>
-            OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a
-            separate epic.
+            claude.ai connects over OAuth — no key to paste. Add the MCP URL as
+            a custom connector and approve the consent screen; tools run with
+            your roles and permission rules.
           </Trans>
-          <ul className="m-0 mt-2 list-disc space-y-1 pl-4 text-[12px]">
+          <ol className="m-0 list-decimal space-y-1 pl-4 text-[12px]">
             <li>
               <Trans>
-                Resumable SSE on{" "}
-                <span className="font-mono text-foreground">GET /mcp</span>
+                claude.ai → Settings → Connectors →{" "}
+                <span className="text-foreground">Add custom connector</span>
               </Trans>
             </li>
             <li>
               <Trans>
-                <span className="font-mono text-foreground">
-                  resources/subscribe
-                </span>{" "}
-                for live tail
+                Paste{" "}
+                <span className="font-mono text-foreground">{mcpUrl}</span>
               </Trans>
             </li>
             <li>
-              <Trans>OAuth scope mapping → backlex roles</Trans>
+              <Trans>Sign in and approve the authorization screen</Trans>
             </li>
-          </ul>
+          </ol>
+          <button
+            type="button"
+            className="flex w-fit cursor-pointer items-center gap-1.5 rounded-control border border-border bg-muted/40 px-2.5 py-1.5 font-mono text-[11.5px] text-foreground hover:bg-accent"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(mcpUrl);
+                pushToast(t`MCP URL copied`);
+              } catch {
+                pushToast(t`Could not copy — clipboard blocked.`, "error");
+              }
+            }}
+          >
+            <I.Copy size={12} />
+            {mcpUrl}
+          </button>
+          <span className="text-[11.5px]">
+            <Trans>
+              Tokens without the{" "}
+              <span className="font-mono text-foreground">mcp:write</span> scope
+              run read-only.
+            </Trans>
+          </span>
         </div>
       </Card>
     </div>

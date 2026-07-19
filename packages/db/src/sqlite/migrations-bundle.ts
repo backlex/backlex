@@ -75,8 +75,9 @@ import m68 from "../../drizzle/sqlite/20260716090000_collections_presentation/mi
 import m69 from "../../drizzle/sqlite/20260718090000_forms/migration.sql" with { type: "text" };
 import m70 from "../../drizzle/sqlite/20260719090000_forms_stats/migration.sql" with { type: "text" };
 import m71 from "../../drizzle/sqlite/20260720090000_usage_metering/migration.sql" with { type: "text" };
-import m72 from "../../drizzle/sqlite/20260721090000_extensions/migration.sql" with { type: "text" };
-import m73 from "../../drizzle/sqlite/20260722090000_staged_edits/migration.sql" with { type: "text" };
+import m72 from "../../drizzle/sqlite/20260720120000_mcp_oauth/migration.sql" with { type: "text" };
+import m73 from "../../drizzle/sqlite/20260721090000_extensions/migration.sql" with { type: "text" };
+import m74 from "../../drizzle/sqlite/20260722090000_staged_edits/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -156,6 +157,7 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260718090000_forms", sql: m69 },
   { name: "20260719090000_forms_stats", sql: m70 },
   { name: "20260720090000_usage_metering", sql: m71 },
-  { name: "20260721090000_extensions", sql: m72 },
-  { name: "20260722090000_staged_edits", sql: m73 },
+  { name: "20260720120000_mcp_oauth", sql: m72 },
+  { name: "20260721090000_extensions", sql: m73 },
+  { name: "20260722090000_staged_edits", sql: m74 },
 ];

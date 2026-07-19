@@ -14,6 +14,7 @@ import { PublicForm } from "@/pages/public-form";
 import { SignIn } from "@/pages/sign-in";
 import { SignUp } from "@/pages/sign-up";
 import { Invite } from "@/pages/invite";
+import { OAuthConsent } from "@/pages/oauth-consent";
 
 export const App = () => {
   const navigate = useNavigate();
@@ -36,6 +37,10 @@ export const App = () => {
         {/* Public invite-acceptance — outside AuthGate; the invitee has no
             account yet. Resolves the token, then signs up + binds membership. */}
         <Route path="/invite" element={<Invite />} />
+        {/* MCP OAuth consent — outside AuthGate so it renders the auth shell;
+            the flow only lands here with a live session (authorize redirects
+            unauthenticated users to /sign-in first). */}
+        <Route path="/oauth/consent" element={<OAuthConsent />} />
         {/* Public record-share view — outside AuthGate, no session needed. */}
         <Route path="/s/:token" element={<SharedRecord />} />
         {/* Public BI dashboard embed — outside AuthGate; iframe-friendly. */}

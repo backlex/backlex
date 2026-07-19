@@ -684,8 +684,8 @@ msgid "<0>Branches</0> are named working copies forked from the live schema — 
 msgstr "<0>Branches</0> are named working copies forked from the live schema — stage changes on a branch, then apply it to live. A branch keeps its own history; a snapshot is a single frozen point."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "<0>resources/subscribe</0> for live tail"
-msgstr "<0>resources/subscribe</0> for live tail"
+#~ msgid "<0>resources/subscribe</0> for live tail"
+#~ msgstr "<0>resources/subscribe</0> for live tail"
 
 #: src/client/admin/pages/schema-versions.tsx
 msgid "<0>Snapshots</0> are immutable checkpoints of your schema. Capture the live schema or import an authored one, then diff or apply it."
@@ -1460,6 +1460,10 @@ msgstr "An invite email was sent to <0>{0}</0>. You can also share the link dire
 msgid "An invite link will be emailed; valid for 7 days."
 msgstr "An invite link will be emailed; valid for 7 days."
 
+#: src/client/pages/oauth-consent.tsx
+msgid "An MCP client is asking to access this workspace on your behalf."
+msgstr "An MCP client is asking to access this workspace on your behalf."
+
 #: src/client/admin/pages/agents.tsx
 msgid "any provider/model id"
 msgstr "any provider/model id"
@@ -1712,6 +1716,22 @@ msgstr "Authentication succeeded"
 #: src/client/admin/storage/widgets.tsx
 msgid "Author"
 msgstr "Author"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Authorization request not found"
+msgstr "Authorization request not found"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Authorize"
+msgstr "Authorize"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Authorize MCP access"
+msgstr "Authorize MCP access"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Authorizing…"
+msgstr "Authorizing…"
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/storage/widgets.tsx
@@ -2269,6 +2289,7 @@ msgstr "ci-bot (optional)"
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/oauth-consent.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -2287,6 +2308,14 @@ msgstr "Claiming…"
 #: src/client/components/mcp-key-modal.tsx
 msgid "Claude Desktop"
 msgstr "Claude Desktop"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "claude.ai → Settings → Connectors → <0>Add custom connector</0>"
+msgstr "claude.ai → Settings → Connectors → <0>Add custom connector</0>"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "claude.ai connects over OAuth — no key to paste. Add the MCP URL as a custom connector and approve the consent screen; tools run with your roles and permission rules."
+msgstr "claude.ai connects over OAuth — no key to paste. Add the MCP URL as a custom connector and approve the consent screen; tools run with your roles and permission rules."
 
 #: src/client/admin/app.tsx
 msgid "clear"
@@ -2692,6 +2721,10 @@ msgstr "Connect"
 msgid "Connect {name}"
 msgstr "Connect {name}"
 
+#: src/client/pages/oauth-consent.tsx
+msgid "Connect an <0>agent</0>."
+msgstr "Connect an <0>agent</0>."
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Connect an MCP client"
 msgstr "Connect an MCP client"
@@ -2894,6 +2927,10 @@ msgstr "corp.example.com, contractor.example.com"
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Could not apply template"
 msgstr "Could not apply template"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Could not copy — clipboard blocked."
+msgstr "Could not copy — clipboard blocked."
 
 #: src/client/admin/pages/logs.tsx
 msgid "Could not copy entry id."
@@ -3576,9 +3613,17 @@ msgstr "Denied"
 msgid "denied for this role"
 msgstr "denied for this role"
 
+#: src/client/pages/oauth-consent.tsx
+msgid "Deny"
+msgstr "Deny"
+
 #: src/client/admin/condition-editor.tsx
 msgid "Deny all"
 msgstr "Deny all"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Denying…"
+msgstr "Denying…"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Deployment default"
@@ -6061,6 +6106,10 @@ msgstr "kind"
 msgid "Kind"
 msgstr "Kind"
 
+#: src/client/pages/oauth-consent.tsx
+msgid "Know who you are"
+msgstr "Know who you are"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Label"
 msgstr "Label"
@@ -6576,6 +6625,7 @@ msgstr "Machine-readable spec for every /api endpoint in this workspace — incl
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/oauth-consent.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -6716,6 +6766,10 @@ msgstr "MCP read-only"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "MCP tool catalog"
 msgstr "MCP tool catalog"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "MCP URL copied"
+msgstr "MCP URL copied"
 
 #. placeholder {0}: k.mcpTools.length
 #: src/client/pages/api-keys.tsx
@@ -7936,12 +7990,12 @@ msgstr "OAuth redirect URI to register with {0}"
 #~ msgstr "OAuth required"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "OAuth scope mapping → backlex roles"
-msgstr "OAuth scope mapping → backlex roles"
+#~ msgid "OAuth scope mapping → backlex roles"
+#~ msgstr "OAuth scope mapping → backlex roles"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
-msgstr "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
+#~ msgid "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
+#~ msgstr "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
 
 #: src/client/admin/ui.tsx
 msgid "Observability"
@@ -8345,6 +8399,10 @@ msgstr "Password set."
 #: src/client/pages/reset-password.tsx
 msgid "Passwords do not match"
 msgstr "Passwords do not match"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Paste <0>{mcpUrl}</0>"
+msgstr "Paste <0>{mcpUrl}</0>"
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Paste a base64 SAMLResponse"
@@ -9240,6 +9298,10 @@ msgstr "read the full text"
 #~ msgid "Read the full text ↗"
 #~ msgstr "Read the full text ↗"
 
+#: src/client/pages/oauth-consent.tsx
+msgid "Read your basic profile"
+msgstr "Read your basic profile"
+
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/pages/shared-record.tsx
@@ -9820,8 +9882,8 @@ msgid "resumable"
 msgstr "resumable"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Resumable SSE on <0>GET /mcp</0>"
-msgstr "Resumable SSE on <0>GET /mcp</0>"
+#~ msgid "Resumable SSE on <0>GET /mcp</0>"
+#~ msgstr "Resumable SSE on <0>GET /mcp</0>"
 
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/logs.tsx
@@ -10153,10 +10215,18 @@ msgstr "Run ranked full-text, vector, or hybrid search against a collection — 
 msgid "Run re-queued — the copy continues where it stopped."
 msgstr "Run re-queued — the copy continues where it stopped."
 
+#: src/client/pages/oauth-consent.tsx
+msgid "Run read-only MCP tools (query collections, schema, search)"
+msgstr "Run read-only MCP tools (query collections, schema, search)"
+
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Run test"
 msgstr "Run test"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Run write MCP tools (create, update, delete — your permissions still apply)"
+msgstr "Run write MCP tools (create, update, delete — your permissions still apply)"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Running"
@@ -10643,6 +10713,10 @@ msgstr "Section: {grp}"
 #: src/client/admin/pages/advisor.tsx
 msgid "Security"
 msgstr "Security"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "See your email address"
+msgstr "See your email address"
 
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Seed a ready-made set of collections — grouped, with sample data — for your use case. You can edit or add more anytime."
@@ -11196,11 +11270,16 @@ msgstr "Side-table (item_ownership)"
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/oauth-consent.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Sign in"
 msgstr "Sign in"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Sign in and approve the authorization screen"
+msgstr "Sign in and approve the authorization screen"
 
 #: src/client/pages/sign-in.tsx
 msgid "Sign in to <0>backlex</0>."
@@ -11249,6 +11328,7 @@ msgstr "Sign out other devices"
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/oauth-consent.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -11560,6 +11640,10 @@ msgstr "Start migration ({0} tables)"
 msgid "Start one with “New migration” — pick tables, review the plan, and the server copies the rows in the background."
 msgstr "Start one with “New migration” — pick tables, review the plan, and the server copies the rows in the background."
 
+#: src/client/pages/oauth-consent.tsx
+msgid "Start the connection again from your MCP client (for example claude.ai → Connectors)."
+msgstr "Start the connection again from your MCP client (for example claude.ai → Connectors)."
+
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Start with a template"
 msgstr "Start with a template"
@@ -11600,6 +11684,10 @@ msgstr "Status field"
 #: src/client/admin/pages/overview.tsx
 msgid "Status refreshed."
 msgstr "Status refreshed."
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Stay connected without re-approving"
+msgstr "Stay connected without re-approving"
 
 #. placeholder {0}: step + 1
 #: src/client/admin/collections-index.tsx
@@ -12048,6 +12136,14 @@ msgstr "The advisor endpoint returned an error. Re-run to try again."
 msgid "The agent's standing instructions — its persona, tone, and rules. Sent to the model before every user message."
 msgstr "The agent's standing instructions — its persona, tone, and rules. Sent to the model before every user message."
 
+#: src/client/pages/oauth-consent.tsx
+msgid "The authorization flow returned no redirect — start over from the client."
+msgstr "The authorization flow returned no redirect — start over from the client."
+
+#: src/client/pages/oauth-consent.tsx
+msgid "The client below wants to call this workspace's MCP tools as you. Your roles and permission rules still gate every call."
+msgstr "The client below wants to call this workspace's MCP tools as you. Your roles and permission rules still gate every call."
+
 #. placeholder {0}: provider.id.toUpperCase()
 #. placeholder {1}: provider.id
 #: src/client/admin/parity/auth-settings.tsx
@@ -12195,6 +12291,10 @@ msgstr "This collection has no form-eligible fields (only scalar, non-private fi
 #: src/client/admin/app.tsx
 msgid "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
 msgstr "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
+
+#: src/client/pages/oauth-consent.tsx
+msgid "This consent link is missing its code or has expired."
+msgstr "This consent link is missing its code or has expired."
 
 #: src/client/admin/pages/usage.tsx
 msgid "This consumer has no metered requests in the selected window."
@@ -12410,6 +12510,7 @@ msgstr "Toggle sidebar"
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/oauth-consent.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -12419,6 +12520,10 @@ msgstr "Toggle theme"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Toggle tools below to edit the allowlist."
 msgstr "Toggle tools below to edit the allowlist."
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Tokens without the <0>mcp:write</0> scope run read-only."
+msgstr "Tokens without the <0>mcp:write</0> scope run read-only."
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Tool"
@@ -12720,6 +12825,10 @@ msgstr "unknown — manifest out of sync, run <0>bun run --cwd packages/db manif
 #: src/client/admin/account-page.tsx
 msgid "unknown agent"
 msgstr "unknown agent"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "unknown client"
+msgstr "unknown client"
 
 #: src/client/admin/parity/app-users.tsx
 msgid "Unknown device"
@@ -13591,6 +13700,10 @@ msgstr "Your personal profile, preferences, password, sessions, and connected cr
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Your registered devices"
 msgstr "Your registered devices"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Your session expired — sign in and retry from the client."
+msgstr "Your session expired — sign in and retry from the client."
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/pages/public-form.tsx

@@ -52,6 +52,13 @@
   to = "/.netlify/functions/api/health"
   status = 200
 
+# OAuth discovery documents for the MCP OAuth flow (RFC 8414 / RFC 9728) —
+# served by the Hono app, must not fall into the SPA fallback.
+[[redirects]]
+  from = "/.well-known/*"
+  to = "/.netlify/functions/api/.well-known/:splat"
+  status = 200
+
 # Single-page-app fallback so client-side routes (/collections, /settings,
 # /functions, …) all serve admin's index.html.
 [[redirects]]

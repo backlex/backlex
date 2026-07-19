@@ -52,6 +52,7 @@ import { integrationsRoutes } from "./routes/integrations";
 import { itemsRoutes } from "./routes/items";
 import { ldapAdminRoutes } from "./routes/ldap-admin";
 import { adminMcpRoutes, tenantMcpRoutes } from "./routes/mcp";
+import { mcpAuthorizeConsentGate, mcpOAuthWellKnownRoutes } from "./routes/mcp-oauth";
 import { meRoutes } from "./routes/me";
 import { metricsRoutes } from "./routes/metrics";
 import { usageRoutes } from "./routes/usage";
@@ -160,6 +161,11 @@ export type AppBindings = {
        *  carries the issuing workspace; we pin the request to it so the
        *  customer's app never needs to send `X-Backlex-Tenant`. */
       appSessionTenantId?: string | null;
+      /** Set by sessionMiddleware when the request authenticates with an MCP
+       *  OAuth access token (better-auth `mcp` plugin — hosted Claude et al).
+       *  Carries the OAuth client id for auditing; guard behavior rides the
+       *  `apiKeyMcp*` fields (readOnly derives from the token's scopes). */
+      oauthClientId?: string | null;
     };
     /** Correlation id for this request. Taken from an inbound `x-request-id`
      *  (trusted proxy / client), else `cf-ray` on Workers, else a generated
@@ -717,7 +723,16 @@ export const createApp = (env: Env) => {
   // Control-plane SSO (SAML ACS/metadata/slo, LDAP sign-in) — must precede the
   // better-auth catch-all so `/api/auth/saml/*` and `/api/auth/ldap/*` win.
   app.route("/api/auth", platformAuthRoutes);
+  // MCP OAuth consent gate — must ALSO precede the catch-all: it rewrites
+  // GET /api/auth/mcp/authorize to force the consent screen for unconsented
+  // clients (the plugin skips consent unless the client opts in) and then
+  // falls through to the better-auth handler below.
+  app.route("/api/auth", mcpAuthorizeConsentGate());
   app.route("/api/auth", authRoutes);
+  // Root OAuth discovery documents (RFC 8414 / RFC 9728) — hosted MCP clients
+  // (claude.ai custom connectors) fetch these from the origin root to find
+  // the authorize/token/register endpoints under /api/auth/mcp/*.
+  app.route("/.well-known", mcpOAuthWellKnownRoutes());
   app.route("/api/me", meRoutes);
   app.route("/api/account", accountRoutes);
   // Workspace end-user auth (the "auth as a service" surface) — each tenant

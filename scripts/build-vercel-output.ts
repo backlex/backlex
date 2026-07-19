@@ -212,6 +212,8 @@ writeFileSync(
         // the URL without the `/api/` prefix.
         { src: "^/mcp/?$", dest: "/api/index?__rawpath=mcp" },
         { src: "^/health/?$", dest: "/api/index?__rawpath=health" },
+        // OAuth discovery documents for the MCP OAuth flow (RFC 8414/9728).
+        { src: "^/\\.well-known/(.*)$", dest: "/api/index?__rawpath=.well-known/$1" },
         // Let static assets + the function resolve directly.
         { handle: "filesystem" },
         // SPA fallback — the React client-side router takes over.

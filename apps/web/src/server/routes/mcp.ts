@@ -2,7 +2,6 @@ import { Hono, type MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import type { Env } from "../env";
-import { requireUser } from "../middleware/session";
 import { handleMcpRequest } from "../mcp/http";
 import { allTools } from "../mcp/tools";
 import type { McpMode, McpServerWiring } from "../mcp/types";
@@ -12,6 +11,28 @@ const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
   if (!auth.roles.includes(SYSTEM_ROLES.admin)) {
     throw new AppError("FORBIDDEN", "Admin role required");
+  }
+  await next();
+};
+
+/** `requireUser` variant for the MCP mounts: the 401 carries the RFC 9728
+ *  `WWW-Authenticate` challenge pointing at the protected-resource metadata,
+ *  which is how OAuth-capable MCP clients (claude.ai custom connectors)
+ *  discover that — and where — they can start the OAuth flow. */
+const requireUserWithOAuthChallenge: MiddlewareHandler<AppBindings> = async (
+  c,
+  next,
+) => {
+  const auth = c.get("auth");
+  if (!auth.userId) {
+    const base = (c.get("ctx").env.APP_URL ?? "").replace(/\/+$/, "");
+    return c.json(
+      { error: { code: "UNAUTHORIZED", message: "Sign in required" } },
+      401,
+      {
+        "WWW-Authenticate": `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource"`,
+      },
+    );
   }
   await next();
 };
@@ -59,7 +80,7 @@ const buildHandler = (app: Hono<AppBindings>, env: Env, mode: McpMode) => {
 export const tenantMcpRoutes = (app: Hono<AppBindings>, env: Env) => {
   const handler = buildHandler(app, env, "tenant");
   return new Hono<AppBindings>()
-    .post("/", requireUser, mcpRateLimit, handler)
+    .post("/", requireUserWithOAuthChallenge, mcpRateLimit, handler)
     .all("/", (c) => handler(c));
 };
 
@@ -72,6 +93,6 @@ export const tenantMcpRoutes = (app: Hono<AppBindings>, env: Env) => {
 export const adminMcpRoutes = (app: Hono<AppBindings>, env: Env) => {
   const handler = buildHandler(app, env, "admin");
   return new Hono<AppBindings>()
-    .post("/", requireUser, requireAdmin, mcpRateLimit, handler)
+    .post("/", requireUserWithOAuthChallenge, requireAdmin, mcpRateLimit, handler)
     .all("/", (c) => handler(c));
 };

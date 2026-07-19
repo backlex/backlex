@@ -1,0 +1,81 @@
+# Public playground deploy (roadmap #16) — play.backlex.com.
+#
+# A standalone Worker running the same build as backlex-admin, but with its
+# own D1 + R2 and DEMO_MODE on: demo credentials are published on the sign-in
+# screen, destructive/outbound endpoints are blocked, and the workspace is
+# wiped + reseeded from SEED_TEMPLATE hourly (see docs/demo-mode.md).
+#
+# Deliberately NOT a cloud fleet tenant — no template-release coupling. Deploy
+# manually after a `bun run build`:
+#   cd apps/web && bunx wrangler deploy -c wrangler.playground.toml
+# Migrations:
+#   D1_DATABASE_NAME=backlex-playground bun run --cwd packages/db migrate:d1 -- --remote --config=apps/web/wrangler.playground.toml
+
+name = "backlex-playground"
+main = "src/server/entries/worker.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+routes = [
+  { pattern = "play.backlex.com", custom_domain = true },
+]
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+# Same Workers-incompatible-dependency shims as wrangler.toml.
+[alias]
+"bun:sqlite" = "./src/server/shims/bun-sqlite-shim.ts"
+"nodemailer" = "./src/server/shims/nodemailer-shim.ts"
+"ldapts" = "./src/server/shims/ldapts-shim.ts"
+"sharp" = "./src/server/shims/sharp-shim.ts"
+"@cf-wasm/photon" = "./src/server/shims/photon-shim.ts"
+
+[vars]
+APP_URL = "https://play.backlex.com"
+AUTH_PLUGINS = "passkey,magic-link,email-otp"
+# Playground mode — the whole point of this deploy. Demo creds use the
+# defaults (demo@backlex.com / playground); the hourly reset reseeds the
+# ecommerce template. No EMAIL_PROVIDER: outbound email is blocked anyway,
+# so the console adapter is fine.
+DEMO_MODE = "1"
+SEED_TEMPLATE = "ecommerce"
+
+[assets]
+directory = "./dist/client"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/health", "/health/*", "/mcp", "/embed/*", "/f/*"]
+
+[[d1_databases]]
+binding = "D1"
+database_name = "backlex-playground"
+database_id = "01a55235-47e4-418b-8880-6932c0a3d808"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "backlex-playground-files"
+
+[ai]
+binding = "AI"
+
+[[durable_objects.bindings]]
+name = "REALTIME"
+class_name = "RealtimeRoom"
+
+[[durable_objects.bindings]]
+name = "RATE_LIMIT"
+class_name = "RateLimitRoom"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["RealtimeRoom"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["RateLimitRoom"]
+
+# Every minute — drives the hourly playground reset (plus the usual sweeps).
+[triggers]
+crons = ["* * * * *"]

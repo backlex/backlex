@@ -42,6 +42,7 @@ describe("usage — REST + SDK surface", () => {
     expect(data.days).toBe(7);
     expect(/^\d{4}-\d{2}$/.test(data.month)).toBe(true);
     expect(Array.isArray(data.series)).toBe(true);
+    expect(Array.isArray(data.keySeries)).toBe(true);
     expect(data.settingsLimits).toEqual(LIMITS);
     expect(data.limits).toEqual(LIMITS); // no env pins in this harness
     expect(data.envPinned).toEqual([]);
@@ -81,11 +82,29 @@ describe("usage — REST + SDK surface", () => {
     expect(rows.find((r) => r.id === keyId)?.monthlyQuota).toBe(7);
   });
 
+  test("ledger export rides the SDK with the same row shape as REST", async () => {
+    const client = createClient({ url: "", fetch: h.fetch as unknown as typeof fetch });
+    const { data } = await client.usage.export();
+    expect(/^\d{4}-\d{2}-01$/.test(data.from)).toBe(true);
+    expect(Array.isArray(data.rows)).toBe(true);
+    const session = data.rows.find((r) => r.apiKeyId === "");
+    expect(session?.keyName).toBe("Sessions & admin");
+
+    const rest = await h.fetch(`/api/admin/usage/export?from=${data.from}&to=${data.to}`);
+    expect(rest.status).toBe(200);
+    const restBody = (await rest.json()) as { data: typeof data };
+    expect(restBody.data.rows.length).toBe(data.rows.length);
+  });
+
   test("anonymous callers get 401", async () => {
     const anon = await h.app.fetch(
       new Request(`${h.env.APP_URL}/api/admin/usage/overview`),
     );
     expect(anon.status).toBe(401);
+    const anonExport = await h.app.fetch(
+      new Request(`${h.env.APP_URL}/api/admin/usage/export`),
+    );
+    expect(anonExport.status).toBe(401);
   });
 });
 
@@ -126,6 +145,23 @@ describe("usage — GraphQL surface", () => {
     });
     expect(bad.errors?.[0]?.extensions?.code).toBe("VALIDATION");
   });
+
+  test("usageExport returns the same ledger rows as REST", async () => {
+    const res = await gql(`query { usageExport }`);
+    expect(res.errors).toBeUndefined();
+    const data = res.data?.usageExport;
+    expect(/^\d{4}-\d{2}-01$/.test(data.from)).toBe(true);
+    expect(Array.isArray(data.rows)).toBe(true);
+    expect(data.rows.find((r: { apiKeyId: string }) => r.apiKeyId === "")?.keyName).toBe(
+      "Sessions & admin",
+    );
+
+    const inverted = await gql(
+      `query($f: String, $t: String){ usageExport(from: $f, to: $t) }`,
+      { f: "2026-07-10", t: "2026-07-01" },
+    );
+    expect(inverted.errors?.[0]?.extensions?.code).toBe("VALIDATION");
+  });
 });
 
 describe("usage — MCP surface", () => {
@@ -163,5 +199,13 @@ describe("usage — MCP surface", () => {
     expect(text).toContain('"month"');
     expect(text).toContain('"Sessions & admin"');
     expect(text).toContain("4242");
+  });
+
+  test("usage.export returns the ledger rows", async () => {
+    const res = await callTool("usage.export", {});
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain('"rows"');
+    expect(text).toContain('"Sessions & admin"');
   });
 });

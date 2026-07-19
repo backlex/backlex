@@ -6,10 +6,11 @@ import {
   GraphQLError,
   GraphQLInt,
   GraphQLNonNull,
+  GraphQLString,
   type GraphQLFieldConfig,
 } from "graphql";
 import { listApiKeys } from "../api-keys";
-import { saveUsageLimits, usageOverview } from "../usage";
+import { saveUsageLimits, usageExport, usageOverview } from "../usage";
 
 // ── Usage metering (#12) ─────────────────────────────────────────────────────
 // Admin-scoped twin of REST `/api/admin/usage` + MCP `usage.*` + SDK
@@ -43,6 +44,21 @@ export const usageQueryFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx
       const keys = await listApiKeys(gqlCtx.ctx, tenantId, null);
       return surfaceAppError(() =>
         usageOverview(gqlCtx.ctx, tenantId, days, keys),
+      );
+    },
+  },
+  usageExport: {
+    type: new GraphQLNonNull(JSONScalar),
+    description:
+      "Raw usage-ledger rows for billing reconciliation — one per (day, API key), " +
+      "buffer flushed first. Defaults to the current UTC month-to-date (admin-only).",
+    args: { from: { type: GraphQLString }, to: { type: GraphQLString } },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireUsageAdmin(gqlCtx);
+      const { from, to } = args as { from?: string | null; to?: string | null };
+      const keys = await listApiKeys(gqlCtx.ctx, tenantId, null);
+      return surfaceAppError(() =>
+        usageExport(gqlCtx.ctx, tenantId, { from, to }, keys),
       );
     },
   },

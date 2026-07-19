@@ -1346,6 +1346,10 @@ msgstr "All clear in this category"
 #~ msgid "All collections"
 #~ msgstr "All collections"
 
+#: src/client/admin/pages/usage.tsx
+msgid "All consumers"
+msgstr "All consumers"
+
 #: src/client/admin/pages/overview.tsx
 msgid "All events"
 msgstr "All events"
@@ -4543,6 +4547,7 @@ msgid "Expiry cleared."
 msgstr "Expiry cleared."
 
 #: src/client/admin/pages/schema-graph.tsx
+#: src/client/admin/pages/usage.tsx
 #: src/client/admin/parity/translations.tsx
 msgid "Export"
 msgstr "Export"
@@ -7747,6 +7752,10 @@ msgstr "No tools match."
 #: src/client/admin/pages/traces.tsx
 msgid "No traces yet"
 msgstr "No traces yet"
+
+#: src/client/admin/pages/usage.tsx
+msgid "No traffic for this consumer"
+msgstr "No traffic for this consumer"
 
 #: src/client/admin/edit-field.tsx
 msgid "No two rows can hold the same value (case-sensitive)."
@@ -12171,6 +12180,10 @@ msgstr "This collection has no form-eligible fields (only scalar, non-private fi
 #: src/client/admin/app.tsx
 msgid "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
 msgstr "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
+
+#: src/client/admin/pages/usage.tsx
+msgid "This consumer has no metered requests in the selected window."
+msgstr "This consumer has no metered requests in the selected window."
 
 #: src/client/admin/parity/insights.tsx
 msgid "This dashboard has no panels yet"

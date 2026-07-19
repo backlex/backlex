@@ -6,7 +6,12 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import { listApiKeys } from "../services/api-keys";
-import { saveUsageLimits, usageOverview } from "../services/usage";
+import {
+  saveUsageLimits,
+  usageExport,
+  usageExportCsv,
+  usageOverview,
+} from "../services/usage";
 
 const requireAdminMw: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
@@ -52,6 +57,18 @@ const UsageOverviewResponse = z
     month: z.string().openapi({ description: "Current UTC month, YYYY-MM." }),
     days: z.number().int(),
     series: z.array(UsageDayPoint),
+    keySeries: z.array(
+      z
+        .object({
+          day: z.string(),
+          apiKeyId: z.string().openapi({
+            description: "API key id; empty string = the session / no-key bucket.",
+          }),
+          requests: z.number().int().nonnegative(),
+          errors: z.number().int().nonnegative(),
+        })
+        .openapi("UsageKeyDayPoint"),
+    ),
     monthTotals: z.object({
       requests: z.number().int().nonnegative(),
       errors: z.number().int().nonnegative(),
@@ -74,6 +91,34 @@ const UsageOverviewResponse = z
     over: z.array(z.enum(["requests", "storage", "rows"])),
   })
   .openapi("UsageOverviewResponse");
+
+const DAY_PARAM = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .optional();
+
+const UsageExportRowShape = z
+  .object({
+    day: z.string(),
+    apiKeyId: z.string().openapi({
+      description: "API key id; empty string = the session / no-key bucket.",
+    }),
+    keyName: z.string(),
+    keyPrefix: z.string().nullable(),
+    requests: z.number().int().nonnegative(),
+    errors: z.number().int().nonnegative(),
+    storageBytes: z.number().int().nullable(),
+    dbRows: z.number().int().nullable(),
+  })
+  .openapi("UsageExportRow");
+
+const UsageExportResponse = z
+  .object({
+    from: z.string(),
+    to: z.string(),
+    rows: z.array(UsageExportRowShape),
+  })
+  .openapi("UsageExportResponse");
 
 const LimitsInput = z
   .object({
@@ -127,6 +172,59 @@ export const usageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const days = c.req.valid("query").days ?? 30;
       const keys = await listApiKeys(ctx, tenantId, null);
       const data = await usageOverview(ctx, tenantId, days, keys);
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/export",
+      tags: TAGS,
+      summary: "Export the usage ledger",
+      description:
+        "Raw `usage_counters` rows — one per (day, API key) — for downstream billing reconciliation. The in-memory counter buffer is flushed before reading. Defaults to the current UTC month-to-date; `format=csv` downloads an RFC 4180 file. Admin only.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdminMw],
+      request: {
+        query: z.object({
+          from: DAY_PARAM.openapi({
+            description: "First UTC day, YYYY-MM-DD (default: first of the current month).",
+          }),
+          to: DAY_PARAM.openapi({
+            description: "Last UTC day inclusive, YYYY-MM-DD (default: today).",
+          }),
+          format: z.enum(["json", "csv"]).optional().openapi({
+            description: "Response shape (default json).",
+          }),
+        }),
+      },
+      responses: {
+        200: {
+          description: "Ledger rows",
+          content: {
+            "application/json": {
+              schema: z.object({ data: UsageExportResponse }),
+            },
+            "text/csv": { schema: z.string() },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = requireTenant(c.get("auth"));
+      const { from, to, format } = c.req.valid("query");
+      const keys = await listApiKeys(ctx, tenantId, null);
+      const data = await usageExport(ctx, tenantId, { from, to }, keys);
+      if (format === "csv") {
+        return new Response(usageExportCsv(data.rows), {
+          headers: {
+            "content-type": "text/csv; charset=utf-8",
+            "content-disposition": `attachment; filename="usage-${data.from}--${data.to}.csv"`,
+          },
+        });
+      }
       return c.json({ data });
     },
   )

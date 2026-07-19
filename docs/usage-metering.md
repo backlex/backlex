@@ -85,8 +85,30 @@ the admin editor and are reported as `envPinned` by the usage API.
 **Observability → Usage** shows the month's request/error totals with limit
 progress bars, storage/row gauges, a per-day request chart (errors stacked in
 red), and the per-key table (usage vs quota, rate limit, revoked keys keep
-their history). The **Limits** button edits workspace limits; the row action
-edits a key's limits. All writes are optimistic.
+their history). The chart has a **consumer filter** — pick an API key (or the
+sessions bucket) to see just its daily series. The **Export** button downloads
+the current month's ledger as CSV; the **Limits** button edits workspace
+limits; the row action edits a key's limits. All writes are optimistic.
+
+## Exporting the ledger (billing)
+
+The buffered write path is quota-grade; for revenue-grade metering, export the
+raw ledger and reconcile downstream:
+
+```
+GET /api/admin/usage/export?from=2026-07-01&to=2026-07-31&format=csv
+```
+
+- One row per `(day, api_key_id)` with the key's name/prefix resolved
+  (`api_key_id = ""` is the session/admin bucket; deleted keys export as
+  `(deleted key)` — their counts survive key deletion).
+- The in-memory counter buffer is **flushed before reading**, so requests the
+  serving isolate has counted are always included. Counts still buffered on
+  *other* isolates land within one flush window (~10s) — export at least that
+  long after the period closes.
+- `from`/`to` are inclusive UTC days; default is the current month-to-date;
+  the range is capped at 366 days. `format=csv` returns an RFC 4180 file
+  (every cell quoted), otherwise JSON.
 
 ## API surfaces (full parity)
 
@@ -94,11 +116,11 @@ Every surface calls the same `usageOverview` / `saveUsageLimits` service pair:
 
 | Surface | Read | Write |
 |---|---|---|
-| REST | `GET /api/admin/usage/overview?days=30` | `PUT /api/admin/usage/limits` |
-| SDK | `client.usage.overview({ days })` | `client.usage.setLimits(limits)` |
-| GraphQL | `usageOverview(days: Int): JSON` | `usageSetLimits(limits: JSON): Boolean` |
-| MCP | `usage.overview` | `usage.set_limits` |
-| CLI | `backlex usage overview | series | limits` | `backlex usage set-limits --data '…'` |
+| REST | `GET /api/admin/usage/overview?days=30`, `GET /api/admin/usage/export?from&to&format` | `PUT /api/admin/usage/limits` |
+| SDK | `client.usage.overview({ days })`, `client.usage.export({ from, to })` | `client.usage.setLimits(limits)` |
+| GraphQL | `usageOverview(days: Int): JSON`, `usageExport(from: String, to: String): JSON` | `usageSetLimits(limits: JSON): Boolean` |
+| MCP | `usage.overview`, `usage.export` | `usage.set_limits` |
+| CLI | `backlex usage overview | series | export | limits` | `backlex usage set-limits --data '…'` |
 
 Per-key limits ride the API-keys surface: `POST /api/api-keys` accepts
 `rateLimitPerMinute` / `monthlyQuota` (admin-only), and
@@ -117,4 +139,5 @@ are pinned in `apps/web/tests/usage.test.ts`.
 
 All three windows are small relative to what they bound (a monthly budget, a
 plan change, a storage footprint). None of this is suitable for **billing** —
-for revenue-grade metering, export the ledger and reconcile downstream.
+for revenue-grade metering, use the ledger export above and reconcile
+downstream.

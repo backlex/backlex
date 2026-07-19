@@ -355,3 +355,98 @@ describe("usage — gauge sweep + env pinning", () => {
     expect(body.data.envPinned).toContain("maxRequestsPerMonth");
   });
 });
+
+describe("usage — billing export", () => {
+  let h: TestHarness;
+  beforeAll(async () => {
+    resetUsageState();
+    h = makeHarness();
+    await seedAdmin(h);
+  });
+  afterAll(() => h.cleanup());
+
+  test("export flushes the buffer — counts made moments ago are in the rows", async () => {
+    for (let i = 0; i < 3; i++) await h.fetch("/api/collections");
+    // No explicit flushUsage — the export endpoint must drain the buffer itself.
+    const res = await h.fetch("/api/admin/usage/export");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      data: {
+        from: string;
+        to: string;
+        rows: { apiKeyId: string; keyName: string; day: string; requests: number }[];
+      };
+    };
+    expect(body.data.from).toBe(`${utcMonth()}-01`);
+    expect(body.data.to).toBe(utcDay());
+    const session = body.data.rows.find((r) => r.apiKeyId === "" && r.day === utcDay());
+    expect(session).toBeDefined();
+    expect(session!.keyName).toBe("Sessions & admin");
+    expect(session!.requests).toBeGreaterThanOrEqual(3);
+  });
+
+  test("key rows carry the resolved key name + prefix", async () => {
+    const tenantId = await activeTenantId(h);
+    const { id } = await mintKey(h, { name: "billing-key" });
+    await seedLedger(h, { tenantId, apiKeyId: id, requests: 7 });
+    const res = await h.fetch("/api/admin/usage/export");
+    const body = (await res.json()) as {
+      data: { rows: { apiKeyId: string; keyName: string; keyPrefix: string | null; requests: number }[] };
+    };
+    const row = body.data.rows.find((r) => r.apiKeyId === id);
+    expect(row).toBeDefined();
+    expect(row!.keyName).toBe("billing-key");
+    expect(row!.keyPrefix).toBeTruthy();
+    expect(row!.requests).toBe(7);
+  });
+
+  test("format=csv downloads an RFC 4180 file with quoted cells", async () => {
+    const res = await h.fetch("/api/admin/usage/export?format=csv");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/csv");
+    expect(res.headers.get("content-disposition")).toContain(
+      `usage-${utcMonth()}-01--${utcDay()}.csv`,
+    );
+    const text = await res.text();
+    const lines = text.trimEnd().split("\r\n");
+    expect(lines[0]).toBe(
+      '"day","apiKeyId","keyName","keyPrefix","requests","errors","storageBytes","dbRows"',
+    );
+    expect(lines.length).toBeGreaterThanOrEqual(2);
+    expect(text).toContain('"Sessions & admin"');
+  });
+
+  test("range validation: bad day shape and inverted ranges are 4xx", async () => {
+    const bad = await h.fetch("/api/admin/usage/export?from=2026-7-1");
+    expect(bad.status).toBeGreaterThanOrEqual(400);
+    expect(bad.status).toBeLessThan(500);
+    const inverted = await h.fetch(
+      "/api/admin/usage/export?from=2026-07-10&to=2026-07-01",
+    );
+    expect(inverted.status).toBe(422);
+    const over = await h.fetch(
+      "/api/admin/usage/export?from=2020-01-01&to=2026-07-01",
+    );
+    expect(over.status).toBe(422);
+  });
+
+  test("overview exposes the per-key day series feeding the chart filter", async () => {
+    const res = await h.fetch("/api/admin/usage/overview?days=7");
+    const body = (await res.json()) as {
+      data: { keySeries: { day: string; apiKeyId: string; requests: number }[] };
+    };
+    expect(Array.isArray(body.data.keySeries)).toBe(true);
+    const session = body.data.keySeries.find(
+      (p) => p.apiKeyId === "" && p.day === utcDay(),
+    );
+    expect(session).toBeDefined();
+    expect(session!.requests).toBeGreaterThanOrEqual(1);
+    // Gauge-only rows (sweep, no traffic) must not appear as zero points.
+    const ctx = await buildContext(h.env);
+    await sweepUsageGauges(ctx);
+    const again = (await (
+      await h.fetch("/api/admin/usage/overview?days=7")
+    ).json()) as { data: { keySeries: { requests: number; errors: number }[] } };
+    expect(again.data.keySeries.every((p) => p.requests > 0 || p.errors > 0)).toBe(true);
+  });
+});

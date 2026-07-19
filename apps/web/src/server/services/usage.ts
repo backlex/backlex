@@ -282,6 +282,105 @@ export const latestGauges = async (
   };
 };
 
+/* ── Billing export ────────────────────────────────────────────────────── */
+
+export interface UsageExportRow {
+  day: string;
+  apiKeyId: string;
+  keyName: string;
+  keyPrefix: string | null;
+  requests: number;
+  errors: number;
+  storageBytes: number | null;
+  dbRows: number | null;
+}
+
+export interface UsageExport {
+  from: string;
+  to: string;
+  rows: UsageExportRow[];
+}
+
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const EXPORT_MAX_RANGE_DAYS = 366;
+
+/**
+ * Raw ledger export for downstream billing reconciliation — the counterpart
+ * of the "not a billing ledger" caveat on the buffered write path. The buffer
+ * is flushed first so every request this isolate has counted is in the rows;
+ * counts still buffered on *other* isolates land within one flush window
+ * (~10s), so export at least that long after the period closes.
+ *
+ * Defaults to the current UTC month-to-date. Rows are one per
+ * (day, api_key_id), ordered by day then key, with key names resolved so the
+ * export is self-describing (`""` = the session/admin bucket).
+ */
+export const usageExport = async (
+  ctx: UsageDbCtx,
+  tenantId: string,
+  range: { from?: string | null; to?: string | null },
+  keys: { id: string; name: string; prefix: string }[],
+): Promise<UsageExport> => {
+  const from = range.from ?? `${utcMonth()}-01`;
+  const to = range.to ?? utcDay();
+  if (!DAY_RE.test(from) || !DAY_RE.test(to))
+    throw new AppError("VALIDATION", "from/to must be UTC days (YYYY-MM-DD)");
+  if (from > to) throw new AppError("VALIDATION", "from must not be after to");
+  const spanMs = Date.parse(to) - Date.parse(from);
+  if (!Number.isFinite(spanMs) || spanMs / 86_400_000 >= EXPORT_MAX_RANGE_DAYS)
+    throw new AppError(
+      "VALIDATION",
+      `Export range is capped at ${EXPORT_MAX_RANGE_DAYS} days`,
+    );
+
+  await flushUsage(ctx);
+  const t = tableFor(ctx.dialect);
+  const raw = (await (ctx.db as any)
+    .select({
+      day: t.day,
+      apiKeyId: t.apiKeyId,
+      requests: t.requests,
+      errors: t.errors,
+      storageBytes: t.storageBytes,
+      dbRows: t.dbRows,
+    })
+    .from(t)
+    .where(and(eq(t.tenantId, tenantId), gte(t.day, from), lte(t.day, to)))
+    .orderBy(t.day, t.apiKeyId)) as Omit<UsageExportRow, "keyName" | "keyPrefix">[];
+
+  const keyById = new Map(keys.map((k) => [k.id, k]));
+  const rows = raw.map((r) => {
+    const key = r.apiKeyId === "" ? null : keyById.get(r.apiKeyId);
+    return {
+      ...r,
+      keyName:
+        r.apiKeyId === "" ? "Sessions & admin" : (key?.name ?? "(deleted key)"),
+      keyPrefix: key?.prefix ?? null,
+    };
+  });
+  return { from, to, rows };
+};
+
+const EXPORT_CSV_COLUMNS = [
+  "day",
+  "apiKeyId",
+  "keyName",
+  "keyPrefix",
+  "requests",
+  "errors",
+  "storageBytes",
+  "dbRows",
+] as const;
+
+/** RFC 4180 — every cell quoted, embedded quotes doubled. */
+const csvCell = (v: unknown): string => `"${String(v ?? "").replace(/"/g, '""')}"`;
+
+export const usageExportCsv = (rows: UsageExportRow[]): string => {
+  const lines = [EXPORT_CSV_COLUMNS.map(csvCell).join(",")];
+  for (const r of rows) lines.push(EXPORT_CSV_COLUMNS.map((c) => csvCell(r[c])).join(","));
+  return `${lines.join("\r\n")}\r\n`;
+};
+
 /* ── Limits resolution ─────────────────────────────────────────────────── */
 
 const envPosInt = (v: string | undefined): number | null => {
@@ -370,6 +469,9 @@ export interface UsageOverview {
   month: string;
   days: number;
   series: { day: string; requests: number; errors: number }[];
+  /** Per-key day points (only days with traffic) — feeds the admin chart's
+   *  consumer filter. `apiKeyId: ""` is the session/admin bucket. */
+  keySeries: { day: string; apiKeyId: string; requests: number; errors: number }[];
   monthTotals: { requests: number; errors: number };
   byKey: {
     id: string;
@@ -423,6 +525,17 @@ export const usageOverview = async (
   const series = [...byDay.entries()]
     .map(([day, v]) => ({ day, ...v }))
     .sort((a, b) => (a.day < b.day ? -1 : 1));
+
+  // Same rows, un-aggregated — gauge-only rows (sweep writes with no traffic)
+  // are dropped so the filtered chart doesn't render phantom zero days.
+  const keySeries = rows
+    .filter((r) => r.requests > 0 || r.errors > 0)
+    .map((r) => ({
+      day: r.day,
+      apiKeyId: r.apiKeyId,
+      requests: r.requests,
+      errors: r.errors,
+    }));
 
   const keyById = new Map(keys.map((k) => [k.id, k]));
   const byKey: UsageOverview["byKey"] = [];
@@ -506,6 +619,7 @@ export const usageOverview = async (
     month: utcMonth(),
     days,
     series,
+    keySeries,
     monthTotals: { requests: monthRequests, errors: monthErrors },
     byKey,
     gauges,

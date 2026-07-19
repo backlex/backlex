@@ -105,19 +105,49 @@ export function UsagePage({
 
   const [limitsOpen, setLimitsOpen] = useState(false);
   const [editKey, setEditKey] = useState<ApiUsageOverview["byKey"][number] | null>(null);
+  // Chart consumer filter — "all", "session" (the ""-id bucket), or "k:<id>".
+  const [chartKey, setChartKey] = useState("all");
+
+  const consumerOptions = useMemo(() => {
+    const opts = [{ value: "all", label: t`All consumers` }];
+    for (const k of overview?.byKey ?? [])
+      opts.push({
+        value: k.id === "" ? "session" : `k:${k.id}`,
+        label: k.id === "" ? t`Sessions & admin` : k.name,
+      });
+    return opts;
+  }, [overview, t]);
 
   // Pad the series so the chart always spans the whole window even when only
-  // a few days have traffic (rows only exist for days with requests).
+  // a few days have traffic (rows only exist for days with requests). With a
+  // consumer selected, the per-key day points feed the same padding.
   const paddedSeries = useMemo(() => {
     if (!overview) return [];
-    const byDay = new Map(overview.series.map((p) => [p.day, p]));
+    const src =
+      chartKey === "all"
+        ? overview.series
+        : overview.keySeries.filter(
+            (p) => p.apiKeyId === (chartKey === "session" ? "" : chartKey.slice(2)),
+          );
+    const byDay = new Map(src.map((p) => [p.day, p]));
     const out: ApiUsageOverview["series"] = [];
     for (let i = days - 1; i >= 0; i--) {
       const day = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10);
-      out.push(byDay.get(day) ?? { day, requests: 0, errors: 0 });
+      const p = byDay.get(day);
+      out.push(p ? { day, requests: p.requests, errors: p.errors } : { day, requests: 0, errors: 0 });
     }
     return out;
-  }, [overview, days]);
+  }, [overview, days, chartKey]);
+
+  // Month-to-date is the natural billing window; the server defaults match.
+  const exportCsv = () => {
+    const a = document.createElement("a");
+    a.href = "/api/admin/usage/export?format=csv";
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
 
   const limits = overview?.limits;
   const over = overview?.over ?? [];
@@ -130,13 +160,16 @@ export function UsagePage({
         title={t`Usage`}
         description={t`Metered API traffic per workspace and API key, storage and row footprints, and the plan limits enforced against them.`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Select
               value={String(days)}
               onChange={(v) => setDays(Number(v))}
               options={WINDOWS.map((d) => ({ value: d, label: t`${d} days` }))}
               className="w-[110px]"
             />
+            <Button variant="outline" icon={I.Download} onClick={exportCsv}>
+              <Trans>Export</Trans>
+            </Button>
             <Button variant="outline" icon={I.Settings} onClick={() => setLimitsOpen(true)}>
               <Trans>Limits</Trans>
             </Button>
@@ -235,15 +268,23 @@ export function UsagePage({
           </div>
 
           <Card className="gap-2 px-4 py-3.5">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-                <Trans>Requests per day</Trans>
-              </div>
-              {overview?.gauges.measuredAt != null && (
-                <div className="text-[11px] text-muted-foreground">
-                  <Trans>gauges measured {new Date(overview.gauges.measuredAt).toLocaleString()}</Trans>
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+                  <Trans>Requests per day</Trans>
                 </div>
-              )}
+                {overview?.gauges.measuredAt != null && (
+                  <div className="hidden text-[11px] text-muted-foreground sm:block">
+                    <Trans>gauges measured {new Date(overview.gauges.measuredAt).toLocaleString()}</Trans>
+                  </div>
+                )}
+              </div>
+              <Select
+                value={chartKey}
+                onChange={setChartKey}
+                options={consumerOptions}
+                className="w-[170px] shrink-0"
+              />
             </div>
             {isLoading || !overview ? (
               <Skeleton className="h-[120px] w-full" />
@@ -251,8 +292,12 @@ export function UsagePage({
               <EmptyState
                 bare
                 icon={I.Gauge}
-                title={t`No metered traffic yet`}
-                description={t`Requests are counted per workspace and API key as they arrive. Make an API call, then refresh.`}
+                title={chartKey === "all" ? t`No metered traffic yet` : t`No traffic for this consumer`}
+                description={
+                  chartKey === "all"
+                    ? t`Requests are counted per workspace and API key as they arrive. Make an API call, then refresh.`
+                    : t`This consumer has no metered requests in the selected window.`
+                }
               />
             ) : (
               <DayChart series={paddedSeries} />

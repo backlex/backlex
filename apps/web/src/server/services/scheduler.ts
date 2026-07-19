@@ -32,6 +32,7 @@ import { runScheduledSnapshots } from "./schema-versions";
 import { processMigrationRuns } from "./migrate";
 import { flushUsage, sweepUsageGauges } from "./usage";
 import { invokeExtensionHook, listCronExtensionHooks } from "./extensions";
+import { isDemoMode, maybeResetDemo } from "./demo";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
@@ -60,6 +61,8 @@ const ACTIVITY_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
  *  weekly window. */
 let lastBackupSweepAt: number = 0;
 const BACKUP_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
+let lastDemoSweepAt: number = 0;
+const DEMO_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 // Scheduled schema snapshots (#9) — throttled like backups; the sweep itself
 // re-checks each workspace's daily/weekly interval so this only bounds cost.
 let lastSchemaSnapshotSweepAt: number = 0;
@@ -270,6 +273,20 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     await unpublishDueItems(ctx);
   } catch (e) {
     console.error("[scheduled-unpublish] tick failed", e);
+  }
+
+  // Playground (demo) mode: wipe + reseed the workspace when the persisted
+  // last-reset timestamp is older than the interval. The per-isolate throttle
+  // only bounds how often we *read* that timestamp; maybeResetDemo itself
+  // decides whether a reset is actually due (and bootstraps a fresh demo
+  // instance on the very first tick).
+  if (isDemoMode(env) && now.getTime() - lastDemoSweepAt >= DEMO_SWEEP_INTERVAL_MS) {
+    lastDemoSweepAt = now.getTime();
+    try {
+      await maybeResetDemo(ctx, env, now);
+    } catch (e) {
+      console.error("[demo-reset] sweep failed", e);
+    }
   }
 
   // Scheduled backups: run + prune per workspace, throttled so the per-minute

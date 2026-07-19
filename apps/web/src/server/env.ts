@@ -40,6 +40,21 @@ export interface Env {
    *  claiming a public instance URL first). Unset on self-host → any first
    *  visitor may claim. */
   OWNER_EMAIL?: string;
+  /** `"1"`/`"true"` flips the instance into playground (demo) mode: the demo
+   *  admin account is auto-provisioned, its credentials are published on the
+   *  public auth surface (one-click sign-in), outbound/destructive endpoints
+   *  are blocked, and the whole workspace is wiped + re-seeded from
+   *  `SEED_TEMPLATE` on a timer. Never set this on a real instance — it makes
+   *  the admin account public by design. See services/demo.ts. */
+  DEMO_MODE?: string;
+  /** Demo-admin email published on the sign-in screen in demo mode.
+   *  Unset → `demo@backlex.com`. */
+  DEMO_EMAIL?: string;
+  /** Demo-admin password published on the sign-in screen in demo mode.
+   *  Unset → `playground`. It is public by design — DEMO_MODE only. */
+  DEMO_PASSWORD?: string;
+  /** Minutes between playground wipes (demo mode only). Unset → `60`. */
+  DEMO_RESET_MINUTES?: string;
   // Postgres URL (self-host or Hyperdrive). One of DATABASE_URL or D1 is required.
   DATABASE_URL?: string;
   /** Optional read-replica Postgres URL. When set (pg dialect only), `ctx.dbRead`
@@ -417,6 +432,10 @@ export const STRING_ENV_KEYS = [
   "OTLP_HEADERS",
   "SEED_TEMPLATE",
   "OWNER_EMAIL",
+  "DEMO_MODE",
+  "DEMO_EMAIL",
+  "DEMO_PASSWORD",
+  "DEMO_RESET_MINUTES",
   "DATABASE_URL",
   "DATABASE_REPLICA_URL",
   "DATABASE_DRIVER",

@@ -3,6 +3,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { Env } from "../env";
 import { userCount, type DbCtx } from "./seed";
+import { demoCredentials, isDemoMode } from "./demo";
 import { loadSignInBranding } from "./settings";
 import { isPlatformSsoEnabled } from "../lib/platform-sso";
 import { isEdgeRuntime } from "../lib/runtime";
@@ -100,6 +101,10 @@ export interface ResolvedAuthSurface {
    *  instance (the `PLATFORM_SSO_ENABLED` gate). Lets the admin client show or
    *  hide the "Platform SSO" settings page. Absent on the workspace surface. */
   platformSso?: boolean;
+  /** Playground (DEMO_MODE) only: the shared demo-admin credentials, published
+   *  so the sign-in screen can offer a one-click "enter the playground" button.
+   *  Public by design — never present outside demo mode. */
+  demo?: { email: string; password: string };
 }
 
 interface StoredAuthConfigRow {
@@ -352,6 +357,7 @@ export const resolveAuthSurface = async (
     // mode) so the claim screen can prefill + lock the email. Empty otherwise.
     ownerEmail: firstUserMode ? (env.OWNER_EMAIL?.trim() ?? "") : "",
     branding,
+    ...(isDemoMode(env) ? { demo: demoCredentials(env) } : {}),
   };
 };
 

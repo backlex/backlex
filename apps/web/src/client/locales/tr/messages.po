@@ -4340,6 +4340,10 @@ msgstr "Doğrulayıcı uygulamanızdaki 6 haneli kodu girin."
 msgid "Enter the email you signed up with — we'll send a reset link."
 msgstr "Kayıt olduğunuz e-postayı girin — sıfırlama bağlantısı göndereceğiz."
 
+#: src/client/components/demo-banner.tsx
+msgid "Enter the playground"
+msgstr "Oyun alanına gir"
+
 #: src/client/pages/sign-in.tsx
 msgid "Enter your authentication code."
 msgstr "Doğrulama kodunuzu girin."
@@ -4359,6 +4363,10 @@ msgstr "Kodları yeniden oluşturmak için şifrenizi girin."
 #: src/client/admin/account-page.tsx
 msgid "Enter your password to turn off 2FA."
 msgstr "2FA'yı kapatmak için şifrenizi girin."
+
+#: src/client/components/demo-banner.tsx
+msgid "Entering…"
+msgstr "Giriliyor…"
 
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Enterprise SSO for operators signing into this dashboard."
@@ -8706,6 +8714,10 @@ msgstr "Platform SSO"
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Platform SSO is not enabled on this instance. It's available on plans with enterprise SSO, or on self-hosted deployments."
 msgstr "Bu örnekte Platform SSO etkin değil. Kurumsal SSO içeren planlarda veya self-host dağıtımlarda kullanılabilir."
+
+#: src/client/components/demo-banner.tsx
+msgid "Playground — this is a shared demo. Anyone can edit the data, and everything resets every hour."
+msgstr "Oyun alanı — bu paylaşılan bir demodur. Verileri herkes düzenleyebilir ve her şey saatte bir sıfırlanır."
 
 #. placeholder {0}: b.label || humanizeLabel(b.name)
 #: src/client/pages/public-form.tsx

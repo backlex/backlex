@@ -81,6 +81,7 @@ import { api } from "@/lib/api";
 import { useUrlState, useUrlStateJson } from "@/lib/use-url-state";
 import { useTheme } from "@/components/theme-provider";
 import { CosmosStars } from "@/components/cosmos-stars";
+import { DemoBanner } from "@/components/demo-banner";
 import { SidebarInset, SidebarProvider } from "@backlex/ui/components/sidebar";
 import { StoragePage } from "./storage";
 import {
@@ -1039,6 +1040,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       <Sidebar activeNav={activeNav} setActiveNav={navTo} pushToast={pushToast} collectionsCount={collections.length} activeCollection={activeCollection} isAdmin={me ? me.isAdmin : null} navGrants={me?.nav ?? null} extensionPanels={extensionPanels.map(({ id, label, icon }) => ({ id, label, icon }))} />
 
       <SidebarInset className="min-h-0 min-w-0 bg-transparent">
+        <DemoBanner />
         <Topbar
           crumbs={
             activeNav === "collections" && activeCollection

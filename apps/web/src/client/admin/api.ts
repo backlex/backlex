@@ -1836,6 +1836,9 @@ export interface ApiFormBlock {
   rating?: boolean;
   consent?: boolean;
   policyUrl?: string;
+  /** File blocks: MIME allow-list + per-upload byte cap. */
+  accept?: string[];
+  maxBytes?: number;
   cond?: { field: string; op: "is" | "is_not"; value: string };
   i18n?: Record<string, ApiFormBlockI18n>;
 }
@@ -1939,6 +1942,9 @@ export interface ApiPublicFormBlock {
   consent: boolean;
   policyUrl: string | null;
   choices: { value: string; label?: string }[] | null;
+  /** File blocks: accepted MIME patterns (null ⇒ any) + effective byte cap. */
+  accept: string[] | null;
+  maxBytes: number | null;
   validation: Record<string, unknown> | null;
   cond: { field: string; op: string; value: string } | null;
 }
@@ -1959,11 +1965,28 @@ export interface ApiPublicForm {
   turnstileSiteKey: string | null;
 }
 
+export interface ApiPublicFormUpload {
+  /** Signed one-time ticket the submit payload carries as the field value. */
+  ticket: string;
+  name: string;
+  size: number;
+  contentType: string | null;
+}
+
 export const formsPublicApi = {
   get: (token: string, lang?: string) =>
     api<Envelope<ApiPublicForm>>(
       `/api/public/forms/${encodeURIComponent(token)}${lang ? `?lang=${encodeURIComponent(lang)}` : ""}`,
     ),
+  upload: (token: string, field: string, file: File) => {
+    const fd = new FormData();
+    fd.append("field", field);
+    fd.append("file", file);
+    return api<Envelope<ApiPublicFormUpload>>(
+      `/api/public/forms/${encodeURIComponent(token)}/upload`,
+      { method: "POST", body: fd },
+    );
+  },
   submit: (
     token: string,
     body: { data: Record<string, unknown>; turnstileToken?: string; website?: string },

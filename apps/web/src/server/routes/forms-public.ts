@@ -12,6 +12,7 @@ import {
 } from "../services/items/write";
 import {
   assertConsents,
+  exposedBlocks,
   exposedFieldNames,
   publicFormDefinition,
   recordFormBlocked,
@@ -21,6 +22,14 @@ import {
   verifyTurnstile,
   type FormRow,
 } from "../services/forms";
+import {
+  consumeFormUploadTicket,
+  formUploadPolicy,
+  matchesAccept,
+  storeFormUpload,
+} from "../services/form-uploads";
+import { DEMO_BLOCKED_MESSAGE, isDemoMode } from "../services/demo";
+import { assertStorageWithinLimit } from "../services/usage";
 
 const TAGS = ["forms"];
 
@@ -28,6 +37,11 @@ const TAGS = ["forms"];
  *  flooded form can't eat the workspace's overall request budget. */
 export const SUBMIT_MAX_PER_MINUTE = 10;
 const SUBMIT_WINDOW_MS = 60_000;
+
+/** Per-form, per-IP upload budget — uploads happen per field before submit,
+ *  so the minute window is looser than the submit one. */
+export const UPLOAD_MAX_PER_MINUTE = 20;
+const DAY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 const PublicFormBlockSchema = z
   .object({
@@ -44,6 +58,8 @@ const PublicFormBlockSchema = z
     choices: z
       .array(z.object({ value: z.string(), label: z.string().optional() }))
       .nullable(),
+    accept: z.array(z.string()).nullable(),
+    maxBytes: z.number().nullable(),
     validation: z.record(z.string(), z.unknown()).nullable(),
     cond: z
       .object({ field: z.string(), op: z.string(), value: z.string() })
@@ -149,8 +165,137 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           collection,
           ctx.env.TURNSTILE_SITE_KEY ?? null,
           c.req.query("lang") ?? null,
+          formUploadPolicy(ctx.env).maxBytes,
         ),
       });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{token}/upload",
+      tags: TAGS,
+      summary: "Upload a file for a form's file block",
+      description:
+        "PUBLIC — no auth. Stores the file (private ACL) and returns a signed one-time ticket the submit payload carries in place of the field value. Size, MIME allow-list, per-form/IP rate limits and the workspace storage cap are all enforced here; unsubmitted uploads are swept after 24h.",
+      security: PUBLIC_SECURITY,
+      request: {
+        params: z.object({ token: z.string() }),
+        body: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: z
+                .object({
+                  /** Field name of the file block the upload belongs to. */
+                  field: z.string(),
+                  file: z.instanceof(File).openapi({ type: "string", format: "binary" }),
+                })
+                .openapi("PublicFormUpload"),
+            },
+          },
+        },
+      },
+      responses: {
+        201: {
+          description: "Stored",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z
+                  .object({
+                    ticket: z.string(),
+                    name: z.string(),
+                    size: z.number(),
+                    contentType: z.string().nullable(),
+                  })
+                  .openapi("PublicFormUploadResult"),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const { token } = c.req.valid("param");
+      const form = requireLiveForm(await resolveFormToken(ctx, token));
+      // The playground wipes hourly and its storage is shared — anonymous
+      // uploads would turn it into a free file host, so they stay off there.
+      if (isDemoMode(ctx.env))
+        throw new AppError("FORBIDDEN", DEMO_BLOCKED_MESSAGE);
+      if (!form.tenantId)
+        throw new AppError("VALIDATION", "This form does not accept file uploads");
+
+      const meta = requestMeta(c.req.raw);
+      const ip = meta.ip ?? "unknown";
+      const policy = formUploadPolicy(ctx.env);
+      const minuteOk = await rateLimitOk(
+        ctx.env,
+        `form-upload:${form.id}:${ip}`,
+        UPLOAD_MAX_PER_MINUTE,
+        SUBMIT_WINDOW_MS,
+      );
+      // Daily budget is per FORM (not per IP) — it caps what a botnet can
+      // store, not just what one address can.
+      const dayOk =
+        minuteOk &&
+        (await rateLimitOk(
+          ctx.env,
+          `form-upload-day:${form.id}`,
+          policy.maxPerDay,
+          DAY_WINDOW_MS,
+        ));
+      if (!minuteOk || !dayOk) {
+        await recordFormBlocked(ctx, form.id);
+        throw new AppError(
+          "RATE_LIMITED",
+          "Too many uploads — please wait and try again",
+        );
+      }
+
+      let collection;
+      try {
+        collection = await loadCollection(ctx, form.tenantId, form.collection);
+      } catch {
+        throw new AppError("NOT_FOUND", NOT_AVAILABLE);
+      }
+
+      const body = c.req.valid("form");
+      const entry = exposedBlocks(form, collection).find(
+        (e) => e.def !== null && e.def.name === body.field && e.def.type === "file",
+      );
+      if (!entry?.def)
+        throw new AppError(
+          "VALIDATION",
+          `"${body.field}" is not an upload field on this form`,
+        );
+
+      const file = body.file;
+      const cap = Math.min(entry.block.maxBytes || policy.maxBytes, policy.maxBytes);
+      if (file.size === 0)
+        throw new AppError("VALIDATION", "The uploaded file is empty");
+      if (file.size > cap)
+        throw new AppError(
+          "VALIDATION",
+          `File is too large — the limit for this field is ${Math.floor(cap / 1024 / 1024)} MB`,
+          { maxBytes: cap, size: file.size },
+        );
+      if (!matchesAccept(entry.block.accept, file.type))
+        throw new AppError(
+          "VALIDATION",
+          "This file type is not accepted for this field",
+          { accept: entry.block.accept ?? null, contentType: file.type || null },
+        );
+      await assertStorageWithinLimit(ctx, ctx.env, form.tenantId, file.size);
+
+      const stored = await storeFormUpload(
+        ctx,
+        { id: form.id, tenantId: form.tenantId },
+        file,
+      );
+      return c.json({ data: stored }, 201);
     },
   )
   .openapi(
@@ -248,6 +393,26 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       }
 
       assertConsents(form, collection, data);
+
+      // File blocks: the payload carries the signed ticket minted by the
+      // upload endpoint — NEVER a raw storage key. Swap each ticket for its
+      // logical key (and reject anything else) before the row write.
+      for (const { block, def } of exposedBlocks(form, collection)) {
+        if (!def || def.type !== "file") continue;
+        const v = data[def.name];
+        if (v === undefined || v === null || v === "") {
+          delete data[def.name];
+          continue;
+        }
+        if (!form.tenantId)
+          throw new AppError("VALIDATION", "This form does not accept file uploads");
+        data[def.name] = await consumeFormUploadTicket(
+          ctx,
+          { id: form.id, tenantId: form.tenantId },
+          v,
+          block.label || def.label || def.name,
+        );
+      }
 
       const env: WriteEnv = {
         ctx,

@@ -846,6 +846,10 @@ msgid "Accept invite"
 msgstr "Daveti kabul et"
 
 #: src/client/admin/pages/forms.tsx
+msgid "Accepted types"
+msgstr "Kabul edilen türler"
+
+#: src/client/admin/pages/forms.tsx
 msgid "accepted, all time"
 msgstr "kabul edilen, tüm zamanlar"
 
@@ -1583,6 +1587,10 @@ msgstr "arşivlendi"
 msgid "Archived"
 msgstr "Arşivlendi"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Archives"
+msgstr "Arşivler"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Args copied"
 msgstr "Argümanlar kopyalandı"
@@ -1652,6 +1660,10 @@ msgstr "Denemeler"
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Attribute map"
 msgstr "Öznitelik eşlemesi"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Audio"
+msgstr "Ses"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Audit reads"
@@ -2218,6 +2230,11 @@ msgstr "seçenekler · şema enum'ından"
 #: src/client/admin/pages/extensions.tsx
 msgid "Choose a different folder"
 msgstr "Farklı bir klasör seç"
+
+#: src/client/admin/pages/forms.tsx
+#: src/client/pages/public-form.tsx
+msgid "Choose a file or drag it here"
+msgstr "Bir dosya seçin veya buraya sürükleyin"
 
 #: src/client/pages/reset-password.tsx
 msgid "Choose a new password"
@@ -3746,6 +3763,10 @@ msgstr "Hiçbir şey yapma"
 msgid "Docs"
 msgstr "Belgeler"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Documents"
+msgstr "Belgeler"
+
 #: src/client/pages/sign-in.tsx
 msgid "Don't have an account?"
 msgstr "Hesabınız yok mu?"
@@ -4779,6 +4800,11 @@ msgstr "Aynı bölüm adını paylaşan alanlar, öğe formunda tek bir başlık
 msgid "File detail"
 msgstr "Dosya detayı"
 
+#. placeholder {0}: fmtBytes(block.maxBytes)
+#: src/client/pages/public-form.tsx
+msgid "File is too large — the limit is {0}"
+msgstr "Dosya çok büyük — sınır {0}"
+
 #: src/client/admin/storage/index.tsx
 msgid "files"
 msgstr "dosyalar"
@@ -5501,6 +5527,10 @@ msgstr "{displayEmail} bir hesapla eşleşiyorsa, giriş bağlantısı yola çı
 #: src/client/admin/pages/forms.tsx
 msgid "If set, visitors are sent there instead of seeing the message."
 msgstr "Ayarlanırsa ziyaretçi mesaj yerine bu adrese yönlendirilir."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Images"
+msgstr "Görseller"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/schema-versions.tsx
@@ -6620,6 +6650,10 @@ msgstr "En fazla 80 karakter."
 msgid "Max attempts"
 msgstr "Maksimum deneme"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Max file size"
+msgstr "Azami dosya boyutu"
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "Max length"
 msgstr "Maks uzunluk"
@@ -7633,6 +7667,10 @@ msgstr "Yapılandırılmış SAML sağlayıcı yok. Bir tane ekleyene kadar oper
 msgid "No schema."
 msgstr "Şema yok."
 
+#: src/client/admin/pages/forms.tsx
+msgid "No selection — any file type is accepted."
+msgstr "Seçim yok — her dosya türü kabul edilir."
+
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "No signing cert stored — login will fail."
@@ -8001,6 +8039,10 @@ msgstr "Yalnızca mevcut durum var — henüz düzenleme kaydedilmedi."
 msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
 msgstr "Yalnızca değiştirdiğiniz alanlar <0>c_{slug}</0> içindeki seçili {count} satırın tümüne yazılır; geri kalan her şey olduğu gibi kalır."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Only the selected types are accepted — enforced server-side."
+msgstr "Yalnızca seçili türler kabul edilir — sunucu tarafında uygulanır."
+
 #: src/client/admin/parity/translations.tsx
 msgid "Only translate missing keys"
 msgstr "Yalnızca eksik anahtarları çevir"
@@ -8339,6 +8381,10 @@ msgstr "Yük (JSON)"
 #: src/client/admin/pages/extensions.tsx
 msgid "Payload must be valid JSON."
 msgstr "Yük geçerli JSON olmalıdır."
+
+#: src/client/admin/pages/forms.tsx
+msgid "PDF"
+msgstr "PDF"
 
 #: src/client/admin/members-panel.tsx
 msgid "pending"
@@ -8723,6 +8769,11 @@ msgstr "Oyun alanı — bu paylaşılan bir demodur. Verileri herkes düzenleyeb
 #: src/client/pages/public-form.tsx
 msgid "Please accept \"{0}\""
 msgstr "Lütfen \"{0}\" onayını işaretleyin"
+
+#. placeholder {0}: b.label || humanizeLabel(b.name)
+#: src/client/pages/public-form.tsx
+msgid "Please attach a file for \"{0}\""
+msgstr "Lütfen \"{0}\" için bir dosya ekleyin"
 
 #. placeholder {0}: b.label || humanizeLabel(b.name)
 #: src/client/pages/public-form.tsx
@@ -9444,6 +9495,10 @@ msgstr "Koşulu kaldır"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Remove device"
 msgstr "Cihazı kaldır"
+
+#: src/client/pages/public-form.tsx
+msgid "Remove file"
+msgstr "Dosyayı kaldır"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Remove from form"
@@ -10578,8 +10633,12 @@ msgid "Select"
 msgstr "Seç"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Select a block on the canvas to edit its settings. Only scalar, non-private fields can be exposed."
-msgstr "Ayarlarını düzenlemek için tuvalden bir blok seçin. Yalnızca skaler, gizli olmayan alanlar gösterilebilir."
+#~ msgid "Select a block on the canvas to edit its settings. Only scalar, non-private fields can be exposed."
+#~ msgstr "Ayarlarını düzenlemek için tuvalden bir blok seçin. Yalnızca skaler, gizli olmayan alanlar gösterilebilir."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Select a block on the canvas to edit its settings. Scalar and file fields can be exposed — never private or computed ones."
+msgstr "Ayarlarını düzenlemek için tuvalde bir blok seçin. Skaler ve dosya alanları formda gösterilebilir — gizli veya hesaplanan alanlar asla."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Select a collection…"
@@ -10739,6 +10798,14 @@ msgstr "E-posta ile tek kullanımlık giriş bağlantısı gönderir — yapıla
 #: src/client/admin/item-views.tsx
 msgid "September"
 msgstr "Eylül"
+
+#: src/client/admin/pages/forms.tsx
+#~ msgid "Server default (10 MB)"
+#~ msgstr "Sunucu varsayılanı (10 MB)"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Server default (5 MB)"
+msgstr "Sunucu varsayılanı (5 MB)"
 
 #: src/client/admin/storage/index.tsx
 msgid "Server fetches the URL and stores it in this workspace. http/https only — private/internal hosts are rejected."
@@ -11407,6 +11474,10 @@ msgstr "Belirtim kullanılamıyor. Yenilemeyi deneyin."
 msgid "Splits the form into pages"
 msgstr "Formu sayfalara böler"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Spreadsheets"
+msgstr "Tablolar"
+
 #: src/client/admin/parity/insights.tsx
 msgid "SQL"
 msgstr "SQL"
@@ -12040,6 +12111,10 @@ msgstr "Bölüm katlanmış açılır — gelişmiş veya nadiren kullanılan al
 #: src/client/admin/pages/extensions.tsx
 msgid "The selected folder has no backlex-extension.json at its root."
 msgstr "Seçilen klasörün kökünde backlex-extension.json yok."
+
+#: src/client/admin/pages/forms.tsx
+msgid "The server-wide upload ceiling still applies on top."
+msgstr "Sunucu genelindeki yükleme sınırı ayrıca geçerlidir."
 
 #: src/client/pages/shared-record.tsx
 msgid "The share link may have been revoked, or the record it pointed to was removed."
@@ -12685,6 +12760,16 @@ msgstr "E-postanızı onaylayana kadar giriş çalışmaz. Almadınız mı? Spam
 msgid "unverified"
 msgstr "doğrulanmamış"
 
+#. placeholder {0}: fmtBytes(block.maxBytes)
+#: src/client/pages/public-form.tsx
+msgid "up to {0}"
+msgstr "en fazla {0}"
+
+#. placeholder {0}: Math.floor((block.maxBytes ?? 5 * 1024 * 1024) / 1024 / 1024)
+#: src/client/admin/pages/forms.tsx
+msgid "up to {0} MB"
+msgstr "en fazla {0} MB"
+
 #: src/client/admin/bulk-edit.tsx
 msgid "Update {count} rows"
 msgstr "{count} satırı güncelle"
@@ -12726,6 +12811,10 @@ msgstr "Yerel bir klasör yükleyin — yayınlamaya gerek olmayan hızlı geli�
 msgid "upload failed"
 msgstr "yükleme başarısız"
 
+#: src/client/pages/public-form.tsx
+msgid "Upload failed — please try again"
+msgstr "Yükleme başarısız — lütfen tekrar deneyin"
+
 #: src/client/admin/pages/extensions.tsx
 msgid "Upload folder"
 msgstr "Klasör yükle"
@@ -12745,6 +12834,7 @@ msgstr "yükleniyor…"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/pages/public-form.tsx
 msgid "Uploading…"
 msgstr "Yükleniyor…"
 
@@ -13036,6 +13126,10 @@ msgstr "sürümlü"
 #: src/client/admin/collection-settings.tsx
 msgid "Versioned (draft / published)"
 msgstr "Sürümlü (taslak / yayınlandı)"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Video"
+msgstr "Video"
 
 #: src/client/admin/item-views.tsx
 msgid "View"

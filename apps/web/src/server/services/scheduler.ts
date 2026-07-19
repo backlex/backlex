@@ -24,6 +24,7 @@ const parseExpression = (
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 import { processJobs } from "./jobs";
 import { sweepExpiredUploads } from "./uploads";
+import { sweepStaleFormUploads } from "./form-uploads";
 import { publishDueItems, unpublishDueItems } from "./items/scheduled-publish";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 import { pruneOldSpans } from "./traces";
@@ -257,6 +258,14 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     await sweepExpiredUploads(ctx);
   } catch (e) {
     console.error("[uploads] sweep failed", e);
+  }
+
+  // Public-form file uploads that were never submitted: delete the pending
+  // objects + rows once they go stale so anonymous uploads can't accumulate.
+  try {
+    await sweepStaleFormUploads(ctx);
+  } catch (e) {
+    console.error("[form-uploads] sweep failed", e);
   }
 
   // Scheduled publishing: flip versioned-collection drafts whose `_publish_at`

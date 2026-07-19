@@ -326,6 +326,11 @@ export interface Env {
   UPLOAD_TTL_MS?: string;
   /** Max parts per upload (S3 limit is 10000). Default 10000. */
   UPLOAD_PART_MAX?: string;
+  /** Global ceiling for one anonymous public-form file upload, in bytes. A
+   *  form block's own `maxBytes` can only clamp below this. Default 5 MiB. */
+  FORM_UPLOAD_MAX_BYTES?: string;
+  /** Per-form daily budget of anonymous uploads (abuse valve). Default 500. */
+  FORM_UPLOAD_MAX_PER_DAY?: string;
   /** Control-plane (admin) SAML/LDAP SSO toggle. Enabled unless explicitly set
    *  to `"false"`/`"0"` — so self-host gets it by default. The cloud injects
    *  `"false"` for projects on plans without enterprise SSO (Free/Pro). */
@@ -519,6 +524,8 @@ export const STRING_ENV_KEYS = [
   "UPLOAD_MIN_PART_BYTES",
   "UPLOAD_TTL_MS",
   "UPLOAD_PART_MAX",
+  "FORM_UPLOAD_MAX_BYTES",
+  "FORM_UPLOAD_MAX_PER_DAY",
   "PLATFORM_SSO_ENABLED",
   "EXTRA_TRUSTED_ORIGINS",
   "FUNCTIONS_FETCH_ALLOW",

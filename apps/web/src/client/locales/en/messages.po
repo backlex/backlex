@@ -224,6 +224,12 @@ msgstr "{0} active · {1} invited"
 msgid "{0} all · {1} custom · {2} none"
 msgstr "{0} all · {1} custom · {2} none"
 
+#. placeholder {0}: statusC.slug
+#. placeholder {1}: statusF.name
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "{0} by {1}"
+msgstr "{0} by {1}"
+
 #. placeholder {0}: tpl.collections.length
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "{0} collections"
@@ -2559,8 +2565,8 @@ msgid "comments"
 msgstr "comments"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Comments needing moderation"
-msgstr "Comments needing moderation"
+#~ msgid "Comments needing moderation"
+#~ msgstr "Comments needing moderation"
 
 #: src/client/admin/item-form.tsx
 msgid "Compare"
@@ -4500,6 +4506,10 @@ msgstr "everyone"
 #: src/client/admin/pages/extensions.tsx
 msgid "Exact package name as published on npm."
 msgstr "Exact package name as published on npm."
+
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Examples"
+msgstr "Examples"
 
 #: src/client/admin/pages/functions.tsx
 msgid "Examples: items:posts:created, items:posts:*, items:*:*"
@@ -8155,8 +8165,8 @@ msgid "or with email"
 msgstr "or with email"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Orders by status"
-msgstr "Orders by status"
+#~ msgid "Orders by status"
+#~ msgstr "Orders by status"
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Original"
@@ -9094,8 +9104,8 @@ msgid "published only"
 msgstr "published only"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Published posts past week"
-msgstr "Published posts past week"
+#~ msgid "Published posts past week"
+#~ msgstr "Published posts past week"
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Published."
@@ -9287,6 +9297,11 @@ msgstr "Recall relevant past turns (needs an embedding provider)."
 #: src/client/admin/extras.tsx
 msgid "Received"
 msgstr "Received"
+
+#. placeholder {0}: recentC.slug
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Recent {0}"
+msgstr "Recent {0}"
 
 #: src/client/admin/pages/users.tsx
 msgid "Recent activity"
@@ -12268,6 +12283,10 @@ msgstr "This password reset link is missing its token or has expired. Request a 
 msgid "This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone."
 msgstr "This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone."
 
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "This plan failed validation — review or edit the args before running."
+msgstr "This plan failed validation — review or edit the args before running."
+
 #: src/client/admin/item-editor.tsx
 msgid "This record was changed by someone else after you opened it. Reload to get the latest version (your edits will be lost), or save anyway to overwrite theirs."
 msgstr "This record was changed by someone else after you opened it. Reload to get the latest version (your edits will be lost), or save anyway to overwrite theirs."
@@ -12432,13 +12451,19 @@ msgstr "tools"
 msgid "Tools"
 msgstr "Tools"
 
+#. placeholder {0}: aggRel.name
+#. placeholder {1}: aggNum.name
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Top {0} by {1}"
+msgstr "Top {0} by {1}"
+
 #: src/client/admin/pages/overview.tsx
 msgid "Top collections"
 msgstr "Top collections"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Top customers by spend"
-msgstr "Top customers by spend"
+#~ msgid "Top customers by spend"
+#~ msgstr "Top customers by spend"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Total"
@@ -12542,8 +12567,8 @@ msgid "Triggers fire on collection events, schedules, or webhooks. Each step run
 msgstr "Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Try"
-msgstr "Try"
+#~ msgid "Try"
+#~ msgstr "Try"
 
 #: src/client/admin/collections-index.tsx
 msgid "Try a different slug or group."

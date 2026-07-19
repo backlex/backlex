@@ -145,11 +145,14 @@ export const buildSchemaDigest = (collections: CollectionMeta[]): string => {
     body = lines.join("\n");
   }
   return (
-    "\n\nWorkspace schema — filter, sort, and `fields` may ONLY reference " +
+    "\n\nWorkspace schema — `collection` MUST be EXACTLY one of the slugs " +
+    "listed below; NEVER a collection that is not listed (ignore any " +
+    "collection named in examples above if it does not appear here). " +
+    "filter, sort, and `fields` may ONLY reference " +
     "field names that appear here (plus the system fields " +
     `${SYSTEM_FIELDS}, present on every collection). If a question asks ` +
-    "about something with no matching field, pick the closest real field " +
-    "and say so in `rationale` — NEVER invent a field name:\n" +
+    "about a collection or field with no match, pick the closest listed " +
+    "slug / real field and say so in `rationale` — NEVER invent one:\n" +
     body
   );
 };
@@ -410,10 +413,12 @@ const planHandler = async (
         `${prompt}\n\nYour previous answer was:\n` +
         `\`\`\`json\n${JSON.stringify({ tool: plan.tool, args: plan.args })}\n\`\`\`\n` +
         `but it failed validation with:\n${err}\n` +
-        "Return ONE corrected JSON block. Use only fields that exist in the " +
-        "schema; relation paths use dotted keys in filter/sort; `fields` " +
-        "takes plain column names; for totals/counts/top-N use " +
-        "collections.aggregate (agg + groupBy), not $group/$sum in a filter.",
+        "Return ONE corrected JSON block. `collection` MUST be a slug from " +
+        "the workspace schema (pick the closest listed one). Use only fields " +
+        "that exist in the schema; relation paths use dotted keys in " +
+        "filter/sort; `fields` takes plain column names; for " +
+        "totals/counts/top-N use collections.aggregate (agg + groupBy), not " +
+        "$group/$sum in a filter.",
       model,
       maxTokens: 1024,
     });

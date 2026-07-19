@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { api } from "@/lib/api";
-import { activityApi, } from "../../api";
+import { activityApi, collectionsApi, type ApiCollection } from "../../api";
 import { I } from "../../icons";
 import { Badge, Button, PageHeader, Switch } from "../../ui";
 import { Card } from "@backlex/ui/components/card";
@@ -127,35 +127,82 @@ export function AskAiPage({
     ],
     [t],
   );
+  // Collections feed the example chips — hard-coded ecommerce examples
+  // ("top customers…") guaranteed a NOT_FOUND in any workspace without an
+  // `orders` collection, so examples are derived from the live schema.
+  const [exampleCollections, setExampleCollections] = useState<ApiCollection[]>([]);
+  useEffect(() => {
+    collectionsApi
+      .list()
+      .then((r) =>
+        setExampleCollections(
+          r.data.filter(
+            (c) => (c.status ?? "active") === "active" && !c.hidden,
+          ),
+        ),
+      )
+      .catch(() => {
+        // No collections → only the schema-draft chip renders.
+      });
+  }, []);
+
   // `prompt` strings stay English — the planner LLM consumes them, not the user.
-  const EXAMPLES = useMemo(
-    () => [
-      {
-        label: t`Top customers by spend`,
-        prompt: "top customers by total spent in the last 30 days, limit 10",
-      },
-      {
-        label: t`Orders by status`,
-        prompt: "count of orders grouped by status",
-      },
-      {
-        label: t`Published posts past week`,
-        prompt:
-          "posts published in the past 7 days, status published, sorted by view_count desc",
-      },
-      {
-        label: t`Comments needing moderation`,
-        prompt:
-          "comments flagged for moderation older than 24h, include author email",
-      },
-      {
-        label: t`Draft support_tickets schema`,
-        prompt:
-          "design a support_tickets collection — subject, body, requester (relation to app_users), priority enum, status workflow, assigned_to",
-      },
-    ],
-    [t],
-  );
+  const EXAMPLES = useMemo(() => {
+    const NUMERIC = new Set(["number", "integer"]);
+    const pool = exampleCollections;
+    const out: Array<{ label: string; prompt: string }> = [];
+
+    // Top-N aggregate: first collection with a relation + a numeric metric.
+    const aggC = pool.find(
+      (c) =>
+        c.fields.some((f) => f.type === "relation" && f.to) &&
+        c.fields.some((f) => NUMERIC.has(f.type)),
+    );
+    const aggRel = aggC?.fields.find((f) => f.type === "relation" && f.to);
+    const aggNum = aggC?.fields.find((f) => NUMERIC.has(f.type));
+    if (aggC && aggRel && aggNum) {
+      out.push({
+        label: t`Top ${aggRel.name} by ${aggNum.name}`,
+        prompt: `top ${aggRel.name} in ${aggC.slug} by total ${aggNum.name} in the last 30 days, limit 10`,
+      });
+    }
+
+    // Grouped count: a status-shaped field (name or select interface).
+    const statusC = pool.find((c) =>
+      c.fields.some(
+        (f) => /^(status|state|stage)$/.test(f.name) || f.interface === "select",
+      ),
+    );
+    const statusF = statusC?.fields.find(
+      (f) => /^(status|state|stage)$/.test(f.name) || f.interface === "select",
+    );
+    if (statusC && statusF) {
+      out.push({
+        label: t`${statusC.slug} by ${statusF.name}`,
+        prompt: `count of ${statusC.slug} grouped by ${statusF.name}`,
+      });
+    }
+
+    // Recent rows: prefer a collection not already used above.
+    const recentC =
+      pool.find(
+        (c) => c.hasCreatedAt !== false && c !== aggC && c !== statusC,
+      ) ?? pool.find((c) => c.hasCreatedAt !== false);
+    if (recentC) {
+      out.push({
+        label: t`Recent ${recentC.slug}`,
+        prompt: `${recentC.slug} created in the past 7 days, sorted by created_at desc, limit 10`,
+      });
+    }
+
+    // Always valid — collection-independent.
+    out.push({
+      label: t`Draft support_tickets schema`,
+      prompt:
+        "design a support_tickets collection — subject, body, requester (relation to app_users), priority enum, status workflow, assigned_to",
+    });
+    return out;
+  }, [exampleCollections, t]);
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [phase, setPhase] = useState<
     "idle" | "thinking" | "plan" | "running" | "done"
@@ -273,7 +320,13 @@ export function AskAiPage({
       setPlan(res.data);
       setArgsDraft(JSON.stringify(res.data.args, null, 2));
       setPhase("plan");
-      if (autoRun && AUTO_RUN_PATTERN.test(res.data.tool)) {
+      // A plan carrying a lingering validationError needs the operator's
+      // eyes (and probably an edit) — never fire it automatically.
+      if (
+        autoRun &&
+        AUTO_RUN_PATTERN.test(res.data.tool) &&
+        !res.data.validationError
+      ) {
         await runPlan(res.data);
       }
     } catch (e) {
@@ -287,7 +340,9 @@ export function AskAiPage({
     if (!plan) return;
     try {
       const next = JSON.parse(argsDraft) as Record<string, unknown>;
-      setPlan({ ...plan, args: next });
+      // Hand-edited args supersede the server's dry-run verdict — clear the
+      // stale warning so the Run button reads clean again.
+      setPlan({ ...plan, args: next, validationError: undefined });
       setEditing(false);
       setArgsError(null);
       pushToast(t`Args updated`);
@@ -454,7 +509,7 @@ export function AskAiPage({
           {phase === "idle" && !planError && (
             <div className="flex flex-wrap gap-2">
               <span className="mr-1 self-center text-[11.5px] uppercase tracking-wider text-muted-foreground">
-                <Trans>Try</Trans>
+                <Trans>Examples</Trans>
               </span>
               {EXAMPLES.map((e) => (
                 <Button
@@ -534,6 +589,20 @@ export function AskAiPage({
               <div className="px-5 pt-2 pb-1 text-[12.5px] leading-relaxed text-muted-foreground">
                 {plan.rationale}
               </div>
+              {plan.validationError && (
+                <div className="mx-5 mt-2 flex items-start gap-2 rounded-control border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700 dark:text-amber-300">
+                  <I.AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                  <span className="min-w-0">
+                    <Trans>
+                      This plan failed validation — review or edit the args
+                      before running.
+                    </Trans>{" "}
+                    <span className="break-words font-mono text-[11px]">
+                      {plan.validationError}
+                    </span>
+                  </span>
+                </div>
+              )}
               <div className="px-5 py-3">
                 <div className="rounded-control border border-border bg-muted/40 p-4">
                   {editing ? (

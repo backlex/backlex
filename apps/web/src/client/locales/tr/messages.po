@@ -224,6 +224,12 @@ msgstr "{0} etkin · {1} davetli"
 msgid "{0} all · {1} custom · {2} none"
 msgstr "{0} tümü · {1} özel · {2} yok"
 
+#. placeholder {0}: statusC.slug
+#. placeholder {1}: statusF.name
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "{0} by {1}"
+msgstr "{1} bazında {0}"
+
 #. placeholder {0}: tpl.collections.length
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "{0} collections"
@@ -2559,8 +2565,8 @@ msgid "comments"
 msgstr "yorumlar"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Comments needing moderation"
-msgstr "Moderasyon bekleyen yorumlar"
+#~ msgid "Comments needing moderation"
+#~ msgstr "Moderasyon bekleyen yorumlar"
 
 #: src/client/admin/item-form.tsx
 msgid "Compare"
@@ -4500,6 +4506,10 @@ msgstr "herkes"
 #: src/client/admin/pages/extensions.tsx
 msgid "Exact package name as published on npm."
 msgstr "npm'de yayınlandığı haliyle tam paket adı."
+
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Examples"
+msgstr "Örnekler"
 
 #: src/client/admin/pages/functions.tsx
 msgid "Examples: items:posts:created, items:posts:*, items:*:*"
@@ -8155,8 +8165,8 @@ msgid "or with email"
 msgstr "veya e-postayla"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Orders by status"
-msgstr "Duruma göre siparişler"
+#~ msgid "Orders by status"
+#~ msgstr "Duruma göre siparişler"
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Original"
@@ -9094,8 +9104,8 @@ msgid "published only"
 msgstr "yalnızca yayınlananlar"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Published posts past week"
-msgstr "Son haftada yayınlanmış postlar"
+#~ msgid "Published posts past week"
+#~ msgstr "Son haftada yayınlanmış postlar"
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Published."
@@ -9287,6 +9297,11 @@ msgstr "İlgili geçmiş konuşmaları hatırlar (bir embedding sağlayıcısı 
 #: src/client/admin/extras.tsx
 msgid "Received"
 msgstr "Alındı"
+
+#. placeholder {0}: recentC.slug
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Recent {0}"
+msgstr "Son {0}"
 
 #: src/client/admin/pages/users.tsx
 msgid "Recent activity"
@@ -12268,6 +12283,10 @@ msgstr "Bu parola sıfırlama bağlantısının token'ı eksik veya süresi dolm
 msgid "This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone."
 msgstr "Bu, fonksiyonu ve kodunu kalıcı olarak kaldırır. Ona başvuran tetikleyiciler, akış adımları veya çağıranlar çalışmayı durdurur. Bu geri alınamaz."
 
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "This plan failed validation — review or edit the args before running."
+msgstr "Bu plan doğrulamadan geçemedi — çalıştırmadan önce argümanları gözden geçirin veya düzenleyin."
+
 #: src/client/admin/item-editor.tsx
 msgid "This record was changed by someone else after you opened it. Reload to get the latest version (your edits will be lost), or save anyway to overwrite theirs."
 msgstr "Bu kayıt siz açtıktan sonra başka biri tarafından değiştirildi. En son sürümü almak için yeniden yükleyin (düzenlemeleriniz kaybolur) ya da yine de kaydedip onların değişikliklerinin üzerine yazın."
@@ -12432,13 +12451,19 @@ msgstr "araç"
 msgid "Tools"
 msgstr "Araçlar"
 
+#. placeholder {0}: aggRel.name
+#. placeholder {1}: aggNum.name
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Top {0} by {1}"
+msgstr "{1} bazında en yüksek {0}"
+
 #: src/client/admin/pages/overview.tsx
 msgid "Top collections"
 msgstr "En çok kullanılan koleksiyonlar"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Top customers by spend"
-msgstr "Harcamaya göre en iyi müşteriler"
+#~ msgid "Top customers by spend"
+#~ msgstr "Harcamaya göre en iyi müşteriler"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Total"
@@ -12542,8 +12567,8 @@ msgid "Triggers fire on collection events, schedules, or webhooks. Each step run
 msgstr "Tetikleyiciler koleksiyon etkinliklerinde, zamanlamalarda veya webhook'larda tetiklenir. Her adım kum havuzunda çalışır."
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Try"
-msgstr "Dene"
+#~ msgid "Try"
+#~ msgstr "Dene"
 
 #: src/client/admin/collections-index.tsx
 msgid "Try a different slug or group."

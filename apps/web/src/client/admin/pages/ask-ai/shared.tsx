@@ -49,6 +49,9 @@ export interface PlanResponse {
     args: Record<string, unknown>;
     model: string;
     usage?: unknown;
+    /** Set when the plan still fails validation after the server's one
+     *  corrective retry — the Ask tab warns and skips auto-run. */
+    validationError?: string;
   };
 }
 
@@ -72,8 +75,11 @@ export interface RunResponse {
 // when the workspace ships `AI_GATEWAY_API_KEY` — otherwise the server
 // returns UNAVAILABLE and the toast surfaces it.
 export const DEFAULT_MODEL = "anthropic/claude-haiku-4-5";
-export const DEFAULT_PROMPT =
-  "top customers by total spent in the last 30 days, limit 10";
+// Deliberately empty — a prefilled question naming a collection the
+// workspace doesn't have (the old "top customers…" default) produced a
+// guaranteed NOT_FOUND on first Run. The example chips (derived from the
+// live schema) are the guided entry point instead.
+export const DEFAULT_PROMPT = "";
 
 // Mirrors the planner's whitelist on the server. Auto-run only fires when
 // the proposed tool is one of these read-leaning surfaces.

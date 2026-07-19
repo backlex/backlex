@@ -3,9 +3,11 @@ import { sql, type SQL } from "drizzle-orm";
 import { AppError, } from "@backlex/core";
 import { ensureVersionedColumns } from "@backlex/db";
 import type { AppBindings } from "../../app";
-import { requirePermission } from "../../middleware/permission";
+import { getRequestPermCache, requirePermission } from "../../middleware/permission";
+import { resolvePermission } from "../../services/permissions";
+import { deleteStagedRow, getStagedRow } from "../../services/items/staged";
 import { publishEvent } from "../../services/events";
-import { elapsedMs, requestMeta } from "../../services/activity";
+import { elapsedMs, recordActivity, requestMeta } from "../../services/activity";
 import { SECURITY, OkSchema, errorResponses } from "../../lib/openapi";
 import {
   collectionFromParam,
@@ -99,12 +101,12 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags: TAGS,
       summary: "Update item",
       description:
-        "Partial update. `localized` fields merge into the existing per-locale value; pass `?locale=xx` with a native value to upsert one locale.",
+        "Partial update. `localized` fields merge into the existing per-locale value; pass `?locale=xx` with a native value to upsert one locale. On a staged-edits collection, a PATCH against a *published* row is stored as a staged patch (applied by the next publish) instead of changing the live row; `?live=1` (requires publish permission) bypasses staging and edits the live row directly.",
       security: SECURITY,
       middleware: [requirePermission(collectionFromParam, "update")],
       request: {
         params: z.object({ slug: z.string(), id: z.string() }),
-        query: z.object({ locale: z.string().optional() }),
+        query: z.object({ locale: z.string().optional(), live: z.enum(["1"]).optional() }),
         body: {
           required: true,
           content: { "application/json": { schema: ItemBody } },
@@ -138,6 +140,25 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         durationMs: () => elapsedMs(c),
         locale: c.req.query("locale") ?? null,
       };
+      // `?live=1` opts out of staged-edits interception — since it changes
+      // what's live on a published row, it needs the publish permission (the
+      // same bar as the publish endpoint), not just update.
+      const live = c.req.query("live") === "1";
+      if (live && collection.versioned && collection.stagedEdits) {
+        const pub = await resolvePermission(
+          ctx,
+          auth,
+          collection.slug,
+          "publish",
+          getRequestPermCache(c),
+        );
+        if (!pub.allowed) {
+          throw new AppError(
+            "FORBIDDEN",
+            "Editing the live row of a staged-edits collection requires the publish permission — omit ?live=1 to stage the change instead",
+          );
+        }
+      }
       // Optional optimistic-concurrency precondition (see performUpdate).
       const ifUnmodifiedSince = c.req.header("x-if-unmodified-since");
       const res = await performUpdate(
@@ -145,7 +166,10 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         id,
         patch,
         { whereSql: perm.whereSql, fields: perm.fields },
-        ifUnmodifiedSince !== undefined ? { ifUnmodifiedSince } : undefined,
+        {
+          ...(ifUnmodifiedSince !== undefined ? { ifUnmodifiedSince } : {}),
+          ...(live ? { live: true } : {}),
+        },
       );
       for (const fx of res.sideEffects) await fx();
       return c.json({ data: res.data ?? {}, ...(res.warnings ? { warnings: res.warnings } : {}) });
@@ -294,10 +318,47 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         event = "published";
         setSql = sql`${sql.identifier("_status")} = 'published', ${sql.identifier("_published_at")} = ${now}, ${sql.identifier("_publish_at")} = NULL, ${sql.identifier("_unpublish_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`;
       }
+      // Staged-edits apply: every real state transition folds the item's
+      // pending staged patch into the row through the normal update path (so
+      // validation, FTS/vector, revisions, and `updated` events all fire),
+      // then clears it. Publishing applies BEFORE the status flip so the
+      // publish stamp lands after the content write (no phantom "edited since
+      // publish"); leaving published (unpublish/archive/schedule) applies
+      // AFTER, once the row is a draft. Setting an expiry is not a state
+      // change and leaves the patch alone.
+      const applyStaged = async (): Promise<void> => {
+        if (!collection.stagedEdits || event === "unpublish_scheduled") return;
+        const staged = await getStagedRow(ctx, collection, id);
+        if (!staged) return;
+        if (Object.keys(staged.data).length > 0) {
+          const env: WriteEnv = {
+            ctx,
+            collection,
+            userId: auth.userId,
+            tenantId: auth.tenantId,
+            roles: auth.roles,
+            email: auth.email,
+            meta: requestMeta(c.req.raw),
+            durationMs: () => elapsedMs(c),
+            locale: null,
+          };
+          const res = await performUpdate(
+            env,
+            id,
+            staged.data,
+            { whereSql: perm.whereSql, fields: perm.fields },
+            { live: true },
+          );
+          for (const fx of res.sideEffects) await fx();
+        }
+        await deleteStagedRow(ctx, collection, id);
+      };
+      if (event === "published") await applyStaged();
       await execute(
         ctx,
         sql`UPDATE ${sql.identifier(table)} SET ${setSql} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
       );
+      if (event !== "published") await applyStaged();
       const rows = await queryAll<Record<string, unknown>>(
         ctx,
         sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)} LIMIT 1`,
@@ -311,6 +372,59 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
       );
       return c.json({ data: after });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "delete",
+      path: "/{slug}/{id}/staged",
+      tags: TAGS,
+      summary: "Discard an item's staged edits",
+      description:
+        "Deletes the pending staged patch of a staged-edits collection item without applying it — the live row is untouched. No-op (still 200) when nothing is staged.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "update")],
+      request: {
+        params: z.object({ slug: z.string(), id: z.string() }),
+      },
+      responses: {
+        200: {
+          description: "Discarded",
+          content: { "application/json": { schema: OkSchema } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const id = c.req.param("id");
+      // The caller must be able to update THIS row (tenant + row-level perm
+      // filter), not just hold a scoped update permission on the collection.
+      const tenantWhere = tenantFilter(collection, auth);
+      const rows = await queryAll<Record<string, unknown>>(
+        ctx,
+        sql`SELECT 1 AS one FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)} LIMIT 1`,
+      );
+      if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
+      await deleteStagedRow(ctx, collection, id);
+      await recordActivity(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          userId: auth.userId,
+          tenantId: auth.tenantId ?? null,
+          action: "update",
+          collection: collection.slug,
+          itemId: id,
+          ...requestMeta(c.req.raw),
+          payload: { _stagedDiscarded: true },
+          response: { ok: true },
+          durationMs: elapsedMs(c),
+        },
+      );
+      return c.json({ ok: true });
     },
   )
   .openapi(

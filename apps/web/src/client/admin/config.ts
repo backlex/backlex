@@ -54,6 +54,9 @@ export interface CollectionSchema {
   defaultSort?: string | null;
   tenantScoped?: boolean;
   versioned?: boolean;
+  /** Staged edits (versioned only): editing a published item stages the change
+   *  (applied by the next publish) instead of changing the live row. */
+  stagedEdits?: boolean;
   adopted?: boolean;
   /** Admin icon key. Null = default Database icon. */
   icon?: string | null;

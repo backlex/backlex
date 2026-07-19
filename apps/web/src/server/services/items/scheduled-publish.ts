@@ -6,6 +6,9 @@ import type { Ctx } from "../../context";
 import { execute, nowFor, queryAll } from "./sql-helpers";
 import { deserializeRow } from "./serialize";
 import { publishEvent } from "../events";
+import { loadCollection } from "./collection-loader";
+import { deleteStagedRow, getStagedRow } from "./staged";
+import { performUpdate, type WriteEnv } from "./write";
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
@@ -134,6 +137,43 @@ export const unpublishDueItems = async (ctx: Ctx): Promise<void> => {
         );
       } catch (e) {
         console.error(`[scheduled-unpublish] event emit failed for ${slug}`, e);
+      }
+      // Staged edits: leaving the published state folds the pending staged
+      // patch into the (now draft) row — same rule as a manual unpublish —
+      // so later direct draft edits can't be silently overwritten by a stale
+      // patch at the next publish. Runs through the normal update path; a
+      // failure (e.g. schema drift since staging) keeps the patch and logs.
+      if ((r.stagedEdits ?? r.staged_edits) && tenantId) {
+        try {
+          const collection = await loadCollection(ctx, tenantId, slug);
+          const itemId = String(row[collection.pkColumn]);
+          const staged = await getStagedRow(ctx, collection, itemId);
+          if (staged) {
+            if (Object.keys(staged.data).length > 0) {
+              const env: WriteEnv = {
+                ctx,
+                collection,
+                userId: null,
+                tenantId,
+                roles: [],
+                meta: {},
+                durationMs: () => 0,
+                locale: null,
+              };
+              const res = await performUpdate(
+                env,
+                itemId,
+                staged.data,
+                { whereSql: null, fields: null },
+                { live: true },
+              );
+              for (const fx of res.sideEffects) await fx();
+            }
+            await deleteStagedRow(ctx, collection, itemId);
+          }
+        } catch (e) {
+          console.error(`[scheduled-unpublish] staged apply failed for ${slug}`, e);
+        }
       }
     }
   }

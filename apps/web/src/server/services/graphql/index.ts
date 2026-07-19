@@ -319,6 +319,7 @@ export const getSchema = async (
     Record<string, unknown>
   >;
   const normalized: CollectionRow[] = collections.map((r) => ({
+    id: r.id as string,
     slug: r.slug as string,
     physicalTable: (r.physicalTable ?? r.physical_table) as string,
     fields: r.fields as FieldDef[],
@@ -329,6 +330,7 @@ export const getSchema = async (
     softDelete: Boolean(r.softDelete ?? r.soft_delete),
     singleton: Boolean(r.singleton),
     versioned: Boolean(r.versioned),
+    stagedEdits: Boolean(r.stagedEdits ?? r.staged_edits),
     // Default-true, matching the REST collection-loader: a row is treated as
     // tenant-scoped unless it explicitly opts out (legacy/system data).
     tenantScoped: (r.tenantScoped ?? r.tenant_scoped ?? true) ? true : false,

@@ -1084,6 +1084,8 @@ export const collections = sqliteTable(
      *  + `_published_at` column. PATCH writes update the draft; explicit
      *  `POST /:id/publish` flips status. */
     versioned: integer("versioned", { mode: "boolean" }).notNull().default(false),
+    /** Staged edits for published rows. See the pg/schema.ts twin. */
+    stagedEdits: integer("staged_edits", { mode: "boolean" }).notNull().default(false),
     /** When true, the physical table gains a nullable `deleted_at` column and
      *  DELETE soft-deletes instead of removing the row; reads filter
      *  `deleted_at IS NULL`. Forced false for adopted collections. See the
@@ -1171,6 +1173,23 @@ export const itemOwnership = sqliteTable(
     uniqueIndex("item_ownership_pk_idx").on(t.collectionId, t.itemId),
     index("item_ownership_owner_idx").on(t.ownerId, t.collectionId),
   ],
+);
+
+/** Staged (unpublished) edits for published rows. See the pg/schema.ts twin
+ *  for the full contract. */
+export const itemStaged = sqliteTable(
+  "item_staged",
+  {
+    collectionId: text("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+    itemId: text("item_id").notNull(),
+    tenantId: text("tenant_id"),
+    data: text("data", { mode: "json" }).$type<Record<string, unknown>>().notNull(),
+    updatedAt: ts("updated_at"),
+    updatedBy: text("updated_by"),
+  },
+  (t) => [uniqueIndex("item_staged_pk_idx").on(t.collectionId, t.itemId)],
 );
 
 /**

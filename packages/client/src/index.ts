@@ -185,6 +185,7 @@ const buildItemSearch = (q: ItemQuery | undefined): string => {
     params.set("expand", Array.isArray(q.expand) ? q.expand.join(",") : q.expand);
   }
   if (q.locale) params.set("locale", q.locale);
+  if (q.staged) params.set("staged", "1");
   const s = params.toString();
   return s ? `?${s}` : "";
 };
@@ -206,6 +207,9 @@ export interface WriteUpdateOpts extends WriteLocaleOpts {
    *  row with; the server refuses with 409 CONFLICT when the row was modified
    *  since (instead of silently last-write-winning). */
   ifUnmodifiedSince?: string;
+  /** Staged-edits collections: bypass staging and edit the live row of a
+   *  published item directly. Requires the `publish` permission. */
+  live?: boolean;
 }
 
 // ── Resumable-upload helpers (TUS) ──────────────────────────────────────────
@@ -276,6 +280,8 @@ export interface CollectionClient<T extends Record<string, unknown>> {
   archive(id: string): Promise<ItemResponse<T>>;
   schedulePublish(id: string, at: Date | string | null): Promise<ItemResponse<T>>;
   scheduleUnpublish(id: string, at: Date | string | null): Promise<ItemResponse<T>>;
+  /** Discard a staged-edits item's pending staged patch without applying it. */
+  discardStaged(id: string): Promise<{ ok: boolean }>;
   /** Check a plaintext against the stored digest of a `hash` field on the row.
    *  The digest never leaves the server; this returns only `{ valid }`.
    *  Requires read permission on the item; the server throttles attempts. */
@@ -1502,15 +1508,18 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         request<ItemResponse<T>>("GET", `/api/items/${slug}/${id}${buildItemSearch(opts)}`),
       create: (data: Partial<T>, opts?: WriteLocaleOpts): Promise<ItemResponse<T>> =>
         request<ItemResponse<T>>("POST", `/api/items/${slug}${writeLocaleQuery(opts)}`, data),
-      update: (id: string, patch: Partial<T>, opts?: WriteUpdateOpts): Promise<ItemResponse<T>> =>
-        request<ItemResponse<T>>(
+      update: (id: string, patch: Partial<T>, opts?: WriteUpdateOpts): Promise<ItemResponse<T>> => {
+        const base = writeLocaleQuery(opts);
+        const search = opts?.live ? `${base ? `${base}&` : "?"}live=1` : base;
+        return request<ItemResponse<T>>(
           "PATCH",
-          `/api/items/${slug}/${id}${writeLocaleQuery(opts)}`,
+          `/api/items/${slug}/${id}${search}`,
           patch,
           opts?.ifUnmodifiedSince
             ? { "x-if-unmodified-since": opts.ifUnmodifiedSince }
             : undefined,
-        ),
+        );
+      },
       delete: (id: string): Promise<{ ok: boolean }> =>
         request<{ ok: boolean }>("DELETE", `/api/items/${slug}/${id}`),
       /** Bulk-create rows. `atomic` runs the whole set in one transaction
@@ -1578,6 +1587,12 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish`, {
           unpublishAt: at == null ? null : at instanceof Date ? at.toISOString() : at,
         }),
+      /** Discard a staged-edits item's pending staged patch without applying
+       *  it — the live row is untouched. (On a `stagedEdits` collection,
+       *  `update()` against a published row stages the change; the next
+       *  `publish()` applies it.) */
+      discardStaged: (id: string): Promise<{ ok: boolean }> =>
+        request<{ ok: boolean }>("DELETE", `/api/items/${slug}/${id}/staged`),
       /** Verify a plaintext against a `hash` field's stored digest. */
       verify: (id: string, field: string, value: string): Promise<{ valid: boolean }> =>
         request<{ valid: boolean }>("POST", `/api/items/${slug}/${id}/verify`, { field, value }),

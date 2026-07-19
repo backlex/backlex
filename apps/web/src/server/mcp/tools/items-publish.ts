@@ -161,6 +161,32 @@ export const scheduleUnpublishItemTool: McpTool = {
   },
 };
 
+export const discardStagedItemTool: McpTool = {
+  name: "items.discard_staged",
+  description:
+    "Discard a staged-edits collection item's pending staged patch without " +
+    "applying it — the live row is untouched. (On a `stagedEdits` collection, " +
+    "`items.update` against a published row stages the change; the next " +
+    "`items.publish` applies it.) Requires the `update` permission.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      collection: { type: "string" },
+      id: { type: "string" },
+    },
+    required: ["collection", "id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const { collection, id } = reqIds(args);
+    const res = await ctx.fetchInternal(
+      `/api/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/staged`,
+      { method: "DELETE" },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const verifyItemTool: McpTool = {
   name: "items.verify",
   description:
@@ -202,5 +228,6 @@ export const itemsPublishTools: McpTool[] = [
   archiveItemTool,
   schedulePublishItemTool,
   scheduleUnpublishItemTool,
+  discardStagedItemTool,
   verifyItemTool,
 ];

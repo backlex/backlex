@@ -1134,7 +1134,17 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
               {identity && (
                 <TableCell className={`sm:left-[37px] sm:max-w-[320px] ${STICKY_BOX}`} {...(gp(ri, "__identity") ?? {})}>
                   <div className="flex min-w-0 flex-col">
-                    <span className="truncate font-medium text-foreground">{cellText(displayTitle, defaultLocale)}</span>
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate font-medium text-foreground">{cellText(displayTitle, defaultLocale)}</span>
+                      {!!(r as Record<string, unknown>)._staged && (
+                        <span
+                          className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] leading-4 text-muted-foreground"
+                          title={t`Has staged changes — publish to apply them`}
+                        >
+                          <Trans>Staged</Trans>
+                        </span>
+                      )}
+                    </span>
                     {displaySlug && <span className="truncate font-mono text-[11px] text-muted-foreground">/{String(displaySlug).slice(0, 24)}</span>}
                   </div>
                 </TableCell>

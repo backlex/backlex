@@ -63,6 +63,9 @@ interface SchemaLike {
   ownerScoped?: boolean;
   tenantScoped?: boolean;
   versioned?: boolean;
+  /** Staged edits (versioned only). When on, editing a *published* item stages
+   *  the change (applied by the next publish) instead of changing the live row. */
+  stagedEdits?: boolean;
   /** Opt-in sensitive-read auditing. When on, every read of this collection
    *  (list + by-id) records an `access.read` row in the audit log. */
   auditReads?: boolean;
@@ -552,6 +555,19 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
             </div>
             <Switch checked={!!schema.versioned} onChange={(v) => onPatch({ versioned: v })} />
           </div>
+          {!!schema.versioned && (
+            <div className="mb-2.5 flex items-center justify-between gap-3 border-b border-border pb-2.5">
+              <div>
+                <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Staged edits</Trans></div>
+                <div className="text-[11.5px] text-muted-foreground">
+                  <Trans>Editing a <span className="font-mono">published</span> item stages the change
+                  instead of updating what's live — readers keep the current version until you
+                  publish again, which applies the staged changes. Drafts still edit directly.</Trans>
+                </div>
+              </div>
+              <Switch checked={!!schema.stagedEdits} onChange={(v) => onPatch({ stagedEdits: v })} />
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3 pb-1">
             <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Audit reads</Trans></div>

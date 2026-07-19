@@ -31,6 +31,8 @@ export interface ManagedCollectionDef {
   ownerScoped?: boolean;
   tenantScoped?: boolean;
   versioned?: boolean;
+  /** Staged edits for published rows (versioned only). */
+  stagedEdits?: boolean;
   vectorize?: boolean;
   vectorizeModel?: string | null;
   /** Enable keyword full-text search — pairs with `searchable` fields. */
@@ -100,6 +102,7 @@ export async function createManagedCollection(
     ownerScoped: def.ownerScoped ?? false,
     tenantScoped,
     versioned: def.versioned ?? false,
+    stagedEdits: def.stagedEdits ?? false,
     vectorize: def.vectorize ?? false,
     vectorizeModel: def.vectorizeModel ?? null,
     fts: def.fts ?? false,
@@ -183,6 +186,7 @@ export async function cloneCollection(
     ownerScoped: Boolean(src.ownerScoped),
     tenantScoped: src.tenantScoped !== false,
     versioned: Boolean(src.versioned),
+    stagedEdits: Boolean(src.stagedEdits),
     vectorize: Boolean(src.vectorize),
     vectorizeModel: (src.vectorizeModel as string | null) ?? null,
     fts: Boolean(src.fts),

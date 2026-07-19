@@ -24,6 +24,11 @@ export interface CollectionRow {
    *  reads/writes are scoped to the active tenant. */
   tenantScoped: boolean;
   versioned?: boolean;
+  /** Staged edits (versioned only). When true, a PATCH against a *published*
+   *  row is stored as a staged JSON patch (`item_staged`) instead of mutating
+   *  the live row; publish applies the patch, unpublish/archive fold it into
+   *  the row as it leaves published. `?live=1` (publish permission) bypasses. */
+  stagedEdits: boolean;
   /** When true, the physical table has a nullable `deleted_at` column; DELETE
    *  soft-deletes (sets `deleted_at = now()`) and every read path filters
    *  `deleted_at IS NULL`. Always false for adopted collections. */
@@ -128,6 +133,7 @@ export const loadCollection = async (
     ownerScoped: Boolean(r.ownerScoped ?? r.owner_scoped),
     tenantScoped: r.tenantScoped ?? r.tenant_scoped ?? true ? true : false,
     versioned: Boolean(r.versioned),
+    stagedEdits: Boolean(r.stagedEdits ?? r.staged_edits),
     softDelete: Boolean(r.softDelete ?? r.soft_delete),
     singleton: Boolean(r.singleton),
     auditReads: Boolean(r.auditReads ?? r.audit_reads),

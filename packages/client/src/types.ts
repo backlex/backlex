@@ -60,6 +60,10 @@ export interface ItemQuery {
   expand?: string | string[];
   /** Collapse `localized` fields to one locale, or `"*"` for the full map. */
   locale?: string;
+  /** Staged-edits collections: preview the row with its pending staged patch
+   *  applied on top (privileged callers only — others get the live row). The
+   *  response carries `_staged: true` whenever a patch is pending. */
+  staged?: boolean;
 }
 
 /** Body for `from(slug).aggregate(...)`. A single function over one column. */

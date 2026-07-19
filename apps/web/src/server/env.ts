@@ -25,6 +25,13 @@ export interface Env {
   /** Days to keep span rows before `cronTick` prunes them. Unset → `7`. `0`
    *  disables pruning (keep forever — bound the table yourself). */
   TRACES_RETENTION_DAYS?: string;
+  /** OTLP/HTTP collector base URL (e.g. `https://otel.example.com` — `/v1/traces`
+   *  is appended). When set, every persisted span is also exported to the
+   *  external OpenTelemetry collector. Unset → no export. See services/otlp.ts. */
+  OTLP_ENDPOINT?: string;
+  /** Optional `key=value,key2=value2` headers for the OTLP export request
+   *  (same format as `OTEL_EXPORTER_OTLP_HEADERS`) — auth tokens etc. */
+  OTLP_HEADERS?: string;
   /** Schema-template id set by the cloud provisioner; the first workspace of a
    *  fresh install seeds the matching collections (zero-touch). */
   SEED_TEMPLATE?: string;
@@ -406,6 +413,8 @@ export const STRING_ENV_KEYS = [
   "LOG_LEVEL",
   "TRACES_SAMPLE_RATE",
   "TRACES_RETENTION_DAYS",
+  "OTLP_ENDPOINT",
+  "OTLP_HEADERS",
   "SEED_TEMPLATE",
   "OWNER_EMAIL",
   "DATABASE_URL",

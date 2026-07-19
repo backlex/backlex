@@ -49,12 +49,15 @@ import { searchCollectionItems } from "../items/search";
 import { runBatch, type BatchOp } from "../items/batch";
 import { runBulkUpdate } from "../items/bulk";
 import { hashIncomingFields, scrubHashFields } from "../items/hash-fields";
+import { getStagedRow, stagedDeleteSql, stagedUpsertSql, stagedViewOf } from "../items/staged";
 import { enforceOnDeleteTriggers } from "../items/on-delete";
 import { verifyHashField } from "../items/verify";
 import type { Hono } from "hono";
 import type { Ctx } from "../../context";
 
 export interface CollectionRow {
+  /** collections.id — keys the `item_staged` sidecar rows. */
+  id: string;
   slug: string;
   physicalTable: string;
   fields: FieldDef[];
@@ -65,6 +68,8 @@ export interface CollectionRow {
   softDelete: boolean;
   singleton: boolean;
   versioned: boolean;
+  /** Staged edits for published rows — see the items collection-loader twin. */
+  stagedEdits: boolean;
   /** Whether the physical table carries a `tenant_id` column scoping rows per
    *  workspace. Managed collections get a per-tenant physical table so the name
    *  itself isolates, but adopted+tenant-scoped collections share one table and
@@ -882,6 +887,78 @@ export const updateResolver = async (
     throw new GraphQLError("Item not found", { extensions: { code: "NOT_FOUND" } });
   }
 
+  // Staged-edits interception — REST-parity (see performUpdate). On a
+  // `stagedEdits` collection, updating a *published* row folds the (validated,
+  // hashed) patch into the item's staged JSON patch instead of the live row;
+  // the next publish applies it. Values are stored REST-shaped (snake field
+  // names; localized fields as `{locale: value}` maps).
+  if (
+    collection.versioned &&
+    collection.stagedEdits &&
+    (existing[0] as Record<string, unknown>)._status === "published"
+  ) {
+    const stagedPatch: Record<string, unknown> = {};
+    for (const f of collection.fields) {
+      if (f.onUpdate) continue;
+      const v = args.data[camel(f.name)];
+      if (v !== undefined) stagedPatch[f.name] = v;
+    }
+    const locSplit = splitLocalized(localizedPatch, collection.fields, null);
+    for (const [loc, fieldMap] of locSplit.localePatches) {
+      for (const [fname, v] of Object.entries(fieldMap)) {
+        const prev = stagedPatch[fname];
+        stagedPatch[fname] = {
+          ...(prev && typeof prev === "object" && !Array.isArray(prev)
+            ? (prev as Record<string, unknown>)
+            : {}),
+          [loc]: v,
+        };
+      }
+    }
+    for (const name of locSplit.clearAll) stagedPatch[name] = null;
+    const existingStaged = await getStagedRow(ctx, collection, args.id);
+    const mergedStaged = { ...(existingStaged?.data ?? {}), ...stagedPatch };
+    await execute(
+      ctx,
+      stagedUpsertSql(
+        ctx.dialect,
+        collection.id,
+        args.id,
+        auth.tenantId ?? null,
+        mergedStaged,
+        auth.userId,
+      ),
+    );
+    // Respond with the (unchanged) live row rendered through the caller's
+    // read allow-list, previewing the staged values on top — mirrors the
+    // REST staged response.
+    const readPermStaged = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
+    const outStaged = renderRow(
+      existing[0]!,
+      collection.fields,
+      ctx.dialect,
+      !!collection.ownerScoped,
+      collection.hasCreatedAt,
+      collection.hasUpdatedAt,
+      readPermStaged.allowed ? readPermStaged.fields : new Set<string>(),
+    );
+    const view = stagedViewOf(mergedStaged, collection.fields);
+    for (const f of collection.fields) {
+      if (f.name in view && !isLocalized(f)) {
+        if (readPermStaged.allowed && readPermStaged.fields && !readPermStaged.fields.has(f.name)) continue;
+        outStaged[camel(f.name)] = view[f.name];
+      }
+    }
+    await attachLocalizedMaps(
+      ctx,
+      collection,
+      [existing[0]!],
+      [outStaged],
+      readPermStaged.allowed ? readPermStaged.fields : new Set<string>(),
+    );
+    return outStaged;
+  }
+
   const now = ctx.dialect === "pg" ? new Date() : Date.now();
   // Only stamp updated_at when the collection has it; skip the UPDATE entirely
   // if there's nothing to set (no timestamp + no changed fields → empty SET).
@@ -1013,6 +1090,10 @@ export const deleteResolver = async (
     if (sidecarFields(collection.fields).length > 0) {
       await execute(ctx, sidecarDeleteRow(table, args.id));
     }
+  }
+  // Deleting the row obsoletes any staged patch — mirrors the REST delete path.
+  if (collection.versioned) {
+    await execute(ctx, stagedDeleteSql(collection.id, args.id));
   }
   // App-layer ON DELETE relational triggers — mirrors the REST delete path.
   await enforceOnDeleteTriggers(ctx, auth.tenantId, collection.slug, args.id, (stmt) =>

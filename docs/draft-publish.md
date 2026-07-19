@@ -113,6 +113,44 @@ A "scheduled" item is simply `_status = 'draft'` with a future `_publish_at`; th
 admin UI surfaces this as a **Scheduled** badge. Editing the item, calling
 `unpublish`, or `publishAt: null` cancels the pending publish.
 
+## Staged edits (draft ≠ live)
+
+By default, draft and published are one row's state — editing a published row
+changes what's live immediately. Turn on **`stagedEdits`** (Settings → "Staged
+edits", versioned collections only) for a true staged workflow:
+
+- A PATCH against a **published** row no longer touches the live row. The
+  (validated) patch is stored as the item's **staged patch** — one JSON patch
+  per item, merged shallowly per field across saves. Readers keep seeing the
+  published content; the response carries `_staged: true` with the staged
+  values previewed on top. `updated_at` doesn't move.
+- **Publish applies the staged patch** (through the normal update path —
+  validation, search/vector reindex, revisions, and events all fire), then
+  publishes. Unpublish/archive/schedule fold the patch into the row as it
+  leaves the published state, so the draft you land on carries your edits.
+- Draft and archived rows keep editing **directly** — staging only guards the
+  published state.
+- Privileged reads flag pending patches: list rows and single GETs carry
+  `_staged: true`; `?staged=1` on a single GET returns the merged preview.
+  Read-only callers never see either.
+- `PATCH …?live=1` bypasses staging and edits the live row directly — it
+  requires the **publish** permission (the same bar as publishing), not just
+  `update`. So with staging on, editors stage and publishers go live.
+- `DELETE /api/items/{slug}/{id}/staged` discards the pending patch without
+  applying it (`update` permission).
+
+```ts
+await backlex.from("articles").update(id, { title: "v2" }); // staged (row is published)
+await backlex.from("articles").one(id, { staged: true });   // merged preview
+await backlex.from("articles").publish(id);                 // applies + publishes
+await backlex.from("articles").discardStaged(id);           // or drop the patch
+await backlex.from("articles").update(id, { title: "hotfix" }, { live: true }); // bypass
+```
+
+MCP: `items.discard_staged` (updates stage automatically through the shared
+route). The admin item editor shows a **Staged changes** badge, edits the
+staged preview, and offers **Publish changes** / **Discard changes**.
+
 ## Permissions
 
 `publish` is a first-class action in the [permission DSL](/permissions/)
@@ -123,11 +161,14 @@ CRUD but not `publish`.
 
 ## Limits & follow-ups
 
-- Draft and published are one row's state, not two divergent versions — editing a
-  published row changes what's live immediately. The admin item editor flags this
-  with an **Edited since publish** badge (`updated_at` is later than
-  `_published_at`); for a true staged-edit workflow use a draft copy. See
-  [revisions](/audit-logs/) for change history.
+- Without `stagedEdits`, draft and published are one row's state — editing a
+  published row changes what's live immediately; the admin item editor flags
+  this with an **Edited since publish** badge (`updated_at` is later than
+  `_published_at`). Turn on [staged edits](#staged-edits-draft--live) for the
+  separated workflow. See [revisions](/audit-logs/) for change history.
+- A staged patch stores the *patch*, not a full row snapshot. If the schema
+  changes incompatibly between staging and publishing, the publish surfaces the
+  validation error (fix or discard the patch).
 - `_publish_at` / `_unpublish_at` are single absolute times (no recurring
   schedules).
 - Storage/collection backend selection is unchanged.

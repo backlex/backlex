@@ -271,6 +271,11 @@ const CollectionInput = z.object({
    *  rows are scoped to the active tenant. */
   tenantScoped: z.boolean().optional().default(true),
   versioned: z.boolean().optional().default(false),
+  /** Staged edits (versioned only). When true, a PATCH against a *published*
+   *  row is stored as a staged patch (item_staged) instead of mutating the
+   *  live row; `publish` applies it. `?live=1` + publish permission edits the
+   *  live row directly. Ignored (no staging) while the row is a draft. */
+  stagedEdits: z.boolean().optional().default(false),
   /** When true (managed only), the physical table gets a nullable
    *  `deleted_at` column, DELETE soft-deletes, and reads filter
    *  `deleted_at IS NULL`. Forced false for adopted creates. */
@@ -371,6 +376,7 @@ const CollectionPatch = CollectionInput.partial().extend({
   ownerScoped: z.boolean().optional(),
   tenantScoped: z.boolean().optional(),
   versioned: z.boolean().optional(),
+  stagedEdits: z.boolean().optional(),
   softDelete: z.boolean().optional(),
   singleton: z.boolean().optional(),
   auditReads: z.boolean().optional(),
@@ -905,6 +911,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ownerScoped: body.ownerScoped,
       tenantScoped: body.tenantScoped,
       versioned: body.versioned,
+      stagedEdits: body.stagedEdits,
       softDelete,
       singleton,
       auditReads: body.auditReads,
@@ -960,6 +967,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ownerScoped: body.ownerScoped,
       tenantScoped: body.tenantScoped,
       versioned: body.versioned,
+      stagedEdits: body.stagedEdits,
       softDelete,
       singleton,
       auditReads: body.auditReads,
@@ -1113,6 +1121,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
         ? { tenantScoped: body.tenantScoped }
         : {}),
       ...(body.versioned !== undefined ? { versioned: body.versioned } : {}),
+      ...(body.stagedEdits !== undefined ? { stagedEdits: body.stagedEdits } : {}),
       ...(body.auditReads !== undefined ? { auditReads: body.auditReads } : {}),
       ...(body.vectorize !== undefined ? { vectorize: body.vectorize } : {}),
       ...(body.vectorizeModel !== undefined

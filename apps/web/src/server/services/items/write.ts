@@ -43,6 +43,12 @@ import {
   usesOwnershipSideTable,
   whereOf,
 } from "./sql-helpers";
+import {
+  getStagedRow,
+  stagedDeleteSql,
+  stagedUpsertSql,
+  stagedViewOf,
+} from "./staged";
 
 /**
  * Shared item-write core. The single-item REST handlers AND the batch endpoint
@@ -288,6 +294,10 @@ export const performUpdate = async (
      *  the row with. When set and the row has moved since, the update is
      *  refused with 409 CONFLICT instead of silently last-write-winning. */
     ifUnmodifiedSince?: string;
+    /** Bypass staged-edits interception and write the live row directly.
+     *  Set by `?live=1` (route gates it on publish permission) and by the
+     *  publish endpoint / cron when *applying* a staged patch. */
+    live?: boolean;
   },
 ): Promise<WriteResult> => {
   const { ctx, collection } = env;
@@ -340,6 +350,86 @@ export const performUpdate = async (
   enforceValidationRules(mergedForConditions, collection.fields, authSubjectOf(env));
   const warnings = collectFieldWarnings(mergedForConditions, collection.fields, authSubjectOf(env));
 
+  // Staged-edits interception: on a `stagedEdits` collection, an ordinary
+  // PATCH against a *published* row never touches the live row — the (already
+  // validated + hashed) patch is folded into the item's staged JSON patch
+  // instead, and `publish` applies it later. Draft/archived rows and `live`
+  // callers fall through to the normal write below. Sits after validation so
+  // a staged save surfaces the same 4xx a live save would.
+  if (
+    collection.versioned &&
+    collection.stagedEdits &&
+    !opts?.live &&
+    (beforeRow as Record<string, unknown>)._status === "published"
+  ) {
+    // Canonical staged shape: base fields post-hash from `patch`; localized
+    // fields as their full `{locale: value}` map (splitLocalized with a null
+    // write-locale routes maps back into the sidecar on apply); a locale-less
+    // null (clear-all-locales) stays a null.
+    const stagedPatch: Record<string, unknown> = { ...patch };
+    for (const [loc, fieldMap] of localeSplit.localePatches) {
+      for (const [fname, v] of Object.entries(fieldMap)) {
+        const prev = stagedPatch[fname];
+        stagedPatch[fname] = {
+          ...(prev && typeof prev === "object" && !Array.isArray(prev)
+            ? (prev as Record<string, unknown>)
+            : {}),
+          [loc]: v,
+        };
+      }
+    }
+    for (const name of localeSplit.clearAll) stagedPatch[name] = null;
+
+    const existingStaged = await getStagedRow(ctx, collection, id);
+    const mergedStaged: Record<string, unknown> = {
+      ...(existingStaged?.data ?? {}),
+      ...stagedPatch,
+    };
+    await emit(
+      env,
+      stagedUpsertSql(
+        ctx.dialect,
+        collection.id,
+        id,
+        env.tenantId ?? null,
+        mergedStaged,
+        env.userId,
+      ),
+    );
+    // Response: the live row with the staged patch previewed on top, flagged
+    // `_staged`. `updatedAt` is NOT bumped — the live row didn't move.
+    const preview: Record<string, unknown> = {
+      ...beforeRow,
+      ...stagedViewOf(mergedStaged, collection.fields),
+    };
+    const projectedPreview = projectFields(preview, perm.fields);
+    // Set after projection — `_staged` is a system annotation, not a field.
+    projectedPreview._staged = true;
+    const auditPatch = stagedViewOf(stagedPatch, collection.fields);
+    const sideFx: SideEffect[] = [
+      () =>
+        recordActivity(
+          { db: ctx.db, dialect: ctx.dialect },
+          {
+            userId: env.userId,
+            tenantId: env.tenantId ?? null,
+            action: "update",
+            collection: collection.slug,
+            itemId: id,
+            ...env.meta,
+            payload: { ...auditPatch, _staged: true },
+            response: { data: projectedPreview },
+            durationMs: env.durationMs(),
+          },
+        ),
+    ];
+    return {
+      id,
+      data: projectedPreview,
+      warnings: warnings.length ? warnings : undefined,
+      sideEffects: sideFx,
+    };
+  }
 
   const now = nowFor(ctx.dialect);
   const sets: SQL[] = [];
@@ -492,6 +582,13 @@ export const performDelete = async (
     if (sidecarFields(collection.fields).length > 0) {
       await emit(env, sidecarDeleteRow(table, id));
     }
+  }
+
+  // Deleting the row obsoletes any staged patch for it. Guarded on `versioned`
+  // (not `stagedEdits`) so patches left behind by a toggled-off setting still
+  // get cleaned up.
+  if (collection.versioned) {
+    await emit(env, stagedDeleteSql(collection.id, id));
   }
 
   // App-layer ON DELETE relational triggers: null-out or cascade rows in other

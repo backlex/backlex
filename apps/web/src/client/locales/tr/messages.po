@@ -2169,6 +2169,10 @@ msgstr "Değerin öğe formunda nasıl düzenlendiğini değiştirir. Seçim ara
 msgid "Changes only"
 msgstr "Yalnızca değişiklikler"
 
+#: src/client/admin/item-editor.tsx
+msgid "Changes staged — publish to apply them."
+msgstr "Değişiklikler beklemeye alındı — uygulamak için yayınlayın."
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Changes the live schema would receive if you apply this version."
 msgstr "Bu sürümü uygularsanız canlı şemanın alacağı değişiklikler."
@@ -3663,6 +3667,10 @@ msgid "Discard"
 msgstr "Vazgeç"
 
 #: src/client/admin/item-editor.tsx
+msgid "Discard changes"
+msgstr "Değişiklikleri at"
+
+#: src/client/admin/item-editor.tsx
 msgid "Discard unsaved changes?"
 msgstr "Kaydedilmemiş değişiklikler atılsın mı?"
 
@@ -4053,6 +4061,10 @@ msgstr "{0} düzenleniyor — boş metinler {1} değerine düşer"
 #: src/client/admin/parity/insights.tsx
 msgid "Editing <0>{0}</0>."
 msgstr "<0>{0}</0> düzenleniyor."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Editing a <0>published</0> item stages the change instead of updating what's live — readers keep the current version until you publish again, which applies the staged changes. Drafts still edit directly."
+msgstr "<0>Yayında</0> olan bir kaydı düzenlemek, canlı içeriği değiştirmek yerine değişikliği beklemeye alır — siz yeniden yayınlayana kadar okuyucular mevcut sürümü görmeye devam eder; yayınlamak bekleyen değişiklikleri uygular. Taslaklar doğrudan düzenlenir."
 
 #: src/client/admin/role-editor.tsx
 msgid "editor"
@@ -5282,6 +5294,10 @@ msgstr "Yarım genişlik"
 #: src/client/admin/pages/usage.tsx
 msgid "Hard"
 msgstr "Katı"
+
+#: src/client/admin/items.tsx
+msgid "Has staged changes — publish to apply them"
+msgstr "Bekleyen değişiklikler var — uygulamak için yayınlayın"
 
 #: src/client/admin/parity/database.tsx
 msgid "Hash"
@@ -8971,6 +8987,10 @@ msgid "Publish"
 msgstr "Yayınla"
 
 #: src/client/admin/item-editor.tsx
+msgid "Publish changes"
+msgstr "Değişiklikleri yayınla"
+
+#: src/client/admin/item-editor.tsx
 msgid "Publish now"
 msgstr "Şimdi yayınla"
 
@@ -11382,6 +11402,26 @@ msgstr "SQL"
 #: src/client/admin/parity/database.tsx
 msgid "SQL editor"
 msgstr "SQL editörü"
+
+#: src/client/admin/items.tsx
+msgid "Staged"
+msgstr "Beklemede"
+
+#: src/client/admin/item-editor.tsx
+msgid "Staged changes"
+msgstr "Bekleyen değişiklikler"
+
+#: src/client/admin/item-editor.tsx
+msgid "Staged changes discarded."
+msgstr "Bekleyen değişiklikler atıldı."
+
+#: src/client/admin/item-editor.tsx
+msgid "Staged changes published."
+msgstr "Bekleyen değişiklikler yayınlandı."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Staged edits"
+msgstr "Aşamalı düzenleme"
 
 #: src/client/admin/ui.tsx
 msgid "Staging"

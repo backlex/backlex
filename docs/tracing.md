@@ -90,11 +90,29 @@ backlex traces get <traceId>        # the span waterfall
 |---|---|---|
 | `TRACES_SAMPLE_RATE` | `1` | Fraction (`0`..`1`) of requests whose span is persisted. Lower it on very high-traffic instances. The span write is non-blocking, so full sampling is the sensible default. |
 | `TRACES_RETENTION_DAYS` | `7` | Days to keep span rows before the daily `cronTick` prunes them. `0` disables pruning. |
+| `OTLP_ENDPOINT` | *(unset)* | OTLP/HTTP collector base URL — enables the external exporter below. |
+| `OTLP_HEADERS` | *(unset)* | `key=value,key2=value2` headers for the export request (auth tokens etc.), the `OTEL_EXPORTER_OTLP_HEADERS` format. |
 
 Span writes never block or fail a request — telemetry must not break the call
 that produced it. On Cloudflare Workers the write is registered with
 `waitUntil`; elsewhere it's fire-and-forget.
 
-> **Note.** This is in-app tracing for the admin panel — there is currently no
-> exporter to an external OpenTelemetry collector (OTLP). The wire format is
-> standard `traceparent`, so adding an OTLP/HTTP exporter later is additive.
+## OTLP export (external collectors)
+
+Set `OTLP_ENDPOINT` to ship every persisted span to an external OpenTelemetry
+collector as an OTLP/HTTP JSON `ExportTraceServiceRequest` — Grafana Tempo,
+Jaeger, Honeycomb, Datadog's OTLP intake, or any standard collector:
+
+```bash
+OTLP_ENDPOINT=https://otel.example.com        # POSTs to <endpoint>/v1/traces
+OTLP_HEADERS="authorization=Bearer <token>"   # optional
+```
+
+- The exporter follows the same `TRACES_SAMPLE_RATE` sampling as the local
+  `spans` table — what the Traces panel shows is what the collector receives.
+- Spans carry `service.name: backlex`, the HTTP method/path/status, and
+  `backlex.tenant_id` / `backlex.user_id` / `backlex.error_code` attributes.
+  Trace/span ids are the same W3C ids from the `traceparent` chain, so traces
+  stitch with upstream/downstream services reporting to the same collector.
+- Same non-blocking contract as the local write: a down or slow collector never
+  adds latency to or fails the request (errors are logged and swallowed).

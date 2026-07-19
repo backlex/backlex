@@ -557,6 +557,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           kanbanActionMap: (res.data as any).kanbanActionMap ?? null,
           tenantScoped: (res.data as any).tenantScoped !== false,
           versioned: !!(res.data as any).versioned,
+          stagedEdits: !!(res.data as any).stagedEdits,
           // fts + auditReads were missing here, so the Settings tab rendered
           // both toggles OFF regardless of the stored value — while the
           // search playground (reading the raw list row) showed the truth.

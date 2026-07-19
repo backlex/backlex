@@ -551,6 +551,9 @@ export const itemsApi = {
         body: JSON.stringify({ keys, data }),
       },
     ),
+  /** Discard a staged-edits item's pending staged patch without applying it. */
+  discardStaged: (slug: string, id: string) =>
+    api<{ ok: true }>(`/api/items/${slug}/${id}/staged`, { method: "DELETE" }),
   /** Publish now (versioned collections). */
   publish: (slug: string, id: string) =>
     api<Envelope<Record<string, unknown>>>(`/api/items/${slug}/${id}/publish`, {

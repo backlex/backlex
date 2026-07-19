@@ -1194,6 +1194,13 @@ export const collections = pgTable(
     tenantScoped: boolean("tenant_scoped").notNull().default(true),
     /** When true, the physical table has `_status` + `_published_at` columns. */
     versioned: boolean("versioned").notNull().default(false),
+    /** Staged edits (only meaningful with `versioned`). When true, a PATCH
+     *  against a *published* row is stored as a staged patch in `item_staged`
+     *  instead of mutating the live row — readers keep seeing the published
+     *  content until `publish` applies the staged changes. `?live=1` (publish
+     *  permission) bypasses staging; unpublish/archive fold the staged patch
+     *  into the row as it leaves the published state. See the sqlite twin. */
+    stagedEdits: boolean("staged_edits").notNull().default(false),
     /** When true, the physical table gains a nullable `deleted_at` column and
      *  DELETE soft-deletes (sets `deleted_at = now()`) instead of removing the
      *  row; every read path filters `deleted_at IS NULL`. Forced false for
@@ -1332,6 +1339,32 @@ export const itemOwnership = pgTable(
     uniqueIndex("item_ownership_pk_idx").on(t.collectionId, t.itemId),
     index("item_ownership_owner_idx").on(t.ownerId, t.collectionId),
   ],
+);
+
+/**
+ * Staged (unpublished) edits for published rows of a `stagedEdits` collection.
+ * One row per (collection, item): the accumulated PATCH — deserialized field
+ * values, merged shallowly per field across saves — that `publish` will apply
+ * to the live row. Kept as a JSON sidecar (not a second physical row) so
+ * unique constraints, relations, and adopted tables need no special casing.
+ * Cleared on publish/unpublish/archive (applied) and on discard/delete.
+ */
+export const itemStaged = pgTable(
+  "item_staged",
+  {
+    collectionId: text("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+    /** PK value of the target row, stringified (uuid/int/text all fit). */
+    itemId: text("item_id").notNull(),
+    tenantId: text("tenant_id"),
+    /** The staged patch: field name → deserialized value (hash fields are
+     *  stored pre-digested — never plaintext). */
+    data: jsonb("data").$type<Record<string, unknown>>().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: text("updated_by"),
+  },
+  (t) => [uniqueIndex("item_staged_pk_idx").on(t.collectionId, t.itemId)],
 );
 
 /**

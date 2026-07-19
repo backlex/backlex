@@ -16,6 +16,7 @@ import {
   formatTraceparent,
 } from "./lib/trace";
 import { recordSpan, traceSampleRate } from "./services/traces";
+import { exportSpanOtlp, otlpEnabled } from "./services/otlp";
 import { errorHandler } from "./middleware/error";
 import type { PermissionVar } from "./middleware/permission";
 import { sessionMiddleware } from "./middleware/session";
@@ -293,7 +294,7 @@ export const createApp = (env: Env) => {
         ctx = undefined;
       }
       if (ctx && Math.random() < traceSampleRate(ctx.env)) {
-        const write = recordSpan(ctx, {
+        const spanInput = {
           trace,
           name: `${c.req.method} ${path}`,
           method: c.req.method,
@@ -304,7 +305,15 @@ export const createApp = (env: Env) => {
           tenantId: auth?.tenantId ?? null,
           userId: auth?.userId ?? null,
           errorCode: code,
-        }).catch(() => {});
+        };
+        // Same sampled span feeds the local table AND (when OTLP_ENDPOINT is
+        // set) the external OpenTelemetry collector. Both never throw.
+        const write = otlpEnabled(ctx.env)
+          ? Promise.all([
+              recordSpan(ctx, spanInput).catch(() => {}),
+              exportSpanOtlp(ctx.env, spanInput),
+            ]).then(() => {})
+          : recordSpan(ctx, spanInput).catch(() => {});
         // `c.executionCtx` is a getter that THROWS on non-Workers runtimes
         // (Bun/Vercel/Netlify) — guard it, then fall back to fire-and-forget.
         try {

@@ -66,6 +66,7 @@ import {
   TAGS,
 } from "../../services/items/schemas";
 import { auditRead, canSeeDraftsFor } from "./shared";
+import { stagedIdsFor } from "../../services/items/staged";
 import { defaultHook } from "../../lib/openapi-router";
 
 export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
@@ -615,9 +616,10 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         hasJoins ? collection.physicalTable : undefined,
       );
       // Versioned collections: hide drafts from callers without publish/update.
+      const canSeeDrafts = await canSeeDraftsFor(ctx, auth, collection, perm);
       const draftWhere = draftFilter(
         collection,
-        await canSeeDraftsFor(ctx, auth, collection, perm),
+        canSeeDrafts,
         c.req.query("status"),
         hasJoins ? collection.physicalTable : undefined,
       );
@@ -959,6 +961,24 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // whole page, then each row's id array becomes an array of inlined rows.
       if (manyPlans.length > 0) {
         await applyManyExpandsToRows(ctx, auth, data, manyPlans);
+      }
+      // Staged-edits: flag rows carrying a pending staged patch for privileged
+      // callers (one batched lookup per page). Applied after projection —
+      // `_staged` is a system annotation, not a field.
+      if (collection.versioned && collection.stagedEdits && canSeeDrafts && pageRows.length > 0) {
+        const flagged = await stagedIdsFor(
+          ctx,
+          collection,
+          pageRows.map((r) => String(r[collection.pkColumn])),
+        );
+        if (flagged.size > 0) {
+          pageRows.forEach((r, i) => {
+            if (flagged.has(String(r[collection.pkColumn]))) {
+              const out = data[i];
+              if (out) out._staged = true;
+            }
+          });
+        }
       }
       return c.json({
         data,

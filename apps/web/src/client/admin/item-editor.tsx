@@ -119,7 +119,14 @@ export function ItemEditorPage({
     setLoading(!initialItem);
     void (async () => {
       try {
-        const res = await itemsApi.get(slug, itemId);
+        // Staged-edits collections: seed the form from the merged staged
+        // preview so editing continues from the pending changes (the live
+        // row is what readers still see).
+        const res = await itemsApi.get(
+          slug,
+          itemId,
+          schema.stagedEdits ? { staged: 1 } : undefined,
+        );
         if (!cancelled && res.data) setItem(res.data as unknown as Post);
       } catch {
         // keep the fast-path row if the fetch fails
@@ -178,7 +185,13 @@ export function ItemEditorPage({
           onSaved(updated);
           setSavedAt(Date.now());
           setRevisionsKey((k) => k + 1);
-          if (!opts?.silent) pushToast(t`Saved.`);
+          if (!opts?.silent) {
+            pushToast(
+              (res.data as Record<string, unknown> | undefined)?._staged
+                ? t`Changes staged — publish to apply them.`
+                : t`Saved.`,
+            );
+          }
           if (opts?.close) onBack();
           return true;
         }
@@ -201,7 +214,11 @@ export function ItemEditorPage({
   // re-seeds the form, discarding this member's local edits.
   const reloadLatest = useCallback(async () => {
     try {
-      const res = await itemsApi.get(slug, itemId);
+      const res = await itemsApi.get(
+        slug,
+        itemId,
+        schema.stagedEdits ? { staged: 1 } : undefined,
+      );
       if (res.data) {
         setItem(res.data as unknown as Post);
         setConflict(false);
@@ -210,7 +227,7 @@ export function ItemEditorPage({
     } catch (e) {
       pushToast((e as Error).message, "error");
     }
-  }, [slug, itemId, pushToast]);
+  }, [slug, itemId, schema.stagedEdits, pushToast]);
 
   // ── Autosave (drafts) — debounced, silent, edit-mode only ────────────────
   // Paused while a conflict is unresolved: retrying would just 409 again.
@@ -258,13 +275,22 @@ export function ItemEditorPage({
               : action === "scheduleUnpublish"
                 ? await itemsApi.scheduleUnpublish(slug, item.id, at ?? null)
                 : await itemsApi.schedulePublish(slug, item.id, at ?? null);
+      const hadStaged = !!(item as unknown as Record<string, unknown>)._staged;
       const updated = { ...item, ...(res.data as Partial<Post>) } as Post;
+      // Every state transition applies (and clears) the staged patch server-
+      // side; only a bare expiry set leaves it pending. The response row
+      // doesn't carry the key, so strip the stale local flag explicitly.
+      if (action !== "scheduleUnpublish") {
+        delete (updated as unknown as Record<string, unknown>)._staged;
+      }
       setItem(updated);
       onSaved(updated);
       setRevisionsKey((k) => k + 1);
       pushToast(
         action === "publish"
-          ? t`Item published.`
+          ? hadStaged
+            ? t`Staged changes published.`
+            : t`Item published.`
           : action === "unpublish"
             ? t`Item reverted to draft.`
             : action === "archive"
@@ -276,6 +302,28 @@ export function ItemEditorPage({
                 : t`Publish scheduled.`,
       );
     } catch (e) {
+      pushToast((e as Error).message, "error");
+    }
+  };
+
+  // Discard staged changes: drop the flag optimistically, then reseed the form
+  // from the live row (the staged values the form currently shows are gone).
+  const discardStaged = async () => {
+    if (!item) return;
+    const snapshot = item;
+    const optimistic = { ...item } as unknown as Record<string, unknown>;
+    delete optimistic._staged;
+    setItem(optimistic as unknown as Post);
+    try {
+      await itemsApi.discardStaged(slug, item.id);
+      const res = await itemsApi.get(slug, itemId);
+      if (res.data) {
+        setItem(res.data as unknown as Post);
+        onSaved(res.data as unknown as Post);
+      }
+      pushToast(t`Staged changes discarded.`);
+    } catch (e) {
+      setItem(snapshot);
       pushToast((e as Error).message, "error");
     }
   };
@@ -588,6 +636,7 @@ export function ItemEditorPage({
                   unpublishAt={unpublishAt}
                   setUnpublishAt={setUnpublishAt}
                   onPublish={doPublish}
+                  onDiscardStaged={discardStaged}
                 />
               </div>
             </Card>
@@ -698,6 +747,7 @@ function PublishControls({
   unpublishAt,
   setUnpublishAt,
   onPublish,
+  onDiscardStaged,
 }: {
   item: Post | null;
   canPublish: boolean;
@@ -709,9 +759,11 @@ function PublishControls({
     action: "publish" | "unpublish" | "archive" | "schedule" | "scheduleUnpublish",
     at?: string | null,
   ) => void | Promise<void>;
+  onDiscardStaged?: () => void | Promise<void>;
 }) {
   const rec = (item ?? {}) as Record<string, unknown>;
   const status = String(rec._status ?? "draft");
+  const staged = !!rec._staged;
   const publishAtMs = toMs(rec._publish_at);
   const unpublishAtMs = toMs(rec._unpublish_at);
   const publishedAtMs = toMs(rec._published_at);
@@ -755,7 +807,12 @@ function PublishControls({
           <Trans>Draft</Trans>
         </Badge>
       )}
-      {editedSincePublish && (
+      {staged && (
+        <Badge variant="outline">
+          <I.Pencil size={10} /> <Trans>Staged changes</Trans>
+        </Badge>
+      )}
+      {editedSincePublish && !staged && (
         <span title={publishedAtMs ? new Date(publishedAtMs).toLocaleString() : undefined}>
           <Badge variant="outline">
             <I.Pencil size={10} /> <Trans>Edited since publish</Trans>
@@ -849,10 +906,21 @@ function PublishControls({
         </>
       ) : published ? (
         <>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => void onPublish("unpublish")}>
-              <Trans>Unpublish</Trans>
+          {staged && (
+            <Button variant="primary" size="sm" className="w-full" onClick={() => void onPublish("publish")}>
+              <Trans>Publish changes</Trans>
             </Button>
+          )}
+          <div className="flex gap-2">
+            {staged && onDiscardStaged ? (
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => void onDiscardStaged()}>
+                <Trans>Discard changes</Trans>
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => void onPublish("unpublish")}>
+                <Trans>Unpublish</Trans>
+              </Button>
+            )}
             <Button variant="ghost" size="sm" className="flex-1" onClick={() => void onPublish("archive")}>
               <I.Archive size={13} /> <Trans>Archive</Trans>
             </Button>

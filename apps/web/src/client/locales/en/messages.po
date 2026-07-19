@@ -2169,6 +2169,10 @@ msgstr "Changes how the value is edited in the item form. Selection interfaces (
 msgid "Changes only"
 msgstr "Changes only"
 
+#: src/client/admin/item-editor.tsx
+msgid "Changes staged — publish to apply them."
+msgstr "Changes staged — publish to apply them."
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Changes the live schema would receive if you apply this version."
 msgstr "Changes the live schema would receive if you apply this version."
@@ -3663,6 +3667,10 @@ msgid "Discard"
 msgstr "Discard"
 
 #: src/client/admin/item-editor.tsx
+msgid "Discard changes"
+msgstr "Discard changes"
+
+#: src/client/admin/item-editor.tsx
 msgid "Discard unsaved changes?"
 msgstr "Discard unsaved changes?"
 
@@ -4053,6 +4061,10 @@ msgstr "editing {0} — empty strings fall back to {1}"
 #: src/client/admin/parity/insights.tsx
 msgid "Editing <0>{0}</0>."
 msgstr "Editing <0>{0}</0>."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Editing a <0>published</0> item stages the change instead of updating what's live — readers keep the current version until you publish again, which applies the staged changes. Drafts still edit directly."
+msgstr "Editing a <0>published</0> item stages the change instead of updating what's live — readers keep the current version until you publish again, which applies the staged changes. Drafts still edit directly."
 
 #: src/client/admin/role-editor.tsx
 msgid "editor"
@@ -5282,6 +5294,10 @@ msgstr "Half width"
 #: src/client/admin/pages/usage.tsx
 msgid "Hard"
 msgstr "Hard"
+
+#: src/client/admin/items.tsx
+msgid "Has staged changes — publish to apply them"
+msgstr "Has staged changes — publish to apply them"
 
 #: src/client/admin/parity/database.tsx
 msgid "Hash"
@@ -8971,6 +8987,10 @@ msgid "Publish"
 msgstr "Publish"
 
 #: src/client/admin/item-editor.tsx
+msgid "Publish changes"
+msgstr "Publish changes"
+
+#: src/client/admin/item-editor.tsx
 msgid "Publish now"
 msgstr "Publish now"
 
@@ -11382,6 +11402,26 @@ msgstr "SQL"
 #: src/client/admin/parity/database.tsx
 msgid "SQL editor"
 msgstr "SQL editor"
+
+#: src/client/admin/items.tsx
+msgid "Staged"
+msgstr "Staged"
+
+#: src/client/admin/item-editor.tsx
+msgid "Staged changes"
+msgstr "Staged changes"
+
+#: src/client/admin/item-editor.tsx
+msgid "Staged changes discarded."
+msgstr "Staged changes discarded."
+
+#: src/client/admin/item-editor.tsx
+msgid "Staged changes published."
+msgstr "Staged changes published."
+
+#: src/client/admin/collection-settings.tsx
+msgid "Staged edits"
+msgstr "Staged edits"
 
 #: src/client/admin/ui.tsx
 msgid "Staging"

@@ -44,6 +44,7 @@ import {
   TAGS,
 } from "../../services/items/schemas";
 import { auditRead, canSeeDraftsFor } from "./shared";
+import { getStagedRow, stagedViewOf } from "../../services/items/staged";
 import { defaultHook } from "../../lib/openapi-router";
 
 export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
@@ -92,6 +93,10 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           expand: z.string().optional().openapi({
             description:
               "Comma-separated relation fields to inline-expand. Single-hop only.",
+          }),
+          staged: z.enum(["1"]).optional().openapi({
+            description:
+              "Staged-edits collections: return the row with its pending staged patch previewed on top (privileged callers only — others see the live row).",
           }),
         }),
       },
@@ -241,9 +246,10 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       );
       // Versioned collections: a draft fetched by id 404s for callers without
       // publish/update permission (the filter excludes it from the result).
+      const canSeeDrafts = await canSeeDraftsFor(ctx, auth, collection, perm);
       const draftWhere = draftFilter(
         collection,
-        await canSeeDraftsFor(ctx, auth, collection, perm),
+        canSeeDrafts,
         c.req.query("status"),
         hasJoins ? collection.physicalTable : undefined,
       );
@@ -252,6 +258,14 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         sql`SELECT ${selectCols} FROM ${fromClause} ${whereOf(pkWhere, perm.whereSql, tenantWhere, deletedWhere, draftWhere)} LIMIT 1`,
       );
       if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
+      // Staged-edits: privileged callers get a `_staged` flag when a pending
+      // patch exists, and `?staged=1` previews the patch on top of the live
+      // row. Loaded before the ETag so the validator moves when the patch
+      // does (the live row's `updated_at` doesn't).
+      const staged =
+        collection.versioned && collection.stagedEdits && canSeeDrafts
+          ? await getStagedRow(ctx, collection, c.req.param("id"))
+          : null;
       // Conditional GET. The weak ETag keys on the row's version (`updated_at`)
       // plus everything that changes the body — the query params and the
       // caller's field allow-list — so a different locale/expand/role can't
@@ -270,6 +284,8 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           c.req.query("locale") ?? "",
           c.req.query("expand") ?? "",
           c.req.query("status") ?? "",
+          c.req.query("staged") ?? "",
+          staged ? `s:${staged.updatedAt instanceof Date ? staged.updatedAt.getTime() : String(staged.updatedAt)}` : "",
           perm.fields ? [...perm.fields].sort().join(",") : "*",
         ]);
         c.header("ETag", etag);
@@ -299,7 +315,13 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         );
         applySidecarFromRows(base, sidecarRows, localizedDefs, ctx.dialect, locale, defaultLocale);
       }
+      if (staged && c.req.query("staged") === "1") {
+        Object.assign(base, stagedViewOf(staged.data, collection.fields));
+      }
       const projected = projectFields(base, perm.fields);
+      // After projection — the flag is a system annotation, not a field the
+      // allow-list knows about.
+      if (staged) projected._staged = true;
       // Expand AFTER projectFields so the inlined object survives the
       // perm.fields trim even when the source FK key (e.g. `customer_id`)
       // would have been kept by virtue of being in perm.fields, but a

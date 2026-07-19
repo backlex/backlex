@@ -364,6 +364,12 @@ msgstr "{0} / {1}"
 msgid "{0} of {1} columns mapped"
 msgstr "{1} sütunun {0} tanesi eşlendi"
 
+#. placeholder {0}: res.failed
+#. placeholder {1}: res.total
+#: src/client/admin/grid-edit.tsx
+msgid "{0} of {1} rows could not be updated."
+msgstr "{0} / {1} satır güncellenemedi."
+
 #. placeholder {0}: allowlist.size
 #. placeholder {1}: tools?.length ?? 0
 #: src/client/components/mcp-guards-fields.tsx
@@ -614,6 +620,10 @@ msgstr "{r} bu kuralla eşleşen satırları güncelleyebilir."
 #: src/client/admin/collections-index.tsx
 msgid "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
 msgstr "{sampleSeeds} şablon örnek satırı hâlâ bu çalışma alanında. Kendi verilerinize asla dokunulmaz."
+
+#: src/client/admin/grid-edit.tsx
+msgid "{skipped} cells skipped (read-only or invalid value)."
+msgstr "{skipped} hücre atlandı (salt okunur ya da geçersiz değer)."
 
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/collections-index.tsx
@@ -2247,6 +2257,10 @@ msgstr "Sahipleniliyor…"
 msgid "Claude Desktop"
 msgstr "Claude Desktop"
 
+#: src/client/admin/app.tsx
+msgid "clear"
+msgstr "temizle"
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
@@ -2782,6 +2796,10 @@ msgstr "kopyala"
 #: src/client/pages/openapi-export.tsx
 msgid "Copy"
 msgstr "Kopyala"
+
+#: src/client/admin/app.tsx
+msgid "copy / paste"
+msgstr "kopyala / yapıştır"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Copy an external Postgres database into collections — primary keys preserved, relations intact, resumable. For databases the server can't reach, use the backlex import-db CLI."
@@ -4273,6 +4291,10 @@ msgstr "Şimdi bir geçiş anahtarı kaydedin"
 msgid "enrolled"
 msgstr "kayıtlı"
 
+#: src/client/admin/app.tsx
+msgid "Enter — edit"
+msgstr "Enter — düzenle"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Enter a name to continue."
@@ -4749,6 +4771,10 @@ msgstr "Dosyalar"
 msgid "Files are read as text in your browser and sent to the server. Files over 1 MB, dotfiles, and node_modules are skipped."
 msgstr "Dosyalar tarayıcınızda metin olarak okunur ve sunucuya gönderilir. 1 MB üzeri dosyalar, nokta dosyaları ve node_modules atlanır."
 
+#: src/client/admin/app.tsx
+msgid "fill down"
+msgstr "aşağı doldur"
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Fill the required fields."
 msgstr "Zorunlu alanları doldurun."
@@ -5199,6 +5225,14 @@ msgstr "GraphQL"
 #: src/client/admin/storage/index.tsx
 msgid "Grid"
 msgstr "Izgara"
+
+#: src/client/admin/app.tsx
+msgid "Grid edit"
+msgstr "Hücre düzenleme"
+
+#: src/client/admin/app.tsx
+msgid "Grid edit — select cells, type to edit, copy/paste, fill down"
+msgstr "Hücre düzenleme — hücre seçin, yazarak düzenleyin, kopyala/yapıştır, aşağı doldur"
 
 #: src/client/admin/collections-index.tsx
 msgid "Group"
@@ -7746,6 +7780,10 @@ msgstr "Son {range} içinde hiçbir şey gelmedi. Aralığı genişletin veya is
 msgid "Nothing new — all {0} collections already exist"
 msgstr "Yeni bir şey yok — {0} koleksiyonun tümü zaten var"
 
+#: src/client/admin/grid-edit.tsx
+msgid "Nothing pasted — the target cells are read-only or the values don't fit."
+msgstr "Hiçbir şey yapıştırılmadı — hedef hücreler salt okunur ya da değerler uymuyor."
+
 #: src/client/admin/pages/search-playground.tsx
 msgid "Nothing ranked for that query — try different words or another mode."
 msgstr "Bu sorgu için sonuç çıkmadı — farklı kelimeler veya başka bir mod deneyin."
@@ -7766,6 +7804,10 @@ msgstr "Henüz hiçbir şey seçilmedi"
 #: src/client/admin/pages/logs.tsx
 msgid "Nothing to export — the current view is empty."
 msgstr "Dışa aktarılacak şey yok — mevcut görünüm boş."
+
+#: src/client/admin/grid-edit.tsx
+msgid "Nothing to paste."
+msgstr "Yapıştırılacak bir şey yok."
 
 #: src/client/admin/ui.tsx
 msgid "Notifications"
@@ -10561,6 +10603,10 @@ msgstr "<0>{0}</0> seçildi"
 msgid "Selected <0>{selected}</0>"
 msgstr "<0>{selected}</0> seçildi"
 
+#: src/client/admin/grid-edit.tsx
+msgid "Selected columns are read-only."
+msgstr "Seçili sütunlar salt okunur."
+
 #: src/client/admin/pages/settings/index.tsx
 msgid "Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values."
 msgstr "Cloudflare Workers üzerinde öz barındırılan. Yapılandırmanın büyük kısmı wrangler.toml içindedir; bu sayfa çalışma zamanında değiştirilebilen değerler için canlı görünüm ve arayüzdür."
@@ -12462,6 +12508,10 @@ msgstr "bağlanmamış"
 #: src/client/admin/parity/revisions.tsx
 msgid "unchanged"
 msgstr "değişmedi"
+
+#: src/client/admin/app.tsx
+msgid "undo"
+msgstr "geri al"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/parity/insights.tsx

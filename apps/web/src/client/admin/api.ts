@@ -532,6 +532,16 @@ export const itemsApi = {
     }),
   remove: (slug: string, id: string) =>
     api<{ ok: true }>(`/api/items/${slug}/${id}`, { method: "DELETE" }),
+  /** Many independent ops in one request (partial-success per row). The grid's
+   *  paste path uses `update` ops when rows receive different values. */
+  batch: (slug: string, operations: Array<{ op: "create" | "update" | "delete"; id?: string; data?: Record<string, unknown> }>) =>
+    api<Envelope<{ total: number; succeeded: number; failed: number; results: { index: number; op: string; ok: boolean; id?: string; error?: { code: string; message: string } }[] }>>(
+      `/api/items/${slug}/batch`,
+      {
+        method: "POST",
+        body: JSON.stringify({ operations }),
+      },
+    ),
   /** Apply one shared patch to many selected ids (only the named fields change). */
   bulkUpdate: (slug: string, keys: string[], data: Record<string, unknown>) =>
     api<Envelope<{ total: number; updated: number; failed: number; results: { id: string; ok: boolean; error?: { code: string; message: string } }[] }>>(

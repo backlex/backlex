@@ -296,10 +296,15 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   // derived below once schemaState is known.
   const [view, setView] = useUrlState("view", "table");
   const requestedView = (["table", "kanban", "gallery", "calendar"].includes(view) ? view : "table") as ItemsViewMode;
+  // Spreadsheet grid mode (table view only, URL-persisted). Cells become
+  // selectable/navigable and the page grows — 8 rows is browsing scale,
+  // 50 is editing scale.
+  const [gridUrl, setGridUrl] = useUrlState("grid", "");
+  const gridMode = requestedView === "table" && gridUrl === "1";
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [page, setPage] = useState(1);
-  const PER_PAGE = 8;
+  const PER_PAGE = gridMode ? 50 : 8;
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetMode, setSheetMode] = useState<"create" | "edit">("create");
@@ -763,7 +768,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     return rows;
   }, [posts, search, filters, statusTab, sort, tweaks.populated]);
 
-  useEffect(() => { setPage(1); }, [search, filters.length, statusTab, sort]);
+  useEffect(() => { setPage(1); }, [search, filters.length, statusTab, sort, gridMode]);
 
   const total = itemsForView.length;
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
@@ -1349,6 +1354,18 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                           hasStatus={!!resolveKanbanGroupField(schemaState as unknown as { fields?: Array<Record<string, unknown>>; kanbanGroupBy?: string | null; versioned?: boolean } | null)}
                         />
                         <div className="flex-1" />
+                        {viewMode === "table" && (
+                          <button
+                            type="button"
+                            onClick={() => setGridUrl(gridMode ? "" : "1")}
+                            aria-pressed={gridMode}
+                            title={t`Grid edit — select cells, type to edit, copy/paste, fill down`}
+                            className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-control border px-2.5 text-[12px] font-medium transition-colors ${gridMode ? "border-[color-mix(in_oklch,var(--primary)_45%,transparent)] bg-[color-mix(in_oklch,var(--primary)_14%,transparent)] text-foreground" : "border-border bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
+                          >
+                            <I.Grid3 size={13} />
+                            <span className="max-sm:hidden">{t`Grid edit`}</span>
+                          </button>
+                        )}
                         {viewMode === "table" && schemaState.slug && (
                           <ColumnPicker slug={schemaState.slug} fields={schemaState.fields as never} />
                         )}
@@ -1373,11 +1390,21 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                           onDelete={onBulkDelete}
                         />
                       )}
+                      {viewMode === "table" && gridMode && pageRows.length > 0 && (
+                        <div className="flex items-center gap-3 border-b border-border bg-[color-mix(in_oklch,var(--primary)_6%,transparent)] px-3.5 py-1.5 font-mono text-[10.5px] text-muted-foreground max-sm:hidden">
+                          <span className="text-foreground"><Trans>Grid edit</Trans></span>
+                          <span><Trans>Enter — edit</Trans></span>
+                          <span>⌘C / ⌘V — <Trans>copy / paste</Trans></span>
+                          <span>⌘D — <Trans>fill down</Trans></span>
+                          <span>⌫ — <Trans>clear</Trans></span>
+                          <span>⌘Z — <Trans>undo</Trans></span>
+                        </div>
+                      )}
                       {viewMode === "table" && (
                         pageRows.length === 0 ? (
                           <EmptyItems onCreate={openCreate} slug={activeCollection ?? undefined} />
                         ) : (
-                          <ItemsTable rows={pageRows} selected={selected} setSelected={setSelected} sort={sort} setSort={setSort} onEdit={openEdit} schema={schemaState} onCellError={(e) => pushToast((e as Error).message, "error")} />
+                          <ItemsTable rows={pageRows} selected={selected} setSelected={setSelected} sort={sort} setSort={setSort} onEdit={openEdit} schema={schemaState} onCellError={(e) => pushToast((e as Error).message, "error")} gridMode={gridMode} onNotice={(m, k) => pushToast(m, k)} />
                         )
                       )}
                       {viewMode === "kanban" && (

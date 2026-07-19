@@ -33,6 +33,35 @@
   --border: oklch(1 0 0 / 8%);
   --input: oklch(1 0 0 / 12%);
   --ring: oklch(0.599 0.230 286.2);
+
+  /* ── Tailwind-facing --color-* re-mappings ──────────────────────────────
+     tokens.css maps --color-* → var(--token) under a NON-inline @theme, so
+     those mappings are computed ON :root against the PAGE theme and inherit
+     down as literals — the bare-token overrides above never reach utility
+     classes (bg-primary, border-input, …). In a light-themed app that leaked
+     the light palette (lime primary, white outline fills) into this dark
+     shell. Re-declaring the mappings here recomputes them against the cosmos
+     tokens for everything inside the shell. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
   --radius: 0.875rem;
   /* semantic radius — mirror of packages/ui tokens.css (self-contained, the
      shell must render right even when tokens.css isn't loaded) */

@@ -138,7 +138,11 @@ describe("MCP — initialize + tools/list", () => {
   test("tools/list returns every namespace", async () => {
     const r = await mcp(h, { jsonrpc: "2.0", id: 2, method: "tools/list" });
     expect(isErr(r)).toBe(false);
-    const names = (r as RpcSuccess).result.tools.map((t: any) => t.name);
+    // Tenant-mount names are hyphenated on the wire (claude.ai contract);
+    // normalize back to the canonical dotted id for catalog-coverage checks.
+    const names = (r as RpcSuccess).result.tools.map((t: any) =>
+      (t.name as string).replaceAll("-", "."),
+    );
     // Original 13 (Phase 1) — schema discovery + collection CRUD + storage + functions
     expect(names).toContain("schema.list_collections");
     expect(names).toContain("schema.describe_collection");
@@ -247,7 +251,7 @@ describe("MCP — initialize + tools/list", () => {
     expect(kinds.has("read")).toBe(true);
     expect(kinds.has("write")).toBe(true);
     expect(kinds.has("destruct")).toBe(true);
-    const byName = new Map(tools.map((t) => [t.name, t]));
+    const byName = new Map(tools.map((t) => [t.name.replaceAll("-", "."), t]));
     expect(byName.get("functions.list")?.adminOnly).toBe(true);
     expect(byName.get("functions.invoke")?.adminOnly).toBe(true);
     expect(byName.get("schema.list_collections")?.kind).toBe("read");
@@ -267,7 +271,7 @@ describe("MCP — initialize + tools/list", () => {
   test("tools/list surfaces outputSchema only where the shape is stable", async () => {
     const r = await mcp(h, { jsonrpc: "2.0", id: 34, method: "tools/list" });
     const byName = new Map(
-      (r as RpcSuccess).result.tools.map((t: any) => [t.name, t]),
+      (r as RpcSuccess).result.tools.map((t: any) => [(t.name as string).replaceAll("-", "."), t]),
     );
     // Schema-discovery + aggregate + the list envelope are schematized.
     expect(byName.get("schema.list_collections")?.outputSchema?.required).toContain("collections");
@@ -922,7 +926,7 @@ describe("MCP — per-key guards (allowlist + read-only)", () => {
     const { rpc } = await mcpBearer(h, restrictedKey, {
       jsonrpc: "2.0", id: 1, method: "tools/list",
     });
-    const names: string[] = (rpc as RpcSuccess).result.tools.map((t: any) => t.name);
+    const names: string[] = (rpc as RpcSuccess).result.tools.map((t: any) => (t.name as string).replaceAll("-", "."));
     expect(names.sort()).toEqual(
       ["schema.list_collections", "collections.list", "collections.read"].sort(),
     );
@@ -1058,7 +1062,7 @@ describe("MCP — per-key guards (allowlist + read-only)", () => {
     const { rpc } = await mcpBearer(h, created.data.secret, {
       jsonrpc: "2.0", id: 7, method: "tools/list",
     });
-    const names: string[] = (rpc as RpcSuccess).result.tools.map((t: any) => t.name);
+    const names: string[] = (rpc as RpcSuccess).result.tools.map((t: any) => (t.name as string).replaceAll("-", "."));
     expect(names).toEqual(["roles.list"]);
   });
 });
@@ -1703,7 +1707,7 @@ describe("MCP — search surface (fts auto-backfill + reindex + vector capabilit
     const r = await mcp(h, { jsonrpc: "2.0", id: 91, method: "tools/list" });
     expect(isErr(r)).toBe(false);
     const tools = (r as RpcSuccess).result.tools as any[];
-    const byName = new Map(tools.map((t: any) => [t.name, t]));
+    const byName = new Map(tools.map((t: any) => [(t.name as string).replaceAll("-", "."), t]));
     expect(byName.has("schema.fts_reindex")).toBe(true);
     expect(byName.has("schema.vectorize_backfill")).toBe(true);
     // "capabilities" isn't a recognised read verb — the explicit kind must win.

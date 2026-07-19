@@ -177,16 +177,37 @@ describe("MCP OAuth — full PKCE flow against /mcp", () => {
   });
   afterAll(() => h.cleanup());
 
-  test("bearer token lists MCP tools", async () => {
+  test("bearer token lists MCP tools with claude.ai-safe names", async () => {
     const res = await mcpRpc(h, writeToken, {
       jsonrpc: "2.0",
       id: 2,
       method: "tools/list",
     });
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { result?: { tools?: unknown[] } };
-    expect(Array.isArray(body.result?.tools)).toBe(true);
-    expect((body.result!.tools!).length).toBeGreaterThan(10);
+    const body = (await res.json()) as {
+      result?: { tools?: Array<{ name: string }> };
+    };
+    const tools = body.result?.tools ?? [];
+    expect(tools.length).toBeGreaterThan(10);
+    // Every advertised name must satisfy the strict client contract — no dot.
+    const pattern = /^[a-zA-Z0-9_-]{1,64}$/;
+    const bad = tools.filter((t) => !pattern.test(t.name)).map((t) => t.name);
+    expect(bad).toEqual([]);
+    // And the substitution is real (dotted ids became hyphenated on the wire).
+    expect(tools.some((t) => t.name.includes("-"))).toBe(true);
+    expect(tools.some((t) => t.name.includes("."))).toBe(false);
+  });
+
+  test("tools/call resolves the hyphenated wire name back to the dotted id", async () => {
+    const res = await mcpRpc(h, writeToken, {
+      jsonrpc: "2.0",
+      id: 6,
+      method: "tools/call",
+      params: { name: "schema-list_collections", arguments: {} },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { result?: { isError?: boolean } };
+    expect(body.result?.isError ?? false).toBe(false);
   });
 
   test("re-authorize after consent skips the consent screen", async () => {

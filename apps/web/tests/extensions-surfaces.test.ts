@@ -187,7 +187,7 @@ describe("extensions — MCP surface", () => {
     const body = (await res.json()) as {
       result?: { tools?: { name: string }[] };
     };
-    const names = (body.result?.tools ?? []).map((t) => t.name);
+    const names = (body.result?.tools ?? []).map((t) => t.name.replaceAll("-", "."));
     for (const t of [
       "extensions.list",
       "extensions.install",

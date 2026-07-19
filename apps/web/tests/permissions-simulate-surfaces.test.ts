@@ -197,7 +197,7 @@ describe("permissions.simulate — cross-surface parity", () => {
 
   test("permissions.simulate is advertised by tools/list", async () => {
     const res = await h.fetch("/mcp", json({ jsonrpc: "2.0", id: 9, method: "tools/list" }));
-    const names = ((await res.json()) as { result: { tools: { name: string }[] } }).result.tools.map((t) => t.name);
+    const names = ((await res.json()) as { result: { tools: { name: string }[] } }).result.tools.map((t) => t.name.replaceAll("-", "."));
     expect(names).toContain("permissions.simulate");
   });
 });

@@ -202,7 +202,7 @@ describe("schema-versions — MCP surface", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 9, method: "tools/list" }),
     });
-    const names = ((await listRes.json()) as { result: { tools: { name: string }[] } }).result.tools.map((t) => t.name);
+    const names = ((await listRes.json()) as { result: { tools: { name: string }[] } }).result.tools.map((t) => t.name.replaceAll("-", "."));
     expect(names).toContain("schema.snapshots");
     expect(names).toContain("schema.diff");
     expect(names).toContain("schema.apply");

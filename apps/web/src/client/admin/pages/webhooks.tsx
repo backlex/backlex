@@ -158,6 +158,17 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
         description={t`Outgoing HTTP on collection events. Failed deliveries retry with exponential backoff.`}
         actions={<Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create", hook: null })}><Trans>New webhook</Trans></Button>}
       />
+      {hooks.length === 0 ? (
+        // Outside the table on purpose: header columns force a min table width
+        // wider than a phone viewport, so an in-table empty state centers
+        // inside the horizontal scroller and hangs off-screen on mobile.
+        <EmptyState
+          icon={I.Webhook}
+          title={<Trans>No webhooks yet</Trans>}
+          description={<Trans>Pipe collection events to Slack, your API, or any HTTPS endpoint.</Trans>}
+          action={<Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create", hook: null })}><Trans>New webhook</Trans></Button>}
+        />
+      ) : (
       <Card className="py-0 gap-0">
         <Table className={ADMIN_TABLE_CLS}>
           <TableHeader>
@@ -245,19 +256,10 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                 </TableRow>
               );
             })}
-            {hooks.length === 0 && (
-              <TableRow><TableCell colSpan={6}>
-                <EmptyState
-                  bare
-                  icon={I.Webhook}
-                  title={<Trans>No webhooks yet</Trans>}
-                  description={<Trans>Pipe collection events to Slack, your API, or any HTTPS endpoint.</Trans>}
-                />
-              </TableCell></TableRow>
-            )}
           </TableBody>
         </Table>
       </Card>
+      )}
 
       <Card className="py-0 gap-0">
         <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
@@ -265,6 +267,15 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
           <div className="flex-1" />
           <Button variant="ghost" size="sm" icon={I.Refresh} onClick={() => pushToast(t`Refreshed.`)}><Trans>Refresh</Trans></Button>
         </div>
+        {deliveries.length === 0 ? (
+          // Bare empty state directly in the card — see the hooks-list note.
+          <EmptyState
+            bare
+            icon={I.Activity}
+            title={<Trans>No deliveries yet</Trans>}
+            description={<Trans>Outgoing webhook deliveries will show up here once a collection event fires.</Trans>}
+          />
+        ) : (
         <Table className={ADMIN_TABLE_CLS}>
           <TableHeader><TableRow><TableHead className="w-[100px]"><Trans>Time</Trans></TableHead><TableHead className="w-[80px]"><Trans>Hook</Trans></TableHead><TableHead><Trans>Event</Trans></TableHead><TableHead className="w-[90px] text-right"><Trans>Status</Trans></TableHead><TableHead className="w-[80px] text-right">ms</TableHead><TableHead className="sticky right-0 w-[60px] bg-card" /></TableRow></TableHeader>
           <TableBody>
@@ -288,18 +299,9 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                 </TableCell>
               </TableRow>
             ))}
-            {deliveries.length === 0 && (
-              <TableRow><TableCell colSpan={6}>
-                <EmptyState
-                  bare
-                  icon={I.Activity}
-                  title={<Trans>No deliveries yet</Trans>}
-                  description={<Trans>Outgoing webhook deliveries will show up here once a collection event fires.</Trans>}
-                />
-              </TableCell></TableRow>
-            )}
           </TableBody>
         </Table>
+        )}
       </Card>
 
       {editor && <WebhookEditorDialog mode={editor.mode} hook={editor.hook} onClose={() => setEditor(null)} onSave={saveHook} pushToast={pushToast} />}

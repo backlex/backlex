@@ -249,6 +249,7 @@ export function UsagePage({
               <Skeleton className="h-[120px] w-full" />
             ) : paddedSeries.every((p) => p.requests === 0) ? (
               <EmptyState
+                bare
                 icon={I.Gauge}
                 title={t`No metered traffic yet`}
                 description={t`Requests are counted per workspace and API key as they arrive. Make an API call, then refresh.`}

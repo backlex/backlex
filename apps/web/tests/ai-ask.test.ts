@@ -75,9 +75,12 @@ describe("Ask AI — buildSchemaDigest (planner schema awareness)", () => {
         ],
       },
     ]);
-    // Header steers the model away from inventing fields.
+    // Header steers the model away from inventing collections AND fields —
+    // the "orders not found" class of failure came from the digest only
+    // constraining field names, not the collection slug.
     expect(digest).toContain("Workspace schema");
-    expect(digest).toContain("NEVER invent a field name");
+    expect(digest).toContain("MUST be EXACTLY one of the slugs");
+    expect(digest).toContain("NEVER invent one");
     // System fields are advertised as always-present.
     expect(digest).toContain("created_at (timestamp)");
     // Real field names + types are surfaced.

@@ -38,6 +38,15 @@ const FormBlockSchema = z
     rating: z.boolean().optional(),
     consent: z.boolean().optional(),
     policyUrl: z.string().url().max(2000).optional(),
+    /** File blocks: MIME allow-list (`image/*`, exact types) + byte cap. The
+     *  env ceiling (`FORM_UPLOAD_MAX_BYTES`) clamps `maxBytes` at upload time. */
+    accept: z.array(z.string().min(3).max(80)).max(20).optional(),
+    maxBytes: z
+      .number()
+      .int()
+      .positive()
+      .max(5 * 1024 * 1024 * 1024)
+      .optional(),
     cond: z
       .object({
         field: z.string().min(1),

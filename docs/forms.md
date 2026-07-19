@@ -26,14 +26,40 @@ the audit trail all apply unchanged.
 - On **versioned collections** submissions land as `draft` — an instant
   moderation queue: review in the admin, publish what you accept.
 
-## Field eligibility (v1)
+## Field eligibility
 
-Only scalar fields can be exposed: `text`, `longtext`, `integer`, `number`,
-`boolean`, `timestamp` (dropdowns are `text` + choices). Excluded: relation /
-file / hash / json / uuid, `private`, `computed`, `localized`, and
+Scalar fields can be exposed — `text`, `longtext`, `integer`, `number`,
+`boolean`, `timestamp` (dropdowns are `text` + choices) — plus single `file`
+fields (see **File-upload blocks** below). Excluded: relation / hash / json
+(without choices) / uuid, `private`, `computed`, `localized`, and
 server-auto-filled (`onCreate`) fields. The fence is enforced at definition
 time AND re-derived on every public read/submit, so a field that later becomes
 ineligible silently disappears from the form instead of leaking.
+
+## File-upload blocks
+
+A `file`-typed collection field can be placed on a form. The public page
+uploads the file **before** submit (`POST /api/public/forms/:token/upload`,
+multipart) and receives a signed one-time **ticket**; the submit payload
+carries the ticket as the field value and the server swaps it for the stored
+key. A raw storage key in the payload is always rejected — an anonymous
+submitter can never point a row at an existing object.
+
+Server-side valves on every upload (the page's own checks are cosmetic):
+
+- **Size** — per-block `maxBytes` (builder: "Max file size"), always clamped
+  by the env ceiling `FORM_UPLOAD_MAX_BYTES` (default 5 MiB).
+- **Type** — per-block MIME allow-list (`accept`, e.g. `image/*`,
+  `application/pdf`; builder offers category chips). No list ⇒ any type.
+- **Rate** — 20 uploads/min per (form, IP) plus a per-form daily budget
+  (`FORM_UPLOAD_MAX_PER_DAY`, default 500).
+- **Quota** — the workspace hard storage cap (usage metering) applies.
+
+Files land under `form-uploads/<form-id>/` with a random basename (private
+ACL, original filename kept in metadata). Uploads that are never submitted
+are swept by the cron tick after 24h; tickets expire after 2h. Demo-mode
+instances refuse public uploads entirely. Turnstile (when enabled) still
+gates the submit — uploads are protected by the valves above instead.
 
 ## Spam protection
 
@@ -85,9 +111,8 @@ Everything goes through one service (`services/forms.ts`):
 Parity gate: `apps/web/tests/forms-surfaces.test.ts`; core behaviour:
 `apps/web/tests/forms.test.ts`.
 
-## Not in v1
+## Not yet
 
-- Relation / file-upload fields (public uploads are a separate security
-  surface).
+- Relation fields.
 - Localized fields.
-- Multi-step forms and per-form themes.
+- Multiple files per block (a `file` field stores one key).

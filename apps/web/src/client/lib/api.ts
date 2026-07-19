@@ -52,7 +52,11 @@ export const api = async <T>(path: string, init?: RequestInit): Promise<T> => {
       // validator try to parse an empty body — it throws "Malformed JSON in
       // request body" and 500s before the handler runs. Omit the header when
       // there's no body so those requests skip body parsing entirely.
-      ...(restInit.body != null ? { "content-type": "application/json" } : {}),
+      // FormData bodies must keep the browser-set multipart boundary — never
+      // override their content-type.
+      ...(restInit.body != null && !(restInit.body instanceof FormData)
+        ? { "content-type": "application/json" }
+        : {}),
       ...(d1Bookmark ? { "x-d1-bookmark": d1Bookmark } : {}),
       ...(initHeaders ?? {}),
     },

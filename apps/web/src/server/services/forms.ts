@@ -15,11 +15,14 @@
  * the public form into a multi-step flow. Legacy configs (plain
  * `{ name, label?, help? }` rows) parse as field blocks unchanged.
  *
- * v1 scope fence: only scalar field types (text/longtext/integer/number/
- * boolean/timestamp — dropdowns are `text` + choices) can be exposed. Relation/
- * file/hash/json/localized/computed/private/auto-filled fields are rejected at
- * definition time AND re-filtered at read/submit time, so a stale form
- * definition can never leak or write a field that later became ineligible.
+ * Scope fence: scalar field types (text/longtext/integer/number/boolean/
+ * timestamp — dropdowns are `text` + choices) plus single `file` fields can be
+ * exposed. Relation/hash/json/localized/computed/private/auto-filled fields
+ * are rejected at definition time AND re-filtered at read/submit time, so a
+ * stale form definition can never leak or write a field that later became
+ * ineligible. File blocks never accept a raw storage key — submits only take
+ * the signed ticket minted by the public upload endpoint (`form-uploads.ts`),
+ * so an anonymous submitter can't point a row at someone else's object.
  */
 import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
@@ -43,7 +46,8 @@ const randomHex = (bytes: number): string => {
   return Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
 };
 
-/** Field types a form may expose. Dropdowns are `text` + `options.choices`. */
+/** Field types a form may expose. Dropdowns are `text` + `options.choices`;
+ *  `file` blocks write the storage key minted by the public upload endpoint. */
 const ALLOWED_TYPES = new Set<string>([
   "text",
   "longtext",
@@ -51,6 +55,7 @@ const ALLOWED_TYPES = new Set<string>([
   "number",
   "boolean",
   "timestamp",
+  "file",
 ]);
 
 /** Per-locale overrides for one block. Empty/missing strings fall back to the
@@ -88,6 +93,12 @@ export interface FormBlock {
   consent?: boolean;
   /** Optional "read the full text" URL rendered next to a consent block. */
   policyUrl?: string;
+  /** File blocks only: accepted MIME patterns (`image/*`, `application/pdf`).
+   *  Empty/missing ⇒ any type. Enforced server-side at upload time. */
+  accept?: string[];
+  /** File blocks only: per-upload byte cap. The env-level
+   *  `FORM_UPLOAD_MAX_BYTES` ceiling always applies on top. */
+  maxBytes?: number;
   cond?: FormBlockCond;
   i18n?: Record<string, FormBlockI18n>;
 }
@@ -407,6 +418,10 @@ export interface PublicFormBlock {
   consent: boolean;
   policyUrl: string | null;
   choices: Array<{ value: string; label?: string }> | null;
+  /** File blocks: accepted MIME patterns (null ⇒ any) and the effective
+   *  per-upload byte cap (block config clamped by the env ceiling). */
+  accept: string[] | null;
+  maxBytes: number | null;
   validation: {
     regex?: string;
     min?: number;
@@ -482,12 +497,18 @@ export const resolveFormLocale = (form: FormRow, lang: string | null): string =>
   return base;
 };
 
+/** Default + ceiling for one anonymous form upload when the env doesn't say
+ *  otherwise (`FORM_UPLOAD_MAX_BYTES`). Lives here so `form-uploads.ts` and
+ *  the definition builder agree without a circular import. */
+export const FORM_UPLOAD_DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
+
 /** Build the public definition payload for the form page. */
 export const publicFormDefinition = (
   form: FormRow,
   collection: CollectionRow,
   turnstileSiteKey: string | null,
   lang: string | null = null,
+  uploadMaxBytes: number = FORM_UPLOAD_DEFAULT_MAX_BYTES,
 ): PublicFormDefinition => {
   const settings = form.settings ?? {};
   const languages = settings.languages?.length ? settings.languages : ["en"];
@@ -509,6 +530,8 @@ export const publicFormDefinition = (
           consent: false,
           policyUrl: null,
           choices: null,
+          accept: null,
+          maxBytes: null,
           validation: null,
           cond: block.cond ?? null,
         };
@@ -529,6 +552,7 @@ export const publicFormDefinition = (
         : null;
       const choices = getChoices(def);
       const consent = Boolean(block.consent && def.type === "boolean");
+      const isFile = def.type === "file";
       return {
         kind: "field",
         name: def.name,
@@ -542,6 +566,10 @@ export const publicFormDefinition = (
         consent,
         policyUrl: consent ? (block.policyUrl ?? null) : null,
         choices: choices.length > 0 ? choices : null,
+        accept: isFile && block.accept?.length ? block.accept : null,
+        maxBytes: isFile
+          ? Math.min(block.maxBytes || uploadMaxBytes, uploadMaxBytes)
+          : null,
         validation:
           validation && Object.keys(validation).length > 0 ? validation : null,
         cond: block.cond ?? null,

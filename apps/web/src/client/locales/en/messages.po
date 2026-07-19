@@ -846,6 +846,10 @@ msgid "Accept invite"
 msgstr "Accept invite"
 
 #: src/client/admin/pages/forms.tsx
+msgid "Accepted types"
+msgstr "Accepted types"
+
+#: src/client/admin/pages/forms.tsx
 msgid "accepted, all time"
 msgstr "accepted, all time"
 
@@ -1583,6 +1587,10 @@ msgstr "archived"
 msgid "Archived"
 msgstr "Archived"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Archives"
+msgstr "Archives"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Args copied"
 msgstr "Args copied"
@@ -1652,6 +1660,10 @@ msgstr "Attempts"
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Attribute map"
 msgstr "Attribute map"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Audio"
+msgstr "Audio"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Audit reads"
@@ -2218,6 +2230,11 @@ msgstr "choices · from schema enum"
 #: src/client/admin/pages/extensions.tsx
 msgid "Choose a different folder"
 msgstr "Choose a different folder"
+
+#: src/client/admin/pages/forms.tsx
+#: src/client/pages/public-form.tsx
+msgid "Choose a file or drag it here"
+msgstr "Choose a file or drag it here"
 
 #: src/client/pages/reset-password.tsx
 msgid "Choose a new password"
@@ -3746,6 +3763,10 @@ msgstr "Do nothing"
 msgid "Docs"
 msgstr "Docs"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Documents"
+msgstr "Documents"
+
 #: src/client/pages/sign-in.tsx
 msgid "Don't have an account?"
 msgstr "Don't have an account?"
@@ -4779,6 +4800,11 @@ msgstr "Fields sharing a section name are grouped under one heading in the item 
 msgid "File detail"
 msgstr "File detail"
 
+#. placeholder {0}: fmtBytes(block.maxBytes)
+#: src/client/pages/public-form.tsx
+msgid "File is too large — the limit is {0}"
+msgstr "File is too large — the limit is {0}"
+
 #: src/client/admin/storage/index.tsx
 msgid "files"
 msgstr "files"
@@ -5501,6 +5527,10 @@ msgstr "If {displayEmail} matches an account, a sign-in link is on its way. It e
 #: src/client/admin/pages/forms.tsx
 msgid "If set, visitors are sent there instead of seeing the message."
 msgstr "If set, visitors are sent there instead of seeing the message."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Images"
+msgstr "Images"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/schema-versions.tsx
@@ -6620,6 +6650,10 @@ msgstr "Max 80 characters."
 msgid "Max attempts"
 msgstr "Max attempts"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Max file size"
+msgstr "Max file size"
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "Max length"
 msgstr "Max length"
@@ -7633,6 +7667,10 @@ msgstr "No SAML providers configured. Operators will sign in with email/password
 msgid "No schema."
 msgstr "No schema."
 
+#: src/client/admin/pages/forms.tsx
+msgid "No selection — any file type is accepted."
+msgstr "No selection — any file type is accepted."
+
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "No signing cert stored — login will fail."
@@ -8001,6 +8039,10 @@ msgstr "Only the current state exists — no edits recorded yet."
 msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
 msgstr "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Only the selected types are accepted — enforced server-side."
+msgstr "Only the selected types are accepted — enforced server-side."
+
 #: src/client/admin/parity/translations.tsx
 msgid "Only translate missing keys"
 msgstr "Only translate missing keys"
@@ -8339,6 +8381,10 @@ msgstr "Payload (JSON)"
 #: src/client/admin/pages/extensions.tsx
 msgid "Payload must be valid JSON."
 msgstr "Payload must be valid JSON."
+
+#: src/client/admin/pages/forms.tsx
+msgid "PDF"
+msgstr "PDF"
 
 #: src/client/admin/members-panel.tsx
 msgid "pending"
@@ -8723,6 +8769,11 @@ msgstr "Playground — this is a shared demo. Anyone can edit the data, and ever
 #: src/client/pages/public-form.tsx
 msgid "Please accept \"{0}\""
 msgstr "Please accept \"{0}\""
+
+#. placeholder {0}: b.label || humanizeLabel(b.name)
+#: src/client/pages/public-form.tsx
+msgid "Please attach a file for \"{0}\""
+msgstr "Please attach a file for \"{0}\""
 
 #. placeholder {0}: b.label || humanizeLabel(b.name)
 #: src/client/pages/public-form.tsx
@@ -9444,6 +9495,10 @@ msgstr "Remove condition"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Remove device"
 msgstr "Remove device"
+
+#: src/client/pages/public-form.tsx
+msgid "Remove file"
+msgstr "Remove file"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Remove from form"
@@ -10578,8 +10633,12 @@ msgid "Select"
 msgstr "Select"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Select a block on the canvas to edit its settings. Only scalar, non-private fields can be exposed."
-msgstr "Select a block on the canvas to edit its settings. Only scalar, non-private fields can be exposed."
+#~ msgid "Select a block on the canvas to edit its settings. Only scalar, non-private fields can be exposed."
+#~ msgstr "Select a block on the canvas to edit its settings. Only scalar, non-private fields can be exposed."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Select a block on the canvas to edit its settings. Scalar and file fields can be exposed — never private or computed ones."
+msgstr "Select a block on the canvas to edit its settings. Scalar and file fields can be exposed — never private or computed ones."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Select a collection…"
@@ -10739,6 +10798,14 @@ msgstr "Sends a one-time sign-in link by email — requires a configured email a
 #: src/client/admin/item-views.tsx
 msgid "September"
 msgstr "September"
+
+#: src/client/admin/pages/forms.tsx
+#~ msgid "Server default (10 MB)"
+#~ msgstr "Server default (10 MB)"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Server default (5 MB)"
+msgstr "Server default (5 MB)"
 
 #: src/client/admin/storage/index.tsx
 msgid "Server fetches the URL and stores it in this workspace. http/https only — private/internal hosts are rejected."
@@ -11407,6 +11474,10 @@ msgstr "Spec unavailable. Try Refresh."
 msgid "Splits the form into pages"
 msgstr "Splits the form into pages"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Spreadsheets"
+msgstr "Spreadsheets"
+
 #: src/client/admin/parity/insights.tsx
 msgid "SQL"
 msgstr "SQL"
@@ -12040,6 +12111,10 @@ msgstr "The section opens folded — useful for advanced or rarely-touched field
 #: src/client/admin/pages/extensions.tsx
 msgid "The selected folder has no backlex-extension.json at its root."
 msgstr "The selected folder has no backlex-extension.json at its root."
+
+#: src/client/admin/pages/forms.tsx
+msgid "The server-wide upload ceiling still applies on top."
+msgstr "The server-wide upload ceiling still applies on top."
 
 #: src/client/pages/shared-record.tsx
 msgid "The share link may have been revoked, or the record it pointed to was removed."
@@ -12685,6 +12760,16 @@ msgstr "Until you confirm your email, sign-in won't work. Didn't get it? Check s
 msgid "unverified"
 msgstr "unverified"
 
+#. placeholder {0}: fmtBytes(block.maxBytes)
+#: src/client/pages/public-form.tsx
+msgid "up to {0}"
+msgstr "up to {0}"
+
+#. placeholder {0}: Math.floor((block.maxBytes ?? 5 * 1024 * 1024) / 1024 / 1024)
+#: src/client/admin/pages/forms.tsx
+msgid "up to {0} MB"
+msgstr "up to {0} MB"
+
 #: src/client/admin/bulk-edit.tsx
 msgid "Update {count} rows"
 msgstr "Update {count} rows"
@@ -12726,6 +12811,10 @@ msgstr "Upload a local folder — the fast dev loop, no publish needed. The fold
 msgid "upload failed"
 msgstr "upload failed"
 
+#: src/client/pages/public-form.tsx
+msgid "Upload failed — please try again"
+msgstr "Upload failed — please try again"
+
 #: src/client/admin/pages/extensions.tsx
 msgid "Upload folder"
 msgstr "Upload folder"
@@ -12745,6 +12834,7 @@ msgstr "uploading…"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/pages/public-form.tsx
 msgid "Uploading…"
 msgstr "Uploading…"
 
@@ -13036,6 +13126,10 @@ msgstr "versioned"
 #: src/client/admin/collection-settings.tsx
 msgid "Versioned (draft / published)"
 msgstr "Versioned (draft / published)"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Video"
+msgstr "Video"
 
 #: src/client/admin/item-views.tsx
 msgid "View"

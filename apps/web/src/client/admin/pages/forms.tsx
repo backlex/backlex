@@ -17,6 +17,7 @@ import {
   Switch,
 } from "../ui";
 import { Select } from "../select";
+import { cn } from "@backlex/ui/lib/utils";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import {
@@ -157,10 +158,42 @@ const blockIcon = (ef: ApiFormEligibleField | null | undefined, block: ApiFormBl
       return I.Calendar;
     case "longtext":
       return I.Type;
+    case "file":
+      return I.Upload;
     default:
       return I.Type;
   }
 };
+
+/** Accepted-type presets for file blocks — each chip toggles its MIME
+ *  patterns in `block.accept`. No selection ⇒ any type. */
+const FILE_ACCEPT_PRESETS: Array<{ key: string; patterns: string[] }> = [
+  { key: "images", patterns: ["image/*"] },
+  { key: "pdf", patterns: ["application/pdf"] },
+  {
+    key: "documents",
+    patterns: [
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+    ],
+  },
+  {
+    key: "spreadsheets",
+    patterns: [
+      "text/csv",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ],
+  },
+  { key: "video", patterns: ["video/*"] },
+  { key: "audio", patterns: ["audio/*"] },
+  { key: "archives", patterns: ["application/zip", "application/gzip", "application/x-7z-compressed"] },
+];
+
+/** Size choices for the file-block cap. The env ceiling
+ *  (`FORM_UPLOAD_MAX_BYTES`, default 5 MB) still clamps at upload time. */
+const FILE_SIZE_OPTIONS = [1, 2, 5, 10, 25, 50] as const;
 
 /** Session-only cache of the last-minted public URLs per form id — the token
  *  is stored hashed server-side, so a reload legitimately loses these. */
@@ -443,6 +476,20 @@ function CanvasFieldPreview({
       <div className="flex h-[74px] items-start gap-2 rounded-[10px] border px-3 py-2.5 text-[13.5px]" style={boxStyle}>
         <span className="mt-0.5"><LeadIcon size={13} /></span>
         <span className="opacity-70">{ph}</span>
+      </div>
+    );
+  }
+  if (ef.type === "file") {
+    return (
+      <div
+        className="flex min-h-[68px] flex-col items-center justify-center gap-1 rounded-[10px] border-[1.5px] border-dashed px-3 py-3 text-[13px]"
+        style={{ borderColor: p.border, background: p.inputBg, color: p.muted }}
+      >
+        <I.Upload size={16} />
+        <span><Trans>Choose a file or drag it here</Trans></span>
+        <span className="text-[11px] opacity-70">
+          <Trans>up to {Math.floor((block.maxBytes ?? 5 * 1024 * 1024) / 1024 / 1024)} MB</Trans>
+        </span>
       </div>
     );
   }
@@ -856,13 +903,30 @@ export function FormsPage({
         >
           <I.ChevronLeft size={14} />
         </button>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1 sm:flex-none">
           <div className="truncate text-[14.5px] font-semibold">{form.name}</div>
           <div className="truncate font-mono text-[11px] text-muted-foreground">→ {form.collection}</div>
         </div>
+        {/* Mobile: the save indicator rides the title row (right edge); the
+            fixed-width desktop copy below keeps the centered tabs stable. */}
+        <span className="flex shrink-0 items-center gap-1 text-[11.5px] text-muted-foreground sm:hidden">
+          {saveState === "saving" ? (
+            <Trans>saving…</Trans>
+          ) : saveState === "error" ? (
+            <span className="text-destructive"><Trans>save failed</Trans></span>
+          ) : (
+            <>
+              <I.Check size={12} />
+              <Trans>saved</Trans>
+            </>
+          )}
+        </span>
         {/* Design tokens: active tab = accent-tinted pill w/ inset ring and
-            near-white label; inactive = muted text on the frosted strip. */}
-        <div className="mx-auto flex items-center gap-0.5 rounded-[10px] border border-white/10 bg-white/5 p-[3px]">
+            near-white label; inactive = muted text on the frosted strip.
+            Mobile: the wrapper takes its own row and centers the pill, so the
+            strip never squeezes the title and never stretches full width. */}
+        <div className="flex w-full justify-center sm:mx-auto sm:w-auto">
+        <div className="flex items-center gap-0.5 rounded-[10px] border border-white/10 bg-white/5 p-[3px]">
           {(["edit", "share", "submissions"] as BuilderTab[]).map((tb) => (
             <button
               key={tb}
@@ -883,8 +947,9 @@ export function FormsPage({
             </button>
           ))}
         </div>
+        </div>
         {/* fixed width so saved↔saving… can't shift the centered tab strip */}
-        <span className="flex w-[76px] shrink-0 items-center justify-end gap-1 text-[11.5px] text-muted-foreground">
+        <span className="hidden w-[76px] shrink-0 items-center justify-end gap-1 text-[11.5px] text-muted-foreground sm:flex">
           {saveState === "saving" ? (
             <Trans>saving…</Trans>
           ) : saveState === "error" ? (
@@ -896,32 +961,35 @@ export function FormsPage({
             </>
           )}
         </span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[11.5px] text-muted-foreground">{form.active ? t`live` : t`paused`}</span>
-          <Switch checked={form.active} onChange={(v) => patchForm({ active: v })} />
+        {/* Actions hug the right edge on mobile (own row via ml-auto). */}
+        <div className="ml-auto flex items-center gap-2.5 sm:ml-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11.5px] text-muted-foreground">{form.active ? t`live` : t`paused`}</span>
+            <Switch checked={form.active} onChange={(v) => patchForm({ active: v })} />
+          </div>
+          <button
+            type="button"
+            title={t`Delete form`}
+            onClick={() => setConfirm("delete")}
+            className="grid size-[30px] shrink-0 place-items-center rounded-[8px] border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+          >
+            <I.Trash size={14} />
+          </button>
+          <Button
+            variant="primary"
+            icon={I.ExternalLink}
+            onClick={() => {
+              const cached = tokenCache.get(form.id);
+              if (cached) window.open(cached.url, "_blank");
+              else {
+                setTab("share");
+                pushToast(t`Generate a link first — the token is only shown once.`);
+              }
+            }}
+          >
+            <Trans>Open form</Trans>
+          </Button>
         </div>
-        <button
-          type="button"
-          title={t`Delete form`}
-          onClick={() => setConfirm("delete")}
-          className="grid size-[30px] shrink-0 place-items-center rounded-[8px] border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
-        >
-          <I.Trash size={14} />
-        </button>
-        <Button
-          variant="primary"
-          icon={I.ExternalLink}
-          onClick={() => {
-            const cached = tokenCache.get(form.id);
-            if (cached) window.open(cached.url, "_blank");
-            else {
-              setTab("share");
-              pushToast(t`Generate a link first — the token is only shown once.`);
-            }
-          }}
-        >
-          <Trans>Open form</Trans>
-        </Button>
       </div>
 
       {tab === "edit" && (
@@ -1650,8 +1718,8 @@ function DesignPanel({
             <IconButton icon={I.ExternalLink} title={t`Open collection`} onClick={onOpenCollection} />
           </div>
           <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-            <Trans>Select a block on the canvas to edit its settings. Only scalar,
-            non-private fields can be exposed.</Trans>
+            <Trans>Select a block on the canvas to edit its settings. Scalar and
+            file fields can be exposed — never private or computed ones.</Trans>
           </p>
         </div>
       </PanelCard>
@@ -1708,7 +1776,7 @@ function BlockPanel({
 
   return (
     <PanelCard
-      icon={isStep ? I.Layers : I.Type}
+      icon={blockIcon(ef, block)}
       title={
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate font-mono text-[12px]">
@@ -1732,7 +1800,7 @@ function BlockPanel({
           onChange={(e) => onText(block.id!, "label", e.target.value)}
         />
       </label>
-      {!isStep && ef && !ef.choices && ef.type !== "boolean" && !(ef.type === "integer" && block.rating) && (
+      {!isStep && ef && !ef.choices && ef.type !== "boolean" && ef.type !== "file" && !(ef.type === "integer" && block.rating) && (
         <label className="flex flex-col gap-1 text-[12px] font-medium">
           <Trans>Placeholder</Trans>
           <Input
@@ -1783,6 +1851,75 @@ function BlockPanel({
         <div className="flex items-center justify-between text-[12px] font-medium">
           <span className="flex items-center gap-1.5"><I.Star size={12} /><Trans>Star rating (1–5)</Trans></span>
           <Switch checked={Boolean(block.rating)} onChange={(v) => onPatch(block.id!, { rating: v })} />
+        </div>
+      )}
+
+      {!isStep && ef?.type === "file" && (
+        <div className="flex flex-col gap-3 border-t border-border pt-3">
+          <label className="flex flex-col gap-1 text-[12px] font-medium">
+            <span className="flex items-center gap-1.5"><I.Upload size={12} /><Trans>Max file size</Trans></span>
+            <Select
+              value={block.maxBytes ? String(block.maxBytes) : "default"}
+              onChange={(v) =>
+                onPatch(block.id!, { maxBytes: v === "default" ? undefined : Number(v) })
+              }
+              options={[
+                { value: "default", label: t`Server default (5 MB)` },
+                ...FILE_SIZE_OPTIONS.map((mb) => ({
+                  value: String(mb * 1024 * 1024),
+                  label: `${mb} MB`,
+                })),
+              ]}
+            />
+            <span className="text-[11px] font-normal text-muted-foreground">
+              <Trans>The server-wide upload ceiling still applies on top.</Trans>
+            </span>
+          </label>
+          <div className="flex flex-col gap-1.5">
+            <PanelLabel><Trans>Accepted types</Trans></PanelLabel>
+            <div className="flex flex-wrap gap-1">
+              {FILE_ACCEPT_PRESETS.map((preset) => {
+                const cur = block.accept ?? [];
+                const active = preset.patterns.every((pt) => cur.includes(pt));
+                const labels: Record<string, string> = {
+                  images: t`Images`,
+                  pdf: t`PDF`,
+                  documents: t`Documents`,
+                  spreadsheets: t`Spreadsheets`,
+                  video: t`Video`,
+                  audio: t`Audio`,
+                  archives: t`Archives`,
+                };
+                return (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    onClick={() => {
+                      const next = active
+                        ? cur.filter((x) => !preset.patterns.includes(x))
+                        : [...cur, ...preset.patterns.filter((x) => !cur.includes(x))];
+                      onPatch(block.id!, { accept: next.length ? next : undefined });
+                    }}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-[11.5px] transition-colors",
+                      active
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/50",
+                    )}
+                  >
+                    {labels[preset.key]}
+                  </button>
+                );
+              })}
+            </div>
+            <span className="text-[11px] text-muted-foreground">
+              {block.accept?.length ? (
+                <Trans>Only the selected types are accepted — enforced server-side.</Trans>
+              ) : (
+                <Trans>No selection — any file type is accepted.</Trans>
+              )}
+            </span>
+          </div>
         </div>
       )}
 

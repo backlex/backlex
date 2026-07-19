@@ -178,14 +178,192 @@ function StarRating({
   );
 }
 
-function BlockInput({
+/** Value a completed file upload leaves in the answers map — the ticket is
+ *  what the submit payload sends; name/size are for display only. */
+interface FileUploadValue {
+  ticket: string;
+  name: string;
+  size: number;
+}
+
+const isFileValue = (v: unknown): v is FileUploadValue =>
+  typeof v === "object" && v !== null && typeof (v as FileUploadValue).ticket === "string";
+
+const fmtBytes = (n: number): string =>
+  n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+
+function FileUploadInput({
   block,
+  token,
   value,
   onChange,
   accent,
   p,
 }: {
   block: ApiPublicFormBlock;
+  token: string;
+  value: unknown;
+  onChange: (v: unknown) => void;
+  accent: string;
+  p: Palette;
+}) {
+  const { t } = useLingui();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const val = isFileValue(value) ? value : null;
+
+  const pick = async (file: File | null | undefined) => {
+    if (!file || uploading || !block.name) return;
+    if (block.maxBytes && file.size > block.maxBytes) {
+      setErr(t`File is too large — the limit is ${fmtBytes(block.maxBytes)}`);
+      return;
+    }
+    setErr(null);
+    setUploading(true);
+    try {
+      const res = await formsPublicApi.upload(token, block.name, file);
+      onChange({ ticket: res.data.ticket, name: res.data.name, size: res.data.size });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t`Upload failed — please try again`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const boxStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    width: "100%",
+    minHeight: 76,
+    borderRadius: 10,
+    border: `1.5px dashed ${dragOver ? accent : p.border}`,
+    background: dragOver ? `${accent}0f` : p.inputBg,
+    color: p.muted,
+    fontSize: 13,
+    fontFamily: "inherit",
+    cursor: uploading ? "progress" : "pointer",
+    padding: "14px 12px",
+    boxSizing: "border-box",
+    textAlign: "center",
+  };
+
+  if (val) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          border: `1px solid ${p.border}`,
+          background: p.inputBg,
+          borderRadius: 10,
+          padding: "10px 12px",
+          minWidth: 0,
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="1.8" style={{ flexShrink: 0 }}>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <path d="M14 2v6h6" />
+        </svg>
+        <span style={{ minWidth: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13.5 }}>
+          {val.name}
+        </span>
+        <span style={{ fontSize: 11, color: p.faint, flexShrink: 0 }}>{fmtBytes(val.size)}</span>
+        <button
+          type="button"
+          aria-label={t`Remove file`}
+          onClick={() => {
+            onChange(undefined);
+            setErr(null);
+          }}
+          style={{
+            background: "none",
+            border: 0,
+            color: p.muted,
+            cursor: "pointer",
+            padding: 4,
+            lineHeight: 0,
+            flexShrink: 0,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={block.accept?.join(",") ?? undefined}
+        onChange={(e) => {
+          void pick(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+        style={{ display: "none" }}
+      />
+      <button
+        type="button"
+        disabled={uploading}
+        onClick={() => inputRef.current?.click()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          void pick(e.dataTransfer.files?.[0]);
+        }}
+        style={boxStyle}
+      >
+        {uploading ? (
+          <Trans>Uploading…</Trans>
+        ) : (
+          <span style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="1.8">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <path d="M17 8l-5-5-5 5M12 3v12" />
+            </svg>
+            <span>
+              <Trans>Choose a file or drag it here</Trans>
+            </span>
+            {block.maxBytes && (
+              <span style={{ fontSize: 11, color: p.faint }}>
+                <Trans>up to {fmtBytes(block.maxBytes)}</Trans>
+              </span>
+            )}
+          </span>
+        )}
+      </button>
+      {err && (
+        <p role="alert" style={{ fontSize: 12, color: "#e5484d", margin: 0 }}>
+          {err}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function BlockInput({
+  block,
+  token,
+  value,
+  onChange,
+  accent,
+  p,
+}: {
+  block: ApiPublicFormBlock;
+  token: string;
   value: unknown;
   onChange: (v: unknown) => void;
   accent: string;
@@ -245,6 +423,18 @@ function BlockInput({
           </option>
         ))}
       </select>
+    );
+  }
+  if (block.type === "file") {
+    return (
+      <FileUploadInput
+        block={block}
+        token={token}
+        value={value}
+        onChange={onChange}
+        accent={accent}
+        p={p}
+      />
     );
   }
   if (block.rating) {
@@ -338,6 +528,8 @@ function buildPayload(
       data[b.name] = raw === true;
     } else if (b.type === "json") {
       if (Array.isArray(raw) && raw.length > 0) data[b.name] = raw;
+    } else if (b.type === "file") {
+      if (isFileValue(raw)) data[b.name] = raw.ticket;
     } else if (b.type === "timestamp" && typeof raw === "string") {
       const d = new Date(raw);
       if (!Number.isNaN(d.getTime())) data[b.name] = d.toISOString();
@@ -443,6 +635,11 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
       if (b.type === "json") {
         if (!Array.isArray(v) || v.length === 0)
           return t`Please fill in "${b.label || humanizeLabel(b.name)}"`;
+        continue;
+      }
+      if (b.type === "file") {
+        if (!isFileValue(v))
+          return t`Please attach a file for "${b.label || humanizeLabel(b.name)}"`;
         continue;
       }
       if (v === undefined || v === null || v === "") {
@@ -751,6 +948,7 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
                 </label>
                 <BlockInput
                   block={b}
+                  token={token ?? ""}
                   value={b.name ? values[b.name] : undefined}
                   onChange={(v) => b.name && setValue(b.name, v)}
                   accent={accent}

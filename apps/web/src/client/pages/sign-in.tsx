@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
@@ -23,7 +24,27 @@ export const SignIn = () => {
   const { t } = useLingui();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const next = params.get("next") || "/";
+  // MCP OAuth resume: the authorize endpoint bounces unauthenticated users
+  // here with the ENTIRE OAuth query attached (client_id, redirect_uri,
+  // code_challenge, …). When those markers are present, "next" is the
+  // authorize endpoint itself so a successful sign-in re-enters the OAuth
+  // flow — as a hard navigation, since it's an API URL, not an SPA route.
+  const oauthResume =
+    params.get("client_id") && params.get("redirect_uri") && params.get("response_type")
+      ? `/api/auth/mcp/authorize?${params.toString()}`
+      : null;
+  const next = oauthResume ?? (params.get("next") || "/");
+  useEffect(() => {
+    // The mcp plugin's after-hook would otherwise hijack the sign-in XHR
+    // response into a 302 chain toward the client callback (which fetch
+    // follows invisibly, leaving the page stuck) — AND that in-hook authorize
+    // re-run bypasses the server's forced-consent gate. The hook only fires
+    // while its `oidc_login_prompt` cookie exists; it's not httpOnly, so we
+    // clear it and own the resume via the hard navigation below instead.
+    if (oauthResume) {
+      document.cookie = "oidc_login_prompt=; Max-Age=0; path=/";
+    }
+  }, [oauthResume]);
   const { surface } = useAuthSurface();
   const hasSocials = useHasSocialProviders();
   const hasSso = useHasPlatformSso();
@@ -94,8 +115,16 @@ export const SignIn = () => {
   return (
     <BaseSignInPage
       authClient={auth}
-      navigate={(to, opts) => navigate(to, opts)}
-      searchParam={(k) => params.get(k)}
+      navigate={(to, opts) => {
+        // API destinations (the OAuth authorize resume) need a real browser
+        // navigation — react-router would swallow them into the SPA catch-all.
+        if (to.startsWith("/api/")) {
+          window.location.href = to;
+          return;
+        }
+        navigate(to, opts);
+      }}
+      searchParam={(k) => (k === "next" ? next : params.get(k))}
       Link={({ to, className, children }) => (
         <Link to={to} className={className}>
           {children}

@@ -684,8 +684,8 @@ msgid "<0>Branches</0> are named working copies forked from the live schema — 
 msgstr "<0>Dallar</0>, canlı şemadan çatallanmış adlandırılmış çalışma kopyalarıdır — bir dalda değişiklikleri hazırlayın, sonra canlıya uygulayın. Bir dal kendi geçmişini tutar; anlık görüntü ise tek bir donmuş noktadır."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "<0>resources/subscribe</0> for live tail"
-msgstr "Canlı akış için <0>resources/subscribe</0>"
+#~ msgid "<0>resources/subscribe</0> for live tail"
+#~ msgstr "Canlı akış için <0>resources/subscribe</0>"
 
 #: src/client/admin/pages/schema-versions.tsx
 msgid "<0>Snapshots</0> are immutable checkpoints of your schema. Capture the live schema or import an authored one, then diff or apply it."
@@ -1460,6 +1460,10 @@ msgstr "<0>{0}</0> adresine davet e-postası gönderildi. Linki doğrudan da pay
 msgid "An invite link will be emailed; valid for 7 days."
 msgstr "Bir davet bağlantısı e-posta ile gönderilecek; 7 gün geçerlidir."
 
+#: src/client/pages/oauth-consent.tsx
+msgid "An MCP client is asking to access this workspace on your behalf."
+msgstr "Bir MCP istemcisi bu çalışma alanına sizin adınıza erişmek istiyor."
+
 #: src/client/admin/pages/agents.tsx
 msgid "any provider/model id"
 msgstr "herhangi bir sağlayıcı/model kimliği"
@@ -1712,6 +1716,22 @@ msgstr "Kimlik doğrulama başarılı"
 #: src/client/admin/storage/widgets.tsx
 msgid "Author"
 msgstr "Yazar"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Authorization request not found"
+msgstr "Yetkilendirme isteği bulunamadı"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Authorize"
+msgstr "Yetkilendir"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Authorize MCP access"
+msgstr "MCP erişimini yetkilendir"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Authorizing…"
+msgstr "Yetkilendiriliyor…"
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/storage/widgets.tsx
@@ -2269,6 +2289,7 @@ msgstr "ci-bot (isteğe bağlı)"
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/oauth-consent.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -2287,6 +2308,14 @@ msgstr "Sahipleniliyor…"
 #: src/client/components/mcp-key-modal.tsx
 msgid "Claude Desktop"
 msgstr "Claude Desktop"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "claude.ai → Settings → Connectors → <0>Add custom connector</0>"
+msgstr "claude.ai → Settings → Connectors → <0>Add custom connector</0>"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "claude.ai connects over OAuth — no key to paste. Add the MCP URL as a custom connector and approve the consent screen; tools run with your roles and permission rules."
+msgstr "claude.ai OAuth ile bağlanır — yapıştırılacak anahtar yok. MCP URL'sini özel bağlayıcı olarak ekleyin ve onay ekranını kabul edin; araçlar rolleriniz ve izin kurallarınızla çalışır."
 
 #: src/client/admin/app.tsx
 msgid "clear"
@@ -2692,6 +2721,10 @@ msgstr "Bağlantı"
 msgid "Connect {name}"
 msgstr "{name} bağlantısı"
 
+#: src/client/pages/oauth-consent.tsx
+msgid "Connect an <0>agent</0>."
+msgstr "Bir <0>ajan</0> bağlayın."
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Connect an MCP client"
 msgstr "Bir MCP istemcisi bağlayın"
@@ -2894,6 +2927,10 @@ msgstr "corp.example.com, contractor.example.com"
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Could not apply template"
 msgstr "Şablon uygulanamadı"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Could not copy — clipboard blocked."
+msgstr "Kopyalanamadı — pano engellendi."
 
 #: src/client/admin/pages/logs.tsx
 msgid "Could not copy entry id."
@@ -3576,9 +3613,17 @@ msgstr "Reddedildi"
 msgid "denied for this role"
 msgstr "bu rol için reddedildi"
 
+#: src/client/pages/oauth-consent.tsx
+msgid "Deny"
+msgstr "Reddet"
+
 #: src/client/admin/condition-editor.tsx
 msgid "Deny all"
 msgstr "Tümünü reddet"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Denying…"
+msgstr "Reddediliyor…"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Deployment default"
@@ -6061,6 +6106,10 @@ msgstr "tür"
 msgid "Kind"
 msgstr "Tür"
 
+#: src/client/pages/oauth-consent.tsx
+msgid "Know who you are"
+msgstr "Kim olduğunuzu bilme"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Label"
 msgstr "Etiket"
@@ -6576,6 +6625,7 @@ msgstr "Bu çalışma alanındaki her /api uç noktası için makine tarafından
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/oauth-consent.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -6716,6 +6766,10 @@ msgstr "MCP salt-okunur"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "MCP tool catalog"
 msgstr "MCP araç kataloğu"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "MCP URL copied"
+msgstr "MCP URL'si kopyalandı"
 
 #. placeholder {0}: k.mcpTools.length
 #: src/client/pages/api-keys.tsx
@@ -7936,12 +7990,12 @@ msgstr "{0} ile kaydedilecek OAuth yönlendirme URI'si"
 #~ msgstr "OAuth gerekli"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "OAuth scope mapping → backlex roles"
-msgstr "OAuth kapsam eşlemesi → backlex rolleri"
+#~ msgid "OAuth scope mapping → backlex roles"
+#~ msgstr "OAuth kapsam eşlemesi → backlex rolleri"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
-msgstr "Barındırılan Claude için OAuth akışı (anahtar yapıştırma adımı olmadan) ayrı bir epik olarak takip ediliyor."
+#~ msgid "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
+#~ msgstr "Barındırılan Claude için OAuth akışı (anahtar yapıştırma adımı olmadan) ayrı bir epik olarak takip ediliyor."
 
 #: src/client/admin/ui.tsx
 msgid "Observability"
@@ -8345,6 +8399,10 @@ msgstr "Parola ayarlandı."
 #: src/client/pages/reset-password.tsx
 msgid "Passwords do not match"
 msgstr "Parolalar eşleşmiyor"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Paste <0>{mcpUrl}</0>"
+msgstr "<0>{mcpUrl}</0> adresini yapıştırın"
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Paste a base64 SAMLResponse"
@@ -9240,6 +9298,10 @@ msgstr "metnin tamamını oku"
 #~ msgid "Read the full text ↗"
 #~ msgstr "Metnin tamamını oku ↗"
 
+#: src/client/pages/oauth-consent.tsx
+msgid "Read your basic profile"
+msgstr "Temel profilinizi okuma"
+
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/pages/shared-record.tsx
@@ -9820,8 +9882,8 @@ msgid "resumable"
 msgstr "sürdürülebilir"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Resumable SSE on <0>GET /mcp</0>"
-msgstr "<0>GET /mcp</0> üzerinde sürdürülebilir SSE"
+#~ msgid "Resumable SSE on <0>GET /mcp</0>"
+#~ msgstr "<0>GET /mcp</0> üzerinde sürdürülebilir SSE"
 
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/logs.tsx
@@ -10153,10 +10215,18 @@ msgstr "Bir koleksiyonda sıralı tam metin, vektör veya hibrit arama çalışt
 msgid "Run re-queued — the copy continues where it stopped."
 msgstr "Çalıştırma yeniden kuyruğa alındı — kopyalama kaldığı yerden sürer."
 
+#: src/client/pages/oauth-consent.tsx
+msgid "Run read-only MCP tools (query collections, schema, search)"
+msgstr "Salt okunur MCP araçlarını çalıştırma (koleksiyon sorgulama, şema, arama)"
+
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Run test"
 msgstr "Test çalıştır"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Run write MCP tools (create, update, delete — your permissions still apply)"
+msgstr "Yazma MCP araçlarını çalıştırma (oluşturma, güncelleme, silme — izinleriniz yine geçerli)"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Running"
@@ -10643,6 +10713,10 @@ msgstr "Bölüm: {grp}"
 #: src/client/admin/pages/advisor.tsx
 msgid "Security"
 msgstr "Güvenlik"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "See your email address"
+msgstr "E-posta adresinizi görme"
 
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Seed a ready-made set of collections — grouped, with sample data — for your use case. You can edit or add more anytime."
@@ -11196,11 +11270,16 @@ msgstr "Yan tablo (item_ownership)"
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/oauth-consent.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Sign in"
 msgstr "Giriş yap"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Sign in and approve the authorization screen"
+msgstr "Giriş yapın ve yetkilendirme ekranını onaylayın"
 
 #: src/client/pages/sign-in.tsx
 msgid "Sign in to <0>backlex</0>."
@@ -11249,6 +11328,7 @@ msgstr "Diğer cihazlardan çıkış yap"
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/oauth-consent.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -11560,6 +11640,10 @@ msgstr "Taşımayı başlat ({0} tablo)"
 msgid "Start one with “New migration” — pick tables, review the plan, and the server copies the rows in the background."
 msgstr "“Yeni taşıma” ile bir tane başlatın — tabloları seçin, planı gözden geçirin; sunucu satırları arka planda kopyalar."
 
+#: src/client/pages/oauth-consent.tsx
+msgid "Start the connection again from your MCP client (for example claude.ai → Connectors)."
+msgstr "Bağlantıyı MCP istemcinizden yeniden başlatın (örneğin claude.ai → Connectors)."
+
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Start with a template"
 msgstr "Bir şablonla başla"
@@ -11600,6 +11684,10 @@ msgstr "Durum alanı"
 #: src/client/admin/pages/overview.tsx
 msgid "Status refreshed."
 msgstr "Durum yenilendi."
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Stay connected without re-approving"
+msgstr "Yeniden onaylamadan bağlı kalma"
 
 #. placeholder {0}: step + 1
 #: src/client/admin/collections-index.tsx
@@ -12048,6 +12136,14 @@ msgstr "Danışman uç noktası hata döndürdü. Tekrar denemek için yeniden �
 msgid "The agent's standing instructions — its persona, tone, and rules. Sent to the model before every user message."
 msgstr "Ajanın kalıcı talimatları — kişiliği, üslubu ve kuralları. Her kullanıcı mesajından önce modele gönderilir."
 
+#: src/client/pages/oauth-consent.tsx
+msgid "The authorization flow returned no redirect — start over from the client."
+msgstr "Yetkilendirme akışı yönlendirme döndürmedi — istemciden baştan başlayın."
+
+#: src/client/pages/oauth-consent.tsx
+msgid "The client below wants to call this workspace's MCP tools as you. Your roles and permission rules still gate every call."
+msgstr "Aşağıdaki istemci bu çalışma alanının MCP araçlarını sizin adınıza çağırmak istiyor. Rolleriniz ve izin kurallarınız her çağrıda yine geçerli."
+
 #. placeholder {0}: provider.id.toUpperCase()
 #. placeholder {1}: provider.id
 #: src/client/admin/parity/auth-settings.tsx
@@ -12195,6 +12291,10 @@ msgstr "Bu koleksiyonda forma uygun alan yok (yalnızca skaler, gizli olmayan al
 #: src/client/admin/app.tsx
 msgid "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
 msgstr "Bu koleksiyon devre dışı — içerik API'si 404 döndürür; kayıtlar listelenemez veya düzenlenemez. Şema ve ayarlar düzenlenebilir kalır."
+
+#: src/client/pages/oauth-consent.tsx
+msgid "This consent link is missing its code or has expired."
+msgstr "Bu onay bağlantısının kodu eksik veya süresi dolmuş."
 
 #: src/client/admin/pages/usage.tsx
 msgid "This consumer has no metered requests in the selected window."
@@ -12410,6 +12510,7 @@ msgstr "Kenar çubuğunu aç/kapat"
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/oauth-consent.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -12419,6 +12520,10 @@ msgstr "Temayı değiştir"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Toggle tools below to edit the allowlist."
 msgstr "İzin listesini düzenlemek için aşağıdaki araçları açıp kapatın."
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Tokens without the <0>mcp:write</0> scope run read-only."
+msgstr "<0>mcp:write</0> kapsamı olmayan token'lar salt okunur çalışır."
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Tool"
@@ -12720,6 +12825,10 @@ msgstr "bilinmiyor — manifest senkronize değil, <0>bun run --cwd packages/db 
 #: src/client/admin/account-page.tsx
 msgid "unknown agent"
 msgstr "bilinmeyen ajan"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "unknown client"
+msgstr "bilinmeyen istemci"
 
 #: src/client/admin/parity/app-users.tsx
 msgid "Unknown device"
@@ -13591,6 +13700,10 @@ msgstr "Kişisel profiliniz, tercihleriniz, parolanız, oturumlarınız ve bağl
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Your registered devices"
 msgstr "Kayıtlı cihazlarınız"
+
+#: src/client/pages/oauth-consent.tsx
+msgid "Your session expired — sign in and retry from the client."
+msgstr "Oturumunuzun süresi doldu — giriş yapıp istemciden yeniden deneyin."
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/pages/public-form.tsx

@@ -187,6 +187,83 @@ export const twoFactors = sqliteTable(
 );
 
 /* ─────────────────────────────────────────────────────────────────────
+ * MCP OAuth provider (better-auth `mcp` plugin) — see the matching block in
+ * ../pg/schema.ts for the full rationale. Property keys MUST match the
+ * plugin's camelCase field names; DB columns stay snake_case.
+ * ───────────────────────────────────────────────────────────────────── */
+
+export const oauthApplications = sqliteTable(
+  "oauth_applications",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    icon: text("icon"),
+    metadata: text("metadata"),
+    clientId: text("client_id").notNull(),
+    clientSecret: text("client_secret"),
+    redirectUrls: text("redirect_urls").notNull(),
+    type: text("type").notNull(),
+    // Written by /mcp/register but absent from the plugin's schema map — the
+    // drizzle adapter's checkMissingFields throws on unknown keys, so the
+    // column (and this exact property name) must exist.
+    authenticationScheme: text("authentication_scheme"),
+    disabled: integer("disabled", { mode: "boolean" }).notNull().default(false),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("oauth_app_client_idx").on(t.clientId),
+    index("oauth_app_user_idx").on(t.userId),
+  ],
+);
+
+export const oauthAccessTokens = sqliteTable(
+  "oauth_access_tokens",
+  {
+    id: text("id").primaryKey(),
+    accessToken: text("access_token").notNull(),
+    refreshToken: text("refresh_token").notNull(),
+    accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp_ms" }).notNull(),
+    refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp_ms" }).notNull(),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthApplications.clientId, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    scopes: text("scopes").notNull(),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("oauth_token_access_idx").on(t.accessToken),
+    uniqueIndex("oauth_token_refresh_idx").on(t.refreshToken),
+    index("oauth_token_client_idx").on(t.clientId),
+    index("oauth_token_user_idx").on(t.userId),
+  ],
+);
+
+export const oauthConsents = sqliteTable(
+  "oauth_consents",
+  {
+    id: text("id").primaryKey(),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthApplications.clientId, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scopes: text("scopes").notNull(),
+    consentGiven: integer("consent_given", { mode: "boolean" }).notNull().default(false),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("oauth_consent_client_idx").on(t.clientId),
+    index("oauth_consent_user_idx").on(t.userId),
+  ],
+);
+
+/* ─────────────────────────────────────────────────────────────────────
  * Workspace end-user auth pool ("auth as a service"). See the matching block
  * in ../pg/schema.ts — these mirror `users`/`sessions`/`accounts`/
  * `verifications` but back a separate, per-tenant identity pool for the

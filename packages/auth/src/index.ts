@@ -65,8 +65,16 @@ const authSchemaFor = (provider: "pg" | "sqlite") => {
     verification: s.verifications,
     passkey: s.passkeys,
     twoFactor: s.twoFactors,
+    oauthApplication: s.oauthApplications,
+    oauthAccessToken: s.oauthAccessTokens,
+    oauthConsent: s.oauthConsents,
   };
 };
+
+/** OAuth scopes the MCP authorization server advertises on top of the plugin's
+ *  built-in defaults (openid/profile/email/offline_access). `mcp:write` is the
+ *  one the resource server inspects: tokens without it run MCP read-only. */
+export const MCP_OAUTH_SCOPES = ["mcp:read", "mcp:write"] as const;
 
 const buildPlugins = async (config: AuthConfig) => {
   const out: ReturnType<typeof magicLink>[] = [];
@@ -112,6 +120,53 @@ const buildPlugins = async (config: AuthConfig) => {
   if (enabled.has("anonymous")) {
     out.push(anonymous() as unknown as ReturnType<typeof magicLink>);
   }
+  // Always on: turns this instance into an OAuth 2.1 authorization server for
+  // the MCP endpoint (discovery metadata, dynamic client registration, PKCE
+  // authorize/token, consent) so OAuth-only MCP clients — hosted Claude
+  // (claude.ai custom connectors) foremost — can connect to `/mcp` without a
+  // pasted `pak_` key. Endpoints live under the better-auth basePath
+  // (`/api/auth/mcp/*`); the app mounts root `/.well-known/*` aliases and an
+  // authorize wrapper that forces a consent screen (the plugin skips consent
+  // unless the client sends `prompt=consent` — with open dynamic registration
+  // that would allow silent authorization). Dynamic import keeps the plugins
+  // barrel (the only export path that carries the server-side `mcp`) out of
+  // the module graph until instance construction.
+  const { mcp } = await import("better-auth/plugins");
+  // The metadata builders do NOT merge `oidcConfig.scopes` into the
+  // advertised scopes_supported — without an explicit override discovery
+  // shows only the four defaults, clients never request mcp:write, and every
+  // token lands read-only. Plugin quirk: the authorization-server document
+  // spreads a TOP-LEVEL `MCPOptions.metadata` (absent from the type — hence
+  // the cast below) while the protected-resource document reads
+  // `oidcConfig.metadata`, so the override must live in BOTH places.
+  const mcpMetadata = {
+    scopes_supported: [
+      "openid",
+      "profile",
+      "email",
+      "offline_access",
+      ...MCP_OAUTH_SCOPES,
+    ],
+  };
+  out.push(
+    mcp({
+      loginPage: "/sign-in",
+      // RFC 9728 resource identifier — strict MCP clients compare this against
+      // the server URL they were pointed at, so it must be the /mcp endpoint,
+      // not the bare origin the plugin would default to.
+      resource: `${config.baseURL.replace(/\/+$/, "")}/mcp`,
+      metadata: mcpMetadata,
+      oidcConfig: {
+        // The type wants loginPage here too, but at runtime mcp() overrides it
+        // with its own top-level `loginPage` — keep the two in sync anyway.
+        loginPage: "/sign-in",
+        scopes: [...MCP_OAUTH_SCOPES],
+        consentPage: "/oauth/consent",
+        // PKCE stays required (plugin default) — hosted clients are public.
+        metadata: mcpMetadata,
+      },
+    } as Parameters<typeof mcp>[0]) as unknown as ReturnType<typeof magicLink>,
+  );
   if (enabled.has("passkey")) {
     // Dynamic import: @better-auth/passkey pulls @simplewebauthn (+ its crypto
     // graph) — a chunk every cold isolate would otherwise eval even when

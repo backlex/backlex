@@ -184,6 +184,53 @@ const findAppSession = async (
   return { userId: row.userId, tenantId: row.tenantId, email: row.email };
 };
 
+/** Resolve an MCP OAuth access token (better-auth `mcp` plugin) to its user.
+ *  One indexed lookup on the unique access_token column + a user join for the
+ *  email. Enforces expiry — the plugin's own get-session lookup doesn't. */
+const findOauthToken = async (
+  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  token: string,
+): Promise<{
+  userId: string;
+  email: string | null;
+  clientId: string;
+  scopes: string[];
+} | null> => {
+  const s = ctx.dialect === "pg" ? pg.schema : sqlite.schema;
+  const t = s.oauthAccessTokens;
+  const u = s.users;
+  try {
+    const rows = await (ctx.db as any)
+      .select({
+        userId: t.userId,
+        clientId: t.clientId,
+        scopes: t.scopes,
+        expiresAt: t.accessTokenExpiresAt,
+        email: u.email,
+      })
+      .from(t)
+      .leftJoin(u, eq(t.userId, u.id))
+      .where(eq(t.accessToken, token))
+      .limit(1);
+    const row = rows[0];
+    if (!row?.userId) return null;
+    const exp =
+      row.expiresAt instanceof Date ? row.expiresAt.getTime() : Number(row.expiresAt);
+    if (!Number.isFinite(exp) || exp <= Date.now()) return null;
+    return {
+      userId: row.userId,
+      email: row.email ?? null,
+      clientId: row.clientId,
+      scopes:
+        typeof row.scopes === "string" ? row.scopes.split(" ").filter(Boolean) : [],
+    };
+  } catch {
+    // Table missing (un-migrated deploy) or transient DB failure — treat the
+    // token as unknown rather than 500ing the whole request.
+    return null;
+  }
+};
+
 export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {
   const ctx = c.get("ctx");
 
@@ -210,6 +257,9 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   // similarly pin the request to the workspace that issued the session — the
   // app's frontend doesn't send a tenant header, it just uses its token.
   let appSessionTenantId: string | null = null;
+  // MCP OAuth access tokens (better-auth `mcp` plugin — hosted Claude custom
+  // connectors). Platform-plane: the token's userId is a control-plane user.
+  let oauthClientId: string | null = null;
 
   // Cookie session resolution, with a per-isolate cache keyed on the signed
   // `*.session_token` cookie. better-auth's getSession costs ~2 D1 round-trips
@@ -290,6 +340,19 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
           userId = appSess.userId;
           email = appSess.email;
           appSessionTenantId = appSess.tenantId;
+        } else {
+          // 3. an MCP OAuth access token (better-auth `mcp` plugin). Opaque
+          //    random string, platform plane. The plugin's own get-session
+          //    endpoint skips the expiry check, so it happens here. Tokens
+          //    without the `mcp:write` scope run the MCP surface read-only
+          //    (rides the same guard fields as read-only API keys).
+          const oauthTok = await findOauthToken(ctx, token);
+          if (oauthTok) {
+            userId = oauthTok.userId;
+            email = oauthTok.email;
+            oauthClientId = oauthTok.clientId;
+            apiKeyMcpReadOnly = !oauthTok.scopes.includes("mcp:write");
+          }
         }
       }
     }
@@ -313,6 +376,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
     apiKeyRateLimit,
     apiKeyMonthlyQuota,
     appSessionTenantId,
+    oauthClientId,
   });
   await next();
 };

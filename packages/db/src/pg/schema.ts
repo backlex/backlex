@@ -217,6 +217,91 @@ export const twoFactors = pgTable(
 );
 
 /* ─────────────────────────────────────────────────────────────────────
+ * MCP OAuth provider (better-auth `mcp` plugin, backed by its oidc-provider).
+ *
+ * These three tables let hosted MCP clients (claude.ai custom connectors and
+ * other OAuth-only agents) connect to `/mcp` without a pasted `pak_` key:
+ * dynamic client registration writes `oauth_applications`, the PKCE code flow
+ * mints rows in `oauth_access_tokens`, and accepted consent screens land in
+ * `oauth_consents`. Authorization codes live in the existing `verifications`
+ * table (better-auth stores them as verification values — no extra table).
+ *
+ * Property keys MUST match the plugin's camelCase field names (same rule as
+ * passkey `credentialID`); only the DB column names are snake_case.
+ * ───────────────────────────────────────────────────────────────────── */
+
+export const oauthApplications = pgTable(
+  "oauth_applications",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    icon: text("icon"),
+    metadata: text("metadata"),
+    clientId: text("client_id").notNull(),
+    clientSecret: text("client_secret"),
+    redirectUrls: text("redirect_urls").notNull(),
+    type: text("type").notNull(),
+    // Written by /mcp/register but absent from the plugin's schema map — the
+    // drizzle adapter's checkMissingFields throws on unknown keys, so the
+    // column (and this exact property name) must exist.
+    authenticationScheme: text("authentication_scheme"),
+    disabled: boolean("disabled").notNull().default(false),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("oauth_app_client_idx").on(t.clientId),
+    index("oauth_app_user_idx").on(t.userId),
+  ],
+);
+
+export const oauthAccessTokens = pgTable(
+  "oauth_access_tokens",
+  {
+    id: text("id").primaryKey(),
+    accessToken: text("access_token").notNull(),
+    refreshToken: text("refresh_token").notNull(),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }).notNull(),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }).notNull(),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthApplications.clientId, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    scopes: text("scopes").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("oauth_token_access_idx").on(t.accessToken),
+    uniqueIndex("oauth_token_refresh_idx").on(t.refreshToken),
+    index("oauth_token_client_idx").on(t.clientId),
+    index("oauth_token_user_idx").on(t.userId),
+  ],
+);
+
+export const oauthConsents = pgTable(
+  "oauth_consents",
+  {
+    id: text("id").primaryKey(),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthApplications.clientId, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scopes: text("scopes").notNull(),
+    consentGiven: boolean("consent_given").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("oauth_consent_client_idx").on(t.clientId),
+    index("oauth_consent_user_idx").on(t.userId),
+  ],
+);
+
+/* ─────────────────────────────────────────────────────────────────────
  * Workspace end-user auth pool ("auth as a service").
  *
  * These mirror the control-plane `users`/`sessions`/`accounts`/`verifications`

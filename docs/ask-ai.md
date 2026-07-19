@@ -102,8 +102,41 @@ is unrecoverable after key creation, so the snippet renders the secret
 as `pak_<prefix>_••••••••` for every existing key — admins paste the
 config, then replace the masked secret with the one they captured at
 creation time. The **Copy** button writes the snippet to the clipboard
-and toasts; the right-rail card surfaces the OAuth-flow roadmap (no
-backend behind that).
+and toasts. The right-rail **Hosted Claude** card carries the OAuth
+connect steps for claude.ai (see below).
+
+### Hosted Claude (OAuth)
+
+claude.ai custom connectors can't paste an API key — they require the
+remote MCP server to speak OAuth. backlex ships a full OAuth 2.1
+authorization server for `/mcp`, powered by better-auth's `mcp` plugin
+(enabled in `packages/auth`; tables `oauth_applications` /
+`oauth_access_tokens` / `oauth_consents`):
+
+1. An unauthenticated `POST /mcp` answers `401` with a
+   `WWW-Authenticate: Bearer resource_metadata="…"` challenge, pointing
+   at `/.well-known/oauth-protected-resource` (root-mounted in
+   `server/routes/mcp-oauth.ts`, RFC 9728).
+2. The client discovers the endpoints via
+   `/.well-known/oauth-authorization-server`, registers itself
+   dynamically (`POST /api/auth/mcp/register`, RFC 7591), and starts a
+   PKCE authorize flow at `GET /api/auth/mcp/authorize`.
+3. A consent gate in `mcp-oauth.ts` forces `prompt=consent` for any
+   client the signed-in user hasn't already granted the requested
+   scopes — the plugin alone would mint the code silently, which open
+   dynamic registration makes unacceptable. The admin approves on the
+   SPA's `/oauth/consent` page (unauthenticated users bounce through
+   `/sign-in`, which resumes the flow).
+4. Token exchange (`POST /api/auth/mcp/token`) yields a bearer token
+   `sessionMiddleware` resolves like any other identity (with an expiry
+   check the plugin's own lookup skips). Scope mapping: tokens without
+   `mcp:write` run the MCP surface **read-only** (same guard fields as
+   read-only API keys); role/permission-DSL enforcement is unchanged —
+   the token acts as the approving user.
+
+To connect from claude.ai: Settings → Connectors → **Add custom
+connector** → paste `${origin}/mcp` → approve the consent screen.
+End-to-end coverage lives in `tests/mcp-oauth.test.ts`.
 
 ## Requirements
 

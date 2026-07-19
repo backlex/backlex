@@ -7,6 +7,7 @@
 // create/rotate and stays honest ("hidden — rotate") otherwise.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { ColorSwatchPicker } from "@/components/color-swatch-picker";
 import { I } from "../icons";
 import {
   Badge,
@@ -132,12 +133,17 @@ const CANVAS_FONTS_HREF =
 
 const ACCENTS = [
   "#8B6CFF",
-  "#FF8A5C",
-  "#34C79A",
+  "#5C6CFF",
   "#4FB7E8",
-  "#E85CA8",
+  "#3AC9C4",
+  "#34C79A",
+  "#8FCC5C",
   "#F2C14E",
+  "#FF8A5C",
   "#E5484D",
+  "#E85CA8",
+  "#C77DFF",
+  "#8A94A6",
 ];
 
 const blockIcon = (ef: ApiFormEligibleField | null | undefined, block: ApiFormBlock) => {
@@ -1604,59 +1610,12 @@ function DesignPanel({
         </div>
         <div className="flex flex-col gap-1.5">
           <PanelLabel><Trans>accent</Trans></PanelLabel>
-          <div className="flex items-center gap-2">
-            {ACCENTS.map((c) => {
-              const selected = accent.toLowerCase() === c.toLowerCase();
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  title={c}
-                  onClick={() => onPatch({ accent: c })}
-                  className="size-[26px] rounded-full border-2 transition-shadow"
-                  style={{
-                    background: c,
-                    borderColor: selected ? "rgba(255,255,255,0.9)" : "transparent",
-                    boxShadow: selected ? `0 0 10px ${c}` : "none",
-                  }}
-                />
-              );
-            })}
-            {/* custom color — conic rainbow ring with the current accent as a
-                center dot, backed by an invisible native color input (mock). */}
-            <label
-              title={t`Custom color`}
-              className="relative grid size-[26px] cursor-pointer place-items-center overflow-hidden rounded-full"
-              style={{
-                boxShadow: ACCENTS.some((c) => c.toLowerCase() === accent.toLowerCase())
-                  ? "none"
-                  : `0 0 0 2px rgba(255,255,255,0.9), 0 0 10px ${accent}`,
-              }}
-            >
-              {/* blurred, over-scaled sweep hides the conic seam → seamless ring */}
-              <span
-                aria-hidden
-                className="absolute inset-0 rounded-full"
-                style={{
-                  background:
-                    "conic-gradient(from 210deg, #ff6b6b, #ffc46e, #7CE6C0, #6CB8FF, #8B6CFF, #E85CA8, #ff6b6b)",
-                  filter: "blur(3px)",
-                  transform: "scale(1.45)",
-                }}
-              />
-              <span
-                className="relative size-3 rounded-full border-[1.5px] border-white/80"
-                style={{ background: accent }}
-              />
-              <input
-                type="color"
-                value={accent}
-                onChange={(e) => onPatch({ accent: e.target.value })}
-                className="absolute inset-0 cursor-pointer border-0 p-0 opacity-0"
-              />
-            </label>
-          </div>
-          <span className="-mt-0.5 font-mono text-[10.5px] text-muted-foreground">{accent}</span>
+          <ColorSwatchPicker
+            options={ACCENTS.map((c) => ({ value: c, swatch: c }))}
+            value={accent}
+            onChange={(accent) => onPatch({ accent })}
+            showValue
+          />
         </div>
         <div className="flex flex-col gap-1.5">
           <PanelLabel><Trans>font</Trans></PanelLabel>

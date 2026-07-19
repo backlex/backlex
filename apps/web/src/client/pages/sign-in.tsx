@@ -6,6 +6,7 @@ import {
   type AuthShellCopy,
   type SignInCopy,
 } from "@backlex/auth-ui";
+import { DemoSignInButton } from "@/components/demo-banner";
 import { SocialButtons, useHasSocialProviders } from "@/components/social-buttons";
 import { PlatformSso, useHasPlatformSso } from "@/components/platform-sso";
 import { notifyError } from "@/lib/error";
@@ -106,8 +107,13 @@ export const SignIn = () => {
       branding={branding}
       surface={toSurfaceFlags(surface)}
       appVersion={appVersion}
-      socialButtons={<SocialButtons callbackURL={next} />}
-      hasSocials={hasSocials}
+      socialButtons={
+        <>
+          {surface?.demo && <DemoSignInButton demo={surface.demo} next={next} />}
+          <SocialButtons callbackURL={next} />
+        </>
+      }
+      hasSocials={hasSocials || Boolean(surface?.demo)}
       ssoButtons={<PlatformSso callbackURL={next} />}
       hasSso={hasSso}
     />

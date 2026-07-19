@@ -30,6 +30,9 @@ export interface AuthSurface {
   /** Control-plane only: admin SAML/LDAP SSO feature gate. Hides the
    *  "Platform SSO" settings page when false. */
   platformSso?: boolean;
+  /** Playground (demo) instance only: the shared demo-admin credentials the
+   *  server publishes so the sign-in screen can offer a one-click entry. */
+  demo?: { email: string; password: string };
   /** Admin-customised sign-in screen copy. Empty strings = use the default. */
   branding?: {
     signInHeadline: string;

@@ -17,6 +17,8 @@ import {
 } from "./lib/trace";
 import { recordSpan, traceSampleRate } from "./services/traces";
 import { exportSpanOtlp, otlpEnabled } from "./services/otlp";
+import { isDemoMode } from "./services/demo";
+import { demoGuardMiddleware } from "./middleware/demo";
 import { errorHandler } from "./middleware/error";
 import type { PermissionVar } from "./middleware/permission";
 import { sessionMiddleware } from "./middleware/session";
@@ -89,6 +91,7 @@ import { uploadsRoutes, tusBaseHeaders } from "./routes/uploads";
 import { uploadPolicy } from "./services/uploads";
 import { flagsPublicRoutes, flagsAdminRoutes } from "./routes/feature-flags";
 import { templatesRoutes } from "./routes/templates";
+import { demoRoutes } from "./routes/demo";
 import { tenantAuthRoutes } from "./routes/tenant-auth";
 import { tenantsRoutes } from "./routes/tenants";
 import { vectorRoutes } from "./routes/vector";
@@ -622,6 +625,11 @@ export const createApp = (env: Env) => {
   // neither counted nor billed. Skips `/api/auth/*` like the limiter.
   app.use("/api/*", usageMeterMiddleware);
 
+  // Playground write-guard: only mounted in DEMO_MODE, so normal instances
+  // don't pay even the path check. Must sit before the route mounts (it 403s
+  // the blocked writes wholesale, including the better-auth catch-all paths).
+  if (isDemoMode(env)) app.use("/api/*", demoGuardMiddleware);
+
   // `version` is the worker-template version baked in at build time (see
   // vite.config `define`). Lets the cloud control-plane + ops verify which
   // template a live instance is actually running without guessing. The `typeof`
@@ -738,6 +746,7 @@ export const createApp = (env: Env) => {
   app.route("/api/api-keys", apiKeysRoutes);
   app.route("/api/collections", collectionsRoutes);
   app.route("/api/admin/templates", templatesRoutes);
+  app.route("/api/admin/demo", demoRoutes);
   app.route("/api/items", itemsRoutes);
   app.route("/api/activity", activityRoutes);
   app.route("/api/admin/traces", tracesRoutes);

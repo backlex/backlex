@@ -4340,6 +4340,10 @@ msgstr "Enter the 6-digit code from your authenticator app."
 msgid "Enter the email you signed up with — we'll send a reset link."
 msgstr "Enter the email you signed up with — we'll send a reset link."
 
+#: src/client/components/demo-banner.tsx
+msgid "Enter the playground"
+msgstr "Enter the playground"
+
 #: src/client/pages/sign-in.tsx
 msgid "Enter your authentication code."
 msgstr "Enter your authentication code."
@@ -4359,6 +4363,10 @@ msgstr "Enter your password to regenerate codes."
 #: src/client/admin/account-page.tsx
 msgid "Enter your password to turn off 2FA."
 msgstr "Enter your password to turn off 2FA."
+
+#: src/client/components/demo-banner.tsx
+msgid "Entering…"
+msgstr "Entering…"
 
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Enterprise SSO for operators signing into this dashboard."
@@ -8706,6 +8714,10 @@ msgstr "Platform SSO"
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Platform SSO is not enabled on this instance. It's available on plans with enterprise SSO, or on self-hosted deployments."
 msgstr "Platform SSO is not enabled on this instance. It's available on plans with enterprise SSO, or on self-hosted deployments."
+
+#: src/client/components/demo-banner.tsx
+msgid "Playground — this is a shared demo. Anyone can edit the data, and everything resets every hour."
+msgstr "Playground — this is a shared demo. Anyone can edit the data, and everything resets every hour."
 
 #. placeholder {0}: b.label || humanizeLabel(b.name)
 #: src/client/pages/public-form.tsx

@@ -37,16 +37,16 @@ export const claudeDesktopSnippet = (url: string, secret: string): string =>
 
 export const cursorSnippet = claudeDesktopSnippet;
 
-/** OpenAI Codex CLI's `~/.codex/config.toml` MCP-server block. Codex configures
- *  MCP servers as a local command (stdio), same as Claude Desktop — so it reuses
- *  the `backlex mcp` CLI bridge that tunnels stdio to the remote `/mcp` HTTP
- *  endpoint with the pak_ key. TOML, not JSON, because that's Codex's config
- *  format. */
+/** OpenAI Codex CLI's `~/.codex/config.toml` MCP-server block. Codex speaks
+ *  Streamable HTTP natively, so it connects straight to the remote `/mcp`
+ *  endpoint with a `bearer_token` — no stdio bridge / absolute CLI path. TOML,
+ *  not JSON, because that's Codex's config format. (For the keyless path, Codex
+ *  also does `auth = "oauth"` + `codex mcp login` — see the OAuth card.) */
 export const codexSnippet = (url: string, secret: string): string =>
   [
     "[mcp_servers.backlex]",
-    'command = "bun"',
-    `args = ["/abs/path/to/backlex/packages/cli/bin/backlex.ts", "mcp", "--url", "${url}", "--key", "${secret}"]`,
+    `url = "${url}"`,
+    `bearer_token = "${secret}"`,
   ].join("\n");
 
 /** Direct Streamable HTTP sanity check — usable from CI agents and shell

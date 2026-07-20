@@ -1156,13 +1156,17 @@ msgstr "Add source"
 msgid "Add step"
 msgstr "Add step"
 
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Add to <0>~/.codex/config.toml</0> (native Streamable HTTP). Or skip the key and connect over OAuth above with <1>codex mcp login</1>."
+msgstr "Add to <0>~/.codex/config.toml</0> (native Streamable HTTP). Or skip the key and connect over OAuth above with <1>codex mcp login</1>."
+
 #: src/client/components/mcp-key-modal.tsx
 msgid "Add to <0>~/.codex/config.toml</0> and restart Codex."
 msgstr "Add to <0>~/.codex/config.toml</0> and restart Codex."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Add to <0>~/.codex/config.toml</0>, then restart Codex. Runs the backlex CLI as a stdio bridge to <1>/mcp</1>."
-msgstr "Add to <0>~/.codex/config.toml</0>, then restart Codex. Runs the backlex CLI as a stdio bridge to <1>/mcp</1>."
+#~ msgid "Add to <0>~/.codex/config.toml</0>, then restart Codex. Runs the backlex CLI as a stdio bridge to <1>/mcp</1>."
+#~ msgstr "Add to <0>~/.codex/config.toml</0>, then restart Codex. Runs the backlex CLI as a stdio bridge to <1>/mcp</1>."
 
 #: src/client/components/mcp-key-modal.tsx
 msgid "Add to <0>~/Library/Application Support/Claude/claude_desktop_config.json</0> (macOS) and restart Claude Desktop."
@@ -1473,8 +1477,12 @@ msgid "An MCP client is asking to access this workspace on your behalf."
 msgstr "An MCP client is asking to access this workspace on your behalf."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
-msgstr "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
+#~ msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
+#~ msgstr "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
+msgstr "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
 
 #: src/client/admin/pages/agents.tsx
 msgid "any provider/model id"
@@ -2450,6 +2458,10 @@ msgstr "Code"
 #: src/client/components/mcp-key-modal.tsx
 msgid "Codex"
 msgstr "Codex"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> then <1>codex mcp login backlex</1>."
+msgstr "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> then <1>codex mcp login backlex</1>."
 
 #: src/client/admin/sheet.tsx
 msgid "Collaboration"

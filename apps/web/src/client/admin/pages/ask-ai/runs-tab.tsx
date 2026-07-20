@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { activityApi, } from "../../api";
 import { I } from "../../icons";
-import { Badge, Button, } from "../../ui";
+import { Badge, Button, EmptyState } from "../../ui";
 import { Card } from "@backlex/ui/components/card";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import {
@@ -173,9 +173,23 @@ export function RunsTab({
             ))}
           </div>
         ) : visible.length === 0 ? (
-          <div className="px-5 py-8 text-center text-[12.5px] text-muted-foreground">
-            <Trans>No runs in this bucket yet.</Trans>
-          </div>
+          <EmptyState
+            bare
+            size="md"
+            icon={I.History}
+            title={
+              filter === "all" ? (
+                <Trans>No runs yet</Trans>
+              ) : (
+                <Trans>No runs in this bucket</Trans>
+              )
+            }
+            description={
+              <Trans>
+                MCP tool calls from the Ask tab and connected clients land here.
+              </Trans>
+            }
+          />
         ) : (
           <ScrollArea viewportClassName="max-h-[640px]">
             <table className="w-full min-w-[680px] border-collapse text-[13px]">

@@ -20,7 +20,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { api } from "@/lib/api";
 import { activityApi, collectionsApi, type ApiCollection } from "../../api";
 import { I } from "../../icons";
-import { Badge, Button, PageHeader, Switch } from "../../ui";
+import { Badge, Button, EmptyState, PageHeader, Switch } from "../../ui";
 import { Card } from "@backlex/ui/components/card";
 import { Textarea } from "@backlex/ui/components/textarea";
 import {
@@ -55,6 +55,11 @@ import {
   readModelPref,
   writePref,
 } from "./shared";
+
+// Primary gradient for the hero Run button — mirrors the Connect tab's copy
+// button. Resolves from the `--primary` token so it tracks light + dark.
+const PRIMARY_GRADIENT =
+  "bg-[linear-gradient(135deg,var(--color-primary),color-mix(in_oklch,var(--color-primary)_78%,black))] text-primary-foreground";
 
 export function AskAiPage({
   pushToast,
@@ -383,9 +388,9 @@ export function AskAiPage({
         }
         description={
           <Trans>
-            Translate natural language into operator-style queries, draft schemas,
-            and dispatch any MCP tool — scoped to your role and the per-key
-            allowlist. The same surface Claude Desktop sees.
+            Query your backend in natural language, browse the MCP tool catalog,
+            and connect external clients over OAuth or an API key — every call
+            scoped to your role and the per-key allowlist.
           </Trans>
         }
       />
@@ -438,105 +443,109 @@ export function AskAiPage({
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1fr_320px]">
         <div className="flex min-w-0 flex-col gap-5">
           <Card className="py-0 gap-0">
-            <div className="flex items-center gap-2 px-5 pt-4 pb-2">
+            <div className="flex items-center gap-2 px-5 pt-4 pb-1">
               <I.Sparkles size={14} className="text-primary" />
-              <span className="text-[12px] font-medium">
+              <span className="text-[13px] font-semibold">
                 <Trans>Ask in natural language</Trans>
               </span>
-              <div className="ml-auto flex items-center gap-3 text-[11.5px] text-muted-foreground">
+            </div>
+            <div className="flex flex-col gap-3.5 px-5 pt-2 pb-4">
+              {/* bordered input box */}
+              <div className="rounded-control border border-border bg-muted/20 px-4 py-3.5 focus-within:border-primary/40 focus-within:ring-3 focus-within:ring-primary/15">
+                <Textarea
+                  ref={taRef}
+                  rows={3}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      e.preventDefault();
+                      void submit();
+                    }
+                  }}
+                  placeholder={t`Ask about your data — e.g. "list published posts from last week, newest first"`}
+                  className="min-h-[64px] resize-none rounded-none border-0 bg-transparent p-0 text-[14px] leading-relaxed shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-0"
+                />
+              </div>
+
+              {/* example chips */}
+              {phase === "idle" && !planError && EXAMPLES.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {EXAMPLES.map((e) => (
+                    <button
+                      key={e.label}
+                      type="button"
+                      onClick={() => {
+                        setPrompt(e.prompt);
+                        taRef.current?.focus();
+                      }}
+                      className="inline-flex h-[30px] cursor-pointer items-center rounded-full border border-border bg-card px-3.5 text-[12px] text-foreground/85 transition-colors hover:border-primary/35 hover:bg-primary/10 hover:text-foreground"
+                    >
+                      {e.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* controls: model + auto-run (left) · clear + run (right) */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <ModelPicker value={model} onChange={setModel} models={MODELS} />
-                <span className="hidden items-center gap-1.5 sm:inline-flex">
+                <span className="hidden items-center gap-1.5 text-[11.5px] text-muted-foreground sm:inline-flex">
                   <Trans>auto-run reads</Trans>
                   <Switch checked={autoRun} onChange={setAutoRun} />
                 </span>
-              </div>
-            </div>
-            <div className="px-5 pb-3">
-              <Textarea
-                ref={taRef}
-                rows={3}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                    e.preventDefault();
-                    void submit();
-                  }
-                }}
-                placeholder={t`e.g. posts published in the past 7 days, sorted by view_count desc`}
-                className="min-h-0 rounded-none border-0 bg-transparent p-0 text-[15px] placeholder:text-muted-foreground/70 focus-visible:ring-0"
-              />
-            </div>
-            <div className="flex items-center gap-2 border-t border-border bg-card px-5 py-3">
-              <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-                <kbd className="rounded-control border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] leading-none text-muted-foreground">
-                  ⌘
-                </kbd>
-                <kbd className="rounded-control border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] leading-none text-muted-foreground">
-                  ↵
-                </kbd>
-                <span><Trans>to run</Trans></span>
-              </div>
-              <div className="ml-auto flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon={I.X}
-                  onClick={() => {
-                    setPrompt("");
-                    setPhase("idle");
-                    setPlan(null);
-                    setResult(null);
-                    setPlanError(null);
-                  }}
-                >
-                  <Trans>Clear</Trans>
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={phase === "thinking" || phase === "running" ? I.Loader : I.Send}
-                  disabled={
-                    !prompt.trim() ||
-                    phase === "thinking" ||
-                    phase === "running"
-                  }
-                  onClick={() => {
-                    void submit();
-                  }}
-                >
-                  {phase === "thinking" ? (
-                    <Trans>Planning…</Trans>
-                  ) : phase === "running" ? (
-                    <Trans>Running…</Trans>
-                  ) : (
-                    <Trans>Run</Trans>
+                <div className="ml-auto flex items-center gap-2">
+                  {(prompt.trim() || plan || result) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={I.X}
+                      onClick={() => {
+                        setPrompt("");
+                        setPhase("idle");
+                        setPlan(null);
+                        setResult(null);
+                        setPlanError(null);
+                      }}
+                    >
+                      <Trans>Clear</Trans>
+                    </Button>
                   )}
-                </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className={`h-9 rounded-control px-5 shadow-[0_8px_22px_-8px_color-mix(in_oklch,var(--color-primary)_70%,transparent)] hover:brightness-110 ${PRIMARY_GRADIENT}`}
+                    icon={
+                      phase === "thinking" || phase === "running"
+                        ? I.Loader
+                        : I.Sparkles
+                    }
+                    disabled={
+                      !prompt.trim() ||
+                      phase === "thinking" ||
+                      phase === "running"
+                    }
+                    onClick={() => {
+                      void submit();
+                    }}
+                  >
+                    {phase === "thinking" ? (
+                      <Trans>Planning…</Trans>
+                    ) : phase === "running" ? (
+                      <Trans>Running…</Trans>
+                    ) : (
+                      <Trans>Run</Trans>
+                    )}
+                  </Button>
+                </div>
               </div>
+            </div>
+            <div className="border-t border-border px-5 py-2.5 text-[11.5px] text-muted-foreground">
+              <Trans>
+                Read-leaning tools auto-run. Writes wait for a click to confirm.
+              </Trans>
             </div>
           </Card>
-
-          {phase === "idle" && !planError && (
-            <div className="flex flex-wrap gap-2">
-              <span className="mr-1 self-center text-[11.5px] uppercase tracking-wider text-muted-foreground">
-                <Trans>Examples</Trans>
-              </span>
-              {EXAMPLES.map((e) => (
-                <Button
-                  key={e.label}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setPrompt(e.prompt);
-                    taRef.current?.focus();
-                  }}
-                >
-                  {e.label}
-                </Button>
-              ))}
-            </div>
-          )}
 
           {planError && (
             <div className="rounded-surface border border-destructive/40 bg-destructive/5 px-5 py-4 text-[12.5px] text-destructive">
@@ -748,8 +757,14 @@ export function AskAiPage({
             </Button>
           </div>
           {recent.length === 0 ? (
-            <div className="border-t border-border px-5 py-8 text-center text-[12.5px] text-muted-foreground">
-              <Trans>No runs yet — your tool calls will show up here.</Trans>
+            <div className="border-t border-border">
+              <EmptyState
+                bare
+                size="sm"
+                icon={I.History}
+                title={<Trans>No runs yet</Trans>}
+                description={<Trans>Your tool calls show up here.</Trans>}
+              />
             </div>
           ) : (
             <ScrollArea className="border-t border-border" viewportClassName="max-h-[480px]">

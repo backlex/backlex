@@ -6,7 +6,7 @@
 //   - Ask     — natural-language → MCP tool dispatcher (Phase 1)
 //   - Tools   — searchable catalog + per-key guard editor (Phase 2)
 //   - Runs    — filtered activity table with CSV export    (Phase 2)
-//   - Connect — Claude Desktop / Cursor / curl snippets    (Phase 2)
+//   - Connect — Claude Desktop / Cursor / Codex / curl snippets    (Phase 2)
 //
 // Backend hops the Ask tab still drives:
 //   POST /api/admin/ai/plan  →  {rationale, tool, args, model, usage}
@@ -28,6 +28,7 @@ import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   claudeDesktopSnippet,
   cursorSnippet,
+  codexSnippet,
   curlSnippet,
 } from "@/lib/mcp-snippets";
 
@@ -36,7 +37,7 @@ import {
   KeyPicker,
 } from "./shared";
 
-type ConnectClient = "claude-desktop" | "cursor" | "curl";
+type ConnectClient = "claude-desktop" | "cursor" | "codex" | "curl";
 
 export function ConnectTab({
   pushToast,
@@ -71,6 +72,7 @@ export function ConnectTab({
   const snippet = useMemo(() => {
     if (client === "claude-desktop") return claudeDesktopSnippet(mcpUrl, secretForSnippet);
     if (client === "cursor") return cursorSnippet(mcpUrl, secretForSnippet);
+    if (client === "codex") return codexSnippet(mcpUrl, secretForSnippet);
     return curlSnippet(mcpUrl, secretForSnippet);
   }, [client, mcpUrl, secretForSnippet]);
 
@@ -102,6 +104,9 @@ export function ConnectTab({
                 </TabsTrigger>
                 <TabsTrigger value="cursor">
                   <Trans>Cursor</Trans>
+                </TabsTrigger>
+                <TabsTrigger value="codex">
+                  <Trans>Codex</Trans>
                 </TabsTrigger>
                 <TabsTrigger value="curl">
                   <Trans>curl</Trans>
@@ -154,6 +159,13 @@ export function ConnectTab({
             {client === "cursor" && (
               <Trans>
                 Settings → MCP → Add. Same JSON shape Claude Desktop uses.
+              </Trans>
+            )}
+            {client === "codex" && (
+              <Trans>
+                Add to <span className="font-mono">~/.codex/config.toml</span>,
+                then restart Codex. Runs the backlex CLI as a stdio bridge to{" "}
+                <span className="font-mono">/mcp</span>.
               </Trans>
             )}
             {client === "curl" && (

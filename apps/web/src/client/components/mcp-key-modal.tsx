@@ -1,6 +1,6 @@
 /**
  * Per-API-key MCP configuration modal:
- *   - Tabbed install-snippet generator (Claude Desktop / Cursor / curl)
+ *   - Tabbed install-snippet generator (Claude Desktop / Cursor / Codex / curl)
  *   - Per-tool allowlist editor (checkbox grid sourced from /api/admin/mcp tools/list)
  *   - Read-only toggle
  *
@@ -33,6 +33,7 @@ import { api } from "@/lib/api";
 import {
   claudeDesktopSnippet,
   cursorSnippet,
+  codexSnippet,
   curlSnippet,
 } from "@/lib/mcp-snippets";
 
@@ -159,6 +160,10 @@ export const McpKeyModal = ({
                   <MonitorSmartphoneIcon className="size-3.5" />
                   <Trans>Cursor</Trans>
                 </TabsTrigger>
+                <TabsTrigger value="codex">
+                  <TerminalSquareIcon className="size-3.5" />
+                  <Trans>Codex</Trans>
+                </TabsTrigger>
                 <TabsTrigger value="curl">
                   <TerminalSquareIcon className="size-3.5" />
                   <Trans>curl</Trans>
@@ -182,6 +187,16 @@ export const McpKeyModal = ({
                 />
                 <p className="mt-2 text-xs text-muted-foreground">
                   <Trans>Settings → MCP → Add new MCP server → paste the JSON.</Trans>
+                </p>
+              </TabsContent>
+              <TabsContent value="codex">
+                <SnippetBlock
+                  snippet={codexSnippet(mcpUrl, secretForSnippet)}
+                  copied={copied === "codex"}
+                  onCopy={() => copySnippet("codex", codexSnippet(mcpUrl, secretForSnippet))}
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  <Trans>Add to <code>~/.codex/config.toml</code> and restart Codex.</Trans>
                 </p>
               </TabsContent>
               <TabsContent value="curl">

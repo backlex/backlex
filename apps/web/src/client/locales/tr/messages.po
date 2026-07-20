@@ -1472,6 +1472,10 @@ msgstr "Bir davet bağlantısı e-posta ile gönderilecek; 7 gün geçerlidir."
 msgid "An MCP client is asking to access this workspace on your behalf."
 msgstr "Bir MCP istemcisi bu çalışma alanına sizin adınıza erişmek istiyor."
 
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
+msgstr "OAuth destekleyen her MCP istemcisi anahtarsız bağlanır — claude.ai, Cursor, ChatGPT connectors, VS Code ve yeni Claude Desktop. MCP URL'sini uzak / özel bağlayıcı olarak ekleyip onay ekranını kabul edin; araçlar rolleriniz ve izin kurallarınızla çalışır."
+
 #: src/client/admin/pages/agents.tsx
 msgid "any provider/model id"
 msgstr "herhangi bir sağlayıcı/model kimliği"
@@ -2318,12 +2322,12 @@ msgid "Claude Desktop"
 msgstr "Claude Desktop"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "claude.ai → Settings → Connectors → <0>Add custom connector</0>"
-msgstr "claude.ai → Settings → Connectors → <0>Add custom connector</0>"
+#~ msgid "claude.ai → Settings → Connectors → <0>Add custom connector</0>"
+#~ msgstr "claude.ai → Settings → Connectors → <0>Add custom connector</0>"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "claude.ai connects over OAuth — no key to paste. Add the MCP URL as a custom connector and approve the consent screen; tools run with your roles and permission rules."
-msgstr "claude.ai OAuth ile bağlanır — yapıştırılacak anahtar yok. MCP URL'sini özel bağlayıcı olarak ekleyin ve onay ekranını kabul edin; araçlar rolleriniz ve izin kurallarınızla çalışır."
+#~ msgid "claude.ai connects over OAuth — no key to paste. Add the MCP URL as a custom connector and approve the consent screen; tools run with your roles and permission rules."
+#~ msgstr "claude.ai OAuth ile bağlanır — yapıştırılacak anahtar yok. MCP URL'sini özel bağlayıcı olarak ekleyin ve onay ekranını kabul edin; araçlar rolleriniz ve izin kurallarınızla çalışır."
 
 #: src/client/admin/app.tsx
 msgid "clear"
@@ -2739,8 +2743,8 @@ msgid "Connect an <0>agent</0>."
 msgstr "Bir <0>ajan</0> bağlayın."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Connect an MCP client"
-msgstr "Bir MCP istemcisi bağlayın"
+#~ msgid "Connect an MCP client"
+#~ msgstr "Bir MCP istemcisi bağlayın"
 
 #: src/client/pages/api-keys.tsx
 msgid "Connect MCP"
@@ -2749,6 +2753,10 @@ msgstr "MCP'yi bağla"
 #: src/client/components/mcp-key-modal.tsx
 msgid "Connect MCP — {keyName}"
 msgstr "MCP'yi bağla — {keyName}"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Connect over OAuth"
+msgstr "OAuth ile bağlan"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/settings/index.tsx
@@ -5423,6 +5431,10 @@ msgstr "Hesabınız var mı?"
 msgid "Head"
 msgstr "Uç"
 
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "headless · CI · scripts · non-OAuth clients"
+msgstr "headless · CI · script · OAuth'suz istemciler"
+
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Headline"
 msgstr "Başlık"
@@ -5516,8 +5528,8 @@ msgid "hooks"
 msgstr "kanca"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Hosted Claude"
-msgstr "Barındırılan Claude"
+#~ msgid "Hosted Claude"
+#~ msgstr "Barındırılan Claude"
 
 #: src/client/admin/collection-settings.tsx
 msgid "how this collection shows up in nav and lists"
@@ -5655,6 +5667,10 @@ msgstr "Google Authenticator'da “Kurulum anahtarı gir” seçeneğini seçin,
 #: src/client/admin/item-views.tsx
 msgid "In review"
 msgstr "İncelemede"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "In your client, add a remote MCP server / custom connector (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
+msgstr "İstemcinizde uzak MCP sunucusu / özel bağlayıcı ekleyin (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
 
 #: src/client/admin/pages/overview.tsx
 msgid "in-isolate, sync only"
@@ -7612,6 +7628,10 @@ msgstr "İş yok"
 msgid "No JSON content defined."
 msgstr "JSON içeriği tanımlanmamış."
 
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "no key to paste"
+msgstr "yapıştırılacak anahtar yok"
+
 #: src/client/admin/pages/forms.tsx
 msgid "No language found."
 msgstr "Dil bulunamadı."
@@ -9404,6 +9424,7 @@ msgid "Recipient (userId)"
 msgstr "Alıcı (userId)"
 
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/pages/sign-up.tsx
 msgid "recommended"
 msgstr "önerilen"
@@ -11089,8 +11110,12 @@ msgid "Settings → MCP → Add new MCP server → paste the JSON."
 msgstr "Ayarlar → MCP → Yeni MCP sunucusu ekle → JSON'u yapıştır."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
-msgstr "Ayarlar → MCP → Ekle. Claude Desktop ile aynı JSON şeklini kullanır."
+#~ msgid "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
+#~ msgstr "Ayarlar → MCP → Ekle. Claude Desktop ile aynı JSON şeklini kullanır."
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Settings → MCP → Add. Same JSON shape Claude Desktop uses. (Or skip the key and connect over OAuth above.)"
+msgstr "Settings → MCP → Add. Claude Desktop ile aynı JSON şekli. (Veya anahtarı atlayıp yukarıdan OAuth ile bağlanın.)"
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Severity"

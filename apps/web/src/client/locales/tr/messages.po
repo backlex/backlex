@@ -1058,6 +1058,10 @@ msgstr "Hazır bir dikey ekleyin (blog, e-ticaret, CRM, …) — örnek verili, 
 msgid "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
 msgstr "<0>c_{from}</0> koleksiyonuna <1>c_{to}</1> öğesini gösteren bir ilişki alanı ekle."
 
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Add a remote MCP connector"
+msgstr "Uzak bir MCP bağlayıcısı ekleyin"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Add a tag and press Enter…"
 msgstr "Etiket ekleyip Enter'a basın…"
@@ -1477,12 +1481,16 @@ msgid "An MCP client is asking to access this workspace on your behalf."
 msgstr "Bir MCP istemcisi bu çalışma alanına sizin adınıza erişmek istiyor."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Any OAuth-capable client connects with no key — the browser handles discovery, consent, and token exchange. Tools then run with <0>your own roles and permission rules</0>."
+msgstr "OAuth destekleyen her istemci anahtar olmadan bağlanır — keşif, onay ve token değişimini tarayıcı halleder. Araçlar ardından <0>kendi rolleriniz ve izin kurallarınızla</0> çalışır."
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
 #~ msgstr "OAuth destekleyen her MCP istemcisi anahtarsız bağlanır — claude.ai, Cursor, ChatGPT connectors, VS Code ve yeni Claude Desktop. MCP URL'sini uzak / özel bağlayıcı olarak ekleyip onay ekranını kabul edin; araçlar rolleriniz ve izin kurallarınızla çalışır."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
-msgstr "OAuth destekleyen her MCP istemcisi anahtarsız bağlanır — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code ve yeni Claude Desktop. MCP URL'sini uzak / özel bağlayıcı olarak ekleyip onay ekranını kabul edin; araçlar rolleriniz ve izin kurallarınızla çalışır."
+#~ msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
+#~ msgstr "OAuth destekleyen her MCP istemcisi anahtarsız bağlanır — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code ve yeni Claude Desktop. MCP URL'sini uzak / özel bağlayıcı olarak ekleyip onay ekranını kabul edin; araçlar rolleriniz ve izin kurallarınızla çalışır."
 
 #: src/client/admin/pages/agents.tsx
 msgid "any provider/model id"
@@ -1582,6 +1590,10 @@ msgstr "Uygulanıyor…"
 msgid "Approve & run"
 msgstr "Onayla ve çalıştır"
 
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Approve the authorization screen — the connector inherits your roles."
+msgstr "Yetkilendirme ekranını onaylayın — bağlayıcı rollerinizi devralır."
+
 #: src/client/admin/item-views.tsx
 msgid "April"
 msgstr "Nisan"
@@ -1644,6 +1656,10 @@ msgstr "Artan"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Ask"
 msgstr "Sor"
+
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Ask about your data — e.g. \"list published posts from last week, newest first\""
+msgstr "Verileriniz hakkında sorun — örn. \"geçen haftanın yayınlanan gönderilerini en yeniden listele\""
 
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/ui.tsx
@@ -2334,6 +2350,10 @@ msgstr "Claude Desktop"
 #~ msgstr "claude.ai → Settings → Connectors → <0>Add custom connector</0>"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add."
+msgstr "claude.ai → Ayarlar → Bağlayıcılar → Özel bağlayıcı ekle; Cursor → Ayarlar → MCP → Ekle."
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "claude.ai connects over OAuth — no key to paste. Add the MCP URL as a custom connector and approve the consent screen; tools run with your roles and permission rules."
 #~ msgstr "claude.ai OAuth ile bağlanır — yapıştırılacak anahtar yok. MCP URL'sini özel bağlayıcı olarak ekleyin ve onay ekranını kabul edin; araçlar rolleriniz ve izin kurallarınızla çalışır."
 
@@ -2460,8 +2480,8 @@ msgid "Codex"
 msgstr "Codex"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> then <1>codex mcp login backlex</1>."
-msgstr "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> sonra <1>codex mcp login backlex</1>."
+#~ msgid "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> then <1>codex mcp login backlex</1>."
+#~ msgstr "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> sonra <1>codex mcp login backlex</1>."
 
 #: src/client/admin/sheet.tsx
 msgid "Collaboration"
@@ -2850,6 +2870,7 @@ msgid "copied"
 msgstr "kopyalandı"
 
 #: src/client/admin/item-collaboration.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Copied"
 msgstr "Kopyalandı"
@@ -3977,6 +3998,10 @@ msgstr "Herhangi bir siteye ekleyin — form kendi temasını korur."
 #~ msgid "Drop the iframe into any site — the form keeps its own theme."
 #~ msgstr "iframe'i herhangi bir siteye ekleyin — form kendi temasını korur."
 
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Drop the MCP URL in as the server address — no token, no config file."
+msgstr "MCP URL'sini sunucu adresi olarak girin — token yok, yapılandırma dosyası yok."
+
 #: src/client/admin/collection-settings.tsx
 msgid "Drops the physical table and all rows. Permissions and revisions tied to the slug are removed too. This is irreversible."
 msgstr "Fiziksel tabloyu ve tüm satırları siler. Slug'a bağlı izinler ve sürümler de kaldırılır. Bu işlem geri alınamaz."
@@ -4034,8 +4059,8 @@ msgid "e.g. Content, SEO, Advanced"
 msgstr "örn. İçerik, SEO, Gelişmiş"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "e.g. posts published in the past 7 days, sorted by view_count desc"
-msgstr "örn: son 7 günde yayınlanmış postlar, view_count'a göre azalan"
+#~ msgid "e.g. posts published in the past 7 days, sorted by view_count desc"
+#~ msgstr "örn: son 7 günde yayınlanmış postlar, view_count'a göre azalan"
 
 #: src/client/admin/account-page.tsx
 msgid "Each code works once if you lose your authenticator. Store them somewhere safe — they won't be shown again."
@@ -4586,8 +4611,8 @@ msgid "Exact package name as published on npm."
 msgstr "npm'de yayınlandığı haliyle tam paket adı."
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Examples"
-msgstr "Örnekler"
+#~ msgid "Examples"
+#~ msgstr "Örnekler"
 
 #: src/client/admin/pages/functions.tsx
 msgid "Examples: items:posts:created, items:posts:*, items:*:*"
@@ -5681,8 +5706,8 @@ msgid "In review"
 msgstr "İncelemede"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "In your client, add a remote MCP server / custom connector (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
-msgstr "İstemcinizde uzak MCP sunucusu / özel bağlayıcı ekleyin (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
+#~ msgid "In your client, add a remote MCP server / custom connector (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
+#~ msgstr "İstemcinizde uzak MCP sunucusu / özel bağlayıcı ekleyin (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
 
 #: src/client/admin/pages/overview.tsx
 msgid "in-isolate, sync only"
@@ -6801,6 +6826,10 @@ msgstr "MCP · {0} araç"
 msgid "MCP access"
 msgstr "MCP erişimi"
 
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "MCP endpoint"
+msgstr "MCP uç noktası"
+
 #: src/client/components/mcp-key-modal.tsx
 msgid "MCP endpoint URL"
 msgstr "MCP uç nokta URL'i"
@@ -6808,6 +6837,10 @@ msgstr "MCP uç nokta URL'i"
 #: src/client/pages/api-keys.tsx
 msgid "MCP read-only"
 msgstr "MCP salt-okunur"
+
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
+msgid "MCP tool calls from the Ask tab and connected clients land here."
+msgstr "Ask sekmesinden ve bağlı istemcilerden gelen MCP araç çağrıları burada görünür."
 
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "MCP tool catalog"
@@ -7641,6 +7674,10 @@ msgid "No JSON content defined."
 msgstr "JSON içeriği tanımlanmamış."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "no key needed"
+msgstr "anahtar gerekmez"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "no key to paste"
 #~ msgstr "yapıştırılacak anahtar yok"
 
@@ -7767,12 +7804,21 @@ msgid "No rows returned."
 msgstr "Satır döndürülmedi."
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
-msgid "No runs in this bucket yet."
-msgstr "Bu kümede henüz çalıştırma yok."
+msgid "No runs in this bucket"
+msgstr "Bu grupta çalıştırma yok"
+
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
+#~ msgid "No runs in this bucket yet."
+#~ msgstr "Bu kümede henüz çalıştırma yok."
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "No runs yet — your tool calls will show up here."
-msgstr "Henüz çalışma yok — araç çağrıların burada görünecek."
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
+msgid "No runs yet"
+msgstr "Henüz çalıştırma yok"
+
+#: src/client/admin/pages/ask-ai/index.tsx
+#~ msgid "No runs yet — your tool calls will show up here."
+#~ msgstr "Henüz çalışma yok — araç çağrıların burada görünecek."
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "No SAML providers configured. Add one to enable IdP-based SSO for this workspace's end-users."
@@ -8451,8 +8497,8 @@ msgid "Passwords do not match"
 msgstr "Parolalar eşleşmiyor"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Paste <0>{mcpUrl}</0>"
-msgstr "<0>{mcpUrl}</0> adresini yapıştırın"
+#~ msgid "Paste <0>{mcpUrl}</0>"
+#~ msgstr "<0>{mcpUrl}</0> adresini yapıştırın"
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Paste a base64 SAMLResponse"
@@ -8469,6 +8515,10 @@ msgstr "sağlayıcıdan yapıştırın"
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Paste IdP metadata XML (optional — prefills the fields below)"
 msgstr "IdP metadata XML yapıştırın (isteğe bağlı — aşağıdaki alanları doldurur)"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Paste the endpoint above"
+msgstr "Yukarıdaki uç noktayı yapıştırın"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Paths"
@@ -9251,6 +9301,10 @@ msgstr "Sorgu tamam · {0} satır · {1}ms"
 msgid "Query returned no rows."
 msgstr "Sorgu hiç satır döndürmedi."
 
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Query your backend in natural language, browse the MCP tool catalog, and connect external clients over OAuth or an API key — every call scoped to your role and the per-key allowlist."
+msgstr "Arka ucunuzu doğal dilde sorgulayın, MCP araç kataloğuna göz atın ve harici istemcileri OAuth veya API anahtarıyla bağlayın — her çağrı rolünüze ve anahtar bazlı izin listesine göre kapsanır."
+
 #: src/client/admin/pages/jobs.tsx
 msgid "Queue"
 msgstr "Kuyruk"
@@ -9351,6 +9405,10 @@ msgstr "metnin tamamını oku"
 #: src/client/pages/oauth-consent.tsx
 msgid "Read your basic profile"
 msgstr "Temel profilinizi okuma"
+
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Read-leaning tools auto-run. Writes wait for a click to confirm."
+msgstr "Okuma ağırlıklı araçlar otomatik çalışır. Yazma işlemleri onay için tıklamayı bekler."
 
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/parity/database.tsx
@@ -11333,8 +11391,12 @@ msgid "Sign in"
 msgstr "Giriş yap"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Sign in and approve the authorization screen"
-msgstr "Giriş yapın ve yetkilendirme ekranını onaylayın"
+msgid "Sign in & approve"
+msgstr "Giriş yapın ve onaylayın"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+#~ msgid "Sign in and approve the authorization screen"
+#~ msgstr "Giriş yapın ve yetkilendirme ekranını onaylayın"
 
 #: src/client/pages/sign-in.tsx
 msgid "Sign in to <0>backlex</0>."
@@ -12546,8 +12608,8 @@ msgid "to execute"
 msgstr "çalıştırmak için"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "to run"
-msgstr "çalıştırmak için"
+#~ msgid "to run"
+#~ msgstr "çalıştırmak için"
 
 #: src/client/admin/storage/index.tsx
 msgid "Toggle"
@@ -12671,8 +12733,8 @@ msgid "Translate"
 msgstr "Çevir"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Translate natural language into operator-style queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
-msgstr "Doğal dili operatör-tabanlı sorgulara dönüştür, şema taslakları çıkar ve istediğin MCP aracını çalıştır — rolüne ve anahtar bazlı izin listene göre sınırlı. Claude Desktop'ın gördüğü yüzeyle aynı."
+#~ msgid "Translate natural language into operator-style queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
+#~ msgstr "Doğal dili operatör-tabanlı sorgulara dönüştür, şema taslakları çıkar ve istediğin MCP aracını çalıştır — rolüne ve anahtar bazlı izin listene göre sınırlı. Claude Desktop'ın gördüğü yüzeyle aynı."
 
 #. placeholder {0}: activeLocale.toUpperCase()
 #: src/client/admin/item-form.tsx
@@ -13764,3 +13826,7 @@ msgstr "Oturumunuzun süresi doldu — giriş yapıp istemciden yeniden deneyin.
 #: src/client/pages/public-form.tsx
 msgid "Your submission has been received."
 msgstr "Gönderiminiz alındı."
+
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Your tool calls show up here."
+msgstr "Araç çağrılarınız burada görünür."

@@ -1058,6 +1058,10 @@ msgstr "Add a ready-made vertical (blog, e-commerce, CRM, …) — grouped colle
 msgid "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
 msgstr "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
 
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Add a remote MCP connector"
+msgstr "Add a remote MCP connector"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Add a tag and press Enter…"
 msgstr "Add a tag and press Enter…"
@@ -1477,12 +1481,16 @@ msgid "An MCP client is asking to access this workspace on your behalf."
 msgstr "An MCP client is asking to access this workspace on your behalf."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Any OAuth-capable client connects with no key — the browser handles discovery, consent, and token exchange. Tools then run with <0>your own roles and permission rules</0>."
+msgstr "Any OAuth-capable client connects with no key — the browser handles discovery, consent, and token exchange. Tools then run with <0>your own roles and permission rules</0>."
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
 #~ msgstr "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
-msgstr "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
+#~ msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
+#~ msgstr "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
 
 #: src/client/admin/pages/agents.tsx
 msgid "any provider/model id"
@@ -1582,6 +1590,10 @@ msgstr "Applying…"
 msgid "Approve & run"
 msgstr "Approve & run"
 
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Approve the authorization screen — the connector inherits your roles."
+msgstr "Approve the authorization screen — the connector inherits your roles."
+
 #: src/client/admin/item-views.tsx
 msgid "April"
 msgstr "April"
@@ -1644,6 +1656,10 @@ msgstr "Ascending"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Ask"
 msgstr "Ask"
+
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Ask about your data — e.g. \"list published posts from last week, newest first\""
+msgstr "Ask about your data — e.g. \"list published posts from last week, newest first\""
 
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/ui.tsx
@@ -2334,6 +2350,10 @@ msgstr "Claude Desktop"
 #~ msgstr "claude.ai → Settings → Connectors → <0>Add custom connector</0>"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add."
+msgstr "claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add."
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "claude.ai connects over OAuth — no key to paste. Add the MCP URL as a custom connector and approve the consent screen; tools run with your roles and permission rules."
 #~ msgstr "claude.ai connects over OAuth — no key to paste. Add the MCP URL as a custom connector and approve the consent screen; tools run with your roles and permission rules."
 
@@ -2460,8 +2480,8 @@ msgid "Codex"
 msgstr "Codex"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> then <1>codex mcp login backlex</1>."
-msgstr "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> then <1>codex mcp login backlex</1>."
+#~ msgid "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> then <1>codex mcp login backlex</1>."
+#~ msgstr "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> then <1>codex mcp login backlex</1>."
 
 #: src/client/admin/sheet.tsx
 msgid "Collaboration"
@@ -2850,6 +2870,7 @@ msgid "copied"
 msgstr "copied"
 
 #: src/client/admin/item-collaboration.tsx
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Copied"
 msgstr "Copied"
@@ -3977,6 +3998,10 @@ msgstr "Drop it into any site — the form keeps its own theme."
 #~ msgid "Drop the iframe into any site — the form keeps its own theme."
 #~ msgstr "Drop the iframe into any site — the form keeps its own theme."
 
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Drop the MCP URL in as the server address — no token, no config file."
+msgstr "Drop the MCP URL in as the server address — no token, no config file."
+
 #: src/client/admin/collection-settings.tsx
 msgid "Drops the physical table and all rows. Permissions and revisions tied to the slug are removed too. This is irreversible."
 msgstr "Drops the physical table and all rows. Permissions and revisions tied to the slug are removed too. This is irreversible."
@@ -4034,8 +4059,8 @@ msgid "e.g. Content, SEO, Advanced"
 msgstr "e.g. Content, SEO, Advanced"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "e.g. posts published in the past 7 days, sorted by view_count desc"
-msgstr "e.g. posts published in the past 7 days, sorted by view_count desc"
+#~ msgid "e.g. posts published in the past 7 days, sorted by view_count desc"
+#~ msgstr "e.g. posts published in the past 7 days, sorted by view_count desc"
 
 #: src/client/admin/account-page.tsx
 msgid "Each code works once if you lose your authenticator. Store them somewhere safe — they won't be shown again."
@@ -4586,8 +4611,8 @@ msgid "Exact package name as published on npm."
 msgstr "Exact package name as published on npm."
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Examples"
-msgstr "Examples"
+#~ msgid "Examples"
+#~ msgstr "Examples"
 
 #: src/client/admin/pages/functions.tsx
 msgid "Examples: items:posts:created, items:posts:*, items:*:*"
@@ -5681,8 +5706,8 @@ msgid "In review"
 msgstr "In review"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "In your client, add a remote MCP server / custom connector (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
-msgstr "In your client, add a remote MCP server / custom connector (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
+#~ msgid "In your client, add a remote MCP server / custom connector (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
+#~ msgstr "In your client, add a remote MCP server / custom connector (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
 
 #: src/client/admin/pages/overview.tsx
 msgid "in-isolate, sync only"
@@ -6801,6 +6826,10 @@ msgstr "MCP · {0} tools"
 msgid "MCP access"
 msgstr "MCP access"
 
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "MCP endpoint"
+msgstr "MCP endpoint"
+
 #: src/client/components/mcp-key-modal.tsx
 msgid "MCP endpoint URL"
 msgstr "MCP endpoint URL"
@@ -6808,6 +6837,10 @@ msgstr "MCP endpoint URL"
 #: src/client/pages/api-keys.tsx
 msgid "MCP read-only"
 msgstr "MCP read-only"
+
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
+msgid "MCP tool calls from the Ask tab and connected clients land here."
+msgstr "MCP tool calls from the Ask tab and connected clients land here."
 
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "MCP tool catalog"
@@ -7641,6 +7674,10 @@ msgid "No JSON content defined."
 msgstr "No JSON content defined."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "no key needed"
+msgstr "no key needed"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "no key to paste"
 #~ msgstr "no key to paste"
 
@@ -7767,12 +7804,21 @@ msgid "No rows returned."
 msgstr "No rows returned."
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
-msgid "No runs in this bucket yet."
-msgstr "No runs in this bucket yet."
+msgid "No runs in this bucket"
+msgstr "No runs in this bucket"
+
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
+#~ msgid "No runs in this bucket yet."
+#~ msgstr "No runs in this bucket yet."
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "No runs yet — your tool calls will show up here."
-msgstr "No runs yet — your tool calls will show up here."
+#: src/client/admin/pages/ask-ai/runs-tab.tsx
+msgid "No runs yet"
+msgstr "No runs yet"
+
+#: src/client/admin/pages/ask-ai/index.tsx
+#~ msgid "No runs yet — your tool calls will show up here."
+#~ msgstr "No runs yet — your tool calls will show up here."
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "No SAML providers configured. Add one to enable IdP-based SSO for this workspace's end-users."
@@ -8451,8 +8497,8 @@ msgid "Passwords do not match"
 msgstr "Passwords do not match"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Paste <0>{mcpUrl}</0>"
-msgstr "Paste <0>{mcpUrl}</0>"
+#~ msgid "Paste <0>{mcpUrl}</0>"
+#~ msgstr "Paste <0>{mcpUrl}</0>"
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Paste a base64 SAMLResponse"
@@ -8469,6 +8515,10 @@ msgstr "paste from the provider"
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Paste IdP metadata XML (optional — prefills the fields below)"
 msgstr "Paste IdP metadata XML (optional — prefills the fields below)"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+msgid "Paste the endpoint above"
+msgstr "Paste the endpoint above"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Paths"
@@ -9251,6 +9301,10 @@ msgstr "Query ok · {0} row(s) · {1}ms"
 msgid "Query returned no rows."
 msgstr "Query returned no rows."
 
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Query your backend in natural language, browse the MCP tool catalog, and connect external clients over OAuth or an API key — every call scoped to your role and the per-key allowlist."
+msgstr "Query your backend in natural language, browse the MCP tool catalog, and connect external clients over OAuth or an API key — every call scoped to your role and the per-key allowlist."
+
 #: src/client/admin/pages/jobs.tsx
 msgid "Queue"
 msgstr "Queue"
@@ -9351,6 +9405,10 @@ msgstr "read the full text"
 #: src/client/pages/oauth-consent.tsx
 msgid "Read your basic profile"
 msgstr "Read your basic profile"
+
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Read-leaning tools auto-run. Writes wait for a click to confirm."
+msgstr "Read-leaning tools auto-run. Writes wait for a click to confirm."
 
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/parity/database.tsx
@@ -11333,8 +11391,12 @@ msgid "Sign in"
 msgstr "Sign in"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "Sign in and approve the authorization screen"
-msgstr "Sign in and approve the authorization screen"
+msgid "Sign in & approve"
+msgstr "Sign in & approve"
+
+#: src/client/admin/pages/ask-ai/connect-tab.tsx
+#~ msgid "Sign in and approve the authorization screen"
+#~ msgstr "Sign in and approve the authorization screen"
 
 #: src/client/pages/sign-in.tsx
 msgid "Sign in to <0>backlex</0>."
@@ -12546,8 +12608,8 @@ msgid "to execute"
 msgstr "to execute"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "to run"
-msgstr "to run"
+#~ msgid "to run"
+#~ msgstr "to run"
 
 #: src/client/admin/storage/index.tsx
 msgid "Toggle"
@@ -12671,8 +12733,8 @@ msgid "Translate"
 msgstr "Translate"
 
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "Translate natural language into operator-style queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
-msgstr "Translate natural language into operator-style queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
+#~ msgid "Translate natural language into operator-style queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
+#~ msgstr "Translate natural language into operator-style queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
 
 #. placeholder {0}: activeLocale.toUpperCase()
 #: src/client/admin/item-form.tsx
@@ -13764,3 +13826,7 @@ msgstr "Your session expired — sign in and retry from the client."
 #: src/client/pages/public-form.tsx
 msgid "Your submission has been received."
 msgstr "Your submission has been received."
+
+#: src/client/admin/pages/ask-ai/index.tsx
+msgid "Your tool calls show up here."
+msgstr "Your tool calls show up here."

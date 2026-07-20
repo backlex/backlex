@@ -186,8 +186,8 @@ prefer them or want to swap on cost / context / latency.
 
 | Provider | Model id | Notes |
 |---|---|---|
-| Anthropic | `anthropic/claude-opus-4-7` | Highest reasoning, slower, ~3× cost |
-| Anthropic | `anthropic/claude-sonnet-4-6` | Balanced — recommended for most queries |
+| Anthropic | `anthropic/claude-opus-4-8` | Highest reasoning, slower, ~3× cost |
+| Anthropic | `anthropic/claude-sonnet-5` | Balanced — recommended for most queries |
 | Anthropic | `anthropic/claude-haiku-4-5` | Fast, cheap, routine reads — **default** |
 | OpenAI    | `openai/gpt-5`               | OpenAI flagship; comparable to Opus |
 | Google    | `google/gemini-2.5-pro`      | Long context, multimodal |

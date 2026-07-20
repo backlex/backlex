@@ -6747,9 +6747,14 @@ msgstr "Maksimum depolama (bayt)"
 msgid "May"
 msgstr "Mayıs"
 
+#. placeholder {0}: toolCount ?? "…"
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "MCP · {MCP_TOOL_COUNT} tools"
-msgstr "MCP · {MCP_TOOL_COUNT} araç"
+msgid "MCP · {0} tools"
+msgstr "MCP · {0} araç"
+
+#: src/client/admin/pages/ask-ai/index.tsx
+#~ msgid "MCP · {MCP_TOOL_COUNT} tools"
+#~ msgstr "MCP · {MCP_TOOL_COUNT} araç"
 
 #: src/client/pages/api-keys.tsx
 msgid "MCP access"

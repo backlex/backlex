@@ -2,6 +2,7 @@ import { Hono, type MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import type { Env } from "../env";
+import { requireUser } from "../middleware/session";
 import { handleMcpRequest } from "../mcp/http";
 import { allTools } from "../mcp/tools";
 import type { McpMode, McpServerWiring } from "../mcp/types";
@@ -92,7 +93,16 @@ export const tenantMcpRoutes = (app: Hono<AppBindings>, env: Env) => {
  *  returning empty results because of permission filters. */
 export const adminMcpRoutes = (app: Hono<AppBindings>, env: Env) => {
   const handler = buildHandler(app, env, "admin");
-  return new Hono<AppBindings>()
-    .post("/", requireUserWithOAuthChallenge, requireAdmin, mcpRateLimit, handler)
-    .all("/", (c) => handler(c));
+  return (
+    new Hono<AppBindings>()
+      // Live tool count for the Ask-AI page header badge — the number is the
+      // whole MCP catalog (`allTools`), so the badge never drifts from the
+      // real surface the way a hardcoded constant did. Cheap: no descriptor
+      // building, no per-tool work.
+      .get("/count", requireUser, requireAdmin, (c) =>
+        c.json({ data: { count: allTools.length } }),
+      )
+      .post("/", requireUserWithOAuthChallenge, requireAdmin, mcpRateLimit, handler)
+      .all("/", (c) => handler(c))
+  );
 };

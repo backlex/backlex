@@ -62,7 +62,7 @@ interface RunStep {
 const MODEL_OPTIONS = [
   { value: "", label: "Default", hint: "Haiku 4.5 — fast & cheap" },
   { value: "anthropic/claude-opus-4-8", label: "Claude Opus 4.8", hint: "most capable" },
-  { value: "anthropic/claude-sonnet-4-6", label: "Claude Sonnet 4.6", hint: "balanced" },
+  { value: "anthropic/claude-sonnet-5", label: "Claude Sonnet 5", hint: "balanced" },
   { value: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5", hint: "fast & cheap" },
 ] as const;
 const MODEL_CUSTOM = "__custom__";

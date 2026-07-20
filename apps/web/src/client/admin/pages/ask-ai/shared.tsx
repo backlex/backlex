@@ -89,11 +89,6 @@ export const DESTRUCTIVE_PATTERN = /\b(delete|drop|revoke|suspend)\b/;
 export const WRITE_PATTERN =
   /\b(insert|update|delete|drop|create|upload|grant|revoke|invoke|suspend|activate|assign|unassign|send|test)\b/;
 
-// Bumping these only matters when the catalog grows; the badge in the page
-// header surfaces the total so the docs page can stay accurate. Source of
-// truth: apps/web/src/server/mcp/tools/index.ts::allTools.length.
-export const MCP_TOOL_COUNT = 74;
-
 /** Lightweight JSON syntax highlighter — ported verbatim from the design's
  *  `JsonBlock` (ai-mcp.jsx:257). Avoids pulling a code-editor dependency
  *  for pretty-printing static args. */

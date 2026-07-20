@@ -13,21 +13,17 @@
 
 /** Claude Desktop's `mcpServers` entry. Cursor uses the same JSON shape
  *  through its `Settings → MCP → Add` flow, so `cursorSnippet` is an
- *  alias of this generator. */
+ *  alias of this generator. Runs the published CLI via `npx` — portable
+ *  (no repo checkout / absolute path / bun install), the standard way MCP
+ *  stdio servers are launched. `@backlex/cli`'s `mcp` command is a stdio↔HTTP
+ *  bridge to the remote `/mcp` endpoint. */
 export const claudeDesktopSnippet = (url: string, secret: string): string =>
   JSON.stringify(
     {
       mcpServers: {
         backlex: {
-          command: "bun",
-          args: [
-            "/abs/path/to/backlex/packages/cli/bin/backlex.ts",
-            "mcp",
-            "--url",
-            url,
-            "--key",
-            secret,
-          ],
+          command: "npx",
+          args: ["-y", "@backlex/cli", "mcp", "--url", url, "--key", secret],
         },
       },
     },

@@ -6747,9 +6747,14 @@ msgstr "Max storage (bytes)"
 msgid "May"
 msgstr "May"
 
+#. placeholder {0}: toolCount ?? "…"
 #: src/client/admin/pages/ask-ai/index.tsx
-msgid "MCP · {MCP_TOOL_COUNT} tools"
-msgstr "MCP · {MCP_TOOL_COUNT} tools"
+msgid "MCP · {0} tools"
+msgstr "MCP · {0} tools"
+
+#: src/client/admin/pages/ask-ai/index.tsx
+#~ msgid "MCP · {MCP_TOOL_COUNT} tools"
+#~ msgstr "MCP · {MCP_TOOL_COUNT} tools"
 
 #: src/client/pages/api-keys.tsx
 msgid "MCP access"

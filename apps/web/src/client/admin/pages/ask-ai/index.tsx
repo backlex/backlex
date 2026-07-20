@@ -40,7 +40,6 @@ import {
   DEFAULT_PROMPT,
   DESTRUCTIVE_PATTERN,
   JsonBlock,
-  MCP_TOOL_COUNT,
   ModelOption,
   ModelPicker,
   PlanResponse,
@@ -69,13 +68,13 @@ export function AskAiPage({
   const MODELS = useMemo<ModelOption[]>(
     () => [
       {
-        id: "anthropic/claude-opus-4-7",
-        label: "claude-opus-4-7",
+        id: "anthropic/claude-opus-4-8",
+        label: "claude-opus-4-8",
         hint: t`highest reasoning · slower · ~3x cost`,
       },
       {
-        id: "anthropic/claude-sonnet-4-6",
-        label: "claude-sonnet-4-6",
+        id: "anthropic/claude-sonnet-5",
+        label: "claude-sonnet-5",
         hint: t`balanced — recommended for most queries`,
         default: true,
       },
@@ -225,7 +224,19 @@ export function AskAiPage({
   const [keys, setKeys] = useState<ApiKeyRow[]>([]);
   const [keysLoading, setKeysLoading] = useState(true);
   const [selectedKeyId, setSelectedKeyId] = useState<string | null>(null);
+  // Live MCP tool count for the header badge — fetched so the number tracks the
+  // real catalog instead of a hardcoded constant that silently drifts. `null`
+  // while loading; the badge renders once it resolves.
+  const [toolCount, setToolCount] = useState<number | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    api<{ data: { count: number } }>("/api/admin/mcp/count")
+      .then((r) => setToolCount(r.data.count))
+      .catch(() => {
+        // Leave the badge count-less rather than showing a stale guess.
+      });
+  }, []);
 
   const refreshKeys = useCallback(async () => {
     try {
@@ -367,7 +378,7 @@ export function AskAiPage({
         title={<Trans>Ask AI</Trans>}
         badges={
           <Badge variant="default" mono>
-            <Trans>MCP · {MCP_TOOL_COUNT} tools</Trans>
+            <Trans>MCP · {toolCount ?? "…"} tools</Trans>
           </Badge>
         }
         description={

@@ -594,6 +594,27 @@ describe("MCP — admin mount gate", () => {
       fresh.cleanup();
     }
   });
+
+  test("GET /api/admin/mcp/count returns the live catalog size (badge source)", async () => {
+    const res = await h.fetch("/api/admin/mcp/count");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { count: number } };
+    // Matches what tools/list exposes on the same mount — the Ask-AI header
+    // badge fetches this instead of hardcoding a number that drifts.
+    const list = await mcp(h, { jsonrpc: "2.0", id: 2, method: "tools/list" }, "/api/admin/mcp");
+    expect(body.data.count).toBe((list as RpcSuccess).result.tools.length);
+    expect(body.data.count).toBeGreaterThanOrEqual(74);
+  });
+
+  test("GET /api/admin/mcp/count requires auth", async () => {
+    const fresh = makeHarness();
+    try {
+      const res = await fresh.fetch("/api/admin/mcp/count");
+      expect(res.status).toBe(401);
+    } finally {
+      fresh.cleanup();
+    }
+  });
 });
 
 describe("MCP — API key (pak_) auth path", () => {

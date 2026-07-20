@@ -106,9 +106,9 @@ export function ConnectTab({
         <div className="flex flex-col gap-3 px-5 pb-4 pt-1 text-[12.5px] text-muted-foreground">
           <Trans>
             Any OAuth-capable MCP client connects with no key — claude.ai,
-            Cursor, ChatGPT connectors, VS Code, and recent Claude Desktop. Add
-            the MCP URL as a remote / custom connector and approve the consent
-            screen; tools run with your roles and permission rules.
+            Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude
+            Desktop. Add the MCP URL as a remote / custom connector and approve
+            the consent screen; tools run with your roles and permission rules.
           </Trans>
           <ol className="m-0 list-decimal space-y-1 pl-4 text-[12px]">
             <li>
@@ -128,6 +128,19 @@ export function ConnectTab({
               <Trans>Sign in and approve the authorization screen</Trans>
             </li>
           </ol>
+          <span className="text-[11.5px]">
+            <Trans>
+              Codex CLI:{" "}
+              <span className="font-mono text-foreground">
+                codex mcp add backlex --url {mcpUrl}
+              </span>{" "}
+              then{" "}
+              <span className="font-mono text-foreground">
+                codex mcp login backlex
+              </span>
+              .
+            </Trans>
+          </span>
           <button
             type="button"
             className="flex w-fit cursor-pointer items-center gap-1.5 rounded-control border border-border bg-muted/40 px-2.5 py-1.5 font-mono text-[11.5px] text-foreground hover:bg-accent"
@@ -236,9 +249,9 @@ export function ConnectTab({
             )}
             {client === "codex" && (
               <Trans>
-                Add to <span className="font-mono">~/.codex/config.toml</span>,
-                then restart Codex. Runs the backlex CLI as a stdio bridge to{" "}
-                <span className="font-mono">/mcp</span>.
+                Add to <span className="font-mono">~/.codex/config.toml</span>{" "}
+                (native Streamable HTTP). Or skip the key and connect over OAuth
+                above with <span className="font-mono">codex mcp login</span>.
               </Trans>
             )}
             {client === "curl" && (

@@ -84,7 +84,7 @@ describe("<AskAiPage>", () => {
     });
     renderWithProviders(<AskAiPage pushToast={() => {}} />);
 
-    const textarea = await screen.findByPlaceholderText(/posts published/);
+    const textarea = await screen.findByPlaceholderText(/Ask about your data/);
     fireEvent.change(textarea, { target: { value: "top customers by spend" } });
     const runButton = screen
       .getAllByRole("button")
@@ -105,7 +105,7 @@ describe("<AskAiPage>", () => {
     const runCalls = mockFetchRoutes();
     renderWithProviders(<AskAiPage pushToast={() => {}} />);
 
-    const textarea = await screen.findByPlaceholderText(/posts published/);
+    const textarea = await screen.findByPlaceholderText(/Ask about your data/);
     fireEvent.change(textarea, { target: { value: "sum deal amounts" } });
     const runButton = screen
       .getAllByRole("button")

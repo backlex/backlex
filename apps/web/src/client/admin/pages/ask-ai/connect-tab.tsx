@@ -6,7 +6,7 @@
 //   - Ask     — natural-language → MCP tool dispatcher (Phase 1)
 //   - Tools   — searchable catalog + per-key guard editor (Phase 2)
 //   - Runs    — filtered activity table with CSV export    (Phase 2)
-//   - Connect — Claude Desktop / Cursor / Codex / curl snippets    (Phase 2)
+//   - Connect — OAuth (no-key) primary + API-key snippets for headless/CI (Phase 2)
 //
 // Backend hops the Ask tab still drives:
 //   POST /api/admin/ai/plan  →  {rationale, tool, args, model, usage}
@@ -86,12 +86,84 @@ export function ConnectTab({
   };
 
   return (
-    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_340px]">
+    <div className="flex flex-col gap-6">
+      {/* Primary — OAuth (no key). The connection flow is standard MCP OAuth
+          (discovery + DCR + PKCE), so it's client-agnostic: any OAuth-capable
+          MCP client uses it, not just claude.ai. Lead with this. */}
       <Card className="py-0 gap-0">
-        <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-3">
+        <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-2">
+          <I.Sparkles size={14} className="text-primary" />
+          <span className="text-[13px] font-semibold">
+            <Trans>Connect over OAuth</Trans>
+          </span>
+          <Badge variant="default" mono>
+            <Trans>recommended</Trans>
+          </Badge>
+          <span className="ml-auto text-[11.5px] text-muted-foreground">
+            <Trans>no key to paste</Trans>
+          </span>
+        </div>
+        <div className="flex flex-col gap-3 px-5 pb-4 pt-1 text-[12.5px] text-muted-foreground">
+          <Trans>
+            Any OAuth-capable MCP client connects with no key — claude.ai,
+            Cursor, ChatGPT connectors, VS Code, and recent Claude Desktop. Add
+            the MCP URL as a remote / custom connector and approve the consent
+            screen; tools run with your roles and permission rules.
+          </Trans>
+          <ol className="m-0 list-decimal space-y-1 pl-4 text-[12px]">
+            <li>
+              <Trans>
+                In your client, add a remote MCP server / custom connector
+                (claude.ai → Settings → Connectors → Add custom connector;
+                Cursor → Settings → MCP → Add).
+              </Trans>
+            </li>
+            <li>
+              <Trans>
+                Paste{" "}
+                <span className="font-mono text-foreground">{mcpUrl}</span>
+              </Trans>
+            </li>
+            <li>
+              <Trans>Sign in and approve the authorization screen</Trans>
+            </li>
+          </ol>
+          <button
+            type="button"
+            className="flex w-fit cursor-pointer items-center gap-1.5 rounded-control border border-border bg-muted/40 px-2.5 py-1.5 font-mono text-[11.5px] text-foreground hover:bg-accent"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(mcpUrl);
+                pushToast(t`MCP URL copied`);
+              } catch {
+                pushToast(t`Could not copy — clipboard blocked.`, "error");
+              }
+            }}
+          >
+            <I.Copy size={12} />
+            {mcpUrl}
+          </button>
+          <span className="text-[11.5px]">
+            <Trans>
+              Tokens without the{" "}
+              <span className="font-mono text-foreground">mcp:write</span> scope
+              run read-only.
+            </Trans>
+          </span>
+        </div>
+      </Card>
+
+      {/* Secondary — API key. For clients that can't do the browser OAuth flow:
+          headless agents, CI, scripts, the backlex CLI/SDK, and MCP clients
+          without OAuth support (Codex CLI today). */}
+      <Card className="py-0 gap-0">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-5 pt-4 pb-3">
           <I.Plug size={13} />
           <span className="text-[13px] font-semibold">
-            <Trans>Connect an MCP client</Trans>
+            <Trans>API key</Trans>
+          </span>
+          <span className="text-[11.5px] text-muted-foreground">
+            <Trans>headless · CI · scripts · non-OAuth clients</Trans>
           </span>
           <div className="ml-auto">
             <Tabs
@@ -158,7 +230,8 @@ export function ConnectTab({
             )}
             {client === "cursor" && (
               <Trans>
-                Settings → MCP → Add. Same JSON shape Claude Desktop uses.
+                Settings → MCP → Add. Same JSON shape Claude Desktop uses. (Or
+                skip the key and connect over OAuth above.)
               </Trans>
             )}
             {client === "codex" && (
@@ -173,68 +246,6 @@ export function ConnectTab({
                 Direct Streamable HTTP — useful for CI agents and smoke tests.
               </Trans>
             )}
-          </span>
-        </div>
-      </Card>
-
-      <Card className="py-0 gap-0">
-        <div className="flex items-center gap-2 px-5 pt-4 pb-3">
-          <I.Sparkles size={13} className="text-primary" />
-          <span className="text-[13px] font-semibold">
-            <Trans>Hosted Claude</Trans>
-          </span>
-          <Badge
-            variant="outline"
-            mono
-            className="ml-1 border-sky-500/40 text-sky-700 dark:text-sky-300"
-          >
-            oauth
-          </Badge>
-        </div>
-        <div className="flex flex-col gap-3 px-5 pb-4 text-[12.5px] text-muted-foreground">
-          <Trans>
-            claude.ai connects over OAuth — no key to paste. Add the MCP URL as
-            a custom connector and approve the consent screen; tools run with
-            your roles and permission rules.
-          </Trans>
-          <ol className="m-0 list-decimal space-y-1 pl-4 text-[12px]">
-            <li>
-              <Trans>
-                claude.ai → Settings → Connectors →{" "}
-                <span className="text-foreground">Add custom connector</span>
-              </Trans>
-            </li>
-            <li>
-              <Trans>
-                Paste{" "}
-                <span className="font-mono text-foreground">{mcpUrl}</span>
-              </Trans>
-            </li>
-            <li>
-              <Trans>Sign in and approve the authorization screen</Trans>
-            </li>
-          </ol>
-          <button
-            type="button"
-            className="flex w-fit cursor-pointer items-center gap-1.5 rounded-control border border-border bg-muted/40 px-2.5 py-1.5 font-mono text-[11.5px] text-foreground hover:bg-accent"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(mcpUrl);
-                pushToast(t`MCP URL copied`);
-              } catch {
-                pushToast(t`Could not copy — clipboard blocked.`, "error");
-              }
-            }}
-          >
-            <I.Copy size={12} />
-            {mcpUrl}
-          </button>
-          <span className="text-[11.5px]">
-            <Trans>
-              Tokens without the{" "}
-              <span className="font-mono text-foreground">mcp:write</span> scope
-              run read-only.
-            </Trans>
           </span>
         </div>
       </Card>

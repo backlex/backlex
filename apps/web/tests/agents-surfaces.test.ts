@@ -159,7 +159,7 @@ describe("agents — MCP surface", () => {
       body: JSON.stringify({ jsonrpc: "2.0", id: 9, method: "tools/list" }),
     });
     const tools = ((await listRes.json()) as { result: { tools: { name: string }[] } }).result.tools;
-    const names = tools.map((t) => t.name);
+    const names = tools.map((t) => t.name.replaceAll("-", "."));
     expect(names).toContain("agents.list");
     expect(names).toContain("agents.get");
     expect(names).toContain("agents.run");

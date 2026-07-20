@@ -187,7 +187,9 @@ describe("backups — MCP surface", () => {
     const tools = ((await listRes.json()) as {
       result: { tools: { name: string; kind?: string }[] };
     }).result.tools;
-    const byName = new Map(tools.map((t) => [t.name, t]));
+    // Tenant-mount names arrive hyphenated (claude.ai contract) — key the map
+    // on the canonical dotted id so the kind assertions below stay readable.
+    const byName = new Map(tools.map((t) => [t.name.replaceAll("-", "."), t]));
     expect(byName.get("backups.list")?.kind).toBe("read");
     expect(byName.get("backups.run")?.kind).toBe("write");
     expect(byName.get("backups.restore")?.kind).toBe("write");

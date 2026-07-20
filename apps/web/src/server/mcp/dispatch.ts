@@ -13,6 +13,7 @@ import { resolveKind } from "./kind";
 import { listResources, listResourceTemplates, readResource } from "./resources";
 import { getPrompt, listPrompts } from "./prompts";
 import { complete } from "./completions";
+import { fromWireToolName, toWireToolName } from "./wire-names";
 
 /** The protocol version we prefer (latest we implement). Returned from
  *  `initialize` when the client doesn't request a version we recognise. */
@@ -44,10 +45,16 @@ const success = (id: JsonRpcRequest["id"], result: unknown): JsonRpcResponse => 
 const findTool = (tools: McpTool[], name: string): McpTool | undefined =>
   tools.find((t) => t.name === name);
 
-const toolDescriptor = (t: McpTool) => {
+const toolDescriptor = (t: McpTool, mode: McpServerWiring["mode"]) => {
   const kind = resolveKind(t);
   return {
-    name: t.name,
+    // Wire name: on the tenant mount (external agents — claude.ai custom
+    // connectors, Claude Desktop, Cursor, curl) dots → hyphens so strict
+    // clients accept the `^[a-zA-Z0-9_-]{1,64}$` tool contract; `tools/call`
+    // translates back. The admin mount (`/api/admin/mcp`, the Ask-AI Tools
+    // tab) keeps the canonical dotted id — the tab round-trips these names
+    // into the per-key `mcpTools` allowlist, which the guard matches dotted.
+    name: mode === "tenant" ? toWireToolName(t.name) : t.name,
     description: t.description,
     inputSchema: t.inputSchema,
     ...(t.outputSchema ? { outputSchema: t.outputSchema } : {}),
@@ -164,7 +171,7 @@ export const dispatch = async (
       return success(id!, {
         tools: wiring.tools
           .filter((t) => allowedNames.has(t.name))
-          .map(toolDescriptor),
+          .map((t) => toolDescriptor(t, wiring.mode)),
       });
     }
 
@@ -176,7 +183,15 @@ export const dispatch = async (
       if (typeof params.name !== "string") {
         return error(id ?? null, RPC_ERR.INVALID_PARAMS, "params.name must be a string");
       }
-      const tool = findTool(wiring.tools, params.name);
+      // Translate the wire name (hyphens) back to the canonical dotted id
+      // before anything downstream — findTool, the guard allowlist, and the
+      // activity log all key on the dotted id. A client that sent the dotted
+      // id directly resolves unchanged.
+      const canonicalName = fromWireToolName(
+        params.name,
+        new Set(wiring.tools.map((t) => t.name)),
+      );
+      const tool = findTool(wiring.tools, canonicalName);
       if (!tool) {
         return error(id ?? null, RPC_ERR.METHOD_NOT_FOUND, `unknown tool: ${params.name}`);
       }
@@ -185,7 +200,7 @@ export const dispatch = async (
       // error, not bounce around the REST layer first. The kind passed here is
       // the same one the descriptor advertised, so read-only is enforced on the
       // tool's true classification (not a separate name heuristic).
-      const guardCheck = checkToolCall(params.name, resolveKind(tool), guards);
+      const guardCheck = checkToolCall(canonicalName, resolveKind(tool), guards);
       if (!guardCheck.ok) {
         return success(id!, {
           content: [{ type: "text", text: `${guardCheck.code}: ${guardCheck.message}` }],

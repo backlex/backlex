@@ -531,14 +531,17 @@ export function KeyPicker({
   }
   if (keys.length === 0) {
     return (
-      <div className="rounded-surface border border-dashed border-border px-3 py-2 text-[12px] text-muted-foreground">
-        <Trans>
-          No live keys — create one on the{" "}
-          <a className="font-mono underline" href="/api-keys">
-            API Keys
-          </a>{" "}
-          page first.
-        </Trans>
+      <div className="flex items-start gap-2 rounded-control border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700 dark:text-amber-300">
+        <I.Info size={13} className="mt-0.5 shrink-0" />
+        <span>
+          <Trans>
+            No live keys — create one on the{" "}
+            <a className="font-medium underline" href="/api-keys">
+              API Keys
+            </a>{" "}
+            page first.
+          </Trans>
+        </span>
       </div>
     );
   }

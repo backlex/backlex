@@ -7641,8 +7641,8 @@ msgid "No JSON content defined."
 msgstr "JSON içeriği tanımlanmamış."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
-msgid "no key to paste"
-msgstr "yapıştırılacak anahtar yok"
+#~ msgid "no key to paste"
+#~ msgstr "yapıştırılacak anahtar yok"
 
 #: src/client/admin/pages/forms.tsx
 msgid "No language found."

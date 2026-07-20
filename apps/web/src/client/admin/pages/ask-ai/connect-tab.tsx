@@ -99,9 +99,6 @@ export function ConnectTab({
           <Badge variant="default" mono>
             <Trans>recommended</Trans>
           </Badge>
-          <span className="ml-auto text-[11.5px] text-muted-foreground">
-            <Trans>no key to paste</Trans>
-          </span>
         </div>
         <div className="flex flex-col gap-3 px-5 pb-4 pt-1 text-[12.5px] text-muted-foreground">
           <Trans>

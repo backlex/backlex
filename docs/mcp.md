@@ -282,10 +282,9 @@ Every tool delegates to the same REST endpoint the admin UI uses, so:
    {
      "mcpServers": {
        "backlex": {
-         "command": "bun",
+         "command": "npx",
          "args": [
-           "/abs/path/to/backlex/packages/cli/bin/backlex.ts",
-           "mcp",
+           "-y", "@backlex/cli", "mcp",
            "--url", "https://your-backlex.example.com/mcp",
            "--key", "pak_xxxxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
          ]
@@ -294,7 +293,7 @@ Every tool delegates to the same REST endpoint the admin UI uses, so:
    }
    ```
 
-   On a globally-installed CLI, swap the absolute path for `backlex`.
+   `npx` pulls the published `@backlex/cli` on first run — no repo checkout or absolute path needed.
 3. Restart Claude Desktop. The MCP server appears under the 🔌 icon; the
    13 tools listed above are now callable from any conversation.
 
@@ -308,10 +307,9 @@ Cursor reads the same `mcpServers` shape under `Settings → MCP → Add`:
 
 ```json
 {
-  "command": "bun",
+  "command": "npx",
   "args": [
-    "/abs/path/to/backlex/packages/cli/bin/backlex.ts",
-    "mcp",
+    "-y", "@backlex/cli", "mcp",
     "--url", "https://your-backlex.example.com/mcp",
     "--key", "pak_…"
   ]

@@ -3,7 +3,7 @@ title: Vector search & AI
 description: Semantic (vector) search over your collections — pgvector on Postgres, native vectors on Turso/libSQL, Cloudflare Vectorize on D1.
 ---
 
-backlex can embed your records and run semantic (vector) search over them. Mark
+Backlex can embed your records and run semantic (vector) search over them. Mark
 a collection vectorizable, and every write auto-embeds the chosen fields and
 stores the vector; queries embed the search text and run approximate
 nearest-neighbour (ANN) search. The same vectors back the [Ask AI](/ask-ai)

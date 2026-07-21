@@ -5,7 +5,7 @@ description: Provider matrix for the SQLite dialect — Bun SQLite, Cloudflare D
 
 # Database providers (SQLite)
 
-backlex' SQLite dialect ships against four transports — local Bun, D1,
+Backlex' SQLite dialect ships against four transports — local Bun, D1,
 libSQL/Turso, and LiteFS. The schema, migrations, permission compiler,
 and queries are identical across all of them; what changes is *where the
 bytes live* and *how the runtime talks to them*.
@@ -77,7 +77,7 @@ vector endpoints on those providers fail loud with a clear message.
   - `file:…` — local libSQL file (rare; prefer Bun SQLite)
 - `LIBSQL_AUTH_TOKEN` is required for any Turso URL; optional for
   self-hosted `sqld` with auth disabled.
-- The libSQL client is pure JS + fetch — works on every runtime backlex
+- The libSQL client is pure JS + fetch — works on every runtime Backlex
   supports including Vercel Edge and Netlify Edge (whereas Bun SQLite
   needs `bun:sqlite`, which those edges don't have).
 - Boot-time auto-migrate runs on first request, same as Postgres. To run
@@ -93,7 +93,7 @@ vector endpoints on those providers fail loud with a clear message.
   binding and no Postgres. This is the only SQLite provider with in-database
   vectors. See [vector-search.md](/docs/vector-search/).
 - Embedded replicas (`@libsql/client` `syncUrl`) are out of scope for
-  backlex — open a custom client outside the standard adapter if you
+  Backlex — open a custom client outside the standard adapter if you
   need them.
 
 ### LiteFS (Fly.io)
@@ -117,13 +117,13 @@ vector endpoints on those providers fail loud with a clear message.
       x-fly-replay = "region={{ env.PRIMARY_REGION }}"
   ```
 
-  This sits outside backlex; the app itself doesn't need a
+  This sits outside Backlex; the app itself doesn't need a
   primary/replica concept.
 - LiteFS isn't an edge transport — it needs FUSE, so it only runs on
   Bun / Node containers (Fly Machines, Railway, a VPS).
 - `PRAGMA journal_mode` on LiteFS-mounted files is fixed to a
   LiteFS-compatible mode by the FUSE layer; the `journal_mode = WAL`
-  backlex tries to set may no-op silently — that's expected.
+  Backlex tries to set may no-op silently — that's expected.
 
 ## Auto-migrate compatibility
 

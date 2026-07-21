@@ -4,7 +4,7 @@ description: Store one-way hashed secrets in a collection — write-only, verify
 ---
 
 A `hash` field stores a **one-way hashed secret** — a password, PIN, API
-secret, or any value you must be able to *check* but never *read*. backlex
+secret, or any value you must be able to *check* but never *read*. Backlex
 scrypt-hashes the plaintext on write and stores only the digest; reads always
 return `null`; the only way to test a value is the verify endpoint.
 

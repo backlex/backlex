@@ -1,9 +1,9 @@
 ---
 title: Ask AI (admin page)
-description: Natural-language MCP-tool dispatch from the backlex admin. Translate prompts into reviewable tool calls, approve or auto-run reads, and watch the audit log fill itself.
+description: Natural-language MCP-tool dispatch from the Backlex admin. Translate prompts into reviewable tool calls, approve or auto-run reads, and watch the audit log fill itself.
 ---
 
-The **Ask AI** page in the backlex admin (sidebar → *Ask AI*) lets an
+The **Ask AI** page in the Backlex admin (sidebar → *Ask AI*) lets an
 operator type a question, get back a single proposed MCP tool call with
 JSON arguments, edit the arguments if the model picked imperfectly, and
 then execute. Reads (`collections.list`, `vector.search`, `schema.*`, …)
@@ -108,7 +108,7 @@ connect steps for claude.ai (see below).
 ### Hosted Claude (OAuth)
 
 claude.ai custom connectors can't paste an API key — they require the
-remote MCP server to speak OAuth. backlex ships a full OAuth 2.1
+remote MCP server to speak OAuth. Backlex ships a full OAuth 2.1
 authorization server for `/mcp`, powered by better-auth's `mcp` plugin
 (enabled in `packages/auth`; tables `oauth_applications` /
 `oauth_access_tokens` / `oauth_consents`):
@@ -140,7 +140,7 @@ End-to-end coverage lives in `tests/mcp-oauth.test.ts`.
 
 ## Requirements
 
-- An AI provider credential on the backlex deployment. backlex routes
+- An AI provider credential on the Backlex deployment. Backlex routes
   through [Vercel AI Gateway](https://ai-gateway.vercel.sh) by default —
   set `AI_GATEWAY_API_KEY` and one key reaches Anthropic, OpenAI, Google,
   and every other gateway-supported provider. The UI ships provider-

@@ -3,7 +3,7 @@ title: Schema versions
 description: Migration diffing & schema branching — snapshot and branch your schema, diff any two versions into a categorized change list, and apply a target to migrate the live schema with destructive changes gated behind a confirm.
 ---
 
-backlex's schema is **dynamic**: a collection is a metadata row plus a physical
+Backlex's schema is **dynamic**: a collection is a metadata row plus a physical
 table that the additive applier (`applyCollection`) maintains. Schema versions
 add GitOps-for-schema on top of that model — snapshot the schema, diff any two
 versions, branch off to stage changes, and apply a target to migrate the live
@@ -41,7 +41,7 @@ additive-only contract:
   for a faithful restore but free to apply.
 
 Adopted collections never emit DDL — applying changes to an adopted table only
-updates backlex's metadata; the user's table is never touched.
+updates Backlex's metadata; the user's table is never touched.
 
 ## The GitOps loop
 
@@ -68,7 +68,7 @@ drops metadata rows for collections that vanished from the target.
 
 ## Surfaces
 
-Schema versions reach every backlex surface (mirrors `flows` / `dashboards`):
+Schema versions reach every Backlex surface (mirrors `flows` / `dashboards`):
 
 ### REST — `/api/admin/schema` (platform-admin gated)
 

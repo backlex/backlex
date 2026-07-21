@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: The big picture of backlex in one page — repo shape, runtimes, and adapter layers.
+description: The big picture of Backlex in one page — repo shape, runtimes, and adapter layers.
 ---
 
 The big picture in one page.

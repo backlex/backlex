@@ -18,7 +18,7 @@ store its credentials (encrypted at rest), and send.
 | `console` | — | Dev only; logs the notification to stdout. |
 
 All three real providers can be active at once: when several have credentials,
-backlex composes them into one fan-out adapter and routes each device by its
+Backlex composes them into one fan-out adapter and routes each device by its
 `platform`.
 
 ## Configuration

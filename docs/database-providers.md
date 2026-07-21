@@ -5,7 +5,7 @@ description: Provider matrix for the Postgres dialect — self-host, Supabase, N
 
 # Database providers
 
-backlex runs on two SQL dialects — Postgres (`pg`) and SQLite — and within
+Backlex runs on two SQL dialects — Postgres (`pg`) and SQLite — and within
 each dialect it accepts several wire-compatible providers. Picking a
 provider is mostly an env-var change; the schema, migrations, permission
 compiler, and queries are the same for every entry in a column.
@@ -49,12 +49,12 @@ The Postgres driver is chosen with `DATABASE_DRIVER`:
 ### Supabase
 
 - The **transaction pooler** on port `6543` is the right URL — it terminates
-  prepared statements before they hit Postgres, which is why backlex sets
+  prepared statements before they hit Postgres, which is why Backlex sets
   `prepare: false` on the postgres-js driver. Using the **session pooler**
   (`5432`) also works, but you lose the pooler's protection against connection
   exhaustion on serverless invocations.
 - Enable pgvector once per project: **Database → Extensions → `vector` → Enable**.
-- Supabase Realtime is *not* used. backlex has its own realtime layer
+- Supabase Realtime is *not* used. Backlex has its own realtime layer
   (`docs/realtime.md`) over SSE / Durable Objects, which respects the
   permission DSL — Supabase Realtime ignores it.
 
@@ -74,7 +74,7 @@ The Postgres driver is chosen with `DATABASE_DRIVER`:
 
 - Xata speaks standard Postgres — the `postgres-js` driver works out of
   the box with the connection string from the Xata dashboard.
-- **No pgvector.** backlex detects `.xata.sh` URLs and routes vector
+- **No pgvector.** Backlex detects `.xata.sh` URLs and routes vector
   endpoints to `noVectorAdapter` unless a Cloudflare Vectorize binding
   is present (`VECTORIZE_OPENAI` / `VECTORIZE_OPENAI_LARGE` /
   `VECTORIZE_BGE_M3` / `VECTORIZE_SELF_HOST_BGE_M3`). Two combinations
@@ -82,12 +82,12 @@ The Postgres driver is chosen with `DATABASE_DRIVER`:
   - **Xata + Cloudflare Workers** → bind a Vectorize index, vector
     endpoints route there automatically.
   - **Xata for relational + another PG for vector** → not supported in a
-    single deploy (backlex uses one DB). Use Vectorize.
+    single deploy (Backlex uses one DB). Use Vectorize.
 - The URL embeds the branch name *after* the database with a colon:
-  `…/<db>:<branch>`. backlex doesn't manage Xata branches; the branch is
+  `…/<db>:<branch>`. Backlex doesn't manage Xata branches; the branch is
   fixed at deploy time via the URL.
 - Workspace-level full-text search via Xata's `/search` endpoint is also
-  not used — backlex uses Postgres `tsvector` + `websearch_to_tsquery`
+  not used — Backlex uses Postgres `tsvector` + `websearch_to_tsquery`
   on the underlying table, which goes through the standard wire protocol.
 
 ### Hyperdrive (CF Workers only)

@@ -3,7 +3,7 @@ title: Resumable uploads
 description: Chunked, resumable file uploads over the TUS 1.0.0 protocol — survive dropped connections, resume from the committed offset, and push files larger than a single request. Works with Uppy / tus-js-client out of the box.
 ---
 
-backlex speaks the **[TUS 1.0.0](https://tus.io/) resumable upload protocol** at
+Backlex speaks the **[TUS 1.0.0](https://tus.io/) resumable upload protocol** at
 `/api/uploads`. Instead of streaming a whole file in one `PUT` (which a dropped
 connection loses, and which can blow the per-request memory/size limits on edge
 runtimes), a TUS client splits the file into chunks and `PATCH`es them one at a
@@ -13,7 +13,7 @@ offset and continues from there.
 Because it is **standard TUS**, any TUS client works against it directly —
 [Uppy](https://uppy.io/docs/tus/), [tus-js-client](https://github.com/tus/tus-js-client),
 the Go/Python/Swift/Kotlin clients — just point them at `/api/uploads`. The
-backlex SDK also ships a thin helper (`storage.uploadResumable`).
+Backlex SDK also ships a thin helper (`storage.uploadResumable`).
 
 ## When it's used
 
@@ -66,7 +66,7 @@ All endpoints carry `Tus-Resumable: 1.0.0`. Supported extensions:
 | `DELETE` | `/api/uploads/{id}` | Terminate a session and discard staged parts. |
 
 `Upload-Metadata` is the standard comma-separated `name base64(value)` list.
-backlex reads:
+Backlex reads:
 
 - **`filename`** or **`key`** — the destination storage key (one required).
 - **`contentType`** (`filetype` / `type` also accepted) — the object MIME type.

@@ -81,7 +81,7 @@ const cloudFeatures = [
   { title: "Keys you don't have to own", desc: "AI embeddings and generation, transactional email, push, and SMS run through managed gateways. Metered against your plan and hard-capped, so nothing runs away.", tag: "ai · email · push · sms" },
   { title: "Meters, alarms, audit", desc: "Requests, database and object storage against your plan caps, a 30-day chart, and CSV export. Set an alarm at any percentage and it fires to email, Slack, or a webhook.", tag: "alarms · csv export · audit log" },
   { title: "Upgrades roll forward", desc: "Your instance is upgraded in place as new versions ship — or take it yourself from Settings with one click. No redeploy, no downtime window to book.", tag: "in-place · one click" },
-  { title: "Your exit is preserved", desc: "Export the whole project as a portable SQL dump — schema and data, one click. It's the same Apache-2.0 backlex, so your own server runs it in minutes.", tag: "sql dump · apache-2.0" },
+  { title: "Your exit is preserved", desc: "Export the whole project as a portable SQL dump — schema and data, one click. It's the same Apache-2.0 Backlex, so your own server runs it in minutes.", tag: "sql dump · apache-2.0" },
 ];
 const sdks = [
   { n: "TypeScript", s: "fetch · browser + node", i: "typescript" },
@@ -139,7 +139,7 @@ const btnGhost =
   "display:inline-flex;align-items:center;gap:8px;font-weight:600;color:#E7E4F4;text-decoration:none;border-radius:11px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.14);";
 const imgWhite = "display:block;opacity:0.85;filter:brightness(0) invert(1);";
 ---
-<Base title="backlex — the AI-native backend you code and deploy globally">
+<Base title="Backlex — the AI-native backend you code and deploy globally">
   <div style="color:#ECEAF7;font-family:'Manrope',sans-serif;">
 
     <!-- ═════════════════ HERO ═════════════════ -->
@@ -422,7 +422,7 @@ claude mcp add --transport http <span style="color:#9b7bff;">backlex</span> \
       <div style="max-width:1180px;margin:0 auto;">
         <div style="border-radius:24px;border:1px solid rgba(139,108,255,0.2);background:linear-gradient(160deg,rgba(124,92,255,0.1),rgba(255,122,89,0.04) 60%,transparent);padding:clamp(28px,5vw,56px);backdrop-filter:blur(10px);">
           <div style={eyebrow}>cloud · managed</div>
-          <h2 style={h2Style + "font-size:clamp(30px,3.6vw,46px);max-width:820px;"}>Don't want to run it yourself? backlex Cloud hosts it for you.</h2>
+          <h2 style={h2Style + "font-size:clamp(30px,3.6vw,46px);max-width:820px;"}>Don't want to run it yourself? Backlex Cloud hosts it for you.</h2>
           <p style="font-size:18px;line-height:1.65;color:#B6B1D0;margin:0 0 28px;max-width:740px;">Same Apache-2.0 codebase, same admin, same API — provisioned as your own Worker, D1 database, R2 bucket and Vectorize index on Cloudflare. <strong style="color:#F0EEFA;font-weight:600;">30 seconds from signup to first deploy</strong>, or start from one of 28 ready schema templates. One-click export if you ever want to bring it back home.</p>
           <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:44px;align-items:center;">
             <a href="https://cloud.backlex.com/sign-up" class="c-btn-p" style={btnPrimary + "padding:13px 24px;font-size:15px;"}>Start free — no card →</a>
@@ -574,15 +574,15 @@ claude mcp add --transport http <span style="color:#9b7bff;">backlex</span> \
     <!-- ═════════════════ COMPARE ═════════════════ -->
     <section id="compare" style="position:relative;z-index:1;padding:114px 24px;">
       <div style="max-width:1180px;margin:0 auto;">
-        <div style={eyebrow}>why backlex</div>
+        <div style={eyebrow}>why Backlex</div>
         <h2 style={h2Style + "max-width:560px;"}>The trade-offs, in one table.</h2>
-        <p style={leadStyle + "margin:0 0 36px;max-width:700px;"}>Other tools do parts of this. backlex's design choice is to keep every part under one source tree, behind one API, deployable to five targets — without forking.</p>
+        <p style={leadStyle + "margin:0 0 36px;max-width:700px;"}>Other tools do parts of this. Backlex's design choice is to keep every part under one source tree, behind one API, deployable to five targets — without forking.</p>
         <div style="overflow-x:auto;border:1px solid rgba(255,255,255,0.08);border-radius:16px;background:rgba(8,7,18,0.5);backdrop-filter:blur(8px);">
           <table style="width:100%;border-collapse:collapse;font-size:13.5px;min-width:760px;">
             <thead>
               <tr style="font-family:'Lexend',sans-serif;">
                 <th style="text-align:left;padding:16px 18px;color:#8E89A8;font-weight:500;font-size:12px;">Capability</th>
-                <th style="padding:16px 14px;color:#b9a3ff;font-weight:600;">backlex</th>
+                <th style="padding:16px 14px;color:#b9a3ff;font-weight:600;">Backlex</th>
                 <th style="padding:16px 14px;color:#8E89A8;font-weight:500;">Supabase</th>
                 <th style="padding:16px 14px;color:#8E89A8;font-weight:500;">Firebase</th>
                 <th style="padding:16px 14px;color:#8E89A8;font-weight:500;">Directus</th>
@@ -609,7 +609,7 @@ claude mcp add --transport http <span style="color:#9b7bff;">backlex</span> \
             <a href={v.href} class="c-chip" style="font-size:13px;color:#C9C5DD;text-decoration:none;padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">{v.label}</a>
           ))}
         </div>
-        <p style="margin:22px 0 0;font-size:12.5px;line-height:1.6;color:#8E89A8;max-width:820px;">Self-host stays the default — most teams want to own their own DB credentials. <strong style="color:#D4D0E6;">backlex Cloud</strong> (managed) runs the same Apache-2.0 codebase on Cloudflare for teams who'd rather not, with one-click export so you can leave any time.</p>
+        <p style="margin:22px 0 0;font-size:12.5px;line-height:1.6;color:#8E89A8;max-width:820px;">Self-host stays the default — most teams want to own their own DB credentials. <strong style="color:#D4D0E6;">Backlex Cloud</strong> (managed) runs the same Apache-2.0 codebase on Cloudflare for teams who'd rather not, with one-click export so you can leave any time.</p>
       </div>
     </section>
 

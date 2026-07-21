@@ -1,7 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 
-// Factual as of 2026. backlex cells reflect the shipping feature set; Supabase
+// Factual as of 2026. Backlex cells reflect the shipping feature set; Supabase
 // cells reflect its documented capabilities (PostgREST, RLS, Studio, pgvector,
 // Edge Functions on Deno, official MCP server for project management).
 const rows = [
@@ -50,8 +50,8 @@ const rows = [
 ];
 ---
 <Base
-  title="backlex vs Supabase — edge-native, multi-runtime backend"
-  description="How backlex compares to Supabase: an open-source backend that runs on Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy, or your own server (Bun, Node, or Deno), with dynamic collections, a permissions DSL, built-in vector search, and a runtime MCP server for AI agents — on PostgreSQL or SQLite/D1."
+  title="Backlex vs Supabase — edge-native, multi-runtime backend"
+  description="How Backlex compares to Supabase: an open-source backend that runs on Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy, or your own server (Bun, Node, or Deno), with dynamic collections, a permissions DSL, built-in vector search, and a runtime MCP server for AI agents — on PostgreSQL or SQLite/D1."
 >
   <section class="relative z-[1] max-w-[920px] mx-auto px-8 max-md:px-5 py-20">
     <div class="flex flex-col gap-3 mb-10">
@@ -59,7 +59,7 @@ const rows = [
         Compare
       </span>
       <h1 class="font-display font-light text-[clamp(32px,5vw,48px)] -tracking-[0.03em] leading-[1.05]">
-        backlex vs Supabase
+        Backlex vs Supabase
       </h1>
       <p class="text-[17px] text-muted-foreground max-w-[62ch] leading-snug">
         Both give you an instant backend over a real database. The difference is
@@ -75,7 +75,7 @@ const rows = [
         <strong class="text-foreground font-medium">Supabase</strong> is an
         excellent open-source backend built around a single managed PostgreSQL
         database, with PostgREST, Realtime, Auth, and Storage on top.
-        <strong class="text-foreground font-medium">backlex</strong> targets a
+        <strong class="text-foreground font-medium">Backlex</strong> targets a
         different shape: one codebase that deploys to Cloudflare Workers, Vercel,
         Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy, or your own server (Bun, Node, or Deno), runs on
         either PostgreSQL or SQLite/D1, and
@@ -88,7 +88,7 @@ const rows = [
           <thead>
             <tr class="text-left">
               <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border"></th>
-              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">backlex</th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">Backlex</th>
               <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">Supabase</th>
             </tr>
           </thead>
@@ -107,7 +107,7 @@ const rows = [
       <div>
         <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">Collections flow</h2>
         <p>
-          In backlex you either let it <strong class="text-foreground font-medium">create
+          In Backlex you either let it <strong class="text-foreground font-medium">create
           a managed table</strong> (dynamic schema with an additive-only DDL
           applier that never drops or rewrites columns) or
           <strong class="text-foreground font-medium">adopt an existing table</strong>
@@ -123,7 +123,7 @@ const rows = [
         <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">Vector search &amp; AI</h2>
         <p>
           Mark a collection vectorizable and flag the text fields to embed —
-          backlex <strong class="text-foreground font-medium">auto-embeds on every
+          Backlex <strong class="text-foreground font-medium">auto-embeds on every
           write</strong> and runs approximate-nearest-neighbour search, using
           <strong class="text-foreground font-medium">pgvector</strong> on Postgres
           or <strong class="text-foreground font-medium">Cloudflare Vectorize</strong>
@@ -136,7 +136,7 @@ const rows = [
       </div>
 
       <div>
-        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When backlex is the better fit</h2>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When Backlex is the better fit</h2>
         <ul class="list-disc pl-5 flex flex-col gap-2">
           <li>You want your backend to <strong class="text-foreground font-medium">run at the edge</strong> (Workers / Vercel / Netlify) instead of in front of a regional database.</li>
           <li>You're building <strong class="text-foreground font-medium">AI agents</strong> and want collections, vector search, and admin actions reachable over MCP with per-key scoping.</li>
@@ -156,7 +156,7 @@ const rows = [
       </div>
 
       <p>
-        See the <a href="/docs/" class="text-primary hover:underline">backlex documentation</a> or the
+        See the <a href="/docs/" class="text-primary hover:underline">Backlex documentation</a> or the
         <a href="https://github.com/backlex/backlex" class="text-primary hover:underline">source on GitHub</a> to get started.
         Self-hosting is free under Apache-2.0; the managed <a href="/pricing" class="text-primary hover:underline">Cloud</a> is optional.
       </p>

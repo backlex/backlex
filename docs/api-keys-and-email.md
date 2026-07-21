@@ -4,7 +4,7 @@ description: Personal access keys, access / refresh token pair, per-workspace em
 ---
 
 This page covers the bearer-token + outbound-mail surfaces that ship
-with backlex's auth plane (Phase 5): personal access keys (PAKs),
+with Backlex's auth plane (Phase 5): personal access keys (PAKs),
 the access / refresh token pair issued to workspace end-users, email
 transport selection (env-level + per-workspace overrides), and OAuth
 social providers.

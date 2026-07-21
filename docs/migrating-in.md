@@ -1,11 +1,11 @@
 ---
 title: Migrating an external database in
-description: Copy an existing database into backlex — Postgres, MySQL, SQLite, MongoDB, Firestore, or DynamoDB — introspect, plan, run, verify, with primary keys preserved.
+description: Copy an existing database into Backlex — Postgres, MySQL, SQLite, MongoDB, Firestore, or DynamoDB — introspect, plan, run, verify, with primary keys preserved.
 ---
 
-`backlex import-db` moves data **into** backlex from a database you already
+`backlex import-db` moves data **into** Backlex from a database you already
 have. It's the complement of [adoption](/adopting-tables/): adoption wraps a
-table that lives in the *same* database backlex runs on; import-db **copies**
+table that lives in the *same* database Backlex runs on; import-db **copies**
 rows from an *external* source — a legacy Postgres or MySQL, a Supabase
 project, a Heroku add-on, a MongoDB/Firestore/DynamoDB app — into managed
 collections. Cloud workspaces run on D1, so for them copying is the only way
@@ -122,7 +122,7 @@ document you're meant to edit before running:
 - **`tables[].slug` / `fields[].name`** — rename freely (source column names
   are `snake_case`d automatically; reserved names like `owner_id` get a
   `_src` suffix).
-- **`fields[].type`** — the mapped backlex type. Migration is more permissive
+- **`fields[].type`** — the mapped Backlex type. Migration is more permissive
   than adoption because it copies into columns *we* create:
 
 | Source | Becomes | Notes |
@@ -217,14 +217,14 @@ design smaller than the table). Delta passes keep their own
 `<plan>.since.state.json`, so a finished full copy's cursors don't
 short-circuit them; `--resume` works the same way.
 
-4. Verify, then point your application at backlex.
+4. Verify, then point your application at Backlex.
 
 There is deliberately no continuous CDC — the watermark pass is repeatable,
 so run it as many times as you like until the diff window is minutes wide.
 
 ## Server-side runs (the admin wizard)
 
-When the source database is reachable **from the backlex server** (Supabase,
+When the source database is reachable **from the Backlex server** (Supabase,
 Neon, RDS with a public endpoint, …), you don't need the CLI at all — the
 admin's **Data → Database import** page drives the same engine server-side:
 
@@ -257,7 +257,7 @@ A hosted admin must not be able to use the server as a proxy into private
 infrastructure, so source URLs pointing at private/internal addresses
 (localhost, RFC1918, link-local — including cloud metadata endpoints — ULA,
 `.local`/`.internal`) are **rejected by default**. Self-hosters whose source
-DB legitimately lives next to backlex opt in with
+DB legitimately lives next to Backlex opt in with
 `MIGRATE_ALLOW_PRIVATE_SOURCES=true`. The CLI pump has no such restriction —
 it runs on your machine, inside your network.
 

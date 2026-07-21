@@ -3,7 +3,7 @@ import { glob } from "astro/loaders";
 import { i18nLoader } from "@astrojs/starlight/loaders";
 import { docsSchema, i18nSchema } from "@astrojs/starlight/schema";
 
-// The canonical backlex docs live at the repo root in `/docs`, NOT in
+// The canonical Backlex docs live at the repo root in `/docs`, NOT in
 // `apps/docs/src/content/docs/`. We point the loader at the repo-root folder
 // so the markdown stays version-controlled in one place and the docs site
 // only renders.

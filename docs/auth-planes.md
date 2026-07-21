@@ -3,7 +3,7 @@ title: Auth planes & workspace end-users
 description: The control-plane vs app-plane split — how admin users (running the dashboard) and workspace end-users (customers of the app built on a workspace) coexist with separate tables, sessions, and APIs.
 ---
 
-backlex is built for **two distinct audiences inside the same instance**:
+Backlex is built for **two distinct audiences inside the same instance**:
 
 - The team running the dashboard — operators, developers, internal
   admins. They sign into `app.your-backlex.com`, configure
@@ -445,7 +445,7 @@ In app mode:
 
 ## End-to-end flow example
 
-A SaaS app called "Acme" runs on top of backlex. The flow from
+A SaaS app called "Acme" runs on top of Backlex. The flow from
 zero to "logged-in customer reading their data":
 
 **1. Operator creates the workspace + a collection (control plane).**
@@ -521,6 +521,6 @@ Every request goes through:
   `permissions` for the workspace; `ownerScoped` injects an `owner_id
   = $user.id` condition compiled to a Drizzle SQL fragment.
 
-The same backlex instance, on the same routes, serves Acme's
+The same Backlex instance, on the same routes, serves Acme's
 internal operators and Alice's CRUD with no shared identity surface
 between them.

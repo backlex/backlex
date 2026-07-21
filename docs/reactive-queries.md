@@ -9,13 +9,13 @@ underlying data changes. You get the initial page, then a fresh array on every
 relevant change. No manual event wiring, no stale data, no hand-written
 "on created insert, on deleted splice" reducer.
 
-It builds on [realtime](/realtime): backlex already streams permission-filtered
+It builds on [realtime](/realtime): Backlex already streams permission-filtered
 per-row events over `items:<slug>` SSE. A reactive query layers query-level
 maintenance on top of that stream — entirely in the client, so the server stays
 a stateless event publisher and live queries ride on **whatever realtime
 transport the deployment provides** (in-process SSE on Bun / Node / Deno,
 Durable Objects on Cloudflare, or Redis Streams on stateless serverless), with
-no per-subscription server state — so they work on any of backlex's supported
+no per-subscription server state — so they work on any of Backlex's supported
 [deploy targets](/deployment).
 
 ## SDK

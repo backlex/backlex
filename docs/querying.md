@@ -3,7 +3,7 @@ title: Querying the items API
 description: One Directus-shaped URL for filter, search, sort, projection, pagination, and counts.
 ---
 
-`GET /api/items/<slug>` is backlex' Directus-shaped REST query endpoint:
+`GET /api/items/<slug>` is Backlex' Directus-shaped REST query endpoint:
 one URL covers filter, full-text search, sort, projection, pagination,
 count metadata, and locale projection. Parsing lives in
 `apps/web/src/server/lib/query.ts::parseQuery`; the same compile path
@@ -175,7 +175,7 @@ are already indexed by their UNIQUE constraint, so `indexed` is skipped for
 them; adopted tables get no DDL. Indexing trades a little write cost for read
 speed — opt-in per field. Note that `_contains` (`LIKE %x%`) and the
 case-insensitive `_icontains` can't use a plain B-tree index — a substring
-search needs a trigram/`pg_trgm` (PG) or FTS index, which backlex doesn't manage
+search needs a trigram/`pg_trgm` (PG) or FTS index, which Backlex doesn't manage
 automatically.
 
 ## Pagination
@@ -560,7 +560,7 @@ the caller:
 3. has `email` inside the role's `fields` allow-list on the target.
 
 This is deliberately invasive: a nested filter leaks the presence of
-target rows through differential response shape, so backlex treats
+target rows through differential response shape, so Backlex treats
 the join as a read against the target and refuses to compile it when
 the caller can't read directly either.
 

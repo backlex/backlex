@@ -1,10 +1,10 @@
 ---
 title: AI Agents
-description: Reusable AI agents that reason, call your allow-listed tools, and answer — built on backlex's MCP tool registry, vector memory, and realtime. A reason→act loop persisted as a replayable thread transcript; admin-authored and reachable over REST, the SDK, GraphQL, MCP, and the CLI.
+description: Reusable AI agents that reason, call your allow-listed tools, and answer — built on Backlex's MCP tool registry, vector memory, and realtime. A reason→act loop persisted as a replayable thread transcript; admin-authored and reachable over REST, the SDK, GraphQL, MCP, and the CLI.
 ---
 
 Agents are reusable AI personas that **reason, call your tools, and answer** —
-built on top of everything else backlex already exposes. An agent is a named
+built on top of everything else Backlex already exposes. An agent is a named
 definition (system prompt + model + a tool allow-list); a **thread** is one
 conversation against it; sending a message runs one **turn** to completion.
 
@@ -118,7 +118,7 @@ The feature mirrors `flows` across every surface ([parity](./service-map.md)):
 
 - **SDK** — `client.agents.{list,get,create,update,delete,threads,createThread,thread,deleteThread,send,run}`. `run(agentId, message)` starts a fresh thread and runs a turn in one call.
 - **GraphQL** — `agents` / `agent` queries; `createAgent` / `updateAgent` / `deleteAgent` / `runAgent` mutations.
-- **MCP** — `agents.list`, `agents.get`, `agents.run` (so an external agent like Claude Desktop can drive a backlex agent).
+- **MCP** — `agents.list`, `agents.get`, `agents.run` (so an external agent like Claude Desktop can drive a Backlex agent).
 - **CLI** — `backlex agents <list|get|create|update|delete|threads|run>`. `backlex agents run <id> --message "…"` prints the answer.
 
 ## Notes & limits

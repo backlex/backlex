@@ -3,7 +3,7 @@ title: Full-text & hybrid search
 description: Keyword (full-text) search over your collections, fused with vector search for hybrid relevance ranking.
 ---
 
-backlex can rank a collection's rows against a query string three ways:
+Backlex can rank a collection's rows against a query string three ways:
 
 - **`fts`** — keyword/full-text search over an inverted index (Postgres
   `tsvector` + GIN; SQLite FTS5). Token-precise, no embedding cost.
@@ -14,7 +14,7 @@ backlex can rank a collection's rows against a query string three ways:
   floats up and a row ranked by *both* wins.
 
 Full-text search is **managed-collection only** and works on every database
-backlex runs on — no extra service. Unlike vector search there's no embedding
+Backlex runs on — no extra service. Unlike vector search there's no embedding
 provider to configure.
 
 ## How the index works
@@ -110,7 +110,7 @@ because every candidate id is re-checked when its row is hydrated.
 
 **RRF.** Each backend returns a ranked id list; every list contributes
 `1 / (60 + rank)` per id (60 is the canonical RRF constant), the scores are
-summed, and the top `limit` ids are hydrated. backlex over-fetches candidates
+summed, and the top `limit` ids are hydrated. Backlex over-fetches candidates
 from each backend so rows dropped by the permission/visibility filters don't
 starve the page.
 

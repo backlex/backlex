@@ -3,7 +3,7 @@ title: Job queue
 description: Durable background jobs — enqueue work, retry with exponential backoff, dead-letter, and delayed/scheduled execution. Cross-runtime, no extra infrastructure.
 ---
 
-The **job queue** runs background work durably: enqueue a job, and backlex
+The **job queue** runs background work durably: enqueue a job, and Backlex
 drains it off the request path, retrying with exponential backoff and moving it
 to a **dead-letter** state after it exhausts its attempts. Jobs can be
 **delayed/scheduled** (`runAt`) for later execution.

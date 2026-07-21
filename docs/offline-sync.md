@@ -3,7 +3,7 @@ title: Offline-first sync
 description: Keep a local copy of a collection that works offline — pull an incremental changefeed (with delete tombstones), stay live over SSE, and queue writes while disconnected, flushing them on reconnect with last-write-wins conflict resolution.
 ---
 
-backlex can keep a **local-first** copy of a collection: reads and writes hit a
+Backlex can keep a **local-first** copy of a collection: reads and writes hit a
 local store immediately, a background loop pulls server changes, and writes made
 while offline flush automatically when the connection returns. It's built from
 two server primitives plus a client `sync` module.

@@ -3,7 +3,7 @@ title: Distributed tracing
 description: W3C traceparent propagation across SDK → API → functions, a span per request, and the admin Traces panel + CLI.
 ---
 
-backlex propagates a [W3C Trace Context](https://www.w3.org/TR/trace-context/)
+Backlex propagates a [W3C Trace Context](https://www.w3.org/TR/trace-context/)
 (`traceparent`) header across every hop of a request — SDK → API → functions —
 and records a span per request so you can see one logical operation stitched
 together in the admin **Traces** panel.
@@ -65,7 +65,7 @@ The current span is also re-exported for advanced use: `makeTraceparent`,
 
 A function's `ctx.fetch()` (the sandbox's allow-listed outbound fetch)
 automatically carries the invoking request's `traceparent` — unless the function
-set its own. A function that calls back into the backlex API therefore continues
+set its own. A function that calls back into the Backlex API therefore continues
 the same trace, and both spans appear in the one waterfall.
 
 ## Admin API

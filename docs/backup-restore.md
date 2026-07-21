@@ -3,7 +3,7 @@ title: Backup, restore & export
 description: Logical JSONL backups (manual + scheduled) with additive restore, plus per-collection CSV/JSON export-import.
 ---
 
-backlex ships a **logical** backup system: every backup is a portable JSONL
+Backlex ships a **logical** backup system: every backup is a portable JSONL
 dump of your data, written through the storage adapter (R2/S3/filesystem). It
 works identically on every runtime and both dialects — unlike a
 Cloudflare-D1 point-in-time snapshot, a logical dump moves cleanly between

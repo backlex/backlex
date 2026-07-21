@@ -107,7 +107,7 @@ so no extra config is needed:
 &nbsp;
 [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/backlex/backlex)
 
-After the clone you still set the runtime env vars — backlex needs a
+After the clone you still set the runtime env vars — Backlex needs a
 Postgres URL (`DATABASE_DRIVER=neon-http`), S3-compatible storage, and
 `AUTH_SECRET`. Full per-platform steps + every variable:
 [Deployment](/docs/deployment/) — also covers Bun, Node, Deno, Cloudflare
@@ -125,7 +125,7 @@ releases — migrations apply automatically on redeploy.
 
 ## What next
 
-- [Migrating an external database in](/docs/migrating-in/) — copy your Postgres/MySQL/Mongo/… into backlex, PKs preserved
+- [Migrating an external database in](/docs/migrating-in/) — copy your Postgres/MySQL/Mongo/… into Backlex, PKs preserved
 - [Permissions DSL](/docs/permissions/) — granular role + condition rules
 - [Auth planes](/docs/auth-planes/) — admin pool vs workspace end-user pool
 - [Sandbox functions](/docs/sandbox/) — JavaScript code that runs in a sandbox

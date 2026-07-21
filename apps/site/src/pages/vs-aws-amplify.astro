@@ -1,7 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 
-// Factual as of 2026. backlex cells reflect the shipping feature set; AWS
+// Factual as of 2026. Backlex cells reflect the shipping feature set; AWS
 // Amplify cells reflect Amplify Gen 2 (Apache-2.0 client libraries + CLI, but
 // the backend is AWS-managed services: AppSync GraphQL over DynamoDB, Cognito
 // auth, S3 storage, Lambda functions, AppSync subscriptions for realtime). It is
@@ -50,8 +50,8 @@ const rows = [
 ];
 ---
 <Base
-  title="backlex vs AWS Amplify — edge-deployable, relational, no AWS lock-in"
-  description="How backlex compares to AWS Amplify (Gen 2): an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy) or self-hosts on Bun, Node, or Deno, runs on PostgreSQL/SQLite and adopts your existing tables, ships built-in vector search, and exposes a runtime MCP server — versus a stack tied to AWS-managed services (AppSync, DynamoDB, Cognito, Lambda, S3)."
+  title="Backlex vs AWS Amplify — edge-deployable, relational, no AWS lock-in"
+  description="How Backlex compares to AWS Amplify (Gen 2): an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy) or self-hosts on Bun, Node, or Deno, runs on PostgreSQL/SQLite and adopts your existing tables, ships built-in vector search, and exposes a runtime MCP server — versus a stack tied to AWS-managed services (AppSync, DynamoDB, Cognito, Lambda, S3)."
 >
   <section class="relative z-[1] max-w-[920px] mx-auto px-8 max-md:px-5 py-20">
     <div class="flex flex-col gap-3 mb-10">
@@ -59,10 +59,10 @@ const rows = [
         Compare
       </span>
       <h1 class="font-display font-light text-[clamp(32px,5vw,48px)] -tracking-[0.03em] leading-[1.05]">
-        backlex vs AWS Amplify
+        Backlex vs AWS Amplify
       </h1>
       <p class="text-[17px] text-muted-foreground max-w-[62ch] leading-snug">
-        Both turn a schema into a typed API, auth, storage, and realtime. backlex
+        Both turn a schema into a typed API, auth, storage, and realtime. Backlex
         runs <strong class="text-foreground font-medium">anywhere</strong> — the
         edge or your own server — on a
         <strong class="text-foreground font-medium">relational database you own</strong>,
@@ -79,7 +79,7 @@ const rows = [
         AppSync GraphQL over DynamoDB, Cognito for auth, S3 for storage, and Lambda
         for functions. The libraries are open source, but the running backend
         lives in your AWS account.
-        <strong class="text-foreground font-medium">backlex</strong> offers the
+        <strong class="text-foreground font-medium">Backlex</strong> offers the
         same "define a model, get an API" flow without the lock-in — the same
         Apache-2.0 codebase deploys to Cloudflare Workers, Vercel, Netlify, AWS
         Lambda, Google Cloud & Azure Functions, Deno Deploy, or your own server
@@ -94,7 +94,7 @@ const rows = [
           <thead>
             <tr class="text-left">
               <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border"></th>
-              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">backlex</th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">Backlex</th>
               <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">AWS Amplify</th>
             </tr>
           </thead>
@@ -115,7 +115,7 @@ const rows = [
         <p>
           Amplify provisions DynamoDB (NoSQL) behind an AppSync GraphQL API in your
           AWS account; relational access and existing data go through custom
-          resolvers. backlex runs directly on
+          resolvers. Backlex runs directly on
           <strong class="text-foreground font-medium">PostgreSQL or SQLite / Cloudflare
           D1</strong> and either creates <strong class="text-foreground font-medium">managed
           tables</strong> or <strong class="text-foreground font-medium">adopts an
@@ -129,7 +129,7 @@ const rows = [
       <div>
         <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">Vector search &amp; AI</h2>
         <p>
-          Semantic search is built into backlex: flag a collection's text fields
+          Semantic search is built into Backlex: flag a collection's text fields
           and it auto-embeds on write and runs ANN search via
           <strong class="text-foreground font-medium">pgvector</strong> or
           <strong class="text-foreground font-medium">Cloudflare Vectorize</strong>,
@@ -142,7 +142,7 @@ const rows = [
       </div>
 
       <div>
-        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When backlex is the better fit</h2>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When Backlex is the better fit</h2>
         <ul class="list-disc pl-5 flex flex-col gap-2">
           <li>You want to avoid <strong class="text-foreground font-medium">AWS lock-in</strong> and deploy to the edge or your own server.</li>
           <li>You want your data in a <strong class="text-foreground font-medium">relational database</strong> — and the option to adopt tables you already run.</li>
@@ -161,9 +161,9 @@ const rows = [
       </div>
 
       <p>
-        See the <a href="/docs/" class="text-primary hover:underline">backlex documentation</a> or the
+        See the <a href="/docs/" class="text-primary hover:underline">Backlex documentation</a> or the
         <a href="https://github.com/backlex/backlex" class="text-primary hover:underline">source on GitHub</a> to get started.
-        backlex's core is free and open under Apache-2.0; the managed <a href="/pricing" class="text-primary hover:underline">Cloud</a> is optional.
+        Backlex's core is free and open under Apache-2.0; the managed <a href="/pricing" class="text-primary hover:underline">Cloud</a> is optional.
       </p>
     </div>
   </section>

@@ -1,7 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 
-// Factual as of 2026. backlex cells reflect the shipping feature set; Strapi
+// Factual as of 2026. Backlex cells reflect the shipping feature set; Strapi
 // cells reflect its documented capabilities (Strapi 5: MIT-licensed community
 // core on Node.js, content-type builder over its own tables, REST built in +
 // GraphQL plugin, media library, lifecycle hooks, webhooks, Users & Permissions
@@ -51,8 +51,8 @@ const rows = [
 ];
 ---
 <Base
-  title="backlex vs Strapi — edge-deployable, AI-native data platform"
-  description="How backlex compares to Strapi: an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy) or self-hosts on Bun, Node, or Deno, adopts your existing tables, ships built-in vector search and realtime, and exposes a runtime MCP server to AI agents — versus a Node.js headless CMS that owns its own content tables."
+  title="Backlex vs Strapi — edge-deployable, AI-native data platform"
+  description="How Backlex compares to Strapi: an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy) or self-hosts on Bun, Node, or Deno, adopts your existing tables, ships built-in vector search and realtime, and exposes a runtime MCP server to AI agents — versus a Node.js headless CMS that owns its own content tables."
 >
   <section class="relative z-[1] max-w-[920px] mx-auto px-8 max-md:px-5 py-20">
     <div class="flex flex-col gap-3 mb-10">
@@ -60,10 +60,10 @@ const rows = [
         Compare
       </span>
       <h1 class="font-display font-light text-[clamp(32px,5vw,48px)] -tracking-[0.03em] leading-[1.05]">
-        backlex vs Strapi
+        Backlex vs Strapi
       </h1>
       <p class="text-[17px] text-muted-foreground max-w-[62ch] leading-snug">
-        Both give you an admin app and an instant API over your content. backlex
+        Both give you an admin app and an instant API over your content. Backlex
         adds <strong class="text-foreground font-medium">edge deployment</strong>,
         a fully <strong class="text-foreground font-medium">Apache-2.0</strong> core
         (no Enterprise tier for SSO or audit logs),
@@ -78,7 +78,7 @@ const rows = [
         <strong class="text-foreground font-medium">Strapi</strong> is the most
         popular open-source headless CMS — a Node.js app where you define content
         types in an admin panel and serve them over REST or GraphQL.
-        <strong class="text-foreground font-medium">backlex</strong> shares the
+        <strong class="text-foreground font-medium">Backlex</strong> shares the
         "instant API + admin" idea but is built as a data platform for the edge:
         the same codebase deploys to Cloudflare Workers, Vercel, Netlify, AWS
         Lambda, Google Cloud & Azure Functions, Deno Deploy, or your own server
@@ -93,7 +93,7 @@ const rows = [
           <thead>
             <tr class="text-left">
               <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border"></th>
-              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">backlex</th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">Backlex</th>
               <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">Strapi</th>
             </tr>
           </thead>
@@ -113,13 +113,13 @@ const rows = [
         <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">Your database vs an owned content model</h2>
         <p>
           Strapi owns its schema: you model content types in the admin and Strapi
-          manages the underlying tables. backlex can do the same with
+          manages the underlying tables. Backlex can do the same with
           <strong class="text-foreground font-medium">managed tables</strong>
           (a dynamic, additive-only DDL applier that never drops or rewrites
           columns), but it can also <strong class="text-foreground font-medium">adopt
           an existing database</strong> — point it at a table and it writes a
           metadata row, auto-detecting foreign keys as relations, with no data
-          migration. That makes backlex a fit for wrapping a database you already
+          migration. That makes Backlex a fit for wrapping a database you already
           run, not just greenfield content.
         </p>
       </div>
@@ -128,7 +128,7 @@ const rows = [
         <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">Vector search &amp; AI</h2>
         <p>
           Semantic search is <strong class="text-foreground font-medium">part of
-          the backend</strong> in backlex, not a bolt-on. Flag a collection's
+          the backend</strong> in Backlex, not a bolt-on. Flag a collection's
           text fields and it auto-embeds on write and runs ANN search via
           <strong class="text-foreground font-medium">pgvector</strong> or
           <strong class="text-foreground font-medium">Cloudflare Vectorize</strong>,
@@ -140,7 +140,7 @@ const rows = [
       </div>
 
       <div>
-        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When backlex is the better fit</h2>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When Backlex is the better fit</h2>
         <ul class="list-disc pl-5 flex flex-col gap-2">
           <li>You want to <strong class="text-foreground font-medium">deploy at the edge</strong> on Workers, Vercel, or Netlify instead of running a Node server.</li>
           <li>You want <strong class="text-foreground font-medium">SSO, audit logs, and field-level permissions</strong> in the open-source core, not behind a paid Enterprise tier.</li>
@@ -159,9 +159,9 @@ const rows = [
       </div>
 
       <p>
-        See the <a href="/docs/" class="text-primary hover:underline">backlex documentation</a> or the
+        See the <a href="/docs/" class="text-primary hover:underline">Backlex documentation</a> or the
         <a href="https://github.com/backlex/backlex" class="text-primary hover:underline">source on GitHub</a> to get started.
-        backlex's core is free and open under Apache-2.0; the managed <a href="/pricing" class="text-primary hover:underline">Cloud</a> is optional.
+        Backlex's core is free and open under Apache-2.0; the managed <a href="/pricing" class="text-primary hover:underline">Cloud</a> is optional.
       </p>
     </div>
   </section>

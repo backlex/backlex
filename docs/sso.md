@@ -3,7 +3,7 @@ title: SSO (SAML & LDAP)
 description: Per-tenant SAML 2.0 and LDAP/Active Directory sign-in for the workspace end-user pool.
 ---
 
-backlex supports per-tenant SAML 2.0 SSO **and** LDAP / Active Directory
+Backlex supports per-tenant SAML 2.0 SSO **and** LDAP / Active Directory
 for the **workspace end-user pool** (the `app_users` table, served via
 `/api/t/<slug>/auth/*`). The admin app itself stays on the existing
 `/api/auth/*` better-auth surface.
@@ -18,7 +18,7 @@ page.
 ```
 +-------------+      AuthnRequest      +-------------+      SAMLResponse      +----------------+
 |             | ---------------------> |             | <--------------------- |                |
-|  customer   |                        |    IdP      |                        |    backlex    |
+|  customer   |                        |    IdP      |                        |    Backlex    |
 |  end-user   | <--------------------- | (Okta etc)  | -- 302 to ACS POST --> |  (workspace SP)|
 |             |  sign-in form          |             |                        |                |
 +-------------+                        +-------------+                        +----------------+
@@ -60,15 +60,15 @@ only ever decrypt it inside `resolveSamlProvider`, never return it.
 ### Okta
 
 1. Okta admin → **Applications** → **Create App Integration** → SAML 2.0.
-2. Single Sign On URL: paste the ACS URL from the backlex admin dialog
+2. Single Sign On URL: paste the ACS URL from the Backlex admin dialog
    (`Authentication → SAML provider → ACS URL`).
 3. Audience URI (SP Entity ID): paste the SP entity id (= metadata URL by
    default).
 4. Name ID format: `EmailAddress` (matches our default).
 5. Attribute Statements: add `email`, `firstName`, `lastName`, and
    (optionally) `groups`. Use the names from the attribute-map fields in
-   the backlex dialog.
-6. Okta will give you a metadata URL — paste it into the backlex
+   the Backlex dialog.
+6. Okta will give you a metadata URL — paste it into the Backlex
    dialog's **Import metadata** tab and click **Fetch & parse**.
 
 ### Azure AD / Entra ID
@@ -79,7 +79,7 @@ only ever decrypt it inside `resolveSamlProvider`, never return it.
 3. Identifier (Entity ID): paste the SP entity id.
 4. Reply URL (ACS): paste the ACS URL.
 5. Attributes: keep the default `http://schemas.xmlsoap.org/…` namespace —
-   the backlex **Azure AD / Entra ID** template maps those already.
+   the Backlex **Azure AD / Entra ID** template maps those already.
 6. Download the **Federation Metadata XML** and import it via the dialog,
    or paste the SAML Signing Certificate (Base64) into the manual tab.
 
@@ -89,10 +89,10 @@ only ever decrypt it inside `resolveSamlProvider`, never return it.
    **Add custom SAML app**.
 2. Download the metadata file Google offers; paste into the dialog's
    **Import metadata** tab.
-3. Service provider details: ACS URL = the backlex ACS URL; Entity ID =
+3. Service provider details: ACS URL = the Backlex ACS URL; Entity ID =
    SP entity id; Name ID format = `EMAIL`.
 4. Attribute mapping: map `Primary email` → `email`, `First name` →
-   `first_name`, `Last name` → `last_name`. The backlex **Google
+   `first_name`, `Last name` → `last_name`. The Backlex **Google
    Workspace** template uses those keys.
 
 ## Security knobs
@@ -123,7 +123,7 @@ assignments aren't touched.
 ## Troubleshooting
 
 - **"SAML audience mismatch"** → the IdP set `Audience` to a different
-  value than the backlex SP entity id. Set the IdP's Audience URI / Entity
+  value than the Backlex SP entity id. Set the IdP's Audience URI / Entity
   ID to the SP entity id printed in the admin dialog.
 - **"SAML issuer mismatch"** → the IdP's `<Issuer>` doesn't match the
   configured `entityId`. Copy the IdP entity id exactly from its metadata.
@@ -135,7 +135,7 @@ assignments aren't touched.
   a request). Treat as the design: re-initiate by hitting the `/login`
   endpoint again.
 - **Clock skew** → samlify enforces `NotBefore` / `NotOnOrAfter`. If your
-  IdP or backlex host is more than ~5 min off NTP, fix that first.
+  IdP or Backlex host is more than ~5 min off NTP, fix that first.
 - **Cert format** → must be PEM (`-----BEGIN CERTIFICATE-----…`). DER
   binary or `.crt` with Windows line endings: re-export as PEM.
 - **Cloudflare Workers runtime** — samlify imports `xml-crypto` which uses

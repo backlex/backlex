@@ -1,11 +1,11 @@
 ---
 title: Client SDKs
-description: Official backlex clients for eleven languages — one API, one wire format, idiomatic in each.
+description: Official Backlex clients for eleven languages — one API, one wire format, idiomatic in each.
 ---
 
 The TypeScript SDK ([`backlex`](/docs/sdk-and-cli/)) is the reference
-client. Alongside it, backlex ships native clients for ten more languages, so an
-app in (almost) any stack talks to backlex the same way.
+client. Alongside it, Backlex ships native clients for ten more languages, so an
+app in (almost) any stack talks to Backlex the same way.
 
 Every client wraps the **same** REST + SSE surface — CRUD, a fluent query
 builder, auth (server key / workspace app-mode token capture / cookie session),
@@ -39,7 +39,7 @@ PHP (Packagist), Java + Kotlin (Maven Central, `com.backlex:backlex` /
 
 ## Client and server usage
 
-backlex ships **one SDK per language — not a client/server split.** The same
+Backlex ships **one SDK per language — not a client/server split.** The same
 client works in a browser or mobile app (end-user scoped) and on a trusted server
 (key scoped); which one you're in is decided by *how you authenticate*, and the
 permission DSL enforces the boundary server-side either way.

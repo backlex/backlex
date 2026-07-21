@@ -3,7 +3,7 @@ title: Flows
 description: Server-side automation — a trigger plus a list of operations (log, email, push, webhook, item.create/update, condition, delay, run a function …) that run on the server when an item event fires, on a cron schedule, on a manual run, or on an inbound webhook. Admin-authored; reachable over REST, the SDK, GraphQL, MCP, and the CLI.
 ---
 
-**Flows** are backlex's server-side automation engine: a **trigger** plus an
+**Flows** are Backlex's server-side automation engine: a **trigger** plus an
 ordered list of **operations** that run on the server when the trigger fires.
 Think "if *this* happens, do *that* — log it, email someone, write a row, call
 a webhook, branch on a condition, wait, then continue."

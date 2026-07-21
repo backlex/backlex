@@ -1,15 +1,15 @@
 ---
 title: Performance
-description: What backlex does to keep reads fast, and the optimization backlog.
+description: What Backlex does to keep reads fast, and the optimization backlog.
 ---
 
 This page records the read-path performance work: what's shipped, why it's
 fast, and the deliberately-deferred items (with the path to finish each). It
-came out of a 2026-06 audit that cross-referenced backlex's own hot paths
+came out of a 2026-06 audit that cross-referenced Backlex's own hot paths
 against the tricks Supabase / PocketBase / Appwrite / Firestore / Convex and
 the Cloudflare platform use.
 
-The guiding split: backlex runs on **D1/SQLite *and* Postgres**, so the wins
+The guiding split: Backlex runs on **D1/SQLite *and* Postgres**, so the wins
 below are the ones that work on both dialects (or are clearly tagged to one).
 PRAGMA tuning and PG connection-pooling/`prepare:false` only touch the
 self-hosted-SQLite and Postgres paths — **D1 manages PRAGMAs and concurrency
@@ -104,7 +104,7 @@ the bookmark threaded response-header → client → next request for
 read-your-writes + monotonic reads.
 
 **Why deferred:** a D1 session is **per-request** (`withSession()` is bound to
-one request's bookmark), but backlex's `Ctx` — including `db`/`dbRead` — is
+one request's bookmark), but Backlex's `Ctx` — including `db`/`dbRead` — is
 built **per-isolate** and memoized (WeakMap on the `Env`). Wiring sessions means
 a per-request read-db layer that doesn't fit the current per-isolate model, and
 none of it is exercisable in the `bun:sqlite` test harness (no `env.D1`), so it

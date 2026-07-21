@@ -1,7 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 
-// Factual as of 2026. backlex cells reflect the shipping feature set; Firebase
+// Factual as of 2026. Backlex cells reflect the shipping feature set; Firebase
 // cells reflect its documented capabilities (Firestore NoSQL, Security Rules,
 // Cloud Functions, Firestore vector search + Genkit, Identity Platform SSO,
 // Cloud Storage with the Resize Images extension).
@@ -47,8 +47,8 @@ const rows = [
 ];
 ---
 <Base
-  title="backlex vs Firebase — open-source, SQL, self-hostable backend"
-  description="How backlex compares to Firebase: an open-source backend with a real SQL database, dynamic collections, built-in vector search, no vendor lock-in, self-hosting on Bun/Node/Deno, Workers/Vercel/Netlify, AWS Lambda, Google Cloud & Azure Functions, or Deno Deploy, and a runtime MCP server for AI agents."
+  title="Backlex vs Firebase — open-source, SQL, self-hostable backend"
+  description="How Backlex compares to Firebase: an open-source backend with a real SQL database, dynamic collections, built-in vector search, no vendor lock-in, self-hosting on Bun/Node/Deno, Workers/Vercel/Netlify, AWS Lambda, Google Cloud & Azure Functions, or Deno Deploy, and a runtime MCP server for AI agents."
 >
   <section class="relative z-[1] max-w-[920px] mx-auto px-8 max-md:px-5 py-20">
     <div class="flex flex-col gap-3 mb-10">
@@ -56,11 +56,11 @@ const rows = [
         Compare
       </span>
       <h1 class="font-display font-light text-[clamp(32px,5vw,48px)] -tracking-[0.03em] leading-[1.05]">
-        backlex vs Firebase
+        Backlex vs Firebase
       </h1>
       <p class="text-[17px] text-muted-foreground max-w-[62ch] leading-snug">
         Firebase gives you a fast, proprietary NoSQL backend on Google Cloud.
-        backlex gives you an <strong class="text-foreground font-medium">open-source,
+        Backlex gives you an <strong class="text-foreground font-medium">open-source,
         SQL-backed</strong> backend with dynamic collections you can run anywhere
         and own end to end.
       </p>
@@ -71,7 +71,7 @@ const rows = [
         <strong class="text-foreground font-medium">Firebase</strong> is Google's
         Backend-as-a-Service: a NoSQL document database (Firestore), realtime
         listeners, auth, and hosting, all managed inside Google Cloud.
-        <strong class="text-foreground font-medium">backlex</strong> is an
+        <strong class="text-foreground font-medium">Backlex</strong> is an
         open-source (Apache-2.0) alternative on a relational database (PostgreSQL
         or SQLite/D1), with dynamic collections, REST + GraphQL, a permissions
         DSL, realtime, built-in vector search, and a
@@ -85,7 +85,7 @@ const rows = [
           <thead>
             <tr class="text-left">
               <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border"></th>
-              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">backlex</th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">Backlex</th>
               <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">Firebase</th>
             </tr>
           </thead>
@@ -104,7 +104,7 @@ const rows = [
       <div>
         <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">Collections flow</h2>
         <p>
-          backlex models data as <strong class="text-foreground font-medium">relational
+          Backlex models data as <strong class="text-foreground font-medium">relational
           collections</strong>. Let it create a managed table (dynamic schema,
           additive-only DDL that never drops columns) or
           <strong class="text-foreground font-medium">adopt an existing table</strong>
@@ -119,7 +119,7 @@ const rows = [
         <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">Vector search &amp; AI</h2>
         <p>
           Semantic search is <strong class="text-foreground font-medium">built into
-          the data layer</strong>: flag a collection's text fields and backlex
+          the data layer</strong>: flag a collection's text fields and Backlex
           auto-embeds on every write and runs ANN search via
           <strong class="text-foreground font-medium">pgvector</strong> (Postgres)
           or <strong class="text-foreground font-medium">Cloudflare Vectorize</strong>
@@ -131,7 +131,7 @@ const rows = [
       </div>
 
       <div>
-        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When backlex is the better fit</h2>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When Backlex is the better fit</h2>
         <ul class="list-disc pl-5 flex flex-col gap-2">
           <li>You want a <strong class="text-foreground font-medium">real SQL database</strong> and relational queries instead of a document store.</li>
           <li>You want to <strong class="text-foreground font-medium">avoid vendor lock-in</strong> and keep the option to self-host.</li>
@@ -151,7 +151,7 @@ const rows = [
       </div>
 
       <p>
-        See the <a href="/docs/" class="text-primary hover:underline">backlex documentation</a> or the
+        See the <a href="/docs/" class="text-primary hover:underline">Backlex documentation</a> or the
         <a href="https://github.com/backlex/backlex" class="text-primary hover:underline">source on GitHub</a> to get started.
         Self-hosting is free under Apache-2.0; the managed <a href="/pricing" class="text-primary hover:underline">Cloud</a> is optional.
       </p>

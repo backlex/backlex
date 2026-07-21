@@ -3,7 +3,7 @@ title: Audit logs & sensitive-read auditing
 description: What the activity store records, how it maps to the Logs page, and the opt-in access trail for sensitive collections.
 ---
 
-backlex keeps a security/audit trail in the `activity` table. The admin **Logs**
+Backlex keeps a security/audit trail in the `activity` table. The admin **Logs**
 page reads it directly. This guide covers what is and isn't recorded, the
 namespaces the UI groups by, and the opt-in **sensitive-read audit** for
 regulated data.

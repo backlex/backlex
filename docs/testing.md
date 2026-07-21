@@ -3,7 +3,7 @@ title: Testing
 description: Three-layer test pyramid that gates every change against business logic, build artifacts, and real-runtime behavior.
 ---
 
-backlex builds the same source tree into bundles for every deploy target —
+Backlex builds the same source tree into bundles for every deploy target —
 Bun and Node self-host, Cloudflare Workers, Vercel, Netlify, and the serverless
 clouds (see [Deployment](/deployment)). The `build:targets` CI gate compiles the
 Workers / Vercel / Netlify / Node bundles on every run. To keep that

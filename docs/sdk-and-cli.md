@@ -1,11 +1,11 @@
 ---
 title: SDK & CLI
-description: The backlex typed fetch wrapper and the backlex CLI for project scaffolding.
+description: The Backlex typed fetch wrapper and the Backlex CLI for project scaffolding.
 ---
 
 Two packages ship for client-side and developer-side use.
 
-> Not on TypeScript? backlex also ships native clients for Python, Go, Rust,
+> Not on TypeScript? Backlex also ships native clients for Python, Go, Rust,
 > Java, Kotlin, Swift, Dart/Flutter, .NET, Ruby, and PHP — same API, idiomatic in
 > each language. See [Client SDKs](/docs/client-sdks/).
 
@@ -211,7 +211,7 @@ per-collection runtime code is generated; the types live in `Collections`.
 
 ## `backlex` CLI
 
-Manage any backlex instance from your terminal or CI — same REST API as the
+Manage any Backlex instance from your terminal or CI — same REST API as the
 SDK, authenticated with a personal API key (`pak_…`).
 
 ### Installing
@@ -495,11 +495,11 @@ Re-run after schema changes. The output is deterministic — safe to commit.
 ### `backlex mcp`
 
 Runs a stdio [MCP](https://modelcontextprotocol.io) server that proxies
-JSON-RPC over stdin/stdout to a remote backlex `/mcp` HTTP endpoint. This lets
-local agents (Claude Desktop, Cursor, IDE plugins) talk to a deployed backlex
+JSON-RPC over stdin/stdout to a remote Backlex `/mcp` HTTP endpoint. This lets
+local agents (Claude Desktop, Cursor, IDE plugins) talk to a deployed Backlex
 instance through a single auth path — the `pak_…` key — while permissions,
 rate-limits, activity logging, and the tenant boundary stay identical to every
-other backlex caller. The URL defaults to `http://localhost:8787/mcp`; the key
+other Backlex caller. The URL defaults to `http://localhost:8787/mcp`; the key
 falls back to `$BACKLEX_API_KEY`.
 
 ```jsonc

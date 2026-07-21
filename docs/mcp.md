@@ -1,9 +1,9 @@
 ---
 title: MCP (Model Context Protocol)
-description: Expose a backlex workspace to AI agents — Claude Desktop, Cursor, IDE plugins — over the MCP Streamable HTTP and stdio transports.
+description: Expose a Backlex workspace to AI agents — Claude Desktop, Cursor, IDE plugins — over the MCP Streamable HTTP and stdio transports.
 ---
 
-backlex ships a built-in MCP (Model Context Protocol) server so AI
+Backlex ships a built-in MCP (Model Context Protocol) server so AI
 agents can read schema, query collections, manage storage, and invoke
 sandbox functions through one authenticated endpoint. The same identity
 model the rest of the API uses (personal access keys / sessions /
@@ -16,7 +16,7 @@ Two mounts, same tool set:
 
 | Mount | Auth | Use case |
 |---|---|---|
-| `POST /mcp` | Any authenticated identity (cookie session, `pak_…` API key, app-plane bearer). Permissions DSL filters results per the caller's roles. | Tenant agents (a workspace member wires Claude Desktop to their own backlex). |
+| `POST /mcp` | Any authenticated identity (cookie session, `pak_…` API key, app-plane bearer). Permissions DSL filters results per the caller's roles. | Tenant agents (a workspace member wires Claude Desktop to their own Backlex). |
 | `POST /api/admin/mcp` | Same as above **plus** the system `admin` role. | Ops bots, CI agents — fails loudly on non-admin auth instead of silently returning empty results. |
 
 Both speak the [MCP Streamable HTTP transport](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#streamable-http)
@@ -204,7 +204,7 @@ resource instead of composing a separate `resources/read`.
 | Tool | Description |
 |---|---|
 | `db.execute_sql` | Run raw SQL against the workspace database (admin-only; bypasses DSL — pair with per-key allowlist). |
-| `db.list_tables` | List every physical table (backlex + collections + adopted). |
+| `db.list_tables` | List every physical table (Backlex + collections + adopted). |
 | `activity.search` | Search the audit log by action, collection, item, user, date range. |
 
 ### Tenants & app-users
@@ -256,7 +256,7 @@ resource instead of composing a separate `resources/read`.
 
 ### AI-native
 
-Three tools delegate to an LLM (via the Vercel AI Gateway when `AI_GATEWAY_API_KEY` is set, else the direct Anthropic provider via `ANTHROPIC_API_KEY`) and wire the structured reply back into backlex sub-fetches:
+Three tools delegate to an LLM (via the Vercel AI Gateway when `AI_GATEWAY_API_KEY` is set, else the direct Anthropic provider via `ANTHROPIC_API_KEY`) and wire the structured reply back into Backlex sub-fetches:
 
 | Tool | Description |
 |---|---|
@@ -385,7 +385,7 @@ The "Connect MCP" modal also generates copyable install snippets for Claude Desk
 
 ## Resources
 
-Beyond tools, backlex exposes **MCP resources** so attach-aware clients (Claude Desktop) can browse the workspace from their resource picker:
+Beyond tools, Backlex exposes **MCP resources** so attach-aware clients (Claude Desktop) can browse the workspace from their resource picker:
 
 | URI | Read returns |
 |---|---|

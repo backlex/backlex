@@ -3,7 +3,7 @@ title: Deployment
 description: Ship the same source to Bun, Node, Deno, AWS Lambda, Google Cloud Functions, Azure Functions, Cloudflare Workers, Vercel, or Netlify.
 ---
 
-backlex runs the same source on nine runtimes — **Bun**, **Node**, and **Deno**
+Backlex runs the same source on nine runtimes — **Bun**, **Node**, and **Deno**
 self-host, plus **AWS Lambda**, **Google Cloud Functions**, **Azure Functions**,
 **Cloudflare Workers**, **Vercel**, **Netlify**, and **Deno Deploy**. The matrix
 below compares the five managed / serverless targets; standalone **Node** and
@@ -368,7 +368,7 @@ Connect the GitHub repo from the Cloudflare dashboard and let every push to
 `main` auto-deploy. No GitHub Actions workflow is needed.
 
 1. **dash.cloudflare.com → Workers & Pages → workeros-api → Settings → Builds**
-   → **Connect** → pick the backlex repo.
+   → **Connect** → pick the Backlex repo.
 2. **Production branch:** `main`.
 3. **Build command:** `bun run db:migrate:d1:remote && bun run build`
    (the migration runs first so deploy never fronts a schema mismatch; the
@@ -549,7 +549,7 @@ original `/api/auth/get-session` etc. instead of the literal
 Connect the GitHub repo from the Vercel dashboard and let every push to
 `main` auto-deploy. No GitHub Actions workflow is needed.
 
-1. **vercel.com → Add New → Project** → pick the backlex repo.
+1. **vercel.com → Add New → Project** → pick the Backlex repo.
 2. **Framework Preset:** `Other`. `vercel.ts` overrides install/build,
    and the Build Output API takes over from there — the preset only
    affects defaults that get overridden anyway.
@@ -711,7 +711,7 @@ build runs it fresh every deploy.
 ### Git integration (recommended)
 
 1. **app.netlify.com → Add new site → Import an existing project** → pick
-   the backlex repo.
+   the Backlex repo.
 2. **Base directory:** leave empty (repo root). The `netlify.toml` already
    sets `base = ""`.
 3. **Build command, Publish directory:** leave empty too — `netlify.toml`

@@ -1,4 +1,4 @@
-# backlex
+# Backlex
 
 Open-source ([Apache-2.0](#license)) **AI-native backend** you can self-host or
 run at the edge. One codebase on Bun / Node / Deno that also deploys to

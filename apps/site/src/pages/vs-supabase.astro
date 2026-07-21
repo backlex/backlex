@@ -24,7 +24,7 @@ const rows = [
   ["MCP server", "Built-in runtime MCP server — ~149 tools (protocol 2025-11-25) over collections, vector search & admin, with OAuth 2.1 so hosted clients connect without an API key (bearer `pak_` keys still work for headless agents), per-key tool allow-lists + read-only guards", "Official MCP server (project / database management from dev tools)"],
   ["Storage + images", "Files with ACLs, signed URLs; image transforms (resize/format/fit) on Bun in-process or the Cloudflare edge", "Storage with image transformations"],
   ["Edge functions", "Sandboxed functions (QuickJS / worker-thread / remote executor); http/event/cron triggers", "Edge Functions (Deno)"],
-  ["Extensions", "Install admin panels, field editors & hooks from npm or an upload; hooks run sandboxed on events or on the cron tick", "Postgres extensions at the database level; Studio itself isn't plugin-extensible"],
+  ["Extensions", "Install admin panels, field editors & hooks from npm or an upload; hooks run sandboxed on events or on the cron tick", "Postgres extensions at the database level"],
   ["Auth providers", "Email/password, OAuth, magic link, email-OTP, passkeys, anonymous", "Email/password, OAuth, magic link, OTP"],
   ["SSO", "SAML 2.0 (per-workspace) and LDAP/AD", "SAML (Pro / Enterprise)"],
   ["Audit logs", "Built-in activity trail + opt-in sensitive-read auditing", "Via Postgres / log drains"],

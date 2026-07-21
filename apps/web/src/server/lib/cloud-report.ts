@@ -1,7 +1,7 @@
 import type { Env } from "../env";
 
 /**
- * Opt-in observability reporting to the workeros **cloud** control plane.
+ * Opt-in observability reporting to the backlex **cloud** control plane.
  *
  * This is a NO-OP unless the cloud provisioner injected `CLOUD_REPORT_SECRET` +
  * `CLOUD_PROJECT_ID` plus a delivery channel. Self-hosted / OSS installs never

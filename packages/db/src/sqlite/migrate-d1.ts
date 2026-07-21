@@ -53,7 +53,7 @@ const execFile = (file: string) => {
 };
 
 // Holds temp .sql files used by execSql below; cleaned up on exit.
-const tmpRoot = mkdtempSync(join(tmpdir(), "workeros-migrate-d1-"));
+const tmpRoot = mkdtempSync(join(tmpdir(), "backlex-migrate-d1-"));
 process.on("exit", () => {
   try { rmSync(tmpRoot, { recursive: true, force: true }); } catch {}
 });

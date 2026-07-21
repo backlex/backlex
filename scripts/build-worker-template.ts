@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 /**
  * Assembles a self-contained "worker template" tarball that a downstream
- * provisioner (the private workeros-cloud repo) can fetch as a release
+ * provisioner (the private backlex-cloud repo) can fetch as a release
  * asset and upload to a fresh Cloudflare Workers account — D1 + R2 +
  * Worker script in one shot — without re-cloning + re-building this repo.
  *
@@ -50,7 +50,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));

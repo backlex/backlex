@@ -1,4 +1,4 @@
-name: Publish @workeros/ui
+name: Publish @backlex/ui
 
 # Manual workflow to publish packages/ui to npm.
 # Trigger:
@@ -6,7 +6,7 @@ name: Publish @workeros/ui
 #   - or run manually from the Actions tab with a version override
 #
 # Required repo secret:
-#   - NPM_TOKEN   (npm automation token with publish access for @workeros)
+#   - NPM_TOKEN   (npm automation token with publish access for @backlex)
 #
 # This workflow runs typecheck + a dry-run pack, then `npm publish` with
 # provenance. The package is source-consumed (no build step) so the
@@ -45,7 +45,7 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
-      - name: Typecheck @workeros/ui
+      - name: Typecheck @backlex/ui
         run: bun run --cwd packages/ui typecheck
 
       - name: Apply manual version override

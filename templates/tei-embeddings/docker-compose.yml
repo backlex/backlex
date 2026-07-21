@@ -1,5 +1,5 @@
 # HuggingFace Text Embeddings Inference — serves an OpenAI-compatible
-# `/v1/embeddings` endpoint that the Workeros `self-host` adapter calls.
+# `/v1/embeddings` endpoint that the Backlex `self-host` adapter calls.
 # Point `EMBEDDING_HTTP_URL` at this container's public/internal URL.
 #
 # CPU image:  ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
@@ -23,7 +23,7 @@ services:
       - "8080:80"
     environment:
       # Auth — if set, clients must send `Authorization: Bearer <value>`.
-      # Match Workeros's EMBEDDING_HTTP_TOKEN.
+      # Match Backlex's EMBEDDING_HTTP_TOKEN.
       # HF_API_TOKEN: ${HF_API_TOKEN:-}
       RUST_LOG: text_embeddings_inference=info
     command:

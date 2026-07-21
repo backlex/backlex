@@ -178,7 +178,7 @@ jobs:
         image: pgvector/pgvector:pg16
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: workeros_smoke
+          POSTGRES_DB: backlex_smoke
         ports:
           - 5432:5432
         options: >-
@@ -187,7 +187,7 @@ jobs:
           --health-timeout 3s
           --health-retries 15
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/workeros_smoke
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/backlex_smoke
       # Disable wrangler's opt-in telemetry call — CF runtime smoke
       # shouldn't reach out to any external service.
       WRANGLER_SEND_METRICS: "false"

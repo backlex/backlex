@@ -1,4 +1,4 @@
-name = "workeros-api"
+name = "backlex-admin-ci"
 main = "src/server/entries/worker.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
@@ -94,21 +94,21 @@ bucket_name = "workeros-files"
 # time, so referencing an index that doesn't exist in your account breaks
 # the deploy. Uncomment ONLY the models you actually want, and create
 # their indexes first with:
-#   wrangler vectorize create workeros-openai-1536        --dimensions=1536 --metric=cosine
-#   wrangler vectorize create workeros-openai-3072        --dimensions=3072 --metric=cosine
-#   wrangler vectorize create workeros-bge-m3             --dimensions=1024 --metric=cosine
-#   wrangler vectorize create workeros-self-host-bge-m3   --dimensions=1024 --metric=cosine
+#   wrangler vectorize create backlex-openai-1536        --dimensions=1536 --metric=cosine
+#   wrangler vectorize create backlex-openai-3072        --dimensions=3072 --metric=cosine
+#   wrangler vectorize create backlex-bge-m3             --dimensions=1024 --metric=cosine
+#   wrangler vectorize create backlex-self-host-bge-m3   --dimensions=1024 --metric=cosine
 
 # OpenAI text-embedding-3-small (1536). Needs OPENAI_API_KEY.
 # [[vectorize]]
 # binding = "VECTORIZE_OPENAI"
-# index_name = "workeros-openai-1536"
+# index_name = "backlex-openai-1536"
 
 # OpenAI text-embedding-3-large (3072). Needs OPENAI_API_KEY.
 # Note: pgvector HNSW caps at 2000 dims — use IVFFlat for the PG table.
 # [[vectorize]]
 # binding = "VECTORIZE_OPENAI_LARGE"
-# index_name = "workeros-openai-3072"
+# index_name = "backlex-openai-3072"
 
 
 # Optional: Hyperdrive proxy in front of Postgres for PG-on-edge.

@@ -129,7 +129,7 @@ export interface Env {
    *  (`@cf/baai/bge-m3`). Add `[ai] binding = "AI"` in wrangler.toml. */
   AI?: Ai;
 
-  /** Opt-in observability reporting to the workeros cloud control plane.
+  /** Opt-in observability reporting to the backlex cloud control plane.
    *  ONLY set when provisioned as a managed cloud tenant — self-hosted installs
    *  leave these unset and never report anything (see lib/cloud-report.ts). */
   CLOUD_REPORT_URL?: string;

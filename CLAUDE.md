@@ -53,7 +53,7 @@ VALUES ('<user-id>', (SELECT id FROM roles WHERE name='admin'), strftime('%s','n
 
 Every working session runs on its own branch. Merging into `main` triggers two independent paths:
 
-- **Cloudflare Workers Builds (native git integration)** — the `workeros-api` Worker is connected to this repo from the CF dashboard. On every push to `main` it runs the build command (`bun run db:migrate:d1:remote && bun run build`) and then deploys with `cd apps/web && bunx wrangler deploy`. No GitHub secrets needed; CF Builds is auto-authenticated.
+- **Cloudflare Workers Builds (native git integration)** — the `backlex-admin` Worker is connected to this repo from the CF dashboard. On every push to `main` it runs the build command (`bun run db:migrate:d1:remote && bun run build`) and then deploys with `cd apps/web && bunx wrangler deploy`. No GitHub secrets needed; CF Builds is auto-authenticated.
 - **`.github/workflows/test.yml`** — runs lint + typecheck + `bun test` + `bun run build:targets` on every PR **and** every push to `main`. Acts as a redundant gate that catches regressions in the four-runtime build matrix (Bun / CF / Vercel / Netlify) which Workers Builds doesn't exercise on its own.
 
 The repo also ships native-git deploy configs for **Vercel** (`vercel.ts` + Build Output API) and **Netlify** (`netlify.toml` + `apps/web/netlify/functions/`). All three platforms (CF / Vercel / Netlify) use their own native git integration — no GitHub Actions deploy workflow exists for any of them. Runtime caveats live in `docs/deployment.md`.
@@ -89,7 +89,7 @@ git push origin main
 gh run list --workflow test.yml --limit 1
 ```
 
-After pushing, report the test.yml run URL back to the user. The actual Worker deploy runs in **Cloudflare dashboard → Workers & Pages → workeros-api → Deployments** (not visible to `gh`). Don't claim "deployed" until both are green — `gh run watch` confirms the gate; the CF dashboard (or `wrangler deployments list`) confirms the deploy.
+After pushing, report the test.yml run URL back to the user. The actual Worker deploy runs in **Cloudflare dashboard → Workers & Pages → backlex-admin → Deployments** (not visible to `gh`). Don't claim "deployed" until both are green — `gh run watch` confirms the gate; the CF dashboard (or `wrangler deployments list`) confirms the deploy.
 
 **After the deploy run goes green**, smoke-test the change against the live URL with the puppeteer MCP server (`mcp__puppeteer__puppeteer_*` tools). The default target is the production deploy unless the user names a specific URL. Drive the relevant flow end-to-end (sign in, exercise the feature touched by this branch, watch for console/network errors via `puppeteer_evaluate`) and screenshot the result. Report what you tested and what you saw — don't call it shipped without that pass.
 

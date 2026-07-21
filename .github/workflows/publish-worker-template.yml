@@ -1,7 +1,7 @@
 name: Publish worker template
 
 # Builds `apps/web` for the Cloudflare runtime and uploads the bundle as a
-# downloadable "worker template" tarball that the (private) workeros-cloud
+# downloadable "worker template" tarball that the (private) backlex-cloud
 # provisioner consumes when spinning up a fresh customer instance — D1 +
 # R2 + Worker — without re-cloning this repo.
 #
@@ -128,7 +128,7 @@ jobs:
           if ! gh release view "${tag}" >/dev/null 2>&1; then
             gh release create "${tag}" \
               --title "Worker template ${tag}" \
-              --notes "Pre-built apps/web Cloudflare Worker bundle (v${VERSION}). See \`docs/deployment.md#worker-template-artifact\` for what's inside and how downstream consumers (workeros-cloud) use it."
+              --notes "Pre-built apps/web Cloudflare Worker bundle (v${VERSION}). See \`docs/deployment.md#worker-template-artifact\` for what's inside and how downstream consumers (backlex-cloud) use it."
           fi
           gh release upload "${tag}" "dist-worker-template/${TARBALL}" --clobber
 

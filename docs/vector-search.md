@@ -71,8 +71,8 @@ want (dimensions are fixed at creation), then bind it in `wrangler.toml`.
 
 ```bash
 # pick the model(s) you need — dimensions must match the model
-wrangler vectorize create workeros-bge-m3   --dimensions=1024 --metric=cosine
-wrangler vectorize create workeros-openai-1536 --dimensions=1536 --metric=cosine
+wrangler vectorize create backlex-bge-m3   --dimensions=1024 --metric=cosine
+wrangler vectorize create backlex-openai-1536 --dimensions=1536 --metric=cosine
 ```
 
 ```toml
@@ -80,7 +80,7 @@ wrangler vectorize create workeros-openai-1536 --dimensions=1536 --metric=cosine
 # at deploy, so a binding to a non-existent index breaks the deploy).
 [[vectorize]]
 binding = "VECTORIZE_BGE_M3"
-index_name = "workeros-bge-m3"
+index_name = "backlex-bge-m3"
 
 # Workers AI bge-m3 needs the AI binding:
 [ai]

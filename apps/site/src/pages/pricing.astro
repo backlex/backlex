@@ -52,8 +52,9 @@ import Base from "../layouts/Base.astro";
             <li><span class="mk-yes">✓</span><span>100K requests / mo</span></li>
             <li><span class="mk-yes">✓</span><span>5s CPU / req</span></li>
             <li><span class="mk-yes">✓</span><span>500MB DB · 1GB storage</span></li>
-            <li><span class="mk-yes">✓</span><span>1 project · 1 env</span></li>
+            <li><span class="mk-yes">✓</span><span>1 project · 3 workspaces</span></li>
             <li><span class="mk-yes">✓</span><span>backlex.com subdomain</span></li>
+            <li><span class="mk-yes">✓</span><span>EU or Global residency</span></li>
             <li class="off"><span class="mk-no">−</span><span>No backup / PITR</span></li>
             <li class="off"><span class="mk-no">−</span><span>Community support</span></li>
           </ul>
@@ -76,7 +77,7 @@ import Base from "../layouts/Base.astro";
             <li><span class="mk-yes">✓</span><span>10M requests / mo</span></li>
             <li><span class="mk-yes">✓</span><span>30s CPU / req</span></li>
             <li><span class="mk-yes">✓</span><span>5GB DB · 25GB storage</span></li>
-            <li><span class="mk-yes">✓</span><span>3 projects · unlimited envs</span></li>
+            <li><span class="mk-yes">✓</span><span>3 projects · 50 workspaces</span></li>
             <li><span class="mk-yes">✓</span><span>Custom domain</span></li>
             <li><span class="mk-yes">✓</span><span>Daily backup, 7-day PITR</span></li>
             <li><span class="mk-yes">✓</span><span>Preview branches</span></li>
@@ -100,12 +101,11 @@ import Base from "../layouts/Base.astro";
             <li><span class="mk-yes">✓</span><span>100M requests / mo</span></li>
             <li><span class="mk-yes">✓</span><span>5min CPU / req</span></li>
             <li><span class="mk-yes">✓</span><span>10GB DB · 500GB storage</span></li>
-            <li><span class="mk-yes">✓</span><span>25 projects</span></li>
-            <li><span class="mk-yes">✓</span><span>Region pinning</span></li>
+            <li><span class="mk-yes">✓</span><span>25 projects · 50 seats</span></li>
             <li><span class="mk-yes">✓</span><span>30 day PITR</span></li>
             <li><span class="mk-yes">✓</span><span>90-day audit log</span></li>
             <li><span class="mk-yes">✓</span><span>99.9% SLA</span></li>
-            <li><span class="mk-yes">✓</span><span>SAML SSO</span></li>
+            <li><span class="mk-yes">✓</span><span>SSO — OIDC + SAML 2.0</span></li>
           </ul>
         </div>
       </div>
@@ -124,7 +124,7 @@ import Base from "../layouts/Base.astro";
           <ul class="pr-feat">
             <li><span class="mk-yes">✓</span><span>500M requests / mo</span></li>
             <li><span class="mk-yes">✓</span><span>10GB DB · 2TB storage</span></li>
-            <li><span class="mk-yes">✓</span><span>100 projects</span></li>
+            <li><span class="mk-yes">✓</span><span>100 projects · 200 seats</span></li>
             <li><span class="mk-yes">✓</span><span>1-year audit log</span></li>
             <li><span class="mk-yes">✓</span><span>99.95% SLA</span></li>
             <li><span class="mk-yes">✓</span><span>SCIM provisioning</span></li>
@@ -180,16 +180,20 @@ import Base from "../layouts/Base.astro";
           <tr><td class="cmp-f">CPU / request</td><td class="cmp-v">5s</td><td class="cmp-v col-pro">30s</td><td class="cmp-v">5min</td><td class="cmp-v">5min</td></tr>
           <tr><td class="cmp-f">Database size</td><td class="cmp-v">500MB</td><td class="cmp-v col-pro">5GB</td><td class="cmp-v">10GB</td><td class="cmp-v">10GB</td></tr>
           <tr><td class="cmp-f">Object storage</td><td class="cmp-v">1GB</td><td class="cmp-v col-pro">25GB</td><td class="cmp-v">500GB</td><td class="cmp-v">2TB</td></tr>
-          <tr><td class="cmp-f">AI inference</td><td class="cmp-v">5K/mo</td><td class="cmp-v col-pro">200K/mo</td><td class="cmp-v">2M/mo</td><td class="cmp-v">10M/mo</td></tr>
+          <tr><td class="cmp-f">Managed AI (neurons)</td><td class="cmp-v">5K/mo</td><td class="cmp-v col-pro">200K/mo</td><td class="cmp-v">2M/mo</td><td class="cmp-v">10M/mo</td></tr>
           <tr><td class="cmp-f">Egress</td><td class="cmp-v">∞</td><td class="cmp-v col-pro">∞</td><td class="cmp-v">∞</td><td class="cmp-v">∞</td></tr>
           <tr><td class="cmp-f">Realtime (WebSocket / SSE)</td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
           <tr><td class="cmp-f">Projects</td><td class="cmp-v">1</td><td class="cmp-v col-pro">3</td><td class="cmp-v">25</td><td class="cmp-v">100</td></tr>
+          <tr><td class="cmp-f">Organizations</td><td class="cmp-v">1</td><td class="cmp-v col-pro">5</td><td class="cmp-v">10</td><td class="cmp-v">20</td></tr>
+          <tr><td class="cmp-f">Workspaces / project</td><td class="cmp-v">3</td><td class="cmp-v col-pro">50</td><td class="cmp-v">250</td><td class="cmp-v">1,000</td></tr>
           <tr><td class="cmp-f">Team members</td><td class="cmp-v">1</td><td class="cmp-v col-pro">10</td><td class="cmp-v">50</td><td class="cmp-v">200</td></tr>
 
           <!-- runtime · region -->
           <tr class="cmp-grp"><td colspan="5"><span class="grp-h">runtime · region</span></td></tr>
           <tr><td class="cmp-f">Edge network</td><td class="cmp-v">Global</td><td class="cmp-v col-pro">Global</td><td class="cmp-v">Global</td><td class="cmp-v">Global</td></tr>
-          <tr><td class="cmp-f">Region pinning</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-no">—</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
+          <tr><td class="cmp-f">Data residency (EU / Global)</td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
+          <tr><td class="cmp-f">Managed AI · email · push · SMS</td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
+          <tr><td class="cmp-f">In-place instance upgrades</td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
           <tr><td class="cmp-f">Custom domain</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
           <tr><td class="cmp-f">Preview branches</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
 
@@ -202,10 +206,10 @@ import Base from "../layouts/Base.astro";
           <!-- identity · security -->
           <tr class="cmp-grp"><td colspan="5"><span class="grp-h">identity · security</span></td></tr>
           <tr><td class="cmp-f">Email / OAuth / Passkey</td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
-          <tr><td class="cmp-f">SAML SSO</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-no">—</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
+          <tr><td class="cmp-f">Enterprise SSO (OIDC + SAML)</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-no">—</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
           <tr><td class="cmp-f">SCIM provisioning</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-no">—</span></td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
           <tr><td class="cmp-f">Audit log</td><td class="cmp-v">7d</td><td class="cmp-v col-pro">30d</td><td class="cmp-v">90d</td><td class="cmp-v">1y</td></tr>
-          <tr><td class="cmp-f">IP allowlist</td><td class="cmp-v"><span class="mk-no">—</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
+          <tr><td class="cmp-f">IP allowlist · 2FA · passkeys</td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v col-pro"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td><td class="cmp-v"><span class="mk-yes">✓</span></td></tr>
 
           <!-- support · SLA -->
           <tr class="cmp-grp"><td colspan="5"><span class="grp-h">support · SLA</span></td></tr>
@@ -223,55 +227,72 @@ import Base from "../layouts/Base.astro";
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
     <div class="flex flex-col gap-4 max-w-[720px] mb-10">
       <span class="pr-eyebrow"><span class="dot"></span>add-ons</span>
-      <h2 class="font-display text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15]">Added when needed, paused any day.</h2>
+      <h2 class="font-display text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15]">Add capacity when you need it, not before.</h2>
     </div>
-    <div class="grid grid-cols-3 max-[920px]:grid-cols-1 gap-3.5">
+    <div class="grid grid-cols-4 max-[1100px]:grid-cols-2 max-[560px]:grid-cols-1 gap-3.5">
+
+      <div class="glass glass-hover p-6">
+        <div class="flex items-center gap-2.5 mb-3">
+          <span class="addon-ic">+</span>
+          <h3 class="text-[15.5px] font-semibold whitespace-nowrap">Request pack</h3>
+          <span class="ml-auto cf-pill whitespace-nowrap">one-time</span>
+        </div>
+        <div class="addon-price">$2<span class="addon-suf"> / 1M requests</span></div>
+        <p class="text-[12.5px] text-muted-foreground mt-2 leading-snug">Cover a spike without jumping a tier. Applies to the current billing month and expires with it — it never renews behind your back.</p>
+        <ul class="pr-feat pr-feat-sm mt-3">
+          <li><span class="mk-yes">✓</span><span>Buy any quantity</span></li>
+          <li><span class="mk-yes">✓</span><span>This month only</span></li>
+          <li><span class="mk-yes">✓</span><span>Alarm at any %</span></li>
+        </ul>
+      </div>
+
+      <div class="glass glass-hover p-6">
+        <div class="flex items-center gap-2.5 mb-3">
+          <span class="addon-ic">+</span>
+          <h3 class="text-[15.5px] font-semibold whitespace-nowrap">AI neurons</h3>
+          <span class="ml-auto cf-pill whitespace-nowrap">one-time</span>
+        </div>
+        <div class="addon-price">$25<span class="addon-suf"> / 1M neurons</span></div>
+        <p class="text-[12.5px] text-muted-foreground mt-2 leading-snug">One budget for every AI we run for you — embeddings, vector search, and generation. Metered and hard-capped at the gateway.</p>
+        <ul class="pr-feat pr-feat-sm mt-3">
+          <li><span class="mk-yes">✓</span><span>$0.025 / 1K neurons</span></li>
+          <li><span class="mk-yes">✓</span><span>No key of your own</span></li>
+          <li><span class="mk-yes">✓</span><span>Usage in dashboard</span></li>
+        </ul>
+      </div>
 
       <div class="glass glass-hover p-6">
         <div class="flex items-center gap-2.5 mb-3">
           <span class="addon-ic">R</span>
-          <h3 class="text-[15.5px] font-semibold">Extra storage</h3>
-          <span class="ml-auto cf-pill">all tiers</span>
+          <h3 class="text-[15.5px] font-semibold whitespace-nowrap">Storage block</h3>
+          <span class="ml-auto cf-pill whitespace-nowrap">monthly</span>
         </div>
-        <div class="addon-price">$0.20<span class="addon-suf"> / GB / mo</span></div>
-        <p class="text-[12.5px] text-muted-foreground mt-2 leading-snug">Zero-egress object storage. Scales beyond your tier quota, no ceiling.</p>
+        <div class="addon-price">$2<span class="addon-suf"> / 10GB / mo</span></div>
+        <p class="text-[12.5px] text-muted-foreground mt-2 leading-snug">Object storage past your tier quota. You occupy it every month, so it renews monthly until you remove it.</p>
         <ul class="pr-feat pr-feat-sm mt-3">
           <li><span class="mk-yes">✓</span><span>Zero egress cost</span></li>
           <li><span class="mk-yes">✓</span><span>Image transforms auto</span></li>
-          <li><span class="mk-yes">✓</span><span>Per-GB-second billing</span></li>
+          <li><span class="mk-yes">✓</span><span>Cancel any time</span></li>
         </ul>
       </div>
 
       <div class="glass glass-hover p-6">
         <div class="flex items-center gap-2.5 mb-3">
-          <span class="addon-ic">+</span>
-          <h3 class="text-[15.5px] font-semibold">Extra request pack</h3>
-          <span class="ml-auto cf-pill">Pro+</span>
+          <span class="addon-ic">D</span>
+          <h3 class="text-[15.5px] font-semibold whitespace-nowrap">Database block</h3>
+          <span class="ml-auto cf-pill whitespace-nowrap">monthly</span>
         </div>
-        <div class="addon-price">$2<span class="addon-suf"> / 1M req</span></div>
-        <p class="text-[12.5px] text-muted-foreground mt-2 leading-snug">Add request packs instead of jumping a tier. Unused packs don't roll over.</p>
+        <div class="addon-price">$2.50<span class="addon-suf"> / GB / mo</span></div>
+        <p class="text-[12.5px] text-muted-foreground mt-2 leading-snug">Extend the managed database past your tier quota, in 1GB steps. Renews monthly while the data sits there.</p>
         <ul class="pr-feat pr-feat-sm mt-3">
-          <li><span class="mk-yes">✓</span><span>80% email alert</span></li>
-          <li><span class="mk-yes">✓</span><span>Manual top-up</span></li>
-          <li><span class="mk-yes">✓</span><span>Cap configurable</span></li>
-        </ul>
-      </div>
-
-      <div class="glass glass-hover p-6">
-        <div class="flex items-center gap-2.5 mb-3">
-          <span class="addon-ic">+</span>
-          <h3 class="text-[15.5px] font-semibold">AI overage</h3>
-          <span class="ml-auto cf-pill">Pro+</span>
-        </div>
-        <div class="addon-price">$0.025<span class="addon-suf"> / 1K units</span></div>
-        <p class="text-[12.5px] text-muted-foreground mt-2 leading-snug">AI inference beyond your tier quota — embeddings, vector search, LLM calls. Billed only past the included units.</p>
-        <ul class="pr-feat pr-feat-sm mt-3">
-          <li><span class="mk-yes">✓</span><span>Per-1K-unit billing</span></li>
-          <li><span class="mk-yes">✓</span><span>Hard cap available</span></li>
-          <li><span class="mk-yes">✓</span><span>Usage in dashboard</span></li>
+          <li><span class="mk-yes">✓</span><span>1GB steps</span></li>
+          <li><span class="mk-yes">✓</span><span>Applies instantly</span></li>
+          <li><span class="mk-yes">✓</span><span>Cancel any time</span></li>
         </ul>
       </div>
     </div>
+
+    <p class="mt-6 text-[12.5px] text-muted-foreground">No auto-buy. At 100% of a quota we throttle and tell you — we never charge your card to keep the meter running.</p>
   </div>
 </section>
 
@@ -291,7 +312,7 @@ import Base from "../layouts/Base.astro";
             <span class="text-[14.5px] font-medium">Will you charge my card on the free tier?</span>
             <svg class="chev ml-auto text-muted-foreground" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
-          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">No. No card on free. When limits are reached, the project pauses; you can upgrade to Pro to resume, or export and self-host.</div>
+          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">No. No card on free, and no auto-buy on any plan. When you reach a limit we throttle that dimension and tell you — upgrade, add a pack, or export and self-host.</div>
         </details>
         <details class="faq glass overflow-hidden">
           <summary class="px-5 py-4 flex items-center gap-3">
@@ -312,14 +333,14 @@ import Base from "../layouts/Base.astro";
             <span class="text-[14.5px] font-medium">What if I want to take my data out?</span>
             <svg class="chev ml-auto text-muted-foreground" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
-          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">Every plan offers one-click full export: schema (DDL), data (SQL + JSON), and a storage archive. It is the same Apache-2.0 backlex — runs on your own infrastructure in minutes. No contract lock-in.</div>
+          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">Every plan can export the project as a portable SQL dump — schema and data — once a day. Uploaded files stay in your object storage and aren't folded into the dump yet. It is the same Apache-2.0 backlex, so the dump restores on your own infrastructure in minutes. No contract lock-in.</div>
         </details>
         <details class="faq glass overflow-hidden">
           <summary class="px-5 py-4 flex items-center gap-3">
             <span class="text-[14.5px] font-medium">Can I require data to stay in a specific region?</span>
             <svg class="chev ml-auto text-muted-foreground" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
-          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">From Scale onwards you get region pinning — primary database and object storage pinned to the region you choose. Edge nodes cache reads; writes stay in-region. A DPA is available for data residency.</div>
+          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">Yes, on every plan — you choose residency when you create the organization, and it is fixed from then on. <strong class="text-foreground font-medium">European Union</strong> creates the database and the bucket in Cloudflare's EU jurisdiction, and read replicas stay in the EU too. <strong class="text-foreground font-medium">Global</strong> lets Cloudflare place the primary across our eight regions for the lowest latency. A DPA is available.</div>
         </details>
         <details class="faq glass overflow-hidden">
           <summary class="px-5 py-4 flex items-center gap-3">

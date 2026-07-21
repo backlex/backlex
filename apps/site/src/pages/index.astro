@@ -36,21 +36,30 @@ const integrations = [
 ];
 const features = [
   { title: "Dynamic schema", desc: "Define collections in the admin, each becomes a physical c_<slug> table. CREATE TABLE runs against your live DB, no redeploy.", tag: "drizzle · pg + sqlite/d1" },
+  { title: "Adopt or import a database", desc: "Wrap tables you already have with a metadata row — no DDL, no data migration. Or import from Postgres, MySQL, SQLite, MongoDB, Firestore and DynamoDB: plan it, run it, resume it, re-sync deltas.", tag: "adopt · 6 sources · --since" },
+  { title: "Schema versions & branching", desc: "Snapshot the schema, diff two points in time, branch a change and apply it when it's ready. Auto-snapshots run on a schedule, so there is always a point to roll back to.", tag: "snapshot · diff · branch" },
   { title: "Permissions DSL", desc: "JSON predicates that compile to Drizzle SQL fragments and match in-process for realtime. Same syntax in roles, REST ?filter, and GraphQL.", tag: "$user.id · _eq · _in · $or" },
   { title: "REST + GraphQL", desc: "Every collection auto-exposes /api/items/:slug with filter/sort/expand/projection. GraphQL synthesised from the same metadata. Bulk + atomic writes on both.", tag: "openapi 3.1 · graphql-yoga" },
-  { title: "Realtime", desc: "SSE in Bun, Durable Object + WebSocket on Workers. Per-event permission filter means subscribers see only what their role can read.", tag: "sse · durable objects" },
+  { title: "Realtime", desc: "SSE in Bun, Durable Object + WebSocket on Workers. Per-event permission filter means subscribers see only what their role can read, and live queries push membership changes — not just raw row events.", tag: "sse · live queries · durable objects" },
   { title: "Edge functions", desc: "JavaScript sandbox with a host bridge for ctx.db / fetch / email. Bun worker thread, QuickJS-WASM, or remote HTTP — auto-selected per runtime.", tag: "quickjs · bun worker · http" },
   { title: "Storage + image transforms", desc: "Local FS in dev, R2 / S3 on edge. Image resize via Bun.Image, CF Image Resizing, or passthrough — same URL shape.", tag: "r2 · s3 · fs" },
   { title: "Webhooks & Flows", desc: "HMAC-signed outbound webhooks per event, plus a visual flow builder for branching multi-step automations. Fire-and-forget — never blocks API responses.", tag: "items.* · auth.* · cron" },
+  { title: "Form builder", desc: "Drag blocks into a multi-step public form, then share the link or embed the script. Anonymous uploads get signed tickets, conditions and translations are built in, and submissions land in a collection.", tag: "blocks · steps · embed · /f/:token" },
+  { title: "Extensions", desc: "Install admin panels, field editors, and hooks from npm or an upload. Hooks run sandboxed — on events or on the cron tick — so you extend the admin instead of forking it.", tag: "npm · upload · sandboxed hooks" },
   { title: "AI Agents", desc: "Agents that reason over your data and call your tools in a persisted reason→act loop. Every tool call runs through your permissions DSL; optional per-thread vector memory.", tag: "threads · tools · memory" },
   { title: "Auth, not yours to maintain", desc: "better-auth wrapper: email, OAuth, magic link, OTP, passkey, 2FA, SAML 2.0 SSO, LDAP / AD. Per-IP rate-limiting + account lockout built in.", tag: "better-auth · 2fa" },
   { title: "Activity + revisions", desc: "One activity table, dot-namespaced actions (item.update, auth.login). Every CRUD writes a row to revisions — point-in-time restore included.", tag: "audit log · point-in-time" },
+  { title: "Traces, usage & advisor", desc: "W3C traceparent spans you can open in the admin or ship over OTLP, a per-key usage ledger with limits, and a linter that scores your schema, permissions, and config with a deep link to each fix.", tag: "otlp · usage ledger · lint score" },
+  { title: "Insights & embedded BI", desc: "Build dashboards over your collections — six chart types, grouping, drill-through — and embed any of them in your own product behind a public iframe token.", tag: "panels · charts · /embed/d/:token" },
   { title: "Unified messaging", desc: "Push (FCM, APNs, Web Push) and SMS (Twilio, Amazon SNS) from one API. Per-tenant credentials, device + phone registries, and templates — all built in.", tag: "fcm · apns · web-push · sms" },
   { title: "Durable job queue", desc: "Background work that retries with exponential backoff, dead-letters after N tries, and runs on a schedule. Rides the cron tick — no Redis, no extra binding.", tag: "retry · dead-letter · runAt" },
   { title: "Resumable uploads", desc: "TUS 1.0.0 chunked uploads survive dropped connections and resume from the committed offset. Native R2 / S3 multipart under the hood.", tag: "tus 1.0.0 · multipart" },
   { title: "Draft & publish", desc: "First-class draft / published status: drafts hidden from readers without a publish permission, and scheduled publishing the cron tick applies when due.", tag: "_status · publishAt" },
   { title: "Feature flags", desc: "Toggle features and ship remote config without a deploy. Per-workspace or global, with rollout-percentage and permission-DSL targeting, evaluated per caller.", tag: "rollout % · targeting" },
   { title: "Offline-first sync", desc: "Keep a local copy that works offline: an incremental changefeed with delete tombstones, SSE live updates, and an offline write queue that flushes on reconnect.", tag: "changefeed · indexeddb · lww" },
+  { title: "Edit like a spreadsheet", desc: "Grid mode with cell selection, keyboard nav, copy/paste, fill-down and undo — or a Kanban board grouped by status. Same permissions and validation as the item form.", tag: "grid · kanban · inline edit" },
+  { title: "Two editors, no lost writes", desc: "Presence and field-level awareness on the item form and the rows table show who is editing what, and every PATCH carries an optimistic-concurrency guard that refuses a stale overwrite.", tag: "presence · awareness · conflict guard" },
+  { title: "Content i18n", desc: "Localize any field — text, files, even relations — through a translations sidecar. Edit locales side by side, compare them, and let AI fill in the keys you haven't written yet.", tag: "locale bar · compare · auto-translate" },
 ];
 const cities = [
   { city: "San Jose", code: "SJC", ms: "12 ms" },
@@ -65,12 +74,14 @@ const cities = [
   { city: "Johannesburg", code: "JNB", ms: "19 ms" },
 ];
 const cloudFeatures = [
-  { title: "Multi-region routing", desc: "3 regions by default (IAD, FRA, IST). Up to 11 on Scale. Optional region pinning for data residency.", tag: "anycast · region pin" },
-  { title: "Auto backup + PITR", desc: "Daily snapshots, 7-day rollback (Pro), 30 days (Scale). One-click restore from the admin.", tag: "daily snapshot · versioned" },
-  { title: "Custom domain + edge SSL", desc: "Bring your own domain. Certificates rotate automatically. No add-on fee, no config.", tag: "api.acme.app · cname" },
-  { title: "Preview branches", desc: "Git push → ephemeral environment. Same admin, isolated DB and storage. Auto-cleanup on PR close.", tag: "preview-247.backlex.com" },
-  { title: "Usage panel + alerts", desc: "Requests, CPU, DB reads/writes, storage, bandwidth — live in dashboard. Email at 80% and 100%, no surprise bills.", tag: "slack · email · webhooks" },
-  { title: "Your exit is preserved", desc: "One-click full export — schema + data + storage. Same Apache-2.0 backlex, so your own server runs it in minutes.", tag: "sql + storage archive · 1-click" },
+  { title: "EU or Global residency", desc: "Pick where the data lives when you create the org. EU pins the database and bucket to the EU jurisdiction — read replicas included. Global lets Cloudflare place the primary for the lowest latency.", tag: "eu jurisdiction · 8 regions" },
+  { title: "Backups with real PITR", desc: "Daily automatic snapshots plus on-demand ones, and point-in-time restore through D1 Time Travel — 7 days on Pro, 30 on Scale and Max.", tag: "daily · on-demand · time travel" },
+  { title: "Custom domain + edge SSL", desc: "Point a subdomain or a root domain at your project. Certificates are issued and rotated for you through Cloudflare for SaaS. Pro and up.", tag: "api.acme.app · automatic ssl" },
+  { title: "Preview branches", desc: "A branch or PR gets a full isolated instance — its own database, bucket, and URL — with data cloned from the parent and torn down for real when it closes.", tag: "isolated instance · auto teardown" },
+  { title: "Keys you don't have to own", desc: "AI embeddings and generation, transactional email, push, and SMS run through managed gateways. Metered against your plan and hard-capped, so nothing runs away.", tag: "ai · email · push · sms" },
+  { title: "Meters, alarms, audit", desc: "Requests, database and object storage against your plan caps, a 30-day chart, and CSV export. Set an alarm at any percentage and it fires to email, Slack, or a webhook.", tag: "alarms · csv export · audit log" },
+  { title: "Upgrades roll forward", desc: "Your instance is upgraded in place as new versions ship — or take it yourself from Settings with one click. No redeploy, no downtime window to book.", tag: "in-place · one click" },
+  { title: "Your exit is preserved", desc: "Export the whole project as a portable SQL dump — schema and data, one click. It's the same Apache-2.0 backlex, so your own server runs it in minutes.", tag: "sql dump · apache-2.0" },
 ];
 const sdks = [
   { n: "TypeScript", s: "fetch · browser + node", i: "typescript" },
@@ -94,6 +105,12 @@ const compareRows = [
   { cap: "Per-event realtime permission filter", bl: "✓", sb: "RLS-based", fb: "rules-based", di: "no", ry: "build it" },
   { cap: "Edge functions sandbox + host bridge", bl: "✓", sb: "✓", fb: "Cloud Functions", di: "no", ry: "build it" },
   { cap: "Visual flow builder", bl: "✓", sb: "no", fb: "no", di: "✓", ry: "build it" },
+  { cap: "Runtime MCP server over your data", bl: "149 tools", sb: "project admin", fb: "no", di: "content tools", ry: "build it" },
+  { cap: "Public form builder + embed", bl: "✓", sb: "no", fb: "no", di: "no", ry: "build it" },
+  { cap: "Embedded BI dashboards", bl: "✓", sb: "SQL editor", fb: "Looker Studio", di: "✓", ry: "build it" },
+  { cap: "Import MySQL / Mongo / Firestore / DynamoDB", bl: "✓", sb: "CSV / pg_dump", fb: "no", di: "limited", ry: "build it" },
+  { cap: "Schema snapshots + branching", bl: "✓", sb: "migrations", fb: "no", di: "schema snapshot", ry: "build it" },
+  { cap: "Live presence + conflict guard", bl: "✓", sb: "no", fb: "no", di: "no", ry: "build it" },
   { cap: "Client SDKs (official)", bl: "11 langs", sb: "4", fb: "5", di: "JS / TS", ry: "build it" },
   { cap: "Unified messaging (push + SMS)", bl: "✓", sb: "OTP only", fb: "push only", di: "no", ry: "build it" },
   { cap: "Durable job queue (retry + DLQ)", bl: "✓", sb: "pgmq", fb: "Cloud Tasks", di: "no", ry: "build it" },
@@ -216,7 +233,7 @@ const imgWhite = "display:block;opacity:0.85;filter:brightness(0) invert(1);";
         <div style="flex:1 1 420px;min-width:300px;">
           <div style={eyebrow}>ai-native</div>
           <h2 style={h2Style}>Ask your data anything, in plain language.</h2>
-          <p style={leadStyle + "margin:0 0 28px;max-width:520px;"}>Type a question and a model turns it into a reviewable query — then runs it. Every plan passes through your permissions DSL, so each caller sees only the rows and fields their role allows.</p>
+          <p style={leadStyle + "margin:0 0 28px;max-width:520px;"}>Type a question and a model turns it into a reviewable query — then runs it. Pick the model (Claude, Grok, DeepSeek, Qwen) or bring your own key. Every plan passes through your permissions DSL, so each caller sees only the rows and fields their role allows.</p>
           <div style="display:flex;gap:12px;flex-wrap:wrap;">
             <a href="https://cloud.backlex.com/sign-up" class="c-btn-p" style={btnPrimary + "padding:11px 18px;font-size:14px;"}>Try Ask AI on Cloud</a>
             <a href="/docs#mcp" class="c-btn-g" style={btnGhost + "padding:11px 18px;font-size:14px;background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.12);"}>MCP spec</a>
@@ -282,9 +299,9 @@ const imgWhite = "display:block;opacity:0.85;filter:brightness(0) invert(1);";
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin-bottom:30px;">
           <div style="border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:22px;background:rgba(255,255,255,0.025);backdrop-filter:blur(10px);">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9b7bff;margin-bottom:12px;">74 tools</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9b7bff;margin-bottom:12px;">149 tools</div>
             <div style="font-family:'Lexend',sans-serif;font-size:17px;color:#F0EEFA;margin-bottom:8px;">MCP tool catalog</div>
-            <div style="font-size:14px;line-height:1.55;color:#9D98B8;">Every admin capability is an MCP tool — grouped, type-validated, and DSL-filtered before it runs.</div>
+            <div style="font-size:14px;line-height:1.55;color:#9D98B8;">Every admin capability is an MCP tool — grouped, type-validated, and DSL-filtered before it runs. Cloud adds 44 more for the control plane.</div>
           </div>
           <div style="border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:22px;background:rgba(255,255,255,0.025);backdrop-filter:blur(10px);">
             <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9b7bff;margin-bottom:12px;">pak_8f2a…</div>
@@ -292,9 +309,9 @@ const imgWhite = "display:block;opacity:0.85;filter:brightness(0) invert(1);";
             <div style="font-size:14px;line-height:1.55;color:#9D98B8;">Bind a tool allowlist and a read-only flag to any access key — agents inherit the guards of the key they used.</div>
           </div>
           <div style="border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:22px;background:rgba(255,255,255,0.025);backdrop-filter:blur(10px);">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9b7bff;margin-bottom:12px;">streamable http</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#9b7bff;margin-bottom:12px;">oauth 2.1 · no key</div>
             <div style="font-family:'Lexend',sans-serif;font-size:17px;color:#F0EEFA;margin-bottom:8px;">Connect a client</div>
-            <div style="font-size:14px;line-height:1.55;color:#9D98B8;">Stateless POST /mcp for tenant agents, /api/admin/mcp for ops bots — JSON-RPC over HTTP.</div>
+            <div style="font-size:14px;line-height:1.55;color:#9D98B8;">Hosted clients sign in with OAuth — no key to paste. Headless agents keep the Bearer path: stateless POST /mcp, or /api/admin/mcp for ops bots.</div>
           </div>
         </div>
 
@@ -320,7 +337,7 @@ claude mcp add --transport http <span style="color:#9b7bff;">backlex</span> \
             </div>
           </div>
         </div>
-        <p style="margin:22px 0 0;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#7E789B;">same wiring for Cursor, Claude Desktop, or any MCP client — one URL + a pak_… key · falls back to ANTHROPIC_API_KEY</p>
+        <p style="margin:22px 0 0;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#7E789B;">same wiring for Cursor, Codex, Claude Desktop, or any MCP client — one URL, then OAuth or a pak_… key · protocol 2025-11-25</p>
       </div>
     </section>
 
@@ -347,7 +364,7 @@ claude mcp add --transport http <span style="color:#9b7bff;">backlex</span> \
       <div style="max-width:1180px;margin:0 auto;text-align:center;">
         <div style={eyebrow}>integrations</div>
         <h2 style={h2Style + "margin:0 auto 20px;max-width:740px;"}>Fan record events out to the tools you already run.</h2>
-        <p style={leadStyle + "margin:0 auto 40px;max-width:680px;"}>Connect a workspace from the admin and every data event flows to chat, alerting, analytics, search, and issue trackers. Scope by collection, secrets encrypted at rest — no glue code.</p>
+        <p style={leadStyle + "margin:0 auto 40px;max-width:680px;"}>Connect a workspace from the admin and every data event flows to chat, alerting, analytics, search, and issue trackers. Scope by collection, secrets encrypted at rest — no glue code. On Cloud the same connectors carry ops events too: deploys, quota alarms, provisioning failures.</p>
         <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;max-width:840px;margin:0 auto 22px;">
           {integrations.map((x) => (
             <span style="display:inline-flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif;font-size:14px;color:#D4D0E6;padding:9px 16px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
@@ -406,11 +423,11 @@ claude mcp add --transport http <span style="color:#9b7bff;">backlex</span> \
         <div style="border-radius:24px;border:1px solid rgba(139,108,255,0.2);background:linear-gradient(160deg,rgba(124,92,255,0.1),rgba(255,122,89,0.04) 60%,transparent);padding:clamp(28px,5vw,56px);backdrop-filter:blur(10px);">
           <div style={eyebrow}>cloud · managed</div>
           <h2 style={h2Style + "font-size:clamp(30px,3.6vw,46px);max-width:820px;"}>Don't want to run it yourself? backlex Cloud hosts it for you.</h2>
-          <p style="font-size:18px;line-height:1.65;color:#B6B1D0;margin:0 0 28px;max-width:740px;">Same Apache-2.0 codebase, same admin, same API — running on Cloudflare's Workers + D1 + R2. <strong style="color:#F0EEFA;font-weight:600;">30 seconds from signup to first deploy</strong>, 50ms first request, 330+ edge cities. One-click export if you ever want to bring it back home.</p>
+          <p style="font-size:18px;line-height:1.65;color:#B6B1D0;margin:0 0 28px;max-width:740px;">Same Apache-2.0 codebase, same admin, same API — provisioned as your own Worker, D1 database, R2 bucket and Vectorize index on Cloudflare. <strong style="color:#F0EEFA;font-weight:600;">30 seconds from signup to first deploy</strong>, or start from one of 28 ready schema templates. One-click export if you ever want to bring it back home.</p>
           <div style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:44px;align-items:center;">
             <a href="https://cloud.backlex.com/sign-up" class="c-btn-p" style={btnPrimary + "padding:13px 24px;font-size:15px;"}>Start free — no card →</a>
             <a href="/pricing" class="c-btn-g" style={btnGhost + "padding:13px 24px;font-size:15px;"}>See pricing</a>
-            <span style="display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:#8E89A8;"><span style="width:6px;height:6px;border-radius:50%;background:#7CE6C0;box-shadow:0 0 8px rgba(124,230,192,0.9);"></span>private beta · 100K requests / mo on free</span>
+            <span style="display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:#8E89A8;"><span style="width:6px;height:6px;border-radius:50%;background:#7CE6C0;box-shadow:0 0 8px rgba(124,230,192,0.9);"></span>no card on free · 100K requests / mo</span>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;">
             {cloudFeatures.map((cf) => (
@@ -592,7 +609,7 @@ claude mcp add --transport http <span style="color:#9b7bff;">backlex</span> \
             <a href={v.href} class="c-chip" style="font-size:13px;color:#C9C5DD;text-decoration:none;padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">{v.label}</a>
           ))}
         </div>
-        <p style="margin:22px 0 0;font-size:12.5px;line-height:1.6;color:#8E89A8;max-width:820px;">Self-host stays the default — most teams want to own their own DB credentials. <strong style="color:#D4D0E6;">backlex Cloud</strong> (managed, private beta) runs the same Apache-2.0 codebase on Cloudflare for teams who'd rather not, with one-click export so you can leave any time.</p>
+        <p style="margin:22px 0 0;font-size:12.5px;line-height:1.6;color:#8E89A8;max-width:820px;">Self-host stays the default — most teams want to own their own DB credentials. <strong style="color:#D4D0E6;">backlex Cloud</strong> (managed) runs the same Apache-2.0 codebase on Cloudflare for teams who'd rather not, with one-click export so you can leave any time.</p>
       </div>
     </section>
 

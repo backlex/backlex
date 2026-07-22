@@ -1,4 +1,5 @@
 import { describe, expect, test, afterAll, beforeAll } from "bun:test";
+import staticSpec from "../src/server/lib/openapi-static.generated.json" with { type: "json" };
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 /**
@@ -179,5 +180,36 @@ describe("openapi spec endpoints", () => {
     // The yaml surface is admin-gated too.
     const anonRes = await anon("/api/openapi.yaml");
     expect(anonRes.status).toBe(401);
+  });
+});
+
+/**
+ * The committed static spec must stay byte-stable across builds.
+ *
+ * `routes/openapi-metadata.ts::loadMetadata()` imports its `*.openapi` modules
+ * through `Promise.all`, and each registers paths as a top-level side effect —
+ * so registry order follows import-resolution order and varies run to run.
+ * `scripts/gen-openapi-static.ts` sorts `paths` and `components.schemas` on
+ * write to absorb that. Without the sort every `bun run build` rewrites the
+ * file with reordered keys, dirtying the working tree and burying real spec
+ * changes in noise. This pins the invariant so a regenerate with a
+ * sort-less generator fails here instead of leaking churn into commits.
+ */
+describe("static openapi spec is deterministic", () => {
+  const doc = staticSpec as unknown as {
+    paths: Record<string, unknown>;
+    components: { schemas: Record<string, unknown> };
+  };
+
+  test("paths keys are sorted", () => {
+    const keys = Object.keys(doc.paths);
+    expect(keys.length).toBeGreaterThan(0);
+    expect(keys).toEqual([...keys].sort());
+  });
+
+  test("components.schemas keys are sorted", () => {
+    const keys = Object.keys(doc.components.schemas);
+    expect(keys.length).toBeGreaterThan(0);
+    expect(keys).toEqual([...keys].sort());
   });
 });

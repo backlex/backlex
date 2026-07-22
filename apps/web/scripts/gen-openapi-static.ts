@@ -29,6 +29,29 @@ const OUT = resolve(
   "../src/server/lib/openapi-static.generated.json",
 );
 
+/**
+ * `loadMetadata()` fires its `*.openapi` modules through `Promise.all`, and each
+ * one registers its paths as a top-level side effect — so the registry fills in
+ * whatever order the imports happen to resolve. The doc is semantically
+ * identical every time, but `paths` and `components.schemas` come out in a
+ * different key order on each run, which dirties the working tree after every
+ * build and buries real spec changes in reordering noise.
+ *
+ * Sorting those two maps on write makes the output byte-stable. Only these two
+ * are sorted: nothing reads them positionally (the REST Explorer re-sorts
+ * endpoints by tag→path→method, and schemas are reached by `$ref`), whereas
+ * deep-sorting would also reorder each schema's `properties` and scramble the
+ * field order the Explorer renders.
+ */
+const sortKeys = <T>(obj: Record<string, T> | undefined): Record<string, T> | undefined => {
+  if (!obj) return obj;
+  return Object.fromEntries(
+    Object.keys(obj)
+      .sort()
+      .map((k) => [k, obj[k] as T]),
+  ) as Record<string, T>;
+};
+
 const main = async (): Promise<void> => {
   // Populate the global registry's lazily-loaded sibling metadata first.
   await loadMetadata();
@@ -37,7 +60,21 @@ const main = async (): Promise<void> => {
   if (pathCount === 0) {
     throw new Error("[gen-openapi-static] generated doc has no paths — aborting");
   }
-  writeFileSync(OUT, `${JSON.stringify(doc)}\n`);
+  const stable = {
+    ...doc,
+    ...(doc.paths ? { paths: sortKeys(doc.paths as Record<string, unknown>) } : {}),
+    ...(doc.components
+      ? {
+          components: {
+            ...doc.components,
+            ...(doc.components.schemas
+              ? { schemas: sortKeys(doc.components.schemas as Record<string, unknown>) }
+              : {}),
+          },
+        }
+      : {}),
+  };
+  writeFileSync(OUT, `${JSON.stringify(stable)}\n`);
   console.log(`[gen-openapi-static] wrote ${pathCount} static paths → ${OUT}`);
 };
 

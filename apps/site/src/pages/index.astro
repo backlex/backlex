@@ -145,9 +145,12 @@ const imgWhite = "display:block;opacity:0.85;filter:brightness(0) invert(1);";
     <!-- ═════════════════ HERO ═════════════════ -->
     <header id="top" style="position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:72px 24px 40px;">
       <!-- Below 900px the hero stacks: the Saturn art leaves the flow and sits
-           behind the CTA row as ambient background instead of dangling under it. -->
+           behind the CTA row as ambient background instead of dangling under it.
+           It is also over-widened so the planet drifts off the right edge (175%,
+           and 220% below 475px where there is less room). html/body already set
+           overflow-x:clip, so the bleed never adds a horizontal scrollbar. -->
       <div class="flex flex-wrap items-center gap-12 max-[900px]:relative">
-        <div class="flex-[1_1_520px] min-w-[320px] max-[900px]:relative max-[900px]:z-[1] max-[900px]:min-w-0">
+        <div class="flex-[3_1_380px] min-w-[320px] max-[900px]:relative max-[900px]:z-[1] max-[900px]:min-w-0">
           <h1 style="font-family:'Lexend',sans-serif;font-weight:300;font-size:clamp(34px,5vw,62px);line-height:1.05;letter-spacing:-0.03em;margin:0 0 24px;color:#F6F4FE;text-wrap:balance;">
             Code your backend with AI.
             <span class="cosmos-grad" style="display:block;line-height:1.16;padding-bottom:0.1em;">Deploy it globally.</span>
@@ -162,8 +165,8 @@ const imgWhite = "display:block;opacity:0.85;filter:brightness(0) invert(1);";
         </div>
 
         <!-- Saturn / orbit hero graphic -->
-        <div class="flex flex-[1_1_380px] min-w-[300px] justify-center max-[900px]:pointer-events-none max-[900px]:absolute max-[900px]:inset-x-0 max-[900px]:bottom-[-108px] max-[900px]:z-0 max-[900px]:h-[440px] max-[900px]:min-w-0 max-[900px]:items-center max-[900px]:opacity-70">
-          <div style="position:relative;width:440px;height:440px;max-width:90vw;">
+        <div class="flex flex-[1_1_380px] min-w-[300px] justify-center max-[900px]:pointer-events-none max-[900px]:absolute max-[900px]:inset-x-0 max-[900px]:bottom-[-108px] max-[475px]:bottom-[-161px] max-[900px]:z-0 max-[900px]:h-[440px] max-[900px]:w-[175%] max-[475px]:w-[220%] max-[900px]:min-w-0 max-[900px]:items-center max-[900px]:opacity-70">
+          <div style="position:relative;width:440px;height:440px;max-width:min(90vw,100%);">
             <div style="position:absolute;inset:0;">
               <!-- back halves of the tilted orbit rings -->
               <div style="position:absolute;left:50%;top:50%;width:260px;height:156px;margin:-78px 0 0 -130px;transform:rotate(-22deg);clip-path:inset(0 0 50% 0);"><div style="position:absolute;inset:0;border-radius:50%;border:1.5px solid rgba(255,255,255,0.14);"></div></div>

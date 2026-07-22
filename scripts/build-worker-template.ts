@@ -295,7 +295,7 @@ const main = async (): Promise<void> => {
   // 2. Stage into a clean directory.
   if (existsSync(args.output)) rmSync(args.output, { recursive: true });
   mkdirSync(args.output, { recursive: true });
-  const stageDir = join(args.output, `workeros-app-worker-v${args.version}`);
+  const stageDir = join(args.output, `backlex-app-worker-v${args.version}`);
   mkdirSync(stageDir, { recursive: true });
 
   // 2a. Worker entry + assets — copy the whole `backlex_admin/` minus the
@@ -347,7 +347,7 @@ const main = async (): Promise<void> => {
       ? process.versions.node
       : "unknown";
   const meta = {
-    name: "workeros-app-worker",
+    name: "backlex-app-worker",
     version: args.version,
     gitSha: gitSha(),
     builtAt: new Date().toISOString(),
@@ -375,14 +375,14 @@ const main = async (): Promise<void> => {
   //    macOS, modern Windows) has it, and it preserves mtimes + perms
   //    cleanly. `-C` so the archive root is the stageDir name, not the
   //    parent path.
-  const tarball = join(args.output, `workeros-app-worker-v${args.version}.tar.gz`);
+  const tarball = join(args.output, `backlex-app-worker-v${args.version}.tar.gz`);
   console.log(`→ tar -czf ${relative(REPO_ROOT, tarball)}`);
   run("tar", [
     "-czf",
     tarball,
     "-C",
     args.output,
-    `workeros-app-worker-v${args.version}`,
+    `backlex-app-worker-v${args.version}`,
   ]);
 
   const tarballBytes = statSync(tarball).size;

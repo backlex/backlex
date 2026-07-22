@@ -96,7 +96,7 @@ jobs:
             exit 1
           fi
           echo "VERSION=${version}" >> "$GITHUB_ENV"
-          echo "TARBALL=workeros-app-worker-v${version}.tar.gz" >> "$GITHUB_ENV"
+          echo "TARBALL=backlex-app-worker-v${version}.tar.gz" >> "$GITHUB_ENV"
           echo "Resolved version=${version}"
 
       # Build the SPA + worker bundle, stage the worker template tree,
@@ -137,6 +137,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: worker-template-dryrun
-          path: dist-worker-template/workeros-app-worker-v*.tar.gz
+          path: dist-worker-template/backlex-app-worker-v*.tar.gz
           if-no-files-found: error
           retention-days: 14

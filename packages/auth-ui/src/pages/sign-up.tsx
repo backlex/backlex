@@ -246,7 +246,19 @@ export const SignUpPage = ({
     setBusy(true);
     setStage("creating");
 
-    const res = await authClient.signUp.email({ email, password, name });
+    let res: Awaited<ReturnType<typeof authClient.signUp.email>>;
+    try {
+      res = await authClient.signUp.email({ email, password, name });
+    } catch (err) {
+      // A rejected sign-up (network failure, or the client-level fetch timeout
+      // aborting a stalled instance) must NOT leave the button spinning on
+      // "Claiming…" forever — re-enable the form and surface the error so the
+      // user can retry.
+      setBusy(false);
+      setStage("form");
+      notify?.(err instanceof Error ? err.message : copy.signUpFailed);
+      return;
+    }
     if (res.error) {
       setBusy(false);
       setStage("form");

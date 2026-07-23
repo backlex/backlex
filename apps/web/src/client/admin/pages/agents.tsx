@@ -58,22 +58,27 @@ interface RunStep {
   isError: boolean;
 }
 
-/** Curated model dropdown. The runner accepts any `provider/model` string
- *  (gateway / direct / managed), so "Custom…" keeps the free-text escape hatch
- *  for models not in this list. Keep IDs in sync with the latest Claude lineup. */
+/** Curated model dropdown. The runner accepts any `provider/model` string, so
+ *  "Custom…" keeps a free-text escape hatch. Claude ids need the workspace to
+ *  bring its own key (or a self-host key); the `@cf/*` Cloudflare Workers AI ids
+ *  are what managed-cloud projects run within their metered plan allowance —
+ *  a managed agent left on "Default" runs Llama 3.1 70B. */
 const MODEL_OPTIONS = [
-  { value: "", label: "Default", hint: "Sonnet 5 — balanced" },
-  { value: "anthropic/claude-opus-4-8", label: "Claude Opus 4.8", hint: "most capable" },
-  { value: "anthropic/claude-sonnet-5", label: "Claude Sonnet 5", hint: "balanced" },
-  { value: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5", hint: "fast & cheap" },
+  { value: "", label: "Default", hint: "Claude w/ your key · else Llama 3.1 70B" },
+  { value: "anthropic/claude-opus-4-8", label: "Claude Opus 4.8", hint: "most capable · your key" },
+  { value: "anthropic/claude-sonnet-5", label: "Claude Sonnet 5", hint: "balanced · your key" },
+  { value: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5", hint: "fast & cheap · your key" },
+  { value: "@cf/meta/llama-3.1-70b-instruct-fp8-fast", label: "Llama 3.1 70B", hint: "Cloudflare AI · managed" },
+  { value: "@cf/meta/llama-3.1-8b-instruct-fp8", label: "Llama 3.1 8B", hint: "Cloudflare AI · fast/cheap" },
+  { value: "@cf/mistral/mistral-7b-instruct-v0.1", label: "Mistral 7B", hint: "Cloudflare AI" },
 ] as const;
 
 /** Human label for the agent's configured model (or the default). */
 const modelLabel = (m?: string | null): string => {
-  if (!m) return "Sonnet 5";
+  if (!m) return "Default";
   const known = MODEL_OPTIONS.find((o) => o.value === m);
   if (known) return known.label.replace(/^Claude /, "");
-  return m.includes("/") ? m.split("/")[1]! : m;
+  return m.includes("/") ? m.split("/").pop()! : m;
 };
 
 /** Compact a token count for the header chip (1234 → "1.2k"). */

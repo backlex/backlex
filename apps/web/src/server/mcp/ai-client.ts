@@ -245,6 +245,20 @@ const cloudToolInstruction = (tools: ClaudeToolDef[]): string => {
   );
 };
 
+/** Default Workers AI model for managed-cloud agent turns. The platform's
+ *  generation default is an 8B model (fine for Ask-AI one-shots) but too weak
+ *  for multi-step agent tool loops, so agents default UP to 70B — still a
+ *  Workers AI model, still neuron-metered + plan-capped, just far better at
+ *  tool use and JSON. An agent can pick any whitelisted `@cf/*` model to
+ *  override (down for cost, or a different family). */
+const CLOUD_DEFAULT_AGENT_MODEL = "@cf/meta/llama-3.1-70b-instruct-fp8-fast";
+
+/** Resolve the Workers AI model for a managed-cloud agent turn: honour an
+ *  explicit `@cf/*` pick, else use the strong agent default (never the platform
+ *  8B default, and never a Claude/gateway id the metered path can't run). */
+const pickCloudModel = (model?: string): string =>
+  model?.startsWith("@cf/") ? model : CLOUD_DEFAULT_AGENT_MODEL;
+
 /** Managed-cloud tool turn: Workers AI is text-only, so we simulate one tool
  *  step in JSON and return the SAME `{text, toolCalls}` shape the native path
  *  does — the runner stays single-path and tool calling keeps working for
@@ -258,7 +272,7 @@ const callCloudToolTurn = async (
   const r = await callCloudGeneration(env, {
     system: sys,
     user: flattenMessages(messages),
-    model,
+    model: pickCloudModel(model),
   });
   const text = r.text ?? "";
   if (tools?.length) {

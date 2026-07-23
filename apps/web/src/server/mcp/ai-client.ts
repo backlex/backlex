@@ -220,6 +220,75 @@ const flattenMessages = (messages: ModelMessage[]): string => {
   return parts.join("\n");
 };
 
+/** System-prompt catalog + instruction for the JSON-simulated tool loop used on
+ *  the managed-cloud text path (Workers AI can't do native tool calling). The
+ *  model emits a single `{tool, args}` JSON block to call a tool, or plain text
+ *  to finish — the same contract the runner's native path expresses natively. */
+const cloudToolInstruction = (tools: ClaudeToolDef[]): string => {
+  const catalog = tools
+    .map((t) => {
+      const props =
+        (t.inputSchema as { properties?: Record<string, { type?: string }> })
+          ?.properties ?? {};
+      const args = Object.keys(props)
+        .map((k) => `${k}: ${props[k]?.type ?? "any"}`)
+        .join(", ");
+      return `  - ${t.name}: ${t.description}${args ? `\n    args: { ${args} }` : ""}`;
+    })
+    .join("\n");
+  return (
+    "\n\nYou can use tools. To CALL a tool, reply with ONLY a fenced json " +
+    'block:\n```json\n{ "tool": "<tool name>", "args": { ... } }\n```\nand ' +
+    "nothing else. To give your FINAL answer, reply with plain text and NO " +
+    "json block. Don't repeat a tool call with identical args. Available tools:\n" +
+    catalog
+  );
+};
+
+/** Managed-cloud tool turn: Workers AI is text-only, so we simulate one tool
+ *  step in JSON and return the SAME `{text, toolCalls}` shape the native path
+ *  does — the runner stays single-path and tool calling keeps working for
+ *  provisioned projects that bring no AI key. */
+const callCloudToolTurn = async (
+  env: Env,
+  { system, messages, tools, model }: ClaudeToolsRequest,
+): Promise<ClaudeToolsResponse> => {
+  const sys =
+    (system ?? "") + (tools?.length ? cloudToolInstruction(tools) : "");
+  const r = await callCloudGeneration(env, {
+    system: sys,
+    user: flattenMessages(messages),
+    model,
+  });
+  const text = r.text ?? "";
+  if (tools?.length) {
+    let parsed: { tool?: unknown; args?: unknown } | null = null;
+    try {
+      parsed = extractJson(text);
+    } catch {
+      parsed = null;
+    }
+    if (parsed && typeof parsed.tool === "string") {
+      const known = tools.find((t) => t.name === parsed!.tool);
+      if (known) {
+        const args =
+          parsed.args &&
+          typeof parsed.args === "object" &&
+          !Array.isArray(parsed.args)
+            ? (parsed.args as Record<string, unknown>)
+            : {};
+        return {
+          text: "",
+          toolCalls: [{ id: crypto.randomUUID(), name: known.name, args }],
+          usage: r.usage,
+        };
+      }
+    }
+  }
+  // No (valid) tool call → treat the reply as the final answer.
+  return { text, toolCalls: [], usage: r.usage };
+};
+
 /**
  * Native tool-calling turn: hands the model a conversation plus a tool catalog
  * (as real Anthropic/gateway tools) and returns either its tool calls or its
@@ -229,8 +298,9 @@ const flattenMessages = (messages: ModelMessage[]): string => {
  * returns the calls instead of running them).
  *
  * The managed-cloud metered path (Workers AI, used when a cloud project brings
- * no key) can't do native tools, so it degrades to a single flattened text turn
- * with no tool calls.
+ * no key) can't do native tools, so it falls back to a JSON-simulated tool step
+ * (`callCloudToolTurn`) that yields the same shape — no regression for the
+ * provisioned-no-key tenants that previously relied on the JSON ReAct loop.
  */
 export const callClaudeTools = async (
   env: Env,
@@ -240,12 +310,7 @@ export const callClaudeTools = async (
     env.AI_GATEWAY_API_KEY?.trim() || env.ANTHROPIC_API_KEY?.trim(),
   );
   if (!hasDirectKey && cloudConfigured(env)) {
-    const r = await callCloudGeneration(env, {
-      system,
-      user: flattenMessages(messages),
-      model,
-    });
-    return { text: r.text, toolCalls: [], usage: r.usage };
+    return callCloudToolTurn(env, { system, messages, tools, model });
   }
 
   const provider = pickProvider(env);

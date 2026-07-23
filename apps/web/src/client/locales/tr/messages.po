@@ -12638,6 +12638,10 @@ msgstr "Temayı değiştir"
 msgid "Toggle tools below to edit the allowlist."
 msgstr "İzin listesini düzenlemek için aşağıdaki araçları açıp kapatın."
 
+#: src/client/admin/pages/agents.tsx
+msgid "tokens"
+msgstr "token"
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Tokens without the <0>mcp:write</0> scope run read-only."
 msgstr "<0>mcp:write</0> kapsamı olmayan token'lar salt okunur çalışır."

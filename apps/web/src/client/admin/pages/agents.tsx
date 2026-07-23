@@ -47,6 +47,8 @@ interface Message {
   role: "user" | "assistant" | "tool";
   content: string;
   toolName?: string | null;
+  tokensIn?: number | null;
+  tokensOut?: number | null;
 }
 
 interface RunStep {
@@ -60,11 +62,23 @@ interface RunStep {
  *  (gateway / direct / managed), so "Custom…" keeps the free-text escape hatch
  *  for models not in this list. Keep IDs in sync with the latest Claude lineup. */
 const MODEL_OPTIONS = [
-  { value: "", label: "Default", hint: "Haiku 4.5 — fast & cheap" },
+  { value: "", label: "Default", hint: "Sonnet 5 — balanced" },
   { value: "anthropic/claude-opus-4-8", label: "Claude Opus 4.8", hint: "most capable" },
   { value: "anthropic/claude-sonnet-5", label: "Claude Sonnet 5", hint: "balanced" },
   { value: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5", hint: "fast & cheap" },
 ] as const;
+
+/** Human label for the agent's configured model (or the default). */
+const modelLabel = (m?: string | null): string => {
+  if (!m) return "Sonnet 5";
+  const known = MODEL_OPTIONS.find((o) => o.value === m);
+  if (known) return known.label.replace(/^Claude /, "");
+  return m.includes("/") ? m.split("/")[1]! : m;
+};
+
+/** Compact a token count for the header chip (1234 → "1.2k"). */
+const fmtTokens = (n: number): string =>
+  n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 const MODEL_CUSTOM = "__custom__";
 const isKnownModel = (m: string) => MODEL_OPTIONS.some((o) => o.value === m);
 
@@ -538,13 +552,24 @@ function AgentDetail({
     }
   }, [agent.id, input, threadId, loadMessages, loadThreads, pushToast]);
 
+  const totalTokens = messages.reduce(
+    (sum, m) => sum + (m.tokensIn ?? 0) + (m.tokensOut ?? 0),
+    0,
+  );
+
   return (
     <>
       <div className="flex flex-wrap items-center gap-2.5">
         <span className="text-base font-semibold">{agent.name}</span>
         <Badge variant={agent.active ? "default" : "secondary"}>{agent.active ? t`active` : t`off`}</Badge>
         {agent.memory && <Badge variant="secondary"><Trans>memory</Trans></Badge>}
+        <Badge variant="secondary" className="gap-1 font-normal">
+          <I.Sparkles size={11} /> {modelLabel(agent.model)}
+        </Badge>
         <span className="text-xs text-muted-foreground">· {agent.tools.length} {t`tools`}</span>
+        {totalTokens > 0 && (
+          <span className="text-xs text-muted-foreground">· {fmtTokens(totalTokens)} {t`tokens`}</span>
+        )}
         <div className="ml-auto flex items-center gap-2.5">
           <select
             className="h-8 rounded-control border border-border bg-background px-2 text-[12.5px]"
@@ -579,12 +604,12 @@ function AgentDetail({
               <MessageRow key={m.id} message={m} />
             ))}
             {liveSteps.map((s, i) => (
-              <div key={`live-${i}`} className="flex flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
+              <div key={`live-${i}`} className="flex min-w-0 flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
                 <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
                   <I.Zap size={12} /> {s.tool}
                 </span>
-                {s.thought && <span className="text-muted-foreground">{s.thought}</span>}
-                <span className={`font-mono text-[11px] ${s.isError ? "text-destructive" : "text-muted-foreground"}`}>{s.observation.slice(0, 280)}</span>
+                {s.thought && <span className="whitespace-pre-wrap break-words text-muted-foreground">{s.thought}</span>}
+                <span className={`whitespace-pre-wrap break-all font-mono text-[11px] ${s.isError ? "text-destructive" : "text-muted-foreground"}`}>{s.observation.slice(0, 280)}</span>
               </div>
             ))}
             {sending && liveSteps.length === 0 && (
@@ -619,11 +644,11 @@ function AgentDetail({
 function MessageRow({ message }: { message: Message }) {
   if (message.role === "tool") {
     return (
-      <div className="flex flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
+      <div className="flex min-w-0 flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
         <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
           <I.Zap size={12} /> {message.toolName}
         </span>
-        <span className="font-mono text-[11px] text-muted-foreground">{message.content.slice(0, 400)}</span>
+        <span className="whitespace-pre-wrap break-all font-mono text-[11px] text-muted-foreground">{message.content.slice(0, 400)}</span>
       </div>
     );
   }
@@ -631,11 +656,11 @@ function MessageRow({ message }: { message: Message }) {
   // A tool-call assistant step carries a toolName — render it like a step note.
   if (message.role === "assistant" && message.toolName) {
     return (
-      <div className="flex flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
+      <div className="flex min-w-0 flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
         <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
           <I.Sparkles size={12} /> {message.toolName}
         </span>
-        {message.content && <span className="text-muted-foreground">{message.content}</span>}
+        {message.content && <span className="whitespace-pre-wrap break-words text-muted-foreground">{message.content}</span>}
       </div>
     );
   }

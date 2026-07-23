@@ -12638,6 +12638,10 @@ msgstr "Toggle theme"
 msgid "Toggle tools below to edit the allowlist."
 msgstr "Toggle tools below to edit the allowlist."
 
+#: src/client/admin/pages/agents.tsx
+msgid "tokens"
+msgstr "tokens"
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Tokens without the <0>mcp:write</0> scope run read-only."
 msgstr "Tokens without the <0>mcp:write</0> scope run read-only."

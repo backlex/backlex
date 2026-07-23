@@ -12,7 +12,7 @@
  * no `/` is treated as a bare Anthropic id and auto-prefixed in gateway
  * mode so old persisted settings keep working.
  */
-import { generateText } from "ai";
+import { generateText, jsonSchema, tool, type ModelMessage } from "ai";
 import { createGateway } from "@ai-sdk/gateway";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { AppError } from "@backlex/core";
@@ -156,6 +156,145 @@ export const callClaude = async (
     // AppError so the global error handler maps it consistently. UNAVAILABLE
     // is the closest fit for upstream provider failures (rate limit, model
     // busy, transient 5xx); the original message is preserved.
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new AppError(
+      "UNAVAILABLE",
+      `AI provider call failed (${provider.kind}, ${modelId}): ${msg.slice(0, 500)}`,
+    );
+  }
+};
+
+/** A tool the model may call, described by a raw JSON Schema. `name` must be a
+ *  native-tool-safe id (`[a-zA-Z0-9_-]{1,64}`) — the agent runner sanitizes the
+ *  dotted MCP names (`schema.list_collections`) before handing them here. */
+export interface ClaudeToolDef {
+  name: string;
+  description: string;
+  /** JSON Schema for the tool arguments (an object schema). */
+  inputSchema: unknown;
+}
+
+/** One tool call the model decided to make this turn. Args are the parsed input. */
+export interface ModelToolCall {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+}
+
+export interface ClaudeToolsRequest {
+  system?: string;
+  /** Full conversation so far, in AI-SDK model-message shape. */
+  messages: ModelMessage[];
+  /** Tools the model may call this turn. Omit/empty → plain completion. */
+  tools?: ClaudeToolDef[];
+  model?: string;
+  maxTokens?: number;
+}
+
+export interface ClaudeToolsResponse {
+  /** Any assistant text produced alongside (or instead of) tool calls. */
+  text: string;
+  /** Tool calls the model made — empty when it produced a final answer. */
+  toolCalls: ModelToolCall[];
+  usage?: { input_tokens?: number; output_tokens?: number };
+}
+
+/** Flatten a model-message transcript to a single prompt for the managed-cloud
+ *  text path, which can't do native tool calling. */
+const flattenMessages = (messages: ModelMessage[]): string => {
+  const parts: string[] = [];
+  for (const m of messages) {
+    const content =
+      typeof m.content === "string"
+        ? m.content
+        : (m.content as Array<Record<string, unknown>>)
+            .map((p) => {
+              if (typeof p.text === "string") return p.text;
+              const out = p.output as { value?: unknown } | undefined;
+              if (out && typeof out.value === "string") return out.value;
+              return JSON.stringify(p);
+            })
+            .join("\n");
+    parts.push(`${m.role}: ${content}`);
+  }
+  return parts.join("\n");
+};
+
+/**
+ * Native tool-calling turn: hands the model a conversation plus a tool catalog
+ * (as real Anthropic/gateway tools) and returns either its tool calls or its
+ * final text. The agent runner drives the reason→act loop around this — it
+ * executes the returned tool calls itself, appends the results to `messages`,
+ * and calls again — so tools are declared here WITHOUT an `execute` (the SDK
+ * returns the calls instead of running them).
+ *
+ * The managed-cloud metered path (Workers AI, used when a cloud project brings
+ * no key) can't do native tools, so it degrades to a single flattened text turn
+ * with no tool calls.
+ */
+export const callClaudeTools = async (
+  env: Env,
+  { system, messages, tools, model, maxTokens }: ClaudeToolsRequest,
+): Promise<ClaudeToolsResponse> => {
+  const hasDirectKey = Boolean(
+    env.AI_GATEWAY_API_KEY?.trim() || env.ANTHROPIC_API_KEY?.trim(),
+  );
+  if (!hasDirectKey && cloudConfigured(env)) {
+    const r = await callCloudGeneration(env, {
+      system,
+      user: flattenMessages(messages),
+      model,
+    });
+    return { text: r.text, toolCalls: [], usage: r.usage };
+  }
+
+  const provider = pickProvider(env);
+  const modelId = resolveModelId(provider.kind, model);
+  const aiModel =
+    provider.kind === "gateway"
+      ? createGateway({ apiKey: provider.key })(modelId)
+      : createAnthropic({ apiKey: provider.key })(modelId);
+
+  const aiTools = tools?.length
+    ? Object.fromEntries(
+        tools.map((t) => [
+          t.name,
+          tool({
+            description: t.description,
+            inputSchema: jsonSchema(
+              t.inputSchema as Parameters<typeof jsonSchema>[0],
+            ),
+          }),
+        ]),
+      )
+    : undefined;
+
+  try {
+    const result = await generateText({
+      model: aiModel,
+      system,
+      messages,
+      tools: aiTools,
+      maxOutputTokens: maxTokens ?? DEFAULT_MAX_TOKENS,
+    });
+    void reportToCloud(env, {
+      kind: "ai_usage",
+      tokensIn: result.usage?.inputTokens,
+      tokensOut: result.usage?.outputTokens,
+    });
+    return {
+      text: result.text,
+      toolCalls: (result.toolCalls ?? []).map((c) => ({
+        id: c.toolCallId,
+        name: c.toolName,
+        args: (c.input ?? {}) as Record<string, unknown>,
+      })),
+      usage: {
+        input_tokens: result.usage?.inputTokens,
+        output_tokens: result.usage?.outputTokens,
+      },
+    };
+  } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     throw new AppError(
       "UNAVAILABLE",

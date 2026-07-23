@@ -1,11 +1,15 @@
 /**
- * AI agent framework — REST CRUD, thread lifecycle, and the reason→act run loop.
+ * AI agent framework — REST CRUD, thread lifecycle, and the native tool-calling
+ * run loop.
  *
  * The harness never has an AI provider key, so we mock `mcp/ai-client` to script
- * the LLM turns. That lets us drive the runner deterministically (tool step →
- * final answer) and assert the persisted transcript + the error path, without
- * any network call. Bun applies `mock.module` retroactively to already-imported
- * bindings, so the runner's `callClaude` import picks up the stub.
+ * the LLM turns. Each scripted turn is either a set of tool calls or a final
+ * answer, mirroring `callClaudeTools`'s shape, so we drive the runner
+ * deterministically (tool step → final answer) and assert the persisted
+ * transcript + the error path without any network call. Bun applies
+ * `mock.module` retroactively to already-imported bindings, so the runner's
+ * `callClaudeTools` import picks up the stub. Native tool names are sanitized
+ * (dots → underscores), so scripted tool calls use the underscore form.
  */
 import { describe, expect, test, beforeAll, afterAll, mock } from "bun:test";
 // Capture the real module BEFORE mocking so the global afterAll can restore it.
@@ -15,28 +19,39 @@ import * as realAiClient from "../src/server/mcp/ai-client";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 const realCallClaude = realAiClient.callClaude;
+const realCallClaudeTools = realAiClient.callClaudeTools;
 const realExtractJson = realAiClient.extractJson;
 
-/** Mutable script the mocked LLM plays back, one entry per `callClaude` call.
- *  Each entry is either a raw model reply string or an Error to throw. */
-let script: Array<string | Error> = [];
+/** One scripted model turn: tool calls to make, or plain text (final answer),
+ *  or an Error to throw. */
+type ScriptTurn =
+  | { text?: string; toolCalls?: Array<{ name: string; args?: Record<string, unknown> }> }
+  | Error;
+
+/** Mutable script the mocked LLM plays back, one entry per `callClaudeTools` call. */
+let script: ScriptTurn[] = [];
 let callIdx = 0;
-const resetScript = (s: Array<string | Error>) => {
+const resetScript = (s: ScriptTurn[]) => {
   script = s;
   callIdx = 0;
 };
 
 mock.module("../src/server/mcp/ai-client", () => ({
-  callClaude: async () => {
+  callClaude: realCallClaude,
+  extractJson: realExtractJson,
+  callClaudeTools: async () => {
     const next = script[callIdx++];
     if (next instanceof Error) throw next;
-    return { text: next ?? '```json\n{"action":"final","args":{"answer":"ok"}}\n```', usage: { input_tokens: 1, output_tokens: 2 } };
-  },
-  // Mirror the real fenced-JSON extractor so the runner parses our scripted replies.
-  extractJson: (text: string) => {
-    const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    const candidate = fence?.[1] ?? text;
-    return JSON.parse(candidate.trim());
+    const turn = next ?? { text: "ok" };
+    return {
+      text: turn.text ?? "",
+      toolCalls: (turn.toolCalls ?? []).map((c, i) => ({
+        id: `call-${callIdx}-${i}`,
+        name: c.name,
+        args: c.args ?? {},
+      })),
+      usage: { input_tokens: 1, output_tokens: 2 },
+    };
   },
 }));
 
@@ -44,6 +59,7 @@ mock.module("../src/server/mcp/ai-client", () => ({
 afterAll(() => {
   mock.module("../src/server/mcp/ai-client", () => ({
     callClaude: realCallClaude,
+    callClaudeTools: realCallClaudeTools,
     extractJson: realExtractJson,
   }));
 });
@@ -133,10 +149,10 @@ describe("agents — run loop", () => {
     expect(thread.status).toBe(201);
     const threadId = ((await thread.json()) as { data: { id: string } }).data.id;
 
-    // Script: 1) call the tool, 2) finish.
+    // Script: 1) call the tool, 2) finish. Native tool name is underscored.
     resetScript([
-      '```json\n{"thought":"I should list collections","action":"schema.list_collections","args":{}}\n```',
-      '```json\n{"thought":"done","action":"final","args":{"answer":"You have some collections."}}\n```',
+      { text: "I should list collections", toolCalls: [{ name: "schema_list_collections", args: {} }] },
+      { text: "You have some collections." },
     ]);
 
     const run = await h.fetch(`/api/agents/threads/${threadId}/messages`, json({ message: "what collections exist?" }));
@@ -183,7 +199,7 @@ describe("agents — run loop", () => {
     const memAgentId = ((await res.json()) as { data: { id: string } }).data.id;
     const thread = await h.fetch(`/api/agents/${memAgentId}/threads`, json({}));
     const threadId = ((await thread.json()) as { data: { id: string } }).data.id;
-    resetScript(['```json\n{"action":"final","args":{"answer":"hi there"}}\n```']);
+    resetScript([{ text: "hi there" }]);
     const run = await h.fetch(`/api/agents/threads/${threadId}/messages`, json({ message: "hello" }));
     expect(run.status).toBe(200);
     expect(((await run.json()) as { data: { answer: string } }).data.answer).toBe("hi there");

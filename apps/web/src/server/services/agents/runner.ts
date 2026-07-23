@@ -1,20 +1,27 @@
 /**
- * Agent run loop — a durable-ish reason→act cycle built on the existing pieces:
- * `callClaude` for the LLM turn (gateway / direct Anthropic / managed-cloud, all
- * already wired) and the MCP tool registry (`allTools`) for actions. Each step
- * is persisted to `agent_messages` as it happens, so a thread is a complete,
- * resumable transcript and the UI can replay every thought / tool call.
+ * Agent run loop — a reason→act cycle built on native tool calling. Each turn,
+ * `callClaudeTools` hands the model the running conversation plus the agent's
+ * tool catalog (as real Anthropic/gateway tools) and returns either tool calls
+ * or a final answer. The runner executes the calls itself (so permissions, the
+ * allow-list, dedup, and step persistence stay under our control), appends the
+ * observations to the transcript, and loops. Every step is persisted to
+ * `agent_messages` as it happens, so a thread is a complete, resumable
+ * transcript the UI can replay.
  *
- * Phase 1 runs the loop synchronously inside the request that posts a message,
- * reusing that request's identity for tool calls via `fetchInternal` (the same
+ * Native tool calling replaced the older hand-rolled JSON ReAct loop, which
+ * flattened the whole thread into one prompt and asked the model to emit
+ * `{thought, action, args}` JSON — fragile (a long tool payload truncated mid-
+ * JSON and leaked as the "answer") and prone to repeating identical calls.
+ *
+ * The loop runs synchronously inside the request that posts a message, reusing
+ * that request's identity for tool calls via `fetchInternal` (the same
  * in-process sub-fetch the MCP + Ask-AI surfaces use, so permissions, tenant
- * resolution, and the permission DSL all apply unchanged). Tool calls are
- * additionally constrained to the agent's own `tools` allow-list. Streaming and
- * a job-queue-backed async path layer on top of this in Phase 2.
+ * resolution, and the permission DSL all apply unchanged).
  */
-import { callClaude, extractJson } from "../../mcp/ai-client";
+import { callClaudeTools } from "../../mcp/ai-client";
 import { allTools } from "../../mcp/tools";
 import type { McpTool, ToolCtx } from "../../mcp/types";
+import type { ModelMessage } from "ai";
 import {
   GLOBAL_AI_CONFIG_ID,
   applyAiOverride,
@@ -60,67 +67,66 @@ export interface RunTurnResult {
   stoppedReason: "final" | "max_steps" | "error";
 }
 
-const DEFAULT_MODEL = "anthropic/claude-haiku-4-5";
+// Default agent model. Sonnet 5 is the balanced pick for multi-step agentic
+// reasoning — the old Haiku default was too weak here and looped on identical
+// tool calls. Gateway-prefixed; `resolveModelId` strips the prefix for a direct
+// Anthropic key.
+const DEFAULT_MODEL = "anthropic/claude-sonnet-5";
 
-/** Render one tool for the system-prompt catalog: name, description, and the
- *  JSON-Schema property keys so the model knows the arg shape without us
- *  re-describing it. */
-const describeTool = (t: McpTool): string => {
-  const props = t.inputSchema?.properties ?? {};
-  const keys = Object.keys(props);
-  const required = new Set(t.inputSchema?.required ?? []);
-  const argList = keys
-    .map((k) => {
-      const spec = props[k] as { type?: string } | undefined;
-      const typ = spec?.type ?? "any";
-      return `${k}${required.has(k) ? "" : "?"}: ${typ}`;
-    })
-    .join(", ");
-  return `  - ${t.name}: ${t.description}${argList ? `\n    args: { ${argList} }` : ""}`;
-};
-
-const buildSystem = (agent: AgentRow, tools: McpTool[]): string => {
+/** Native tools carry their own JSON-Schema, so the system prompt is just the
+ *  persona plus a short loop instruction — no hand-written tool catalog. */
+const buildSystem = (agent: AgentRow, hasTools: boolean): string => {
   const persona =
     agent.systemPrompt?.trim() ||
     "You are a helpful AI agent operating inside a backlex workspace.";
-  const catalog = tools.length
-    ? tools.map(describeTool).join("\n")
-    : "  (no tools available — answer from your own knowledge)";
-  return (
-    `${persona}\n\n` +
-    "You work in a reason→act loop. On EACH turn output EXACTLY one fenced " +
-    "JSON block (```json ... ```) and nothing else, with this shape:\n" +
-    '  { "thought": string, "action": string, "args": object }\n' +
-    "where `action` is either the name of ONE tool from the list below (to " +
-    'call it with `args`), or the literal "final" to finish. When `action` is ' +
-    '"final", put your complete user-facing answer in `args.answer` (a string). ' +
-    "Call a tool only when you need its data; prefer finishing once you can " +
-    "answer. Never invent a tool name or an argument the schema doesn't list.\n\n" +
-    "Available tools:\n" +
-    catalog
-  );
+  const loop = hasTools
+    ? "\n\nYou can call the provided tools to read or act on the workspace. " +
+      "Call a tool only when you need its data, and prefer finishing once you " +
+      "can answer. Don't repeat a tool call with the exact same arguments — " +
+      "reuse the result you already have. When you're done, reply with your " +
+      "complete answer as plain text (no tool call)."
+    : "\n\nYou have no tools — answer from your own knowledge.";
+  return persona + loop;
 };
 
-/** Flatten the persisted thread into a transcript the single-turn `callClaude`
- *  can consume. Tool steps render as Action/Observation pairs so the model sees
- *  its own scratchpad on the next iteration. */
-const renderTranscript = (messages: MessageRow[]): string => {
-  const lines: string[] = [];
-  for (const m of messages) {
-    if (m.role === "user") {
-      lines.push(`User: ${m.content}`);
-    } else if (m.role === "assistant" && m.toolName) {
-      const args = m.toolArgs ? JSON.stringify(m.toolArgs) : "{}";
-      if (m.content) lines.push(`Thought: ${m.content}`);
-      lines.push(`Action: ${m.toolName} ${args}`);
-    } else if (m.role === "assistant") {
-      lines.push(`Assistant: ${m.content}`);
-    } else if (m.role === "tool") {
-      lines.push(`Observation: ${m.content}`);
-    }
+/** Anthropic/gateway tool names must match `[a-zA-Z0-9_-]{1,64}`, but MCP tool
+ *  names are dotted (`schema.list_collections`). Sanitize to a native-safe id,
+ *  disambiguating any collisions, and keep a map back to the real MCP tool. */
+const buildToolMap = (
+  tools: McpTool[],
+): { defs: { name: string; description: string; inputSchema: unknown }[]; byNative: Map<string, McpTool> } => {
+  const byNative = new Map<string, McpTool>();
+  const defs: { name: string; description: string; inputSchema: unknown }[] = [];
+  for (const t of tools) {
+    let native = t.name.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
+    while (byNative.has(native)) native = native.slice(0, 60) + "_" + defs.length;
+    byNative.set(native, t);
+    defs.push({
+      name: native,
+      description: t.description,
+      inputSchema: t.inputSchema ?? { type: "object", properties: {} },
+    });
   }
-  return lines.join("\n");
+  return { defs, byNative };
 };
+
+/** Rebuild the AI-SDK message history from the persisted thread. We carry
+ *  forward the user turns and the assistant's final answers; prior turns' tool
+ *  scratchpad isn't reconstructed into native tool-call/result parts (the model
+ *  gets a fresh tool catalog each turn), which keeps the sequence valid. */
+const buildMessages = (messages: MessageRow[]): ModelMessage[] => {
+  const out: ModelMessage[] = [];
+  for (const m of messages) {
+    if (m.role === "user") out.push({ role: "user", content: m.content });
+    else if (m.role === "assistant" && !m.toolName && m.content)
+      out.push({ role: "assistant", content: m.content });
+  }
+  return out;
+};
+
+/** Stable key for the per-turn duplicate-call guard. */
+const argsKey = (args: Record<string, unknown>): string =>
+  JSON.stringify(args, Object.keys(args).sort());
 
 /** Pull a plain-text rendering out of an MCP ToolResult for the observation the
  *  model reads back. Prefers `structuredContent` (machine shape) but falls back
@@ -147,27 +153,6 @@ const renderObservation = (result: {
   return { text, isError: Boolean(result.isError) };
 };
 
-interface ParsedAction {
-  thought: string;
-  action: string;
-  args: Record<string, unknown>;
-}
-
-const parseAction = (text: string): ParsedAction => {
-  const parsed = extractJson(text) as {
-    thought?: unknown;
-    action?: unknown;
-    args?: unknown;
-  };
-  const action = typeof parsed.action === "string" ? parsed.action : "final";
-  const thought = typeof parsed.thought === "string" ? parsed.thought : "";
-  const args =
-    parsed.args && typeof parsed.args === "object" && !Array.isArray(parsed.args)
-      ? (parsed.args as Record<string, unknown>)
-      : {};
-  return { thought, action, args };
-};
-
 /**
  * Run a single end-user turn against an agent to completion (final answer or
  * max-steps). Persists the user message, every tool step, and the final answer.
@@ -180,10 +165,12 @@ export const runAgentTurn = async (
   if (!agent) throw new Error("agent not found");
 
   // The agent's allow-list, resolved against the live registry. Unknown names
-  // (a tool removed since the agent was authored) are simply dropped.
+  // (a tool removed since the agent was authored) are simply dropped. Native
+  // tool names are sanitized (dots → underscores) with a map back to the MCP
+  // tool the model's call resolves to.
   const tools = allTools.filter((t) => agent.tools.includes(t.name));
-  const toolByName = new Map(tools.map((t) => [t.name, t]));
-  let system = buildSystem(agent, tools);
+  const { defs: toolDefs, byNative } = buildToolMap(tools);
+  let system = buildSystem(agent, tools.length > 0);
 
   // Live progress channel — clients subscribe to `agent:thread:<id>` to watch
   // steps stream in. Best-effort: a publish failure never breaks the turn.
@@ -239,46 +226,33 @@ export const runAgentTurn = async (
   const steps: RunStep[] = [];
   const maxSteps = Math.max(1, Math.min(agent.maxSteps || 8, 25));
 
+  // Running conversation the model sees, seeded from the persisted thread. The
+  // loop appends this turn's assistant tool-call and tool-result messages so
+  // each iteration builds on the last with proper roles (not a flat re-prompt).
+  const messages = buildMessages(await listMessages(ctx, threadId));
+  // Per-turn duplicate-call guard: same tool + same args → short-circuit rather
+  // than re-running (a weak model can otherwise spin on the identical call).
+  const called = new Set<string>();
+
   try {
     for (let i = 0; i < maxSteps; i++) {
-      const transcript = renderTranscript(await listMessages(ctx, threadId));
-      const reply = await callClaude(aiEnv, {
+      const reply = await callClaudeTools(aiEnv, {
         system,
-        user: `${transcript}\n\nRespond with the next JSON action.`,
+        messages,
+        tools: toolDefs,
         model,
-        maxTokens: 1500,
+        maxTokens: 4096,
       });
       const usage = {
         tokensIn: reply.usage?.input_tokens ?? null,
         tokensOut: reply.usage?.output_tokens ?? null,
       };
 
-      let parsed: ParsedAction;
-      try {
-        parsed = parseAction(reply.text);
-      } catch {
-        // Model didn't return parseable JSON — treat the raw reply as the
-        // final answer rather than failing the whole turn.
-        const answer = reply.text.trim();
-        const msg = await appendMessage(ctx, {
-          threadId,
-          tenantId,
-          role: "assistant",
-          content: answer,
-          ...usage,
-        });
-        await setThreadStatus(ctx, threadId, "idle");
-        if (agent.memory) await storeMemory(ctx, threadId, msg.id, answer);
-        await emit("agent.final", { answer });
-        return { answer, steps, stoppedReason: "final" };
-      }
-
-      if (parsed.action === "final" || !toolByName.has(parsed.action)) {
+      // No tool calls → the model produced its final answer.
+      if (reply.toolCalls.length === 0) {
         const answer =
-          typeof parsed.args.answer === "string" && parsed.args.answer.trim()
-            ? (parsed.args.answer as string)
-            : parsed.thought ||
-              "I wasn't able to produce an answer for that request.";
+          reply.text.trim() ||
+          "I wasn't able to produce an answer for that request.";
         const msg = await appendMessage(ctx, {
           threadId,
           tenantId,
@@ -292,46 +266,94 @@ export const runAgentTurn = async (
         return { answer, steps, stoppedReason: "final" };
       }
 
-      // Tool step — record the model's decision, run the tool, record the
-      // observation.
-      const tool = toolByName.get(parsed.action)!;
-      await appendMessage(ctx, {
-        threadId,
-        tenantId,
+      // Reflect the model's assistant turn (any text + its tool calls) back into
+      // the conversation so the tool results below line up by id.
+      messages.push({
         role: "assistant",
-        content: parsed.thought,
-        toolName: parsed.action,
-        toolArgs: parsed.args,
-        ...usage,
+        content: [
+          ...(reply.text ? [{ type: "text" as const, text: reply.text }] : []),
+          ...reply.toolCalls.map((c) => ({
+            type: "tool-call" as const,
+            toolCallId: c.id,
+            toolName: c.name,
+            input: c.args,
+          })),
+        ],
       });
 
-      let observation: { text: string; isError: boolean };
-      try {
-        const result = await tool.handler(parsed.args, toolCtx);
-        observation = renderObservation(result);
-      } catch (e) {
-        observation = {
-          text: e instanceof Error ? e.message : String(e),
-          isError: true,
+      // Usage is per model turn — attach it to the first persisted assistant
+      // row of this turn only, so the UI's token total doesn't double-count.
+      let usageAttached = false;
+      for (const call of reply.toolCalls) {
+        const mcpTool = byNative.get(call.name);
+        const rowUsage = usageAttached ? {} : usage;
+        usageAttached = true;
+
+        await appendMessage(ctx, {
+          threadId,
+          tenantId,
+          role: "assistant",
+          content: reply.text,
+          toolName: mcpTool?.name ?? call.name,
+          toolArgs: call.args,
+          ...rowUsage,
+        });
+
+        let observation: { text: string; isError: boolean };
+        const key = `${call.name}:${argsKey(call.args)}`;
+        if (!mcpTool) {
+          observation = {
+            text: `Unknown tool "${call.name}" — pick one from the provided tools.`,
+            isError: true,
+          };
+        } else if (called.has(key)) {
+          observation = {
+            text: `Already called ${mcpTool.name} with these exact arguments this turn — reuse the earlier result or finish with your answer.`,
+            isError: false,
+          };
+        } else {
+          try {
+            observation = renderObservation(
+              await mcpTool.handler(call.args, toolCtx),
+            );
+          } catch (e) {
+            observation = {
+              text: e instanceof Error ? e.message : String(e),
+              isError: true,
+            };
+          }
+        }
+        called.add(key);
+
+        await appendMessage(ctx, {
+          threadId,
+          tenantId,
+          role: "tool",
+          content: observation.text,
+          toolName: mcpTool?.name ?? call.name,
+          toolResult: observation.text,
+        });
+        messages.push({
+          role: "tool",
+          content: [
+            {
+              type: "tool-result",
+              toolCallId: call.id,
+              toolName: call.name,
+              output: { type: "text", value: observation.text },
+            },
+          ],
+        });
+        const step: RunStep = {
+          thought: reply.text,
+          tool: mcpTool?.name ?? call.name,
+          args: call.args,
+          observation: observation.text,
+          isError: observation.isError,
         };
+        steps.push(step);
+        await emit("agent.step", step);
       }
-      await appendMessage(ctx, {
-        threadId,
-        tenantId,
-        role: "tool",
-        content: observation.text,
-        toolName: parsed.action,
-        toolResult: observation.text,
-      });
-      const step: RunStep = {
-        thought: parsed.thought,
-        tool: parsed.action,
-        args: parsed.args,
-        observation: observation.text,
-        isError: observation.isError,
-      };
-      steps.push(step);
-      await emit("agent.step", step);
     }
 
     // Loop exhausted without a final answer.

@@ -69,15 +69,15 @@ const MODEL_OPTIONS = [
   { value: "@cf/qwen/qwen3-30b-a3b-fp8", label: "Qwen3 30B", hint: "Cloudflare AI · managed · balanced" },
   { value: "@cf/google/gemma-4-26b-a4b-it", label: "Gemma 4 26B", hint: "Cloudflare AI · managed · thinking" },
   { value: "@cf/openai/gpt-oss-120b", label: "GPT-OSS 120B", hint: "Cloudflare AI · managed · strong" },
+  { value: "@cf/zai-org/glm-5.2", label: "GLM 5.2", hint: "Cloudflare AI · managed · flagship coding" },
+  { value: "@cf/moonshotai/kimi-k2.7-code", label: "Kimi K2.7", hint: "Cloudflare AI · managed · coding" },
   { value: "@cf/meta/llama-3.1-70b-instruct-fp8-fast", label: "Llama 3.1 70B", hint: "Cloudflare AI · managed" },
   { value: "@cf/meta/llama-3.1-8b-instruct-fp8", label: "Llama 3.1 8B", hint: "Cloudflare AI · managed · fast/cheap" },
-  // Bring-your-own-key models — Anthropic direct or Vercel AI Gateway. Without
-  // a key configured in Settings · AI these fall back to Workers AI on managed.
+  // Bring-your-own-key models — Anthropic Claude, needs a key in Settings · AI.
+  // (GLM / Kimi above are Cloudflare-hosted @cf models, so they need no key.)
   { value: "anthropic/claude-opus-4-8", label: "Claude Opus 4.8", hint: "your key · most capable" },
   { value: "anthropic/claude-sonnet-5", label: "Claude Sonnet 5", hint: "your key · balanced" },
   { value: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5", hint: "your key · fast/cheap" },
-  { value: "moonshotai/kimi-k2.7-code", label: "Kimi K2.7", hint: "your key · AI Gateway" },
-  { value: "zai/glm-5.2", label: "GLM 5.2", hint: "your key · AI Gateway" },
 ] as const;
 
 /** Managed default (mirrors the runner's CLOUD_DEFAULT_AGENT_MODEL). */

@@ -831,6 +831,10 @@ msgstr "A single value — counter fits best; sparkline / bars need multiple row
 msgid "A template with key \"{trimmedKey}\" already exists."
 msgstr "A template with key \"{trimmedKey}\" already exists."
 
+#: src/client/admin/pages/agents.tsx
+msgid "A turn is still running on this thread — wait for it to finish."
+msgstr "A turn is still running on this thread — wait for it to finish."
+
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "A value is stored. Type a new one to replace it, or leave blank to keep it."

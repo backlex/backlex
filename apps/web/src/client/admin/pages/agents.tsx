@@ -577,7 +577,9 @@ function AgentDetail({
 
   const send = useCallback(async () => {
     const message = input.trim();
-    if (!message) return;
+    // Guard against a double-send: a turn runs synchronously inside the POST, so
+    // a second send while one is in flight would 409 ("A turn is already running").
+    if (!message || sending) return;
     let tid = threadId;
     if (!tid) {
       try {
@@ -597,7 +599,8 @@ function AgentDetail({
     setSending(true);
     setLiveSteps([]);
     // Optimistically show the user message.
-    setMessages((m) => [...m, { id: `tmp-${Date.now()}`, role: "user", content: message }]);
+    const tmpId = `tmp-${Date.now()}`;
+    setMessages((m) => [...m, { id: tmpId, role: "user", content: message }]);
 
     // Subscribe to live step events for this turn.
     let es: EventSource | null = null;
@@ -627,15 +630,22 @@ function AgentDetail({
       });
       await loadMessages(tid);
     } catch (e) {
-      pushToast((e as Error).message, "error");
-      // Reload so the persisted user message + any error state is reflected.
-      await loadMessages(tid);
+      // Drop the optimistic bubble and RESTORE the typed text so it isn't lost.
+      setMessages((m) => m.filter((x) => x.id !== tmpId));
+      setInput((cur) => cur || message);
+      const msg = (e as Error).message;
+      pushToast(
+        /already running/i.test(msg)
+          ? t`A turn is still running on this thread — wait for it to finish.`
+          : msg,
+        "error",
+      );
     } finally {
       es?.close();
       setSending(false);
       setLiveSteps([]);
     }
-  }, [agent.id, input, threadId, loadMessages, loadThreads, pushToast]);
+  }, [agent.id, input, sending, threadId, loadMessages, loadThreads, pushToast, t]);
 
   const totalTokens = messages.reduce(
     (sum, m) => sum + (m.tokensIn ?? 0) + (m.tokensOut ?? 0),

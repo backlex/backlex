@@ -717,8 +717,13 @@ function AgentDetail({
                 <span className={`whitespace-pre-wrap break-all font-mono text-[11px] ${s.isError ? "text-destructive" : "text-muted-foreground"}`}>{s.observation.slice(0, 280)}</span>
               </div>
             ))}
-            {sending && liveSteps.length === 0 && (
-              <div className="text-[12px] text-muted-foreground"><Trans>Thinking…</Trans></div>
+            {sending && (
+              <div className="flex flex-col gap-2 px-1 py-1.5">
+                <div className="agent-sweep-track" aria-hidden />
+                <span className="text-[12px] text-muted-foreground">
+                  {liveSteps.length > 0 ? t`Working…` : t`Thinking…`}
+                </span>
+              </div>
             )}
             <div ref={endRef} />
           </div>
@@ -738,7 +743,7 @@ function AgentDetail({
             placeholder={t`Ask the agent…`}
           />
           <Button variant="primary" size="sm" icon={I.ArrowRight} disabled={sending || !input.trim()} onClick={send}>
-            <Trans>Send</Trans>
+            {sending ? <Trans>Working…</Trans> : <Trans>Send</Trans>}
           </Button>
         </div>
       </div>

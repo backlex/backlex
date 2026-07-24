@@ -2177,3 +2177,35 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .sheet-tab:hover { color: var(--foreground); }
 .sheet-tab.on { color: var(--foreground); border-bottom-color: var(--foreground); }
 
+
+/* Agent "working" indicator — the gradient sweep bar from the Backlex Console
+   design (claude.ai/design). A slim track with a purple→orange gradient that
+   sweeps across while an agent turn is in flight. */
+@keyframes agent-sweep {
+  0% { background-position: 180% 0; opacity: 0; }
+  12% { opacity: 1; }
+  60% { background-position: -80% 0; opacity: 1; }
+  100% { background-position: -80% 0; opacity: 0; }
+}
+.agent-sweep-track {
+  position: relative;
+  height: 6px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(128, 128, 128, 0.16);
+}
+.agent-sweep-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(139, 108, 255, 0) 0%,
+    rgba(139, 108, 255, 0.95) 40%,
+    rgba(255, 157, 131, 0.95) 56%,
+    rgba(255, 157, 131, 0) 100%
+  );
+  background-size: 62% 100%;
+  background-repeat: no-repeat;
+  animation: agent-sweep 3.2s linear infinite;
+}

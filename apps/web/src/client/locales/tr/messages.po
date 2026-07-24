@@ -13656,6 +13656,7 @@ msgstr "worker bağlamaları"
 msgid "worker thread + RPC"
 msgstr "worker thread + RPC"
 
+#: src/client/admin/pages/agents.tsx
 #: src/client/components/confirm-action.tsx
 msgid "Working…"
 msgstr "İşleniyor…"

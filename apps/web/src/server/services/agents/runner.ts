@@ -83,8 +83,10 @@ const buildSystem = (agent: AgentRow, hasTools: boolean): string => {
     ? "\n\nYou can call the provided tools to read or act on the workspace. " +
       "Call a tool only when you need its data, and prefer finishing once you " +
       "can answer. Don't repeat a tool call with the exact same arguments — " +
-      "reuse the result you already have. When you're done, reply with your " +
-      "complete answer as plain text (no tool call)."
+      "reuse the result you already have. When you have enough information, " +
+      "STOP calling tools and reply with a CONCISE, well-structured summary in " +
+      "plain text — describe what you found or did and the outcome. Do NOT paste " +
+      "raw tool output or JSON back; that summary is your final answer."
     : "\n\nYou have no tools — answer from your own knowledge.";
   return persona + loop;
 };

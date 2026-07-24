@@ -686,7 +686,7 @@ function AgentDetail({
 
       <div className="flex h-[440px] flex-col overflow-hidden rounded-control border border-border">
         <ScrollArea className="min-h-0 flex-1">
-          <div className="flex flex-col gap-3 p-4">
+          <div className="flex min-w-0 flex-col gap-3 p-4">
             {messages.length === 0 && liveSteps.length === 0 && (
               <div className="py-10 text-center text-[13px] text-muted-foreground">
                 <Trans>Send a message to start the conversation.</Trans>
@@ -757,8 +757,8 @@ function MessageRow({ message }: { message: Message }) {
     );
   }
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[80%] whitespace-pre-wrap rounded-surface px-3.5 py-2 text-[13px] ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+    <div className={`flex min-w-0 ${isUser ? "justify-end" : "justify-start"}`}>
+      <div className={`max-w-[80%] overflow-hidden whitespace-pre-wrap break-words rounded-surface px-3.5 py-2 text-[13px] ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
         {message.content}
       </div>
     </div>

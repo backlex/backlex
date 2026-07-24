@@ -205,6 +205,44 @@ describe("agents — run loop", () => {
     expect(((await run.json()) as { data: { answer: string } }).data.answer).toBe("hi there");
   });
 
+  test("an untitled thread is named after its opening prompt", async () => {
+    const thread = await h.fetch(`/api/agents/${agentId}/threads`, json({}));
+    const threadId = ((await thread.json()) as { data: { id: string } }).data.id;
+    const prompt =
+      "Summarize the top products by revenue this month\nand say what changed versus last month";
+    resetScript([{ text: "ok" }]);
+    expect(
+      (await h.fetch(`/api/agents/threads/${threadId}/messages`, json({ message: prompt }))).status,
+    ).toBe(200);
+
+    const list = (await (await h.fetch(`/api/agents/${agentId}/threads`)).json()) as {
+      data: Array<{ id: string; title: string | null }>;
+    };
+    const row = list.data.find((x) => x.id === threadId);
+    // Single line, clipped — never the raw uuid.
+    expect(row?.title).toBe("Summarize the top products by revenue this month and say what c…");
+    expect(row?.title).not.toContain("\n");
+
+    // A second turn must not re-title the thread.
+    resetScript([{ text: "ok" }]);
+    await h.fetch(`/api/agents/threads/${threadId}/messages`, json({ message: "and last week?" }));
+    const after = (await (await h.fetch(`/api/agents/${agentId}/threads`)).json()) as {
+      data: Array<{ id: string; title: string | null }>;
+    };
+    expect(after.data.find((x) => x.id === threadId)?.title).toBe(row?.title);
+  });
+
+  test("an explicit title survives the first turn", async () => {
+    const thread = await h.fetch(`/api/agents/${agentId}/threads`, json({ title: "Pinned" }));
+    const threadId = ((await thread.json()) as { data: { id: string } }).data.id;
+    resetScript([{ text: "ok" }]);
+    await h.fetch(`/api/agents/threads/${threadId}/messages`, json({ message: "anything" }));
+    const list = (await (await h.fetch(`/api/agents/${agentId}/threads`)).json()) as {
+      data: Array<{ id: string; title: string | null }>;
+    };
+    expect(list.data.find((x) => x.id === threadId)?.title).toBe("Pinned");
+  });
+
   test("empty message is rejected (422)", async () => {
     const thread = await h.fetch(`/api/agents/${agentId}/threads`, json({}));
     const threadId = ((await thread.json()) as { data: { id: string } }).data.id;

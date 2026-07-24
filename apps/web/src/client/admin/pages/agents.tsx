@@ -13,6 +13,14 @@ import { Label } from "@backlex/ui/components/label";
 import { Checkbox } from "@backlex/ui/components/checkbox";
 import { Select } from "../select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@backlex/ui/components/dropdown-menu";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -38,8 +46,11 @@ interface Agent {
 
 interface Thread {
   id: string;
+  /** Server-derived label: the first line of the opening prompt (a raw id is
+   *  meaningless in the picker). Null only for a thread with no messages yet. */
   title?: string | null;
   status: string;
+  updatedAt?: string | number | null;
 }
 
 interface Message {
@@ -132,6 +143,27 @@ const effectiveModelValue = (
 /** Compact a token count for the header chip (1234 → "1.2k"). */
 const fmtTokens = (n: number): string =>
   n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+/** Mirror of the server's thread label (`threadTitleFrom`) so the optimistic
+ *  history row reads the same as the one that comes back from the API. */
+const previewTitle = (message: string, max = 64): string => {
+  const flat = message.replace(/\s+/g, " ").trim();
+  return flat.length <= max ? flat : `${flat.slice(0, max - 1).trimEnd()}…`;
+};
+
+/** Short "when" stamp for a history row — recency is what picks a thread apart,
+ *  so minutes/hours/days beat a full timestamp at this width. */
+const fmtWhen = (v: string | number | null | undefined): string => {
+  if (v === null || v === undefined) return "";
+  const ms = typeof v === "number" ? v : Date.parse(v);
+  if (!Number.isFinite(ms)) return "";
+  const diff = Date.now() - ms;
+  if (diff < 60_000) return "now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
+  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}d`;
+  return new Date(ms).toISOString().slice(5, 10);
+};
+
 const MODEL_CUSTOM = "__custom__";
 const isKnownModel = (m: string) => MODEL_OPTIONS.some((o) => o.value === m);
 
@@ -561,19 +593,19 @@ function AgentDetail({
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages, liveSteps]);
 
-  const newThread = useCallback(async () => {
-    try {
-      const res = await api<{ data: Thread }>(`/api/agents/${agent.id}/threads`, {
-        method: "POST",
-        body: JSON.stringify({}),
-      });
-      await loadThreads();
-      setThreadId(res.data.id);
-      setMessages([]);
-    } catch (e) {
-      pushToast((e as Error).message, "error");
-    }
-  }, [agent.id, loadThreads, pushToast]);
+  // "New conversation" is purely local — the thread row is created on the first
+  // send. Creating it up front left untitled ghost rows in the history list for
+  // every abandoned chat.
+  const newThread = useCallback(() => {
+    setThreadId(null);
+    setMessages([]);
+    setLiveSteps([]);
+  }, []);
+
+  const activeThread = threads.find((th) => th.id === threadId);
+  const activeThreadLabel = threadId
+    ? activeThread?.title || t`Conversation`
+    : t`New conversation`;
 
   const send = useCallback(async () => {
     const message = input.trim();
@@ -589,7 +621,12 @@ function AgentDetail({
         });
         tid = res.data.id;
         setThreadId(tid);
-        await loadThreads();
+        // Show it in the history list right away, labelled the way the server
+        // will label it once the turn lands (first line of this prompt).
+        setThreads((prev) => [
+          { id: tid as string, title: previewTitle(message), status: "running", updatedAt: Date.now() },
+          ...prev,
+        ]);
       } catch (e) {
         pushToast((e as Error).message, "error");
         return;
@@ -644,6 +681,9 @@ function AgentDetail({
       es?.close();
       setSending(false);
       setLiveSteps([]);
+      // Reconcile the optimistic history row either way: the server names an
+      // untitled thread after its opening prompt and bumps status/updatedAt.
+      void loadThreads();
     }
   }, [agent.id, input, sending, threadId, loadMessages, loadThreads, pushToast, t]);
 
@@ -675,18 +715,53 @@ function AgentDetail({
         {totalTokens > 0 && (
           <span className="text-xs text-muted-foreground">· {fmtTokens(totalTokens)} {t`tokens`}</span>
         )}
-        <div className="ml-auto flex items-center gap-2.5">
-          <select
-            className="h-8 rounded-control border border-border bg-background px-2 text-[12.5px]"
-            value={threadId ?? ""}
-            onChange={(e) => setThreadId(e.target.value || null)}
-          >
-            <option value="">{t`New conversation`}</option>
-            {threads.map((th) => (
-              <option key={th.id} value={th.id}>{th.title || th.id.slice(0, 8)}</option>
-            ))}
-          </select>
-          <Button variant="outline" size="sm" icon={I.Plus} onClick={newThread}><Trans>New chat</Trans></Button>
+        <div className="ml-auto flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" icon={I.History} className="max-w-[45vw] sm:max-w-[220px]">
+                <span className="truncate">{activeThreadLabel}</span>
+                <I.ChevronDown size={12} className="shrink-0 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[min(22rem,calc(100vw-2rem))]">
+              <DropdownMenuLabel className="flex items-center justify-between">
+                <span><Trans>History</Trans></span>
+                <span className="font-mono text-[10.5px] text-muted-foreground">{threads.length}</span>
+              </DropdownMenuLabel>
+              {threads.length === 0 ? (
+                <div className="px-3 py-3 text-[12px] text-muted-foreground">
+                  <Trans>No conversations yet.</Trans>
+                </div>
+              ) : (
+                <ScrollArea viewportClassName="max-h-[280px]">
+                  {threads.map((th) => (
+                    <DropdownMenuItem
+                      key={th.id}
+                      className="items-start gap-2.5"
+                      onSelect={() => setThreadId(th.id)}
+                    >
+                      <I.MessageSquare size={13} className="mt-0.5 shrink-0 text-muted-foreground" />
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate text-[13px] font-normal">
+                          {th.title || t`Empty conversation`}
+                        </span>
+                        <span className="text-[11px] font-normal text-muted-foreground">
+                          {fmtWhen(th.updatedAt)}
+                          {th.status === "running" ? ` · ${t`running`}` : ""}
+                        </span>
+                      </span>
+                      {th.id === threadId && <I.Check size={12} className="mt-0.5 shrink-0" />}
+                    </DropdownMenuItem>
+                  ))}
+                </ScrollArea>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={newThread}>
+                <I.Plus size={12} /> <Trans>New conversation</Trans>
+                {threadId === null && <I.Check size={12} className="ml-auto" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="primary" size="sm" icon={I.Pencil} onClick={onEdit}><Trans>Edit</Trans></Button>
         </div>
       </div>

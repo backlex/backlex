@@ -2878,6 +2878,10 @@ msgstr "Bu anahtarın yalnızca MCP sunucusu üzerinden neler yapabileceğini be
 msgid "conventional column present"
 msgstr "geleneksel sütun mevcut"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Conversation"
+msgstr "Konuşma"
+
 #: src/client/admin/ui.tsx
 msgid "copied"
 msgstr "kopyalandı"
@@ -4340,6 +4344,10 @@ msgstr "Boş = varsayılan kolonlar. Biçimlendirme her alanın Arayüz sekmesin
 msgid "Empty collection"
 msgstr "Boş koleksiyon"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Empty conversation"
+msgstr "Boş konuşma"
+
 #: src/client/admin/collections-index.tsx
 #~ msgid "Empty or template"
 #~ msgstr "Boş veya şablon"
@@ -5561,6 +5569,7 @@ msgid "highest reasoning · slower · ~3x cost"
 msgstr "en yüksek akıl yürütme · daha yavaş · ~3x maliyet"
 
 #: src/client/admin/item-editor.tsx
+#: src/client/admin/pages/agents.tsx
 msgid "History"
 msgstr "Geçmiş"
 
@@ -7204,8 +7213,8 @@ msgid "New branch"
 msgstr "Yeni dal"
 
 #: src/client/admin/pages/agents.tsx
-msgid "New chat"
-msgstr "Yeni sohbet"
+#~ msgid "New chat"
+#~ msgstr "Yeni sohbet"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/overview.tsx
@@ -7493,6 +7502,10 @@ msgstr "Koşul yok. Bu alanı diğer alanlara göre zorunlu/salt okunur/gizli ya
 #: src/client/pages/rest-explorer.tsx
 msgid "No content schema."
 msgstr "İçerik şeması yok."
+
+#: src/client/admin/pages/agents.tsx
+msgid "No conversations yet."
+msgstr "Henüz konuşma yok."
 
 #: src/client/admin/parity/insights.tsx
 msgid "No data yet — run the panel."
@@ -10353,6 +10366,10 @@ msgstr "Test çalıştır"
 #: src/client/pages/oauth-consent.tsx
 msgid "Run write MCP tools (create, update, delete — your permissions still apply)"
 msgstr "Yazma MCP araçlarını çalıştırma (oluşturma, güncelleme, silme — izinleriniz yine geçerli)"
+
+#: src/client/admin/pages/agents.tsx
+msgid "running"
+msgstr "çalışıyor"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Running"

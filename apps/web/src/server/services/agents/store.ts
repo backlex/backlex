@@ -4,7 +4,7 @@
  * casts to `any` follow the same `noUncheckedIndexedAccess` + union-type
  * reasoning documented in CLAUDE.md.
  */
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { Ctx } from "../../context";
@@ -162,6 +162,15 @@ export const deleteAgent = async (
 
 // ── threads ───────────────────────────────────────────────────────────────
 
+/** A thread label a human can recognise: the first line of the opening prompt,
+ *  whitespace-collapsed and clipped. Raw thread ids are unreadable in the
+ *  history picker, so this is what the UI shows. */
+export const threadTitleFrom = (message: string, max = 64): string => {
+  const flat = message.replace(/\s+/g, " ").trim();
+  if (flat.length <= max) return flat;
+  return `${flat.slice(0, max - 1).trimEnd()}…`;
+};
+
 export const listThreads = async (
   ctx: Ctx,
   tenantId: string,
@@ -171,11 +180,42 @@ export const listThreads = async (
   const where = agentId
     ? and(eq(t.tenantId, tenantId), eq(t.agentId, agentId))
     : eq(t.tenantId, tenantId);
-  return (await (ctx.db as any)
+  const rows = (await (ctx.db as any)
     .select()
     .from(t)
     .where(where)
     .orderBy(desc(t.updatedAt))) as ThreadRow[];
+
+  // Threads created before titles were persisted (and any created with an
+  // explicit null title) still need a readable label — derive it on read from
+  // their opening user message rather than backfilling with a migration.
+  const untitled = rows.filter((r) => !r.title);
+  if (untitled.length === 0) return rows;
+  const m = messagesTable(ctx.dialect);
+  const firsts = (await (ctx.db as any)
+    .select({ threadId: m.threadId, content: m.content, createdAt: m.createdAt })
+    .from(m)
+    .where(
+      and(
+        inArray(
+          m.threadId,
+          untitled.map((r) => r.id),
+        ),
+        eq(m.role, "user"),
+      ),
+    )
+    .orderBy(asc(m.createdAt))) as {
+    threadId: string;
+    content: string;
+  }[];
+  const byThread = new Map<string, string>();
+  for (const row of firsts) {
+    if (!byThread.has(row.threadId) && row.content)
+      byThread.set(row.threadId, threadTitleFrom(row.content));
+  }
+  return rows.map((r) =>
+    r.title ? r : { ...r, title: byThread.get(r.id) ?? null },
+  );
 };
 
 export const getThread = async (
@@ -213,6 +253,22 @@ export const createThread = async (
   };
   await (ctx.db as any).insert(t).values(row);
   return row as ThreadRow;
+};
+
+/** Name a thread after its opening prompt — only if it doesn't have a title
+ *  yet, so an explicit title (or a later message) never overwrites it. */
+export const ensureThreadTitle = async (
+  ctx: Ctx,
+  id: string,
+  message: string,
+): Promise<void> => {
+  const title = threadTitleFrom(message);
+  if (!title) return;
+  const t = threadsTable(ctx.dialect);
+  await (ctx.db as any)
+    .update(t)
+    .set({ title })
+    .where(and(eq(t.id, id), or(isNull(t.title), eq(t.title, ""))));
 };
 
 export const setThreadStatus = async (

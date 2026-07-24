@@ -63,6 +63,11 @@ active workspace.
 | `DELETE` | `/api/agents/threads/{threadId}` | Delete a thread |
 | `POST` | `/api/agents/threads/{threadId}/messages` | Send a message → run a turn |
 
+A thread started without an explicit `title` is named after its opening prompt
+(first line, clipped to 64 chars) on the first turn, so the admin's **History**
+picker lists readable conversations instead of thread ids. Threads that predate
+that behaviour get the same label derived on read in `GET /threads`.
+
 ## Definition fields
 
 | Field | Default | Notes |

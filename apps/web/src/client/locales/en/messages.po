@@ -2878,6 +2878,10 @@ msgstr "Controls what this key can do through the MCP server only — REST autho
 msgid "conventional column present"
 msgstr "conventional column present"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Conversation"
+msgstr "Conversation"
+
 #: src/client/admin/ui.tsx
 msgid "copied"
 msgstr "copied"
@@ -4340,6 +4344,10 @@ msgstr "Empty = the default columns. Formatting comes from each field's Interfac
 msgid "Empty collection"
 msgstr "Empty collection"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Empty conversation"
+msgstr "Empty conversation"
+
 #: src/client/admin/collections-index.tsx
 #~ msgid "Empty or template"
 #~ msgstr "Empty or template"
@@ -5561,6 +5569,7 @@ msgid "highest reasoning · slower · ~3x cost"
 msgstr "highest reasoning · slower · ~3x cost"
 
 #: src/client/admin/item-editor.tsx
+#: src/client/admin/pages/agents.tsx
 msgid "History"
 msgstr "History"
 
@@ -7204,8 +7213,8 @@ msgid "New branch"
 msgstr "New branch"
 
 #: src/client/admin/pages/agents.tsx
-msgid "New chat"
-msgstr "New chat"
+#~ msgid "New chat"
+#~ msgstr "New chat"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/overview.tsx
@@ -7493,6 +7502,10 @@ msgstr "No conditions. Click \"Add condition\" to make this field required/reado
 #: src/client/pages/rest-explorer.tsx
 msgid "No content schema."
 msgstr "No content schema."
+
+#: src/client/admin/pages/agents.tsx
+msgid "No conversations yet."
+msgstr "No conversations yet."
 
 #: src/client/admin/parity/insights.tsx
 msgid "No data yet — run the panel."
@@ -10353,6 +10366,10 @@ msgstr "Run test"
 #: src/client/pages/oauth-consent.tsx
 msgid "Run write MCP tools (create, update, delete — your permissions still apply)"
 msgstr "Run write MCP tools (create, update, delete — your permissions still apply)"
+
+#: src/client/admin/pages/agents.tsx
+msgid "running"
+msgstr "running"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Running"

@@ -32,6 +32,7 @@ import type { Ctx } from "../../context";
 import { retrieveMemory, storeMemory } from "./memory";
 import {
   appendMessage,
+  ensureThreadTitle,
   getAgent,
   listMessages,
   setThreadStatus,
@@ -221,6 +222,9 @@ export const runAgentTurn = async (
     role: "user",
     content: message,
   });
+  // Label the thread with its opening prompt so the history picker reads as
+  // text instead of a uuid. No-op once the thread has a title.
+  await ensureThreadTitle(ctx, threadId, message);
   await setThreadStatus(ctx, threadId, "running");
   await emit("agent.start", { threadId, agentId });
   if (agent.memory) await storeMemory(ctx, threadId, userMsg.id, message);

@@ -551,7 +551,10 @@ function AgentDetail({
   }, [loadThreads]);
 
   useEffect(() => {
+    // Selecting "New conversation" (threadId=null) must clear the transcript —
+    // otherwise the previously-opened thread's messages linger.
     if (threadId) void loadMessages(threadId);
+    else setMessages([]);
   }, [threadId, loadMessages]);
 
   useEffect(() => {

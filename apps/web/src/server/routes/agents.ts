@@ -212,7 +212,20 @@ export const agentsRoutes = (app: Hono<AppBindings>, env: Env) => {
     const thread = await getThread(ctx, threadId, tenantId);
     if (!thread) throw new AppError("NOT_FOUND", "Thread not found");
     if (thread.status === "running") {
-      throw new AppError("CONFLICT", "A turn is already running on this thread");
+      // A live turn heartbeats `updatedAt` on every persisted step (appendMessage
+      // bumps it). If it's gone quiet for longer than a step could take, the
+      // previous turn's request was canceled/killed mid-run (e.g. the client
+      // disconnected) and never reset the status — otherwise it's a genuine
+      // in-flight turn. Only block on a fresh one; let this turn take over a stale
+      // "running" so a zombie can't wedge the thread forever.
+      const updatedMs =
+        typeof thread.updatedAt === "number"
+          ? thread.updatedAt
+          : new Date(thread.updatedAt).getTime();
+      const STALE_TURN_MS = 120_000;
+      if (Date.now() - updatedMs < STALE_TURN_MS) {
+        throw new AppError("CONFLICT", "A turn is already running on this thread");
+      }
     }
     const body = await readBody(c);
     const message = typeof body.message === "string" ? body.message.trim() : "";

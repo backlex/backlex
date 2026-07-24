@@ -259,6 +259,51 @@ const CLOUD_DEFAULT_AGENT_MODEL = "@cf/zai-org/glm-5.2";
 const pickCloudModel = (model?: string): string =>
   model?.startsWith("@cf/") ? model : CLOUD_DEFAULT_AGENT_MODEL;
 
+/** Pull EVERY `{ "tool": …, "args": … }` object out of a reply. Reasoning models
+ *  (GLM-5.2) batch several tool calls in one turn with messy fences and stray
+ *  braces, so a single fenced-block parse fails (invalid JSON → the whole reply
+ *  leaks as the "answer"). Brace-match each object independently instead — the
+ *  runner executes them all, then loops for the next turn. */
+const parseCloudToolCalls = (text: string): ModelToolCall[] => {
+  const calls: ModelToolCall[] = [];
+  const marker = /"tool"\s*:/g;
+  let m: RegExpExecArray | null = marker.exec(text);
+  while (m !== null) {
+    const start = text.lastIndexOf("{", m.index);
+    let end = -1;
+    if (start !== -1) {
+      let depth = 0;
+      for (let i = start; i < text.length; i++) {
+        const ch = text[i];
+        if (ch === "{") depth++;
+        else if (ch === "}" && --depth === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+    if (end === -1) break; // truncated / unbalanced — stop scanning
+    try {
+      const obj = JSON.parse(text.slice(start, end + 1)) as {
+        tool?: unknown;
+        args?: unknown;
+      };
+      if (typeof obj.tool === "string") {
+        const args =
+          obj.args && typeof obj.args === "object" && !Array.isArray(obj.args)
+            ? (obj.args as Record<string, unknown>)
+            : {};
+        calls.push({ id: crypto.randomUUID(), name: obj.tool, args });
+      }
+    } catch {
+      /* skip an unparseable object */
+    }
+    marker.lastIndex = end + 1;
+    m = marker.exec(text);
+  }
+  return calls;
+};
+
 /** Managed-cloud tool turn: Workers AI is text-only, so we simulate one tool
  *  step in JSON and return the SAME `{text, toolCalls}` shape the native path
  *  does — the runner stays single-path and tool calling keeps working for
@@ -276,28 +321,11 @@ const callCloudToolTurn = async (
   });
   const text = r.text ?? "";
   if (tools?.length) {
-    let parsed: { tool?: unknown; args?: unknown } | null = null;
-    try {
-      parsed = extractJson(text);
-    } catch {
-      parsed = null;
-    }
-    if (parsed && typeof parsed.tool === "string") {
-      const known = tools.find((t) => t.name === parsed!.tool);
-      if (known) {
-        const args =
-          parsed.args &&
-          typeof parsed.args === "object" &&
-          !Array.isArray(parsed.args)
-            ? (parsed.args as Record<string, unknown>)
-            : {};
-        return {
-          text: "",
-          toolCalls: [{ id: crypto.randomUUID(), name: known.name, args }],
-          usage: r.usage,
-        };
-      }
-    }
+    // Accept a BATCH of tool calls (GLM-5.2 emits several per turn); keep only
+    // ones that name a real tool. The runner loops over them all.
+    const known = new Set(tools.map((t) => t.name));
+    const calls = parseCloudToolCalls(text).filter((c) => known.has(c.name));
+    if (calls.length) return { text: "", toolCalls: calls, usage: r.usage };
   }
   // No (valid) tool call → treat the reply as the final answer.
   return { text, toolCalls: [], usage: r.usage };

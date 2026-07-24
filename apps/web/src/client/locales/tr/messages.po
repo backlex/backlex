@@ -700,6 +700,11 @@ msgstr "✓ geçti · {0}ms"
 msgid "✗ denied"
 msgstr "✗ reddedildi"
 
+#. placeholder {0}: modelLabel(MANAGED_DEFAULT_MODEL)
+#: src/client/admin/pages/agents.tsx
+msgid "🔒 Needs your own API key — without one this falls back to {0} on managed cloud. Add a key in Settings · AI."
+msgstr "🔒 Kendi API anahtarını gerektirir — anahtar yoksa managed cloud'da {0} modeline düşer. Settings · AI'dan anahtar ekle."
+
 #: src/client/admin/relational-pickers.tsx
 msgid "1 file"
 msgstr "1 dosya"
@@ -2468,6 +2473,10 @@ msgstr "Kapat"
 #: src/client/pages/sign-up.tsx
 msgid "Closed instance."
 msgstr "Kapalı örnek."
+
+#: src/client/admin/pages/agents.tsx
+msgid "Cloudflare Workers AI · managed"
+msgstr "Cloudflare Workers AI · yönetilen"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/functions.tsx
@@ -7376,6 +7385,10 @@ msgstr "Ajan seçilmedi"
 msgid "No agents yet — click + New agent."
 msgstr "Henüz ajan yok — + Yeni ajan’a tıklayın."
 
+#: src/client/admin/pages/agents.tsx
+msgid "no AI key configured"
+msgstr "AI anahtarı tanımlı değil"
+
 #: src/client/pages/api-keys.tsx
 msgid "No API keys yet"
 msgstr "Henüz API anahtarı yok"
@@ -10340,6 +10353,10 @@ msgstr "Yazma MCP araçlarını çalıştırma (oluşturma, güncelleme, silme �
 #: src/client/admin/pages/database-import.tsx
 msgid "Running"
 msgstr "Çalışıyor"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Running on {modelSrc}"
+msgstr "{modelSrc} üzerinde çalışıyor"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
@@ -13797,6 +13814,10 @@ msgstr "siz@ornek.com"
 #: src/client/pages/magic-link.tsx
 msgid "your address"
 msgstr "adresiniz"
+
+#: src/client/admin/pages/agents.tsx
+msgid "your API key"
+msgstr "kendi API anahtarın"
 
 #: src/client/admin/account-page.tsx
 msgid "Your display name"

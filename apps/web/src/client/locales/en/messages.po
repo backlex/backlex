@@ -700,6 +700,11 @@ msgstr "✓ passes · {0}ms"
 msgid "✗ denied"
 msgstr "✗ denied"
 
+#. placeholder {0}: modelLabel(MANAGED_DEFAULT_MODEL)
+#: src/client/admin/pages/agents.tsx
+msgid "🔒 Needs your own API key — without one this falls back to {0} on managed cloud. Add a key in Settings · AI."
+msgstr "🔒 Needs your own API key — without one this falls back to {0} on managed cloud. Add a key in Settings · AI."
+
 #: src/client/admin/relational-pickers.tsx
 msgid "1 file"
 msgstr "1 file"
@@ -2468,6 +2473,10 @@ msgstr "Close"
 #: src/client/pages/sign-up.tsx
 msgid "Closed instance."
 msgstr "Closed instance."
+
+#: src/client/admin/pages/agents.tsx
+msgid "Cloudflare Workers AI · managed"
+msgstr "Cloudflare Workers AI · managed"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/functions.tsx
@@ -7376,6 +7385,10 @@ msgstr "No agent selected"
 msgid "No agents yet — click + New agent."
 msgstr "No agents yet — click + New agent."
 
+#: src/client/admin/pages/agents.tsx
+msgid "no AI key configured"
+msgstr "no AI key configured"
+
 #: src/client/pages/api-keys.tsx
 msgid "No API keys yet"
 msgstr "No API keys yet"
@@ -10340,6 +10353,10 @@ msgstr "Run write MCP tools (create, update, delete — your permissions still a
 #: src/client/admin/pages/database-import.tsx
 msgid "Running"
 msgstr "Running"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Running on {modelSrc}"
+msgstr "Running on {modelSrc}"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
@@ -13797,6 +13814,10 @@ msgstr "you@example.com"
 #: src/client/pages/magic-link.tsx
 msgid "your address"
 msgstr "your address"
+
+#: src/client/admin/pages/agents.tsx
+msgid "your API key"
+msgstr "your API key"
 
 #: src/client/admin/account-page.tsx
 msgid "Your display name"

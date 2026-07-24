@@ -64,21 +64,67 @@ interface RunStep {
  *  are what managed-cloud projects run within their metered plan allowance —
  *  a managed agent left on "Default" runs Llama 3.1 70B. */
 const MODEL_OPTIONS = [
-  { value: "", label: "Default", hint: "Claude w/ your key · else Llama 3.1 70B" },
-  { value: "anthropic/claude-opus-4-8", label: "Claude Opus 4.8", hint: "most capable · your key" },
-  { value: "anthropic/claude-sonnet-5", label: "Claude Sonnet 5", hint: "balanced · your key" },
-  { value: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5", hint: "fast & cheap · your key" },
+  { value: "", label: "Default", hint: "Claude w/ your key · else Qwen3 30B (managed)" },
+  // Cloudflare Workers AI — run on managed cloud within your plan, no key needed.
+  { value: "@cf/qwen/qwen3-30b-a3b-fp8", label: "Qwen3 30B", hint: "Cloudflare AI · managed · balanced" },
+  { value: "@cf/google/gemma-4-26b-a4b-it", label: "Gemma 4 26B", hint: "Cloudflare AI · managed · thinking" },
+  { value: "@cf/openai/gpt-oss-120b", label: "GPT-OSS 120B", hint: "Cloudflare AI · managed · strong" },
   { value: "@cf/meta/llama-3.1-70b-instruct-fp8-fast", label: "Llama 3.1 70B", hint: "Cloudflare AI · managed" },
-  { value: "@cf/meta/llama-3.1-8b-instruct-fp8", label: "Llama 3.1 8B", hint: "Cloudflare AI · fast/cheap" },
-  { value: "@cf/mistral/mistral-7b-instruct-v0.1", label: "Mistral 7B", hint: "Cloudflare AI" },
+  { value: "@cf/meta/llama-3.1-8b-instruct-fp8", label: "Llama 3.1 8B", hint: "Cloudflare AI · managed · fast/cheap" },
+  // Bring-your-own-key models — Anthropic direct or Vercel AI Gateway. Without
+  // a key configured in Settings · AI these fall back to Workers AI on managed.
+  { value: "anthropic/claude-opus-4-8", label: "Claude Opus 4.8", hint: "your key · most capable" },
+  { value: "anthropic/claude-sonnet-5", label: "Claude Sonnet 5", hint: "your key · balanced" },
+  { value: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5", hint: "your key · fast/cheap" },
+  { value: "moonshotai/kimi-k2.7-code", label: "Kimi K2.7", hint: "your key · AI Gateway" },
+  { value: "zai/glm-5.2", label: "GLM 5.2", hint: "your key · AI Gateway" },
 ] as const;
 
-/** Human label for the agent's configured model (or the default). */
+/** Managed default (mirrors the runner's CLOUD_DEFAULT_AGENT_MODEL). */
+const MANAGED_DEFAULT_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
+
+/** A model that isn't a Cloudflare `@cf/*` id needs the workspace to bring an
+ *  AI key (Anthropic / AI Gateway) — otherwise it can't run as picked. */
+const modelNeedsKey = (v?: string | null): boolean => !!v && !v.startsWith("@cf/");
+
+/** Human label for a model id. */
 const modelLabel = (m?: string | null): string => {
   if (!m) return "Default";
   const known = MODEL_OPTIONS.find((o) => o.value === m);
   if (known) return known.label.replace(/^Claude /, "");
   return m.includes("/") ? m.split("/").pop()! : m;
+};
+
+/** Workspace AI config (subset of GET /api/admin/ai-config). */
+interface AiCfg {
+  provider: string;
+  secretsSet: { gatewayKey: boolean; anthropicKey: boolean };
+  env: { cloud: boolean; hasGatewayKey: boolean; hasAnthropicKey: boolean };
+}
+
+/** Does the workspace/deployment effectively have a direct AI key, so BYO
+ *  (Claude / Kimi / GLM) models actually run instead of falling back? */
+const hasEffectiveKey = (c: AiCfg | null): boolean =>
+  !!c &&
+  ((c.provider === "gateway" && c.secretsSet.gatewayKey) ||
+    (c.provider === "anthropic" && c.secretsSet.anthropicKey) ||
+    c.env.hasGatewayKey ||
+    c.env.hasAnthropicKey);
+
+/** BYO models silently fall back to Workers AI on managed cloud when no key. */
+const keylessManaged = (c: AiCfg | null): boolean =>
+  !!c && !hasEffectiveKey(c) && c.env.cloud;
+
+/** The model that ACTUALLY runs for an agent given the key situation — so the
+ *  UI can show the effective model, not a misleading configured-but-ignored one. */
+const effectiveModelValue = (
+  agentModel: string | null | undefined,
+  c: AiCfg | null,
+): string => {
+  const m = agentModel || "anthropic/claude-sonnet-5"; // runner's DEFAULT_MODEL
+  if (!c || hasEffectiveKey(c)) return m; // configured model runs as picked
+  if (c.env.cloud) return m.startsWith("@cf/") ? m : MANAGED_DEFAULT_MODEL;
+  return m; // self-host, no key — configured (may error until a key is set)
 };
 
 /** Compact a token count for the header chip (1234 → "1.2k"). */
@@ -115,6 +161,9 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
   const [saving, setSaving] = useState(false);
   // Whether the Model picker is in free-text ("Custom…") mode.
   const [modelCustom, setModelCustom] = useState(false);
+  // Workspace AI config — drives the effective-model chip + the "needs your key"
+  // hints so the picker is honest about what actually runs.
+  const [aiCfg, setAiCfg] = useState<AiCfg | null>(null);
 
   const reload = useCallback(async () => {
     const r = await fetchSafely<{ data: Agent[] }>("/api/agents");
@@ -125,6 +174,13 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    void (async () => {
+      const r = await fetchSafely<{ data: AiCfg }>("/api/admin/ai-config");
+      if (r?.data) setAiCfg(r.data);
+    })();
+  }, []);
 
   const agent = agents.find((a) => a.id === active) ?? null;
 
@@ -286,6 +342,7 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
             <AgentDetail
               key={agent.id}
               agent={agent}
+              aiCfg={aiCfg}
               pushToast={pushToast}
               onEdit={() => openEditor(agent)}
             />
@@ -332,7 +389,14 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
                         }
                       }}
                       options={[
-                        ...MODEL_OPTIONS.map((o) => ({ value: o.value, label: o.label, hint: o.hint })),
+                        ...MODEL_OPTIONS.map((o) => ({
+                          value: o.value,
+                          label: o.label,
+                          hint:
+                            keylessManaged(aiCfg) && modelNeedsKey(o.value)
+                              ? `🔒 ${o.hint}`
+                              : o.hint,
+                        })),
                         { value: MODEL_CUSTOM, label: t`Custom…`, hint: t`any provider/model id` },
                       ]}
                     />
@@ -343,6 +407,15 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
                         onChange={(e) => setDraft({ ...draft, model: e.target.value })}
                         placeholder="anthropic/claude-haiku-4-5"
                       />
+                    )}
+                    {keylessManaged(aiCfg) && modelNeedsKey(draft.model) && (
+                      <span className="text-[11.5px] text-amber-600 dark:text-amber-500">
+                        <Trans>
+                          🔒 Needs your own API key — without one this falls back to{" "}
+                          {modelLabel(MANAGED_DEFAULT_MODEL)} on managed cloud. Add a key in
+                          Settings · AI.
+                        </Trans>
+                      </span>
                     )}
                   </div>
                   <div className="flex min-w-0 flex-col gap-1.5">
@@ -441,10 +514,12 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
 // ── Detail + chat playground ──────────────────────────────────────────────────
 function AgentDetail({
   agent,
+  aiCfg,
   pushToast,
   onEdit,
 }: {
   agent: Agent;
+  aiCfg: AiCfg | null;
   pushToast: (m: string, type?: "success" | "error") => void;
   onEdit: () => void;
 }) {
@@ -561,6 +636,14 @@ function AgentDetail({
     (sum, m) => sum + (m.tokensIn ?? 0) + (m.tokensOut ?? 0),
     0,
   );
+  // The model that actually runs (managed cloud may map a keyless Claude pick
+  // down to its Workers AI default), plus a human source for the chip tooltip.
+  const effModel = modelLabel(effectiveModelValue(agent.model, aiCfg));
+  const modelSrc = hasEffectiveKey(aiCfg)
+    ? t`your API key`
+    : aiCfg?.env.cloud
+      ? t`Cloudflare Workers AI · managed`
+      : t`no AI key configured`;
 
   return (
     <>
@@ -568,9 +651,11 @@ function AgentDetail({
         <span className="text-base font-semibold">{agent.name}</span>
         <Badge variant={agent.active ? "default" : "secondary"}>{agent.active ? t`active` : t`off`}</Badge>
         {agent.memory && <Badge variant="secondary"><Trans>memory</Trans></Badge>}
-        <Badge variant="secondary" className="gap-1 font-normal">
-          <I.Sparkles size={11} /> {modelLabel(agent.model)}
-        </Badge>
+        <span title={t`Running on ${modelSrc}`} className="inline-flex">
+          <Badge variant="secondary" className="gap-1 font-normal">
+            <I.Sparkles size={11} /> {effModel}
+          </Badge>
+        </span>
         <span className="text-xs text-muted-foreground">· {agent.tools.length} {t`tools`}</span>
         {totalTokens > 0 && (
           <span className="text-xs text-muted-foreground">· {fmtTokens(totalTokens)} {t`tokens`}</span>

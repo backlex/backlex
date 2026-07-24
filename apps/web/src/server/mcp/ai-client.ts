@@ -245,14 +245,13 @@ const cloudToolInstruction = (tools: ClaudeToolDef[]): string => {
   );
 };
 
-/** Default Workers AI model for managed-cloud agent turns. The platform's
- *  generation default is an 8B model (fine for Ask-AI one-shots) but too weak
- *  for multi-step agent tool loops, so agents default UP to Qwen3-30B-A3B — an
- *  MoE with only 3B active params: strong at tool use / JSON, yet ~7x cheaper
- *  output than the 70B (see the cloud GENERATION_MODELS rates). Still a Workers
- *  AI model, still neuron-metered + plan-capped. An agent can pick any
- *  whitelisted `@cf/*` model to override. */
-const CLOUD_DEFAULT_AGENT_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
+/** Default Workers AI model for managed-cloud agent turns. GLM-5.2 (Z.ai) is
+ *  the strongest Cloudflare-hosted model for the code-writing agent use case —
+ *  flagship coding + tool use. It is also the priciest on output neurons, so it
+ *  burns plan budget fast; an agent can pick a cheaper whitelisted `@cf/*` model
+ *  (Qwen3-30B, gpt-oss, Llama) to trade quality for cost. Still a Workers AI
+ *  model, still neuron-metered + plan-capped. */
+const CLOUD_DEFAULT_AGENT_MODEL = "@cf/zai-org/glm-5.2";
 
 /** Resolve the Workers AI model for a managed-cloud agent turn: honour an
  *  explicit `@cf/*` pick, else use the strong agent default (never the platform

@@ -64,7 +64,7 @@ interface RunStep {
  *  are what managed-cloud projects run within their metered plan allowance —
  *  a managed agent left on "Default" runs Llama 3.1 70B. */
 const MODEL_OPTIONS = [
-  { value: "", label: "Default", hint: "Claude w/ your key · else Qwen3 30B (managed)" },
+  { value: "", label: "Default", hint: "Claude w/ your key · else GLM 5.2 (managed)" },
   // Cloudflare Workers AI — run on managed cloud within your plan, no key needed.
   { value: "@cf/qwen/qwen3-30b-a3b-fp8", label: "Qwen3 30B", hint: "Cloudflare AI · managed · balanced" },
   { value: "@cf/google/gemma-4-26b-a4b-it", label: "Gemma 4 26B", hint: "Cloudflare AI · managed · thinking" },
@@ -78,10 +78,12 @@ const MODEL_OPTIONS = [
   { value: "anthropic/claude-opus-4-8", label: "Claude Opus 4.8", hint: "your key · most capable" },
   { value: "anthropic/claude-sonnet-5", label: "Claude Sonnet 5", hint: "your key · balanced" },
   { value: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5", hint: "your key · fast/cheap" },
+  { value: "openai/gpt-5", label: "GPT-5", hint: "your key · AI Gateway" },
+  { value: "openai/gpt-5-mini", label: "GPT-5 mini", hint: "your key · AI Gateway · fast/cheap" },
 ] as const;
 
 /** Managed default (mirrors the runner's CLOUD_DEFAULT_AGENT_MODEL). */
-const MANAGED_DEFAULT_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
+const MANAGED_DEFAULT_MODEL = "@cf/zai-org/glm-5.2";
 
 /** A model that isn't a Cloudflare `@cf/*` id needs the workspace to bring an
  *  AI key (Anthropic / AI Gateway) — otherwise it can't run as picked. */

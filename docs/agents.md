@@ -190,7 +190,7 @@ later and asks the follow-up. And a room can host **several agents at once**.
 | `routing` | A message that mentions nobody |
 |---|---|
 | `mention` (default for a new room) | Nobody. The room is a plain team thread until someone is addressed. |
-| `default` | `default_agent_id` answers. This is what a thread opened against one agent does, so pre-rooms threads were migrated to it. |
+| `default` | `default_agent_id` answers. This is what a thread opened against one agent does, so pre-rooms threads were migrated to it. With no default set and exactly one participant, that participant answers — a room set to this mode should never go silently mute. |
 | `auto` | One extra, cheap model call reads the participants' `description`s and picks one (or none). Opt-in per room: it costs a round-trip and can pick wrong. |
 
 An explicit `@handle` always wins over the routing mode, and **several mentions

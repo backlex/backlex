@@ -185,6 +185,34 @@ resource instead of composing a separate `resources/read`.
 | `jobs.retry` | Requeue a failed / dead-lettered / cancelled job. |
 | `jobs.cancel` | Cancel a pending job. |
 
+### AI agents & chat rooms
+
+An external agent (Claude Desktop, Cursor, a CI bot) can both **drive** a
+Backlex agent and **take part in a team room** — the same rooms the admin's Chat
+page shows, so a message posted here appears on your teammates' screens.
+
+| Tool | Description |
+|---|---|
+| `agents.list` | List the workspace's AI agents — model, tool allow-list, whether memory is on. |
+| `agents.get` | Fetch one agent's full definition by id. |
+| `agents.run` | Send a message to a named agent and run one turn to completion. Starts a fresh thread unless `threadId` is given. Returns `{ answer, steps, stoppedReason, threadId }`. |
+| `agents.rooms_list` | List the workspace's rooms with their participants and routing mode. |
+| `agents.room_send` | Post a message in a room. `@handle` addresses an agent; otherwise the room's routing mode decides — possibly nobody, which is a valid outcome. |
+
+Two things worth knowing before wiring this up:
+
+- **The turn runs inside the tool call.** The async path (`{"async": true}`)
+  needs a signed-in user, so an API-key caller always gets the synchronous
+  shape: `agents.room_send` returns once the agents it woke have answered.
+  A room where you mention three agents will take as long as the slowest.
+- **Posting is supported; watching is not.** The room's realtime channel
+  (`agent:thread:<id>`) is gated on an admin session, so an MCP client can post
+  and read a transcript but can't subscribe to one live. Poll
+  `agents.rooms_list` / the REST transcript if you need to follow along.
+
+Attribution follows the caller's identity: a `pak_…` key's messages are
+recorded against the user that key belongs to, not against the MCP client.
+
 ### Notifications & users
 
 | Tool | Description |

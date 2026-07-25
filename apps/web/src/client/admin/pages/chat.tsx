@@ -45,7 +45,7 @@ import { ChatSkeleton } from "../page-skeletons";
 import {
   MessageRow,
   PresenceChips,
-  ROUTING_OPTIONS,
+  useRoutingOptions,
   StepNote,
   agentColor,
   agentLabel,
@@ -129,7 +129,12 @@ export function ChatPage({
   const room = rooms.find((r) => r.id === roomId) ?? null;
 
   const createRoom = useCallback(
-    async (input: { title: string; agentIds: string[]; routing: Routing }) => {
+    async (input: {
+      title: string;
+      agentIds: string[];
+      routing: Routing;
+      defaultAgentId: string | null;
+    }) => {
       // Optimistic: the room appears (and is selected) before the round-trip,
       // then reconciles to the server's id.
       const tempId = `tmp-${Date.now()}`;
@@ -138,6 +143,7 @@ export function ChatPage({
         title: input.title || t`New room`,
         status: "idle",
         routing: input.routing,
+        defaultAgentId: input.defaultAgentId,
         agentIds: input.agentIds,
         updatedAt: Date.now(),
       };
@@ -151,6 +157,7 @@ export function ChatPage({
             ...(input.title ? { title: input.title } : {}),
             agentIds: input.agentIds,
             routing: input.routing,
+            ...(input.defaultAgentId ? { defaultAgentId: input.defaultAgentId } : {}),
           }),
         });
         setRooms((prev) =>
@@ -299,12 +306,27 @@ function NewRoomDialog({
 }: {
   agents: Agent[];
   onCancel: () => void;
-  onCreate: (input: { title: string; agentIds: string[]; routing: Routing }) => void;
+  onCreate: (input: {
+    title: string;
+    agentIds: string[];
+    routing: Routing;
+    defaultAgentId: string | null;
+  }) => void;
 }) {
   const { t } = useLingui();
+  const routingOptions = useRoutingOptions();
   const [title, setTitle] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [routing, setRouting] = useState<Routing>("mention");
+  const [defaultAgentId, setDefaultAgentId] = useState<string>("");
+  // "A chosen agent answers" needs to know WHICH one. Default to the first
+  // agent in the room and drop the pick if that agent is unchecked again, so
+  // the mode can never be saved pointing at nobody.
+  const pickedAgents = picked
+    .map((id) => agents.find((a) => a.id === id))
+    .filter((a): a is Agent => !!a);
+  const effectiveDefault =
+    defaultAgentId && picked.includes(defaultAgentId) ? defaultAgentId : (picked[0] ?? "");
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
@@ -371,12 +393,33 @@ function NewRoomDialog({
                 className="min-w-0"
                 value={routing}
                 onChange={(v) => setRouting(v as Routing)}
-                options={ROUTING_OPTIONS.map((o) => ({
-                  value: o.value,
-                  label: o.label,
-                  hint: o.hint,
-                }))}
+                // An empty room can only be mention-only: the other two modes
+                // need someone to hand the message to. Offering them as dead
+                // entries would be worse than not offering them.
+                options={routingOptions
+                  .filter((o) => o.value === "mention" || picked.length > 0)
+                  .map((o) => ({ value: o.value, label: o.label, hint: o.hint }))}
               />
+              {routing === "default" && picked.length > 0 && (
+                <Select
+                  className="min-w-0"
+                  value={effectiveDefault}
+                  onChange={(v) => setDefaultAgentId(v)}
+                  options={pickedAgents.map((a) => ({
+                    value: a.id,
+                    label: a.name,
+                    hint: agentLabel(a),
+                  }))}
+                />
+              )}
+              {routing === "auto" && (
+                <span className="text-[11.5px] text-muted-foreground">
+                  <Trans>
+                    Picked from each agent's description, so give them one. Costs an extra model
+                    call per unaddressed message.
+                  </Trans>
+                </span>
+              )}
             </div>
           </div>
         </ScrollArea>
@@ -385,7 +428,14 @@ function NewRoomDialog({
           <Button
             variant="primary"
             size="sm"
-            onClick={() => onCreate({ title: title.trim(), agentIds: picked, routing })}
+            onClick={() =>
+              onCreate({
+                title: title.trim(),
+                agentIds: picked,
+                routing,
+                defaultAgentId: routing === "default" ? effectiveDefault : null,
+              })
+            }
           >
             <Trans>Create room</Trans>
           </Button>
@@ -413,6 +463,7 @@ function RoomView({
   onActivity: () => void;
 }) {
   const { t } = useLingui();
+  const routingOptions = useRoutingOptions();
   const [messages, setMessages] = useState<Message[]>([]);
   const [authors, setAuthors] = useState<Record<string, Author>>({});
   const [input, setInput] = useState("");
@@ -774,11 +825,9 @@ function RoomView({
             className="min-w-0"
             value={routing}
             onChange={(v) => void setRouting(v as Routing)}
-            options={ROUTING_OPTIONS.map((o) => ({
-              value: o.value,
-              label: o.label,
-              hint: o.hint,
-            }))}
+            options={routingOptions
+              .filter((o) => o.value === "mention" || members.length > 0)
+              .map((o) => ({ value: o.value, label: o.label, hint: o.hint }))}
           />
         </div>
         {routing === "default" && (

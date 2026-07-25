@@ -822,6 +822,10 @@ msgstr "7 gün"
 msgid "90 days"
 msgstr "90 gün"
 
+#: src/client/admin/pages/_agents-shared.tsx
+msgid "A chosen agent answers"
+msgstr "Seçilen bir agent cevaplar"
+
 #: src/client/admin/parity/insights.tsx
 msgid "A dashboard with that name already exists."
 msgstr "Bu adda bir pano zaten var."
@@ -8117,6 +8121,10 @@ msgstr "Henüz webhook yok"
 msgid "No workspace locales configured — add them under Settings → Localization."
 msgstr "Çalışma alanı dili yapılandırılmamış — Ayarlar → Yerelleştirme'den ekleyin."
 
+#: src/client/admin/pages/_agents-shared.tsx
+msgid "Nobody answers"
+msgstr "Kimse cevaplamaz"
+
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "none"
@@ -8337,6 +8345,10 @@ msgstr "Güncellendiğinde"
 #: src/client/pages/api-keys.tsx
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 msgstr "Bu sayfadan ayrıldığınızda gizli anahtar bir daha alınamaz — yalnızca iptal edilebilir. MCP erişimini istediğiniz zaman anahtarın Connect MCP panelinden ayarlayabilirsiniz."
+
+#: src/client/admin/pages/_agents-shared.tsx
+msgid "one extra model call per message"
+msgstr "mesaj başına bir ek model çağrısı"
 
 #: src/client/components/boot-screen.tsx
 msgid "One moment while we get things ready."
@@ -9064,6 +9076,10 @@ msgstr "Tür seçin…"
 msgid "Pick where submissions land — you'll design the form next."
 msgstr "Gönderimlerin nereye düşeceğini seçin — formu bir sonraki adımda tasarlayacaksınız."
 
+#: src/client/admin/pages/_agents-shared.tsx
+msgid "pick which one below"
+msgstr "aşağıdan hangisi olduğunu seçin"
+
 #: src/client/admin/pages/chat.tsx
 msgid "Pick who's in the room. You can add or remove agents later."
 msgstr "Odada kimlerin olacağını seçin. Agentları sonra ekleyip çıkarabilirsiniz."
@@ -9071,6 +9087,10 @@ msgstr "Odada kimlerin olacağını seçin. Agentları sonra ekleyip çıkarabil
 #: src/client/admin/item-form.tsx
 msgid "Pick…"
 msgstr "Seçin…"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Picked from each agent's description, so give them one. Costs an extra model call per unaddressed message."
+msgstr "Her agent'ın açıklamasına bakılarak seçilir, o yüzden açıklama yazın. Etiketlenmemiş her mesaj için bir ek model çağrısı maliyeti getirir."
 
 #: src/client/admin/ui.tsx
 msgid "Pin to top"
@@ -11139,7 +11159,6 @@ msgstr "Bunun yerine sihirli bağlantı gönder"
 #~ msgid "Send a message to start the conversation."
 #~ msgstr "Konuşmayı başlatmak için bir mesaj gönderin."
 
-#: src/client/admin/pages/_agents-shared.tsx
 #: src/client/admin/pages/chat.tsx
 msgid "Send a message to start the conversation. Type @ to address an agent."
 msgstr "Sohbeti başlatmak için bir mesaj gönderin. Bir agent'a seslenmek için @ yazın."
@@ -13105,6 +13124,10 @@ msgstr "İki adımlı doğrulama açık."
 msgid "Type"
 msgstr "Tür"
 
+#: src/client/admin/pages/_agents-shared.tsx
+msgid "type @ to address an agent"
+msgstr "bir agent'a seslenmek için @ yazın"
+
 #: src/client/admin/extras.tsx
 msgid "Type a command, collection, or item title to navigate."
 msgstr "Gezinmek için bir komut, koleksiyon veya öğe başlığı yazın."
@@ -13828,6 +13851,10 @@ msgstr "“Test SMS gönder” işleminin nereye iletileceği. Hesabınızın ka
 #: src/client/admin/collection-settings.tsx
 msgid "which field the board groups cards by"
 msgstr "panonun kartları hangi alana göre grupladığı"
+
+#: src/client/admin/pages/_agents-shared.tsx
+msgid "Whichever agent fits best"
+msgstr "En uygun agent"
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Whole numbers only (no decimals)"

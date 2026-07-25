@@ -2,7 +2,7 @@
 // agent is and what it may do) and **Chat** (rooms — where you actually talk to
 // them). They were one page until rooms arrived; splitting them kept the daily
 // surface out of a management screen, and this module is what both still need.
-import { Trans, useLingui } from "@lingui/react/macro";
+import { useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { collabColor } from "../collab";
 import type { AgentPeer } from "../agent-thread-live";
@@ -347,13 +347,20 @@ export const agentColor = (id: string): string => collabColor(id);
 export const agentLabel = (a: Agent | undefined): string =>
   a ? (a.handle ? `@${a.handle}` : a.name) : "agent";
 
-/** Room routing options — a finite set, so it's a dropdown, not free text. */
-export const ROUTING_OPTIONS: { value: Routing; label: string; hint: string }[] = [
-  { value: "mention", label: "Only when mentioned", hint: "@handle to address an agent" },
-  { value: "default", label: "One agent always answers", hint: "pick the default below" },
-  { value: "auto", label: "Auto — pick by description", hint: "extra model call per message" },
-];
-
-export const EmptyRoomHint = () => (
-  <Trans>Send a message to start the conversation. Type @ to address an agent.</Trans>
-);
+/**
+ * Room routing options — a finite set, so it's a dropdown, not free text.
+ *
+ * Each label reads as an answer to the field's question ("When nobody is
+ * mentioned"), NOT as a statement about the room. An earlier wording,
+ * "One agent always answers", read like a limit on how many agents a room may
+ * hold, which is a different thing entirely — a room with five agents can still
+ * have one of them field the unaddressed messages.
+ */
+export const useRoutingOptions = (): { value: Routing; label: string; hint: string }[] => {
+  const { t } = useLingui();
+  return [
+    { value: "mention", label: t`Nobody answers`, hint: t`type @ to address an agent` },
+    { value: "default", label: t`A chosen agent answers`, hint: t`pick which one below` },
+    { value: "auto", label: t`Whichever agent fits best`, hint: t`one extra model call per message` },
+  ];
+};

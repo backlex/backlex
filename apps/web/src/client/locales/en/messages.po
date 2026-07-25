@@ -822,6 +822,10 @@ msgstr "7 days"
 msgid "90 days"
 msgstr "90 days"
 
+#: src/client/admin/pages/_agents-shared.tsx
+msgid "A chosen agent answers"
+msgstr "A chosen agent answers"
+
 #: src/client/admin/parity/insights.tsx
 msgid "A dashboard with that name already exists."
 msgstr "A dashboard with that name already exists."
@@ -8117,6 +8121,10 @@ msgstr "No webhooks yet"
 msgid "No workspace locales configured — add them under Settings → Localization."
 msgstr "No workspace locales configured — add them under Settings → Localization."
 
+#: src/client/admin/pages/_agents-shared.tsx
+msgid "Nobody answers"
+msgstr "Nobody answers"
+
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "none"
@@ -8337,6 +8345,10 @@ msgstr "On update"
 #: src/client/pages/api-keys.tsx
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 msgstr "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
+
+#: src/client/admin/pages/_agents-shared.tsx
+msgid "one extra model call per message"
+msgstr "one extra model call per message"
 
 #: src/client/components/boot-screen.tsx
 msgid "One moment while we get things ready."
@@ -9064,6 +9076,10 @@ msgstr "Pick type…"
 msgid "Pick where submissions land — you'll design the form next."
 msgstr "Pick where submissions land — you'll design the form next."
 
+#: src/client/admin/pages/_agents-shared.tsx
+msgid "pick which one below"
+msgstr "pick which one below"
+
 #: src/client/admin/pages/chat.tsx
 msgid "Pick who's in the room. You can add or remove agents later."
 msgstr "Pick who's in the room. You can add or remove agents later."
@@ -9071,6 +9087,10 @@ msgstr "Pick who's in the room. You can add or remove agents later."
 #: src/client/admin/item-form.tsx
 msgid "Pick…"
 msgstr "Pick…"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Picked from each agent's description, so give them one. Costs an extra model call per unaddressed message."
+msgstr "Picked from each agent's description, so give them one. Costs an extra model call per unaddressed message."
 
 #: src/client/admin/ui.tsx
 msgid "Pin to top"
@@ -11139,7 +11159,6 @@ msgstr "Send a magic link instead"
 #~ msgid "Send a message to start the conversation."
 #~ msgstr "Send a message to start the conversation."
 
-#: src/client/admin/pages/_agents-shared.tsx
 #: src/client/admin/pages/chat.tsx
 msgid "Send a message to start the conversation. Type @ to address an agent."
 msgstr "Send a message to start the conversation. Type @ to address an agent."
@@ -13105,6 +13124,10 @@ msgstr "Two-factor authentication is on."
 msgid "Type"
 msgstr "Type"
 
+#: src/client/admin/pages/_agents-shared.tsx
+msgid "type @ to address an agent"
+msgstr "type @ to address an agent"
+
 #: src/client/admin/extras.tsx
 msgid "Type a command, collection, or item title to navigate."
 msgstr "Type a command, collection, or item title to navigate."
@@ -13828,6 +13851,10 @@ msgstr "Where “Send test SMS” delivers. Leave blank to use your account's re
 #: src/client/admin/collection-settings.tsx
 msgid "which field the board groups cards by"
 msgstr "which field the board groups cards by"
+
+#: src/client/admin/pages/_agents-shared.tsx
+msgid "Whichever agent fits best"
+msgstr "Whichever agent fits best"
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Whole numbers only (no decimals)"

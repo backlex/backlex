@@ -153,6 +153,23 @@ describe("rooms — routing", () => {
     expect(body.data.runs.map((r) => r.agentId)).toEqual([alpha.id]);
   });
 
+  test("default routing with no default chosen answers when there's only one agent", async () => {
+    // The UI can't produce this (the create dialog picks one), but the API can —
+    // and a room that silently answers nobody is the worst possible outcome.
+    const room = await makeRoom(h, [alpha.id], { routing: "default" });
+    const res = await say(h, room.id, "who's there?");
+    const body = (await res.json()) as { data: { runs: { agentId: string }[] } };
+    expect(body.data.runs.map((r) => r.agentId)).toEqual([alpha.id]);
+  });
+
+  test("default routing with no default and several agents stays silent", async () => {
+    const room = await makeRoom(h, [alpha.id, beta.id], { routing: "default" });
+    const res = await say(h, room.id, "who's there?");
+    const body = (await res.json()) as { data: { runs: unknown[] } };
+    // Ambiguous — guessing which of two agents was meant would be worse.
+    expect(body.data.runs).toEqual([]);
+  });
+
   test("an agent's own answer never triggers a mention — no agent-to-agent chain", async () => {
     const room = await makeRoom(h, [alpha.id, beta.id]);
     answer = `sure, @${beta.handle} should take this`;

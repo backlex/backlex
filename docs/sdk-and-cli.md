@@ -253,6 +253,11 @@ backlex flags <list|set|delete>                  feature flags / remote config
 backlex settings <get|set>                       workspace settings (whitelisted keys)
 backlex functions <list|deploy|invoke|delete>    sandboxed JS functions
 backlex flows <list|get|run|create|delete>       visual workflow builder
+backlex agents <list|get|create|update|delete|threads|run>
+                                                 AI agent definitions + one-off runs
+backlex agents rooms <list|new|add|remove>       chat rooms several agents share
+backlex agents say <roomId> --message "@handle …"
+                                                 post in a room; the @handle picks who answers
 backlex templates <list|apply|extract|clear-samples>  schema-template catalog (apply seeds groups + samples + bundles; apply --file for custom; extract exports the workspace)
 backlex webhooks <list|create|test|deliveries|retry|resume|delete>  outbound webhooks
 backlex jobs <list|get|retry|cancel|remove|enqueue>  durable job queue
@@ -403,6 +408,23 @@ backlex flows list
 backlex flows get <id> > flow.json     # export
 backlex flows create --data @flow.json # import into another env
 backlex flows run <id>
+```
+
+### `backlex agents`
+
+Agent definitions, plus the chat **rooms** several agents share
+(`docs/agents.md`). `run` names its agent and prints the answer; `say` posts in
+a room and lets the room decide who replies — an `@handle` addresses one
+directly, and a room set to mention-only simply records the message when
+nobody is named:
+
+```bash
+backlex agents create --data '{"name":"Sales bot","tools":["collections.list"]}'
+backlex agents run <agentId> --message "how many orders last month?"
+
+backlex agents rooms new --title "Weekly numbers" --agents <id1>,<id2>
+backlex agents rooms list
+backlex agents say <roomId> --message "@sales-bot @data-buddy compare these"
 ```
 
 ### `backlex webhooks` / `jobs`

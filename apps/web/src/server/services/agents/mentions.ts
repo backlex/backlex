@@ -130,7 +130,12 @@ export const resolveResponders = async (
   if (thread.routing === "default") {
     const id = thread.defaultAgentId ?? thread.agentId;
     const agent = active.find((a) => a.id === id);
-    return agent ? [agent.id] : [];
+    if (agent) return [agent.id];
+    // "a chosen agent answers" with nobody chosen — a room created through the
+    // API without a `defaultAgentId`, or one whose default was removed from the
+    // room. With exactly one participant there's no ambiguity about what was
+    // meant, so answer rather than going silently mute.
+    return active.length === 1 ? [active[0]!.id] : [];
   }
   if (thread.routing === "auto") {
     const picked = await routeAutomatically(env, message, active);

@@ -67,13 +67,31 @@ guides; this list is everything else.
   Admin-scoped CRUD + run is mirrored across REST, the SDK
   (`client.flows.*`), GraphQL (`runFlow` et al.), MCP (`flows.*`), and the
   CLI. See `docs/flows.md`.
-- **AI agents** (`routes/agents.ts`, `services/agents/{store,runner,memory}.ts`)
-  — reason→act AI agents over the MCP tool registry. An agent definition +
-  threads + persisted message transcripts; a turn runs synchronously, executes
-  allow-listed tools via an identity-carrying in-process sub-fetch, and streams
-  steps over `agent:thread:<id>`. Optional per-thread vector memory. Admin-scoped
-  CRUD + run is mirrored across REST, the SDK (`client.agents.*`), GraphQL
-  (`runAgent` et al.), MCP (`agents.*`), and the CLI. See `docs/agents.md`.
+- **AI agents + chat rooms** (`routes/agents.ts`,
+  `services/agents/{store,runner,memory,mentions,send,async-run}.ts`)
+  — reason→act AI agents over the MCP tool registry. An agent definition, plus
+  **rooms** (`agent_threads`) that host several agents at once, their membership
+  (`agent_thread_agents`), and one `agent_runs` row per turn — which is also the
+  per-agent lock, so two agents answer in parallel but one can't run twice.
+  - `send.ts` is the single entry point every surface funnels through: it
+    persists the message once, then decides who answers.
+  - `mentions.ts` resolves `@handle`s and the room's routing mode
+    (`mention` / `default` / `auto`). Only user messages route, so agents can't
+    trigger each other.
+  - `runner.ts` executes one agent's turn, calling allow-listed tools through an
+    identity-carrying in-process sub-fetch and streaming steps over
+    `agent:thread:<id>`.
+  - `async-run.ts` is the background path (`{"async": true}`): an `agent.turn`
+    job enqueued with `maxAttempts: 1`, started inline via `waitUntil`, with a
+    `queued`-only status guard so a non-idempotent turn is never replayed.
+    Detached tool calls authenticate with a short-lived agent-run token
+    (`lib/jwt.ts`) that carries no roles.
+  - Optional per-(thread, agent) vector memory in `memory.ts`.
+
+  Admin-scoped CRUD + rooms + run are mirrored across REST, the SDK
+  (`client.agents.*`), GraphQL (`runAgent` et al.), MCP (`agents.*`), and the
+  CLI. Admin UI: `pages/agents.tsx` (definitions) + `pages/chat.tsx` (rooms),
+  sharing `pages/_agents-shared.tsx`. See `docs/agents.md`.
 - **Functions** (`routes/functions.ts`, `services/functions.ts`,
   `services/sandbox/*`, `routes/sandbox-rpc.ts`) — sandboxed JS
   execution. Provider picked by runtime: QuickJS on Workers, Bun

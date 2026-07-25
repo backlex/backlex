@@ -162,6 +162,15 @@ export interface Env {
    *  action in the Translations admin page, which hard-codes the
    *  Anthropic client. */
   ANTHROPIC_API_KEY?: string;
+  /** Short-lived Anthropic OAuth bearer token, used instead of a long-lived
+   *  API key. Sent as `Authorization: Bearer` (never alongside `x-api-key` —
+   *  the API rejects both). Mint one with `ant auth print-credentials
+   *  --access-token`, or from a federation exchange in CI.
+   *
+   *  It EXPIRES and nothing here refreshes it, so it suits local dev and
+   *  short-lived jobs; a long-running deployment wants `AI_GATEWAY_API_KEY`
+   *  or `ANTHROPIC_API_KEY`. Lower precedence than both. */
+  ANTHROPIC_AUTH_TOKEN?: string;
   /** Base URL of a self-hosted, OpenAI-compatible embeddings container
    *  (e.g. HuggingFace TEI, Ollama, vLLM, LiteLLM). The adapter posts to
    *  `${EMBEDDING_HTTP_URL}/v1/embeddings`. Required to use any model whose
@@ -455,6 +464,7 @@ export const STRING_ENV_KEYS = [
   "OPENAI_API_KEY",
   "AI_GATEWAY_API_KEY",
   "ANTHROPIC_API_KEY",
+  "ANTHROPIC_AUTH_TOKEN",
   "EMBEDDING_HTTP_URL",
   "EMBEDDING_HTTP_TOKEN",
   "EMBEDDING_DEFAULT_MODEL",

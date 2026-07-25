@@ -122,7 +122,11 @@ export const aiConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           env: {
             cloud: cloudConfigured(ctx.env),
             hasGatewayKey: Boolean(ctx.env.AI_GATEWAY_API_KEY?.trim()),
-            hasAnthropicKey: Boolean(ctx.env.ANTHROPIC_API_KEY?.trim()),
+            // An OAuth bearer token counts: the UI only asks "can BYO models
+            // actually run here", and it can.
+            hasAnthropicKey: Boolean(
+              ctx.env.ANTHROPIC_API_KEY?.trim() || ctx.env.ANTHROPIC_AUTH_TOKEN?.trim(),
+            ),
           },
           providerIds: ["inherit", "gateway", "anthropic"],
         },

@@ -7,7 +7,17 @@
  * would fail every turn rather than silently ignoring the setting.
  */
 import { describe, expect, test } from "bun:test";
-import { AI_EFFORTS, anthropicProviderOptions } from "../src/server/mcp/ai-client";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { generateText } from "ai";
+import {
+  AI_EFFORTS,
+  anthropicProviderOptions,
+  hasDirectAiCredential,
+  pickProvider,
+} from "../src/server/mcp/ai-client";
+import type { Env } from "../src/server/env";
+
+const env = (over: Partial<Env>): Env => ({ ...over } as Env);
 
 describe("anthropic provider options", () => {
   test("prompt caching is always requested", () => {
@@ -55,5 +65,119 @@ describe("anthropic provider options", () => {
         effort,
       );
     }
+  });
+
+  test("an OAuth credential asks for the oauth beta; an API key doesn't", () => {
+    expect(anthropicProviderOptions("claude-opus-4-8", undefined, true).anthropic).toMatchObject(
+      { anthropicBeta: ["oauth-2025-04-20"] },
+    );
+    expect(
+      anthropicProviderOptions("claude-opus-4-8").anthropic.anthropicBeta,
+    ).toBeUndefined();
+  });
+});
+
+describe("AI credential resolution", () => {
+  test("gateway key wins, then API key, then OAuth token", () => {
+    expect(
+      pickProvider(
+        env({
+          AI_GATEWAY_API_KEY: "gw",
+          ANTHROPIC_API_KEY: "sk",
+          ANTHROPIC_AUTH_TOKEN: "oat",
+        }),
+      ),
+    ).toEqual({ kind: "gateway", key: "gw" });
+
+    expect(
+      pickProvider(env({ ANTHROPIC_API_KEY: "sk", ANTHROPIC_AUTH_TOKEN: "oat" })),
+    ).toEqual({ kind: "anthropic", key: "sk" });
+
+    // Only a token: flagged as oauth so it rides Authorization: Bearer rather
+    // than x-api-key (the API rejects a request carrying both).
+    expect(pickProvider(env({ ANTHROPIC_AUTH_TOKEN: "oat" }))).toEqual({
+      kind: "anthropic",
+      key: "oat",
+      oauth: true,
+    });
+  });
+
+  test("whitespace-only credentials don't count as configured", () => {
+    expect(hasDirectAiCredential(env({ ANTHROPIC_AUTH_TOKEN: "   " }))).toBe(false);
+    expect(() => pickProvider(env({ ANTHROPIC_AUTH_TOKEN: "   " }))).toThrow();
+  });
+
+  test("an OAuth token alone satisfies the direct-credential check", () => {
+    // Otherwise a managed-cloud project holding only a token would silently
+    // route to the metered platform gateway instead of using it.
+    expect(hasDirectAiCredential(env({ ANTHROPIC_AUTH_TOKEN: "oat" }))).toBe(true);
+    expect(hasDirectAiCredential(env({}))).toBe(false);
+  });
+});
+
+/**
+ * What actually goes on the wire. These options are only worth anything if they
+ * survive the AI SDK's request building, and the OAuth failure mode is silent:
+ * an `x-api-key` sent alongside `Authorization` is rejected by the API, and a
+ * missing beta header fails the same way — neither shows up in a type check.
+ */
+describe("outbound request shape", () => {
+  const capture = async (opts: {
+    authToken?: string;
+    apiKey?: string;
+    oauth?: boolean;
+    effort?: "low" | "medium" | "high";
+  }) => {
+    let captured: Request | null = null;
+    const fakeFetch = (async (input: string, init?: RequestInit) => {
+      captured = new Request(input, init);
+      return new Response(
+        JSON.stringify({
+          id: "msg_1",
+          type: "message",
+          role: "assistant",
+          model: "claude-opus-4-8",
+          content: [{ type: "text", text: "ok" }],
+          stop_reason: "end_turn",
+          usage: { input_tokens: 1, output_tokens: 1 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
+
+    const model = createAnthropic(
+      opts.authToken
+        ? { authToken: opts.authToken, fetch: fakeFetch }
+        : { apiKey: opts.apiKey, fetch: fakeFetch },
+    )("claude-opus-4-8");
+
+    await generateText({
+      model,
+      system: "sys",
+      messages: [{ role: "user", content: "hi" }],
+      providerOptions: anthropicProviderOptions("claude-opus-4-8", opts.effort, opts.oauth),
+    });
+    const req = captured as unknown as Request;
+    return { headers: req.headers, body: (await req.json()) as Record<string, any> };
+  };
+
+  test("an OAuth token rides Authorization: Bearer with the oauth beta, and no x-api-key", async () => {
+    const { headers } = await capture({ authToken: "oat-test", oauth: true });
+    expect(headers.get("authorization")).toBe("Bearer oat-test");
+    expect(headers.get("x-api-key")).toBeNull();
+    expect(headers.get("anthropic-beta")).toContain("oauth-2025-04-20");
+  });
+
+  test("an API key rides x-api-key, with no Authorization and no oauth beta", async () => {
+    const { headers } = await capture({ apiKey: "sk-test" });
+    expect(headers.get("x-api-key")).toBe("sk-test");
+    expect(headers.get("authorization")).toBeNull();
+    expect(headers.get("anthropic-beta") ?? "").not.toContain("oauth");
+  });
+
+  test("caching and effort reach the request body", async () => {
+    const { body } = await capture({ apiKey: "sk-test", effort: "low" });
+    expect(body.cache_control).toEqual({ type: "ephemeral" });
+    expect(body.output_config).toMatchObject({ effort: "low" });
   });
 });

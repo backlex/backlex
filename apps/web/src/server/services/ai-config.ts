@@ -105,5 +105,17 @@ export const resolveAiOverride = async (
  */
 export const applyAiOverride = (env: Env, override: AiOverride): Env =>
   override.provider === "gateway"
-    ? { ...env, AI_GATEWAY_API_KEY: override.key, ANTHROPIC_API_KEY: undefined }
-    : { ...env, ANTHROPIC_API_KEY: override.key, AI_GATEWAY_API_KEY: undefined };
+    ? {
+        ...env,
+        AI_GATEWAY_API_KEY: override.key,
+        ANTHROPIC_API_KEY: undefined,
+        // Also drop the deployment's OAuth token: "my key" must mean the
+        // workspace's key, not a silent fallback to the operator's identity.
+        ANTHROPIC_AUTH_TOKEN: undefined,
+      }
+    : {
+        ...env,
+        ANTHROPIC_API_KEY: override.key,
+        AI_GATEWAY_API_KEY: undefined,
+        ANTHROPIC_AUTH_TOKEN: undefined,
+      };

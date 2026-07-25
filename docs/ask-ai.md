@@ -151,7 +151,23 @@ End-to-end coverage lives in `tests/mcp-oauth.test.ts`.
   Anthropic provider (Claude only). The page silently strips the
   `anthropic/` prefix from any selected model. Workspaces that already
   ship `ANTHROPIC_API_KEY` keep working with no change.
-- Without **either** key, `/plan` returns `503 UNAVAILABLE` with a clear
+- **Keyless option:** `ANTHROPIC_AUTH_TOKEN` holds a short-lived Anthropic
+  OAuth bearer token instead of a long-lived API key. It is sent as
+  `Authorization: Bearer` (never alongside `x-api-key` — the API rejects a
+  request carrying both) with the `oauth-2025-04-20` beta, and sits last in
+  precedence, behind both keys. Mint one with `ant auth print-credentials
+  --access-token`, or export a whole env block with `--env`:
+
+  ```sh
+  ant auth login                     # once, opens a browser
+  set -a; eval "$(ant auth print-credentials --env)"; set +a
+  ```
+
+  It **expires and nothing here refreshes it**, so it fits local development
+  and short-lived jobs — a long-running deployment still wants an API key. For
+  the same reason it's deployment-level env only, not a workspace BYO secret.
+  A workspace that brings its own key shadows it entirely.
+- Without **any** of the three, `/plan` returns `503 UNAVAILABLE` with a clear
   message — the same pattern every `ai.*` MCP tool uses (see
   `apps/web/src/server/mcp/ai-client.ts`).
 - The signed-in user must hold the system `admin` role. Non-admins get a

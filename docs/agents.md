@@ -185,7 +185,8 @@ The feature mirrors `flows` across every surface ([parity](./service-map.md)):
 - A turn runs **synchronously** inside the request that posts the message; the
   whole loop is bounded by `maxSteps` and the model's per-call token cap. A
   thread that is already `running` rejects a second concurrent turn (`409`).
-- Requires an AI provider (`AI_GATEWAY_API_KEY`, `ANTHROPIC_API_KEY`, or a
+- Requires an AI provider (`AI_GATEWAY_API_KEY`, `ANTHROPIC_API_KEY`, a
+  short-lived `ANTHROPIC_AUTH_TOKEN` — see [Ask AI](./ask-ai.md#requirements), or a
   workspace bring-your-own key, or the managed-cloud gateway). With none
   configured a turn returns `503 UNAVAILABLE` and the thread is marked `error`.
 - **Deferred:** a durable, job-queue-backed async run path (enqueue a turn and

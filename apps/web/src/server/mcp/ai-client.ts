@@ -52,15 +52,57 @@ export interface ClaudeResponse {
 
 type Provider = "gateway" | "anthropic";
 
-const pickProvider = (env: Env): { kind: Provider; key: string } => {
+export interface AiCredential {
+  kind: Provider;
+  key: string;
+  /** True when `key` is an OAuth bearer token (`ANTHROPIC_AUTH_TOKEN`) rather
+   *  than an API key: it goes on `Authorization: Bearer`, never `x-api-key`,
+   *  and needs the `oauth-2025-04-20` beta. */
+  oauth?: boolean;
+}
+
+/** Is any direct provider credential configured on this env? Used to decide
+ *  whether to route through the managed-cloud gateway instead. */
+export const hasDirectAiCredential = (env: Env): boolean =>
+  Boolean(
+    env.AI_GATEWAY_API_KEY?.trim() ||
+      env.ANTHROPIC_API_KEY?.trim() ||
+      env.ANTHROPIC_AUTH_TOKEN?.trim(),
+  );
+
+/**
+ * Resolve which credential to call Anthropic with, in the same precedence the
+ * official SDKs use: API key first, then an OAuth bearer token.
+ *
+ * `ANTHROPIC_AUTH_TOKEN` exists so a deployment doesn't have to store a
+ * long-lived API key: it holds a short-lived token minted elsewhere (e.g.
+ * `ant auth print-credentials --access-token` on a developer machine, or a
+ * federation exchange in CI). It expires and is NOT auto-refreshed here, which
+ * is exactly why it stays deployment-level env and is not offered as a
+ * workspace BYO secret — a tenant pasting one into Settings · AI would watch
+ * it stop working within the hour.
+ */
+export const pickProvider = (env: Env): AiCredential => {
   const gw = env.AI_GATEWAY_API_KEY?.trim();
   if (gw) return { kind: "gateway", key: gw };
   const direct = env.ANTHROPIC_API_KEY?.trim();
   if (direct) return { kind: "anthropic", key: direct };
+  const token = env.ANTHROPIC_AUTH_TOKEN?.trim();
+  if (token) return { kind: "anthropic", key: token, oauth: true };
   throw new AppError(
     "UNAVAILABLE",
-    "No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider) or the legacy ANTHROPIC_API_KEY on the backlex deployment.",
+    "No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider), the legacy ANTHROPIC_API_KEY, or a short-lived ANTHROPIC_AUTH_TOKEN on the backlex deployment.",
   );
+};
+
+/** Build the AI-SDK model for a resolved credential. An OAuth token uses the
+ *  provider's `authToken` option, which sends `Authorization: Bearer` and
+ *  omits `x-api-key` — sending both is rejected by the API. */
+const modelFor = (cred: AiCredential, modelId: string) => {
+  if (cred.kind === "gateway") return createGateway({ apiKey: cred.key })(modelId);
+  return cred.oauth
+    ? createAnthropic({ authToken: cred.key })(modelId)
+    : createAnthropic({ apiKey: cred.key })(modelId);
 };
 
 /** Reasoning effort. Lower effort = fewer thinking tokens and fewer, more
@@ -92,10 +134,15 @@ const EFFORT_CAPABLE = /claude-(opus-4-[5-9]|sonnet-5|sonnet-4-6|fable-5|mythos-
 export const anthropicProviderOptions = (
   modelId: string,
   effort?: AiEffort,
+  oauth?: boolean,
 ): { anthropic: Record<string, JSONValue> } => ({
   anthropic: {
     cacheControl: { type: "ephemeral" },
     ...(effort && EFFORT_CAPABLE.test(modelId) ? { effort } : {}),
+    // OAuth bearer tokens need this beta on /v1/messages. Passing it as a
+    // provider option (rather than a raw header) lets the provider union it
+    // with whatever feature betas the request already needs.
+    ...(oauth ? { anthropicBeta: ["oauth-2025-04-20"] } : {}),
   },
 });
 
@@ -159,20 +206,15 @@ export const callClaude = async (
   // services/ai-config), which is exactly the opt-out from the metered/capped
   // platform gateway. With no direct key, a cloud project falls back to the
   // gateway; self-host with no key throws the helpful "set a key" error below.
-  const hasDirectKey = Boolean(
-    env.AI_GATEWAY_API_KEY?.trim() || env.ANTHROPIC_API_KEY?.trim(),
-  );
+  const hasDirectKey = hasDirectAiCredential(env);
   if (!hasDirectKey && cloudConfigured(env))
     return callCloudGeneration(env, { system, user, model, maxTokens });
 
   const provider = pickProvider(env);
   const modelId = resolveModelId(provider.kind, model);
-  // createGateway / createAnthropic let us inject the key from `env`
-  // instead of relying on `process.env`, which doesn't exist on CF Workers.
-  const aiModel =
-    provider.kind === "gateway"
-      ? createGateway({ apiKey: provider.key })(modelId)
-      : createAnthropic({ apiKey: provider.key })(modelId);
+  // The provider is constructed with the key from `env` instead of
+  // `process.env`, which doesn't exist on CF Workers.
+  const aiModel = modelFor(provider, modelId);
 
   try {
     const result = await generateText({
@@ -180,7 +222,7 @@ export const callClaude = async (
       system,
       messages: [{ role: "user", content: user }],
       maxOutputTokens: maxTokens ?? DEFAULT_MAX_TOKENS,
-      providerOptions: anthropicProviderOptions(modelId, effort),
+      providerOptions: anthropicProviderOptions(modelId, effort, provider.oauth),
     });
     // Opt-in: self-report token usage to the cloud control plane (no-op
     // unless provisioned). Fire-and-forget — never blocks the response.
@@ -400,19 +442,14 @@ export const callClaudeTools = async (
   env: Env,
   { system, messages, tools, model, maxTokens, effort }: ClaudeToolsRequest,
 ): Promise<ClaudeToolsResponse> => {
-  const hasDirectKey = Boolean(
-    env.AI_GATEWAY_API_KEY?.trim() || env.ANTHROPIC_API_KEY?.trim(),
-  );
+  const hasDirectKey = hasDirectAiCredential(env);
   if (!hasDirectKey && cloudConfigured(env)) {
     return callCloudToolTurn(env, { system, messages, tools, model });
   }
 
   const provider = pickProvider(env);
   const modelId = resolveModelId(provider.kind, model);
-  const aiModel =
-    provider.kind === "gateway"
-      ? createGateway({ apiKey: provider.key })(modelId)
-      : createAnthropic({ apiKey: provider.key })(modelId);
+  const aiModel = modelFor(provider, modelId);
 
   const aiTools = tools?.length
     ? Object.fromEntries(
@@ -438,7 +475,7 @@ export const callClaudeTools = async (
       // The big one for agents: each step re-sends system + tool schemas +
       // the whole transcript, so caching turns step N's prompt into step
       // N+1's cache read.
-      providerOptions: anthropicProviderOptions(modelId, effort),
+      providerOptions: anthropicProviderOptions(modelId, effort, provider.oauth),
     });
     void reportToCloud(env, {
       kind: "ai_usage",

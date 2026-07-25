@@ -17,22 +17,21 @@
  */
 import { AppError } from "@backlex/core";
 import type { McpTool, ToolResult, ToolCtx } from "../types";
-import { callClaude, extractJson } from "../ai-client";
+import { callClaude, extractJson, hasDirectAiCredential } from "../ai-client";
 import { readJson } from "../internal-fetch";
 
 /** Fail fast when the workspace has no AI credential — every `ai.*` tool
  *  checks this BEFORE any other sub-fetch so missing-key errors don't hide
  *  behind upstream 404s (`ai.query` on a non-existent collection used to
  *  report "Collection not found" before this guard was added). Either the
- *  preferred `AI_GATEWAY_API_KEY` or the legacy `ANTHROPIC_API_KEY`
- *  satisfies the check — `callClaude` picks the provider per-call. */
+ *  preferred `AI_GATEWAY_API_KEY`, the legacy `ANTHROPIC_API_KEY`, or a
+ *  short-lived `ANTHROPIC_AUTH_TOKEN` satisfies the check — `callClaude`
+ *  picks the credential per-call. */
 const requireAiKey = (ctx: ToolCtx): void => {
-  const gw = ctx.env.AI_GATEWAY_API_KEY?.trim();
-  const anth = ctx.env.ANTHROPIC_API_KEY?.trim();
-  if (!gw && !anth) {
+  if (!hasDirectAiCredential(ctx.env)) {
     throw new AppError(
       "UNAVAILABLE",
-      "No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider) or the legacy ANTHROPIC_API_KEY on the backlex deployment.",
+      "No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider), the legacy ANTHROPIC_API_KEY, or a short-lived ANTHROPIC_AUTH_TOKEN on the backlex deployment.",
     );
   }
 };

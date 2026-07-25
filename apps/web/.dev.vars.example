@@ -91,6 +91,11 @@ TEST_ADMIN_PASSWORD = "correct-horse-battery"
 # client falls back to the direct Anthropic provider for backward compat.
 # AI_GATEWAY_API_KEY = "vck_..."
 # ANTHROPIC_API_KEY = "sk-ant-..."
+# Or skip the static key entirely: ANTHROPIC_AUTH_TOKEN takes a short-lived
+# OAuth bearer token (`ant auth login`, then `ant auth print-credentials
+# --access-token`). Lowest precedence of the three, and it EXPIRES — handy for
+# local dev, not for a long-running deployment.
+# ANTHROPIC_AUTH_TOKEN = "sk-ant-oat01-..."
 
 # OAuth providers — both id+secret required to enable. Each is auto-wired
 # into better-auth's socialProviders if both are present. The admin Auth

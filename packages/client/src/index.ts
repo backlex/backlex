@@ -623,6 +623,9 @@ export interface Agent {
   id: string;
   tenantId?: string | null;
   name: string;
+  /** Stable `@`-mention token, unique per workspace. This is what you type
+   *  after `@` in a room to address the agent. */
+  handle?: string | null;
   description?: string | null;
   systemPrompt?: string | null;
   model?: string | null;
@@ -641,6 +644,9 @@ export interface Agent {
 /** Create/update payload for an agent. */
 export interface AgentInput {
   name: string;
+  /** Mention handle. Derived from `name` when omitted; normalised and
+   *  de-duplicated server-side. */
+  handle?: string | null;
   description?: string | null;
   systemPrompt?: string | null;
   model?: string | null;
@@ -651,13 +657,50 @@ export interface AgentInput {
   active?: boolean;
 }
 
-/** A conversation thread against an agent. */
+/**
+ * A conversation — a **room**, which may host several agents at once.
+ *
+ * `agentId` is the legacy single-agent pin (set on a thread opened against one
+ * specific agent, null on a room); membership lives in `agentIds`.
+ *
+ * `routing` decides who answers a message that mentions nobody:
+ * `mention` (nobody — the room is usable human-to-human), `default`
+ * (`defaultAgentId` answers), or `auto` (a cheap router picks a participant).
+ */
 export interface AgentThread {
   id: string;
   tenantId?: string | null;
-  agentId: string;
+  agentId?: string | null;
   title?: string | null;
   status: "idle" | "running" | "error";
+  routing?: AgentRoomRouting;
+  defaultAgentId?: string | null;
+  /** Participants. Present on room list/detail responses. */
+  agentIds?: string[];
+}
+
+export type AgentRoomRouting = "mention" | "default" | "auto";
+
+/** Create payload for a room. */
+export interface AgentRoomInput {
+  title?: string | null;
+  agentIds?: string[];
+  routing?: AgentRoomRouting;
+  defaultAgentId?: string | null;
+}
+
+/**
+ * One agent's turn — the unit of work AND the per-agent lock. Two agents can
+ * answer the same room message at once; the same agent cannot run twice.
+ */
+export interface AgentRun {
+  id: string;
+  threadId: string;
+  agentId: string;
+  status: "queued" | "running" | "done" | "error";
+  startedBy?: string | null;
+  triggerMessageId?: string | null;
+  error?: string | null;
 }
 
 /** One persisted message in a thread (user / assistant / tool). */
@@ -669,6 +712,9 @@ export interface AgentMessage {
   /** Team member who asked. Threads are workspace-wide, so a transcript can
    *  mix authors; null on assistant/tool rows and on API-key-driven turns. */
   userId?: string | null;
+  /** Which agent wrote an assistant/tool row — a room's transcript mixes
+   *  several. Null on user rows. */
+  agentId?: string | null;
   toolName?: string | null;
   toolArgs?: unknown;
   toolResult?: unknown;
@@ -697,6 +743,23 @@ export interface AgentRunResult {
   answer: string;
   steps: AgentRunStep[];
   stoppedReason: "final" | "max_steps" | "error";
+  /** The persisted user message that triggered it — one row however many
+   *  agents answered. */
+  messageId?: string;
+  /** Turns that were started, in responder order. */
+  runs?: { runId: string; agentId: string }[];
+  /** Agents that were asked to answer but were already mid-turn. */
+  busy?: { agentId: string; runId: string }[];
+  /** Every turn this message produced. The top-level `answer`/`steps` mirror
+   *  the first, so single-agent callers need not look here. */
+  turns?: AgentRunResult[];
+}
+
+/** What `send(..., { async: true })` returns: nothing has run yet. */
+export interface AgentSendQueued {
+  messageId: string;
+  runs: { runId: string; agentId: string }[];
+  busy: { agentId: string; runId: string }[];
 }
 
 /** AI agents (admin-scoped). Mirrors `/api/agents`. See `createClient`. */
@@ -715,14 +778,49 @@ export interface AgentsClient {
   threads(agentId: string): Promise<{ data: AgentThread[] }>;
   /** Start a new conversation thread for an agent. */
   createThread(agentId: string, title?: string): Promise<{ data: AgentThread }>;
-  /** Fetch a thread, its full message transcript, and the people who wrote it. */
+  /** Fetch a thread, its full message transcript, and the people who wrote it.
+   *  Rooms additionally return their participants and any turns in flight. */
   thread(threadId: string): Promise<{
-    data: { thread: AgentThread; messages: AgentMessage[]; authors: AgentThreadAuthor[] };
+    data: {
+      thread: AgentThread;
+      messages: AgentMessage[];
+      authors: AgentThreadAuthor[];
+      agentIds?: string[];
+      activeRuns?: AgentRun[];
+    };
   }>;
   /** Delete a thread and its messages. */
   deleteThread(threadId: string): Promise<{ ok: boolean }>;
-  /** Send a message and run one turn to completion. */
-  send(threadId: string, message: string): Promise<{ data: AgentRunResult }>;
+  /** Send a message and run whichever agents it wakes, to completion.
+   *
+   *  `agentIds` forces specific responders, bypassing the room's routing mode.
+   *  `async: true` queues the turns instead and resolves as soon as they're
+   *  accepted — watch `agent:thread:<id>` over realtime, or poll `getRun`. */
+  send(
+    threadId: string,
+    message: string,
+    opts?: { agentIds?: string[]; async?: false },
+  ): Promise<{ data: AgentRunResult }>;
+  send(
+    threadId: string,
+    message: string,
+    opts: { agentIds?: string[]; async: true },
+  ): Promise<{ data: AgentSendQueued }>;
+  /** Every conversation in the workspace, newest activity first. */
+  rooms(): Promise<{ data: AgentThread[] }>;
+  /** Open a room. With no `agentIds` it starts empty. */
+  createRoom(input?: AgentRoomInput): Promise<{ data: AgentThread }>;
+  /** Rename a room or change how it routes unaddressed messages. */
+  updateRoom(
+    threadId: string,
+    patch: Omit<AgentRoomInput, "agentIds">,
+  ): Promise<{ ok: boolean }>;
+  /** Add an agent to a room. Idempotent. */
+  addRoomAgent(threadId: string, agentId: string): Promise<{ ok: boolean }>;
+  /** Remove an agent from a room. */
+  removeRoomAgent(threadId: string, agentId: string): Promise<{ ok: boolean }>;
+  /** Poll one turn's status — for async sends without a realtime connection. */
+  getRun(runId: string): Promise<{ data: AgentRun }>;
   /** Convenience: start a fresh thread and run one turn. Returns the result
    *  plus the new `threadId` so you can continue the conversation. */
   run(
@@ -2189,24 +2287,65 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       ),
     thread: (threadId: string) =>
       request<{
-        data: { thread: AgentThread; messages: AgentMessage[]; authors: AgentThreadAuthor[] };
+        data: {
+          thread: AgentThread;
+          messages: AgentMessage[];
+          authors: AgentThreadAuthor[];
+          agentIds?: string[];
+          activeRuns?: AgentRun[];
+        };
       }>("GET", `/api/agents/threads/${encodeURIComponent(threadId)}`),
     deleteThread: (threadId: string) =>
       request<{ ok: boolean }>(
         "DELETE",
         `/api/agents/threads/${encodeURIComponent(threadId)}`,
       ),
-    send: (threadId: string, message: string) =>
-      request<{ data: AgentRunResult }>(
+    send: ((
+      threadId: string,
+      message: string,
+      opts?: { agentIds?: string[]; async?: boolean },
+    ) =>
+      request<{ data: AgentRunResult | AgentSendQueued }>(
         "POST",
         `/api/agents/threads/${encodeURIComponent(threadId)}/messages`,
-        { message },
-      ),
+        {
+          message,
+          ...(opts?.agentIds ? { agentIds: opts.agentIds } : {}),
+          ...(opts?.async ? { async: true } : {}),
+        },
+      )) as AgentsClient["send"],
     run: async (agentId: string, message: string, title?: string) => {
       const { data: thread } = await agents.createThread(agentId, title);
-      const { data } = await agents.send(thread.id, message);
+      // The thread was opened against this agent, so it answers by default —
+      // but pin it anyway so `run` means "this agent replies", full stop.
+      const { data } = await agents.send(thread.id, message, { agentIds: [agentId] });
       return { data, threadId: thread.id };
     },
+    rooms: () => request<{ data: AgentThread[] }>("GET", "/api/agents/threads"),
+    createRoom: (input?: AgentRoomInput) =>
+      request<{ data: AgentThread }>("POST", "/api/agents/threads", input ?? {}),
+    updateRoom: (threadId: string, patch: Omit<AgentRoomInput, "agentIds">) =>
+      request<{ ok: boolean }>(
+        "PATCH",
+        `/api/agents/threads/${encodeURIComponent(threadId)}`,
+        patch,
+      ),
+    addRoomAgent: (threadId: string, agentId: string) =>
+      request<{ ok: boolean }>(
+        "POST",
+        `/api/agents/threads/${encodeURIComponent(threadId)}/agents`,
+        { agentId },
+      ),
+    removeRoomAgent: (threadId: string, agentId: string) =>
+      request<{ ok: boolean }>(
+        "DELETE",
+        `/api/agents/threads/${encodeURIComponent(threadId)}/agents/${encodeURIComponent(agentId)}`,
+      ),
+    getRun: (runId: string) =>
+      request<{ data: AgentRun }>(
+        "GET",
+        `/api/agents/runs/${encodeURIComponent(runId)}`,
+      ),
   };
 
   // Permission tooling — the simulator dry-runs the resolver for any subject

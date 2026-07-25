@@ -23,7 +23,7 @@ interface AgentRow {
   memory?: boolean | number;
 }
 
-const AGENTS_HELP = `backlex agents <list|get|create|update|delete|threads|run>
+const AGENTS_HELP = `backlex agents <list|get|create|update|delete|threads|run|rooms|say>
 
   list                              all agents
   get <id>                          one agent (full JSON definition)
@@ -33,6 +33,13 @@ const AGENTS_HELP = `backlex agents <list|get|create|update|delete|threads|run>
   threads <agentId>                 list threads for an agent
   run <agentId> --message <text>    run one turn (new thread unless --thread <id>)
                                     [--thread <id>] [--json]
+
+  rooms                             list every conversation in the workspace
+  rooms new [--title <t>] [--agents <id,id>] [--routing mention|default|auto]
+  rooms add <roomId> <agentId>      add an agent to a room
+  rooms remove <roomId> <agentId>   remove one
+  say <roomId> --message <text>     post in a room; @handle to address an agent
+                                    [--json]
 `;
 
 const BASE = "/api/agents";
@@ -133,6 +140,86 @@ export const runAgents = async (args: string[]): Promise<void> => {
           );
         return;
       }
+      case "rooms": {
+        const action = rest[0] ?? "list";
+        if (action === "list") {
+          const { data } = await client.request<{ data: Array<Record<string, unknown>> }>(
+            "GET",
+            `${BASE}/threads`,
+          );
+          if (json) printJson(data);
+          else
+            printTable(
+              data.map((t) => ({
+                id: t.id as string,
+                title: (t.title as string) ?? "—",
+                agents: ((t.agentIds as string[]) ?? []).length,
+                routing: (t.routing as string) ?? "mention",
+                status: t.status as string,
+              })),
+            );
+          return;
+        }
+        if (action === "new") {
+          const agentsFlag = flag(rest, "--agents");
+          const res = await client.request<{ data: Record<string, unknown> }>(
+            "POST",
+            `${BASE}/threads`,
+            {
+              ...(flag(rest, "--title") ? { title: flag(rest, "--title") } : {}),
+              ...(agentsFlag
+                ? { agentIds: agentsFlag.split(",").map((s) => s.trim()).filter(Boolean) }
+                : {}),
+              ...(flag(rest, "--routing") ? { routing: flag(rest, "--routing") } : {}),
+            },
+          );
+          if (json) printJson(res.data);
+          else printKeyValues({ id: res.data.id as string });
+          return;
+        }
+        if (action === "add" || action === "remove") {
+          const roomId = rest[1];
+          const agentId = rest[2];
+          if (!roomId || !agentId) {
+            process.stderr.write(`agents rooms ${action} <roomId> <agentId>\n`);
+            process.exit(1);
+          }
+          if (action === "add") {
+            await client.request("POST", `${BASE}/threads/${encodeURIComponent(roomId)}/agents`, {
+              agentId,
+            });
+            process.stderr.write(`Added ${agentId} to room ${roomId}.\n`);
+          } else {
+            await client.request(
+              "DELETE",
+              `${BASE}/threads/${encodeURIComponent(roomId)}/agents/${encodeURIComponent(agentId)}`,
+            );
+            process.stderr.write(`Removed ${agentId} from room ${roomId}.\n`);
+          }
+          return;
+        }
+        process.stderr.write(`unknown rooms action: ${action}\n\n${AGENTS_HELP}`);
+        process.exit(1);
+        return;
+      }
+      case "say": {
+        const roomId = rest[0];
+        const message = flag(rest, "--message") ?? flag(rest, "-m");
+        if (!roomId || !message) {
+          process.stderr.write('agents say <roomId> --message "text"\n');
+          process.exit(1);
+        }
+        // Routed by the room: an @handle addresses an agent, otherwise the
+        // room's mode decides — possibly nobody, which is a valid outcome.
+        const res = await client.request<{
+          data: { answer?: string; turns?: Array<{ answer: string }> };
+        }>("POST", `${BASE}/threads/${encodeURIComponent(roomId)}/messages`, { message });
+        if (json) printJson(res.data);
+        else if (res.data.turns?.length)
+          process.stdout.write(`${res.data.turns.map((t) => t.answer).join("\n\n")}\n`);
+        else process.stderr.write("Message posted — no agent was addressed.\n");
+        return;
+      }
       case "run": {
         const agentId = rest[0];
         const message = flag(rest, "--message") ?? flag(rest, "-m");
@@ -151,7 +238,12 @@ export const runAgents = async (args: string[]): Promise<void> => {
         }
         const res = await client.request<{
           data: { answer: string; steps: unknown[]; stoppedReason: string };
-        }>("POST", `${BASE}/threads/${encodeURIComponent(threadId)}/messages`, { message });
+        }>("POST", `${BASE}/threads/${encodeURIComponent(threadId)}/messages`, {
+          message,
+          // `run` names its agent, so it answers regardless of how the thread
+          // would otherwise route an unaddressed message.
+          agentIds: [agentId],
+        });
         if (json) printJson({ ...res.data, threadId });
         else process.stdout.write(`${res.data.answer}\n`);
         return;

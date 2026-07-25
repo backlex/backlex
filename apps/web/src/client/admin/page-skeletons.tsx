@@ -375,6 +375,65 @@ function FlowsSkeletonImpl() {
   );
 }
 
+/** Agents — header, a left list of definitions, and the summary panel: badges,
+ *  a 2-up spec grid, then the tool allow-list and system prompt blocks. */
+function AgentsSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-4.5">
+      <HeaderSkeleton actions={1} />
+      <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
+        <ListCardSkeleton rows={4} header={false} />
+        <Card className="gap-4.5 p-[22px]">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-5 w-24 rounded-full" />
+            <Skeleton className="h-5 w-20 rounded-full" />
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 max-[560px]:grid-cols-1">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="flex flex-col gap-1.5">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            ))}
+          </div>
+          <Skeleton className="h-[120px] w-full rounded-control" />
+          <Skeleton className="h-[140px] w-full rounded-control" />
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/** Chat — header, a left room list, and the room pane: title row, agent chips,
+ *  the routing selects, then the transcript box. Matches the live heights so
+ *  the page doesn't jump when it loads. */
+function ChatSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-4.5">
+      <HeaderSkeleton actions={1} />
+      <div className="grid grid-cols-[300px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
+        <ListCardSkeleton rows={4} header={false} />
+        <Card className="gap-4 p-[22px]">
+          <div className="flex items-center gap-2.5">
+            <Skeleton className="h-6 w-44" />
+            <Skeleton className="ml-auto h-8 w-24 rounded-control" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-5 w-28 rounded-full" />
+            <Skeleton className="h-5 w-24 rounded-full" />
+          </div>
+          <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
+            <Skeleton className="h-9 w-full rounded-control" />
+            <Skeleton className="h-9 w-full rounded-control" />
+          </div>
+          <Skeleton className="h-[460px] w-full rounded-control max-[640px]:h-[420px]" />
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 /** Functions — header, then a left list + an editor pane. */
 function FunctionsSkeletonImpl() {
   return (
@@ -867,6 +926,8 @@ export const LogsSkeleton = withSkeletonDelay(LogsSkeletonImpl);
 export const UsageSkeleton = withSkeletonDelay(UsageSkeletonImpl);
 export const DatabaseSkeleton = withSkeletonDelay(DatabaseSkeletonImpl);
 export const FlowsSkeleton = withSkeletonDelay(FlowsSkeletonImpl);
+export const AgentsSkeleton = withSkeletonDelay(AgentsSkeletonImpl);
+export const ChatSkeleton = withSkeletonDelay(ChatSkeletonImpl);
 export const FunctionsSkeleton = withSkeletonDelay(FunctionsSkeletonImpl);
 export const WebhooksSkeleton = withSkeletonDelay(WebhooksSkeletonImpl);
 export const ExtensionsSkeleton = withSkeletonDelay(ExtensionsSkeletonImpl);
@@ -925,6 +986,10 @@ export function PageSkeleton({ nav }: { nav: string }) {
       return <StorageSkeleton />;
     case "flows":
       return <FlowsSkeleton />;
+    case "agents":
+      return <AgentsSkeleton />;
+    case "chat":
+      return <ChatSkeleton />;
     case "functions":
       return <FunctionsSkeleton />;
     case "webhooks":

@@ -21,9 +21,8 @@ import {
   createThread as createAgentThreadRow,
   getThread as getAgentThreadRow,
 } from "../agents/store";
-import { runAgentTurn } from "../agents/runner";
+import { sendMessage } from "../agents/send";
 import { allTools } from "../../mcp/tools";
-import { makeInternalFetch } from "../../mcp/internal-fetch";
 
 // ── AI agents ────────────────────────────────────────────────────────────────
 // Static, admin-scoped surface mirroring REST `/api/agents` + MCP `agents.*` +
@@ -36,6 +35,8 @@ const AgentType = new GraphQLObjectType({
     id: { type: new GraphQLNonNull(GraphQLID) },
     tenantId: { type: GraphQLString },
     name: { type: new GraphQLNonNull(GraphQLString) },
+    /** Stable `@`-mention token used in rooms. */
+    handle: { type: GraphQLString },
     description: { type: GraphQLString },
     systemPrompt: { type: GraphQLString },
     model: { type: GraphQLString },
@@ -50,6 +51,7 @@ const AgentInputType = new GraphQLInputObjectType({
   name: "AgentInput",
   fields: {
     name: { type: GraphQLString },
+    handle: { type: GraphQLString },
     description: { type: GraphQLString },
     systemPrompt: { type: GraphQLString },
     model: { type: GraphQLString },
@@ -226,17 +228,27 @@ export const agentMutationFields: Record<string, GraphQLFieldConfig<unknown, Gql
         });
         threadId = t.id;
       }
-      const fetchInternal = makeInternalFetch(app, rawRequest, ctx.env);
-      const result = await runAgentTurn({
+      // Through the same service every other surface uses, with the named
+      // agent forced: `runAgent` names its agent, so a room's routing mode must
+      // not decide otherwise.
+      const result = await sendMessage({
         ctx,
-        agentId: a.agent,
-        threadId,
+        app,
+        env: ctx.env,
         tenantId,
+        threadId,
         message: a.message,
-        fetchInternal,
         auth: { userId: gqlCtx.auth.userId },
+        request: rawRequest,
+        forceAgentIds: [a.agent],
       });
-      return { ...result, threadId };
+      const turn = result.turns[0];
+      return {
+        answer: turn?.answer ?? "",
+        steps: turn?.steps ?? [],
+        stoppedReason: turn?.stoppedReason ?? "final",
+        threadId,
+      };
     },
   },
 };

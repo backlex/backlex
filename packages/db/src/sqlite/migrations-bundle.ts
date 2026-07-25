@@ -80,6 +80,7 @@ import m73 from "../../drizzle/sqlite/20260721090000_extensions/migration.sql" w
 import m74 from "../../drizzle/sqlite/20260722090000_staged_edits/migration.sql" with { type: "text" };
 import m75 from "../../drizzle/sqlite/20260725090000_agent_message_author/migration.sql" with { type: "text" };
 import m76 from "../../drizzle/sqlite/20260725120000_agent_effort/migration.sql" with { type: "text" };
+import m77 from "../../drizzle/sqlite/20260725150000_agent_rooms/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -164,4 +165,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260722090000_staged_edits", sql: m74 },
   { name: "20260725090000_agent_message_author", sql: m75 },
   { name: "20260725120000_agent_effort", sql: m76 },
+  { name: "20260725150000_agent_rooms", sql: m77 },
 ];

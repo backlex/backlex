@@ -262,6 +262,12 @@ msgstr "{0} bağlandı."
 msgid "{0} consecutive failures"
 msgstr "{0} ardışık başarısızlık"
 
+#. placeholder {0}: agentLabel(agentById.get(d.agentId))
+#. placeholder {1}: d.message
+#: src/client/admin/pages/chat.tsx
+msgid "{0} couldn't finish: {1}"
+msgstr "{0} tamamlayamadı: {1}"
+
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} deleted, {failed} failed."
@@ -337,10 +343,25 @@ msgstr "{0} düzenliyor"
 msgid "{0} is required"
 msgstr "{0} zorunludur"
 
+#. placeholder {0}: agentLabel(agentById.get(b.agentId))
+#: src/client/admin/pages/chat.tsx
+msgid "{0} is still working on the previous message."
+msgstr "{0} hâlâ önceki mesaj üzerinde çalışıyor."
+
+#. placeholder {0}: agentLabel(agent)
+#: src/client/admin/pages/chat.tsx
+msgid "{0} is thinking…"
+msgstr "{0} düşünüyor…"
+
 #. placeholder {0}: nameFor(typingPeers[0]!.id)
-#: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/chat.tsx
 msgid "{0} is typing…"
 msgstr "{0} yazıyor…"
+
+#. placeholder {0}: agentLabel(agent)
+#: src/client/admin/pages/chat.tsx
+msgid "{0} is working…"
+msgstr "{0} çalışıyor…"
 
 #. placeholder {0}: c.count
 #: src/client/admin/extras.tsx
@@ -475,7 +496,7 @@ msgid "{0} tags"
 msgstr "{0} etiket"
 
 #. placeholder {0}: typingPeers.length
-#: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/chat.tsx
 msgid "{0} teammates are typing…"
 msgstr "{0} takım arkadaşı yazıyor…"
 
@@ -634,12 +655,12 @@ msgid "{r} may update rows matching this rule."
 msgstr "{r} bu kuralla eşleşen satırları güncelleyebilir."
 
 #: src/client/admin/pages/agents.tsx
-msgid "{runnerName} is asking…"
-msgstr "{runnerName} soruyor…"
+#~ msgid "{runnerName} is asking…"
+#~ msgstr "{runnerName} soruyor…"
 
 #: src/client/admin/pages/agents.tsx
-msgid "{runnerName} is running a turn…"
-msgstr "{runnerName} bir tur çalıştırıyor…"
+#~ msgid "{runnerName} is running a turn…"
+#~ msgstr "{runnerName} bir tur çalıştırıyor…"
 
 #: src/client/admin/collections-index.tsx
 msgid "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
@@ -837,6 +858,10 @@ msgstr "\"{id}\" kimliğine sahip bir sağlayıcı zaten mevcut."
 msgid "A read-only view of one record from <0>{collection}</0>."
 msgstr "<0>{collection}</0> koleksiyonundan bir kaydın salt okunur görünümü."
 
+#: src/client/admin/pages/chat.tsx
+msgid "A room needs at least one agent to talk to. Create one on the Agents page first."
+msgstr "Bir odanın konuşacağı en az bir agent gerekir. Önce Agents sayfasından bir tane oluşturun."
+
 #: src/client/pages/magic-link.tsx
 msgid "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
 msgstr "İmzalı bir bağlantı gelen kutunuza gönderilecek. Tek kullanımlık, 15 dakika içinde sona erer."
@@ -846,20 +871,20 @@ msgid "A single value — counter fits best; sparkline / bars need multiple rows
 msgstr "Tek değer — sayaç en uygunudur; kıvılcım grafik / çubuklar birden fazla satır gerektirir."
 
 #: src/client/admin/pages/agents.tsx
-msgid "A teammate is asking…"
-msgstr "Bir takım arkadaşı soruyor…"
+#~ msgid "A teammate is asking…"
+#~ msgstr "Bir takım arkadaşı soruyor…"
 
 #: src/client/admin/pages/agents.tsx
-msgid "A teammate is running a turn…"
-msgstr "Bir takım arkadaşı bir tur çalıştırıyor…"
+#~ msgid "A teammate is running a turn…"
+#~ msgstr "Bir takım arkadaşı bir tur çalıştırıyor…"
 
 #: src/client/admin/parity/email-templates.tsx
 msgid "A template with key \"{trimmedKey}\" already exists."
 msgstr "\"{trimmedKey}\" anahtarlı bir şablon zaten mevcut."
 
 #: src/client/admin/pages/agents.tsx
-msgid "A turn is still running on this thread — wait for it to finish."
-msgstr "Bu görüşmede bir tur hâlâ çalışıyor — bitmesini bekleyin."
+#~ msgid "A turn is still running on this thread — wait for it to finish."
+#~ msgstr "Bu görüşmede bir tur hâlâ çalışıyor — bitmesini bekleyin."
 
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
@@ -1101,6 +1126,10 @@ msgstr "Uzak bir MCP bağlayıcısı ekleyin"
 msgid "Add a tag and press Enter…"
 msgstr "Etiket ekleyip Enter'a basın…"
 
+#: src/client/admin/pages/chat.tsx
+msgid "Add an agent to this room, or just talk to your team…"
+msgstr "Bu odaya bir agent ekleyin ya da sadece ekibinizle konuşun…"
+
 #: src/client/admin/add-field.tsx
 msgid "Add at least one dropdown choice."
 msgstr "En az bir açılır liste seçeneği ekleyin."
@@ -1332,10 +1361,19 @@ msgstr "Ajan silindi."
 msgid "Agent saved."
 msgstr "Ajan kaydedildi."
 
+#: src/client/admin/pages/chat.tsx
+msgid "agents"
+msgstr "agent"
+
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/ui.tsx
 msgid "Agents"
 msgstr "Ajanlar"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Agents in the room"
+msgstr "Odadaki agentlar"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Aggregate function"
@@ -1710,8 +1748,8 @@ msgid "Ask in natural language"
 msgstr "Doğal dilde sor"
 
 #: src/client/admin/pages/agents.tsx
-msgid "Ask the agent…"
-msgstr "Ajana sorun…"
+#~ msgid "Ask the agent…"
+#~ msgstr "Ajana sorun…"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "asking {model}…"
@@ -2141,8 +2179,8 @@ msgid "c_{target} is empty."
 msgstr "c_{target} boş."
 
 #: src/client/admin/pages/agents.tsx
-msgid "cached"
-msgstr "önbellekten"
+#~ msgid "cached"
+#~ msgstr "önbellekten"
 
 #: src/client/admin/item-views.tsx
 msgid "Calendar"
@@ -2167,6 +2205,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/feature-flags.tsx
@@ -2301,6 +2340,11 @@ msgstr "Kanal"
 #: src/client/admin/pages/realtime.tsx
 msgid "Channels refreshed."
 msgstr "Kanallar yenilendi."
+
+#: src/client/admin/pages/chat.tsx
+#: src/client/admin/ui.tsx
+msgid "Chat"
+msgstr "Sohbet"
 
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/sign-up.tsx
@@ -2909,8 +2953,8 @@ msgid "conventional column present"
 msgstr "geleneksel sütun mevcut"
 
 #: src/client/admin/pages/agents.tsx
-msgid "Conversation"
-msgstr "Konuşma"
+#~ msgid "Conversation"
+#~ msgstr "Konuşma"
 
 #: src/client/admin/ui.tsx
 msgid "copied"
@@ -3223,6 +3267,10 @@ msgstr "İlişki oluştur"
 msgid "Create role"
 msgstr "Rol oluştur"
 
+#: src/client/admin/pages/chat.tsx
+msgid "Create room"
+msgstr "Oda oluştur"
+
 #: src/client/admin/item-collaboration.tsx
 msgid "Create share link"
 msgstr "Paylaşım bağlantısı oluştur"
@@ -3480,9 +3528,17 @@ msgstr "Ondalık (1.234,5)"
 msgid "Decimal places"
 msgstr "Ondalık basamak"
 
+#: src/client/admin/pages/agents.tsx
+msgid "default"
+msgstr "varsayılan"
+
 #: src/client/admin/edit-field.tsx
 msgid "Default (auto)"
 msgstr "Varsayılan (otomatik)"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Default agent"
+msgstr "Varsayılan agent"
 
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Default language"
@@ -3564,6 +3620,8 @@ msgid "Delete \"{0}\" and its branch-owned snapshots? This can't be undone."
 msgstr "\"{0}\" ve ona ait dal anlık görüntüleri silinsin mi? Bu geri alınamaz."
 
 #. placeholder {0}: confirmDelete.name
+#. placeholder {0}: room.title || t`this room`
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Delete \"{0}\"?"
 msgstr "\"{0}\" silinsin mi?"
@@ -3628,6 +3686,10 @@ msgstr "Grubu sil (koleksiyonlar gruplanmamış olur)"
 #: src/client/admin/parity/insights.tsx
 msgid "Delete panel"
 msgstr "Paneli sil"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Delete room"
+msgstr "Odayı sil"
 
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -4379,12 +4441,16 @@ msgid "Empty collection"
 msgstr "Boş koleksiyon"
 
 #: src/client/admin/pages/agents.tsx
-msgid "Empty conversation"
-msgstr "Boş konuşma"
+#~ msgid "Empty conversation"
+#~ msgstr "Boş konuşma"
 
 #: src/client/admin/collections-index.tsx
 #~ msgid "Empty or template"
 #~ msgstr "Boş veya şablon"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Empty room"
+msgstr "Boş oda"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/extensions.tsx
@@ -5427,6 +5493,10 @@ msgstr "Globaller: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. v1'de y
 msgid "Go live"
 msgstr "Canlıya geç"
 
+#: src/client/admin/pages/chat.tsx
+msgid "Go to Agents"
+msgstr "Agents sayfasına git"
+
 #: src/client/admin/extras.tsx
 msgid "goto"
 msgstr "git"
@@ -5603,7 +5673,6 @@ msgid "highest reasoning · slower · ~3x cost"
 msgstr "en yüksek akıl yürütme · daha yavaş · ~3x maliyet"
 
 #: src/client/admin/item-editor.tsx
-#: src/client/admin/pages/agents.tsx
 msgid "History"
 msgstr "Geçmiş"
 
@@ -5765,6 +5834,10 @@ msgstr "Google Authenticator'da “Kurulum anahtarı gir” seçeneğini seçin,
 msgid "In review"
 msgstr "İncelemede"
 
+#: src/client/admin/pages/chat.tsx
+msgid "In this room"
+msgstr "Bu odada"
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "In your client, add a remote MCP server / custom connector (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
 #~ msgstr "İstemcinizde uzak MCP sunucusu / özel bağlayıcı ekleyin (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
@@ -5834,8 +5907,8 @@ msgid "Input (JSON)"
 msgstr "Girdi (JSON)"
 
 #: src/client/admin/pages/agents.tsx
-msgid "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
-msgstr "Son turda prompt önbelleğinden karşılanan girdi token'ları — tam fiyatın yaklaşık onda biri üzerinden faturalanır."
+#~ msgid "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
+#~ msgstr "Son turda prompt önbelleğinden karşılanan girdi token'ları — tam fiyatın yaklaşık onda biri üzerinden faturalanır."
 
 #: src/client/admin/display-template-editor.tsx
 msgid "Insert field"
@@ -6580,6 +6653,7 @@ msgstr "listele ve sırala"
 msgid "List columns"
 msgstr "Liste kolonları"
 
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/revisions.tsx
 #: src/client/admin/ui.tsx
@@ -6939,9 +7013,17 @@ msgstr "hafıza"
 msgid "Memory"
 msgstr "Hafıza"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Mention handle"
+msgstr "Etiket adı"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Message"
 msgstr "İleti"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Message the room — type @ to address an agent…"
+msgstr "Odaya yazın — bir agent'a seslenmek için @ yazın…"
 
 #: src/client/admin/pages/schema-versions.tsx
 msgid "metadata"
@@ -7149,6 +7231,7 @@ msgstr "Temam"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/add-field.tsx
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
@@ -7264,8 +7347,8 @@ msgid "New collection"
 msgstr "Yeni koleksiyon"
 
 #: src/client/admin/pages/agents.tsx
-msgid "New conversation"
-msgstr "Yeni konuşma"
+#~ msgid "New conversation"
+#~ msgstr "Yeni konuşma"
 
 #: src/client/admin/parity/insights.tsx
 msgid "New dashboard"
@@ -7339,6 +7422,10 @@ msgstr "Yeni ilişki"
 #: src/client/admin/role-editor.tsx
 msgid "New role"
 msgstr "Yeni rol"
+
+#: src/client/admin/pages/chat.tsx
+msgid "New room"
+msgstr "Yeni oda"
 
 #: src/client/admin/extras.tsx
 msgid "New row"
@@ -7435,6 +7522,14 @@ msgstr "Etkinlik kaydedilmedi."
 #: src/client/admin/pages/agents.tsx
 msgid "No agent selected"
 msgstr "Ajan seçilmedi"
+
+#: src/client/admin/pages/chat.tsx
+msgid "No agents in this room yet — add one from the Agents menu."
+msgstr "Bu odada henüz agent yok — Agentlar menüsünden ekleyin."
+
+#: src/client/admin/pages/chat.tsx
+msgid "No agents yet"
+msgstr "Henüz agent yok"
 
 #: src/client/admin/pages/agents.tsx
 msgid "No agents yet — click + New agent."
@@ -7546,8 +7641,8 @@ msgid "No content schema."
 msgstr "İçerik şeması yok."
 
 #: src/client/admin/pages/agents.tsx
-msgid "No conversations yet."
-msgstr "Henüz konuşma yok."
+#~ msgid "No conversations yet."
+#~ msgstr "Henüz konuşma yok."
 
 #: src/client/admin/parity/insights.tsx
 msgid "No data yet — run the panel."
@@ -7862,6 +7957,14 @@ msgstr "Rol bulunamadı."
 #: src/client/admin/permission-tester.tsx
 msgid "No roles selected = anonymous (the public role)."
 msgstr "Rol seçilmedi = anonim (public rolü)."
+
+#: src/client/admin/pages/chat.tsx
+msgid "No room selected"
+msgstr "Oda seçilmedi"
+
+#: src/client/admin/pages/chat.tsx
+msgid "No rooms yet — click + New room."
+msgstr "Henüz oda yok — + Yeni oda'ya tıklayın."
 
 #: src/client/admin/relational-pickers.tsx
 msgid "No row from c_{target} selected"
@@ -8297,6 +8400,10 @@ msgstr "aç"
 msgid "Open"
 msgstr "Aç"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Open chat"
+msgstr "Sohbeti aç"
+
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Open collection"
@@ -8364,6 +8471,10 @@ msgstr "Operasyon botları — yönetici rolü gerekli."
 #: src/client/admin/pages/overview.tsx
 msgid "optional"
 msgstr "isteğe bağlı"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Optional — a room with no name is labelled after its first message."
+msgstr "İsteğe bağlı — adı olmayan oda ilk mesajına göre adlandırılır."
 
 #: src/client/pages/api-keys.tsx
 msgid "Optional — a timestamped name is generated if you leave this blank."
@@ -8805,6 +8916,10 @@ msgstr "Sayısal alan seçin…"
 msgid "Pick a revision from the timeline to inspect, diff, or revert."
 msgstr "İncelemek, karşılaştırmak veya geri almak için zaman çizelgesinden bir revizyon seçin."
 
+#: src/client/admin/pages/chat.tsx
+msgid "Pick a room on the left, or click <0>+ New room</0>."
+msgstr "Soldan bir oda seçin ya da <0>+ Yeni oda</0>'ya tıklayın."
+
 #: src/client/admin/relational-pickers.tsx
 msgid "Pick a row from <0>c_{target}</0>"
 msgstr "<0>c_{target}</0> tablosundan satır seçin"
@@ -8948,6 +9063,10 @@ msgstr "Tür seçin…"
 #: src/client/admin/pages/forms.tsx
 msgid "Pick where submissions land — you'll design the form next."
 msgstr "Gönderimlerin nereye düşeceğini seçin — formu bir sonraki adımda tasarlayacaksınız."
+
+#: src/client/admin/pages/chat.tsx
+msgid "Pick who's in the room. You can add or remove agents later."
+msgstr "Odada kimlerin olacağını seçin. Agentları sonra ekleyip çıkarabilirsiniz."
 
 #: src/client/admin/item-form.tsx
 msgid "Pick…"
@@ -9531,6 +9650,10 @@ msgstr "Kaydetmeye hazır."
 #: src/client/admin/ui.tsx
 msgid "Realtime"
 msgstr "Gerçek zamanlı"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Reasoning effort"
+msgstr "Akıl yürütme eforu"
 
 #: src/client/admin/pages/agents.tsx
 msgid "Recall relevant past turns (needs an embedding provider)."
@@ -10266,6 +10389,10 @@ msgstr "Dağıtım % (0–100, opsiyonel)"
 msgid "Rollout must be 0–100."
 msgstr "Dağıtım 0–100 olmalı."
 
+#: src/client/admin/pages/chat.tsx
+msgid "Room deleted."
+msgstr "Oda silindi."
+
 #: src/client/admin/pages/traces.tsx
 msgid "root"
 msgstr "kök"
@@ -10410,8 +10537,8 @@ msgid "Run write MCP tools (create, update, delete — your permissions still ap
 msgstr "Yazma MCP araçlarını çalıştırma (oluşturma, güncelleme, silme — izinleriniz yine geçerli)"
 
 #: src/client/admin/pages/agents.tsx
-msgid "running"
-msgstr "çalışıyor"
+#~ msgid "running"
+#~ msgstr "çalışıyor"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Running"
@@ -10998,7 +11125,7 @@ msgid "semantic embeddings"
 msgstr "anlamsal embedding'ler"
 
 #: src/client/admin/item-collaboration.tsx
-#: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/pages/rest-explorer.tsx
 msgid "Send"
@@ -11009,8 +11136,13 @@ msgid "Send a magic link instead"
 msgstr "Bunun yerine sihirli bağlantı gönder"
 
 #: src/client/admin/pages/agents.tsx
-msgid "Send a message to start the conversation."
-msgstr "Konuşmayı başlatmak için bir mesaj gönderin."
+#~ msgid "Send a message to start the conversation."
+#~ msgstr "Konuşmayı başlatmak için bir mesaj gönderin."
+
+#: src/client/admin/pages/_agents-shared.tsx
+#: src/client/admin/pages/chat.tsx
+msgid "Send a message to start the conversation. Type @ to address an agent."
+msgstr "Sohbeti başlatmak için bir mesaj gönderin. Bir agent'a seslenmek için @ yazın."
 
 #: src/client/admin/pages/users.tsx
 msgid "Send an email invite. The user finishes signup themselves."
@@ -11067,6 +11199,7 @@ msgid "Sending reset link"
 msgstr "Sıfırlama bağlantısı gönderiliyor"
 
 #: src/client/admin/item-collaboration.tsx
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx
@@ -11308,6 +11441,10 @@ msgstr "paylaşılan global bütçe"
 #: src/client/pages/shared-record.tsx
 msgid "Shared record"
 msgstr "Paylaşılan kayıt"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Shared rooms where your team and its agents talk. Type @ to address an agent."
+msgstr "Ekibinizin ve agentlarının konuştuğu paylaşılan odalar. Bir agent'a seslenmek için @ yazın."
 
 #: src/client/pages/shared-record.tsx
 msgid "Shared via backlex · this link can be revoked at any time."
@@ -12462,8 +12599,8 @@ msgid "These rows will be removed from c_posts. This deletes the underlying reco
 msgstr "Bu satırlar c_posts tablosundan kaldırılacak. Bu temel kayıtları siler — sürümler kullanılabilir kalmaya devam eder."
 
 #: src/client/admin/pages/agents.tsx
-msgid "Thinking…"
-msgstr "Düşünüyor…"
+#~ msgid "Thinking…"
+#~ msgstr "Düşünüyor…"
 
 #: src/client/admin/app.tsx
 msgid "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
@@ -12516,6 +12653,10 @@ msgstr "Bu veritabanında hiç tablo yok."
 #: src/client/admin/parity/insights.tsx
 msgid "This deletes the dashboard and disables its public embed. Its panels are <0>not</0> deleted — they become ungrouped. This action can't be undone."
 msgstr "Bu, panoyu siler ve herkese açık gömmesini kapatır. Panelleri <0>silinmez</0> — gruplanmamış hale gelir. Bu işlem geri alınamaz."
+
+#: src/client/admin/pages/chat.tsx
+msgid "This deletes the room and its whole transcript for everyone on the team. The agents themselves are <0>not</0> deleted. This can't be undone."
+msgstr "Bu, odayı ve tüm konuşma dökümünü ekipteki herkes için siler. Agentların kendisi <0>silinmez</0>. Bu işlem geri alınamaz."
 
 #: src/client/admin/collection-settings.tsx
 msgid "This deployment has no vector store — connect a Vectorize binding (Cloudflare), pgvector (Postgres), or libSQL before vector search can run."
@@ -12601,6 +12742,10 @@ msgstr "Bu, satırı <0>c_{slug}</0> tablosundan kaldırır. Revizyonlar kullan�
 #: src/client/admin/parity/revisions.tsx
 msgid "This rewrites the item to the v{0} snapshot from {1}. The current state is preserved as a new revision, so this is undoable."
 msgstr "Bu, öğeyi {1} tarihli v{0} anlık görüntüsüne yeniden yazar. Mevcut durum yeni bir sürüm olarak korunur, dolayısıyla geri alınabilir."
+
+#: src/client/admin/pages/chat.tsx
+msgid "this room"
+msgstr "bu oda"
 
 #. placeholder {0}: target.name
 #. placeholder {1}: target.slug
@@ -12718,7 +12863,7 @@ msgstr "Temayı değiştir"
 msgid "Toggle tools below to edit the allowlist."
 msgstr "İzin listesini düzenlemek için aşağıdaki araçları açıp kapatın."
 
-#: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/chat.tsx
 msgid "tokens"
 msgstr "token"
 
@@ -12729,6 +12874,10 @@ msgstr "<0>mcp:write</0> kapsamı olmayan token'lar salt okunur çalışır."
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Tool"
 msgstr "Araç"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Tool allow-list"
+msgstr "İzinli araç listesi"
 
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 #: src/client/components/mcp-guards-fields.tsx
@@ -12972,7 +13121,7 @@ msgstr "Yazın ve Enter'a basın…"
 msgid "Types"
 msgstr "Türler"
 
-#: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/_agents-shared.tsx
 msgid "typing"
 msgstr "yazıyor"
 
@@ -13589,6 +13738,10 @@ msgstr "Çar"
 msgid "Weekly"
 msgstr "Haftalık"
 
+#: src/client/admin/pages/chat.tsx
+msgid "Weekly numbers"
+msgstr "Haftalık rakamlar"
+
 #: src/client/pages/sign-in.tsx
 msgid "Welcome back"
 msgstr "Tekrar hoş geldiniz"
@@ -13600,6 +13753,10 @@ msgstr "Tekrar hoş geldin. Kaldığın yerden devam et — içerik, veri ve API
 #: src/client/admin/pages/search-playground.tsx
 msgid "What are you looking for?"
 msgstr "Ne arıyorsunuz?"
+
+#: src/client/admin/pages/agents.tsx
+msgid "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
+msgstr "Ekip arkadaşlarının bir odada bu agent'a seslenmek için @ sonrasına yazdığı ad. Boş bırakılırsa addan türetilir."
 
 #: src/client/admin/pages/agents.tsx
 msgid "What this agent is for"
@@ -13629,6 +13786,10 @@ msgstr "Ne zaman"
 #: src/client/admin/flow-builder.tsx
 msgid "When (filter DSL)"
 msgstr "Koşul (filtre DSL)"
+
+#: src/client/admin/pages/chat.tsx
+msgid "When nobody is mentioned"
+msgstr "Kimse etiketlenmediğinde"
 
 #: src/client/admin/parity/translations.tsx
 msgid "When off, existing translations in the target locale are overwritten."
@@ -13719,7 +13880,6 @@ msgstr "worker bağlamaları"
 msgid "worker thread + RPC"
 msgstr "worker thread + RPC"
 
-#: src/client/admin/pages/agents.tsx
 #: src/client/components/confirm-action.tsx
 msgid "Working…"
 msgstr "İşleniyor…"

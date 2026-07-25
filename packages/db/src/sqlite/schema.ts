@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   sqliteTable,
   text,
@@ -537,6 +538,8 @@ export const agents = sqliteTable(
     id: text("id").primaryKey(),
     tenantId: text("tenant_id"),
     name: text("name").notNull(),
+    /** Stable `@`-mention token, unique per workspace. See the pg schema. */
+    handle: text("handle"),
     description: text("description"),
     systemPrompt: text("system_prompt"),
     model: text("model"),
@@ -552,18 +555,23 @@ export const agents = sqliteTable(
   },
   (t) => [
     uniqueIndex("agents_tenant_name_idx").on(t.tenantId, t.name),
+    uniqueIndex("agents_tenant_handle_idx").on(t.tenantId, t.handle),
     index("agents_tenant_idx").on(t.tenantId),
   ],
 );
 
+/** A conversation — a room that may host several agents. See the pg schema for
+ *  the `agent_id` / `routing` / `status` semantics. */
 export const agentThreads = sqliteTable(
   "agent_threads",
   {
     id: text("id").primaryKey(),
     tenantId: text("tenant_id"),
-    agentId: text("agent_id").notNull(),
+    agentId: text("agent_id"),
     title: text("title"),
     status: text("status").notNull().default("idle"),
+    routing: text("routing").notNull().default("mention"),
+    defaultAgentId: text("default_agent_id"),
     createdBy: text("created_by"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
@@ -571,6 +579,48 @@ export const agentThreads = sqliteTable(
   (t) => [
     index("agent_threads_tenant_agent_idx").on(t.tenantId, t.agentId),
     index("agent_threads_agent_idx").on(t.agentId),
+    index("agent_threads_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/** Room membership — which agents can be mentioned in (and answer in) a room. */
+export const agentThreadAgents = sqliteTable(
+  "agent_thread_agents",
+  {
+    tenantId: text("tenant_id"),
+    threadId: text("thread_id").notNull(),
+    agentId: text("agent_id").notNull(),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    uniqueIndex("agent_thread_agents_pk").on(t.threadId, t.agentId),
+    index("agent_thread_agents_agent_idx").on(t.agentId),
+  ],
+);
+
+/** One agent's turn in a room — and, via the partial unique index, the
+ *  per-agent lock that lets two agents answer in parallel while stopping the
+ *  same agent from running twice. See the pg schema for the full note. */
+export const agentRuns = sqliteTable(
+  "agent_runs",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    threadId: text("thread_id").notNull(),
+    agentId: text("agent_id").notNull(),
+    jobId: text("job_id"),
+    status: text("status").notNull().default("queued"),
+    startedBy: text("started_by"),
+    triggerMessageId: text("trigger_message_id"),
+    error: text("error"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("agent_runs_thread_idx").on(t.threadId, t.createdAt),
+    uniqueIndex("agent_runs_active_idx")
+      .on(t.threadId, t.agentId)
+      .where(sql`${t.status} in ('queued','running')`),
   ],
 );
 
@@ -585,6 +635,8 @@ export const agentMessages = sqliteTable(
      *  has to say who asked. Null for assistant/tool rows and for turns run by
      *  an API key rather than a person. */
     userId: text("user_id"),
+    /** Which agent wrote an assistant/tool row — see the pg schema. */
+    agentId: text("agent_id"),
     content: text("content").notNull().default(""),
     toolName: text("tool_name"),
     toolArgs: text("tool_args", { mode: "json" }).$type<unknown>(),

@@ -12,7 +12,15 @@
 import { isEmbeddingModel, type EmbeddingModel } from "@backlex/core";
 import type { Ctx } from "../../context";
 
-const namespaceFor = (threadId: string) => `agentmem:${threadId}`;
+/** Memory is scoped per (thread, agent), not per thread: a room hosts several
+ *  agents and one must not retrieve another's recollection of the conversation
+ *  — that would leak one persona's private notes into another's prompt.
+ *
+ *  Threads that predate rooms stored under the bare `agentmem:<threadId>`; those
+ *  records simply stop being retrieved (memory is opt-in and best-effort, so
+ *  this is a cold start, not data loss). */
+const namespaceFor = (threadId: string, agentId: string) =>
+  `agentmem:${threadId}:${agentId}`;
 
 /** The embedding model to use for memory: the workspace's configured default.
  *  Memory has no per-field model the way collections do, so we lean on
@@ -28,6 +36,7 @@ export const resolveMemoryModel = (ctx: Ctx): EmbeddingModel | null => {
 export const storeMemory = async (
   ctx: Ctx,
   threadId: string,
+  agentId: string,
   messageId: string,
   text: string,
 ): Promise<void> => {
@@ -43,8 +52,8 @@ export const storeMemory = async (
       {
         id: messageId,
         values: values[0]!,
-        namespace: namespaceFor(threadId),
-        metadata: { threadId, messageId, content: text },
+        namespace: namespaceFor(threadId, agentId),
+        metadata: { threadId, agentId, messageId, content: text },
       },
     ]);
   } catch (e) {
@@ -58,6 +67,7 @@ export const storeMemory = async (
 export const retrieveMemory = async (
   ctx: Ctx,
   threadId: string,
+  agentId: string,
   queryText: string,
   topK = 4,
 ): Promise<string[]> => {
@@ -72,7 +82,7 @@ export const retrieveMemory = async (
     const matches = await ctx.vector.query(model, {
       values: values[0]!,
       topK,
-      namespace: namespaceFor(threadId),
+      namespace: namespaceFor(threadId, agentId),
     });
     return matches
       .map((m) => {
@@ -92,12 +102,13 @@ export const retrieveMemory = async (
 export const dropThreadMemory = async (
   ctx: Ctx,
   threadId: string,
+  agentId: string,
   messageIds: string[],
 ): Promise<void> => {
   const model = resolveMemoryModel(ctx);
   if (!model || messageIds.length === 0) return;
   try {
-    await ctx.vector.delete(model, messageIds, namespaceFor(threadId));
+    await ctx.vector.delete(model, messageIds, namespaceFor(threadId, agentId));
   } catch {
     /* best-effort */
   }

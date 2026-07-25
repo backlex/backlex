@@ -13,24 +13,32 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import type { Env } from "../env";
 import { requireUser } from "../middleware/session";
-import { makeInternalFetch } from "../mcp/internal-fetch";
 import { AI_EFFORTS, type AiEffort } from "../mcp/ai-client";
 import { allTools } from "../mcp/tools";
 import { logActivity } from "../services/activity";
 import {
+  addThreadAgent,
   createAgent,
   createThread,
   deleteAgent,
   deleteThread,
   getAgent,
+  getRun,
   getThread,
+  listActiveRuns,
   listAgents,
   listAuthors,
   listMessages,
+  listThreadAgentIds,
+  listThreadAgentIdsFor,
   listThreads,
+  removeThreadAgent,
+  THREAD_ROUTINGS,
   updateAgent,
+  updateThread,
+  type ThreadRouting,
 } from "../services/agents/store";
-import { runAgentTurn } from "../services/agents/runner";
+import { sendMessage } from "../services/agents/send";
 
 const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
@@ -57,6 +65,18 @@ const parseAgentInput = (body: Record<string, unknown>, partial: boolean) => {
       throw new AppError("VALIDATION", "name is required");
     }
     out.name = body.name.trim();
+  }
+  if (body.handle !== undefined) {
+    // Normalised + de-duped by the store; validated here only for shape, since
+    // handles allow unicode letters (mentions match the workspace's known
+    // handles, not a fixed charset).
+    if (body.handle !== null && typeof body.handle !== "string") {
+      throw new AppError("VALIDATION", "handle must be a string");
+    }
+    if (typeof body.handle === "string" && /[\s@]/.test(body.handle)) {
+      throw new AppError("VALIDATION", "handle cannot contain spaces or '@'");
+    }
+    out.handle = body.handle;
   }
   if (body.description !== undefined)
     out.description = body.description === null ? null : String(body.description);
@@ -95,6 +115,16 @@ const parseAgentInput = (body: Record<string, unknown>, partial: boolean) => {
   return out;
 };
 
+/** Validate a room's routing mode, defaulting to mention-only. */
+const parseRouting = (v: unknown): ThreadRouting => {
+  if (v === undefined || v === null) return "mention";
+  if (THREAD_ROUTINGS.includes(v as ThreadRouting)) return v as ThreadRouting;
+  throw new AppError(
+    "VALIDATION",
+    `routing must be one of ${THREAD_ROUTINGS.join(", ")}`,
+  );
+};
+
 const readBody = async (
   c: Parameters<MiddlewareHandler<AppBindings>>[0],
 ): Promise<Record<string, unknown>> => {
@@ -128,6 +158,58 @@ export const agentsRoutes = (app: Hono<AppBindings>, env: Env) => {
       response: { data: created },
     });
     return c.json({ data: created }, 201);
+  });
+
+  // ── rooms ────────────────────────────────────────────────────────────────
+  // Registered BEFORE `/:id`, which would otherwise swallow `/threads` and
+  // `/runs` as agent ids.
+
+  /** Every conversation in the workspace, newest activity first, each with its
+   *  participants so the room list can render agent chips without an N+1. */
+  r.get("/threads", async (c) => {
+    const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
+    const threads = await listThreads(ctx, tenantId);
+    const members = await listThreadAgentIdsFor(ctx, threads.map((t) => t.id));
+    return c.json({
+      data: threads.map((t) => ({
+        ...t,
+        agentIds: members.get(t.id) ?? (t.agentId ? [t.agentId] : []),
+      })),
+    });
+  });
+
+  /** Open a room. With no `agentIds` it starts empty and answers nobody until
+   *  agents are added — rooms are usable as plain team threads. */
+  r.post("/threads", async (c) => {
+    const ctx = c.get("ctx");
+    const auth = c.get("auth");
+    const tenantId = requireTenant(c);
+    const body = await readBody(c);
+    const agentIds = Array.isArray(body.agentIds)
+      ? (body.agentIds as unknown[]).filter((v): v is string => typeof v === "string")
+      : [];
+    for (const id of agentIds) {
+      if (!(await getAgent(ctx, id, tenantId)))
+        throw new AppError("VALIDATION", `unknown agent: ${id}`);
+    }
+    const thread = await createThread(ctx, tenantId, null, {
+      title: typeof body.title === "string" ? body.title : null,
+      createdBy: auth.userId,
+      routing: parseRouting(body.routing),
+      defaultAgentId:
+        typeof body.defaultAgentId === "string" ? body.defaultAgentId : null,
+      agentIds,
+    });
+    return c.json({ data: { ...thread, agentIds } }, 201);
+  });
+
+  r.get("/runs/:runId", async (c) => {
+    const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
+    const run = await getRun(ctx, c.req.param("runId"), tenantId);
+    if (!run) throw new AppError("NOT_FOUND", "Run not found");
+    return c.json({ data: run });
   });
 
   r.get("/:id", async (c) => {
@@ -207,7 +289,72 @@ export const agentsRoutes = (app: Hono<AppBindings>, env: Env) => {
       ...messages.map((m) => m.userId),
       thread.createdBy,
     ]);
-    return c.json({ data: { thread, messages, authors } });
+    const agentIds = await listThreadAgentIds(ctx, thread.id);
+    return c.json({
+      data: {
+        thread,
+        messages,
+        authors,
+        agentIds: agentIds.length > 0 ? agentIds : thread.agentId ? [thread.agentId] : [],
+        // Turns in flight right now — a room can have several, one per agent,
+        // so the client renders a working indicator per agent rather than one
+        // global "busy".
+        activeRuns: await listActiveRuns(ctx, thread.id),
+      },
+    });
+  });
+
+  r.patch("/threads/:threadId", async (c) => {
+    const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
+    const threadId = c.req.param("threadId");
+    const thread = await getThread(ctx, threadId, tenantId);
+    if (!thread) throw new AppError("NOT_FOUND", "Thread not found");
+    const body = await readBody(c);
+    if (body.defaultAgentId != null) {
+      if (typeof body.defaultAgentId !== "string")
+        throw new AppError("VALIDATION", "defaultAgentId must be a string");
+      if (!(await getAgent(ctx, body.defaultAgentId, tenantId)))
+        throw new AppError("VALIDATION", `unknown agent: ${body.defaultAgentId}`);
+    }
+    await updateThread(ctx, threadId, tenantId, {
+      ...(body.title !== undefined
+        ? { title: body.title === null ? null : String(body.title) }
+        : {}),
+      ...(body.routing !== undefined ? { routing: parseRouting(body.routing) } : {}),
+      ...(body.defaultAgentId !== undefined
+        ? {
+            defaultAgentId:
+              body.defaultAgentId === null ? null : String(body.defaultAgentId),
+          }
+        : {}),
+    });
+    return c.json({ ok: true });
+  });
+
+  r.post("/threads/:threadId/agents", async (c) => {
+    const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
+    const threadId = c.req.param("threadId");
+    const thread = await getThread(ctx, threadId, tenantId);
+    if (!thread) throw new AppError("NOT_FOUND", "Thread not found");
+    const body = await readBody(c);
+    const agentId = typeof body.agentId === "string" ? body.agentId : "";
+    if (!agentId) throw new AppError("VALIDATION", "agentId is required");
+    if (!(await getAgent(ctx, agentId, tenantId)))
+      throw new AppError("NOT_FOUND", "Agent not found");
+    await addThreadAgent(ctx, tenantId, threadId, agentId);
+    return c.json({ ok: true });
+  });
+
+  r.delete("/threads/:threadId/agents/:agentId", async (c) => {
+    const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
+    const threadId = c.req.param("threadId");
+    const thread = await getThread(ctx, threadId, tenantId);
+    if (!thread) throw new AppError("NOT_FOUND", "Thread not found");
+    await removeThreadAgent(ctx, threadId, c.req.param("agentId"));
+    return c.json({ ok: true });
   });
 
   r.delete("/threads/:threadId", async (c) => {
@@ -220,65 +367,94 @@ export const agentsRoutes = (app: Hono<AppBindings>, env: Env) => {
     return c.json({ ok: true });
   });
 
-  // ── run a turn ─────────────────────────────────────────────────────────────
+  // ── send a message (and run whoever it wakes) ─────────────────────────────
+  //
+  // Sync by default — the pre-rooms shape, still what the SDK / CLI / MCP /
+  // GraphQL callers get, answer and all. `async: true` queues the turns and
+  // answers with run ids instead; that's what a multi-agent room uses, since
+  // several agents can't take turns holding one response open.
   r.post("/threads/:threadId/messages", async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     const tenantId = requireTenant(c);
     const threadId = c.req.param("threadId");
-    const thread = await getThread(ctx, threadId, tenantId);
-    if (!thread) throw new AppError("NOT_FOUND", "Thread not found");
-    if (thread.status === "running") {
-      // A live turn heartbeats `updatedAt` on every persisted step (appendMessage
-      // bumps it). If it's gone quiet for longer than a step could take, the
-      // previous turn's request was canceled/killed mid-run (e.g. the client
-      // disconnected) and never reset the status — otherwise it's a genuine
-      // in-flight turn. Only block on a fresh one; let this turn take over a stale
-      // "running" so a zombie can't wedge the thread forever.
-      const updatedMs =
-        typeof thread.updatedAt === "number"
-          ? thread.updatedAt
-          : new Date(thread.updatedAt).getTime();
-      const STALE_TURN_MS = 120_000;
-      if (Date.now() - updatedMs < STALE_TURN_MS) {
-        throw new AppError("CONFLICT", "A turn is already running on this thread");
-      }
-    }
     const body = await readBody(c);
     const message = typeof body.message === "string" ? body.message.trim() : "";
     if (!message) throw new AppError("VALIDATION", "message is required");
+    // Explicit responders — how a caller that already knows which agent it
+    // wants (the SDK/MCP/CLI `run` shape) bypasses the room's routing mode.
+    const forceAgentIds = Array.isArray(body.agentIds)
+      ? (body.agentIds as unknown[]).filter((v): v is string => typeof v === "string")
+      : undefined;
 
-    const fetchInternal = makeInternalFetch(
-      app as unknown as Hono,
-      c.req.raw,
-      env,
-    );
     const start = Date.now();
-    const result = await runAgentTurn({
+    const result = await sendMessage({
       ctx,
-      agentId: thread.agentId,
-      threadId,
+      app: app as unknown as Hono,
+      env,
       tenantId,
+      threadId,
       message,
-      fetchInternal,
       auth: { userId: auth.userId },
-    });
-    await logActivity(c, {
-      action: "agent.run",
-      collection: "system_agents",
-      itemId: thread.agentId,
-      payload: {
-        threadId,
-        steps: result.steps.length,
-        stoppedReason: result.stoppedReason,
-        durationMs: Date.now() - start,
-        // What the prompt cache saved on this turn, in input tokens billed at
-        // ~0.1× instead of full price.
-        cachedTokens: result.cachedTokens,
+      request: c.req.raw,
+      forceAgentIds,
+      async: Boolean(body.async),
+      background: (p) => {
+        try {
+          c.executionCtx?.waitUntil?.(p);
+        } catch {
+          /* no ExecutionContext (Bun/Node) — the promise runs regardless */
+        }
       },
-      response: { ok: true },
     });
-    return c.json({ data: result });
+
+    for (const turn of result.turns) {
+      await logActivity(c, {
+        action: "agent.run",
+        collection: "system_agents",
+        itemId: result.runs[result.turns.indexOf(turn)]?.agentId ?? threadId,
+        payload: {
+          threadId,
+          steps: turn.steps.length,
+          stoppedReason: turn.stoppedReason,
+          durationMs: Date.now() - start,
+          // What the prompt cache saved on this turn, in input tokens billed at
+          // ~0.1× instead of full price.
+          cachedTokens: turn.cachedTokens,
+        },
+        response: { ok: true },
+      });
+    }
+
+    // Async: nothing has run yet, so there's no answer to return.
+    if (body.async) {
+      return c.json(
+        {
+          data: {
+            messageId: result.messageId,
+            runs: result.runs,
+            busy: result.busy,
+          },
+        },
+        202,
+      );
+    }
+    // Sync: the first turn's fields stay at the top level so every existing
+    // caller keeps reading `data.answer`; `turns` carries the rest when a
+    // message woke more than one agent.
+    const first = result.turns[0];
+    return c.json({
+      data: {
+        answer: first?.answer ?? "",
+        steps: first?.steps ?? [],
+        stoppedReason: first?.stoppedReason ?? "final",
+        cachedTokens: first?.cachedTokens ?? 0,
+        messageId: result.messageId,
+        runs: result.runs,
+        busy: result.busy,
+        turns: result.turns,
+      },
+    });
   });
 
   return r;

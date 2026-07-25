@@ -262,6 +262,12 @@ msgstr "{0} connected."
 msgid "{0} consecutive failures"
 msgstr "{0} consecutive failures"
 
+#. placeholder {0}: agentLabel(agentById.get(d.agentId))
+#. placeholder {1}: d.message
+#: src/client/admin/pages/chat.tsx
+msgid "{0} couldn't finish: {1}"
+msgstr "{0} couldn't finish: {1}"
+
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} deleted, {failed} failed."
@@ -337,10 +343,25 @@ msgstr "{0} is editing"
 msgid "{0} is required"
 msgstr "{0} is required"
 
+#. placeholder {0}: agentLabel(agentById.get(b.agentId))
+#: src/client/admin/pages/chat.tsx
+msgid "{0} is still working on the previous message."
+msgstr "{0} is still working on the previous message."
+
+#. placeholder {0}: agentLabel(agent)
+#: src/client/admin/pages/chat.tsx
+msgid "{0} is thinking…"
+msgstr "{0} is thinking…"
+
 #. placeholder {0}: nameFor(typingPeers[0]!.id)
-#: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/chat.tsx
 msgid "{0} is typing…"
 msgstr "{0} is typing…"
+
+#. placeholder {0}: agentLabel(agent)
+#: src/client/admin/pages/chat.tsx
+msgid "{0} is working…"
+msgstr "{0} is working…"
 
 #. placeholder {0}: c.count
 #: src/client/admin/extras.tsx
@@ -475,7 +496,7 @@ msgid "{0} tags"
 msgstr "{0} tags"
 
 #. placeholder {0}: typingPeers.length
-#: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/chat.tsx
 msgid "{0} teammates are typing…"
 msgstr "{0} teammates are typing…"
 
@@ -634,12 +655,12 @@ msgid "{r} may update rows matching this rule."
 msgstr "{r} may update rows matching this rule."
 
 #: src/client/admin/pages/agents.tsx
-msgid "{runnerName} is asking…"
-msgstr "{runnerName} is asking…"
+#~ msgid "{runnerName} is asking…"
+#~ msgstr "{runnerName} is asking…"
 
 #: src/client/admin/pages/agents.tsx
-msgid "{runnerName} is running a turn…"
-msgstr "{runnerName} is running a turn…"
+#~ msgid "{runnerName} is running a turn…"
+#~ msgstr "{runnerName} is running a turn…"
 
 #: src/client/admin/collections-index.tsx
 msgid "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
@@ -837,6 +858,10 @@ msgstr "A provider with id \"{id}\" already exists."
 msgid "A read-only view of one record from <0>{collection}</0>."
 msgstr "A read-only view of one record from <0>{collection}</0>."
 
+#: src/client/admin/pages/chat.tsx
+msgid "A room needs at least one agent to talk to. Create one on the Agents page first."
+msgstr "A room needs at least one agent to talk to. Create one on the Agents page first."
+
 #: src/client/pages/magic-link.tsx
 msgid "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
 msgstr "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
@@ -846,20 +871,20 @@ msgid "A single value — counter fits best; sparkline / bars need multiple rows
 msgstr "A single value — counter fits best; sparkline / bars need multiple rows."
 
 #: src/client/admin/pages/agents.tsx
-msgid "A teammate is asking…"
-msgstr "A teammate is asking…"
+#~ msgid "A teammate is asking…"
+#~ msgstr "A teammate is asking…"
 
 #: src/client/admin/pages/agents.tsx
-msgid "A teammate is running a turn…"
-msgstr "A teammate is running a turn…"
+#~ msgid "A teammate is running a turn…"
+#~ msgstr "A teammate is running a turn…"
 
 #: src/client/admin/parity/email-templates.tsx
 msgid "A template with key \"{trimmedKey}\" already exists."
 msgstr "A template with key \"{trimmedKey}\" already exists."
 
 #: src/client/admin/pages/agents.tsx
-msgid "A turn is still running on this thread — wait for it to finish."
-msgstr "A turn is still running on this thread — wait for it to finish."
+#~ msgid "A turn is still running on this thread — wait for it to finish."
+#~ msgstr "A turn is still running on this thread — wait for it to finish."
 
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
@@ -1101,6 +1126,10 @@ msgstr "Add a remote MCP connector"
 msgid "Add a tag and press Enter…"
 msgstr "Add a tag and press Enter…"
 
+#: src/client/admin/pages/chat.tsx
+msgid "Add an agent to this room, or just talk to your team…"
+msgstr "Add an agent to this room, or just talk to your team…"
+
 #: src/client/admin/add-field.tsx
 msgid "Add at least one dropdown choice."
 msgstr "Add at least one dropdown choice."
@@ -1332,10 +1361,19 @@ msgstr "Agent deleted."
 msgid "Agent saved."
 msgstr "Agent saved."
 
+#: src/client/admin/pages/chat.tsx
+msgid "agents"
+msgstr "agents"
+
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/ui.tsx
 msgid "Agents"
 msgstr "Agents"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Agents in the room"
+msgstr "Agents in the room"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Aggregate function"
@@ -1710,8 +1748,8 @@ msgid "Ask in natural language"
 msgstr "Ask in natural language"
 
 #: src/client/admin/pages/agents.tsx
-msgid "Ask the agent…"
-msgstr "Ask the agent…"
+#~ msgid "Ask the agent…"
+#~ msgstr "Ask the agent…"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "asking {model}…"
@@ -2141,8 +2179,8 @@ msgid "c_{target} is empty."
 msgstr "c_{target} is empty."
 
 #: src/client/admin/pages/agents.tsx
-msgid "cached"
-msgstr "cached"
+#~ msgid "cached"
+#~ msgstr "cached"
 
 #: src/client/admin/item-views.tsx
 msgid "Calendar"
@@ -2167,6 +2205,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/feature-flags.tsx
@@ -2301,6 +2340,11 @@ msgstr "Channel"
 #: src/client/admin/pages/realtime.tsx
 msgid "Channels refreshed."
 msgstr "Channels refreshed."
+
+#: src/client/admin/pages/chat.tsx
+#: src/client/admin/ui.tsx
+msgid "Chat"
+msgstr "Chat"
 
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/sign-up.tsx
@@ -2909,8 +2953,8 @@ msgid "conventional column present"
 msgstr "conventional column present"
 
 #: src/client/admin/pages/agents.tsx
-msgid "Conversation"
-msgstr "Conversation"
+#~ msgid "Conversation"
+#~ msgstr "Conversation"
 
 #: src/client/admin/ui.tsx
 msgid "copied"
@@ -3223,6 +3267,10 @@ msgstr "Create relation"
 msgid "Create role"
 msgstr "Create role"
 
+#: src/client/admin/pages/chat.tsx
+msgid "Create room"
+msgstr "Create room"
+
 #: src/client/admin/item-collaboration.tsx
 msgid "Create share link"
 msgstr "Create share link"
@@ -3480,9 +3528,17 @@ msgstr "Decimal (1,234.5)"
 msgid "Decimal places"
 msgstr "Decimal places"
 
+#: src/client/admin/pages/agents.tsx
+msgid "default"
+msgstr "default"
+
 #: src/client/admin/edit-field.tsx
 msgid "Default (auto)"
 msgstr "Default (auto)"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Default agent"
+msgstr "Default agent"
 
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Default language"
@@ -3564,6 +3620,8 @@ msgid "Delete \"{0}\" and its branch-owned snapshots? This can't be undone."
 msgstr "Delete \"{0}\" and its branch-owned snapshots? This can't be undone."
 
 #. placeholder {0}: confirmDelete.name
+#. placeholder {0}: room.title || t`this room`
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Delete \"{0}\"?"
 msgstr "Delete \"{0}\"?"
@@ -3628,6 +3686,10 @@ msgstr "Delete group (collections become ungrouped)"
 #: src/client/admin/parity/insights.tsx
 msgid "Delete panel"
 msgstr "Delete panel"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Delete room"
+msgstr "Delete room"
 
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -4379,12 +4441,16 @@ msgid "Empty collection"
 msgstr "Empty collection"
 
 #: src/client/admin/pages/agents.tsx
-msgid "Empty conversation"
-msgstr "Empty conversation"
+#~ msgid "Empty conversation"
+#~ msgstr "Empty conversation"
 
 #: src/client/admin/collections-index.tsx
 #~ msgid "Empty or template"
 #~ msgstr "Empty or template"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Empty room"
+msgstr "Empty room"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/extensions.tsx
@@ -5427,6 +5493,10 @@ msgstr "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only
 msgid "Go live"
 msgstr "Go live"
 
+#: src/client/admin/pages/chat.tsx
+msgid "Go to Agents"
+msgstr "Go to Agents"
+
 #: src/client/admin/extras.tsx
 msgid "goto"
 msgstr "goto"
@@ -5603,7 +5673,6 @@ msgid "highest reasoning · slower · ~3x cost"
 msgstr "highest reasoning · slower · ~3x cost"
 
 #: src/client/admin/item-editor.tsx
-#: src/client/admin/pages/agents.tsx
 msgid "History"
 msgstr "History"
 
@@ -5765,6 +5834,10 @@ msgstr "In Google Authenticator choose “Enter a setup key”, paste the key ab
 msgid "In review"
 msgstr "In review"
 
+#: src/client/admin/pages/chat.tsx
+msgid "In this room"
+msgstr "In this room"
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "In your client, add a remote MCP server / custom connector (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
 #~ msgstr "In your client, add a remote MCP server / custom connector (claude.ai → Settings → Connectors → Add custom connector; Cursor → Settings → MCP → Add)."
@@ -5834,8 +5907,8 @@ msgid "Input (JSON)"
 msgstr "Input (JSON)"
 
 #: src/client/admin/pages/agents.tsx
-msgid "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
-msgstr "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
+#~ msgid "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
+#~ msgstr "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
 
 #: src/client/admin/display-template-editor.tsx
 msgid "Insert field"
@@ -6580,6 +6653,7 @@ msgstr "list & sort"
 msgid "List columns"
 msgstr "List columns"
 
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/revisions.tsx
 #: src/client/admin/ui.tsx
@@ -6939,9 +7013,17 @@ msgstr "memory"
 msgid "Memory"
 msgstr "Memory"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Mention handle"
+msgstr "Mention handle"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Message"
 msgstr "Message"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Message the room — type @ to address an agent…"
+msgstr "Message the room — type @ to address an agent…"
 
 #: src/client/admin/pages/schema-versions.tsx
 msgid "metadata"
@@ -7149,6 +7231,7 @@ msgstr "My theme"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/add-field.tsx
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
@@ -7264,8 +7347,8 @@ msgid "New collection"
 msgstr "New collection"
 
 #: src/client/admin/pages/agents.tsx
-msgid "New conversation"
-msgstr "New conversation"
+#~ msgid "New conversation"
+#~ msgstr "New conversation"
 
 #: src/client/admin/parity/insights.tsx
 msgid "New dashboard"
@@ -7339,6 +7422,10 @@ msgstr "New relation"
 #: src/client/admin/role-editor.tsx
 msgid "New role"
 msgstr "New role"
+
+#: src/client/admin/pages/chat.tsx
+msgid "New room"
+msgstr "New room"
 
 #: src/client/admin/extras.tsx
 msgid "New row"
@@ -7435,6 +7522,14 @@ msgstr "No activity recorded."
 #: src/client/admin/pages/agents.tsx
 msgid "No agent selected"
 msgstr "No agent selected"
+
+#: src/client/admin/pages/chat.tsx
+msgid "No agents in this room yet — add one from the Agents menu."
+msgstr "No agents in this room yet — add one from the Agents menu."
+
+#: src/client/admin/pages/chat.tsx
+msgid "No agents yet"
+msgstr "No agents yet"
 
 #: src/client/admin/pages/agents.tsx
 msgid "No agents yet — click + New agent."
@@ -7546,8 +7641,8 @@ msgid "No content schema."
 msgstr "No content schema."
 
 #: src/client/admin/pages/agents.tsx
-msgid "No conversations yet."
-msgstr "No conversations yet."
+#~ msgid "No conversations yet."
+#~ msgstr "No conversations yet."
 
 #: src/client/admin/parity/insights.tsx
 msgid "No data yet — run the panel."
@@ -7862,6 +7957,14 @@ msgstr "No roles found."
 #: src/client/admin/permission-tester.tsx
 msgid "No roles selected = anonymous (the public role)."
 msgstr "No roles selected = anonymous (the public role)."
+
+#: src/client/admin/pages/chat.tsx
+msgid "No room selected"
+msgstr "No room selected"
+
+#: src/client/admin/pages/chat.tsx
+msgid "No rooms yet — click + New room."
+msgstr "No rooms yet — click + New room."
 
 #: src/client/admin/relational-pickers.tsx
 msgid "No row from c_{target} selected"
@@ -8297,6 +8400,10 @@ msgstr "open"
 msgid "Open"
 msgstr "Open"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Open chat"
+msgstr "Open chat"
+
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Open collection"
@@ -8364,6 +8471,10 @@ msgstr "Ops bots — admin role required."
 #: src/client/admin/pages/overview.tsx
 msgid "optional"
 msgstr "optional"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Optional — a room with no name is labelled after its first message."
+msgstr "Optional — a room with no name is labelled after its first message."
 
 #: src/client/pages/api-keys.tsx
 msgid "Optional — a timestamped name is generated if you leave this blank."
@@ -8805,6 +8916,10 @@ msgstr "Pick a numeric field…"
 msgid "Pick a revision from the timeline to inspect, diff, or revert."
 msgstr "Pick a revision from the timeline to inspect, diff, or revert."
 
+#: src/client/admin/pages/chat.tsx
+msgid "Pick a room on the left, or click <0>+ New room</0>."
+msgstr "Pick a room on the left, or click <0>+ New room</0>."
+
 #: src/client/admin/relational-pickers.tsx
 msgid "Pick a row from <0>c_{target}</0>"
 msgstr "Pick a row from <0>c_{target}</0>"
@@ -8948,6 +9063,10 @@ msgstr "Pick type…"
 #: src/client/admin/pages/forms.tsx
 msgid "Pick where submissions land — you'll design the form next."
 msgstr "Pick where submissions land — you'll design the form next."
+
+#: src/client/admin/pages/chat.tsx
+msgid "Pick who's in the room. You can add or remove agents later."
+msgstr "Pick who's in the room. You can add or remove agents later."
 
 #: src/client/admin/item-form.tsx
 msgid "Pick…"
@@ -9531,6 +9650,10 @@ msgstr "Ready to save."
 #: src/client/admin/ui.tsx
 msgid "Realtime"
 msgstr "Realtime"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Reasoning effort"
+msgstr "Reasoning effort"
 
 #: src/client/admin/pages/agents.tsx
 msgid "Recall relevant past turns (needs an embedding provider)."
@@ -10266,6 +10389,10 @@ msgstr "Rollout % (0–100, optional)"
 msgid "Rollout must be 0–100."
 msgstr "Rollout must be 0–100."
 
+#: src/client/admin/pages/chat.tsx
+msgid "Room deleted."
+msgstr "Room deleted."
+
 #: src/client/admin/pages/traces.tsx
 msgid "root"
 msgstr "root"
@@ -10410,8 +10537,8 @@ msgid "Run write MCP tools (create, update, delete — your permissions still ap
 msgstr "Run write MCP tools (create, update, delete — your permissions still apply)"
 
 #: src/client/admin/pages/agents.tsx
-msgid "running"
-msgstr "running"
+#~ msgid "running"
+#~ msgstr "running"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Running"
@@ -10998,7 +11125,7 @@ msgid "semantic embeddings"
 msgstr "semantic embeddings"
 
 #: src/client/admin/item-collaboration.tsx
-#: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/pages/rest-explorer.tsx
 msgid "Send"
@@ -11009,8 +11136,13 @@ msgid "Send a magic link instead"
 msgstr "Send a magic link instead"
 
 #: src/client/admin/pages/agents.tsx
-msgid "Send a message to start the conversation."
-msgstr "Send a message to start the conversation."
+#~ msgid "Send a message to start the conversation."
+#~ msgstr "Send a message to start the conversation."
+
+#: src/client/admin/pages/_agents-shared.tsx
+#: src/client/admin/pages/chat.tsx
+msgid "Send a message to start the conversation. Type @ to address an agent."
+msgstr "Send a message to start the conversation. Type @ to address an agent."
 
 #: src/client/admin/pages/users.tsx
 msgid "Send an email invite. The user finishes signup themselves."
@@ -11067,6 +11199,7 @@ msgid "Sending reset link"
 msgstr "Sending reset link"
 
 #: src/client/admin/item-collaboration.tsx
+#: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx
@@ -11308,6 +11441,10 @@ msgstr "shared global budget"
 #: src/client/pages/shared-record.tsx
 msgid "Shared record"
 msgstr "Shared record"
+
+#: src/client/admin/pages/chat.tsx
+msgid "Shared rooms where your team and its agents talk. Type @ to address an agent."
+msgstr "Shared rooms where your team and its agents talk. Type @ to address an agent."
 
 #: src/client/pages/shared-record.tsx
 msgid "Shared via backlex · this link can be revoked at any time."
@@ -12462,8 +12599,8 @@ msgid "These rows will be removed from c_posts. This deletes the underlying reco
 msgstr "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."
 
 #: src/client/admin/pages/agents.tsx
-msgid "Thinking…"
-msgstr "Thinking…"
+#~ msgid "Thinking…"
+#~ msgstr "Thinking…"
 
 #: src/client/admin/app.tsx
 msgid "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
@@ -12516,6 +12653,10 @@ msgstr "This database has no tables."
 #: src/client/admin/parity/insights.tsx
 msgid "This deletes the dashboard and disables its public embed. Its panels are <0>not</0> deleted — they become ungrouped. This action can't be undone."
 msgstr "This deletes the dashboard and disables its public embed. Its panels are <0>not</0> deleted — they become ungrouped. This action can't be undone."
+
+#: src/client/admin/pages/chat.tsx
+msgid "This deletes the room and its whole transcript for everyone on the team. The agents themselves are <0>not</0> deleted. This can't be undone."
+msgstr "This deletes the room and its whole transcript for everyone on the team. The agents themselves are <0>not</0> deleted. This can't be undone."
 
 #: src/client/admin/collection-settings.tsx
 msgid "This deployment has no vector store — connect a Vectorize binding (Cloudflare), pgvector (Postgres), or libSQL before vector search can run."
@@ -12601,6 +12742,10 @@ msgstr "This removes the row from <0>c_{slug}</0>. Revisions remain available."
 #: src/client/admin/parity/revisions.tsx
 msgid "This rewrites the item to the v{0} snapshot from {1}. The current state is preserved as a new revision, so this is undoable."
 msgstr "This rewrites the item to the v{0} snapshot from {1}. The current state is preserved as a new revision, so this is undoable."
+
+#: src/client/admin/pages/chat.tsx
+msgid "this room"
+msgstr "this room"
 
 #. placeholder {0}: target.name
 #. placeholder {1}: target.slug
@@ -12718,7 +12863,7 @@ msgstr "Toggle theme"
 msgid "Toggle tools below to edit the allowlist."
 msgstr "Toggle tools below to edit the allowlist."
 
-#: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/chat.tsx
 msgid "tokens"
 msgstr "tokens"
 
@@ -12729,6 +12874,10 @@ msgstr "Tokens without the <0>mcp:write</0> scope run read-only."
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Tool"
 msgstr "Tool"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Tool allow-list"
+msgstr "Tool allow-list"
 
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 #: src/client/components/mcp-guards-fields.tsx
@@ -12972,7 +13121,7 @@ msgstr "Type and press Enter…"
 msgid "Types"
 msgstr "Types"
 
-#: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/_agents-shared.tsx
 msgid "typing"
 msgstr "typing"
 
@@ -13589,6 +13738,10 @@ msgstr "Wed"
 msgid "Weekly"
 msgstr "Weekly"
 
+#: src/client/admin/pages/chat.tsx
+msgid "Weekly numbers"
+msgstr "Weekly numbers"
+
 #: src/client/pages/sign-in.tsx
 msgid "Welcome back"
 msgstr "Welcome back"
@@ -13600,6 +13753,10 @@ msgstr "Welcome back. Pick up where you left off — content, data, and APIs all
 #: src/client/admin/pages/search-playground.tsx
 msgid "What are you looking for?"
 msgstr "What are you looking for?"
+
+#: src/client/admin/pages/agents.tsx
+msgid "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
+msgstr "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
 
 #: src/client/admin/pages/agents.tsx
 msgid "What this agent is for"
@@ -13629,6 +13786,10 @@ msgstr "When"
 #: src/client/admin/flow-builder.tsx
 msgid "When (filter DSL)"
 msgstr "When (filter DSL)"
+
+#: src/client/admin/pages/chat.tsx
+msgid "When nobody is mentioned"
+msgstr "When nobody is mentioned"
 
 #: src/client/admin/parity/translations.tsx
 msgid "When off, existing translations in the target locale are overwritten."
@@ -13719,7 +13880,6 @@ msgstr "worker bindings"
 msgid "worker thread + RPC"
 msgstr "worker thread + RPC"
 
-#: src/client/admin/pages/agents.tsx
 #: src/client/components/confirm-action.tsx
 msgid "Working…"
 msgstr "Working…"

@@ -147,6 +147,7 @@ export const NAV_DATA: NavItem[] = [
 export const NAV_AUTOMATION: NavItem[] = [
   { id: "flows", icon: "Bolt" },
   { id: "agents", icon: "Sparkles" },
+  { id: "chat", icon: "MessageSquare" },
   { id: "functions", icon: "Function" },
   { id: "jobs", icon: "Clock" },
   { id: "feature-flags", icon: "ToggleLeft" },

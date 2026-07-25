@@ -33,6 +33,33 @@ export const makeInternalFetch = (
   };
 };
 
+/**
+ * The same forwarder for work that has **no live request** to inherit from —
+ * an agent turn running in the background after its HTTP response has returned.
+ *
+ * Identity comes from a short-lived agent-run token (see `lib/jwt`) instead of
+ * the caller's cookie, and the tenant is pinned explicitly. Everything else is
+ * identical: the sub-request re-enters the full middleware stack, so roles,
+ * permissions, and tenant membership are resolved from the DB exactly as they
+ * would be for a direct HTTP call — the turn cannot outlive its caller's access.
+ */
+export const makeDetachedFetch = (
+  app: Hono,
+  env: Env,
+  opts: { origin: string; token: string; tenantId: string },
+): ((path: string, init?: RequestInit) => Promise<Response>) => {
+  return async (path: string, init: RequestInit = {}): Promise<Response> => {
+    const subUrl = new URL(path, opts.origin);
+    const headers = new Headers(init.headers ?? {});
+    if (!headers.has("authorization"))
+      headers.set("authorization", `Bearer ${opts.token}`);
+    if (!headers.has("x-backlex-tenant"))
+      headers.set("x-backlex-tenant", opts.tenantId);
+    const req = new Request(subUrl.toString(), { ...init, headers });
+    return app.fetch(req, env);
+  };
+};
+
 /** Parse a Response as JSON and either return the parsed `data` slice or
  *  throw an Error carrying the upstream error code + message. MCP tools
  *  generally surface the upstream HTTP shape verbatim so the caller can

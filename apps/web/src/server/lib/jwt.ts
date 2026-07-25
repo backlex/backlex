@@ -108,6 +108,94 @@ export const signAccessToken = async (
   };
 };
 
+// ── detached agent runs ───────────────────────────────────────────────────
+
+/**
+ * Identity for an agent turn that runs **outside** the request that asked for
+ * it (the async room path — see `services/agents/runner`).
+ *
+ * A detached turn still has to call tools as the person who triggered it: the
+ * whole promise of the agent framework is that "an agent can only ever do what
+ * the caller could do". `makeInternalFetch` forwards the live request's cookie,
+ * which a background run doesn't have, and running as a system identity would
+ * quietly ESCALATE the agent past its caller.
+ *
+ * So the job carries the enqueuer's user id and the worker mints one of these
+ * to re-enter the API with. Deliberately narrow:
+ *  - short-lived, and never returned to a client — it exists only in memory
+ *    between the worker and the in-process sub-fetch;
+ *  - it carries **no roles**. Roles are re-resolved from the DB by the tenant
+ *    middleware on every sub-request, so a user suspended (or demoted) while
+ *    their turn is still running loses access mid-flight.
+ */
+export const AGENT_RUN_TOKEN_TTL_SECONDS = 15 * 60;
+
+export interface AgentRunTokenClaims {
+  /** platform-plane user the turn runs as */
+  sub: string;
+  /** tenant the run is pinned to */
+  tid: string;
+  /** the `agent_runs` row this token was minted for */
+  rid: string;
+  typ: "agent_run";
+  iat: number;
+  exp: number;
+}
+
+export const signAgentRunToken = async (
+  secret: string,
+  claims: { sub: string; tid: string; rid: string },
+  expiresInSeconds: number = AGENT_RUN_TOKEN_TTL_SECONDS,
+): Promise<string> => {
+  const iat = Math.floor(Date.now() / 1000);
+  const payload: AgentRunTokenClaims = {
+    sub: claims.sub,
+    tid: claims.tid,
+    rid: claims.rid,
+    typ: "agent_run",
+    iat,
+    exp: iat + expiresInSeconds,
+  };
+  const body = `${HEADER}.${base64urlFromString(JSON.stringify(payload))}`;
+  const key = await importKey(secret);
+  const sig = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, buf(enc.encode(body))),
+  );
+  return `${body}.${base64urlFromBytes(sig)}`;
+};
+
+/** Verify a detached-run token. Same never-throws contract as
+ *  `verifyAccessToken`: anything that isn't a live agent-run token is `null`. */
+export const verifyAgentRunToken = async (
+  secret: string,
+  token: string,
+): Promise<AgentRunTokenClaims | null> => {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [headerPart, payloadPart, sigPart] = parts as [string, string, string];
+  try {
+    const key = await importKey(secret);
+    const ok = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      buf(base64urlToBytes(sigPart)),
+      buf(enc.encode(`${headerPart}.${payloadPart}`)),
+    );
+    if (!ok) return null;
+    const claims = JSON.parse(
+      dec.decode(base64urlToBytes(payloadPart)),
+    ) as AgentRunTokenClaims;
+    if (claims.typ !== "agent_run") return null;
+    if (!claims.sub || !claims.tid || !claims.rid) return null;
+    if (typeof claims.exp !== "number" || claims.exp * 1000 <= Date.now()) {
+      return null;
+    }
+    return claims;
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Verify + decode an access token. Returns the claims on success, or `null`
  * for anything that isn't a valid, unexpired backlex app access token —

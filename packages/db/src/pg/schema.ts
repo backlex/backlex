@@ -603,6 +603,11 @@ export const agents = pgTable(
     id: text("id").primaryKey(),
     tenantId: text("tenant_id"),
     name: text("name").notNull(),
+    /** Stable `@`-mention token, unique per workspace. `name` is free text (it
+     *  can contain spaces), so it can't be the thing a room member types after
+     *  an `@`. Derived from the name on create, editable, and what the room
+     *  composer's mention picker inserts. */
+    handle: text("handle"),
     description: text("description"),
     systemPrompt: text("system_prompt"),
     model: text("model"),
@@ -626,23 +631,37 @@ export const agents = pgTable(
   },
   (t) => [
     uniqueIndex("agents_tenant_name_idx").on(t.tenantId, t.name),
+    uniqueIndex("agents_tenant_handle_idx").on(t.tenantId, t.handle),
     index("agents_tenant_idx").on(t.tenantId),
   ],
 );
 
 /**
- * A conversation thread against one agent. `status` is `idle` between turns,
- * `running` while a turn executes, `error` if the last turn threw. The thread
- * is the durable unit a turn appends messages to.
+ * A conversation — a **room**, which may host several agents at once.
+ *
+ * `agent_id` is the legacy single-agent pin: set on every thread created before
+ * rooms existed (and on one opened against a specific agent), null on a room.
+ * Room membership lives in `agent_thread_agents`; a pinned thread behaves like
+ * a one-participant room.
+ *
+ * `routing` decides who answers a message that mentions nobody:
+ *   - `mention` — nobody does (the room is usable human-to-human)
+ *   - `default` — `default_agent_id` does (what a pinned thread does today)
+ *   - `auto`    — a cheap router picks a participant by its description
+ *
+ * `status` is kept for backwards compatibility (it mirrors "any run active");
+ * the real per-agent lock is `agent_runs`.
  */
 export const agentThreads = pgTable(
   "agent_threads",
   {
     id: text("id").primaryKey(),
     tenantId: text("tenant_id"),
-    agentId: text("agent_id").notNull(),
+    agentId: text("agent_id"),
     title: text("title"),
     status: text("status").notNull().default("idle"),
+    routing: text("routing").notNull().default("mention"),
+    defaultAgentId: text("default_agent_id"),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -650,6 +669,64 @@ export const agentThreads = pgTable(
   (t) => [
     index("agent_threads_tenant_agent_idx").on(t.tenantId, t.agentId),
     index("agent_threads_agent_idx").on(t.agentId),
+    index("agent_threads_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/** Room membership: which agents can be mentioned in (and answer in) a room. */
+export const agentThreadAgents = pgTable(
+  "agent_thread_agents",
+  {
+    tenantId: text("tenant_id"),
+    threadId: text("thread_id").notNull(),
+    agentId: text("agent_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("agent_thread_agents_pk").on(t.threadId, t.agentId),
+    index("agent_thread_agents_agent_idx").on(t.agentId),
+  ],
+);
+
+/**
+ * One agent's turn in a room — the unit of work and, via the partial unique
+ * index below, the **per-agent lock**.
+ *
+ * The lock used to live on the thread (`agent_threads.status = 'running'`),
+ * which meant a room where two agents were mentioned at once had one of them
+ * rejected. Keying it on (thread, agent) lets different agents answer in
+ * parallel while still stopping the same agent from running twice.
+ *
+ * A turn is NOT idempotent (its tool calls can have side effects), so the
+ * backing job is enqueued with `maxAttempts: 1` — a run whose isolate dies
+ * lands in `error`, it is never replayed.
+ */
+export const agentRuns = pgTable(
+  "agent_runs",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    threadId: text("thread_id").notNull(),
+    agentId: text("agent_id").notNull(),
+    /** Backing `jobs` row, when the turn runs async. Null for a sync turn. */
+    jobId: text("job_id"),
+    /** `queued` | `running` | `done` | `error` */
+    status: text("status").notNull().default("queued"),
+    /** Team member whose message triggered this turn (null for an API key). */
+    startedBy: text("started_by"),
+    /** The `agent_messages` row that triggered it. */
+    triggerMessageId: text("trigger_message_id"),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("agent_runs_thread_idx").on(t.threadId, t.createdAt),
+    // The lock itself — see the table comment. Partial, so finished runs don't
+    // collide with the next turn.
+    uniqueIndex("agent_runs_active_idx")
+      .on(t.threadId, t.agentId)
+      .where(sql`${t.status} in ('queued','running')`),
   ],
 );
 
@@ -669,6 +746,10 @@ export const agentMessages = pgTable(
      *  has to say who asked. Null for assistant/tool rows and for turns run by
      *  an API key rather than a person. */
     userId: text("user_id"),
+    /** Which agent wrote an assistant/tool row. A room's transcript mixes
+     *  several agents, so without this a byline is impossible. Null on user
+     *  rows, and on pre-rooms rows that couldn't be attributed. */
+    agentId: text("agent_id"),
     content: text("content").notNull().default(""),
     toolName: text("tool_name"),
     toolArgs: jsonb("tool_args").$type<unknown>(),

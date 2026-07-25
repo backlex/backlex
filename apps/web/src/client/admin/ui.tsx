@@ -572,6 +572,7 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
   search: msg`Search`,
   flows: msg`Flows`,
   agents: msg`Agents`,
+  chat: msg`Chat`,
   functions: msg`Functions`,
   jobs: msg`Jobs`,
   "feature-flags": msg`Feature flags`,

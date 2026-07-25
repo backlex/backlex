@@ -163,11 +163,79 @@ describe("agents — MCP surface", () => {
     expect(names).toContain("agents.list");
     expect(names).toContain("agents.get");
     expect(names).toContain("agents.run");
+    // Rooms reach MCP too — the parity rule (see docs/service-map.md).
+    expect(names).toContain("agents.rooms_list");
+    expect(names).toContain("agents.room_send");
 
     const list = await callTool("agents.list");
     expect(JSON.stringify(list?.structuredContent)).toContain("mcp-agent");
 
     const got = await callTool("agents.get", { id: agentId });
     expect(JSON.stringify(got?.structuredContent)).toContain(agentId);
+  });
+});
+
+describe("rooms — multi-surface parity", () => {
+  let h: TestHarness;
+  let client: ReturnType<typeof createClient>;
+  let agentId: string;
+  let handle: string;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    client = createClient({ url: "http://local.test", fetch: h.fetch as typeof fetch });
+    const res = await h.fetch("/api/agents", json({ name: "Room Agent", tools: [] }));
+    const created = ((await res.json()) as { data: { id: string; handle: string } }).data;
+    agentId = created.id;
+    handle = created.handle;
+  });
+  afterAll(() => h.cleanup());
+
+  test("SDK: createRoom → rooms → addRoomAgent → thread → removeRoomAgent", async () => {
+    const room = await client.agents.createRoom({ title: "sdk room", routing: "mention" });
+    expect(room.data.id).toBeTruthy();
+
+    const rooms = await client.agents.rooms();
+    expect(rooms.data.some((r) => r.id === room.data.id)).toBe(true);
+
+    await client.agents.addRoomAgent(room.data.id, agentId);
+    const detail = await client.agents.thread(room.data.id);
+    expect(detail.data.agentIds).toEqual([agentId]);
+    expect(detail.data.activeRuns).toEqual([]);
+
+    await client.agents.updateRoom(room.data.id, { routing: "default", defaultAgentId: agentId });
+    const afterPatch = await client.agents.thread(room.data.id);
+    expect(afterPatch.data.thread.routing).toBe("default");
+
+    await client.agents.removeRoomAgent(room.data.id, agentId);
+    const emptied = await client.agents.thread(room.data.id);
+    expect(emptied.data.agentIds).toEqual([]);
+  });
+
+  test("SDK: an unaddressed message in a mention-only room records but wakes nobody", async () => {
+    // No AI provider in the harness, so this also proves the no-responder path
+    // never reaches the model — it would 503 if it did.
+    const room = await client.agents.createRoom({ agentIds: [agentId], routing: "mention" });
+    const sent = await client.agents.send(room.data.id, "just a note for the team");
+    expect(sent.data.runs).toEqual([]);
+    expect(sent.data.messageId).toBeTruthy();
+  });
+
+  test("GraphQL: an agent exposes its mention handle", async () => {
+    const res = await h.fetch("/api/graphql", json({ query: "{ agents { id handle } }" }));
+    const body = (await res.json()) as { data?: { agents?: { id: string; handle: string }[] } };
+    expect(body.data?.agents?.find((a) => a.id === agentId)?.handle).toBe(handle);
+  });
+
+  test("REST: routing and participants are validated", async () => {
+    const room = await client.agents.createRoom({});
+    const badAgent = await h.fetch(
+      `/api/agents/threads/${room.data.id}/agents`,
+      json({ agentId: "nope" }),
+    );
+    expect(badAgent.status).toBe(404);
+    const badRoom = await h.fetch("/api/agents/threads", json({ agentIds: ["nope"] }));
+    expect(badRoom.status).toBe(422);
   });
 });

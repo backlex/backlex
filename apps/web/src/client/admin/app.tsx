@@ -105,6 +105,7 @@ const OverviewPage = lazy(() => import("./pages/overview").then((m) => ({ defaul
 const AskAiPage = lazy(() => import("./pages/ask-ai").then((m) => ({ default: m.AskAiPage })));
 const FlowsPage = lazy(() => import("./pages/flows").then((m) => ({ default: m.FlowsPage })));
 const AgentsPage = lazy(() => import("./pages/agents").then((m) => ({ default: m.AgentsPage })));
+const ChatPage = lazy(() => import("./pages/chat").then((m) => ({ default: m.ChatPage })));
 const FunctionsPage = lazy(() => import("./pages/functions").then((m) => ({ default: m.FunctionsPage })));
 const JobsPage = lazy(() => import("./pages/jobs").then((m) => ({ default: m.JobsPage })));
 const FeatureFlagsPage = lazy(() => import("./pages/feature-flags").then((m) => ({ default: m.FeatureFlagsPage })));
@@ -1063,7 +1064,8 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "database" && <DatabasePage pushToast={pushToast} adapter={tweaks.adapter} />}
             {activeNav === "storage" && <StoragePage pushToast={pushToast} />}
             {activeNav === "flows" && <FlowsPage pushToast={pushToast} activeFlow={activeFlow} setActiveFlow={setActiveFlow} />}
-            {activeNav === "agents" && <AgentsPage pushToast={pushToast} />}
+            {activeNav === "agents" && <AgentsPage pushToast={pushToast} setActiveNav={setActiveNav} />}
+            {activeNav === "chat" && <ChatPage pushToast={pushToast} setActiveNav={setActiveNav} />}
             {activeNav === "functions" && <FunctionsPage pushToast={pushToast} />}
             {activeNav === "jobs" && <JobsPage pushToast={pushToast} />}
             {activeNav === "feature-flags" && <FeatureFlagsPage pushToast={pushToast} />}

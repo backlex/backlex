@@ -1,6 +1,10 @@
-// Agents page — AI agent definitions + a chat playground that streams each
-// reason→act step live over the `agent:thread:<id>` realtime channel.
-import { useCallback, useEffect, useRef, useState } from "react";
+// Agents page — the agent **definitions**: what an agent is, which model it
+// runs on, and the tool allow-list bounding what it may do.
+//
+// Talking to one lives on the Chat page: an agent is configured rarely and
+// used constantly, and rooms host several agents at once, so a conversation
+// can no longer be one agent's detail panel.
+import { useCallback, useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, EmptyState, PageHeader, Switch } from "../ui";
@@ -13,14 +17,6 @@ import { Label } from "@backlex/ui/components/label";
 import { Checkbox } from "@backlex/ui/components/checkbox";
 import { Select } from "../select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@backlex/ui/components/dropdown-menu";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -30,176 +26,23 @@ import {
 } from "@backlex/ui/components/dialog";
 import { api } from "@/lib/api";
 import { useMcpTools, type ToolDescriptor } from "@/components/mcp-guards-fields";
+import { AgentsSkeleton } from "../page-skeletons";
 import { fetchSafely } from "./_shared";
-import { useMe } from "../queries";
-import { collabColor } from "../collab";
-import { useAgentThreadLive, type AgentPeer } from "../agent-thread-live";
-
-interface Agent {
-  id: string;
-  name: string;
-  description?: string | null;
-  systemPrompt?: string | null;
-  model?: string | null;
-  /** Reasoning effort; "" / null = the provider default. */
-  effort?: string | null;
-  tools: string[];
-  maxSteps: number;
-  memory: boolean;
-  active: boolean;
-}
-
-interface Thread {
-  id: string;
-  /** Server-derived label: the first line of the opening prompt (a raw id is
-   *  meaningless in the picker). Null only for a thread with no messages yet. */
-  title?: string | null;
-  status: string;
-  updatedAt?: string | number | null;
-}
-
-interface Message {
-  id: string;
-  role: "user" | "assistant" | "tool";
-  content: string;
-  /** Team member who asked — threads are workspace-wide, so a transcript can
-   *  mix several people. Null on assistant/tool rows. */
-  userId?: string | null;
-  toolName?: string | null;
-  tokensIn?: number | null;
-  tokensOut?: number | null;
-}
-
-/** A teammate who appears in a transcript, shipped alongside the messages. */
-interface Author {
-  id: string;
-  name: string | null;
-  email: string | null;
-  image: string | null;
-}
-
-/** Display handle for an author: their name, else the email's local part. */
-const authorLabel = (a: Author | undefined): string | null => {
-  if (!a) return null;
-  if (a.name?.trim()) return a.name.trim();
-  if (!a.email) return null;
-  const at = a.email.indexOf("@");
-  return at > 0 ? a.email.slice(0, at) : a.email;
-};
-
-interface RunStep {
-  thought?: string;
-  tool: string;
-  observation: string;
-  isError: boolean;
-}
-
-/** Curated model dropdown. The runner accepts any `provider/model` string, so
- *  "Custom…" keeps a free-text escape hatch. Claude ids need the workspace to
- *  bring its own key (or a self-host key); the `@cf/*` Cloudflare Workers AI ids
- *  are what managed-cloud projects run within their metered plan allowance —
- *  a managed agent left on "Default" runs Llama 3.1 70B. */
-const MODEL_OPTIONS = [
-  { value: "", label: "Default", hint: "Claude w/ your key · else GLM 5.2 (managed)" },
-  // Cloudflare Workers AI — run on managed cloud within your plan, no key needed.
-  { value: "@cf/qwen/qwen3-30b-a3b-fp8", label: "Qwen3 30B", hint: "Cloudflare AI · managed · balanced" },
-  { value: "@cf/google/gemma-4-26b-a4b-it", label: "Gemma 4 26B", hint: "Cloudflare AI · managed · thinking" },
-  { value: "@cf/openai/gpt-oss-120b", label: "GPT-OSS 120B", hint: "Cloudflare AI · managed · strong" },
-  { value: "@cf/zai-org/glm-5.2", label: "GLM 5.2", hint: "Cloudflare AI · managed · flagship coding" },
-  { value: "@cf/moonshotai/kimi-k2.7-code", label: "Kimi K2.7", hint: "Cloudflare AI · managed · coding" },
-  { value: "@cf/meta/llama-3.1-70b-instruct-fp8-fast", label: "Llama 3.1 70B", hint: "Cloudflare AI · managed" },
-  { value: "@cf/meta/llama-3.1-8b-instruct-fp8", label: "Llama 3.1 8B", hint: "Cloudflare AI · managed · fast/cheap" },
-  // Bring-your-own-key models — Anthropic Claude, needs a key in Settings · AI.
-  // (GLM / Kimi above are Cloudflare-hosted @cf models, so they need no key.)
-  { value: "anthropic/claude-opus-4-8", label: "Claude Opus 4.8", hint: "your key · most capable" },
-  { value: "anthropic/claude-sonnet-5", label: "Claude Sonnet 5", hint: "your key · balanced" },
-  { value: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5", hint: "your key · fast/cheap" },
-  { value: "openai/gpt-5", label: "GPT-5", hint: "your key · AI Gateway" },
-  { value: "openai/gpt-5-mini", label: "GPT-5 mini", hint: "your key · AI Gateway · fast/cheap" },
-] as const;
-
-/** Managed default (mirrors the runner's CLOUD_DEFAULT_AGENT_MODEL). */
-const MANAGED_DEFAULT_MODEL = "@cf/zai-org/glm-5.2";
-
-/** A model that isn't a Cloudflare `@cf/*` id needs the workspace to bring an
- *  AI key (Anthropic / AI Gateway) — otherwise it can't run as picked. */
-const modelNeedsKey = (v?: string | null): boolean => !!v && !v.startsWith("@cf/");
-
-/** Human label for a model id. */
-const modelLabel = (m?: string | null): string => {
-  if (!m) return "Default";
-  const known = MODEL_OPTIONS.find((o) => o.value === m);
-  if (known) return known.label.replace(/^Claude /, "");
-  return m.includes("/") ? m.split("/").pop()! : m;
-};
-
-/** Workspace AI config (subset of GET /api/admin/ai-config). */
-interface AiCfg {
-  provider: string;
-  secretsSet: { gatewayKey: boolean; anthropicKey: boolean };
-  env: { cloud: boolean; hasGatewayKey: boolean; hasAnthropicKey: boolean };
-}
-
-/** Does the workspace/deployment effectively have a direct AI key, so BYO
- *  (Claude / Kimi / GLM) models actually run instead of falling back? */
-const hasEffectiveKey = (c: AiCfg | null): boolean =>
-  !!c &&
-  ((c.provider === "gateway" && c.secretsSet.gatewayKey) ||
-    (c.provider === "anthropic" && c.secretsSet.anthropicKey) ||
-    c.env.hasGatewayKey ||
-    c.env.hasAnthropicKey);
-
-/** BYO models silently fall back to Workers AI on managed cloud when no key. */
-const keylessManaged = (c: AiCfg | null): boolean =>
-  !!c && !hasEffectiveKey(c) && c.env.cloud;
-
-/** The model that ACTUALLY runs for an agent given the key situation — so the
- *  UI can show the effective model, not a misleading configured-but-ignored one. */
-const effectiveModelValue = (
-  agentModel: string | null | undefined,
-  c: AiCfg | null,
-): string => {
-  const m = agentModel || "anthropic/claude-sonnet-5"; // runner's DEFAULT_MODEL
-  if (!c || hasEffectiveKey(c)) return m; // configured model runs as picked
-  if (c.env.cloud) return m.startsWith("@cf/") ? m : MANAGED_DEFAULT_MODEL;
-  return m; // self-host, no key — configured (may error until a key is set)
-};
-
-/** Compact a token count for the header chip (1234 → "1.2k"). */
-const fmtTokens = (n: number): string =>
-  n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
-/** Mirror of the server's thread label (`threadTitleFrom`) so the optimistic
- *  history row reads the same as the one that comes back from the API. */
-const previewTitle = (message: string, max = 64): string => {
-  const flat = message.replace(/\s+/g, " ").trim();
-  return flat.length <= max ? flat : `${flat.slice(0, max - 1).trimEnd()}…`;
-};
-
-/** Short "when" stamp for a history row — recency is what picks a thread apart,
- *  so minutes/hours/days beat a full timestamp at this width. */
-const fmtWhen = (v: string | number | null | undefined): string => {
-  if (v === null || v === undefined) return "";
-  const ms = typeof v === "number" ? v : Date.parse(v);
-  if (!Number.isFinite(ms)) return "";
-  const diff = Date.now() - ms;
-  if (diff < 60_000) return "now";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
-  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}d`;
-  return new Date(ms).toISOString().slice(5, 10);
-};
-
-/** Reasoning-effort picker. Empty = don't send the parameter at all, which is
- *  the provider default (`high` on the models that support it). */
-const EFFORT_OPTIONS = [
-  { value: "", label: "Default", hint: "provider default (high)" },
-  { value: "low", label: "Low", hint: "cheapest · short, scoped tasks" },
-  { value: "medium", label: "Medium", hint: "balanced" },
-  { value: "high", label: "High", hint: "most thorough · most tokens" },
-];
-
-const MODEL_CUSTOM = "__custom__";
-const isKnownModel = (m: string) => MODEL_OPTIONS.some((o) => o.value === m);
+import {
+  EFFORT_OPTIONS,
+  MANAGED_DEFAULT_MODEL,
+  MODEL_CUSTOM,
+  MODEL_OPTIONS,
+  effectiveModelValue,
+  hasEffectiveKey,
+  isKnownModel,
+  keylessManaged,
+  modelLabel,
+  modelNeedsKey,
+  slugPreview,
+  type Agent,
+  type AiCfg,
+} from "./_agents-shared";
 
 const EMPTY_DRAFT: Agent = {
   id: "",
@@ -214,7 +57,14 @@ const EMPTY_DRAFT: Agent = {
   active: true,
 };
 
-export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "success" | "error") => void }) {
+export function AgentsPage({
+  pushToast,
+  setActiveNav,
+}: {
+  pushToast: (m: string, type?: "success" | "error") => void;
+  /** Jumping straight into a conversation with the agent you just configured. */
+  setActiveNav?: (id: string) => void;
+}) {
   const { t } = useLingui();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -269,6 +119,8 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
     setSaving(true);
     const payload = {
       name: draft.name.trim(),
+      // Empty = let the server derive one from the name (and de-dupe it).
+      ...(draft.handle?.trim() ? { handle: draft.handle.trim() } : {}),
       description: draft.description || null,
       systemPrompt: draft.systemPrompt || null,
       model: draft.model || null,
@@ -330,22 +182,7 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
       };
     });
 
-  if (!loaded) {
-    return (
-      <div className="flex flex-col gap-4.5">
-        <PageHeader title={t`Agents`} description={t`AI agents that reason, call your tools, and answer — built on your collections.`} />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <Card key={i} className="flex flex-col gap-3 p-4">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-3.5 w-full" />
-              <Skeleton className="h-3.5 w-2/3" />
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (!loaded) return <AgentsSkeleton />;
 
   // Filtered catalog grouped by namespace (`schema.*`, `collections.*`, …) so
   // the ~130-tool roster stays browsable. The filter matches the tool name or
@@ -393,7 +230,9 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
               <span><I.Sparkles size={14} /></span>
               <div className="flex min-w-0 flex-col">
                 <span className="truncate text-[13px] font-medium">{a.name}</span>
-                <span className="font-mono text-[11px] text-muted-foreground">{(a.tools ?? []).length} {t`tools`}{a.memory ? ` · ${t`memory`}` : ""}</span>
+                <span className="truncate font-mono text-[11px] text-muted-foreground">
+                  {a.handle ? `@${a.handle} · ` : ""}{(a.tools ?? []).length} {t`tools`}{a.memory ? ` · ${t`memory`}` : ""}
+                </span>
               </div>
               <Badge variant={a.active ? "default" : "secondary"}>{a.active ? t`active` : t`off`}</Badge>
             </div>
@@ -409,12 +248,12 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
               description={<Trans>Pick an agent on the left, or click <strong>+ New agent</strong>.</Trans>}
             />
           ) : (
-            <AgentDetail
+            <AgentSummary
               key={agent.id}
               agent={agent}
               aiCfg={aiCfg}
-              pushToast={pushToast}
               onEdit={() => openEditor(agent)}
+              onOpenChat={setActiveNav ? () => setActiveNav("chat") : undefined}
             />
           )}
         </Card>
@@ -432,9 +271,23 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
 
             <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(88vh-13rem)] max-[640px]:max-h-[calc(88vh-15rem)]">
               <div className="flex flex-col gap-4 px-0.5 py-1">
-                <div className="flex flex-col gap-1.5">
-                  <Label><Trans>Name</Trans></Label>
-                  <Input autoFocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder={t`Support agent`} />
+                <div className="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <Label><Trans>Name</Trans></Label>
+                    <Input autoFocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder={t`Support agent`} />
+                  </div>
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <Label><Trans>Mention handle</Trans></Label>
+                    <Input
+                      className="font-mono"
+                      value={draft.handle ?? ""}
+                      onChange={(e) => setDraft({ ...draft, handle: e.target.value })}
+                      placeholder={draft.name ? slugPreview(draft.name) : "support-agent"}
+                    />
+                    <span className="text-[11.5px] text-muted-foreground">
+                      <Trans>What teammates type after @ to address this agent in a room. Derived from the name when left blank.</Trans>
+                    </span>
+                  </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label><Trans>Description</Trans></Label>
@@ -599,228 +452,22 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
   );
 }
 
-// ── Detail + chat playground ──────────────────────────────────────────────────
-function AgentDetail({
+
+/** What an agent IS, at a glance — the counterpart to the editor dialog. The
+ *  conversation moved to the Chat page, so this panel answers "is this thing
+ *  configured the way I think?" and hands you off to a room. */
+function AgentSummary({
   agent,
   aiCfg,
-  pushToast,
   onEdit,
+  onOpenChat,
 }: {
   agent: Agent;
   aiCfg: AiCfg | null;
-  pushToast: (m: string, type?: "success" | "error") => void;
   onEdit: () => void;
+  onOpenChat?: () => void;
 }) {
   const { t } = useLingui();
-  const [threads, setThreads] = useState<Thread[]>([]);
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [authors, setAuthors] = useState<Record<string, Author>>({});
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [liveSteps, setLiveSteps] = useState<RunStep[]>([]);
-  // A turn a TEAMMATE started, seen over the channel — the composer locks for
-  // everyone while it runs, since the API rejects a concurrent turn anyway.
-  const [remoteRun, setRemoteRun] = useState<{ userId: string | null } | null>(null);
-  /** Input tokens the last turn read from the prompt cache (~0.1× price). */
-  const [cachedTokens, setCachedTokens] = useState(0);
-  const endRef = useRef<HTMLDivElement>(null);
-  const meQuery = useMe();
-  const meId = meQuery.data?.data?.id ?? null;
-
-  const loadThreads = useCallback(async () => {
-    const r = await fetchSafely<{ data: Thread[] }>(`/api/agents/${agent.id}/threads`);
-    setThreads(r?.data ?? []);
-  }, [agent.id]);
-
-  const loadMessages = useCallback(async (tid: string) => {
-    const r = await fetchSafely<{ data: { messages: Message[]; authors?: Author[] } }>(
-      `/api/agents/threads/${tid}`,
-    );
-    setMessages(r?.data?.messages ?? []);
-    setAuthors(Object.fromEntries((r?.data?.authors ?? []).map((a) => [a.id, a])));
-  }, []);
-
-  useEffect(() => {
-    void loadThreads();
-    setThreadId(null);
-    setMessages([]);
-  }, [loadThreads]);
-
-  useEffect(() => {
-    // Selecting "New conversation" (threadId=null) must clear the transcript —
-    // otherwise the previously-opened thread's messages linger.
-    if (threadId) void loadMessages(threadId);
-    else setMessages([]);
-  }, [threadId, loadMessages]);
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
-  }, [messages, liveSteps]);
-
-  // ── team sync ──────────────────────────────────────────────────────────────
-  // Everything below arrives on the thread's channel for EVERY viewer, so a
-  // teammate's question, its tool steps, and the answer land on your screen the
-  // same way your own do. Own frames are skipped where the local optimistic
-  // path already handled them.
-  const onLiveEvent = useCallback(
-    (e: { event: string; data: any }) => {
-      const mine = e.data?.userId && meId && e.data.userId === meId;
-      switch (e.event) {
-        case "agent.message": {
-          if (mine) return; // already on screen optimistically
-          const { id, role, content, userId } = e.data ?? {};
-          if (!id || !content) return;
-          setMessages((m) =>
-            m.some((x) => x.id === id) ? m : [...m, { id, role: role ?? "user", content, userId }],
-          );
-          return;
-        }
-        case "agent.start":
-          if (!mine) setRemoteRun({ userId: e.data?.userId ?? null });
-          return;
-        case "agent.step":
-          if (!mine) setLiveSteps((s) => [...s, e.data as RunStep]);
-          return;
-        case "agent.final":
-        case "agent.error":
-          if (mine) return;
-          setRemoteRun(null);
-          setLiveSteps([]);
-          // Pull the persisted transcript rather than trusting the frame: it
-          // carries the tool rows and token counts too.
-          if (threadId) void loadMessages(threadId);
-          return;
-        default:
-      }
-    },
-    [meId, threadId, loadMessages],
-  );
-  const { peers, notifyTyping } = useAgentThreadLive(threadId, meId, onLiveEvent);
-
-  // "New conversation" is purely local — the thread row is created on the first
-  // send. Creating it up front left untitled ghost rows in the history list for
-  // every abandoned chat.
-  const newThread = useCallback(() => {
-    setThreadId(null);
-    setMessages([]);
-    setLiveSteps([]);
-    setRemoteRun(null);
-    setCachedTokens(0);
-  }, []);
-
-  const activeThread = threads.find((th) => th.id === threadId);
-  const activeThreadLabel = threadId
-    ? activeThread?.title || t`Conversation`
-    : t`New conversation`;
-  // Busy because a TEAMMATE is running a turn — either seen live, or read off a
-  // thread you opened mid-turn. The API rejects a concurrent turn, so the
-  // composer says who's holding it instead of letting you hit a 409.
-  const runningElsewhere =
-    !sending && (!!remoteRun || activeThread?.status === "running");
-  // Name a teammate from the transcript's authors, falling back to the live
-  // roster — a message that arrives over the channel is on screen before the
-  // authors list that names its writer catches up.
-  const nameFor = useCallback(
-    (userId: string): string =>
-      authorLabel(authors[userId]) ??
-      peers.find((p) => p.id === userId)?.name ??
-      userId.slice(0, 6),
-    [authors, peers],
-  );
-  const runnerName = remoteRun?.userId ? nameFor(remoteRun.userId) : null;
-  const typingPeers = peers.filter((p) => p.typing);
-
-  const send = useCallback(async () => {
-    const message = input.trim();
-    // Guard against a double-send: a turn runs synchronously inside the POST, so
-    // a second send while one is in flight would 409 ("A turn is already running").
-    if (!message || sending) return;
-    let tid = threadId;
-    if (!tid) {
-      try {
-        const res = await api<{ data: Thread }>(`/api/agents/${agent.id}/threads`, {
-          method: "POST",
-          body: JSON.stringify({}),
-        });
-        tid = res.data.id;
-        setThreadId(tid);
-        // Show it in the history list right away, labelled the way the server
-        // will label it once the turn lands (first line of this prompt).
-        setThreads((prev) => [
-          { id: tid as string, title: previewTitle(message), status: "running", updatedAt: Date.now() },
-          ...prev,
-        ]);
-      } catch (e) {
-        pushToast((e as Error).message, "error");
-        return;
-      }
-    }
-    setInput("");
-    setSending(true);
-    setLiveSteps([]);
-    // Optimistically show the user message.
-    const tmpId = `tmp-${Date.now()}`;
-    setMessages((m) => [...m, { id: tmpId, role: "user", content: message, userId: meId }]);
-
-    // Own-turn step stream. The team subscription (useAgentThreadLive) is
-    // already open for an existing thread, but on a brand-new one it attaches a
-    // render later — this one is guaranteed live before the POST, so your own
-    // steps never race. Teammate frames are ignored here; the hook has them.
-    let es: EventSource | null = null;
-    try {
-      es = new EventSource(
-        `/api/realtime/${encodeURIComponent(`agent:thread:${tid}`)}/subscribe`,
-        { withCredentials: true },
-      );
-      es.onmessage = (ev) => {
-        try {
-          const parsed = JSON.parse(ev.data) as { event?: string; data?: any };
-          if (parsed.event === "agent.step" && parsed.data) {
-            setLiveSteps((s) => [...s, parsed.data as RunStep]);
-          }
-        } catch {
-          /* ignore non-JSON frames */
-        }
-      };
-    } catch {
-      /* streaming unsupported — the final transcript refetch still works */
-    }
-
-    try {
-      const run = await api<{ data?: { cachedTokens?: number } }>(
-        `/api/agents/threads/${tid}/messages`,
-        { method: "POST", body: JSON.stringify({ message }) },
-      );
-      // Prompt-cache hits for this turn — surfaced so the saving is visible
-      // rather than something you have to read the activity log to believe.
-      setCachedTokens(run.data?.cachedTokens ?? 0);
-      await loadMessages(tid);
-    } catch (e) {
-      // Drop the optimistic bubble and RESTORE the typed text so it isn't lost.
-      setMessages((m) => m.filter((x) => x.id !== tmpId));
-      setInput((cur) => cur || message);
-      const msg = (e as Error).message;
-      pushToast(
-        /already running/i.test(msg)
-          ? t`A turn is still running on this thread — wait for it to finish.`
-          : msg,
-        "error",
-      );
-    } finally {
-      es?.close();
-      setSending(false);
-      setLiveSteps([]);
-      // Reconcile the optimistic history row either way: the server names an
-      // untitled thread after its opening prompt and bumps status/updatedAt.
-      void loadThreads();
-    }
-  }, [agent.id, input, sending, threadId, meId, loadMessages, loadThreads, pushToast, t]);
-
-  const totalTokens = messages.reduce(
-    (sum, m) => sum + (m.tokensIn ?? 0) + (m.tokensOut ?? 0),
-    0,
-  );
   // The model that actually runs (managed cloud may map a keyless Claude pick
   // down to its Workers AI default), plus a human source for the chip tooltip.
   const effModel = modelLabel(effectiveModelValue(agent.model, aiCfg));
@@ -834,6 +481,9 @@ function AgentDetail({
     <>
       <div className="flex flex-wrap items-center gap-2.5">
         <span className="text-base font-semibold">{agent.name}</span>
+        {agent.handle && (
+          <Badge variant="secondary" className="font-mono font-normal">@{agent.handle}</Badge>
+        )}
         <Badge variant={agent.active ? "default" : "secondary"}>{agent.active ? t`active` : t`off`}</Badge>
         {agent.memory && <Badge variant="secondary"><Trans>memory</Trans></Badge>}
         <span title={t`Running on ${modelSrc}`} className="inline-flex">
@@ -841,257 +491,68 @@ function AgentDetail({
             <I.Sparkles size={11} /> {effModel}
           </Badge>
         </span>
-        <span className="text-xs text-muted-foreground">· {agent.tools.length} {t`tools`}</span>
-        {totalTokens > 0 && (
-          <span className="text-xs text-muted-foreground">· {fmtTokens(totalTokens)} {t`tokens`}</span>
-        )}
-        {cachedTokens > 0 && (
-          <span
-            className="text-xs text-muted-foreground"
-            title={t`Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price.`}
-          >
-            · {fmtTokens(cachedTokens)} {t`cached`}
-          </span>
-        )}
         <div className="ml-auto flex items-center gap-2">
-          <PresenceChips peers={peers} nameFor={nameFor} />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" icon={I.History} className="max-w-[45vw] sm:max-w-[220px]">
-                <span className="truncate">{activeThreadLabel}</span>
-                <I.ChevronDown size={12} className="shrink-0 opacity-60" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[min(22rem,calc(100vw-2rem))]">
-              <DropdownMenuLabel className="flex items-center justify-between">
-                <span><Trans>History</Trans></span>
-                <span className="font-mono text-[10.5px] text-muted-foreground">{threads.length}</span>
-              </DropdownMenuLabel>
-              {threads.length === 0 ? (
-                <div className="px-3 py-3 text-[12px] text-muted-foreground">
-                  <Trans>No conversations yet.</Trans>
-                </div>
-              ) : (
-                <ScrollArea viewportClassName="max-h-[280px]">
-                  {threads.map((th) => (
-                    <DropdownMenuItem
-                      key={th.id}
-                      className="items-start gap-2.5"
-                      onSelect={() => setThreadId(th.id)}
-                    >
-                      <I.MessageSquare size={13} className="mt-0.5 shrink-0 text-muted-foreground" />
-                      <span className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate text-[13px] font-normal">
-                          {th.title || t`Empty conversation`}
-                        </span>
-                        <span className="text-[11px] font-normal text-muted-foreground">
-                          {fmtWhen(th.updatedAt)}
-                          {th.status === "running" ? ` · ${t`running`}` : ""}
-                        </span>
-                      </span>
-                      {th.id === threadId && <I.Check size={12} className="mt-0.5 shrink-0" />}
-                    </DropdownMenuItem>
-                  ))}
-                </ScrollArea>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={newThread}>
-                <I.Plus size={12} /> <Trans>New conversation</Trans>
-                {threadId === null && <I.Check size={12} className="ml-auto" />}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {onOpenChat && (
+            <Button variant="outline" size="sm" icon={I.MessageSquare} onClick={onOpenChat}>
+              <Trans>Open chat</Trans>
+            </Button>
+          )}
           <Button variant="primary" size="sm" icon={I.Pencil} onClick={onEdit}><Trans>Edit</Trans></Button>
         </div>
       </div>
 
-      {agent.tools.length === 0 && (
+      {agent.description && (
+        <p className="text-[13px] text-muted-foreground">{agent.description}</p>
+      )}
+
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] max-[560px]:grid-cols-1">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <dt className="text-[11px] uppercase tracking-wide text-muted-foreground"><Trans>Mention handle</Trans></dt>
+          <dd className="truncate font-mono">{agent.handle ? `@${agent.handle}` : "—"}</dd>
+        </div>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <dt className="text-[11px] uppercase tracking-wide text-muted-foreground"><Trans>Max steps</Trans></dt>
+          <dd className="font-mono">{agent.maxSteps}</dd>
+        </div>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <dt className="text-[11px] uppercase tracking-wide text-muted-foreground"><Trans>Reasoning effort</Trans></dt>
+          <dd className="font-mono">{agent.effort || t`default`}</dd>
+        </div>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <dt className="text-[11px] uppercase tracking-wide text-muted-foreground"><Trans>Tools</Trans></dt>
+          <dd className="font-mono">{agent.tools.length}</dd>
+        </div>
+      </dl>
+
+      {agent.tools.length === 0 ? (
         <div className="rounded-surface border border-dashed border-border px-3 py-2 text-[12px] text-muted-foreground">
           <Trans>This agent has no tools — it answers from the model alone. Add tools in Edit to let it read your data.</Trans>
         </div>
-      )}
-
-      <div className="flex h-[440px] flex-col overflow-hidden rounded-control border border-border">
-        <ScrollArea className="min-h-0 flex-1">
-          <div className="flex min-w-0 flex-col gap-3 p-4">
-            {messages.length === 0 && liveSteps.length === 0 && (
-              <div className="py-10 text-center text-[13px] text-muted-foreground">
-                <Trans>Send a message to start the conversation.</Trans>
-              </div>
-            )}
-            {messages.map((m) => (
-              <MessageRow
-                key={m.id}
-                message={m}
-                label={m.userId ? nameFor(m.userId) : null}
-                isMine={!m.userId || m.userId === meId}
-              />
-            ))}
-            {liveSteps.map((s, i) => (
-              <div key={`live-${i}`} className="flex min-w-0 flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
-                <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
-                  <I.Zap size={12} /> {s.tool}
-                </span>
-                {s.thought && <span className="whitespace-pre-wrap break-words text-muted-foreground">{s.thought}</span>}
-                <span className={`whitespace-pre-wrap break-all font-mono text-[11px] ${s.isError ? "text-destructive" : "text-muted-foreground"}`}>{s.observation.slice(0, 280)}</span>
-              </div>
-            ))}
-            {(sending || runningElsewhere) && (
-              <div className="flex flex-col gap-2 px-1 py-1.5">
-                <div className="agent-sweep-track" aria-hidden />
-                <span className="text-[12px] text-muted-foreground">
-                  {sending
-                    ? liveSteps.length > 0
-                      ? t`Working…`
-                      : t`Thinking…`
-                    : runnerName
-                      ? t`${runnerName} is asking…`
-                      : t`A teammate is asking…`}
-                </span>
-              </div>
-            )}
-            <div ref={endRef} />
-          </div>
-        </ScrollArea>
-        <div className="flex flex-col gap-1.5 border-t border-border p-2.5">
-          {typingPeers.length > 0 && (
-            <span className="px-1 text-[11px] text-muted-foreground">
-              {typingPeers.length === 1
-                ? t`${nameFor(typingPeers[0]!.id)} is typing…`
-                : t`${typingPeers.length} teammates are typing…`}
-            </span>
-          )}
-          <div className="flex items-end gap-2">
-          <Textarea
-            className="min-h-[40px] flex-1 resize-none text-[13px]"
-            value={input}
-            disabled={sending || runningElsewhere}
-            onChange={(e) => {
-              setInput(e.target.value);
-              notifyTyping();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void send();
-              }
-            }}
-            placeholder={
-              runningElsewhere
-                ? runnerName
-                  ? t`${runnerName} is running a turn…`
-                  : t`A teammate is running a turn…`
-                : t`Ask the agent…`
-            }
-          />
-          <Button
-            variant="primary"
-            size="sm"
-            icon={I.ArrowRight}
-            disabled={sending || runningElsewhere || !input.trim()}
-            onClick={send}
-          >
-            {sending ? <Trans>Working…</Trans> : <Trans>Send</Trans>}
-          </Button>
-          </div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground"><Trans>Tool allow-list</Trans></span>
+          <ScrollArea viewportClassName="max-h-[180px]" className="w-full rounded-control border border-border">
+            <div className="flex flex-wrap gap-1.5 p-2.5">
+              {agent.tools.map((tool) => (
+                <Badge key={tool} variant="secondary" className="font-mono text-[11px] font-normal">
+                  {tool}
+                </Badge>
+              ))}
+            </div>
+          </ScrollArea>
         </div>
-      </div>
+      )}
+
+      {agent.systemPrompt && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground"><Trans>System prompt</Trans></span>
+          <ScrollArea viewportClassName="max-h-[200px]" className="w-full rounded-control border border-border">
+            <div className="whitespace-pre-wrap break-words p-3 text-[12.5px] text-muted-foreground">
+              {agent.systemPrompt}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
     </>
-  );
-}
-
-/** Who else has this thread open, as overlapping initials. Threads are
- *  workspace-wide, so knowing a teammate is here (and typing) is the difference
- *  between a shared conversation and two people talking over each other. */
-function PresenceChips({
-  peers,
-  nameFor,
-}: {
-  peers: AgentPeer[];
-  /** Prefers the transcript's author name (real name) over the presence
-   *  frame's handle (email local-part), so one person reads one way. */
-  nameFor: (userId: string) => string;
-}) {
-  const { t } = useLingui();
-  if (peers.length === 0) return null;
-  const shown = peers.slice(0, 3);
-  return (
-    <span
-      className="flex items-center -space-x-1.5"
-      title={peers
-        .map((p) => (p.typing ? `${nameFor(p.id)} (${t`typing`})` : nameFor(p.id)))
-        .join(", ")}
-    >
-      {shown.map((p) => (
-        <span
-          key={p.id}
-          className={`inline-flex size-6 items-center justify-center rounded-full border-2 border-background text-[10px] font-semibold uppercase text-white ${p.typing ? "animate-pulse" : ""}`}
-          style={{ backgroundColor: p.color }}
-        >
-          {nameFor(p.id).charAt(0)}
-        </span>
-      ))}
-      {peers.length > shown.length && (
-        <span className="inline-flex size-6 items-center justify-center rounded-full border-2 border-background bg-muted text-[10px] font-semibold text-muted-foreground">
-          +{peers.length - shown.length}
-        </span>
-      )}
-    </span>
-  );
-}
-
-function MessageRow({
-  message,
-  label: authorName,
-  isMine,
-}: {
-  message: Message;
-  /** Display name of the teammate who wrote it, when it isn't yours. */
-  label: string | null;
-  isMine: boolean;
-}) {
-  if (message.role === "tool") {
-    return (
-      <div className="flex min-w-0 flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
-        <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
-          <I.Zap size={12} /> {message.toolName}
-        </span>
-        <span className="whitespace-pre-wrap break-all font-mono text-[11px] text-muted-foreground">{message.content.slice(0, 400)}</span>
-      </div>
-    );
-  }
-  const isUser = message.role === "user";
-  // A tool-call assistant step carries a toolName — render it like a step note.
-  if (message.role === "assistant" && message.toolName) {
-    return (
-      <div className="flex min-w-0 flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
-        <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
-          <I.Sparkles size={12} /> {message.toolName}
-        </span>
-        {message.content && <span className="whitespace-pre-wrap break-words text-muted-foreground">{message.content}</span>}
-      </div>
-    );
-  }
-  // A teammate's question keeps the user-side alignment but drops the "mine"
-  // fill and gains a byline — otherwise a shared transcript reads as if one
-  // person asked everything.
-  const label = isMine ? null : authorName;
-  return (
-    <div className={`flex min-w-0 flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}>
-      {label && (
-        <span className="flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
-          <span
-            className="inline-flex size-4 items-center justify-center rounded-full text-[9px] font-semibold uppercase text-white"
-            style={{ backgroundColor: collabColor(message.userId ?? label) }}
-          >
-            {label.charAt(0)}
-          </span>
-          {label}
-        </span>
-      )}
-      <div className={`max-w-[80%] overflow-hidden whitespace-pre-wrap break-words rounded-surface px-3.5 py-2 text-[13px] ${isUser ? (isMine ? "bg-primary text-primary-foreground" : "border border-border bg-background") : "bg-muted"}`}>
-        {message.content}
-      </div>
-    </div>
   );
 }

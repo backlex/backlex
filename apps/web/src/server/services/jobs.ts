@@ -16,7 +16,7 @@ const SYSTEM_AUTH: AuthSubject = { userId: null, email: null, roles: [] };
 /** Built-in handler discriminators. `function` runs a named user function in the
  *  sandbox; `webhook.deliver` re-attempts a single outbound webhook (so webhooks
  *  inherit the queue's retry + dead-letter). */
-export type JobType = "function" | "webhook.deliver";
+export type JobType = "function" | "webhook.deliver" | "agent.turn";
 
 export type JobStatus =
   | "pending"
@@ -256,6 +256,22 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
       throw new Error(`webhook responded ${out.status}${out.error ? `: ${out.error}` : ""}`);
     }
     return { status: out.status };
+  }
+  if (job.type === "agent.turn") {
+    // An agent turn re-enters the API to call its tools, so it needs the Hono
+    // app. Imported lazily to keep `app.ts → routes → jobs` acyclic, the same
+    // way the app defers its own optional route modules.
+    const [{ createApp }, { runQueuedAgentTurn }] = await Promise.all([
+      import("../app"),
+      import("./agents/async-run"),
+    ]);
+    const app = createApp(ctx.env) as unknown as Parameters<
+      typeof runQueuedAgentTurn
+    >[1];
+    const out = await runQueuedAgentTurn(ctx, app, job.payload);
+    // A turn is not idempotent, so a refusal is reported, never retried — the
+    // `agent_runs` row already carries the failure the room is watching.
+    return out;
   }
   throw new Error(`unknown job type '${job.type}'`);
 };

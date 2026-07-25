@@ -83,7 +83,9 @@ export const runAgent: McpTool = {
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message }),
+        // The named agent answers even if the thread is a room whose routing
+        // mode would otherwise wait for an `@mention`.
+        body: JSON.stringify({ message, agentIds: [agent] }),
       },
     );
     const body = (await res.json().catch(() => null)) as
@@ -101,4 +103,62 @@ export const runAgent: McpTool = {
   },
 };
 
-export const agentsTools: McpTool[] = [listAgents, getAgent, runAgent];
+export const listRooms: McpTool = {
+  name: "agents.rooms_list",
+  description:
+    "List the workspace's agent conversations (rooms), newest activity first. " +
+    "Each row carries its participant agent ids and its routing mode " +
+    "(`mention` | `default` | `auto`). Use `agents.room_send` to post in one.",
+  inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  kind: "read",
+  handler: async (_args, ctx) => {
+    const res = await ctx.fetchInternal(`/api/agents/threads`);
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const sendToRoom: McpTool = {
+  name: "agents.room_send",
+  description:
+    "Post a message in a room and run whichever agents it wakes. Mention an " +
+    "agent by its handle (`@sales-bot`) to address it directly; otherwise the " +
+    "room's routing mode decides. A room on `mention` routing with no mention " +
+    "simply records the message and nobody answers. Returns the persisted " +
+    "message id plus each turn's answer.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      threadId: { type: "string", description: "Room (thread) id." },
+      message: {
+        type: "string",
+        description: "The message. Use @handle to address an agent.",
+      },
+    },
+    required: ["threadId", "message"],
+    additionalProperties: false,
+  },
+  kind: "write",
+  handler: async (args, ctx) => {
+    const threadId = String(args.threadId ?? "");
+    const message = String(args.message ?? "");
+    if (!threadId) throw new Error("VALIDATION: threadId is required");
+    if (!message) throw new Error("VALIDATION: message is required");
+    const res = await ctx.fetchInternal(
+      `/api/agents/threads/${encodeURIComponent(threadId)}/messages`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message }),
+      },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const agentsTools: McpTool[] = [
+  listAgents,
+  getAgent,
+  runAgent,
+  listRooms,
+  sendToRoom,
+];

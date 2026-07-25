@@ -13,6 +13,8 @@ export interface AgentRow {
   id: string;
   tenantId: string | null;
   name: string;
+  /** Stable `@`-mention token, unique per workspace. */
+  handle: string | null;
   description: string | null;
   systemPrompt: string | null;
   model: string | null;
@@ -26,12 +28,20 @@ export interface AgentRow {
   updatedAt: Date | number;
 }
 
+/** How a room decides who answers a message that mentions nobody. */
+export type ThreadRouting = "mention" | "default" | "auto";
+export const THREAD_ROUTINGS: ThreadRouting[] = ["mention", "default", "auto"];
+
 export interface ThreadRow {
   id: string;
   tenantId: string | null;
-  agentId: string;
+  /** Legacy single-agent pin — null on a room. Membership lives in
+   *  `agent_thread_agents`; a pinned thread is a one-participant room. */
+  agentId: string | null;
   title: string | null;
   status: string;
+  routing: ThreadRouting;
+  defaultAgentId: string | null;
   createdBy: string | null;
   createdAt: Date | number;
   updatedAt: Date | number;
@@ -47,6 +57,9 @@ export interface MessageRow {
   /** Who wrote a `user` message (null for assistant/tool rows, and for turns
    *  driven by an API key instead of a person). */
   userId: string | null;
+  /** Which agent wrote an assistant/tool row. Null on user rows — and on rows
+   *  written before rooms existed that we couldn't attribute. */
+  agentId: string | null;
   content: string;
   toolName: string | null;
   toolArgs: unknown;
@@ -56,12 +69,30 @@ export interface MessageRow {
   createdAt: Date | number;
 }
 
+export interface RunRow {
+  id: string;
+  tenantId: string | null;
+  threadId: string;
+  agentId: string;
+  jobId: string | null;
+  status: "queued" | "running" | "done" | "error";
+  startedBy: string | null;
+  triggerMessageId: string | null;
+  error: string | null;
+  createdAt: Date | number;
+  updatedAt: Date | number;
+}
+
 const agentsTable = (d: "pg" | "sqlite") =>
   d === "pg" ? pg.schema.agents : sqlite.schema.agents;
 const threadsTable = (d: "pg" | "sqlite") =>
   d === "pg" ? pg.schema.agentThreads : sqlite.schema.agentThreads;
 const messagesTable = (d: "pg" | "sqlite") =>
   d === "pg" ? pg.schema.agentMessages : sqlite.schema.agentMessages;
+const threadAgentsTable = (d: "pg" | "sqlite") =>
+  d === "pg" ? pg.schema.agentThreadAgents : sqlite.schema.agentThreadAgents;
+const runsTable = (d: "pg" | "sqlite") =>
+  d === "pg" ? pg.schema.agentRuns : sqlite.schema.agentRuns;
 
 const nowFor = (d: "pg" | "sqlite"): Date | number =>
   d === "pg" ? new Date() : Date.now();
@@ -94,8 +125,42 @@ export const getAgent = async (
   return rows[0] ?? null;
 };
 
+/** Turn a display name into a mention handle: lowercased, whitespace as
+ *  dashes. Unicode letters survive on purpose — a Turkish-named agent gets a
+ *  Turkish handle, and mentions are resolved against the room's known handles
+ *  rather than a strict charset. Mirrors the migration's backfill. */
+export const slugifyHandle = (name: string): string =>
+  name.trim().toLowerCase().replace(/\s+/g, "-").replace(/^-+|-+$/g, "");
+
+/** Pick a handle that's free in this workspace, suffixing on collision. Called
+ *  on create (and on rename when the caller didn't pin one explicitly), so two
+ *  agents can never share the token a room member types after `@`. */
+export const uniqueHandle = async (
+  ctx: Ctx,
+  tenantId: string,
+  desired: string,
+  excludeAgentId?: string,
+): Promise<string> => {
+  const t = agentsTable(ctx.dialect);
+  const base = slugifyHandle(desired) || "agent";
+  const rows = (await (ctx.db as any)
+    .select({ id: t.id, handle: t.handle })
+    .from(t)
+    .where(eq(t.tenantId, tenantId))) as { id: string; handle: string | null }[];
+  const taken = new Set(
+    rows.filter((r) => r.id !== excludeAgentId && r.handle).map((r) => r.handle as string),
+  );
+  if (!taken.has(base)) return base;
+  for (let i = 2; i < 1000; i++) {
+    const candidate = `${base}-${i}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return `${base}-${crypto.randomUUID().slice(0, 8)}`;
+};
+
 export interface AgentInput {
   name: string;
+  handle?: string | null;
   description?: string | null;
   systemPrompt?: string | null;
   model?: string | null;
@@ -118,6 +183,7 @@ export const createAgent = async (
     id,
     tenantId,
     name: input.name,
+    handle: await uniqueHandle(ctx, tenantId, input.handle || input.name),
     description: input.description ?? null,
     systemPrompt: input.systemPrompt ?? null,
     model: input.model ?? null,
@@ -144,6 +210,11 @@ export const updateAgent = async (
     .update(t)
     .set({
       ...(input.name !== undefined ? { name: input.name } : {}),
+      // An explicit handle is normalised + de-duped; a bare rename leaves the
+      // existing handle alone, since a room's transcript already mentions it.
+      ...(input.handle
+        ? { handle: await uniqueHandle(ctx, tenantId, input.handle, id) }
+        : {}),
       ...(input.description !== undefined ? { description: input.description } : {}),
       ...(input.systemPrompt !== undefined ? { systemPrompt: input.systemPrompt } : {}),
       ...(input.model !== undefined ? { model: input.model } : {}),
@@ -240,11 +311,23 @@ export const getThread = async (
   return rows[0] ?? null;
 };
 
+/**
+ * Open a conversation. Passing `agentId` pins it to one agent — the pre-rooms
+ * shape, which also becomes its own single participant and answers every
+ * message (`routing: "default"`). Passing null opens a room whose participants
+ * are added separately and which, by default, only answers when mentioned.
+ */
 export const createThread = async (
   ctx: Ctx,
   tenantId: string,
-  agentId: string,
-  opts: { title?: string | null; createdBy?: string | null } = {},
+  agentId: string | null,
+  opts: {
+    title?: string | null;
+    createdBy?: string | null;
+    routing?: ThreadRouting;
+    defaultAgentId?: string | null;
+    agentIds?: string[];
+  } = {},
 ): Promise<ThreadRow> => {
   const t = threadsTable(ctx.dialect);
   const id = crypto.randomUUID();
@@ -255,12 +338,106 @@ export const createThread = async (
     agentId,
     title: opts.title ?? null,
     status: "idle",
+    routing: opts.routing ?? (agentId ? "default" : "mention"),
+    defaultAgentId: opts.defaultAgentId ?? agentId ?? null,
     createdBy: opts.createdBy ?? null,
     createdAt: now,
     updatedAt: now,
   };
   await (ctx.db as any).insert(t).values(row);
+  const members = [...new Set([...(agentId ? [agentId] : []), ...(opts.agentIds ?? [])])];
+  for (const memberId of members) await addThreadAgent(ctx, tenantId, id, memberId);
   return row as ThreadRow;
+};
+
+export interface ThreadPatch {
+  title?: string | null;
+  routing?: ThreadRouting;
+  defaultAgentId?: string | null;
+}
+
+export const updateThread = async (
+  ctx: Ctx,
+  id: string,
+  tenantId: string,
+  patch: ThreadPatch,
+): Promise<void> => {
+  const t = threadsTable(ctx.dialect);
+  await (ctx.db as any)
+    .update(t)
+    .set({
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+      ...(patch.routing !== undefined ? { routing: patch.routing } : {}),
+      ...(patch.defaultAgentId !== undefined
+        ? { defaultAgentId: patch.defaultAgentId }
+        : {}),
+      updatedAt: nowFor(ctx.dialect),
+    })
+    .where(and(eq(t.id, id), eq(t.tenantId, tenantId)));
+};
+
+// ── room membership ───────────────────────────────────────────────────────
+
+/** Agent ids in a room, oldest first. */
+export const listThreadAgentIds = async (
+  ctx: Ctx,
+  threadId: string,
+): Promise<string[]> => {
+  const t = threadAgentsTable(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select({ agentId: t.agentId, createdAt: t.createdAt })
+    .from(t)
+    .where(eq(t.threadId, threadId))
+    .orderBy(asc(t.createdAt))) as { agentId: string }[];
+  return rows.map((r) => r.agentId);
+};
+
+/** Participants for several rooms at once — the room list renders a chip per
+ *  agent, and an N+1 per room would make that list a query storm. */
+export const listThreadAgentIdsFor = async (
+  ctx: Ctx,
+  threadIds: string[],
+): Promise<Map<string, string[]>> => {
+  const out = new Map<string, string[]>();
+  if (threadIds.length === 0) return out;
+  const t = threadAgentsTable(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select({ threadId: t.threadId, agentId: t.agentId, createdAt: t.createdAt })
+    .from(t)
+    .where(inArray(t.threadId, threadIds))
+    .orderBy(asc(t.createdAt))) as { threadId: string; agentId: string }[];
+  for (const r of rows) {
+    const bucket = out.get(r.threadId) ?? [];
+    bucket.push(r.agentId);
+    out.set(r.threadId, bucket);
+  }
+  return out;
+};
+
+/** Idempotent — re-adding an agent already in the room is a no-op, so the
+ *  route doesn't need a read-then-write race. */
+export const addThreadAgent = async (
+  ctx: Ctx,
+  tenantId: string,
+  threadId: string,
+  agentId: string,
+): Promise<void> => {
+  const t = threadAgentsTable(ctx.dialect);
+  await (ctx.db as any)
+    .insert(t)
+    .values({ tenantId, threadId, agentId, createdAt: nowFor(ctx.dialect) })
+    .onConflictDoNothing();
+};
+
+export const removeThreadAgent = async (
+  ctx: Ctx,
+  threadId: string,
+  agentId: string,
+): Promise<void> => {
+  const t = threadAgentsTable(ctx.dialect);
+  await (ctx.db as any)
+    .delete(t)
+    .where(and(eq(t.threadId, threadId), eq(t.agentId, agentId)));
 };
 
 /** Name a thread after its OPENING prompt — the earliest user message, not the
@@ -292,6 +469,35 @@ export const ensureThreadTitle = async (ctx: Ctx, id: string): Promise<void> => 
     .where(and(eq(t.id, id), or(isNull(t.title), eq(t.title, ""))));
 };
 
+/**
+ * Recompute `agent_threads.status` from the runs still holding a lock.
+ *
+ * The thread-level status is no longer the lock (that's `agent_runs`) — it's a
+ * summary kept for the clients and surfaces that already read it. In a room two
+ * agents can be mid-turn at once, so a finishing run must not flip the thread
+ * to `idle` while its room-mate is still working.
+ */
+export const syncThreadStatus = async (
+  ctx: Ctx,
+  threadId: string,
+): Promise<void> => {
+  const active = await listActiveRuns(ctx, threadId);
+  if (active.length > 0) {
+    await setThreadStatus(ctx, threadId, "running");
+    return;
+  }
+  // Quiet now — but a thread whose last turn blew up still reads `error`, the
+  // way it did when the thread itself was the unit of work.
+  const t = runsTable(ctx.dialect);
+  const last = (await (ctx.db as any)
+    .select({ status: t.status })
+    .from(t)
+    .where(eq(t.threadId, threadId))
+    .orderBy(desc(t.createdAt))
+    .limit(1)) as { status: string }[];
+  await setThreadStatus(ctx, threadId, last[0]?.status === "error" ? "error" : "idle");
+};
+
 export const setThreadStatus = async (
   ctx: Ctx,
   id: string,
@@ -311,10 +517,167 @@ export const deleteThread = async (
 ): Promise<void> => {
   const tt = threadsTable(ctx.dialect);
   const mt = messagesTable(ctx.dialect);
+  const at = threadAgentsTable(ctx.dialect);
+  const rt = runsTable(ctx.dialect);
   await (ctx.db as any).delete(mt).where(eq(mt.threadId, id));
+  await (ctx.db as any).delete(at).where(eq(at.threadId, id));
+  await (ctx.db as any).delete(rt).where(eq(rt.threadId, id));
   await (ctx.db as any)
     .delete(tt)
     .where(and(eq(tt.id, id), eq(tt.tenantId, tenantId)));
+};
+
+// ── runs (the per-agent lock) ─────────────────────────────────────────────
+
+/** How long an unfinished run may sit before it's treated as a dead isolate
+ *  rather than a live turn. A run heartbeats `updatedAt` on every persisted
+ *  step, so this only trips on a turn whose process actually went away. */
+export const STALE_RUN_MS = 120_000;
+
+const msOf = (v: Date | number): number =>
+  typeof v === "number" ? v : new Date(v).getTime();
+
+export const getRun = async (
+  ctx: Ctx,
+  id: string,
+  tenantId: string,
+): Promise<RunRow | null> => {
+  const t = runsTable(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(and(eq(t.id, id), eq(t.tenantId, tenantId)))
+    .limit(1)) as RunRow[];
+  return rows[0] ?? null;
+};
+
+/** Runs still holding a lock on this thread — what the UI renders as "agent X
+ *  is working" and what makes a second turn for the same agent a conflict. */
+export const listActiveRuns = async (
+  ctx: Ctx,
+  threadId: string,
+): Promise<RunRow[]> => {
+  const t = runsTable(ctx.dialect);
+  const rows = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(and(eq(t.threadId, threadId), inArray(t.status, ["queued", "running"])))
+    .orderBy(asc(t.createdAt))) as RunRow[];
+  return rows;
+};
+
+/**
+ * Take the lock for one agent in one thread, or report who's holding it.
+ *
+ * The `agent_runs_active_idx` partial unique index is the actual mutex: a
+ * second insert for the same (thread, agent) while one is `queued`/`running`
+ * violates it. Different agents don't collide, which is the whole point —
+ * a room where two agents are mentioned answers with both, in parallel.
+ *
+ * A run whose isolate died leaves the lock held; `STALE_RUN_MS` past its last
+ * heartbeat we fail it and take over, so a zombie can't wedge an agent forever.
+ */
+export const claimRun = async (
+  ctx: Ctx,
+  input: {
+    tenantId: string;
+    threadId: string;
+    agentId: string;
+    startedBy?: string | null;
+    triggerMessageId?: string | null;
+    jobId?: string | null;
+  },
+): Promise<{ ok: true; run: RunRow } | { ok: false; heldBy: RunRow }> => {
+  const t = runsTable(ctx.dialect);
+  const now = nowFor(ctx.dialect);
+
+  const existing = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(
+      and(
+        eq(t.threadId, input.threadId),
+        eq(t.agentId, input.agentId),
+        inArray(t.status, ["queued", "running"]),
+      ),
+    )
+    .limit(1)) as RunRow[];
+  const held = existing[0];
+  if (held) {
+    if (Date.now() - msOf(held.updatedAt) < STALE_RUN_MS) {
+      return { ok: false, heldBy: held };
+    }
+    await setRunStatus(ctx, held.id, "error", "the previous turn stopped responding");
+  }
+
+  const row: RunRow = {
+    id: crypto.randomUUID(),
+    tenantId: input.tenantId,
+    threadId: input.threadId,
+    agentId: input.agentId,
+    jobId: input.jobId ?? null,
+    status: "queued",
+    startedBy: input.startedBy ?? null,
+    triggerMessageId: input.triggerMessageId ?? null,
+    error: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+  try {
+    await (ctx.db as any).insert(t).values(row);
+  } catch (e) {
+    // Lost the race to a concurrent claim — the index did its job. Re-read so
+    // the caller can name who's holding it instead of surfacing a raw DB error.
+    const raced = (await (ctx.db as any)
+      .select()
+      .from(t)
+      .where(
+        and(
+          eq(t.threadId, input.threadId),
+          eq(t.agentId, input.agentId),
+          inArray(t.status, ["queued", "running"]),
+        ),
+      )
+      .limit(1)) as RunRow[];
+    if (raced[0]) return { ok: false, heldBy: raced[0] };
+    throw e;
+  }
+  return { ok: true, run: row };
+};
+
+export const setRunStatus = async (
+  ctx: Ctx,
+  id: string,
+  status: RunRow["status"],
+  error?: string | null,
+): Promise<void> => {
+  const t = runsTable(ctx.dialect);
+  await (ctx.db as any)
+    .update(t)
+    .set({
+      status,
+      ...(error !== undefined ? { error } : {}),
+      updatedAt: nowFor(ctx.dialect),
+    })
+    .where(eq(t.id, id));
+};
+
+/** Heartbeat — keeps the stale-takeover window from tripping on a long turn. */
+export const touchRun = async (ctx: Ctx, id: string): Promise<void> => {
+  const t = runsTable(ctx.dialect);
+  await (ctx.db as any)
+    .update(t)
+    .set({ updatedAt: nowFor(ctx.dialect) })
+    .where(eq(t.id, id));
+};
+
+export const setRunJobId = async (
+  ctx: Ctx,
+  id: string,
+  jobId: string,
+): Promise<void> => {
+  const t = runsTable(ctx.dialect);
+  await (ctx.db as any).update(t).set({ jobId }).where(eq(t.id, id));
 };
 
 // ── authors ───────────────────────────────────────────────────────────────
@@ -363,6 +726,9 @@ export interface AppendMessageInput {
   tenantId: string | null;
   role: MessageRole;
   userId?: string | null;
+  /** Which agent wrote it — required for assistant/tool rows in a room, or the
+   *  transcript can't render a byline. */
+  agentId?: string | null;
   content?: string;
   toolName?: string | null;
   toolArgs?: unknown;
@@ -384,6 +750,7 @@ export const appendMessage = async (
     threadId: input.threadId,
     role: input.role,
     userId: input.userId ?? null,
+    agentId: input.agentId ?? null,
     content: input.content ?? "",
     toolName: input.toolName ?? null,
     toolArgs: input.toolArgs ?? null,

@@ -4,7 +4,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { getCookie } from "hono/cookie";
 import type { AppBindings } from "../app";
-import { verifyAccessToken } from "../lib/jwt";
+import { verifyAccessToken, verifyAgentRunToken } from "../lib/jwt";
 import { findApiKey, touchLastUsed } from "../services/api-keys";
 import { getCachedSession, setCachedSession } from "../services/permissions-cache";
 
@@ -324,34 +324,45 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
       //      issued directly by SAML/LDAP and better-auth's bearer plugin).
       // Unknown tokens fall through → unauthenticated.
       const token = authHeader.slice("bearer ".length).trim();
-      const claims = await verifyAccessToken(ctx.env.AUTH_SECRET, token);
-      if (claims) {
-        plane = "app";
-        userId = claims.sub;
-        email = claims.email;
-        appSessionTenantId = claims.tid;
+      // 0. a detached agent-run token (see lib/jwt). Platform plane, minted by
+      //    the agent worker for its own in-process sub-fetches and never handed
+      //    to a client. It names the user the turn runs as; roles are NOT taken
+      //    from the token — tenantMiddleware resolves them from the DB below,
+      //    so a suspended user's in-flight turn loses access too.
+      const runClaims = await verifyAgentRunToken(ctx.env.AUTH_SECRET, token);
+      if (runClaims) {
+        userId = runClaims.sub;
+        email = await loadUserEmail(ctx, runClaims.sub);
       } else {
-        const appSess = await findAppSession(
-          { db: ctx.db, dialect: ctx.dialect },
-          token,
-        );
-        if (appSess) {
+        const claims = await verifyAccessToken(ctx.env.AUTH_SECRET, token);
+        if (claims) {
           plane = "app";
-          userId = appSess.userId;
-          email = appSess.email;
-          appSessionTenantId = appSess.tenantId;
+          userId = claims.sub;
+          email = claims.email;
+          appSessionTenantId = claims.tid;
         } else {
-          // 3. an MCP OAuth access token (better-auth `mcp` plugin). Opaque
-          //    random string, platform plane. The plugin's own get-session
-          //    endpoint skips the expiry check, so it happens here. Tokens
-          //    without the `mcp:write` scope run the MCP surface read-only
-          //    (rides the same guard fields as read-only API keys).
-          const oauthTok = await findOauthToken(ctx, token);
-          if (oauthTok) {
-            userId = oauthTok.userId;
-            email = oauthTok.email;
-            oauthClientId = oauthTok.clientId;
-            apiKeyMcpReadOnly = !oauthTok.scopes.includes("mcp:write");
+          const appSess = await findAppSession(
+            { db: ctx.db, dialect: ctx.dialect },
+            token,
+          );
+          if (appSess) {
+            plane = "app";
+            userId = appSess.userId;
+            email = appSess.email;
+            appSessionTenantId = appSess.tenantId;
+          } else {
+            // 3. an MCP OAuth access token (better-auth `mcp` plugin). Opaque
+            //    random string, platform plane. The plugin's own get-session
+            //    endpoint skips the expiry check, so it happens here. Tokens
+            //    without the `mcp:write` scope run the MCP surface read-only
+            //    (rides the same guard fields as read-only API keys).
+            const oauthTok = await findOauthToken(ctx, token);
+            if (oauthTok) {
+              userId = oauthTok.userId;
+              email = oauthTok.email;
+              oauthClientId = oauthTok.clientId;
+              apiKeyMcpReadOnly = !oauthTok.scopes.includes("mcp:write");
+            }
           }
         }
       }

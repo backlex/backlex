@@ -105,8 +105,9 @@ embedding provider configured it silently no-ops — the agent still works.
 ## Live step streaming
 
 While a turn runs, each step is published to the realtime channel
-`agent:thread:<threadId>` as `agent.start` / `agent.step` / `agent.final` /
-`agent.error` events. Subscribe with SSE to watch an agent think in real time:
+`agent:thread:<threadId>` as `agent.message` (the question, with its author) /
+`agent.start` / `agent.step` / `agent.final` / `agent.error` events. Subscribe
+with SSE to watch an agent think in real time:
 
 ```js
 new EventSource(`/api/realtime/${encodeURIComponent("agent:thread:" + threadId)}/subscribe`,
@@ -117,11 +118,39 @@ The admin **Agents** page uses exactly this to stream tool calls live in its
 chat playground. (Streaming is best-effort; the final transcript is always
 persisted regardless.)
 
+The channel is **gated like the routes it mirrors**: signed-in, admin role, and
+the thread must belong to your active workspace. The only payload a client may
+publish there is a presence frame — `{ t: "hello" | "ping" | "typing" | "bye" }`
+— whose identity is stamped server-side, so nobody can forge a turn event or
+appear as a teammate.
+
+## Team chat
+
+Threads are **workspace-wide**, not per-person: anyone on the team with the
+admin role sees the same conversations and can pick up any of them. That makes
+a thread a shared artifact — one person asks the agent to dig through orders,
+another reads the answer an hour later and asks the follow-up.
+
+- **Attribution** — every `user` message records the team member who wrote it
+  (`agent_messages.user_id`). `GET /api/agents/threads/{id}` returns the
+  transcript plus an `authors` array (`id`, `name`, `email`, `image`) so a
+  client can render bylines without an N+1 lookup. Assistant and tool rows stay
+  unattributed, as do turns driven by an API key.
+- **Live sync** — because every viewer subscribes to the thread channel, a
+  teammate's question, its tool steps, and the final answer appear on your
+  screen as they happen, not on your next refresh.
+- **Presence** — who else has the thread open, and who is composing, rides the
+  same channel (`typing` says *that* someone is typing, never *what*). The
+  roster is derived client-side with a 45s TTL, like record collaboration.
+- **One turn at a time** — a thread that's already `running` rejects a second
+  turn (`409`), so the admin locks the composer and names who's holding it
+  rather than letting you type into a doomed request.
+
 ## Other surfaces
 
 The feature mirrors `flows` across every surface ([parity](./service-map.md)):
 
-- **SDK** — `client.agents.{list,get,create,update,delete,threads,createThread,thread,deleteThread,send,run}`. `run(agentId, message)` starts a fresh thread and runs a turn in one call.
+- **SDK** — `client.agents.{list,get,create,update,delete,threads,createThread,thread,deleteThread,send,run}`. `run(agentId, message)` starts a fresh thread and runs a turn in one call; `thread()` returns `{ thread, messages, authors }`.
 - **GraphQL** — `agents` / `agent` queries; `createAgent` / `updateAgent` / `deleteAgent` / `runAgent` mutations.
 - **MCP** — `agents.list`, `agents.get`, `agents.run` (so an external agent like Claude Desktop can drive a Backlex agent).
 - **CLI** — `backlex agents <list|get|create|update|delete|threads|run>`. `backlex agents run <id> --message "…"` prints the answer.

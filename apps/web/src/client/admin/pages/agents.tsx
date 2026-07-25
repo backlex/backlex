@@ -31,6 +31,9 @@ import {
 import { api } from "@/lib/api";
 import { useMcpTools, type ToolDescriptor } from "@/components/mcp-guards-fields";
 import { fetchSafely } from "./_shared";
+import { useMe } from "../queries";
+import { collabColor } from "../collab";
+import { useAgentThreadLive, type AgentPeer } from "../agent-thread-live";
 
 interface Agent {
   id: string;
@@ -57,10 +60,30 @@ interface Message {
   id: string;
   role: "user" | "assistant" | "tool";
   content: string;
+  /** Team member who asked — threads are workspace-wide, so a transcript can
+   *  mix several people. Null on assistant/tool rows. */
+  userId?: string | null;
   toolName?: string | null;
   tokensIn?: number | null;
   tokensOut?: number | null;
 }
+
+/** A teammate who appears in a transcript, shipped alongside the messages. */
+interface Author {
+  id: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
+}
+
+/** Display handle for an author: their name, else the email's local part. */
+const authorLabel = (a: Author | undefined): string | null => {
+  if (!a) return null;
+  if (a.name?.trim()) return a.name.trim();
+  if (!a.email) return null;
+  const at = a.email.indexOf("@");
+  return at > 0 ? a.email.slice(0, at) : a.email;
+};
 
 interface RunStep {
   thought?: string;
@@ -561,10 +584,16 @@ function AgentDetail({
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [authors, setAuthors] = useState<Record<string, Author>>({});
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [liveSteps, setLiveSteps] = useState<RunStep[]>([]);
+  // A turn a TEAMMATE started, seen over the channel — the composer locks for
+  // everyone while it runs, since the API rejects a concurrent turn anyway.
+  const [remoteRun, setRemoteRun] = useState<{ userId: string | null } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const meQuery = useMe();
+  const meId = meQuery.data?.data?.id ?? null;
 
   const loadThreads = useCallback(async () => {
     const r = await fetchSafely<{ data: Thread[] }>(`/api/agents/${agent.id}/threads`);
@@ -572,8 +601,11 @@ function AgentDetail({
   }, [agent.id]);
 
   const loadMessages = useCallback(async (tid: string) => {
-    const r = await fetchSafely<{ data: { messages: Message[] } }>(`/api/agents/threads/${tid}`);
+    const r = await fetchSafely<{ data: { messages: Message[]; authors?: Author[] } }>(
+      `/api/agents/threads/${tid}`,
+    );
     setMessages(r?.data?.messages ?? []);
+    setAuthors(Object.fromEntries((r?.data?.authors ?? []).map((a) => [a.id, a])));
   }, []);
 
   useEffect(() => {
@@ -593,6 +625,46 @@ function AgentDetail({
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages, liveSteps]);
 
+  // ── team sync ──────────────────────────────────────────────────────────────
+  // Everything below arrives on the thread's channel for EVERY viewer, so a
+  // teammate's question, its tool steps, and the answer land on your screen the
+  // same way your own do. Own frames are skipped where the local optimistic
+  // path already handled them.
+  const onLiveEvent = useCallback(
+    (e: { event: string; data: any }) => {
+      const mine = e.data?.userId && meId && e.data.userId === meId;
+      switch (e.event) {
+        case "agent.message": {
+          if (mine) return; // already on screen optimistically
+          const { id, role, content, userId } = e.data ?? {};
+          if (!id || !content) return;
+          setMessages((m) =>
+            m.some((x) => x.id === id) ? m : [...m, { id, role: role ?? "user", content, userId }],
+          );
+          return;
+        }
+        case "agent.start":
+          if (!mine) setRemoteRun({ userId: e.data?.userId ?? null });
+          return;
+        case "agent.step":
+          if (!mine) setLiveSteps((s) => [...s, e.data as RunStep]);
+          return;
+        case "agent.final":
+        case "agent.error":
+          if (mine) return;
+          setRemoteRun(null);
+          setLiveSteps([]);
+          // Pull the persisted transcript rather than trusting the frame: it
+          // carries the tool rows and token counts too.
+          if (threadId) void loadMessages(threadId);
+          return;
+        default:
+      }
+    },
+    [meId, threadId, loadMessages],
+  );
+  const { peers, notifyTyping } = useAgentThreadLive(threadId, meId, onLiveEvent);
+
   // "New conversation" is purely local — the thread row is created on the first
   // send. Creating it up front left untitled ghost rows in the history list for
   // every abandoned chat.
@@ -600,12 +672,30 @@ function AgentDetail({
     setThreadId(null);
     setMessages([]);
     setLiveSteps([]);
+    setRemoteRun(null);
   }, []);
 
   const activeThread = threads.find((th) => th.id === threadId);
   const activeThreadLabel = threadId
     ? activeThread?.title || t`Conversation`
     : t`New conversation`;
+  // Busy because a TEAMMATE is running a turn — either seen live, or read off a
+  // thread you opened mid-turn. The API rejects a concurrent turn, so the
+  // composer says who's holding it instead of letting you hit a 409.
+  const runningElsewhere =
+    !sending && (!!remoteRun || activeThread?.status === "running");
+  // Name a teammate from the transcript's authors, falling back to the live
+  // roster — a message that arrives over the channel is on screen before the
+  // authors list that names its writer catches up.
+  const nameFor = useCallback(
+    (userId: string): string =>
+      authorLabel(authors[userId]) ??
+      peers.find((p) => p.id === userId)?.name ??
+      userId.slice(0, 6),
+    [authors, peers],
+  );
+  const runnerName = remoteRun?.userId ? nameFor(remoteRun.userId) : null;
+  const typingPeers = peers.filter((p) => p.typing);
 
   const send = useCallback(async () => {
     const message = input.trim();
@@ -637,9 +727,12 @@ function AgentDetail({
     setLiveSteps([]);
     // Optimistically show the user message.
     const tmpId = `tmp-${Date.now()}`;
-    setMessages((m) => [...m, { id: tmpId, role: "user", content: message }]);
+    setMessages((m) => [...m, { id: tmpId, role: "user", content: message, userId: meId }]);
 
-    // Subscribe to live step events for this turn.
+    // Own-turn step stream. The team subscription (useAgentThreadLive) is
+    // already open for an existing thread, but on a brand-new one it attaches a
+    // render later — this one is guaranteed live before the POST, so your own
+    // steps never race. Teammate frames are ignored here; the hook has them.
     let es: EventSource | null = null;
     try {
       es = new EventSource(
@@ -685,7 +778,7 @@ function AgentDetail({
       // untitled thread after its opening prompt and bumps status/updatedAt.
       void loadThreads();
     }
-  }, [agent.id, input, sending, threadId, loadMessages, loadThreads, pushToast, t]);
+  }, [agent.id, input, sending, threadId, meId, loadMessages, loadThreads, pushToast, t]);
 
   const totalTokens = messages.reduce(
     (sum, m) => sum + (m.tokensIn ?? 0) + (m.tokensOut ?? 0),
@@ -716,6 +809,7 @@ function AgentDetail({
           <span className="text-xs text-muted-foreground">· {fmtTokens(totalTokens)} {t`tokens`}</span>
         )}
         <div className="ml-auto flex items-center gap-2">
+          <PresenceChips peers={peers} nameFor={nameFor} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" icon={I.History} className="max-w-[45vw] sm:max-w-[220px]">
@@ -781,7 +875,12 @@ function AgentDetail({
               </div>
             )}
             {messages.map((m) => (
-              <MessageRow key={m.id} message={m} />
+              <MessageRow
+                key={m.id}
+                message={m}
+                label={m.userId ? nameFor(m.userId) : null}
+                isMine={!m.userId || m.userId === meId}
+              />
             ))}
             {liveSteps.map((s, i) => (
               <div key={`live-${i}`} className="flex min-w-0 flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
@@ -792,41 +891,120 @@ function AgentDetail({
                 <span className={`whitespace-pre-wrap break-all font-mono text-[11px] ${s.isError ? "text-destructive" : "text-muted-foreground"}`}>{s.observation.slice(0, 280)}</span>
               </div>
             ))}
-            {sending && (
+            {(sending || runningElsewhere) && (
               <div className="flex flex-col gap-2 px-1 py-1.5">
                 <div className="agent-sweep-track" aria-hidden />
                 <span className="text-[12px] text-muted-foreground">
-                  {liveSteps.length > 0 ? t`Working…` : t`Thinking…`}
+                  {sending
+                    ? liveSteps.length > 0
+                      ? t`Working…`
+                      : t`Thinking…`
+                    : runnerName
+                      ? t`${runnerName} is asking…`
+                      : t`A teammate is asking…`}
                 </span>
               </div>
             )}
             <div ref={endRef} />
           </div>
         </ScrollArea>
-        <div className="flex items-end gap-2 border-t border-border p-2.5">
+        <div className="flex flex-col gap-1.5 border-t border-border p-2.5">
+          {typingPeers.length > 0 && (
+            <span className="px-1 text-[11px] text-muted-foreground">
+              {typingPeers.length === 1
+                ? t`${nameFor(typingPeers[0]!.id)} is typing…`
+                : t`${typingPeers.length} teammates are typing…`}
+            </span>
+          )}
+          <div className="flex items-end gap-2">
           <Textarea
             className="min-h-[40px] flex-1 resize-none text-[13px]"
             value={input}
-            disabled={sending}
-            onChange={(e) => setInput(e.target.value)}
+            disabled={sending || runningElsewhere}
+            onChange={(e) => {
+              setInput(e.target.value);
+              notifyTyping();
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 void send();
               }
             }}
-            placeholder={t`Ask the agent…`}
+            placeholder={
+              runningElsewhere
+                ? runnerName
+                  ? t`${runnerName} is running a turn…`
+                  : t`A teammate is running a turn…`
+                : t`Ask the agent…`
+            }
           />
-          <Button variant="primary" size="sm" icon={I.ArrowRight} disabled={sending || !input.trim()} onClick={send}>
+          <Button
+            variant="primary"
+            size="sm"
+            icon={I.ArrowRight}
+            disabled={sending || runningElsewhere || !input.trim()}
+            onClick={send}
+          >
             {sending ? <Trans>Working…</Trans> : <Trans>Send</Trans>}
           </Button>
+          </div>
         </div>
       </div>
     </>
   );
 }
 
-function MessageRow({ message }: { message: Message }) {
+/** Who else has this thread open, as overlapping initials. Threads are
+ *  workspace-wide, so knowing a teammate is here (and typing) is the difference
+ *  between a shared conversation and two people talking over each other. */
+function PresenceChips({
+  peers,
+  nameFor,
+}: {
+  peers: AgentPeer[];
+  /** Prefers the transcript's author name (real name) over the presence
+   *  frame's handle (email local-part), so one person reads one way. */
+  nameFor: (userId: string) => string;
+}) {
+  const { t } = useLingui();
+  if (peers.length === 0) return null;
+  const shown = peers.slice(0, 3);
+  return (
+    <span
+      className="flex items-center -space-x-1.5"
+      title={peers
+        .map((p) => (p.typing ? `${nameFor(p.id)} (${t`typing`})` : nameFor(p.id)))
+        .join(", ")}
+    >
+      {shown.map((p) => (
+        <span
+          key={p.id}
+          className={`inline-flex size-6 items-center justify-center rounded-full border-2 border-background text-[10px] font-semibold uppercase text-white ${p.typing ? "animate-pulse" : ""}`}
+          style={{ backgroundColor: p.color }}
+        >
+          {nameFor(p.id).charAt(0)}
+        </span>
+      ))}
+      {peers.length > shown.length && (
+        <span className="inline-flex size-6 items-center justify-center rounded-full border-2 border-background bg-muted text-[10px] font-semibold text-muted-foreground">
+          +{peers.length - shown.length}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function MessageRow({
+  message,
+  label: authorName,
+  isMine,
+}: {
+  message: Message;
+  /** Display name of the teammate who wrote it, when it isn't yours. */
+  label: string | null;
+  isMine: boolean;
+}) {
   if (message.role === "tool") {
     return (
       <div className="flex min-w-0 flex-col gap-1 rounded-control border border-border bg-muted/40 px-3 py-2 text-[12px]">
@@ -849,9 +1027,24 @@ function MessageRow({ message }: { message: Message }) {
       </div>
     );
   }
+  // A teammate's question keeps the user-side alignment but drops the "mine"
+  // fill and gains a byline — otherwise a shared transcript reads as if one
+  // person asked everything.
+  const label = isMine ? null : authorName;
   return (
-    <div className={`flex min-w-0 ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[80%] overflow-hidden whitespace-pre-wrap break-words rounded-surface px-3.5 py-2 text-[13px] ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+    <div className={`flex min-w-0 flex-col gap-1 ${isUser ? "items-end" : "items-start"}`}>
+      {label && (
+        <span className="flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
+          <span
+            className="inline-flex size-4 items-center justify-center rounded-full text-[9px] font-semibold uppercase text-white"
+            style={{ backgroundColor: collabColor(message.userId ?? label) }}
+          >
+            {label.charAt(0)}
+          </span>
+          {label}
+        </span>
+      )}
+      <div className={`max-w-[80%] overflow-hidden whitespace-pre-wrap break-words rounded-surface px-3.5 py-2 text-[13px] ${isUser ? (isMine ? "bg-primary text-primary-foreground" : "border border-border bg-background") : "bg-muted"}`}>
         {message.content}
       </div>
     </div>

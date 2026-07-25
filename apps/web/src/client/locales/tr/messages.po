@@ -337,6 +337,11 @@ msgstr "{0} düzenliyor"
 msgid "{0} is required"
 msgstr "{0} zorunludur"
 
+#. placeholder {0}: nameFor(typingPeers[0]!.id)
+#: src/client/admin/pages/agents.tsx
+msgid "{0} is typing…"
+msgstr "{0} yazıyor…"
+
 #. placeholder {0}: c.count
 #: src/client/admin/extras.tsx
 msgid "{0} items"
@@ -468,6 +473,11 @@ msgstr "{0} sistem · {1} özel"
 #: src/client/pages/rest-explorer.tsx
 msgid "{0} tags"
 msgstr "{0} etiket"
+
+#. placeholder {0}: typingPeers.length
+#: src/client/admin/pages/agents.tsx
+msgid "{0} teammates are typing…"
+msgstr "{0} takım arkadaşı yazıyor…"
 
 #. placeholder {0}: form.errorCount
 #: src/client/admin/item-editor.tsx
@@ -622,6 +632,14 @@ msgstr "{r} bu kuralla eşleşen satırları silebilir."
 #: src/client/admin/condition-editor.tsx
 msgid "{r} may update rows matching this rule."
 msgstr "{r} bu kuralla eşleşen satırları güncelleyebilir."
+
+#: src/client/admin/pages/agents.tsx
+msgid "{runnerName} is asking…"
+msgstr "{runnerName} soruyor…"
+
+#: src/client/admin/pages/agents.tsx
+msgid "{runnerName} is running a turn…"
+msgstr "{runnerName} bir tur çalıştırıyor…"
 
 #: src/client/admin/collections-index.tsx
 msgid "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
@@ -826,6 +844,14 @@ msgstr "İmzalı bir bağlantı gelen kutunuza gönderilecek. Tek kullanımlık,
 #: src/client/admin/parity/insights.tsx
 msgid "A single value — counter fits best; sparkline / bars need multiple rows."
 msgstr "Tek değer — sayaç en uygunudur; kıvılcım grafik / çubuklar birden fazla satır gerektirir."
+
+#: src/client/admin/pages/agents.tsx
+msgid "A teammate is asking…"
+msgstr "Bir takım arkadaşı soruyor…"
+
+#: src/client/admin/pages/agents.tsx
+msgid "A teammate is running a turn…"
+msgstr "Bir takım arkadaşı bir tur çalıştırıyor…"
 
 #: src/client/admin/parity/email-templates.tsx
 msgid "A template with key \"{trimmedKey}\" already exists."
@@ -12929,6 +12955,10 @@ msgstr "Yazın ve Enter'a basın…"
 #: src/client/pages/graphql.tsx
 msgid "Types"
 msgstr "Türler"
+
+#: src/client/admin/pages/agents.tsx
+msgid "typing"
+msgstr "yazıyor"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "unbound"

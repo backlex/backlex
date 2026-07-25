@@ -24,6 +24,7 @@ import {
   getAgent,
   getThread,
   listAgents,
+  listAuthors,
   listMessages,
   listThreads,
   updateAgent,
@@ -190,7 +191,13 @@ export const agentsRoutes = (app: Hono<AppBindings>, env: Env) => {
     const thread = await getThread(ctx, c.req.param("threadId"), tenantId);
     if (!thread) throw new AppError("NOT_FOUND", "Thread not found");
     const messages = await listMessages(ctx, thread.id);
-    return c.json({ data: { thread, messages } });
+    // Threads are team-wide, so a transcript can mix several authors — ship
+    // the people alongside it instead of making the client fetch each one.
+    const authors = await listAuthors(ctx, [
+      ...messages.map((m) => m.userId),
+      thread.createdBy,
+    ]);
+    return c.json({ data: { thread, messages, authors } });
   });
 
   r.delete("/threads/:threadId", async (c) => {

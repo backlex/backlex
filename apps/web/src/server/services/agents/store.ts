@@ -42,6 +42,9 @@ export interface MessageRow {
   tenantId: string | null;
   threadId: string;
   role: MessageRole;
+  /** Who wrote a `user` message (null for assistant/tool rows, and for turns
+   *  driven by an API key instead of a person). */
+  userId: string | null;
   content: string;
   toolName: string | null;
   toolArgs: unknown;
@@ -255,16 +258,29 @@ export const createThread = async (
   return row as ThreadRow;
 };
 
-/** Name a thread after its opening prompt — only if it doesn't have a title
- *  yet, so an explicit title (or a later message) never overwrites it. */
-export const ensureThreadTitle = async (
-  ctx: Ctx,
-  id: string,
-  message: string,
-): Promise<void> => {
-  const title = threadTitleFrom(message);
-  if (!title) return;
+/** Name a thread after its OPENING prompt — the earliest user message, not the
+ *  one that just arrived. Called after the new message is appended, so on a
+ *  first turn those are the same row; on a thread that predates titles (or one
+ *  a teammate picks up months later) it still names the conversation after how
+ *  it started. No-op once the thread has a title, so an explicit one stands. */
+export const ensureThreadTitle = async (ctx: Ctx, id: string): Promise<void> => {
   const t = threadsTable(ctx.dialect);
+  const existing = (await (ctx.db as any)
+    .select({ title: t.title })
+    .from(t)
+    .where(eq(t.id, id))
+    .limit(1)) as { title: string | null }[];
+  if (existing[0]?.title) return;
+
+  const m = messagesTable(ctx.dialect);
+  const first = (await (ctx.db as any)
+    .select({ content: m.content })
+    .from(m)
+    .where(and(eq(m.threadId, id), eq(m.role, "user")))
+    .orderBy(asc(m.createdAt))
+    .limit(1)) as { content: string }[];
+  const title = threadTitleFrom(first[0]?.content ?? "");
+  if (!title) return;
   await (ctx.db as any)
     .update(t)
     .set({ title })
@@ -296,6 +312,33 @@ export const deleteThread = async (
     .where(and(eq(tt.id, id), eq(tt.tenantId, tenantId)));
 };
 
+// ── authors ───────────────────────────────────────────────────────────────
+
+export interface ThreadAuthor {
+  id: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
+}
+
+const usersTable = (d: "pg" | "sqlite") =>
+  d === "pg" ? pg.schema.users : sqlite.schema.users;
+
+/** Resolve the team members behind a transcript's `user_id`s in one query, so
+ *  the admin can render "who asked" without an N+1 per message. */
+export const listAuthors = async (
+  ctx: Ctx,
+  userIds: (string | null)[],
+): Promise<ThreadAuthor[]> => {
+  const ids = [...new Set(userIds.filter((v): v is string => !!v))];
+  if (ids.length === 0) return [];
+  const u = usersTable(ctx.dialect);
+  return (await (ctx.db as any)
+    .select({ id: u.id, name: u.name, email: u.email, image: u.image })
+    .from(u)
+    .where(inArray(u.id, ids))) as ThreadAuthor[];
+};
+
 // ── messages ──────────────────────────────────────────────────────────────
 
 export const listMessages = async (
@@ -314,6 +357,7 @@ export interface AppendMessageInput {
   threadId: string;
   tenantId: string | null;
   role: MessageRole;
+  userId?: string | null;
   content?: string;
   toolName?: string | null;
   toolArgs?: unknown;
@@ -334,6 +378,7 @@ export const appendMessage = async (
     tenantId: input.tenantId,
     threadId: input.threadId,
     role: input.role,
+    userId: input.userId ?? null,
     content: input.content ?? "",
     toolName: input.toolName ?? null,
     toolArgs: input.toolArgs ?? null,

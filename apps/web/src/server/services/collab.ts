@@ -53,6 +53,47 @@ export const parseCollabChannel = (channel: string): CollabChannelScope | null =
   return { slug: rest.slice(0, sep), itemId: rest.slice(sep + 1) };
 };
 
+export const AGENT_THREAD_PREFIX = "agent:thread:";
+
+/** Parse `agent:thread:<threadId>` → the thread id, or null when malformed. */
+export const parseAgentThreadChannel = (channel: string): string | null => {
+  if (!channel.startsWith(AGENT_THREAD_PREFIX)) return null;
+  const id = channel.slice(AGENT_THREAD_PREFIX.length);
+  return id && !id.includes(":") ? id : null;
+};
+
+/** Presence protocol for an agent thread — the only thing a client may publish
+ *  on `agent:thread:*` (the turn events themselves are server-emitted). `typing`
+ *  carries no text: it says someone is composing, never what they're writing. */
+export const AgentPresenceSchema = z
+  .object({ t: z.enum(["hello", "ping", "typing", "bye"]) })
+  .strict()
+  .openapi("AgentPresenceInput");
+
+export interface AgentPresenceMessage {
+  event: "agent.presence";
+  data: {
+    t: "hello" | "ping" | "typing" | "bye";
+    user: { id: string; name: string | null };
+    at: number;
+  };
+}
+
+/** Wrap a validated presence input in the `{event, data}` envelope the agent
+ *  channel already uses, with identity stamped from the session so a member
+ *  can't appear as someone else. */
+export const buildAgentPresenceMessage = (
+  input: z.infer<typeof AgentPresenceSchema>,
+  auth: { userId: string; email: string | null },
+): AgentPresenceMessage => ({
+  event: "agent.presence",
+  data: {
+    t: input.t,
+    user: { id: auth.userId, name: auth.email },
+    at: Date.now(),
+  },
+});
+
 export const CollabPublishSchema = z
   .object({
     t: z.enum(["hello", "focus", "blur", "ping", "bye"]),

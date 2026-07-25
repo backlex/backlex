@@ -221,12 +221,21 @@ export const runAgentTurn = async (
     tenantId,
     role: "user",
     content: message,
+    userId: input.auth.userId,
   });
   // Label the thread with its opening prompt so the history picker reads as
   // text instead of a uuid. No-op once the thread has a title.
-  await ensureThreadTitle(ctx, threadId, message);
+  await ensureThreadTitle(ctx, threadId);
   await setThreadStatus(ctx, threadId, "running");
-  await emit("agent.start", { threadId, agentId });
+  // Threads are team-visible: everyone watching this one sees the question
+  // appear and who asked it, not just the person who sent it.
+  await emit("agent.message", {
+    id: userMsg.id,
+    role: "user",
+    content: message,
+    userId: input.auth.userId,
+  });
+  await emit("agent.start", { threadId, agentId, userId: input.auth.userId });
   if (agent.memory) await storeMemory(ctx, threadId, userMsg.id, message);
 
   const steps: RunStep[] = [];

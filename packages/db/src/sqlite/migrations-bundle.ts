@@ -78,6 +78,7 @@ import m71 from "../../drizzle/sqlite/20260720090000_usage_metering/migration.sq
 import m72 from "../../drizzle/sqlite/20260720120000_mcp_oauth/migration.sql" with { type: "text" };
 import m73 from "../../drizzle/sqlite/20260721090000_extensions/migration.sql" with { type: "text" };
 import m74 from "../../drizzle/sqlite/20260722090000_staged_edits/migration.sql" with { type: "text" };
+import m75 from "../../drizzle/sqlite/20260725090000_agent_message_author/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -160,4 +161,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260720120000_mcp_oauth", sql: m72 },
   { name: "20260721090000_extensions", sql: m73 },
   { name: "20260722090000_staged_edits", sql: m74 },
+  { name: "20260725090000_agent_message_author", sql: m75 },
 ];

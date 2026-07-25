@@ -661,9 +661,21 @@ export interface AgentMessage {
   threadId: string;
   role: "user" | "assistant" | "tool";
   content: string;
+  /** Team member who asked. Threads are workspace-wide, so a transcript can
+   *  mix authors; null on assistant/tool rows and on API-key-driven turns. */
+  userId?: string | null;
   toolName?: string | null;
   toolArgs?: unknown;
   toolResult?: unknown;
+}
+
+/** A team member referenced by a transcript's `userId`s, returned alongside
+ *  the messages so a client can render "who asked" without an extra lookup. */
+export interface AgentThreadAuthor {
+  id: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
 }
 
 /** One reason→act step the agent took during a turn. */
@@ -698,8 +710,10 @@ export interface AgentsClient {
   threads(agentId: string): Promise<{ data: AgentThread[] }>;
   /** Start a new conversation thread for an agent. */
   createThread(agentId: string, title?: string): Promise<{ data: AgentThread }>;
-  /** Fetch a thread and its full message transcript. */
-  thread(threadId: string): Promise<{ data: { thread: AgentThread; messages: AgentMessage[] } }>;
+  /** Fetch a thread, its full message transcript, and the people who wrote it. */
+  thread(threadId: string): Promise<{
+    data: { thread: AgentThread; messages: AgentMessage[]; authors: AgentThreadAuthor[] };
+  }>;
   /** Delete a thread and its messages. */
   deleteThread(threadId: string): Promise<{ ok: boolean }>;
   /** Send a message and run one turn to completion. */
@@ -2169,10 +2183,9 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         title ? { title } : {},
       ),
     thread: (threadId: string) =>
-      request<{ data: { thread: AgentThread; messages: AgentMessage[] } }>(
-        "GET",
-        `/api/agents/threads/${encodeURIComponent(threadId)}`,
-      ),
+      request<{
+        data: { thread: AgentThread; messages: AgentMessage[]; authors: AgentThreadAuthor[] };
+      }>("GET", `/api/agents/threads/${encodeURIComponent(threadId)}`),
     deleteThread: (threadId: string) =>
       request<{ ok: boolean }>(
         "DELETE",

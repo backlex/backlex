@@ -578,6 +578,10 @@ export const agentMessages = sqliteTable(
     tenantId: text("tenant_id"),
     threadId: text("thread_id").notNull(),
     role: text("role").notNull(),
+    /** Author of a `user` message — threads are team-visible, so a transcript
+     *  has to say who asked. Null for assistant/tool rows and for turns run by
+     *  an API key rather than a person. */
+    userId: text("user_id"),
     content: text("content").notNull().default(""),
     toolName: text("tool_name"),
     toolArgs: text("tool_args", { mode: "json" }).$type<unknown>(),

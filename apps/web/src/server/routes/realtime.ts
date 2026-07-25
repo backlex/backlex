@@ -32,13 +32,17 @@ import { rateLimitOk } from "../lib/rate-limit";
 import { isStatelessEdge } from "../lib/runtime";
 import { defaultHook } from "../lib/openapi-router";
 import {
+  AgentPresenceSchema,
   COLLAB_PREFIX,
   CollabPublishSchema,
+  buildAgentPresenceMessage,
   buildCollabMessage,
   collabConfig,
   mintAblyTokenRequest,
+  parseAgentThreadChannel,
   parseCollabChannel,
 } from "../services/collab";
+import { getThread } from "../services/agents/store";
 
 /** Poll interval for the Redis-Stream subscribe loop (serverless transport). */
 const REDIS_POLL_MS = 1_000;
@@ -76,6 +80,9 @@ interface Gate {
   /** true for `collab:*` channels — publish bodies are schema-validated and
    *  identity-stamped instead of forwarded as-is. */
   collab?: boolean;
+  /** true for `agent:thread:*` channels — same treatment as collab, but the
+   *  only publishable message is thread presence/typing. */
+  agentThread?: boolean;
 }
 
 const clientIp = (c: { req: { header: (n: string) => string | undefined } }): string =>
@@ -278,6 +285,29 @@ const gateForChannel = async (
     }
     return { collab: true };
   }
+  const agentThreadId = parseAgentThreadChannel(channel);
+  if (agentThreadId) {
+    // An agent transcript is workspace data — the turn events carry the
+    // questions, the tool observations, and the answer. Gate it like the
+    // /api/agents routes it mirrors: admin, and the thread must belong to the
+    // caller's active workspace. (This channel used to fall through to the
+    // free-form branch, i.e. readable by anyone who guessed a thread id.)
+    if (!auth.userId) {
+      throw new AppError("UNAUTHORIZED", "Sign in required for agent thread channels");
+    }
+    if (!auth.roles.includes(SYSTEM_ROLES.admin)) {
+      throw new AppError("FORBIDDEN", "Admin role required for agent thread channels");
+    }
+    if (!auth.tenantId) {
+      throw new AppError("UNAUTHORIZED", "Active tenant required");
+    }
+    const thread = await getThread(ctx, agentThreadId, auth.tenantId);
+    if (!thread) throw new AppError("NOT_FOUND", "Thread not found");
+    return {
+      meta: { authSubject: auth, conditions: null, fields: null },
+      agentThread: true,
+    };
+  }
   // user-defined channel: no auth, no filter
   return {};
 };
@@ -432,6 +462,22 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           throw new AppError("VALIDATION", "Invalid collab message — expected { t, item?, field? }");
         }
         payload = buildCollabMessage(parsed.data, {
+          userId: auth.userId!,
+          email: auth.email,
+        });
+      }
+      if (gate.agentThread) {
+        // Turn events are server-emitted; the only thing a client may put on an
+        // agent thread channel is its own presence (identity stamped here, so
+        // nobody can forge an `agent.final` or appear as a teammate).
+        const parsed = AgentPresenceSchema.safeParse(payload);
+        if (!parsed.success) {
+          throw new AppError(
+            "VALIDATION",
+            "Invalid agent presence message — expected { t: hello | ping | typing | bye }",
+          );
+        }
+        payload = buildAgentPresenceMessage(parsed.data, {
           userId: auth.userId!,
           email: auth.email,
         });

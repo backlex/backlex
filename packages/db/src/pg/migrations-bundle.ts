@@ -73,6 +73,7 @@ import m66 from "../../drizzle/pg/20260720090000_usage_metering/migration.sql" w
 import m67 from "../../drizzle/pg/20260720120000_mcp_oauth/migration.sql" with { type: "text" };
 import m68 from "../../drizzle/pg/20260721090000_extensions/migration.sql" with { type: "text" };
 import m69 from "../../drizzle/pg/20260722090000_staged_edits/migration.sql" with { type: "text" };
+import m70 from "../../drizzle/pg/20260725090000_agent_message_author/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -150,4 +151,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260720120000_mcp_oauth", sql: m67 },
   { name: "20260721090000_extensions", sql: m68 },
   { name: "20260722090000_staged_edits", sql: m69 },
+  { name: "20260725090000_agent_message_author", sql: m70 },
 ];

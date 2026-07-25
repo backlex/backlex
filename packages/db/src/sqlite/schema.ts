@@ -540,6 +540,9 @@ export const agents = sqliteTable(
     description: text("description"),
     systemPrompt: text("system_prompt"),
     model: text("model"),
+    /** Reasoning effort (`low` | `medium` | `high`); null = provider default.
+     *  See the pg schema for the full note. */
+    effort: text("effort"),
     tools: text("tools", { mode: "json" }).$type<string[]>().notNull().default([]),
     maxSteps: integer("max_steps").notNull().default(8),
     memory: integer("memory", { mode: "boolean" }).notNull().default(false),

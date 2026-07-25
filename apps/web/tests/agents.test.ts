@@ -205,6 +205,40 @@ describe("agents — run loop", () => {
     expect(((await run.json()) as { data: { answer: string } }).data.answer).toBe("hi there");
   });
 
+  test("effort round-trips and rejects an unknown level", async () => {
+    const created = await h.fetch(
+      "/api/agents",
+      json({ name: `Effort ${Date.now()}`, tools: [], effort: "low" }),
+    );
+    expect(created.status).toBe(201);
+    const id = ((await created.json()) as { data: { id: string; effort: string | null } })
+      .data.id;
+
+    const read = (await (await h.fetch(`/api/agents/${id}`)).json()) as {
+      data: { effort: string | null };
+    };
+    expect(read.data.effort).toBe("low");
+
+    // Explicit null clears it back to the provider default.
+    expect(
+      (await h.fetch(`/api/agents/${id}`, { ...json({ effort: null }), method: "PATCH" }))
+        .status,
+    ).toBe(200);
+    expect(
+      (
+        (await (await h.fetch(`/api/agents/${id}`)).json()) as {
+          data: { effort: string | null };
+        }
+      ).data.effort,
+    ).toBeNull();
+
+    const bad = await h.fetch(`/api/agents/${id}`, {
+      ...json({ effort: "turbo" }),
+      method: "PATCH",
+    });
+    expect(bad.status).toBe(422);
+  });
+
   test("an untitled thread is named after its opening prompt", async () => {
     const thread = await h.fetch(`/api/agents/${agentId}/threads`, json({}));
     const threadId = ((await thread.json()) as { data: { id: string } }).data.id;

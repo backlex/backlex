@@ -18,7 +18,7 @@
  * in-process sub-fetch the MCP + Ask-AI surfaces use, so permissions, tenant
  * resolution, and the permission DSL all apply unchanged).
  */
-import { callClaudeTools } from "../../mcp/ai-client";
+import { callClaudeTools, type AiEffort } from "../../mcp/ai-client";
 import { allTools } from "../../mcp/tools";
 import type { McpTool, ToolCtx } from "../../mcp/types";
 import type { ModelMessage } from "ai";
@@ -66,6 +66,9 @@ export interface RunTurnResult {
   answer: string;
   steps: RunStep[];
   stoppedReason: "final" | "max_steps" | "error";
+  /** Input tokens this turn that were served from the prompt cache (~0.1× of
+   *  full input price). Zero on the managed-cloud path, which doesn't cache. */
+  cachedTokens: number;
 }
 
 // Default agent model. Sonnet 5 is the balanced pick for multi-step agentic
@@ -239,6 +242,7 @@ export const runAgentTurn = async (
   if (agent.memory) await storeMemory(ctx, threadId, userMsg.id, message);
 
   const steps: RunStep[] = [];
+  let cachedTokens = 0;
   const maxSteps = Math.max(1, Math.min(agent.maxSteps || 8, 25));
 
   // Running conversation the model sees, seeded from the persisted thread. The
@@ -257,11 +261,15 @@ export const runAgentTurn = async (
         tools: toolDefs,
         model,
         maxTokens: 4096,
+        effort: agent.effort as AiEffort | undefined,
       });
       const usage = {
         tokensIn: reply.usage?.input_tokens ?? null,
         tokensOut: reply.usage?.output_tokens ?? null,
       };
+      // Prompt-cache hits across the loop's steps — the whole point of the
+      // caching option, so make it observable rather than inferred.
+      cachedTokens += reply.usage?.cache_read_input_tokens ?? 0;
 
       // No tool calls → the model produced its final answer.
       if (reply.toolCalls.length === 0) {
@@ -278,7 +286,7 @@ export const runAgentTurn = async (
         await setThreadStatus(ctx, threadId, "idle");
         if (agent.memory) await storeMemory(ctx, threadId, msg.id, answer);
         await emit("agent.final", { answer });
-        return { answer, steps, stoppedReason: "final" };
+        return { answer, steps, stoppedReason: "final", cachedTokens };
       }
 
       // Reflect the model's assistant turn (any text + its tool calls) back into
@@ -383,7 +391,7 @@ export const runAgentTurn = async (
     });
     await setThreadStatus(ctx, threadId, "idle");
     await emit("agent.final", { answer, stoppedReason: "max_steps" });
-    return { answer, steps, stoppedReason: "max_steps" };
+    return { answer, steps, stoppedReason: "max_steps", cachedTokens };
   } catch (e) {
     await setThreadStatus(ctx, threadId, "error");
     await emit("agent.error", {

@@ -2140,6 +2140,10 @@ msgstr "atla — salt okunur"
 msgid "c_{target} is empty."
 msgstr "c_{target} boş."
 
+#: src/client/admin/pages/agents.tsx
+msgid "cached"
+msgstr "önbellekten"
+
 #: src/client/admin/item-views.tsx
 msgid "Calendar"
 msgstr "Takvim"
@@ -4251,6 +4255,10 @@ msgstr "editör"
 msgid "Editor"
 msgstr "Editör"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Effort"
+msgstr "Eforu"
+
 #: src/client/admin/account-page.tsx
 #: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/pages/overview.tsx
@@ -5616,6 +5624,10 @@ msgstr "kanca"
 #~ msgid "Hosted Claude"
 #~ msgstr "Barındırılan Claude"
 
+#: src/client/admin/pages/agents.tsx
+msgid "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
+msgstr "Modelin her adımda ne kadar düşüneceği. Düşük efor daha az düşünme token'ı ve daha az araç çağrısı demek — daha ucuz ve hızlı, daha az kapsamlı. Desteklemeyen modellerde yok sayılır."
+
 #: src/client/admin/collection-settings.tsx
 msgid "how this collection shows up in nav and lists"
 msgstr "bu koleksiyonun gezinti ve listelerde nasıl görüneceği"
@@ -5820,6 +5832,10 @@ msgstr "Girdi"
 #: src/client/admin/pages/jobs.tsx
 msgid "Input (JSON)"
 msgstr "Girdi (JSON)"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
+msgstr "Son turda prompt önbelleğinden karşılanan girdi token'ları — tam fiyatın yaklaşık onda biri üzerinden faturalanır."
 
 #: src/client/admin/display-template-editor.tsx
 msgid "Insert field"

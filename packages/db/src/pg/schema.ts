@@ -606,6 +606,11 @@ export const agents = pgTable(
     description: text("description"),
     systemPrompt: text("system_prompt"),
     model: text("model"),
+    /** Reasoning effort (`low` | `medium` | `high`), null = the provider
+     *  default. The cheapest quality/cost dial: lower effort means fewer
+     *  thinking tokens and fewer, more consolidated tool calls. Only sent to
+     *  models that accept it. */
+    effort: text("effort"),
     /** Allow-list of MCP tool names this agent may invoke. */
     tools: jsonb("tools").$type<string[]>().notNull().default([]),
     /** Hard cap on reason→act iterations per turn (runaway-loop backstop). */

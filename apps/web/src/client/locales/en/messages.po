@@ -2140,6 +2140,10 @@ msgstr "bypass — read-only"
 msgid "c_{target} is empty."
 msgstr "c_{target} is empty."
 
+#: src/client/admin/pages/agents.tsx
+msgid "cached"
+msgstr "cached"
+
 #: src/client/admin/item-views.tsx
 msgid "Calendar"
 msgstr "Calendar"
@@ -4251,6 +4255,10 @@ msgstr "editor"
 msgid "Editor"
 msgstr "Editor"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Effort"
+msgstr "Effort"
+
 #: src/client/admin/account-page.tsx
 #: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/pages/overview.tsx
@@ -5616,6 +5624,10 @@ msgstr "hooks"
 #~ msgid "Hosted Claude"
 #~ msgstr "Hosted Claude"
 
+#: src/client/admin/pages/agents.tsx
+msgid "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
+msgstr "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
+
 #: src/client/admin/collection-settings.tsx
 msgid "how this collection shows up in nav and lists"
 msgstr "how this collection shows up in nav and lists"
@@ -5820,6 +5832,10 @@ msgstr "Input"
 #: src/client/admin/pages/jobs.tsx
 msgid "Input (JSON)"
 msgstr "Input (JSON)"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
+msgstr "Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price."
 
 #: src/client/admin/display-template-editor.tsx
 msgid "Insert field"

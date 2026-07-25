@@ -96,7 +96,7 @@ export function Select({
           // `min-w-0` lets the trigger shrink inside flex/grid parents (e.g. a
           // narrow dialog) instead of forcing the container wider than the
           // viewport when the selected option's label+hint is long.
-          "w-full min-w-0 justify-between",
+          "w-full min-w-0 justify-between overflow-hidden",
           size === "sm" && "text-xs",
           className,
         )}
@@ -109,11 +109,19 @@ export function Select({
           const icon = renderIcon(o.icon);
           return (
             <SelectItem key={o.value} value={radixValue}>
-              <span className="flex items-center gap-2">
+              {/* Radix clones the selected item's children into the trigger, so
+                  this row has to be able to shrink: without min-w-0 + truncate a
+                  long label+hint (e.g. the agent Model picker's) pushes the
+                  trigger past the viewport inside a narrow dialog. */}
+              <span className="flex min-w-0 items-center gap-2">
                 {icon && <span className="inline-flex items-center">{icon}</span>}
-                <span>{o.label}</span>
+                {/* The label always reads in full; the hint is the part that
+                    gives way when space runs out. */}
+                <span className="shrink-0 whitespace-nowrap">{o.label}</span>
                 {o.hint && (
-                  <span className="text-muted-foreground font-mono text-xs">{o.hint}</span>
+                  <span className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-xs">
+                    {o.hint}
+                  </span>
                 )}
                 {o.badge && (
                   <Badge variant="outline" mono>

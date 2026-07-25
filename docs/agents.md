@@ -76,6 +76,7 @@ that behaviour get the same label derived on read in `GET /threads`.
 | `description` | `null` | Free text. |
 | `systemPrompt` | a generic helper persona | Shapes the agent's behaviour. |
 | `model` | `anthropic/claude-haiku-4-5` | Gateway-prefixed id or bare Anthropic id (resolved by `callClaude`). |
+| `effort` | `null` | Reasoning effort — `low` / `medium` / `high`, or null for the provider default. See [Cost controls](#cost-controls). |
 | `tools` | `[]` | Allow-list of MCP tool names (validated against `allTools` at write time). An empty list = model-only, no data access. |
 | `maxSteps` | `8` | Hard cap on reason→act iterations per turn (1–25). |
 | `memory` | `false` | See [Memory](#memory). |
@@ -101,6 +102,30 @@ thread grows long).
 Memory is **best-effort**: it reuses the workspace embedding provider and
 `EMBEDDING_DEFAULT_MODEL` (see [Vector search](./vector-search.md)). With no
 embedding provider configured it silently no-ops — the agent still works.
+
+## Cost controls
+
+A turn is a loop: every step re-sends the system prompt, the tool schemas, and
+the transcript so far. That prefix is identical from one step to the next, which
+is exactly what prompt caching is for.
+
+- **Prompt caching is always on** and needs no configuration. Each request marks
+  its last cacheable block, so the next step re-reads the whole prefix at ~0.1×
+  of input price instead of paying full freight. The ~1.25× write premium pays
+  for itself on the second call of any multi-step turn; a prefix below the
+  model's minimum simply doesn't cache (no error). `POST .../messages` reports
+  what it saved as `cachedTokens`, and the same number lands on the `agent.run`
+  activity log entry.
+- **`effort`** is the per-agent quality/cost dial: `low` means fewer thinking
+  tokens and fewer, more consolidated tool calls; `high` (the provider default)
+  is the most thorough. It is only sent to models that accept it — Opus 4.5+,
+  Sonnet 4.6, Sonnet 5 and newer. On Haiku 4.5 or Sonnet 4.5 the parameter is a
+  400, so backlex drops it rather than breaking the turn; the setting is stored
+  either way and takes effect if you later switch the agent to a model that
+  supports it.
+
+Neither applies to the managed-cloud Workers AI path, which meters neurons
+against the plan allowance instead of billing tokens.
 
 ## Live step streaming
 

@@ -16,6 +16,8 @@ export interface AgentRow {
   description: string | null;
   systemPrompt: string | null;
   model: string | null;
+  /** Reasoning effort (`low` | `medium` | `high`); null = provider default. */
+  effort: string | null;
   tools: string[];
   maxSteps: number;
   memory: boolean;
@@ -97,6 +99,7 @@ export interface AgentInput {
   description?: string | null;
   systemPrompt?: string | null;
   model?: string | null;
+  effort?: string | null;
   tools?: string[];
   maxSteps?: number;
   memory?: boolean;
@@ -118,6 +121,7 @@ export const createAgent = async (
     description: input.description ?? null,
     systemPrompt: input.systemPrompt ?? null,
     model: input.model ?? null,
+    effort: input.effort ?? null,
     tools: input.tools ?? [],
     maxSteps: input.maxSteps ?? 8,
     memory: input.memory ?? false,
@@ -143,6 +147,7 @@ export const updateAgent = async (
       ...(input.description !== undefined ? { description: input.description } : {}),
       ...(input.systemPrompt !== undefined ? { systemPrompt: input.systemPrompt } : {}),
       ...(input.model !== undefined ? { model: input.model } : {}),
+      ...(input.effort !== undefined ? { effort: input.effort } : {}),
       ...(input.tools !== undefined ? { tools: input.tools } : {}),
       ...(input.maxSteps !== undefined ? { maxSteps: input.maxSteps } : {}),
       ...(input.memory !== undefined ? { memory: input.memory } : {}),

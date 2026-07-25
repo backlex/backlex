@@ -14,6 +14,7 @@ import type { AppBindings } from "../app";
 import type { Env } from "../env";
 import { requireUser } from "../middleware/session";
 import { makeInternalFetch } from "../mcp/internal-fetch";
+import { AI_EFFORTS, type AiEffort } from "../mcp/ai-client";
 import { allTools } from "../mcp/tools";
 import { logActivity } from "../services/activity";
 import {
@@ -63,6 +64,15 @@ const parseAgentInput = (body: Record<string, unknown>, partial: boolean) => {
     out.systemPrompt = body.systemPrompt === null ? null : String(body.systemPrompt);
   if (body.model !== undefined)
     out.model = body.model === null ? null : String(body.model);
+  if (body.effort !== undefined) {
+    if (body.effort === null || body.effort === "") out.effort = null;
+    else if (AI_EFFORTS.includes(body.effort as AiEffort)) out.effort = body.effort;
+    else
+      throw new AppError(
+        "VALIDATION",
+        `effort must be one of ${AI_EFFORTS.join(", ")} (or null for the provider default)`,
+      );
+  }
   if (body.tools !== undefined) {
     if (!Array.isArray(body.tools) || body.tools.some((t) => typeof t !== "string")) {
       throw new AppError("VALIDATION", "tools must be an array of tool names");
@@ -262,6 +272,9 @@ export const agentsRoutes = (app: Hono<AppBindings>, env: Env) => {
         steps: result.steps.length,
         stoppedReason: result.stoppedReason,
         durationMs: Date.now() - start,
+        // What the prompt cache saved on this turn, in input tokens billed at
+        // ~0.1× instead of full price.
+        cachedTokens: result.cachedTokens,
       },
       response: { ok: true },
     });

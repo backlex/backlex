@@ -41,6 +41,8 @@ interface Agent {
   description?: string | null;
   systemPrompt?: string | null;
   model?: string | null;
+  /** Reasoning effort; "" / null = the provider default. */
+  effort?: string | null;
   tools: string[];
   maxSteps: number;
   memory: boolean;
@@ -187,6 +189,15 @@ const fmtWhen = (v: string | number | null | undefined): string => {
   return new Date(ms).toISOString().slice(5, 10);
 };
 
+/** Reasoning-effort picker. Empty = don't send the parameter at all, which is
+ *  the provider default (`high` on the models that support it). */
+const EFFORT_OPTIONS = [
+  { value: "", label: "Default", hint: "provider default (high)" },
+  { value: "low", label: "Low", hint: "cheapest · short, scoped tasks" },
+  { value: "medium", label: "Medium", hint: "balanced" },
+  { value: "high", label: "High", hint: "most thorough · most tokens" },
+];
+
 const MODEL_CUSTOM = "__custom__";
 const isKnownModel = (m: string) => MODEL_OPTIONS.some((o) => o.value === m);
 
@@ -196,6 +207,7 @@ const EMPTY_DRAFT: Agent = {
   description: "",
   systemPrompt: "",
   model: "",
+  effort: "",
   tools: [],
   maxSteps: 8,
   memory: false,
@@ -243,7 +255,7 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
 
   // ── editor ────────────────────────────────────────────────────────────────
   const openEditor = useCallback((a?: Agent) => {
-    setDraft(a ? { ...a, description: a.description ?? "", systemPrompt: a.systemPrompt ?? "", model: a.model ?? "" } : EMPTY_DRAFT);
+    setDraft(a ? { ...a, description: a.description ?? "", systemPrompt: a.systemPrompt ?? "", model: a.model ?? "", effort: a.effort ?? "" } : EMPTY_DRAFT);
     setModelCustom(!!(a?.model && !isKnownModel(a.model)));
     setToolFilter("");
     setEditorOpen(true);
@@ -261,6 +273,7 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
       systemPrompt: draft.systemPrompt || null,
       model: draft.model || null,
       tools: draft.tools,
+      effort: draft.effort || null,
       maxSteps: draft.maxSteps,
       memory: draft.memory,
       active: draft.active,
@@ -479,6 +492,24 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
                     <Label><Trans>Max steps</Trans></Label>
                     <Input type="number" min={1} max={25} value={draft.maxSteps} onChange={(e) => setDraft({ ...draft, maxSteps: Math.max(1, Math.min(25, Number(e.target.value) || 1)) })} />
                   </div>
+                  {/* Full-width row of its own: the helper below it is a
+                      sentence, not a hint, and reads badly in a half column. */}
+                  <div className="flex min-w-0 flex-col gap-1.5 max-[520px]:col-span-1 col-span-2">
+                    <Label><Trans>Effort</Trans></Label>
+                    <Select
+                      value={draft.effort ?? ""}
+                      onChange={(v) => setDraft({ ...draft, effort: v })}
+                      options={EFFORT_OPTIONS}
+                      className="min-w-0 sm:max-w-[50%]"
+                    />
+                    <span className="text-[11.5px] text-muted-foreground">
+                      <Trans>
+                        How hard the model thinks per step. Lower effort means fewer thinking
+                        tokens and fewer tool calls — cheaper and faster, less thorough. Ignored
+                        by models that don't support it.
+                      </Trans>
+                    </span>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between rounded-control border border-border px-3 py-2.5">
                   <div className="flex flex-col">
@@ -591,6 +622,8 @@ function AgentDetail({
   // A turn a TEAMMATE started, seen over the channel — the composer locks for
   // everyone while it runs, since the API rejects a concurrent turn anyway.
   const [remoteRun, setRemoteRun] = useState<{ userId: string | null } | null>(null);
+  /** Input tokens the last turn read from the prompt cache (~0.1× price). */
+  const [cachedTokens, setCachedTokens] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
   const meQuery = useMe();
   const meId = meQuery.data?.data?.id ?? null;
@@ -673,6 +706,7 @@ function AgentDetail({
     setMessages([]);
     setLiveSteps([]);
     setRemoteRun(null);
+    setCachedTokens(0);
   }, []);
 
   const activeThread = threads.find((th) => th.id === threadId);
@@ -754,10 +788,13 @@ function AgentDetail({
     }
 
     try {
-      await api(`/api/agents/threads/${tid}/messages`, {
-        method: "POST",
-        body: JSON.stringify({ message }),
-      });
+      const run = await api<{ data?: { cachedTokens?: number } }>(
+        `/api/agents/threads/${tid}/messages`,
+        { method: "POST", body: JSON.stringify({ message }) },
+      );
+      // Prompt-cache hits for this turn — surfaced so the saving is visible
+      // rather than something you have to read the activity log to believe.
+      setCachedTokens(run.data?.cachedTokens ?? 0);
       await loadMessages(tid);
     } catch (e) {
       // Drop the optimistic bubble and RESTORE the typed text so it isn't lost.
@@ -807,6 +844,14 @@ function AgentDetail({
         <span className="text-xs text-muted-foreground">· {agent.tools.length} {t`tools`}</span>
         {totalTokens > 0 && (
           <span className="text-xs text-muted-foreground">· {fmtTokens(totalTokens)} {t`tokens`}</span>
+        )}
+        {cachedTokens > 0 && (
+          <span
+            className="text-xs text-muted-foreground"
+            title={t`Input tokens served from the prompt cache on the last turn — billed at about a tenth of full price.`}
+          >
+            · {fmtTokens(cachedTokens)} {t`cached`}
+          </span>
         )}
         <div className="ml-auto flex items-center gap-2">
           <PresenceChips peers={peers} nameFor={nameFor} />

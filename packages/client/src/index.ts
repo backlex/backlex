@@ -626,6 +626,10 @@ export interface Agent {
   description?: string | null;
   systemPrompt?: string | null;
   model?: string | null;
+  /** Reasoning effort (`low` | `medium` | `high`); null = provider default.
+   *  Lower effort = fewer thinking tokens and fewer tool calls. Ignored by
+   *  models that don't support it. */
+  effort?: string | null;
   /** Allow-list of MCP tool names the agent may call. */
   tools: string[];
   maxSteps: number;
@@ -640,6 +644,7 @@ export interface AgentInput {
   description?: string | null;
   systemPrompt?: string | null;
   model?: string | null;
+  effort?: "low" | "medium" | "high" | null;
   tools?: string[];
   maxSteps?: number;
   memory?: boolean;

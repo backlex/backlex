@@ -12,7 +12,7 @@
  * no `/` is treated as a bare Anthropic id and auto-prefixed in gateway
  * mode so old persisted settings keep working.
  */
-import { generateText, jsonSchema, tool, type ModelMessage } from "ai";
+import { generateText, jsonSchema, tool, type JSONValue, type ModelMessage } from "ai";
 import { createGateway } from "@ai-sdk/gateway";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { AppError } from "@backlex/core";
@@ -32,14 +32,22 @@ export interface ClaudeRequest {
    *  provider-prefixed id (`openai/gpt-5`). */
   model?: string;
   maxTokens?: number;
+  /** Reasoning effort; ignored on models that don't support it. */
+  effort?: AiEffort;
 }
 
 export interface ClaudeResponse {
   text: string;
   /** Token counts surfaced for callers that want to show usage in their
    *  tool output. Field names mirror the legacy Anthropic shape so the
-   *  existing `structuredContent.usage` consumers keep working. */
-  usage?: { input_tokens?: number; output_tokens?: number };
+   *  existing `structuredContent.usage` consumers keep working.
+   *  `cache_read_input_tokens` is the part served from the prompt cache at
+   *  ~0.1× — the savings, made visible. */
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_read_input_tokens?: number;
+  };
 }
 
 type Provider = "gateway" | "anthropic";
@@ -54,6 +62,42 @@ const pickProvider = (env: Env): { kind: Provider; key: string } => {
     "No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider) or the legacy ANTHROPIC_API_KEY on the backlex deployment.",
   );
 };
+
+/** Reasoning effort. Lower effort = fewer thinking tokens and fewer, more
+ *  consolidated tool calls — the cheapest quality/cost dial there is. */
+export type AiEffort = "low" | "medium" | "high";
+
+export const AI_EFFORTS: readonly AiEffort[] = ["low", "medium", "high"] as const;
+
+/** `output_config.effort` is GA only on the newer Claude tiers — sending it to
+ *  Haiku 4.5 or Sonnet 4.5 is a 400, not a no-op. Gate on the resolved id so a
+ *  workspace that picked a cheap model can't break its own agent by setting
+ *  effort. (Matches with or without a gateway `anthropic/` prefix.) */
+const EFFORT_CAPABLE = /claude-(opus-4-[5-9]|sonnet-5|sonnet-4-6|fable-5|mythos-5)/;
+
+/**
+ * Provider options for the Anthropic path. The gateway forwards `providerOptions`
+ * verbatim, so the same object works for both `createGateway` and `createAnthropic`,
+ * and a non-Anthropic gateway model simply ignores the `anthropic` key.
+ *
+ * `cacheControl` turns on the API's automatic prompt caching: a breakpoint is
+ * placed on the request's last cacheable block, so the NEXT call re-reads that
+ * whole prefix at ~0.1× of input price instead of paying full freight. That is
+ * exactly the agent loop's shape — every step re-sends the system prompt, the
+ * tool schemas, and the transcript so far, growing by one step each time. It is
+ * also safe to set unconditionally: a prefix below the model's minimum simply
+ * doesn't cache (no error), and the ~1.25× write premium pays for itself on the
+ * second call of any multi-step turn.
+ */
+export const anthropicProviderOptions = (
+  modelId: string,
+  effort?: AiEffort,
+): { anthropic: Record<string, JSONValue> } => ({
+  anthropic: {
+    cacheControl: { type: "ephemeral" },
+    ...(effort && EFFORT_CAPABLE.test(modelId) ? { effort } : {}),
+  },
+});
 
 const resolveModelId = (provider: Provider, model: string | undefined): string => {
   if (provider === "gateway") {
@@ -107,7 +151,7 @@ const callCloudGeneration = async (
 
 export const callClaude = async (
   env: Env,
-  { system, user, model, maxTokens }: ClaudeRequest,
+  { system, user, model, maxTokens, effort }: ClaudeRequest,
 ): Promise<ClaudeResponse> => {
   // A direct provider key wins over the managed cloud gateway. On self-host
   // that's the deployment's env key; on managed cloud it only appears when a
@@ -136,6 +180,7 @@ export const callClaude = async (
       system,
       messages: [{ role: "user", content: user }],
       maxOutputTokens: maxTokens ?? DEFAULT_MAX_TOKENS,
+      providerOptions: anthropicProviderOptions(modelId, effort),
     });
     // Opt-in: self-report token usage to the cloud control plane (no-op
     // unless provisioned). Fire-and-forget — never blocks the response.
@@ -149,6 +194,7 @@ export const callClaude = async (
       usage: {
         input_tokens: result.usage?.inputTokens,
         output_tokens: result.usage?.outputTokens,
+        cache_read_input_tokens: result.usage?.cachedInputTokens,
       },
     };
   } catch (e) {
@@ -189,6 +235,8 @@ export interface ClaudeToolsRequest {
   tools?: ClaudeToolDef[];
   model?: string;
   maxTokens?: number;
+  /** Reasoning effort; ignored on models that don't support it. */
+  effort?: AiEffort;
 }
 
 export interface ClaudeToolsResponse {
@@ -196,7 +244,11 @@ export interface ClaudeToolsResponse {
   text: string;
   /** Tool calls the model made — empty when it produced a final answer. */
   toolCalls: ModelToolCall[];
-  usage?: { input_tokens?: number; output_tokens?: number };
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_read_input_tokens?: number;
+  };
 }
 
 /** Flatten a model-message transcript to a single prompt for the managed-cloud
@@ -346,7 +398,7 @@ const callCloudToolTurn = async (
  */
 export const callClaudeTools = async (
   env: Env,
-  { system, messages, tools, model, maxTokens }: ClaudeToolsRequest,
+  { system, messages, tools, model, maxTokens, effort }: ClaudeToolsRequest,
 ): Promise<ClaudeToolsResponse> => {
   const hasDirectKey = Boolean(
     env.AI_GATEWAY_API_KEY?.trim() || env.ANTHROPIC_API_KEY?.trim(),
@@ -383,6 +435,10 @@ export const callClaudeTools = async (
       messages,
       tools: aiTools,
       maxOutputTokens: maxTokens ?? DEFAULT_MAX_TOKENS,
+      // The big one for agents: each step re-sends system + tool schemas +
+      // the whole transcript, so caching turns step N's prompt into step
+      // N+1's cache read.
+      providerOptions: anthropicProviderOptions(modelId, effort),
     });
     void reportToCloud(env, {
       kind: "ai_usage",
@@ -399,6 +455,7 @@ export const callClaudeTools = async (
       usage: {
         input_tokens: result.usage?.inputTokens,
         output_tokens: result.usage?.outputTokens,
+        cache_read_input_tokens: result.usage?.cachedInputTokens,
       },
     };
   } catch (e) {

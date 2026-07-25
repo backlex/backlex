@@ -1,5 +1,15 @@
 import { describe, expect, test, afterAll, beforeAll } from "bun:test";
+import { TEMPLATES } from "../src/server/templates/catalog";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+
+const blog = TEMPLATES.find((t) => t.id === "blog")!;
+/** Catalog-derived expectations — these assert that apply *reproduces the
+ *  template*, so they must not be re-stated as literals that drift from it. */
+const blogGroups = blog.groups!;
+const blogSlugs = blog.collections.map((c) => c.slug);
+const blogSamples = blog.collections.reduce((n, c) => n + (c.samples?.length ?? 0), 0);
+const blogSampledSlugs = blog.collections.filter((c) => c.samples?.length).map((c) => c.slug);
+const blogPanels = blog.dashboards!.find((d) => d.name === "Content overview")!.panels.length;
 
 /**
  * Template ⇄ collection-grouping integration + the professional-bar features
@@ -42,7 +52,7 @@ describe("template apply seeds admin groups", () => {
     expect(bySlug.get("posts")?.sortOrder).toBe(20);
     expect(bySlug.get("pages")?.sortOrder).toBe(30);
     // Header order merged into collectionGroups in template order.
-    expect(meta.groups).toEqual(["Content", "Taxonomy", "People"]);
+    expect(meta.groups).toEqual(blogGroups);
   });
 
   test("re-apply never overwrites the admin's layout edits", async () => {
@@ -127,7 +137,7 @@ describe("template bundles: roles + dashboards", () => {
     const panels = (await panelsRes.json()) as {
       data: { name: string; kind: string; viz: string }[];
     };
-    expect(panels.data).toHaveLength(3);
+    expect(panels.data).toHaveLength(blogPanels);
     expect(panels.data.every((p) => p.kind === "items-aggregate")).toBe(true);
   });
 
@@ -164,7 +174,7 @@ describe("seed manifest + clear-samples", () => {
     const before = (await (await h.fetch("/api/admin/templates")).json()) as {
       sampleSeeds: number;
     };
-    expect(before.sampleSeeds).toBe(10);
+    expect(before.sampleSeeds).toBe(blogSamples);
 
     // …the admin adds their own row…
     const own = await h.fetch(
@@ -179,10 +189,8 @@ describe("seed manifest + clear-samples", () => {
     const { data } = (await clear.json()) as {
       data: { removed: number; collections: string[] };
     };
-    expect(data.removed).toBe(10);
-    expect(data.collections.sort()).toEqual(
-      ["authors", "categories", "pages", "posts", "tags"].sort(),
-    );
+    expect(data.removed).toBe(blogSamples);
+    expect(data.collections.slice().sort()).toEqual(blogSampledSlugs.slice().sort());
 
     const posts = (await (await h.fetch("/api/items/posts?status=all")).json()) as {
       data: { title: string }[];
@@ -237,11 +245,9 @@ describe("extract → apply-custom round-trip", () => {
         collections: { slug: string; group?: string; fields: unknown[] }[];
       };
     };
-    expect(template.groups).toEqual(["Content", "Taxonomy", "People"]);
+    expect(template.groups).toEqual(blogGroups);
     const slugs = template.collections.map((c) => c.slug);
-    expect(slugs.sort()).toEqual(
-      ["authors", "categories", "media", "pages", "posts", "tags"].sort(),
-    );
+    expect(slugs.slice().sort()).toEqual(blogSlugs.slice().sort());
     // Dependency order: relation targets precede dependents.
     expect(slugs.indexOf("authors")).toBeLessThan(slugs.indexOf("posts"));
     expect(slugs.indexOf("categories")).toBeLessThan(slugs.indexOf("posts"));
@@ -262,7 +268,7 @@ describe("extract → apply-custom round-trip", () => {
       meta: { groups: string[] };
     };
     expect(cols.data.find((c) => c.slug === "posts")?.group).toBe("Content");
-    expect(cols.meta.groups).toEqual(["Content", "Taxonomy", "People"]);
+    expect(cols.meta.groups).toEqual(blogGroups);
   });
 
   test("extract narrows with ?collections= and validates emptiness", async () => {

@@ -275,10 +275,16 @@ export const introspectColumns = async (
     );
     return new Set(rows.map((r) => r.column_name));
   }
+  // `table_xinfo`, not `table_info`: the latter OMITS generated columns, so a
+  // collection owning a `computed` field looked column-less to the applier and
+  // every schema edit re-issued its `ADD COLUMN … GENERATED ALWAYS AS …`,
+  // failing with "duplicate column name". `table_xinfo` lists hidden/generated
+  // columns too and is otherwise identical. (Postgres is unaffected —
+  // information_schema.columns already includes generated columns.)
   const rows = await all<{ name: string }>(
     db,
     dialect,
-    `PRAGMA table_info(${quote(table)})`,
+    `PRAGMA table_xinfo(${quote(table)})`,
   );
   return new Set(rows.map((r) => r.name));
 };

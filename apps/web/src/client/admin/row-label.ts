@@ -9,7 +9,21 @@
 // composed value ("Jordan · Reed") or the 8-char id at worst.
 import { renderTemplate } from "@backlex/core";
 
-const LABEL_FIELDS = ["title", "name", "label", "slug", "subject", "email", "username"];
+// Ordered most- to least-specific. `number` / `code` are here because a
+// document-shaped collection (invoice, order, quote, RMA, purchase order, lot)
+// carries no `name` — its human label IS its number, and without these the whole
+// class of records fell through to the composed-text fallback or a short id.
+const LABEL_FIELDS = [
+  "title",
+  "name",
+  "label",
+  "slug",
+  "number",
+  "code",
+  "subject",
+  "email",
+  "username",
+];
 
 /** Coerce a value to a display string. Handles a `localized` field's
  *  `{locale: value}` map — prefers the workspace default language (`prefer`),

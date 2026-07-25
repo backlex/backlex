@@ -5,6 +5,7 @@ import {
   type EmbeddingModel,
 } from "@backlex/core";
 import {
+  FIELD_TYPES,
   applyCollection,
   assertIdent,
   derivePhysicalTable,
@@ -67,30 +68,10 @@ const DateBoundSchema = z.union([
 const FieldSchema = z
   .object({
     name: z.string().min(1).regex(/^[a-z][a-z0-9_]*$/, "snake_case"),
-    type: z.enum([
-      "text",
-      "longtext",
-      "integer",
-      "number",
-      "boolean",
-      "json",
-      "timestamp",
-      "uuid",
-      "relation",
-      "relation_many",
-      // Single foreign storage key (relation to system_files), stored as a TEXT
-      // column. Present in `FieldType` (@backlex/db) + the type→column map, so
-      // editing a collection that owns a file field must validate here too.
-      "file",
-      // One-way hashed secret. The write path scrypt-hashes the plaintext and
-      // stores only the digest; reads return null; verification is via
-      // `POST /:slug/:id/verify`. Keep in sync with `FieldType` in @backlex/db.
-      "hash",
-      // Presentational-only blocks — no column, no value. `loadCollection`
-      // strips them from every items path; the schema applier skips them.
-      "divider",
-      "notice",
-    ]),
+    // Derived from the canonical list in @backlex/db (which carries the
+    // per-type notes and a compile-time exhaustiveness guard) — a hand-copied
+    // enum here has silently dropped `file` and `hash` before.
+    type: z.enum(FIELD_TYPES),
     required: z.boolean().optional(),
     unique: z.boolean().optional(),
     // Plain B-tree index on the column — speeds up filter/sort. Applied by

@@ -9,6 +9,9 @@ more. A template is not just tables — it is a **bundle**:
 
 - **Collections** with relations, indexes, colored dropdown choices, soft
   validation, computed fields, full-text search and embedding flags.
+- **Laid-out item forms** — fields arrive already organized into sections (or
+  tabs on the largest records), with paired scalars side by side and callouts
+  on the fields that would otherwise mislead. See *Form layout* below.
 - **Admin groups** — collections land pre-organized under section headers
   ("Catalog", "Orders", "Customers", …) on the Collections page and the
   sidebar tree, in the template's order.
@@ -156,3 +159,44 @@ small helper DSL (`text`, `rel`, `money`, `select`, …). Hard constraints:
   after apply.
 - Keep `id`s stable once shipped (cloud contract), and add the id to the
   `CATEGORY` map so the picker files it under the right section.
+
+### Data model
+
+Each vertical mirrors the entity model of the strongest platform in its space,
+taken from that platform's published API surface or its open-source schema
+rather than invented — ecommerce from Shopify / Vendure / Medusa, saas from
+Stripe, crm from Salesforce / HubSpot / SuiteCRM, support from Zendesk /
+Chatwoot, hr from Workday / BambooHR / ERPNext HRMS, projects from Jira /
+Linear / OpenProject, ats from Greenhouse, lms from Canvas, inventory and
+manufacturing from NetSuite / ERPNext, invoicing from Invoice Ninja,
+appointments from Cal.com, blog from WordPress / Ghost, nonprofit from CiviCRM,
+clinic from FHIR / OpenEMR. When you extend a vertical, check the reference
+first: the point is that an operator who knows the category recognizes the
+model, including the status enums.
+
+### Form layout
+
+Collections are laid out with the field-organization primitives, not left as a
+flat column of inputs. The helpers at the top of `catalog.ts` — `sec`, `half`,
+`stacked`, `tabbed`, `divider`, `hint` — wrap `group`, `width`,
+`sectionCollapsible` / `sectionCollapsed`, `sectionsAsTabs` and the
+presentational `divider` / `notice` field types. The house rules:
+
+| Record size (storage fields) | Container |
+|---|---|
+| < 10 | flat — one conceptual unit; still pair scalars with `half()` |
+| 10–13 | `stacked(...)` section headings |
+| ≥ 14 | `tabbed(...)`, one tab per section |
+
+Plus: pair naturally-adjacent scalars (first/last name, price/currency,
+start/end date) at `half` width so they share a row and stack on mobile; fold
+optional trailing sections (SEO, internal notes, churn) with `{ folded: true }`;
+and spend a `hint()` callout only where the form would otherwise mislead — a
+generated total, a stock number maintained elsewhere, a record whose reads are
+audited.
+
+Two renderer behaviours the rules exist to respect: in tabs mode **every field
+must carry a group** (an ungrouped one lands in an implicit "General" tab), and
+the tabs branch returns before the collapsible one, so **fold flags are ignored
+when `sectionsAsTabs` is set**. `tests/templates-layout.test.ts` enforces all of
+this, so a layout that would silently render wrong fails in CI.

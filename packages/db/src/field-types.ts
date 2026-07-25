@@ -35,6 +35,46 @@ export type FieldType =
   | "notice";
 
 /**
+ * Every valid {@link FieldType} token, in declaration order — the single source
+ * of truth for the surfaces that must validate a type string coming off the
+ * wire (the collections create/patch zod enum, the custom-template apply). Each
+ * of those used to hand-maintain its own copy, and each has drifted at least
+ * once: `file` and `hash` went missing from the collections enum, and
+ * `divider`/`notice` from the template one — so a workspace using a layout
+ * block could not re-apply its own extract. The exhaustiveness guard below
+ * turns that drift into a compile error instead of a 422 nobody hits until a
+ * customer does.
+ */
+export const FIELD_TYPES = [
+  "text",
+  "longtext",
+  "integer",
+  "number",
+  "boolean",
+  "json",
+  "timestamp",
+  "uuid",
+  "relation",
+  // Single foreign storage key (relation to system_files), stored as TEXT.
+  "file",
+  "relation_many",
+  // One-way hashed secret — the write path scrypt-hashes the plaintext and
+  // stores only the digest; reads return null; verification goes through
+  // `POST /:slug/:id/verify`.
+  "hash",
+  // Presentational-only blocks — no column, no value. `loadCollection` strips
+  // them from every items path; the schema applier skips them for DDL.
+  "divider",
+  "notice",
+] as const satisfies readonly FieldType[];
+
+// Compile-time exhaustiveness: adding a member to `FieldType` without listing
+// it above makes this assignment fail to typecheck.
+type UncoveredFieldType = Exclude<FieldType, (typeof FIELD_TYPES)[number]>;
+const _fieldTypesAreExhaustive: UncoveredFieldType extends never ? true : never = true;
+void _fieldTypesAreExhaustive;
+
+/**
  * True for field types that are pure layout/presentation — they have no
  * physical column, take no value, and must be filtered out of every storage,
  * serialization, and query path. The item-form + schema editor keep them for

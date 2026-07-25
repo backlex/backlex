@@ -2,7 +2,14 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { derivePhysicalTable, ftsTableName, validateFields, type FieldDef } from "@backlex/db";
+import {
+  FIELD_TYPES,
+  derivePhysicalTable,
+  ftsTableName,
+  isPresentational,
+  validateFields,
+  type FieldDef,
+} from "@backlex/db";
 import { AppError } from "@backlex/core";
 import {
   getTemplate,
@@ -241,10 +248,11 @@ async function seedSamples(
     const raw: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(sample)) {
       const def = fieldByName.get(key);
-      // Skipped: unknown/computed fields, and `hash` — a sample would land as
-      // plaintext where the API stores a scrypt digest (custom templates can
-      // send anything; catalog templates never sample hash fields).
-      if (!def || def.computed || def.type === "hash") continue;
+      // Skipped: unknown/computed fields, `hash` — a sample would land as
+      // plaintext where the API stores a scrypt digest — and presentational
+      // layout blocks, which own no column at all (custom templates can send
+      // anything; catalog templates never sample either).
+      if (!def || def.computed || def.type === "hash" || isPresentational(def)) continue;
       const resolved = resolveSample(value, seeded);
       raw[def.name] = resolved;
       let serialized = serialize(resolved, def.type, ctx.dialect);
@@ -959,22 +967,9 @@ export const CustomTemplateInput = z.object({
     .max(1000),
 });
 
-/** Storable field types — keep in sync with `FieldType` in @backlex/db
+/** Valid field-type tokens, from the canonical list in @backlex/db
  *  (`validateFields` checks names/flags but not the type token itself). */
-const FIELD_TYPES = new Set<string>([
-  "text",
-  "longtext",
-  "integer",
-  "number",
-  "boolean",
-  "json",
-  "timestamp",
-  "uuid",
-  "relation",
-  "file",
-  "relation_many",
-  "hash",
-]);
+const VALID_FIELD_TYPES = new Set<string>(FIELD_TYPES);
 
 /** Zod-parse + deep field-validate an inline template payload into the
  *  engine's {@link SchemaTemplate} shape. Throws `AppError("VALIDATION")`. */
@@ -986,7 +981,7 @@ export const parseCustomTemplate = (input: unknown): SchemaTemplate => {
   for (const col of parsed.data.collections) {
     for (const f of col.fields) {
       const name = typeof f.name === "string" ? f.name : "?";
-      if (typeof f.type !== "string" || !FIELD_TYPES.has(f.type)) {
+      if (typeof f.type !== "string" || !VALID_FIELD_TYPES.has(f.type)) {
         throw new AppError(
           "VALIDATION",
           `Collection "${col.slug}": field "${name}" has unknown type "${String(f.type)}"`,

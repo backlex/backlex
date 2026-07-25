@@ -1,5 +1,6 @@
 import { describe, expect, test, afterAll, beforeAll } from "bun:test";
 import { createClient } from "../../../packages/client/src/index";
+import { TEMPLATES } from "../src/server/templates/catalog";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 /**
@@ -10,6 +11,10 @@ import { makeHarness, seedAdmin, type TestHarness } from "./setup";
  * semantics (catalog + idempotent, sample-seeding apply). Each surface gets a
  * fresh workspace so the apply counts stay deterministic.
  */
+const blogTemplate = TEMPLATES.find((t) => t.id === "blog")!;
+const blogGroups = blogTemplate.groups!;
+const blogSamples = blogTemplate.collections.reduce((n, c) => n + (c.samples?.length ?? 0), 0);
+
 const json = (body: unknown): RequestInit => ({
   method: "POST",
   headers: { "content-type": "application/json" },
@@ -43,7 +48,7 @@ describe("templates — GraphQL surface", () => {
     expect(blog.sampleRows).toBeGreaterThan(0);
     expect(blog.collections.length).toBeGreaterThan(0);
     // Grouping + bundle metadata reach the GraphQL surface too.
-    expect(blog.groups).toEqual(["Content", "Taxonomy", "People"]);
+    expect(blog.groups).toEqual(blogGroups);
     expect(blog.roles).toEqual(["Editor"]);
     expect(blog.dashboards).toEqual(["Content overview"]);
     expect(blog.collections.find((c: any) => c.slug === "posts").group).toBe("Content");
@@ -80,7 +85,7 @@ describe("templates — GraphQL surface", () => {
       groups: string[];
       collections: { slug: string; group?: string }[];
     };
-    expect(template.groups).toEqual(["Content", "Taxonomy", "People"]);
+    expect(template.groups).toEqual(blogGroups);
     expect(template.collections.find((c) => c.slug === "posts")?.group).toBe("Content");
 
     // Re-applying it to the SAME workspace converges (everything skipped).
@@ -96,10 +101,10 @@ describe("templates — GraphQL surface", () => {
     // clearTemplateSamples removes the rows the blog apply seeded…
     const before = await gql(`{ templateSeedStatus { hasCollections sampleSeeds } }`);
     expect(before.data?.templateSeedStatus.hasCollections).toBe(true);
-    expect(before.data?.templateSeedStatus.sampleSeeds).toBe(10);
+    expect(before.data?.templateSeedStatus.sampleSeeds).toBe(blogSamples);
     const cleared = await gql(`mutation{ clearTemplateSamples { removed collections } }`);
     expect(cleared.errors).toBeUndefined();
-    expect(cleared.data?.clearTemplateSamples.removed).toBe(10);
+    expect(cleared.data?.clearTemplateSamples.removed).toBe(blogSamples);
     // …and the seed status reflects it (REST catalog-meta parity).
     const after = await gql(`{ templateSeedStatus { sampleSeeds } }`);
     expect(after.data?.templateSeedStatus.sampleSeeds).toBe(0);

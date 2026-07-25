@@ -1,6 +1,14 @@
 import { describe, expect, test, afterAll, beforeAll } from "bun:test";
 import { columnDefSql, type FieldDef } from "@backlex/db";
+import { TEMPLATES } from "../src/server/templates/catalog";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+
+/** Every `samples` row the template declares — what a clean apply must seed. */
+const declaredSamples = (templateId: string): number =>
+  TEMPLATES.find((t) => t.id === templateId)!.collections.reduce(
+    (n, c) => n + (c.samples?.length ?? 0),
+    0,
+  );
 
 describe("column defaults (DDL)", () => {
   test("emits DEFAULT for scalar fields, per dialect", () => {
@@ -114,8 +122,10 @@ describe("schema template sample seeding", () => {
       data: { created: string[]; seeded: number };
     };
     expect(data.created).toContain("posts");
-    // authors 2 + categories 2 + tags 2 + posts 2 + pages 2 = 10 sample rows.
-    expect(data.seeded).toBe(10);
+    // Every declared sample row lands — a row that silently fails to insert
+    // (bad relation ref, dialect-hostile value) shows up as a shortfall here.
+    expect(data.seeded).toBe(declaredSamples("blog"));
+    expect(data.seeded).toBeGreaterThan(0);
 
     // Sample rows are queryable — relation refs resolved to real ids.
     const authorsRes = await h.fetch("/api/items/authors");

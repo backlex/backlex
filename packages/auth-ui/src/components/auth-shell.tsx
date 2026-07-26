@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { Button } from "@backlex/ui/components/button";
+import { useIsMobile } from "@backlex/ui/hooks/use-mobile";
 import type {
   AuthBranding,
   AuthMode,
@@ -59,10 +60,14 @@ const StarCanvas = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Static frame (no rAF) when reduced motion is requested *or* we're on a
+    // phone — a per-frame full-viewport repaint is the most expensive thing on
+    // the auth screen and it costs real battery on mobile.
     const reduce =
       typeof window !== "undefined" &&
       typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.matchMedia("(prefers-reduced-motion: reduce), (max-width: 767px)")
+        .matches;
 
     const dpr = Math.min(
       typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
@@ -211,6 +216,9 @@ const StarCanvas = () => {
 /** Saturn: violet planet, tilted coral ring with front/back occlusion, moon. */
 const SaturnMark = ({ size = 34 }: { size?: number }) => {
   const uid = useId().replace(/:/g, "");
+  // SMIL <animateMotion> can't be stopped from CSS, so the orbiting moon is
+  // dropped from the tree on phones — it runs forever behind the auth card.
+  const isMobile = useIsMobile();
   return (
     <svg
       viewBox="0 0 32 32"
@@ -239,9 +247,13 @@ const SaturnMark = ({ size = 34 }: { size?: number }) => {
         <ellipse cx="16" cy="16" rx="14.2" ry="5.3" stroke="#ffb59e" strokeWidth="1.7" />
       </g>
       <g transform="rotate(-22 16 16)">
-        <circle r="1.5" fill="#ffe2d4">
-          <animateMotion dur="6s" repeatCount="indefinite" path="M 1.8 16 a 14.2 5.3 0 1 0 28.4 0 a 14.2 5.3 0 1 0 -28.4 0" />
-        </circle>
+        {isMobile ? (
+          <circle cx="1.8" cy="16" r="1.5" fill="#ffe2d4" />
+        ) : (
+          <circle r="1.5" fill="#ffe2d4">
+            <animateMotion dur="6s" repeatCount="indefinite" path="M 1.8 16 a 14.2 5.3 0 1 0 28.4 0 a 14.2 5.3 0 1 0 -28.4 0" />
+          </circle>
+        )}
       </g>
     </svg>
   );

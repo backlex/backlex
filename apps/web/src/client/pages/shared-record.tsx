@@ -6,6 +6,7 @@
 import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { LinkIcon } from "lucide-react";
+import { useIsMobile } from "@backlex/ui/hooks/use-mobile";
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
   Card,
@@ -98,6 +99,9 @@ function FieldRow({
 
 /** Centered shell shared by the loading / error / record states. */
 function Shell({ children }: { children: React.ReactNode }) {
+  // SMIL <animateMotion> can't be stopped from CSS — drop the orbiting moon on
+  // phones so the mark is static there, matching the admin + auth shells.
+  const isMobile = useIsMobile();
   return (
     <div className="flex min-h-svh w-full items-center justify-center bg-background px-4 py-10 text-foreground">
       <div className="w-full max-w-[520px]">
@@ -121,9 +125,13 @@ function Shell({ children }: { children: React.ReactNode }) {
               <ellipse cx="16" cy="16" rx="14.2" ry="5.3" stroke="#ffb59e" strokeWidth="1.7" />
             </g>
             <g transform="rotate(-22 16 16)">
-              <circle r="1.5" fill="#ffe2d4">
-                <animateMotion dur="6s" repeatCount="indefinite" path="M 1.8 16 a 14.2 5.3 0 1 0 28.4 0 a 14.2 5.3 0 1 0 -28.4 0" />
-              </circle>
+              {isMobile ? (
+                <circle cx="1.8" cy="16" r="1.5" fill="#ffe2d4" />
+              ) : (
+                <circle r="1.5" fill="#ffe2d4">
+                  <animateMotion dur="6s" repeatCount="indefinite" path="M 1.8 16 a 14.2 5.3 0 1 0 28.4 0 a 14.2 5.3 0 1 0 -28.4 0" />
+                </circle>
+              )}
             </g>
           </svg>
           backlex

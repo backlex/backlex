@@ -16,7 +16,7 @@ in the dashboard · `server`/`CLI` = backend or tooling.
 
 | Capability | Where | Demonstrated by | Docs |
 |---|---|---|---|
-| Workspace auth (end-user sign-up / sign-in / session) | SDK | all three (`AuthForm`) — `auth.signUp/signIn/getSession/signOut` | [auth-planes](../docs/auth-planes.md) |
+| Workspace auth (end-user sign-up / sign-in / session) | SDK | all four SPAs (`AuthForm`) — `auth.signUp/signIn/getSession/signOut`; **nextjs-app** does the same in a Server Action and stores the token in an **httpOnly cookie** (the server-rendering variant) | [auth-planes](../docs/auth-planes.md) |
 | Collection CRUD | SDK | all three — `from(c).list/create/update/delete` | [querying](../docs/querying.md) |
 | Query API + filtering | SDK | **showcase** & **ecommerce** — fluent `query().where(f=>…).orderBy().limit().withMeta()`; `.toQuery()` → `ListQuery` in **blog** | [querying](../docs/querying.md) |
 | Aggregates (count / sum / avg / min / max, `groupBy`) | SDK | **blog** (count by status), **ecommerce** (count + avg price), **showcase** (Aggregates panel) | [querying](../docs/querying.md) |
@@ -104,3 +104,4 @@ in the admin while an example app is running and watch the behaviour change.
 | [`ecommerce-react`](./ecommerce-react) | 5176 | Filter/sort, storage image uploads + transforms, cart, batch order writes |
 | [`showcase-react`](./showcase-react) | 5177 | One tab per capability — the broadest SDK sweep |
 | [`react-router-app`](./react-router-app) | 5178 | The admin/server plane — jobs, flows, agents, permission simulation, usage |
+| [`nextjs-app`](./nextjs-app) | 5179 | The end-user plane server-rendered — RSC reads, Server Actions write, httpOnly-cookie session |

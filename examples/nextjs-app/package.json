@@ -1,0 +1,27 @@
+{
+  "name": "@backlex-examples/nextjs-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Next.js App Router notes app — Server Components read the data plane, Server Actions write it, and the workspace session lives in an httpOnly cookie.",
+  "scripts": {
+    "dev": "next dev --port 5179",
+    "build": "next build",
+    "start": "next start --port 5179",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "backlex": "workspace:*",
+    "next": "^16.2.12",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.6.3"
+  }
+}

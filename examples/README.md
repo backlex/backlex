@@ -14,15 +14,25 @@ out of the monorepo? Swap the `workspace:*` dependency for the published package
 | [`ecommerce-react`](./ecommerce-react) | React 19 + Vite + `backlex` | Filter/sort via query builder, storage image uploads + transforms, cart, batch order writes, aggregates |
 | [`showcase-react`](./showcase-react) | React 19 + Vite + `backlex` | One tab per capability: query builder, aggregates, search, realtime, draft/publish, storage, offline sync, feature flags, messaging (real Web Push), **raw REST + GraphQL** |
 | [`react-router-app`](./react-router-app) | React Router 8 (framework mode, SSR) + `backlex` | The **admin/server plane**: loaders + actions drive jobs, flows, agents, permission simulation, and usage with an API key that never reaches the browser |
+| [`nextjs-app`](./nextjs-app) | Next.js 16 App Router + `backlex` | The end-user plane **server-rendered**: Server Components read, Server Actions write + `revalidatePath`, session token in an **httpOnly cookie** instead of `localStorage` |
 
 **Want the full feature picture?** [`CAPABILITIES.md`](./CAPABILITIES.md) maps
 every backlex capability — including the admin / server-side ones (webhooks,
 jobs, sandbox, SSO, audit logs…) — to where you can see or configure it.
 
-The first four sign in as a **workspace end-user** and use the consumer half of
-the SDK. `react-router-app` covers the other half — the `requireAdmin` namespaces
-a browser app can't reach. See [`CAPABILITIES.md`](./CAPABILITIES.md) for the
-split.
+Three axes to pick along:
+
+- **Which plane?** The first four and `nextjs-app` sign in as a **workspace
+  end-user** (the consumer half of the SDK). `react-router-app` covers the other
+  half — the `requireAdmin` namespaces a browser app can't reach.
+- **Where does it render?** The four Vite apps are client-rendered SPAs;
+  `nextjs-app` and `react-router-app` render on the server.
+- **Where does the session live?** SPAs use `localStorage` (readable by JS, so
+  realtime and offline sync work). `nextjs-app` uses an **httpOnly cookie**
+  (unreadable by JS, so server rendering works and XSS can't exfiltrate it — but
+  a browser-side client can't authenticate).
+
+See [`CAPABILITIES.md`](./CAPABILITIES.md) for the full feature split.
 
 More to come — mobile (Swift/Kotlin) and other frameworks. Contributions
 welcome: add a folder here, keep it minimal and runnable in a couple of

@@ -92,6 +92,25 @@ describe("app plane: session cookie authenticates like the bearer", () => {
     await res.body?.cancel();
   });
 
+  // The harness speaks plain HTTP, so better-auth emits the bare cookie name.
+  // Over HTTPS it prefixes `__Secure-`, which the first cut of this fix didn't
+  // strip — so it passed every local test and still 401'd in production.
+  // Rebuild the production-shaped name here so that can't recur.
+  test("the __Secure- prefixed cookie is accepted (production shape)", async () => {
+    const res = await raw("/api/items/cookienotes", {
+      Cookie: `__Secure-${cookieHeader}`,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  test("__Secure- prefixed cookie authenticates realtime too", async () => {
+    const res = await raw("/api/realtime/items:cookienotes/subscribe", {
+      Cookie: `__Secure-${cookieHeader}`,
+    });
+    expect(res.status).toBe(200);
+    await res.body?.cancel();
+  });
+
   test("a garbage app cookie is still rejected", async () => {
     const res = await raw("/api/items/cookienotes", {
       Cookie: "wo_default.session_token=not-a-real-token.sig",

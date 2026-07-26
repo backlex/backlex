@@ -276,7 +276,13 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   const cookies = getCookie(c);
   for (const name of Object.keys(cookies)) {
     if (!name.endsWith("session_token")) continue;
-    if (name.startsWith("wo_")) {
+    // Over HTTPS better-auth emits the cookie as `__Secure-wo_<slug>.…`; over
+    // plain HTTP (local dev) there is no prefix. Strip the RFC 6265bis prefixes
+    // before deciding which plane the cookie belongs to — matching on the raw
+    // name works in dev and silently fails in production, which is exactly how
+    // this shipped broken once.
+    const bare = name.replace(/^__(Secure|Host)-/, "");
+    if (bare.startsWith("wo_")) {
       // better-auth signs cookies as `<value>.<signature>`. The value is the
       // same high-entropy `app_sessions.token` the bearer path accepts raw, and
       // it's verified by the DB lookup — so taking the value is no weaker than

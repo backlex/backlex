@@ -13,14 +13,25 @@ import type { FieldChoice, FieldDef } from "@backlex/db";
  * Templates are authored to a "professional" bar on two axes.
  *
  * DATA MODEL — each vertical mirrors the entity model of the strongest platform
- * in its space, taken from their published API surface or their open-source
- * schema rather than invented: ecommerce → Shopify / Vendure / Medusa,
- * saas → Stripe, crm → Salesforce / HubSpot / SuiteCRM, support → Zendesk /
- * Chatwoot, hr → Workday / BambooHR / ERPNext HRMS, projects → Jira / Linear /
- * OpenProject, ats → Greenhouse / Lever, lms → Canvas / Teachable,
- * inventory + manufacturing → NetSuite / ERPNext, invoicing → Invoice Ninja,
- * appointments → Cal.com, blog → WordPress / Ghost, nonprofit → CiviCRM,
- * clinic → FHIR / OpenEMR. Foreign keys and status/date columns are `indexed`,
+ * in its space rather than being invented: ecommerce → Shopify / Vendure /
+ * Medusa / BigCommerce, saas → Stripe, crm → Salesforce / HubSpot / SuiteCRM,
+ * support → Zendesk / Chatwoot, hr → Workday / BambooHR / ERPNext HRMS,
+ * projects → Jira / Linear / OpenProject, ats → Greenhouse / Lever,
+ * lms → Canvas / Teachable, inventory + manufacturing → NetSuite / ERPNext,
+ * invoicing → Invoice Ninja, appointments → Cal.com, blog → WordPress / Ghost,
+ * nonprofit → CiviCRM, clinic → FHIR / OpenEMR.
+ *
+ * Of those, the ones actually read from a published schema (and therefore the
+ * ones to trust and to re-check first when extending) are: Vendure and Medusa
+ * entity/module listings, Shopify's Storefront `QueryRoot`, BigCommerce's
+ * GraphQL `site`, SuiteCRM modules, Zendesk's resource list, Chatwoot models,
+ * ERPNext stock + manufacturing doctypes, frappe/hrms doctypes, OpenProject
+ * and Canvas models, Greenhouse Harvest, Invoice Ninja models, Cal.com's
+ * Prisma schema, Ghost models, CiviCRM core DAOs. The rest are modelled from
+ * domain knowledge — treat them as the weaker claim. Vendor doc portals are
+ * mostly unfetchable; go to the open-source schema when you need ground truth.
+ *
+ * Foreign keys and status/date columns are `indexed`,
  * status fields use colored `dropdown` choices, money/email/url/rating fields
  * carry soft `validation`, content-heavy collections enable `fts`, and every
  * collection ships realistic `samples` so a fresh workspace is demo-ready.

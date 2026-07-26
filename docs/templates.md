@@ -162,17 +162,32 @@ small helper DSL (`text`, `rel`, `money`, `select`, …). Hard constraints:
 
 ### Data model
 
-Each vertical mirrors the entity model of the strongest platform in its space,
-taken from that platform's published API surface or its open-source schema
-rather than invented — ecommerce from Shopify / Vendure / Medusa, saas from
-Stripe, crm from Salesforce / HubSpot / SuiteCRM, support from Zendesk /
-Chatwoot, hr from Workday / BambooHR / ERPNext HRMS, projects from Jira /
-Linear / OpenProject, ats from Greenhouse, lms from Canvas, inventory and
-manufacturing from NetSuite / ERPNext, invoicing from Invoice Ninja,
-appointments from Cal.com, blog from WordPress / Ghost, nonprofit from CiviCRM,
-clinic from FHIR / OpenEMR. When you extend a vertical, check the reference
-first: the point is that an operator who knows the category recognizes the
-model, including the status enums.
+Each vertical mirrors the entity model of the strongest platform in its space
+rather than being invented — ecommerce from Shopify / Vendure / Medusa /
+BigCommerce, saas from Stripe, crm from Salesforce / HubSpot / SuiteCRM,
+support from Zendesk / Chatwoot, hr from Workday / BambooHR / ERPNext HRMS,
+projects from Jira / Linear / OpenProject, ats from Greenhouse, lms from Canvas,
+inventory and manufacturing from NetSuite / ERPNext, invoicing from Invoice
+Ninja, appointments from Cal.com, blog from WordPress / Ghost, nonprofit from
+CiviCRM, clinic from FHIR / OpenEMR. The point is that an operator who knows
+the category recognizes the model, including the status enums.
+
+Not every reference above was read from a published schema. The ones that were —
+and so the ones to trust and re-check first — are Vendure and Medusa entity /
+module listings, Shopify's Storefront `QueryRoot`, BigCommerce's GraphQL `site`,
+SuiteCRM modules, Zendesk's resource list, Chatwoot models, ERPNext stock +
+manufacturing doctypes, frappe/hrms doctypes, OpenProject and Canvas models,
+Greenhouse Harvest, Invoice Ninja models, Cal.com's Prisma schema, Ghost models
+and CiviCRM core DAOs. The rest are modelled from domain knowledge.
+
+When you extend a vertical, go to the **open-source schema**, not the vendor
+doc portal: those are SPA-rendered and mostly return 404s or boilerplate to a
+fetcher. `gh api repos/<owner>/<repo>/contents/<models dir>` against the
+project's entity/model/doctype directory is the highest-signal source. Note
+also that Shopify's and BigCommerce's *Storefront* APIs are buyer-facing read
+models — they validate the merchandising shape (products, variants, options,
+collections, cart, menus, redirects) but say nothing about the back-office
+model, which is where Vendure/Medusa earn their place.
 
 ### Form layout
 

@@ -20,9 +20,13 @@ Panels:
 7. **Offline sync** — `backlex.sync({ collection: "notes", store: memoryStore() })`
    with `start` / `pull` / `flush` / `stop` and optimistic `create` / `update` / `remove`.
 8. **Feature flags** — `flags.all()` + `flags.isEnabled("beta")` gating a banner.
-9. **REST (raw)** — the same endpoints **without the SDK**: plain `fetch` to
-   `GET` / `POST /api/items/notes` with the workspace token as a `Bearer` header.
-10. **GraphQL** — `POST /api/graphql` with `{ query, variables }`: a `notes`
+9. **Messaging** — `messaging.registerDevice` (a **real** Web Push subscription:
+   service worker → `Notification.requestPermission()` → `pushManager.subscribe()`),
+   `registerPhone`, `listDevices` / `listPhones`, and `sendPush` / `sendSms`
+   addressed to yourself.
+10. **REST (raw)** — the same endpoints **without the SDK**: plain `fetch` to
+    `GET` / `POST /api/items/notes` with the workspace token as a `Bearer` header.
+11. **GraphQL** — `POST /api/graphql` with `{ query, variables }`: a `notes`
     list query and a `createNotes` mutation against the auto-generated schema.
 
 The last two show the wire protocol the SDK wraps — reach for them from any
@@ -87,7 +91,22 @@ In the admin UI → **Feature flags**:
 
 With no flags configured the panel just shows an empty list — still valid.
 
-## 4. Configure and run the example
+## 4. (Optional) Enable Web Push for the Messaging panel
+
+The Messaging panel builds a **real** browser push subscription, which needs a
+VAPID key pair. In the admin UI → **Settings → Push**, configure the `web-push`
+provider, then copy the **public** key into this example's `.env` as
+`VITE_BACKLEX_VAPID_PUBLIC_KEY`. It's public by design — browsers require it
+client-side and it ships in the bundle; the private key never leaves the backend.
+(See [`docs/push-messaging.md`](../../docs/push-messaging.md).)
+
+Leave it empty and the push half is disabled with an inline hint — device
+listing, phone registration, and `sendSms` still work. SMS **delivery**
+similarly needs a provider (Twilio / Amazon SNS) configured in the admin; the
+registration calls work without one. (See
+[`docs/sms-messaging.md`](../../docs/sms-messaging.md).)
+
+## 5. Configure and run the example
 
 ```bash
 cd examples/showcase-react
@@ -115,6 +134,7 @@ reachable. Once it's green, sign up and click through the tabs.
 | `App.tsx` · `StoragePanel` | `storage.put`, `storage.list`, `storage.download`, `storage.delete` |
 | `App.tsx` · `SyncPanel` | `sync({ collection, store: memoryStore() })` → `start` / `pull` / `flush` / `stop` / `create` / `update` / `remove` / `getAll` |
 | `App.tsx` · `FlagsPanel` | `flags.all()`, `flags.isEnabled("beta")` |
+| `App.tsx` · `MessagingPanel` + `public/sw.js` | `messaging.registerDevice` / `unregister` / `registerPhone` / `unregisterPhone` / `listDevices` / `listPhones` / `sendPush` / `sendSms` |
 | `App.tsx` · `RestPanel` | raw `fetch` → `GET` / `POST /api/items/notes` with a `Bearer` token (no SDK) |
 | `App.tsx` · `GraphqlPanel` | raw `fetch` → `POST /api/graphql` `{ query, variables }`: `notes` query + `createNotes` mutation |
 

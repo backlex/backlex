@@ -34,6 +34,14 @@ export const ENV: EnvSpec[] = [
     description:
       "Where the dev proxy forwards /api/* (used only when VITE_BACKLEX_URL is empty).",
   },
+  {
+    key: "VITE_BACKLEX_VAPID_PUBLIC_KEY",
+    required: false,
+    value: import.meta.env.VITE_BACKLEX_VAPID_PUBLIC_KEY,
+    example: "(empty) · BEl62iUYgUivxIkv69y…",
+    description:
+      "VAPID public key for the Web Push demo in the Messaging panel. Public by design (it ships in the bundle) — copy it from the admin → Push settings. Leave empty to skip browser push; SMS registration still works.",
+  },
 ];
 
 /** Required vars that are not set — empty array means env is good to go. */
@@ -44,3 +52,7 @@ export const WORKSPACE: string = import.meta.env.VITE_BACKLEX_WORKSPACE ?? "";
 
 /** API origin — empty string means same-origin (dev proxy). */
 export const API_URL: string = import.meta.env.VITE_BACKLEX_URL ?? "";
+
+/** VAPID public key for Web Push — empty string means the push demo is off. */
+export const VAPID_PUBLIC_KEY: string =
+  import.meta.env.VITE_BACKLEX_VAPID_PUBLIC_KEY ?? "";

@@ -29,6 +29,7 @@ in the dashboard · `server`/`CLI` = backend or tooling.
 | Feature flags + remote config | SDK + admin | **showcase** (Feature flags panel) — `flags.all/isEnabled/get`; flags are defined in the admin | [feature-flags](../docs/feature-flags.md) |
 | Permissions (owner-scoped) | SDK + admin | all three — every collection is created **owner-scoped**, so each user sees only their own rows; configured at collection-create | [permissions](../docs/permissions.md) |
 | Multi-language (localized) | SDK + admin | **blog** — `title` / `body` are localized; the composer writes a `{ en, tr }` map and the EN/TR switcher re-lists with `list({ locale })` to collapse each field | [locale-timezone](../docs/locale-timezone.md) |
+| Push + SMS registration and self-send | SDK | **showcase** (Messaging panel) — `messaging.registerDevice` (real Web Push subscription via `public/sw.js`) / `registerPhone` / `listDevices` / `listPhones` / `sendPush` / `sendSms`; providers are configured in the admin | [push-messaging](../docs/push-messaging.md), [sms-messaging](../docs/sms-messaging.md) |
 | Raw REST (no SDK) | HTTP | **showcase** (REST panel) — plain `fetch` to `/api/items/<c>` with a `Bearer` token | [querying](../docs/querying.md) |
 | GraphQL API | HTTP | **showcase** (GraphQL panel) — `POST /api/graphql` `{ query, variables }`; schema generated from your collections | [graphql](../docs/graphql.md) |
 
@@ -38,10 +39,26 @@ in the dashboard · `server`/`CLI` = backend or tooling.
 |---|---|---|
 | Resumable uploads (TUS) | `storage.uploadResumable({ key, data, onProgress })` | [resumable-uploads](../docs/resumable-uploads.md) |
 | Export / import a collection | `from(c).exportItems("csv")` / `importItems(rows)` | [backup-restore](../docs/backup-restore.md) |
-| Push device registration | `messaging.registerDevice({ platform, token })` | [push-messaging](../docs/push-messaging.md) |
-| SMS phone registration | `messaging.registerPhone({ phoneNumber })` | [sms-messaging](../docs/sms-messaging.md) |
 | Single-item read with relations | `from(c).one(id, { expand })` | [querying](../docs/querying.md) |
 | Outbound webhook signature verify | `verifyWebhook(payload, sig, secret)` | [webhooks](../docs/webhooks.md) |
+
+## Why the SDK's other namespaces aren't in a browser panel
+
+`createClient()` also returns `agents`, `jobs`, `flows`, `forms`, `dashboards`,
+`permissions`, `templates`, `schema`, `migrate`, `usage`, `backups`,
+`extensions`, and `appUsers`. None of them appear in the example apps, and that
+is **deliberate, not a gap**: every one of those routes is guarded by
+`requireAdmin` on the server. A workspace end-user — which is what all four
+example apps sign in as — gets a `403` from them by construction.
+
+They're reachable from a **server-side** caller holding an admin API key: a
+backend route, a script, CI, or a framework loader. `messaging` is the one
+exception on this list — it's genuinely end-user scoped (you register *your*
+devices and may only send to *yourself*), which is why it has a panel.
+
+So: if you're looking for how to drive the admin half of backlex from code,
+don't reach for a browser app — see the **admin / server-side** table below and
+[`docs/api-keys-and-email.md`](../docs/api-keys-and-email.md) for minting the key.
 
 ## Admin / server-side capabilities
 

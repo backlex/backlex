@@ -1,7 +1,13 @@
-import { BacklexError, type FlagState, memoryStore } from "backlex";
+import {
+  BacklexError,
+  type DeviceToken,
+  type FlagState,
+  memoryStore,
+  type PhoneNumber,
+} from "backlex";
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { backlex, type Note, notes, persistToken } from "./backlex";
-import { API_URL } from "./env";
+import { API_URL, VAPID_PUBLIC_KEY } from "./env";
 import { SetupCheck } from "./SetupCheck";
 
 // `SyncController` isn't exported by name; derive it from the client method so
@@ -142,6 +148,7 @@ const PANELS = [
   { id: "storage", label: "Storage" },
   { id: "sync", label: "Offline sync" },
   { id: "flags", label: "Feature flags" },
+  { id: "messaging", label: "Messaging" },
   { id: "rest", label: "REST (raw)" },
   { id: "graphql", label: "GraphQL" },
 ] as const;
@@ -186,6 +193,7 @@ function Showcase({ user, onSignOut }: { user: User; onSignOut: () => void }) {
       {tab === "storage" && <StoragePanel />}
       {tab === "sync" && <SyncPanel />}
       {tab === "flags" && <FlagsPanel />}
+      {tab === "messaging" && <MessagingPanel user={user} />}
       {tab === "rest" && <RestPanel />}
       {tab === "graphql" && <GraphqlPanel />}
     </div>
@@ -984,6 +992,279 @@ function FlagsPanel() {
       </ul>
     </Panel>
   );
+}
+
+// ── Panel: messaging (push + SMS) ────────────────────────────────────────────
+// The only *end-user* messaging surface: a signed-in user registers their own
+// devices/phones and may send to themselves. (`sendPush`/`sendSms` let admins
+// target any user; non-admins are restricted to their own id server-side — so
+// this panel always passes `user.id`.)
+//
+// Web Push is a real subscription, not a mock: register a service worker, ask
+// for notification permission, `pushManager.subscribe()` with the VAPID public
+// key, then hand the endpoint + keys to `messaging.registerDevice`. Delivery
+// still needs push credentials configured in the admin; without them the send
+// fails with an inline error while registration itself keeps working.
+function MessagingPanel({ user }: { user: User }) {
+  const [devices, setDevices] = useState<DeviceToken[]>([]);
+  const [phones, setPhones] = useState<PhoneNumber[]>([]);
+  const [phone, setPhone] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const [d, p] = await Promise.all([
+        backlex.messaging.listDevices(),
+        backlex.messaging.listPhones(),
+      ]);
+      setDevices(d.data);
+      setPhones(p.data);
+      setError(null);
+    } catch (err) {
+      setError(errMsg(err));
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  // The full browser-push handshake, end to end.
+  async function enablePush() {
+    setBusy("push");
+    setNote(null);
+    setError(null);
+    try {
+      if (!VAPID_PUBLIC_KEY) throw new Error("Set VITE_BACKLEX_VAPID_PUBLIC_KEY to enable push.");
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+        throw new Error("This browser has no Web Push support.");
+      }
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") throw new Error(`Notification permission: ${permission}`);
+
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+      // Reuse an existing subscription when there is one — re-subscribing with
+      // a different key throws, and backlex treats a re-register as a refresh.
+      const sub =
+        (await reg.pushManager.getSubscription()) ??
+        (await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        }));
+
+      const json = sub.toJSON();
+      if (!json.keys?.p256dh || !json.keys?.auth) throw new Error("Subscription is missing keys.");
+      await backlex.messaging.registerDevice({
+        platform: "web-push",
+        token: sub.endpoint,
+        keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+        deviceName: "showcase (browser)",
+      });
+      setNote("Device registered — send yourself a push below.");
+      await refresh();
+    } catch (err) {
+      setError(errMsg(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function unregisterDevice(id: string) {
+    // Optimistic: drop the row, restore it if the call fails.
+    const snapshot = devices;
+    setDevices((ds) => ds.filter((d) => d.id !== id));
+    try {
+      await backlex.messaging.unregister(id);
+    } catch (err) {
+      setDevices(snapshot);
+      setError(errMsg(err));
+    }
+  }
+
+  async function addPhone(e: FormEvent) {
+    e.preventDefault();
+    const number = phone.trim();
+    if (!number) return;
+    setBusy("phone");
+    setNote(null);
+    setError(null);
+    try {
+      await backlex.messaging.registerPhone({ phoneNumber: number });
+      setPhone("");
+      setNote("Phone registered.");
+      await refresh();
+    } catch (err) {
+      setError(errMsg(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function unregisterPhone(id: string) {
+    const snapshot = phones;
+    setPhones((ps) => ps.filter((p) => p.id !== id));
+    try {
+      await backlex.messaging.unregisterPhone(id);
+    } catch (err) {
+      setPhones(snapshot);
+      setError(errMsg(err));
+    }
+  }
+
+  async function sendSelf(kind: "push" | "sms") {
+    setBusy(kind === "push" ? "send-push" : "send-sms");
+    setNote(null);
+    setError(null);
+    try {
+      const res =
+        kind === "push"
+          ? await backlex.messaging.sendPush({
+              userId: user.id,
+              title: "Hello from backlex",
+              body: "Sent by the showcase Messaging panel.",
+              url: "/",
+            })
+          : await backlex.messaging.sendSms({
+              userId: user.id,
+              body: "Hello from the backlex showcase.",
+            });
+      setNote(`Dispatched — sent ${res.sent}, failed ${res.failed}.`);
+    } catch (err) {
+      setError(errMsg(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Panel
+      title="Messaging (push + SMS)"
+      desc="messaging.registerDevice / registerPhone / listDevices / listPhones / sendPush / sendSms — an end-user may only target themselves"
+    >
+      {note && <p className="text-sm text-emerald-700">{note}</p>}
+      {error && <ErrorLine msg={error} />}
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Stat label="Devices" value={devices.length} />
+        <Stat label="Phones" value={phones.length} />
+      </div>
+
+      {/* ── Web Push ── */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-neutral-700">Web Push</h3>
+        {!VAPID_PUBLIC_KEY && (
+          <p className="text-xs text-neutral-500">
+            Set <code>VITE_BACKLEX_VAPID_PUBLIC_KEY</code> in <code>.env</code> (admin → Push
+            settings) to enable the browser subscription.
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={ghostBtnCls}
+            onClick={enablePush}
+            disabled={busy === "push" || !VAPID_PUBLIC_KEY}
+          >
+            {busy === "push" ? "Subscribing…" : "Enable push on this device"}
+          </button>
+          <button
+            type="button"
+            className={ghostBtnCls}
+            onClick={() => sendSelf("push")}
+            disabled={busy === "send-push" || devices.length === 0}
+          >
+            {busy === "send-push" ? "Sending…" : "Send myself a push"}
+          </button>
+        </div>
+        <ul className="space-y-2">
+          {devices.length === 0 && <Empty>No devices registered.</Empty>}
+          {devices.map((d) => (
+            <li
+              key={d.id}
+              className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-3 text-sm"
+            >
+              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs">{d.platform}</span>
+              <span className="min-w-0 flex-1 truncate text-neutral-600">
+                {d.deviceName ?? d.token}
+              </span>
+              {!d.isActive && <span className="text-xs text-neutral-400">inactive</span>}
+              <button
+                type="button"
+                onClick={() => unregisterDevice(d.id)}
+                className="text-neutral-400 hover:text-red-600"
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* ── SMS ── */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-neutral-700">SMS</h3>
+        <form onSubmit={addPhone} className="flex gap-2">
+          <input
+            className={inputCls}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="+14155552671"
+          />
+          <button type="submit" className={ghostBtnCls} disabled={busy === "phone"}>
+            {busy === "phone" ? "…" : "Register"}
+          </button>
+        </form>
+        <p className="text-xs text-neutral-500">
+          E.164 format. Delivery needs an SMS provider configured in the admin; registration works
+          without one.
+        </p>
+        <button
+          type="button"
+          className={ghostBtnCls}
+          onClick={() => sendSelf("sms")}
+          disabled={busy === "send-sms" || phones.length === 0}
+        >
+          {busy === "send-sms" ? "Sending…" : "Send myself an SMS"}
+        </button>
+        <ul className="space-y-2">
+          {phones.length === 0 && <Empty>No phone numbers registered.</Empty>}
+          {phones.map((p) => (
+            <li
+              key={p.id}
+              className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-3 text-sm"
+            >
+              <code className="flex-1">{p.phoneNumber}</code>
+              {!p.isActive && <span className="text-xs text-neutral-400">inactive</span>}
+              <button
+                type="button"
+                onClick={() => unregisterPhone(p.id)}
+                className="text-neutral-400 hover:text-red-600"
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Panel>
+  );
+}
+
+/**
+ * VAPID keys travel as base64url; `applicationServerKey` wants raw bytes.
+ * Backed by an explicit `ArrayBuffer` so the result is `Uint8Array<ArrayBuffer>`
+ * — the plain `new Uint8Array(n)` overload widens to `ArrayBufferLike`, which
+ * the DOM's `BufferSource` no longer accepts.
+ */
+function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+  const raw = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
+  const out = new Uint8Array(new ArrayBuffer(raw.length));
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
 }
 
 // ── Raw HTTP helpers (no SDK) ────────────────────────────────────────────────

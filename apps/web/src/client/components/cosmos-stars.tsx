@@ -40,7 +40,9 @@ export function CosmosStars() {
 
     const make = () => {
       stars.length = 0;
-      const n = Math.round((w * h) / 6500);
+      // Denser when frozen — without drift/twinkle to catch the eye a
+      // desktop-density field reads as empty. Static paints are one-off.
+      const n = Math.round((w * h) / (staticMq.matches ? 3200 : 6500));
       for (let i = 0; i < n; i++) {
         const depth = Math.random();
         stars.push({
@@ -69,7 +71,10 @@ export function CosmosStars() {
     const paintStatic = () => {
       ctx.clearRect(0, 0, w, h);
       for (const s of stars) {
-        ctx.globalAlpha = 0.5 * (0.45 + s.depth);
+        // Same alpha expression as tick(), evaluated once against each star's
+        // randomly-seeded phase — a flat 0.5 multiplier gives every star the
+        // mid-brightness of the twinkle and the field reads as washed out.
+        ctx.globalAlpha = Math.max(0, 0.35 + Math.sin(s.tw) * 0.45) * (0.45 + s.depth);
         ctx.fillStyle = s.depth > 0.45 ? "#cdbcff" : "#ffffff";
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.r, 0, 6.283);

@@ -106,7 +106,12 @@ const StarCanvas = () => {
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const count = Math.round((w * h) / 6500);
+      // Denser field when the frame is frozen. On a phone the auth card covers
+      // most of the canvas, so the desktop density leaves only a handful of
+      // stars in the visible margins — with no drift or twinkle to catch the
+      // eye, that reads as an empty background. A static paint is one-off, so
+      // the extra stars cost nothing per frame.
+      const count = Math.round((w * h) / (reduce ? 3200 : 6500));
       stars = Array.from({ length: count }, () => {
         const deep = Math.random() < 0.25;
         return {
@@ -125,16 +130,20 @@ const StarCanvas = () => {
     const paintStars = (animate: boolean) => {
       ctx.clearRect(0, 0, w, h);
       for (const s of stars) {
-        let a = s.base;
+        // The twinkle term is applied in BOTH modes. Dropping it from the
+        // static frame flattens every star to `base` (0.35–0.80) — no bright
+        // peaks — and the backdrop reads as empty. Each star's `tw` is seeded
+        // randomly, so evaluating it once gives the same brightness spread as
+        // a paused frame of the animation.
         if (animate) {
           s.tw += s.tws;
-          a = s.base + Math.sin(s.tw) * 0.35;
           s.y += s.vy;
           if (s.y > h) {
             s.y = 0;
             s.x = Math.random() * w;
           }
         }
+        const a = s.base + Math.sin(s.tw) * 0.35;
         ctx.globalAlpha = Math.max(0, Math.min(1, a));
         ctx.fillStyle = s.violet ? "#cdbcff" : "#ffffff";
         ctx.beginPath();

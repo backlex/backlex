@@ -104,9 +104,19 @@ export function Palette({ open, onClose, onNavigate, items, collections, isAdmin
             placeholder={t`Type a command, collection, or item title…`}
             className="h-auto flex-1 border-0 bg-transparent p-0 text-[14.5px] text-foreground shadow-none focus-visible:ring-0"
           />
-          <span className="rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">esc</span>
+          {/* Touch has no Esc key, so the hint chip becomes a real tap target
+              below sm; the chip stays on pointer devices where it's accurate. */}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t`Close`}
+            className="grid size-8 shrink-0 place-items-center rounded-control border border-border text-muted-foreground sm:hidden"
+          >
+            <I.X size={16} />
+          </button>
+          <span className="hidden rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground sm:inline">esc</span>
         </div>
-        <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(60vh-100px)]">
+        <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(60vh-57px)] sm:max-h-[calc(60vh-100px)]">
           <div className="p-1.5">
           {flat.length === 0 ? (
             <div className="p-7 text-center text-[13px] text-muted-foreground">
@@ -140,7 +150,8 @@ export function Palette({ open, onClose, onNavigate, items, collections, isAdmin
           )}
           </div>
         </ScrollArea>
-        <div className="flex shrink-0 items-center gap-3.5 border-t border-border px-5 py-3.5 font-mono text-[11px] text-muted-foreground">
+        {/* Keyboard-only legend — hidden on touch, where none of it applies. */}
+        <div className="hidden shrink-0 items-center gap-3.5 border-t border-border px-5 py-3.5 font-mono text-[11px] text-muted-foreground sm:flex">
           <span><span className={kbd}>↵</span> <Trans>open</Trans></span>
           <span><span className={kbd}>↑↓</span> <Trans>navigate</Trans></span>
           <span><span className={kbd}>esc</span> <Trans>close</Trans></span>

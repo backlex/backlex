@@ -17,7 +17,11 @@ export function CosmosStars() {
     if (!c) return;
     const ctx = c.getContext("2d");
     if (!ctx) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Static frame instead of a rAF loop when the user asked for reduced motion
+    // *or* we're on a phone — a per-frame full-viewport canvas repaint is the
+    // most expensive thing on the page for a backdrop nobody looks at, and it
+    // costs real battery on mobile.
+    const staticMq = window.matchMedia("(prefers-reduced-motion: reduce), (max-width: 767px)");
 
     let w = 0;
     let h = 0;
@@ -58,6 +62,9 @@ export function CosmosStars() {
       c.height = h * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       make();
+      // Resizing clears the canvas; the animated path repaints on the next
+      // frame, the static one has to redraw here or the stars vanish.
+      if (staticMq.matches) paintStatic();
     };
     const paintStatic = () => {
       ctx.clearRect(0, 0, w, h);
@@ -118,16 +125,25 @@ export function CosmosStars() {
       raf = requestAnimationFrame(tick);
     };
 
+    // Re-evaluated on change so rotating a phone past the breakpoint (or
+    // toggling the OS reduced-motion setting) switches modes without a remount.
+    const applyMode = () => {
+      if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      }
+      if (staticMq.matches) paintStatic();
+      else tick();
+    };
+
     resize();
     window.addEventListener("resize", resize);
-    if (reduce) {
-      paintStatic();
-    } else {
-      tick();
-    }
+    staticMq.addEventListener("change", applyMode);
+    applyMode();
     return () => {
       if (raf) cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
+      staticMq.removeEventListener("change", applyMode);
     };
   }, []);
 

@@ -59,3 +59,10 @@ html.dark body {
 @media (prefers-reduced-motion: reduce) {
   .cosmos-neb { animation: none; }
 }
+/* Phones: the glows are 540–620px blurred circles, so animating them repaints a
+ * large fraction of a small viewport every frame for a backdrop that's mostly
+ * covered by content anyway. Static glows, same look. Paired with the static
+ * star frame <CosmosStars> paints on mobile. */
+@media (max-width: 767px) {
+  .cosmos-neb { animation: none; }
+}

@@ -33,6 +33,7 @@ import { Input } from "@backlex/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { useIsMobile } from "@backlex/ui/hooks/use-mobile";
 import {
   Dialog,
   DialogContent,
@@ -141,6 +142,9 @@ export interface BrandMarkProps {
 
 export function BrandMark({ size = 32, logoUrl }: BrandMarkProps) {
   const uid = useId().replace(/:/g, "");
+  // SMIL <animateMotion> can't be disabled from CSS, so the moon's orbit is
+  // dropped from the tree on phones (it runs forever in the sidebar header).
+  const isMobile = useIsMobile();
   if (logoUrl) {
     return (
       <img
@@ -180,9 +184,13 @@ export function BrandMark({ size = 32, logoUrl }: BrandMarkProps) {
         <ellipse cx="16" cy="16" rx="14.2" ry="5.3" stroke="#ffb59e" strokeWidth="1.7" />
       </g>
       <g transform="rotate(-22 16 16)">
-        <circle r="1.5" fill="#ffe2d4">
-          <animateMotion dur="6s" repeatCount="indefinite" path="M 1.8 16 a 14.2 5.3 0 1 0 28.4 0 a 14.2 5.3 0 1 0 -28.4 0" />
-        </circle>
+        {isMobile ? (
+          <circle cx="1.8" cy="16" r="1.5" fill="#ffe2d4" />
+        ) : (
+          <circle r="1.5" fill="#ffe2d4">
+            <animateMotion dur="6s" repeatCount="indefinite" path="M 1.8 16 a 14.2 5.3 0 1 0 28.4 0 a 14.2 5.3 0 1 0 -28.4 0" />
+          </circle>
+        )}
       </g>
     </svg>
   );
@@ -1273,7 +1281,9 @@ export function EmptyState({
   );
   if (bare) {
     return (
-      <div className={cn("flex flex-col items-center gap-3 text-center text-muted-foreground py-8", className)}>
+      // px matters: `bare` has no card chrome of its own, so without it the copy
+      // runs edge-to-edge against the parent card's border on narrow screens.
+      <div className={cn("flex flex-col items-center gap-3 px-6 py-8 text-center text-muted-foreground", className)}>
         {content}
       </div>
     );

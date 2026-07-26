@@ -1685,11 +1685,30 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 
 @media (max-width: 768px) {
   .topbar { padding: 10px 14px; gap: 8px; }
-  .topbar .kbar {
+  /* Collapsed to an icon button — must be visually identical to the
+   * .notif-trigger bell sitting next to it (same 32px box, transparent fill,
+   * same border + icon color). The desktop .kbar fill/dim-text treatment is a
+   * search-*input* affordance and reads as a smaller, different button once the
+   * label is gone. */
+  .topbar .kbar,
+  .dark .topbar .kbar {
     min-width: 0;
     flex: 0 0 auto;
-    padding: 6px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    gap: 0;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    border-color: var(--border);
+    color: var(--foreground);
   }
+  .topbar .kbar:hover,
+  .dark .topbar .kbar:hover { background: var(--accent); }
+  /* The icon is sized by an SVG width/height attribute (13px); CSS wins, so
+   * this matches the bell's 14px without threading a breakpoint through JSX. */
+  .topbar .kbar > svg { width: 14px; height: 14px; }
   .topbar .kbar > span:not(.kbd) { display: none; }
   .topbar .kbar .kbd { display: none; }
   .crumbs { min-width: 0; flex: 1; overflow: hidden; }

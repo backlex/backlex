@@ -11,6 +11,7 @@ import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, IconButton, Switch, relativeTime } from "./ui";
 import { authorById } from "./items";
+import { rowLabel } from "./row-label";
 import { Card } from "@backlex/ui/components/card";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Skeleton } from "@backlex/ui/components/skeleton";
@@ -390,10 +391,15 @@ export function ItemEditorPage({
 
   const title = useMemo(() => {
     if (mode === "create") return t`New ${slug}`;
-    const rec = (item ?? {}) as Record<string, unknown>;
-    const display = rec.title ?? rec.name ?? rec.slug;
-    return typeof display === "string" && display.trim() ? display : itemId;
-  }, [mode, item, slug, itemId, t]);
+    // Go through the shared resolver rather than a local title/name/slug scan:
+    // it honours the collection's display template and the wider label-field
+    // list, so a record keyed by a number (invoice, order, RMA) or by a person's
+    // first/last name gets a real heading instead of a raw UUID.
+    return rowLabel((item ?? {}) as Record<string, unknown>, {
+      displayTemplate: schema?.displayTemplate,
+      fields: schema?.fields,
+    });
+  }, [mode, item, slug, schema, t]);
 
   const ownerScoped = !!schema?.ownerScoped;
   const rec = (item ?? {}) as Record<string, unknown>;

@@ -582,9 +582,9 @@ export const TEMPLATES: SchemaTemplate[] = [
   {
     id: "ecommerce",
     label: "E-commerce",
-    groups: ["Catalog", "Orders", "Customers", "Inventory", "Marketing", "Shipping & tax"],
+    groups: ["Catalog", "Orders", "Customers", "Inventory", "Marketing", "Storefront", "Shipping & tax"],
     description:
-      "Shopify-grade storefront: products with options & variants, multi-location inventory, customer groups, discounts, carts, orders with separate payment & fulfillment status, transactions, refunds, returns, fulfillments, shipping zones & rates, tax rates, reviews and gift cards.",
+      "Shopify-grade storefront: products with options & variants and subscribe-and-save selling plans, multi-location inventory, customer groups, discounts, carts, orders with separate payment & fulfillment status, transactions, refunds, returns, fulfillments, shipping zones & rates, tax rates, reviews, gift cards, plus the storefront surface itself — content pages, navigation menus and URL redirects.",
     collections: [
       {
         slug: "media", group: "Catalog", singular: "Media", plural: "Media",
@@ -627,6 +627,71 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
         ),
         samples: [{ title: "Summer Sale", slug: "summer-sale", collection_type: "manual", position: 1, published: true }],
+      },
+      {
+        // Storefront content page (Shopify Storefront `page`). A store needs
+        // About / Shipping policy / FAQ without pulling in the whole blog model.
+        slug: "pages", group: "Storefront", singular: "Page", plural: "Pages", versioned: true, fts: true, defaultSort: "title",
+        fields: stacked(
+          sec("Content", [
+            ...half(text("title", { required: true, searchable: true }), slugField()),
+            { name: "body", type: "longtext", interface: "richtext", searchable: true },
+          ]),
+          sec("SEO", [
+            text("seo_title", { label: "SEO title" }),
+            notes("seo_description", { label: "SEO description" }),
+            bool("visible", { default: true }),
+          ], { folded: true }),
+        ),
+        samples: [
+          { title: "Shipping & returns", slug: "shipping-returns", body: "Orders ship within two business days.", visible: true },
+          { title: "About us", slug: "about-us", body: "We have been making things since 2019.", visible: true },
+        ],
+      },
+      {
+        // Storefront navigation (Shopify Storefront `menu`). Nav is authored
+        // content, not a projection of the category tree — a header menu routinely
+        // mixes categories, collections, pages and external links.
+        slug: "menus", group: "Storefront", singular: "Menu", plural: "Menus", defaultSort: "handle",
+        fields: [
+          ...half(text("title", { required: true }), text("handle", { unique: true, required: true, description: "Referenced by the storefront, e.g. main-menu or footer." })),
+        ],
+        samples: [{ title: "Main menu", handle: "main-menu" }, { title: "Footer", handle: "footer" }],
+      },
+      {
+        slug: "menu_items", group: "Storefront", singular: "Menu item", plural: "Menu items", defaultSort: "position",
+        fields: stacked(
+          sec("Item", [
+            ...half(rel("menu", "menus", { required: true }), text("title", { required: true })),
+            ...half(rel("parent", "menu_items", { label: "Nested under" }), position()),
+          ]),
+          sec("Target", [
+            hint("menu_items_target", "Point at one of the links below — whichever is set wins, in the order shown."),
+            ...half(rel("category", "categories"), rel("collection", "collections")),
+            ...half(rel("page", "pages"), url("external_url", { label: "External URL" })),
+          ]),
+        ),
+        samples: [
+          { menu: { ref: "menus:0" }, title: "Apparel", category: { ref: "categories:0" }, position: 1 },
+          { menu: { ref: "menus:0" }, title: "Summer Sale", collection: { ref: "collections:0" }, position: 2 },
+          { menu: { ref: "menus:1" }, title: "Shipping & returns", page: { ref: "pages:0" }, position: 1 },
+        ],
+      },
+      {
+        // Shopify `urlRedirects` / BigCommerce `route` — the thing that keeps SEO
+        // alive when a product handle or category path changes.
+        slug: "redirects", group: "Storefront", singular: "Redirect", plural: "Redirects", defaultSort: "from_path",
+        fields: [
+          ...half(
+            text("from_path", { required: true, unique: true, label: "From path", description: "Path only, e.g. /products/old-handle." }),
+            text("to_path", { required: true, label: "To path or URL" }),
+          ),
+          ...half(bool("permanent", { default: true, label: "Permanent (301)" }), bool("active", { default: true })),
+        ],
+        samples: [
+          { from_path: "/products/tee", to_path: "/products/classic-tee", permanent: true, active: true },
+          { from_path: "/sale", to_path: "/collections/summer-sale", permanent: false, active: true },
+        ],
       },
       {
         // Pricing / eligibility tier a customer belongs to (Vendure CustomerGroup,
@@ -713,7 +778,12 @@ export const TEMPLATES: SchemaTemplate[] = [
               text("product_type", { label: "Type" }),
             ),
             ...half(rel("brand", "brands"), rel("category", "categories")),
-            tags("tags"),
+            ...half(
+              tags("tags"),
+              // BigCommerce exposes `featuredProducts` on the storefront; that
+              // needs a merchandising flag to read from.
+              bool("featured", { default: false, label: "Featured", description: "Surfaces the product in featured storefront slots." }),
+            ),
           ]),
           sec("Pricing", [
             ...half(money("price", { required: true, label: "Base price" }), money("compare_at_price", { label: "Compare-at price" })),
@@ -797,6 +867,35 @@ export const TEMPLATES: SchemaTemplate[] = [
         samples: [
           { product: { ref: "products:0" }, title: "S / Black", sku: "TEE-001-S-BLK", price: 25, cost: 9, inventory_quantity: 40, position: 1 },
           { product: { ref: "products:0" }, title: "M / Black", sku: "TEE-001-M-BLK", price: 25, cost: 9, inventory_quantity: 50, position: 2 },
+        ],
+      },
+      {
+        // Subscribe-and-save / prepaid plans (Shopify Storefront
+        // `sellingPlanGroups`) — a recurring purchase option attached to a
+        // product, distinct from the one-off price on the variant.
+        slug: "selling_plans", group: "Catalog", singular: "Selling plan", plural: "Selling plans", defaultSort: "name",
+        fields: stacked(
+          sec("Plan", [
+            ...half(text("name", { required: true }), rel("product", "products")),
+            ...half(
+              select("kind", [ch("subscription", C.purple), ch("prepaid", C.teal), ch("try_before_you_buy", C.blue, "Try before you buy")], { default: "subscription" }),
+              bool("active", { default: true }),
+            ),
+          ]),
+          sec("Cadence & discount", [
+            ...half(
+              select("billing_interval", [ch("day", C.gray), ch("week", C.teal), ch("month", C.blue), ch("year", C.purple)], { default: "month", label: "Billing interval" }),
+              int("interval_count", { default: 1, validation: { min: 1 }, label: "Every" }),
+            ),
+            ...half(
+              pct("discount_pct", { default: 0, label: "Subscriber discount (%)" }),
+              int("min_cycles", { validation: { min: 0 }, label: "Minimum cycles" }),
+            ),
+          ]),
+        ),
+        samples: [
+          { name: "Deliver every month — save 10%", product: { ref: "products:0" }, kind: "subscription", billing_interval: "month", interval_count: 1, discount_pct: 10, min_cycles: 3, active: true },
+          { name: "Prepaid 6 months", product: { ref: "products:1" }, kind: "prepaid", billing_interval: "month", interval_count: 6, discount_pct: 15, active: true },
         ],
       },
       {
@@ -1109,6 +1208,11 @@ export const TEMPLATES: SchemaTemplate[] = [
           { collection: "customers", action: "read" },
           { collection: "addresses", action: "read" },
           { collection: "carts", action: "read" },
+          { collection: "pages", action: "read" },
+          { collection: "menus", action: "read" },
+          { collection: "menu_items", action: "read" },
+          { collection: "redirects", action: "read" },
+          { collection: "selling_plans", action: "read" },
         ],
       },
     ],

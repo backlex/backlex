@@ -17,6 +17,10 @@
          CSP without an unsafe-inline exception. Blocking + in <head> so the
          theme class lands before first paint (anti-FOUC). -->
     <script src="/theme-init.js"></script>
+    <!-- Must run BEFORE the module bundle so its capture-phase error listener
+         is installed when a stale `/assets/*` chunk fails to load. See the file
+         header for why a stale document white-screens in the first place. -->
+    <script src="/boot-recovery.js"></script>
   </head>
   <body class="bg-background text-foreground">
     <div id="root"></div>

@@ -149,3 +149,8 @@ dist
 !.claude/hooks/
 .vercel
 .env*
+# …but the templates are documentation, not secrets. Every example README says
+# `cp .env.example .env`, which only works if the file survives a fresh clone —
+# the bare `.env*` above was silently swallowing all of them.
+!.env.example
+!.env.*.example

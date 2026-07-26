@@ -56,9 +56,19 @@ backend route, a script, CI, or a framework loader. `messaging` is the one
 exception on this list — it's genuinely end-user scoped (you register *your*
 devices and may only send to *yourself*), which is why it has a panel.
 
-So: if you're looking for how to drive the admin half of backlex from code,
-don't reach for a browser app — see the **admin / server-side** table below and
-[`docs/api-keys-and-email.md`](../docs/api-keys-and-email.md) for minting the key.
+[`react-router-app`](./react-router-app) is that server-side caller: React Router
+8 in framework mode, where every read and write happens in a loader/action and
+the `pak_…` key stays in `process.env`. It covers:
+
+| Capability | Where | Demonstrated by | Docs |
+|---|---|---|---|
+| Usage metering + quotas | SDK (admin) | **react-router-app** `/` — `usage.overview({ days })`: month totals, per-key traffic, limit breaches | [usage-metering](../docs/usage-metering.md) |
+| Durable job queue (retry / DLQ / scheduled) | SDK (admin) | **react-router-app** `/jobs` — `jobs.enqueue` (with `runAt` + `maxAttempts`) / `list` / `retry` / `cancel` / `remove` | [jobs](../docs/jobs.md) |
+| Flows (event/cron/manual automation) | SDK (admin) | **react-router-app** `/flows` — `flows.list` / `run(id, input)` / `update(id, { active })` | [flows](../docs/flows.md) |
+| AI agents (reason→act loop + tools) | SDK (admin) | **react-router-app** `/agents` — `agents.run(id, message)` with the full tool-call trace | [agents](../docs/agents.md) |
+| Permission simulation | SDK (admin) | **react-router-app** `/permissions` — `permissions.simulate(...)`: allow/deny verdict, matched rules, compiled SQL predicate, resolved DSL vars | [permissions](../docs/permissions.md) |
+
+Minting the key: [`docs/api-keys-and-email.md`](../docs/api-keys-and-email.md).
 
 ## Admin / server-side capabilities
 
@@ -93,3 +103,4 @@ in the admin while an example app is running and watch the behaviour change.
 | [`blog-react`](./blog-react) | 5175 | Draft/publish, full-text search, aggregates, query builder |
 | [`ecommerce-react`](./ecommerce-react) | 5176 | Filter/sort, storage image uploads + transforms, cart, batch order writes |
 | [`showcase-react`](./showcase-react) | 5177 | One tab per capability — the broadest SDK sweep |
+| [`react-router-app`](./react-router-app) | 5178 | The admin/server plane — jobs, flows, agents, permission simulation, usage |

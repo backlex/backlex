@@ -82,10 +82,14 @@ it, delete it. Open a second tab to watch realtime propagate.
   locally. Going **cross-origin** in production? Set `VITE_BACKLEX_URL` to your
   API origin and register this app's origin as trusted on the backend (the
   `EXTRA_TRUSTED_ORIGINS` env var, or the workspace's auth redirect URLs).
-- **Realtime over SSE** uses `EventSource`, which can't attach a bearer header,
-  so live events arrive only when the `todos` channel is readable by the request's
-  cookie/anon scope. Every mutation also updates state from its direct response,
-  so the UI stays correct regardless — the subscription is a cross-tab bonus.
+- **Realtime over SSE** uses `EventSource`, which can't attach a bearer header —
+  it authenticates with the workspace session **cookie** the app plane sets on
+  sign-in (`wo_<slug>.session_token`, httpOnly). That cookie is `SameSite=Lax`,
+  so it's sent same-origin — which is what the dev proxy gives you, and what a
+  same-origin production deploy gives you. A genuinely **cross-origin** SPA
+  won't send it, so realtime is unavailable there; put the API behind a
+  same-origin path (a proxy or a route on your own domain) if you need live
+  updates.
 - **Using this outside the monorepo?** Swap the `backlex` `workspace:*`
   dependency for the published package and point `VITE_BACKLEX_URL` at your
   deployed backlex.

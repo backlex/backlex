@@ -268,12 +268,23 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   // services/permissions-cache `CachedSession` for the safety rationale (key is
   // the signed cookie; TTL < better-auth's 60s cookieCache).
   let sessionToken: string | undefined;
+  // App-plane cookies are namespaced `wo_<tenantSlug>.session_token` (see
+  // packages/auth/src/tenant.ts `advanced.cookiePrefix`). They must NOT be fed
+  // to `ctx.auth` — that's the control-plane instance and will never recognise
+  // one. Keep them aside and resolve them against `app_sessions` below.
+  let appCookieToken: string | undefined;
   const cookies = getCookie(c);
   for (const name of Object.keys(cookies)) {
-    if (name.endsWith("session_token")) {
-      sessionToken = cookies[name];
-      break;
+    if (!name.endsWith("session_token")) continue;
+    if (name.startsWith("wo_")) {
+      // better-auth signs cookies as `<value>.<signature>`. The value is the
+      // same high-entropy `app_sessions.token` the bearer path accepts raw, and
+      // it's verified by the DB lookup — so taking the value is no weaker than
+      // the bearer path it mirrors.
+      appCookieToken ??= cookies[name]?.split(".")[0];
+      continue;
     }
+    sessionToken ??= cookies[name];
   }
   const cached = sessionToken ? getCachedSession(sessionToken) : undefined;
   if (cached) {
@@ -366,6 +377,33 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
           }
         }
       }
+    }
+  }
+
+  // Workspace end-user session carried by its own cookie, resolved last so an
+  // explicit `Authorization` header always wins.
+  //
+  // The app plane issues this cookie on every sign-in and the browser sends it
+  // back, but until now nothing read it — so a request authenticated by cookie
+  // alone got a 401 while the identical token as a bearer got a 200. That gap
+  // is invisible to `fetch` callers (the SDK sends the bearer) and fatal to
+  // `EventSource`, which cannot set headers at all: realtime was unreachable
+  // for every workspace end-user browser app.
+  //
+  // Cross-origin caveat: the cookie is `SameSite=Lax`, so a browser won't send
+  // it to a different site. Same-origin deploys and dev proxies work; a truly
+  // cross-origin SPA still needs the bearer (and therefore still can't use
+  // EventSource).
+  if (!userId && appCookieToken) {
+    const appSess = await findAppSession(
+      { db: ctx.db, dialect: ctx.dialect },
+      appCookieToken,
+    );
+    if (appSess) {
+      plane = "app";
+      userId = appSess.userId;
+      email = appSess.email;
+      appSessionTenantId = appSess.tenantId;
     }
   }
 

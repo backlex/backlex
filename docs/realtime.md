@@ -43,6 +43,28 @@ es.addEventListener("message", (ev) => {
 es.addEventListener("error", () => { /* reconnect logic */ });
 ```
 
+### How a subscription authenticates
+
+`EventSource` **cannot set request headers** — there is no way to attach an
+`Authorization: Bearer` token to it. Subscriptions therefore authenticate by
+**cookie**, which is why `withCredentials: true` above is mandatory rather than
+decorative.
+
+| Caller | Cookie it sends |
+|---|---|
+| Admin / control plane | the platform session cookie |
+| Workspace end-user (app plane) | `wo_<tenantSlug>.session_token`, set on every end-user sign-in — httpOnly, `SameSite=Lax` |
+
+The practical consequence: **realtime needs the API to be same-origin with your
+app.** A `SameSite=Lax` cookie is not sent to a different site, so a genuinely
+cross-origin SPA gets a `401` on subscribe even though its `fetch` calls work
+fine (those carry the bearer). Serve the API under your own origin — a dev proxy
+locally, a path or subdomain-with-shared-site in production — and subscriptions
+authenticate with no extra work.
+
+Public channels (`public:*`, `presence:*`, `collab:*`) are open and need none of
+this.
+
 Or via the SDK:
 
 ```ts

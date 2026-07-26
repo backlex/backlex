@@ -66,6 +66,43 @@ const SYSTEM_TABLES_SQLITE: Record<string, unknown> = {
   email_config: sqlite.schema.emailConfig,
 };
 
+/** Single-quote a value for inlining into a `sql.raw` predicate. */
+const lit = (v: string): string => `'${v.replace(/'/g, "''")}'`;
+
+/** Double-quote an identifier for inlining into a `sql.raw` statement. */
+const ident = (v: string): string => `"${v.replace(/"/g, '""')}"`;
+
+/**
+ * How each system table is narrowed to a single workspace.
+ *
+ * Four of these tables carry no `tenant_id` column of their own, so they are
+ * scoped through the relation that does: `users` via `tenant_members`,
+ * `user_roles` / `permissions` via `roles.tenant_id`, and `tenants` by its own
+ * primary key. Everything else filters on `tenant_id` directly (keeping the
+ * `IS NULL` arm so globally-seeded rows — default email templates, global
+ * settings — still land in every workspace's backup).
+ *
+ * This is a static table rather than "try the filtered query, fall back on
+ * error" on purpose. The exception-driven form it replaces produced a FULL
+ * cross-tenant dump for exactly those four tables — every workspace's user
+ * directory, role assignments and permission rules ended up inside a single
+ * tenant's downloadable backup — and degraded the same way for any correctly
+ * scoped table that happened to hit a transient DB error.
+ */
+const TENANT_WHERE: Record<string, (tid: string) => string> = {
+  tenants: (tid) => `id = ${lit(tid)}`,
+  users: (tid) =>
+    `id IN (SELECT user_id FROM tenant_members WHERE tenant_id = ${lit(tid)} AND user_id IS NOT NULL)`,
+  user_roles: (tid) =>
+    `role_id IN (SELECT id FROM roles WHERE tenant_id = ${lit(tid)} OR tenant_id IS NULL)`,
+  permissions: (tid) =>
+    `role_id IN (SELECT id FROM roles WHERE tenant_id = ${lit(tid)} OR tenant_id IS NULL)`,
+};
+
+/** Default scoping for tables that own a `tenant_id` column. */
+const tenantColumnWhere = (tid: string): string =>
+  `tenant_id = ${lit(tid)} OR tenant_id IS NULL`;
+
 const queryRows = async <T>(
   ctx: Ctx,
   raw: ReturnType<typeof sql.raw>,
@@ -109,6 +146,8 @@ export const runBackup = async (
     tenant_id?: string | null;
     physicalTable?: string;
     physical_table?: string;
+    tenantScoped?: boolean | number | null;
+    tenant_scoped?: boolean | number | null;
   }>;
   const includedCollections = allCollections
     .filter(
@@ -120,35 +159,38 @@ export const runBackup = async (
     .map((c) => ({
       slug: c.slug,
       physicalTable: (c.physicalTable ?? c.physical_table) as string,
+      // Whether the physical table actually has a `tenant_id` column to filter
+      // on. Legacy rows predate the flag; those default to scoped, matching
+      // `applyCollection`'s own default.
+      tenantScoped:
+        (c.tenantScoped ?? c.tenant_scoped) === undefined
+          ? true
+          : asBool(c.tenantScoped ?? c.tenant_scoped),
     }));
 
   const lines: string[] = [];
   let rowCount = 0;
   let tableCount = 0;
 
-  // System tables. For each table, scope by tenant_id when the column exists
-  // (keeps backups workspace-local). We just SELECT *; the resulting raw rows
-  // already use the on-disk column names.
-  for (const [name, _table] of Object.entries(sysTables)) {
+  // System tables. Each one is scoped to the workspace through `TENANT_WHERE`
+  // (see that map for why the predicate is chosen statically rather than
+  // discovered by catching a SQL error). We just SELECT *; the resulting raw
+  // rows already use the on-disk column names.
+  for (const name of Object.keys(sysTables)) {
+    const where = options.tenantId
+      ? (TENANT_WHERE[name] ?? tenantColumnWhere)(options.tenantId)
+      : null;
+    // A missing table (older/partial migration) is the one failure we tolerate;
+    // it yields no rows rather than aborting the whole backup. We deliberately
+    // do NOT retry unfiltered — an unscoped dump is worse than a short one.
     let rows: Record<string, unknown>[];
     try {
-      // Try filtered first — works when tenant_id column exists.
-      if (options.tenantId) {
-        rows = await queryRows(
-          ctx,
-          sql.raw(
-            `SELECT * FROM "${name}" WHERE tenant_id = '${options.tenantId.replace(/'/g, "''")}' OR tenant_id IS NULL`,
-          ),
-        );
-      } else {
-        rows = await queryRows(ctx, sql.raw(`SELECT * FROM "${name}"`));
-      }
+      rows = await queryRows(
+        ctx,
+        sql.raw(`SELECT * FROM ${ident(name)}${where ? ` WHERE ${where}` : ""}`),
+      );
     } catch {
-      try {
-        rows = await queryRows(ctx, sql.raw(`SELECT * FROM "${name}"`));
-      } catch {
-        rows = [];
-      }
+      rows = [];
     }
     if (rows.length === 0) continue;
     tableCount += 1;
@@ -158,21 +200,19 @@ export const runBackup = async (
     }
   }
 
-  // Dynamic c_* tables.
+  // Dynamic c_* tables. Only tenant-scoped collections own a `tenant_id`
+  // column to filter on; an unscoped collection is global by definition, so it
+  // is dumped whole. Reading the flag beats probing with a query that throws —
+  // that used to silently drop every unscoped collection from the backup.
   for (const c of includedCollections) {
     const table = c.physicalTable;
+    const scope =
+      options.tenantId && c.tenantScoped
+        ? ` WHERE tenant_id = ${lit(options.tenantId)}`
+        : "";
     let rows: Record<string, unknown>[];
     try {
-      if (options.tenantId) {
-        rows = await queryRows(
-          ctx,
-          sql.raw(
-            `SELECT * FROM "${table}" WHERE tenant_id = '${options.tenantId.replace(/'/g, "''")}'`,
-          ),
-        );
-      } else {
-        rows = await queryRows(ctx, sql.raw(`SELECT * FROM "${table}"`));
-      }
+      rows = await queryRows(ctx, sql.raw(`SELECT * FROM ${ident(table)}${scope}`));
     } catch {
       rows = [];
     }
@@ -450,10 +490,52 @@ export const restoreBackup = async (
     ...[...buckets.keys()].filter((n) => !RESTORE_ORDER.includes(n)),
   ];
 
+  // Roles that belong to the target workspace, collected as the `roles` bucket
+  // is restored. `user_roles` / `permissions` carry no `tenant_id` of their own
+  // — they're scoped by the role they point at — so this set is what lets us
+  // reject grants belonging to some other workspace.
+  const ownRoleIds = new Set<string>();
+  for (const row of buckets.get("roles") ?? []) {
+    const rTenant = (row.tenant_id ?? row.tenantId) as string | null | undefined;
+    if (options.tenantId && rTenant && rTenant !== options.tenantId) continue;
+    const id = row.id;
+    if (typeof id === "string") ownRoleIds.add(id);
+  }
+
+  /**
+   * Whether a dumped row may be written into the target workspace.
+   *
+   * Restore is documented as additive "into the active workspace", but only the
+   * `collections` bucket used to be checked — every other table was inserted
+   * verbatim, carrying its ORIGINAL `tenant_id`. That let a restore
+   * re-materialize another workspace's rows (and, paired with the unscoped dump
+   * this file used to produce, re-inject its users and permissions).
+   */
+  const rowBelongs = (table: string, row: Record<string, unknown>): boolean => {
+    if (!options.tenantId) return true; // global restore — keep everything
+    if (table === "tenants") return row.id === options.tenantId;
+    if (table === "user_roles" || table === "permissions") {
+      const roleId = (row.role_id ?? row.roleId) as string | undefined;
+      return typeof roleId === "string" ? ownRoleIds.has(roleId) : false;
+    }
+    // `users` are global identities shared across workspaces; the dump is
+    // already narrowed to this workspace's members, and the insert is
+    // ON CONFLICT DO NOTHING, so they pass through.
+    if (table === "users") return true;
+    const rTenant = (row.tenant_id ?? row.tenantId) as string | null | undefined;
+    // No tenant column in the row (unscoped collection, or a globally-seeded
+    // system row) → nothing to disagree with.
+    return !rTenant || rTenant === options.tenantId;
+  };
+
   let tableCount = 0;
   let rowCount = 0;
   for (const table of ordered) {
-    const rows = buckets.get(table) ?? [];
+    const rows = (buckets.get(table) ?? []).filter((r) => {
+      const ok = rowBelongs(table, r);
+      if (!ok) skipped += 1;
+      return ok;
+    });
     if (rows.length === 0) continue;
     let wrote = false;
     let tableFailed = false;

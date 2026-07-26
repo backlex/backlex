@@ -27,6 +27,22 @@ tick also flushes), so a busy deployment pays roughly one ledger write per
 twenty requests. The trade-off: an isolate evicted mid-buffer under-counts by
 at most one buffer — the ledger is quota-grade, not billing-grade.
 
+### Public surfaces
+
+Unauthenticated routes — `POST /api/webhook/:flowId`, the public form endpoints,
+public dashboard embeds, shared links — have no identity for `tenantMiddleware`
+to resolve, so it hands them the **default** workspace. That would bill the wrong
+tenant on a multi-workspace instance and leave the owning workspace's monthly cap
+unenforced on its own public surfaces.
+
+Those handlers therefore call `setMeterTenant(c, <owner>)` as soon as they've
+loaded the row that identifies the workspace (the flow, form, embed token or
+share link). The meter prefers that value over the default-workspace fallback
+whenever the request carries no authenticated identity. Handlers that can spend
+real money — the flow trigger especially, since a flow can send SMS/push, call AI
+and invoke functions — additionally call `assertWorkspaceRequestQuota` before
+doing the work, and carry their own per-token/per-IP rate limit.
+
 ## Per-API-key limits
 
 Two admin-only knobs live on the key row (`Settings → API keys` to mint,

@@ -185,6 +185,12 @@ export type AppBindings = {
      *  global error handler so the single access-log line can carry it. Unset
      *  for successful responses. */
     errorCode?: string;
+    /** Workspace to bill this request to when it carries no authenticated
+     *  identity — set by public handlers (`setMeterTenant`) once they've
+     *  resolved the row that owns the request (flow, embed token, form). The
+     *  usage meter falls back to it so public surfaces are metered and
+     *  quota-checked like the rest of the data API. */
+    meterTenantId?: string | null;
     permission: PermissionVar;
     /** Per-request L1 permission cache. Lazily initialized by the first
      *  `requirePermission` (or any explicit `getRequestPermCache(c)` call)

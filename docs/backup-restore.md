@@ -100,6 +100,28 @@ existing data. The response reports `{ tableCount, rowCount, skipped }`. A clean
 point-in-time rollback (overwriting current state) is a separate, destructive
 operation outside this path.
 
+### Workspace scoping
+
+Both directions are scoped to one workspace, and the scoping is derived from the
+schema rather than probed at runtime:
+
+- **Dump.** Most system tables filter on their own `tenant_id`. Four don't have
+  one, so they're scoped through the relation that does — `users` via
+  `tenant_members`, `user_roles` and `permissions` via `roles.tenant_id`, and
+  `tenants` by its own id. Globally-seeded rows (`tenant_id IS NULL`, e.g. the
+  default email templates) are included in every workspace's backup. Dynamic
+  `c_*` tables filter on `tenant_id` when the collection is tenant-scoped and are
+  dumped whole when it isn't.
+- **Restore.** Every row is checked against the target workspace before it is
+  written, not just the `collections` metadata: rows carrying a foreign
+  `tenant_id` are counted in `skipped` and never inserted, and `user_roles` /
+  `permissions` are accepted only when they point at a role in the target
+  workspace.
+
+A backup taken with no workspace (`tenantId: null` — the instance-wide scheduled
+backup) contains everything and restores everything, which is the intended
+disaster-recovery path.
+
 ## Per-collection export / import
 
 Move one collection's data in and out — handy for spreadsheets, seeding a new

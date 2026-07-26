@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, lte } from "drizzle-orm";
 import cronParser from "cron-parser";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
@@ -50,28 +50,74 @@ const SYSTEM_AUTH: AuthSubject = { userId: null, email: null, roles: [] };
  */
 let lastTickAt: Date | null = null;
 
-/** When activity pruning last ran (per process). Pruning is throttled to
- *  once every 24h so the cron tick stays cheap; a scan + DELETE on a
- *  growing table is overkill on a per-minute schedule. */
-let lastActivityPruneAt: number = 0;
+/** Pruning is throttled to once every 24h so the cron tick stays cheap; a scan
+ *  + DELETE on a growing table is overkill on a per-minute schedule. */
 const ACTIVITY_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
-/** When the scheduled-backup sweep last ran (per process). Throttled so the
- *  per-minute tick stays cheap — the sweep itself re-checks each workspace's
- *  schedule interval, so a coarse 15-minute cadence never misses a daily or
- *  weekly window. */
-let lastBackupSweepAt: number = 0;
+/** Throttled so the per-minute tick stays cheap — the sweep itself re-checks
+ *  each workspace's schedule interval, so a coarse 15-minute cadence never
+ *  misses a daily or weekly window. */
 const BACKUP_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
-let lastDemoSweepAt: number = 0;
 const DEMO_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 // Scheduled schema snapshots (#9) — throttled like backups; the sweep itself
 // re-checks each workspace's daily/weekly interval so this only bounds cost.
-let lastSchemaSnapshotSweepAt: number = 0;
 const SCHEMA_SNAPSHOT_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
 // Usage gauge sweep (#12) — per-workspace SUM/COUNT measurements; a coarse
 // half-hourly cadence is plenty for "how big is this workspace" gauges.
-let lastUsageGaugeSweepAt: number = 0;
 const USAGE_GAUGE_SWEEP_INTERVAL_MS = 30 * 60 * 1000;
+
+/**
+ * Durable, cross-instance throttle for the periodic sweeps below.
+ *
+ * These used to be plain module-level `let lastXSweepAt = 0` counters. That
+ * only works behind a long-lived process (`startBunScheduler`, Deno). Every
+ * serverless entry — the Workers `scheduled()` handler, Vercel, Netlify,
+ * Lambda, GCP, Azure — may run each minute's tick in a FRESH instance, where
+ * the counter is back at `0` and `now - 0 >= interval` is trivially true. So
+ * on those runtimes none of the throttles engaged: the 24h activity prune, the
+ * 15-minute backup and schema-snapshot sweeps and the 30-minute usage-gauge
+ * sweep all ran on EVERY minute-ly tick, up to 1440× the intended DB work.
+ *
+ * The watermark now lives in `app_settings`, claimed with an atomic
+ * compare-and-set: the conditional `ON CONFLICT … DO UPDATE … WHERE
+ * updated_at <= cutoff` means exactly one instance can win a given window, so
+ * concurrent ticks don't double-run either. We key on the PRIMARY KEY rather
+ * than the `(tenant_id, key)` unique index because these rows are global
+ * (`tenant_id IS NULL`) and both dialects treat NULLs in a unique index as
+ * distinct — an `ON CONFLICT (tenant_id, key)` target would never match and
+ * would insert a new row every tick.
+ */
+const claimSweep = async (
+  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  name: string,
+  intervalMs: number,
+  now: Date,
+): Promise<boolean> => {
+  const t =
+    ctx.dialect === "pg" ? pg.schema.appSettings : sqlite.schema.appSettings;
+  const id = `__sweep__${name}`;
+  const cutoff = new Date(now.getTime() - intervalMs);
+  try {
+    const rows = (await (ctx.db as any)
+      .insert(t)
+      .values({ id, tenantId: null, key: id, value: now.getTime(), updatedAt: now })
+      .onConflictDoUpdate({
+        target: t.id,
+        set: { value: now.getTime(), updatedAt: now },
+        setWhere: lte(t.updatedAt, cutoff),
+      })
+      .returning({ id: t.id })) as { id: string }[];
+    // Rows returned → we won this window. Empty → another instance holds it,
+    // or the interval hasn't elapsed yet.
+    return rows.length > 0;
+  } catch (e) {
+    // Never let a throttle-bookkeeping failure take the whole tick down. Fail
+    // CLOSED (skip the sweep): the next tick retries a minute later, which is
+    // far cheaper than falling back to running every expensive sweep always.
+    console.error(`[sweep:${name}] claim failed`, e);
+    return false;
+  }
+};
 const DEFAULT_ACTIVITY_RETENTION_DAYS = 90;
 const DEFAULT_TRACES_RETENTION_DAYS = 7;
 // Sensitive-read audit rows (`access.*`) are opt-in but higher-volume, so they
@@ -285,12 +331,14 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
   }
 
   // Playground (demo) mode: wipe + reseed the workspace when the persisted
-  // last-reset timestamp is older than the interval. The per-isolate throttle
-  // only bounds how often we *read* that timestamp; maybeResetDemo itself
-  // decides whether a reset is actually due (and bootstraps a fresh demo
-  // instance on the very first tick).
-  if (isDemoMode(env) && now.getTime() - lastDemoSweepAt >= DEMO_SWEEP_INTERVAL_MS) {
-    lastDemoSweepAt = now.getTime();
+  // last-reset timestamp is older than the interval. The sweep claim only
+  // bounds how often we *read* that timestamp; maybeResetDemo itself decides
+  // whether a reset is actually due (and bootstraps a fresh demo instance on
+  // the very first tick).
+  if (
+    isDemoMode(env) &&
+    (await claimSweep(ctx, "demo", DEMO_SWEEP_INTERVAL_MS, now))
+  ) {
     try {
       await maybeResetDemo(ctx, env, now);
     } catch (e) {
@@ -300,8 +348,7 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
 
   // Scheduled backups: run + prune per workspace, throttled so the per-minute
   // tick stays cheap (the sweep re-checks each schedule's interval itself).
-  if (now.getTime() - lastBackupSweepAt >= BACKUP_SWEEP_INTERVAL_MS) {
-    lastBackupSweepAt = now.getTime();
+  if (await claimSweep(ctx, "backup", BACKUP_SWEEP_INTERVAL_MS, now)) {
     try {
       await maybeRunScheduledBackups(ctx, now);
     } catch (e) {
@@ -312,8 +359,9 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
   // Scheduled schema snapshots: capture a `kind:"scheduled"` snapshot per
   // workspace whose cadence is due, then prune to keepLast. Same throttle +
   // interval-recheck posture as backups above.
-  if (now.getTime() - lastSchemaSnapshotSweepAt >= SCHEMA_SNAPSHOT_SWEEP_INTERVAL_MS) {
-    lastSchemaSnapshotSweepAt = now.getTime();
+  if (
+    await claimSweep(ctx, "schema-snapshot", SCHEMA_SNAPSHOT_SWEEP_INTERVAL_MS, now)
+  ) {
     try {
       await runScheduledSnapshots({ db: ctx.db, dialect: ctx.dialect }, now);
     } catch (e) {
@@ -329,8 +377,7 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
   } catch (e) {
     console.error("[usage] flush failed", e);
   }
-  if (now.getTime() - lastUsageGaugeSweepAt >= USAGE_GAUGE_SWEEP_INTERVAL_MS) {
-    lastUsageGaugeSweepAt = now.getTime();
+  if (await claimSweep(ctx, "usage-gauges", USAGE_GAUGE_SWEEP_INTERVAL_MS, now)) {
     try {
       await sweepUsageGauges(ctx, now);
     } catch (e) {
@@ -348,8 +395,7 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     console.error("[migrate-run] sweep failed", e);
   }
 
-  if (now.getTime() - lastActivityPruneAt >= ACTIVITY_PRUNE_INTERVAL_MS) {
-    lastActivityPruneAt = now.getTime();
+  if (await claimSweep(ctx, "activity-prune", ACTIVITY_PRUNE_INTERVAL_MS, now)) {
     const raw = env.ACTIVITY_RETENTION_DAYS;
     const days = raw == null || raw === "" ? DEFAULT_ACTIVITY_RETENTION_DAYS : Number(raw);
     await pruneOldActivity({ db: ctx.db, dialect: ctx.dialect }, days);

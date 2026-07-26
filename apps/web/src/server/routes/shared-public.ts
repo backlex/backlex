@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { sql } from "drizzle-orm";
 import { AppError } from "@backlex/core";
+import { setMeterTenant } from "../lib/usage-meter";
 import type { FieldDef } from "@backlex/db";
 import type { AppBindings } from "../app";
 import { PUBLIC_SECURITY, errorResponses } from "../lib/openapi";
@@ -83,6 +84,9 @@ export const sharedPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook }).
     // is the source of truth — `loadCollection` reads it. If the collection
     // was deleted or archived, this throws NOT_FOUND, which the caller maps
     // to a 404, same as a revoked link.
+    // Attribute this unauthenticated read to the workspace that owns the link.
+    setMeterTenant(c, link.tenantId);
+
     let collection;
     try {
       collection = await loadCollection(ctx, link.tenantId, link.collection);

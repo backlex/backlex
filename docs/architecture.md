@@ -186,12 +186,27 @@ In-process state that doesn't survive across multiple workers / regions:
 
 - Realtime subscribers Map (Bun) — single-instance only
 - `lastTickAt` for cron dedupe — per-process; safe because `cronTick`
-  is idempotent (only fires when `prev() ∈ (lastTickAt, now]`)
+  is idempotent (only fires when `prev() ∈ (lastTickAt, now]`), and the
+  per-minute schedule means a cold instance's `now - 60s` default covers
+  exactly the window it missed
 - `rolesSeeded` flag — boots once per isolate; the seed function is
   idempotent so multi-isolate is fine
 
 For multi-instance Bun deployments (rare), use Workers or accept that
 realtime fan-out is per-instance.
+
+**Periodic sweep throttles are NOT in this list — deliberately.** The
+backup / schema-snapshot / usage-gauge / activity-prune / demo-reset sweeps
+run on a much coarser cadence than the per-minute tick (15 min to 24 h), so
+"has this interval elapsed?" cannot be answered from process memory: every
+serverless entry (the Workers `scheduled()` handler, Vercel, Netlify, Lambda,
+GCP, Azure) may run each tick in a **fresh instance**, where a module-level
+`lastXSweepAt = 0` makes `now - 0 >= interval` trivially true and the throttle
+never engages. They're claimed instead through `claimSweep` in
+`services/scheduler.ts`, an atomic compare-and-set on an `app_settings` row
+(`ON CONFLICT (id) DO UPDATE … WHERE updated_at <= cutoff`, `RETURNING`), so
+exactly one instance wins a given window. Anything periodic and expensive
+added to the tick should use `claimSweep`, not a `let`.
 
 ## Migrations
 

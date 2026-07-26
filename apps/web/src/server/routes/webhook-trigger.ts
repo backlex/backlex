@@ -4,7 +4,18 @@ import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
+import { rateLimitOk } from "../lib/rate-limit";
+import { assertWorkspaceRequestQuota, setMeterTenant } from "../lib/usage-meter";
+import { requestMeta } from "../services/activity";
 import { runFlowById } from "../services/flows";
+
+/** Per-flow-and-IP burst budget, and a per-flow ceiling that bounds what a
+ *  distributed caller can spend even from many addresses. A flow run can
+ *  invoke functions and send SMS / push / AI calls, so an unbounded public
+ *  trigger is a direct spend channel, not just load. */
+const TRIGGER_MAX_PER_MINUTE = 30;
+const TRIGGER_MAX_PER_FLOW_PER_MINUTE = 120;
+const MINUTE_MS = 60_000;
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.flows : sqlite.schema.flows;
@@ -41,6 +52,32 @@ export const webhookTriggerRoutes = new Hono<AppBindings>().post("/:flowId", asy
   if (!flow.active) throw new AppError("FORBIDDEN", "Flow is paused");
   if (flow.trigger !== "webhook") {
     throw new AppError("BAD_REQUEST", "Flow trigger is not 'webhook'");
+  }
+
+  // The flow row is what tells us which workspace owns this unauthenticated
+  // request, so throttling + metering can only start here. Mirrors the
+  // per-form/IP guard in routes/forms-public.ts.
+  const ip = requestMeta(c.req.raw).ip ?? "unknown";
+  const withinIpBudget = await rateLimitOk(
+    ctx.env,
+    `flow-trigger:${flow.id}:${ip}`,
+    TRIGGER_MAX_PER_MINUTE,
+    MINUTE_MS,
+  );
+  const withinFlowBudget =
+    withinIpBudget &&
+    (await rateLimitOk(
+      ctx.env,
+      `flow-trigger-all:${flow.id}`,
+      TRIGGER_MAX_PER_FLOW_PER_MINUTE,
+      MINUTE_MS,
+    ));
+  if (!withinFlowBudget) {
+    throw new AppError("RATE_LIMITED", "Too many triggers for this flow — slow down");
+  }
+  if (flow.tenantId) {
+    setMeterTenant(c, flow.tenantId);
+    await assertWorkspaceRequestQuota(ctx, flow.tenantId);
   }
 
   const body = await c.req.json().catch(() => ({}));

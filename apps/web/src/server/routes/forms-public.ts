@@ -4,6 +4,7 @@ import type { AppBindings } from "../app";
 import { PUBLIC_SECURITY, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import { rateLimitOk } from "../lib/rate-limit";
+import { setMeterTenant } from "../lib/usage-meter";
 import { elapsedMs, requestMeta } from "../services/activity";
 import { loadCollection } from "../services/items/collection-loader";
 import {
@@ -151,6 +152,9 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const { token } = c.req.valid("param");
       const form = requireLiveForm(await resolveFormToken(ctx, token));
+      // Public path: no authenticated identity, so the form row is what
+      // attributes this request to a workspace for usage metering.
+      setMeterTenant(c, form.tenantId);
 
       let collection;
       try {
@@ -221,6 +225,9 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const { token } = c.req.valid("param");
       const form = requireLiveForm(await resolveFormToken(ctx, token));
+      // Public path: no authenticated identity, so the form row is what
+      // attributes this request to a workspace for usage metering.
+      setMeterTenant(c, form.tenantId);
       // The playground wipes hourly and its storage is shared — anonymous
       // uploads would turn it into a free file host, so they stay off there.
       if (isDemoMode(ctx.env))
@@ -328,6 +335,9 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const { token } = c.req.valid("param");
       const body = c.req.valid("json");
       const form = requireLiveForm(await resolveFormToken(ctx, token));
+      // Public path: no authenticated identity, so the form row is what
+      // attributes this request to a workspace for usage metering.
+      setMeterTenant(c, form.tenantId);
 
       const settings = form.settings ?? {};
       const locale = resolveFormLocale(form, c.req.query("lang") ?? null);

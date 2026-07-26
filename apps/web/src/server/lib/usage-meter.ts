@@ -34,6 +34,49 @@ import {
 const isAuthPath = (path: string): boolean =>
   path.startsWith("/api/auth/") || /^\/api\/t\/[^/]+\/auth\//.test(path);
 
+/**
+ * Attribute the current request to a workspace that only the handler could
+ * resolve — the owner of a webhook-triggered flow, a dashboard embed token, a
+ * public form. Call it as soon as the owning row is loaded; the middleware
+ * reads it after `next()` and bills the response.
+ *
+ * Unauthenticated requests reach `tenantMiddleware` with nothing to resolve, so
+ * they fall back to the DEFAULT workspace. On a single-workspace instance that
+ * is accidentally correct; on a multi-workspace one every public hit was billed
+ * to the wrong tenant, and the owning workspace's monthly request cap was never
+ * consulted — so its public surfaces sat outside its own quota.
+ */
+export const setMeterTenant = (
+  c: Parameters<MiddlewareHandler<AppBindings>>[0],
+  tenantId: string | null | undefined,
+): void => {
+  if (tenantId) c.set("meterTenantId", tenantId);
+};
+
+/**
+ * Enforce the workspace's hard monthly request cap for traffic the middleware
+ * couldn't gate up front (public surfaces, where the tenant is only known once
+ * the handler has resolved it). Call before doing the expensive work.
+ *
+ * Mirrors the `machineTraffic` arm of the middleware: unauthenticated callers
+ * are never platform admins, so there's no admin exemption to honour here.
+ */
+export const assertWorkspaceRequestQuota = async (
+  ctx: Parameters<typeof effectiveUsageLimits>[0] & { env: Parameters<typeof effectiveUsageLimits>[1] },
+  tenantId: string,
+): Promise<void> => {
+  const limits = await effectiveUsageLimits(ctx, ctx.env, tenantId);
+  if (limits.mode !== "hard" || limits.maxRequestsPerMonth == null) return;
+  const used = await monthUsage(ctx, tenantId, null);
+  if (used >= limits.maxRequestsPerMonth) {
+    throw new AppError("QUOTA_EXCEEDED", "Workspace monthly request limit reached", {
+      scope: "workspace",
+      limit: limits.maxRequestsPerMonth,
+      used,
+    });
+  }
+};
+
 export const usageMeterMiddleware: MiddlewareHandler<AppBindings> = async (
   c,
   next,
@@ -84,12 +127,21 @@ export const usageMeterMiddleware: MiddlewareHandler<AppBindings> = async (
 
   await next();
 
-  if (!tenantId) return;
+  // Public (unauthenticated) routes carry no identity, so `tenantMiddleware`
+  // hands them the DEFAULT workspace — not the one that owns the flow / embed
+  // token / form the request actually targets. On a multi-workspace instance
+  // that billed the wrong tenant and left the owner's monthly cap unenforced.
+  // The handler resolves the true owner and publishes it via `setMeterTenant`;
+  // it wins here precisely when there is no authenticated identity to trust.
+  const anonymous = !auth?.userId && !auth?.apiKeyId;
+  const ownerTenantId = c.get("meterTenantId") ?? null;
+  const billedTenantId = (anonymous ? (ownerTenantId ?? tenantId) : tenantId) ?? null;
+  if (!billedTenantId) return;
   const status = c.res.status;
   if (status === 429) return; // throttled/over-quota responses aren't billed
   bumpUsage(
     ctx,
-    { tenantId, apiKeyId: auth.apiKeyId ?? "", error: status >= 500 },
+    { tenantId: billedTenantId, apiKeyId: auth?.apiKeyId ?? "", error: status >= 500 },
     (work) => {
       try {
         c.executionCtx?.waitUntil?.(work);

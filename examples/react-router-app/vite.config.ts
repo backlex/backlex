@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { reactRouter } from "@react-router/dev/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, loadEnv } from "vite";
@@ -11,6 +12,12 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.BACKLEX_URL || "http://localhost:5173";
   return {
     plugins: [reactRouter(), tailwindcss()],
+    resolve: {
+      // `~` is declared in tsconfig `paths`, but that only teaches tsc. Vite
+      // needs its own alias — and the dev SSR module runner is stricter than
+      // the production build, so a missing alias here fails only at runtime.
+      alias: { "~": fileURLToPath(new URL("./app", import.meta.url)) },
+    },
     server: {
       port: 5178,
       proxy: {

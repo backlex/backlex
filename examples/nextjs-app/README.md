@@ -78,6 +78,16 @@ bun run build && bun run start   # production build + server
 
 ## Notes
 
+- **Server-side auth needs an explicit `Origin` header.** better-auth enforces a
+  CSRF origin check on writes and answers a header-less request with **403**.
+  Browsers set `Origin` automatically; a server does not — so every
+  `auth.signIn` / `signUp` from a Server Action fails until you send one. This is
+  the single most confusing failure when moving auth to the server, and
+  `lib/backlex.ts` handles it by passing a `fetch` wrapper to `createClient`. In
+  production, send your app's real origin and register it on the backend via
+  `EXTRA_TRUSTED_ORIGINS` or the workspace's auth redirect URLs.
+- **`name` is a required string on workspace sign-up.** Sending `undefined` for a
+  blank field fails validation with a bare `400`; send `""` instead.
 - **No `NEXT_PUBLIC_` variables.** That prefix inlines a value into the browser
   bundle; nothing here needs to.
 - **`redirect()` must sit outside `try/catch`.** It signals by throwing, so a

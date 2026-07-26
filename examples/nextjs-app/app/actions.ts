@@ -31,7 +31,10 @@ export async function signInAction(
         ? await backlex.auth.signUp({
             email,
             password,
-            name: String(formData.get("name") ?? "").trim() || undefined,
+            // Always a string — the workspace sign-up endpoint validates `name`
+            // as a required string, so omitting it for a blank field fails with
+            // a bare 400 rather than signing the user up anonymously.
+            name: String(formData.get("name") ?? "").trim(),
           })
         : await backlex.auth.signIn({ email, password });
 

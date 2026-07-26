@@ -64,6 +64,13 @@ jobs:
       - name: Smoke tests
         run: bun run test
 
+      # The example apps consume `packages/client` by source, so an SDK change
+      # that breaks them only surfaces at bundle time — typecheck alone misses
+      # runtime-shaped breakage (bad imports, removed subpath exports). Cheap:
+      # four Vite builds, ~150ms each.
+      - name: Build examples
+        run: bun run build:examples
+
   # Decide whether the heavy build + runtime-smoke matrix needs to run.
   # It does whenever anything that feeds `build:targets` (app/server/client
   # source, shared packages, build scripts, runtime configs, the smoke

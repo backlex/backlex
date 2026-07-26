@@ -25,6 +25,7 @@
     "deploy": "bun run --cwd apps/web deploy",
     "dev:site": "bun run --cwd apps/site dev",
     "build:site": "bun run --cwd apps/site build",
+    "build:examples": "bun run --filter '@backlex-examples/*' build",
     "build:targets": "bun scripts/build-targets.ts",
     "build:node": "bun scripts/build-node.ts",
     "start:node": "node apps/web/dist/node/server.mjs",
@@ -33,8 +34,8 @@
     "build:azure": "bun scripts/build-azure.ts",
     "build:deno": "bun scripts/build-deno.ts",
     "test": "bun run --cwd apps/web test",
-    "lint": "biome lint apps packages",
-    "lint:fix": "biome lint --write apps packages",
+    "lint": "biome lint apps packages examples",
+    "lint:fix": "biome lint --write apps packages examples",
     "prepare": "lefthook install --force || true",
     "backlex": "bun run packages/cli/bin/backlex.ts"
   },

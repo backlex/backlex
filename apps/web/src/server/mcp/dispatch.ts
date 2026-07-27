@@ -8,7 +8,15 @@ import {
   type ToolCtx,
 } from "./types";
 import { makeInternalFetch } from "./internal-fetch";
-import { checkToolCall, filterByAllowlist, guardsFromAuth } from "./guards";
+import {
+  checkToolCall,
+  filterByAllowlist,
+  guardsFromAuth,
+  mergeGuards,
+  type KeyGuards,
+} from "./guards";
+import { loadRoleMcpGuards } from "../services/roles/mcp-guards";
+import { auditMcp, auditMcpResource } from "./audit";
 import { resolveKind } from "./kind";
 import { listResources, listResourceTemplates, readResource } from "./resources";
 import { getPrompt, listPrompts } from "./prompts";
@@ -44,6 +52,51 @@ const success = (id: JsonRpcRequest["id"], result: unknown): JsonRpcResponse => 
 
 const findTool = (tools: McpTool[], name: string): McpTool | undefined =>
   tools.find((t) => t.name === name);
+
+/** Methods that can't reach a tool, a resource, or the caller's own scope —
+ *  so the role-guard lookup is pure overhead for them. */
+const HANDSHAKE_METHODS = new Set([
+  "initialize",
+  "ping",
+  "notifications/initialized",
+  "notifications/cancelled",
+]);
+
+/** Per-key guards folded together with the caller's role-derived guards.
+ *  Degrades to the key guards alone when there's no request context (the MCP
+ *  unit tests dispatch against a bare Hono context). */
+const resolveEffectiveGuards = async (
+  honoCtx: {
+    get: (k: string) => unknown;
+  },
+  auth: {
+    userId?: string | null;
+    apiKeyRoleId?: string | null;
+    apiKeyMcpTools?: string[] | null;
+    apiKeyMcpReadOnly?: boolean;
+  },
+): Promise<KeyGuards> => {
+  const keyGuards = guardsFromAuth(auth);
+  const dbCtx = honoCtx.get("ctx") as
+    | { db?: unknown; dialect?: "pg" | "sqlite" }
+    | undefined;
+  if (!dbCtx?.db || !dbCtx.dialect) return keyGuards;
+  const role = await loadRoleMcpGuards(
+    { db: dbCtx.db, dialect: dbCtx.dialect },
+    {
+      userId: auth.userId ?? null,
+      apiKeyRoleId: auth.apiKeyRoleId ?? null,
+    },
+  );
+  return mergeGuards(keyGuards, role);
+};
+
+/** First text block of a tool result — the error message when `isError` is set.
+ *  Clipped, because the audit row wants a reason, not a payload dump. */
+const firstText = (result: { content?: { type: string; text?: string }[] }): string => {
+  const text = result.content?.find((b) => b.type === "text")?.text ?? "";
+  return text.length > 500 ? `${text.slice(0, 500)}…` : text;
+};
 
 const toolDescriptor = (t: McpTool, mode: McpServerWiring["mode"]) => {
   const kind = resolveKind(t);
@@ -83,10 +136,23 @@ const toolDescriptor = (t: McpTool, mode: McpServerWiring["mode"]) => {
 export const dispatch = async (
   wiring: McpServerWiring,
   originRequest: Request,
-  honoCtx: Context<{ Variables: { auth?: { apiKeyMcpTools?: string[] | null; apiKeyMcpReadOnly?: boolean } } }>,
+  honoCtx: Context<{
+    Variables: {
+      auth?: {
+        userId?: string | null;
+        tenantId?: string | null;
+        apiKeyId?: string | null;
+        apiKeyRoleId?: string | null;
+        apiKeyMcpTools?: string[] | null;
+        apiKeyMcpReadOnly?: boolean;
+      };
+      /** Request context (db + dialect) — the audit writer needs it. Optional
+       *  because the MCP tests dispatch against a bare Hono context. */
+      ctx?: { db: unknown; dialect: "pg" | "sqlite" };
+    };
+  }>,
   body: JsonRpcRequest | { jsonrpc: "2.0"; method: string; params?: unknown },
 ): Promise<JsonRpcResponse | null> => {
-  const guards = guardsFromAuth(honoCtx.get("auth") ?? {});
   // Notification — no id, no response per JSON-RPC spec.
   const id = "id" in body ? body.id : undefined;
   const isNotification = id === undefined;
@@ -99,6 +165,15 @@ export const dispatch = async (
     if (isNotification) return null;
     return error(id ?? null, RPC_ERR.INVALID_REQUEST, "method must be a string");
   }
+
+  // Effective guards = the key's own restrictions folded together with whatever
+  // the caller's roles impose. The role lookup is one indexed join, skipped
+  // entirely for the handshake methods that can't touch a tool — every other
+  // method either lists, calls, or reports the guards.
+  const auth = honoCtx.get("auth") ?? {};
+  const guards = HANDSHAKE_METHODS.has(body.method)
+    ? guardsFromAuth(auth)
+    : await resolveEffectiveGuards(honoCtx, auth);
 
   // One ToolCtx for every tool / resource / prompt / completion sub-call. The
   // internal fetch carries the caller's auth; `guards` lets a resource report
@@ -200,22 +275,55 @@ export const dispatch = async (
       // error, not bounce around the REST layer first. The kind passed here is
       // the same one the descriptor advertised, so read-only is enforced on the
       // tool's true classification (not a separate name heuristic).
-      const guardCheck = checkToolCall(canonicalName, resolveKind(tool), guards);
+      const kind = resolveKind(tool);
+      const args =
+        params.arguments && typeof params.arguments === "object"
+          ? (params.arguments as Record<string, unknown>)
+          : {};
+      const startedAt = Date.now();
+      const guardCheck = checkToolCall(canonicalName, kind, guards);
       if (!guardCheck.ok) {
+        // A refused call is the row an operator most wants to find later, so
+        // it's audited unconditionally (see `shouldAudit`).
+        auditMcp(honoCtx, wiring.env, {
+          tool: canonicalName,
+          kind,
+          mode: wiring.mode,
+          outcome: "denied",
+          durationMs: Date.now() - startedAt,
+          args,
+          error: guardCheck.message,
+        });
         return success(id!, {
           content: [{ type: "text", text: `${guardCheck.code}: ${guardCheck.message}` }],
           isError: true,
         });
       }
-      const args =
-        params.arguments && typeof params.arguments === "object"
-          ? (params.arguments as Record<string, unknown>)
-          : {};
       try {
         const result = await tool.handler(args, toolCtx);
+        auditMcp(honoCtx, wiring.env, {
+          tool: canonicalName,
+          kind,
+          mode: wiring.mode,
+          // A tool that reports `isError` ran but failed — that's an `mcp.error`
+          // row, not a successful call, even though the RPC layer returns 200.
+          outcome: result.isError ? "error" : "ok",
+          durationMs: Date.now() - startedAt,
+          args,
+          ...(result.isError ? { error: firstText(result) } : {}),
+        });
         return success(id!, result);
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
+        auditMcp(honoCtx, wiring.env, {
+          tool: canonicalName,
+          kind,
+          mode: wiring.mode,
+          outcome: "error",
+          durationMs: Date.now() - startedAt,
+          args,
+          error: message,
+        });
         // Tool errors surface inside the JSON-RPC `result.isError` channel
         // per MCP spec — that's how callers tell "the tool reported an
         // error" apart from "the protocol layer failed". A thrown error
@@ -245,10 +353,23 @@ export const dispatch = async (
       if (typeof params.uri !== "string") {
         return error(id ?? null, RPC_ERR.INVALID_PARAMS, "params.uri must be a string");
       }
+      const startedAt = Date.now();
       try {
-        return success(id!, await readResource(toolCtx, params.uri));
+        const result = await readResource(toolCtx, params.uri);
+        auditMcpResource(honoCtx, wiring.env, {
+          uri: params.uri,
+          mode: wiring.mode,
+          durationMs: Date.now() - startedAt,
+        });
+        return success(id!, result);
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
+        auditMcpResource(honoCtx, wiring.env, {
+          uri: params.uri,
+          mode: wiring.mode,
+          durationMs: Date.now() - startedAt,
+          error: message,
+        });
         return error(id ?? null, RPC_ERR.INTERNAL, message);
       }
     }

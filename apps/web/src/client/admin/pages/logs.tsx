@@ -59,6 +59,7 @@ type SourceId =
   | "automation"
   | "functions"
   | "storage"
+  | "agents"
   | "other";
 
 interface SourceDef {
@@ -74,6 +75,7 @@ const SOURCE_DEFS: SourceDef[] = [
   { id: "automation", label: "Automation", icon: "Webhook" },
   { id: "functions", label: "Functions", icon: "Function" },
   { id: "storage", label: "Storage", icon: "Archive" },
+  { id: "agents", label: "Agents", icon: "Sparkles" },
   { id: "other", label: "Other", icon: "Activity" },
 ];
 
@@ -98,6 +100,7 @@ const CATEGORY_CHIPS = [
   "function",
   "webhook",
   "backup",
+  "mcp",
 ] as const;
 type CategoryChip = (typeof CATEGORY_CHIPS)[number];
 
@@ -142,6 +145,10 @@ function sourceForAction(action: string): SourceId {
       return "functions";
     case "storage":
       return "storage";
+    // MCP tool calls / refusals / resource reads — an agent acting on the
+    // workspace, which reads very differently from a human's data edit.
+    case "mcp":
+      return "agents";
     default:
       return "other";
   }
@@ -150,6 +157,10 @@ function sourceForAction(action: string): SourceId {
 /** Derive a log level from real activity data — error rows, then duration. */
 function levelForRow(action: string, durationMs: number | null): LogLevel {
   if (action === "request.error") return "error";
+  // A refused tool call isn't slow, it's suspicious — level it by meaning
+  // rather than by duration, or it would read as a routine `info` row.
+  if (action === "mcp.error") return "error";
+  if (action === "mcp.denied") return "warn";
   if (durationMs != null) {
     if (durationMs >= 2000) return "error";
     if (durationMs >= 500) return "warn";
@@ -186,10 +197,17 @@ function projectRow(a: ApiActivity): LogRow {
     status = typeof s === "number" ? s : null;
   }
 
+  // MCP rows carry the tool id (or resource URI) in `itemId` and the synthetic
+  // `system_mcp` collection — showing "system_mcp/collections.insert" would
+  // bury the only part that matters, so the tool stands alone.
+  const isMcp = src === "agents";
+
   let path: string;
   if (src === "http") {
     // `itemId` holds "<METHOD> <path>" for request.error rows.
     path = a.itemId ?? a.collection ?? "—";
+  } else if (isMcp) {
+    path = a.itemId ?? "—";
   } else {
     path = `${a.collection ?? "—"}${a.itemId ? `/${a.itemId}` : ""}`;
   }
@@ -198,6 +216,14 @@ function projectRow(a: ApiActivity): LogRow {
   if (isError) {
     const m = payloadField(a.payload, "message");
     msg = typeof m === "string" ? m : action;
+  } else if (isMcp) {
+    // "collections.insert · admin mount" / "… · denied: not in allowlist".
+    const mount = payloadField(a.payload, "mount");
+    const reason = payloadField(a.response, "error");
+    msg =
+      typeof reason === "string" && reason
+        ? `${a.itemId ?? action} · ${reason}`
+        : `${a.itemId ?? action}${typeof mount === "string" ? ` · ${mount} mount` : ""}`;
   } else {
     msg = a.collection ? `${action} · ${a.collection}` : action;
   }
@@ -491,6 +517,7 @@ function StreamView({
       automation: 0,
       functions: 0,
       storage: 0,
+      agents: 0,
       other: 0,
     };
     for (const r of rows) out[r.src]++;

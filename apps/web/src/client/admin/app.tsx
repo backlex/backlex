@@ -1797,16 +1797,25 @@ function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
     let cancelled = false;
     void (async () => {
       try {
-        const r = await api<{ data: { id: string; name: string; description: string | null; admin: boolean }[] }>(`/api/roles`);
+        const r = await api<{ data: { id: string; name: string; description: string | null; admin: boolean; mcpTools: string[] | null; mcpReadOnly: boolean }[] }>(`/api/roles`);
         if (!cancelled && Array.isArray(r.data)) {
           setRoles(
             r.data.map((row) => ({
+              id: row.id,
               name: row.name,
               system: ["admin", "authenticated", "public"].includes(row.name),
-              badges: row.admin ? ["bypass"] : [],
+              badges: [
+                ...(row.admin ? ["bypass"] : []),
+                // Surfaced on the row so an operator can see at a glance which
+                // roles an agent is constrained by without opening each editor.
+                ...(row.mcpReadOnly ? ["mcp read-only"] : []),
+                ...(row.mcpTools ? ["mcp scoped"] : []),
+              ],
               description: row.description ?? "",
               matrix: { read: "all", create: "all", update: "all", delete: "all" } as any,
               rule: row.description ?? "",
+              mcpTools: row.mcpTools ?? null,
+              mcpReadOnly: Boolean(row.mcpReadOnly),
             })),
           );
         }
@@ -1821,39 +1830,63 @@ function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
 
   const openNew = () => { setEditing(null); setIsNew(true); };
   const openEdit = (r: RoleData) => { setEditing(r); setIsNew(false); };
+  // Badges are derived, not stored — recompute them from whatever the editor
+  // returned so an MCP guard flipped in the dialog is visible on the row the
+  // instant it closes, without waiting for a refetch.
+  const badgesFor = (data: RoleData): string[] => [
+    ...((data.badges ?? []).includes("bypass") ? ["bypass"] : []),
+    ...(data.mcpReadOnly ? ["mcp read-only"] : []),
+    ...(data.mcpTools ? ["mcp scoped"] : []),
+  ];
+
   const save = async (data: RoleData) => {
-    if (isNew) {
-      if (roles.find((r) => r.name === data.name)) { pushToast(t`Role "${data.name}" already exists.`); return; }
-      try {
-        await api(`/api/roles`, {
-          method: "POST",
-          body: JSON.stringify({ name: data.name, description: data.description, admin: false }),
-        });
-      } catch (e) {
-        pushToast((e as Error).message);
-      }
-      setRoles((arr) => [...arr, { ...data, badges: [] }]);
-      pushToast(t`Role "${data.name}" created.`);
-    } else if (editing) {
-      try {
-        // Roles are loaded via /api/roles which returns id; the editor only
-        // tracks name. Look up id by name from the latest server snapshot.
-        const r = await api<{ data: { id: string; name: string }[] }>(`/api/roles`);
-        const target = r.data.find((x) => x.name === editing.name);
-        if (target) {
-          await api(`/api/roles/${target.id}`, {
-            method: "PATCH",
-            body: JSON.stringify({ name: data.name, description: data.description }),
-          });
-        }
-      } catch (e) {
-        pushToast((e as Error).message);
-      }
-      setRoles((arr) => arr.map((r) => r.name === editing.name ? { ...r, ...data } : r));
-      pushToast(t`Role "${data.name}" saved.`);
-    }
+    const payload = {
+      name: data.name,
+      description: data.description,
+      mcpTools: data.mcpTools ?? null,
+      mcpReadOnly: data.mcpReadOnly ?? false,
+    };
+    const snapshot = roles;
     setEditing(null);
     setIsNew(false);
+    if (isNew) {
+      if (roles.find((r) => r.name === data.name)) { pushToast(t`Role "${data.name}" already exists.`); return; }
+      setRoles((arr) => [...arr, { ...data, badges: badgesFor(data) }]);
+      try {
+        const created = await api<{ data: { id: string } }>(`/api/roles`, {
+          method: "POST",
+          body: JSON.stringify({ ...payload, admin: false }),
+        });
+        // Reconcile the server-assigned id so a follow-up edit patches the
+        // right row instead of falling back to a name lookup.
+        setRoles((arr) =>
+          arr.map((r) => (r.name === data.name ? { ...r, id: created.data.id } : r)),
+        );
+        pushToast(t`Role "${data.name}" created.`);
+      } catch (e) {
+        setRoles(snapshot);
+        pushToast((e as Error).message);
+      }
+      return;
+    }
+    if (!editing) return;
+    setRoles((arr) =>
+      arr.map((r) =>
+        r.name === editing.name ? { ...r, ...data, badges: badgesFor(data) } : r,
+      ),
+    );
+    try {
+      const id = editing.id ?? data.id;
+      if (!id) throw new Error("Role id missing — reload the page and retry.");
+      await api(`/api/roles/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+      pushToast(t`Role "${data.name}" saved.`);
+    } catch (e) {
+      setRoles(snapshot);
+      pushToast((e as Error).message);
+    }
   };
   const close = () => { setEditing(null); setIsNew(false); };
   return (

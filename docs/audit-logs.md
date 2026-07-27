@@ -49,6 +49,7 @@ Table-view category chip, and the `/api/activity?action=<prefix>` filter is a
 | `webhook` / `flow` | Automation | `flow.run` |
 | `function` | Functions | `function.invoke` |
 | `storage` | Storage | `storage.upload` |
+| `mcp` | **Agents** | `mcp.call`, `mcp.denied` |
 | `request.error` | HTTP | 5xx errors |
 
 ## Sensitive-read auditing (opt-in)
@@ -95,6 +96,41 @@ The rows surface under the **Access** lens in Logs, filterable via
   resolvers; that hook is a follow-up.
 - Aggregate reads (`POST /api/items/:slug/aggregate`) are not audited.
 
+## MCP tool auditing
+
+Every MCP `tools/call` fans out into an internal sub-fetch, so the *underlying*
+REST route logs its own `item.create` row. What that misses is the layer above:
+which **tool** an agent reached for, whether a guard refused it, and how long it
+took. Those land under `mcp.*`:
+
+| Action | When |
+|---|---|
+| `mcp.call` | A tool ran and returned a result |
+| `mcp.error` | A tool ran and reported an error (or threw) |
+| `mcp.denied` | A [guard](./mcp.md#mcp-guards) refused the call before the tool ran |
+| `mcp.resource` | A `resources/read` served workspace data |
+
+Rows carry `collection: "system_mcp"` and put the canonical dotted tool id (or
+the `backlex://…` URI) in `item_id`, so `/api/activity?action=mcp&itemId=collections.delete`
+answers "who has been deleting rows through an agent". The payload records the
+tool's `kind`, which mount served it, the calling key id when one was used, and a
+**summarised** copy of the arguments — long strings clipped, long arrays cut to
+a head plus a count, and anything over 8 KB replaced by its key list, so a bulk
+insert doesn't get copied into the audit log. Secrets are redacted by the same
+[redactor](#redaction) as everything else.
+
+Volume is tuned with `MCP_AUDIT_LEVEL`:
+
+| Value | Records |
+|---|---|
+| `all` | Every call and every resource read |
+| `writes` (default) | Write/destruct calls only |
+| `off` | Nothing |
+
+Refusals (`mcp.denied`) and errors (`mcp.error`) are recorded at **every**
+level, including `off` — those are the security-relevant events and they're rare
+by construction, so dropping them would defeat the point.
+
 ## Retention
 
 A daily cron tick (`services/scheduler.ts`) prunes old rows:
@@ -103,7 +139,8 @@ A daily cron tick (`services/scheduler.ts`) prunes old rows:
 |---|---|---|
 | All activity | `ACTIVITY_RETENTION_DAYS` | 90 days |
 | `access.*` only | `ACCESS_AUDIT_RETENTION_DAYS` | 30 days |
+| `mcp.*` only | `MCP_AUDIT_RETENTION_DAYS` | 30 days |
 
-`access.read` rows are higher-volume, so they get a shorter dedicated clock
-(`pruneOldActivityByPrefix(ctx, days, "access.")`) on top of the global prune.
-Set either to `0` to disable that pass.
+`access.read` and `mcp.*` rows are higher-volume, so they get shorter dedicated
+clocks (`pruneOldActivityByPrefix(ctx, days, "<prefix>.")`) on top of the global
+prune. Set any of them to `0` to disable that pass.

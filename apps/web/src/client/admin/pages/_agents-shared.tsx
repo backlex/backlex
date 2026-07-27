@@ -20,6 +20,8 @@ export interface Agent {
   tools: string[];
   maxSteps: number;
   memory: boolean;
+  /** How far distilled facts reach: `thread` (default) | `agent`. */
+  memoryScope?: string;
   active: boolean;
 }
 
@@ -188,6 +190,22 @@ export const EFFORT_OPTIONS = [
   { value: "low", label: "Low", hint: "cheapest · short, scoped tasks" },
   { value: "medium", label: "Medium", hint: "balanced" },
   { value: "high", label: "High", hint: "most thorough · most tokens" },
+];
+
+/** How far an agent's distilled facts reach. `agent` is deliberately described
+ *  in terms of its consequence, not its mechanism — the sharing is the whole
+ *  point and also the whole risk, so the picker says so out loud. */
+export const MEMORY_SCOPE_OPTIONS = [
+  {
+    value: "thread",
+    label: "This conversation",
+    hint: "default · nothing carries between rooms",
+  },
+  {
+    value: "agent",
+    label: "Every conversation",
+    hint: "shared pool · facts from one person reach the next",
+  },
 ];
 
 /** Mirror of the server's `slugifyHandle`, so the editor's placeholder shows

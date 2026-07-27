@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
-import { Badge, Button, EmptyState, PageHeader, Switch } from "../ui";
+import { Badge, Button, EmptyState, IconButton, PageHeader, Switch } from "../ui";
 import { Card } from "@backlex/ui/components/card";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
@@ -30,6 +30,7 @@ import { AgentsSkeleton } from "../page-skeletons";
 import { fetchSafely } from "./_shared";
 import {
   EFFORT_OPTIONS,
+  MEMORY_SCOPE_OPTIONS,
   MANAGED_DEFAULT_MODEL,
   MODEL_CUSTOM,
   MODEL_OPTIONS,
@@ -54,6 +55,7 @@ const EMPTY_DRAFT: Agent = {
   tools: [],
   maxSteps: 8,
   memory: false,
+  memoryScope: "thread",
   active: true,
 };
 
@@ -128,6 +130,7 @@ export function AgentsPage({
       effort: draft.effort || null,
       maxSteps: draft.maxSteps,
       memory: draft.memory,
+      memoryScope: draft.memoryScope || "thread",
       active: draft.active,
     };
     try {
@@ -364,12 +367,33 @@ export function AgentsPage({
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between rounded-control border border-border px-3 py-2.5">
-                  <div className="flex flex-col">
-                    <span className="text-[13px] font-medium"><Trans>Memory</Trans></span>
-                    <span className="text-[11.5px] text-muted-foreground"><Trans>Recall relevant past turns (needs an embedding provider).</Trans></span>
+                <div className="flex flex-col gap-2.5 rounded-control border border-border px-3 py-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-[13px] font-medium"><Trans>Memory</Trans></span>
+                      <span className="text-[11.5px] text-muted-foreground"><Trans>Recall past turns and remember durable facts (needs an embedding provider).</Trans></span>
+                    </div>
+                    <Switch checked={draft.memory} onChange={(next) => setDraft({ ...draft, memory: next })} />
                   </div>
-                  <Switch checked={draft.memory} onChange={(next) => setDraft({ ...draft, memory: next })} />
+                  {draft.memory && (
+                    <div className="flex flex-col gap-1.5 border-t border-border pt-2.5">
+                      <Label className="shrink-0"><Trans>Remembered facts apply to</Trans></Label>
+                      <Select
+                        value={draft.memoryScope || "thread"}
+                        onChange={(v) => setDraft({ ...draft, memoryScope: v })}
+                        options={MEMORY_SCOPE_OPTIONS}
+                        className="min-w-0 sm:max-w-[60%]"
+                      />
+                      <span className="text-[11.5px] text-muted-foreground">
+                        <Trans>
+                          Transcript recall always stays inside its own conversation. This
+                          only controls the distilled facts — sharing them across rooms is
+                          what lets an agent build up lasting knowledge, and also what makes
+                          something one person told it visible to the next.
+                        </Trans>
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center justify-between rounded-control border border-border px-3 py-2.5">
                   <span className="text-[13px] font-medium"><Trans>Active</Trans></span>
@@ -543,6 +567,8 @@ function AgentSummary({
         </div>
       )}
 
+      {agent.memory && <AgentMemoryPanel agentId={agent.id} />}
+
       {agent.systemPrompt && (
         <div className="flex flex-col gap-1.5">
           <span className="text-[11px] uppercase tracking-wide text-muted-foreground"><Trans>System prompt</Trans></span>
@@ -554,5 +580,96 @@ function AgentSummary({
         </div>
       )}
     </>
+  );
+}
+
+interface MemoryRow {
+  id: string;
+  threadId: string | null;
+  scope: string;
+  content: string;
+  embedded: boolean;
+  hits: number;
+}
+
+/** What the agent has actually learned. Worth surfacing next to the config
+ *  because memory is the one setting whose effect an operator can't predict
+ *  from the settings alone — and occasionally needs to correct. */
+function AgentMemoryPanel({ agentId }: { agentId: string }) {
+  const { t } = useLingui();
+  const [rows, setRows] = useState<MemoryRow[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setRows(null);
+    void (async () => {
+      const r = await fetchSafely<{ data: MemoryRow[] }>(
+        `/api/agents/${agentId}/memory`,
+      );
+      if (!cancelled) setRows(r?.data ?? []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [agentId]);
+
+  const forget = async (memoryId: string) => {
+    const snapshot = rows;
+    setRows((cur) => (cur ?? []).filter((r) => r.id !== memoryId));
+    try {
+      await api(`/api/agents/${agentId}/memory/${memoryId}`, { method: "DELETE" });
+    } catch {
+      setRows(snapshot);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        <Trans>What it has learned</Trans>{" "}
+        {rows && <span className="tabular-nums">({rows.length})</span>}
+      </span>
+      {rows === null ? (
+        <Skeleton className="h-16 w-full rounded-control" />
+      ) : rows.length === 0 ? (
+        <div className="rounded-surface border border-dashed border-border px-3 py-2 text-[12px] text-muted-foreground">
+          <Trans>
+            Nothing yet. Facts are distilled from conversations once a few turns
+            have gone by — and need an embedding provider to be recalled.
+          </Trans>
+        </div>
+      ) : (
+        <ScrollArea viewportClassName="max-h-[220px]" className="w-full rounded-control border border-border">
+          <div className="flex flex-col">
+            {rows.map((row) => (
+              <div
+                key={row.id}
+                className="flex items-start gap-2 border-b border-border px-3 py-2 text-[12.5px] last:border-b-0"
+              >
+                <span className="min-w-0 flex-1 break-words">{row.content}</span>
+                {!row.embedded && (
+                  <span
+                    className="shrink-0"
+                    title={t`Stored without an embedding — not recalled by similarity.`}
+                  >
+                    <Badge variant="outline" className="font-normal">
+                      <Trans>not indexed</Trans>
+                    </Badge>
+                  </span>
+                )}
+                <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
+                  {row.hits}×
+                </span>
+                <IconButton
+                  icon={I.Trash}
+                  title={t`Forget this`}
+                  onClick={() => void forget(row.id)}
+                />
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      )}
+    </div>
   );
 }

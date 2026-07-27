@@ -155,10 +155,118 @@ export const sendToRoom: McpTool = {
   },
 };
 
+export const listAgentMemory: McpTool = {
+  name: "agents.memory_list",
+  description:
+    "List the durable facts an agent has learned (its semantic memory). " +
+    "These are distilled from past conversations, not the transcript itself — " +
+    "use `agents.rooms_list` for that. Pass `threadId` to see only what was " +
+    "learned in one conversation.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      id: { type: "string", description: "Agent id." },
+      threadId: {
+        type: "string",
+        description: "Narrow to one conversation's pool. Omit for everything.",
+      },
+      limit: { type: "number", description: "Max rows (default 100, max 200)." },
+    },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  kind: "read",
+  handler: async (args, ctx) => {
+    const id = String(args.id ?? "");
+    if (!id) throw new Error("VALIDATION: id is required");
+    const qs = new URLSearchParams();
+    if (typeof args.threadId === "string" && args.threadId)
+      qs.set("threadId", args.threadId);
+    if (typeof args.limit === "number") qs.set("limit", String(args.limit));
+    const suffix = qs.toString() ? `?${qs}` : "";
+    const res = await ctx.fetchInternal(
+      `/api/agents/${encodeURIComponent(id)}/memory${suffix}`,
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const rememberAgentFact: McpTool = {
+  name: "agents.memory_add",
+  description:
+    "Teach an agent one durable fact directly, without waiting for it to be " +
+    "distilled from a conversation. Write a single self-contained sentence. " +
+    "Deduped against what the agent already knows, so re-teaching is a no-op. " +
+    "`threadId` is required while the agent's memoryScope is `thread`.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      id: { type: "string", description: "Agent id." },
+      content: { type: "string", description: "The fact, as one sentence." },
+      threadId: {
+        type: "string",
+        description: "Conversation the fact belongs to (thread-scoped agents).",
+      },
+    },
+    required: ["id", "content"],
+    additionalProperties: false,
+  },
+  kind: "write",
+  handler: async (args, ctx) => {
+    const id = String(args.id ?? "");
+    const content = String(args.content ?? "");
+    if (!id) throw new Error("VALIDATION: id is required");
+    if (!content) throw new Error("VALIDATION: content is required");
+    const res = await ctx.fetchInternal(
+      `/api/agents/${encodeURIComponent(id)}/memory`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          content,
+          ...(typeof args.threadId === "string" ? { threadId: args.threadId } : {}),
+        }),
+      },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const forgetAgentMemory: McpTool = {
+  name: "agents.memory_forget",
+  description:
+    "Delete one remembered fact by its id (from `agents.memory_list`). Removes " +
+    "both the row and its embedding, so the agent stops retrieving it.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      id: { type: "string", description: "Agent id." },
+      memoryId: { type: "string", description: "Memory row id." },
+    },
+    required: ["id", "memoryId"],
+    additionalProperties: false,
+  },
+  kind: "destruct",
+  handler: async (args, ctx) => {
+    const id = String(args.id ?? "");
+    const memoryId = String(args.memoryId ?? "");
+    if (!id || !memoryId)
+      throw new Error("VALIDATION: id and memoryId are required");
+    const res = await ctx.fetchInternal(
+      `/api/agents/${encodeURIComponent(id)}/memory/${encodeURIComponent(memoryId)}`,
+      { method: "DELETE" },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const agentsTools: McpTool[] = [
   listAgents,
   getAgent,
   runAgent,
   listRooms,
   sendToRoom,
+  listAgentMemory,
+  rememberAgentFact,
+  forgetAgentMemory,
 ];

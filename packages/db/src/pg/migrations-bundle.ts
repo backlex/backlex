@@ -77,8 +77,10 @@ import m70 from "../../drizzle/pg/20260725090000_agent_message_author/migration.
 import m71 from "../../drizzle/pg/20260725120000_agent_effort/migration.sql" with { type: "text" };
 import m72 from "../../drizzle/pg/20260725150000_agent_rooms/migration.sql" with { type: "text" };
 import m73 from "../../drizzle/pg/20260727090000_app_orgs/migration.sql" with { type: "text" };
-import m74 from "../../drizzle/pg/20260727090000_product_analytics/migration.sql" with { type: "text" };
-import m75 from "../../drizzle/pg/20260727120000_payments/migration.sql" with { type: "text" };
+import m74 from "../../drizzle/pg/20260727090000_mcp_role_guards/migration.sql" with { type: "text" };
+import m75 from "../../drizzle/pg/20260727090000_product_analytics/migration.sql" with { type: "text" };
+import m76 from "../../drizzle/pg/20260727100000_agent_semantic_memory/migration.sql" with { type: "text" };
+import m77 from "../../drizzle/pg/20260727120000_payments/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -160,6 +162,8 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260725120000_agent_effort", sql: m71 },
   { name: "20260725150000_agent_rooms", sql: m72 },
   { name: "20260727090000_app_orgs", sql: m73 },
-  { name: "20260727090000_product_analytics", sql: m74 },
-  { name: "20260727120000_payments", sql: m75 },
+  { name: "20260727090000_mcp_role_guards", sql: m74 },
+  { name: "20260727090000_product_analytics", sql: m75 },
+  { name: "20260727100000_agent_semantic_memory", sql: m76 },
+  { name: "20260727120000_payments", sql: m77 },
 ];

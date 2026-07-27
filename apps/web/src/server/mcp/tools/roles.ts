@@ -24,13 +24,29 @@ export const createRole: McpTool = {
   name: "roles.create",
   description:
     "Create a role in the active workspace. `name` is a free-form label; " +
-    "`admin: true` grants DSL bypass — be careful with that flag.",
+    "`admin: true` grants DSL bypass — be careful with that flag. " +
+    "`mcpTools` / `mcpReadOnly` restrict which MCP tools members of this role " +
+    "may call (omit both to leave MCP unrestricted).",
   inputSchema: {
     type: "object",
     properties: {
       name: { type: "string" },
       description: { type: "string" },
       admin: { type: "boolean" },
+      mcpTools: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "MCP tool allowlist for members of this role: exact ids " +
+          "(`collections.read`) or globs (`collections.*`, `*`). Omit or null " +
+          "to impose no restriction.",
+      },
+      mcpReadOnly: {
+        type: "boolean",
+        description:
+          "When true, members of this role cannot call any MCP write or " +
+          "destructive tool.",
+      },
     },
     required: ["name"],
     additionalProperties: false,

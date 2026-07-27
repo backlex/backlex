@@ -23,6 +23,9 @@ export interface AgentRow {
   tools: string[];
   maxSteps: number;
   memory: boolean;
+  /** `thread` | `agent` — how far distilled semantic facts reach. See the
+   *  schema comment on `agents.memory_scope`. */
+  memoryScope: string;
   active: boolean;
   createdAt: Date | number;
   updatedAt: Date | number;
@@ -168,6 +171,8 @@ export interface AgentInput {
   tools?: string[];
   maxSteps?: number;
   memory?: boolean;
+  /** `thread` | `agent` — how far distilled semantic facts reach. */
+  memoryScope?: string;
   active?: boolean;
 }
 
@@ -191,6 +196,7 @@ export const createAgent = async (
     tools: input.tools ?? [],
     maxSteps: input.maxSteps ?? 8,
     memory: input.memory ?? false,
+    memoryScope: input.memoryScope === "agent" ? "agent" : "thread",
     active: input.active ?? true,
     createdAt: now,
     updatedAt: now,
@@ -222,6 +228,9 @@ export const updateAgent = async (
       ...(input.tools !== undefined ? { tools: input.tools } : {}),
       ...(input.maxSteps !== undefined ? { maxSteps: input.maxSteps } : {}),
       ...(input.memory !== undefined ? { memory: input.memory } : {}),
+      ...(input.memoryScope !== undefined
+        ? { memoryScope: input.memoryScope === "agent" ? "agent" : "thread" }
+        : {}),
       ...(input.active !== undefined ? { active: input.active } : {}),
       updatedAt: nowFor(ctx.dialect),
     })

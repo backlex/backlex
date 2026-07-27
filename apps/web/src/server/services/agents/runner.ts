@@ -29,7 +29,13 @@ import {
 } from "../ai-config";
 import { publishEvent } from "../events";
 import type { Ctx } from "../../context";
-import { retrieveMemory, storeMemory } from "./memory";
+import {
+  parseMemoryScope,
+  retrieveEpisodic,
+  retrieveSemantic,
+  scheduleDistillation,
+  storeEpisodic,
+} from "./memory";
 import {
   appendMessage,
   getAgent,
@@ -279,12 +285,26 @@ export const runAgentTurn = async (
     guards: { allowlist: null, readOnly: false },
   };
 
-  // Semantic memory (opt-in): retrieve the most relevant past snippets and fold
-  // them into the system prompt. Scoped per (thread, agent) so a room-mate's
-  // recollection never leaks into this persona. No-op when memory is off or no
-  // embedding provider is configured.
+  // Memory (opt-in), in two passes. They're folded in under separate headings
+  // because they answer different questions and the model should weigh them
+  // differently: episodes are "what was said" (fallible, conversational),
+  // facts are "what is true" (durable, already filtered). Merging them into one
+  // bullet list invites the model to treat a stray remark as settled fact.
+  // Episodic recall is always thread-scoped so a room-mate's recollection never
+  // leaks into this persona; semantic reach follows the agent's `memoryScope`.
+  // No-op when memory is off or no embedding provider is configured.
+  const memoryScope = parseMemoryScope(agent.memoryScope);
   if (agent.memory) {
-    const snippets = await retrieveMemory(ctx, threadId, agentId, message);
+    const [facts, snippets] = await Promise.all([
+      retrieveSemantic(ctx, agentId, memoryScope, threadId, message),
+      retrieveEpisodic(ctx, threadId, agentId, message),
+    ]);
+    if (facts.length) {
+      system +=
+        "\n\nWhat you have learned previously (treat as established unless the " +
+        "user corrects it):\n" +
+        facts.map((s) => `  - ${s}`).join("\n");
+    }
     if (snippets.length) {
       system +=
         "\n\nRelevant context from earlier in this conversation (may help, " +
@@ -297,7 +317,7 @@ export const runAgentTurn = async (
   await setThreadStatus(ctx, threadId, "running");
   await emit("agent.start", { threadId, userId: input.auth.userId });
   if (agent.memory) {
-    await storeMemory(ctx, threadId, agentId, `${runId}:q`, message);
+    await storeEpisodic(ctx, threadId, agentId, `${runId}:q`, message);
   }
 
   const steps: RunStep[] = [];
@@ -352,7 +372,18 @@ export const runAgentTurn = async (
         await setRunStatus(ctx, runId, "done");
         await syncThreadStatus(ctx, threadId);
         if (agent.memory) {
-          await storeMemory(ctx, threadId, agentId, msg.id, answer);
+          await storeEpisodic(ctx, threadId, agentId, msg.id, answer);
+          // Distillation is an extra LLM call, so it runs out of band on the
+          // job queue rather than making the user wait for an answer they
+          // already have. The job itself is a no-op until enough new transcript
+          // has accumulated (see DISTILL_EVERY_MESSAGES).
+          await scheduleDistillation(ctx, {
+            tenantId,
+            agentId,
+            threadId,
+            scope: memoryScope,
+            model: agent.model,
+          });
         }
         await emit("agent.final", { answer });
         return { answer, steps, stoppedReason: "final", cachedTokens };

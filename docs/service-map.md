@@ -24,7 +24,9 @@ guides; this list is everything else.
   permission row).
 - **Activity log** (`routes/activity.ts`, `services/activity.ts`) —
   central audit trail. Mutating routes call `logActivity(...)` after
-  success. Add it when introducing new write endpoints.
+  success. Add it when introducing new write endpoints. The MCP dispatcher
+  writes its own `mcp.*` rows via `mcp/audit.ts` (which tool, which mount,
+  refused or not) — the REST row alone can't say an agent was involved.
 - **Storage + folders** (`routes/storage.ts`, `routes/folders.ts`,
   `services/storage/*`) — uploads, folder tree, signed serves,
   on-the-fly image transforms. See `docs/storage.md`.
@@ -98,7 +100,12 @@ guides; this list is everything else.
     `queued`-only status guard so a non-idempotent turn is never replayed.
     Detached tool calls authenticate with a short-lived agent-run token
     (`lib/jwt.ts`) that carries no roles.
-  - Optional per-(thread, agent) vector memory in `memory.ts`.
+  - Optional two-tier memory in `memory.ts`: **episodic** (per-(thread, agent)
+    vector namespace, retrieved by similarity blended with recency) and
+    **semantic** (durable facts distilled by a queued `agent.distill_memory`
+    job into the `agent_memories` table, so they can be listed, taught, and
+    forgotten). `agents.memory_scope` decides whether facts stay in their
+    thread or pool per agent.
 
   Admin-scoped CRUD + rooms + run are mirrored across REST, the SDK
   (`client.agents.*`), GraphQL (`runAgent` et al.), MCP (`agents.*`), and the

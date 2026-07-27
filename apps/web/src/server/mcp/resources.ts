@@ -180,7 +180,14 @@ export const readResource = async (
     const body = await readJson<{ data: Record<string, unknown> }>(res);
     const me = {
       ...body.data,
-      mcp: { readOnly: ctx.guards.readOnly, allowlist: ctx.guards.allowlist },
+      mcp: {
+        readOnly: ctx.guards.readOnly,
+        allowlist: ctx.guards.allowlist,
+        // Reported separately from the key's own list: an agent that hits a
+        // FORBIDDEN needs to know whether the limit travels with the key or
+        // with the identity, because only one of those it can ask to change.
+        roleAllowlist: ctx.guards.roleAllowlist ?? null,
+      },
     };
     return {
       contents: [{ uri, mimeType: "application/json", text: JSON.stringify(me, null, 2) }],

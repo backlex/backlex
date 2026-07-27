@@ -22,6 +22,12 @@ import {
   getThread as getAgentThreadRow,
 } from "../agents/store";
 import { sendMessage } from "../agents/send";
+import {
+  forgetFact,
+  listFacts,
+  parseMemoryScope,
+  rememberFact,
+} from "../agents/memory";
 import { allTools } from "../../mcp/tools";
 
 // ── AI agents ────────────────────────────────────────────────────────────────
@@ -43,7 +49,25 @@ const AgentType = new GraphQLObjectType({
     tools: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     maxSteps: { type: new GraphQLNonNull(GraphQLInt) },
     memory: { type: new GraphQLNonNull(GraphQLBoolean) },
+    /** `thread` | `agent` — how far distilled semantic facts reach. */
+    memoryScope: { type: new GraphQLNonNull(GraphQLString) },
     active: { type: new GraphQLNonNull(GraphQLBoolean) },
+  },
+});
+
+/** One durable fact an agent holds. Mirrors `agent_memories`. */
+const AgentMemoryType = new GraphQLObjectType({
+  name: "AgentMemory",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    agentId: { type: new GraphQLNonNull(GraphQLID) },
+    threadId: { type: GraphQLID },
+    scope: { type: new GraphQLNonNull(GraphQLString) },
+    content: { type: new GraphQLNonNull(GraphQLString) },
+    /** False when the fact was stored with no embedding provider available —
+     *  it's listable and forgettable, but not retrievable by similarity. */
+    embedded: { type: new GraphQLNonNull(GraphQLBoolean) },
+    hits: { type: new GraphQLNonNull(GraphQLInt) },
   },
 });
 
@@ -58,6 +82,7 @@ const AgentInputType = new GraphQLInputObjectType({
     tools: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
     maxSteps: { type: GraphQLInt },
     memory: { type: GraphQLBoolean },
+    memoryScope: { type: GraphQLString },
     active: { type: GraphQLBoolean },
   },
 });
@@ -91,9 +116,29 @@ export const requireAgentAdmin = requireFlowAdmin;
 const normalizeAgentRow = (r: Record<string, unknown>) => ({
   ...r,
   memory: Boolean(r.memory),
+  memoryScope: r.memoryScope === "agent" ? "agent" : "thread",
   active: Boolean(r.active),
   tools: Array.isArray(r.tools) ? r.tools : [],
 });
+
+const normalizeMemoryRow = (r: Record<string, unknown>) => ({
+  ...r,
+  embedded: Boolean(r.embedded),
+  hits: Number(r.hits ?? 0),
+});
+
+/** Reject a memoryScope that isn't one of the two the schema allows, rather
+ *  than silently coercing it — a typo'd `"global"` would otherwise read as
+ *  `thread` and quietly not do what the caller asked. */
+const validateMemoryScope = (v: unknown): string | undefined => {
+  if (v === undefined) return undefined;
+  if (v !== "thread" && v !== "agent") {
+    throw new GraphQLError("memoryScope must be 'thread' or 'agent'", {
+      extensions: { code: "VALIDATION" },
+    });
+  }
+  return v;
+};
 
 const validateAgentTools = (tools: unknown): string[] | undefined => {
   if (tools === undefined) return undefined;
@@ -132,6 +177,32 @@ export const agentQueryFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx
       return row ? normalizeAgentRow(row as unknown as Record<string, unknown>) : null;
     },
   },
+  agentMemories: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(AgentMemoryType))),
+    description:
+      "The durable facts an agent has learned, newest first (admin-only). " +
+      "Pass `threadId` to see only what was learned in one conversation.",
+    args: {
+      agentId: { type: new GraphQLNonNull(GraphQLID) },
+      threadId: { type: GraphQLID },
+      limit: { type: GraphQLInt },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAgentAdmin(gqlCtx);
+      const a = args as { agentId: string; threadId?: string; limit?: number };
+      // Ownership check first: `listFacts` keys on agentId alone, so without
+      // this a cross-tenant id would read another workspace's memory.
+      const agent = await getAgentRow(gqlCtx.ctx, a.agentId, tenantId);
+      if (!agent) {
+        throw new GraphQLError("Agent not found", { extensions: { code: "NOT_FOUND" } });
+      }
+      const rows = await listFacts(gqlCtx.ctx, a.agentId, {
+        threadId: a.threadId ?? null,
+        limit: a.limit,
+      });
+      return rows.map((r) => normalizeMemoryRow(r as unknown as Record<string, unknown>));
+    },
+  },
 };
 
 export const agentMutationFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
@@ -146,6 +217,7 @@ export const agentMutationFields: Record<string, GraphQLFieldConfig<unknown, Gql
         throw new GraphQLError("name is required", { extensions: { code: "VALIDATION" } });
       }
       const tools = validateAgentTools(data.tools);
+      const memoryScope = validateMemoryScope(data.memoryScope);
       const row = await createAgentRow(gqlCtx.ctx, tenantId, {
         name: data.name,
         description: (data.description as string) ?? null,
@@ -154,6 +226,7 @@ export const agentMutationFields: Record<string, GraphQLFieldConfig<unknown, Gql
         ...(tools ? { tools } : {}),
         ...(data.maxSteps !== undefined ? { maxSteps: Number(data.maxSteps) } : {}),
         ...(data.memory !== undefined ? { memory: Boolean(data.memory) } : {}),
+        ...(memoryScope ? { memoryScope } : {}),
         ...(data.active !== undefined ? { active: Boolean(data.active) } : {}),
       });
       return normalizeAgentRow(row as unknown as Record<string, unknown>);
@@ -171,6 +244,7 @@ export const agentMutationFields: Record<string, GraphQLFieldConfig<unknown, Gql
       const id = (args as { id: string }).id;
       const data = (args as { data: Record<string, unknown> }).data;
       const tools = validateAgentTools(data.tools);
+      const memoryScope = validateMemoryScope(data.memoryScope);
       await updateAgentRow(gqlCtx.ctx, id, tenantId, {
         ...(data.name !== undefined ? { name: data.name as string } : {}),
         ...(data.description !== undefined ? { description: data.description as string } : {}),
@@ -179,6 +253,7 @@ export const agentMutationFields: Record<string, GraphQLFieldConfig<unknown, Gql
         ...(tools ? { tools } : {}),
         ...(data.maxSteps !== undefined ? { maxSteps: Number(data.maxSteps) } : {}),
         ...(data.memory !== undefined ? { memory: Boolean(data.memory) } : {}),
+        ...(memoryScope ? { memoryScope } : {}),
         ...(data.active !== undefined ? { active: Boolean(data.active) } : {}),
       });
       const row = await getAgentRow(gqlCtx.ctx, id, tenantId);
@@ -193,6 +268,60 @@ export const agentMutationFields: Record<string, GraphQLFieldConfig<unknown, Gql
       const tenantId = requireAgentAdmin(gqlCtx);
       await deleteAgentRow(gqlCtx.ctx, (args as { id: string }).id, tenantId);
       return true;
+    },
+  },
+  rememberAgentFact: {
+    type: AgentMemoryType,
+    description:
+      "Teach an agent one durable fact directly (admin-only). Deduped against " +
+      "what it already knows — a restatement returns null rather than erroring. " +
+      "`threadId` is required while the agent's memoryScope is `thread`.",
+    args: {
+      agentId: { type: new GraphQLNonNull(GraphQLID) },
+      content: { type: new GraphQLNonNull(GraphQLString) },
+      threadId: { type: GraphQLID },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAgentAdmin(gqlCtx);
+      const a = args as { agentId: string; content: string; threadId?: string };
+      const agent = await getAgentRow(gqlCtx.ctx, a.agentId, tenantId);
+      if (!agent) {
+        throw new GraphQLError("Agent not found", { extensions: { code: "NOT_FOUND" } });
+      }
+      const scope = parseMemoryScope(agent.memoryScope);
+      if (scope === "thread" && !a.threadId) {
+        throw new GraphQLError(
+          "threadId is required while this agent's memoryScope is 'thread'",
+          { extensions: { code: "VALIDATION" } },
+        );
+      }
+      const row = await rememberFact(gqlCtx.ctx, {
+        tenantId,
+        agentId: a.agentId,
+        threadId: a.threadId ?? "",
+        scope,
+        content: a.content,
+      });
+      return row ? normalizeMemoryRow(row as unknown as Record<string, unknown>) : null;
+    },
+  },
+  forgetAgentMemory: {
+    type: new GraphQLNonNull(GraphQLBoolean),
+    description:
+      "Delete one remembered fact by id, from both the table and the vector " +
+      "index (admin-only). False when the id doesn't belong to the agent.",
+    args: {
+      agentId: { type: new GraphQLNonNull(GraphQLID) },
+      memoryId: { type: new GraphQLNonNull(GraphQLID) },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAgentAdmin(gqlCtx);
+      const a = args as { agentId: string; memoryId: string };
+      const agent = await getAgentRow(gqlCtx.ctx, a.agentId, tenantId);
+      if (!agent) {
+        throw new GraphQLError("Agent not found", { extensions: { code: "NOT_FOUND" } });
+      }
+      return await forgetFact(gqlCtx.ctx, a.agentId, a.memoryId);
     },
   },
   runAgent: {

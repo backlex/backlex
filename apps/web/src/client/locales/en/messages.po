@@ -442,6 +442,11 @@ msgstr "{0} of {1} tools allowed. Choose Allow all to remove the allowlist."
 msgid "{0} of lists"
 msgstr "{0} of lists"
 
+#. placeholder {0}: (mcpTools ?? []).length
+#: src/client/admin/role-mcp-guards.tsx
+msgid "{0} patterns"
+msgstr "{0} patterns"
+
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} posts deleted."
@@ -2791,6 +2796,10 @@ msgstr "Collections are physical tables created at runtime. Create one from scra
 msgid "Collections you archive will show up here."
 msgstr "Collections you archive will show up here."
 
+#: src/client/admin/role-mcp-guards.tsx
+msgid "collections.read, schema.describe_collection"
+msgstr "collections.read, schema.describe_collection"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Color"
 msgstr "Color"
@@ -2847,6 +2856,10 @@ msgstr "Columns"
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
 msgstr "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
+
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Comma-separated exact tool ids. Use these when a whole namespace is too broad."
+msgstr "Comma-separated exact tool ids. Use these when a whole namespace is too broad."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Comma-separated; prefix with <0>-</0> for descending. Leave blank to fall back to <1>-created_at</1>."
@@ -3651,6 +3664,10 @@ msgstr "Custom message (optional)"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Custom OpenID Connect provider."
 msgstr "Custom OpenID Connect provider."
+
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Custom patterns"
+msgstr "Custom patterns"
 
 #: src/client/admin/role-editor.tsx
 msgid "Custom roles layer additively on top of authenticated."
@@ -4977,6 +4994,10 @@ msgstr "Every MCP tool is callable, subject to permissions. Tick a tool below to
 msgid "Every occurrence of this bug, with the latest stack trace and how many visitors it reached."
 msgstr "Every occurrence of this bug, with the latest stack trace and how many visitors it reached."
 
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Every tool"
+msgstr "Every tool"
+
 #: src/client/admin/parity/revisions.tsx
 msgid "Every write is versioned. Inspect, diff, or revert any prior state."
 msgstr "Every write is versioned. Inspect, diff, or revert any prior state."
@@ -5539,6 +5560,10 @@ msgstr "Foreign keys adopted as relations:"
 #: src/client/admin/adopt-wizard.tsx
 msgid "Foreign keys detected"
 msgstr "Foreign keys detected"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Forget this"
+msgstr "Forget this"
 
 #: src/client/pages/sign-in.tsx
 msgid "Forgot?"
@@ -6962,6 +6987,10 @@ msgstr "Limits for {0}"
 msgid "Limits must be positive numbers (or empty for unlimited)."
 msgstr "Limits must be positive numbers (or empty for unlimited)."
 
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Limits which MCP tools an AI agent may call on behalf of members of this role. Narrowing only — it never grants anything the permission rules above already deny."
+msgstr "Limits which MCP tools an AI agent may call on behalf of members of this role. Narrowing only — it never grants anything the permission rules above already deny."
+
 #: src/client/admin/account-page.tsx
 msgid "Link"
 msgstr "Link"
@@ -7314,6 +7343,7 @@ msgstr "MCP · {0} tools"
 #~ msgid "MCP · {MCP_TOOL_COUNT} tools"
 #~ msgstr "MCP · {MCP_TOOL_COUNT} tools"
 
+#: src/client/admin/role-mcp-guards.tsx
 #: src/client/pages/api-keys.tsx
 msgid "MCP access"
 msgstr "MCP access"
@@ -7655,6 +7685,10 @@ msgstr "Name, Entity ID, SSO URL and IdP certificate are required."
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "NameID format"
 msgstr "NameID format"
+
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Namespaces"
+msgstr "Namespaces"
 
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Native push transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>PUSH_*</1> env vars. Secret values are encrypted at rest and never shown again. In-app notifications can fan out to devices via the <2>push</2> flag."
@@ -8598,6 +8632,10 @@ msgstr "not configured"
 msgid "Not enough history yet"
 msgstr "Not enough history yet"
 
+#: src/client/admin/pages/agents.tsx
+msgid "not indexed"
+msgstr "not indexed"
+
 #: src/client/admin/account-page.tsx
 msgid "Not linked."
 msgstr "Not linked."
@@ -8680,6 +8718,10 @@ msgstr "Nothing to paste."
 #: src/client/admin/pages/advisor.tsx
 msgid "Nothing was recorded in the last {days} day(s). Request spans appear here once the API serves traffic, unless `TRACES_SAMPLE_RATE` is 0 or span retention already pruned this window."
 msgstr "Nothing was recorded in the last {days} day(s). Request spans appear here once the API serves traffic, unless `TRACES_SAMPLE_RATE` is 0 or span retention already pruned this window."
+
+#: src/client/admin/pages/agents.tsx
+msgid "Nothing yet. Facts are distilled from conversations once a few turns have gone by — and need an embedding provider to be recalled."
+msgstr "Nothing yet. Facts are distilled from conversations once a few turns have gone by — and need an embedding provider to be recalled."
 
 #: src/client/admin/ui.tsx
 msgid "Notifications"
@@ -8872,6 +8914,10 @@ msgstr "Only the selected types are accepted — enforced server-side."
 #: src/client/admin/parity/translations.tsx
 msgid "Only translate missing keys"
 msgstr "Only translate missing keys"
+
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Only what I select"
+msgstr "Only what I select"
 
 #: src/client/admin/extras.tsx
 msgid "open"
@@ -10144,6 +10190,10 @@ msgstr "Read-only"
 msgid "Read-only mode"
 msgstr "Read-only mode"
 
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Read-only over MCP"
+msgstr "Read-only over MCP"
+
 #: src/client/admin/parity/insights.tsx
 msgid "read-only SELECT against the workspace database"
 msgstr "read-only SELECT against the workspace database"
@@ -10184,8 +10234,12 @@ msgid "Reasoning effort"
 msgstr "Reasoning effort"
 
 #: src/client/admin/pages/agents.tsx
-msgid "Recall relevant past turns (needs an embedding provider)."
-msgstr "Recall relevant past turns (needs an embedding provider)."
+msgid "Recall past turns and remember durable facts (needs an embedding provider)."
+msgstr "Recall past turns and remember durable facts (needs an embedding provider)."
+
+#: src/client/admin/pages/agents.tsx
+#~ msgid "Recall relevant past turns (needs an embedding provider)."
+#~ msgstr "Recall relevant past turns (needs an embedding provider)."
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/payments.tsx
@@ -10378,6 +10432,10 @@ msgstr "Reload"
 #: src/client/pages/graphql.tsx
 msgid "Reload schema"
 msgstr "Reload schema"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Remembered facts apply to"
+msgstr "Remembered facts apply to"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/collection-settings.tsx
@@ -12674,6 +12732,10 @@ msgstr "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-fo
 msgid "stored objects"
 msgstr "stored objects"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Stored without an embedding — not recalled by similarity."
+msgstr "Stored without an embedding — not recalled by similarity."
+
 #: src/client/admin/item-form.tsx
 msgid "Stores a list of storage keys. Upload new files on the <0>Storage</0> page."
 msgstr "Stores a list of storage keys. Upload new files on the <0>Storage</0> page."
@@ -13522,6 +13584,10 @@ msgstr "Tokens without the <0>mcp:write</0> scope run read-only."
 msgid "Tool"
 msgstr "Tool"
 
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Tool access"
+msgstr "Tool access"
+
 #: src/client/admin/pages/agents.tsx
 msgid "Tool allow-list"
 msgstr "Tool allow-list"
@@ -13530,6 +13596,10 @@ msgstr "Tool allow-list"
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Tool allowlist"
 msgstr "Tool allowlist"
+
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Tool catalog unavailable — use the field below."
+msgstr "Tool catalog unavailable — use the field below."
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Tool failed"
@@ -13621,6 +13691,10 @@ msgstr "Traffic rules read {0} span(s) over {1} day(s)."
 #: src/client/admin/pages/advisor.tsx
 msgid "Traffic window"
 msgstr "Traffic window"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Transcript recall always stays inside its own conversation. This only controls the distilled facts — sharing them across rooms is what lets an agent build up lasting knowledge, and also what makes something one person told it visible to the next."
+msgstr "Transcript recall always stays inside its own conversation. This only controls the distilled facts — sharing them across rooms is what lets an agent build up lasting knowledge, and also what makes something one person told it visible to the next."
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Transform"
@@ -13907,6 +13981,10 @@ msgstr "Unpublish on"
 #: src/client/admin/ui.tsx
 msgid "Unread"
 msgstr "Unread"
+
+#: src/client/admin/role-mcp-guards.tsx
+msgid "unrestricted"
+msgstr "unrestricted"
 
 #: src/client/admin/permission-tester.tsx
 msgid "Unrestricted — no row filter applies."
@@ -14447,6 +14525,10 @@ msgstr "Welcome back. Pick up where you left off — content, data, and APIs all
 #: src/client/admin/pages/search-playground.tsx
 msgid "What are you looking for?"
 msgstr "What are you looking for?"
+
+#: src/client/admin/pages/agents.tsx
+msgid "What it has learned"
+msgstr "What it has learned"
 
 #: src/client/admin/pages/agents.tsx
 msgid "What teammates type after @ to address this agent in a room. Derived from the name when left blank."

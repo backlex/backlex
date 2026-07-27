@@ -18,12 +18,15 @@ const SYSTEM_AUTH: AuthSubject = { userId: null, email: null, roles: [] };
 /** Built-in handler discriminators. `function` runs a named user function in the
  *  sandbox; `webhook.deliver` re-attempts a single outbound webhook (so webhooks
  *  inherit the queue's retry + dead-letter); `payments.reconcile` walks a
- *  payment provider's API and upserts what it finds. */
+ *  payment provider's API and upserts what it finds; `agent.turn` runs one
+ *  queued agent turn; `agent.distill_memory` extracts durable facts from a
+ *  thread's recent transcript out of band. */
 export type JobType =
   | "function"
   | "webhook.deliver"
   | "agent.turn"
-  | "payments.reconcile";
+  | "payments.reconcile"
+  | "agent.distill_memory";
 
 export type JobStatus =
   | "pending"
@@ -302,6 +305,27 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
     // A turn is not idempotent, so a refusal is reported, never retried — the
     // `agent_runs` row already carries the failure the room is watching.
     return out;
+  }
+  if (job.type === "agent.distill_memory") {
+    // Reading the transcript and extracting durable facts is an extra LLM call,
+    // so it happens here rather than inside the turn the user is waiting on.
+    const p = job.payload as {
+      agentId?: string;
+      threadId?: string;
+      scope?: string;
+      model?: string | null;
+    };
+    if (!p.agentId || !p.threadId) {
+      throw new Error("agent.distill_memory job has an invalid payload");
+    }
+    const { distillSemantic, parseMemoryScope } = await import("./agents/memory");
+    return await distillSemantic(ctx, {
+      tenantId: job.tenantId,
+      agentId: p.agentId,
+      threadId: p.threadId,
+      scope: parseMemoryScope(p.scope),
+      model: p.model ?? null,
+    });
   }
   throw new Error(`unknown job type '${job.type}'`);
 };

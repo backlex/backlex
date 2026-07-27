@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { RoleMcpGuards } from "./role-mcp-guards";
 
 const ACTIONS = ["read", "create", "update", "delete", "publish"] as const;
 
@@ -20,12 +21,18 @@ export type RuleState = "all" | "none" | "auth" | "owner" | "published";
 export type RoleMatrix = Record<typeof ACTIONS[number], RuleState>;
 
 export interface RoleData {
+  /** Server row id. Absent while creating — the caller assigns it on save. */
+  id?: string;
   name: string;
   system?: boolean;
   description?: string;
   badges?: string[];
   matrix?: RoleMatrix;
   rule?: string;
+  /** Role-scoped MCP tool allowlist; `null` = unrestricted. */
+  mcpTools?: string[] | null;
+  /** Role-scoped MCP read-only lock. */
+  mcpReadOnly?: boolean;
 }
 
 export function defaultRoleRule(): RoleMatrix {
@@ -62,12 +69,16 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [rule, setRule] = useState<RoleMatrix>(defaultRoleRule());
+  const [mcpTools, setMcpTools] = useState<string[] | null>(null);
+  const [mcpReadOnly, setMcpReadOnly] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setName(role?.name || "");
     setDescription(role?.description || "");
     setRule(role?.matrix || defaultRoleRule());
+    setMcpTools(role?.mcpTools ?? null);
+    setMcpReadOnly(role?.mcpReadOnly ?? false);
   }, [open, role]);
 
   const compiled = useMemo(() => compileRule(rule), [rule]);
@@ -137,6 +148,15 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
             </ScrollArea>
             <span className="text-[11.5px] text-muted-foreground"><Trans>Generated DSL — saved to <span className="font-mono">role_permissions</span> on save.</Trans></span>
           </div>
+
+          <RoleMcpGuards
+            mcpTools={mcpTools}
+            mcpReadOnly={mcpReadOnly}
+            onChange={(next) => {
+              setMcpTools(next.mcpTools);
+              setMcpReadOnly(next.mcpReadOnly);
+            }}
+          />
         </div>
         </ScrollArea>
 
@@ -146,11 +166,14 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
             variant="primary"
             disabled={!name.trim()}
             onClick={() => onSave({
+              id: role?.id,
               name: name.trim(),
               description,
               matrix: rule,
               system: isSystem || false,
               rule: ruleSummary(rule),
+              mcpTools,
+              mcpReadOnly,
             })}
           >
             {isNew ? <Trans>Create role</Trans> : <Trans>Save changes</Trans>}

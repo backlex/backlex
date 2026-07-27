@@ -67,6 +67,8 @@ import { messagingRoutes } from "./routes/messaging";
 import { jobsRoutes } from "./routes/jobs";
 import { openapiRoutes } from "./routes/openapi";
 import { panelsRoutes } from "./routes/panels";
+import { paymentsRoutes } from "./routes/payments";
+import { paymentsPublicRoutes } from "./routes/payments-public";
 import { dashboardsRoutes } from "./routes/dashboards";
 import { schemaVersionsRoutes } from "./routes/schema-versions";
 import { dashboardsPublicRoutes } from "./routes/dashboards-public";
@@ -788,6 +790,11 @@ export const createApp = (env: Env) => {
   app.route("/api/realtime", realtimeRoutes);
   app.route("/api/webhooks", webhooksRoutes);
   app.route("/api/admin/integrations", integrationsRoutes);
+  app.route("/api/admin/payments", paymentsRoutes);
+  // Public payment-provider webhook receiver — no `requireUser`. The path
+  // token resolves the workspace and the provider HMAC authenticates the body
+  // (see routes/payments-public.ts).
+  app.route("/api/payments", paymentsPublicRoutes);
   // Public flow-trigger endpoint — POST /api/webhook/:flowId fires the
   // matching `webhook`-triggered flow. Distinct path from /api/webhooks
   // (outgoing dispatch admin) by design.

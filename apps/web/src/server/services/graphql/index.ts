@@ -21,6 +21,7 @@ import {
   type GqlCtx,
 } from "./core";
 import { flowQueryFields, flowMutationFields } from "./flows";
+import { paymentQueryFields, paymentMutationFields } from "./payments";
 import { extensionQueryFields, extensionMutationFields } from "./extensions";
 import { messagingMutationFields } from "./messaging";
 import { dashboardQueryFields, dashboardMutationFields } from "./dashboards";
@@ -69,6 +70,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
             resolve: () => "No collections defined yet.",
           },
           ...flowQueryFields,
+          ...paymentQueryFields,
           ...extensionQueryFields,
           ...dashboardQueryFields,
           ...formQueryFields,
@@ -88,6 +90,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
         name: "Mutation",
         fields: {
           ...flowMutationFields,
+          ...paymentMutationFields,
           ...extensionMutationFields,
           ...dashboardMutationFields,
           ...formMutationFields,
@@ -109,6 +112,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
 
   const queryFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
     ...flowQueryFields,
+    ...paymentQueryFields,
     ...extensionQueryFields,
     ...dashboardQueryFields,
     ...formQueryFields,
@@ -125,6 +129,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
   };
   const mutationFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
     ...flowMutationFields,
+    ...paymentMutationFields,
     ...extensionMutationFields,
     ...dashboardMutationFields,
     ...formMutationFields,

@@ -153,6 +153,7 @@ export const NAV_AUTOMATION: NavItem[] = [
   { id: "feature-flags", icon: "ToggleLeft" },
   { id: "webhooks", icon: "Webhook" },
   { id: "integrations", icon: "Plug" },
+  { id: "payments", icon: "CreditCard" },
   { id: "realtime", icon: "Zap" },
 ];
 

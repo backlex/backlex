@@ -61,6 +61,18 @@ guides; this list is everything else.
   broadcast notification; reset on success or manual resume). SDK receiver
   helper: `verifyWebhook` from `backlex/webhook`. The trigger route is
   the inbound side that flows/functions hook into. See `docs/webhooks.md`.
+- **Payments** (`routes/payments.ts`, `routes/payments-public.ts`,
+  `services/payments.ts`, `@backlex/integrations/payments`) — inbound sync from
+  Stripe / Polar / Lemon Squeezy, the mirror image of Webhooks above. The public
+  receiver verifies the provider HMAC over the RAW body, dedupes on the
+  provider's event id via a unique index, and upserts through `ingestRows` into
+  four MANAGED collections (`payment_customers`, `payment_subscriptions`,
+  `payment_invoices`, `payment_transactions`) rather than system tables — so billing data
+  inherits permissions, GraphQL, realtime and the BI panels. `reconcileProvider`
+  is the pull side (cursor-paged, resumable); a six-hourly sweep enqueues one
+  `payments.reconcile` job per connected provider. Mirrored across REST, the SDK
+  (`client.payments.*`), GraphQL, MCP (`payments.*`) and the CLI.
+  See `docs/payments.md`.
 - **Flows** (`routes/flows.ts`, `services/flows.ts`) — visual
   workflow builder. Trigger keys are `event` / `cron` / `webhook` /
   `manual`; operations are a serialized DSL evaluated server-side.

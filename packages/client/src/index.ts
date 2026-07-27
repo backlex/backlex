@@ -886,6 +886,114 @@ export interface PermissionsClient {
   simulate(input: PermissionSimulateInput): Promise<{ data: PermissionSimulation }>;
 }
 
+
+/** One connected payment provider. Secrets come back MASKED. */
+export interface PaymentProviderConnection {
+  id: string;
+  /** `stripe` | `polar` | `lemonsqueezy`. */
+  provider: string;
+  status: string;
+  /** Provider config with every secret field masked (`sk_l…3f9x`). */
+  config: Record<string, unknown>;
+  webhookToken: string;
+  /** Origin-relative path to paste into the provider's webhook settings. */
+  webhookPath: string;
+  syncCursor: Record<string, string | null> | null;
+  lastEventAt?: unknown;
+  lastSyncAt?: unknown;
+  lastSyncError: string | null;
+  createdAt?: unknown;
+}
+
+export interface PaymentProviderInput {
+  provider: string;
+  /** Credentials. A masked value is treated as "leave the stored one alone". */
+  config?: Record<string, unknown>;
+  status?: "connected" | "disabled";
+}
+
+/** One inbound webhook delivery, verified or not. */
+export interface PaymentEvent {
+  id: string;
+  providerId: string;
+  /** The provider's own event id — the replay key. */
+  externalId: string;
+  type: string;
+  /** `received` | `processed` | `skipped` | `failed`. */
+  status: string;
+  recordCount: number;
+  error: string | null;
+  createdAt?: unknown;
+  processedAt?: unknown;
+}
+
+export interface PaymentSyncResult {
+  queued?: boolean;
+  jobId?: string;
+  provider?: string;
+  written?: number;
+  failed?: number;
+  cursors?: Record<string, string | null>;
+  error?: string;
+}
+
+export interface PaymentCollectionsResult {
+  /** Slugs this call created. */
+  created: string[];
+  /** Slugs that already existed as sync targets. */
+  existing: string[];
+  /** Slugs taken by an unrelated collection — nothing is written to these
+   *  until one of the two is renamed. */
+  conflicts: string[];
+}
+
+export interface PaymentCatalogEntry {
+  provider: string;
+  label: string;
+  fields: {
+    key: string;
+    label: string;
+    placeholder?: string;
+    secret?: boolean;
+    optional?: boolean;
+    /** Finite value set — render a select rather than a text input. */
+    choices?: string[];
+    hint?: string;
+  }[];
+}
+
+/**
+ * Payment providers (admin-scoped). Mirrors `/api/admin/payments`.
+ *
+ * Connecting a provider provisions four collections — `payment_customers`,
+ * `payment_subscriptions`, `payment_invoices`, `payments` — and everything the
+ * provider pushes lands there, so you query billing data with the same
+ * `client.from(...)` you use for the rest of the workspace.
+ */
+export interface PaymentsClient {
+  /** Supported providers and the config fields each one needs. */
+  catalog(): Promise<{ providers: PaymentCatalogEntry[]; recordKinds: string[] }>;
+  /** Connected providers plus a count of deliveries per status. */
+  list(): Promise<{ data: PaymentProviderConnection[]; stats: Record<string, number> }>;
+  /** Connect or reconfigure a provider; also provisions the sync collections. */
+  connect(
+    input: PaymentProviderInput,
+  ): Promise<{ data: PaymentProviderConnection; collections: PaymentCollectionsResult }>;
+  /** Disconnect. Synced rows are kept — that data is the workspace's. */
+  disconnect(id: string): Promise<{ ok: boolean }>;
+  /** Issue a fresh receive URL and invalidate the previous one. */
+  rotateToken(id: string): Promise<{ data: PaymentProviderConnection }>;
+  /** Pull objects back from the provider API and upsert them. */
+  sync(
+    id: string,
+    opts?: { kinds?: string[]; maxPages?: number; resume?: boolean; async?: boolean },
+  ): Promise<PaymentSyncResult>;
+  /** Recent webhook deliveries, newest first. */
+  events(opts?: { providerId?: string; limit?: number }): Promise<{ data: PaymentEvent[] }>;
+  /** (Re-)provision the four sync collections. Idempotent. */
+  provisionCollections(): Promise<PaymentCollectionsResult>;
+}
+
 /** Visual workflows (admin-scoped). Mirrors `/api/flows`. See `createClient`. */
 export interface FlowsClient {
   /** List every flow in the active workspace. */
@@ -1485,6 +1593,8 @@ export interface BacklexClient {
   jobs: JobsClient;
   /** Visual workflows (flows). */
   flows: FlowsClient;
+  /** Connected payment providers (Stripe / Polar / Lemon Squeezy). */
+  payments: PaymentsClient;
   extensions: ExtensionsClient;
   /** Embedded BI dashboards. */
   dashboards: DashboardsClient;
@@ -2155,6 +2265,45 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<FlowRunResult>("POST", `/api/flows/${encodeURIComponent(id)}/run`, input ?? {}),
   };
 
+  // Payment providers. Admin-scoped over `/api/admin/payments`; the synced
+  // business data is read through the ordinary collection surface.
+  const pay = (id: string) => `/api/admin/payments/providers/${encodeURIComponent(id)}`;
+  const payments: PaymentsClient = {
+    catalog: () =>
+      request<{ providers: PaymentCatalogEntry[]; recordKinds: string[] }>(
+        "GET",
+        "/api/admin/payments/catalog",
+      ),
+    list: () =>
+      request<{ data: PaymentProviderConnection[]; stats: Record<string, number> }>(
+        "GET",
+        "/api/admin/payments/providers",
+      ),
+    connect: (input: PaymentProviderInput) =>
+      request<{ data: PaymentProviderConnection; collections: PaymentCollectionsResult }>(
+        "POST",
+        "/api/admin/payments/providers",
+        input,
+      ),
+    disconnect: (id: string) => request<{ ok: boolean }>("DELETE", pay(id)),
+    rotateToken: (id: string) =>
+      request<{ data: PaymentProviderConnection }>("POST", `${pay(id)}/rotate-token`, {}),
+    sync: (id: string, opts?: { kinds?: string[]; maxPages?: number; resume?: boolean; async?: boolean }) =>
+      request<PaymentSyncResult>("POST", `${pay(id)}/sync`, opts ?? {}),
+    events: (opts?: { providerId?: string; limit?: number }) => {
+      const qs = new URLSearchParams();
+      if (opts?.providerId) qs.set("providerId", opts.providerId);
+      if (opts?.limit !== undefined) qs.set("limit", String(opts.limit));
+      const q = qs.toString();
+      return request<{ data: PaymentEvent[] }>(
+        "GET",
+        `/api/admin/payments/events${q ? `?${q}` : ""}`,
+      );
+    },
+    provisionCollections: () =>
+      request<PaymentCollectionsResult>("POST", "/api/admin/payments/collections", {}),
+  };
+
   // Embedded BI dashboards. Admin-scoped CRUD over `/api/admin/dashboards`;
   // `run` executes every panel, `share`/`revoke` toggle the public embed token.
   const dash = (id: string) => `/api/admin/dashboards/${encodeURIComponent(id)}`;
@@ -2560,6 +2709,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     messaging,
     jobs,
     flows,
+    payments,
     extensions,
     dashboards,
     forms,

@@ -22,10 +22,11 @@ const parseExpression = (
   }
 ).parseExpression;
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
-import { processJobs } from "./jobs";
+import { enqueueJob, processJobs } from "./jobs";
 import { sweepExpiredUploads } from "./uploads";
 import { sweepStaleFormUploads } from "./form-uploads";
 import { publishDueItems, unpublishDueItems } from "./items/scheduled-publish";
+import { listConnectedProviders } from "./payments";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 import { pruneOldSpans } from "./traces";
 import { maybeRunScheduledBackups } from "./backup";
@@ -58,6 +59,10 @@ const ACTIVITY_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
  *  each workspace's schedule interval, so a coarse 15-minute cadence never
  *  misses a daily or weekly window. */
 const BACKUP_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
+/** Webhooks carry the steady state, so the reconcile pull only has to catch
+ *  drift and missed deliveries — six-hourly is plenty and keeps the provider
+ *  API-rate budget untouched for the workspace's own calls. */
+const PAYMENTS_SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const DEMO_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 // Scheduled schema snapshots (#9) — throttled like backups; the sweep itself
 // re-checks each workspace's daily/weekly interval so this only bounds cost.
@@ -353,6 +358,24 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
       await maybeRunScheduledBackups(ctx, now);
     } catch (e) {
       console.error("[scheduled-backup] sweep failed", e);
+    }
+  }
+
+  // Payments reconcile: one queued job per connected provider, so a slow or
+  // rate-limited provider API can never stall the tick — the job queue owns
+  // the retry/backoff. Each job resumes from its stored cursor.
+  if (await claimSweep(ctx, "payments-reconcile", PAYMENTS_SWEEP_INTERVAL_MS, now)) {
+    try {
+      const providers = await listConnectedProviders(ctx);
+      for (const p of providers) {
+        await enqueueJob(ctx, {
+          type: "payments.reconcile",
+          tenantId: p.tenantId,
+          payload: { providerId: p.id, resume: true },
+        });
+      }
+    } catch (e) {
+      console.error("[payments-reconcile] sweep failed", e);
     }
   }
 

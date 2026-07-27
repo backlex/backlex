@@ -462,6 +462,21 @@ function WebhooksSkeletonImpl() {
   );
 }
 
+/** Payments — header, the three provider cards, then the deliveries table. */
+function PaymentsSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-4.5">
+      <HeaderSkeleton actions={0} />
+      <div className="grid grid-cols-3 gap-3 max-[920px]:grid-cols-2 max-[560px]:grid-cols-1">
+        {[0, 1, 2].map((i) => (
+          <CardSkeleton key={i} lines={2} className="h-[152px]" />
+        ))}
+      </div>
+      <TableCardSkeleton rows={5} cols={4} />
+    </div>
+  );
+}
+
 /** Extensions — header (install), then the extensions table card
  *  (extension / source / contributes / enabled / actions). */
 function ExtensionsSkeletonImpl() {
@@ -931,6 +946,7 @@ export const ChatSkeleton = withSkeletonDelay(ChatSkeletonImpl);
 export const FunctionsSkeleton = withSkeletonDelay(FunctionsSkeletonImpl);
 export const WebhooksSkeleton = withSkeletonDelay(WebhooksSkeletonImpl);
 export const ExtensionsSkeleton = withSkeletonDelay(ExtensionsSkeletonImpl);
+export const PaymentsSkeleton = withSkeletonDelay(PaymentsSkeletonImpl);
 export const FormsSkeleton = withSkeletonDelay(FormsSkeletonImpl);
 export const RealtimeSkeleton = withSkeletonDelay(RealtimeSkeletonImpl);
 export const SearchPlaygroundSkeleton = withSkeletonDelay(SearchPlaygroundSkeletonImpl);
@@ -995,6 +1011,8 @@ export function PageSkeleton({ nav }: { nav: string }) {
     case "webhooks":
     case "integrations":
       return <WebhooksSkeleton />;
+    case "payments":
+      return <PaymentsSkeleton />;
     case "extensions":
       return <ExtensionsSkeleton />;
     case "forms":

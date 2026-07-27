@@ -2268,3 +2268,62 @@ export const integrations = pgTable(
   },
   (t) => [index("integrations_tenant_idx").on(t.tenantId)],
 );
+
+/**
+ * A connected payment provider (Stripe / Polar / Lemon Squeezy). Distinct from
+ * `integrations` because the direction of travel is the opposite: the provider
+ * pushes signed webhooks at us and we pull its objects back to reconcile.
+ * `config` holds the API key + webhook secret encrypted at rest (AUTH_SECRET);
+ * `webhook_token` is the public path segment of the receive URL and is
+ * rotatable without touching the provider credentials.
+ */
+export const paymentProviders = pgTable(
+  "payment_providers",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    provider: text("provider").notNull(),
+    config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+    status: text("status").notNull().default("connected"),
+    webhookToken: text("webhook_token").notNull(),
+    /** Cursor per record kind, so an interrupted reconcile resumes. */
+    syncCursor: jsonb("sync_cursor").$type<Record<string, string | null> | null>(),
+    lastEventAt: timestamp("last_event_at", { withTimezone: true }),
+    lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+    lastSyncError: text("last_sync_error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("payment_providers_tenant_provider_idx").on(t.tenantId, t.provider),
+    uniqueIndex("payment_providers_token_idx").on(t.webhookToken),
+  ],
+);
+
+/**
+ * Every webhook delivery a provider made, verified or not. The unique
+ * (provider_id, external_id) index is the replay guard: a retried delivery
+ * hits the conflict and is answered 200 without re-applying its rows.
+ */
+export const paymentEvents = pgTable(
+  "payment_events",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    providerId: text("provider_id").notNull(),
+    /** The provider's own event id — the dedupe key. */
+    externalId: text("external_id").notNull(),
+    type: text("type").notNull().default(""),
+    /** received | processed | skipped | failed */
+    status: text("status").notNull().default("received"),
+    recordCount: integer("record_count").notNull().default(0),
+    error: text("error"),
+    payload: jsonb("payload").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("payment_events_dedupe_idx").on(t.providerId, t.externalId),
+    index("payment_events_tenant_created_idx").on(t.tenantId, t.createdAt),
+  ],
+);

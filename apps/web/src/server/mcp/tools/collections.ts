@@ -388,11 +388,78 @@ export const searchItems: McpTool = {
   },
 };
 
+export const changesItems: McpTool = {
+  name: "collections.changes",
+  // Read: drains an incremental feed, mutates nothing.
+  kind: "read",
+  description:
+    "One page of a collection's incremental changefeed — rows whose " +
+    "`updatedAt` is past the `since` cursor, keyset-paginated so nothing is " +
+    "skipped or repeated. Use this to answer 'what changed since…' or to " +
+    "replicate a collection locally; use collections.list for a plain " +
+    "snapshot. Soft-deleted rows appear as tombstones (`_deleted: true`) so " +
+    "deletions are observable. Pass `shape` (a flat filter, same grammar as " +
+    "collections.list's `filter`, but no relation hops) to follow only a " +
+    "subset — rows that LEFT the subset come back as `{ id, _shape_exit: " +
+    "true }`. Omit `since` for a full initial pull; feed the returned " +
+    "`cursor` back as `since` and repeat while `hasMore` is true.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      collection: { type: "string", description: "Collection slug." },
+      since: {
+        type: "string",
+        description: "Opaque cursor from a prior call. Omit for a full initial pull.",
+      },
+      limit: { type: "number", description: "Rows per page (1-500, default 100)." },
+      shape: {
+        type: "object",
+        description:
+          "Flat filter naming the subset to follow, e.g. `{\"status\":{\"_eq\":\"open\"}}`. Relation hops are rejected.",
+      },
+      fields: {
+        type: "array",
+        items: { type: "string" },
+        description: "Narrow the columns returned. `id` and `updatedAt` always come along.",
+      },
+    },
+    required: ["collection"],
+    additionalProperties: false,
+  },
+  outputSchema: {
+    type: "object",
+    properties: {
+      data: { type: "array", items: { type: "object" } },
+      cursor: { type: ["string", "null"] },
+      hasMore: { type: "boolean" },
+      shape: { type: "string" },
+    },
+    required: ["data", "cursor", "hasMore"],
+  },
+  handler: async (args, ctx) => {
+    const slug = requireSlug(args);
+    const qs = new URLSearchParams();
+    if (typeof args.since === "string") qs.set("since", args.since);
+    if (typeof args.limit === "number") qs.set("limit", String(args.limit));
+    if (args.shape !== undefined && args.shape !== null) qs.set("shape", JSON.stringify(args.shape));
+    if (Array.isArray(args.fields)) {
+      qs.set("fields", (args.fields as unknown[]).map(String).join(","));
+    }
+    const q = qs.toString();
+    const res = await ctx.fetchInternal(
+      `/api/items/${encodeURIComponent(slug)}/changes${q ? `?${q}` : ""}`,
+    );
+    const out = await readJson<unknown>(res);
+    return textResult(out);
+  },
+};
+
 export const collectionsTools: McpTool[] = [
   listItems,
   readItem,
   aggregateItems,
   searchItems,
+  changesItems,
   insertItem,
   updateItem,
   deleteItem,

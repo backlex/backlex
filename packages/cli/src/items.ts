@@ -31,8 +31,13 @@ const ITEMS_HELP = `backlex items <cmd> <slug> [args]
   export <slug>   [--format json|csv] [--out <file>]
   import <slug>   <file|@file|->  [--format json|csv]
   search <slug>   -q <text> [--mode fts|vector|hybrid] [--limit N] [--locale xx]
+  changes <slug>  [--since <cursor>] [--shape <json>] [--fields a,b] [--limit N] [--follow]
 
 Add --json to any read for raw output.
+
+\`changes\` drains the incremental feed: rows changed past --since, with
+soft-delete tombstones (\`_deleted\`). --shape follows only a subset; rows that
+left it come back as \`{ id, _shape_exit: true }\`. --follow pages to the head.
 `;
 
 const die = (e: unknown, what: string): never => {
@@ -208,6 +213,50 @@ export const runItems = async (args: string[]): Promise<void> => {
         else {
           process.stderr.write(`mode=${res.mode} limit=${res.limit}\n`);
           printTable(res.data as Record<string, unknown>[]);
+        }
+        return;
+      }
+      case "changes": {
+        const slug = requireSlug(rest, "items changes <slug> [--since <cursor>]");
+        const shapeRaw = flag(rest, "--shape");
+        let shape: Record<string, unknown> | undefined;
+        if (shapeRaw) {
+          try {
+            shape = JSON.parse(shapeRaw) as Record<string, unknown>;
+          } catch {
+            process.stderr.write("--shape must be valid JSON\n");
+            process.exit(1);
+          }
+        }
+        const limit = flag(rest, "--limit");
+        const fieldsRaw = flag(rest, "--fields");
+        // `--follow` drains every page to the head, so a scripted sync can grab
+        // the whole delta in one command instead of shell-looping on the cursor.
+        const follow = has(rest, "--follow");
+        const all: Record<string, unknown>[] = [];
+        let cursor = flag(rest, "--since") ?? undefined;
+        let hasMore = false;
+        let shapeKeyOut: string | undefined;
+        do {
+          const page = await client.from(slug).changes({
+            since: cursor,
+            limit: limit ? Number(limit) : undefined,
+            shape: shape as never,
+            fields: fieldsRaw ? fieldsRaw.split(",").map((f) => f.trim()) : undefined,
+          });
+          all.push(...(page.data as Record<string, unknown>[]));
+          cursor = page.cursor ?? cursor;
+          hasMore = page.hasMore;
+          shapeKeyOut = page.shape;
+        } while (follow && hasMore);
+
+        if (json) {
+          printJson({ data: all, cursor: cursor ?? null, hasMore, ...(shapeKeyOut ? { shape: shapeKeyOut } : {}) });
+        } else {
+          printTable(all);
+          process.stderr.write(
+            `\ncursor=${cursor ?? "-"} hasMore=${hasMore}${shapeKeyOut ? ` shape=${shapeKeyOut}` : ""}\n`,
+          );
         }
         return;
       }

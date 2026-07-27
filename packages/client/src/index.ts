@@ -29,6 +29,8 @@ import {
   type ListResponse,
   type SearchQuery,
   type SearchResponse,
+  type ChangesQuery,
+  type ChangesResponse,
   type ImportSummary,
   type PhoneNumber,
   type Job,
@@ -48,6 +50,9 @@ export type {
   AggregateRow,
   SearchQuery,
   SearchResponse,
+  ChangesQuery,
+  ChangesResponse,
+  ChangeRow,
   ImportSummary,
   BatchOperation,
   BatchResponse,
@@ -62,6 +67,8 @@ export type {
   FlagState,
 } from "./types";
 export { BacklexError } from "./types";
+export { normalizeCondition, matchesCondition, shapeKey } from "./condition";
+export type { Condition, ComparisonObj, RelativeNow, MatchResult } from "./condition";
 export { QueryBuilder } from "./query";
 export type { FilterBuilder, FieldKey, SortKey } from "./query";
 
@@ -249,6 +256,11 @@ export interface CollectionClient<T extends Record<string, unknown>> {
    *  matching capability enabled on the collection. Rows come back best-first
    *  with the caller's read permission + tenant scope enforced. */
   search(body: SearchQuery): Promise<SearchResponse<T>>;
+  /** One page of the incremental changefeed. Rows changed past `since`, with
+   *  soft-delete tombstones (`_deleted`) and — when a `shape` is given — id-only
+   *  move-out markers (`_shape_exit`) for rows that left the subset. This is the
+   *  raw primitive; `client.sync()` is the managed loop built on it. */
+  changes(q?: ChangesQuery): Promise<ChangesResponse<T>>;
   /** Export every readable row as a JSON or CSV string. */
   exportItems(format?: "json" | "csv"): Promise<string>;
   /** Bulk-import rows from a JSON array (or a raw JSON/CSV string). */
@@ -1624,6 +1636,16 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       /** Relevance search (full-text / vector / hybrid). */
       search: (body: SearchQuery): Promise<SearchResponse<T>> =>
         request<SearchResponse<T>>("POST", `/api/items/${slug}/search`, body),
+      /** One page of the incremental changefeed (offline sync primitive). */
+      changes: (q?: ChangesQuery): Promise<ChangesResponse<T>> => {
+        const p = new URLSearchParams();
+        if (q?.since) p.set("since", q.since);
+        if (q?.limit) p.set("limit", String(q.limit));
+        if (q?.shape) p.set("shape", JSON.stringify(q.shape));
+        if (q?.fields?.length) p.set("fields", q.fields.join(","));
+        const qs = p.toString();
+        return request<ChangesResponse<T>>("GET", `/api/items/${slug}/changes${qs ? `?${qs}` : ""}`);
+      },
       /** Export every readable row as a JSON or CSV string (honors the same
        *  read filters as `list`). */
       exportItems: (format: "json" | "csv" = "json"): Promise<string> =>
@@ -2617,9 +2639,14 @@ export {
   createSync,
   memoryStore,
   indexedDbStore,
+  sqliteStore,
+  type SqliteLike,
   type SyncStore,
   type SyncOptions,
+  type SyncController,
   type QueuedOp,
+  type ConflictPolicy,
+  type SyncConflict,
 } from "./sync";
 
 export { verifyWebhook, type VerifyWebhookOptions } from "./webhook";

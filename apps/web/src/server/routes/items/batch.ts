@@ -20,6 +20,13 @@ const BatchOp = z
     op: z.enum(["create", "update", "delete"]),
     id: z.string().optional(),
     data: z.record(z.string(), z.unknown()).optional(),
+    ifUnmodifiedSince: z
+      .string()
+      .optional()
+      .openapi({
+        description:
+          "Optimistic-concurrency precondition for this op: the `updatedAt` you last saw. The op fails with CONFLICT (and the current `updatedAt` in `error.details`) if the row moved since — instead of overwriting a concurrent edit.",
+      }),
   })
   .openapi("BatchOperation");
 

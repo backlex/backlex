@@ -6,6 +6,7 @@ import {
   buildInputType,
   bulkUpdateResolver,
   aggregateResolver,
+  changesResolver,
   camel,
   collectionsTable,
   createResolver,
@@ -210,6 +211,26 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
       },
       resolve: async (_src, rawArgs, gqlCtx) =>
         searchResolver(gqlCtx, c, rawArgs as Parameters<typeof searchResolver>[2]),
+    };
+
+    queryFields[`${lowerName}Changes`] = {
+      type: new GraphQLNonNull(JSONScalar),
+      description:
+        `Incremental changefeed for "${c.slug}" — rows changed past the ` +
+        "`since` cursor, keyset-paginated on (updatedAt, id), including " +
+        "soft-delete tombstones (`_deleted`). Pass `shape` (a flat filter) to " +
+        "replicate a subset: rows that LEFT the shape come back as " +
+        "`{ id, _shape_exit: true }` so an offline store can drop them. " +
+        "Returns `{ data, cursor, hasMore, shape? }`. Mirrors REST " +
+        "`GET /api/items/{slug}/changes` — same permission, tenant and draft guards.",
+      args: {
+        since: { type: GraphQLString },
+        limit: { type: GraphQLInt },
+        shape: { type: JSONScalar },
+        fields: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
+      },
+      resolve: async (_src, rawArgs, gqlCtx) =>
+        changesResolver(gqlCtx, c, rawArgs as Parameters<typeof changesResolver>[2]),
     };
 
     mutationFields[`create${Pascal}`] = {

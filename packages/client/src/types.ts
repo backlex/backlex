@@ -83,6 +83,41 @@ export interface AggregateRow {
   label?: unknown;
 }
 
+/** Query for `from(slug).changes(...)` — one page of the incremental feed. */
+export interface ChangesQuery {
+  /** Opaque cursor from the previous response. Omit for a full initial sync. */
+  since?: string;
+  /** Rows per page (1–500). */
+  limit?: number;
+  /**
+   * Replicate only rows matching this filter. Flat fields only — a shape can't
+   * span relations, because membership has to be decidable from the row alone
+   * for move-out detection to be sound.
+   */
+  shape?: Condition;
+  /** Narrow the columns returned. `id` and `updatedAt` always come along. */
+  fields?: string[];
+}
+
+/** One page of the changefeed. Entries are rows, with two possible markers:
+ *  `_deleted` (soft-deleted server-side) and `_shape_exit` (id only — the row
+ *  still exists but has left the requested shape). */
+export type ChangeRow<T> = (Partial<T> & {
+  id: string;
+  _deleted?: boolean;
+  _shape_exit?: boolean;
+}) & Record<string, unknown>;
+
+export interface ChangesResponse<T> {
+  data: ChangeRow<T>[];
+  /** Pass back as `since` for the next page; null when nothing was returned. */
+  cursor: string | null;
+  hasMore: boolean;
+  /** Stable key for the shape these changes were computed against. Present only
+   *  when a shape was sent — a client re-syncs from scratch when it changes. */
+  shape?: string;
+}
+
 /** Body for `from(slug).search(...)` — relevance search over a collection. */
 export interface SearchQuery {
   /** The query string. */

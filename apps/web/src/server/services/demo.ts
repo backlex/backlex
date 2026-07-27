@@ -65,6 +65,9 @@ const BLOCKED_WRITE_PREFIXES = [
   "/api/admin/platform-ldap-config",
   "/api/admin/migrate",
   "/api/admin/db",
+  // Advisor reads stay open (the page still renders); only `POST /apply`,
+  // which runs DDL against a shared table, is blocked.
+  "/api/admin/advisor",
   "/api/messaging",
   "/api/auth/change-password",
   "/api/auth/change-email",

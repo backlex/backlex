@@ -408,6 +408,11 @@ msgstr "{0} / {1} satır güncellenemedi."
 msgid "{0} of {1} tools allowed. Choose Allow all to remove the allowlist."
 msgstr "{1} araçtan {0} tanesine izin verildi. Listeyi kaldırmak için Tümüne izin ver'i seçin."
 
+#. placeholder {0}: pct(evidence.share)
+#: src/client/admin/pages/advisor.tsx
+msgid "{0} of lists"
+msgstr "listelerin %{0}'i"
+
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} posts deleted."
@@ -422,6 +427,12 @@ msgstr "{0} yayınlandı, {failed} başarısız."
 #: src/client/admin/app.tsx
 msgid "{0} published."
 msgstr "{0} yayınlandı."
+
+#. placeholder {0}: evidence.requests
+#. placeholder {1}: evidence.windowDays
+#: src/client/admin/pages/advisor.tsx
+msgid "{0} req / {1}d"
+msgstr "{0} istek / {1}g"
 
 #. placeholder {0}: results.length
 #: src/client/admin/pages/search-playground.tsx
@@ -809,6 +820,15 @@ msgstr "4:5 dikey"
 #: src/client/admin/pages/functions.tsx
 msgid "5-field cron (minute hour day month weekday)."
 msgstr "5 alanlı cron (dakika saat gün ay haftanın günü)."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "5xx"
+msgstr "5xx"
+
+#. placeholder {0}: pct(evidence.errorRate)
+#: src/client/admin/pages/advisor.tsx
+msgid "5xx {0}"
+msgstr "5xx {0}"
 
 #: src/client/admin/pages/usage.tsx
 msgid "5xx responses"
@@ -1640,6 +1660,10 @@ msgstr "Henüz yerel geçersiz kılma ayarı yapmamış kullanıcılara uygulan�
 msgid "Apply"
 msgstr "Uygula"
 
+#: src/client/admin/pages/advisor.tsx
+msgid "Apply fix"
+msgstr "Düzeltmeyi uygula"
+
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Apply template"
 msgstr "Şablonu uygula"
@@ -1658,6 +1682,7 @@ msgstr "Uygulama eklemelidir: var olan koleksiyonlar atlanır, yeniler şablonun
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/bulk-edit.tsx
+#: src/client/admin/pages/advisor.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Applying…"
@@ -2174,6 +2199,11 @@ msgstr "tarafından"
 msgid "By"
 msgstr "Tarafından"
 
+#. placeholder {0}: win.spanCount
+#: src/client/admin/pages/advisor.tsx
+msgid "By p95 over {0} recorded span(s). Counts are spans seen, never extrapolated."
+msgstr "Kaydedilen {0} span üzerinden p95'e göre. Sayılar görülen span sayısıdır, hiçbir zaman tahmin edilmez."
+
 #: src/client/admin/permissions-matrix.tsx
 msgid "bypass — read-only"
 msgstr "atla — salt okunur"
@@ -2588,6 +2618,7 @@ msgid "Collapsible section"
 msgstr "Katlanabilir bölüm"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/advisor.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/search-playground.tsx
@@ -2620,6 +2651,10 @@ msgstr "Koleksiyon etkinleştirildi."
 #: src/client/admin/pages/forms.tsx
 msgid "Collection fields not yet on the form, plus layout blocks."
 msgstr "Formda henüz olmayan koleksiyon alanları ve yerleşim blokları."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Collection list traffic"
+msgstr "Koleksiyon liste trafiği"
 
 #: src/client/admin/app.tsx
 msgid "Collection settings saved."
@@ -3077,6 +3112,10 @@ msgstr "corp.example.com, contractor.example.com"
 msgid "Could not apply template"
 msgstr "Şablon uygulanamadı"
 
+#: src/client/admin/pages/advisor.tsx
+msgid "Could not apply the fix."
+msgstr "Düzeltme uygulanamadı."
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Could not copy — clipboard blocked."
 msgstr "Kopyalanamadı — pano engellendi."
@@ -3136,6 +3175,10 @@ msgstr "Auth yapılandırması yüklenemedi."
 #: src/client/admin/pages/logs.tsx
 msgid "Couldn't load logs"
 msgstr "Günlükler yüklenemedi"
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Couldn't load runtime insights"
+msgstr "Çalışma zamanı içgörüleri yüklenemedi"
 
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Couldn't load the template catalog."
@@ -3322,6 +3365,11 @@ msgstr "{0} koleksiyon oluşturuldu"
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Created {0} collections with {seeded} sample rows"
 msgstr "{seeded} örnek satırla birlikte {0} koleksiyon oluşturuldu"
+
+#. placeholder {0}: res.applied.indexName
+#: src/client/admin/pages/advisor.tsx
+msgid "Created index {0}."
+msgstr "{0} index'i oluşturuldu."
 
 #: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
@@ -4514,6 +4562,7 @@ msgstr "bitiş"
 msgid "Ending"
 msgstr "Bitiş"
 
+#: src/client/admin/pages/advisor.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Endpoint"
 msgstr "Uç nokta"
@@ -5117,6 +5166,10 @@ msgstr "Araçları filtrele"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Filter tools…"
 msgstr "Araçları filtrele…"
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Filtered by"
+msgstr "Filtrelenen"
 
 #: src/client/admin/collections-index.tsx
 msgid "Finish arranging collections"
@@ -5927,6 +5980,7 @@ msgstr "<0>c_{slug}</0>{0} tablosuna ekle."
 msgid "Insight panels chart a collection aggregate (count / sum / average …) or a saved SQL query as a counter, sparkline, bars, donut, or table. Click <0>+ New panel</0> to build your first one — pick a collection, no SQL required."
 msgstr "İçgörü panelleri bir koleksiyon toplamını (say / topla / ortalama …) veya kaydedilmiş bir SQL sorgusunu sayaç, kıvılcım çizgisi, çubuk, halka veya tablo olarak gösterir. İlkini oluşturmak için <0>+ Yeni panel</0>'e tıklayın — bir koleksiyon seçin, SQL gerekmez."
 
+#: src/client/admin/pages/advisor.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/ui.tsx
 msgid "Insights"
@@ -6376,6 +6430,10 @@ msgstr "Giriş marka panelindeki büyük başlık."
 msgid "Last"
 msgstr "Son"
 
+#: src/client/admin/pages/advisor.tsx
+msgid "Last {d} days"
+msgstr "Son {d} gün"
+
 #: src/client/admin/pages/logs.tsx
 msgid "last {range}"
 msgstr "son {range}"
@@ -6394,6 +6452,7 @@ msgstr "Son 1 saat"
 msgid "Last 15 minutes"
 msgstr "Son 15 dakika"
 
+#: src/client/admin/pages/advisor.tsx
 #: src/client/admin/pages/overview.tsx
 msgid "Last 24 hours"
 msgstr "Son 24 saat"
@@ -6656,6 +6715,10 @@ msgstr "listele ve sırala"
 #: src/client/admin/list-columns.tsx
 msgid "List columns"
 msgstr "Liste kolonları"
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Lists"
+msgstr "Liste"
 
 #: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/forms.tsx
@@ -6996,6 +7059,10 @@ msgstr "MCP URL'si kopyalandı"
 #: src/client/pages/api-keys.tsx
 msgid "MCP: {0} tool(s)"
 msgstr "MCP: {0} araç"
+
+#: src/client/admin/pages/advisor.tsx
+msgid "measured"
+msgstr "ölçüldü"
 
 #: src/client/admin/members-panel.tsx
 msgid "Member"
@@ -7824,6 +7891,10 @@ msgstr "Henüz içgörü paneli yok"
 msgid "No interface matches \"{query}\"."
 msgstr "\"{query}\" ile eşleşen arayüz yok."
 
+#: src/client/admin/pages/advisor.tsx
+msgid "No item-list requests recorded in this window."
+msgstr "Bu pencerede kayıtlı öğe listeleme isteği yok."
+
 #: src/client/admin/item-views.tsx
 msgid "No items"
 msgstr "Öğe yok"
@@ -7937,6 +8008,11 @@ msgstr "Sorgu yok."
 #: src/client/admin/pages/schema-graph.tsx
 msgid "No relation-typed fields detected. Add a field with type <0>relation</0> to draw an edge."
 msgstr "İlişki türünde alan tespit edilmedi. Kenar çizmek için <0>relation</0> türünde bir alan ekleyin."
+
+#. placeholder {0}: runtime.windowDays
+#: src/client/admin/pages/advisor.tsx
+msgid "No request spans recorded in the last {0} day(s) — the traffic-derived rules had nothing to measure."
+msgstr "Son {0} günde kayıtlı istek span'i yok — trafiğe dayalı kuralların ölçecek verisi olmadı."
 
 #: src/client/pages/rest-explorer.tsx
 msgid "No responses defined."
@@ -8096,6 +8172,10 @@ msgstr "Henüz iz yok"
 msgid "No traffic for this consumer"
 msgstr "Bu tüketici için trafik yok"
 
+#: src/client/admin/pages/advisor.tsx
+msgid "No traffic recorded yet"
+msgstr "Henüz trafik kaydedilmedi"
+
 #: src/client/admin/edit-field.tsx
 msgid "No two rows can hold the same value (case-sensitive)."
 msgstr "İki satır aynı değeri tutamaz (büyük/küçük harfe duyarlı)."
@@ -8222,6 +8302,10 @@ msgstr "Dışa aktarılacak şey yok — mevcut görünüm boş."
 #: src/client/admin/grid-edit.tsx
 msgid "Nothing to paste."
 msgstr "Yapıştırılacak bir şey yok."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Nothing was recorded in the last {days} day(s). Request spans appear here once the API serves traffic, unless `TRACES_SAMPLE_RATE` is 0 or span retention already pruned this window."
+msgstr "Son {days} günde hiçbir şey kaydedilmedi. API trafik almaya başladığında istek span'leri burada görünür; `TRACES_SAMPLE_RATE` 0 değilse veya span saklama süresi bu pencereyi zaten temizlemediyse."
 
 #: src/client/admin/ui.tsx
 msgid "Notifications"
@@ -8394,6 +8478,10 @@ msgstr "Yalnızca mevcut durum var — henüz düzenleme kaydedilmedi."
 #: src/client/admin/bulk-edit.tsx
 msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
 msgstr "Yalnızca değiştirdiğiniz alanlar <0>c_{slug}</0> içindeki seçili {count} satırın tümüne yazılır; geri kalan her şey olduğu gibi kalır."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Only the most recent spans in the window were aggregated."
+msgstr "Penceredeki yalnızca en yeni span'ler toplandı."
 
 #: src/client/admin/pages/forms.tsx
 msgid "Only the selected types are accepted — enforced server-side."
@@ -9990,6 +10078,10 @@ msgstr "Değiştir"
 #: src/client/admin/pages/settings/index.tsx
 msgid "Repository"
 msgstr "Depo"
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Reqs"
+msgstr "İstek"
 
 #: src/client/pages/rest-explorer.tsx
 msgid "Request"
@@ -11791,6 +11883,10 @@ msgstr "Slack #content"
 msgid "SLO URL"
 msgstr "SLO URL"
 
+#: src/client/admin/pages/advisor.tsx
+msgid "Slowest endpoints"
+msgstr "En yavaş uç noktalar"
+
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/collections-index.tsx
@@ -11878,6 +11974,10 @@ msgstr "Esnek"
 msgid "Soft delete"
 msgstr "Geçici silme"
 
+#: src/client/admin/pages/advisor.tsx
+msgid "Sorted by"
+msgstr "Sıralanan"
+
 #: src/client/admin/item-form.tsx
 #: src/client/admin/pages/extensions.tsx
 msgid "Source"
@@ -11922,6 +12022,11 @@ msgstr "span"
 #: src/client/admin/pages/traces.tsx
 msgid "Spans"
 msgstr "Span’ler"
+
+#. placeholder {0}: pct(runtime.sampleRate)
+#: src/client/admin/pages/advisor.tsx
+msgid "Spans are sampled at {0}, so counts describe a sample."
+msgstr "Span'ler %{0} oranında örnekleniyor, dolayısıyla sayılar bir örneklemi tanımlar."
 
 #: src/client/pages/openapi-export.tsx
 msgid "Spec unavailable. Try Refresh."
@@ -12527,6 +12632,10 @@ msgstr "Form devre dışı bırakılmış ya da bağlantısı değiştirilmiş o
 msgid "The full secret is shown once after creation — copy it somewhere safe."
 msgstr "Tam gizli anahtar oluşturulduktan sonra yalnızca bir kez gösterilir — güvenli bir yere kopyalayın."
 
+#: src/client/admin/pages/advisor.tsx
+msgid "The insights endpoint returned an error. Re-run to try again."
+msgstr "İçgörü uç noktası hata döndürdü. Tekrar denemek için yeniden çalıştırın."
+
 #: src/client/admin/pages/users.tsx
 msgid "The invite is valid for 7 days."
 msgstr "Davet 7 gün geçerlidir."
@@ -12543,6 +12652,10 @@ msgstr "\"{0}\" anahtarı hemen çalışmayı durduracak. Bu geri alınamaz."
 #: src/client/admin/pages/forms.tsx
 #~ msgid "The link was shown once when it was minted. Rotate the token to get a new one."
 #~ msgstr "Bağlantı yalnızca oluşturulduğunda bir kez gösterildi. Yenisi için token'ı yenileyin."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "The oldest recorded span is newer than the start of this window — span retention, not traffic, is what bounds it."
+msgstr "En eski kayıtlı span bu pencerenin başlangıcından daha yeni — pencereyi sınırlayan trafik değil, span saklama süresi."
 
 #: src/client/admin/app.tsx
 msgid "The physical table and all rows are dropped. This is irreversible."
@@ -12967,6 +13080,16 @@ msgstr "İzler yenilendi."
 #: src/client/admin/pages/integrations.tsx
 msgid "Track data events through Segment."
 msgstr "Veri olaylarını Segment üzerinden izle."
+
+#. placeholder {0}: runtime.spanCount
+#. placeholder {1}: runtime.windowDays
+#: src/client/admin/pages/advisor.tsx
+msgid "Traffic rules read {0} span(s) over {1} day(s)."
+msgstr "Trafik kuralları {1} gün boyunca {0} span okudu."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Traffic window"
+msgstr "Trafik penceresi"
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Transform"
@@ -13847,6 +13970,10 @@ msgstr "“Test SMS gönder” işleminin nereye iletileceği. Hesabınızın ka
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Where submissions are stored."
 #~ msgstr "Gönderimlerin kaydedileceği yer."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Which columns real list requests filter and sort on — the input behind the missing-index findings."
+msgstr "Gerçek liste isteklerinin hangi kolonlarda filtreleyip sıraladığı — eksik index bulgularının dayandığı veri."
 
 #: src/client/admin/collection-settings.tsx
 msgid "which field the board groups cards by"

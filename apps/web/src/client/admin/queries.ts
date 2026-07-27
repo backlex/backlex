@@ -90,7 +90,12 @@ export const queryKeys = {
   /** Active public share links for a record, keyed by (collection, itemId). */
   sharedLinks: (collection: string, itemId: string) =>
     ["shared-links", collection, itemId] as const,
-  advisor: () => ["advisor"] as const,
+  /** Advisor run. Called with no argument this is the `["advisor"]` prefix
+   *  every advisor query (including insights) sits under, so invalidating it
+   *  refreshes findings and insights together after an applied fix. */
+  advisor: (days?: number) =>
+    days === undefined ? (["advisor"] as const) : (["advisor", days] as const),
+  advisorInsights: (days: number) => ["advisor", "insights", days] as const,
   /** Item list for a collection. The shared `["items", collection]` prefix is
    *  the rollback/invalidate scope for every filter/sort/search variant —
    *  optimistic mutations patch every cached variant of a collection through
@@ -388,11 +393,23 @@ export function useSharedLinks(collection: string, itemId: string) {
   });
 }
 
-/** Advisor findings (`/api/admin/advisor`). Admin-only on the server. */
-export function useAdvisor() {
+/** Advisor findings (`/api/admin/advisor`). Admin-only on the server.
+ *  `days` is the window the traffic-derived performance rules aggregate over;
+ *  omitting it takes the server default (7). */
+export function useAdvisor(days?: number) {
   return useQuery({
-    queryKey: queryKeys.advisor(),
-    queryFn: () => advisorApi.list(),
+    queryKey: queryKeys.advisor(days),
+    queryFn: () => advisorApi.list(days),
+  });
+}
+
+/** Runtime query insights (`/api/admin/advisor/insights`) — the aggregation
+ *  the traffic-derived rules are computed from. Admin-only on the server. */
+export function useAdvisorInsights(days: number, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.advisorInsights(days),
+    queryFn: () => advisorApi.insights(days),
+    enabled,
   });
 }
 

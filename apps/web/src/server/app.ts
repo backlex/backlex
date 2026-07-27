@@ -202,6 +202,12 @@ export type AppBindings = {
      *  header. `_t0` is the worker-entry timestamp; other keys are durations.
      *  Used to attribute latency (dispatch vs ctx vs middleware vs route). */
     __st?: Record<string, number>;
+    /** Which collection + local columns an item-list request filtered and
+     *  sorted on. Set by the list handler once the query is parsed and folded
+     *  into the span's `attributes` below, so the advisor's runtime rules can
+     *  suggest indexes for the columns traffic actually uses. Column names
+     *  only — no filter values are ever recorded. */
+    queryShape?: { collection: string; filters: string[]; sorts: string[] };
   };
 };
 
@@ -309,6 +315,12 @@ export const createApp = (env: Env) => {
         ctx = undefined;
       }
       if (ctx && Math.random() < traceSampleRate(ctx.env)) {
+        let shape: { collection: string; filters: string[]; sorts: string[] } | undefined;
+        try {
+          shape = c.get("queryShape");
+        } catch {
+          shape = undefined;
+        }
         const spanInput = {
           trace,
           name: `${c.req.method} ${path}`,
@@ -320,6 +332,7 @@ export const createApp = (env: Env) => {
           tenantId: auth?.tenantId ?? null,
           userId: auth?.userId ?? null,
           errorCode: code,
+          queryShape: shape,
         };
         // Same sampled span feeds the local table AND (when OTLP_ENDPOINT is
         // set) the external OpenTelemetry collector. Both never throw.

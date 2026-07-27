@@ -11,7 +11,7 @@ import {
 } from "@backlex/db";
 import type { AppBindings } from "../../app";
 import { requirePermission } from "../../middleware/permission";
-import { parseQuery, resolveProjection } from "../../lib/query";
+import { parseQuery, queryShapeOf, resolveProjection } from "../../lib/query";
 import { resolvePermission } from "../../services/permissions";
 import { ftsMembershipWhere, isSearchable } from "../../services/fts";
 import { loadAppSettings } from "../../services/settings";
@@ -123,6 +123,15 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         isSearchable(collection),
         collection.versioned,
       );
+
+      // Telemetry only: hand the span writer the columns this list actually
+      // filters / sorts on so the advisor's runtime rules can suggest indexes
+      // from real traffic instead of guessing from the schema. Names only —
+      // no filter values — and it never affects the query below.
+      c.set("queryShape", {
+        collection: collection.slug,
+        ...queryShapeOf(q),
+      });
 
       // User-supplied filters and permission whereSql both reference system
       // fields by their logical names (`created_at`, `owner_id`). Rewrite

@@ -408,6 +408,11 @@ msgstr "{0} of {1} rows could not be updated."
 msgid "{0} of {1} tools allowed. Choose Allow all to remove the allowlist."
 msgstr "{0} of {1} tools allowed. Choose Allow all to remove the allowlist."
 
+#. placeholder {0}: pct(evidence.share)
+#: src/client/admin/pages/advisor.tsx
+msgid "{0} of lists"
+msgstr "{0} of lists"
+
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} posts deleted."
@@ -422,6 +427,12 @@ msgstr "{0} published, {failed} failed."
 #: src/client/admin/app.tsx
 msgid "{0} published."
 msgstr "{0} published."
+
+#. placeholder {0}: evidence.requests
+#. placeholder {1}: evidence.windowDays
+#: src/client/admin/pages/advisor.tsx
+msgid "{0} req / {1}d"
+msgstr "{0} req / {1}d"
 
 #. placeholder {0}: results.length
 #: src/client/admin/pages/search-playground.tsx
@@ -809,6 +820,15 @@ msgstr "4:5 portrait"
 #: src/client/admin/pages/functions.tsx
 msgid "5-field cron (minute hour day month weekday)."
 msgstr "5-field cron (minute hour day month weekday)."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "5xx"
+msgstr "5xx"
+
+#. placeholder {0}: pct(evidence.errorRate)
+#: src/client/admin/pages/advisor.tsx
+msgid "5xx {0}"
+msgstr "5xx {0}"
 
 #: src/client/admin/pages/usage.tsx
 msgid "5xx responses"
@@ -1640,6 +1660,10 @@ msgstr "Applied to users with no local override yet."
 msgid "Apply"
 msgstr "Apply"
 
+#: src/client/admin/pages/advisor.tsx
+msgid "Apply fix"
+msgstr "Apply fix"
+
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Apply template"
 msgstr "Apply template"
@@ -1658,6 +1682,7 @@ msgstr "Applying is additive: collections that already exist are skipped, new on
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/bulk-edit.tsx
+#: src/client/admin/pages/advisor.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Applying…"
@@ -2174,6 +2199,11 @@ msgstr "by"
 msgid "By"
 msgstr "By"
 
+#. placeholder {0}: win.spanCount
+#: src/client/admin/pages/advisor.tsx
+msgid "By p95 over {0} recorded span(s). Counts are spans seen, never extrapolated."
+msgstr "By p95 over {0} recorded span(s). Counts are spans seen, never extrapolated."
+
 #: src/client/admin/permissions-matrix.tsx
 msgid "bypass — read-only"
 msgstr "bypass — read-only"
@@ -2588,6 +2618,7 @@ msgid "Collapsible section"
 msgstr "Collapsible section"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/advisor.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/search-playground.tsx
@@ -2620,6 +2651,10 @@ msgstr "Collection enabled."
 #: src/client/admin/pages/forms.tsx
 msgid "Collection fields not yet on the form, plus layout blocks."
 msgstr "Collection fields not yet on the form, plus layout blocks."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Collection list traffic"
+msgstr "Collection list traffic"
 
 #: src/client/admin/app.tsx
 msgid "Collection settings saved."
@@ -3077,6 +3112,10 @@ msgstr "corp.example.com, contractor.example.com"
 msgid "Could not apply template"
 msgstr "Could not apply template"
 
+#: src/client/admin/pages/advisor.tsx
+msgid "Could not apply the fix."
+msgstr "Could not apply the fix."
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Could not copy — clipboard blocked."
 msgstr "Could not copy — clipboard blocked."
@@ -3136,6 +3175,10 @@ msgstr "Couldn't load auth config."
 #: src/client/admin/pages/logs.tsx
 msgid "Couldn't load logs"
 msgstr "Couldn't load logs"
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Couldn't load runtime insights"
+msgstr "Couldn't load runtime insights"
 
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Couldn't load the template catalog."
@@ -3322,6 +3365,11 @@ msgstr "Created {0} collections"
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Created {0} collections with {seeded} sample rows"
 msgstr "Created {0} collections with {seeded} sample rows"
+
+#. placeholder {0}: res.applied.indexName
+#: src/client/admin/pages/advisor.tsx
+msgid "Created index {0}."
+msgstr "Created index {0}."
 
 #: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
@@ -4514,6 +4562,7 @@ msgstr "ending"
 msgid "Ending"
 msgstr "Ending"
 
+#: src/client/admin/pages/advisor.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Endpoint"
 msgstr "Endpoint"
@@ -5117,6 +5166,10 @@ msgstr "Filter tools"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Filter tools…"
 msgstr "Filter tools…"
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Filtered by"
+msgstr "Filtered by"
 
 #: src/client/admin/collections-index.tsx
 msgid "Finish arranging collections"
@@ -5927,6 +5980,7 @@ msgstr "Insert into <0>c_{slug}</0>{0}."
 msgid "Insight panels chart a collection aggregate (count / sum / average …) or a saved SQL query as a counter, sparkline, bars, donut, or table. Click <0>+ New panel</0> to build your first one — pick a collection, no SQL required."
 msgstr "Insight panels chart a collection aggregate (count / sum / average …) or a saved SQL query as a counter, sparkline, bars, donut, or table. Click <0>+ New panel</0> to build your first one — pick a collection, no SQL required."
 
+#: src/client/admin/pages/advisor.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/ui.tsx
 msgid "Insights"
@@ -6376,6 +6430,10 @@ msgstr "Large title in the sign-in brand panel."
 msgid "Last"
 msgstr "Last"
 
+#: src/client/admin/pages/advisor.tsx
+msgid "Last {d} days"
+msgstr "Last {d} days"
+
 #: src/client/admin/pages/logs.tsx
 msgid "last {range}"
 msgstr "last {range}"
@@ -6394,6 +6452,7 @@ msgstr "Last 1 hour"
 msgid "Last 15 minutes"
 msgstr "Last 15 minutes"
 
+#: src/client/admin/pages/advisor.tsx
 #: src/client/admin/pages/overview.tsx
 msgid "Last 24 hours"
 msgstr "Last 24 hours"
@@ -6656,6 +6715,10 @@ msgstr "list & sort"
 #: src/client/admin/list-columns.tsx
 msgid "List columns"
 msgstr "List columns"
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Lists"
+msgstr "Lists"
 
 #: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/forms.tsx
@@ -6996,6 +7059,10 @@ msgstr "MCP URL copied"
 #: src/client/pages/api-keys.tsx
 msgid "MCP: {0} tool(s)"
 msgstr "MCP: {0} tool(s)"
+
+#: src/client/admin/pages/advisor.tsx
+msgid "measured"
+msgstr "measured"
 
 #: src/client/admin/members-panel.tsx
 msgid "Member"
@@ -7824,6 +7891,10 @@ msgstr "No insight panels yet"
 msgid "No interface matches \"{query}\"."
 msgstr "No interface matches \"{query}\"."
 
+#: src/client/admin/pages/advisor.tsx
+msgid "No item-list requests recorded in this window."
+msgstr "No item-list requests recorded in this window."
+
 #: src/client/admin/item-views.tsx
 msgid "No items"
 msgstr "No items"
@@ -7937,6 +8008,11 @@ msgstr "No queries."
 #: src/client/admin/pages/schema-graph.tsx
 msgid "No relation-typed fields detected. Add a field with type <0>relation</0> to draw an edge."
 msgstr "No relation-typed fields detected. Add a field with type <0>relation</0> to draw an edge."
+
+#. placeholder {0}: runtime.windowDays
+#: src/client/admin/pages/advisor.tsx
+msgid "No request spans recorded in the last {0} day(s) — the traffic-derived rules had nothing to measure."
+msgstr "No request spans recorded in the last {0} day(s) — the traffic-derived rules had nothing to measure."
 
 #: src/client/pages/rest-explorer.tsx
 msgid "No responses defined."
@@ -8096,6 +8172,10 @@ msgstr "No traces yet"
 msgid "No traffic for this consumer"
 msgstr "No traffic for this consumer"
 
+#: src/client/admin/pages/advisor.tsx
+msgid "No traffic recorded yet"
+msgstr "No traffic recorded yet"
+
 #: src/client/admin/edit-field.tsx
 msgid "No two rows can hold the same value (case-sensitive)."
 msgstr "No two rows can hold the same value (case-sensitive)."
@@ -8222,6 +8302,10 @@ msgstr "Nothing to export — the current view is empty."
 #: src/client/admin/grid-edit.tsx
 msgid "Nothing to paste."
 msgstr "Nothing to paste."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Nothing was recorded in the last {days} day(s). Request spans appear here once the API serves traffic, unless `TRACES_SAMPLE_RATE` is 0 or span retention already pruned this window."
+msgstr "Nothing was recorded in the last {days} day(s). Request spans appear here once the API serves traffic, unless `TRACES_SAMPLE_RATE` is 0 or span retention already pruned this window."
 
 #: src/client/admin/ui.tsx
 msgid "Notifications"
@@ -8394,6 +8478,10 @@ msgstr "Only the current state exists — no edits recorded yet."
 #: src/client/admin/bulk-edit.tsx
 msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
 msgstr "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Only the most recent spans in the window were aggregated."
+msgstr "Only the most recent spans in the window were aggregated."
 
 #: src/client/admin/pages/forms.tsx
 msgid "Only the selected types are accepted — enforced server-side."
@@ -9990,6 +10078,10 @@ msgstr "Replace"
 #: src/client/admin/pages/settings/index.tsx
 msgid "Repository"
 msgstr "Repository"
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Reqs"
+msgstr "Reqs"
 
 #: src/client/pages/rest-explorer.tsx
 msgid "Request"
@@ -11791,6 +11883,10 @@ msgstr "Slack #content"
 msgid "SLO URL"
 msgstr "SLO URL"
 
+#: src/client/admin/pages/advisor.tsx
+msgid "Slowest endpoints"
+msgstr "Slowest endpoints"
+
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/collections-index.tsx
@@ -11878,6 +11974,10 @@ msgstr "Soft"
 msgid "Soft delete"
 msgstr "Soft delete"
 
+#: src/client/admin/pages/advisor.tsx
+msgid "Sorted by"
+msgstr "Sorted by"
+
 #: src/client/admin/item-form.tsx
 #: src/client/admin/pages/extensions.tsx
 msgid "Source"
@@ -11922,6 +12022,11 @@ msgstr "span"
 #: src/client/admin/pages/traces.tsx
 msgid "Spans"
 msgstr "Spans"
+
+#. placeholder {0}: pct(runtime.sampleRate)
+#: src/client/admin/pages/advisor.tsx
+msgid "Spans are sampled at {0}, so counts describe a sample."
+msgstr "Spans are sampled at {0}, so counts describe a sample."
 
 #: src/client/pages/openapi-export.tsx
 msgid "Spec unavailable. Try Refresh."
@@ -12527,6 +12632,10 @@ msgstr "The form may have been deactivated, or its link replaced."
 msgid "The full secret is shown once after creation — copy it somewhere safe."
 msgstr "The full secret is shown once after creation — copy it somewhere safe."
 
+#: src/client/admin/pages/advisor.tsx
+msgid "The insights endpoint returned an error. Re-run to try again."
+msgstr "The insights endpoint returned an error. Re-run to try again."
+
 #: src/client/admin/pages/users.tsx
 msgid "The invite is valid for 7 days."
 msgstr "The invite is valid for 7 days."
@@ -12543,6 +12652,10 @@ msgstr "The key \"{0}\" will stop working immediately. This cannot be undone."
 #: src/client/admin/pages/forms.tsx
 #~ msgid "The link was shown once when it was minted. Rotate the token to get a new one."
 #~ msgstr "The link was shown once when it was minted. Rotate the token to get a new one."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "The oldest recorded span is newer than the start of this window — span retention, not traffic, is what bounds it."
+msgstr "The oldest recorded span is newer than the start of this window — span retention, not traffic, is what bounds it."
 
 #: src/client/admin/app.tsx
 msgid "The physical table and all rows are dropped. This is irreversible."
@@ -12967,6 +13080,16 @@ msgstr "Traces refreshed."
 #: src/client/admin/pages/integrations.tsx
 msgid "Track data events through Segment."
 msgstr "Track data events through Segment."
+
+#. placeholder {0}: runtime.spanCount
+#. placeholder {1}: runtime.windowDays
+#: src/client/admin/pages/advisor.tsx
+msgid "Traffic rules read {0} span(s) over {1} day(s)."
+msgstr "Traffic rules read {0} span(s) over {1} day(s)."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Traffic window"
+msgstr "Traffic window"
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Transform"
@@ -13847,6 +13970,10 @@ msgstr "Where “Send test SMS” delivers. Leave blank to use your account's re
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Where submissions are stored."
 #~ msgstr "Where submissions are stored."
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Which columns real list requests filter and sort on — the input behind the missing-index findings."
+msgstr "Which columns real list requests filter and sort on — the input behind the missing-index findings."
 
 #: src/client/admin/collection-settings.tsx
 msgid "which field the board groups cards by"

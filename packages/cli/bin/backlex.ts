@@ -122,8 +122,12 @@ Usage:
   backlex messaging <send-push|send-sms|devices|phones>
       Direct push/SMS dispatch + the caller's device/phone registrations.
 
-  backlex advisor [--kind …] [--fail-on error|warn]
-      Run security/performance checks. \`--fail-on\` makes it a CI gate.
+  backlex advisor [--kind …] [--fail-on error|warn] [--apply <id>]
+      Run security/performance checks. \`--fail-on\` makes it a CI gate;
+      \`--apply\` carries out a finding's fix (e.g. create a missing index).
+
+  backlex advisor insights [--days N]
+      Slowest endpoints + per-collection list traffic, from recorded spans.
 
   backlex traces <list|get>
       Inspect distributed-tracing spans (request traces + waterfalls).

@@ -262,6 +262,7 @@ backlex templates <list|apply|extract|clear-samples>  schema-template catalog (a
 backlex webhooks <list|create|test|deliveries|retry|resume|delete>  outbound webhooks
 backlex jobs <list|get|retry|cancel|remove|enqueue>  durable job queue
 backlex advisor [--kind …] [--fail-on error|warn]   security/perf checks (CI gate)
+backlex advisor insights [--days N]                slowest endpoints + list traffic
 backlex init [dir] [--force]                     scaffold a TypeScript consumer starter
 backlex sdk [lang]                               discover the official native client SDKs
 backlex migrate [db-path]                        apply SQLite migrations
@@ -453,6 +454,24 @@ gate — non-zero exit when a finding at or above the level is present:
 backlex advisor                          # list all findings
 backlex advisor --kind security --json   # machine-readable
 backlex advisor --fail-on error          # exit 1 on any error-level finding
+backlex advisor --days 30                # widen the traffic window (default 7)
+```
+
+The `fixable` column marks findings the server can remediate itself. Apply one
+by id — only the id is sent, and the server re-derives the statement it runs:
+
+```bash
+backlex advisor --apply perf-hot-filter-index-posts-status
+```
+
+`insights` prints the raw aggregation those traffic-derived rules read: slowest
+endpoints (p50/p95/p99 + 5xx rate) and per-collection list traffic with the
+columns it filters and sorts on. Counts are spans actually recorded — a note
+under each table says when sampling or span retention bounded the window:
+
+```bash
+backlex advisor insights --days 30
+backlex advisor insights --json | jq '.collections[0].filters'
 ```
 
 > **Deploy.** There is no `backlex deploy` command. Deployment goes through each

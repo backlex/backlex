@@ -211,6 +211,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Embedded BI dashboards (panels + public embed) | `docs/embedded-dashboards.md` |
 | Advisor rules | `docs/advisor.md` |
 | Auth planes (admin vs workspace end-users) | `docs/auth-planes.md` |
+| Organizations / teams (app-plane B2B grouping) | `docs/app-organizations.md` |
 | SSO (SAML / LDAP) | `docs/sso.md` |
 | API keys, access tokens, email & OAuth | `docs/api-keys-and-email.md` |
 | Adopting existing tables | `docs/adopting-tables.md` |

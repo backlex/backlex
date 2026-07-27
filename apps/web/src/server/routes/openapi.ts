@@ -27,6 +27,7 @@ import {
   usersRoutes,
 } from "./roles";
 import { appUsersRoutes } from "./app-users";
+import { appOrgsRoutes } from "./app-orgs";
 import { tenantsRoutes } from "./tenants";
 import { emailTemplatesRoutes } from "./email-templates";
 import { emailConfigRoutes } from "./email-config";
@@ -68,6 +69,7 @@ export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/permissions", permissionsRoutes as unknown as OpenAPIHono<any>],
   ["/api/users", usersRoutes as unknown as OpenAPIHono<any>],
   ["/api/app-users", appUsersRoutes as unknown as OpenAPIHono<any>],
+  ["/api/app-orgs", appOrgsRoutes as unknown as OpenAPIHono<any>],
   ["/api/tenants", tenantsRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/email-templates", emailTemplatesRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/email-config", emailConfigRoutes as unknown as OpenAPIHono<any>],

@@ -69,6 +69,25 @@ export type Condition =
  */
 export type AuthPlane = "platform" | "app";
 
+/** A member's standing inside one app-plane organization. Fixed vocabulary:
+ *  `owner` may delete the org and transfer ownership, `admin` may invite and
+ *  manage members, `member` may do neither. Distinct from the workspace
+ *  `roles` a member can also hold *within* an org — those drive data-plane
+ *  permissions, this drives org administration. */
+export type OrgRole = "owner" | "admin" | "member";
+
+export const ORG_ROLES: readonly OrgRole[] = ["owner", "admin", "member"];
+
+/** Rank for "at least this role" checks — higher outranks lower. */
+export const ORG_ROLE_RANK: Record<OrgRole, number> = {
+  owner: 3,
+  admin: 2,
+  member: 1,
+};
+
+export const isOrgRole = (v: unknown): v is OrgRole =>
+  typeof v === "string" && (ORG_ROLES as readonly string[]).includes(v);
+
 export interface AuthSubject {
   /** See {@link AuthPlane}. Absent ⇒ treat as `"platform"`. */
   plane?: AuthPlane;
@@ -81,6 +100,22 @@ export interface AuthSubject {
    *  that role. Permission resolution then considers *only* this role (and
    *  only while the owner still holds it). Absent/null = no key scoping. */
   apiKeyRoleId?: string | null;
+  /**
+   * App-plane organization context, resolved by `tenantMiddleware` for
+   * `plane: "app"` requests (see `services/app-orgs.ts::resolveOrgContext`).
+   * Platform-plane identities never carry it.
+   *
+   *   - `orgId`   — the org this request is acting in (`$org.id`), picked from
+   *                 the `X-Backlex-Org` header, else the session's active org,
+   *                 else the sole membership. Null when the subject belongs to
+   *                 no org, or to several with none selected.
+   *   - `orgRole` — their membership role in that org (`$org.role`).
+   *   - `orgIds`  — every org they belong to (`$user.orgs`), so a condition can
+   *                 span all of them without an active selection.
+   */
+  orgId?: string | null;
+  orgRole?: OrgRole | null;
+  orgIds?: string[];
 }
 
 export const SYSTEM_ROLES = {

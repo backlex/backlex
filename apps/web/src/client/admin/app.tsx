@@ -86,6 +86,7 @@ import { SidebarInset, SidebarProvider } from "@backlex/ui/components/sidebar";
 import { StoragePage } from "./storage";
 import {
   AppUsersPage,
+  AppOrgsPage,
   AuthSettingsPage,
   PlatformSsoSettingsPage,
   DatabasePage,
@@ -1091,6 +1092,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "platform-sso" && <PlatformSsoSettingsPage pushToast={pushToast} />}
             {activeNav === "users" && <UsersPage pushToast={pushToast} />}
             {activeNav === "app-users" && <AppUsersPage pushToast={pushToast} />}
+            {activeNav === "app-orgs" && <AppOrgsPage pushToast={pushToast} />}
             {activeNav === "api-keys" && <ApiKeys />}
             {activeNav === "email-templates" && <EmailTemplatesPage pushToast={pushToast} />}
             {activeNav === "settings" && <SettingsPage adapter={tweaks.adapter} pushToast={pushToast} />}

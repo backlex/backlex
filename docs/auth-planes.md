@@ -58,8 +58,10 @@ users                                          app_users          tenant_id, sta
 sessions                                       app_sessions       tenant_id, user_id, token, …
 accounts            (OAuth links)              app_accounts       tenant_id, user_id, provider_id, …
 verifications                                  app_verifications  tenant_id, identifier, value, expires_at
-passkeys
-twoFactor           (TOTP secret + backup codes; users.two_factor_enabled flag)
+passkeys                                       app_orgs           tenant_id, slug, name, …
+twoFactor           (TOTP secret + backup codes; app_org_members     org_id, app_user_id, role
+                     users.two_factor_enabled flag)             app_org_member_roles org_id, app_user_id, role_id
+                                               app_org_invites    org_id, email, role, token, expires_at
 
            ──────── shared by both ────────
            tenants            (workspaces — id, slug, project, env, …)
@@ -302,6 +304,10 @@ never blocks the sign-up.
 
 Distinct from `/api/users`, which is the **control-plane** pool. The
 two never overlap.
+
+End-users can additionally be grouped into **organizations** — the B2B
+layer inside a workspace, administered at `/api/app-orgs` and self-served
+at `/api/t/{slug}/orgs`. See [Organizations](/docs/app-organizations/).
 
 ## Control-plane auth features
 

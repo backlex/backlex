@@ -152,13 +152,19 @@ const loadUserEmail = async (
 const findAppSession = async (
   ctx: { db: unknown; dialect: "pg" | "sqlite" },
   token: string,
-): Promise<{ userId: string; tenantId: string; email: string | null } | null> => {
+): Promise<{
+  id: string;
+  userId: string;
+  tenantId: string;
+  email: string | null;
+} | null> => {
   const t =
     ctx.dialect === "pg"
       ? { sessions: pg.schema.appSessions, users: pg.schema.appUsers }
       : { sessions: sqlite.schema.appSessions, users: sqlite.schema.appUsers };
   const rows = (await (ctx.db as any)
     .select({
+      id: t.sessions.id,
       userId: t.sessions.userId,
       tenantId: t.sessions.tenantId,
       expiresAt: t.sessions.expiresAt,
@@ -169,6 +175,7 @@ const findAppSession = async (
     .innerJoin(t.users, eq(t.sessions.userId, t.users.id))
     .where(eq(t.sessions.token, token))
     .limit(1)) as Array<{
+      id: string;
       userId: string;
       tenantId: string;
       expiresAt: Date | number;
@@ -181,7 +188,12 @@ const findAppSession = async (
   const exp =
     row.expiresAt instanceof Date ? row.expiresAt.getTime() : Number(row.expiresAt);
   if (exp <= Date.now()) return null;
-  return { userId: row.userId, tenantId: row.tenantId, email: row.email };
+  return {
+    id: row.id,
+    userId: row.userId,
+    tenantId: row.tenantId,
+    email: row.email,
+  };
 };
 
 /** Resolve an MCP OAuth access token (better-auth `mcp` plugin) to its user.
@@ -257,6 +269,11 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   // similarly pin the request to the workspace that issued the session — the
   // app's frontend doesn't send a tenant header, it just uses its token.
   let appSessionTenantId: string | null = null;
+  // `app_sessions.id` behind an app-plane request. Carried so the org layer can
+  // read back the session's pinned `active_org_id` without a token lookup — the
+  // stateless access JWT names it in `sid`, and both DB-backed paths know the
+  // row they matched.
+  let appSessionId: string | null = null;
   // MCP OAuth access tokens (better-auth `mcp` plugin — hosted Claude custom
   // connectors). Platform-plane: the token's userId is a control-plane user.
   let oauthClientId: string | null = null;
@@ -357,6 +374,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
           userId = claims.sub;
           email = claims.email;
           appSessionTenantId = claims.tid;
+          appSessionId = claims.sid ?? null;
         } else {
           const appSess = await findAppSession(
             { db: ctx.db, dialect: ctx.dialect },
@@ -367,6 +385,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
             userId = appSess.userId;
             email = appSess.email;
             appSessionTenantId = appSess.tenantId;
+            appSessionId = appSess.id;
           } else {
             // 3. an MCP OAuth access token (better-auth `mcp` plugin). Opaque
             //    random string, platform plane. The plugin's own get-session
@@ -410,6 +429,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
       userId = appSess.userId;
       email = appSess.email;
       appSessionTenantId = appSess.tenantId;
+      appSessionId = appSess.id;
     }
   }
 
@@ -431,6 +451,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
     apiKeyRateLimit,
     apiKeyMonthlyQuota,
     appSessionTenantId,
+    appSessionId,
     oauthClientId,
   });
   await next();

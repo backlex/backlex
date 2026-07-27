@@ -1,4 +1,4 @@
-import type { AuthPlane } from "@backlex/core";
+import type { AuthPlane, OrgRole } from "@backlex/core";
 import { createD1SessionClient } from "@backlex/db/sqlite";
 import { sql } from "drizzle-orm";
 import { Hono, type MiddlewareHandler } from "hono";
@@ -33,6 +33,8 @@ import { aiAskRoutes } from "./routes/ai-ask";
 import { agentsRoutes } from "./routes/agents";
 import { apiKeysRoutes } from "./routes/api-keys";
 import { appUsersRoutes } from "./routes/app-users";
+import { appOrgsRoutes } from "./routes/app-orgs";
+import { appOrgsPublicRoutes } from "./routes/app-orgs-public";
 import { authRoutes } from "./routes/auth";
 import { authAdminRoutes } from "./routes/auth-admin";
 import { authPublicRoutes } from "./routes/auth-public";
@@ -161,6 +163,17 @@ export type AppBindings = {
        *  carries the issuing workspace; we pin the request to it so the
        *  customer's app never needs to send `X-Backlex-Tenant`. */
       appSessionTenantId?: string | null;
+      /** `app_sessions.id` behind an app-plane request (from the access JWT's
+       *  `sid`, or the row the bearer/cookie token matched). Lets the org layer
+       *  read and write the session's pinned `active_org_id`. */
+      appSessionId?: string | null;
+      /** App-plane organization context, resolved by tenantMiddleware. Feeds
+       *  `$org.id` / `$org.role` / `$user.orgs` in the permission DSL and the
+       *  org-scoped role grants in `loadRolesForUser`. See
+       *  `services/app-orgs.ts::resolveOrgContext` and docs/app-organizations.md. */
+      orgId?: string | null;
+      orgRole?: OrgRole | null;
+      orgIds?: string[];
       /** Set by sessionMiddleware when the request authenticates with an MCP
        *  OAuth access token (better-auth `mcp` plugin — hosted Claude et al).
        *  Carries the OAuth client id for auditing; guard behavior rides the
@@ -745,6 +758,10 @@ export const createApp = (env: Env) => {
   // gets its own better-auth instance under /api/t/<slug>/auth/*, backed by
   // the app_* tables and the tenant-scoped adapter wrapper.
   app.route("/api/t", tenantAuthRoutes);
+  // End-user organization self-service, alongside the auth surface on the same
+  // `/api/t/:slug` prefix. Mounted after tenantAuthRoutes — its catch-all is
+  // `/:slug/auth/*`, so the `/orgs` paths here never collide with it.
+  app.route("/api/t", appOrgsPublicRoutes);
   app.route("/api/tenants", tenantsRoutes);
   app.route("/api/admin/email-templates", emailTemplatesRoutes);
   app.route("/api/admin/email-config", emailConfigRoutes);
@@ -880,6 +897,7 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
   app.route("/api/permissions", permissionsRoutes);
   app.route("/api/users", usersRoutes);
   app.route("/api/app-users", appUsersRoutes);
+  app.route("/api/app-orgs", appOrgsRoutes);
   app.route("/api/functions", functionsRoutes);
   app.route("/api/extensions", extensionsRoutes);
   // Lazy: the GraphQL subsystem (graphql-yoga + graphql + @graphql-tools) is a

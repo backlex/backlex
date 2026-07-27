@@ -14,6 +14,7 @@ import {
   setCachedTenantRoleNames,
 } from "../services/permissions-cache";
 import { ensureDefaultTenant } from "../services/seed";
+import { resolveOrgContext, type OrgContext } from "../services/app-orgs";
 import { loadUnfilteredRoleNames } from "./session";
 
 /** Loose UUID v4-ish shape check — strict enough to avoid false positives on
@@ -25,6 +26,10 @@ const UUID_RE =
 
 export const TENANT_COOKIE = "backlex-tenant";
 export const TENANT_HEADER = "x-backlex-tenant";
+/** App-plane organization override — an `app_orgs` id or slug. Only honoured
+ *  for identities that are actually a member of it; see
+ *  `services/app-orgs.ts::resolveOrgContext`. */
+export const ORG_HEADER = "x-backlex-org";
 
 const tablesFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"
@@ -436,7 +441,33 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
     }
   }
 
-  c.set("auth", { ...auth, roles: tenantRoles, tenantId });
+  // App-plane organization context. Resolved here (not in sessionMiddleware)
+  // because it needs the active tenant, and only for the app plane —
+  // control-plane identities have no `app_org_members` rows, so a platform
+  // request never pays for this. The membership list rides a per-isolate cache
+  // (see permissions-cache `orgMembershipsCache`), so a workspace that has no
+  // orgs costs one cached empty lookup per TTL window.
+  let orgCtx: OrgContext = { orgId: null, orgRole: null, orgIds: [] };
+  if (auth.plane === "app" && auth.userId && tenantId) {
+    orgCtx = await resolveOrgContext(
+      { db, dialect },
+      tenantId,
+      auth.userId,
+      {
+        requestedOrg: c.req.header(ORG_HEADER) ?? null,
+        appSessionId: auth.appSessionId ?? null,
+      },
+    );
+  }
+
+  c.set("auth", {
+    ...auth,
+    roles: tenantRoles,
+    tenantId,
+    orgId: orgCtx.orgId,
+    orgRole: orgCtx.orgRole,
+    orgIds: orgCtx.orgIds,
+  });
   // Stamp the request start so route handlers can pass duration_ms to
   // recordActivity without each one having to remember to capture Date.now().
   // Use Hono's typed `set` — assigning to `c.var` directly hits a Proxy that

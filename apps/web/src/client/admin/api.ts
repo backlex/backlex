@@ -755,6 +755,90 @@ export const appUsersApi = {
     api<{ ok: true }>(`/api/app-users/${id}/sessions/${sessionId}`, { method: "DELETE" }),
 };
 
+/** A member's standing inside an organization — governs org administration,
+ *  not data access. The workspace roles bound to them *within* the org do
+ *  that, and live on `ApiOrgMember.roles`. */
+export type OrgRole = "owner" | "admin" | "member";
+
+export interface ApiOrg {
+  id: string;
+  slug: string;
+  name: string;
+  image: string | null;
+  metadata: Record<string, unknown> | null;
+  createdBy: string | null;
+  createdAt: number | null;
+  updatedAt: number | null;
+  memberCount: number;
+}
+
+export interface ApiOrgMember {
+  appUserId: string;
+  email: string;
+  name: string | null;
+  status: string;
+  role: OrgRole;
+  /** Workspace roles bound to this member within this org. */
+  roles: { id: string; name: string }[];
+  createdAt: number | null;
+}
+
+export interface ApiOrgInvite {
+  id: string;
+  orgId: string;
+  email: string;
+  role: OrgRole;
+  roleIds: string[];
+  invitedBy: string | null;
+  expiresAt: number;
+  acceptedAt: number | null;
+  createdAt: number | null;
+  pending: boolean;
+}
+
+/** App-plane organizations ("teams"). Admin-only, scoped to the active
+ *  workspace. Every id argument also accepts the org's slug. */
+export const appOrgsApi = {
+  list: (params?: { q?: string }) => {
+    const qs = params?.q ? `?q=${encodeURIComponent(params.q)}` : "";
+    return api<Envelope<ApiOrg[]>>(`/api/app-orgs${qs}`);
+  },
+  create: (body: { name: string; slug?: string; ownerAppUserId?: string }) =>
+    api<Envelope<ApiOrg>>(`/api/app-orgs`, { method: "POST", body: JSON.stringify(body) }),
+  patch: (id: string, body: { name?: string; slug?: string; image?: string | null }) =>
+    api<Envelope<ApiOrg>>(`/api/app-orgs/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) => api<{ ok: true }>(`/api/app-orgs/${id}`, { method: "DELETE" }),
+
+  members: (id: string) => api<Envelope<ApiOrgMember[]>>(`/api/app-orgs/${id}/members`),
+  addMember: (id: string, body: { appUserId: string; role?: OrgRole; roleIds?: string[] }) =>
+    api<Envelope<ApiOrgMember>>(`/api/app-orgs/${id}/members`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  patchMember: (id: string, appUserId: string, body: { role?: OrgRole; roleIds?: string[] }) =>
+    api<Envelope<ApiOrgMember>>(`/api/app-orgs/${id}/members/${appUserId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  removeMember: (id: string, appUserId: string) =>
+    api<{ ok: true }>(`/api/app-orgs/${id}/members/${appUserId}`, { method: "DELETE" }),
+
+  invites: (id: string, params?: { pending?: boolean }) =>
+    api<Envelope<ApiOrgInvite[]>>(
+      `/api/app-orgs/${id}/invites${params?.pending ? "?pending=true" : ""}`,
+    ),
+  invite: (id: string, body: { email: string; role?: OrgRole; roleIds?: string[] }) =>
+    api<Envelope<{ id: string; email: string; role: OrgRole; token: string; expiresAt: number }>>(
+      `/api/app-orgs/${id}/invites`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  revokeInvite: (id: string, inviteId: string) =>
+    api<{ ok: true }>(`/api/app-orgs/${id}/invites/${inviteId}`, { method: "DELETE" }),
+};
+
 export const functionsApi = {
   list: () => api<Envelope<ApiFunction[]>>(`/api/functions`),
 };

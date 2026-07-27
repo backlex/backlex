@@ -8,6 +8,7 @@ import { runItems } from "../src/items";
 import { runBackup } from "../src/backup";
 import { runUsers, runRoles, runFlags, runSettings } from "../src/admin";
 import { runPermissions } from "../src/permissions";
+import { runOrgs } from "../src/orgs";
 import { runFunctions } from "../src/functions";
 import { runExtensions } from "../src/extensions";
 import { runFlows } from "../src/flows";
@@ -75,6 +76,10 @@ Usage:
   backlex permissions simulate --collection <slug> --action <action>
       Dry-run the permission resolver and explain the allow/deny decision.
       Test a real user (\`--user <id>\`) or ad-hoc roles (\`--roles a,b\`).
+
+  backlex orgs <list|get|create|update|delete|members|invite|...>
+      App-plane organizations ("teams") — the B2B grouping inside a workspace.
+      Members are end-users; \`--roles\` binds workspace roles per-org.
 
   backlex flags <list|set|delete>
       Feature flags / remote config. \`--global\` targets the global scope.
@@ -216,6 +221,10 @@ const run = async () => {
     case "permission":
     case "perms":
       await runPermissions(rest);
+      return;
+    case "orgs":
+    case "org":
+      await runOrgs(rest);
       return;
     case "flags":
     case "flag":

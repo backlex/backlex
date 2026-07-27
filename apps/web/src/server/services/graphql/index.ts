@@ -36,6 +36,7 @@ import { agentQueryFields, agentMutationFields } from "./agents";
 import { permissionQueryFields } from "./permission-sim";
 import { templateQueryFields, templateMutationFields } from "./templates";
 import { appUserMutationFields } from "./app-users";
+import { appOrgMutationFields, appOrgQueryFields } from "./app-orgs";
 import {
   GraphQLBoolean,
   GraphQLID,
@@ -82,6 +83,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...agentQueryFields,
           ...permissionQueryFields,
           ...templateQueryFields,
+          ...appOrgQueryFields,
         },
       }),
       mutation: new GraphQLObjectType({
@@ -101,6 +103,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...agentMutationFields,
           ...templateMutationFields,
           ...appUserMutationFields,
+          ...appOrgMutationFields,
           ...messagingMutationFields,
         },
       }),
@@ -122,6 +125,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...agentQueryFields,
     ...permissionQueryFields,
     ...templateQueryFields,
+    ...appOrgQueryFields,
   };
   const mutationFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
     ...flowMutationFields,
@@ -138,6 +142,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...agentMutationFields,
     ...templateMutationFields,
     ...appUserMutationFields,
+    ...appOrgMutationFields,
     ...messagingMutationFields,
   };
 

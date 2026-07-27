@@ -193,6 +193,7 @@ export const NAV_SETTINGS: NavItem[] = [
   { id: "platform-sso", icon: "Shield" },
   { id: "users", icon: "Users" },
   { id: "app-users", icon: "Users" },
+  { id: "app-orgs", icon: "Building" },
   { id: "api-keys", icon: "Code" },
   { id: "email-templates", icon: "Mail" },
   { id: "settings", icon: "Settings" },

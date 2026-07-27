@@ -98,6 +98,14 @@ export interface ClientOptions {
    * ignores it for app-mode bearer sessions (the tenant comes from the session).
    */
   tenant?: string;
+  /**
+   * Act inside a specific organization by sending the `X-Backlex-Org` header
+   * (slug or id) on every request, so `$org.id` in permission rules resolves to
+   * it. Only meaningful for app-plane sessions, and only accepted for orgs the
+   * signed-in end-user actually belongs to. Change it later with
+   * `client.orgs.use(...)`.
+   */
+  org?: string;
   /** Optional fetch override (testing / Node polyfill). */
   fetch?: typeof fetch;
   /**
@@ -1245,6 +1253,134 @@ export interface AppUsersClient {
   }): Promise<{ data: { id: string; email: string; token: string; expiresAt: number } }>;
 }
 
+/** A member's standing inside an organization. Distinct from the workspace
+ *  `roles` they may also hold *within* that org. */
+export type OrgRole = "owner" | "admin" | "member";
+
+/** An app-plane organization — the B2B grouping level inside one workspace. */
+export interface Org {
+  id: string;
+  slug: string;
+  name: string;
+  image: string | null;
+  metadata: Record<string, unknown> | null;
+  createdBy: string | null;
+  createdAt: number | null;
+  updatedAt: number | null;
+  /** Present on list responses. */
+  memberCount?: number;
+  /** Present when the listing was scoped to one end-user (app mode). */
+  role?: OrgRole;
+}
+
+export interface OrgMember {
+  appUserId: string;
+  email: string;
+  name: string | null;
+  status: string;
+  role: OrgRole;
+  /** Workspace roles bound to this member *within this org*. */
+  roles: Array<{ id: string; name: string }>;
+  createdAt: number | null;
+}
+
+export interface OrgInvite {
+  id: string;
+  orgId: string;
+  email: string;
+  role: OrgRole;
+  roleIds: string[];
+  invitedBy: string | null;
+  expiresAt: number;
+  acceptedAt: number | null;
+  createdAt: number | null;
+  /** Neither accepted nor expired. */
+  pending: boolean;
+}
+
+/**
+ * Organizations ("teams") — the same namespace on both planes, routed by the
+ * client's mode:
+ *
+ *  - **app mode** (`workspace` set) → `/api/t/{workspace}/orgs`. Scoped to the
+ *    signed-in end-user: they see their own orgs and act with their membership
+ *    role. `create`, `acceptInvite`, `setActive` and `leave` are here.
+ *  - **admin mode** → `/api/app-orgs`. The workspace operator's view: every org
+ *    in the workspace, plus `addMember`.
+ *
+ * Members are addressed by `app_users.id`. Every id argument also accepts the
+ * org's slug.
+ */
+export interface OrgsClient {
+  /** App mode: the orgs I belong to (plus `active`, the org this client is
+   *  currently acting in). Admin mode: every org in the workspace. */
+  list(opts?: {
+    q?: string;
+  }): Promise<{ data: Org[]; active?: { orgId: string | null; role: OrgRole | null } }>;
+  get(idOrSlug: string): Promise<{ data: Org }>;
+  /** App mode: the caller becomes the first `owner`. Admin mode: pass
+   *  `ownerAppUserId` to seed one, or omit it for an empty org. */
+  create(input: {
+    name: string;
+    slug?: string;
+    image?: string | null;
+    metadata?: Record<string, unknown> | null;
+    ownerAppUserId?: string;
+  }): Promise<{ data: Org }>;
+  update(
+    idOrSlug: string,
+    patch: {
+      name?: string;
+      slug?: string;
+      image?: string | null;
+      metadata?: Record<string, unknown> | null;
+    },
+  ): Promise<{ data: Org }>;
+  delete(idOrSlug: string): Promise<{ ok: boolean }>;
+
+  members(idOrSlug: string): Promise<{ data: OrgMember[] }>;
+  /** Admin mode only — the app plane grows members through invitations. */
+  addMember(
+    idOrSlug: string,
+    input: { appUserId: string; role?: OrgRole; roleIds?: string[] },
+  ): Promise<{ data: OrgMember }>;
+  /** Change the membership role and/or replace the member's org-scoped
+   *  workspace roles. */
+  updateMember(
+    idOrSlug: string,
+    appUserId: string,
+    patch: { role?: OrgRole; roleIds?: string[] },
+  ): Promise<{ data: OrgMember }>;
+  removeMember(idOrSlug: string, appUserId: string): Promise<{ ok: boolean }>;
+
+  invites(idOrSlug: string, opts?: { pending?: boolean }): Promise<{ data: OrgInvite[] }>;
+  /** Mint a 7-day invitation (also mailed best-effort). The raw token comes
+   *  back once, here — it is never listed again. */
+  invite(
+    idOrSlug: string,
+    input: { email: string; role?: OrgRole; roleIds?: string[] },
+  ): Promise<{
+    data: { id: string; email: string; role: OrgRole; token: string; expiresAt: number };
+  }>;
+  revokeInvite(idOrSlug: string, inviteId: string): Promise<{ ok: boolean }>;
+  /** App mode only. The signed-in account's email must match the invited one. */
+  acceptInvite(token: string): Promise<{ data: { org: Org; role: OrgRole } }>;
+
+  /** App mode only — pin this *session* to an org (`null` clears it). Only
+   *  needed for multi-org end-users; a single-org one resolves automatically. */
+  setActive(idOrSlug: string | null): Promise<{ data: Org | null }>;
+  /** App mode only. The last owner must hand over first. */
+  leave(idOrSlug: string): Promise<{ ok: boolean }>;
+
+  /** Send `X-Backlex-Org` on every subsequent request from this client, so
+   *  `$org.id` in permission rules resolves to it. Stateless alternative to
+   *  {@link OrgsClient.setActive} — nothing is persisted server-side, and it
+   *  works with access-JWT clients that have no session row. `null` clears. */
+  use(idOrSlug: string | null): void;
+  /** The org id/slug {@link OrgsClient.use} is currently sending, if any. */
+  active(): string | null;
+}
+
 /** Schema templates (admin-scoped). Mirrors `/api/admin/templates`. */
 export interface TemplatesClient {
   /** List the template catalog for the active workspace. */
@@ -1501,6 +1637,8 @@ export interface BacklexClient {
   templates: TemplatesClient;
   /** Workspace end-user provisioning (invites — admin plane). */
   appUsers: AppUsersClient;
+  /** Organizations ("teams") — the B2B grouping level inside a workspace. */
+  orgs: OrgsClient;
   /** Schema versions — migration diffing / schema branching. */
   schema: SchemaClient;
   /** External-DB migration (sources + server-side copy runs). */
@@ -1534,6 +1672,13 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const tenantHeader = (): Record<string, string> =>
     opts.tenant ? { "x-backlex-tenant": opts.tenant } : {};
 
+  // Active organization for app-plane requests, set via `orgs.use(...)`. Rides
+  // every request so `$org.id` in permission rules resolves without the caller
+  // threading it through each call.
+  let activeOrg: string | null = opts.org ?? null;
+  const orgHeader = (): Record<string, string> =>
+    activeOrg ? { "x-backlex-org": activeOrg } : {};
+
   // W3C traceparent — on by default. `tracing: false` opts out; a function lets
   // the caller continue an existing trace (return a traceparent) or start a
   // fresh one (return undefined).
@@ -1560,6 +1705,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       ...(body !== undefined ? { "content-type": "application/json" } : {}),
       ...authHeader(),
       ...tenantHeader(),
+      ...orgHeader(),
       ...traceHeader(),
       ...(extraHeaders ?? {}),
     };
@@ -1591,6 +1737,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     const headers: Record<string, string> = {
       ...authHeader(),
       ...tenantHeader(),
+      ...orgHeader(),
       ...traceHeader(),
     };
     if (contentType) headers["content-type"] = contentType;
@@ -1879,7 +2026,12 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     const res = await f(`${opts.url}${location}`, {
       method: "HEAD",
       credentials: "include",
-      headers: { ...authHeader(), ...tenantHeader(), "Tus-Resumable": "1.0.0" },
+      headers: {
+        ...authHeader(),
+        ...tenantHeader(),
+        ...orgHeader(),
+        "Tus-Resumable": "1.0.0",
+      },
       signal,
     });
     if (!res.ok) throw new BacklexError(res.status, undefined);
@@ -1909,6 +2061,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
           headers: {
             ...authHeader(),
             ...tenantHeader(),
+      ...orgHeader(),
             "Tus-Resumable": "1.0.0",
             "Upload-Offset": String(offset),
             "content-type": OFFSET_OCTET,
@@ -1959,6 +2112,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       const headers: Record<string, string> = {
         ...authHeader(),
         ...tenantHeader(),
+      ...orgHeader(),
         ...(contentType ? { "content-type": contentType } : {}),
       };
       const url = `${opts.url}/api/storage/${encodeURIComponent(key)}${folderId ? `?folderId=${folderId}` : ""}`;
@@ -1979,7 +2133,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     download: async (key: string): Promise<Response> => {
       const res = await f(`${opts.url}/api/storage/${encodeURIComponent(key)}`, {
         credentials: "include",
-        headers: { ...authHeader(), ...tenantHeader() },
+        headers: { ...authHeader(), ...tenantHeader(), ...orgHeader() },
       });
       if (!res.ok) {
         throw new BacklexError(res.status, undefined);
@@ -2022,6 +2176,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         headers: {
           ...authHeader(),
           ...tenantHeader(),
+      ...orgHeader(),
           "Tus-Resumable": "1.0.0",
           "Upload-Length": String(src.size),
           "Upload-Metadata": meta.join(","),
@@ -2507,6 +2662,75 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       ),
   };
 
+  // Organizations. One namespace, two backends: an app-mode client talks to the
+  // end-user surface under its workspace, an admin-mode client to the
+  // control-plane one. Both are the same service behind different gates, so the
+  // shapes coming back are identical.
+  const orgBase = opts.workspace
+    ? `/api/t/${encodeURIComponent(opts.workspace)}/orgs`
+    : "/api/app-orgs";
+  const orgPath = (idOrSlug: string, suffix = ""): string =>
+    `${orgBase}/${encodeURIComponent(idOrSlug)}${suffix}`;
+
+  const orgs: OrgsClient = {
+    list: (o) =>
+      request<{ data: Org[]; active?: { orgId: string | null; role: OrgRole | null } }>(
+        "GET",
+        `${orgBase}${o?.q ? `?q=${encodeURIComponent(o.q)}` : ""}`,
+      ),
+    get: (idOrSlug) => request<{ data: Org }>("GET", orgPath(idOrSlug)),
+    create: (input) => request<{ data: Org }>("POST", orgBase, input),
+    update: (idOrSlug, patch) =>
+      request<{ data: Org }>("PATCH", orgPath(idOrSlug), patch),
+    delete: (idOrSlug) => request<{ ok: boolean }>("DELETE", orgPath(idOrSlug)),
+
+    members: (idOrSlug) =>
+      request<{ data: OrgMember[] }>("GET", orgPath(idOrSlug, "/members")),
+    addMember: (idOrSlug, input) =>
+      request<{ data: OrgMember }>("POST", orgPath(idOrSlug, "/members"), input),
+    updateMember: (idOrSlug, appUserId, patch) =>
+      request<{ data: OrgMember }>(
+        "PATCH",
+        orgPath(idOrSlug, `/members/${encodeURIComponent(appUserId)}`),
+        patch,
+      ),
+    removeMember: (idOrSlug, appUserId) =>
+      request<{ ok: boolean }>(
+        "DELETE",
+        orgPath(idOrSlug, `/members/${encodeURIComponent(appUserId)}`),
+      ),
+
+    invites: (idOrSlug, o) =>
+      request<{ data: OrgInvite[] }>(
+        "GET",
+        orgPath(idOrSlug, `/invites${o?.pending ? "?pending=true" : ""}`),
+      ),
+    invite: (idOrSlug, input) =>
+      request<{
+        data: { id: string; email: string; role: OrgRole; token: string; expiresAt: number };
+      }>("POST", orgPath(idOrSlug, "/invites"), input),
+    revokeInvite: (idOrSlug, inviteId) =>
+      request<{ ok: boolean }>(
+        "DELETE",
+        orgPath(idOrSlug, `/invites/${encodeURIComponent(inviteId)}`),
+      ),
+    acceptInvite: (token) =>
+      request<{ data: { org: Org; role: OrgRole } }>(
+        "POST",
+        `${orgBase}/invites/accept`,
+        { token },
+      ),
+
+    setActive: (idOrSlug) =>
+      request<{ data: Org | null }>("POST", `${orgBase}/set-active`, { orgId: idOrSlug }),
+    leave: (idOrSlug) => request<{ ok: boolean }>("POST", orgPath(idOrSlug, "/leave")),
+
+    use: (idOrSlug) => {
+      activeOrg = idOrSlug;
+    },
+    active: () => activeOrg,
+  };
+
   // Feature flags / remote config, evaluated for the current caller (targeting
   // rules + rollout already applied server-side).
   let flagsCache: Record<string, FlagState> | null = null;
@@ -2569,6 +2793,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     permissions,
     templates,
     appUsers,
+    orgs,
     schema,
     migrate,
     flags,

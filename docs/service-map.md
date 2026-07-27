@@ -113,12 +113,21 @@ guides; this list is everything else.
   object-store multipart (R2/S3) or fs offset-append. The `uploads`
   table tracks session offset + parts; `sweepExpiredUploads` aborts
   stale sessions inside `cronTick`. See `docs/resumable-uploads.md`.
-- **Offline sync** (`routes/items.ts` `/changes` + `/revisions`,
+- **Offline sync** (`routes/items/changes.ts` + `/revisions`,
+  `services/items/changefeed.ts`, `services/items/shape.ts`,
   `packages/client/src/sync.ts`) — incremental changefeed (keyset on
-  `updated_at,id`, tombstones via `_deleted`) + revisions endpoint; the
-  client `sync` module pulls into a pluggable local store (memory /
-  IndexedDB), stays live over SSE, and queues offline writes (LWW). Soft-
-  delete bumps `updated_at` so deletes reach the feed. See `docs/offline-sync.md`.
+  `updated_at,id`, tombstones via `_deleted`) + revisions endpoint.
+  `runChangefeed` is the ONE implementation behind REST, the SDK,
+  `<collection>Changes` (GraphQL), `collections.changes` (MCP) and
+  `backlex items changes` (CLI). A `shape` (flat filter) replicates a subset;
+  rows leaving it come back as `{ id, _shape_exit: true }` — computed as a
+  SELECT-list expression, not a WHERE clause, so move-outs stay observable.
+  The client `sync` module pulls into a pluggable local store (memory /
+  IndexedDB / SQLite), stays live over SSE with local shape matching, and
+  queues offline writes with a configurable conflict policy (LWW by default;
+  `server-wins` / `client-wins` / `merge` / `manual` send a per-op
+  `ifUnmodifiedSince` precondition through the batch endpoint). Soft-delete
+  bumps `updated_at` so deletes reach the feed. See `docs/offline-sync.md`.
 - **Feature flags** (`routes/feature-flags.ts`, `services/feature-flags.ts`)
   — per-workspace/global flags + remote config in the `feature_flags` table;
   `evaluateFlags` resolves rollout % + permission-DSL targeting per caller;

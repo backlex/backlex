@@ -346,6 +346,12 @@ backlex items import posts posts.csv --format csv
 
 # Relevance search (fts / vector / hybrid, per the collection's capabilities)
 backlex items search posts -q "launch" --mode hybrid --limit 5
+
+# Incremental changefeed — what changed since a cursor (see docs/offline-sync.md).
+# --shape follows only a subset; rows that leave it come back as `_shape_exit`.
+backlex items changes posts --json
+backlex items changes tasks --shape '{"status":{"_eq":"open"}}' --follow --json
+backlex items changes tasks --since <cursor> --fields title,status
 ```
 
 ### `backlex backup`

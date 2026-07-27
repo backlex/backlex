@@ -19,6 +19,12 @@ export interface BatchOp {
   op: "create" | "update" | "delete";
   id?: string;
   data?: Record<string, unknown>;
+  /** Optimistic-concurrency precondition for this op alone — the `updatedAt`
+   *  the caller last saw. If the row has moved since, the op fails with
+   *  `CONFLICT` instead of last-write-winning over someone else's edit. This is
+   *  what lets an offline client flush a queue and be *told* which of its
+   *  writes raced, rather than silently clobbering. */
+  ifUnmodifiedSince?: string;
 }
 
 export interface BatchRowResult {
@@ -27,7 +33,7 @@ export interface BatchRowResult {
   ok: boolean;
   id?: string;
   data?: Record<string, unknown>;
-  error?: { code: string; message: string };
+  error?: { code: string; message: string; details?: unknown };
 }
 
 export interface BatchRunResult {
@@ -86,7 +92,13 @@ export const runBatch = async (params: RunBatchParams): Promise<BatchRunResult> 
     if (op.op === "create") return performCreate(env, { ...(op.data ?? {}) }, perm);
     if (op.op === "update") {
       if (!op.id) throw new AppError("VALIDATION", "update operation requires `id`");
-      return performUpdate(env, op.id, { ...(op.data ?? {}) }, perm);
+      return performUpdate(
+        env,
+        op.id,
+        { ...(op.data ?? {}) },
+        perm,
+        op.ifUnmodifiedSince !== undefined ? { ifUnmodifiedSince: op.ifUnmodifiedSince } : undefined,
+      );
     }
     if (!op.id) throw new AppError("VALIDATION", "delete operation requires `id`");
     return performDelete(env, op.id, perm);
@@ -144,7 +156,13 @@ export const runBatch = async (params: RunBatchParams): Promise<BatchRunResult> 
     } catch (e) {
       const error =
         e instanceof AppError
-          ? { code: e.code, message: e.message }
+          ? {
+              code: e.code,
+              message: e.message,
+              // A CONFLICT carries `currentUpdatedAt` — a sync client uses it to
+              // rebase its queued write without a second round trip.
+              ...(e.details !== undefined ? { details: e.details } : {}),
+            }
           : { code: "INTERNAL", message: e instanceof Error ? e.message : String(e) };
       results.push({ index: i, op: op.op, ok: false, id: op.id, error });
     }

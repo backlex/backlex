@@ -47,6 +47,7 @@ import { loadCollection } from "../items/collection-loader";
 import { ITEMS_AGG_FUNCS, runItemsAggregate } from "../items/aggregate";
 import { searchCollectionItems } from "../items/search";
 import { runBatch, type BatchOp } from "../items/batch";
+import { runChangefeed } from "../items/changefeed";
 import { runBulkUpdate } from "../items/bulk";
 import { hashIncomingFields, scrubHashFields } from "../items/hash-fields";
 import { getStagedRow, stagedDeleteSql, stagedUpsertSql, stagedViewOf } from "../items/staged";
@@ -1169,12 +1170,14 @@ const normalizeBatchOps = (raw: unknown): BatchOp[] => {
         extensions: { code: "VALIDATION" },
       });
     }
-    const e = o as { id?: unknown; data?: unknown };
+    const e = o as { id?: unknown; data?: unknown; ifUnmodifiedSince?: unknown };
     return {
       op,
       id: typeof e.id === "string" ? e.id : undefined,
       data:
         e.data && typeof e.data === "object" ? (e.data as Record<string, unknown>) : undefined,
+      ifUnmodifiedSince:
+        typeof e.ifUnmodifiedSince === "string" ? e.ifUnmodifiedSince : undefined,
     };
   });
 };
@@ -1375,5 +1378,46 @@ export const searchResolver = async (
       },
     );
     return data;
+  });
+};
+
+/**
+ * `changes<Collection>` — one page of the incremental changefeed, the GraphQL
+ * twin of REST `GET /api/items/{slug}/changes`. Delegates to the same
+ * `runChangefeed` service, so permission, tenant, draft and shape handling are
+ * literally the same code rather than a re-implementation that can drift.
+ */
+export const changesResolver = async (
+  gqlCtx: GqlCtx,
+  collection: CollectionRow,
+  args: {
+    since?: string | null;
+    limit?: number | null;
+    shape?: unknown;
+    fields?: string[] | null;
+  },
+) => {
+  const { ctx, auth, permCache } = gqlCtx;
+  const perm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
+  if (!perm.allowed) denyOrThrow(auth, collection.slug);
+  return surfaceAppError(async () => {
+    const loaded = await loadCollection(ctx, auth.tenantId ?? undefined, collection.slug);
+    const canSeeDrafts =
+      Boolean(perm.isAdmin) ||
+      (await resolvePermission(ctx, auth, collection.slug, "publish", permCache)).allowed ||
+      (await resolvePermission(ctx, auth, collection.slug, "update", permCache)).allowed;
+    return runChangefeed({
+      ctx,
+      auth,
+      collection: loaded,
+      perm: { whereSql: perm.whereSql, fields: perm.fields },
+      canSeeDrafts,
+      since: args.since ?? undefined,
+      limit: args.limit ?? undefined,
+      // The GraphQL arg is a JSON scalar; the service parses the same string
+      // form the REST query param carries.
+      shape: args.shape == null ? undefined : JSON.stringify(args.shape),
+      fields: args.fields?.length ? args.fields.join(",") : undefined,
+    });
   });
 };

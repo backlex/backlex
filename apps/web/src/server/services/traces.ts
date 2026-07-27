@@ -33,7 +33,28 @@ export interface SpanInput {
   tenantId: string | null;
   userId: string | null;
   errorCode?: string;
+  /** Set on item-list requests: the collection and the local columns the query
+   *  filtered / sorted on. Persisted into `attributes` so the advisor's
+   *  runtime rules can aggregate which columns real traffic needs indexed.
+   *  Column names only — filter values are never recorded. */
+  queryShape?: { collection: string; filters: string[]; sorts: string[] };
 }
+
+/** Build the span's `attributes` JSON, or null when there is nothing to store.
+ *  Kept small on purpose: one row is written per sampled request. */
+const spanAttributes = (
+  input: SpanInput,
+): Record<string, unknown> | null => {
+  const attrs: Record<string, unknown> = {};
+  if (input.errorCode) attrs.code = input.errorCode;
+  const shape = input.queryShape;
+  if (shape) {
+    attrs.collection = shape.collection;
+    if (shape.filters.length) attrs.filters = shape.filters;
+    if (shape.sorts.length) attrs.sorts = shape.sorts;
+  }
+  return Object.keys(attrs).length ? attrs : null;
+};
 
 /** Fire-and-forget persist of one server span. Never throws — telemetry must
  *  not break the request that produced it. */
@@ -56,7 +77,7 @@ export const recordSpan = async (
       status: input.status,
       userId: input.userId,
       durationMs: input.durationMs,
-      attributes: input.errorCode ? { code: input.errorCode } : null,
+      attributes: spanAttributes(input),
       startedAt: new Date(input.startedAt),
     });
   } catch (e) {

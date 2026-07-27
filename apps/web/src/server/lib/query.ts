@@ -435,6 +435,59 @@ export const parseQuery = (
   return { filter, sort, fields: fieldsList, expand, expandSubs, limit, offset, cursor, meta, search };
 };
 
+/** Which columns of the *local* table one parsed list query touches — the
+ *  input the advisor's traffic-derived index rules aggregate over. */
+export interface QueryShape {
+  /** Local column names appearing in the filter, deduped. */
+  filters: string[];
+  /** Local column names appearing in the sort, deduped, in sort order. */
+  sorts: string[];
+}
+
+/** Local column a filter/sort key refers to. A dotted key traverses a relation
+ *  (`customer_id.city`), and the column the *local* table has to look up — and
+ *  therefore the one an index would help — is the head segment. */
+const localColumnOf = (key: string): string => {
+  const head = key.split(".")[0];
+  return head ?? key;
+};
+
+/** Walk a condition tree, collecting the local column of every leaf key. */
+const collectFilterColumns = (cond: Condition, into: Set<string>): void => {
+  for (const [key, value] of Object.entries(cond)) {
+    if (key === "$and" || key === "$or") {
+      if (Array.isArray(value)) {
+        for (const sub of value as Condition[]) collectFilterColumns(sub, into);
+      }
+      continue;
+    }
+    if (key === "$not") {
+      if (value && typeof value === "object") {
+        collectFilterColumns(value as Condition, into);
+      }
+      continue;
+    }
+    into.add(localColumnOf(key));
+  }
+};
+
+/**
+ * Reduce a parsed query to the set of columns it filters and sorts on. Recorded
+ * as a span attribute by the list handler so the advisor can tell which columns
+ * real traffic actually needs indexed — as opposed to guessing from the schema.
+ * Names only: no values, so nothing user-supplied leaks into telemetry.
+ */
+export const queryShapeOf = (parsed: ParsedQuery): QueryShape => {
+  const filters = new Set<string>();
+  if (parsed.filter) collectFilterColumns(parsed.filter, filters);
+  const sorts: string[] = [];
+  for (const s of parsed.sort) {
+    const col = localColumnOf(s.field);
+    if (!sorts.includes(col)) sorts.push(col);
+  }
+  return { filters: [...filters], sorts };
+};
+
 /**
  * Compute the projection set: intersection of (user-requested fields ∪
  * system columns) with the permission allow-list. Returns null if no

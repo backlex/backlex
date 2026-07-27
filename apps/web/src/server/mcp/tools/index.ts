@@ -22,6 +22,7 @@ import { flowsTools } from "./flows";
 import { dashboardsTools } from "./dashboards";
 import { formsTools } from "./forms";
 import { usageTools } from "./usage";
+import { advisorTools } from "./advisor";
 import { backupsTools } from "./backups";
 import { agentsTools } from "./agents";
 import { jobsTools } from "./jobs";
@@ -71,6 +72,7 @@ export const allTools: McpTool[] = [
   ...dashboardsTools,
   ...formsTools,
   ...usageTools,
+  ...advisorTools,
   ...backupsTools,
   ...agentsTools,
   ...jobsTools,

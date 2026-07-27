@@ -535,10 +535,13 @@ function AdvisorSkeletonImpl() {
               <CardSkeleton key={i} lines={2} />
             ))}
           </div>
+          {/* "Last run" line + the runtime-window note under it. */}
           <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-3 w-52 max-w-full" />
         </div>
       </Card>
-      <TabStripSkeleton tabs={2} />
+      {/* Security · Performance · Insights */}
+      <TabStripSkeleton tabs={3} />
       <div className="flex flex-col gap-2.5">
         {Array.from({ length: 5 }).map((_, i) => (
           <CardSkeleton key={i} lines={2} />

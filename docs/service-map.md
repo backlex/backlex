@@ -161,9 +161,12 @@ guides; this list is everything else.
   the permission DSL. `collection-rename` is the only safe path to
   rename a collection (renames the physical table + updates
   permission rows in one transaction).
-- **Advisor** (`routes/advisor.ts`, `services/advisor.ts`) —
-  security / performance / config rule checks surfaced in the admin
-  UI with fix recommendations. See `docs/advisor.md`.
+- **Advisor** (`routes/advisor.ts`, `services/advisor.ts`,
+  `services/advisor-insights.ts`) — security / performance / config rule
+  checks surfaced in the admin UI with fix recommendations. Performance
+  covers both static schema-derived rules and traffic-derived ones computed
+  from recorded spans; `POST /apply` carries out a finding's remediation by
+  re-deriving the statement server-side. See `docs/advisor.md`.
 - **Panels** (`routes/panels.ts`) — dashboard widget definitions.
 - **Metrics** (`routes/metrics.ts`) — request / error counters +
   time-series rollups for the admin dashboard.

@@ -1,13 +1,28 @@
 /**
- * Advisor — automated lint over live schema, permissions, and config.
+ * Advisor — automated lint over live schema, permissions, config, and traffic.
  *
  * Every check here is computed from real DB / env state. No statistics are
- * fabricated: the security checks read permission / role / key rows directly,
- * and the performance checks are *static, schema-derived* — they introspect
- * which physical indexes exist (via dialect-specific catalog queries) and flag
- * collections whose hot query paths (owner_id filter, `-created_at` sort) have
- * no covering index. They do NOT use query-level statistics (seq-scan counts,
- * p95 latencies) — the app doesn't collect those, so no finding pretends to.
+ * fabricated. There are two families of performance check and they are
+ * deliberately distinct:
+ *
+ *  - **static, schema-derived** — introspect which physical indexes exist (via
+ *    dialect-specific catalog queries) and flag collections whose *implied* hot
+ *    paths (owner_id filter, `-created_at` sort) have no covering index. These
+ *    fire on a workspace with zero traffic, because they reason about the
+ *    schema alone.
+ *  - **runtime, traffic-derived** (v2) — aggregate the `spans` rows the request
+ *    middleware already writes (`services/advisor-insights.ts`) and flag what
+ *    actually happened: endpoints whose p95 is slow, endpoints returning 5xx,
+ *    and columns real list traffic filters/sorts on that have no index. Every
+ *    such finding quotes the observed numbers and the window they came from.
+ *
+ * When runtime evidence exists for a (table, column) pair, the traffic-backed
+ * finding wins and the static one is suppressed — one finding per real problem,
+ * and the more informative one survives.
+ *
+ * Findings that a server-built DDL statement can fix carry an `action`; see
+ * `routes/advisor.ts` for the apply path, which re-derives the statement rather
+ * than trusting anything the client sends.
  *
  * Keep this file pure-ish: it only reads from `ctx.db` + `ctx.env` and
  * returns plain findings + a derived score. The route (`routes/advisor.ts`)
@@ -15,15 +30,39 @@
  * table isn't migrated yet.
  */
 import { and, eq, isNull, sql } from "drizzle-orm";
+import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import type { Env } from "../env";
 import { loadEmailConfigRow } from "./email-config";
+import { recordActivity } from "./activity";
+import {
+  type RuntimeInsights,
+  collectionFromPath,
+  loadRuntimeInsights,
+} from "./advisor-insights";
 
 export type AdvisorKind = "security" | "performance";
 export type AdvisorLevel = "error" | "warn" | "info";
+
+/**
+ * A remediation the server can carry out itself. Only ever produced by the
+ * advisor — the apply endpoint re-runs the checks and matches by finding id, so
+ * the `sql` below is never taken from client input.
+ */
+export interface AdvisorAction {
+  type: "create-index";
+  /** Physical table the index lands on. */
+  table: string;
+  /** Index name the statement creates. */
+  indexName: string;
+  /** Indexed columns, in index order. */
+  columns: string[];
+  /** The exact statement the apply endpoint runs. */
+  sql: string;
+}
 
 export interface AdvisorCheck {
   id: string;
@@ -39,6 +78,19 @@ export interface AdvisorCheck {
   resource: string;
   /** Optional admin SPA route path to the relevant surface. */
   link?: string;
+  /** Present when the advisor can apply the fix itself. */
+  action?: AdvisorAction;
+  /** Observed numbers behind a traffic-derived finding. Absent on static and
+   *  security findings — its presence is what marks a finding as measured. */
+  evidence?: {
+    /** Requests observed in the window (spans seen, not extrapolated). */
+    requests: number;
+    windowDays: number;
+    p95?: number;
+    errorRate?: number;
+    /** Share of the collection's list traffic touching the column, 0..1. */
+    share?: number;
+  };
 }
 
 export interface AdvisorResult {
@@ -47,6 +99,15 @@ export interface AdvisorResult {
   score: number;
   /** ISO timestamp — one honest value per run. */
   generatedAt: string;
+  /** What the traffic-derived rules had to work with this run. `spanCount: 0`
+   *  means no runtime finding could fire, which is different from "no problems
+   *  found" — the UI says so rather than implying a clean bill of health. */
+  runtime: {
+    windowDays: number;
+    spanCount: number;
+    sampleRate: number;
+    truncated: boolean;
+  };
 }
 
 interface AdvisorCtx {
@@ -54,6 +115,31 @@ interface AdvisorCtx {
   dialect: "pg" | "sqlite";
   env: Env;
 }
+
+/** Thresholds for the traffic-derived rules. Deliberately conservative: a rule
+ *  that fires on three requests is noise, not advice. */
+const RUNTIME = {
+  /** Default aggregation window. */
+  windowDays: 7,
+  /** Minimum requests before latency/index advice is worth giving. */
+  minRequests: 20,
+  /** Minimum requests before error-rate advice is worth giving. */
+  minErrorRequests: 10,
+  /** p95 at or above this is "slow". */
+  slowP95Ms: 500,
+  /** p95 at or above this is escalated from warn to error. */
+  verySlowP95Ms: 2000,
+  /** 5xx share at or above this is a finding. */
+  errorRate: 0.05,
+  /** A filter column used on at least this share of a collection's list
+   *  traffic is worth an index. */
+  filterShare: 0.2,
+  /** Sorting names a column on essentially every list request (the default
+   *  sort counts), so the bar is higher than for filters. */
+  sortShare: 0.5,
+  /** Cap per rule so a broken deploy can't flood the page. */
+  maxFindingsPerRule: 5,
+} as const;
 
 const schemaFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema : sqlite.schema;
@@ -101,16 +187,21 @@ const runRaw = async <T>(
 };
 
 /**
- * Return the set of column names that have at least one index covering them
- * (as the index's leading column). Dialect-specific catalog introspection;
- * throws are caught by the caller so a check skips gracefully.
+ * Every index on the table as an ordered list of its column names.
+ * Dialect-specific catalog introspection; throws are caught by the caller so a
+ * check skips gracefully.
+ *
+ * The full column order matters: a managed collection's pagination index is
+ * `(tenant_id, created_at, id)`, and reading only the leading column would call
+ * `created_at` unindexed when in practice every tenant-scoped query pins
+ * `tenant_id` and uses that index. See {@link isColumnCovered}.
  */
-const indexedColumns = async (
+const tableIndexes = async (
   db: any,
   dialect: "pg" | "sqlite",
   table: string,
-): Promise<Set<string>> => {
-  const cols = new Set<string>();
+): Promise<string[][]> => {
+  const out: string[][] = [];
   const safe = table.replace(/"/g, '""');
   if (dialect === "sqlite") {
     // PRAGMA index_list → each index; PRAGMA index_info → its columns.
@@ -127,45 +218,161 @@ const indexedColumns = async (
         dialect,
         sql.raw(`PRAGMA index_info("${idxSafe}")`),
       );
-      for (const c of info) {
-        // Only the leading column of an index helps a single-column filter.
-        if (c && Number(c.seqno) === 0 && c.name) cols.add(c.name);
-      }
+      const cols = [...info]
+        .filter((c) => c?.name)
+        .sort((a, b) => Number(a.seqno) - Number(b.seqno))
+        .map((c) => c.name);
+      if (cols.length) out.push(cols);
     }
   } else {
-    // PG: pg_index → indkey[0] is the leading indexed column's attnum.
-    const rows = await runRaw<{ col: string }>(
+    // PG: `indkey` is the ordered attnum vector; unnest it WITH ORDINALITY so
+    // the index's column order survives the join.
+    const rows = await runRaw<{ idx: string; col: string; ord: number | string }>(
       db,
       dialect,
       sql.raw(
-        `SELECT a.attname AS col
+        `SELECT i.indexrelid::text AS idx, a.attname AS col, k.ord AS ord
            FROM pg_index i
            JOIN pg_class t ON t.oid = i.indrelid
            JOIN pg_namespace n ON n.oid = t.relnamespace
-           JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = i.indkey[0]
+           CROSS JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+           JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
           WHERE t.relname = '${safe.replace(/'/g, "''")}'
-            AND n.nspname = current_schema()`,
+            AND n.nspname = current_schema()
+          ORDER BY i.indexrelid, k.ord`,
       ),
     );
+    const byIndex = new Map<string, { ord: number; col: string }[]>();
     for (const r of rows) {
-      if (r?.col) cols.add(r.col);
+      if (!r?.idx || !r.col) continue;
+      const list = byIndex.get(r.idx) ?? [];
+      list.push({ ord: Number(r.ord), col: r.col });
+      byIndex.set(r.idx, list);
     }
+    for (const list of byIndex.values()) {
+      out.push(list.sort((a, b) => a.ord - b.ord).map((e) => e.col));
+    }
+  }
+  return out;
+};
+
+/**
+ * Columns every items query constrains by equality, so an index whose leading
+ * columns are all in this set still serves a filter/sort on a later column.
+ * `tenant_id` is applied by `tenantFilter` on every read of a managed
+ * collection — which is exactly why the `(tenant_id, created_at, id)`
+ * pagination index really does cover a `-created_at` sort.
+ */
+const ALWAYS_PINNED_COLUMNS = new Set(["tenant_id"]);
+
+/**
+ * True when some index can serve a filter/sort on `column`: either it leads an
+ * index, or every column before it in a composite index is pinned by equality
+ * on every query.
+ */
+const isColumnCovered = (indexes: string[][], column: string): boolean =>
+  indexes.some((cols) => {
+    const at = cols.indexOf(column);
+    if (at < 0) return false;
+    return cols.slice(0, at).every((c) => ALWAYS_PINNED_COLUMNS.has(c));
+  });
+
+/**
+ * The physical table's real column names. Used to gate index advice: a column
+ * name reaches us via a span attribute, and even though the list handler only
+ * ever records names it validated against the collection's field defs, an index
+ * finding is only emitted for a column the catalog confirms exists.
+ */
+const tableColumns = async (
+  db: any,
+  dialect: "pg" | "sqlite",
+  table: string,
+): Promise<Set<string>> => {
+  const cols = new Set<string>();
+  const safe = table.replace(/"/g, '""');
+  if (dialect === "sqlite") {
+    const rows = await runRaw<{ name: string }>(
+      db,
+      dialect,
+      sql.raw(`PRAGMA table_info("${safe}")`),
+    );
+    for (const r of rows) if (r?.name) cols.add(r.name);
+  } else {
+    const rows = await runRaw<{ column_name: string }>(
+      db,
+      dialect,
+      sql.raw(
+        `SELECT column_name
+           FROM information_schema.columns
+          WHERE table_name = '${safe.replace(/'/g, "''")}'
+            AND table_schema = current_schema()`,
+      ),
+    );
+    for (const r of rows) if (r?.column_name) cols.add(r.column_name);
   }
   return cols;
 };
+
+/** SQL identifiers the advisor is willing to interpolate. Both sides of an
+ *  index statement are already catalog-verified by the time we build it; this
+ *  is the belt-and-braces gate that keeps a DDL string from ever carrying
+ *  anything but a plain identifier. */
+const SAFE_IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/** Deterministic index name for a (table, columns) pair, kept inside PG's
+ *  63-byte identifier limit. Deterministic so re-running the advisor after an
+ *  apply produces the same name and the `IF NOT EXISTS` is a real no-op. */
+export const advisorIndexName = (table: string, columns: string[]): string => {
+  const base = `bx_idx_${table}_${columns.join("_")}`;
+  if (base.length <= 63) return base;
+  // Truncate, but keep the tail distinct by folding a cheap checksum in.
+  let hash = 0;
+  for (let i = 0; i < base.length; i++) hash = (hash * 31 + base.charCodeAt(i)) >>> 0;
+  return `${base.slice(0, 54)}_${hash.toString(36)}`;
+};
+
+/**
+ * Build the `create-index` action for a (table, columns) pair, or null when any
+ * identifier fails the safety gate. Both dialects support
+ * `CREATE INDEX IF NOT EXISTS`, so applying twice is harmless.
+ */
+const createIndexAction = (
+  table: string,
+  columns: string[],
+): AdvisorAction | null => {
+  if (!SAFE_IDENT.test(table)) return null;
+  if (columns.length === 0 || !columns.every((c) => SAFE_IDENT.test(c))) return null;
+  const indexName = advisorIndexName(table, columns);
+  const cols = columns.map((c) => `"${c}"`).join(", ");
+  return {
+    type: "create-index",
+    table,
+    indexName,
+    columns,
+    sql: `CREATE INDEX IF NOT EXISTS "${indexName}" ON "${table}" (${cols})`,
+  };
+};
+
+/** `12.4%` — share formatting shared by every traffic-derived body string. */
+const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
 
 /**
  * Run every advisor check against live state. Tenant-scoped: `tenantId`
  * narrows the `collections` / `roles` rows that are inspected so a workspace
  * only sees findings about its own schema and permissions.
+ *
+ * `opts.insights` lets a caller (the apply endpoint, tests) pass an already
+ * computed aggregation instead of paying for a second pass over `spans`.
  */
 export const runAdvisorChecks = async (
   ctx: AdvisorCtx,
   tenantId: string | null,
+  opts: { windowDays?: number; insights?: RuntimeInsights } = {},
 ): Promise<AdvisorResult> => {
   const s = schemaFor(ctx.dialect);
   const db = ctx.db as any;
   const out: AdvisorCheck[] = [];
+  const windowDays = opts.windowDays ?? RUNTIME.windowDays;
 
   // --- SECURITY ----------------------------------------------------------
 
@@ -450,12 +657,191 @@ export const runAdvisorChecks = async (
     // user_roles / roles table not migrated — skip.
   }
 
-  // --- PERFORMANCE -------------------------------------------------------
+  // --- PERFORMANCE (runtime, traffic-derived) ----------------------------
+  //
+  // Aggregate the spans the request middleware already writes and let what
+  // actually happened drive the advice. Every finding below quotes its observed
+  // numbers; when the window holds no spans, none of them fire at all.
+  const insights =
+    opts.insights ??
+    (await loadRuntimeInsights(
+      { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
+      tenantId,
+      { days: windowDays, limit: 200 },
+    ).catch(() => null));
+
+  // (table, column) pairs a traffic-derived index finding already covers. The
+  // static rules below skip these so one missing index is one finding — the
+  // measured version, not the inferred one.
+  const coveredIndexPairs = new Set<string>();
+  const sampleNote =
+    insights && insights.window.sampleRate < 1
+      ? ` Spans are sampled at ${pct(insights.window.sampleRate)} (TRACES_SAMPLE_RATE), so the counts describe a sample of real traffic.`
+      : "";
+
+  if (insights && insights.window.spanCount > 0) {
+    // Slow endpoints — p95 over the threshold with enough traffic to mean it.
+    try {
+      const slow = insights.endpoints
+        .filter(
+          (e) =>
+            e.requests >= RUNTIME.minRequests && e.p95 >= RUNTIME.slowP95Ms,
+        )
+        .slice(0, RUNTIME.maxFindingsPerRule);
+      for (const e of slow) {
+        const collection = collectionFromPath(e.path);
+        out.push({
+          id: `perf-slow-endpoint-${e.method}-${e.path}`,
+          kind: "performance",
+          level: e.p95 >= RUNTIME.verySlowP95Ms ? "error" : "warn",
+          rule: "slow-endpoint",
+          groupTitle: "Slow endpoints",
+          title: `${e.route} p95 is ${e.p95} ms`,
+          body: `Over the last ${windowDays} day(s), ${e.requests} recorded request(s) to ${e.route} had a p95 of ${e.p95} ms (p50 ${e.p50} ms, p99 ${e.p99} ms, max ${e.maxMs} ms).${sampleNote}`,
+          fix: collection
+            ? `Open the Traces panel filtered to ${e.path} to find the slow calls, then check the Insights tab for which columns ${collection} filters on and whether they are indexed.`
+            : `Open the Traces panel filtered to ${e.path} to inspect the slow calls span by span.`,
+          resource: `endpoint · ${e.route}`,
+          link: "/traces",
+          evidence: { requests: e.requests, windowDays, p95: e.p95 },
+        });
+      }
+    } catch {
+      // Aggregation shape unexpected — skip rather than emit a bad finding.
+    }
+
+    // Endpoints returning server errors.
+    try {
+      const failing = insights.endpoints
+        .filter(
+          (e) =>
+            e.requests >= RUNTIME.minErrorRequests &&
+            e.errorRate >= RUNTIME.errorRate,
+        )
+        .sort((a, b) => b.errorRate - a.errorRate)
+        .slice(0, RUNTIME.maxFindingsPerRule);
+      for (const e of failing) {
+        out.push({
+          id: `perf-endpoint-errors-${e.method}-${e.path}`,
+          kind: "performance",
+          level: "error",
+          rule: "endpoint-errors",
+          groupTitle: "Endpoints returning server errors",
+          title: `${e.route} returned 5xx on ${pct(e.errorRate)} of requests`,
+          body: `${e.serverErrors} of ${e.requests} recorded request(s) to ${e.route} in the last ${windowDays} day(s) returned a 5xx.${sampleNote}`,
+          fix: `Filter the Traces panel to ${e.path} with a minimum status of 500 — each failing span carries the error code the handler raised.`,
+          resource: `endpoint · ${e.route}`,
+          link: "/traces",
+          evidence: {
+            requests: e.requests,
+            windowDays,
+            errorRate: e.errorRate,
+          },
+        });
+      }
+    } catch {
+      // Skip silently.
+    }
+
+    // Traffic-derived missing indexes: columns real list traffic filters or
+    // sorts on that have no covering index on the physical table.
+    try {
+      const collRows = (await db
+        .select({
+          slug: s.collections.slug,
+          physicalTable: s.collections.physicalTable,
+          status: s.collections.status,
+        })
+        .from(s.collections)
+        .where(
+          tenantId ? eq(s.collections.tenantId, tenantId) : undefined,
+        )) as { slug: string; physicalTable: string; status: string }[];
+      const tableBySlug = new Map(
+        collRows
+          .filter((r) => r.status !== "archived")
+          .map((r) => [r.slug, r.physicalTable] as const),
+      );
+
+      let filterFindings = 0;
+      let sortFindings = 0;
+      for (const stat of insights.collections) {
+        if (stat.listRequests < RUNTIME.minRequests) continue;
+        const table = tableBySlug.get(stat.collection);
+        if (!table) continue;
+        let indexes: string[][];
+        let existing: Set<string>;
+        try {
+          indexes = await tableIndexes(db, ctx.dialect, table);
+          existing = await tableColumns(db, ctx.dialect, table);
+        } catch {
+          continue;
+        }
+
+        const emit = (
+          use: { column: string; requests: number; share: number },
+          kind: "filter" | "sort",
+        ): boolean => {
+          if (!existing.has(use.column)) return false;
+          if (isColumnCovered(indexes, use.column)) return false;
+          const action = createIndexAction(table, [use.column]);
+          if (!action) return false;
+          // One index serves both filtering and sorting on the same column —
+          // don't report the same gap twice.
+          const pair = `${table}.${use.column}`;
+          if (coveredIndexPairs.has(pair)) return false;
+          coveredIndexPairs.add(pair);
+          out.push({
+            id: `perf-hot-${kind}-index-${stat.collection}-${use.column}`,
+            kind: "performance",
+            level: "warn",
+            rule: kind === "filter" ? "hot-filter-index" : "hot-sort-index",
+            groupTitle:
+              kind === "filter"
+                ? "Frequently filtered columns with no index"
+                : "Frequently sorted columns with no index",
+            title: `${stat.collection} ${kind}s by ${use.column} on ${pct(use.share)} of list requests, with no index`,
+            body: `${use.requests} of ${stat.listRequests} recorded list request(s) on ${stat.collection} in the last ${windowDays} day(s) ${kind === "filter" ? "filter by" : "sort by"} ${use.column}, but ${table} has no index leading with that column — each of those requests scans the table (list p95 is ${stat.p95} ms).${sampleNote}`,
+            fix: `${action.sql};`,
+            resource: `${table} · ${use.column}`,
+            link: `/collections/${stat.collection}`,
+            action,
+            evidence: {
+              requests: use.requests,
+              windowDays,
+              share: use.share,
+              p95: stat.p95,
+            },
+          });
+          return true;
+        };
+
+        for (const use of stat.filters) {
+          if (filterFindings >= RUNTIME.maxFindingsPerRule) break;
+          if (use.share < RUNTIME.filterShare) continue;
+          if (use.requests < RUNTIME.minRequests) continue;
+          if (emit(use, "filter")) filterFindings++;
+        }
+        for (const use of stat.sorts) {
+          if (sortFindings >= RUNTIME.maxFindingsPerRule) break;
+          if (use.share < RUNTIME.sortShare) continue;
+          if (use.requests < RUNTIME.minRequests) continue;
+          if (emit(use, "sort")) sortFindings++;
+        }
+      }
+    } catch {
+      // collections table not migrated — skip the traffic-derived index rules.
+    }
+  }
+
+  // --- PERFORMANCE (static, schema-derived) ------------------------------
   //
   // Static, schema-derived index-presence checks. Each inspects the physical
   // table's index catalog and flags a missing index on a hot query path.
-  // Wrapped in try/catch so an introspection failure on either dialect skips
-  // the check rather than emitting an unbacked finding.
+  // These reason about the schema alone, so they still fire on a workspace
+  // with no recorded traffic; where runtime evidence already covered the same
+  // (table, column) pair above, the measured finding wins and this one is
+  // skipped. Wrapped in try/catch so an introspection failure on either
+  // dialect skips the check rather than emitting an unbacked finding.
   try {
     const perfCollRows = (await db
       .select({
@@ -484,9 +870,9 @@ export const runAdvisorChecks = async (
 
     for (const coll of perfCollRows) {
       if (coll.status === "archived") continue;
-      let cols: Set<string>;
+      let indexes: string[][];
       try {
-        cols = await indexedColumns(db, ctx.dialect, coll.physicalTable);
+        indexes = await tableIndexes(db, ctx.dialect, coll.physicalTable);
       } catch {
         // Index introspection failed for this table — skip it silently.
         continue;
@@ -495,7 +881,11 @@ export const runAdvisorChecks = async (
       // Owner-scoped reads filter by owner_id on every request.
       if (coll.ownerScoped) {
         const ownerCol = coll.ownerIdColumn ?? "owner_id";
-        if (!cols.has(ownerCol)) {
+        if (
+          !isColumnCovered(indexes, ownerCol) &&
+          !coveredIndexPairs.has(`${coll.physicalTable}.${ownerCol}`)
+        ) {
+          const action = createIndexAction(coll.physicalTable, [ownerCol]);
           out.push({
             id: `perf-owner-index-${coll.slug}`,
             kind: "performance",
@@ -504,9 +894,12 @@ export const runAdvisorChecks = async (
             groupTitle: "Owner-scoped collections missing an owner_id index",
             title: `${coll.slug} has no index on ${ownerCol}`,
             body: `${coll.slug} is owner-scoped — owner-scoped reads filter by ${ownerCol} on every request; an unindexed ${ownerCol} forces a full scan.`,
-            fix: `CREATE INDEX ON ${coll.physicalTable} (${ownerCol}); — or add the index through your migration tooling.`,
+            fix: action
+              ? `${action.sql};`
+              : `CREATE INDEX ON ${coll.physicalTable} (${ownerCol}); — or add the index through your migration tooling.`,
             resource: `${coll.physicalTable} · ${ownerCol}`,
             link: `/collections/${coll.slug}`,
+            ...(action ? { action } : {}),
           });
         }
       }
@@ -514,7 +907,11 @@ export const runAdvisorChecks = async (
       // The items query API default-sorts `-created_at`.
       if (coll.hasCreatedAt) {
         const createdCol = coll.createdAtColumn ?? "created_at";
-        if (!cols.has(createdCol)) {
+        if (
+          !isColumnCovered(indexes, createdCol) &&
+          !coveredIndexPairs.has(`${coll.physicalTable}.${createdCol}`)
+        ) {
+          const action = createIndexAction(coll.physicalTable, [createdCol]);
           out.push({
             id: `perf-created-index-${coll.slug}`,
             kind: "performance",
@@ -523,9 +920,12 @@ export const runAdvisorChecks = async (
             groupTitle: "Collections missing a created_at index",
             title: `${coll.slug} has no index covering ${createdCol}`,
             body: `The items query API default-sorts by -${createdCol}; without a covering index every list request sorts the full table.`,
-            fix: `CREATE INDEX ON ${coll.physicalTable} (${createdCol}); — or add the index through your migration tooling.`,
+            fix: action
+              ? `${action.sql};`
+              : `CREATE INDEX ON ${coll.physicalTable} (${createdCol}); — or add the index through your migration tooling.`,
             resource: `${coll.physicalTable} · ${createdCol}`,
             link: `/collections/${coll.slug}`,
+            ...(action ? { action } : {}),
           });
         }
       }
@@ -538,5 +938,77 @@ export const runAdvisorChecks = async (
     data: out,
     score: computeScore(out),
     generatedAt: new Date().toISOString(),
+    runtime: {
+      windowDays,
+      spanCount: insights?.window.spanCount ?? 0,
+      sampleRate: insights?.window.sampleRate ?? 1,
+      truncated: insights?.window.truncated ?? false,
+    },
   };
+};
+
+/**
+ * Carry out the remediation a finding carries. The ONE implementation behind
+ * REST `POST /api/admin/advisor/apply`, GraphQL `advisorApply`, the MCP
+ * `advisor-apply` tool, and `backlex advisor --apply` — so the "re-derive the
+ * statement, never trust the caller" rule can't be forgotten on one surface.
+ *
+ * The caller supplies only the finding **id**. The advisor is re-run here and
+ * the statement executed is the one the fresh finding carries, which means a
+ * fix can never be applied for a finding that no longer holds.
+ */
+export const applyAdvisorFix = async (
+  ctx: AdvisorCtx,
+  tenantId: string | null,
+  input: {
+    id: string;
+    windowDays?: number;
+    /** Recorded on the audit row so an applied index is attributable. */
+    userId?: string | null;
+    ip?: string | null;
+    userAgent?: string | null;
+  },
+): Promise<{ applied: AdvisorAction }> => {
+  const result = await runAdvisorChecks(ctx, tenantId, {
+    windowDays: input.windowDays,
+  });
+  const finding = result.data.find((f) => f.id === input.id);
+  if (!finding)
+    throw new AppError(
+      "NOT_FOUND",
+      "No current advisor finding with that id — re-run the advisor and try again.",
+    );
+  const action = finding.action;
+  if (!action)
+    throw new AppError(
+      "VALIDATION",
+      `Finding "${input.id}" has no automatic fix. Apply the suggested change manually.`,
+    );
+
+  try {
+    const stmt = sql.raw(action.sql);
+    if (ctx.dialect === "pg") await (ctx.db as any).execute(stmt);
+    else await (ctx.db as any).run(stmt);
+  } catch (e) {
+    throw new AppError(
+      "INTERNAL",
+      `Could not create the index: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+
+  await recordActivity(
+    { db: ctx.db as any, dialect: ctx.dialect },
+    {
+      userId: input.userId ?? null,
+      tenantId,
+      action: "advisor.apply",
+      collection: action.table,
+      itemId: action.indexName,
+      ip: input.ip ?? null,
+      userAgent: input.userAgent ?? null,
+      payload: { findingId: input.id, rule: finding.rule, sql: action.sql },
+    },
+  );
+
+  return { applied: action };
 };

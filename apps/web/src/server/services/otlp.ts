@@ -53,6 +53,17 @@ export const buildOtlpPayload = (input: SpanInput): Record<string, unknown> => {
   if (input.tenantId) attributes.push(strAttr("backlex.tenant_id", input.tenantId));
   if (input.userId) attributes.push(strAttr("backlex.user_id", input.userId));
   if (input.errorCode) attributes.push(strAttr("backlex.error_code", input.errorCode));
+  // Item-list query shape — same names the local `spans.attributes` carries, so
+  // an external collector can answer the same "which columns does traffic
+  // filter on?" question the built-in advisor does.
+  const shape = input.queryShape;
+  if (shape) {
+    attributes.push(strAttr("backlex.collection", shape.collection));
+    if (shape.filters.length)
+      attributes.push(strAttr("backlex.query.filters", shape.filters.join(",")));
+    if (shape.sorts.length)
+      attributes.push(strAttr("backlex.query.sorts", shape.sorts.join(",")));
+  }
   return {
     resourceSpans: [
       {

@@ -2013,6 +2013,29 @@ export interface ApiAdvisorCheck {
   resource: string;
   /** Optional admin SPA route path to the relevant surface. */
   link?: string;
+  /** Present when the advisor can apply the fix itself. */
+  action?: ApiAdvisorAction;
+  /** Observed numbers behind a traffic-derived finding. Its presence is what
+   *  marks a finding as measured rather than inferred from the schema. */
+  evidence?: {
+    /** Requests observed in the window — spans seen, never extrapolated. */
+    requests: number;
+    windowDays: number;
+    p95?: number;
+    errorRate?: number;
+    /** Share of the collection's list traffic touching the column, 0..1. */
+    share?: number;
+  };
+}
+
+/** A fix the server can carry out itself (`POST /api/admin/advisor/apply`). */
+export interface ApiAdvisorAction {
+  type: "create-index";
+  table: string;
+  indexName: string;
+  columns: string[];
+  /** Informational — the server re-derives it and never accepts one back. */
+  sql: string;
 }
 
 /** Advisor run result (`GET /api/admin/advisor`). */
@@ -2022,10 +2045,84 @@ export interface ApiAdvisorResult {
   score: number;
   /** ISO timestamp — one honest value per run. */
   generatedAt: string;
+  /** What the traffic-derived rules had to work with. `spanCount: 0` means no
+   *  runtime rule could fire — not the same as "no problems found". */
+  runtime: {
+    windowDays: number;
+    spanCount: number;
+    sampleRate: number;
+    truncated: boolean;
+  };
+}
+
+/** One endpoint's latency + error profile (`GET /api/admin/advisor/insights`). */
+export interface ApiAdvisorEndpointStat {
+  /** `GET /api/items/posts/:id`. */
+  route: string;
+  method: string;
+  path: string;
+  requests: number;
+  p50: number;
+  p95: number;
+  p99: number;
+  maxMs: number;
+  avgMs: number;
+  serverErrors: number;
+  clientErrors: number;
+  errorRate: number;
+}
+
+export interface ApiAdvisorColumnUse {
+  column: string;
+  requests: number;
+  /** Share of the collection's list requests touching this column, 0..1. */
+  share: number;
+}
+
+export interface ApiAdvisorCollectionStat {
+  collection: string;
+  listRequests: number;
+  p50: number;
+  p95: number;
+  filters: ApiAdvisorColumnUse[];
+  sorts: ApiAdvisorColumnUse[];
+}
+
+export interface ApiAdvisorInsights {
+  /** Slowest first (p95 desc, ties broken by traffic). */
+  endpoints: ApiAdvisorEndpointStat[];
+  /** Busiest first. */
+  collections: ApiAdvisorCollectionStat[];
+  window: {
+    from: number;
+    to: number;
+    days: number;
+    spanCount: number;
+    /** Start of the oldest span seen. Well after `from` means span retention,
+     *  not traffic, bounded the window. */
+    oldestSpanAt: number | null;
+    /** `TRACES_SAMPLE_RATE`. Below 1, the numbers describe a sample. */
+    sampleRate: number;
+    truncated: boolean;
+  };
 }
 
 export const advisorApi = {
-  list: () => api<ApiAdvisorResult>(`/api/admin/advisor`),
+  list: (days?: number) =>
+    api<ApiAdvisorResult>(
+      `/api/admin/advisor${days ? `?days=${days}` : ""}`,
+    ),
+  insights: (days?: number) =>
+    api<ApiAdvisorInsights>(
+      `/api/admin/advisor/insights${days ? `?days=${days}` : ""}`,
+    ),
+  /** Apply a finding's fix. Only the id goes over the wire — the server
+   *  re-runs the advisor and executes the statement it derives itself. */
+  apply: (id: string, days?: number) =>
+    api<{ ok: true; applied: ApiAdvisorAction }>(`/api/admin/advisor/apply`, {
+      method: "POST",
+      body: JSON.stringify(days ? { id, days } : { id }),
+    }),
 };
 
 export interface ApiTraceSummary {

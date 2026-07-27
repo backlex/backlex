@@ -147,6 +147,7 @@ netlify deploy --prod
 ```
 GET    /health
 *      /api/auth/**             better-auth (email, OAuth, magic-link, OTP, passkey)
+GET    /.well-known/jwks.json  public signing keys for app-plane access tokens
 GET    /api/api-keys            list
 POST   /api/api-keys            create — secret returned once
 DELETE /api/api-keys/:id        revoke

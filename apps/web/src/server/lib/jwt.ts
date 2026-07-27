@@ -1,19 +1,35 @@
 /**
- * Stateless access tokens (HS256 JWT) for workspace end-user ("app" plane)
- * sessions.
+ * Stateless access tokens for workspace end-user ("app" plane) sessions.
  *
  * The DB-backed `app_sessions` row stays the long-lived, revocable *refresh*
  * token; this JWT is the short-lived *access* token a native/mobile client
  * sends on every request so the hot path skips the `app_sessions` lookup.
  *
- * Hand-rolled on Web Crypto (HMAC-SHA256) — no dependency, identical on
- * Workers, Bun, Vercel and Netlify. Keyed off `AUTH_SECRET`, the same secret
- * better-auth and `lib/crypto` already use.
+ * Two signature modes, chosen by config:
+ *  - **HS256** (default) — keyed off `AUTH_SECRET`, the same secret better-auth
+ *    and `lib/crypto` already use. Only this server can verify.
+ *  - **ES256 / RS256** — when `AUTH_JWT_PRIVATE_KEY` is set (see `jwt-keys.ts`).
+ *    The public half is published at `/.well-known/jwks.json`, so any other
+ *    service can verify a backlex token locally without holding a secret that
+ *    would also let it mint one.
+ *
+ * Verification accepts both, always dispatching on the token's own `alg` header
+ * against the matching key type — a public key is never fed to HMAC (the classic
+ * algorithm-confusion forgery). HS256 stays live regardless because the internal
+ * agent-run token below is symmetric by design.
+ *
+ * Hand-rolled on Web Crypto — no dependency, identical on Workers, Bun, Vercel
+ * and Netlify.
  */
+
+import { algParams, type JwtKeyEnv, jwtKeyMaterial } from "./jwt-keys";
 
 /** Access-token lifetime. Short on purpose — revoking the refresh token
  *  (deleting the `app_sessions` row) takes full effect within this window. */
 export const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
+
+/** The env an access token is minted from / verified against. */
+export type JwtEnv = { AUTH_SECRET: string; APP_URL?: string } & JwtKeyEnv;
 
 export interface AccessTokenClaims {
   /** app_user id */
@@ -28,6 +44,9 @@ export interface AccessTokenClaims {
   email: string | null;
   /** token-type discriminator */
   typ: "access";
+  /** issuing instance (`APP_URL`), so an external verifier can pin the issuer.
+   *  Omitted when `APP_URL` isn't configured. */
+  iss?: string;
   /** issued-at (epoch seconds) */
   iat: number;
   /** expiry (epoch seconds) */
@@ -78,9 +97,10 @@ const importKey = (secret: string): Promise<CryptoKey> => {
 
 const HEADER = base64urlFromString(JSON.stringify({ alg: "HS256", typ: "JWT" }));
 
-/** Mint an access token for a workspace end-user session. */
+/** Mint an access token for a workspace end-user session. Signed with the
+ *  configured key pair when there is one, otherwise HS256 off `AUTH_SECRET`. */
 export const signAccessToken = async (
-  secret: string,
+  env: JwtEnv,
   claims: { sub: string; tid: string; sid: string; email: string | null },
   expiresInSeconds: number = ACCESS_TOKEN_TTL_SECONDS,
 ): Promise<{ token: string; expiresIn: number; expiresAt: number }> => {
@@ -93,13 +113,22 @@ export const signAccessToken = async (
     sid: claims.sid,
     email: claims.email,
     typ: "access",
+    ...(env.APP_URL ? { iss: env.APP_URL } : {}),
     iat,
     exp,
   };
-  const body = `${HEADER}.${base64urlFromString(JSON.stringify(payload))}`;
-  const key = await importKey(secret);
+  const { signing } = await jwtKeyMaterial(env);
+  const header = signing
+    ? base64urlFromString(
+        JSON.stringify({ alg: signing.alg, typ: "JWT", kid: signing.kid }),
+      )
+    : HEADER;
+  const body = `${header}.${base64urlFromString(JSON.stringify(payload))}`;
+  const signed = buf(enc.encode(body));
   const sig = new Uint8Array(
-    await crypto.subtle.sign("HMAC", key, buf(enc.encode(body))),
+    signing
+      ? await crypto.subtle.sign(algParams(signing.alg), signing.key, signed)
+      : await crypto.subtle.sign("HMAC", await importKey(env.AUTH_SECRET), signed),
   );
   return {
     token: `${body}.${base64urlFromBytes(sig)}`,
@@ -204,20 +233,38 @@ export const verifyAgentRunToken = async (
  * so callers can use it as a cheap "is this one of ours?" probe.
  */
 export const verifyAccessToken = async (
-  secret: string,
+  env: JwtEnv,
   token: string,
 ): Promise<AccessTokenClaims | null> => {
   const parts = token.split(".");
   if (parts.length !== 3) return null;
   const [headerPart, payloadPart, sigPart] = parts as [string, string, string];
   try {
-    const key = await importKey(secret);
-    const ok = await crypto.subtle.verify(
-      "HMAC",
-      key,
-      buf(base64urlToBytes(sigPart)),
-      buf(enc.encode(`${headerPart}.${payloadPart}`)),
-    );
+    const header = JSON.parse(dec.decode(base64urlToBytes(headerPart))) as {
+      alg?: unknown;
+      kid?: unknown;
+    };
+    const signed = buf(enc.encode(`${headerPart}.${payloadPart}`));
+    const sig = buf(base64urlToBytes(sigPart));
+    // Dispatch on the token's own `alg`, but only ever into the key type that
+    // algorithm belongs to. `none`, or an asymmetric alg pointed at the HMAC
+    // path, is rejected rather than "verified".
+    let ok: boolean;
+    if (header.alg === "HS256") {
+      ok = await crypto.subtle.verify(
+        "HMAC",
+        await importKey(env.AUTH_SECRET),
+        sig,
+        signed,
+      );
+    } else if (header.alg === "ES256" || header.alg === "RS256") {
+      if (typeof header.kid !== "string") return null;
+      const entry = (await jwtKeyMaterial(env)).verify.get(header.kid);
+      if (!entry || entry.alg !== header.alg) return null;
+      ok = await crypto.subtle.verify(algParams(entry.alg), entry.key, sig, signed);
+    } else {
+      return null;
+    }
     if (!ok) return null;
     const claims = JSON.parse(
       dec.decode(base64urlToBytes(payloadPart)),

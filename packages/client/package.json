@@ -28,6 +28,7 @@
     ".": "./src/index.ts",
     "./types": "./src/types.ts",
     "./webhook": "./src/webhook.ts",
+    "./token": "./src/token.ts",
     "./react": "./src/react.ts"
   },
   "files": [

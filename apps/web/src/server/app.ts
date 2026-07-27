@@ -52,6 +52,7 @@ import { integrationsRoutes } from "./routes/integrations";
 import { itemsRoutes } from "./routes/items";
 import { ldapAdminRoutes } from "./routes/ldap-admin";
 import { adminMcpRoutes, tenantMcpRoutes } from "./routes/mcp";
+import { jwksRoutes } from "./routes/jwks";
 import { mcpAuthorizeConsentGate, mcpOAuthWellKnownRoutes } from "./routes/mcp-oauth";
 import { meRoutes } from "./routes/me";
 import { metricsRoutes } from "./routes/metrics";
@@ -565,9 +566,11 @@ export const createApp = (env: Env) => {
   app.use("/api/uploads", tusHeaders);
   app.use("/api/uploads/*", tusHeaders);
 
-  app.use(
-    "*",
-    timed("cors", cors({
+  // `/.well-known/*` is skipped below: those documents (JWKS, OAuth metadata)
+  // are public and uncredentialed, and serve their own `ACAO: *` so ANY origin
+  // can read them. The credentialed policy here would overwrite that with the
+  // single allowed origin, which is exactly wrong for a discovery document.
+  const corsMw = timed("cors", cors({
       // Allow `APP_URL` always; allow any origin in `EXTRA_TRUSTED_ORIGINS`
       // or derived from a workspace's `auth_config.redirectUrls` (so a
       // customer's app on a different domain can call its workspace's auth
@@ -616,7 +619,9 @@ export const createApp = (env: Env) => {
         "Tus-Max-Size",
       ],
     }),
-  ),
+  );
+  app.use("*", async (c, next) =>
+    c.req.path.startsWith("/.well-known/") ? next() : corsMw(c, next),
   );
 
   app.use("*", timed("session", sessionMiddleware));
@@ -739,6 +744,7 @@ export const createApp = (env: Env) => {
   // (claude.ai custom connectors) fetch these from the origin root to find
   // the authorize/token/register endpoints under /api/auth/mcp/*.
   app.route("/.well-known", mcpOAuthWellKnownRoutes());
+  app.route("/.well-known", jwksRoutes());
   app.route("/api/me", meRoutes);
   app.route("/api/account", accountRoutes);
   // Workspace end-user auth (the "auth as a service" surface) — each tenant

@@ -9,6 +9,8 @@ export default defineConfig({
     index: "src/index.ts",
     types: "src/types.ts",
     webhook: "src/webhook.ts",
+    // `backlex/token` — local JWKS verification of app-plane access tokens.
+    token: "src/token.ts",
     // `backlex/react` — the useLiveQuery hook. React is an optional peer, kept
     // external so it's never bundled into the (otherwise zero-dependency) SDK.
     react: "src/react.ts",

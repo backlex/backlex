@@ -14,7 +14,7 @@ import { consumeAppUserInvite, findAppUserInvite } from "../services/app-user-in
 import { assignAppUserRoleByName, ensureSystemRoles } from "../services/seed";
 import { invalidateUserRoles } from "../services/permissions-cache";
 import { rateLimitOk } from "../lib/rate-limit";
-import { signAccessToken } from "../lib/jwt";
+import { type JwtEnv, signAccessToken } from "../lib/jwt";
 
 /**
  * Workspace end-user auth surface — the "auth as a service" router. Mounted
@@ -198,7 +198,7 @@ const issueAppSession = async (
  * stateless *access* token verified without a DB round-trip on every request.
  */
 const issueTokenPair = async (
-  ctx: { db: unknown; dialect: "pg" | "sqlite"; env: { AUTH_SECRET: string } },
+  ctx: { db: unknown; dialect: "pg" | "sqlite"; env: JwtEnv },
   args: AppSessionArgs & { email: string | null },
 ): Promise<{
   accessToken: string;
@@ -207,7 +207,7 @@ const issueTokenPair = async (
   refreshExpiresAt: Date;
 }> => {
   const session = await issueAppSession(ctx, args);
-  const access = await signAccessToken(ctx.env.AUTH_SECRET, {
+  const access = await signAccessToken(ctx.env, {
     sub: args.userId,
     tid: args.tenantId,
     sid: session.id,
@@ -726,7 +726,7 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
       throw new AppError("UNAUTHORIZED", "Invalid or expired refresh token");
     }
 
-    const access = await signAccessToken(ctx.env.AUTH_SECRET, {
+    const access = await signAccessToken(ctx.env, {
       sub: session.userId,
       tid: tenant.id,
       sid: session.id,

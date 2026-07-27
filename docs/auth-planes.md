@@ -392,13 +392,66 @@ App-plane sign-ins return a **token pair**: the long-lived, revocable
 The middleware accepts either shape on `Authorization: Bearer`
 (`apps/web/src/server/middleware/session.ts:177`):
 
-1. JWT first (fast path — verify with `AUTH_SECRET`, no DB hit);
+1. JWT first (fast path — verify with the signing key, no DB hit);
 2. opaque `app_sessions` lookup as fallback.
 
 The TTL is hardcoded because access-token revocation latency is a
 property of the design — making it env-tunable invites someone to set
 it to "24 hours" and accidentally turn revocation off. If you need a
 different window, edit the constant.
+
+### Key-pair signing + JWKS
+
+HS256 is fine while backlex is the only thing that reads its own tokens.
+The moment something else has to — an edge worker gating a route, a
+partner API, a second service behind the same login — a shared secret is
+the wrong tool: anything that can *verify* with it can also *mint* with
+it.
+
+Set `AUTH_JWT_PRIVATE_KEY` to a PKCS#8 PEM and access tokens are signed
+`ES256` (EC P-256) or `RS256` (RSA) instead, with the public half served
+at **`GET /.well-known/jwks.json`** — public, CORS-open, cached 5
+minutes:
+
+```bash
+openssl ecparam -name prime256v1 -genkey -noout \
+  | openssl pkcs8 -topk8 -nocrypt          # → AUTH_JWT_PRIVATE_KEY
+```
+
+The `kid` isn't configured: it's the RFC 7638 thumbprint of the public
+key, so it's stable per key and changes exactly when the key does. Tokens
+also carry `iss` (your `APP_URL`) so a verifier can pin the issuer.
+
+Verifying elsewhere — no secret, no round-trip per request:
+
+```ts
+import { createTokenVerifier } from "backlex/token";
+
+const verifier = createTokenVerifier({ url: "https://api.example.com" });
+const claims = await verifier.verify(bearerToken); // null when invalid
+```
+
+The verifier caches the JWKS (5 min default) and refetches when it meets
+an unknown `kid`, at most every 30s. It rejects HS256 tokens outright —
+a remote holder of that secret could mint tokens, which defeats the
+point.
+
+**Rollout is non-breaking.** Verification dispatches on the token's own
+`alg` into the matching key type (never a public key fed to HMAC — the
+classic confusion forgery), and HS256 stays accepted, so sessions minted
+before the switch keep working. HS256 can't be turned off anyway: the
+internal detached agent-run token is symmetric by design.
+
+**Rotation.** Put the new private key in `AUTH_JWT_PRIVATE_KEY` and the
+*old* public key (SPKI PEM) in `AUTH_JWT_PUBLIC_KEYS` — several may be
+concatenated. New tokens use the new key; outstanding ones still verify,
+here and for external verifiers reading the JWKS, until they expire (15
+min). Then drop the old key.
+
+A private key that is set but unparseable **throws** rather than falling
+back to HS256 — a silent downgrade would leave you believing tokens are
+asymmetric when they aren't. Instances with no key configured serve
+`{"keys": []}` (not a 404), so a client can detect the mode.
 
 Full reference (response shape, refresh endpoint, trade-offs):
 [API keys, access tokens, email & OAuth](/docs/api-keys-and-email/).

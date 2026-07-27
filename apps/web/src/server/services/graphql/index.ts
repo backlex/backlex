@@ -50,7 +50,9 @@ import {
 import { eq, } from "drizzle-orm";
 import {
   type FieldDef,
+  isKnownFieldType,
 } from "@backlex/db";
+import { log } from "../../lib/log";
 import type { Ctx } from "../../context";
 
 const singularize = (plural: string): string =>
@@ -338,7 +340,30 @@ export const getSchema = async (
   const hash = hashCollections(normalized);
   const hit = cached.get(tenantId);
   if (hit?.hash === hash) return hit.schema;
+  warnOnUnknownFieldTypes(normalized, tenantId);
   const schema = buildSchema(normalized);
   cached.set(tenantId, { hash, schema });
   return schema;
+};
+
+/**
+ * A field type this build doesn't recognise no longer breaks the schema — it
+ * degrades to opaque JSON (see `fieldGqlType`). But degrading silently means an
+ * operator never learns their metadata has rotted, so say so once per schema
+ * build. The schema is cached per tenant and keyed on the collections' contents,
+ * so this fires when the schema actually (re)builds, not per request.
+ */
+const warnOnUnknownFieldTypes = (collections: CollectionRow[], tenantId: string): void => {
+  const bad: string[] = [];
+  for (const c of collections) {
+    for (const f of c.fields ?? []) {
+      if (!isKnownFieldType(f.type)) bad.push(`${c.slug}.${f.name} (${String(f.type)})`);
+    }
+  }
+  if (bad.length === 0) return;
+  log.warn("graphql.unknown_field_type", {
+    tenantId,
+    fields: bad,
+    hint: "Written by an older build. Exposed as JSON; edit the collection to set a current type.",
+  });
 };

@@ -252,8 +252,16 @@ msgstr "{0} cols"
 msgid "{0} connected · {1} optional"
 msgstr "{0} connected · {1} optional"
 
+#. placeholder {0}: labelFor(provider)
+#. placeholder {1}: res.collections.conflicts.join(", ")
+#: src/client/admin/pages/payments.tsx
+msgid "{0} connected, but {1} already exist and aren't sync targets — rename them or that data won't sync."
+msgstr "{0} connected, but {1} already exist and aren't sync targets — rename them or that data won't sync."
+
 #. placeholder {0}: brandFor(kind).name
+#. placeholder {0}: labelFor(provider)
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "{0} connected."
 msgstr "{0} connected."
 
@@ -285,6 +293,11 @@ msgstr "{0} deleted."
 #: src/client/admin/pages/integrations.tsx
 msgid "{0} disconnected."
 msgstr "{0} disconnected."
+
+#. placeholder {0}: labelFor(row.provider)
+#: src/client/admin/pages/payments.tsx
+msgid "{0} disconnected. Synced rows were kept."
+msgstr "{0} disconnected. Synced rows were kept."
 
 #. placeholder {0}: c?.activeFlows ?? 0
 #. placeholder {1}: c?.pausedFlows ?? 0
@@ -2247,6 +2260,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/template-onboarding.tsx
@@ -2889,8 +2903,13 @@ msgstr "Confirm your password to begin"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Connect"
 msgstr "Connect"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Connect {label}"
+msgstr "Connect {label}"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Connect {name}"
@@ -2923,14 +2942,24 @@ msgstr "connected"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Connected"
 msgstr "Connected"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Connecting also creates the payment_customers, payment_subscriptions, payment_invoices and payment_transactions collections if they don't exist yet."
+msgstr "Connecting also creates the payment_customers, payment_subscriptions, payment_invoices and payment_transactions collections if they don't exist yet."
+
+#: src/client/admin/pages/payments.tsx
+#~ msgid "Connecting also creates the payment_customers, payment_subscriptions, payment_invoices and payments collections if they don't exist yet."
+#~ msgstr "Connecting also creates the payment_customers, payment_subscriptions, payment_invoices and payments collections if they don't exist yet."
 
 #: src/client/components/boot-screen.tsx
 msgid "Connecting to your workspace…"
 msgstr "Connecting to your workspace…"
 
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Connecting…"
 msgstr "Connecting…"
 
@@ -3100,6 +3129,10 @@ msgstr "Copy order:"
 msgid "Copy URL"
 msgstr "Copy URL"
 
+#: src/client/admin/pages/payments.tsx
+msgid "Copy webhook URL"
+msgstr "Copy webhook URL"
+
 #: src/client/components/mcp-key-modal.tsx
 msgid "Copying snippet"
 msgstr "Copying snippet"
@@ -3163,6 +3196,10 @@ msgstr "Could not revoke share link."
 #: src/client/admin/account-page.tsx
 msgid "Couldn't copy — select and copy them manually."
 msgstr "Couldn't copy — select and copy them manually."
+
+#: src/client/admin/pages/payments.tsx
+msgid "Couldn't copy — select the URL and copy it manually."
+msgstr "Couldn't copy — select the URL and copy it manually."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Couldn't load advisor findings"
@@ -3396,6 +3433,10 @@ msgstr "Creating…"
 #: src/client/admin/pages/integrations.tsx
 msgid "Credentials are encrypted at rest and never shown again."
 msgstr "Credentials are encrypted at rest and never shown again."
+
+#: src/client/admin/pages/payments.tsx
+msgid "Credentials are encrypted at rest and shown masked afterwards. You'll get a webhook URL to paste into the provider once this is saved."
+msgstr "Credentials are encrypted at rest and shown masked afterwards. You'll get a webhook URL to paste into the provider once this is saved."
 
 #: src/client/admin/pages/functions.tsx
 msgid "Cron expression"
@@ -3962,6 +4003,7 @@ msgid "Discard unsaved changes?"
 msgstr "Discard unsaved changes?"
 
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Disconnect"
 msgstr "Disconnect"
 
@@ -4751,6 +4793,7 @@ msgstr "Evaluates against current step context. Use <0>{{ var }}</0> for interpo
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Event"
 msgstr "Event"
@@ -6478,7 +6521,9 @@ msgid "Last error"
 msgstr "Last error"
 
 #. placeholder {0}: relativeTime(it.lastEventAt)
+#. placeholder {0}: relativeTime(row.lastEventAt)
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "last event {0}"
 msgstr "last event {0}"
 
@@ -6512,6 +6557,11 @@ msgstr "Last seen"
 #: src/client/admin/pages/forms.tsx
 msgid "Last submission"
 msgstr "Last submission"
+
+#. placeholder {0}: row.lastSyncError
+#: src/client/admin/pages/payments.tsx
+msgid "Last sync failed: {0}"
+msgstr "Last sync failed: {0}"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/overview.tsx
@@ -7169,6 +7219,10 @@ msgstr "Mint a public link that shows this record read-only — no sign-in requi
 msgid "Mints a new token; the current link stops working"
 msgstr "Mints a new token; the current link stops working"
 
+#: src/client/admin/pages/payments.tsx
+msgid "Mirror customers, subscriptions, invoices and payments from Stripe, Polar or Lemon Squeezy into your collections. Deliveries are signature-verified; credentials are encrypted at rest."
+msgstr "Mirror customers, subscriptions, invoices and payments from Stripe, Polar or Lemon Squeezy into your collections. Deliveries are signature-verified; credentials are encrypted at rest."
+
 #. placeholder {0}: data.filter((r) => locales.some((l) => !r[l])).length
 #: src/client/admin/parity/translations.tsx
 msgid "Missing ({0})"
@@ -7518,6 +7572,15 @@ msgstr "New template"
 msgid "New translation key"
 msgstr "New translation key"
 
+#: src/client/admin/pages/payments.tsx
+msgid "New URL"
+msgstr "New URL"
+
+#. placeholder {0}: labelFor(row.provider)
+#: src/client/admin/pages/payments.tsx
+msgid "New URL copied. Paste it into {0} — the old one is dead."
+msgstr "New URL copied. Paste it into {0} — the old one is dead."
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "New webhook"
 msgstr "New webhook"
@@ -7731,6 +7794,11 @@ msgstr "No DDL on the table."
 msgid "No default sort configured — list responses fall back to<0> -created_at</0> (newest first). Add one or more fields below to pin a different order."
 msgstr "No default sort configured — list responses fall back to<0> -created_at</0> (newest first). Add one or more fields below to pin a different order."
 
+#: src/client/admin/pages/payments.tsx
+msgid "no deliveries yet"
+msgstr "no deliveries yet"
+
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "No deliveries yet"
 msgstr "No deliveries yet"
@@ -8426,6 +8494,10 @@ msgstr "On submit"
 msgid "On update"
 msgstr "On update"
 
+#: src/client/admin/pages/payments.tsx
+msgid "Once a provider posts to the webhook URL above, every delivery shows up here with what it wrote."
+msgstr "Once a provider posts to the webhook URL above, every delivery shows up here with what it wrote."
+
 #: src/client/pages/api-keys.tsx
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 msgstr "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
@@ -8569,6 +8641,7 @@ msgstr "Ops bots — admin role required."
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "optional"
 msgstr "optional"
 
@@ -8841,6 +8914,11 @@ msgstr "Payload (JSON)"
 #: src/client/admin/pages/extensions.tsx
 msgid "Payload must be valid JSON."
 msgstr "Payload must be valid JSON."
+
+#: src/client/admin/pages/payments.tsx
+#: src/client/admin/ui.tsx
+msgid "Payments"
+msgstr "Payments"
 
 #: src/client/admin/pages/forms.tsx
 msgid "PDF"
@@ -9768,6 +9846,7 @@ msgid "Recall relevant past turns (needs an embedding provider)."
 msgstr "Recall relevant past turns (needs an embedding provider)."
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Received"
 msgstr "Received"
 
@@ -9780,6 +9859,7 @@ msgstr "Recent {0}"
 msgid "Recent activity"
 msgstr "Recent activity"
 
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Recent deliveries"
 msgstr "Recent deliveries"
@@ -9844,6 +9924,7 @@ msgstr "Refetch /api/openapi.json"
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/realtime.tsx
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/settings/index.tsx
@@ -10550,6 +10631,7 @@ msgstr "rows"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/usage.tsx
 msgid "Rows"
 msgstr "Rows"
@@ -12127,6 +12209,7 @@ msgstr "static panels render their config object verbatim — set it from the AP
 #: src/client/admin/items.tsx
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/traces.tsx
 #: src/client/admin/pages/users.tsx
@@ -12359,6 +12442,15 @@ msgstr "Suspend end-user"
 msgid "suspended"
 msgstr "suspended"
 
+#. placeholder {0}: entry.label
+#: src/client/admin/pages/payments.tsx
+msgid "Sync customers, subscriptions, invoices and payments from {0}."
+msgstr "Sync customers, subscriptions, invoices and payments from {0}."
+
+#: src/client/admin/pages/payments.tsx
+msgid "Sync now"
+msgstr "Sync now"
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Sync records to a Meilisearch index on data events."
 msgstr "Sync records to a Meilisearch index on data events."
@@ -12366,6 +12458,17 @@ msgstr "Sync records to a Meilisearch index on data events."
 #: src/client/admin/pages/integrations.tsx
 msgid "Sync records to an Algolia index on data events."
 msgstr "Sync records to an Algolia index on data events."
+
+#. placeholder {0}: res.error
+#: src/client/admin/pages/payments.tsx
+msgid "Sync stopped: {0}"
+msgstr "Sync stopped: {0}"
+
+#. placeholder {0}: res.written ?? 0
+#. placeholder {1}: labelFor(row.provider)
+#: src/client/admin/pages/payments.tsx
+msgid "Synced {0} records from {1}."
+msgstr "Synced {0} records from {1}."
 
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
@@ -13870,6 +13973,10 @@ msgstr "Webhook \"{0}\" created."
 msgid "Webhook \"{0}\" updated."
 msgstr "Webhook \"{0}\" updated."
 
+#: src/client/admin/pages/payments.tsx
+msgid "Webhook URL copied."
+msgstr "Webhook URL copied."
+
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/ui.tsx
 msgid "Webhooks"
@@ -14034,6 +14141,7 @@ msgstr "worker bindings"
 msgid "worker thread + RPC"
 msgstr "worker thread + RPC"
 
+#: src/client/admin/pages/payments.tsx
 #: src/client/components/confirm-action.tsx
 msgid "Working…"
 msgstr "Working…"

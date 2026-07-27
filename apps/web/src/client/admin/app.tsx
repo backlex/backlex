@@ -112,6 +112,7 @@ const FeatureFlagsPage = lazy(() => import("./pages/feature-flags").then((m) => 
 const FormsPage = lazy(() => import("./pages/forms").then((m) => ({ default: m.FormsPage })));
 const WebhooksPage = lazy(() => import("./pages/webhooks").then((m) => ({ default: m.WebhooksPage })));
 const IntegrationsPage = lazy(() => import("./pages/integrations").then((m) => ({ default: m.IntegrationsPage })));
+const PaymentsPage = lazy(() => import("./pages/payments").then((m) => ({ default: m.PaymentsPage })));
 const RealtimePage = lazy(() => import("./pages/realtime").then((m) => ({ default: m.RealtimePage })));
 const LogsPage = lazy(() => import("./pages/logs").then((m) => ({ default: m.LogsPage })));
 const TracesPage = lazy(() => import("./pages/traces").then((m) => ({ default: m.TracesPage })));
@@ -1072,6 +1073,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "forms" && <FormsPage pushToast={pushToast} setActiveNav={setActiveNav} />}
             {activeNav === "webhooks" && <WebhooksPage pushToast={pushToast} />}
             {activeNav === "integrations" && <IntegrationsPage pushToast={pushToast} />}
+            {activeNav === "payments" && <PaymentsPage pushToast={pushToast} />}
             {activeNav === "graphql" && <GraphqlPage />}
             {activeNav === "rest-explorer" && <RestExplorerPage />}
             {activeNav === "openapi" && <OpenApiExportPage />}

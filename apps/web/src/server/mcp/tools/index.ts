@@ -19,6 +19,7 @@ import { rolesTools } from "./roles";
 import { apiKeysTools } from "./api-keys";
 import { webhooksTools } from "./webhooks";
 import { flowsTools } from "./flows";
+import { paymentsTools } from "./payments";
 import { dashboardsTools } from "./dashboards";
 import { formsTools } from "./forms";
 import { usageTools } from "./usage";
@@ -69,6 +70,7 @@ export const allTools: McpTool[] = [
   ...apiKeysTools,
   ...webhooksTools,
   ...flowsTools,
+  ...paymentsTools,
   ...dashboardsTools,
   ...formsTools,
   ...usageTools,

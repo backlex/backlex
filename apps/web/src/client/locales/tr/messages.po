@@ -252,8 +252,16 @@ msgstr "{0} sütun"
 msgid "{0} connected · {1} optional"
 msgstr "{0} bağlı · {1} isteğe bağlı"
 
+#. placeholder {0}: labelFor(provider)
+#. placeholder {1}: res.collections.conflicts.join(", ")
+#: src/client/admin/pages/payments.tsx
+msgid "{0} connected, but {1} already exist and aren't sync targets — rename them or that data won't sync."
+msgstr "{0} bağlandı, ancak {1} zaten var ve eşitleme hedefi değil — yeniden adlandırın, yoksa o veri eşitlenmez."
+
 #. placeholder {0}: brandFor(kind).name
+#. placeholder {0}: labelFor(provider)
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "{0} connected."
 msgstr "{0} bağlandı."
 
@@ -285,6 +293,11 @@ msgstr "{0} silindi."
 #: src/client/admin/pages/integrations.tsx
 msgid "{0} disconnected."
 msgstr "{0} bağlantısı kesildi."
+
+#. placeholder {0}: labelFor(row.provider)
+#: src/client/admin/pages/payments.tsx
+msgid "{0} disconnected. Synced rows were kept."
+msgstr "{0} bağlantısı kesildi. Eşitlenen kayıtlar korundu."
 
 #. placeholder {0}: c?.activeFlows ?? 0
 #. placeholder {1}: c?.pausedFlows ?? 0
@@ -2247,6 +2260,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/template-onboarding.tsx
@@ -2889,8 +2903,13 @@ msgstr "Başlamak için şifrenizi onaylayın"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Connect"
 msgstr "Bağlantı"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Connect {label}"
+msgstr "{label} bağlantısı kur"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Connect {name}"
@@ -2923,14 +2942,24 @@ msgstr "bağlı"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Connected"
 msgstr "Bağlı"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Connecting also creates the payment_customers, payment_subscriptions, payment_invoices and payment_transactions collections if they don't exist yet."
+msgstr "Bağlantı kurulduğunda payment_customers, payment_subscriptions, payment_invoices ve payment_transactions koleksiyonları yoksa oluşturulur."
+
+#: src/client/admin/pages/payments.tsx
+#~ msgid "Connecting also creates the payment_customers, payment_subscriptions, payment_invoices and payments collections if they don't exist yet."
+#~ msgstr "Bağlantı kurulduğunda payment_customers, payment_subscriptions, payment_invoices ve payments koleksiyonları yoksa oluşturulur."
 
 #: src/client/components/boot-screen.tsx
 msgid "Connecting to your workspace…"
 msgstr "Çalışma alanınıza bağlanılıyor…"
 
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Connecting…"
 msgstr "Bağlanıyor…"
 
@@ -3100,6 +3129,10 @@ msgstr "Kopyalama sırası:"
 msgid "Copy URL"
 msgstr "URL'yi kopyala"
 
+#: src/client/admin/pages/payments.tsx
+msgid "Copy webhook URL"
+msgstr "Webhook URL'sini kopyala"
+
 #: src/client/components/mcp-key-modal.tsx
 msgid "Copying snippet"
 msgstr "Snippet kopyalanıyor"
@@ -3163,6 +3196,10 @@ msgstr "Paylaşım bağlantısı iptal edilemedi."
 #: src/client/admin/account-page.tsx
 msgid "Couldn't copy — select and copy them manually."
 msgstr "Kopyalanamadı — elle seçip kopyalayın."
+
+#: src/client/admin/pages/payments.tsx
+msgid "Couldn't copy — select the URL and copy it manually."
+msgstr "Kopyalanamadı — URL'yi seçip elle kopyalayın."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Couldn't load advisor findings"
@@ -3396,6 +3433,10 @@ msgstr "Oluşturuluyor…"
 #: src/client/admin/pages/integrations.tsx
 msgid "Credentials are encrypted at rest and never shown again."
 msgstr "Kimlik bilgileri beklemede şifrelenir ve bir daha gösterilmez."
+
+#: src/client/admin/pages/payments.tsx
+msgid "Credentials are encrypted at rest and shown masked afterwards. You'll get a webhook URL to paste into the provider once this is saved."
+msgstr "Kimlik bilgileri şifrelenerek saklanır ve sonrasında maskelenmiş gösterilir. Kaydettiğinizde sağlayıcıya yapıştıracağınız bir webhook URL'si verilir."
 
 #: src/client/admin/pages/functions.tsx
 msgid "Cron expression"
@@ -3962,6 +4003,7 @@ msgid "Discard unsaved changes?"
 msgstr "Kaydedilmemiş değişiklikler atılsın mı?"
 
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Disconnect"
 msgstr "Bağlantıyı kes"
 
@@ -4751,6 +4793,7 @@ msgstr "Mevcut adım bağlamına göre değerlendirir. Enterpolasyon için <0>{{
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Event"
 msgstr "Olay"
@@ -6478,7 +6521,9 @@ msgid "Last error"
 msgstr "Son hata"
 
 #. placeholder {0}: relativeTime(it.lastEventAt)
+#. placeholder {0}: relativeTime(row.lastEventAt)
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "last event {0}"
 msgstr "son olay {0}"
 
@@ -6512,6 +6557,11 @@ msgstr "Son görülme"
 #: src/client/admin/pages/forms.tsx
 msgid "Last submission"
 msgstr "Son gönderim"
+
+#. placeholder {0}: row.lastSyncError
+#: src/client/admin/pages/payments.tsx
+msgid "Last sync failed: {0}"
+msgstr "Son eşitleme başarısız: {0}"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/overview.tsx
@@ -7169,6 +7219,10 @@ msgstr "Bu kaydı salt okunur olarak gösteren bir genel bağlantı oluşturun �
 msgid "Mints a new token; the current link stops working"
 msgstr "Yeni bir token üretir; mevcut bağlantı çalışmayı durdurur"
 
+#: src/client/admin/pages/payments.tsx
+msgid "Mirror customers, subscriptions, invoices and payments from Stripe, Polar or Lemon Squeezy into your collections. Deliveries are signature-verified; credentials are encrypted at rest."
+msgstr "Stripe, Polar veya Lemon Squeezy'deki müşterileri, abonelikleri, faturaları ve ödemeleri koleksiyonlarınıza yansıtın. Gelen teslimatlar imzayla doğrulanır; kimlik bilgileri şifrelenerek saklanır."
+
 #. placeholder {0}: data.filter((r) => locales.some((l) => !r[l])).length
 #: src/client/admin/parity/translations.tsx
 msgid "Missing ({0})"
@@ -7518,6 +7572,15 @@ msgstr "Yeni şablon"
 msgid "New translation key"
 msgstr "Yeni çeviri anahtarı"
 
+#: src/client/admin/pages/payments.tsx
+msgid "New URL"
+msgstr "Yeni URL"
+
+#. placeholder {0}: labelFor(row.provider)
+#: src/client/admin/pages/payments.tsx
+msgid "New URL copied. Paste it into {0} — the old one is dead."
+msgstr "Yeni URL kopyalandı. {0} paneline yapıştırın — eskisi artık çalışmıyor."
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "New webhook"
 msgstr "Yeni webhook"
@@ -7731,6 +7794,11 @@ msgstr "Tabloda DDL yok."
 msgid "No default sort configured — list responses fall back to<0> -created_at</0> (newest first). Add one or more fields below to pin a different order."
 msgstr "Varsayılan sıralama yapılandırılmamış — liste yanıtları<0> -created_at</0>'e (en yeni önce) geri döner. Farklı bir sıra sabitlemek için aşağıya bir veya daha fazla alan ekleyin."
 
+#: src/client/admin/pages/payments.tsx
+msgid "no deliveries yet"
+msgstr "henüz teslimat yok"
+
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "No deliveries yet"
 msgstr "Henüz teslimat yok"
@@ -8426,6 +8494,10 @@ msgstr "Gönderimde"
 msgid "On update"
 msgstr "Güncellendiğinde"
 
+#: src/client/admin/pages/payments.tsx
+msgid "Once a provider posts to the webhook URL above, every delivery shows up here with what it wrote."
+msgstr "Bir sağlayıcı yukarıdaki webhook URL'sine gönderim yaptığında, her teslimat neyi yazdığıyla birlikte burada görünür."
+
 #: src/client/pages/api-keys.tsx
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 msgstr "Bu sayfadan ayrıldığınızda gizli anahtar bir daha alınamaz — yalnızca iptal edilebilir. MCP erişimini istediğiniz zaman anahtarın Connect MCP panelinden ayarlayabilirsiniz."
@@ -8569,6 +8641,7 @@ msgstr "Operasyon botları — yönetici rolü gerekli."
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "optional"
 msgstr "isteğe bağlı"
 
@@ -8841,6 +8914,11 @@ msgstr "Yük (JSON)"
 #: src/client/admin/pages/extensions.tsx
 msgid "Payload must be valid JSON."
 msgstr "Yük geçerli JSON olmalıdır."
+
+#: src/client/admin/pages/payments.tsx
+#: src/client/admin/ui.tsx
+msgid "Payments"
+msgstr "Ödemeler"
 
 #: src/client/admin/pages/forms.tsx
 msgid "PDF"
@@ -9768,6 +9846,7 @@ msgid "Recall relevant past turns (needs an embedding provider)."
 msgstr "İlgili geçmiş konuşmaları hatırlar (bir embedding sağlayıcısı gerekir)."
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Received"
 msgstr "Alındı"
 
@@ -9780,6 +9859,7 @@ msgstr "Son {0}"
 msgid "Recent activity"
 msgstr "Son etkinlik"
 
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Recent deliveries"
 msgstr "Son teslimatlar"
@@ -9844,6 +9924,7 @@ msgstr "/api/openapi.json yeniden çek"
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/realtime.tsx
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/settings/index.tsx
@@ -10550,6 +10631,7 @@ msgstr "satır"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/usage.tsx
 msgid "Rows"
 msgstr "Satırlar"
@@ -12127,6 +12209,7 @@ msgstr "statik paneller yapılandırma nesnelerini aynen işler — panel oluşt
 #: src/client/admin/items.tsx
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/traces.tsx
 #: src/client/admin/pages/users.tsx
@@ -12359,6 +12442,15 @@ msgstr "Son kullanıcıyı askıya al"
 msgid "suspended"
 msgstr "askıya alındı"
 
+#. placeholder {0}: entry.label
+#: src/client/admin/pages/payments.tsx
+msgid "Sync customers, subscriptions, invoices and payments from {0}."
+msgstr "{0} üzerindeki müşterileri, abonelikleri, faturaları ve ödemeleri eşitleyin."
+
+#: src/client/admin/pages/payments.tsx
+msgid "Sync now"
+msgstr "Şimdi eşitle"
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Sync records to a Meilisearch index on data events."
 msgstr "Veri olaylarında kayıtları bir Meilisearch dizinine senkronla."
@@ -12366,6 +12458,17 @@ msgstr "Veri olaylarında kayıtları bir Meilisearch dizinine senkronla."
 #: src/client/admin/pages/integrations.tsx
 msgid "Sync records to an Algolia index on data events."
 msgstr "Veri olaylarında kayıtları bir Algolia dizinine senkronla."
+
+#. placeholder {0}: res.error
+#: src/client/admin/pages/payments.tsx
+msgid "Sync stopped: {0}"
+msgstr "Eşitleme durdu: {0}"
+
+#. placeholder {0}: res.written ?? 0
+#. placeholder {1}: labelFor(row.provider)
+#: src/client/admin/pages/payments.tsx
+msgid "Synced {0} records from {1}."
+msgstr "{1} kaynağından {0} kayıt eşitlendi."
 
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
@@ -13870,6 +13973,10 @@ msgstr "\"{0}\" webhook'u oluşturuldu."
 msgid "Webhook \"{0}\" updated."
 msgstr "\"{0}\" webhook'u güncellendi."
 
+#: src/client/admin/pages/payments.tsx
+msgid "Webhook URL copied."
+msgstr "Webhook URL'si kopyalandı."
+
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/ui.tsx
 msgid "Webhooks"
@@ -14034,6 +14141,7 @@ msgstr "worker bağlamaları"
 msgid "worker thread + RPC"
 msgstr "worker thread + RPC"
 
+#: src/client/admin/pages/payments.tsx
 #: src/client/components/confirm-action.tsx
 msgid "Working…"
 msgstr "İşleniyor…"

@@ -2,12 +2,14 @@ import { and, desc, eq, lte, or, sql } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AuthSubject } from "@backlex/core";
+import type { PaymentRecordKind } from "@backlex/integrations/payments";
 import type { Ctx } from "../context";
 import type { Env } from "../env";
 import { buildContext } from "../context";
 import { findByName } from "./functions";
 import { runFunction } from "./sandbox";
 import { deliverWebhookById } from "./webhooks";
+import { reconcileProvider } from "./payments";
 import { publishEvent } from "./events";
 import { recordActivity } from "./activity";
 
@@ -15,8 +17,13 @@ const SYSTEM_AUTH: AuthSubject = { userId: null, email: null, roles: [] };
 
 /** Built-in handler discriminators. `function` runs a named user function in the
  *  sandbox; `webhook.deliver` re-attempts a single outbound webhook (so webhooks
- *  inherit the queue's retry + dead-letter). */
-export type JobType = "function" | "webhook.deliver" | "agent.turn";
+ *  inherit the queue's retry + dead-letter); `payments.reconcile` walks a
+ *  payment provider's API and upserts what it finds. */
+export type JobType =
+  | "function"
+  | "webhook.deliver"
+  | "agent.turn"
+  | "payments.reconcile";
 
 export type JobStatus =
   | "pending"
@@ -256,6 +263,29 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
       throw new Error(`webhook responded ${out.status}${out.error ? `: ${out.error}` : ""}`);
     }
     return { status: out.status };
+  }
+  if (job.type === "payments.reconcile") {
+    const p = job.payload as {
+      providerId?: string;
+      kinds?: PaymentRecordKind[];
+      maxPages?: number;
+      resume?: boolean;
+    };
+    if (!p.providerId) throw new Error("payments.reconcile job missing payload.providerId");
+    if (!job.tenantId) throw new Error("payments.reconcile job missing tenantId");
+    const out = await reconcileProvider(ctx, job.tenantId, {
+      providerId: p.providerId,
+      kinds: p.kinds,
+      maxPages: p.maxPages,
+      // A queued reconcile always resumes: the scheduled sweep runs it
+      // repeatedly, and restarting from the top each night would re-walk the
+      // whole account for nothing.
+      resume: p.resume ?? true,
+    });
+    // A provider-side failure is thrown so the queue retries with backoff
+    // rather than recording a silent success.
+    if (out.error) throw new Error(`reconcile failed: ${out.error}`);
+    return out;
   }
   if (job.type === "agent.turn") {
     // An agent turn re-enters the API to call its tools, so it needs the Hono

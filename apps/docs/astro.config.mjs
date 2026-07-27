@@ -118,6 +118,7 @@ export default defineConfig({
             { slug: "sms-messaging" },
             { slug: "jobs" },
             { slug: "flows" },
+            { slug: "payments" },
             { slug: "agents" },
             { slug: "feature-flags" },
             { slug: "embedded-dashboards" },

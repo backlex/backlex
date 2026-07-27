@@ -17,6 +17,7 @@ import { runUsage } from "../src/usage";
 import { runSchema } from "../src/schema";
 import { runAgents } from "../src/agents";
 import { runTemplates } from "../src/templates";
+import { runPayments } from "../src/payments";
 import { runWebhooks } from "../src/webhooks";
 import { runJobs } from "../src/jobs";
 import { runMessaging } from "../src/messaging";
@@ -115,6 +116,10 @@ Usage:
 
   backlex webhooks <list|create|test|deliveries|retry|resume|delete>
       Outbound webhooks + delivery ops. \`resume\` re-enables an auto-disabled hook.
+
+  backlex payments <catalog|list|connect|sync|events|rotate-token|provision|disconnect>
+      Stripe / Polar / Lemon Squeezy. \`connect\` also provisions the four sync
+      collections; \`sync\` pulls history back from the provider API.
 
   backlex jobs <list|get|retry|cancel|remove|enqueue>
       Durable background job queue.
@@ -267,6 +272,10 @@ const run = async () => {
     case "webhooks":
     case "webhook":
       await runWebhooks(rest);
+      return;
+    case "payments":
+    case "payment":
+      await runPayments(rest);
       return;
     case "jobs":
     case "job":

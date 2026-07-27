@@ -16,6 +16,7 @@ const LOADERS: Record<string, () => Promise<unknown>> = {
   "feature-flags": () => import("../pages/feature-flags"),
   webhooks: () => import("../pages/webhooks"),
   integrations: () => import("../pages/integrations"),
+  payments: () => import("../pages/payments"),
   realtime: () => import("../pages/realtime"),
   logs: () => import("../pages/logs"),
   advisor: () => import("../pages/advisor"),

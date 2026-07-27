@@ -17,6 +17,7 @@ import { storageRoutes } from "./storage";
 import { vectorRoutes } from "./vector";
 import { realtimeRoutes } from "./realtime";
 import { webhooksRoutes } from "./webhooks";
+import { paymentsRoutes } from "./payments";
 import { commentsRoutes } from "./comments";
 import { notificationsRoutes } from "./notifications";
 import { flowsRoutes } from "./flows";
@@ -60,6 +61,7 @@ export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/vector", vectorRoutes as unknown as OpenAPIHono<any>],
   ["/api/realtime", realtimeRoutes as unknown as OpenAPIHono<any>],
   ["/api/webhooks", webhooksRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/payments", paymentsRoutes as unknown as OpenAPIHono<any>],
   ["/api/comments", commentsRoutes as unknown as OpenAPIHono<any>],
   ["/api/notifications", notificationsRoutes as unknown as OpenAPIHono<any>],
   ["/api/flows", flowsRoutes as unknown as OpenAPIHono<any>],

@@ -1964,3 +1964,62 @@ export const integrations = sqliteTable(
   },
   (t) => [index("integrations_tenant_idx").on(t.tenantId)],
 );
+
+/**
+ * A connected payment provider (Stripe / Polar / Lemon Squeezy). Mirror of the
+ * PG table. Distinct from `integrations` because the direction of travel is the
+ * opposite: the provider pushes signed webhooks at us and we pull its objects
+ * back to reconcile. `config` holds the API key + webhook secret encrypted at
+ * rest; `webhook_token` is the public path segment of the receive URL and is
+ * rotatable without touching the provider credentials.
+ */
+export const paymentProviders = sqliteTable(
+  "payment_providers",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    provider: text("provider").notNull(),
+    config: text("config", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
+    status: text("status").notNull().default("connected"),
+    webhookToken: text("webhook_token").notNull(),
+    /** Cursor per record kind, so an interrupted reconcile resumes. */
+    syncCursor: text("sync_cursor", { mode: "json" }).$type<Record<string, string | null> | null>(),
+    lastEventAt: integer("last_event_at", { mode: "timestamp_ms" }),
+    lastSyncAt: integer("last_sync_at", { mode: "timestamp_ms" }),
+    lastSyncError: text("last_sync_error"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("payment_providers_tenant_provider_idx").on(t.tenantId, t.provider),
+    uniqueIndex("payment_providers_token_idx").on(t.webhookToken),
+  ],
+);
+
+/**
+ * Every webhook delivery a provider made, verified or not. The unique
+ * (provider_id, external_id) index is the replay guard: a retried delivery
+ * hits the conflict and is answered 200 without re-applying its rows.
+ */
+export const paymentEvents = sqliteTable(
+  "payment_events",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    providerId: text("provider_id").notNull(),
+    /** The provider's own event id — the dedupe key. */
+    externalId: text("external_id").notNull(),
+    type: text("type").notNull().default(""),
+    /** received | processed | skipped | failed */
+    status: text("status").notNull().default("received"),
+    recordCount: integer("record_count").notNull().default(0),
+    error: text("error"),
+    payload: text("payload", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    createdAt: ts("created_at"),
+    processedAt: integer("processed_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    uniqueIndex("payment_events_dedupe_idx").on(t.providerId, t.externalId),
+    index("payment_events_tenant_created_idx").on(t.tenantId, t.createdAt),
+  ],
+);

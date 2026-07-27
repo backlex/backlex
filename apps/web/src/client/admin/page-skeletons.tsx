@@ -291,6 +291,48 @@ function UsageSkeletonImpl() {
   );
 }
 
+/** Analytics page: header (window select + ingest key + refresh), the tab
+ *  strip, 2×2→4-up stat tiles, the per-day chart card, then the three
+ *  top-N breakdown cards. Mirrors the Overview tab, the default landing. */
+function AnalyticsSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-[18px]">
+      <HeaderSkeleton actions={3} />
+      <div className="flex items-center gap-1.5">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-9 w-[92px]" />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i} className="gap-2 px-[15px] py-3.5">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-7 w-16" />
+            <Skeleton className="h-3 w-20" />
+          </Card>
+        ))}
+      </div>
+      <Card className="gap-2 px-4 py-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-3 w-28" />
+        </div>
+        <Skeleton className="h-[120px] w-full" />
+      </Card>
+      <div className="grid gap-3 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i} className="gap-2 px-4 py-3.5">
+            <Skeleton className="h-3 w-24" />
+            {Array.from({ length: 5 }).map((__, j) => (
+              <Skeleton key={j} className="h-6 w-full" />
+            ))}
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function LogsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-[18px]">
@@ -924,6 +966,7 @@ export const OverviewSkeleton = withSkeletonDelay(OverviewSkeletonImpl);
 export const AskAiSkeleton = withSkeletonDelay(AskAiSkeletonImpl);
 export const LogsSkeleton = withSkeletonDelay(LogsSkeletonImpl);
 export const UsageSkeleton = withSkeletonDelay(UsageSkeletonImpl);
+export const AnalyticsSkeleton = withSkeletonDelay(AnalyticsSkeletonImpl);
 export const DatabaseSkeleton = withSkeletonDelay(DatabaseSkeletonImpl);
 export const FlowsSkeleton = withSkeletonDelay(FlowsSkeletonImpl);
 export const AgentsSkeleton = withSkeletonDelay(AgentsSkeletonImpl);
@@ -1007,6 +1050,8 @@ export function PageSkeleton({ nav }: { nav: string }) {
       return <LogsSkeleton />;
     case "usage":
       return <UsageSkeleton />;
+    case "analytics":
+      return <AnalyticsSkeleton />;
     case "advisor":
       return <AdvisorSkeleton />;
     case "schema-graph":

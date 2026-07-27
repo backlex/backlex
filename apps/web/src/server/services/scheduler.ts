@@ -28,6 +28,7 @@ import { sweepStaleFormUploads } from "./form-uploads";
 import { publishDueItems, unpublishDueItems } from "./items/scheduled-publish";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 import { pruneOldSpans } from "./traces";
+import { pruneAnalyticsEvents, pruneErrorEvents } from "./analytics";
 import { maybeRunScheduledBackups } from "./backup";
 import { runScheduledSnapshots } from "./schema-versions";
 import { processMigrationRuns } from "./migrate";
@@ -123,6 +124,11 @@ const DEFAULT_TRACES_RETENTION_DAYS = 7;
 // Sensitive-read audit rows (`access.*`) are opt-in but higher-volume, so they
 // get a shorter default clock than the global retention.
 const DEFAULT_ACCESS_AUDIT_RETENTION_DAYS = 30;
+// Product analytics (#22). A quarter covers the reporting windows the admin UI
+// offers (up to 365d is allowed, but the aggregates people actually read are
+// 7/30/90) while keeping the highest-volume table bounded.
+const DEFAULT_ANALYTICS_RETENTION_DAYS = 90;
+const DEFAULT_ERRORS_RETENTION_DAYS = 90;
 
 const dueCronFunctions = (
   fns: FunctionRow[],
@@ -419,6 +425,28 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
         ? DEFAULT_TRACES_RETENTION_DAYS
         : Number(spanRaw);
     await pruneOldSpans({ db: ctx.db, dialect: ctx.dialect }, spanDays);
+
+    // Product analytics (#22) rides the same daily clock. The two streams get
+    // separate budgets: tracked events are pure volume, while error
+    // occurrences carry stacks worth keeping around a triage cycle.
+    const analyticsRaw = env.ANALYTICS_RETENTION_DAYS;
+    const analyticsDays =
+      analyticsRaw == null || analyticsRaw === ""
+        ? DEFAULT_ANALYTICS_RETENTION_DAYS
+        : Number(analyticsRaw);
+    const errorsRaw = env.ERRORS_RETENTION_DAYS;
+    const errorDays =
+      errorsRaw == null || errorsRaw === ""
+        ? DEFAULT_ERRORS_RETENTION_DAYS
+        : Number(errorsRaw);
+    try {
+      await pruneAnalyticsEvents({ db: ctx.db, dialect: ctx.dialect }, analyticsDays);
+      await pruneErrorEvents({ db: ctx.db, dialect: ctx.dialect }, errorDays);
+    } catch (e) {
+      // Telemetry pruning must never take down the tick that also runs jobs,
+      // backups and scheduled publishing.
+      console.error("[analytics-prune] sweep failed", e);
+    }
   }
 };
 

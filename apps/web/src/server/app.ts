@@ -29,6 +29,8 @@ import { tracesRoutes } from "./routes/traces";
 import { adoptRoutes } from "./routes/adopt";
 import { migrateRoutes } from "./routes/migrate";
 import { advisorRoutes } from "./routes/advisor";
+import { analyticsRoutes } from "./routes/analytics";
+import { analyticsIngestRoutes } from "./routes/analytics-ingest";
 import { aiAskRoutes } from "./routes/ai-ask";
 import { agentsRoutes } from "./routes/agents";
 import { apiKeysRoutes } from "./routes/api-keys";
@@ -584,6 +586,9 @@ export const createApp = (env: Env) => {
         "Content-Type",
         "Authorization",
         "X-Backlex-Tenant",
+        // Publishable analytics ingest key — a custom header, so a browser SDK
+        // on a customer origin preflights before it can post events.
+        "X-Backlex-Ingest-Key",
         "X-D1-Bookmark",
         "MCP-Protocol-Version",
         // TUS resumable-upload request headers (Uppy / tus-js-client).
@@ -778,6 +783,10 @@ export const createApp = (env: Env) => {
   app.route("/api/items", itemsRoutes);
   app.route("/api/activity", activityRoutes);
   app.route("/api/admin/traces", tracesRoutes);
+  app.route("/api/admin/analytics", analyticsRoutes);
+  // Public ingest — authenticated by a publishable key or a normal session,
+  // never anonymous. Kept off `/api/admin/*` because client bundles call it.
+  app.route("/api/analytics", analyticsIngestRoutes);
   app.route("/api/revisions", revisionsRoutes);
   app.route("/api/storage", storageRoutes);
   app.route("/api/uploads", uploadsRoutes);

@@ -12,11 +12,14 @@ import { defaultHook } from "../lib/openapi-router";
 import {
   runItemsAggregate,
 } from "../services/items/aggregate";
+// Shared with the dashboard runner + the public embed, so an `analytics` panel
+// renders identically wherever it's drawn.
+import { runAnalyticsPanel } from "../services/dashboards";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.savedPanels : sqlite.schema.savedPanels;
 
-const PANEL_KINDS = ["sql", "items-aggregate", "static"] as const;
+const PANEL_KINDS = ["sql", "items-aggregate", "analytics", "static"] as const;
 const PANEL_VIZES = [
   "sparkline",
   "line",
@@ -82,7 +85,7 @@ const PanelRow = z
 
 const PreviewInput = z
   .object({
-    kind: z.enum(["sql", "items-aggregate"]),
+    kind: z.enum(["sql", "items-aggregate", "analytics"]),
     sql: z.string().optional(),
     config: z.unknown().optional(),
   })
@@ -342,10 +345,15 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         const out = await runItemsAggregate(ctx, auth, tenantId, body.config);
         return c.json({ data: out, ms: Date.now() - t0 });
       }
+      if (body.kind === "analytics") {
+        const t0 = Date.now();
+        const out = await runAnalyticsPanel(ctx, tenantId, body.config);
+        return c.json({ data: out, ms: Date.now() - t0 });
+      }
       if (body.kind !== "sql" || !body.sql) {
         throw new AppError(
           "VALIDATION",
-          `Preview only supports kind "sql" or "items-aggregate" (got "${body.kind ?? "unknown"}")`,
+          `Preview only supports kind "sql", "items-aggregate" or "analytics" (got "${body.kind ?? "unknown"}")`,
         );
       }
       if (!isReadOnly(body.sql)) {
@@ -405,6 +413,12 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (panel.kind === "items-aggregate") {
         const t0 = Date.now();
         const out = await runItemsAggregate(ctx, auth, tenantId, panel.config);
+        return c.json({ data: out, ms: Date.now() - t0 });
+      }
+
+      if (panel.kind === "analytics") {
+        const t0 = Date.now();
+        const out = await runAnalyticsPanel(ctx, tenantId, panel.config);
         return c.json({ data: out, ms: Date.now() - t0 });
       }
 

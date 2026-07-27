@@ -12,6 +12,7 @@ import { runFunctions } from "../src/functions";
 import { runExtensions } from "../src/extensions";
 import { runFlows } from "../src/flows";
 import { runDashboards } from "../src/dashboards";
+import { runAnalytics } from "../src/analytics";
 import { runForms } from "../src/forms";
 import { runUsage } from "../src/usage";
 import { runSchema } from "../src/schema";
@@ -94,6 +95,10 @@ Usage:
 
   backlex dashboards <list|get|run|create|delete|share|revoke>
       Embedded BI dashboards. \`share <id>\` mints a public embed token.
+
+  backlex analytics <overview|funnel|retention|errors|track|ingest-key|...>
+      Product analytics + crash reporting. \`ingest-key mint\` prints the
+      publishable client key.
 
   backlex forms <list|get|fields|create|update|rotate-token|delete>
       Public form builder. \`create\`/\`rotate-token\` print the one-time link.
@@ -241,6 +246,9 @@ const run = async () => {
     case "dashboards":
     case "dashboard":
       await runDashboards(rest);
+      return;
+    case "analytics":
+      await runAnalytics(rest);
       return;
     case "forms":
     case "form":

@@ -286,6 +286,11 @@ msgstr "{0} silindi."
 msgid "{0} disconnected."
 msgstr "{0} bağlantısı kesildi."
 
+#. placeholder {0}: pct(s.dropOff)
+#: src/client/admin/pages/analytics.tsx
+msgid "{0} dropped off here"
+msgstr "burada {0} ayrıldı"
+
 #. placeholder {0}: c?.activeFlows ?? 0
 #. placeholder {1}: c?.pausedFlows ?? 0
 #: src/client/admin/pages/overview.tsx
@@ -609,6 +614,7 @@ msgstr "{clean} zaten var"
 msgid "{count} selected"
 msgstr "{count} seçildi"
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/usage.tsx
 msgid "{d} days"
 msgstr "{d} gün"
@@ -842,6 +848,10 @@ msgstr "Bir bayrak; etkinse VE hedeflemesi (koşul + dağıtım) eşleşiyorsa �
 msgid "A function with that name already exists."
 msgstr "Bu isimde bir fonksiyon zaten mevcut."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "A funnel measures how many visitors who did the first event went on to do the next ones, in order."
+msgstr "Huni, ilk olayı gerçekleştiren ziyaretçilerden kaçının sonraki olayları sırayla yaptığını ölçer."
+
 #: src/client/admin/parity/translations.tsx
 msgid "A key with this name already exists."
 msgstr "Bu isimde bir anahtar zaten mevcut."
@@ -857,6 +867,10 @@ msgstr "Sunucunun erişebildiği bir Postgres bağlantısı. URL bekleme durumun
 #: src/client/admin/parity/auth-settings.tsx
 msgid "A provider with id \"{id}\" already exists."
 msgstr "\"{id}\" kimliğine sahip bir sağlayıcı zaten mevcut."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "A publishable key you can ship inside browser and mobile bundles. It only allows appending events and crash reports — it can't read any data back. Cross-origin callers still need their origin on the workspace's allowed-origins list."
+msgstr "Tarayıcı ve mobil paketlerin içinde dağıtabileceğiniz yayınlanabilir bir anahtar. Yalnızca olay ve çökme raporu eklemeye izin verir — hiçbir veriyi geri okuyamaz. Farklı kaynaktan çağıranların yine de kaynak adresi çalışma alanının izinli kaynaklar listesinde olmalıdır."
 
 #: src/client/pages/shared-record.tsx
 msgid "A read-only view of one record from <0>{collection}</0>."
@@ -1225,6 +1239,7 @@ msgid "Add source"
 msgstr "Kaynak ekle"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/analytics.tsx
 msgid "Add step"
 msgstr "Adım ekle"
 
@@ -1349,6 +1364,10 @@ msgstr "Danışman yeniden çalıştırıldı."
 msgid "advisory — returned as a warning, not blocking"
 msgstr "tavsiye niteliğinde — engellemez, uyarı olarak döner"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "affected"
+msgstr "etkilenen"
+
 #: src/client/admin/parity/revisions.tsx
 msgid "after"
 msgstr "sonra"
@@ -1466,6 +1485,10 @@ msgstr "Tüm dosyalar"
 msgid "all folders"
 msgstr "tüm klasörler"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "All levels"
+msgstr "Tüm seviyeler"
+
 #: src/client/admin/account-page.tsx
 msgid "All other devices signed out."
 msgstr "Diğer tüm cihazlardan çıkış yapıldı."
@@ -1478,6 +1501,7 @@ msgstr "Tüm sağlayıcılar"
 msgid "All roles"
 msgstr "Tüm roller"
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/users.tsx
 msgid "All statuses"
 msgstr "Tüm durumlar"
@@ -1556,6 +1580,23 @@ msgstr "Bir davet bağlantısı e-posta ile gönderilecek; 7 gün geçerlidir."
 #: src/client/pages/oauth-consent.tsx
 msgid "An MCP client is asking to access this workspace on your behalf."
 msgstr "Bir MCP istemcisi bu çalışma alanına sizin adınıza erişmek istiyor."
+
+#: src/client/admin/pages/analytics.tsx
+#: src/client/admin/ui.tsx
+msgid "Analytics"
+msgstr "Analitik"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Analytics ingest key"
+msgstr "Analitik veri alma anahtarı"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Analytics refreshed."
+msgstr "Analitik yenilendi."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "any event"
+msgstr "herhangi bir olay"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Any OAuth-capable client connects with no key — the browser handles discovery, consent, and token exchange. Tools then run with <0>your own roles and permission rules</0>."
@@ -2190,6 +2231,10 @@ msgstr "c_{target} boş."
 msgid "Calendar"
 msgstr "Takvim"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
+msgstr "Yakalanmamış hataları ve işlenmemiş reddetmeleri otomatik iletmek için uygulamanızda client.analytics.captureErrors() çağırın."
+
 #: src/client/components/boot-screen.tsx
 msgid "Can't reach your workspace"
 msgstr "Çalışma alanınıza ulaşılamıyor"
@@ -2573,6 +2618,10 @@ msgstr "Codex"
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> then <1>codex mcp login backlex</1>."
 #~ msgstr "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> sonra <1>codex mcp login backlex</1>."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Cohort"
+msgstr "Kohort"
 
 #: src/client/admin/sheet.tsx
 msgid "Collaboration"
@@ -2960,6 +3009,10 @@ msgstr "geleneksel sütun mevcut"
 #~ msgid "Conversation"
 #~ msgstr "Konuşma"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Convert within"
+msgstr "Şu süre içinde dönüşsün"
+
 #: src/client/admin/ui.tsx
 msgid "copied"
 msgstr "kopyalandı"
@@ -2978,6 +3031,7 @@ msgstr "curl kodu kopyalandı."
 msgid "Copied JSON."
 msgstr "JSON kopyalandı."
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/storage/index.tsx
 msgid "Copied to clipboard."
 msgstr "Panoya kopyalandı."
@@ -2999,6 +3053,7 @@ msgstr "kopyala"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/members-panel.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -3125,9 +3180,17 @@ msgstr "Paylaşım bağlantısı iptal edilemedi."
 msgid "Couldn't copy — select and copy them manually."
 msgstr "Kopyalanamadı — elle seçip kopyalayın."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Couldn't delete the group."
+msgstr "Grup silinemedi."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "Couldn't load advisor findings"
 msgstr "Danışman bulguları yüklenemedi"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Couldn't load analytics"
+msgstr "Analitik yüklenemedi"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Couldn't load auth config."
@@ -3149,9 +3212,21 @@ msgstr "İzler yüklenemedi"
 msgid "Couldn't load usage"
 msgstr "Kullanım yüklenemedi"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Couldn't mint an ingest key."
+msgstr "Veri alma anahtarı oluşturulamadı."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Couldn't reset layout."
 msgstr "Düzen sıfırlanamadı."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Couldn't resolve."
+msgstr "Çözümlenemedi."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Couldn't revoke the ingest key."
+msgstr "Veri alma anahtarı iptal edilemedi."
 
 #: src/client/admin/pages/usage.tsx
 msgid "Couldn't save key limits."
@@ -3165,9 +3240,21 @@ msgstr "Düzen kaydedilemedi."
 msgid "Couldn't save limits."
 msgstr "Limitler kaydedilemedi."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Couldn't update the status."
+msgstr "Durum güncellenemedi."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Count"
+msgstr "Adet"
+
 #: src/client/admin/parity/insights.tsx
 msgid "count / sum / average over a collection — no SQL"
 msgstr "bir koleksiyon üzerinde say / topla / ortalama — SQL gerektirmez"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Count a visitor as active when they fire"
+msgstr "Ziyaretçiyi şunu gerçekleştirdiğinde aktif say"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
@@ -3602,6 +3689,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
@@ -4538,6 +4626,10 @@ msgstr "kayıtta uygulanır (422)"
 msgid "Enforcement"
 msgstr "Uygulama"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "engagement depth"
+msgstr "etkileşim derinliği"
+
 #: src/client/admin/pages/jobs.tsx
 msgid "Enqueue"
 msgstr "Kuyruğa ekle"
@@ -4656,6 +4748,7 @@ msgstr "Ortam değişkenleri burada salt okunur"
 msgid "err"
 msgstr "hata"
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/extensions.tsx
 msgid "Error"
@@ -4682,6 +4775,7 @@ msgstr "hata: {0}"
 msgid "errors"
 msgstr "hatalar"
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/usage.tsx
 #: src/client/pages/graphql.tsx
 msgid "Errors"
@@ -4714,14 +4808,27 @@ msgstr "Olay kancaları eşleşen desenlerinde de tetiklenir; burada çalıştı
 msgid "Event pattern"
 msgstr "Olay deseni"
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Events"
 msgstr "Olaylar"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Events / visitor"
+msgstr "Olay / ziyaretçi"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Events per day"
+msgstr "Günlük olay sayısı"
+
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 msgstr "İzinlere bağlı olarak her MCP aracı çağrılabilir. Bu anahtarı bir izin listesiyle daraltmak için aşağıdan bir araç işaretleyin."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Every occurrence of this bug, with the latest stack trace and how many visitors it reached."
+msgstr "Bu hatanın tüm görülmeleri; en son yığın izi ve kaç ziyaretçiye ulaştığı ile birlikte."
 
 #: src/client/admin/parity/revisions.tsx
 msgid "Every write is versioned. Inspect, diff, or revert any prior state."
@@ -4934,6 +5041,10 @@ msgstr "hızlı · çok ucuz · rutin okumalar"
 msgid "Faster, phishing-resistant sign-in. Your device will prompt for biometric or PIN after the account is created. You can add or remove passkeys later in Settings."
 msgstr "Daha hızlı, kimlik avına karşı dirençli giriş. Hesap oluşturulduktan sonra cihazınız biyometrik veya PIN isteyecektir. Geçiş anahtarlarını daha sonra Ayarlar'dan ekleyip kaldırabilirsiniz."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Fatal"
+msgstr "Ölümcül"
+
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Favicon"
 msgstr "Favicon"
@@ -5141,6 +5252,10 @@ msgstr "ilk açılır liste"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "First name"
 msgstr "Ad"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "First seen"
+msgstr "İlk görülme"
 
 #: src/client/pages/sign-up.tsx
 msgid "First-user policy."
@@ -5430,6 +5545,10 @@ msgstr "Fonksiyonlar"
 #: src/client/admin/pages/overview.tsx
 msgid "FUNCTIONS_EXEC_URL set"
 msgstr "FUNCTIONS_EXEC_URL ayarlandı"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Funnel"
+msgstr "Huni"
 
 #: src/client/admin/item-views.tsx
 msgid "Gallery"
@@ -5783,6 +5902,14 @@ msgstr "{displayEmail} bir hesapla eşleşiyorsa, giriş bağlantısı yola çı
 msgid "If set, visitors are sent there instead of seeing the message."
 msgstr "Ayarlanırsa ziyaretçi mesaj yerine bu adrese yönlendirilir."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Ignore"
+msgstr "Yoksay"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Ignored"
+msgstr "Yoksayıldı"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Images"
 msgstr "Görseller"
@@ -5888,6 +6015,14 @@ msgstr "bilgi"
 #: src/client/admin/field-validation-editor.tsx
 msgid "Info"
 msgstr "Bilgi"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Ingest key"
+msgstr "Veri alma anahtarı"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Ingest key revoked."
+msgstr "Veri alma anahtarı iptal edildi."
 
 #: src/client/admin/parity/revisions.tsx
 msgid "initial"
@@ -6294,6 +6429,10 @@ msgstr "Anahtar en fazla 120 karakter olmalıdır."
 msgid "Key must be 2–40 chars (letters, digits, dash, underscore)."
 msgstr "Anahtar 2–40 karakter olmalıdır (harf, rakam, tire, alt çizgi)."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Key set"
+msgstr "Anahtar tanımlı"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "keys"
 msgstr "anahtarlar"
@@ -6376,6 +6515,10 @@ msgstr "Giriş marka panelindeki büyük başlık."
 msgid "Last"
 msgstr "Son"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "last {days} days"
+msgstr "son {days} gün"
+
 #: src/client/admin/pages/logs.tsx
 msgid "last {range}"
 msgstr "son {range}"
@@ -6445,10 +6588,15 @@ msgid "last seen"
 msgstr "son görülme"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Last seen"
 msgstr "Son görülme"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Last seen at"
+msgstr "Son görülme adresi"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Last submission"
@@ -6470,6 +6618,10 @@ msgstr "Gecikme"
 #: src/client/admin/field-validation-editor.tsx
 msgid "Latest"
 msgstr "En geç"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Latest stack trace"
+msgstr "En son yığın izi"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/forms.tsx
@@ -6582,6 +6734,10 @@ msgstr "eski üretim"
 msgid "Let editors fold the \"{0}\" section. Applies to the whole section."
 msgstr "Editörlerin \"{0}\" bölümünü katlamasına izin ver. Tüm bölüme uygulanır."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Level"
+msgstr "Seviye"
+
 #: src/client/admin/pages/settings/index.tsx
 msgid "License"
 msgstr "Lisans"
@@ -6589,6 +6745,10 @@ msgstr "Lisans"
 #: src/client/admin/collection-settings.tsx
 msgid "lifecycle"
 msgstr "yaşam döngüsü"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "lifetime"
+msgstr "toplam"
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
@@ -7097,6 +7257,18 @@ msgstr "Min seçili"
 #: src/client/admin/item-collaboration.tsx
 msgid "Mint a public link that shows this record read-only — no sign-in required to view it."
 msgstr "Bu kaydı salt okunur olarak gösteren bir genel bağlantı oluşturun — görüntülemek için giriş gerekmez."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Mint an ingest key, then call client.analytics.track(\"page_view\") from your app. Events show up here within seconds."
+msgstr "Bir veri alma anahtarı oluşturun, ardından uygulamanızdan client.analytics.track(\\\"page_view\\\") çağırın. Olaylar saniyeler içinde burada görünür."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Mint key"
+msgstr "Anahtar oluştur"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Minting a new key immediately invalidates the old one."
+msgstr "Yeni anahtar oluşturmak eskisini anında geçersiz kılar."
 
 #: src/client/admin/pages/forms.tsx
 msgid "Mints a new token; the current link stops working"
@@ -7648,6 +7820,10 @@ msgstr "İçerik şeması yok."
 #~ msgid "No conversations yet."
 #~ msgstr "Henüz konuşma yok."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "No crashes here"
+msgstr "Burada çökme yok"
+
 #: src/client/admin/parity/insights.tsx
 msgid "No data yet — run the panel."
 msgstr "Henüz veri yok — paneli çalıştırın."
@@ -7717,6 +7893,18 @@ msgstr "Hata kaydedilmedi."
 #: src/client/pages/graphql.tsx
 msgid "No errors."
 msgstr "Hata yok."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "No events in this window."
+msgstr "Bu aralıkta olay yok."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "No events to build a funnel from"
+msgstr "Huni kuracak olay yok"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "No events tracked yet"
+msgstr "Henüz olay izlenmedi"
 
 #: src/client/admin/pages/extensions.tsx
 msgid "No extensions installed"
@@ -7844,6 +8032,14 @@ msgstr "İş yok"
 msgid "No JSON content defined."
 msgstr "JSON içeriği tanımlanmamış."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "No key"
+msgstr "Anahtar yok"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "No key has been minted for this workspace yet."
+msgstr "Bu çalışma alanı için henüz anahtar oluşturulmadı."
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "no key needed"
 msgstr "anahtar gerekmez"
@@ -7922,6 +8118,10 @@ msgstr "Sayısal sütun yok"
 msgid "No outstanding findings. Re-run after a schema or permission change."
 msgstr "Bekleyen bulgu yok. Şema veya izin değişikliğinin ardından yeniden çalıştırın."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "No page paths recorded — send a path with your events."
+msgstr "Sayfa yolu kaydedilmemiş — olaylarınızla birlikte bir yol gönderin."
+
 #: src/client/pages/rest-explorer.tsx
 msgid "No parameters or body."
 msgstr "Parametre veya gövde yok."
@@ -7933,6 +8133,10 @@ msgstr "Mevcut spec'te yol yok."
 #: src/client/pages/graphql.tsx
 msgid "No queries."
 msgstr "Sorgu yok."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "No referrers recorded."
+msgstr "Yönlendiren kaydedilmemiş."
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "No relation-typed fields detected. Add a field with type <0>relation</0> to draw an edge."
@@ -8148,6 +8352,10 @@ msgstr "hiçbiri seçili değil = tümü"
 msgid "not configured"
 msgstr "yapılandırılmamış"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Not enough history yet"
+msgstr "Henüz yeterli geçmiş yok"
+
 #: src/client/admin/account-page.tsx
 msgid "Not linked."
 msgstr "Bağlı değil."
@@ -8280,6 +8488,10 @@ msgstr "{0} ile kaydedilecek OAuth yönlendirme URI'si"
 msgid "Observability"
 msgstr "Gözlemlenebilirlik"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Occurrences"
+msgstr "Görülme"
+
 #: src/client/admin/item-views.tsx
 msgid "October"
 msgstr "Ekim"
@@ -8408,6 +8620,7 @@ msgid "open"
 msgstr "aç"
 
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Open"
 msgstr "Aç"
@@ -8555,6 +8768,7 @@ msgstr "aşım raporlanır, hiçbir şey engellenmez"
 msgid "Overrides the `--primary` token used across the admin and any published surfaces."
 msgstr "Admin ve yayımlanan yüzeylerde kullanılan `--primary` token'ını geçersiz kılar."
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/ui.tsx
 #: src/client/pages/rest-explorer.tsx
@@ -8999,6 +9213,10 @@ msgstr "Bir son kullanıcı seçin"
 msgid "Pick an end-user to select them"
 msgstr "Seçmek için bir son kullanıcıya tıklayın"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Pick an event…"
+msgstr "Bir olay seçin…"
+
 #: src/client/admin/relational-pickers.tsx
 msgid "Pick an existing file, or drop a new one to upload."
 msgstr "Mevcut bir dosya seçin veya yüklemek için yeni bir tane bırakın."
@@ -9022,6 +9240,10 @@ msgstr "en az bir olay seçin"
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Pick at least one field."
 #~ msgstr "En az bir alan seçin."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Pick at least two steps"
+msgstr "En az iki adım seçin"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Pick collection…"
@@ -9322,6 +9544,10 @@ msgstr "Gizlilik Politikası URL'si"
 #: src/client/admin/storage/widgets.tsx
 msgid "Private"
 msgstr "Özel"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Product events and crash reports from your apps. Visitors are counted by an anonymous id, so pre-signup traffic is measured too."
+msgstr "Uygulamalarınızdan gelen ürün olayları ve çökme raporları. Ziyaretçiler anonim bir kimlikle sayılır, böylece kayıt öncesi trafik de ölçülür."
 
 #: src/client/admin/ui.tsx
 msgid "Production"
@@ -9700,6 +9926,10 @@ msgstr "Son teslimatlar"
 msgid "Recent errors"
 msgstr "Son hatalar"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Recent occurrences"
+msgstr "Son görülmeler"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Recent runs"
 msgstr "Son çalışmalar"
@@ -9750,6 +9980,7 @@ msgstr "/api/openapi.json yeniden çek"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/database-import.tsx
@@ -9931,6 +10162,10 @@ msgstr "Dili kaldır"
 msgid "Remove sample data"
 msgstr "Örnek verileri kaldır"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Remove step"
+msgstr "Adımı kaldır"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Remove tag"
 msgstr "Etiketi kaldır"
@@ -9981,6 +10216,10 @@ msgstr "Yeniden adlandırılıyor…"
 #: src/client/admin/field-format-editor.tsx
 msgid "rendering only — never affects storage or sorting"
 msgstr "yalnızca gösterim — depolama veya sıralamayı etkilemez"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Reopen"
+msgstr "Yeniden aç"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
@@ -10127,6 +10366,14 @@ msgstr "Parolanızı sıfırlayın"
 msgid "Resetting password"
 msgstr "Parola sıfırlanıyor"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Resolve"
+msgstr "Çözümle"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Resolved"
+msgstr "Çözümlendi"
+
 #: src/client/pages/rest-explorer.tsx
 msgid "Resolved schemes"
 msgstr "Çözümlenen şemalar"
@@ -10223,6 +10470,14 @@ msgstr "devam ettirildi"
 msgid "Retain (auto)"
 msgstr "Sakla (otomatik)"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Retention"
+msgstr "Elde tutma"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Retention needs visitors whose first-ever day falls inside the selected window. Widen the window or come back after a few days of traffic."
+msgstr "Elde tutma, ilk gün etkinliği seçili aralığa düşen ziyaretçilere ihtiyaç duyar. Aralığı genişletin ya da birkaç günlük trafikten sonra tekrar bakın."
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/template-onboarding.tsx
@@ -10303,6 +10558,7 @@ msgstr "istediğiniz zaman iptal edilebilir"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/item-collaboration.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -10420,6 +10676,10 @@ msgstr "kök"
 #: src/client/admin/pages/webhooks.tsx
 msgid "Rotate"
 msgstr "Döndür"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Rotate key"
+msgstr "Anahtarı yenile"
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/insights.tsx
@@ -11304,6 +11564,7 @@ msgid "sessions"
 msgstr "oturumlar"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 msgid "Sessions"
@@ -11612,6 +11873,10 @@ msgstr "Admin arayüzü o dildeyken etiket yerine gösterilir."
 msgid "shown once — copy it now, it won't appear again"
 msgstr "bir kez gösterilir — şimdi kopyalayın, tekrar görünmeyecek"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Shown once — store it now."
+msgstr "Yalnızca bir kez gösterilir — şimdi kaydedin."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Side-table (item_ownership)"
 msgstr "Yan tablo (item_ownership)"
@@ -11776,6 +12041,7 @@ msgstr "Tekil"
 msgid "Singular"
 msgstr "Tekil ad"
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/storage/index.tsx
@@ -12021,6 +12287,7 @@ msgstr "statik paneller yapılandırma nesnelerini aynen işler — panel oluşt
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/members-panel.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/traces.tsx
@@ -12489,6 +12756,10 @@ msgstr "Danışman uç noktası hata döndürdü. Tekrar denemek için yeniden �
 msgid "The agent's standing instructions — its persona, tone, and rules. Sent to the model before every user message."
 msgstr "Ajanın kalıcı talimatları — kişiliği, üslubu ve kuralları. Her kullanıcı mesajından önce modele gönderilir."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "The analytics endpoint returned an error. Refresh to try again."
+msgstr "Analitik uç noktası hata döndürdü. Yenileyip tekrar deneyin."
+
 #: src/client/pages/oauth-consent.tsx
 msgid "The authorization flow returned no redirect — start over from the client."
 msgstr "Yetkilendirme akışı yönlendirme döndürmedi — istemciden baştan başlayın."
@@ -12563,6 +12834,10 @@ msgstr "Herkese açık gömme aktif. Bağlantı oluşturulduğunda yalnızca bir
 #: src/client/admin/pages/forms.tsx
 msgid "The public link stops working immediately. Submitted rows stay in the collection."
 msgstr "Herkese açık bağlantı anında devre dışı kalır. Gönderilen kayıtlar koleksiyonda kalır."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "The publishable key your client apps send when tracking."
+msgstr "İstemci uygulamalarınızın izleme sırasında gönderdiği yayınlanabilir anahtar."
 
 #: src/client/admin/parity/insights.tsx
 msgid "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
@@ -12939,6 +13214,18 @@ msgstr "En çok kullanılan koleksiyonlar"
 #~ msgid "Top customers by spend"
 #~ msgstr "Harcamaya göre en iyi müşteriler"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Top events"
+msgstr "En çok olay"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Top pages"
+msgstr "En çok sayfa"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Top referrers"
+msgstr "En çok yönlendiren"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Total"
 msgstr "Toplam"
@@ -12963,6 +13250,10 @@ msgstr "İstekler geldikçe izler görünür. SDK veya yönetim arayüzüyle bir
 #: src/client/admin/pages/traces.tsx
 msgid "Traces refreshed."
 msgstr "İzler yenilendi."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Track at least two different event names, then come back to measure how visitors move between them."
+msgstr "En az iki farklı olay adı izleyin, sonra ziyaretçilerin bunlar arasında nasıl ilerlediğini ölçmek için geri dönün."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Track data events through Segment."
@@ -13194,6 +13485,10 @@ msgstr "Benzersiz"
 #: src/client/admin/add-field.tsx
 msgid "UNIQUE constraint at the column level."
 msgstr "Sütun düzeyinde UNIQUE kısıtlaması."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "unique, by anonymous id"
+msgstr "benzersiz, anonim kimliğe göre"
 
 #: src/client/admin/parity/database.tsx
 msgid "unknown — manifest out of sync, run <0>bun run --cwd packages/db manifest</0>"
@@ -13691,6 +13986,10 @@ msgstr "Görünümler"
 msgid "visitor's browser language"
 msgstr "ziyaretçinin tarayıcı dili"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Visitors"
+msgstr "Ziyaretçiler"
+
 #. placeholder {0}: languages[1] ?? "tr"
 #: src/client/admin/pages/forms.tsx
 msgid "Visitors get their browser language; <0>?lang={0}</0> forces one. Missing strings fall back to the base language."
@@ -13721,6 +14020,7 @@ msgid "warn"
 msgstr "uyarı"
 
 #: src/client/admin/field-validation-editor.tsx
+#: src/client/admin/pages/analytics.tsx
 msgid "Warning"
 msgstr "Uyarı"
 
@@ -13894,6 +14194,10 @@ msgstr "<0>{0}</0> anahtar{1}{2} çevrilecek."
 #: src/client/components/mcp-key-modal.tsx
 msgid "Wire this API key into a Model Context Protocol client (Claude Desktop, Cursor, or any MCP-aware tool). The snippet below is pre-filled with this workspace's MCP URL."
 msgstr "Bu API anahtarını bir Model Context Protocol istemcisine bağla (Claude Desktop, Cursor veya MCP destekli herhangi bir araç). Aşağıdaki snippet bu çalışma alanının MCP URL'iyle önceden doldurulmuştur."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "with a session id"
+msgstr "oturum kimliği olan"
 
 #: src/client/admin/items.tsx
 msgid "Words"

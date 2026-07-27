@@ -155,7 +155,16 @@ guides; this list is everything else.
 - **Advisor** (`routes/advisor.ts`, `services/advisor.ts`) —
   security / performance / config rule checks surfaced in the admin
   UI with fix recommendations. See `docs/advisor.md`.
-- **Panels** (`routes/panels.ts`) — dashboard widget definitions.
+- **Product analytics + crash reporting** (`routes/analytics.ts`,
+  `routes/analytics-ingest.ts`, `services/analytics.ts`) — the tracked-event
+  stream plus fingerprinted error groups. Ingest is append-only and
+  authenticated by a publishable `alk_` key, an API key or a session; the
+  admin reads (overview / funnel / retention / errors) are admin-only.
+  Funnel + retention are CTE chains with one dialect branch (timestamp
+  shape). Pruned by `services/scheduler.ts`. See `docs/product-analytics.md`.
+- **Panels** (`routes/panels.ts`) — dashboard widget definitions. The
+  `analytics` kind runs through `services/dashboards.ts::runAnalyticsPanel`,
+  shared with the dashboard runner + public embed.
 - **Metrics** (`routes/metrics.ts`) — request / error counters +
   time-series rollups for the admin dashboard.
 - **Realtime admin + DB admin** (`routes/realtime-admin.ts`,

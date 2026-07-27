@@ -1,0 +1,527 @@
+/**
+ * Product analytics + crash reporting over GraphQL (#22).
+ *
+ * Static, admin-scoped surface mirroring REST `/api/admin/analytics` + MCP
+ * `analytics.*` / `errors.*` + SDK `client.analytics.*` + CLI `backlex
+ * analytics`. Every resolver calls the same `services/analytics` functions the
+ * REST routes do, so there is exactly one place the SQL lives.
+ *
+ * Ingest is exposed here too (`trackEvents` / `trackErrors`) for server-side
+ * callers that already speak GraphQL. It is admin-gated on this surface — the
+ * publishable-ingest-key path is REST-only, since that's what browser and
+ * mobile bundles use.
+ */
+import { JSONScalar, type GqlCtx } from "./core";
+import { requireFlowAdmin } from "./flows";
+import {
+  GraphQLBoolean,
+  GraphQLError,
+  GraphQLFloat,
+  GraphQLID,
+  GraphQLInputObjectType,
+  GraphQLInt,
+  GraphQLList,
+  GraphQLNonNull,
+  GraphQLObjectType,
+  GraphQLString,
+  type GraphQLFieldConfig,
+} from "graphql";
+import {
+  analyticsFunnel,
+  analyticsOverview,
+  analyticsRetention,
+  deleteErrorGroup,
+  getErrorGroup,
+  listAnalyticsEvents,
+  listErrorGroups,
+  listEventNames,
+  recordErrors,
+  recordEvents,
+  updateErrorGroup,
+} from "../analytics";
+
+/** Analytics is admin-only on every other surface — reuse the shared gate. */
+const requireAnalyticsAdmin = requireFlowAdmin;
+
+/** Default reporting window, matching the REST route. */
+const DEFAULT_RANGE_DAYS = 30;
+const MAX_RANGE_DAYS = 365;
+
+const resolveRange = (args: { from?: number | null; to?: number | null }) => {
+  const to = args.to ?? Date.now();
+  const from = args.from ?? to - DEFAULT_RANGE_DAYS * 86_400_000;
+  if (from > to) {
+    throw new GraphQLError("`from` must be before `to`", {
+      extensions: { code: "VALIDATION" },
+    });
+  }
+  if (to - from > MAX_RANGE_DAYS * 86_400_000) {
+    throw new GraphQLError(`Range is capped at ${MAX_RANGE_DAYS} days`, {
+      extensions: { code: "VALIDATION" },
+    });
+  }
+  return { from, to };
+};
+
+const dbOf = (gqlCtx: GqlCtx) => ({
+  db: gqlCtx.ctx.db,
+  dialect: gqlCtx.ctx.dialect,
+});
+
+const AnalyticsTotalsType = new GraphQLObjectType({
+  name: "AnalyticsTotals",
+  fields: {
+    events: { type: new GraphQLNonNull(GraphQLInt) },
+    users: { type: new GraphQLNonNull(GraphQLInt) },
+    sessions: { type: new GraphQLNonNull(GraphQLInt) },
+  },
+});
+
+const AnalyticsSeriesPointType = new GraphQLObjectType({
+  name: "AnalyticsSeriesPoint",
+  fields: {
+    day: { type: new GraphQLNonNull(GraphQLString) },
+    events: { type: new GraphQLNonNull(GraphQLInt) },
+    users: { type: new GraphQLNonNull(GraphQLInt) },
+  },
+});
+
+const AnalyticsTopEventType = new GraphQLObjectType({
+  name: "AnalyticsTopEvent",
+  fields: {
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    count: { type: new GraphQLNonNull(GraphQLInt) },
+    users: { type: new GraphQLNonNull(GraphQLInt) },
+  },
+});
+
+/** One label→count breakdown row (paths, referrers, sources). */
+const AnalyticsBreakdownType = new GraphQLObjectType({
+  name: "AnalyticsBreakdown",
+  fields: {
+    value: { type: new GraphQLNonNull(GraphQLString) },
+    count: { type: new GraphQLNonNull(GraphQLInt) },
+  },
+});
+
+const AnalyticsOverviewType = new GraphQLObjectType({
+  name: "AnalyticsOverview",
+  fields: {
+    totals: { type: new GraphQLNonNull(AnalyticsTotalsType) },
+    series: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(AnalyticsSeriesPointType)),
+      ),
+    },
+    topEvents: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(AnalyticsTopEventType)),
+      ),
+    },
+    topPaths: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(AnalyticsBreakdownType)),
+      ),
+    },
+    topReferrers: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(AnalyticsBreakdownType)),
+      ),
+    },
+    sources: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(AnalyticsBreakdownType)),
+      ),
+    },
+  },
+});
+
+const FunnelStepType = new GraphQLObjectType({
+  name: "AnalyticsFunnelStep",
+  fields: {
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    count: { type: new GraphQLNonNull(GraphQLInt) },
+    conversion: { type: new GraphQLNonNull(GraphQLFloat) },
+    dropOff: { type: new GraphQLNonNull(GraphQLFloat) },
+  },
+});
+
+const FunnelResultType = new GraphQLObjectType({
+  name: "AnalyticsFunnel",
+  fields: {
+    windowDays: { type: new GraphQLNonNull(GraphQLInt) },
+    steps: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(FunnelStepType))),
+    },
+  },
+});
+
+const RetentionCohortType = new GraphQLObjectType({
+  name: "AnalyticsRetentionCohort",
+  fields: {
+    day: { type: new GraphQLNonNull(GraphQLString) },
+    size: { type: new GraphQLNonNull(GraphQLInt) },
+    values: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLInt))),
+    },
+  },
+});
+
+const RetentionResultType = new GraphQLObjectType({
+  name: "AnalyticsRetention",
+  fields: {
+    maxOffset: { type: new GraphQLNonNull(GraphQLInt) },
+    cohorts: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(RetentionCohortType)),
+      ),
+    },
+  },
+});
+
+const AnalyticsEventType = new GraphQLObjectType({
+  name: "AnalyticsEvent",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    distinctId: { type: new GraphQLNonNull(GraphQLString) },
+    userId: { type: GraphQLString },
+    sessionId: { type: GraphQLString },
+    props: { type: JSONScalar },
+    path: { type: GraphQLString },
+    referrer: { type: GraphQLString },
+    source: { type: GraphQLString },
+    release: { type: GraphQLString },
+    country: { type: GraphQLString },
+    ts: { type: new GraphQLNonNull(GraphQLFloat) },
+  },
+});
+
+const ErrorGroupType = new GraphQLObjectType({
+  name: "ErrorGroup",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    fingerprint: { type: new GraphQLNonNull(GraphQLString) },
+    type: { type: new GraphQLNonNull(GraphQLString) },
+    message: { type: new GraphQLNonNull(GraphQLString) },
+    culprit: { type: GraphQLString },
+    level: { type: new GraphQLNonNull(GraphQLString) },
+    platform: { type: GraphQLString },
+    release: { type: GraphQLString },
+    status: { type: new GraphQLNonNull(GraphQLString) },
+    events: { type: new GraphQLNonNull(GraphQLInt) },
+    firstSeen: { type: new GraphQLNonNull(GraphQLFloat) },
+    lastSeen: { type: new GraphQLNonNull(GraphQLFloat) },
+    resolvedAt: { type: GraphQLFloat },
+    resolvedBy: { type: GraphQLString },
+  },
+});
+
+const ErrorOccurrenceType = new GraphQLObjectType({
+  name: "ErrorOccurrence",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    message: { type: new GraphQLNonNull(GraphQLString) },
+    stack: { type: GraphQLString },
+    level: { type: new GraphQLNonNull(GraphQLString) },
+    platform: { type: GraphQLString },
+    release: { type: GraphQLString },
+    url: { type: GraphQLString },
+    userId: { type: GraphQLString },
+    distinctId: { type: GraphQLString },
+    sessionId: { type: GraphQLString },
+    context: { type: JSONScalar },
+    ts: { type: new GraphQLNonNull(GraphQLFloat) },
+  },
+});
+
+const ErrorSeriesPointType = new GraphQLObjectType({
+  name: "ErrorSeriesPoint",
+  fields: {
+    day: { type: new GraphQLNonNull(GraphQLString) },
+    count: { type: new GraphQLNonNull(GraphQLInt) },
+  },
+});
+
+const ErrorGroupDetailType = new GraphQLObjectType({
+  name: "ErrorGroupDetail",
+  fields: {
+    group: { type: new GraphQLNonNull(ErrorGroupType) },
+    occurrences: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(ErrorOccurrenceType)),
+      ),
+    },
+    series: {
+      type: new GraphQLNonNull(
+        new GraphQLList(new GraphQLNonNull(ErrorSeriesPointType)),
+      ),
+    },
+    users: { type: new GraphQLNonNull(GraphQLInt) },
+  },
+});
+
+const TrackEventInputType = new GraphQLInputObjectType({
+  name: "TrackEventInput",
+  fields: {
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    distinctId: { type: new GraphQLNonNull(GraphQLString) },
+    userId: { type: GraphQLString },
+    sessionId: { type: GraphQLString },
+    props: { type: JSONScalar },
+    path: { type: GraphQLString },
+    referrer: { type: GraphQLString },
+    source: { type: GraphQLString },
+    release: { type: GraphQLString },
+    country: { type: GraphQLString },
+    ts: { type: GraphQLFloat },
+  },
+});
+
+const TrackErrorInputType = new GraphQLInputObjectType({
+  name: "TrackErrorInput",
+  fields: {
+    message: { type: new GraphQLNonNull(GraphQLString) },
+    type: { type: GraphQLString },
+    stack: { type: GraphQLString },
+    level: { type: GraphQLString },
+    platform: { type: GraphQLString },
+    release: { type: GraphQLString },
+    url: { type: GraphQLString },
+    userId: { type: GraphQLString },
+    distinctId: { type: GraphQLString },
+    sessionId: { type: GraphQLString },
+    context: { type: JSONScalar },
+    ts: { type: GraphQLFloat },
+  },
+});
+
+const IngestResultType = new GraphQLObjectType({
+  name: "AnalyticsIngestResult",
+  fields: {
+    accepted: { type: new GraphQLNonNull(GraphQLInt) },
+    rejected: { type: new GraphQLNonNull(GraphQLInt) },
+    groups: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
+  },
+});
+
+/** Flatten the service's per-column breakdown shape into `{ value, count }`. */
+const breakdown = <K extends string>(
+  rows: (Record<K, string> & { count: number })[],
+  key: K,
+) => rows.map((r) => ({ value: r[key], count: r.count }));
+
+export const analyticsQueryFields: Record<
+  string,
+  GraphQLFieldConfig<unknown, GqlCtx>
+> = {
+  analyticsOverview: {
+    type: new GraphQLNonNull(AnalyticsOverviewType),
+    description:
+      "Headline counters, the zero-filled daily series and top-N breakdowns (admin-only).",
+    args: { from: { type: GraphQLFloat }, to: { type: GraphQLFloat } },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAnalyticsAdmin(gqlCtx);
+      const { from, to } = resolveRange(args as { from?: number; to?: number });
+      const o = await analyticsOverview(dbOf(gqlCtx), { tenantId, from, to });
+      return {
+        ...o,
+        topPaths: breakdown(o.topPaths, "path"),
+        topReferrers: breakdown(o.topReferrers, "referrer"),
+        sources: breakdown(o.sources, "source"),
+      };
+    },
+  },
+  analyticsEventNames: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))),
+    description: "Distinct tracked event names ordered by volume (admin-only).",
+    resolve: async (_src, _args, gqlCtx) =>
+      listEventNames(dbOf(gqlCtx), requireAnalyticsAdmin(gqlCtx)),
+  },
+  analyticsFunnel: {
+    type: new GraphQLNonNull(FunnelResultType),
+    description:
+      "Ordered conversion funnel — each step counted only when it follows the previous one within `windowDays` of the visitor's own entry (admin-only).",
+    args: {
+      steps: {
+        type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))),
+      },
+      windowDays: { type: GraphQLInt },
+      from: { type: GraphQLFloat },
+      to: { type: GraphQLFloat },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAnalyticsAdmin(gqlCtx);
+      const a = args as {
+        steps: string[];
+        windowDays?: number;
+        from?: number;
+        to?: number;
+      };
+      const { from, to } = resolveRange(a);
+      return analyticsFunnel(dbOf(gqlCtx), {
+        tenantId,
+        from,
+        to,
+        steps: a.steps,
+        windowDays: a.windowDays,
+      });
+    },
+  },
+  analyticsRetention: {
+    type: new GraphQLNonNull(RetentionResultType),
+    description:
+      "Cohort retention keyed on each visitor's first-ever active day (admin-only).",
+    args: {
+      event: { type: GraphQLString },
+      from: { type: GraphQLFloat },
+      to: { type: GraphQLFloat },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAnalyticsAdmin(gqlCtx);
+      const a = args as { event?: string | null; from?: number; to?: number };
+      const { from, to } = resolveRange(a);
+      return analyticsRetention(dbOf(gqlCtx), {
+        tenantId,
+        from,
+        to,
+        event: a.event ?? null,
+      });
+    },
+  },
+  analyticsEvents: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(AnalyticsEventType))),
+    description: "Recent raw tracked events — the debug view (admin-only).",
+    args: {
+      name: { type: GraphQLString },
+      distinctId: { type: GraphQLString },
+      limit: { type: GraphQLInt },
+      from: { type: GraphQLFloat },
+      to: { type: GraphQLFloat },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAnalyticsAdmin(gqlCtx);
+      const a = args as {
+        name?: string;
+        distinctId?: string;
+        limit?: number;
+        from?: number;
+        to?: number;
+      };
+      return listAnalyticsEvents(dbOf(gqlCtx), {
+        tenantId,
+        limit: a.limit ?? 100,
+        from: a.from,
+        to: a.to,
+        name: a.name ?? null,
+        distinctId: a.distinctId ?? null,
+      });
+    },
+  },
+  errorGroups: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ErrorGroupType))),
+    description: "Deduplicated crash groups, most recently seen first (admin-only).",
+    args: {
+      status: { type: GraphQLString },
+      level: { type: GraphQLString },
+      since: { type: GraphQLFloat },
+      limit: { type: GraphQLInt },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAnalyticsAdmin(gqlCtx);
+      const a = args as {
+        status?: string;
+        level?: string;
+        since?: number;
+        limit?: number;
+      };
+      return listErrorGroups(dbOf(gqlCtx), {
+        tenantId,
+        limit: a.limit ?? 50,
+        status: a.status ?? null,
+        level: a.level ?? null,
+        since: a.since,
+      });
+    },
+  },
+  errorGroup: {
+    type: ErrorGroupDetailType,
+    description:
+      "One crash group with its recent occurrences, daily series and affected-visitor count (admin-only).",
+    args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAnalyticsAdmin(gqlCtx);
+      return getErrorGroup(dbOf(gqlCtx), tenantId, (args as { id: string }).id);
+    },
+  },
+};
+
+export const analyticsMutationFields: Record<
+  string,
+  GraphQLFieldConfig<unknown, GqlCtx>
+> = {
+  trackEvents: {
+    type: new GraphQLNonNull(IngestResultType),
+    description:
+      "Append a batch of tracked product events (admin-only on this surface; browser and mobile clients use the REST ingest endpoint with a publishable key).",
+    args: {
+      events: {
+        type: new GraphQLNonNull(
+          new GraphQLList(new GraphQLNonNull(TrackEventInputType)),
+        ),
+      },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAnalyticsAdmin(gqlCtx);
+      const a = args as { events: Parameters<typeof recordEvents>[2] };
+      return recordEvents(dbOf(gqlCtx), tenantId, a.events);
+    },
+  },
+  trackErrors: {
+    type: new GraphQLNonNull(IngestResultType),
+    description:
+      "Append a batch of error occurrences, folding them into their fingerprinted groups (admin-only on this surface).",
+    args: {
+      errors: {
+        type: new GraphQLNonNull(
+          new GraphQLList(new GraphQLNonNull(TrackErrorInputType)),
+        ),
+      },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAnalyticsAdmin(gqlCtx);
+      const a = args as { errors: Parameters<typeof recordErrors>[2] };
+      return recordErrors(dbOf(gqlCtx), tenantId, a.errors);
+    },
+  },
+  updateErrorGroup: {
+    type: new GraphQLNonNull(ErrorGroupType),
+    description:
+      "Set a crash group's status to open / resolved / ignored (admin-only).",
+    args: {
+      id: { type: new GraphQLNonNull(GraphQLID) },
+      status: { type: new GraphQLNonNull(GraphQLString) },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAnalyticsAdmin(gqlCtx);
+      const a = args as { id: string; status: string };
+      return updateErrorGroup(
+        dbOf(gqlCtx),
+        tenantId,
+        a.id,
+        { status: a.status },
+        gqlCtx.auth.userId ?? null,
+      );
+    },
+  },
+  deleteErrorGroup: {
+    type: new GraphQLNonNull(GraphQLBoolean),
+    description: "Delete a crash group and every captured occurrence (admin-only).",
+    args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireAnalyticsAdmin(gqlCtx);
+      await deleteErrorGroup(dbOf(gqlCtx), tenantId, (args as { id: string }).id);
+      return true;
+    },
+  },
+};

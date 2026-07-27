@@ -24,6 +24,7 @@ import { flowQueryFields, flowMutationFields } from "./flows";
 import { extensionQueryFields, extensionMutationFields } from "./extensions";
 import { messagingMutationFields } from "./messaging";
 import { dashboardQueryFields, dashboardMutationFields } from "./dashboards";
+import { analyticsQueryFields, analyticsMutationFields } from "./analytics";
 import { formQueryFields, formMutationFields } from "./forms";
 import { usageQueryFields, usageMutationFields } from "./usage";
 import { backupQueryFields, backupMutationFields } from "./backups";
@@ -71,6 +72,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...flowQueryFields,
           ...extensionQueryFields,
           ...dashboardQueryFields,
+          ...analyticsQueryFields,
           ...formQueryFields,
           ...usageQueryFields,
           ...backupQueryFields,
@@ -90,6 +92,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...flowMutationFields,
           ...extensionMutationFields,
           ...dashboardMutationFields,
+          ...analyticsMutationFields,
           ...formMutationFields,
           ...usageMutationFields,
           ...backupMutationFields,
@@ -111,6 +114,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...flowQueryFields,
     ...extensionQueryFields,
     ...dashboardQueryFields,
+    ...analyticsQueryFields,
     ...formQueryFields,
     ...usageQueryFields,
     ...backupQueryFields,
@@ -127,6 +131,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...flowMutationFields,
     ...extensionMutationFields,
     ...dashboardMutationFields,
+    ...analyticsMutationFields,
     ...formMutationFields,
     ...usageMutationFields,
     ...backupMutationFields,

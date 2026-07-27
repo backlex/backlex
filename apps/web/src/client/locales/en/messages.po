@@ -286,6 +286,11 @@ msgstr "{0} deleted."
 msgid "{0} disconnected."
 msgstr "{0} disconnected."
 
+#. placeholder {0}: pct(s.dropOff)
+#: src/client/admin/pages/analytics.tsx
+msgid "{0} dropped off here"
+msgstr "{0} dropped off here"
+
 #. placeholder {0}: c?.activeFlows ?? 0
 #. placeholder {1}: c?.pausedFlows ?? 0
 #: src/client/admin/pages/overview.tsx
@@ -609,6 +614,7 @@ msgstr "{clean} already exists"
 msgid "{count} selected"
 msgstr "{count} selected"
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/usage.tsx
 msgid "{d} days"
 msgstr "{d} days"
@@ -842,6 +848,10 @@ msgstr "A flag is on for a caller when enabled AND its targeting (condition + ro
 msgid "A function with that name already exists."
 msgstr "A function with that name already exists."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "A funnel measures how many visitors who did the first event went on to do the next ones, in order."
+msgstr "A funnel measures how many visitors who did the first event went on to do the next ones, in order."
+
 #: src/client/admin/parity/translations.tsx
 msgid "A key with this name already exists."
 msgstr "A key with this name already exists."
@@ -857,6 +867,10 @@ msgstr "A Postgres connection the server can reach. The URL is encrypted at rest
 #: src/client/admin/parity/auth-settings.tsx
 msgid "A provider with id \"{id}\" already exists."
 msgstr "A provider with id \"{id}\" already exists."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "A publishable key you can ship inside browser and mobile bundles. It only allows appending events and crash reports — it can't read any data back. Cross-origin callers still need their origin on the workspace's allowed-origins list."
+msgstr "A publishable key you can ship inside browser and mobile bundles. It only allows appending events and crash reports — it can't read any data back. Cross-origin callers still need their origin on the workspace's allowed-origins list."
 
 #: src/client/pages/shared-record.tsx
 msgid "A read-only view of one record from <0>{collection}</0>."
@@ -1225,6 +1239,7 @@ msgid "Add source"
 msgstr "Add source"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/analytics.tsx
 msgid "Add step"
 msgstr "Add step"
 
@@ -1349,6 +1364,10 @@ msgstr "Advisor re-ran."
 msgid "advisory — returned as a warning, not blocking"
 msgstr "advisory — returned as a warning, not blocking"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "affected"
+msgstr "affected"
+
 #: src/client/admin/parity/revisions.tsx
 msgid "after"
 msgstr "after"
@@ -1466,6 +1485,10 @@ msgstr "All files"
 msgid "all folders"
 msgstr "all folders"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "All levels"
+msgstr "All levels"
+
 #: src/client/admin/account-page.tsx
 msgid "All other devices signed out."
 msgstr "All other devices signed out."
@@ -1478,6 +1501,7 @@ msgstr "All providers"
 msgid "All roles"
 msgstr "All roles"
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/users.tsx
 msgid "All statuses"
 msgstr "All statuses"
@@ -1556,6 +1580,23 @@ msgstr "An invite link will be emailed; valid for 7 days."
 #: src/client/pages/oauth-consent.tsx
 msgid "An MCP client is asking to access this workspace on your behalf."
 msgstr "An MCP client is asking to access this workspace on your behalf."
+
+#: src/client/admin/pages/analytics.tsx
+#: src/client/admin/ui.tsx
+msgid "Analytics"
+msgstr "Analytics"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Analytics ingest key"
+msgstr "Analytics ingest key"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Analytics refreshed."
+msgstr "Analytics refreshed."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "any event"
+msgstr "any event"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Any OAuth-capable client connects with no key — the browser handles discovery, consent, and token exchange. Tools then run with <0>your own roles and permission rules</0>."
@@ -2190,6 +2231,10 @@ msgstr "c_{target} is empty."
 msgid "Calendar"
 msgstr "Calendar"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
+msgstr "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
+
 #: src/client/components/boot-screen.tsx
 msgid "Can't reach your workspace"
 msgstr "Can't reach your workspace"
@@ -2573,6 +2618,10 @@ msgstr "Codex"
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> then <1>codex mcp login backlex</1>."
 #~ msgstr "Codex CLI: <0>codex mcp add backlex --url {mcpUrl}</0> then <1>codex mcp login backlex</1>."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Cohort"
+msgstr "Cohort"
 
 #: src/client/admin/sheet.tsx
 msgid "Collaboration"
@@ -2960,6 +3009,10 @@ msgstr "conventional column present"
 #~ msgid "Conversation"
 #~ msgstr "Conversation"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Convert within"
+msgstr "Convert within"
+
 #: src/client/admin/ui.tsx
 msgid "copied"
 msgstr "copied"
@@ -2978,6 +3031,7 @@ msgstr "Copied curl snippet."
 msgid "Copied JSON."
 msgstr "Copied JSON."
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/storage/index.tsx
 msgid "Copied to clipboard."
 msgstr "Copied to clipboard."
@@ -2999,6 +3053,7 @@ msgstr "copy"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/members-panel.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -3125,9 +3180,17 @@ msgstr "Could not revoke share link."
 msgid "Couldn't copy — select and copy them manually."
 msgstr "Couldn't copy — select and copy them manually."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Couldn't delete the group."
+msgstr "Couldn't delete the group."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "Couldn't load advisor findings"
 msgstr "Couldn't load advisor findings"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Couldn't load analytics"
+msgstr "Couldn't load analytics"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Couldn't load auth config."
@@ -3149,9 +3212,21 @@ msgstr "Couldn't load traces"
 msgid "Couldn't load usage"
 msgstr "Couldn't load usage"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Couldn't mint an ingest key."
+msgstr "Couldn't mint an ingest key."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Couldn't reset layout."
 msgstr "Couldn't reset layout."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Couldn't resolve."
+msgstr "Couldn't resolve."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Couldn't revoke the ingest key."
+msgstr "Couldn't revoke the ingest key."
 
 #: src/client/admin/pages/usage.tsx
 msgid "Couldn't save key limits."
@@ -3165,9 +3240,21 @@ msgstr "Couldn't save layout."
 msgid "Couldn't save limits."
 msgstr "Couldn't save limits."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Couldn't update the status."
+msgstr "Couldn't update the status."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Count"
+msgstr "Count"
+
 #: src/client/admin/parity/insights.tsx
 msgid "count / sum / average over a collection — no SQL"
 msgstr "count / sum / average over a collection — no SQL"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Count a visitor as active when they fire"
+msgstr "Count a visitor as active when they fire"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
@@ -3602,6 +3689,7 @@ msgstr "Defaults to the URL's filename"
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
@@ -4538,6 +4626,10 @@ msgstr "enforced on save (422)"
 msgid "Enforcement"
 msgstr "Enforcement"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "engagement depth"
+msgstr "engagement depth"
+
 #: src/client/admin/pages/jobs.tsx
 msgid "Enqueue"
 msgstr "Enqueue"
@@ -4656,6 +4748,7 @@ msgstr "Environment variables are read-only here"
 msgid "err"
 msgstr "err"
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/extensions.tsx
 msgid "Error"
@@ -4682,6 +4775,7 @@ msgstr "error: {0}"
 msgid "errors"
 msgstr "errors"
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/usage.tsx
 #: src/client/pages/graphql.tsx
 msgid "Errors"
@@ -4714,14 +4808,27 @@ msgstr "Event hooks also fire on their matching pattern; running one here execut
 msgid "Event pattern"
 msgstr "Event pattern"
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Events"
 msgstr "Events"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Events / visitor"
+msgstr "Events / visitor"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Events per day"
+msgstr "Events per day"
+
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 msgstr "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Every occurrence of this bug, with the latest stack trace and how many visitors it reached."
+msgstr "Every occurrence of this bug, with the latest stack trace and how many visitors it reached."
 
 #: src/client/admin/parity/revisions.tsx
 msgid "Every write is versioned. Inspect, diff, or revert any prior state."
@@ -4934,6 +5041,10 @@ msgstr "fast · very cheap · routine reads"
 msgid "Faster, phishing-resistant sign-in. Your device will prompt for biometric or PIN after the account is created. You can add or remove passkeys later in Settings."
 msgstr "Faster, phishing-resistant sign-in. Your device will prompt for biometric or PIN after the account is created. You can add or remove passkeys later in Settings."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Fatal"
+msgstr "Fatal"
+
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Favicon"
 msgstr "Favicon"
@@ -5141,6 +5252,10 @@ msgstr "first dropdown"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "First name"
 msgstr "First name"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "First seen"
+msgstr "First seen"
 
 #: src/client/pages/sign-up.tsx
 msgid "First-user policy."
@@ -5430,6 +5545,10 @@ msgstr "Functions"
 #: src/client/admin/pages/overview.tsx
 msgid "FUNCTIONS_EXEC_URL set"
 msgstr "FUNCTIONS_EXEC_URL set"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Funnel"
+msgstr "Funnel"
 
 #: src/client/admin/item-views.tsx
 msgid "Gallery"
@@ -5783,6 +5902,14 @@ msgstr "If {displayEmail} matches an account, a sign-in link is on its way. It e
 msgid "If set, visitors are sent there instead of seeing the message."
 msgstr "If set, visitors are sent there instead of seeing the message."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Ignore"
+msgstr "Ignore"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Ignored"
+msgstr "Ignored"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Images"
 msgstr "Images"
@@ -5888,6 +6015,14 @@ msgstr "info"
 #: src/client/admin/field-validation-editor.tsx
 msgid "Info"
 msgstr "Info"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Ingest key"
+msgstr "Ingest key"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Ingest key revoked."
+msgstr "Ingest key revoked."
 
 #: src/client/admin/parity/revisions.tsx
 msgid "initial"
@@ -6294,6 +6429,10 @@ msgstr "Key must be 120 characters or fewer."
 msgid "Key must be 2–40 chars (letters, digits, dash, underscore)."
 msgstr "Key must be 2–40 chars (letters, digits, dash, underscore)."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Key set"
+msgstr "Key set"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "keys"
 msgstr "keys"
@@ -6376,6 +6515,10 @@ msgstr "Large title in the sign-in brand panel."
 msgid "Last"
 msgstr "Last"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "last {days} days"
+msgstr "last {days} days"
+
 #: src/client/admin/pages/logs.tsx
 msgid "last {range}"
 msgstr "last {range}"
@@ -6445,10 +6588,15 @@ msgid "last seen"
 msgstr "last seen"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Last seen"
 msgstr "Last seen"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Last seen at"
+msgstr "Last seen at"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Last submission"
@@ -6470,6 +6618,10 @@ msgstr "Latency"
 #: src/client/admin/field-validation-editor.tsx
 msgid "Latest"
 msgstr "Latest"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Latest stack trace"
+msgstr "Latest stack trace"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/forms.tsx
@@ -6582,6 +6734,10 @@ msgstr "legacy production"
 msgid "Let editors fold the \"{0}\" section. Applies to the whole section."
 msgstr "Let editors fold the \"{0}\" section. Applies to the whole section."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Level"
+msgstr "Level"
+
 #: src/client/admin/pages/settings/index.tsx
 msgid "License"
 msgstr "License"
@@ -6589,6 +6745,10 @@ msgstr "License"
 #: src/client/admin/collection-settings.tsx
 msgid "lifecycle"
 msgstr "lifecycle"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "lifetime"
+msgstr "lifetime"
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
@@ -7097,6 +7257,18 @@ msgstr "Min selected"
 #: src/client/admin/item-collaboration.tsx
 msgid "Mint a public link that shows this record read-only — no sign-in required to view it."
 msgstr "Mint a public link that shows this record read-only — no sign-in required to view it."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Mint an ingest key, then call client.analytics.track(\"page_view\") from your app. Events show up here within seconds."
+msgstr "Mint an ingest key, then call client.analytics.track(\"page_view\") from your app. Events show up here within seconds."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Mint key"
+msgstr "Mint key"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Minting a new key immediately invalidates the old one."
+msgstr "Minting a new key immediately invalidates the old one."
 
 #: src/client/admin/pages/forms.tsx
 msgid "Mints a new token; the current link stops working"
@@ -7648,6 +7820,10 @@ msgstr "No content schema."
 #~ msgid "No conversations yet."
 #~ msgstr "No conversations yet."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "No crashes here"
+msgstr "No crashes here"
+
 #: src/client/admin/parity/insights.tsx
 msgid "No data yet — run the panel."
 msgstr "No data yet — run the panel."
@@ -7717,6 +7893,18 @@ msgstr "No errors recorded."
 #: src/client/pages/graphql.tsx
 msgid "No errors."
 msgstr "No errors."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "No events in this window."
+msgstr "No events in this window."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "No events to build a funnel from"
+msgstr "No events to build a funnel from"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "No events tracked yet"
+msgstr "No events tracked yet"
 
 #: src/client/admin/pages/extensions.tsx
 msgid "No extensions installed"
@@ -7844,6 +8032,14 @@ msgstr "No jobs"
 msgid "No JSON content defined."
 msgstr "No JSON content defined."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "No key"
+msgstr "No key"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "No key has been minted for this workspace yet."
+msgstr "No key has been minted for this workspace yet."
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "no key needed"
 msgstr "no key needed"
@@ -7922,6 +8118,10 @@ msgstr "No numeric columns"
 msgid "No outstanding findings. Re-run after a schema or permission change."
 msgstr "No outstanding findings. Re-run after a schema or permission change."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "No page paths recorded — send a path with your events."
+msgstr "No page paths recorded — send a path with your events."
+
 #: src/client/pages/rest-explorer.tsx
 msgid "No parameters or body."
 msgstr "No parameters or body."
@@ -7933,6 +8133,10 @@ msgstr "No paths in the current spec."
 #: src/client/pages/graphql.tsx
 msgid "No queries."
 msgstr "No queries."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "No referrers recorded."
+msgstr "No referrers recorded."
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "No relation-typed fields detected. Add a field with type <0>relation</0> to draw an edge."
@@ -8148,6 +8352,10 @@ msgstr "none selected = all"
 msgid "not configured"
 msgstr "not configured"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Not enough history yet"
+msgstr "Not enough history yet"
+
 #: src/client/admin/account-page.tsx
 msgid "Not linked."
 msgstr "Not linked."
@@ -8280,6 +8488,10 @@ msgstr "OAuth redirect URI to register with {0}"
 msgid "Observability"
 msgstr "Observability"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Occurrences"
+msgstr "Occurrences"
+
 #: src/client/admin/item-views.tsx
 msgid "October"
 msgstr "October"
@@ -8408,6 +8620,7 @@ msgid "open"
 msgstr "open"
 
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Open"
 msgstr "Open"
@@ -8555,6 +8768,7 @@ msgstr "overage is reported, nothing is blocked"
 msgid "Overrides the `--primary` token used across the admin and any published surfaces."
 msgstr "Overrides the `--primary` token used across the admin and any published surfaces."
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/ui.tsx
 #: src/client/pages/rest-explorer.tsx
@@ -8999,6 +9213,10 @@ msgstr "Pick an end-user"
 msgid "Pick an end-user to select them"
 msgstr "Pick an end-user to select them"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Pick an event…"
+msgstr "Pick an event…"
+
 #: src/client/admin/relational-pickers.tsx
 msgid "Pick an existing file, or drop a new one to upload."
 msgstr "Pick an existing file, or drop a new one to upload."
@@ -9022,6 +9240,10 @@ msgstr "pick at least one event"
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Pick at least one field."
 #~ msgstr "Pick at least one field."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Pick at least two steps"
+msgstr "Pick at least two steps"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Pick collection…"
@@ -9322,6 +9544,10 @@ msgstr "Privacy Policy URL"
 #: src/client/admin/storage/widgets.tsx
 msgid "Private"
 msgstr "Private"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Product events and crash reports from your apps. Visitors are counted by an anonymous id, so pre-signup traffic is measured too."
+msgstr "Product events and crash reports from your apps. Visitors are counted by an anonymous id, so pre-signup traffic is measured too."
 
 #: src/client/admin/ui.tsx
 msgid "Production"
@@ -9700,6 +9926,10 @@ msgstr "Recent deliveries"
 msgid "Recent errors"
 msgstr "Recent errors"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Recent occurrences"
+msgstr "Recent occurrences"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Recent runs"
 msgstr "Recent runs"
@@ -9750,6 +9980,7 @@ msgstr "Refetch /api/openapi.json"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/database-import.tsx
@@ -9931,6 +10162,10 @@ msgstr "Remove language"
 msgid "Remove sample data"
 msgstr "Remove sample data"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Remove step"
+msgstr "Remove step"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Remove tag"
 msgstr "Remove tag"
@@ -9981,6 +10216,10 @@ msgstr "Renaming…"
 #: src/client/admin/field-format-editor.tsx
 msgid "rendering only — never affects storage or sorting"
 msgstr "rendering only — never affects storage or sorting"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Reopen"
+msgstr "Reopen"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
@@ -10127,6 +10366,14 @@ msgstr "Reset your password"
 msgid "Resetting password"
 msgstr "Resetting password"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Resolve"
+msgstr "Resolve"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Resolved"
+msgstr "Resolved"
+
 #: src/client/pages/rest-explorer.tsx
 msgid "Resolved schemes"
 msgstr "Resolved schemes"
@@ -10223,6 +10470,14 @@ msgstr "resumed"
 msgid "Retain (auto)"
 msgstr "Retain (auto)"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Retention"
+msgstr "Retention"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Retention needs visitors whose first-ever day falls inside the selected window. Widen the window or come back after a few days of traffic."
+msgstr "Retention needs visitors whose first-ever day falls inside the selected window. Widen the window or come back after a few days of traffic."
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/template-onboarding.tsx
@@ -10303,6 +10558,7 @@ msgstr "revocable anytime"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/item-collaboration.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -10420,6 +10676,10 @@ msgstr "root"
 #: src/client/admin/pages/webhooks.tsx
 msgid "Rotate"
 msgstr "Rotate"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Rotate key"
+msgstr "Rotate key"
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/insights.tsx
@@ -11304,6 +11564,7 @@ msgid "sessions"
 msgstr "sessions"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 msgid "Sessions"
@@ -11612,6 +11873,10 @@ msgstr "Shown instead of the label when the admin UI is in that language."
 msgid "shown once — copy it now, it won't appear again"
 msgstr "shown once — copy it now, it won't appear again"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Shown once — store it now."
+msgstr "Shown once — store it now."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Side-table (item_ownership)"
 msgstr "Side-table (item_ownership)"
@@ -11776,6 +12041,7 @@ msgstr "Singleton"
 msgid "Singular"
 msgstr "Singular"
 
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/storage/index.tsx
@@ -12021,6 +12287,7 @@ msgstr "static panels render their config object verbatim — set it from the AP
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/members-panel.tsx
+#: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/traces.tsx
@@ -12489,6 +12756,10 @@ msgstr "The advisor endpoint returned an error. Re-run to try again."
 msgid "The agent's standing instructions — its persona, tone, and rules. Sent to the model before every user message."
 msgstr "The agent's standing instructions — its persona, tone, and rules. Sent to the model before every user message."
 
+#: src/client/admin/pages/analytics.tsx
+msgid "The analytics endpoint returned an error. Refresh to try again."
+msgstr "The analytics endpoint returned an error. Refresh to try again."
+
 #: src/client/pages/oauth-consent.tsx
 msgid "The authorization flow returned no redirect — start over from the client."
 msgstr "The authorization flow returned no redirect — start over from the client."
@@ -12563,6 +12834,10 @@ msgstr "The public embed is live. The link was shown once when it was created �
 #: src/client/admin/pages/forms.tsx
 msgid "The public link stops working immediately. Submitted rows stay in the collection."
 msgstr "The public link stops working immediately. Submitted rows stay in the collection."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "The publishable key your client apps send when tracking."
+msgstr "The publishable key your client apps send when tracking."
 
 #: src/client/admin/parity/insights.tsx
 msgid "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
@@ -12939,6 +13214,18 @@ msgstr "Top collections"
 #~ msgid "Top customers by spend"
 #~ msgstr "Top customers by spend"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Top events"
+msgstr "Top events"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Top pages"
+msgstr "Top pages"
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Top referrers"
+msgstr "Top referrers"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Total"
 msgstr "Total"
@@ -12963,6 +13250,10 @@ msgstr "Traces appear as requests come in. Make a call with the SDK or admin UI,
 #: src/client/admin/pages/traces.tsx
 msgid "Traces refreshed."
 msgstr "Traces refreshed."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "Track at least two different event names, then come back to measure how visitors move between them."
+msgstr "Track at least two different event names, then come back to measure how visitors move between them."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Track data events through Segment."
@@ -13194,6 +13485,10 @@ msgstr "Unique"
 #: src/client/admin/add-field.tsx
 msgid "UNIQUE constraint at the column level."
 msgstr "UNIQUE constraint at the column level."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "unique, by anonymous id"
+msgstr "unique, by anonymous id"
 
 #: src/client/admin/parity/database.tsx
 msgid "unknown — manifest out of sync, run <0>bun run --cwd packages/db manifest</0>"
@@ -13691,6 +13986,10 @@ msgstr "Views"
 msgid "visitor's browser language"
 msgstr "visitor's browser language"
 
+#: src/client/admin/pages/analytics.tsx
+msgid "Visitors"
+msgstr "Visitors"
+
 #. placeholder {0}: languages[1] ?? "tr"
 #: src/client/admin/pages/forms.tsx
 msgid "Visitors get their browser language; <0>?lang={0}</0> forces one. Missing strings fall back to the base language."
@@ -13721,6 +14020,7 @@ msgid "warn"
 msgstr "warn"
 
 #: src/client/admin/field-validation-editor.tsx
+#: src/client/admin/pages/analytics.tsx
 msgid "Warning"
 msgstr "Warning"
 
@@ -13894,6 +14194,10 @@ msgstr "Will translate <0>{0}</0> key{1}{2}."
 #: src/client/components/mcp-key-modal.tsx
 msgid "Wire this API key into a Model Context Protocol client (Claude Desktop, Cursor, or any MCP-aware tool). The snippet below is pre-filled with this workspace's MCP URL."
 msgstr "Wire this API key into a Model Context Protocol client (Claude Desktop, Cursor, or any MCP-aware tool). The snippet below is pre-filled with this workspace's MCP URL."
+
+#: src/client/admin/pages/analytics.tsx
+msgid "with a session id"
+msgstr "with a session id"
 
 #: src/client/admin/items.tsx
 msgid "Words"

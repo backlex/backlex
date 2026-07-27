@@ -76,6 +76,7 @@ import m69 from "../../drizzle/pg/20260722090000_staged_edits/migration.sql" wit
 import m70 from "../../drizzle/pg/20260725090000_agent_message_author/migration.sql" with { type: "text" };
 import m71 from "../../drizzle/pg/20260725120000_agent_effort/migration.sql" with { type: "text" };
 import m72 from "../../drizzle/pg/20260725150000_agent_rooms/migration.sql" with { type: "text" };
+import m73 from "../../drizzle/pg/20260727090000_product_analytics/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -156,4 +157,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260725090000_agent_message_author", sql: m70 },
   { name: "20260725120000_agent_effort", sql: m71 },
   { name: "20260725150000_agent_rooms", sql: m72 },
+  { name: "20260727090000_product_analytics", sql: m73 },
 ];

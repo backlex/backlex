@@ -127,6 +127,7 @@ export default defineConfig({
             { slug: "advisor" },
             { slug: "tracing" },
             { slug: "usage-metering" },
+            { slug: "product-analytics" },
             { slug: "audit-logs" },
             { slug: "demo-mode" },
           ],

@@ -433,6 +433,15 @@ export interface Env {
    *  the global retention. Pruned by the same daily cron tick. Defaults to 30.
    *  Set to `0` to disable (rows then fall back to ACTIVITY_RETENTION_DAYS). */
   ACCESS_AUDIT_RETENTION_DAYS?: string;
+  /** Days of tracked product-analytics events to keep. The stream is the
+   *  highest-volume table backlex writes, and the aggregates that matter
+   *  (funnels, retention) are windowed anyway. Defaults to 90. */
+  ANALYTICS_RETENTION_DAYS?: string;
+  /** Days of captured error occurrences (stacks + context) to keep. Groups
+   *  outlive their occurrences — only a group with nothing left AND no sighting
+   *  since the cutoff is dropped — so an active bug keeps its full lifetime
+   *  counter. Defaults to 90. */
+  ERRORS_RETENTION_DAYS?: string;
   /** Set to `"true"` to let the server-side migration connector dial
    *  private/internal addresses (localhost, RFC1918, link-local, ULA). Off
    *  by default — a hosted admin must not be able to use the server as a
@@ -579,6 +588,8 @@ export const STRING_ENV_KEYS = [
   "S3_SECRET_ACCESS_KEY",
   "ACTIVITY_RETENTION_DAYS",
   "ACCESS_AUDIT_RETENTION_DAYS",
+  "ANALYTICS_RETENTION_DAYS",
+  "ERRORS_RETENTION_DAYS",
   "MIGRATE_ALLOW_PRIVATE_SOURCES",
 ] as const satisfies readonly (keyof Env)[];
 

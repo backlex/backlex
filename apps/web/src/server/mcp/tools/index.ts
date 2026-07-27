@@ -21,6 +21,7 @@ import { webhooksTools } from "./webhooks";
 import { flowsTools } from "./flows";
 import { paymentsTools } from "./payments";
 import { dashboardsTools } from "./dashboards";
+import { analyticsTools } from "./analytics";
 import { formsTools } from "./forms";
 import { usageTools } from "./usage";
 import { advisorTools } from "./advisor";
@@ -72,6 +73,7 @@ export const allTools: McpTool[] = [
   ...flowsTools,
   ...paymentsTools,
   ...dashboardsTools,
+  ...analyticsTools,
   ...formsTools,
   ...usageTools,
   ...advisorTools,

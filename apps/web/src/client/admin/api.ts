@@ -2343,3 +2343,136 @@ export const migrateApi = {
       body: JSON.stringify({}),
     }),
 };
+
+// ── Product analytics + crash reporting (#22) ────────────────────────────────
+
+export interface ApiAnalyticsOverview {
+  totals: { events: number; users: number; sessions: number };
+  series: { day: string; events: number; users: number }[];
+  topEvents: { name: string; count: number; users: number }[];
+  topPaths: { path: string; count: number }[];
+  topReferrers: { referrer: string; count: number }[];
+  sources: { source: string; count: number }[];
+}
+
+export interface ApiAnalyticsFunnel {
+  windowDays: number;
+  steps: { name: string; count: number; conversion: number; dropOff: number }[];
+}
+
+export interface ApiAnalyticsRetention {
+  maxOffset: number;
+  cohorts: { day: string; size: number; values: number[] }[];
+}
+
+export interface ApiAnalyticsEvent {
+  id: string;
+  name: string;
+  distinctId: string;
+  userId: string | null;
+  sessionId: string | null;
+  props: Record<string, unknown> | null;
+  path: string | null;
+  referrer: string | null;
+  source: string | null;
+  release: string | null;
+  country: string | null;
+  ts: number;
+}
+
+export type ApiErrorStatus = "open" | "resolved" | "ignored";
+
+export interface ApiErrorGroup {
+  id: string;
+  fingerprint: string;
+  type: string;
+  message: string;
+  culprit: string | null;
+  level: string;
+  platform: string | null;
+  release: string | null;
+  status: ApiErrorStatus;
+  events: number;
+  firstSeen: number;
+  lastSeen: number;
+  resolvedAt: number | null;
+  resolvedBy: string | null;
+}
+
+export interface ApiErrorOccurrence {
+  id: string;
+  message: string;
+  stack: string | null;
+  level: string;
+  platform: string | null;
+  release: string | null;
+  url: string | null;
+  userId: string | null;
+  distinctId: string | null;
+  sessionId: string | null;
+  context: Record<string, unknown> | null;
+  ts: number;
+}
+
+export interface ApiErrorGroupDetail {
+  group: ApiErrorGroup;
+  occurrences: ApiErrorOccurrence[];
+  series: { day: string; count: number }[];
+  users: number;
+}
+
+/** Build a query string, dropping empty values. */
+const analyticsQs = (params: Record<string, string | number | undefined>): string => {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== "") qs.set(k, String(v));
+  }
+  const tail = qs.toString();
+  return tail ? `?${tail}` : "";
+};
+
+export const analyticsApi = {
+  overview: (from: number, to: number) =>
+    api<Envelope<ApiAnalyticsOverview>>(
+      `/api/admin/analytics/overview${analyticsQs({ from, to })}`,
+    ),
+  eventNames: () => api<Envelope<string[]>>("/api/admin/analytics/event-names"),
+  funnel: (body: { steps: string[]; windowDays?: number; from: number; to: number }) =>
+    api<Envelope<ApiAnalyticsFunnel>>("/api/admin/analytics/funnel", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  retention: (body: { event?: string | null; from: number; to: number }) =>
+    api<Envelope<ApiAnalyticsRetention>>("/api/admin/analytics/retention", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  events: (opts: {
+    from?: number;
+    to?: number;
+    name?: string;
+    distinctId?: string;
+    limit?: number;
+  }) => api<Envelope<ApiAnalyticsEvent[]>>(`/api/admin/analytics/events${analyticsQs(opts)}`),
+  errors: (opts: { status?: string; level?: string; since?: number; limit?: number }) =>
+    api<Envelope<ApiErrorGroup[]>>(`/api/admin/analytics/errors${analyticsQs(opts)}`),
+  error: (id: string) =>
+    api<Envelope<ApiErrorGroupDetail>>(
+      `/api/admin/analytics/errors/${encodeURIComponent(id)}`,
+    ),
+  updateError: (id: string, status: ApiErrorStatus) =>
+    api<Envelope<ApiErrorGroup>>(`/api/admin/analytics/errors/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
+  deleteError: (id: string) =>
+    api<{ ok: boolean }>(`/api/admin/analytics/errors/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
+  ingestKeyStatus: () =>
+    api<Envelope<{ exists: boolean }>>("/api/admin/analytics/ingest-key"),
+  mintIngestKey: () =>
+    api<Envelope<{ key: string }>>("/api/admin/analytics/ingest-key", { method: "POST" }),
+  revokeIngestKey: () =>
+    api<{ ok: boolean }>("/api/admin/analytics/ingest-key", { method: "DELETE" }),
+};

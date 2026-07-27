@@ -2023,3 +2023,127 @@ export const paymentEvents = sqliteTable(
     index("payment_events_tenant_created_idx").on(t.tenantId, t.createdAt),
   ],
 );
+
+/**
+ * Product-analytics event stream (#22) — one row per tracked product event
+ * (`page_view`, `signup`, `checkout_completed`, …), written in batches by the
+ * public ingest endpoint. High-volume and disposable: no FKs, pruned by
+ * retention, safe to truncate. Every "unique user" count, funnel cohort and
+ * retention cohort is keyed by `distinct_id`, not `user_id`, so anonymous
+ * pre-signup traffic is measurable and a visitor who later logs in still
+ * counts once.
+ */
+export const analyticsEvents = sqliteTable(
+  "analytics_events",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    /** Client-generated stable id for an anonymous visitor/device. */
+    distinctId: text("distinct_id").notNull(),
+    /** App-plane user id, when the caller was authenticated. */
+    userId: text("user_id"),
+    sessionId: text("session_id"),
+    props: text("props", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    path: text("path"),
+    referrer: text("referrer"),
+    /** `web` / `ios` / `android` / `server`, or any free-form client label. */
+    source: text("source"),
+    /** App or build version, so a metric shift can be tied to a release. */
+    release: text("release"),
+    country: text("country"),
+    /** Event time. Client-supplied (offline queues replay late) but clamped
+     *  server-side so a skewed clock can't park rows in the far future. */
+    ts: integer("ts", { mode: "timestamp_ms" }).notNull(),
+    /** UTC calendar day of `ts`, `YYYY-MM-DD`. Denormalized so funnel and
+     *  retention cohorts group without dialect-specific date math — the same
+     *  trick `usage_counters.day` uses. */
+    day: text("day").notNull(),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    index("analytics_events_tenant_ts_idx").on(t.tenantId, t.ts),
+    index("analytics_events_tenant_name_ts_idx").on(t.tenantId, t.name, t.ts),
+    index("analytics_events_tenant_distinct_idx").on(t.tenantId, t.distinctId, t.ts),
+    index("analytics_events_tenant_day_idx").on(t.tenantId, t.day),
+  ],
+);
+
+/**
+ * Crash-reporting group — the deduplicated identity of one bug. Occurrences
+ * fold into a group by `fingerprint` (a hash of the error type, its normalized
+ * message and the top stack frames) so a crash that fires 10k times is one row
+ * to triage, not 10k.
+ *
+ * `id` is derived deterministically from `(tenantId, fingerprint)` rather than
+ * random, which lets ingest upsert with a single atomic
+ * `onConflictDoUpdate(id)` — no check-then-insert race, and no reliance on a
+ * unique index over the nullable `tenant_id` (SQLite treats NULLs as distinct,
+ * so such an index would not dedupe the default workspace).
+ */
+export const errorGroups = sqliteTable(
+  "error_groups",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    fingerprint: text("fingerprint").notNull(),
+    type: text("type").notNull().default("Error"),
+    message: text("message").notNull(),
+    /** Top in-app stack frame (`file:line`) — the location the list shows. */
+    culprit: text("culprit"),
+    /** `error` / `warning` / `fatal`. */
+    level: text("level").notNull().default("error"),
+    /** `browser` / `node` / `ios` / `android`, or any free-form client label. */
+    platform: text("platform"),
+    /** Release the group was LAST seen on (regressions move it forward). */
+    release: text("release"),
+    /** `open` / `resolved` / `ignored`. */
+    status: text("status").notNull().default("open"),
+    /** Denormalized occurrence counter — incremented by ingest so the list
+     *  never has to COUNT over `error_events`, which retention prunes. */
+    events: integer("events").notNull().default(0),
+    firstSeen: integer("first_seen", { mode: "timestamp_ms" }).notNull(),
+    lastSeen: integer("last_seen", { mode: "timestamp_ms" }).notNull(),
+    resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
+    resolvedBy: text("resolved_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("error_groups_tenant_last_seen_idx").on(t.tenantId, t.lastSeen),
+    index("error_groups_tenant_status_idx").on(t.tenantId, t.status),
+  ],
+);
+
+/**
+ * One captured occurrence of an error. Kept for the stack trace + context of
+ * recent samples; pruned on its own retention clock while `error_groups` (and
+ * its `events` counter) survive, so an old bug keeps its history even after
+ * its individual payloads age out.
+ */
+export const errorEvents = sqliteTable(
+  "error_events",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    groupId: text("group_id").notNull(),
+    type: text("type").notNull().default("Error"),
+    message: text("message").notNull(),
+    stack: text("stack"),
+    level: text("level").notNull().default("error"),
+    platform: text("platform"),
+    release: text("release"),
+    url: text("url"),
+    userId: text("user_id"),
+    distinctId: text("distinct_id"),
+    sessionId: text("session_id"),
+    /** Breadcrumbs, tags, extra and user-agent — whatever the SDK attached. */
+    context: text("context", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    ts: integer("ts", { mode: "timestamp_ms" }).notNull(),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    index("error_events_group_ts_idx").on(t.groupId, t.ts),
+    index("error_events_tenant_ts_idx").on(t.tenantId, t.ts),
+  ],
+);

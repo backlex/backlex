@@ -19,6 +19,11 @@ import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { Ctx } from "../context";
+import {
+  analyticsFunnel,
+  analyticsOverview,
+  analyticsRetention,
+} from "./analytics";
 import { runItemsAggregate } from "./items/aggregate";
 import { queryAll } from "./items/sql-helpers";
 import { resolvePermission } from "./permissions";
@@ -283,6 +288,95 @@ const panelsOf = async (
     .orderBy(asc(p.createdAt))) as any[];
 };
 
+/** Metrics an `analytics` panel can plot. */
+export const ANALYTICS_PANEL_METRICS = [
+  "totals",
+  "series",
+  "top-events",
+  "top-paths",
+  "top-referrers",
+  "sources",
+  "funnel",
+  "retention",
+] as const;
+export type AnalyticsPanelMetric = (typeof ANALYTICS_PANEL_METRICS)[number];
+
+/**
+ * Run an `analytics` panel and flatten the result into the row shape the panel
+ * renderer expects: the first non-numeric column is the label, numeric columns
+ * are the series.
+ *
+ * Unlike `items-aggregate`, there is no per-role clamp to apply on the embed
+ * path — the analytics stream has no row-level owner, only counts. Analytics
+ * panels are therefore treated like `sql` panels on a public embed: admin-
+ * authored, and published only because an admin explicitly enabled the embed.
+ */
+export const runAnalyticsPanel = async (
+  ctx: Ctx,
+  tenantId: string,
+  config: any,
+): Promise<Record<string, unknown>[]> => {
+  const metric: AnalyticsPanelMetric = (ANALYTICS_PANEL_METRICS as readonly string[]).includes(
+    config?.metric,
+  )
+    ? config.metric
+    : "series";
+  // `runPanel` carries the workspace as `""` for the default tenant, while the
+  // analytics tables store NULL there — normalise before querying.
+  const scopeTenant = tenantId || null;
+  const rangeDays = Math.min(365, Math.max(1, Math.floor(Number(config?.rangeDays) || 30)));
+  const to = Date.now();
+  const from = to - rangeDays * 86_400_000;
+  const dbCtx = { db: ctx.db, dialect: ctx.dialect };
+
+  if (metric === "funnel") {
+    const steps = Array.isArray(config?.steps) ? config.steps.map(String) : [];
+    const { steps: rows } = await analyticsFunnel(dbCtx, {
+      tenantId: scopeTenant,
+      from,
+      to,
+      steps,
+      windowDays: Number(config?.windowDays) || undefined,
+    });
+    return rows.map((s) => ({ step: s.name, users: s.count }));
+  }
+
+  if (metric === "retention") {
+    const { cohorts, maxOffset } = await analyticsRetention(dbCtx, {
+      tenantId: scopeTenant,
+      from,
+      to,
+      event: config?.event ?? null,
+    });
+    // Collapse the cohort grid into one curve: total users still active N days
+    // after their first day. A per-cohort grid needs the dedicated Analytics
+    // page — a panel is a single chart.
+    const out: Record<string, unknown>[] = [];
+    for (let offset = 0; offset <= maxOffset; offset++) {
+      let users = 0;
+      for (const c of cohorts) users += c.values[offset] ?? 0;
+      out.push({ day: `Day ${offset}`, users });
+    }
+    return out;
+  }
+
+  const overview = await analyticsOverview(dbCtx, { tenantId: scopeTenant, from, to });
+  switch (metric) {
+    case "totals":
+      return [overview.totals as unknown as Record<string, unknown>];
+    case "top-events":
+      return overview.topEvents as unknown as Record<string, unknown>[];
+    case "top-paths":
+      return overview.topPaths as unknown as Record<string, unknown>[];
+    case "top-referrers":
+      return overview.topReferrers as unknown as Record<string, unknown>[];
+    case "sources":
+      return overview.sources as unknown as Record<string, unknown>[];
+    default:
+      return overview.series as unknown as Record<string, unknown>[];
+  }
+};
+
 /**
  * Run a single panel and shape the result. `scope` (when supplied) carries the
  * embed role's resolved read permission so items-aggregate panels never expose
@@ -324,6 +418,10 @@ const runPanel = async (
         }
       }
       const data = await runItemsAggregate(ctx, auth, tenantId, panel.config, opts);
+      return { ...base, data };
+    }
+    if (panel.kind === "analytics") {
+      const data = await runAnalyticsPanel(ctx, tenantId, panel.config);
       return { ...base, data };
     }
     if (panel.kind === "sql" && panel.sql) {

@@ -115,6 +115,13 @@ export interface ClientOptions {
    * ignores it for app-mode bearer sessions (the tenant comes from the session).
    */
   tenant?: string;
+  /**
+   * Publishable analytics ingest key (`alk_...`). Safe to ship in a browser or
+   * mobile bundle: it authorises append-only `analytics.track` /
+   * `analytics.trackError` calls and cannot read anything back. Omit it when
+   * the client already carries a session or API key — ingest accepts those too.
+   */
+  ingestKey?: string;
   /** Optional fetch override (testing / Node polyfill). */
   fetch?: typeof fetch;
   /**
@@ -1052,6 +1059,203 @@ export interface DashboardsClient {
   revoke(id: string): Promise<{ ok: boolean }>;
 }
 
+/* ── Product analytics + crash reporting (#22) ─────────────────────────── */
+
+/** One tracked product event. `distinctId` defaults to the SDK's stable
+ *  anonymous visitor id, so callers usually pass only a name and props. */
+export interface TrackedEvent {
+  name: string;
+  distinctId?: string;
+  userId?: string | null;
+  sessionId?: string | null;
+  props?: Record<string, unknown> | null;
+  path?: string | null;
+  referrer?: string | null;
+  source?: string | null;
+  release?: string | null;
+  country?: string | null;
+  /** Epoch ms. Defaults to now; the server clamps to −7d / +5min. */
+  ts?: number;
+}
+
+/** One error occurrence to report. */
+export interface TrackedError {
+  message: string;
+  type?: string | null;
+  stack?: string | null;
+  level?: "error" | "warning" | "fatal" | null;
+  platform?: string | null;
+  release?: string | null;
+  url?: string | null;
+  userId?: string | null;
+  distinctId?: string | null;
+  sessionId?: string | null;
+  context?: Record<string, unknown> | null;
+  ts?: number;
+}
+
+export interface AnalyticsIngestResult {
+  accepted: number;
+  /** Rows the server dropped as malformed, rather than failing the batch. */
+  rejected: number;
+}
+
+export interface AnalyticsOverview {
+  totals: { events: number; users: number; sessions: number };
+  series: { day: string; events: number; users: number }[];
+  topEvents: { name: string; count: number; users: number }[];
+  topPaths: { path: string; count: number }[];
+  topReferrers: { referrer: string; count: number }[];
+  sources: { source: string; count: number }[];
+}
+
+export interface AnalyticsFunnelResult {
+  windowDays: number;
+  steps: { name: string; count: number; conversion: number; dropOff: number }[];
+}
+
+export interface AnalyticsRetentionResult {
+  maxOffset: number;
+  cohorts: { day: string; size: number; values: number[] }[];
+}
+
+export interface AnalyticsEventRow {
+  id: string;
+  name: string;
+  distinctId: string;
+  userId: string | null;
+  sessionId: string | null;
+  props: Record<string, unknown> | null;
+  path: string | null;
+  referrer: string | null;
+  source: string | null;
+  release: string | null;
+  country: string | null;
+  ts: number;
+}
+
+export interface ErrorGroup {
+  id: string;
+  fingerprint: string;
+  type: string;
+  message: string;
+  culprit: string | null;
+  level: string;
+  platform: string | null;
+  release: string | null;
+  status: "open" | "resolved" | "ignored" | string;
+  events: number;
+  firstSeen: number;
+  lastSeen: number;
+  resolvedAt: number | null;
+  resolvedBy: string | null;
+}
+
+export interface ErrorOccurrence {
+  id: string;
+  message: string;
+  stack: string | null;
+  level: string;
+  platform: string | null;
+  release: string | null;
+  url: string | null;
+  userId: string | null;
+  distinctId: string | null;
+  sessionId: string | null;
+  context: Record<string, unknown> | null;
+  ts: number;
+}
+
+export interface ErrorGroupDetail {
+  group: ErrorGroup;
+  occurrences: ErrorOccurrence[];
+  series: { day: string; count: number }[];
+  users: number;
+}
+
+/** Inclusive epoch-ms reporting window. Defaults to the last 30 days. */
+export interface AnalyticsRange {
+  from?: number;
+  to?: number;
+}
+
+/**
+ * Product analytics + crash reporting. The two `track*` methods are the
+ * append-only ingest side (usable from a browser with a publishable
+ * `ingestKey`); everything else is admin-scoped reporting.
+ */
+export interface AnalyticsClient {
+  /** The stable anonymous visitor id this client stamps on events that omit
+   *  one. Persisted in `localStorage` in a browser, in memory elsewhere. */
+  distinctId(): string;
+  /** Pin the visitor id — call after sign-in to tie a known user to the
+   *  anonymous history already recorded under the generated id. */
+  identify(distinctId: string, opts?: { userId?: string | null }): void;
+  /** Track one event. */
+  track(
+    name: string,
+    props?: Record<string, unknown> | null,
+    extra?: Omit<TrackedEvent, "name" | "props">,
+  ): Promise<AnalyticsIngestResult>;
+  /** Track many events in one request (offline queues, batching). */
+  trackBatch(events: TrackedEvent[]): Promise<AnalyticsIngestResult>;
+  /** Report one error. Accepts a real `Error` (message/stack/type are read off
+   *  it) or an explicit payload. */
+  trackError(
+    error: Error | TrackedError,
+    extra?: Partial<TrackedError>,
+  ): Promise<AnalyticsIngestResult & { groups: string[] }>;
+  /** Report many errors in one request. */
+  trackErrorBatch(
+    errors: TrackedError[],
+  ): Promise<AnalyticsIngestResult & { groups: string[] }>;
+  /**
+   * Browser only: forward uncaught errors and unhandled promise rejections to
+   * `trackError` automatically. Returns a function that removes the listeners.
+   * A no-op returning a no-op outside a browser.
+   */
+  captureErrors(opts?: { release?: string; platform?: string }): () => void;
+  /** Headline counters, daily series and top-N breakdowns (admin). */
+  overview(range?: AnalyticsRange): Promise<{ data: AnalyticsOverview }>;
+  /** Distinct event names ordered by volume (admin). */
+  eventNames(): Promise<{ data: string[] }>;
+  /** Ordered conversion funnel (admin). */
+  funnel(
+    input: AnalyticsRange & { steps: string[]; windowDays?: number },
+  ): Promise<{ data: AnalyticsFunnelResult }>;
+  /** Cohort retention grid (admin). */
+  retention(
+    input?: AnalyticsRange & { event?: string | null },
+  ): Promise<{ data: AnalyticsRetentionResult }>;
+  /** Raw recent events — the debug view behind the aggregates (admin). */
+  events(
+    query?: AnalyticsRange & { name?: string; distinctId?: string; limit?: number },
+  ): Promise<{ data: AnalyticsEventRow[] }>;
+  /** Crash-report triage (admin). */
+  errors: {
+    list(query?: {
+      status?: "open" | "resolved" | "ignored";
+      level?: "error" | "warning" | "fatal";
+      since?: number;
+      limit?: number;
+    }): Promise<{ data: ErrorGroup[] }>;
+    get(id: string): Promise<{ data: ErrorGroupDetail }>;
+    update(
+      id: string,
+      patch: { status: "open" | "resolved" | "ignored" },
+    ): Promise<{ data: ErrorGroup }>;
+    delete(id: string): Promise<{ ok: boolean }>;
+  };
+  /** Publishable ingest-key management (admin). */
+  ingestKey: {
+    /** Whether a key exists. The plaintext is never recoverable. */
+    status(): Promise<{ data: { exists: boolean } }>;
+    /** Mint a fresh key, invalidating any previous one. Shown once. */
+    mint(): Promise<{ data: { key: string } }>;
+    revoke(): Promise<{ ok: boolean }>;
+  };
+}
+
 export interface FormsClient {
   /** List every public form in the active workspace. */
   list(): Promise<{ data: PublicForm[] }>;
@@ -1741,6 +1945,8 @@ export interface BacklexClient {
   extensions: ExtensionsClient;
   /** Embedded BI dashboards. */
   dashboards: DashboardsClient;
+  /** Product analytics + crash reporting. */
+  analytics: AnalyticsClient;
   forms: FormsClient;
   /** Usage metering — per-day/per-key counters + workspace limits. */
   usage: UsageClient;
@@ -2604,6 +2810,183 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     revoke: (id: string) => request<{ ok: boolean }>("DELETE", `${dash(id)}/share`),
   };
 
+  // Product analytics + crash reporting. `track*` post to the public ingest
+  // endpoints (authenticated by the publishable `ingestKey` when set, else by
+  // whatever session/API key the client already carries); everything else is
+  // admin-scoped reporting over `/api/admin/analytics`.
+  const ANON_KEY = "backlex.analytics.distinctId";
+  let anonId: string | null = null;
+  let identifiedUserId: string | null = null;
+  /** A stable per-visitor id. Persisted so a returning browser keeps its
+   *  history — which is what makes retention and funnels meaningful. */
+  const currentDistinctId = (): string => {
+    if (anonId) return anonId;
+    try {
+      const store = globalThis.localStorage;
+      const saved = store?.getItem(ANON_KEY);
+      if (saved) {
+        anonId = saved;
+        return anonId;
+      }
+      anonId = crypto.randomUUID();
+      store?.setItem(ANON_KEY, anonId);
+    } catch {
+      // Private mode / no DOM — an in-memory id still groups one session.
+      anonId ??= crypto.randomUUID();
+    }
+    return anonId;
+  };
+  const ingestHeaders = (): Record<string, string> =>
+    opts.ingestKey ? { "x-backlex-ingest-key": opts.ingestKey } : {};
+  const analyticsQuery = (q: object | undefined): string => {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(q ?? {})) {
+      if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
+    }
+    const s = params.toString();
+    return s ? `?${s}` : "";
+  };
+  const toTrackedError = (e: Error | TrackedError): TrackedError =>
+    e instanceof Error
+      ? { message: e.message, type: e.name, stack: e.stack ?? null }
+      : e;
+  const errPath = (id: string) =>
+    `/api/admin/analytics/errors/${encodeURIComponent(id)}`;
+
+  const analytics: AnalyticsClient = {
+    distinctId: currentDistinctId,
+    identify: (distinctId: string, o?: { userId?: string | null }) => {
+      anonId = distinctId;
+      identifiedUserId = o?.userId ?? null;
+      try {
+        globalThis.localStorage?.setItem(ANON_KEY, distinctId);
+      } catch {
+        // non-browser or storage denied — the in-memory id still applies
+      }
+    },
+    trackBatch: (events: TrackedEvent[]) =>
+      request<AnalyticsIngestResult>(
+        "POST",
+        "/api/analytics/events",
+        {
+          events: events.map((e) => ({
+            ...e,
+            distinctId: e.distinctId ?? currentDistinctId(),
+            userId: e.userId ?? identifiedUserId ?? undefined,
+          })),
+        },
+        ingestHeaders(),
+      ),
+    track: (name, props, extra) =>
+      analytics.trackBatch([{ ...extra, name, props: props ?? null }]),
+    trackErrorBatch: (errors: TrackedError[]) =>
+      request<AnalyticsIngestResult & { groups: string[] }>(
+        "POST",
+        "/api/analytics/errors",
+        {
+          errors: errors.map((e) => ({
+            ...e,
+            distinctId: e.distinctId ?? currentDistinctId(),
+            userId: e.userId ?? identifiedUserId ?? undefined,
+          })),
+        },
+        ingestHeaders(),
+      ),
+    trackError: (error, extra) =>
+      analytics.trackErrorBatch([{ ...toTrackedError(error), ...extra }]),
+    captureErrors: (o) => {
+      const w = globalThis as unknown as {
+        addEventListener?: typeof addEventListener;
+        removeEventListener?: typeof removeEventListener;
+        location?: { href?: string };
+      };
+      if (typeof w.addEventListener !== "function") return () => {};
+      const base = {
+        platform: o?.platform ?? "browser",
+        release: o?.release ?? null,
+      };
+      // Reporting must never throw inside a global error handler — that would
+      // replace the app's original failure with the reporter's.
+      const send = (payload: TrackedError) => {
+        void analytics
+          .trackError({ ...base, url: w.location?.href ?? null, ...payload })
+          .catch(() => {});
+      };
+      const onError = (ev: Event) => {
+        const e = ev as ErrorEvent;
+        send(
+          e.error instanceof Error
+            ? toTrackedError(e.error)
+            : { message: e.message || "Uncaught error" },
+        );
+      };
+      const onRejection = (ev: Event) => {
+        const reason = (ev as PromiseRejectionEvent).reason;
+        send(
+          reason instanceof Error
+            ? toTrackedError(reason)
+            : { message: `Unhandled rejection: ${String(reason)}` },
+        );
+      };
+      w.addEventListener("error", onError);
+      w.addEventListener("unhandledrejection", onRejection);
+      return () => {
+        w.removeEventListener?.("error", onError);
+        w.removeEventListener?.("unhandledrejection", onRejection);
+      };
+    },
+    overview: (range) =>
+      request<{ data: AnalyticsOverview }>(
+        "GET",
+        `/api/admin/analytics/overview${analyticsQuery(range)}`,
+      ),
+    eventNames: () =>
+      request<{ data: string[] }>("GET", "/api/admin/analytics/event-names"),
+    funnel: (input) =>
+      request<{ data: AnalyticsFunnelResult }>(
+        "POST",
+        "/api/admin/analytics/funnel",
+        input,
+      ),
+    retention: (input) =>
+      request<{ data: AnalyticsRetentionResult }>(
+        "POST",
+        "/api/admin/analytics/retention",
+        input ?? {},
+      ),
+    events: (query) =>
+      request<{ data: AnalyticsEventRow[] }>(
+        "GET",
+        `/api/admin/analytics/events${analyticsQuery(query)}`,
+      ),
+    errors: {
+      list: (query) =>
+        request<{ data: ErrorGroup[] }>(
+          "GET",
+          `/api/admin/analytics/errors${analyticsQuery(query)}`,
+        ),
+      get: (id: string) => request<{ data: ErrorGroupDetail }>("GET", errPath(id)),
+      update: (id: string, patch: { status: "open" | "resolved" | "ignored" }) =>
+        request<{ data: ErrorGroup }>("PATCH", errPath(id), patch),
+      delete: (id: string) => request<{ ok: boolean }>("DELETE", errPath(id)),
+    },
+    ingestKey: {
+      status: () =>
+        request<{ data: { exists: boolean } }>(
+          "GET",
+          "/api/admin/analytics/ingest-key",
+        ),
+      mint: () =>
+        request<{ data: { key: string } }>(
+          "POST",
+          "/api/admin/analytics/ingest-key",
+          {},
+        ),
+      revoke: () =>
+        request<{ ok: boolean }>("DELETE", "/api/admin/analytics/ingest-key"),
+    },
+  };
+
   // Public form builder. Admin-scoped over `/api/admin/forms`; the plaintext
   // token only ever appears in `create` / `rotateToken` responses.
   const formPath = (id: string) => `/api/admin/forms/${encodeURIComponent(id)}`;
@@ -3016,6 +3399,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     payments,
     extensions,
     dashboards,
+    analytics,
     forms,
     usage,
     advisor,

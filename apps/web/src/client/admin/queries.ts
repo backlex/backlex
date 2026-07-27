@@ -42,6 +42,10 @@ import {
   commentsApi,
   extensionsApi,
   itemsApi,
+  analyticsApi,
+  type ApiErrorGroup,
+  type ApiErrorGroupDetail,
+  type ApiErrorStatus,
   meApi,
   metricsApi,
   notificationsApi,
@@ -117,6 +121,24 @@ export const queryKeys = {
   trace: (traceId: string) => ["trace", traceId] as const,
   /** Usage-metering overview (admin Usage page). Keyed by the series window. */
   usage: (days: number) => ["usage", days] as const,
+  /** Product-analytics overview (admin Analytics page). Keyed by the window. */
+  analytics: (days: number) => ["analytics", "overview", days] as const,
+  /** Tracked event names — the funnel builder's step vocabulary. */
+  analyticsEventNames: () => ["analytics", "event-names"] as const,
+  /** A funnel run. Keyed by its steps + window so switching back is instant. */
+  analyticsFunnel: (steps: string[], windowDays: number, days: number) =>
+    ["analytics", "funnel", steps, windowDays, days] as const,
+  /** A retention run, keyed by the optional activity event + window. */
+  analyticsRetention: (event: string | null, days: number) =>
+    ["analytics", "retention", event, days] as const,
+  /** Crash groups. Shares the `["errors"]` prefix with the detail query so one
+   *  invalidate refreshes the list and any open group. */
+  errorGroups: (status: string, level: string) =>
+    ["errors", "list", status, level] as const,
+  /** One crash group's detail (stacks, series, affected visitors). */
+  errorGroup: (id: string) => ["errors", "detail", id] as const,
+  /** Whether a publishable ingest key exists. */
+  analyticsIngestKey: () => ["analytics", "ingest-key"] as const,
   /** Enabled extensions — drives dynamic sidebar panels + extension field
    *  editors. Shares the `["extensions"]` prefix with the admin page's list
    *  query so one invalidate refreshes both. */
@@ -498,6 +520,146 @@ export function useUsageOverview(days: number) {
   return useQuery({
     queryKey: queryKeys.usage(days),
     queryFn: () => usageApi.overview(days),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Product analytics + crash reporting (#22)
+//
+// Reads are plain queries keyed by their window so flipping between 7/30/90
+// days is instant on the way back. The triage mutations are optimistic: a
+// resolve/ignore must repaint the row before the round-trip, and roll back if
+// the server refuses.
+// ---------------------------------------------------------------------------
+
+/** Turn a day window into the inclusive epoch-ms range the API takes. */
+const analyticsRange = (days: number) => {
+  const to = Date.now();
+  return { from: to - days * 86_400_000, to };
+};
+
+export function useAnalyticsOverview(days: number) {
+  return useQuery({
+    queryKey: queryKeys.analytics(days),
+    queryFn: () => {
+      const { from, to } = analyticsRange(days);
+      return analyticsApi.overview(from, to);
+    },
+  });
+}
+
+/** Event-name vocabulary for the funnel builder's step pickers. */
+export function useAnalyticsEventNames() {
+  return useQuery({
+    queryKey: queryKeys.analyticsEventNames(),
+    queryFn: () => analyticsApi.eventNames(),
+  });
+}
+
+/** A funnel run. Disabled until at least two steps are chosen. */
+export function useAnalyticsFunnel(steps: string[], windowDays: number, days: number) {
+  return useQuery({
+    queryKey: queryKeys.analyticsFunnel(steps, windowDays, days),
+    queryFn: () => {
+      const { from, to } = analyticsRange(days);
+      return analyticsApi.funnel({ steps, windowDays, from, to });
+    },
+    enabled: steps.length >= 2,
+  });
+}
+
+export function useAnalyticsRetention(event: string | null, days: number) {
+  return useQuery({
+    queryKey: queryKeys.analyticsRetention(event, days),
+    queryFn: () => {
+      const { from, to } = analyticsRange(days);
+      return analyticsApi.retention({ event, from, to });
+    },
+  });
+}
+
+export function useErrorGroups(status: string, level: string) {
+  return useQuery({
+    queryKey: queryKeys.errorGroups(status, level),
+    queryFn: () =>
+      analyticsApi.errors({
+        status: status === "all" ? undefined : status,
+        level: level === "all" ? undefined : level,
+        limit: 100,
+      }),
+  });
+}
+
+/** One group's stacks + series. Enabled only while the detail sheet is open. */
+export function useErrorGroup(id: string | null) {
+  return useQuery({
+    queryKey: queryKeys.errorGroup(id ?? ""),
+    queryFn: () => analyticsApi.error(id as string),
+    enabled: !!id,
+  });
+}
+
+export function useAnalyticsIngestKey() {
+  return useQuery({
+    queryKey: queryKeys.analyticsIngestKey(),
+    queryFn: () => analyticsApi.ingestKeyStatus(),
+  });
+}
+
+/** Triage a crash group. Repaints the row (and any open detail) immediately. */
+export function useUpdateErrorGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: ApiErrorStatus }) =>
+      analyticsApi.updateError(id, status),
+    onMutate: async ({ id, status }) => {
+      await qc.cancelQueries({ queryKey: ["errors"] });
+      const snap = qc.getQueriesData({ queryKey: ["errors"] });
+      qc.setQueriesData(
+        { queryKey: ["errors", "list"] },
+        (old: { data: ApiErrorGroup[] } | undefined) =>
+          old && {
+            ...old,
+            data: old.data.map((g) => (g.id === id ? { ...g, status } : g)),
+          },
+      );
+      qc.setQueryData(
+        queryKeys.errorGroup(id),
+        (old: { data: ApiErrorGroupDetail } | undefined) =>
+          old && { ...old, data: { ...old.data, group: { ...old.data.group, status } } },
+      );
+      return { snap };
+    },
+    onError: (_e, _vars, ctx) => {
+      for (const [key, data] of ctx?.snap ?? []) qc.setQueryData(key, data);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["errors"] });
+    },
+  });
+}
+
+/** Delete a crash group. Drops the row optimistically, restores on failure. */
+export function useDeleteErrorGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => analyticsApi.deleteError(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["errors"] });
+      const snap = qc.getQueriesData({ queryKey: ["errors"] });
+      qc.setQueriesData(
+        { queryKey: ["errors", "list"] },
+        (old: { data: ApiErrorGroup[] } | undefined) =>
+          old && { ...old, data: old.data.filter((g) => g.id !== id) },
+      );
+      return { snap };
+    },
+    onError: (_e, _vars, ctx) => {
+      for (const [key, data] of ctx?.snap ?? []) qc.setQueryData(key, data);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["errors"] });
+    },
   });
 }
 

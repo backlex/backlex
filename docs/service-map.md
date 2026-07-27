@@ -179,7 +179,16 @@ guides; this list is everything else.
   covers both static schema-derived rules and traffic-derived ones computed
   from recorded spans; `POST /apply` carries out a finding's remediation by
   re-deriving the statement server-side. See `docs/advisor.md`.
-- **Panels** (`routes/panels.ts`) — dashboard widget definitions.
+- **Product analytics + crash reporting** (`routes/analytics.ts`,
+  `routes/analytics-ingest.ts`, `services/analytics.ts`) — the tracked-event
+  stream plus fingerprinted error groups. Ingest is append-only and
+  authenticated by a publishable `alk_` key, an API key or a session; the
+  admin reads (overview / funnel / retention / errors) are admin-only.
+  Funnel + retention are CTE chains with one dialect branch (timestamp
+  shape). Pruned by `services/scheduler.ts`. See `docs/product-analytics.md`.
+- **Panels** (`routes/panels.ts`) — dashboard widget definitions. The
+  `analytics` kind runs through `services/dashboards.ts::runAnalyticsPanel`,
+  shared with the dashboard runner + public embed.
 - **Metrics** (`routes/metrics.ts`) — request / error counters +
   time-series rollups for the admin dashboard.
 - **Realtime admin + DB admin** (`routes/realtime-admin.ts`,

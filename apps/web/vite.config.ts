@@ -264,6 +264,24 @@ export default defineConfig({
       ),
     },
   },
+  /**
+   * Dev-server only. `packages/db/src/pg/index.ts` imports `postgres`, and the
+   * Worker environment's dep scanner doesn't see it on the first pass — it's
+   * reached lazily, so Vite discovers it mid-boot, re-runs the optimizer, and
+   * asks the runner to reload. `@cloudflare/vite-plugin` loses that race: the
+   * reloaded worker still references a pre-bundled chunk from the previous
+   * pass, and the boot dies with "The file does not exist at
+   * …/deps_backlex_admin/schemas-*.js".
+   *
+   * Excluding it removes the trigger rather than the symptom — there is no
+   * second optimizer pass, so there is no reload. Nothing is lost: `postgres`
+   * is aliased to a throwing shim above (D1/SQLite is what runs on Workers),
+   * so pre-bundling it was never useful. The production build goes through
+   * Rollup + that alias and is unaffected either way.
+   */
+  optimizeDeps: {
+    exclude: ["postgres"],
+  },
   build: {
     rollupOptions: {
       output: {

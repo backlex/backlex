@@ -7,11 +7,29 @@ export const SYSTEM_ROLE_NAMES = new Set<string>([
   SYSTEM_ROLES.public,
 ]);
 
+/** Allowlist entries are canonical (dotted) MCP tool ids, or `namespace.*` /
+ *  `*` globs. Whitespace and empty strings are rejected outright — an empty
+ *  entry silently matches nothing and reads like a mistake, which is exactly
+ *  what it is. */
+export const McpToolPattern = z
+  .string()
+  .trim()
+  .min(1)
+  .max(120)
+  .regex(
+    /^(\*|[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)*(\.\*)?)$/,
+    "must be a tool id (`collections.read`) or a glob (`collections.*`, `*`)",
+  );
+
 export const RoleInput = z
   .object({
     name: z.string().min(1),
     description: z.string().optional(),
     admin: z.boolean().optional(),
+    /** Role-scoped MCP tool allowlist. `null` = this role imposes none. */
+    mcpTools: z.array(McpToolPattern).nullable().optional(),
+    /** Role-scoped MCP read-only lock. */
+    mcpReadOnly: z.boolean().optional(),
   })
   .openapi("RoleInput");
 
@@ -22,6 +40,8 @@ export const RoleRowSchema = z
     name: z.string(),
     description: z.string().nullable(),
     admin: z.boolean(),
+    mcpTools: z.array(z.string()).nullable(),
+    mcpReadOnly: z.boolean(),
   })
   .openapi("Role");
 

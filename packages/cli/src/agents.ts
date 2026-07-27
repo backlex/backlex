@@ -40,6 +40,11 @@ const AGENTS_HELP = `backlex agents <list|get|create|update|delete|threads|run|r
   rooms remove <roomId> <agentId>   remove one
   say <roomId> --message <text>     post in a room; @handle to address an agent
                                     [--json]
+
+  memory <agentId>                  durable facts the agent has learned
+                                    [--thread <id>] [--limit <n>] [--json]
+  memory add <agentId> --content <text>   teach it one fact [--thread <id>]
+  memory forget <agentId> <memoryId>      make it forget one
 `;
 
 const BASE = "/api/agents";
@@ -200,6 +205,72 @@ export const runAgents = async (args: string[]): Promise<void> => {
         }
         process.stderr.write(`unknown rooms action: ${action}\n\n${AGENTS_HELP}`);
         process.exit(1);
+        return;
+      }
+      case "memory": {
+        // `memory <agentId>` lists; `memory add|forget …` mutate. The verb is
+        // optional in the list case so the common read is the short one.
+        const action =
+          rest[0] === "add" || rest[0] === "forget" ? rest[0] : "list";
+        const agentId = action === "list" ? rest[0] : rest[1];
+        if (!agentId) {
+          process.stderr.write(
+            "agents memory <agentId> | agents memory add <agentId> --content <text> | agents memory forget <agentId> <memoryId>\n",
+          );
+          process.exit(1);
+        }
+        if (action === "add") {
+          const content = flag(rest, "--content") ?? flag(rest, "-c");
+          if (!content) {
+            process.stderr.write('agents memory add <agentId> --content "text"\n');
+            process.exit(1);
+          }
+          const res = await client.request<{
+            data: Record<string, unknown> | null;
+            meta?: { deduped?: boolean };
+          }>("POST", `${BASE}/${encodeURIComponent(agentId)}/memory`, {
+            content,
+            ...(flag(rest, "--thread") ? { threadId: flag(rest, "--thread") } : {}),
+          });
+          if (json) printJson(res);
+          else if (res.meta?.deduped)
+            process.stderr.write("Already known — nothing stored.\n");
+          else printKeyValues({ id: res.data?.id as string, content });
+          return;
+        }
+        if (action === "forget") {
+          const memoryId = rest[2];
+          if (!memoryId) {
+            process.stderr.write("agents memory forget <agentId> <memoryId>\n");
+            process.exit(1);
+          }
+          await client.request(
+            "DELETE",
+            `${BASE}/${encodeURIComponent(agentId)}/memory/${encodeURIComponent(memoryId)}`,
+          );
+          process.stderr.write(`Forgot ${memoryId}.\n`);
+          return;
+        }
+        const qs = new URLSearchParams();
+        if (flag(rest, "--thread")) qs.set("threadId", flag(rest, "--thread") as string);
+        if (flag(rest, "--limit")) qs.set("limit", flag(rest, "--limit") as string);
+        const suffix = qs.toString() ? `?${qs}` : "";
+        const { data } = await client.request<{ data: Array<Record<string, unknown>> }>(
+          "GET",
+          `${BASE}/${encodeURIComponent(agentId)}/memory${suffix}`,
+        );
+        if (json) printJson(data);
+        else if (data.length === 0)
+          process.stderr.write("No facts learned yet.\n");
+        else
+          printTable(
+            data.map((m) => ({
+              id: m.id as string,
+              scope: m.scope as string,
+              hits: Number(m.hits ?? 0),
+              content: String(m.content).slice(0, 80),
+            })),
+          );
         return;
       }
       case "say": {

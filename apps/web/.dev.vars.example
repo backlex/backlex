@@ -110,3 +110,15 @@ TEST_ADMIN_PASSWORD = "correct-horse-battery"
 # Extension installs resolve npm packages against this registry. Defaults to
 # the public registry; point at a private mirror to gate what admins can pull.
 # EXTENSIONS_NPM_REGISTRY = "https://registry.npmjs.org"
+
+# ── MCP tool auditing ────────────────────────────────────────────────────────
+# How much of the MCP surface earns an `mcp.*` row in the activity log.
+#   all    — every tools/call plus every resources/read
+#   writes — write/destruct calls only (the default)
+#   off    — none
+# Guard refusals (`mcp.denied`) and tool errors (`mcp.error`) are recorded at
+# EVERY level, including `off` — those are the rows an operator actually needs.
+# MCP_AUDIT_LEVEL = "writes"
+# Days of `mcp.*` history to keep. Agent loops are chatty, so these get a
+# shorter clock than ACTIVITY_RETENTION_DAYS. 0 disables this prune pass.
+# MCP_AUDIT_RETENTION_DAYS = "30"

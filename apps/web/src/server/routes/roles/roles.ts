@@ -97,9 +97,20 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         name: body.name,
         description: body.description ?? null,
         admin: body.admin ?? false,
+        mcpTools: body.mcpTools ?? null,
+        mcpReadOnly: body.mcpReadOnly ?? false,
       });
       return c.json(
-        { data: { id, tenantId, ...body, admin: body.admin ?? false } },
+        {
+          data: {
+            id,
+            tenantId,
+            ...body,
+            admin: body.admin ?? false,
+            mcpTools: body.mcpTools ?? null,
+            mcpReadOnly: body.mcpReadOnly ?? false,
+          },
+        },
         201,
       );
     },
@@ -144,6 +155,10 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             ? { description: body.description }
             : {}),
           ...(body.admin !== undefined ? { admin: body.admin } : {}),
+          ...(body.mcpTools !== undefined ? { mcpTools: body.mcpTools } : {}),
+          ...(body.mcpReadOnly !== undefined
+            ? { mcpReadOnly: body.mcpReadOnly }
+            : {}),
           updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
         })
         .where(and(eq(t.roles.id, id), eq(t.roles.tenantId, tenantId)));

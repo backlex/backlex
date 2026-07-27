@@ -375,6 +375,15 @@ export const roles = sqliteTable(
     name: text("name").notNull(),
     description: text("description"),
     admin: integer("admin", { mode: "boolean" }).notNull().default(false),
+    /** Role-scoped MCP tool allowlist. See the pg/schema.ts twin for the full
+     *  contract (globs, union across policy-setting roles, intersection with
+     *  the key's own allowlist). `NULL` = this role has no MCP policy — which
+     *  is deliberately NOT the same as "allow everything". */
+    mcpTools: text("mcp_tools", { mode: "json" }).$type<string[] | null>(),
+    /** Role-scoped MCP read-only lock. See the pg/schema.ts twin. */
+    mcpReadOnly: integer("mcp_read_only", { mode: "boolean" })
+      .notNull()
+      .default(false),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },
@@ -549,6 +558,9 @@ export const agents = sqliteTable(
     tools: text("tools", { mode: "json" }).$type<string[]>().notNull().default([]),
     maxSteps: integer("max_steps").notNull().default(8),
     memory: integer("memory", { mode: "boolean" }).notNull().default(false),
+    /** `thread` (default) | `agent` — how far distilled semantic facts reach.
+     *  See the pg/schema.ts twin for the full contract and the privacy note. */
+    memoryScope: text("memory_scope").notNull().default("thread"),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
@@ -647,6 +659,30 @@ export const agentMessages = sqliteTable(
   },
   (t) => [
     index("agent_messages_thread_idx").on(t.threadId, t.createdAt),
+  ],
+);
+
+/** Distilled semantic memory for an agent — see the pg/schema.ts twin for the
+ *  full contract (why facts get rows while episodic memory stays vector-only,
+ *  and why retrieval filters on the agent's *current* scope). */
+export const agentMemories = sqliteTable(
+  "agent_memories",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    agentId: text("agent_id").notNull(),
+    threadId: text("thread_id"),
+    scope: text("scope").notNull().default("thread"),
+    content: text("content").notNull(),
+    embedded: integer("embedded", { mode: "boolean" }).notNull().default(false),
+    hits: integer("hits").notNull().default(0),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("agent_memories_agent_idx").on(t.agentId, t.scope),
+    index("agent_memories_thread_idx").on(t.threadId, t.createdAt),
+    index("agent_memories_tenant_idx").on(t.tenantId),
   ],
 );
 

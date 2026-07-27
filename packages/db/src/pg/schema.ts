@@ -421,6 +421,24 @@ export const roles = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     admin: boolean("admin").notNull().default(false),
+    /** Role-scoped MCP tool allowlist — the same shape and matching rules as
+     *  `api_keys.mcp_tools`, but attached to a role so the restriction follows
+     *  the *person* rather than one key they happened to mint. `NULL` means
+     *  this role has **no MCP policy**, which is not the same as "allow
+     *  everything": policy-free roles are ignored when the effective allowlist
+     *  is computed. (Every user holds the policy-free `authenticated` role, so
+     *  the other reading would cancel every restriction ever configured.)
+     *  Entries are exact tool ids (`collections.read`) or namespace globs
+     *  (`collections.*`, `*`).
+     *
+     *  The effective list is the union across the roles that set one; the key's
+     *  own allowlist then INTERSECTS it, so a key can only narrow what its
+     *  owner's roles already allow. See `mcp/guards.ts::mergeGuards`. */
+    mcpTools: jsonb("mcp_tools").$type<string[] | null>(),
+    /** When true, members of this role cannot call any MCP write/destruct tool.
+     *  Sticky: holding a second role does not lift it, and a read-only key
+     *  applies on top. Mirrors `api_keys.mcp_read_only`. */
+    mcpReadOnly: boolean("mcp_read_only").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -620,11 +638,27 @@ export const agents = pgTable(
     tools: jsonb("tools").$type<string[]>().notNull().default([]),
     /** Hard cap on reason→act iterations per turn (runaway-loop backstop). */
     maxSteps: integer("max_steps").notNull().default(8),
-    /** When true, the runner stores each turn's user + final messages as
-     *  embeddings and retrieves the most relevant past context on every turn —
-     *  cross-turn semantic memory beyond the raw transcript. Best-effort: a
-     *  no-op when no embedding provider / default model is configured. */
+    /** Master switch for the agent's memory. When true the runner keeps an
+     *  **episodic** trace (each turn's user + final messages, embedded and
+     *  retrieved by relevance blended with recency) and distils durable
+     *  **semantic** facts out of it into `agent_memories`. Best-effort: a no-op
+     *  when no embedding provider / default model is configured. */
     memory: boolean("memory").notNull().default(false),
+    /** How far the distilled semantic facts reach.
+     *
+     *  - `thread` (default) — facts are scoped to the conversation they came
+     *    from. Safe by construction: nothing a user said in one room can
+     *    resurface in another.
+     *  - `agent` — facts are shared across every thread this agent takes part
+     *    in, so it accumulates lasting knowledge about the workspace. That is
+     *    the point of semantic memory, and also its risk: threads have
+     *    different human participants, so a fact learned from one person
+     *    becomes visible to the next. Opt-in for exactly that reason.
+     *
+     *  Episodic memory is always thread-scoped regardless of this setting —
+     *  raw transcript snippets are the part most likely to carry something
+     *  personal, and they earn their keep inside a single conversation. */
+    memoryScope: text("memory_scope").notNull().default("thread"),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -760,6 +794,55 @@ export const agentMessages = pgTable(
   },
   (t) => [
     index("agent_messages_thread_idx").on(t.threadId, t.createdAt),
+  ],
+);
+
+/**
+ * Distilled **semantic** memory for an agent — durable facts, not transcript.
+ *
+ * Episodic memory (the raw turns) stays vector-only: it's high-volume, cheap to
+ * regenerate, and only useful as similarity fodder. Semantic facts are the
+ * opposite — few, long-lived, and the thing an operator will want to read and
+ * correct — so they get real rows. That also buys listing and forgetting, which
+ * the vector adapter contract can't provide (no enumerate-by-namespace).
+ *
+ * `thread_id` records where a fact came from. `scope` records the reach it was
+ * distilled under, and retrieval only ever reads rows matching the agent's
+ * *current* `memory_scope`: flipping an agent from `thread` to `agent` starts a
+ * fresh shared pool rather than retroactively broadcasting facts that were
+ * learned while the agent was promised to stay inside one conversation.
+ *
+ * The vector record for a row uses the row id, so forgetting a fact removes
+ * both halves.
+ */
+export const agentMemories = pgTable(
+  "agent_memories",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    agentId: text("agent_id").notNull(),
+    /** The conversation this fact was distilled from. Kept even for
+     *  agent-scoped rows so an operator can trace a fact back to its source. */
+    threadId: text("thread_id"),
+    /** `thread` | `agent` — the reach this row was written under. */
+    scope: text("scope").notNull().default("thread"),
+    /** One self-contained fact, as a short sentence. */
+    content: text("content").notNull(),
+    /** True once an embedding was successfully stored for this row. False rows
+     *  are still listable and still forgettable — they just can't be retrieved
+     *  by similarity, which is what happens when no embedding provider is
+     *  configured at distillation time. */
+    embedded: boolean("embedded").notNull().default(false),
+    /** How many turns have retrieved this fact. Cheap signal for pruning and
+     *  for showing an operator which memories actually matter. */
+    hits: integer("hits").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("agent_memories_agent_idx").on(t.agentId, t.scope),
+    index("agent_memories_thread_idx").on(t.threadId, t.createdAt),
+    index("agent_memories_tenant_idx").on(t.tenantId),
   ],
 );
 

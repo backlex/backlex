@@ -76,6 +76,8 @@ import m69 from "../../drizzle/pg/20260722090000_staged_edits/migration.sql" wit
 import m70 from "../../drizzle/pg/20260725090000_agent_message_author/migration.sql" with { type: "text" };
 import m71 from "../../drizzle/pg/20260725120000_agent_effort/migration.sql" with { type: "text" };
 import m72 from "../../drizzle/pg/20260725150000_agent_rooms/migration.sql" with { type: "text" };
+import m73 from "../../drizzle/pg/20260727090000_mcp_role_guards/migration.sql" with { type: "text" };
+import m74 from "../../drizzle/pg/20260727100000_agent_semantic_memory/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -156,4 +158,6 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260725090000_agent_message_author", sql: m70 },
   { name: "20260725120000_agent_effort", sql: m71 },
   { name: "20260725150000_agent_rooms", sql: m72 },
+  { name: "20260727090000_mcp_role_guards", sql: m73 },
+  { name: "20260727100000_agent_semantic_memory", sql: m74 },
 ];

@@ -411,6 +411,18 @@ export interface Env {
    *  the global retention. Pruned by the same daily cron tick. Defaults to 30.
    *  Set to `0` to disable (rows then fall back to ACTIVITY_RETENTION_DAYS). */
   ACCESS_AUDIT_RETENTION_DAYS?: string;
+  /** How much of the MCP surface earns an audit row (`mcp.*` in the activity
+   *  log). `all` = every `tools/call` plus every `resources/read`; `writes`
+   *  (default) = write/destruct calls only; `off` = none. Guard refusals
+   *  (`mcp.denied`) and tool errors (`mcp.error`) are recorded at every level —
+   *  those are the security-relevant events and dropping them would defeat the
+   *  point. */
+  MCP_AUDIT_LEVEL?: string;
+  /** Days of MCP audit (`mcp.*`) history to keep. Agent loops are chatty, so
+   *  these rows get a shorter clock than the global retention, on the same
+   *  daily cron tick. Defaults to 30. Set to `0` to disable (rows then fall
+   *  back to ACTIVITY_RETENTION_DAYS). */
+  MCP_AUDIT_RETENTION_DAYS?: string;
   /** Set to `"true"` to let the server-side migration connector dial
    *  private/internal addresses (localhost, RFC1918, link-local, ULA). Off
    *  by default — a hosted admin must not be able to use the server as a
@@ -554,6 +566,8 @@ export const STRING_ENV_KEYS = [
   "S3_SECRET_ACCESS_KEY",
   "ACTIVITY_RETENTION_DAYS",
   "ACCESS_AUDIT_RETENTION_DAYS",
+  "MCP_AUDIT_LEVEL",
+  "MCP_AUDIT_RETENTION_DAYS",
   "MIGRATE_ALLOW_PRIVATE_SOURCES",
 ] as const satisfies readonly (keyof Env)[];
 

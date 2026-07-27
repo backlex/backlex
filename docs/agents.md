@@ -74,6 +74,9 @@ active workspace.
 | `DELETE` | `/api/agents/threads/{threadId}` | Delete a room |
 | `POST` | `/api/agents/threads/{threadId}/messages` | Send a message → run whoever it wakes |
 | `GET` | `/api/agents/runs/{runId}` | Poll one turn's status |
+| `GET` | `/api/agents/{id}/memory` | The durable facts the agent holds (`?threadId=`, `?limit=`) |
+| `POST` | `/api/agents/{id}/memory` | Teach it one fact directly |
+| `DELETE` | `/api/agents/{id}/memory/{memoryId}` | Make it forget one |
 
 A thread started without an explicit `title` is named after its opening prompt
 (first line, clipped to 64 chars) on the first turn, so the admin's **History**
@@ -93,6 +96,7 @@ that behaviour get the same label derived on read in `GET /threads`.
 | `tools` | `[]` | Allow-list of MCP tool names (validated against `allTools` at write time). An empty list = model-only, no data access. |
 | `maxSteps` | `8` | Hard cap on reason→act iterations per turn (1–25). |
 | `memory` | `false` | See [Memory](#memory). |
+| `memoryScope` | `"thread"` | `thread` \| `agent` — how far distilled facts reach. See [`memoryScope`](#memoryscope). |
 | `active` | `true` | — |
 
 ## Tools
@@ -106,17 +110,86 @@ only read.
 
 ## Memory
 
-With `memory: true`, each turn's user message and final answer are embedded and
-stored under a per-(thread, agent) vector namespace
-(`agentmem:<threadId>:<agentId>` — scoped per agent so one persona in a room
-never retrieves another's recollection); on every new
-turn the most relevant past snippets are retrieved and folded into the system
-prompt. This gives cross-turn recall beyond the raw transcript (useful once a
-thread grows long).
+With `memory: true` an agent keeps two kinds of memory, because raw turns and
+durable facts behave nothing alike.
+
+### Episodic — what was said
+
+Each turn's user message and final answer are embedded under a per-(thread,
+agent) vector namespace (`agentep:<threadId>:<agentId>` — scoped per agent so
+one persona in a room never retrieves another's recollection). On every new turn
+the most relevant snippets are retrieved and folded into the system prompt,
+giving cross-turn recall beyond the raw transcript.
+
+Retrieval blends similarity with **recency**: in a conversation, "what we just
+said" usually beats an equally-similar exchange from three weeks ago. The
+recency term has a 14-day half-life and 30% of the blended weight, so it breaks
+ties without overriding relevance. Episodic memory is always thread-scoped —
+transcript snippets are the part most likely to carry something personal, and
+they earn their keep inside a single conversation.
+
+### Semantic — what is true
+
+Every few turns a short, cheap LLM pass reads the transcript written since the
+last one and extracts **durable facts** — stable preferences, decisions,
+names and roles, constraints, configuration. Things still true after the
+conversation ends. Each fact is stored as a row in `agent_memories` and
+retrieved alongside the episodes under its own heading, so the model can weigh
+"established" differently from "someone once said".
+
+Facts get real rows rather than living only in the vector store, which buys
+three things the vector adapter contract can't: listing, correcting, and
+forgetting. New facts are deduped against the pool (cosine ≥ 0.93, or normalised
+text when no embedding provider is available), the pool is capped at 60 facts
+per scope (dropping never-retrieved ones first), and each row tracks how many
+turns have actually retrieved it.
+
+Distillation runs on the **job queue** (`agent.distill_memory`), not inside the
+turn — the user already has their answer, and an extra LLM call shouldn't make
+them wait for it. It's only enqueued once ~6 new turns have accumulated.
+
+### `memoryScope`
+
+How far the distilled facts reach:
+
+| Value | Effect |
+|---|---|
+| `thread` (default) | Facts stay in the conversation they came from. Safe by construction — nothing said in one room resurfaces in another. |
+| `agent` | One shared pool across every thread the agent takes part in, so it accumulates lasting knowledge about the workspace. |
+
+`agent` is the point of semantic memory and also its risk: threads have
+different human participants, so a fact learned from one person becomes visible
+to the next. It's opt-in for exactly that reason.
+
+Retrieval always filters on the agent's *current* scope, so flipping `thread` →
+`agent` starts a fresh shared pool rather than retroactively broadcasting facts
+learned while the agent was promised to stay inside one conversation.
+
+### Reading and correcting
+
+```bash
+# What has it learned?
+curl $APP/api/agents/$AGENT/memory
+# Teach it something directly (deduped like a distilled fact)
+curl -X POST $APP/api/agents/$AGENT/memory -H 'content-type: application/json' \
+  -d '{"content":"Deploys go out on Thursdays.","threadId":"'$THREAD'"}'
+# Make it forget
+curl -X DELETE $APP/api/agents/$AGENT/memory/$MEMORY_ID
+```
+
+Also on the Agents page (**What it has learned**), the SDK
+(`client.agents.memory` / `.remember` / `.forget`), GraphQL (`agentMemories`,
+`rememberAgentFact`, `forgetAgentMemory`), MCP (`agents.memory_list` /
+`memory_add` / `memory_forget`), and the CLI (`backlex agents memory …`).
+
+There's deliberately no endpoint for episodic memory: it's a verbatim copy of
+the transcript, which the thread endpoints already serve.
 
 Memory is **best-effort**: it reuses the workspace embedding provider and
 `EMBEDDING_DEFAULT_MODEL` (see [Vector search](./vector-search.md)). With no
-embedding provider configured it silently no-ops — the agent still works.
+embedding provider configured, episodic recall no-ops and semantic facts are
+stored unindexed (`embedded: false`) and retrieved by recency — the agent still
+works either way.
 
 ## Cost controls
 
@@ -255,10 +328,10 @@ escalate the agent past its caller.
 
 The feature mirrors `flows` across every surface ([parity](./service-map.md)):
 
-- **SDK** — `client.agents.{list,get,create,update,delete,threads,createThread,thread,deleteThread,send,run}` plus rooms: `{rooms,createRoom,updateRoom,addRoomAgent,removeRoomAgent,getRun}`. `send(id, msg, { async: true })` queues; `thread()` returns `{ thread, messages, authors, agentIds, activeRuns }`.
-- **GraphQL** — `agents` / `agent` queries; `createAgent` / `updateAgent` / `deleteAgent` / `runAgent` mutations.
-- **MCP** — `agents.list`, `agents.get`, `agents.run`, `agents.rooms_list`, `agents.room_send` (so an external agent like Claude Desktop can drive a Backlex agent, or post in a room).
-- **CLI** — `backlex agents <list|get|create|update|delete|threads|run|rooms|say>`. `backlex agents run <id> --message "…"` prints the answer; `backlex agents say <roomId> --message "@handle …"` posts in a room.
+- **SDK** — `client.agents.{list,get,create,update,delete,threads,createThread,thread,deleteThread,send,run}` plus rooms: `{rooms,createRoom,updateRoom,addRoomAgent,removeRoomAgent,getRun}` and memory: `{memory,remember,forget}`. `send(id, msg, { async: true })` queues; `thread()` returns `{ thread, messages, authors, agentIds, activeRuns }`.
+- **GraphQL** — `agents` / `agent` / `agentMemories` queries; `createAgent` / `updateAgent` / `deleteAgent` / `runAgent` / `rememberAgentFact` / `forgetAgentMemory` mutations.
+- **MCP** — `agents.list`, `agents.get`, `agents.run`, `agents.rooms_list`, `agents.room_send`, `agents.memory_list`, `agents.memory_add`, `agents.memory_forget` (so an external agent like Claude Desktop can drive a Backlex agent, post in a room, or inspect what one has learned).
+- **CLI** — `backlex agents <list|get|create|update|delete|threads|run|rooms|say|memory>`. `backlex agents run <id> --message "…"` prints the answer; `backlex agents say <roomId> --message "@handle …"` posts in a room; `backlex agents memory <id>` lists its facts.
 
 ## Notes & limits
 
@@ -268,6 +341,9 @@ The feature mirrors `flows` across every surface ([parity](./service-map.md)):
   short-lived `ANTHROPIC_AUTH_TOKEN` — see [Ask AI](./ask-ai.md#requirements), or a
   workspace bring-your-own key, or the managed-cloud gateway). With none
   configured a turn returns `503 UNAVAILABLE` and the thread is marked `error`.
-- Memory written before rooms existed lived under the bare `agentmem:<threadId>`
-  namespace and is no longer retrieved. Memory is opt-in and best-effort, so
-  this is a cold start rather than data loss.
+- Episodic memory written before the episodic/semantic split lived under the
+  `agentmem:*` namespaces and is no longer retrieved. Memory is opt-in and
+  best-effort, so this is a cold start rather than data loss.
+- Distillation costs one extra (cheap, `effort: low`) LLM call per ~6 turns, on
+  the job queue. It's skipped entirely when no AI provider is configured — the
+  facts you add by hand still work.

@@ -123,6 +123,9 @@ const DEFAULT_TRACES_RETENTION_DAYS = 7;
 // Sensitive-read audit rows (`access.*`) are opt-in but higher-volume, so they
 // get a shorter default clock than the global retention.
 const DEFAULT_ACCESS_AUDIT_RETENTION_DAYS = 30;
+// MCP audit rows (`mcp.*`) — one per agent tool call, so chattier than the
+// mutation log they sit next to. Same shorter clock as the read audit.
+const DEFAULT_MCP_AUDIT_RETENTION_DAYS = 30;
 
 const dueCronFunctions = (
   fns: FunctionRow[],
@@ -410,6 +413,18 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
       { db: ctx.db, dialect: ctx.dialect },
       accessDays,
       "access.",
+    );
+    // MCP tool-call audit rows — same reasoning as the read audit above: one
+    // row per agent tool call would otherwise crowd out the mutation history.
+    const mcpRaw = env.MCP_AUDIT_RETENTION_DAYS;
+    const mcpDays =
+      mcpRaw == null || mcpRaw === ""
+        ? DEFAULT_MCP_AUDIT_RETENTION_DAYS
+        : Number(mcpRaw);
+    await pruneOldActivityByPrefix(
+      { db: ctx.db, dialect: ctx.dialect },
+      mcpDays,
+      "mcp.",
     );
     // Trace spans are high-volume (one per sampled request) with a short useful
     // life — prune on the same daily clock as activity, default 7 days.

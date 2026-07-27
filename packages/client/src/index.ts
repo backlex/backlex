@@ -636,9 +636,32 @@ export interface Agent {
   /** Allow-list of MCP tool names the agent may call. */
   tools: string[];
   maxSteps: number;
-  /** Cross-turn semantic memory (best-effort; needs an embedding provider). */
+  /** Cross-turn memory — an episodic trace plus distilled semantic facts.
+   *  Best-effort; needs an embedding provider. */
   memory: boolean;
+  /** How far distilled facts reach. `thread` (default) keeps everything inside
+   *  the conversation it was learned in; `agent` shares one pool across every
+   *  thread, so the agent accumulates lasting knowledge — at the cost of facts
+   *  learned from one person becoming visible to the next. */
+  memoryScope?: AgentMemoryScope;
   active: boolean;
+}
+
+export type AgentMemoryScope = "thread" | "agent";
+
+/** One durable fact an agent holds. Mirrors `/api/agents/:id/memory`. */
+export interface AgentMemory {
+  id: string;
+  agentId: string;
+  /** Conversation the fact was distilled from. */
+  threadId: string | null;
+  scope: AgentMemoryScope;
+  content: string;
+  /** False when the fact was stored with no embedding provider available — it's
+   *  listable and forgettable, but not retrievable by similarity. */
+  embedded: boolean;
+  /** How many turns have retrieved this fact. */
+  hits: number;
 }
 
 /** Create/update payload for an agent. */
@@ -654,6 +677,7 @@ export interface AgentInput {
   tools?: string[];
   maxSteps?: number;
   memory?: boolean;
+  memoryScope?: AgentMemoryScope;
   active?: boolean;
 }
 
@@ -821,6 +845,25 @@ export interface AgentsClient {
   removeRoomAgent(threadId: string, agentId: string): Promise<{ ok: boolean }>;
   /** Poll one turn's status — for async sends without a realtime connection. */
   getRun(runId: string): Promise<{ data: AgentRun }>;
+  /** The durable facts this agent has learned, newest first. These are
+   *  distilled from past conversations — for the raw transcript use `thread`.
+   *  `threadId` narrows to one conversation's pool. */
+  memory(
+    agentId: string,
+    opts?: { threadId?: string; limit?: number },
+  ): Promise<{ data: AgentMemory[]; meta?: { scope: AgentMemoryScope } }>;
+  /** Teach the agent one durable fact directly, as a self-contained sentence.
+   *  Deduped: re-teaching something it already knows resolves with
+   *  `data: null` and `meta.deduped`. `threadId` is required while the agent's
+   *  `memoryScope` is `thread`. */
+  remember(
+    agentId: string,
+    content: string,
+    opts?: { threadId?: string },
+  ): Promise<{ data: AgentMemory | null; meta?: { deduped?: boolean } }>;
+  /** Delete one remembered fact by id, from both the row store and the vector
+   *  index — the agent stops retrieving it. */
+  forget(agentId: string, memoryId: string): Promise<{ ok: boolean }>;
   /** Convenience: start a fresh thread and run one turn. Returns the result
    *  plus the new `threadId` so you can continue the conversation. */
   run(
@@ -2345,6 +2388,27 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<{ data: AgentRun }>(
         "GET",
         `/api/agents/runs/${encodeURIComponent(runId)}`,
+      ),
+    memory: (agentId: string, opts?: { threadId?: string; limit?: number }) => {
+      const qs = new URLSearchParams();
+      if (opts?.threadId) qs.set("threadId", opts.threadId);
+      if (opts?.limit != null) qs.set("limit", String(opts.limit));
+      const suffix = qs.toString() ? `?${qs}` : "";
+      return request<{ data: AgentMemory[]; meta?: { scope: AgentMemoryScope } }>(
+        "GET",
+        `/api/agents/${encodeURIComponent(agentId)}/memory${suffix}`,
+      );
+    },
+    remember: (agentId: string, content: string, opts?: { threadId?: string }) =>
+      request<{ data: AgentMemory | null; meta?: { deduped?: boolean } }>(
+        "POST",
+        `/api/agents/${encodeURIComponent(agentId)}/memory`,
+        { content, ...(opts?.threadId ? { threadId: opts.threadId } : {}) },
+      ),
+    forget: (agentId: string, memoryId: string) =>
+      request<{ ok: boolean }>(
+        "DELETE",
+        `/api/agents/${encodeURIComponent(agentId)}/memory/${encodeURIComponent(memoryId)}`,
       ),
   };
 

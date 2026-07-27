@@ -377,16 +377,58 @@ curl -X POST https://your-backlex.example.com/mcp \
 - `functions.invoke` stays admin-only in MVP because the underlying `/api/functions/{name}/invoke` endpoint is admin-only — the MCP layer doesn't loosen that.
 - Storage writes are tenant-prefixed at the physical-key layer; cross-tenant access isn't reachable from the tool surface.
 
-### Per-key MCP guards
+### MCP guards
 
-Two extra defense-in-depth layers live on `api_keys`, independent of the permissions DSL:
+Tool-level restrictions live in two places, both independent of the permissions
+DSL and both **narrowing only** — neither can grant anything the DSL denies:
+
+- **Per key** (`api_keys.mcp_tools` / `mcp_read_only`) — scoped to the
+  credential.
+- **Per role** (`roles.mcp_tools` / `mcp_read_only`) — scoped to the *person*,
+  so minting a fresh key doesn't shed the restriction.
+
+A call must satisfy both. The composition rules:
+
+| | Rule |
+|---|---|
+| Across roles | The effective allowlist is the **union** of the lists on roles that set one. A role with `NULL` has *no MCP policy* and is ignored — **not** read as "allow everything". |
+| Read-only across roles | Sticks if **any** role sets it; a second role can't lift it. |
+| Role ↔ key | The two allowlists **intersect**; read-only ORs. |
+| Admin roles | Excluded entirely — `admin` already means unrestricted. |
+
+The null-means-no-opinion rule is load-bearing: every signed-in user carries the
+policy-free `authenticated` role, so the "most permissive role wins" reading the
+permission DSL uses would cancel every restriction anyone configured.
+
+Allowlist entries are exact tool ids (`collections.read`) or namespace globs
+(`collections.*`, or a bare `*`). A glob stops at its own namespace boundary —
+`collections.*` matches `collections.read` but not `collections_admin.read`.
+
+Set role guards from **Settings → Roles & permissions → *(edit a role)* → MCP
+access**, or over the API:
+
+```bash
+curl -X PATCH $APP/api/roles/$ROLE_ID -H 'content-type: application/json' \
+  -d '{"mcpTools":["schema.*","collections.read"],"mcpReadOnly":true}'
+```
+
+Every refusal is written to the audit log as an `mcp.denied` row naming the tool
+and which side refused — see [MCP tool auditing](./audit-logs.md#mcp-tool-auditing).
+
+#### Per-key guards
+
+The two key-level fields, in detail:
 
 | Field | Effect |
 |---|---|
 | `mcp_tools` (JSON array, default `[]` on new keys; legacy NULL stays permissive) | When set, the dispatcher hides every tool not in the list from `tools/list` and 403s any out-of-list `tools/call`. NULL = unrestricted. The create endpoint now defaults the column to `[]` so a fresh `pak_*` can't call any tool until the owner opts in — POST a key with explicit `"mcpTools": null` (or PATCH it later) to recover the old permissive shape. |
 | `mcp_read_only` (bool, default false) | When true, any tool whose `kind` is not `read` (i.e. every `write` / `destruct` tool) returns `isError: true` before any upstream call. The check uses the tool's resolved `kind` — the same value `tools/list` advertises — so it tracks the tool's true behaviour, not a separate verb list that could drift. REST routes for the same identity are unaffected. |
 
-These run **before** the upstream permission DSL, so a read-only key gets a clear `tool "collections.delete" is a destruct operation; this API key is MCP read-only` message instead of bouncing around the REST layer. A key whose DSL allows `delete` can still be MCP-locked to read-only.
+These run **before** the upstream permission DSL, so a read-only caller gets a clear `tool "collections.delete" is a destruct operation; this caller is MCP read-only` message instead of bouncing around the REST layer. A key whose DSL allows `delete` can still be MCP-locked to read-only. Refusals name which side refused ("this API key's MCP allowlist" vs "the MCP allowlist on this caller's roles") so the fix lands on the right screen.
+
+`backlex://me` reports the caller's own effective scope — `mcp.allowlist`,
+`mcp.roleAllowlist`, and `mcp.readOnly` — so an agent that hits a FORBIDDEN can
+tell whether the limit travels with its key or with its identity.
 
 ### Rate limiting
 

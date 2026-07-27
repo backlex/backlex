@@ -39,6 +39,12 @@ import {
   type ThreadRouting,
 } from "../services/agents/store";
 import { sendMessage } from "../services/agents/send";
+import {
+  forgetFact,
+  listFacts,
+  parseMemoryScope,
+  rememberFact,
+} from "../services/agents/memory";
 
 const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
@@ -111,6 +117,15 @@ const parseAgentInput = (body: Record<string, unknown>, partial: boolean) => {
     out.maxSteps = n;
   }
   if (body.memory !== undefined) out.memory = Boolean(body.memory);
+  if (body.memoryScope !== undefined) {
+    if (body.memoryScope !== "thread" && body.memoryScope !== "agent") {
+      throw new AppError(
+        "VALIDATION",
+        "memoryScope must be 'thread' or 'agent'",
+      );
+    }
+    out.memoryScope = body.memoryScope;
+  }
   if (body.active !== undefined) out.active = Boolean(body.active);
   return out;
 };
@@ -247,6 +262,91 @@ export const agentsRoutes = (app: Hono<AppBindings>, env: Env) => {
       action: "delete",
       collection: "system_agents",
       itemId: id,
+      response: { ok: true },
+    });
+    return c.json({ ok: true });
+  });
+
+  // ── memory ───────────────────────────────────────────────────────────────
+  // The distilled semantic facts an agent holds. Episodic memory has no
+  // endpoint on purpose: it's a verbatim copy of the transcript, which the
+  // thread endpoints already serve, and exposing it would just be a second,
+  // staler way to read the same conversation.
+
+  /** `?threadId=` narrows to one conversation's pool; omit for everything. */
+  r.get("/:id/memory", async (c) => {
+    const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
+    const id = c.req.param("id");
+    const agent = await getAgent(ctx, id, tenantId);
+    if (!agent) throw new AppError("NOT_FOUND", "Agent not found");
+    const threadId = c.req.query("threadId") ?? null;
+    const limit = Number(c.req.query("limit") ?? 100);
+    return c.json({
+      data: await listFacts(ctx, id, {
+        threadId,
+        limit: Number.isFinite(limit) ? limit : 100,
+      }),
+      meta: { scope: parseMemoryScope(agent.memoryScope) },
+    });
+  });
+
+  /** Teach the agent a fact directly, without waiting for a distillation pass.
+   *  Deduped against the pool exactly like a distilled one. */
+  r.post("/:id/memory", async (c) => {
+    const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
+    const id = c.req.param("id");
+    const agent = await getAgent(ctx, id, tenantId);
+    if (!agent) throw new AppError("NOT_FOUND", "Agent not found");
+    const body = await readBody(c);
+    const content = typeof body.content === "string" ? body.content.trim() : "";
+    if (!content) throw new AppError("VALIDATION", "content is required");
+    const scope = parseMemoryScope(agent.memoryScope);
+    // A thread-scoped fact needs a home thread; an agent-scoped one doesn't,
+    // and the empty string keeps it out of any single thread's pool.
+    const threadId = typeof body.threadId === "string" ? body.threadId : "";
+    if (scope === "thread" && !threadId) {
+      throw new AppError(
+        "VALIDATION",
+        "threadId is required while this agent's memoryScope is 'thread'",
+      );
+    }
+    const row = await rememberFact(ctx, {
+      tenantId,
+      agentId: id,
+      threadId,
+      scope,
+      content,
+    });
+    if (!row) {
+      // Not an error: the agent already knows this. Reporting it as one would
+      // make every "teach it X" integration have to special-case a 409.
+      return c.json({ data: null, meta: { deduped: true } });
+    }
+    await logActivity(c, {
+      action: "update",
+      collection: "system_agents",
+      itemId: id,
+      payload: { memory: "remember", content },
+      response: { data: row },
+    });
+    return c.json({ data: row }, 201);
+  });
+
+  r.delete("/:id/memory/:memoryId", async (c) => {
+    const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
+    const id = c.req.param("id");
+    const agent = await getAgent(ctx, id, tenantId);
+    if (!agent) throw new AppError("NOT_FOUND", "Agent not found");
+    const ok = await forgetFact(ctx, id, c.req.param("memoryId"));
+    if (!ok) throw new AppError("NOT_FOUND", "Memory not found");
+    await logActivity(c, {
+      action: "update",
+      collection: "system_agents",
+      itemId: id,
+      payload: { memory: "forget", memoryId: c.req.param("memoryId") },
       response: { ok: true },
     });
     return c.json({ ok: true });

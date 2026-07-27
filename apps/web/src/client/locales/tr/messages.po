@@ -408,6 +408,11 @@ msgstr "{0} / {1} satır güncellenemedi."
 msgid "{0} of {1} tools allowed. Choose Allow all to remove the allowlist."
 msgstr "{1} araçtan {0} tanesine izin verildi. Listeyi kaldırmak için Tümüne izin ver'i seçin."
 
+#. placeholder {0}: (mcpTools ?? []).length
+#: src/client/admin/role-mcp-guards.tsx
+msgid "{0} patterns"
+msgstr "{0} desen"
+
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} posts deleted."
@@ -2656,6 +2661,10 @@ msgstr "Koleksiyonlar, çalışma zamanında oluşturulan fiziksel tablolardır.
 msgid "Collections you archive will show up here."
 msgstr "Arşivlediğiniz koleksiyonlar burada görünür."
 
+#: src/client/admin/role-mcp-guards.tsx
+msgid "collections.read, schema.describe_collection"
+msgstr "collections.read, schema.describe_collection"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Color"
 msgstr "Renk"
@@ -2712,6 +2721,10 @@ msgstr "Kolonlar"
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
 msgstr "Virgül veya boşlukla ayrılmış. Ayarlandığında, diğer alan adlarından gelen e-posta görünümlü kullanıcı adları LDAP sorgusundan önce reddedilir."
+
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Comma-separated exact tool ids. Use these when a whole namespace is too broad."
+msgstr "Virgülle ayrılmış tam araç kimlikleri. Bir ad alanının tamamı fazla genişse bunları kullanın."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Comma-separated; prefix with <0>-</0> for descending. Leave blank to fall back to <1>-created_at</1>."
@@ -3431,6 +3444,10 @@ msgstr "Özel mesaj (isteğe bağlı)"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Custom OpenID Connect provider."
 msgstr "Özel OpenID Connect sağlayıcısı."
+
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Custom patterns"
+msgstr "Özel desenler"
 
 #: src/client/admin/role-editor.tsx
 msgid "Custom roles layer additively on top of authenticated."
@@ -4723,6 +4740,10 @@ msgstr "Olaylar"
 msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 msgstr "İzinlere bağlı olarak her MCP aracı çağrılabilir. Bu anahtarı bir izin listesiyle daraltmak için aşağıdan bir araç işaretleyin."
 
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Every tool"
+msgstr "Her araç"
+
 #: src/client/admin/parity/revisions.tsx
 msgid "Every write is versioned. Inspect, diff, or revert any prior state."
 msgstr "Her yazma işlemi sürümlenir. Önceki herhangi bir durumu inceleyin, karşılaştırın veya geri alın."
@@ -5261,6 +5282,10 @@ msgstr "İlişki olarak benimsenen yabancı anahtarlar:"
 #: src/client/admin/adopt-wizard.tsx
 msgid "Foreign keys detected"
 msgstr "Yabancı anahtarlar tespit edildi"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Forget this"
+msgstr "Bunu unut"
 
 #: src/client/pages/sign-in.tsx
 msgid "Forgot?"
@@ -6616,6 +6641,10 @@ msgstr "{0} limitleri"
 msgid "Limits must be positive numbers (or empty for unlimited)."
 msgstr "Limitler pozitif sayı olmalı (sınırsız için boş bırakın)."
 
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Limits which MCP tools an AI agent may call on behalf of members of this role. Narrowing only — it never grants anything the permission rules above already deny."
+msgstr "Bu roldeki kullanıcılar adına bir yapay zekâ ajanının hangi MCP araçlarını çağırabileceğini sınırlar. Yalnızca daraltır — yukarıdaki izin kurallarının reddettiği hiçbir şeyi vermez."
+
 #: src/client/admin/account-page.tsx
 msgid "Link"
 msgstr "Bağla"
@@ -6964,6 +6993,7 @@ msgstr "MCP · {0} araç"
 #~ msgid "MCP · {MCP_TOOL_COUNT} tools"
 #~ msgstr "MCP · {MCP_TOOL_COUNT} araç"
 
+#: src/client/admin/role-mcp-guards.tsx
 #: src/client/pages/api-keys.tsx
 msgid "MCP access"
 msgstr "MCP erişimi"
@@ -7282,6 +7312,10 @@ msgstr "Ad, Entity ID, SSO URL ve IdP sertifikası gereklidir."
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "NameID format"
 msgstr "NameID biçimi"
+
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Namespaces"
+msgstr "Ad alanları"
 
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Native push transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>PUSH_*</1> env vars. Secret values are encrypted at rest and never shown again. In-app notifications can fan out to devices via the <2>push</2> flag."
@@ -8148,6 +8182,10 @@ msgstr "hiçbiri seçili değil = tümü"
 msgid "not configured"
 msgstr "yapılandırılmamış"
 
+#: src/client/admin/pages/agents.tsx
+msgid "not indexed"
+msgstr "dizinlenmedi"
+
 #: src/client/admin/account-page.tsx
 msgid "Not linked."
 msgstr "Bağlı değil."
@@ -8222,6 +8260,10 @@ msgstr "Dışa aktarılacak şey yok — mevcut görünüm boş."
 #: src/client/admin/grid-edit.tsx
 msgid "Nothing to paste."
 msgstr "Yapıştırılacak bir şey yok."
+
+#: src/client/admin/pages/agents.tsx
+msgid "Nothing yet. Facts are distilled from conversations once a few turns have gone by — and need an embedding provider to be recalled."
+msgstr "Henüz bir şey yok. Bilgiler, birkaç tur geçtikten sonra konuşmalardan damıtılır — hatırlanabilmesi için bir gömme sağlayıcısı gerekir."
 
 #: src/client/admin/ui.tsx
 msgid "Notifications"
@@ -8402,6 +8444,10 @@ msgstr "Yalnızca seçili türler kabul edilir — sunucu tarafında uygulanır.
 #: src/client/admin/parity/translations.tsx
 msgid "Only translate missing keys"
 msgstr "Yalnızca eksik anahtarları çevir"
+
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Only what I select"
+msgstr "Yalnızca seçtiklerim"
 
 #: src/client/admin/extras.tsx
 msgid "open"
@@ -9636,6 +9682,10 @@ msgstr "Salt okunur"
 msgid "Read-only mode"
 msgstr "Salt-okunur mod"
 
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Read-only over MCP"
+msgstr "MCP üzerinde salt okunur"
+
 #: src/client/admin/parity/insights.tsx
 msgid "read-only SELECT against the workspace database"
 msgstr "çalışma alanı veritabanına karşı salt okunur SELECT"
@@ -9676,8 +9726,12 @@ msgid "Reasoning effort"
 msgstr "Akıl yürütme eforu"
 
 #: src/client/admin/pages/agents.tsx
-msgid "Recall relevant past turns (needs an embedding provider)."
-msgstr "İlgili geçmiş konuşmaları hatırlar (bir embedding sağlayıcısı gerekir)."
+msgid "Recall past turns and remember durable facts (needs an embedding provider)."
+msgstr "Geçmiş turları hatırlar ve kalıcı bilgileri saklar (gömme sağlayıcısı gerekir)."
+
+#: src/client/admin/pages/agents.tsx
+#~ msgid "Recall relevant past turns (needs an embedding provider)."
+#~ msgstr "İlgili geçmiş konuşmaları hatırlar (bir embedding sağlayıcısı gerekir)."
 
 #: src/client/admin/extras.tsx
 msgid "Received"
@@ -9862,6 +9916,10 @@ msgstr "Yeniden yükle"
 #: src/client/pages/graphql.tsx
 msgid "Reload schema"
 msgstr "Şemayı yeniden yükle"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Remembered facts apply to"
+msgstr "Hatırlanan bilgilerin kapsamı"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/collection-settings.tsx
@@ -12094,6 +12152,10 @@ msgstr "HTML olarak saklanır. Tam WYSIWYG düzenleyici henüz bağlı değil �
 msgid "stored objects"
 msgstr "depolanan nesneler"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Stored without an embedding — not recalled by similarity."
+msgstr "Gömme olmadan saklandı — benzerlikle hatırlanmaz."
+
 #: src/client/admin/item-form.tsx
 msgid "Stores a list of storage keys. Upload new files on the <0>Storage</0> page."
 msgstr "Depolama anahtarlarının listesini saklar. Yeni dosyaları <0>Depolama</0> sayfasında yükleyin."
@@ -12894,6 +12956,10 @@ msgstr "<0>mcp:write</0> kapsamı olmayan token'lar salt okunur çalışır."
 msgid "Tool"
 msgstr "Araç"
 
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Tool access"
+msgstr "Araç erişimi"
+
 #: src/client/admin/pages/agents.tsx
 msgid "Tool allow-list"
 msgstr "İzinli araç listesi"
@@ -12902,6 +12968,10 @@ msgstr "İzinli araç listesi"
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Tool allowlist"
 msgstr "Araç izin listesi"
+
+#: src/client/admin/role-mcp-guards.tsx
+msgid "Tool catalog unavailable — use the field below."
+msgstr "Araç kataloğuna ulaşılamıyor — aşağıdaki alanı kullanın."
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Tool failed"
@@ -12967,6 +13037,10 @@ msgstr "İzler yenilendi."
 #: src/client/admin/pages/integrations.tsx
 msgid "Track data events through Segment."
 msgstr "Veri olaylarını Segment üzerinden izle."
+
+#: src/client/admin/pages/agents.tsx
+msgid "Transcript recall always stays inside its own conversation. This only controls the distilled facts — sharing them across rooms is what lets an agent build up lasting knowledge, and also what makes something one person told it visible to the next."
+msgstr "Konuşma metni hatırlaması her zaman kendi konuşmasının içinde kalır. Bu ayar yalnızca damıtılmış bilgileri denetler — bunları odalar arasında paylaşmak ajanın kalıcı bilgi biriktirmesini sağlar, ama aynı zamanda birinin söylediğini bir sonraki kişiye görünür kılar."
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Transform"
@@ -13249,6 +13323,10 @@ msgstr "Kaldırma tarihi"
 #: src/client/admin/ui.tsx
 msgid "Unread"
 msgstr "Okunmamış"
+
+#: src/client/admin/role-mcp-guards.tsx
+msgid "unrestricted"
+msgstr "kısıtsız"
 
 #: src/client/admin/permission-tester.tsx
 msgid "Unrestricted — no row filter applies."
@@ -13776,6 +13854,10 @@ msgstr "Tekrar hoş geldin. Kaldığın yerden devam et — içerik, veri ve API
 #: src/client/admin/pages/search-playground.tsx
 msgid "What are you looking for?"
 msgstr "Ne arıyorsunuz?"
+
+#: src/client/admin/pages/agents.tsx
+msgid "What it has learned"
+msgstr "Öğrendikleri"
 
 #: src/client/admin/pages/agents.tsx
 msgid "What teammates type after @ to address this agent in a room. Derived from the name when left blank."

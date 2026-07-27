@@ -105,8 +105,8 @@ permission means subscribe rejects with 401).
 |-------------------------------------|--------------------|------------------------------------------------------------------------------------------------------------------|
 | Bun (self-host)                     | SSE                | In-process `Map<channel, Set<Subscriber>>` + a bounded per-channel ring buffer for replay. Single-instance only. |
 | Cloudflare Workers                  | SSE                | SSE response bridged into the `RealtimeRoom` Durable Object (WebSocket Hibernation API; `seq` + recent-event log persisted in `state.storage`). |
-| Vercel Functions (Node 22)          | SSE                | Loads but impractical: Lambda is stateless, so each cold-started function instance gets its own Map; the SSE stream also caps at the function execution limit. |
-| Netlify Functions (Node 22)         | SSE                | Same caveat as Vercel.                                                                                            |
+| Vercel Functions (Node 22)          | SSE, or Ably signals | With `UPSTASH_REDIS_REST_*`: a Redis Stream per channel, subscribe as a bounded long-poll. With only `ABLY_API_KEY`: the [signal-only data plane](#signal-only-data-plane-signalitemsslug) below. With neither: nothing — each stateless instance gets its own Map. |
+| Netlify Functions (Node 22)         | SSE, or Ably signals | Same as Vercel.                                                                                                   |
 
 The server still chooses different fan-out paths under the hood (in-proc
 Map on Bun, Durable Object on Workers), but every subscriber sees the
@@ -115,9 +115,112 @@ monotonic per-channel `seq`, `: ping` keep-alives every 25 s.
 Reconnecting clients with `Last-Event-ID` replay the gap (bounded ring
 buffer on Bun, `storage`-backed log on the DO).
 
-For multi-region / multi-process realtime on Vercel / Netlify, plug a
-Pub/Sub backend (Redis, NATS, Cloudflare DO + service-to-service) — not
-yet shipped.
+## Signal-only data plane (`signal:items:<slug>`)
+
+On Vercel / Netlify Functions there is no Durable Object and no long-lived
+process, so the only way to hold an `items:*` SSE stream open is the Upstash
+Redis long-poll — which keeps a **function invocation open per subscriber**.
+One always-open tab is roughly 130K invocations/month against a 125K free tier,
+plus ~3,600 Redis commands per editor-hour. That's not a realtime story you can
+ship on a free deployment.
+
+The signal plane fixes the cost by moving delivery off your infrastructure
+entirely. With `ABLY_API_KEY` set (and no Durable Object / Upstash), the server
+publishes an **ID-only signal** to Ably and the browser is connected to Ably
+directly:
+
+```jsonc
+// the ENTIRE payload on signal:items:posts
+{ "event": "updated", "collection": "posts", "id": "row-1", "at": 1750000000000 }
+```
+
+The client then reads the changed rows back through the normal REST list
+endpoint. Delivery costs **zero function invocations**; the server pays one
+REST publish per write.
+
+### Why no row data — and why filtering still holds
+
+The `items:*` plane renders every event *per subscriber*: permission
+conditions, the live-query filter and the field allow-list all run server-side
+(`renderItemEvent`). None of that can run inside a hosted pub/sub, which fans
+out one payload to everyone — that's exactly why the data plane never moved
+there.
+
+So the signal doesn't carry a row; it carries the fact that a row changed. The
+read-back is where the gate runs, unchanged:
+
+```
+signal in → coalesce the burst → ONE list({ id: { _in: [...] } , ...filter })
+          → emit {event, transition, data: row} per row returned
+          → any id NOT returned → emit a removal
+```
+
+An id that doesn't come back is either not readable by this caller or no longer
+matches its query — both mean "drop it", which is exactly what the SSE plane's
+`leave` transition means. Passing the subscription's own filter into the
+read-back reproduces membership transitions too, including for `$now` / `$user`
+filters the client can't evaluate itself.
+
+Bursts are coalesced: a 100-row bulk insert is one read-back, not 100.
+
+### The metadata trade-off
+
+Row data can't leak. What a subscriber *can* still observe is the **id and the
+timing** of every change in the collection — including rows a row-level
+permission condition would have hidden from it entirely on the SSE plane.
+
+The gate bounds that: a token is issued only to callers whose `read` permission
+on the collection is **unconditional** (admins, and roles whose grant carries no
+`condition`). Those callers can enumerate every id over REST anyway, so the
+signal tells them nothing new. A conditioned role — including a non-admin reader
+of a `versioned` collection, who implicitly only sees published rows — is
+refused and degrades to no realtime.
+
+Set `REALTIME_SIGNAL_SCOPE=all` to waive the check on deployments where change
+timing isn't sensitive.
+
+### Using it
+
+The SDK handles all of this. `subscribe()` and `liveQuery()` probe
+`GET /api/realtime/items-config` once per client and pick the transport:
+
+```ts
+// identical code on every host — Workers, Bun, Vercel, Netlify
+const off = backlex.liveQuery("posts", { filter: { done: { _eq: false } } }, setRows);
+```
+
+`ably` is an **optional peer dependency** of the SDK, loaded dynamically and
+only on deployments that report `ably-signal`; everyone else stays
+dependency-free.
+
+Rolling your own client:
+
+| Step | Call |
+|---|---|
+| Detect the transport | `GET /api/realtime/items-config` → `{ transport: "sse" \| "ably-signal" \| "off" }` |
+| Get a token | `POST /api/realtime/ably-token` `{ channels: ["signal:items:posts"] }` → a signed Ably `TokenRequest`, `clientId` pinned to the session user |
+| Listen | Ably channel `signal:items:posts`, message name `signal` |
+| Hydrate | `GET /api/items/posts?filter={"id":{"_in":[…]}}` |
+
+Signal channels are **subscribe-only** in the minted capability — a client that
+could publish signals could make every other reader refetch rows that never
+changed, or miss ones that did. One token can cover both planes at once
+(`collab:*` gets `publish` + `subscribe`, `signal:items:*` gets `subscribe`).
+
+On a signal deployment, `GET /api/realtime/items:<slug>/subscribe` returns
+`503 UNAVAILABLE` with a pointer here rather than holding open a stream that can
+never deliver.
+
+### What it doesn't do
+
+- **No `Last-Event-ID` gap replay.** Ably's own connection recovery covers short
+  drops; longer outages heal because every consumer re-reads from the server
+  (`liveQuery` refetches), never by replaying a log.
+- **Only `items:*`.** `collections`, `presence:*` and free-form channels have no
+  signal twin and stay on SSE.
+- **Never a downgrade.** A runtime that can already serve full-fidelity SSE —
+  Workers, Bun, or a deployment with Upstash configured — keeps it. The signal
+  plane only fills the case that was previously `off`.
 
 ## Bun SSE: queue + flush gotcha
 

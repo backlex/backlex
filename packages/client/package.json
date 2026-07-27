@@ -1,7 +1,7 @@
 {
   "name": "backlex",
   "version": "0.2.0",
-  "description": "Typed TypeScript client for the backlex API — auth, collection CRUD, query builder, realtime, storage, jobs, flows, flags, and offline sync. Zero dependencies. On npm as compiled ESM + types; on JSR (@backlex/backlex) as TypeScript source.",
+  "description": "Typed TypeScript client for the backlex API — auth, collection CRUD, query builder, realtime, storage, jobs, flows, flags, and offline sync. Zero required dependencies (`ably` is an optional peer, needed only by serverless deployments that use the signal realtime plane). On npm as compiled ESM + types; on JSR (@backlex/backlex) as TypeScript source.",
   "type": "module",
   "license": "Apache-2.0",
   "homepage": "https://backlex.com",
@@ -41,9 +41,13 @@
     "provenance": true
   },
   "peerDependencies": {
+    "ably": ">=2",
     "react": ">=18"
   },
   "peerDependenciesMeta": {
+    "ably": {
+      "optional": true
+    },
     "react": {
       "optional": true
     }
@@ -54,6 +58,7 @@
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
+    "ably": "^2.24.0",
     "react": "^19.2.7",
     "tsup": "^8.3.5",
     "typescript": "^5.6.3"

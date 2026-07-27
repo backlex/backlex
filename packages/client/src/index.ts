@@ -72,6 +72,16 @@ import { createSync, type SyncController, type SyncOptions } from "./sync";
 import { createLiveQuery, type LiveQueryOptions } from "./live";
 export { matchesRow, isIncrementalSafe } from "./live";
 export type { LiveQueryOptions, LiveQueryDeps } from "./live";
+import type { Condition } from "./condition";
+import {
+  createSignalHub,
+  createSignalHydrator,
+  idBatchFilter,
+  signalChannel,
+  type ItemsTransportKind,
+  type SignalHub,
+} from "./signal";
+export type { ItemSignal, ItemsTransportKind } from "./signal";
 
 export interface ClientOptions {
   url: string;
@@ -1740,11 +1750,59 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     };
   };
 
-  const subscribe = <T = Record<string, unknown>>(
+  // ── Realtime transport selection ──────────────────────────────────────────
+  //
+  // Which data-plane transport this deployment offers is deployment-static, so
+  // it's probed ONCE per client and every later subscribe reuses the answer.
+  // The probe has to come first (rather than optimistically opening an
+  // EventSource and switching): on a stateless-serverless deployment an
+  // `items:*` SSE subscribe would hold a function invocation open for a stream
+  // that can never deliver anything.
+  let itemsTransportPromise: Promise<ItemsTransportKind> | null = null;
+  const itemsTransport = (): Promise<ItemsTransportKind> => {
+    itemsTransportPromise ??= request<{ transport?: ItemsTransportKind }>(
+      "GET",
+      "/api/realtime/items-config",
+    )
+      .then((j) => j.transport ?? "sse")
+      // A probe failure must not take realtime down on deployments where SSE
+      // works — assume the historical transport.
+      .catch(() => "sse" as const);
+    return itemsTransportPromise;
+  };
+
+  /** Lazily-created Ably connection shared by every signal subscription. */
+  let signalHub: SignalHub | null = null;
+  const getSignalHub = (): SignalHub => {
+    signalHub ??= createSignalHub({
+      token: (channels) =>
+        request<{ tokenRequest: unknown }>("POST", "/api/realtime/ably-token", {
+          channels,
+        }).then((r) => r.tokenRequest),
+    });
+    return signalHub;
+  };
+
+  /** Pull the `filter=<json>` a live query appended to the subscribe URL back
+   *  out, so the signal plane's read-back can apply the same narrowing the SSE
+   *  plane applies server-side. Anything unparseable is treated as no filter —
+   *  the read-back is then merely wider, never wrong. */
+  const filterFromQuery = (query: string | undefined): Condition | null => {
+    if (!query) return null;
+    const raw = new URLSearchParams(query).get("filter");
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as Condition;
+    } catch {
+      return null;
+    }
+  };
+
+  const subscribeSse = <T>(
     channel: string,
     onEvent: (e: ItemEvent<T>) => void,
-    onError?: (err: unknown) => void,
-    query?: string,
+    onError: ((err: unknown) => void) | undefined,
+    query: string | undefined,
   ): (() => void) => {
     const url = `${opts.url}/api/realtime/${channel}/subscribe${query ? `?${query}` : ""}`;
     const es = new EventSource(url, { withCredentials: true });
@@ -1757,6 +1815,84 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     });
     es.addEventListener("error", (e) => onError?.(e));
     return () => es.close();
+  };
+
+  /** Signal plane: listen for id-only signals on Ably, read the changed rows
+   *  back through the permission-filtered REST path, and emit the same
+   *  `ItemEvent`s the SSE plane would have. */
+  const subscribeSignal = <T extends Record<string, unknown>>(
+    slug: string,
+    onEvent: (e: ItemEvent<T>) => void,
+    onError: ((err: unknown) => void) | undefined,
+    query: string | undefined,
+  ): Promise<() => void> => {
+    const filter = filterFromQuery(query);
+    const hydrator = createSignalHydrator<T>(
+      {
+        fetchByIds: (ids) =>
+          collection<T>(slug)
+            .list({ filter: idBatchFilter(filter, ids), limit: ids.length })
+            .then((r) => r.data),
+      },
+      onEvent,
+      onError,
+    );
+    return getSignalHub()
+      .attach(signalChannel(slug), (s) => hydrator.push(s))
+      .then((detach) => () => {
+        hydrator.close();
+        detach();
+      })
+      .catch((e: unknown) => {
+        onError?.(e);
+        hydrator.close();
+        return () => {};
+      });
+  };
+
+  const subscribe = <T = Record<string, unknown>>(
+    channel: string,
+    onEvent: (e: ItemEvent<T>) => void,
+    onError?: (err: unknown) => void,
+    query?: string,
+  ): (() => void) => {
+    const slug = channel.startsWith("items:") ? channel.slice("items:".length) : null;
+    // Non-`items:` channels (presence, collab, agent threads, free-form) have
+    // no signal twin — they stay on SSE exactly as before.
+    if (!slug) return subscribeSse(channel, onEvent, onError, query);
+
+    let disposed = false;
+    let stop: (() => void) | null = null;
+    void (async () => {
+      const transport = await itemsTransport();
+      if (disposed) return;
+      if (transport === "off") {
+        onError?.(
+          new Error(
+            "Realtime is not available on this deployment — no Durable Object, long-lived process, Upstash Redis or ABLY_API_KEY is configured.",
+          ),
+        );
+        return;
+      }
+      stop =
+        transport === "ably-signal"
+          ? await subscribeSignal(
+              slug,
+              onEvent as (e: ItemEvent<Record<string, unknown>>) => void,
+              onError,
+              query,
+            )
+          : subscribeSse(channel, onEvent, onError, query);
+      if (disposed) {
+        stop();
+        stop = null;
+      }
+    })();
+    return () => {
+      disposed = true;
+      stop?.();
+      stop = null;
+    };
   };
 
   const captureToken = (r: AuthResult): AuthResult => {

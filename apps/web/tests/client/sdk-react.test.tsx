@@ -73,6 +73,11 @@ const makeClient = (
     fetch: (async (input: RequestInfo | URL) => {
       const url =
         typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      // Before its first subscribe, the SDK probes which data-plane transport
+      // the deployment offers (SSE vs the Ably signal plane) — once per client.
+      // Answer it here so each test's handler only sees the requests it's
+      // actually asserting on.
+      if (url.includes("/api/realtime/items-config")) return json({ transport: "sse" });
       return handler(url);
     }) as typeof fetch,
   });

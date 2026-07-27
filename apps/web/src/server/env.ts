@@ -403,6 +403,19 @@ export interface Env {
    *  awareness traffic costs zero function invocations. The key secret never
    *  reaches the client. */
   ABLY_API_KEY?: string;
+  /** Who may subscribe to the signal-only data plane (`signal:items:<slug>`,
+   *  the Ably realtime path on stateless serverless).
+   *
+   *  - `unconditional` (default) — only subscribers whose `read` permission on
+   *    the collection carries NO row condition. They can already enumerate the
+   *    collection's ids over REST, so an id-only change signal tells them
+   *    nothing new. A conditioned role is refused a token and degrades to no
+   *    realtime.
+   *  - `all` — waive that check. Row DATA still never leaks (the client
+   *    refetches through the permission-filtered REST path), but a conditioned
+   *    subscriber does learn the ids and timing of changes to rows its
+   *    condition hides. Set this only when that's not sensitive. */
+  REALTIME_SIGNAL_SCOPE?: "unconditional" | "all";
   /** S3-compatible storage. When `S3_BUCKET` is set the storage adapter
    *  selects S3 (via `Bun.S3Client` when on Bun, else `aws4fetch`).
    *  Compatible with AWS S3, Cloudflare R2, Backblaze B2, MinIO,
@@ -558,6 +571,7 @@ export const STRING_ENV_KEYS = [
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_REST_TOKEN",
   "ABLY_API_KEY",
+  "REALTIME_SIGNAL_SCOPE",
   "S3_BUCKET",
   "S3_REGION",
   "S3_ENDPOINT",

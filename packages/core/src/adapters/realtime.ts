@@ -66,3 +66,50 @@ export type CollabTransportKind = "native" | "ably" | "off";
 export interface CollabConfig {
   transport: CollabTransportKind;
 }
+
+/**
+ * How a client should receive DATA-plane row events (`items:<slug>`).
+ *
+ *  - `sse`         — the held `items:*` SSE stream: full per-subscriber
+ *                    permission filtering + field projection happen server-side
+ *                    (Durable Object, long-lived Bun process, or the Upstash
+ *                    Redis long-poll).
+ *  - `ably-signal` — stateless serverless with `ABLY_API_KEY`: the server
+ *                    publishes ID-ONLY {@link ItemSignal}s to Ably and the
+ *                    client refetches the changed rows through the normal,
+ *                    permission-filtered REST read path. Delivery costs zero
+ *                    function invocations, which is what makes realtime work on
+ *                    a free Vercel/Netlify tier.
+ *  - `off`         — no viable transport; consumers stay at their last fetch.
+ */
+export type ItemsTransportKind = "sse" | "ably-signal" | "off";
+
+export interface ItemsConfig {
+  transport: ItemsTransportKind;
+}
+
+/**
+ * A data-plane change SIGNAL — the entire wire payload on the Ably items plane.
+ *
+ * It deliberately carries NO row data. The server can't run per-subscriber
+ * permission filtering or field projection inside Ably (that's exactly why the
+ * data plane never moved there), so instead of shipping a row it ships the fact
+ * that a row changed; the client then reads it back through the REST API, where
+ * the normal permission gate, row conditions and field allow-list all apply. A
+ * row the subscriber may not see simply doesn't come back — and the client
+ * treats that absence as "drop it".
+ *
+ * What remains observable to a subscriber is the ID and the timing of a change.
+ * That's why the signal plane is offered only to subscribers whose `read`
+ * permission on the collection is UNCONDITIONAL (see `REALTIME_SIGNAL_SCOPE`).
+ */
+export interface ItemSignal {
+  event: "created" | "updated" | "deleted";
+  /** Collection slug the row belongs to. */
+  collection: string;
+  /** Primary key of the changed row. */
+  id: string;
+  /** Server epoch ms at publish time — lets a client discard a signal it
+   *  already satisfied with a newer read. */
+  at: number;
+}

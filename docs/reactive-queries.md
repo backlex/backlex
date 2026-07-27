@@ -107,12 +107,27 @@ debounced refetch (always correct, just less incremental):
 
 Bursts of events (e.g. a batch write) are coalesced into a single refetch.
 
+### On stateless serverless: the signal plane
+
+Vercel / Netlify Functions can't hold an SSE stream open cheaply, so a
+deployment with `ABLY_API_KEY` (and no Upstash) delivers row events as **ID-only
+signals over Ably**, which the SDK hydrates back into ordinary events by reading
+the changed rows through REST — with your filter applied, so the `enter` /
+`update` / `leave` answers come out the same. `liveQuery` is unchanged: it
+probes the transport once and adapts. See
+[Signal-only data plane](/realtime#signal-only-data-plane-signalitemsslug) for
+the mechanics, the cost argument, and the one thing it trades away (subscribers
+observe change *timing*, so the plane is gated to unconditional readers).
+
 ## Permission & tenant scope
 
 A reactive query inherits the realtime feed's guarantees: you only ever receive
 events for rows you can read, already field-projected to your permission
 allow-list. The initial `list()` and every refetch apply the same read gate. A
-reactive query can never surface a row the caller couldn't fetch directly.
+reactive query can never surface a row the caller couldn't fetch directly. That
+holds on the signal plane too — there the read gate simply moves to the
+read-back, which is why an id you can't read is reported to the engine as a
+removal rather than a row.
 
 ## In the admin
 

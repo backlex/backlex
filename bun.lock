@@ -300,14 +300,17 @@
       "version": "0.2.0",
       "devDependencies": {
         "@types/react": "^19.0.0",
+        "ably": "^2.24.0",
         "react": "^19.2.7",
         "tsup": "^8.3.5",
         "typescript": "^5.6.3",
       },
       "peerDependencies": {
+        "ably": ">=2",
         "react": ">=18",
       },
       "optionalPeers": [
+        "ably",
         "react",
       ],
     },

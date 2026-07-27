@@ -167,21 +167,27 @@ export interface AblyTokenRequest {
 
 const ABLY_TOKEN_TTL_MS = 60 * 60 * 1000;
 
+/**
+ * Sign an Ably TokenRequest for exactly `capabilities` — a map of channel name
+ * → allowed operations, built by the caller AFTER each channel passed the same
+ * permission gate a native subscribe would apply.
+ *
+ * The ops differ per plane: collab channels need `publish` + `subscribe` (every
+ * member both announces and listens), while the signal data plane is
+ * `subscribe`-only — signals are server-emitted, and a client that could
+ * publish them could fabricate change notifications for other readers.
+ */
 export const mintAblyTokenRequest = async (
   apiKey: string,
   clientId: string,
-  channels: string[],
+  capabilities: Record<string, string[]>,
 ): Promise<AblyTokenRequest> => {
   const sep = apiKey.indexOf(":");
   if (sep <= 0) throw new Error("ABLY_API_KEY must be in keyName:keySecret form");
   const keyName = apiKey.slice(0, sep);
   const keySecret = apiKey.slice(sep + 1);
 
-  // Capability map: exactly the gated channels, publish+subscribe only (no
-  // history/presence ops needed — the collab protocol is message-based).
-  const capability = JSON.stringify(
-    Object.fromEntries(channels.map((ch) => [ch, ["publish", "subscribe"]])),
-  );
+  const capability = JSON.stringify(capabilities);
   const ttl = ABLY_TOKEN_TTL_MS;
   const timestamp = Date.now();
   const nonce = crypto.randomUUID().replace(/-/g, "");

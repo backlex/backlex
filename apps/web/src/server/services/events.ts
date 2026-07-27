@@ -14,6 +14,11 @@ import { runFlows } from "./flows";
 import { runEventFunctions } from "./functions";
 import { runExtensionEventHooks } from "./extensions";
 import { redisPublish, redisRealtimeEnabled } from "./realtime-redis";
+import {
+  ablyPublishSignal,
+  itemSignalFor,
+  itemsTransportKind,
+} from "./realtime-signal";
 
 export interface ItemEventPayload {
   event: "created" | "updated" | "deleted";
@@ -284,6 +289,15 @@ export const publishEvent = async (
     // through a Redis Stream so subscribers on other invocations see the event.
     // The in-process map (publishLocal) wouldn't reach them.
     await redisPublish(env, channel, payload);
+  } else if (itemsTransportKind(env) === "ably-signal") {
+    // Stateless serverless with Ably and nothing else: the only thing that goes
+    // out is an ID-ONLY signal — subscribers read the row back through the
+    // permission-filtered REST path (see services/realtime-signal.ts). Rows
+    // themselves NEVER cross this plane, so no per-subscriber filtering is lost.
+    const signal = itemSignalFor(channel, payload);
+    // Non-row channels (`collections`, agent threads, …) have no signal shape;
+    // they simply have no serverless transport here, same as before.
+    if (signal) await ablyPublishSignal(env.ABLY_API_KEY!, signal);
   } else {
     publishLocal(channel, payload);
   }

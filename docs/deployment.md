@@ -15,7 +15,7 @@ constraints you need.
 |--------------------|-------------------|----------------------|----------------------|------------------------------|------------------------|
 | **Database**       | SQLite, libSQL/Turso, or PG | D1, libSQL/Turso, or Hyperdrive→PG | PG via `DATABASE_DRIVER=neon-http` (recommended — HTTP avoids cold-start TCP handshake), or libSQL/Turso | PG via `DATABASE_DRIVER=neon-http` (recommended), or libSQL/Turso | PG via `neon-http` (auto-forced); libSQL/Turso too |
 | **Storage**        | local fs / S3 / `Bun.S3Client` | R2 (S3 fallback) | S3 (`aws4fetch`) **required** — Lambda zip has no local fs | S3 (`aws4fetch`) **required** — Lambda zip has no local fs | S3 (`aws4fetch`) **required** — no fs |
-| **Realtime**       | in-proc + SSE     | Durable Objects + WS | Upstash Redis long-poll¹ | Upstash Redis long-poll¹ | Upstash Redis long-poll¹ |
+| **Realtime**       | in-proc + SSE     | Durable Objects + WS | Ably signals¹ (or Upstash long-poll) | Ably signals¹ (or Upstash long-poll) | Ably signals¹ (or Upstash long-poll) |
 | **SAML**           | yes               | yes (nodejs_compat)  | yes (Node 22 native crypto) | yes (Node 22 native crypto) | yes (Deno `node:crypto`) |
 | **LDAP / SMTP**    | yes               | 503 (no raw TCP)     | yes (Node 22 has raw TCP) | yes (Node 22 has raw TCP) | no (no raw TCP) |
 | **Sandbox**        | Bun worker        | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS-WASM / remote HTTP |
@@ -23,15 +23,30 @@ constraints you need.
 | **Cron**           | setInterval       | wrangler triggers    | `.vercel/output/config.json` crons (emitted by `scripts/build-vercel-output.ts`; Vercel sends `Authorization: Bearer $CRON_SECRET` automatically) | scheduled function pings `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` | native `Deno.cron` (1-min idempotent tick) |
 | **Cost**           | VPS               | $0–5/mo              | $0–20/mo             | $0–19/mo             | $0+ (free tier) |
 
-¹ Realtime on Vercel/Netlify needs `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
-(publish/subscribe fan out through a Redis stream; subscribe is a bounded long-poll
-that closes and lets `EventSource` reconnect). Verified live on both. Without the
-Upstash vars, realtime falls back to the in-process map — use Bun/Workers instead.
-The admin's live-collaboration channels prefer `ABLY_API_KEY` over the Redis
-fallback on these targets: the browser connects to Ably directly, so awareness
-traffic costs zero function invocations and stays inside Ably's free tier — the
-Redis long-poll burns Upstash commands and function hours continuously. See
-`docs/realtime.md` § Collaboration channels. Verified live on both.
+¹ Realtime on these stateless targets has two paths, and `ABLY_API_KEY` is the one
+that fits a free tier.
+
+**Ably (recommended).** With `ABLY_API_KEY` set and no Upstash, row events ride the
+**signal-only data plane**: the server publishes ID-only `{event, collection, id}`
+signals to Ably, the browser connects to Ably directly, and the client reads the
+changed rows back over the permission-filtered REST path. Delivery costs **zero
+function invocations**. The same key also carries the admin's live-collaboration
+channels. Trade-off: subscribers learn the ids and timing of changes, so the plane
+is offered only to roles with an unconditional `read` grant (override with
+`REALTIME_SIGNAL_SCOPE=all`). See `docs/realtime.md` § Signal-only data plane.
+
+**Upstash Redis.** With `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`,
+publish/subscribe fan out through a Redis stream and subscribe is a bounded
+long-poll that closes and lets `EventSource` reconnect. This keeps full
+server-side per-row filtering and `Last-Event-ID` replay, so it takes priority
+when configured — but it holds a function invocation open per subscriber
+(~130K invocations/month for one always-open tab, against a 125K free tier) and
+burns ~3,600 Redis commands per editor-hour. Use it when you're already paying
+for Upstash and want full-fidelity events.
+
+With neither, realtime falls back to the in-process map (useless when instances
+are stateless) — use Bun/Workers instead. Both paths verified live on Vercel and
+Netlify.
 
 ² Image transforms on Vercel use `sharp`. The Vercel build stages sharp's native
 `@img/*` closure into the function (`scripts/build-vercel-output.ts`); if the binary

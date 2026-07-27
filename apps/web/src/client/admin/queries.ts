@@ -56,6 +56,7 @@ import {
 } from "./api";
 import type { Post } from "./config";
 import { type ItemsQueryParams, reconcileBulkUpdate } from "./items-query-params";
+import { itemsTransport, openSignalPipe } from "./signal";
 
 export {
   buildItemsParams,
@@ -536,9 +537,16 @@ export function useItems(collection: string | null, params: ItemsQueryParams) {
  * cache + optimistic writes, so an event just debounce-invalidates the active
  * collection's queries and RQ refetches the exact, permission-filtered window.
  *
- * Returns a `live` flag (true while the SSE channel is connected) for a UI
- * indicator. No-ops when realtime isn't available (the EventSource just errors
- * and the list stays at its last fetched state — still correct, just not live).
+ * Two pipes, one behaviour. `GET /api/realtime/items-config` picks:
+ *  - `sse` — the held `items:*` stream (Durable Object, Bun, or the Upstash
+ *    long-poll). Every event is a bump.
+ *  - `ably-signal` — stateless serverless: id-only signals over Ably, which the
+ *    browser receives directly. Same bump, zero function invocations.
+ * Either way the payload is irrelevant here — RQ refetches the real window.
+ *
+ * Returns a `live` flag (true while the channel is connected) for a UI
+ * indicator. No-ops when realtime isn't available (the list stays at its last
+ * fetched state — still correct, just not live).
  */
 export function useLiveCollection(collection: string | null): { live: boolean } {
   const qc = useQueryClient();
@@ -548,10 +556,8 @@ export function useLiveCollection(collection: string | null): { live: boolean } 
   useEffect(() => {
     setLive(false);
     if (!collection) return;
-    if (typeof EventSource === "undefined") return;
-    const base = import.meta.env.VITE_API_URL ?? "";
-    const url = `${base}/api/realtime/items:${encodeURIComponent(collection)}/subscribe`;
-    const es = new EventSource(url, { withCredentials: true });
+    let disposed = false;
+    let stop: (() => void) | null = null;
 
     const bump = () => {
       if (timer.current) clearTimeout(timer.current);
@@ -561,13 +567,42 @@ export function useLiveCollection(collection: string | null): { live: boolean } 
       }, 150);
     };
 
-    es.addEventListener("open", () => setLive(true));
-    es.addEventListener("message", bump);
-    es.addEventListener("error", () => setLive(false));
+    void (async () => {
+      const transport = await itemsTransport();
+      if (disposed) return;
+      if (transport === "ably-signal") {
+        const close = await openSignalPipe(collection, bump);
+        if (disposed || !close) {
+          close?.();
+          return;
+        }
+        setLive(true);
+        stop = () => {
+          setLive(false);
+          close();
+        };
+        return;
+      }
+      if (transport === "off") return;
+      if (typeof EventSource === "undefined") return;
+      const base = import.meta.env.VITE_API_URL ?? "";
+      const url = `${base}/api/realtime/items:${encodeURIComponent(collection)}/subscribe`;
+      const es = new EventSource(url, { withCredentials: true });
+      es.addEventListener("open", () => setLive(true));
+      es.addEventListener("message", bump);
+      es.addEventListener("error", () => setLive(false));
+      stop = () => {
+        setLive(false);
+        es.close();
+      };
+      if (disposed) stop();
+    })();
 
     return () => {
+      disposed = true;
       if (timer.current) clearTimeout(timer.current);
-      es.close();
+      stop?.();
+      stop = null;
       setLive(false);
     };
   }, [collection, qc]);

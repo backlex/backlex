@@ -39,10 +39,19 @@ import {
   buildCollabMessage,
   collabConfig,
   mintAblyTokenRequest,
+  type AblyTokenRequest,
   parseAgentThreadChannel,
   parseCollabChannel,
 } from "../services/collab";
 import { getThread } from "../services/agents/store";
+import {
+  SIGNAL_ROOT,
+  itemsConfig,
+  itemsTransportKind,
+  parseSignalChannel,
+  signalChannel,
+  signalScopeAllowsConditional,
+} from "../services/realtime-signal";
 
 /** Poll interval for the Redis-Stream subscribe loop (serverless transport). */
 const REDIS_POLL_MS = 1_000;
@@ -83,6 +92,10 @@ interface Gate {
   /** true for `agent:thread:*` channels — same treatment as collab, but the
    *  only publishable message is thread presence/typing. */
   agentThread?: boolean;
+  /** true for `signal:items:*` channels — the id-only data plane. Carries no
+   *  `meta` because there is no row to filter: the payload is a signal, and the
+   *  actual permission gate happens on the client's follow-up REST read. */
+  signal?: boolean;
 }
 
 const clientIp = (c: { req: { header: (n: string) => string | undefined } }): string =>
@@ -235,6 +248,68 @@ const gateForChannel = async (
       },
     };
   }
+  if (channel.startsWith(SIGNAL_ROOT)) {
+    const signalSlug = parseSignalChannel(channel);
+    if (!signalSlug) {
+      throw new AppError(
+        "VALIDATION",
+        "Malformed signal channel — expected signal:items:<slug>",
+      );
+    }
+    // Signal-only data plane (`signal:items:<slug>`) — see
+    // services/realtime-signal.ts for why it exists and what it deliberately
+    // does NOT carry. Two gates apply:
+    //
+    //  1. the same `read` permission a native `items:*` subscribe requires; and
+    //  2. that permission must be UNCONDITIONAL. Signals carry no row data, but
+    //     they do reveal the id + timing of every change — including rows a
+    //     row-level condition hides. A caller who can already enumerate the
+    //     collection over REST learns nothing new; a conditioned caller would.
+    //     `REALTIME_SIGNAL_SCOPE=all` waives (2) for deployments where change
+    //     timing isn't sensitive.
+    if (isPublish) {
+      throw new AppError(
+        "FORBIDDEN",
+        "signal:items:* channels are published by the API; client publish is disabled",
+      );
+    }
+    if (!auth.userId) {
+      throw new AppError("UNAUTHORIZED", "Sign in required for signal channels");
+    }
+    const perm = await resolvePermission(ctx, auth, signalSlug, "read");
+    if (!perm.allowed) {
+      throw new AppError("FORBIDDEN", `No read permission for ${signalSlug}`);
+    }
+    if (!signalScopeAllowsConditional(ctx.env)) {
+      // `conditions === null` means at least one grant is condition-free, i.e.
+      // every row of the collection is readable.
+      let unconditional = perm.isAdmin || perm.conditions === null;
+      // A versioned collection adds an implicit `_status = 'published'` clause
+      // for readers who can't see drafts — that's a row condition too, so it
+      // disqualifies them just the same.
+      if (unconditional && !perm.isAdmin && auth.tenantId) {
+        let versioned = false;
+        try {
+          versioned = Boolean((await loadCollection(ctx, auth.tenantId, signalSlug)).versioned);
+        } catch {
+          versioned = false;
+        }
+        if (versioned) {
+          unconditional =
+            (await resolvePermission(ctx, auth, signalSlug, "publish")).allowed ||
+            (await resolvePermission(ctx, auth, signalSlug, "update")).allowed;
+        }
+      }
+      if (!unconditional) {
+        throw new AppError(
+          "FORBIDDEN",
+          `Row-level read conditions on ${signalSlug} — change signals would reveal ids this role can't read. ` +
+            "Set REALTIME_SIGNAL_SCOPE=all to allow it.",
+        );
+      }
+    }
+    return { signal: true };
+  }
   if (channel === "collections") {
     if (!auth.roles.includes(SYSTEM_ROLES.admin)) {
       throw new AppError(
@@ -310,6 +385,46 @@ const gateForChannel = async (
   }
   // user-defined channel: no auth, no filter
   return {};
+};
+
+/**
+ * Gate every requested channel, then sign one Ably TokenRequest scoped to
+ * exactly those channels. Shared by `/collab-token` (collab plane only) and
+ * `/ably-token` (collab + the signal data plane), so the two can't drift on
+ * what a token is allowed to reach.
+ *
+ * Ops are per plane: collab members publish AND subscribe (that's the whole
+ * protocol), while signal subscribers are `subscribe`-only — signals are
+ * server-emitted, and a client able to publish them could fabricate change
+ * notifications that make other readers refetch (or miss) rows.
+ */
+const gateAndMintAblyToken = async (
+  ctx: Ctx,
+  auth: { userId: string | null; email: string | null; roles: string[]; tenantId?: string | null },
+  channels: string[],
+  allowSignal: boolean,
+): Promise<AblyTokenRequest> => {
+  if (!ctx.env.ABLY_API_KEY) {
+    throw new AppError("UNAVAILABLE", "Ably is not configured on this deployment");
+  }
+  const capabilities: Record<string, string[]> = {};
+  for (const channel of channels) {
+    const isSignal = channel.startsWith(SIGNAL_ROOT);
+    if (isSignal && !allowSignal) {
+      throw new AppError("VALIDATION", "collab-token only covers collab:* channels");
+    }
+    if (!isSignal && !channel.startsWith(COLLAB_PREFIX)) {
+      throw new AppError(
+        "VALIDATION",
+        allowSignal
+          ? "ably-token only covers collab:* and signal:items:* channels"
+          : "collab-token only covers collab:* channels",
+      );
+    }
+    await gateForChannel(ctx, auth, channel, false);
+    capabilities[channel] = isSignal ? ["subscribe"] : ["publish", "subscribe"];
+  }
+  return mintAblyTokenRequest(ctx.env.ABLY_API_KEY, auth.userId!, capabilities);
 };
 
 /** Parse a `Last-Event-ID` header into a positive sequence number, or 0. */
@@ -512,6 +627,33 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     (c) => c.json(collabConfig(c.get("ctx").env)),
   )
+  // How a client should receive DATA-plane row events on this deployment:
+  // `sse` (the held `items:*` stream, full server-side filtering), `ably-signal`
+  // (id-only signals over Ably + a permission-filtered refetch — the free-tier
+  // path on Vercel/Netlify), or `off`.
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/items-config",
+      tags: [TAG],
+      summary: "Data-plane transport capability",
+      security: SECURITY,
+      responses: {
+        200: {
+          description: "Transport the client should use for `items:*` events",
+          content: {
+            "application/json": {
+              schema: z
+                .object({ transport: z.enum(["sse", "ably-signal", "off"]) })
+                .openapi("ItemsConfig"),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    (c) => c.json(itemsConfig(c.get("ctx").env)),
+  )
   // Ably token auth for collab channels: the browser's ably-js authCallback
   // POSTs the channels it wants; each one passes the same permission gate as a
   // native subscribe, and the response is a TokenRequest whose capability is
@@ -552,22 +694,57 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       },
     }),
     async (c) => {
-      const ctx = c.get("ctx");
-      const auth = c.get("auth");
-      if (!ctx.env.ABLY_API_KEY) {
-        throw new AppError("UNAVAILABLE", "Ably is not configured on this deployment");
-      }
-      const { channels } = c.req.valid("json");
-      for (const channel of channels) {
-        if (!channel.startsWith(COLLAB_PREFIX)) {
-          throw new AppError("VALIDATION", "collab-token only covers collab:* channels");
-        }
-        await gateForChannel(ctx, auth, channel, false);
-      }
-      const tokenRequest = await mintAblyTokenRequest(
-        ctx.env.ABLY_API_KEY,
-        auth.userId!,
-        channels,
+      const tokenRequest = await gateAndMintAblyToken(
+        c.get("ctx"),
+        c.get("auth"),
+        c.req.valid("json").channels,
+        false,
+      );
+      return c.json({ tokenRequest });
+    },
+  )
+  // Same flow, widened to the signal data plane: `collab:*` (publish+subscribe)
+  // AND `signal:items:*` (subscribe only). The SDK and the admin both use this
+  // one endpoint so a single connection can carry awareness and row signals.
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/ably-token",
+      tags: [TAG],
+      summary: "Mint an Ably TokenRequest scoped to collab + signal channels",
+      security: SECURITY,
+      request: {
+        body: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: z
+                .object({ channels: z.array(z.string()).min(1).max(20) })
+                .openapi("AblyTokenInput"),
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: "Signed Ably TokenRequest for the requested channels",
+          content: {
+            "application/json": {
+              schema: z
+                .object({ tokenRequest: z.record(z.string(), z.unknown()) })
+                .openapi("AblyTokenResponse"),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const tokenRequest = await gateAndMintAblyToken(
+        c.get("ctx"),
+        c.get("auth"),
+        c.req.valid("json").channels,
+        true,
       );
       return c.json({ tokenRequest });
     },
@@ -660,6 +837,17 @@ export const openRealtimeSubscribe = async (
     // delivered (reactive invalidation Stage 1).
     const gate = await gateForChannel(ctx, auth, channel, false, filterRaw);
     const since = parseSince(c.req.header("Last-Event-ID"));
+
+    // Signal-plane deployment: there is no cross-instance `items:*` fan-out to
+    // stream. Without this the request would fall through to the in-process bus
+    // and hold a function invocation open on a stream that can never deliver —
+    // the exact cost the signal plane exists to avoid. Fail loudly instead.
+    if (channel.startsWith(ITEMS_PREFIX) && itemsTransportKind(ctx.env) === "ably-signal") {
+      throw new AppError(
+        "UNAVAILABLE",
+        `This deployment streams row events as ID-only signals over Ably. Subscribe to "${signalChannel(channel.slice(ITEMS_PREFIX.length))}" with a token from POST /api/realtime/ably-token (the backlex SDK does this automatically), then read the changed rows back over REST.`,
+      );
+    }
 
     // Workers: bridge a hibernatable WebSocket from the RealtimeRoom DO into an
     // SSE response so the EventSource client works the same on both runtimes.

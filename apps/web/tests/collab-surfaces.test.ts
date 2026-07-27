@@ -320,9 +320,9 @@ describe("collab transport selection", () => {
 
 describe("ably token minting", () => {
   test("token request is signed per the Ably REST token spec", async () => {
-    const tr = await mintAblyTokenRequest("appId.keyId:topsecret", "user-1", [
-      "collab:item:articles:row1",
-    ]);
+    const tr = await mintAblyTokenRequest("appId.keyId:topsecret", "user-1", {
+      "collab:item:articles:row1": ["publish", "subscribe"],
+    });
     expect(tr.keyName).toBe("appId.keyId");
     expect(tr.clientId).toBe("user-1");
     expect(tr.ttl).toBe(3_600_000);
@@ -337,7 +337,9 @@ describe("ably token minting", () => {
   });
 
   test("a key without the keyName:keySecret shape is rejected", async () => {
-    await expect(mintAblyTokenRequest("garbage", "u", ["collab:item:a:b"])).rejects.toThrow();
+    await expect(
+      mintAblyTokenRequest("garbage", "u", { "collab:item:a:b": ["subscribe"] }),
+    ).rejects.toThrow();
   });
 });
 

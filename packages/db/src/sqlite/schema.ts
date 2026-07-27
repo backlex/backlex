@@ -308,6 +308,9 @@ export const appSessions = sqliteTable(
     expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
+    /** Org this session is currently acting in (`app_orgs.id`). See the PG
+     *  schema for why there's no FK. */
+    activeOrgId: text("active_org_id"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },
@@ -417,6 +420,110 @@ export const appUserRoles = sqliteTable(
   (t) => [
     uniqueIndex("app_user_roles_pk").on(t.appUserId, t.roleId),
     index("app_user_roles_role_idx").on(t.roleId),
+  ],
+);
+
+/* ─────────────────────────────────────────────────────────────────────
+ * App-plane organizations ("teams"). See the matching block in ../pg/schema.ts
+ * for the rationale and the two role layers these tables carry.
+ * ───────────────────────────────────────────────────────────────────── */
+
+export const appOrgs = sqliteTable(
+  "app_orgs",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    image: text("image"),
+    metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    /** `app_users.id` of the creating end-user; null for admin-created orgs. */
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("app_orgs_tenant_slug_idx").on(t.tenantId, t.slug),
+    index("app_orgs_tenant_idx").on(t.tenantId),
+  ],
+);
+
+export const appOrgMembers = sqliteTable(
+  "app_org_members",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => appOrgs.id, { onDelete: "cascade" }),
+    appUserId: text("app_user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    /** owner | admin | member. */
+    role: text("role").notNull().default("member"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("app_org_members_pk").on(t.orgId, t.appUserId),
+    index("app_org_members_user_idx").on(t.appUserId),
+    index("app_org_members_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/** Workspace roles bound to a member within one org — the org-scoped sibling
+ *  of `app_user_roles`. */
+export const appOrgMemberRoles = sqliteTable(
+  "app_org_member_roles",
+  {
+    orgId: text("org_id")
+      .notNull()
+      .references(() => appOrgs.id, { onDelete: "cascade" }),
+    appUserId: text("app_user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    uniqueIndex("app_org_member_roles_pk").on(t.orgId, t.appUserId, t.roleId),
+    index("app_org_member_roles_role_idx").on(t.roleId),
+    index("app_org_member_roles_user_idx").on(t.appUserId),
+  ],
+);
+
+/** Pending + accepted org invitations. Listable (unlike the workspace-level
+ *  end-user invite, which hides its token in `app_verifications`). */
+export const appOrgInvites = sqliteTable(
+  "app_org_invites",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => appOrgs.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: text("role").notNull().default("member"),
+    roleIds: text("role_ids", { mode: "json" }).$type<string[] | null>(),
+    token: text("token").notNull(),
+    invitedBy: text("invited_by"),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    acceptedAt: integer("accepted_at", { mode: "timestamp_ms" }),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    uniqueIndex("app_org_invites_token_idx").on(t.token),
+    index("app_org_invites_org_idx").on(t.orgId),
+    index("app_org_invites_email_idx").on(t.email),
+    index("app_org_invites_tenant_idx").on(t.tenantId),
   ],
 );
 

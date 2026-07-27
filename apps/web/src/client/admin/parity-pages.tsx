@@ -6,3 +6,4 @@ export { InsightsPage } from "./parity/insights";
 export { EmailTemplatesPage } from "./parity/email-templates";
 export { TranslationsPage } from "./parity/translations";
 export { AppUsersPage } from "./parity/app-users";
+export { AppOrgsPage } from "./parity/app-orgs";

@@ -97,6 +97,9 @@ export const I = {
   ScrollText: (p: IconProps) => <Icon {...p}><path d="M15 3v4a2 2 0 0 0 2 2h4" /><path d="M18 22H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h11l5 5v13a2 2 0 0 1-2 2Z" /><path d="M8 13h6M8 17h6M8 9h2" /></Icon>,
   ShieldAlert: (p: IconProps) => <Icon {...p}><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="M12 8v4M12 16h.01" /></Icon>,
   Network: (p: IconProps) => <Icon {...p}><rect x="16" y="16" width="6" height="6" rx="1" /><rect x="2" y="16" width="6" height="6" rx="1" /><rect x="9" y="2" width="6" height="6" rx="1" /><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8" /></Icon>,
+  /** App-plane organizations — a company block, distinct from the person
+   *  glyphs (`Users`) the two user pools already use. */
+  Building: (p: IconProps) => <Icon {...p}><rect width="16" height="20" x="4" y="2" rx="2" /><path d="M9 22v-4h6v4" /><path d="M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01M12 6h.01M12 10h.01M12 14h.01" /></Icon>,
   LayoutKanban: (p: IconProps) => <Icon {...p}><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M8 7v7M16 7v10M12 7v4" /></Icon>,
   LayoutGrid: (p: IconProps) => <Icon {...p}><rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" /></Icon>,
   LayoutList: (p: IconProps) => <Icon {...p}><rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" /><path d="M14 4h7M14 9h7M14 15h7M14 20h7" /></Icon>,

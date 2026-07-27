@@ -10,18 +10,22 @@ import {
   type CachedRoleRow,
   type CachedStaticPermission,
   getCachedMembership,
+  getCachedOrgMemberships,
   getCachedRoles,
   getCachedSession,
   getCachedStaticPermission,
   getCachedTenantResolve,
   getCachedTenantRoleNames,
   invalidateAllPermissions,
+  invalidateOrgMemberships,
   invalidateSession,
   invalidateTenantMembership,
+  invalidateTenantOrgs,
   invalidateTenantPermissions,
   invalidateTenantRoles,
   invalidateUserRoles,
   setCachedMembership,
+  setCachedOrgMemberships,
   setCachedRoles,
   setCachedSession,
   setCachedStaticPermission,
@@ -194,6 +198,9 @@ describe("invalidation", () => {
     );
     setCachedSession("tok-1", { userId: "u1", email: "u1@x.io", sessionId: "s1" });
     setCachedTenantResolve("acme", "t1");
+    setCachedOrgMemberships({ tenantId: "t1", appUserId: "au1" }, [
+      { orgId: "o1", role: "owner" },
+    ]);
     expect(__cacheStats()).toEqual({
       roles: 1,
       perms: 1,
@@ -201,6 +208,7 @@ describe("invalidation", () => {
       tenantRoleNames: 1,
       session: 1,
       tenantResolve: 1,
+      orgMemberships: 1,
     });
 
     invalidateAllPermissions();
@@ -212,7 +220,33 @@ describe("invalidation", () => {
       tenantRoleNames: 0,
       session: 0,
       tenantResolve: 0,
+      orgMemberships: 0,
     });
+  });
+
+  test("org memberships: per-(tenant, app user) isolation + targeted invalidation", () => {
+    const t1a = { tenantId: "t1", appUserId: "au1" };
+    const t1b = { tenantId: "t1", appUserId: "au2" };
+    const t2a = { tenantId: "t2", appUserId: "au1" };
+    setCachedOrgMemberships(t1a, [{ orgId: "o1", role: "owner" }]);
+    setCachedOrgMemberships(t1b, [{ orgId: "o1", role: "member" }]);
+    setCachedOrgMemberships(t2a, [{ orgId: "o9", role: "admin" }]);
+
+    // Same app-user id in two workspaces must not share an entry — an
+    // `app_users` row is tenant-scoped, so a collision would leak memberships.
+    expect(getCachedOrgMemberships(t1a)?.[0]?.orgId).toBe("o1");
+    expect(getCachedOrgMemberships(t2a)?.[0]?.orgId).toBe("o9");
+
+    invalidateOrgMemberships("t1", "au1");
+    expect(getCachedOrgMemberships(t1a)).toBeUndefined();
+    expect(getCachedOrgMemberships(t1b)).toBeDefined();
+    expect(getCachedOrgMemberships(t2a)).toBeDefined();
+
+    // Deleting an org scrubs the whole tenant slice (the caller doesn't know
+    // who was in it) but leaves other workspaces alone.
+    invalidateTenantOrgs("t1");
+    expect(getCachedOrgMemberships(t1b)).toBeUndefined();
+    expect(getCachedOrgMemberships(t2a)).toBeDefined();
   });
 
   test("tenant-resolve cache: set/get by slug-or-id key, isolates by key", () => {

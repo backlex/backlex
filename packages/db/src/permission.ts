@@ -86,6 +86,13 @@ const resolveVar = (
   if (v === "$user.email") return ctx.email;
   if (v === "$user.roles") return ctx.roles;
   if (v === "$tenant.id" || v === "$user.tenant_id") return ctx.tenantId ?? null;
+  // App-plane organizations. `$org.id` is the active org (null when the
+  // subject has none selected — a `_eq` against null compiles to FALSE, so an
+  // org-scoped rule denies rather than leaking across orgs). `$user.orgs` is
+  // every membership, for rules that should span all of them.
+  if (v === "$org.id") return ctx.orgId ?? null;
+  if (v === "$org.role") return ctx.orgRole ?? null;
+  if (v === "$user.orgs") return ctx.orgIds ?? [];
   if (v === "$now") return temporal(now, dialect);
   return v;
 };
@@ -132,6 +139,31 @@ export type LeafCompiler = (
 
 const defaultColRef: ColRefResolver = (field) => sql`${sql.identifier(field)}`;
 
+/**
+ * Normalize the right-hand side of `_in` / `_nin` to a concrete array.
+ *
+ * Two accepted shapes:
+ *   - a literal array, whose elements may themselves be variables
+ *     (`{ status: { _in: ["draft", "$user.id"] } }`);
+ *   - a bare variable that RESOLVES to an array — `$user.roles`, `$user.orgs`.
+ *     Without this branch the compiler called `.map` on a string and threw a
+ *     500, which made the array-valued variables unusable in the very operator
+ *     they exist for.
+ *
+ * Anything else (a variable that resolved to null, a scalar) yields `[]`, which
+ * the callers turn into FALSE for `_in` and TRUE for `_nin` — the same
+ * fail-closed reading an explicitly empty list already had.
+ */
+const resolveList = (raw: unknown, r: (v: unknown) => unknown): unknown[] => {
+  if (Array.isArray(raw)) return raw.map(r);
+  if (isVar(raw)) {
+    const resolved = r(raw);
+    // Already-resolved values are concrete — don't re-resolve the elements.
+    return Array.isArray(resolved) ? resolved : [];
+  }
+  return [];
+};
+
 const compileComparison = (
   field: string,
   cmp: ComparisonObj,
@@ -158,12 +190,12 @@ const compileComparison = (
     parts.push(v === null || v === undefined ? sql`${id} IS NOT NULL` : sql`${id} <> ${v}`);
   }
   if (cmp._in !== undefined) {
-    const arr = (cmp._in as unknown[]).map(r);
+    const arr = resolveList(cmp._in, r);
     if (arr.length === 0) return FALSE;
     parts.push(sql`${id} IN (${sql.join(arr.map((v) => sql`${v}`), sql`, `)})`);
   }
   if (cmp._nin !== undefined) {
-    const arr = (cmp._nin as unknown[]).map(r);
+    const arr = resolveList(cmp._nin, r);
     if (arr.length === 0) return TRUE;
     parts.push(sql`${id} NOT IN (${sql.join(arr.map((v) => sql`${v}`), sql`, `)})`);
   }
@@ -324,12 +356,14 @@ const matchesInner = (
     const left = lookup(row, field);
     if (cmp._eq !== undefined && left !== r(cmp._eq)) return false;
     if (cmp._neq !== undefined && left === r(cmp._neq)) return false;
+    // Same variable-resolving list handling as the SQL compiler, so realtime
+    // and the permission simulator agree with what the query layer produced.
     if (cmp._in !== undefined) {
-      const arr = (cmp._in as unknown[]).map(r);
+      const arr = resolveList(cmp._in, r);
       if (!arr.includes(left)) return false;
     }
     if (cmp._nin !== undefined) {
-      const arr = (cmp._nin as unknown[]).map(r);
+      const arr = resolveList(cmp._nin, r);
       if (arr.includes(left)) return false;
     }
     if (cmp._gt !== undefined && !(num(left) > num(r(cmp._gt)))) return false;

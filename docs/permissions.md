@@ -58,8 +58,29 @@ Resolved against the request's auth subject:
 - `$tenant.id` (aka `$user.tenant_id`) — active workspace id
 - `$now` — `Date.now()`
 
+App-plane only (see [Organizations](/docs/app-organizations/)) — these are
+resolved for workspace end-users and are always null/empty for control-plane
+identities:
+
+- `$org.id` — the organization this request is acting in
+- `$org.role` — the caller's membership role in it (`owner` / `admin` / `member`)
+- `$user.orgs` — array of every organization id they belong to
+
 `$user.id` resolving to null short-circuits comparison ops to false, so
 anonymous users never accidentally match `{ owner_id: { _eq: "$user.id" } }`.
+`$org.id` behaves the same way: with no organization selected an
+`{ org_id: { _eq: "$org.id" } }` rule matches nothing rather than falling
+through to another org's rows.
+
+The array-valued variables (`$user.roles`, `$user.orgs`) can stand in for the
+whole right-hand side of `_in` / `_nin`:
+
+```jsonc
+{ "org_id": { "_in": "$user.orgs" } }   // every org they belong to
+```
+
+An array variable that resolves to nothing makes `_in` match no rows and
+`_nin` match all of them — the same reading an explicitly empty list has.
 
 ## Permission rows
 

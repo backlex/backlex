@@ -128,6 +128,7 @@ releases — migrations apply automatically on redeploy.
 - [Migrating an external database in](/docs/migrating-in/) — copy your Postgres/MySQL/Mongo/… into Backlex, PKs preserved
 - [Permissions DSL](/docs/permissions/) — granular role + condition rules
 - [Auth planes](/docs/auth-planes/) — admin pool vs workspace end-user pool
+- [Organizations](/docs/app-organizations/) — B2B teams inside a workspace, with `$org.id` scoping
 - [Sandbox functions](/docs/sandbox/) — JavaScript code that runs in a sandbox
 - [AI agents](/docs/agents/) — reason→act agents that call your tools, with per-thread memory
 - [MCP server](/docs/mcp/) — expose the workspace to Claude Desktop / Cursor / IDE agents

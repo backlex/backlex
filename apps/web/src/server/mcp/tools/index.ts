@@ -34,6 +34,7 @@ import { dbTools } from "./db";
 import { activityTools } from "./activity";
 import { tenantsTools } from "./tenants";
 import { appUsersTools } from "./app-users";
+import { appOrgsTools } from "./app-orgs";
 import { samlTools } from "./saml";
 import { sharedLinksTools } from "./shared-links";
 import { foldersTools } from "./folders";
@@ -86,6 +87,7 @@ export const allTools: McpTool[] = [
   ...activityTools,
   ...tenantsTools,
   ...appUsersTools,
+  ...appOrgsTools,
   ...samlTools,
   ...sharedLinksTools,
   ...foldersTools,

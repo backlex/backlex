@@ -217,6 +217,11 @@ msgstr "{0} etkin"
 msgid "{0} active · {1} invited"
 msgstr "{0} etkin · {1} davetli"
 
+#. placeholder {0}: user.email
+#: src/client/admin/parity/app-orgs.tsx
+msgid "{0} added."
+msgstr "{0} eklendi."
+
 #. placeholder {0}: stats.all
 #. placeholder {1}: stats.custom
 #. placeholder {2}: stats.none
@@ -276,16 +281,22 @@ msgstr "{0} ardışık başarısızlık"
 msgid "{0} couldn't finish: {1}"
 msgstr "{0} tamamlayamadı: {1}"
 
+#. placeholder {0}: data.name
+#: src/client/admin/parity/app-orgs.tsx
+msgid "{0} created."
+msgstr "{0} oluşturuldu."
+
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} deleted, {failed} failed."
 msgstr "{0} silindi, {failed} başarısız."
 
 #. placeholder {0}: h.name
+#. placeholder {0}: org.name
 #. placeholder {0}: u.email
-#. placeholder {0}: user.email
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/app-orgs.tsx
 msgid "{0} deleted."
 msgstr "{0} silindi."
 
@@ -446,6 +457,11 @@ msgstr "{0} yayınlandı, {failed} başarısız."
 msgid "{0} published."
 msgstr "{0} yayınlandı."
 
+#. placeholder {0}: m.email
+#: src/client/admin/parity/app-orgs.tsx
+msgid "{0} removed."
+msgstr "{0} çıkarıldı."
+
 #. placeholder {0}: evidence.requests
 #. placeholder {1}: evidence.windowDays
 #: src/client/admin/pages/advisor.tsx
@@ -551,8 +567,10 @@ msgstr "{0} toplam · {1} düzenlenebilir · yeniden sıralamak için tutacağı
 msgid "{0} updated, {1} skipped."
 msgstr "{0} güncellendi, {1} atlandı."
 
+#. placeholder {0}: data.name
 #. placeholder {0}: r.updated
 #: src/client/admin/app.tsx
+#: src/client/admin/parity/app-orgs.tsx
 msgid "{0} updated."
 msgstr "{0} güncellendi."
 
@@ -999,6 +1017,10 @@ msgstr "Hesap ayarları"
 msgid "ACL"
 msgstr "ACL"
 
+#: src/client/admin/parity/app-orgs.tsx
+msgid "Acme Inc."
+msgstr "Acme A.Ş."
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Acme Okta"
 msgstr "Acme Okta"
@@ -1115,6 +1137,7 @@ msgstr "ekle"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/translations.tsx
 msgid "Add"
@@ -1180,6 +1203,10 @@ msgstr "Etiket ekleyip Enter'a basın…"
 #: src/client/admin/pages/chat.tsx
 msgid "Add an agent to this room, or just talk to your team…"
 msgstr "Bu odaya bir agent ekleyin ya da sadece ekibinizle konuşun…"
+
+#: src/client/admin/parity/app-orgs.tsx
+msgid "Add an end-user…"
+msgstr "Son kullanıcı ekle…"
 
 #: src/client/admin/add-field.tsx
 msgid "Add at least one dropdown choice."
@@ -1600,6 +1627,10 @@ msgstr "Bu kayıt için etkin bir paylaşım bağlantısı mevcut. Güvenlik ama
 #: src/client/pages/sign-up.tsx
 msgid "An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
 msgstr "Bir admin bu örnek için genel kayıt kapatmış. Davet isteyin veya zaten bir hesabınız varsa giriş yapın."
+
+#: src/client/admin/parity/app-orgs.tsx
+msgid "An end-user who can administer the org from your app. You can add one later."
+msgstr "Organizasyonu uygulamanız üzerinden yönetebilecek bir son kullanıcı. Sonradan da ekleyebilirsiniz."
 
 #. placeholder {0}: created.email
 #: src/client/admin/pages/users.tsx
@@ -2312,6 +2343,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/usage.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -2633,6 +2665,7 @@ msgstr "kapat"
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/sheet.tsx
@@ -2679,6 +2712,10 @@ msgstr "Koleksiyonları daralt"
 #: src/client/admin/edit-field.tsx
 msgid "Collapsible section"
 msgstr "Katlanabilir bölüm"
+
+#: src/client/admin/parity/app-orgs.tsx
+msgid "colleague@example.com"
+msgstr "meslektas@ornek.com"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/advisor.tsx
@@ -3340,6 +3377,7 @@ msgstr "Ziyaretçiyi şunu gerçekleştirdiğinde aktif say"
 msgid "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
 msgstr "Sayaç, 1. satırın ilk sayısal sütununu alır; kıvılcım grafik / çubuklar tüm satırlarda gösterir; halka / tablo ilk iki sütunu eşleştirir."
 
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Create"
@@ -3469,6 +3507,7 @@ msgstr "Admin hesabınızı oluşturun"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/database.tsx
@@ -3504,12 +3543,17 @@ msgstr "Hesap oluşturuluyor…"
 msgid "Creating key"
 msgstr "Anahtar oluşturuluyor"
 
+#: src/client/admin/parity/app-orgs.tsx
+#~ msgid "Creating one here leaves it empty — add members below once it exists, or seed an owner now."
+#~ msgstr "Buradan oluşturulan organizasyon boş başlar — oluştuktan sonra aşağıdan üye ekleyin ya da şimdi bir sahip belirleyin."
+
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/storage/index.tsx
@@ -3634,6 +3678,7 @@ msgid "danger zone"
 msgstr "tehlike bölgesi"
 
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
 msgid "Danger zone"
 msgstr "Tehlike bölgesi"
@@ -3787,6 +3832,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -3863,6 +3909,10 @@ msgstr "Fonksiyon silinsin mi?"
 #: src/client/admin/collections-index.tsx
 msgid "Delete group (collections become ungrouped)"
 msgstr "Grubu sil (koleksiyonlar gruplanmamış olur)"
+
+#: src/client/admin/parity/app-orgs.tsx
+msgid "Delete organization"
+msgstr "Organizasyonu sil"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Delete panel"
@@ -3985,6 +4035,10 @@ msgstr "Genişlik × kaynak en-boy oranından türet"
 msgid "Derived from the {mcpDerivedFrom} role — adjust below if needed."
 msgstr "{mcpDerivedFrom} rolünden türetildi — gerekirse aşağıdan değiştirin."
 
+#: src/client/admin/parity/app-orgs.tsx
+msgid "derived from the name"
+msgstr "addan türetilir"
+
 #: src/client/admin/collection-settings.tsx
 msgid "desc"
 msgstr "azalan"
@@ -4012,6 +4066,7 @@ msgid "destructive"
 msgstr "yıkıcı"
 
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/parity/app-orgs.tsx
 msgid "Details"
 msgstr "Ayrıntılar"
 
@@ -4970,6 +5025,10 @@ msgstr "Beklenen"
 msgid "expired"
 msgstr "süresi dolmuş"
 
+#: src/client/admin/parity/app-orgs.tsx
+msgid "expires"
+msgstr "bitiş"
+
 #: src/client/pages/api-keys.tsx
 msgid "Expires"
 msgstr "Son kullanma"
@@ -5284,6 +5343,10 @@ msgstr "Filtrele"
 msgid "Filter by email / name…"
 msgstr "E-posta / ada göre filtrele…"
 
+#: src/client/admin/parity/app-orgs.tsx
+msgid "Filter by name / slug…"
+msgstr "Ada / slug’a göre filtrele…"
+
 #: src/client/admin/pages/traces.tsx
 msgid "Filter by path…"
 msgstr "Yola göre filtrele…"
@@ -5348,6 +5411,10 @@ msgstr "ilk açılır liste"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "First name"
 msgstr "Ad"
+
+#: src/client/admin/parity/app-orgs.tsx
+msgid "First owner"
+msgstr "İlk sahip"
 
 #: src/client/admin/pages/analytics.tsx
 msgid "First seen"
@@ -6073,6 +6140,10 @@ msgstr "Bu odada"
 msgid "in-isolate, sync only"
 msgstr "izolasyonlu, yalnızca senkron"
 
+#: src/client/admin/parity/app-orgs.tsx
+msgid "In-org roles"
+msgstr "Organizasyon içi roller"
+
 #: src/client/admin/pages/realtime.tsx
 msgid "In-process pub/sub on Bun, Durable Objects on Workers. Permission filter applies on subscribe + publish."
 msgstr "Bun üzerinde süreç içi pub/sub, Workers üzerinde Durable Objects. İzin filtresi abone olma ve yayınlama sırasında uygulanır."
@@ -6235,8 +6306,14 @@ msgstr "Geçersiz JSON."
 msgid "Invalid SQL."
 msgstr "Geçersiz SQL."
 
+#. placeholder {0}: data.email
+#: src/client/admin/parity/app-orgs.tsx
+msgid "Invitation sent to {0}."
+msgstr "{0} adresine davet gönderildi."
+
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-orgs.tsx
 msgid "Invite"
 msgstr "Davet et"
 
@@ -7279,10 +7356,12 @@ msgid "Member"
 msgstr "Üye"
 
 #: src/client/admin/members-panel.tsx
+#: src/client/admin/parity/app-orgs.tsx
 msgid "members"
 msgstr "üyeler"
 
 #: src/client/admin/app.tsx
+#: src/client/admin/parity/app-orgs.tsx
 msgid "Members"
 msgstr "Üyeler"
 
@@ -7536,6 +7615,7 @@ msgstr "Temam"
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/insights.tsx
@@ -7689,6 +7769,10 @@ msgstr "Yeni anahtar"
 #: src/client/admin/pages/database-import.tsx
 msgid "New migration"
 msgstr "Yeni taşıma"
+
+#: src/client/admin/parity/app-orgs.tsx
+msgid "New organization"
+msgstr "Yeni organizasyon"
 
 #: src/client/admin/parity/insights.tsx
 msgid "New panel"
@@ -8211,6 +8295,7 @@ msgstr "Henüz günlük yok — Çalıştır'a tıklayın."
 msgid "No matches"
 msgstr "Eşleşme yok"
 
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/pages/graphql.tsx
 #: src/client/pages/rest-explorer.tsx
@@ -8226,6 +8311,7 @@ msgid "No members match \"{q}\"."
 msgstr "\"{q}\" ile eşleşen üye yok."
 
 #: src/client/admin/members-panel.tsx
+#: src/client/admin/parity/app-orgs.tsx
 msgid "No members yet."
 msgstr "Henüz üye yok."
 
@@ -8253,9 +8339,17 @@ msgstr "Mutasyon yok."
 msgid "No numeric columns"
 msgstr "Sayısal sütun yok"
 
+#: src/client/admin/parity/app-orgs.tsx
+msgid "No organizations yet — create one here, or let end-users start their own from your app."
+msgstr "Henüz organizasyon yok — buradan oluşturun ya da son kullanıcılar uygulamanızdan kendileri açsın."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "No outstanding findings. Re-run after a schema or permission change."
 msgstr "Bekleyen bulgu yok. Şema veya izin değişikliğinin ardından yeniden çalıştırın."
+
+#: src/client/admin/parity/app-orgs.tsx
+msgid "No owner yet"
+msgstr "Henüz sahip yok"
 
 #: src/client/admin/pages/analytics.tsx
 msgid "No page paths recorded — send a path with your events."
@@ -8549,6 +8643,10 @@ msgstr "Son {range} içinde hiçbir şey gelmedi. Aralığı genişletin veya is
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Nothing new — all {0} collections already exist"
 msgstr "Yeni bir şey yok — {0} koleksiyonun tümü zaten var"
+
+#: src/client/admin/parity/app-orgs.tsx
+msgid "Nothing outstanding."
+msgstr "Bekleyen bir şey yok."
 
 #: src/client/admin/grid-edit.tsx
 msgid "Nothing pasted — the target cells are read-only or the values don't fit."
@@ -8887,6 +8985,11 @@ msgstr "veya e-postayla"
 #~ msgid "Orders by status"
 #~ msgstr "Duruma göre siparişler"
 
+#: src/client/admin/parity/app-orgs.tsx
+#: src/client/admin/ui.tsx
+msgid "Organizations"
+msgstr "Organizasyonlar"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Original"
 msgstr "Orijinal"
@@ -9147,6 +9250,10 @@ msgstr "beklemede"
 msgid "Pending"
 msgstr "Bekliyor"
 
+#: src/client/admin/parity/app-orgs.tsx
+msgid "Pending invitations"
+msgstr "Bekleyen davetler"
+
 #: src/client/admin/pages/users.tsx
 msgid "Pending invites"
 msgstr "Bekleyen davetler"
@@ -9179,9 +9286,18 @@ msgstr "Performans"
 msgid "Permanent. Owned items remain; ownership is reassigned to admin."
 msgstr "Kalıcı. Sahip olunan öğeler kalır; sahiplik yöneticiye devredilir."
 
+#: src/client/admin/parity/app-orgs.tsx
+msgid "Permanent. Removes memberships, in-org role bindings and invitations."
+msgstr "Kalıcıdır. Üyelikleri, organizasyon içi rol bağlarını ve davetleri siler."
+
 #: src/client/admin/parity/app-users.tsx
 msgid "Permanent. Removes sessions, OAuth accounts and role assignments."
 msgstr "Kalıcı. Oturumları, OAuth hesaplarını ve rol atamalarını kaldırır."
+
+#. placeholder {0}: confirmDelete.name
+#: src/client/admin/parity/app-orgs.tsx
+msgid "Permanently delete {0}? Its memberships, org-scoped role bindings and invitations go with it, and any session pinned to it falls back to no active organization. This can't be undone."
+msgstr "{0} kalıcı olarak silinsin mi? Üyelikleri, organizasyona özgü rol bağları ve davetleri de silinir; bu organizasyona sabitlenmiş oturumlar aktif organizasyonsuz kalır. Bu işlem geri alınamaz."
 
 #. placeholder {0}: confirmDelete.email
 #: src/client/admin/parity/app-users.tsx
@@ -10270,6 +10386,7 @@ msgstr "Şemayı yeniden yükle"
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/rule-builder.tsx
 msgid "Remove"
 msgstr "Kaldır"
@@ -10733,6 +10850,7 @@ msgstr "istediğiniz zaman iptal edilebilir"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/pages/api-keys.tsx
@@ -11136,6 +11254,7 @@ msgstr "Farklı kaydet <0>(isteğe bağlı)</0>"
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
@@ -11242,6 +11361,7 @@ msgstr "kaydediliyor…"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
@@ -11495,6 +11615,10 @@ msgstr "Kullanım senaryonuza göre hazır bir koleksiyon seti oluşturun — gr
 #: src/client/admin/pages/template-onboarding.tsx
 #~ msgid "Seed a ready-made set of collections — with sample data — for your use case. You can edit or add more anytime."
 #~ msgstr "Kullanım senaryonuz için hazır bir koleksiyon setini — örnek verilerle — yükleyin. İstediğiniz zaman düzenleyebilir veya yenisini ekleyebilirsiniz."
+
+#: src/client/admin/parity/app-orgs.tsx
+msgid "Seed an owner now, or leave it empty and add members once it exists."
+msgstr "Şimdi bir sahip belirleyin ya da boş bırakıp organizasyon oluştuktan sonra üye ekleyin."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Select"
@@ -12239,6 +12363,7 @@ msgstr "En yavaş uç noktalar"
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/overview.tsx
+#: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Slug"
 msgstr "Slug"
@@ -12829,6 +12954,10 @@ msgstr "Taksonomi"
 msgid "Team"
 msgstr "Ekip"
 
+#: src/client/admin/parity/app-orgs.tsx
+msgid "Teams inside this workspace — the customer accounts your end-users belong to. Members come from <0>Users</0> (the end-user pool), and the roles you bind here apply only within that organization, which is what <1>$org.id</1> matches in permission rules."
+msgstr "Bu çalışma alanı içindeki ekipler — son kullanıcılarınızın bağlı olduğu müşteri hesapları. Üyeler <0>Kullanıcılar</0> havuzundan gelir ve burada bağladığınız roller yalnızca o organizasyon içinde geçerlidir; izin kurallarında <1>$org.id</1> tam olarak bununla eşleşir."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Template"
 msgstr "Şablon"
@@ -13014,6 +13143,10 @@ msgstr "İçgörü uç noktası hata döndürdü. Tekrar denemek için yeniden �
 msgid "The invite is valid for 7 days."
 msgstr "Davet 7 gün geçerlidir."
 
+#: src/client/admin/parity/app-orgs.tsx
+msgid "The invitee must already have an end-user account with this email, and accepts from your app."
+msgstr "Davet edilen kişinin bu e-postayla bir son kullanıcı hesabı zaten olmalı ve daveti uygulamanız üzerinden kabul eder."
+
 #. placeholder {0}: k.name
 #: src/client/pages/api-keys.tsx
 msgid "The key \"{0}\" will stop working immediately. This cannot be undone."
@@ -13058,6 +13191,10 @@ msgstr "İstemci uygulamalarınızın izleme sırasında gönderdiği yayınlana
 #: src/client/admin/parity/insights.tsx
 msgid "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
 msgstr "Sorgu aynen çalıştırılır. Yukarıdaki görselleştirme ipucu, sütunların grafikle nasıl eşleştiğini açıklar."
+
+#: src/client/admin/parity/app-orgs.tsx
+msgid "The role dropdown governs org administration. In-org roles are workspace roles that apply only inside this organization — the <0>admin</0> role can never be granted here."
+msgstr "Rol menüsü organizasyon yönetimini belirler. Organizasyon içi roller ise yalnızca bu organizasyonda geçerli olan çalışma alanı rolleridir — <0>admin</0> rolü burada asla verilemez."
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "The row is rejected unless this matches. Reference another field's value with <0>$field.name</0> (e.g. <1>end_date ≥ $field.start_date</1>)."
@@ -13900,6 +14037,10 @@ msgstr "URL"
 #: src/client/admin/storage/index.tsx
 msgid "URL copied: {0}"
 msgstr "URL kopyalandı: {0}"
+
+#: src/client/admin/parity/app-orgs.tsx
+msgid "URL handle, unique per workspace. Leave blank to derive it from the name."
+msgstr "Çalışma alanı içinde benzersiz URL adı. Addan türetilmesi için boş bırakın."
 
 #: src/client/admin/collection-settings.tsx
 msgid "URL identifier and physical table prefix. Renaming cascades through all references."

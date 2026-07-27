@@ -90,6 +90,9 @@ Resolved against the auth subject before the SQL fragment is emitted:
 - `$user.email`
 - `$user.roles` — role-name array
 - `$tenant.id` — active workspace id
+- `$org.id` / `$org.role` / `$user.orgs` — app-plane organization context
+  (null/empty for control-plane identities). See
+  [Organizations](/docs/app-organizations/).
 - `$now` — the current instant. Supports **relative offsets** via an object
   form usable anywhere a value is expected (filters and permission rules):
   `{ "$now": { "sub": { "months": 1 } } }` (also `add`; units: `years`,

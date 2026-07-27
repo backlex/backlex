@@ -802,6 +802,45 @@ function AppUsersSkeletonImpl() {
   );
 }
 
+/** Organizations — header with a "New organization" action, then a table card
+ *  whose strip carries the title, a count and a right-aligned filter. Mirrors
+ *  `AppOrgsPage`'s layout so the placeholder doesn't jump on hydration. */
+function AppOrgsSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-4.5">
+      <HeaderSkeleton actions={1} />
+      <Card className="gap-0 py-0">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
+          <Skeleton className="size-3.5 shrink-0 rounded-sm" />
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-3 w-8" />
+          <div className="hidden flex-1 sm:block" />
+          <Skeleton className="h-9 min-w-0 flex-1 sm:max-w-[240px]" />
+        </div>
+        <div className="flex items-center gap-3 border-b border-border px-3.5 py-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-3 flex-1" />
+          ))}
+        </div>
+        {Array.from({ length: 5 }).map((_, r) => (
+          <div
+            key={r}
+            className="flex items-center gap-3 border-b border-border px-3.5 py-3 last:border-b-0"
+          >
+            {Array.from({ length: 4 }).map((_, c) => (
+              <Skeleton
+                key={c}
+                className="h-4 flex-1"
+                style={{ maxWidth: c === 0 ? undefined : "70%" }}
+              />
+            ))}
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
 /** API keys — header, then a card holding a key list. */
 function ApiKeysSkeletonImpl() {
   return (
@@ -1007,6 +1046,7 @@ export const EmailTemplatesSkeleton = withSkeletonDelay(EmailTemplatesSkeletonIm
 export const AuthSettingsSkeleton = withSkeletonDelay(AuthSettingsSkeletonImpl);
 export const UsersSkeleton = withSkeletonDelay(UsersSkeletonImpl);
 export const AppUsersSkeleton = withSkeletonDelay(AppUsersSkeletonImpl);
+export const AppOrgsSkeleton = withSkeletonDelay(AppOrgsSkeletonImpl);
 export const ApiKeysSkeleton = withSkeletonDelay(ApiKeysSkeletonImpl);
 export const SettingsSkeleton = withSkeletonDelay(SettingsSkeletonImpl);
 export const AccountSkeleton = withSkeletonDelay(AccountSkeletonImpl);
@@ -1099,6 +1139,8 @@ export function PageSkeleton({ nav }: { nav: string }) {
       return <UsersSkeleton />;
     case "app-users":
       return <AppUsersSkeleton />;
+    case "app-orgs":
+      return <AppOrgsSkeleton />;
     case "api-keys":
       return <ApiKeysSkeleton />;
     case "email-templates":

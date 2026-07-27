@@ -354,6 +354,12 @@ export const appSessions = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
+    /** Org this session is currently acting in (`app_orgs.id`). Set by
+     *  `POST /api/t/{slug}/orgs/{id}/set-active` and read back when the request
+     *  carries no `X-Backlex-Org` header. No FK — `app_orgs` is declared below
+     *  and a dropped org must degrade to "no active org", not cascade-delete
+     *  the session. */
+    activeOrgId: text("active_org_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -465,6 +471,140 @@ export const appUserRoles = pgTable(
   (t) => [
     uniqueIndex("app_user_roles_pk").on(t.appUserId, t.roleId),
     index("app_user_roles_role_idx").on(t.roleId),
+  ],
+);
+
+/* ─────────────────────────────────────────────────────────────────────
+ * App-plane organizations ("teams").
+ *
+ * A second grouping level *inside* one workspace: the tenant is the backlex
+ * customer, an `app_orgs` row is one of THEIR customers — the company account
+ * a set of end-users belong to. This is what every B2B SaaS built on backlex
+ * used to hand-roll.
+ *
+ * Two independent role layers meet here:
+ *   - `app_org_members.role` — the org-membership role (owner/admin/member).
+ *     Governs who may rename the org, invite, or remove people. Fixed
+ *     vocabulary, enforced in `services/app-orgs.ts`.
+ *   - `app_org_member_roles` — workspace `roles` rows bound to a member
+ *     *within one org*. The data-plane RBAC layer: a person can hold
+ *     "Editor" in org A and nothing in org B. Merged into the effective role
+ *     set by `loadRolesForUser` once an org is active.
+ *
+ * The permission DSL sees the result as `$org.id`, `$org.role` and
+ * `$user.orgs` — see docs/app-organizations.md.
+ * ───────────────────────────────────────────────────────────────────── */
+
+export const appOrgs = pgTable(
+  "app_orgs",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** URL-safe handle, unique per workspace. */
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    image: text("image"),
+    /** Free-form app-owned attributes (plan, billing ref, …). */
+    metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+    /** `app_users.id` of the end-user who created it; null for admin-created
+     *  orgs. Deliberately no FK — deleting the creator must not delete the org. */
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("app_orgs_tenant_slug_idx").on(t.tenantId, t.slug),
+    index("app_orgs_tenant_idx").on(t.tenantId),
+  ],
+);
+
+export const appOrgMembers = pgTable(
+  "app_org_members",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => appOrgs.id, { onDelete: "cascade" }),
+    appUserId: text("app_user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    /** owner | admin | member — see the block comment above. */
+    role: text("role").notNull().default("member"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("app_org_members_pk").on(t.orgId, t.appUserId),
+    index("app_org_members_user_idx").on(t.appUserId),
+    index("app_org_members_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/** Workspace roles bound to a member *within one org*. Parallel to
+ *  `app_user_roles` (which is workspace-wide) but org-scoped, so the same
+ *  person can carry different data-plane grants per org. */
+export const appOrgMemberRoles = pgTable(
+  "app_org_member_roles",
+  {
+    orgId: text("org_id")
+      .notNull()
+      .references(() => appOrgs.id, { onDelete: "cascade" }),
+    appUserId: text("app_user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("app_org_member_roles_pk").on(t.orgId, t.appUserId, t.roleId),
+    index("app_org_member_roles_role_idx").on(t.roleId),
+    index("app_org_member_roles_user_idx").on(t.appUserId),
+  ],
+);
+
+/**
+ * Pending org invitations. Unlike the workspace-level end-user invite (which
+ * hides its token in `app_verifications`), these need to be *listed* — "who
+ * have we invited and not heard back from?" is a screen in every B2B app — so
+ * they get a real table. Accepted rows are kept with `accepted_at` set so the
+ * org has an audit trail of how each member got in.
+ */
+export const appOrgInvites = pgTable(
+  "app_org_invites",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    orgId: text("org_id")
+      .notNull()
+      .references(() => appOrgs.id, { onDelete: "cascade" }),
+    /** Lowercased at write time — matched case-insensitively on accept. */
+    email: text("email").notNull(),
+    /** Org role the invitee lands with (owner | admin | member). */
+    role: text("role").notNull().default("member"),
+    /** Org-scoped workspace role ids bound on accept. */
+    roleIds: jsonb("role_ids").$type<string[] | null>(),
+    token: text("token").notNull(),
+    /** `app_users.id` of the inviter; null when an admin invited from the
+     *  control plane. No FK for the same reason as `app_orgs.created_by`. */
+    invitedBy: text("invited_by"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("app_org_invites_token_idx").on(t.token),
+    index("app_org_invites_org_idx").on(t.orgId),
+    index("app_org_invites_email_idx").on(t.email),
+    index("app_org_invites_tenant_idx").on(t.tenantId),
   ],
 );
 

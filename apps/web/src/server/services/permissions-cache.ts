@@ -110,12 +110,17 @@ interface RolesKey {
   tenantId: string;
   userId: string | null;
   apiKeyRoleId: string | null;
+  /** Active app-plane org, when one is selected. Part of the key because
+   *  org-scoped role grants (`app_org_member_roles`) change the bundle: the
+   *  same person resolves differently in org A and org B. */
+  orgId?: string | null;
 }
 
 const rolesCache = new TtlLru<RolesKey, CachedRoleRow[]>(
   MAX_ENTRIES,
   TTL_MS,
-  (k) => `${k.plane}|${k.tenantId}|${k.userId ?? ""}|${k.apiKeyRoleId ?? ""}`,
+  (k) =>
+    `${k.plane}|${k.tenantId}|${k.userId ?? ""}|${k.apiKeyRoleId ?? ""}|${k.orgId ?? ""}`,
 );
 
 export const getCachedRoles = (k: RolesKey): CachedRoleRow[] | undefined =>
@@ -220,6 +225,48 @@ export const setCachedTenantRoleNames = (
 ): void => tenantRoleNamesCache.set(k, v);
 
 /**
+ * Per-isolate cache of an app-plane subject's organization memberships.
+ *
+ * `tenantMiddleware` resolves this for every `plane: "app"` request so the
+ * permission DSL can bind `$org.id` / `$org.role` / `$user.orgs`, and so
+ * `loadRolesForUser` can fold in org-scoped role grants. That's one extra
+ * SELECT on the app-plane hot path, which is exactly the shape the role and
+ * membership caches above already exist to remove.
+ *
+ * Keyed by (tenant, app user) — NOT by the requested org, because the entry
+ * holds every membership and the active-org pick is derived from it in JS.
+ * A workspace that never creates an org caches an empty array and pays one
+ * lookup per TTL window.
+ */
+export interface CachedOrgMembership {
+  orgId: string;
+  /** owner | admin | member — validated on write, typed loosely here so this
+   *  module stays free of a `@backlex/core` import. */
+  role: string;
+}
+
+interface OrgMembershipsKey {
+  tenantId: string;
+  appUserId: string;
+}
+
+const orgMembershipsCache = new TtlLru<OrgMembershipsKey, readonly CachedOrgMembership[]>(
+  MAX_ENTRIES,
+  TTL_MS,
+  (k) => `${k.tenantId}|${k.appUserId}`,
+);
+
+/** Cached membership list, or `undefined` on miss. Shared array — read-only. */
+export const getCachedOrgMemberships = (
+  k: OrgMembershipsKey,
+): readonly CachedOrgMembership[] | undefined => orgMembershipsCache.get(k);
+
+export const setCachedOrgMemberships = (
+  k: OrgMembershipsKey,
+  v: readonly CachedOrgMembership[],
+): void => orgMembershipsCache.set(k, v);
+
+/**
  * Per-isolate cache of the resolved cookie session, keyed by the signed
  * `*.session_token` cookie value. `sessionMiddleware` runs `getSession` (a
  * better-auth call costing ~2 D1 round-trips) on EVERY authed request;
@@ -317,6 +364,27 @@ export const invalidateTenantPermissions = (tenantId: string): void => {
   permsCache.deleteBy((k) => k.tenantId === tenantId);
 };
 
+/** Drop one app-plane user's cached org memberships. Call whenever their
+ *  `app_org_members` row is added, removed, or has its role changed — and
+ *  alongside `invalidateUserRoles`, since an org-scoped role grant changes
+ *  their effective role set too. */
+export const invalidateOrgMemberships = (
+  tenantId: string,
+  appUserId: string,
+): void => {
+  orgMembershipsCache.deleteBy(
+    (k) => k.tenantId === tenantId && k.appUserId === appUserId,
+  );
+};
+
+/** Drop every cached org membership in a tenant. Call when an org itself is
+ *  deleted — its members are unknown to the caller without a query, and org
+ *  deletion is rare enough that scrubbing the tenant slice is cheap. */
+export const invalidateTenantOrgs = (tenantId: string): void => {
+  orgMembershipsCache.deleteBy((k) => k.tenantId === tenantId);
+  rolesCache.deleteBy((k) => k.tenantId === tenantId);
+};
+
 /** Clear all caches. Tests + emergency stop. */
 export const invalidateAllPermissions = (): void => {
   rolesCache.clear();
@@ -325,6 +393,7 @@ export const invalidateAllPermissions = (): void => {
   tenantRoleNamesCache.clear();
   sessionCache.clear();
   tenantResolveCache.clear();
+  orgMembershipsCache.clear();
 };
 
 /** Test-only — current entry counts. */
@@ -335,6 +404,7 @@ export const __cacheStats = (): {
   tenantRoleNames: number;
   session: number;
   tenantResolve: number;
+  orgMemberships: number;
 } => ({
   roles: rolesCache.size,
   perms: permsCache.size,
@@ -342,4 +412,5 @@ export const __cacheStats = (): {
   tenantRoleNames: tenantRoleNamesCache.size,
   session: sessionCache.size,
   tenantResolve: tenantResolveCache.size,
+  orgMemberships: orgMembershipsCache.size,
 });

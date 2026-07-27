@@ -12,6 +12,7 @@ import {
   SYSTEM_ROLES,
 } from "@backlex/core";
 import { combineConditions, matchesCondition, type LeafCompiler } from "@backlex/db";
+import { resolveOrgContext, type OrgContext } from "./app-orgs";
 import type { DbCtx } from "./seed";
 import {
   buildPermissionRelationLeaf,
@@ -43,6 +44,7 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
         roles: pg.schema.roles,
         userRoles: pg.schema.userRoles,
         appUserRoles: pg.schema.appUserRoles,
+        appOrgMemberRoles: pg.schema.appOrgMemberRoles,
         permissions: pg.schema.permissions,
         users: pg.schema.users,
         appUsers: pg.schema.appUsers,
@@ -52,6 +54,7 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
         roles: sqlite.schema.roles,
         userRoles: sqlite.schema.userRoles,
         appUserRoles: sqlite.schema.appUserRoles,
+        appOrgMemberRoles: sqlite.schema.appOrgMemberRoles,
         permissions: sqlite.schema.permissions,
         users: sqlite.schema.users,
         appUsers: sqlite.schema.appUsers,
@@ -89,6 +92,10 @@ export const loadRolesForUser = async (
   tenantId: string | null,
   apiKeyRoleId: string | null = null,
   plane: "platform" | "app" = "platform",
+  /** Active app-plane organization, when the request has one. Adds the roles
+   *  bound to this member *within that org* (`app_org_member_roles`) on top of
+   *  their workspace-wide ones. Ignored on the platform plane. */
+  orgId: string | null = null,
 ): Promise<RoleRow[]> => {
   // Without an active tenant we can't pick the right copy of public/admin/etc.,
   // so deny everything by returning no roles. This is the safe default — the
@@ -97,7 +104,11 @@ export const loadRolesForUser = async (
   // L2 cache hit short-circuits both the role join and the underlying DB
   // round-trip. TTL is short (1s) so role demotion is felt almost immediately
   // even across isolates; explicit writes also invalidate.
-  const cacheKey = { plane, tenantId, userId, apiKeyRoleId };
+  //
+  // `orgId` is part of the key: the same person in org A and org B resolves to
+  // two different role bundles, and collapsing them would leak grants across
+  // orgs for a full TTL window.
+  const cacheKey = { plane, tenantId, userId, apiKeyRoleId, orgId };
   const cached = getCachedRoles(cacheKey);
   if (cached) return cached;
   // Suspension gate (control-plane only — app-plane end-users have no
@@ -185,6 +196,27 @@ export const loadRolesForUser = async (
           ),
         ),
       )) as RoleRow[];
+    // Org-scoped grants (`app_org_member_roles`) sit on top: the same person
+    // can be an Editor in org A and hold nothing in org B, so these are only
+    // pulled in for the org the request is actually acting in. Same `admin`
+    // exclusion as above — an org owner must never be able to hand out the
+    // workspace admin bypass.
+    if (orgId) {
+      const orgRows = (await (ctx.db as any)
+        .select({ id: t.roles.id, name: t.roles.name, admin: t.roles.admin })
+        .from(t.appOrgMemberRoles)
+        .innerJoin(t.roles, eq(t.appOrgMemberRoles.roleId, t.roles.id))
+        .where(
+          and(
+            eq(t.appOrgMemberRoles.orgId, orgId),
+            eq(t.appOrgMemberRoles.appUserId, userId),
+            eq(t.roles.tenantId, tenantId),
+            eq(t.roles.admin, false),
+          ),
+        )) as RoleRow[];
+      const seen = new Set(rows.map((r) => r.id));
+      for (const r of orgRows) if (!seen.has(r.id)) rows.push(r);
+    }
     setCachedRoles(cacheKey, rows);
     return rows;
   }
@@ -269,6 +301,7 @@ export const resolvePermission = async (
     auth.tenantId ?? null,
     auth.apiKeyRoleId ?? null,
     auth.plane ?? "platform",
+    auth.orgId ?? null,
   );
 
   const remember = (r: ResolvedPermission): ResolvedPermission => {
@@ -434,6 +467,7 @@ export const listReadableCollections = async (
     auth.tenantId ?? null,
     auth.apiKeyRoleId ?? null,
     auth.plane ?? "platform",
+    auth.orgId ?? null,
   );
   if (roles.some((r) => r.admin)) return "*";
   if (roles.length === 0) return new Set();
@@ -493,6 +527,11 @@ export interface PermissionSimInput {
   roles?: string[] | null;
   tenantId: string | null;
   plane?: AuthPlane;
+  /** App-plane only: the organization to simulate acting in (id or slug). It
+   *  binds `$org.id` / `$org.role` and pulls in the subject's org-scoped role
+   *  grants, so "would this member see org B's rows?" is answerable without
+   *  signing in as them. Ignored on the platform plane. */
+  orgId?: string | null;
   collection: string;
   action: Action;
   sampleRow?: Record<string, unknown> | null;
@@ -505,6 +544,11 @@ export interface PermissionSimResult {
     roles: string[];
     tenantId: string | null;
     plane: AuthPlane;
+    /** App-plane only: the org the simulation ran in, and every org the
+     *  subject belongs to. Null/empty on the platform plane. */
+    orgId?: string | null;
+    orgRole?: string | null;
+    orgIds?: string[];
   };
   collection: string;
   action: Action;
@@ -540,9 +584,11 @@ const renderSql = (
   return { sql: q.sql, params: q.params as unknown[] };
 };
 
-/** Resolve the five supported DSL variables to concrete values for display.
+/** Resolve the supported DSL variables to concrete values for display.
  *  `$now` uses the dialect's physical representation (PG ISO string / SQLite
- *  epoch-ms), matching what the compiler binds into the SQL. */
+ *  epoch-ms), matching what the compiler binds into the SQL. The `$org.*`
+ *  trio only means anything on the app plane, so it's omitted for
+ *  platform-plane subjects rather than shown as a row of nulls. */
 const resolveVarsForDisplay = (
   auth: AuthSubject,
   now: number,
@@ -552,6 +598,13 @@ const resolveVarsForDisplay = (
   "$user.email": auth.email,
   "$user.roles": auth.roles,
   "$tenant.id": auth.tenantId ?? null,
+  ...(auth.plane === "app"
+    ? {
+        "$org.id": auth.orgId ?? null,
+        "$org.role": auth.orgRole ?? null,
+        "$user.orgs": auth.orgIds ?? [],
+      }
+    : {}),
   "$now": dialect === "pg" ? new Date(now).toISOString() : now,
 });
 
@@ -565,13 +618,40 @@ export const simulatePermission = async (
   const now = Date.now();
   const t = tablesFor(ctx.dialect);
 
+  // App-plane org context. Resolved before the role load because org-scoped
+  // grants are part of the bundle — simulating "in org B" must produce exactly
+  // what a real request in org B would. The simulator deliberately bypasses
+  // caches everywhere else, but this path reuses `resolveOrgContext` so its
+  // membership rules (header must name a real membership, sole-org fallback)
+  // are the ones under test rather than a second copy.
+  let orgCtx: OrgContext = { orgId: null, orgRole: null, orgIds: [] };
+  if (plane === "app" && input.userId && tenantId) {
+    try {
+      orgCtx = await resolveOrgContext(ctx, tenantId, input.userId, {
+        requestedOrg: input.orgId ?? null,
+      });
+    } catch {
+      // A non-membership `orgId` is a legitimate thing to ask about ("what
+      // would they see in an org they don't belong to?") — answer with no org
+      // context rather than failing the whole simulation.
+      orgCtx = { orgId: null, orgRole: null, orgIds: [] };
+    }
+  }
+
   // Resolve the role bundle. An explicit userId reads the live roles from the
   // DB (the real-world path); ad-hoc role *names* are looked up so we can map
   // them to ids for the permission query; neither ⇒ anonymous (public role).
   let roles: RoleRow[];
   let email = input.email ?? null;
   if (input.userId) {
-    roles = await loadRolesForUser(ctx, input.userId, tenantId, null, plane);
+    roles = await loadRolesForUser(
+      ctx,
+      input.userId,
+      tenantId,
+      null,
+      plane,
+      orgCtx.orgId,
+    );
     if (!email && tenantId) {
       // Best-effort: surface the subject's email so `$user.email` conditions
       // resolve to a real value (platform users live in `users`, app-plane
@@ -617,6 +697,9 @@ export const simulatePermission = async (
     roles: roles.map((r) => r.name),
     tenantId,
     plane,
+    orgId: orgCtx.orgId,
+    orgRole: orgCtx.orgRole,
+    orgIds: orgCtx.orgIds,
   };
   const resolvedVars = resolveVarsForDisplay(auth, now, ctx.dialect);
 
@@ -627,6 +710,13 @@ export const simulatePermission = async (
       roles: auth.roles,
       tenantId,
       plane,
+      ...(plane === "app"
+        ? {
+            orgId: orgCtx.orgId,
+            orgRole: orgCtx.orgRole,
+            orgIds: orgCtx.orgIds,
+          }
+        : {}),
     },
     collection,
     action,

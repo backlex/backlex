@@ -607,6 +607,7 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
   "platform-sso": msg`Platform SSO`,
   users: msg`Team`,
   "app-users": msg`Users`,
+  "app-orgs": msg`Organizations`,
   "api-keys": msg`API keys`,
   "email-templates": msg`Email templates`,
   settings: msg`Settings`,

@@ -163,6 +163,13 @@ guides; this list is everything else.
   `routes/tenants.ts`, `routes/tenant-auth.ts`) — multi-tenant
   end-user pool (distinct from the control-plane admin pool):
   invite flow, tenant switching, per-tenant sign-in routes.
+- **App organizations** (`routes/app-orgs.ts`,
+  `routes/app-orgs-public.ts`, `services/app-orgs.ts`) — the B2B
+  grouping level inside a workspace: orgs, membership (owner/admin/
+  member), org-scoped workspace roles, invitations, and the active-org
+  resolution that binds `$org.id` for the permission DSL. Admin routes
+  under `/api/app-orgs`; end-user self-service under
+  `/api/t/{slug}/orgs`. See docs/app-organizations.md.
 - **Settings + workspace config** (`routes/settings.ts`,
   `services/settings.ts`, `routes/workspace-config.ts`,
   `services/workspace-config.ts`) — `settings` is the `app_settings`

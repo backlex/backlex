@@ -10,7 +10,9 @@ import {
   ACCESS_TOKEN_TTL_SECONDS,
 } from "../src/server/lib/jwt";
 
-const SECRET = "unit-test-secret-stable";
+// The signing env, not a bare secret: `signAccessToken` reads the optional
+// key-pair fields off it too (none set here → the HS256 default path).
+const SECRET = { AUTH_SECRET: "unit-test-secret-stable" };
 
 describe("jwt: sign → verify round-trip", () => {
   test("a freshly signed token verifies and carries the right claims", async () => {
@@ -54,7 +56,7 @@ describe("jwt: rejections", () => {
       sid: "s",
       email: null,
     });
-    expect(await verifyAccessToken("a-different-secret", token)).toBeNull();
+    expect(await verifyAccessToken({ AUTH_SECRET: "a-different-secret" }, token)).toBeNull();
   });
 
   test("a tampered payload → null", async () => {

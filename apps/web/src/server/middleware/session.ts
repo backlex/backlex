@@ -351,7 +351,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
         userId = runClaims.sub;
         email = await loadUserEmail(ctx, runClaims.sub);
       } else {
-        const claims = await verifyAccessToken(ctx.env.AUTH_SECRET, token);
+        const claims = await verifyAccessToken(ctx.env, token);
         if (claims) {
           plane = "app";
           userId = claims.sub;

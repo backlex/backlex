@@ -2623,3 +2623,10 @@ export {
 } from "./sync";
 
 export { verifyWebhook, type VerifyWebhookOptions } from "./webhook";
+
+export {
+  createTokenVerifier,
+  type AccessTokenClaims,
+  type TokenVerifier,
+  type TokenVerifierOptions,
+} from "./token";

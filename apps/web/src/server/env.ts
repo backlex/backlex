@@ -8,6 +8,15 @@
 export interface Env {
   APP_URL: string;
   AUTH_SECRET: string;
+  /** PKCS#8 PEM (EC P-256 → ES256, or RSA → RS256). When set, app-plane access
+   *  tokens are signed with this key instead of HS256 and the public half is
+   *  published at `/.well-known/jwks.json`, so other services can verify a
+   *  backlex token without a shared secret. See lib/jwt-keys.ts. */
+  AUTH_JWT_PRIVATE_KEY?: string;
+  /** Extra SPKI PEM public keys (concatenate several for rotation). Published
+   *  in the JWKS and accepted at verification, so tokens signed by a key that
+   *  has just been rotated out still work until they expire. */
+  AUTH_JWT_PUBLIC_KEYS?: string;
   /** When set, a request carrying `x-backlex-timing: <this>` gets the per-phase
    *  `Server-Timing` header (diagnostic). Unset (default) → timings are never
    *  collected or emitted, so internal phase latencies aren't disclosed. */
@@ -438,6 +447,8 @@ export interface Env {
 export const STRING_ENV_KEYS = [
   "APP_URL",
   "AUTH_SECRET",
+  "AUTH_JWT_PRIVATE_KEY",
+  "AUTH_JWT_PUBLIC_KEYS",
   "DEBUG_TIMING_SECRET",
   "LOG_LEVEL",
   "TRACES_SAMPLE_RATE",

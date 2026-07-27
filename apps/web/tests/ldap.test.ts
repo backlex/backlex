@@ -172,7 +172,7 @@ describe("ldap: happy path + idempotent re-login + bad creds + transport error",
     expect(body.tokenType).toBe("Bearer");
     expect(body.expiresIn).toBeGreaterThan(0);
 
-    const claims = await verifyAccessToken(h.env.AUTH_SECRET, body.accessToken);
+    const claims = await verifyAccessToken(h.env, body.accessToken);
     expect(claims).not.toBeNull();
     expect(claims!.plane).toBe("app");
     expect(claims!.email).toBe("alice@test.example");
@@ -194,10 +194,7 @@ describe("ldap: happy path + idempotent re-login + bad creds + transport error",
       tokenType: string;
     };
     expect(refreshed.refreshToken).toBe(refreshToken);
-    const claims = await verifyAccessToken(
-      h.env.AUTH_SECRET,
-      refreshed.accessToken,
-    );
+    const claims = await verifyAccessToken(h.env, refreshed.accessToken);
     expect(claims).not.toBeNull();
 
     // A bogus refresh token is rejected.

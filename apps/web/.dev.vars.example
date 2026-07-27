@@ -1,6 +1,14 @@
 APP_URL = "http://localhost:5173"
 AUTH_SECRET = "dev-only-secret-not-for-prod-please-rotate"
 
+# Optional — sign app-plane access tokens with a key pair instead of HS256, and
+# publish the public half at /.well-known/jwks.json so other services can verify
+# a backlex token locally (no shared secret). PKCS#8 PEM, EC P-256 or RSA:
+#   openssl ecparam -name prime256v1 -genkey -noout | openssl pkcs8 -topk8 -nocrypt
+# AUTH_JWT_PRIVATE_KEY = """-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----"""
+# During rotation, keep the OLD public key (SPKI PEM) here until its tokens expire:
+# AUTH_JWT_PUBLIC_KEYS = """-----BEGIN PUBLIC KEY-----\n…\n-----END PUBLIC KEY-----"""
+
 # Database — pick ONE block. Without DATABASE_URL the runtime falls back to
 # bun:sqlite at ./.data/backlex.sqlite (or to the D1 binding on CF Workers).
 # Full provider matrix + caveats: docs/database-providers.md

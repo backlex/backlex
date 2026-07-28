@@ -487,6 +487,12 @@ export const createApp = (env: Env) => {
     // Extension iframe entries set their own inline-only CSP in the route
     // (default-src 'none'; script-src 'unsafe-inline') — don't overwrite it.
     if (/^\/api\/extensions\/[^/]+\/assets\//.test(path)) return;
+    // Routes that stream user-uploaded bytes opt into an inert sandbox policy
+    // of their own (`default-src 'none'; sandbox` — see
+    // services/storage/content-type.ts). Replacing it with STRICT_CSP would
+    // hand those responses `script-src 'self'` back, and uploaded objects are
+    // same-origin — precisely the stored-XSS path the sandbox closes.
+    if (c.res.headers.get("content-security-policy")?.includes("sandbox")) return;
     if (isDevServer && (path.startsWith("/embed/") || path.startsWith("/f/"))) {
       // Dev-only: the Worker-served SPA shell carries Vite's inline
       // React-refresh preamble, which `script-src 'self'` would block.

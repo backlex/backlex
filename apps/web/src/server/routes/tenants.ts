@@ -3,8 +3,10 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { and, desc, eq } from "drizzle-orm";
+import type { Context } from "hono";
 import { setCookie } from "hono/cookie";
 import type { AppBindings } from "../app";
+import { isInstanceOperator } from "../services/roles/guards";
 import { errorResponses, OkSchema, SECURITY } from "../lib/openapi";
 import { requireUser } from "../middleware/session";
 import { TENANT_COOKIE } from "../middleware/tenant";
@@ -17,6 +19,40 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"
     ? { tenants: pg.schema.tenants, members: pg.schema.tenantMembers, users: pg.schema.users }
     : { tenants: sqlite.schema.tenants, members: sqlite.schema.tenantMembers, users: sqlite.schema.users };
+
+/** Authorize against the workspace named in the **path**, never the active one.
+ *
+ *  `auth.roles` is rewritten per active workspace by `tenantMiddleware`, so
+ *  `auth.roles.includes("admin")` says nothing about the `{id}` being operated
+ *  on. These routes used it as a bypass, which — combined with `POST /` handing
+ *  `admin` to whoever creates a workspace — let any authenticated user invite
+ *  themselves into, enumerate, or evict members from *every* workspace on the
+ *  instance. The escape hatch is now the real instance operator (admin of the
+ *  default workspace, or `OWNER_EMAIL`), which a self-created workspace cannot
+ *  confer.
+ *
+ *  `manageOnly` additionally requires the membership row to be `owner`/`admin`,
+ *  for the mutating routes. */
+const assertWorkspaceAccess = async (
+  c: Context<AppBindings>,
+  tenantId: string,
+  opts: { manageOnly?: boolean; message: string },
+): Promise<void> => {
+  const ctx = c.get("ctx");
+  const auth = c.get("auth");
+  const t = tablesFor(ctx.dialect);
+  const m = (await (ctx.db as any)
+    .select({ role: t.members.role })
+    .from(t.members)
+    .where(
+      and(eq(t.members.tenantId, tenantId), eq(t.members.userId, auth.userId!)),
+    )
+    .limit(1)) as Array<{ role: string }>;
+  const row = m[0];
+  if (row && (!opts.manageOnly || ["owner", "admin"].includes(row.role))) return;
+  if (await isInstanceOperator(ctx, auth)) return;
+  throw new AppError("FORBIDDEN", opts.message);
+};
 
 const slugify = (s: string) =>
   s
@@ -265,16 +301,9 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         target = r2[0];
       }
       if (!target) throw new AppError("NOT_FOUND", "Workspace not found");
-      // Membership check (admins bypass).
-      if (!auth.roles.includes("admin")) {
-        const m = await (ctx.db as any)
-          .select({ id: t.members.id })
-          .from(t.members)
-          .where(and(eq(t.members.tenantId, target.id), eq(t.members.userId, auth.userId!)))
-          .limit(1);
-        if (!m[0])
-          throw new AppError("FORBIDDEN", "You are not a member of this workspace");
-      }
+      await assertWorkspaceAccess(c, target.id, {
+        message: "You are not a member of this workspace",
+      });
       setCookie(c, TENANT_COOKIE, target.id, {
         httpOnly: false,
         sameSite: "Lax",
@@ -316,19 +345,26 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     async (c) => {
       const ctx = c.get("ctx");
-      const auth = c.get("auth");
       const { id } = c.req.valid("param");
       const t = tablesFor(ctx.dialect);
-      if (!auth.roles.includes("admin")) {
-        const ok = await (ctx.db as any)
-          .select({ id: t.members.id })
-          .from(t.members)
-          .where(and(eq(t.members.tenantId, id), eq(t.members.userId, auth.userId!)))
-          .limit(1);
-        if (!ok[0]) throw new AppError("FORBIDDEN", "Not a member");
-      }
+      await assertWorkspaceAccess(c, id, { message: "Not a member" });
+      // Explicit projection — `select()` also returned `invite_token` /
+      // `invite_expires_at`, i.e. a live credential for every pending invite.
       const rows = await (ctx.db as any)
-        .select()
+        .select({
+          id: t.members.id,
+          tenantId: t.members.tenantId,
+          userId: t.members.userId,
+          email: t.members.email,
+          role: t.members.role,
+          status: t.members.status,
+          invitedBy: t.members.invitedBy,
+          invitedAt: t.members.invitedAt,
+          joinedAt: t.members.joinedAt,
+          lastSeenAt: t.members.lastSeenAt,
+          createdAt: t.members.createdAt,
+          updatedAt: t.members.updatedAt,
+        })
         .from(t.members)
         .where(eq(t.members.tenantId, id))
         .orderBy(desc(t.members.createdAt));
@@ -379,17 +415,11 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const { id } = c.req.valid("param");
-      const t = tablesFor(ctx.dialect);
-      // Caller must have admin/owner role on this tenant (or be a global admin).
-      if (!auth.roles.includes("admin")) {
-        const m = await (ctx.db as any)
-          .select({ role: t.members.role })
-          .from(t.members)
-          .where(and(eq(t.members.tenantId, id), eq(t.members.userId, auth.userId!)))
-          .limit(1);
-        if (!m[0] || !["owner", "admin"].includes(m[0].role))
-          throw new AppError("FORBIDDEN", "Only owners/admins may invite");
-      }
+      // Caller must be an owner/admin **of this workspace** (or the operator).
+      await assertWorkspaceAccess(c, id, {
+        manageOnly: true,
+        message: "Only owners/admins may invite",
+      });
       const { id: memberId, token } = await createMemberInvite(ctx, {
         tenantId: id,
         email: body.email,
@@ -432,18 +462,12 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     }),
     async (c) => {
       const ctx = c.get("ctx");
-      const auth = c.get("auth");
       const { id: tenantId, memberId } = c.req.valid("param");
       const t = tablesFor(ctx.dialect);
-      if (!auth.roles.includes("admin")) {
-        const m = await (ctx.db as any)
-          .select({ role: t.members.role })
-          .from(t.members)
-          .where(and(eq(t.members.tenantId, tenantId), eq(t.members.userId, auth.userId!)))
-          .limit(1);
-        if (!m[0] || !["owner", "admin"].includes(m[0].role))
-          throw new AppError("FORBIDDEN", "Only owners/admins may remove members");
-      }
+      await assertWorkspaceAccess(c, tenantId, {
+        manageOnly: true,
+        message: "Only owners/admins may remove members",
+      });
       await (ctx.db as any)
         .delete(t.members)
         .where(and(eq(t.members.tenantId, tenantId), eq(t.members.id, memberId)));

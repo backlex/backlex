@@ -38,6 +38,7 @@ import {
   tags,
 } from "../services/storage/schemas";
 import { serveObject } from "../services/storage/serve";
+import { baseContentType } from "../services/storage/content-type";
 import {
   deleteFileScoped,
   listFilesScoped,
@@ -466,7 +467,10 @@ export const storageRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     const logicalKey = c.req.param("key");
     guardLogicalKey(logicalKey);
     const key = physicalKey(tenantId, logicalKey);
-    const contentType = c.req.header("content-type") ?? undefined;
+    // Normalized: parameters stripped so the serve-path guard cannot be
+    // side-stepped with `text/html ;x=1`. See services/storage/content-type.ts.
+    const contentType =
+      baseContentType(c.req.header("content-type")) || undefined;
     // Auto-derive folder from the key path so an upload at
     // `photos/2024/spring/beach.jpg` lands in the matching folder row
     // (created on the fly when missing). An explicit `?folderId=` always

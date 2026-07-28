@@ -207,7 +207,10 @@ guides; this list is everything else.
   time-series rollups for the admin dashboard.
 - **Realtime admin + DB admin** (`routes/realtime-admin.ts`,
   `routes/db-admin.ts`) — subscriber counts + test-publish, and
-  schema introspection + diagnostics. Both admin-only.
+  schema introspection + diagnostics. Realtime admin is admin-only; the DB
+  admin routes that span the whole database (`/sql/run`, `/tables`,
+  `/migrations`) require the **instance operator**, not the workspace `admin`
+  role — see the system-roles section of `docs/permissions.md`.
 - **Backup / restore** (`services/backup.ts`) — logical JSONL dumps
   (`runBackup`), additive `restoreBackup` (`ON CONFLICT DO NOTHING`,
   recreates missing `c_*` tables), and the scheduled-backup sweep +

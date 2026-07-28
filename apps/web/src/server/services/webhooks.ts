@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
@@ -363,23 +363,31 @@ export const deliverWebhookById = async (
  */
 export const dispatchWebhooks = async (
   ctx: DbCtx | Ctx,
+  /** Workspace the event originated in, taken from the request context by
+   *  `publishEvent`. Authoritative — never re-derive it from the payload. */
+  originTenantId: string | null,
   channel: string,
   payload: { event: string; data: unknown },
 ): Promise<void> => {
   const t = webhooksTable(ctx.dialect);
-  // Pull the originating tenant from the event payload — every
-  // ItemEvent.data carries the row, which on tenant-scoped collections
-  // contains tenant_id/tenantId. When absent (system events with no
-  // tenant), fall through to the unscoped fan-out so global hooks still
-  // fire; the table-level fan-out is otherwise gated.
+  // This used to read the tenant out of `payload.data`, on the assumption that
+  // an ItemEvent row carries `tenant_id`. It does not — `deserializeRow` only
+  // emits declared collection fields — so the value was always undefined for
+  // item events and the query fell through to an UNSCOPED fan-out, delivering
+  // every workspace's rows to every registered hook on the instance. Scope on
+  // the caller-supplied origin instead, and when there is no origin tenant
+  // match only the genuinely global hooks rather than all of them.
   const data = payload.data as Record<string, unknown> | null | undefined;
-  const tenantId =
+  const payloadTenantId =
     (data && typeof data === "object"
       ? (data["tenantId"] ?? data["tenant_id"])
       : null) as string | null | undefined;
+  // System events (jobs, backups, …) put the tenant inside `data`; keep that as
+  // a fallback, but only when the caller had nothing more authoritative.
+  const tenantId = originTenantId ?? payloadTenantId ?? null;
   const where = tenantId
     ? and(eq(t.active, true), eq(t.tenantId, tenantId))
-    : eq(t.active, true);
+    : and(eq(t.active, true), isNull(t.tenantId));
   const rows = (await (ctx.db as any)
     .select()
     .from(t)

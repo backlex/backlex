@@ -15,6 +15,8 @@ import {
 } from "../services/workspace-config";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
+import { guardLogicalKey } from "../services/storage/keys";
+import { safeServeHeaders } from "../services/storage/content-type";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.workspaceConfig : sqlite.schema.workspaceConfig;
@@ -86,6 +88,22 @@ const normalizeNullable = (v: string | null | undefined): string | null | undefi
   if (v === null) return null;
   const trimmed = v.trim();
   return trimmed === "" ? null : trimmed;
+};
+
+/** Same as above, for the two fields that are used as **storage keys**.
+ *
+ *  These are interpolated straight into `tenants/<tid>/<key>` and handed to the
+ *  storage adapter by the *public* asset route below. Unvalidated, a key like
+ *  `../../../backlex.sqlite` escaped both the tenant prefix and (on the fs
+ *  adapter, which does a bare `join(root, key)`) the storage root — turning an
+ *  admin-writable config field into an unauthenticated arbitrary file read.
+ *  `guardLogicalKey` is the same check every `routes/storage.ts` path runs. */
+const normalizeFileKey = (
+  v: string | null | undefined,
+): string | null | undefined => {
+  const normalized = normalizeNullable(v);
+  if (typeof normalized === "string") guardLogicalKey(normalized);
+  return normalized;
 };
 
 const TAG = "workspace-config";
@@ -205,8 +223,8 @@ export const workspaceConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook 
       const fields: Record<string, string | null | undefined> = {
         workspaceName: normalizeNullable(body.workspaceName),
         description: normalizeNullable(body.description),
-        logoFileKey: normalizeNullable(body.logoFileKey),
-        faviconFileKey: normalizeNullable(body.faviconFileKey),
+        logoFileKey: normalizeFileKey(body.logoFileKey),
+        faviconFileKey: normalizeFileKey(body.faviconFileKey),
         primaryColor: normalizeNullable(body.primaryColor),
         defaultTheme: normalizeNullable(body.defaultTheme),
       };
@@ -270,6 +288,10 @@ export const workspaceConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook 
       const row = await loadWorkspaceConfigRow(ctx, tenantId);
       const logical = kind === "logo" ? row?.logoFileKey : row?.faviconFileKey;
       if (!logical) throw new AppError("NOT_FOUND", `No ${kind} configured`);
+      // Re-guard on read, not just on write: rows persisted before the write
+      // guard existed (or by any other writer) must not be servable either.
+      // This route is public, so a bad key here is an anonymous file read.
+      guardLogicalKey(logical);
       // Same prefix scheme as `routes/storage.ts` — keep in sync if it changes.
       const physical = `tenants/${tenantId}/${logical}`;
       const obj = await ctx.storage.get(physical);
@@ -278,6 +300,10 @@ export const workspaceConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook 
         headers: {
           "content-type": obj.meta.contentType ?? "application/octet-stream",
           "content-length": String(obj.meta.size),
+          // Branding assets are tenant-uploaded bytes served on the app origin
+          // (and an SVG logo is a document) — same inert-serve headers the
+          // storage route uses.
+          ...safeServeHeaders(obj.meta.contentType),
           // Short cache — admins re-upload at low frequency, and the resolved
           // view appends `?v=<updatedAt>` so a change always busts.
           "cache-control": "public, max-age=300",

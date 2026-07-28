@@ -193,9 +193,7 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
     };
     // Tenant scope: fall back to the row's own tenantId if the runtime didn't
     // supply one (event triggers don't carry an authSubject).
-    const tenantId =
-      ctx.authSubject.tenantId ??
-      ((ctx.data as { tenantId?: string | null } | undefined)?.tenantId ?? null);
+    const tenantId = ctx.authSubject.tenantId ?? null;
     const result = await sendTemplatedEmail(ctx.ctx, {
       to,
       templateKey: op.templateKey,
@@ -258,9 +256,7 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
         : sqlite.schema.notifications;
     // Stamp the originating workspace so the row (including broadcasts) is only
     // visible to that tenant — the notifications API filters reads by tenant_id.
-    const tenantId =
-      ctx.authSubject.tenantId ??
-      ((ctx.data as { tenantId?: string | null } | undefined)?.tenantId ?? null);
+    const tenantId = ctx.authSubject.tenantId ?? null;
     try {
       await (ctx.ctx.db as any).insert(t).values({
         id: crypto.randomUUID(),
@@ -299,9 +295,7 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
     const body = interpolate(op.body, ctx) as string;
     const url = op.url ? (interpolate(op.url, ctx) as string) : undefined;
     const userId = interpolate(op.userId, ctx) as string;
-    const tenantId =
-      ctx.authSubject.tenantId ??
-      ((ctx.data as { tenantId?: string | null } | undefined)?.tenantId ?? null);
+    const tenantId = ctx.authSubject.tenantId ?? null;
     try {
       const result = await sendPushToUsers(ctx.ctx, tenantId, {
         userIds: userId ? [userId] : [],
@@ -320,17 +314,18 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
     const dialect = ctx.ctx.dialect;
     const t =
       dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
-    // Tenant-scoped lookup. Flows execute under the runtime's authSubject;
-    // when no tenant is bound (event triggers without auth), we fall back
-    // to the row's own tenantId if the payload carries one — matching the
-    // email template lookup behavior.
-    const tenantId =
-      ctx.authSubject.tenantId ??
-      ((ctx.data as { tenantId?: string | null } | undefined)?.tenantId ?? null);
-    const where =
-      tenantId == null
-        ? eq(t.name, name)
-        : and(eq(t.name, name), eq(t.tenantId, tenantId));
+    // Tenant-scoped lookup, fail-closed. The subject's tenant is pinned to the
+    // flow row by every entry point, so it is always present for a legitimate
+    // run. It previously fell back to a GLOBAL `eq(t.name, name)` when unbound,
+    // which let a flow in one workspace resolve and execute another
+    // workspace's function purely by name.
+    const tenantId = ctx.authSubject.tenantId ?? null;
+    if (tenantId == null) {
+      throw new FlowOpError(
+        `function "${name}" requires a tenant — the flow run has no workspace bound`,
+      );
+    }
+    const where = and(eq(t.name, name), eq(t.tenantId, tenantId));
     const rows = (await (ctx.ctx.db as any)
       .select()
       .from(t)
@@ -357,15 +352,14 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
   }
 
   if (op.type === "item.create" || op.type === "item.update") {
-    // Tenant resolution: prefer the running auth subject, fall back to the
-    // event row's tenantId. Items are tenant-scoped at the DB layer, so an
-    // unresolvable tenant is a hard error rather than a silent skip.
-    const tenantId =
-      ctx.authSubject.tenantId ??
-      ((ctx.data as { tenantId?: string | null } | undefined)?.tenantId ?? null);
+    // Tenant comes from the running auth subject only — every entry point pins
+    // it to the flow's own workspace. It used to fall back to
+    // `ctx.data.tenantId`, i.e. a value the triggering payload controls, which
+    // let an op write into whichever workspace the payload named.
+    const tenantId = ctx.authSubject.tenantId ?? null;
     if (!tenantId) {
       throw new FlowOpError(
-        `${op.type} requires a tenant — none on auth subject or event payload`,
+        `${op.type} requires a tenant — the flow run has no workspace bound`,
       );
     }
     const slug = interpolate(op.collection, ctx) as string;
@@ -549,14 +543,22 @@ export const resumeContinuation = async (
  */
 export const runFlows = async (
   ctx: Ctx,
+  /** Workspace the event originated in. Required: without it this loaded every
+   *  active flow on the instance and matched on the `channel:event` string
+   *  alone, so a flow created in one workspace fired on every other
+   *  workspace's item writes — with the victim's row as `data`. */
+  tenantId: string | null,
   channel: string,
   payload: { event: string; data: Record<string, unknown> },
 ): Promise<void> => {
+  // Fail closed, exactly as `runEventFunctions` does: an event we cannot
+  // attribute to a workspace must not fan out at all.
+  if (!tenantId) return;
   const t = tableFor(ctx.dialect);
   const rows = (await (ctx.db as any)
     .select()
     .from(t)
-    .where(eq(t.active, true))) as FlowRow[];
+    .where(and(eq(t.active, true), eq(t.tenantId, tenantId)))) as FlowRow[];
   if (rows.length === 0) return;
 
   const matching = rows.filter((r) => {
@@ -573,7 +575,14 @@ export const runFlows = async (
   for (const flow of matching) {
     const runCtx: RunCtx = {
       data: payload.data,
-      authSubject: { userId: null, email: null, roles: [] },
+      // Pin the workspace on the subject so the per-op tenant resolution below
+      // can never be steered by an attacker-visible `data.tenantId`.
+      authSubject: {
+        userId: null,
+        email: null,
+        roles: [],
+        tenantId: flow.tenantId ?? tenantId,
+      },
       ctx,
       last: undefined,
     };
@@ -603,7 +612,13 @@ export const runFlowById = async (
   if (!flow.active) return { ok: false, error: "flow is paused" };
   const runCtx: RunCtx = {
     data,
-    authSubject,
+    // The flow row's own workspace is authoritative — a caller that forgot to
+    // thread `tenantId` through must not degrade into an unscoped run, and a
+    // `tenantId` in the caller-supplied `data` must never win.
+    authSubject: {
+      ...authSubject,
+      tenantId: flow.tenantId ?? authSubject.tenantId ?? null,
+    },
     ctx,
     last: undefined,
   };

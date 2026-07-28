@@ -15,7 +15,13 @@ import {
 } from "../services/backup";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
+import { requireOperatorMw } from "../services/roles/guards";
 
+/** Workspace-scoped admin. Enough for the backup routes below, which all run
+ *  against `auth.tenantId`. NOT enough for the instance-wide routes (SQL
+ *  console, table/migration inventory) — those touch every workspace's data at
+ *  once and take `requireOperatorMw` instead, because `admin` is self-serve:
+ *  `POST /api/tenants` grants it to whoever creates a workspace. */
 const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
   if (!auth.roles.includes(SYSTEM_ROLES.admin))
@@ -134,7 +140,7 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       description:
         "Read-only by default. Writes require `?writes=1` AND `X-Backlex-Confirm: yes` header. Splits on `;` and runs each statement.",
       security: SECURITY,
-      middleware: [requireUser, requireAdmin],
+      middleware: [requireUser, requireOperatorMw],
       request: {
         query: z.object({ writes: z.enum(["0", "1"]).optional() }),
         body: { required: true, content: { "application/json": { schema: SqlRunInput } } },
@@ -207,7 +213,7 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       description:
         "Tables with row counts. Drops the drizzle migrations table and runtime system tables.",
       security: SECURITY,
-      middleware: [requireUser, requireAdmin],
+      middleware: [requireUser, requireOperatorMw],
       request: { query: z.object({ limit: z.string().optional() }) },
       responses: {
         200: {
@@ -286,7 +292,7 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       description:
         "Joins the drizzle migrations table with the build-time manifest for human-readable tags.",
       security: SECURITY,
-      middleware: [requireUser, requireAdmin],
+      middleware: [requireUser, requireOperatorMw],
       responses: {
         200: {
           description: "OK",

@@ -147,6 +147,28 @@ afterward.
 
 System roles cannot be deleted from the admin UI.
 
+### `admin` is workspace-scoped — the instance operator is separate
+
+`admin` is resolved **per workspace**: `tenantMiddleware` recomputes
+`auth.roles` from the active workspace on every request, and `POST /api/tenants`
+grants `admin` to whoever creates a workspace. It is therefore a self-serve
+role, and it deliberately does **not** authorize anything that spans workspaces
+or the whole database.
+
+Those surfaces take `requireOperatorMw`
+(`services/roles/guards.ts::isInstanceOperator`) instead. The instance operator
+is:
+
+- `admin` in the **default/bootstrap workspace** — the first user to sign up is
+  seeded there, so existing single-workspace installs are unaffected; **or**
+- the address pinned in `OWNER_EMAIL`, when a provisioner set one.
+
+API keys and app-plane end-users are never operators, whatever roles they hold.
+Today this gates the raw SQL console and the instance-wide table/migration
+inventory (`routes/db-admin.ts`), and acts as the cross-workspace escape hatch
+on `/api/tenants/{id}/*`. Backups stay on workspace `admin` — they run against
+`auth.tenantId`.
+
 ## Worked example: per-team posts
 
 Two collections, `teams` and `posts` with `team_id` relation field.

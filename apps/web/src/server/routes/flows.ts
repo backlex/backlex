@@ -364,6 +364,10 @@ export const flowsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         userId: auth.userId,
         email: auth.email,
         roles: auth.roles,
+        // Bind the run to this workspace. Without it the subject's tenant was
+        // undefined and the `function` op resolved names across every
+        // workspace on the instance.
+        tenantId,
       });
       return c.json({ ok: result.ok, error: result.error ?? undefined });
     },

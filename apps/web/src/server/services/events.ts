@@ -310,12 +310,18 @@ export const publishEvent = async (
     "data" in payload
   ) {
     const evt = payload as ItemEventPayload;
+    // Every fan-out below is scoped with the ORIGINATING workspace, taken from
+    // the request context — never re-derived from the payload. Item events do
+    // not carry `tenant_id` (the serializer only emits declared fields), so a
+    // payload-derived scope silently falls open and delivers one workspace's
+    // rows to every other workspace's webhooks/flows.
+    const tenantId = serverCtx.tenantId ?? null;
     // Pass the full Ctx when available so dispatch enqueues durable
     // webhook.deliver jobs (retry + dead-letter); otherwise it sends inline.
-    void dispatchWebhooks(serverCtx.fullCtx ?? serverCtx, channel, evt);
+    void dispatchWebhooks(serverCtx.fullCtx ?? serverCtx, tenantId, channel, evt);
     void dispatchIntegrations(env, serverCtx, channel, evt);
     if (serverCtx.fullCtx) {
-      void runFlows(serverCtx.fullCtx, channel, evt);
+      void runFlows(serverCtx.fullCtx, tenantId, channel, evt);
       void runEventFunctions(
         serverCtx.fullCtx,
         serverCtx.tenantId ?? null,

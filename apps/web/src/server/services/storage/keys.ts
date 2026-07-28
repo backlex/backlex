@@ -41,14 +41,33 @@ export const guardLogicalKey = (key: string) => {
   if (key.startsWith("/") || key.startsWith("\\") || key.includes("\\")) {
     throw new AppError("VALIDATION", "Key must not contain backslashes or start with a slash");
   }
+  // `?` / `#` are parsed as query / fragment by the S3 fetch adapter, which
+  // builds its URL by interpolation — a key carrying either can inject S3
+  // sub-resource parameters or truncate the object path.
+  if (key.includes("?") || key.includes("#")) {
+    throw new AppError("VALIDATION", 'Key must not contain "?" or "#"');
+  }
   // Normalize separators and check every segment: no `.`/`..` traversal,
   // no leading-slash collapse. Covers `a/../../b`, `./x`, `a//b`.
-  const segments = key.split("/");
-  for (const seg of segments) {
-    if (seg === "." || seg === "..") {
-      throw new AppError("VALIDATION", "Key must not contain path-traversal segments");
+  const assertNoTraversal = (value: string) => {
+    for (const seg of value.split("/")) {
+      if (seg === "." || seg === "..") {
+        throw new AppError("VALIDATION", "Key must not contain path-traversal segments");
+      }
     }
+  };
+  assertNoTraversal(key);
+  // A key that looks clean can still traverse once a URL parser sees it: the
+  // S3 fetch adapter interpolates it through `encodeURI`, which leaves an
+  // already-encoded `%2e%2e` untouched, and WHATWG URL parsing then collapses
+  // it back into `..`. Re-check the decoded form.
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(key);
+  } catch {
+    throw new AppError("VALIDATION", "Key must not contain invalid percent-encoding");
   }
+  if (decoded !== key) assertNoTraversal(decoded);
 };
 
 /** Both forms a row's `key` might take in production: the modern, tenant-

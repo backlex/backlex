@@ -24,6 +24,7 @@ import type { Ctx } from "../context";
 import { FORM_UPLOAD_DEFAULT_MAX_BYTES } from "./forms";
 import { filesTable } from "./storage/folders";
 import { physicalKey } from "./storage/keys";
+import { baseContentType } from "./storage/content-type";
 
 const TICKET_PREFIX = "fut_";
 /** How long a ticket stays valid between upload and submit. */
@@ -185,7 +186,9 @@ export const storeFormUpload = async (
 ): Promise<StoredFormUpload> => {
   const logical = `form-uploads/${form.id}/${crypto.randomUUID()}${keyExtension(file.name)}`;
   const key = physicalKey(form.tenantId, logical);
-  const contentType = file.type || undefined;
+  // Client-declared and, on a form with no `accept` list, entirely
+  // attacker-chosen — normalize it so the serve-path guard sees the real type.
+  const contentType = baseContentType(file.type) || undefined;
   const obj = await ctx.storage.put({ key, body: file.stream(), contentType });
   const t = filesTable(ctx.dialect);
   await (ctx.db as any).insert(t).values({

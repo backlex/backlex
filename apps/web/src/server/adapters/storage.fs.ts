@@ -1,12 +1,24 @@
 import { appendFile, mkdir, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { createReadStream, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import type { StorageAdapter, StoredObject } from "@backlex/core/adapters";
 
 export const fsStorage = (root: string): StorageAdapter => {
-  const path = (key: string) => join(root, key);
+  const rootAbs = resolve(root);
+  /** Resolve a key under the storage root, refusing anything that escapes it.
+   *  Callers are expected to have run `guardLogicalKey` already; this is the
+   *  last line of defense, because a bare `join(root, key)` happily walks out
+   *  of the root on `../../../etc/passwd` and turns any key-carrying field into
+   *  an arbitrary host-file read. */
+  const path = (key: string) => {
+    const abs = resolve(rootAbs, key);
+    if (abs !== rootAbs && !abs.startsWith(rootAbs + sep)) {
+      throw new Error(`storage key escapes the storage root: ${key}`);
+    }
+    return abs;
+  };
   // Temp file backing an in-progress multipart upload. TUS is strictly
   // sequential by offset, so we just append each part to one file and rename
   // it into place on complete — the current file size IS the committed offset.

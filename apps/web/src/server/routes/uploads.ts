@@ -8,6 +8,7 @@ import {
   physicalKey,
   requireTenantId,
 } from "../services/storage/keys";
+import { baseContentType } from "../services/storage/content-type";
 import {
   findOrCreateFolderByName,
   folderNameFromKey,
@@ -126,7 +127,9 @@ export const uploadsRoutes = new Hono<AppBindings>()
       );
     }
     guardLogicalKey(logicalKey);
-    const contentType = meta.contentType || meta.filetype || meta.type || undefined;
+    const contentType =
+      baseContentType(meta.contentType || meta.filetype || meta.type) ||
+      undefined;
 
     let folderId: string | null;
     const folderMeta = meta.folderId ?? null;

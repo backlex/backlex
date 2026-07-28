@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
@@ -10,6 +10,7 @@ import { encryptSecret } from "../lib/crypto";
 import { invalidateTenantAuth } from "../services/tenant-auth";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
+import { assertTenantMember, requireTenant } from "../services/roles/guards";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"
@@ -17,11 +18,13 @@ const tableFor = (dialect: "pg" | "sqlite") =>
         sessions: pg.schema.sessions,
         users: pg.schema.users,
         config: pg.schema.authConfig,
+        tenantMembers: pg.schema.tenantMembers,
       }
     : {
         sessions: sqlite.schema.sessions,
         users: sqlite.schema.users,
         config: sqlite.schema.authConfig,
+        tenantMembers: sqlite.schema.tenantMembers,
       };
 
 const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
@@ -353,7 +356,7 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags: [TAG],
       summary: "List active sessions",
       description:
-        "Every active better-auth session joined with user email. Flags the caller's current session.",
+        "Active better-auth sessions for members of the active workspace, joined with user email. Flags the caller's current session.",
       security: SECURITY,
       middleware: [requireUser, requireAdmin],
       responses: {
@@ -366,9 +369,14 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ...errorResponses,
       },
     }),
-    /** All currently-active sessions, joined with the user's email. */
+    /** Active sessions of the workspace's own members, joined with the user's
+     *  email. `sessions` is a global table (no tenant_id), so the workspace
+     *  scope has to come from a `tenant_members` join — without it a tenant
+     *  admin would read the email + IP of every operator on the instance. Same
+     *  invariant `routes/roles/users.ts` enforces with `assertTenantMember`. */
     async (c) => {
       const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
       const t = tableFor(ctx.dialect);
       const rows = await (ctx.db as any)
         .select({
@@ -383,6 +391,13 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         })
         .from(t.sessions)
         .innerJoin(t.users, eq(t.sessions.userId, t.users.id))
+        .innerJoin(
+          t.tenantMembers,
+          and(
+            eq(t.tenantMembers.userId, t.sessions.userId),
+            eq(t.tenantMembers.tenantId, tenantId),
+          ),
+        )
         .orderBy(desc(t.sessions.updatedAt));
       const current = await ctx.auth.api
         .getSession({ headers: c.req.raw.headers })
@@ -416,11 +431,24 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ...errorResponses,
       },
     }),
-    /** Revoke a single session; the next request from that token gets 401. */
+    /** Revoke a single session; the next request from that token gets 401.
+     *  Resolves the session's owner first and asserts they belong to the active
+     *  workspace — `sessions.id` is a global identifier, so without the check a
+     *  tenant admin could sign out any user on the instance. */
     async (c) => {
       const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
       const t = tableFor(ctx.dialect);
       const { id } = c.req.valid("param");
+      const row = (await (ctx.db as any)
+        .select({ userId: t.sessions.userId })
+        .from(t.sessions)
+        .where(eq(t.sessions.id, id))
+        .limit(1)) as { userId: string }[];
+      // Idempotent by contract: an unknown id stays a 200 no-op rather than
+      // leaking whether that session exists in some other workspace.
+      if (!row[0]) return c.json({ ok: true });
+      await assertTenantMember(ctx, tenantId, row[0].userId);
       await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.id, id));
       return c.json({ ok: true });
     },

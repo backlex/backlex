@@ -1,6 +1,7 @@
 import { and, eq, inArray, type SQL } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../../app";
+import { safeServeHeaders } from "./content-type";
 import { filesTable } from "./folders";
 import { keyCandidates } from "./keys";
 import {
@@ -57,11 +58,15 @@ export async function serveObject(
   if (!parsed.any) {
     const obj = await ctx.storage.get(key);
     if (!obj) throw new AppError("NOT_FOUND", "Object not found");
+    const contentType =
+      obj.meta.contentType ?? row.contentType ?? "application/octet-stream";
     return new Response(obj.body, {
       headers: {
-        "content-type":
-          obj.meta.contentType ?? row.contentType ?? "application/octet-stream",
+        "content-type": contentType,
         "content-length": String(obj.meta.size),
+        // User-supplied bytes on the app origin — never let them execute as a
+        // document. See services/storage/content-type.ts.
+        ...safeServeHeaders(contentType),
       },
     });
   }
@@ -96,6 +101,7 @@ export async function serveObject(
     );
     const headers = new Headers(resp.headers);
     headers.set("etag", etag);
+    for (const [k, v] of Object.entries(safeServeHeaders(ct))) headers.set(k, v);
     // A redirect (Netlify CDN) is cached by the CDN itself; only decorate
     // byte-carrying responses with our transform cache policy.
     if (resp.status !== 302) {
@@ -150,6 +156,7 @@ export async function serveObject(
       ...(bytes ? { "content-length": String(bytes.byteLength) } : {}),
       etag,
       ...TRANSFORM_CACHE_HEADERS,
+      ...safeServeHeaders(transformed.contentType),
     },
   });
 }

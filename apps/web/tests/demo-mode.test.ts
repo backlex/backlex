@@ -10,9 +10,11 @@
  *    `maybeResetDemo` without any manual sign-up.
  */
 import { afterEach, describe, expect, test } from "bun:test";
+import { sql } from "drizzle-orm";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 import { buildContext } from "../src/server/context";
 import {
+  DEMO_RETRY_BACKOFF_MS,
   demoResetIntervalMs,
   isDemoBlockedRequest,
   maybeResetDemo,
@@ -131,6 +133,28 @@ describe("demo mode — reset", () => {
     expect(await maybeResetDemo(ctx, h.env, new Date())).toBe(false);
     const later = new Date(Date.now() + demoResetIntervalMs(h.env) + 1000);
     expect(await maybeResetDemo(ctx, h.env, later)).toBe(true);
+  });
+
+  test("a failed reset hands the claim back instead of parking for the interval", async () => {
+    h = makeHarness({ DEMO_MODE: "1", SEED_TEMPLATE: "blog" });
+    const ctx = await buildContext(h.env);
+
+    // Reproduce what took the live playground down: the D1 drifted behind the
+    // schema, so every reset wiped the workspace and then died seeding roles.
+    // The claim is written *before* the wipe, so the old code left visitors an
+    // empty workspace with a role-less demo admin until the next hour.
+    await (ctx.db as any).run(sql`DROP TABLE roles`);
+    const t0 = new Date();
+    await expect(maybeResetDemo(ctx, h.env, t0)).rejects.toThrow();
+
+    // Inside the backoff window the claim still holds — no per-minute retry storm.
+    const soon = new Date(t0.getTime() + DEMO_RETRY_BACKOFF_MS - 1000);
+    expect(await maybeResetDemo(ctx, h.env, soon)).toBe(false);
+
+    // Past it the reset is attempted again (and throws again, because the
+    // schema is still broken) rather than sitting on a wiped workspace.
+    const after = new Date(t0.getTime() + DEMO_RETRY_BACKOFF_MS + 1000);
+    await expect(maybeResetDemo(ctx, h.env, after)).rejects.toThrow();
   });
 
   test("maybeResetDemo bootstraps a brand-new instance without any sign-up", async () => {

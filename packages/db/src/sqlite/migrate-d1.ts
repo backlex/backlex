@@ -9,6 +9,10 @@
  *   bun run packages/db/src/sqlite/migrate-d1.ts --remote   # production D1
  *   bun run packages/db/src/sqlite/migrate-d1.ts --config=apps/web/wrangler.ci.toml
  *                                                           # alternate config
+ *
+ * The target database name comes from the config's first `[[d1_databases]]`
+ * entry (override with `D1_DATABASE_NAME`), so pointing `--config` at another
+ * deploy's wrangler.toml is enough to migrate that deploy's D1.
  */
 import { spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
@@ -21,8 +25,31 @@ const args = process.argv.slice(2);
 const remote = args.includes("--remote");
 const persistTo = args.find((a) => a.startsWith("--persist-to="))?.slice("--persist-to=".length);
 const configPath = args.find((a) => a.startsWith("--config="))?.slice("--config=".length);
-const dbName = process.env.D1_DATABASE_NAME ?? "workeros";
 const cwd = resolve(fileURLToPath(import.meta.url), "../../../../../apps/web");
+
+// `wrangler d1 execute <name>` resolves <name> against the ACCOUNT, not
+// against `--config` — so a wrong name silently migrates a different
+// database that happens to exist (this is how the playground D1 drifted 5
+// migrations behind while every build "succeeded" against the admin one).
+// Derive the name from the config we were pointed at instead.
+const configFile = resolve(process.cwd(), configPath ?? join(cwd, "wrangler.toml"));
+const dbNameFromConfig = (file: string): string | null => {
+  try {
+    const parsed = Bun.TOML.parse(readFileSync(file, "utf8")) as {
+      d1_databases?: { database_name?: string }[];
+    };
+    return parsed.d1_databases?.[0]?.database_name ?? null;
+  } catch {
+    return null;
+  }
+};
+const configDbName = dbNameFromConfig(configFile);
+const dbName = process.env.D1_DATABASE_NAME ?? configDbName ?? "workeros";
+if (configDbName && dbName !== configDbName) {
+  console.warn(
+    `⚠ D1_DATABASE_NAME="${dbName}" overrides "${configDbName}" from ${configFile} — migrating "${dbName}".`,
+  );
+}
 
 const root = resolve(fileURLToPath(import.meta.url), "../../../drizzle/sqlite");
 const order = readdirSync(root)

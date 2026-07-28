@@ -356,6 +356,16 @@ export const resetDemoWorkspace = async (
 };
 
 /**
+ * How soon a *failed* reset is retried. The claim is written before the wipe,
+ * so a mid-reset failure leaves the workspace wiped but unseeded — sitting on
+ * that claim for a full interval would show visitors an empty playground with
+ * a role-less demo admin until the next hour rolled over. Hand the claim back
+ * with a short backoff instead: broken stays broken for minutes, not hours,
+ * and recovers on its own once the underlying cause is fixed.
+ */
+export const DEMO_RETRY_BACKOFF_MS = 5 * 60_000;
+
+/**
  * Cron hook: reset when the persisted last-reset timestamp is older than the
  * interval (also fires on a brand-new instance, which bootstraps the demo
  * admin + template without any manual sign-up). The timestamp is claimed
@@ -365,8 +375,15 @@ export const maybeResetDemo = async (ctx: Ctx, env: Env, now: Date): Promise<boo
   if (!isDemoMode(env)) return false;
   const tenantId = await ensureDefaultTenant(ctx);
   const last = await readLastResetAt(ctx, tenantId);
-  if (last !== null && now.getTime() - last < demoResetIntervalMs(env)) return false;
+  const interval = demoResetIntervalMs(env);
+  if (last !== null && now.getTime() - last < interval) return false;
   await writeLastResetAt(ctx, tenantId, now.getTime());
-  await resetDemoWorkspace(ctx, env, now);
+  try {
+    await resetDemoWorkspace(ctx, env, now);
+  } catch (e) {
+    const retryAt = now.getTime() - interval + Math.min(DEMO_RETRY_BACKOFF_MS, interval);
+    await writeLastResetAt(ctx, tenantId, retryAt);
+    throw e;
+  }
   return true;
 };

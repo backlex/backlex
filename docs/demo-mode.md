@@ -71,10 +71,25 @@ survives isolate restarts; each isolate re-checks it at most every 5 minutes.
 Visitors signed in when the wipe lands keep their cookie but the shared
 account's state resets under them — by design.
 
+The timestamp is claimed **before** the wipe so concurrent isolates back off
+mid-reset. If the reset then fails, `maybeResetDemo` hands the claim back with a
+`DEMO_RETRY_BACKOFF_MS` (5 min) delay rather than sitting on a half-wiped
+workspace for the rest of the interval — a broken playground self-heals minutes
+after the cause is fixed instead of at the next hour boundary.
+
 ## Ops notes
 
 - The playground is just a normal deploy (Workers, Bun, Vercel, Netlify) with
   the env vars above — nothing else is special about it.
 - Storage blobs whose metadata rows were wiped past the per-reset cleanup cap
   (1000 objects) are orphaned; point the playground at a dedicated bucket.
+- **Keep the playground's own database migrated.** A dedicated deploy has its
+  own D1/Postgres, and schema drift there is silent until a reset dies mid-way
+  (a wiped workspace whose demo admin never gets its role back → an empty admin
+  UI). `migrate-d1.ts` takes the database name from the `--config` file's first
+  `[[d1_databases]]` entry, so the deploy's own wrangler config is enough:
+  `bun run packages/db/src/sqlite/migrate-d1.ts --remote --config=apps/web/wrangler.playground.toml`.
+  (`wrangler d1 execute <name>` resolves the name against the *account*, not the
+  config — a stale `D1_DATABASE_NAME` override silently migrates a different
+  database and still exits 0.)
 - Tests: `apps/web/tests/demo-mode.test.ts`.

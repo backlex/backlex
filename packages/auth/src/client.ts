@@ -15,6 +15,13 @@ import { passkeyClient } from "@better-auth/passkey/client";
 export const createBacklexAuthClient = (baseURL: string) =>
   createAuthClient({
     baseURL,
+    // Hard cap every auth request. `better-fetch` aborts once the timeout
+    // fires, so a stalled instance (cold Worker + slow/provisioning DB) turns
+    // into a surfaced error instead of an auth call that never resolves — the
+    // symptom being the "Claiming…" / "Signing in…" button frozen forever with
+    // no feedback and no way to retry. The WebAuthn ceremony is browser-native
+    // (not a fetch), so this doesn't cut short a biometric prompt.
+    fetchOptions: { timeout: 30_000 },
     plugins: [passkeyClient(), magicLinkClient(), twoFactorClient()],
   });
 

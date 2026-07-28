@@ -180,7 +180,17 @@ export const SignInPage = ({
     }
     setError(null);
     setBusy("email");
-    const res = await authClient.signIn.email({ email, password });
+    let res: Awaited<ReturnType<typeof authClient.signIn.email>>;
+    try {
+      res = await authClient.signIn.email({ email, password });
+    } catch (err) {
+      // A rejected sign-in (network failure or the client-level fetch timeout
+      // aborting a stalled instance) must re-enable the button instead of
+      // leaving it frozen on "Signing in…".
+      setError(err instanceof Error ? err.message : copy.signInFailed);
+      setBusy(null);
+      return;
+    }
     if (res.error) {
       // Unverified email → don't show a generic error; offer to resend the
       // verification link instead. better-auth returns 403 / EMAIL_NOT_VERIFIED.

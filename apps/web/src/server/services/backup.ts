@@ -719,7 +719,16 @@ export const startManualBackup = async (
   return (refreshed[0] ?? { id, storageKey, status: "running" }) as Record<string, unknown>;
 };
 
-/** Fetch one tracking row, enforcing workspace scoping. */
+/** Fetch one tracking row, enforcing workspace scoping.
+ *
+ *  Note the null arms are NOT symmetric. A row with `tenant_id = NULL` is a
+ *  *global* backup, and `runBackup` applies no WHERE at all for those — it is a
+ *  genuine full-instance dump carrying every workspace's `users`, `api_keys`
+ *  and `auth_config`. The previous guard (`tenantId && row.tenantId && …`)
+ *  fell open on exactly that row, so a workspace-scoped caller holding the id
+ *  could download or restore the whole instance. `listBackups` filters on
+ *  `eq(tenant_id, …)`, which never matches NULL, so the id was not reachable
+ *  through the API — this closes the guard rather than a live exploit. */
 export const getBackupScoped = async (
   ctx: Ctx,
   tenantId: string | null,
@@ -729,8 +738,13 @@ export const getBackupScoped = async (
   const rows = await (ctx.db as any).select().from(t).where(eq(t.id, id)).limit(1);
   const row = rows[0];
   if (!row) throw new AppError("NOT_FOUND", "Backup not found");
-  if (tenantId && row.tenantId && row.tenantId !== tenantId)
-    throw new AppError("FORBIDDEN", "Backup belongs to a different workspace");
+  if (tenantId && row.tenantId !== tenantId)
+    throw new AppError(
+      "FORBIDDEN",
+      row.tenantId
+        ? "Backup belongs to a different workspace"
+        : "This is an instance-wide backup — not reachable from a workspace",
+    );
   return row as Record<string, unknown>;
 };
 

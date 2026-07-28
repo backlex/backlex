@@ -167,7 +167,16 @@ API keys and app-plane end-users are never operators, whatever roles they hold.
 Today this gates the raw SQL console and the instance-wide table/migration
 inventory (`routes/db-admin.ts`), and acts as the cross-workspace escape hatch
 on `/api/tenants/{id}/*`. Backups stay on workspace `admin` — they run against
-`auth.tenantId`.
+`auth.tenantId` and `services/backup.ts::TENANT_WHERE` narrows every system
+table to that workspace, including the four with no `tenant_id` column of their
+own. A backup row with `tenant_id = NULL` is different: that one **is** a full
+instance dump, and it is reachable only to the operator.
+
+> **Recovering a lost operator.** Nothing in the API renames or deletes a
+> workspace, so the default one is normally permanent. If it was removed by
+> hand, `ensureDefaultTenant` recreates an empty `default` that nobody admins
+> and the operator-gated routes start returning 403. Set `OWNER_EMAIL` to your
+> address to get back in without touching the database.
 
 ## Worked example: per-team posts
 

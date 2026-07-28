@@ -107,14 +107,23 @@ export const isInstanceOperator = async (
   return names.includes(SYSTEM_ROLES.admin);
 };
 
-/** Per-route instance-operator gate. Run after `requireUser`. */
+/** Per-route instance-operator gate. Run after `requireUser`.
+ *
+ *  The message names the two ways back in on purpose: the only way to hold no
+ *  operator at all is an instance whose default workspace was renamed or
+ *  dropped by hand (nothing in the API mutates `tenants.slug`), and there
+ *  `ensureDefaultTenant` would quietly mint an empty `default` that nobody
+ *  admins. Setting `OWNER_EMAIL` recovers it without DB surgery. */
 export const requireOperatorMw: MiddlewareHandler<AppBindings> = async (
   c,
   next,
 ) => {
   const ctx = c.get("ctx");
   if (!(await isInstanceOperator(ctx, c.get("auth")))) {
-    throw new AppError("FORBIDDEN", "Instance operator access required");
+    throw new AppError(
+      "FORBIDDEN",
+      "Instance operator access required — sign in as an admin of the default workspace, or set OWNER_EMAIL to your address",
+    );
   }
   await next();
 };

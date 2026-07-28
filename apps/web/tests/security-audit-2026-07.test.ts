@@ -546,3 +546,84 @@ describe("finding 7: the flow function op stays inside its workspace", () => {
     expect(result.error ?? "").toContain("not found");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Follow-ups from the audit review (see the two items flagged after the fixes)
+// ---------------------------------------------------------------------------
+
+describe("follow-up: instance-wide backups are unreachable from a workspace", () => {
+  let cast: Cast;
+
+  beforeAll(async () => {
+    cast = await buildCast();
+  });
+  afterAll(() => cast.h.cleanup());
+
+  test("a workspace admin cannot download another workspace's backup", async () => {
+    // Operator takes a backup of the default workspace…
+    await signOut(cast.h);
+    await signIn(cast.h, cast.operatorEmail);
+    const made = await cast.h.fetch("/api/admin/db/backups/now", {
+      method: "POST",
+      headers: { ...JSON_HEADERS, "X-Backlex-Tenant": "default" },
+      body: JSON.stringify({ label: "operator-backup" }),
+    });
+    expect(made.status).toBeLessThan(300);
+    const backup = (await made.json()) as { data: { id: string } };
+
+    // …the attacker, admin of their own workspace, must not reach it even
+    // holding the id.
+    await signIn(cast.h, cast.attackerEmail);
+    const res = await cast.h.fetch(
+      `/api/admin/db/backups/${backup.data.id}/download`,
+      { headers: { "X-Backlex-Tenant": cast.evilSlug } },
+    );
+    expect(res.status).toBe(403);
+  });
+
+  test("the backup dump itself is workspace-scoped, not an instance dump", async () => {
+    // Regression gate for `TENANT_WHERE`: the four system tables with no
+    // `tenant_id` column of their own (users / user_roles / permissions /
+    // tenants) are scoped through the relation that does have one, so one
+    // workspace's backup must not contain another workspace's user directory.
+    await signIn(cast.h, cast.attackerEmail);
+    const made = await cast.h.fetch("/api/admin/db/backups/now", {
+      method: "POST",
+      headers: { ...JSON_HEADERS, "X-Backlex-Tenant": cast.evilSlug },
+      body: JSON.stringify({ label: "attacker-backup" }),
+    });
+    expect(made.status).toBeLessThan(300);
+    const backup = (await made.json()) as { data: { id: string } };
+
+    const dump = await cast.h.fetch(
+      `/api/admin/db/backups/${backup.data.id}/download`,
+      { headers: { "X-Backlex-Tenant": cast.evilSlug } },
+    );
+    expect(dump.status).toBe(200);
+    const text = await dump.text();
+    expect(text).toContain(cast.attackerEmail);
+    expect(text).not.toContain(cast.operatorEmail);
+  });
+});
+
+describe("follow-up: the operator gate explains how to recover", () => {
+  let cast: Cast;
+
+  beforeAll(async () => {
+    cast = await buildCast();
+  });
+  afterAll(() => cast.h.cleanup());
+
+  test("the 403 names both routes back in", async () => {
+    const res = await cast.h.fetch("/api/admin/db/sql/run", {
+      method: "POST",
+      headers: { ...JSON_HEADERS, "X-Backlex-Tenant": cast.evilSlug },
+      body: JSON.stringify({ sql: "SELECT 1" }),
+    });
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { error?: { message?: string } };
+    const message = JSON.stringify(body);
+    expect(message).toContain("default workspace");
+    expect(message).toContain("OWNER_EMAIL");
+  });
+});

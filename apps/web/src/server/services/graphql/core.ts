@@ -21,6 +21,7 @@ import {
   compileCondition,
   type FieldDef,
   type FieldType,
+  isKnownFieldType,
   isLocalized,
   resolveAutoFill,
   sidecarFields,
@@ -168,10 +169,28 @@ const fieldScalar = (
   }
 };
 
+/**
+ * Field types are read back from a JSON metadata blob that nothing re-validates,
+ * so a collection written by an older build can name a type this one dropped.
+ * `fieldScalar`'s switch is exhaustive over `FieldType` — which proves it
+ * handles every type in the union, not that the value IS one. An unrecognised
+ * type fell through and returned `undefined`, and since the schema is built
+ * eagerly for the whole workspace, `new GraphQLNonNull(undefined)` threw at
+ * BUILD time and took down every collection and every query, including
+ * `__typename`. One legacy field, entire endpoint 500.
+ *
+ * Unknown types are surfaced as opaque JSON and always nullable: the data stays
+ * reachable, and we make no promise about a column we can't interpret.
+ */
+const unknownTypeFallback = (f: FieldDef): GraphQLOutputType & GraphQLInputType | null =>
+  isKnownFieldType(f.type) ? null : JSONScalar;
+
 const fieldGqlType = (f: FieldDef): GraphQLOutputType => {
   // A `localized` field is exposed as its full `{locale: value}` map (JSON),
   // regardless of native type.
   if (isLocalized(f)) return JSONScalar;
+  const fallback = unknownTypeFallback(f);
+  if (fallback) return fallback;
   const t = fieldScalar(f.type);
   // A hash field always resolves to null on read (write-only), so it must stay
   // nullable on OUTPUT even when `required` — a NonNull wrapper would make every
@@ -241,8 +260,10 @@ export const buildInputType = (collection: CollectionRow): GraphQLInputObjectTyp
         if (f.onCreate || f.onUpdate) continue;
         // All fields optional in input — server-side validates required-ness.
         // A `localized` field accepts a `{locale: value}` map (JSON).
+        // Same untrusted-metadata guard as the output side — a type this build
+        // doesn't know must not reach the exhaustive switch.
         fields[camel(f.name)] = {
-          type: isLocalized(f) ? JSONScalar : fieldScalar(f.type),
+          type: isLocalized(f) ? JSONScalar : (unknownTypeFallback(f) ?? fieldScalar(f.type)),
         };
       }
       // GraphQL requires at least one input field. A collection with no

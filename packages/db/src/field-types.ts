@@ -83,6 +83,23 @@ void _fieldTypesAreExhaustive;
 export const isPresentational = (field: { type: FieldType }): boolean =>
   field.type === "divider" || field.type === "notice";
 
+/**
+ * Runtime check that a type string read back from stored metadata is one this
+ * build actually knows.
+ *
+ * `collections.fields` is a JSON blob the code *asserts* is `FieldDef[]`, but
+ * nothing re-validates it on read — so a workspace written by an older build
+ * can carry a type since dropped (`i18n_text`, removed in 6bd2f601 with no data
+ * migration). TypeScript's exhaustiveness checking proves a switch covers every
+ * `FieldType`; it cannot prove the value on the wire IS one. Anything consuming
+ * `field.type` where a miss is worse than a fallback should guard with this
+ * first — see `fieldGqlType`, where an unrecognised type used to produce an
+ * `undefined` scalar and take the whole GraphQL endpoint down at schema-build
+ * time.
+ */
+export const isKnownFieldType = (type: string): type is FieldType =>
+  (FIELD_TYPES as readonly string[]).includes(type);
+
 /** Soft validation rules — enforced at the API layer, not at the DB. */
 export interface FieldValidation {
   /** Regex pattern (string-form, ECMA syntax). Applied to text/longtext/hash. */

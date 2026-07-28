@@ -10,8 +10,8 @@ export const fsStorage = (root: string): StorageAdapter => {
   /** Resolve a key under the storage root, refusing anything that escapes it.
    *  Callers are expected to have run `guardLogicalKey` already; this is the
    *  last line of defense, because a bare `join(root, key)` happily walks out
-   *  of the root on `../../../etc/passwd` and turns any key-carrying field into
-   *  an arbitrary host-file read. */
+   *  of the root on a key made of parent-directory segments, turning any
+   *  key-carrying field into an arbitrary host-file read. */
   const path = (key: string) => {
     const abs = resolve(rootAbs, key);
     if (abs !== rootAbs && !abs.startsWith(rootAbs + sep)) {

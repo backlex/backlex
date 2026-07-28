@@ -29,9 +29,11 @@ export const guardLogicalKey = (key: string) => {
     throw new AppError("VALIDATION", `Key prefix "${TENANT_PREFIX}" is reserved`);
   }
   // Reject path-traversal and absolute/backslash/null-byte keys. Without this a
-  // key like `../../../etc/passwd` escapes both the `tenants/<tid>/` isolation
-  // prefix (all adapters) AND the storage root on the fs adapter
+  // key built from parent-directory segments escapes both the `tenants/<tid>/`
+  // isolation prefix (all adapters) AND the storage root on the fs adapter
   // (`join(root, key)`), enabling cross-tenant or out-of-root file writes.
+  // (Kept in prose deliberately: a literal traversal payload in a comment ships
+  // in the worker bundle and trips Cloudflare's managed WAF on template upload.)
   if (key.length === 0) {
     throw new AppError("VALIDATION", "Key must not be empty");
   }

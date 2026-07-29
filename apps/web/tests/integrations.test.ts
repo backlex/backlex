@@ -148,6 +148,115 @@ describe("@backlex/integrations adapters", () => {
     expect(rec.calls[0]!.body).toEqual([{ id: "42" }]);
   });
 
+  test("typesense upserts a single document into the configured collection", async () => {
+    const rec = recorder(201);
+    const out = await deliverToIntegration(
+      "typesense",
+      { host: "https://xxx.a1.typesense.net/", apiKey: "ts-key", collectionName: "items" },
+      evt,
+      rec.fetch,
+    );
+    expect(out.ok).toBe(true);
+    // action=upsert is what makes item.created and item.updated converge on one
+    // call — plain POST /documents would 409 the second time a record changes.
+    expect(rec.calls[0]!.url).toBe("https://xxx.a1.typesense.net/collections/items/documents?action=upsert");
+    expect(rec.calls[0]!.headers["X-TYPESENSE-API-KEY"]).toBe("ts-key");
+    expect(rec.calls[0]!.headers.Authorization).toBeUndefined();
+    expect(rec.calls[0]!.body).toEqual({ id: "42" });
+  });
+
+  test("typesense defaults a scheme-less host to https and encodes the collection", async () => {
+    const rec = recorder(201);
+    await deliverToIntegration(
+      "typesense",
+      { host: "ts.example.com", apiKey: "k", collectionName: "my items/v2" },
+      evt,
+      rec.fetch,
+    );
+    expect(rec.calls[0]!.url).toBe(
+      "https://ts.example.com/collections/my%20items%2Fv2/documents?action=upsert",
+    );
+  });
+
+  test("typesense falls back to the event name when the payload has no id", async () => {
+    const rec = recorder(201);
+    await deliverToIntegration(
+      "typesense",
+      { host: "ts.example.com", apiKey: "k", collectionName: "items" },
+      { event: "item.deleted", text: "gone", payload: {} },
+      rec.fetch,
+    );
+    // Typesense rejects a document without `id`, so the sink must always send one.
+    expect(rec.calls[0]!.body).toEqual({ id: "item.deleted" });
+  });
+
+  test("typesense fails closed when any credential is missing", async () => {
+    const rec = recorder();
+    for (const config of [
+      { apiKey: "k", collectionName: "items" },
+      { host: "ts.example.com", collectionName: "items" },
+      { host: "ts.example.com", apiKey: "k" },
+      { host: "ts.example.com", apiKey: "", collectionName: "items" },
+    ]) {
+      expect(await deliverToIntegration("typesense", config, evt, rec.fetch)).toEqual({ ok: false, status: 0 });
+    }
+    expect(rec.calls).toHaveLength(0);
+  });
+
+  test("elasticsearch upserts via _update with doc_as_upsert and ApiKey auth", async () => {
+    const rec = recorder();
+    const out = await deliverToIntegration(
+      "elasticsearch",
+      { host: "https://es.example.com:9200", apiKey: "es-key", indexName: "items" },
+      evt,
+      rec.fetch,
+    );
+    expect(out.ok).toBe(true);
+    expect(rec.calls[0]!.url).toBe("https://es.example.com:9200/items/_update/42");
+    expect(rec.calls[0]!.headers.Authorization).toBe("ApiKey es-key");
+    // doc_as_upsert is load-bearing: without it an update for an id that was
+    // never indexed 404s instead of creating the document.
+    expect(rec.calls[0]!.body).toEqual({ doc: { id: "42" }, doc_as_upsert: true });
+  });
+
+  test("elasticsearch encodes the index and the document id into the path", async () => {
+    const rec = recorder();
+    await deliverToIntegration(
+      "elasticsearch",
+      { host: "os.example.com/", apiKey: "k", indexName: "logs/2026" },
+      { event: "item.created", text: "x", payload: { id: "a b/c" } },
+      rec.fetch,
+    );
+    // An unencoded id would change which document (or index) is written to.
+    expect(rec.calls[0]!.url).toBe("https://os.example.com/logs%2F2026/_update/a%20b%2Fc");
+  });
+
+  test("elasticsearch fails closed when any credential is missing", async () => {
+    const rec = recorder();
+    for (const config of [
+      { apiKey: "k", indexName: "items" },
+      { host: "es.example.com", indexName: "items" },
+      { host: "es.example.com", apiKey: "k" },
+      { host: "es.example.com", apiKey: "k", indexName: "" },
+    ]) {
+      expect(await deliverToIntegration("elasticsearch", config, evt, rec.fetch)).toEqual({
+        ok: false,
+        status: 0,
+      });
+    }
+    expect(rec.calls).toHaveLength(0);
+  });
+
+  test("search sinks report a non-2xx upstream as a failed delivery", async () => {
+    const rec = recorder(401);
+    for (const [kind, config] of [
+      ["typesense", { host: "ts.example.com", apiKey: "bad", collectionName: "items" }],
+      ["elasticsearch", { host: "es.example.com", apiKey: "bad", indexName: "items" }],
+    ] as const) {
+      expect(await deliverToIntegration(kind, config, evt, rec.fetch)).toEqual({ ok: false, status: 401 });
+    }
+  });
+
   test("misconfigured providers fail closed (no throw, ok:false)", async () => {
     const rec = recorder();
     expect((await deliverToIntegration("slack", { webhookUrl: "https://evil.test" }, evt, rec.fetch)).ok).toBe(false);

@@ -10,9 +10,14 @@ import { buildSmsAdapter, type SMSSpec } from "../lib/sms-select";
 /** Tenant id of the instance-wide override row. Mirrors `push_config`. */
 export const GLOBAL_SMS_CONFIG_ID = "_global";
 
-/** Secret keys recognised across providers (twilio: `authToken`; sns:
- *  `secretAccessKey`). A row names one provider, so the keys never collide. */
-export const SMS_SECRET_KEYS = ["authToken", "secretAccessKey"] as const;
+/**
+ * Secret keys recognised across providers — twilio: `authToken`; sns:
+ * `secretAccessKey`; netgsm: `password`; iletimerkezi: `hash`. A row names one
+ * provider, so the keys never collide. Everything listed here is encrypted at
+ * rest (AES-256-GCM off `AUTH_SECRET`) and never returned by the read route —
+ * so a provider's credential MUST live in `secrets`, never in `config`.
+ */
+export const SMS_SECRET_KEYS = ["authToken", "secretAccessKey", "password", "hash"] as const;
 
 export interface SmsConfigRow {
   tenantId: string;
@@ -93,6 +98,20 @@ const specFromRow = async (row: SmsConfigRow, appSecret: string): Promise<SMSSpe
       return secretAccessKey && region && accessKeyId
         ? { provider: "sns", region, accessKeyId, secretAccessKey, senderId }
         : null;
+    }
+    case "netgsm": {
+      const password = await secret("password");
+      const usercode = str(cfg.usercode);
+      const msgheader = str(cfg.msgheader);
+      return password && usercode && msgheader
+        ? { provider: "netgsm", usercode, password, msgheader }
+        : null;
+    }
+    case "iletimerkezi": {
+      const hash = await secret("hash");
+      const key = str(cfg.key);
+      const sender = str(cfg.sender);
+      return hash && key && sender ? { provider: "iletimerkezi", key, hash, sender } : null;
     }
     default:
       return null;

@@ -256,9 +256,10 @@ export interface Env {
   WEBPUSH_SUBJECT?: string;
   WEBPUSH_VAPID_PUBLIC_KEY?: string;
   WEBPUSH_VAPID_PRIVATE_KEY?: string;
-  // SMS. `SMS_PROVIDER` forces a single transport (`console`, `twilio`, `sns`);
-  // when unset the first provider below with complete credentials is used
-  // (twilio → sns), falling back to `console`.
+  // SMS. `SMS_PROVIDER` forces a single transport (`console`, `twilio`, `sns`,
+  // `netgsm`, `iletimerkezi`); when unset the first provider below with complete
+  // credentials is used (twilio → sns → netgsm → iletimerkezi), falling back to
+  // `console`.
   SMS_PROVIDER?: string;
   // Twilio Programmable Messaging — `TWILIO_FROM` is an E.164 number or approved
   // alphanumeric sender id; alternatively set `TWILIO_MESSAGING_SERVICE_SID`
@@ -274,6 +275,16 @@ export interface Env {
   SMS_AWS_ACCESS_KEY_ID?: string;
   SMS_AWS_SECRET_ACCESS_KEY?: string;
   SMS_AWS_SENDER_ID?: string;
+  // NetGSM (TR) — panel user code + password; `NETGSM_MSGHEADER` is the
+  // pre-approved alphanumeric sender header (başlık) registered with NetGSM.
+  NETGSM_USERCODE?: string;
+  NETGSM_PASSWORD?: string;
+  NETGSM_MSGHEADER?: string;
+  // İleti Merkezi (TR) — panel API key + hash; `ILETIMERKEZI_SENDER` is the
+  // pre-approved originator title.
+  ILETIMERKEZI_KEY?: string;
+  ILETIMERKEZI_HASH?: string;
+  ILETIMERKEZI_SENDER?: string;
   // OAuth providers. Each provider is enabled iff both id+secret are set.
   OAUTH_GOOGLE_CLIENT_ID?: string;
   OAUTH_GOOGLE_CLIENT_SECRET?: string;
@@ -551,6 +562,12 @@ export const STRING_ENV_KEYS = [
   "SMS_AWS_ACCESS_KEY_ID",
   "SMS_AWS_SECRET_ACCESS_KEY",
   "SMS_AWS_SENDER_ID",
+  "NETGSM_USERCODE",
+  "NETGSM_PASSWORD",
+  "NETGSM_MSGHEADER",
+  "ILETIMERKEZI_KEY",
+  "ILETIMERKEZI_HASH",
+  "ILETIMERKEZI_SENDER",
   "OAUTH_GOOGLE_CLIENT_ID",
   "OAUTH_GOOGLE_CLIENT_SECRET",
   "OAUTH_GITHUB_CLIENT_ID",

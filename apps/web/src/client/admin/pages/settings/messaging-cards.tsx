@@ -375,14 +375,19 @@ export function PushSettingsCard({ pushToast }: { pushToast: (m: string) => void
   );
 }
 
-const SMS_PROVIDER_OPTIONS = [
+// Exported for `tests/client/sms-settings-card.test.tsx`, which cross-checks these
+// tables against the server registry (SMS_PROVIDER_IDS / SMS_SECRET_KEYS) — a
+// provider added on the server but missing here is silently unconfigurable.
+export const SMS_PROVIDER_OPTIONS = [
   { value: "inherit", label: "Inherit — deployment default" },
   { value: "console", label: "Console (log to stdout)" },
   { value: "twilio", label: "Twilio (Programmable Messaging)" },
   { value: "sns", label: "Amazon SNS (AWS SMS)" },
+  { value: "netgsm", label: "NetGSM (Türkiye)" },
+  { value: "iletimerkezi", label: "İleti Merkezi (Türkiye)" },
 ];
 
-const SMS_PROVIDER_FIELDS: Record<
+export const SMS_PROVIDER_FIELDS: Record<
   string,
   {
     hint: string;
@@ -395,6 +400,8 @@ const SMS_PROVIDER_FIELDS: Record<
   console: { hint: "Doesn't deliver anything — writes the message to the Worker log. Dev only.", config: [], secrets: [] },
   twilio: { hint: "Programmable Messaging REST API — works on every runtime. Use a From number (E.164) OR a Messaging Service SID. Credentials from the Twilio Console.", config: [["accountSid", "Account SID", "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "text"], ["from", "From number (E.164) or sender id", "+14155552671", "text"], ["messagingServiceSid", "Messaging Service SID (optional, MGxxxx)", "", "text"]], secrets: [["authToken", "Auth Token"]], link: { href: "https://console.twilio.com/", label: "Twilio Console →" } },
   sns: { hint: "Amazon SNS SMS — signed with AWS SigV4, works on every runtime. The IAM principal needs sns:Publish. Sender ID is only honoured in supported countries.", config: [["region", "AWS region", "us-east-1", "text"], ["accessKeyId", "Access key ID", "AKIA…", "text"], ["senderId", "Sender ID (optional)", "MYAPP", "text"]], secrets: [["secretAccessKey", "Secret access key"]], link: { href: "https://console.aws.amazon.com/sns/", label: "AWS SNS Console →" } },
+  netgsm: { hint: "NetGSM (Türkiye) — the classic HTTP API. User code + password are your panel credentials; the message header (başlık) must already be approved by NetGSM. Recipients are sent as E.164; the leading + is stripped for you.", config: [["usercode", "User code (kullanıcı kodu)", "8501234567", "text"], ["msgheader", "Message header (başlık)", "MYCOMPANY", "text"]], secrets: [["password", "Panel password"]], link: { href: "https://www.netgsm.com.tr/", label: "NetGSM panel →" } },
+  iletimerkezi: { hint: "İleti Merkezi (Türkiye) — the v1 JSON API. Key + hash come from the panel's API credentials page; the sender title must already be approved. Recipients are sent as E.164; the leading + is stripped for you.", config: [["key", "API key", "", "text"], ["sender", "Sender title (gönderici adı)", "MYCOMPANY", "text"]], secrets: [["hash", "API hash"]], link: { href: "https://www.iletimerkezi.com/", label: "İleti Merkezi panel →" } },
 };
 
 /** SMS transport config — mirrors {@link PushSettingsCard}, minus the device
@@ -479,7 +486,10 @@ export function SmsSettingsCard({ pushToast }: { pushToast: (m: string) => void 
       </div>
       <div className="flex flex-col gap-1.5">
         <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Provider</Trans></label>
-        <Select value={provider} onChange={(v: string) => { setProvider(v); mark(); }} options={SMS_PROVIDER_OPTIONS} />
+        {/* Switching provider swaps the credential fields below, so drop any
+            half-typed secret for the old provider rather than PUT-ing it under
+            the new one's row. */}
+        <Select value={provider} onChange={(v: string) => { setProvider(v); setSecrets({}); mark(); }} options={SMS_PROVIDER_OPTIONS} />
         <span className="text-[11.5px] text-muted-foreground">
           {fields.hint}{envHint}
           {fields.link && (

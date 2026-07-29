@@ -1,6 +1,6 @@
 ---
 title: SMS messaging
-description: SMS (Twilio / Amazon SNS) with per-workspace providers, phone-number registration, and flow/MCP/SDK send paths.
+description: SMS (Twilio / Amazon SNS / NetGSM / İleti Merkezi) with per-workspace providers, phone-number registration, and flow/MCP/SDK send paths.
 ---
 
 Send SMS text messages to your users' phones. SMS uses the **same adapter +
@@ -14,11 +14,27 @@ per-workspace config model as [push](/push-messaging/) and
 |---|---|---|
 | `twilio` | Account SID + Auth Token (HTTP Basic) | Programmable Messaging REST API — works on every runtime. Use a `From` number (E.164) **or** a Messaging Service SID. |
 | `sns` | AWS access key + secret (SigV4) | Amazon SNS SMS (the transport behind AWS Amplify). Signed with Web Crypto — no AWS SDK. The IAM principal needs `sns:Publish`. |
+| `netgsm` | User code + panel password (query params) | NetGSM (Türkiye) over the classic HTTP GET API. Needs a NetGSM-approved message header (*başlık*) as the sender. |
+| `iletimerkezi` | API key + hash (in the request envelope) | İleti Merkezi (Türkiye) over the v1 JSON API. Needs an approved sender title. |
 | `console` | — | Dev only; logs the message to stdout. |
 
 Unlike push (where one batch can span FCM/APNs/web-push), an SMS deployment uses
 **exactly one provider** — there's no fan-out. When `SMS_PROVIDER` is unset the
-first provider with complete credentials wins (`twilio` → `sns`).
+first provider with complete credentials wins
+(`twilio` → `sns` → `netgsm` → `iletimerkezi`).
+
+All four adapters send **one HTTP request per recipient**, even where the
+provider accepts a batch. Batch endpoints answer with a single status for the
+whole order, which would make it impossible to tell *which* number was rejected —
+and `invalidNumbers` (the array that deactivates rows in `phone_numbers`) has to
+be exact. Only genuinely number-level rejections are mapped: NetGSM `70`
+(invalid parameter on a single-recipient call) and İleti Merkezi `405` (invalid
+recipient). Account-level failures — bad credentials, unapproved sender header,
+no balance, rate limits — count as `failed` only, so one misconfiguration can
+never wipe a workspace's phone book.
+
+Both Turkish providers want the bare msisdn (`905321234567`); the adapters strip
+the leading `+` from the stored E.164 number for you.
 
 ## Configuration
 
@@ -30,7 +46,7 @@ Two layers, resolved in order (same as email/push): the workspace's own
 
 ```bash
 # Force one provider, or leave unset to auto-pick the first configured one.
-SMS_PROVIDER=             # twilio | sns | console
+SMS_PROVIDER=             # twilio | sns | netgsm | iletimerkezi | console
 
 # Twilio Programmable Messaging
 TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -43,6 +59,16 @@ SMS_AWS_REGION=us-east-1
 SMS_AWS_ACCESS_KEY_ID=AKIA…
 SMS_AWS_SECRET_ACCESS_KEY=…
 SMS_AWS_SENDER_ID=MYAPP                   # optional, honoured only in some countries
+
+# NetGSM (TR)
+NETGSM_USERCODE=8501234567
+NETGSM_PASSWORD=…
+NETGSM_MSGHEADER=MYCOMPANY                # the sender header approved by NetGSM
+
+# İleti Merkezi (TR)
+ILETIMERKEZI_KEY=…
+ILETIMERKEZI_HASH=…
+ILETIMERKEZI_SENDER=MYCOMPANY             # the approved sender title
 ```
 
 > The AWS vars are prefixed `SMS_` so they don't collide with any ambient

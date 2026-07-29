@@ -986,7 +986,7 @@ export const smsConfig = sqliteTable(
   "sms_config",
   {
     tenantId: text("tenant_id").primaryKey(),
-    /** inherit | console | twilio | sns */
+    /** inherit | console | twilio | sns | netgsm | iletimerkezi */
     provider: text("provider").notNull().default("inherit"),
     config: text("config", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
     secrets: text("secrets", { mode: "json" }).$type<Record<string, string>>().notNull().default({}),

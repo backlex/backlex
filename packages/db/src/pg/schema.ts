@@ -1202,7 +1202,7 @@ export const smsConfig = pgTable(
   "sms_config",
   {
     tenantId: text("tenant_id").primaryKey(),
-    /** inherit | console | twilio | sns */
+    /** inherit | console | twilio | sns | netgsm | iletimerkezi */
     provider: text("provider").notNull().default("inherit"),
     config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
     secrets: jsonb("secrets").$type<Record<string, string>>().notNull().default({}),

@@ -26,17 +26,20 @@ const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   await next();
 };
 
-const SmsProvider = z.enum(["inherit", "console", "twilio", "sns"]);
+// Derived from the transport registry so a new provider can't be accepted by
+// `sms-select` yet rejected here (or vice versa).
+const SmsProvider = z.enum(SMS_PROVIDER_IDS);
 
 const PutInput = z
   .object({
     provider: SmsProvider,
     /** Non-secret provider params (twilio: accountSid/from/messagingServiceSid;
-     *  sns: region/accessKeyId/senderId). Replaces the stored `config` wholesale. */
+     *  sns: region/accessKeyId/senderId; netgsm: usercode/msgheader;
+     *  iletimerkezi: key/sender). Replaces the stored `config` wholesale. */
     config: z.record(z.string(), z.unknown()).optional(),
-    /** Per-key plaintext secret (`authToken` for twilio, `secretAccessKey` for
-     *  sns). Non-empty = encrypt + store; empty/null = clear; omitted keys
-     *  untouched. */
+    /** Per-key plaintext secret (`authToken` twilio, `secretAccessKey` sns,
+     *  `password` netgsm, `hash` iletimerkezi). Non-empty = encrypt + store;
+     *  empty/null = clear; omitted keys untouched. */
     secrets: z.record(z.string(), z.union([z.string(), z.null()])).optional(),
   })
   .openapi("SmsConfigPutInput");
@@ -49,15 +52,22 @@ const SmsTestInput = z
   })
   .openapi("SmsTestInput");
 
-/** Which secret keys have a stored ciphertext — never returns the ciphertext. */
+/**
+ * Which secret keys have a stored ciphertext — never returns the ciphertext.
+ * Built from `SMS_SECRET_KEYS` so adding a provider's secret key can't silently
+ * leave it out of the "stored" flags (the UI would then look empty and an admin
+ * would re-enter it).
+ */
 const secretsSet = (
   stored: Record<string, string> | null | undefined,
 ): Record<(typeof SMS_SECRET_KEYS)[number], boolean> => {
   const s = stored ?? {};
-  return {
-    authToken: typeof s.authToken === "string" && s.authToken.length > 0,
-    secretAccessKey: typeof s.secretAccessKey === "string" && s.secretAccessKey.length > 0,
-  };
+  const out = {} as Record<(typeof SMS_SECRET_KEYS)[number], boolean>;
+  for (const k of SMS_SECRET_KEYS) {
+    const v = s[k];
+    out[k] = typeof v === "string" && v.length > 0;
+  }
+  return out;
 };
 
 const tags = ["sms-config"];

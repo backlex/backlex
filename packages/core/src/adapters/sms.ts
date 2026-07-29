@@ -9,7 +9,7 @@
  * no composite SMS adapter; a config resolves to a single leaf.
  */
 
-export type SMSProvider = "twilio" | "sns" | "console";
+export type SMSProvider = "twilio" | "sns" | "netgsm" | "iletimerkezi" | "console";
 
 export interface SMSMessage {
   /** Target phone numbers in E.164 format, e.g. "+14155552671". */

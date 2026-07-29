@@ -66,6 +66,8 @@ const ICONS: Record<string, string> = {
   jira: "M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.001 1.001 0 0 0 23.013 0Z",
   algolia: "M12 0C5.445 0 .103 5.285.01 11.817c-.097 6.634 5.285 12.131 11.92 12.17a11.91 11.91 0 0 0 5.775-1.443.281.281 0 0 0 .052-.457l-1.122-.994a.79.79 0 0 0-.833-.14 9.693 9.693 0 0 1-3.923.77c-5.36-.067-9.692-4.527-9.607-9.888.084-5.293 4.417-9.573 9.73-9.573h9.73v17.296l-5.522-4.907a.407.407 0 0 0-.596.063 4.52 4.52 0 0 1-3.934 1.793 4.538 4.538 0 0 1-4.192-4.168 4.53 4.53 0 0 1 4.512-4.872 4.532 4.532 0 0 1 4.509 4.126c.018.205.11.397.265.533l1.438 1.275a.28.28 0 0 0 .462-.158 6.82 6.82 0 0 0 .099-1.725c-.232-3.376-2.966-6.092-6.345-6.3-3.873-.24-7.11 2.79-7.214 6.588-.1 3.7 2.933 6.892 6.634 6.974a6.75 6.75 0 0 0 4.136-1.294l7.212 6.394a.48.48 0 0 0 .797-.36V.456A.456.456 0 0 0 23.54 0Z",
   meilisearch: "m6.505 18.998 4.434-11.345a4.168 4.168 0 0 1 3.882-2.651h2.674l-4.434 11.345a4.169 4.169 0 0 1-3.883 2.651H6.505Zm6.505 0 4.434-11.345a4.169 4.169 0 0 1 3.883-2.651H24l-4.434 11.345a4.168 4.168 0 0 1-3.882 2.651H13.01Zm-13.01 0L4.434 7.653a4.168 4.168 0 0 1 3.882-2.651h2.674L6.556 16.347a4.169 4.169 0 0 1-3.883 2.651H0Z",
+  typesense: "M12 0 1.607 6v12L12 24l10.393-6V6L12 0Zm0 2.31 8.393 4.845v9.69L12 21.69 3.607 16.845V7.155L12 2.31Zm0 3.267a2.077 2.077 0 1 0 0 4.154 2.077 2.077 0 0 0 0-4.154Zm-3.75 5.538v1.731h1.442v4.037c0 1.36 1.014 2.135 2.481 2.135.567 0 1.128-.086 1.577-.23v-1.788a3.51 3.51 0 0 1-.98.144c-.66 0-1.096-.288-1.096-.98v-3.318h2.076v-1.73H11.674V8.712l-2.058.605v1.798H8.25Z",
+  elasticsearch: "M13.394 0C10.07 0 7.147 1.699 5.44 4.276h13.531A6.61 6.61 0 0 0 13.394 0ZM4.298 6.276a10.53 10.53 0 0 0-.548 2.752h15.727a3.377 3.377 0 0 0 0-2.752H4.298Zm-.548 6.696c.062.945.25 1.867.548 2.752h15.179a3.377 3.377 0 0 0 0-2.752H3.75Zm1.69 6.752A10.588 10.588 0 0 0 13.394 24a6.61 6.61 0 0 0 5.577-4.276H5.44Z",
 };
 const SI = ({ d }: { d: string }) => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -91,6 +93,10 @@ const BRANDS: Record<string, Brand> = {
   jira: { name: "Jira", mark: <SI d={ICONS.jira!} />, markBg: "#0052CC" },
   algolia: { name: "Algolia", mark: <SI d={ICONS.algolia!} />, markBg: "#003DFF" },
   meilisearch: { name: "Meilisearch", mark: <SI d={ICONS.meilisearch!} />, markBg: "#FF5CAA" },
+  typesense: { name: "Typesense", mark: <SI d={ICONS.typesense!} />, markBg: "#D52B7C" },
+  // One card covers both engines — OpenSearch is an Elasticsearch 7.x fork and
+  // speaks the same index/update API, so the adapter and the credentials match.
+  elasticsearch: { name: "Elasticsearch / OpenSearch", mark: <SI d={ICONS.elasticsearch!} />, markBg: "#005571" },
 };
 const brandFor = (kind: string): Brand => BRANDS[kind] ?? { name: kind, mark: kind.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };
 
@@ -151,6 +157,10 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
         return t`Sync records to an Algolia index on data events.`;
       case "meilisearch":
         return t`Sync records to a Meilisearch index on data events.`;
+      case "typesense":
+        return t`Sync records to a Typesense collection on data events.`;
+      case "elasticsearch":
+        return t`Sync records to an Elasticsearch or OpenSearch index on data events.`;
       default:
         return "";
     }

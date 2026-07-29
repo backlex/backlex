@@ -5,6 +5,7 @@
  * that matters most: no surface may hand back a decrypted credential.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { INTEGRATION_KINDS } from "@backlex/integrations";
 import { createClient } from "../../../packages/client/src/index";
 import { integrationsTools } from "../src/server/mcp/tools/integrations";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
@@ -35,7 +36,13 @@ describe("integrations — GraphQL surface", () => {
   test("catalog → connect → integrations → deliveries → resume → disconnect", async () => {
     const cat = await gql(`{ integrationCatalog { id label category capabilities } }`);
     expect(cat.errors).toBeUndefined();
-    expect(cat.data?.integrationCatalog.length).toBe(15);
+    // Derived from the registry, not a literal: the point is that GraphQL
+    // exposes the WHOLE catalog, and a hard-coded count only means "someone
+    // added a provider" every time one is added.
+    expect(cat.data?.integrationCatalog.length).toBe(INTEGRATION_KINDS.length);
+    expect((cat.data?.integrationCatalog as { id: string }[]).map((p) => p.id).sort()).toEqual(
+      [...INTEGRATION_KINDS].sort(),
+    );
 
     const made = await gql(
       `mutation($k:String!,$c:JSON){ connectIntegration(kind:$k, config:$c){ id kind status consecutiveFailures } }`,

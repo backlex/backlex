@@ -12,6 +12,7 @@ import type { IntegrationProvider } from "../provider";
 import { algolia } from "./algolia";
 import { datadog } from "./datadog";
 import { discord } from "./discord";
+import { elasticsearch } from "./elasticsearch";
 import { github } from "./github";
 import { jira } from "./jira";
 import { linear } from "./linear";
@@ -24,6 +25,7 @@ import { sentry } from "./sentry";
 import { slack } from "./slack";
 import { teams } from "./teams";
 import { telegram } from "./telegram";
+import { typesense } from "./typesense";
 
 export const INTEGRATION_KINDS = [
   // chat
@@ -46,6 +48,8 @@ export const INTEGRATION_KINDS = [
   // search sync
   "algolia",
   "meilisearch",
+  "typesense",
+  "elasticsearch",
 ] as const;
 
 export type IntegrationKind = (typeof INTEGRATION_KINDS)[number];
@@ -66,6 +70,8 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   jira,
   algolia,
   meilisearch,
+  typesense,
+  elasticsearch,
 };
 
 /** Look a provider up by id; `undefined` for anything unregistered. */

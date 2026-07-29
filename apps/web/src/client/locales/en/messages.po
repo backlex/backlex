@@ -12984,8 +12984,16 @@ msgid "Sync records to a Meilisearch index on data events."
 msgstr "Sync records to a Meilisearch index on data events."
 
 #: src/client/admin/pages/integrations.tsx
+msgid "Sync records to a Typesense collection on data events."
+msgstr "Sync records to a Typesense collection on data events."
+
+#: src/client/admin/pages/integrations.tsx
 msgid "Sync records to an Algolia index on data events."
 msgstr "Sync records to an Algolia index on data events."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Sync records to an Elasticsearch or OpenSearch index on data events."
+msgstr "Sync records to an Elasticsearch or OpenSearch index on data events."
 
 #. placeholder {0}: res.error
 #: src/client/admin/pages/payments.tsx

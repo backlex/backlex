@@ -20,7 +20,7 @@ receiving endpoint and backlex signs what it sends.
 
 ## Providers
 
-Fifteen providers ship in the registry, grouped by category:
+Seventeen providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -28,7 +28,7 @@ Fifteen providers ship in the registry, grouped by category:
 | observability | Datadog, Sentry, PagerDuty, Opsgenie |
 | analytics | PostHog, Segment |
 | issue tracking | GitHub, Linear, Jira |
-| search | Algolia, Meilisearch |
+| search | Algolia, Meilisearch, Typesense, Elasticsearch / OpenSearch |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -71,7 +71,7 @@ For a record event, the provider receives a one-line human `text` and a machine
 ```
 
 Chat providers render `text`; structured providers (GitHub dispatch, Algolia,
-Meilisearch, Segment) consume `payload`. **Field values are never included** —
+Meilisearch, Typesense, Elasticsearch, Segment) consume `payload`. **Field values are never included** —
 the payload carries the collection, the action and the record id, so a chat
 channel never becomes an unaudited copy of your data.
 

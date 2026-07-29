@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import { INTEGRATION_FIELDS, INTEGRATION_KINDS } from "@backlex/integrations";
+import { INTEGRATION_CATALOG, INTEGRATION_FIELDS, INTEGRATION_KINDS } from "@backlex/integrations";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { connectIntegration, disconnectIntegration, listIntegrations } from "../services/integrations";
@@ -22,7 +22,20 @@ const IntegrationView = z
   .openapi("Integration");
 
 const CatalogView = z
-  .object({ kinds: z.array(z.string()), fields: z.record(z.string(), z.unknown()) })
+  .object({
+    kinds: z.array(z.string()),
+    fields: z.record(z.string(), z.unknown()),
+    /** Registry metadata — lets the connect UI group providers by category
+     *  and hide the ones that can't do what the caller is looking for. */
+    providers: z.array(
+      z.object({
+        id: z.string(),
+        label: z.string(),
+        category: z.string(),
+        capabilities: z.array(z.string()),
+      }),
+    ),
+  })
   .openapi("IntegrationCatalog");
 
 const IntegrationInput = z
@@ -72,7 +85,19 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ...errorResponses,
       },
     }),
-    (c) => c.json({ data: { kinds: [...INTEGRATION_KINDS], fields: INTEGRATION_FIELDS } }),
+    (c) =>
+      c.json({
+        data: {
+          kinds: [...INTEGRATION_KINDS],
+          fields: INTEGRATION_FIELDS,
+          providers: INTEGRATION_CATALOG.map(({ id, label, category, capabilities }) => ({
+            id,
+            label,
+            category,
+            capabilities,
+          })),
+        },
+      }),
   )
   .openapi(
     createRoute({

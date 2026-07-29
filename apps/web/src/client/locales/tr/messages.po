@@ -73,7 +73,12 @@ msgstr " Zorunlu."
 msgid " Set the target collection in the field settings."
 msgstr " Hedef koleksiyonu alan ayarlarından belirleyin."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "— default (email) —"
+msgstr "— varsayılan (email) —"
+
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "— none —"
 msgstr "— yok —"
@@ -968,6 +973,10 @@ msgstr "<0>{collection}</0> koleksiyonundan bir kaydın salt okunur görünümü
 msgid "A room needs at least one agent to talk to. Create one on the Agents page first."
 msgstr "Bir odanın konuşacağı en az bir agent gerekir. Önce Agents sayfasından bir tane oluşturun."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "A secret is stored and cannot be read back. Leave this blank to keep the current secret."
+msgstr "Kayıtlı bir gizli anahtar var ve geri okunamaz. Mevcut gizli anahtarı korumak için burayı boş bırakın."
+
 #: src/client/pages/magic-link.tsx
 msgid "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
 msgstr "İmzalı bir bağlantı gelen kutunuza gönderilecek. Tek kullanımlık, 15 dakika içinde sona erer."
@@ -1058,6 +1067,7 @@ msgstr "ACL"
 msgid "Acme Inc."
 msgstr "Acme A.Ş."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Acme Okta"
 msgstr "Acme Okta"
@@ -1301,6 +1311,11 @@ msgid "Add next step"
 msgstr "Sonraki adımı ekle"
 
 #: src/client/admin/parity/auth-settings.tsx
+msgid "Add OIDC"
+msgstr "OIDC ekle"
+
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Add OIDC provider"
 msgstr "OIDC sağlayıcı ekle"
 
@@ -1309,6 +1324,7 @@ msgid "Add passkey"
 msgstr "Geçiş anahtarı ekle"
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Add provider"
 msgstr "Sağlayıcı ekle"
@@ -1443,6 +1459,10 @@ msgstr "Mevcut tabloyu benimse"
 #: src/client/admin/collections-index.tsx
 msgid "Adopted \"{slug}\". Reloading…"
 msgstr "\"{slug}\" benimsendi. Yeniden yükleniyor…"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Advanced"
+msgstr "Gelişmiş"
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Advanced — cross-field rule"
@@ -1981,6 +2001,10 @@ msgstr "Yazar"
 msgid "Authorization request not found"
 msgstr "Yetkilendirme isteği bulunamadı"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Authorization URL"
+msgstr "Yetkilendirme URL’si"
+
 #: src/client/pages/oauth-consent.tsx
 msgid "Authorize"
 msgstr "Yetkilendir"
@@ -2383,6 +2407,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/admin/parity/translations.tsx
@@ -2676,12 +2701,17 @@ msgid "Click to edit"
 msgstr "Düzenlemek için tıklayın"
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Client ID"
 msgstr "Client ID"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Client ID <0>(optional)</0>"
 msgstr "Client ID <0>(isteğe bağlı)</0>"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Client secret"
+msgstr "İstemci gizli anahtarı"
 
 #. placeholder {0}: provider.hasSecret && <span className="text-muted-foreground">· stored, leave blank to keep</span>
 #: src/client/admin/parity/auth-settings.tsx
@@ -2991,6 +3021,10 @@ msgstr "{0} yapılandır"
 #~ msgid "configure directory under Authentication"
 #~ msgstr "Kimlik Doğrulama altında dizini yapılandırın"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Configure OIDC provider"
+msgstr "OIDC sağlayıcısını yapılandır"
+
 #: src/client/admin/pages/users.tsx
 #~ msgid "configure providers under Authentication"
 #~ msgstr "Kimlik Doğrulama altında sağlayıcıları yapılandırın"
@@ -3185,6 +3219,7 @@ msgstr "Panoya kopyalandı."
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Copied."
 msgstr "Kopyalandı."
@@ -3205,6 +3240,7 @@ msgstr "kopyala"
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/components/mcp-key-modal.tsx
@@ -3686,6 +3722,14 @@ msgstr "Özel renk"
 msgid "Custom date…"
 msgstr "Özel tarih…"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Custom email claim"
+msgstr "Özel e-posta claim’i"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Custom groups claim"
+msgstr "Özel gruplar claim’i"
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "Custom headers"
 msgstr "Özel başlıklar"
@@ -3711,6 +3755,7 @@ msgid "custom rule"
 msgstr "özel kural"
 
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Custom…"
 msgstr "Özel…"
 
@@ -3960,6 +4005,10 @@ msgstr "Fonksiyon silinsin mi?"
 msgid "Delete group (collections become ungrouped)"
 msgstr "Grubu sil (koleksiyonlar gruplanmamış olur)"
 
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Delete OIDC provider?"
+msgstr "OIDC sağlayıcısı silinsin mi?"
+
 #: src/client/admin/parity/app-orgs.tsx
 msgid "Delete organization"
 msgstr "Organizasyonu sil"
@@ -4205,6 +4254,10 @@ msgstr "Bağlantıyı kes"
 msgid "Disconnecting…"
 msgstr "Bağlantı kesiliyor…"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Discovery URL"
+msgstr "Keşif (discovery) URL’si"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Discovery URL <0>(optional)</0>"
 msgstr "Keşif URL'si <0>(isteğe bağlı)</0>"
@@ -4236,6 +4289,7 @@ msgstr "Görüntü etiketi. Depolama anahtarı <0>{0}</0> olarak kalır."
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Display name"
 msgstr "Görünen ad"
@@ -4640,6 +4694,10 @@ msgstr "E-posta özniteliği"
 msgid "Email changes aren't supported yet — contact an admin if you need to switch addresses."
 msgstr "E-posta değişikliği henüz desteklenmiyor — adres değiştirmeniz gerekiyorsa bir admin ile iletişime geçin."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Email claim"
+msgstr "E-posta claim’i"
+
 #: src/client/pages/sign-up.tsx
 msgid "Email is the only required field. Roles assigned post-signup — first user gets admin."
 msgstr "E-posta tek zorunlu alandır. Roller kayıt sonrası atanır — ilk kullanıcı admin olur."
@@ -4762,6 +4820,7 @@ msgstr "etkin"
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Enabled"
 msgstr "Etkin"
@@ -4773,6 +4832,10 @@ msgstr "etkin ama yapılandırılmadı — giriş ekranında görünmez"
 #: src/client/admin/parity/insights.tsx
 msgid "Enabling…"
 msgstr "Etkinleştiriliyor…"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Encrypted at rest; it is never returned by the API."
+msgstr "Saklanırken şifrelenir; API tarafından hiçbir zaman döndürülmez."
 
 #: src/client/admin/parity/app-users.tsx
 msgid "End-users"
@@ -4789,6 +4852,10 @@ msgstr "Bu çalışma alanı üzerinde oluşturulan uygulamanın son kullanıcı
 #: src/client/admin/parity/app-users.tsx
 msgid "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
 msgstr "Bu workspace üstüne kurulan uygulamanın son kullanıcıları — panel <0>Ekip</0>'inden (admin/kontrol-düzlemi operatörleri) ayrı bir havuz. Bu workspace'in kendi auth uç noktasından kaydolurlar (bkz. <1>Authentication → Workspace auth API</1>)."
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "End-users who signed in through it keep their accounts, but lose this sign-in route."
+msgstr "Bu yolla giriş yapmış son kullanıcılar hesaplarını korur, ancak bu giriş yolunu kaybeder."
 
 #: src/client/admin/pages/forms.tsx
 msgid "ending"
@@ -4810,6 +4877,10 @@ msgstr "Uç nokta URL'si"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Endpoints"
 msgstr "Uç noktalar"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Endpoints fetched."
+msgstr "Uç noktalar alındı."
 
 #: src/client/admin/pages/usage.tsx
 msgid "Enforced even where the global API limiter is off."
@@ -5273,6 +5344,10 @@ msgstr "Şubat"
 msgid "Fetch & parse"
 msgstr "Getir ve ayrıştır"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Fetch endpoints"
+msgstr "Uç noktaları getir"
+
 #: src/client/admin/pages/extensions.tsx
 msgid "Fetched from the npm registry. The package must ship a backlex-extension.json manifest at its root."
 msgstr "npm kayıt deposundan indirilir. Paketin kökünde bir backlex-extension.json manifestosu bulunmalıdır."
@@ -5281,6 +5356,7 @@ msgstr "npm kayıt deposundan indirilir. Paketin kökünde bir backlex-extension
 msgid "Fetching subfields…"
 msgstr "Alt alanlar getiriliyor…"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Fetching…"
 msgstr "Getiriliyor…"
@@ -5386,6 +5462,7 @@ msgstr "Dosyalar tarayıcınızda metin olarak okunur ve sunucuya gönderilir. 1
 msgid "fill down"
 msgstr "aşağı doldur"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Fill the required fields."
 msgstr "Zorunlu alanları doldurun."
@@ -5904,6 +5981,10 @@ msgstr "Binlik ayır (1.234)"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Groups"
 msgstr "Gruplar"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Groups claim"
+msgstr "Gruplar claim’i"
 
 #: src/client/admin/collections-index.tsx
 msgid "Groups organize the Collections page and the sidebar. Rearrange them anytime with Edit layout."
@@ -6480,6 +6561,10 @@ msgstr "null"
 msgid "ISO or $now"
 msgstr "ISO veya $now"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Issuer origin works too — the well-known path is appended."
+msgstr "Yalnızca issuer adresi de olur — well-known yolu otomatik eklenir."
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Istanbul, Turkey"
 msgstr "İstanbul, Türkiye"
@@ -6940,6 +7025,10 @@ msgstr "Tüm yerel ayarlarda boş değerlerle anahtar oluşturmak için boş bı
 msgid "leave blank to keep current"
 msgstr "mevcut değeri korumak için boş bırakın"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "leave blank to keep the current secret"
+msgstr "mevcut gizli anahtarı korumak için boş bırakın"
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Leave blank to keep the stored cert."
 msgstr "Saklanan sertifikayı korumak için boş bırakın."
@@ -7038,6 +7127,7 @@ msgstr "Bu roldeki kullanıcılar adına bir yapay zekâ ajanının hangi MCP ar
 msgid "Link"
 msgstr "Bağla"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Link by verified email"
 msgstr "Doğrulanmış e-postayla bağla"
@@ -7223,6 +7313,10 @@ msgstr "Uzun ömürlü anahtarlar hasar alanını genişletir. İşe yarayan en 
 #: src/client/admin/account-page.tsx
 msgid "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
 msgstr "Kodlarınızı kaybettiniz veya azaldı mı? Yeni bir set oluşturun — eski kodlar hemen çalışmayı durdurur."
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Lowercase id used in the sign-in call and the redirect URI below."
+msgstr "Giriş çağrısında ve aşağıdaki yönlendirme URI’sinde kullanılan küçük harfli kimlik."
 
 #: src/client/admin/pages/functions.tsx
 msgid "Lowercase letters, digits, _ or -; must start with a letter."
@@ -7634,6 +7728,10 @@ msgstr "göndermek için kabul edilmeli"
 #: src/client/admin/collection-settings.tsx
 msgid "Must be an absolute URL (https://…)"
 msgstr "Mutlak bir URL olmalı (https://…)"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Must be an https URL."
+msgstr "https bir URL olmalı."
 
 #: src/client/admin/parity/insights.tsx
 msgid "Must be an integer or number column."
@@ -8054,6 +8152,10 @@ msgstr "Henüz seçenek yok — \"Ekle\"ye tıklayın. Değer, sütunun sakladı
 msgid "No choices yet. Click \"Add choice\" — value is what the column stores."
 msgstr "Henüz seçenek yok. \"Seçenek ekle\"ye tıklayın — değer, sütunun sakladığı şeydir."
 
+#: src/client/admin/parity/auth-settings.tsx
+msgid "No client secret stored — login will fail."
+msgstr "Kayıtlı istemci gizli anahtarı yok — giriş başarısız olacak."
+
 #: src/client/admin/parity/insights.tsx
 msgid "No collections"
 msgstr "Koleksiyon yok"
@@ -8423,6 +8525,10 @@ msgstr "Mutasyon yok."
 #: src/client/admin/parity/insights.tsx
 msgid "No numeric columns"
 msgstr "Sayısal sütun yok"
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "No OIDC providers configured. Add one to let this workspace's end-users sign in with Okta, Auth0, Keycloak, Entra ID and friends."
+msgstr "Yapılandırılmış OIDC sağlayıcısı yok. Bu çalışma alanının son kullanıcıları Okta, Auth0, Keycloak, Entra ID ve benzerleriyle giriş yapabilsin diye bir tane ekleyin."
 
 #: src/client/admin/parity/app-orgs.tsx
 msgid "No organizations yet — create one here, or let end-users start their own from your app."
@@ -8859,9 +8965,14 @@ msgstr "kapalı"
 msgid "Off"
 msgstr "Kapalı"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Off keeps the provider configured but hidden from sign-in."
 msgstr "Kapalı, sağlayıcıyı yapılandırılmış tutar ancak girişte gizler."
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "OIDC / OAuth2 SSO"
+msgstr "OIDC / OAuth2 SSO"
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/extensions.tsx
@@ -9027,6 +9138,10 @@ msgstr "OpenAPI"
 msgid "OpenAPI spec refreshed."
 msgstr "OpenAPI spec yenilendi."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "OpenID Connect / OAuth2 sign-in for this workspace's end-users."
+msgstr "Bu çalışma alanının son kullanıcıları için OpenID Connect / OAuth2 girişi."
+
 #: src/client/admin/pages/traces.tsx
 msgid "Operation"
 msgstr "İşlem"
@@ -9050,6 +9165,7 @@ msgstr "Operasyon botları — yönetici rolü gerekli."
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/payments.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "optional"
 msgstr "isteğe bağlı"
 
@@ -9279,6 +9395,7 @@ msgid "Paste an authored schema (a JSON array of collections, e.g. from <0>backl
 msgstr "Fark alıp uygulayabileceğiniz bir anlık görüntü olarak saklamak için hazırlanmış bir şemayı (koleksiyonların JSON dizisi, örn. <0>backlex collections export-schema</0> çıktısı) yapıştırın."
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "paste from the provider"
 msgstr "sağlayıcıdan yapıştırın"
 
@@ -9714,6 +9831,10 @@ msgstr "Platform planı (env) tarafından sabitlendi — sabitlenen değer geçe
 msgid "Pipe collection events to Slack, your API, or any HTTPS endpoint."
 msgstr "Koleksiyon olaylarını Slack'e, API'nize veya herhangi bir HTTPS uç noktasına iletin."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "PKCE"
+msgstr "PKCE"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Placeholder"
 msgstr "Yer tutucu"
@@ -9968,6 +10089,7 @@ msgstr "sağlayıcı"
 msgid "Provider"
 msgstr "Sağlayıcı"
 
+#: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Provider created."
 msgstr "Sağlayıcı oluşturuldu."
@@ -9981,6 +10103,7 @@ msgstr "Sağlayıcı silindi."
 msgid "Provider discovery"
 msgstr "Sağlayıcı keşfi"
 
+#: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Provider saved."
 msgstr "Sağlayıcı kaydedildi."
@@ -10268,6 +10391,7 @@ msgstr "Okuma süresi"
 msgid "Readonly"
 msgstr "Salt okunur"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Ready to create."
 msgstr "Oluşturmaya hazır."
@@ -10276,6 +10400,7 @@ msgstr "Oluşturmaya hazır."
 msgid "Ready to register <0>{slugClean}</0>"
 msgstr "<0>{slugClean}</0> kaydedilmeye hazır"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Ready to save."
 msgstr "Kaydetmeye hazır."
@@ -10355,6 +10480,10 @@ msgstr "Teslimat loguna yazılır. Varsayılan <0>flow.run</0>."
 msgid "Redelivered."
 msgstr "Yeniden teslim edildi."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Redirect URI"
+msgstr "Yönlendirme URI’si"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Redirect URL"
 msgstr "Yönlendirme URL'si"
@@ -10430,6 +10559,10 @@ msgstr "Fiziksel bir tabloyu backlex koleksiyonu olarak kaydet. Tabloda hiç DDL
 #: src/client/admin/collections-index.tsx
 msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
 msgstr "Veritabanınızda zaten var olan bir tabloyu kaydet. Tabloda hiç DDL çalıştırılmaz — backlex yalnızca kendi meta verilerini yazar."
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "register this with the IdP"
+msgstr "bunu IdP tarafına kaydedin"
 
 #: src/client/admin/pages/extensions.tsx
 msgid "Reinstall / upgrade"
@@ -11025,6 +11158,7 @@ msgstr "Anahtar iptal ediliyor"
 msgid "Revoking…"
 msgstr "İptal ediliyor…"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Risk: a hostile IdP can take over any local account that shares an email. Off by default."
 msgstr "Risk: Düşmanca bir IdP, e-postayı paylaşan herhangi bir yerel hesabı ele geçirebilir. Varsayılan olarak kapalı."
@@ -11353,6 +11487,7 @@ msgstr "Cmt"
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/parity/email-templates.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/sheet.tsx
@@ -11585,6 +11720,10 @@ msgstr "Gömmeyi bir role kapsayın; böylece yalnızca o rolün okuyabildiğini
 #: src/client/pages/api-keys.tsx
 msgid "Scope to role"
 msgstr "Role göre kapsama al"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Scopes"
+msgstr "Kapsamlar"
 
 #: src/client/admin/collection-settings.tsx
 msgid "scoping & lifecycle"
@@ -11841,6 +11980,10 @@ msgstr "anlamsal embedding'ler"
 msgid "Send"
 msgstr "Gönder"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Send a code challenge on the authorize request. Leave on unless the IdP rejects it."
+msgstr "Yetkilendirme isteğinde code challenge gönderir. IdP reddetmediği sürece açık bırakın."
+
 #: src/client/pages/sign-in.tsx
 msgid "Send a magic link instead"
 msgstr "Bunun yerine sihirli bağlantı gönder"
@@ -12021,6 +12164,10 @@ msgstr "ayarlandı"
 #: src/client/pages/sign-up.tsx
 msgid "Set <0>openSignup</0> to <1>true</1> in admin → Auth Settings to re-open."
 msgstr "Yeniden açmak için yönetici → Auth Ayarları'nda <0>openSignup</0> değerini <1>true</1> olarak ayarlayın."
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Set a discovery URL, or both the authorization and token URLs."
+msgstr "Bir keşif URL’si ya da hem yetkilendirme hem token URL’sini girin."
 
 #: src/client/pages/reset-password.tsx
 msgid "Set a new password for your account — at least 8 characters."
@@ -12496,6 +12643,7 @@ msgstr "En yavaş uç noktalar"
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/app-orgs.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Slug"
 msgstr "Slug"
@@ -12619,6 +12767,15 @@ msgstr "SP varlık ID'si"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "SP URLs <0>(paste into the IdP console)</0>"
 msgstr "SP URL'leri <0>(IdP konsoluna yapıştırın)</0>"
+
+#. placeholder {0}: discoveredScopes.join(", ")
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Space-separated. Advertised by the IdP: {0}"
+msgstr "Boşlukla ayrılır. IdP’nin bildirdikleri: {0}"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Space-separated. Defaults to openid profile email."
+msgstr "Boşlukla ayrılır. Varsayılan: openid profile email."
 
 #: src/client/admin/pages/traces.tsx
 msgid "span"
@@ -12793,6 +12950,10 @@ msgstr "Her dil için ayrı bir değer çeviri yan tablosunda saklanır. Tek bir
 #: src/client/admin/edit-field.tsx
 msgid "Store one value per language in the translations sidecar. Turning this on for a field that already has data does not move existing values — backfill them afterwards."
 msgstr "Her dil için ayrı bir değer çeviri yan tablosunda saklanır. Verisi olan bir alanda bunu açmak mevcut değerleri taşımaz — sonrasında geri doldurun."
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "stored"
+msgstr "kayıtlı"
 
 #: src/client/admin/item-form.tsx
 msgid "Stored as a one-way hash — it's never shown again. Leave blank to keep the current value."
@@ -13650,6 +13811,10 @@ msgstr "Temayı değiştir"
 msgid "Toggle tools below to edit the allowlist."
 msgstr "İzin listesini düzenlemek için aşağıdaki araçları açıp kapatın."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Token URL"
+msgstr "Token URL’si"
+
 #: src/client/admin/pages/chat.tsx
 msgid "tokens"
 msgstr "token"
@@ -14326,6 +14491,10 @@ msgstr "Kullanıcı filtresi"
 msgid "User-Agent"
 msgstr "User-Agent"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "UserInfo URL"
+msgstr "UserInfo URL’si"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Username"
 msgstr "Kullanıcı adı"
@@ -14686,6 +14855,10 @@ msgstr "Gerçek liste isteklerinin hangi kolonlarda filtreleyip sıraladığı �
 #: src/client/admin/collection-settings.tsx
 msgid "which field the board groups cards by"
 msgstr "panonun kartları hangi alana göre grupladığı"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Which ID-token claim carries the user's email address."
+msgstr "Kullanıcının e-posta adresini hangi ID-token claim’inin taşıdığı."
 
 #: src/client/admin/pages/_agents-shared.tsx
 msgid "Whichever agent fits best"

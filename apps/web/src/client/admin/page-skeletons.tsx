@@ -733,7 +733,8 @@ function AuthSettingsSkeletonImpl() {
         <ListCardSkeleton rows={5} />
         <CardSkeleton lines={7} />
       </div>
-      {/* Full-width SAML 2.0 SSO + LDAP cards. */}
+      {/* Full-width SAML 2.0 SSO + OIDC / OAuth2 SSO + LDAP cards. */}
+      <ListCardSkeleton rows={3} />
       <ListCardSkeleton rows={3} />
       <ListCardSkeleton rows={3} />
     </div>

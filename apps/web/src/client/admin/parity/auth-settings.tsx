@@ -21,15 +21,19 @@ import {
   tenantsApi,
   rolesApi,
   samlAdminApi,
+  oidcAdminApi,
   type ApiAuthConfig,
+  type ApiOidcProvider,
   type ApiSamlProvider,
   type ApiSession,
   type ApiTenant,
+  type OidcProviderCreate,
 } from "../api";
 import { ConfirmDialog } from "../sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import { apiOrigin, copyText, fmtRelative } from "./_shared";
 import { SamlProviderDialog } from "./saml-provider-dialog";
+import { OidcProviderDialog } from "./oidc-provider-dialog";
 import { LdapConfigCard } from "./ldap-config-card";
 import { shouldWarnTwoFactorBypass } from "./mfa-bypass";
 import { AuthSettingsSkeleton } from "../page-skeletons";
@@ -115,6 +119,11 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
   const [samlProviders, setSamlProviders] = useState<ApiSamlProvider[]>([]);
   const [samlDialog, setSamlDialog] = useState<{ mode: "create" } | { mode: "edit"; row: ApiSamlProvider } | null>(null);
   const [confirmRemoveSaml, setConfirmRemoveSaml] = useState<{ id: string } | null>(null);
+  // Generic OIDC / OAuth2 providers — the `oidc_providers` table, edited
+  // through OidcProviderDialog. Sibling of the SAML block above.
+  const [oidcProviders, setOidcProviders] = useState<ApiOidcProvider[]>([]);
+  const [oidcDialog, setOidcDialog] = useState<{ mode: "create" } | { mode: "edit"; row: ApiOidcProvider } | null>(null);
+  const [confirmRemoveOidc, setConfirmRemoveOidc] = useState<{ id: string } | null>(null);
   // Pending "enable a 2FA-bypassing provider" confirmation (magic / emailOtp).
   const [confirmBypass, setConfirmBypass] = useState<{ id: string } | null>(null);
   const [availableRoles, setAvailableRoles] = useState<{ id: string; name: string }[]>([]);
@@ -158,6 +167,16 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
     }
   };
 
+  const loadOidcProviders = async () => {
+    try {
+      const r = await oidcAdminApi.list();
+      setOidcProviders(r.data ?? []);
+    } catch {
+      // oidc_providers table may not be migrated yet — empty list is fine
+      setOidcProviders([]);
+    }
+  };
+
   const loadAvailableRoles = async () => {
     try {
       const r = await rolesApi.list();
@@ -194,7 +213,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
         pushToast?.((e as Error).message);
       }
       if (cancelled) return;
-      await Promise.allSettled([loadSamlProviders(), loadAvailableRoles()]);
+      await Promise.allSettled([loadSamlProviders(), loadOidcProviders(), loadAvailableRoles()]);
       if (!cancelled) setLoaded(true);
     })();
     return () => { cancelled = true; };
@@ -221,6 +240,79 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
     } catch (e) {
       pushToast?.((e as Error).message);
       setSamlProviders((arr) => arr.map((r) => (r.id === row.id ? { ...r, enabled: !enabled } : r)));
+    }
+  };
+
+  const doRemoveOidcProvider = async (id: string) => {
+    const snapshot = oidcProviders;
+    setOidcProviders((arr) => arr.filter((r) => r.id !== id));
+    try {
+      await oidcAdminApi.remove(id);
+      pushToast?.(t`Provider deleted.`);
+    } catch (e) {
+      setOidcProviders(snapshot);
+      pushToast?.((e as Error).message);
+    }
+  };
+
+  const toggleOidcEnabled = async (row: ApiOidcProvider, enabled: boolean) => {
+    setOidcProviders((arr) => arr.map((r) => (r.id === row.id ? { ...r, enabled } : r)));
+    try {
+      await oidcAdminApi.update(row.id, { enabled });
+    } catch (e) {
+      pushToast?.((e as Error).message);
+      setOidcProviders((arr) => arr.map((r) => (r.id === row.id ? { ...r, enabled: !enabled } : r)));
+    }
+  };
+
+  /**
+   * Create/update from the dialog. The row is applied to the list (and the
+   * dialog closed) before the request goes out, then reconciled with the
+   * server's own view; any failure restores the pre-mutation snapshot.
+   *
+   * The optimistic row deliberately derives `hasClientSecret` from "was one
+   * already stored, or did the admin just type one" — the API never echoes the
+   * secret back, so guessing `true` unconditionally would make an edit that
+   * failed server-side look credentialed.
+   */
+  const saveOidcProvider = async (body: OidcProviderCreate, existing: ApiOidcProvider | null) => {
+    const snapshot = oidcProviders;
+    setOidcDialog(null);
+    const optimistic: ApiOidcProvider = {
+      id: existing?.id ?? `optimistic-${body.slug}`,
+      name: body.name,
+      slug: body.slug,
+      clientId: body.clientId,
+      hasClientSecret: !!body.clientSecret || !!existing?.hasClientSecret,
+      discoveryUrl: body.discoveryUrl ?? null,
+      authorizationUrl: body.authorizationUrl ?? null,
+      tokenUrl: body.tokenUrl ?? null,
+      userInfoUrl: body.userInfoUrl ?? null,
+      scopes: body.scopes ?? existing?.scopes ?? ["openid", "profile", "email"],
+      pkce: body.pkce ?? true,
+      emailClaim: body.emailClaim ?? null,
+      groupsClaim: body.groupsClaim ?? null,
+      defaultRoleId: existing?.defaultRoleId ?? null,
+      groupsToRoles: existing?.groupsToRoles ?? null,
+      linkByVerifiedEmail: body.linkByVerifiedEmail ?? false,
+      enabled: body.enabled ?? true,
+      createdAt: existing?.createdAt ?? null,
+      updatedAt: null,
+    };
+    setOidcProviders((arr) =>
+      existing
+        ? arr.map((r) => (r.id === existing.id ? optimistic : r))
+        : [optimistic, ...arr],
+    );
+    try {
+      const res = existing
+        ? await oidcAdminApi.update(existing.id, body)
+        : await oidcAdminApi.create(body);
+      setOidcProviders((arr) => arr.map((r) => (r.id === optimistic.id ? res.data : r)));
+      pushToast?.(existing ? t`Provider saved.` : t`Provider created.`);
+    } catch (e) {
+      setOidcProviders(snapshot);
+      pushToast?.((e as Error).message);
     }
   };
 
@@ -480,6 +572,70 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
         ))}
       </Card>
 
+      <Card className="gap-0 py-0">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
+          <I.Key size={13} />
+          <span className="text-[13px] font-medium"><Trans>OIDC / OAuth2 SSO</Trans></span>
+          <span className="font-mono text-[11.5px] text-muted-foreground">
+            {oidcProviders.length} {oidcProviders.length === 1 ? t`provider` : t`providers`}
+          </span>
+          <div className="flex-1" />
+          <Button
+            size="sm"
+            variant="outline"
+            icon={I.Plus}
+            onClick={() => setOidcDialog({ mode: "create" })}
+          >
+            <Trans>Add OIDC</Trans>
+          </Button>
+        </div>
+        {oidcProviders.length === 0 && (
+          <div className="border-b border-border px-4 py-3.5 text-[12.5px] text-muted-foreground">
+            <Trans>No OIDC providers configured. Add one to let this workspace's end-users sign in with Okta, Auth0, Keycloak, Entra ID and friends.</Trans>
+          </div>
+        )}
+        {oidcProviders.map((p) => (
+          <div
+            key={p.id}
+            className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3.5 py-3 text-[13px] last:border-b-0 md:grid md:grid-cols-[24px_1fr_auto_auto_auto_auto] md:gap-3 md:py-[11px]"
+          >
+            <span className="shrink-0">
+              <I.Key size={13} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-medium">{p.name}</div>
+              <div className="truncate font-mono text-[11px] text-muted-foreground">
+                {p.slug} · {p.discoveryUrl || p.authorizationUrl || "—"}
+              </div>
+              {!p.hasClientSecret && (
+                <div className="text-[11px] text-destructive">
+                  <Trans>No client secret stored — login will fail.</Trans>
+                </div>
+              )}
+            </div>
+            <Badge variant="default">OIDC</Badge>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setOidcDialog({ mode: "edit", row: p })}
+            >
+              <Trans>Configure</Trans>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirmRemoveOidc({ id: p.id })}
+            >
+              <Trans>Delete</Trans>
+            </Button>
+            <Switch
+              checked={p.enabled}
+              onChange={(v) => void toggleOidcEnabled(p, v)}
+            />
+          </div>
+        ))}
+      </Card>
+
       <LdapConfigCard availableRoles={availableRoles} pushToast={pushToast} />
 
       {(() => {
@@ -622,6 +778,27 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
           }}
         />
       )}
+      {oidcDialog && (
+        <OidcProviderDialog
+          existing={oidcDialog.mode === "edit" ? oidcDialog.row : null}
+          workspaceSlug={workspace?.slug ?? ""}
+          pushToast={pushToast}
+          onClose={() => setOidcDialog(null)}
+          onSave={(body, existing) => void saveOidcProvider(body, existing)}
+        />
+      )}
+      <ConfirmDialog
+        open={!!confirmRemoveOidc}
+        title={t`Delete OIDC provider?`}
+        description={t`End-users who signed in through it keep their accounts, but lose this sign-in route.`}
+        actionLabel={t`Delete`}
+        destructive
+        onConfirm={async () => {
+          if (confirmRemoveOidc) await doRemoveOidcProvider(confirmRemoveOidc.id);
+          setConfirmRemoveOidc(null);
+        }}
+        onCancel={() => setConfirmRemoveOidc(null)}
+      />
       <ConfirmDialog
         open={!!confirmRemoveSaml}
         title={t`Delete SAML provider?`}

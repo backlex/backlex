@@ -73,7 +73,12 @@ msgstr " Required."
 msgid " Set the target collection in the field settings."
 msgstr " Set the target collection in the field settings."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "— default (email) —"
+msgstr "— default (email) —"
+
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "— none —"
 msgstr "— none —"
@@ -968,6 +973,10 @@ msgstr "A read-only view of one record from <0>{collection}</0>."
 msgid "A room needs at least one agent to talk to. Create one on the Agents page first."
 msgstr "A room needs at least one agent to talk to. Create one on the Agents page first."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "A secret is stored and cannot be read back. Leave this blank to keep the current secret."
+msgstr "A secret is stored and cannot be read back. Leave this blank to keep the current secret."
+
 #: src/client/pages/magic-link.tsx
 msgid "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
 msgstr "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
@@ -1058,6 +1067,7 @@ msgstr "ACL"
 msgid "Acme Inc."
 msgstr "Acme Inc."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Acme Okta"
 msgstr "Acme Okta"
@@ -1301,6 +1311,11 @@ msgid "Add next step"
 msgstr "Add next step"
 
 #: src/client/admin/parity/auth-settings.tsx
+msgid "Add OIDC"
+msgstr "Add OIDC"
+
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Add OIDC provider"
 msgstr "Add OIDC provider"
 
@@ -1309,6 +1324,7 @@ msgid "Add passkey"
 msgstr "Add passkey"
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Add provider"
 msgstr "Add provider"
@@ -1443,6 +1459,10 @@ msgstr "Adopt existing table"
 #: src/client/admin/collections-index.tsx
 msgid "Adopted \"{slug}\". Reloading…"
 msgstr "Adopted \"{slug}\". Reloading…"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Advanced"
+msgstr "Advanced"
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Advanced — cross-field rule"
@@ -1981,6 +2001,10 @@ msgstr "Author"
 msgid "Authorization request not found"
 msgstr "Authorization request not found"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Authorization URL"
+msgstr "Authorization URL"
+
 #: src/client/pages/oauth-consent.tsx
 msgid "Authorize"
 msgstr "Authorize"
@@ -2383,6 +2407,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/admin/parity/translations.tsx
@@ -2676,12 +2701,17 @@ msgid "Click to edit"
 msgstr "Click to edit"
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Client ID"
 msgstr "Client ID"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Client ID <0>(optional)</0>"
 msgstr "Client ID <0>(optional)</0>"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Client secret"
+msgstr "Client secret"
 
 #. placeholder {0}: provider.hasSecret && <span className="text-muted-foreground">· stored, leave blank to keep</span>
 #: src/client/admin/parity/auth-settings.tsx
@@ -2991,6 +3021,10 @@ msgstr "Configure {0}"
 #~ msgid "configure directory under Authentication"
 #~ msgstr "configure directory under Authentication"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Configure OIDC provider"
+msgstr "Configure OIDC provider"
+
 #: src/client/admin/pages/users.tsx
 #~ msgid "configure providers under Authentication"
 #~ msgstr "configure providers under Authentication"
@@ -3185,6 +3219,7 @@ msgstr "Copied to clipboard."
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Copied."
 msgstr "Copied."
@@ -3205,6 +3240,7 @@ msgstr "copy"
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/components/mcp-key-modal.tsx
@@ -3686,6 +3722,14 @@ msgstr "Custom color"
 msgid "Custom date…"
 msgstr "Custom date…"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Custom email claim"
+msgstr "Custom email claim"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Custom groups claim"
+msgstr "Custom groups claim"
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "Custom headers"
 msgstr "Custom headers"
@@ -3711,6 +3755,7 @@ msgid "custom rule"
 msgstr "custom rule"
 
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Custom…"
 msgstr "Custom…"
 
@@ -3960,6 +4005,10 @@ msgstr "Delete function?"
 msgid "Delete group (collections become ungrouped)"
 msgstr "Delete group (collections become ungrouped)"
 
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Delete OIDC provider?"
+msgstr "Delete OIDC provider?"
+
 #: src/client/admin/parity/app-orgs.tsx
 msgid "Delete organization"
 msgstr "Delete organization"
@@ -4205,6 +4254,10 @@ msgstr "Disconnect"
 msgid "Disconnecting…"
 msgstr "Disconnecting…"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Discovery URL"
+msgstr "Discovery URL"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Discovery URL <0>(optional)</0>"
 msgstr "Discovery URL <0>(optional)</0>"
@@ -4236,6 +4289,7 @@ msgstr "Display label. The storage key stays <0>{0}</0>."
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Display name"
 msgstr "Display name"
@@ -4640,6 +4694,10 @@ msgstr "Email attribute"
 msgid "Email changes aren't supported yet — contact an admin if you need to switch addresses."
 msgstr "Email changes aren't supported yet — contact an admin if you need to switch addresses."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Email claim"
+msgstr "Email claim"
+
 #: src/client/pages/sign-up.tsx
 msgid "Email is the only required field. Roles assigned post-signup — first user gets admin."
 msgstr "Email is the only required field. Roles assigned post-signup — first user gets admin."
@@ -4762,6 +4820,7 @@ msgstr "enabled"
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Enabled"
 msgstr "Enabled"
@@ -4773,6 +4832,10 @@ msgstr "enabled but not configured — won't appear on sign-in"
 #: src/client/admin/parity/insights.tsx
 msgid "Enabling…"
 msgstr "Enabling…"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Encrypted at rest; it is never returned by the API."
+msgstr "Encrypted at rest; it is never returned by the API."
 
 #: src/client/admin/parity/app-users.tsx
 msgid "End-users"
@@ -4789,6 +4852,10 @@ msgstr "End-users of the app built on this workspace sign in here — separate f
 #: src/client/admin/parity/app-users.tsx
 msgid "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
 msgstr "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "End-users who signed in through it keep their accounts, but lose this sign-in route."
+msgstr "End-users who signed in through it keep their accounts, but lose this sign-in route."
 
 #: src/client/admin/pages/forms.tsx
 msgid "ending"
@@ -4810,6 +4877,10 @@ msgstr "Endpoint URL"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Endpoints"
 msgstr "Endpoints"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Endpoints fetched."
+msgstr "Endpoints fetched."
 
 #: src/client/admin/pages/usage.tsx
 msgid "Enforced even where the global API limiter is off."
@@ -5273,6 +5344,10 @@ msgstr "February"
 msgid "Fetch & parse"
 msgstr "Fetch & parse"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Fetch endpoints"
+msgstr "Fetch endpoints"
+
 #: src/client/admin/pages/extensions.tsx
 msgid "Fetched from the npm registry. The package must ship a backlex-extension.json manifest at its root."
 msgstr "Fetched from the npm registry. The package must ship a backlex-extension.json manifest at its root."
@@ -5281,6 +5356,7 @@ msgstr "Fetched from the npm registry. The package must ship a backlex-extension
 msgid "Fetching subfields…"
 msgstr "Fetching subfields…"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Fetching…"
 msgstr "Fetching…"
@@ -5386,6 +5462,7 @@ msgstr "Files are read as text in your browser and sent to the server. Files ove
 msgid "fill down"
 msgstr "fill down"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Fill the required fields."
 msgstr "Fill the required fields."
@@ -5904,6 +5981,10 @@ msgstr "Group thousands (1,234)"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Groups"
 msgstr "Groups"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Groups claim"
+msgstr "Groups claim"
 
 #: src/client/admin/collections-index.tsx
 msgid "Groups organize the Collections page and the sidebar. Rearrange them anytime with Edit layout."
@@ -6480,6 +6561,10 @@ msgstr "is null"
 msgid "ISO or $now"
 msgstr "ISO or $now"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Issuer origin works too — the well-known path is appended."
+msgstr "Issuer origin works too — the well-known path is appended."
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Istanbul, Turkey"
 msgstr "Istanbul, Turkey"
@@ -6940,6 +7025,10 @@ msgstr "Leave blank to create the key with empty values across all locales."
 msgid "leave blank to keep current"
 msgstr "leave blank to keep current"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "leave blank to keep the current secret"
+msgstr "leave blank to keep the current secret"
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Leave blank to keep the stored cert."
 msgstr "Leave blank to keep the stored cert."
@@ -7038,6 +7127,7 @@ msgstr "Limits which MCP tools an AI agent may call on behalf of members of this
 msgid "Link"
 msgstr "Link"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Link by verified email"
 msgstr "Link by verified email"
@@ -7223,6 +7313,10 @@ msgstr "Long-lived keys widen blast radius. Prefer the shortest expiry that work
 #: src/client/admin/account-page.tsx
 msgid "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
 msgstr "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Lowercase id used in the sign-in call and the redirect URI below."
+msgstr "Lowercase id used in the sign-in call and the redirect URI below."
 
 #: src/client/admin/pages/functions.tsx
 msgid "Lowercase letters, digits, _ or -; must start with a letter."
@@ -7634,6 +7728,10 @@ msgstr "must be accepted to submit"
 #: src/client/admin/collection-settings.tsx
 msgid "Must be an absolute URL (https://…)"
 msgstr "Must be an absolute URL (https://…)"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Must be an https URL."
+msgstr "Must be an https URL."
 
 #: src/client/admin/parity/insights.tsx
 msgid "Must be an integer or number column."
@@ -8054,6 +8152,10 @@ msgstr "No choices yet — click \"Add\". The value is what the column stores."
 msgid "No choices yet. Click \"Add choice\" — value is what the column stores."
 msgstr "No choices yet. Click \"Add choice\" — value is what the column stores."
 
+#: src/client/admin/parity/auth-settings.tsx
+msgid "No client secret stored — login will fail."
+msgstr "No client secret stored — login will fail."
+
 #: src/client/admin/parity/insights.tsx
 msgid "No collections"
 msgstr "No collections"
@@ -8423,6 +8525,10 @@ msgstr "No mutations."
 #: src/client/admin/parity/insights.tsx
 msgid "No numeric columns"
 msgstr "No numeric columns"
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "No OIDC providers configured. Add one to let this workspace's end-users sign in with Okta, Auth0, Keycloak, Entra ID and friends."
+msgstr "No OIDC providers configured. Add one to let this workspace's end-users sign in with Okta, Auth0, Keycloak, Entra ID and friends."
 
 #: src/client/admin/parity/app-orgs.tsx
 msgid "No organizations yet — create one here, or let end-users start their own from your app."
@@ -8859,9 +8965,14 @@ msgstr "off"
 msgid "Off"
 msgstr "Off"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Off keeps the provider configured but hidden from sign-in."
 msgstr "Off keeps the provider configured but hidden from sign-in."
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "OIDC / OAuth2 SSO"
+msgstr "OIDC / OAuth2 SSO"
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/extensions.tsx
@@ -9027,6 +9138,10 @@ msgstr "OpenAPI"
 msgid "OpenAPI spec refreshed."
 msgstr "OpenAPI spec refreshed."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "OpenID Connect / OAuth2 sign-in for this workspace's end-users."
+msgstr "OpenID Connect / OAuth2 sign-in for this workspace's end-users."
+
 #: src/client/admin/pages/traces.tsx
 msgid "Operation"
 msgstr "Operation"
@@ -9050,6 +9165,7 @@ msgstr "Ops bots — admin role required."
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/payments.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "optional"
 msgstr "optional"
 
@@ -9279,6 +9395,7 @@ msgid "Paste an authored schema (a JSON array of collections, e.g. from <0>backl
 msgstr "Paste an authored schema (a JSON array of collections, e.g. from <0>backlex collections export-schema</0>) to store as a snapshot you can diff and apply."
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "paste from the provider"
 msgstr "paste from the provider"
 
@@ -9714,6 +9831,10 @@ msgstr "Pinned by the platform plan (env) — the pinned value wins."
 msgid "Pipe collection events to Slack, your API, or any HTTPS endpoint."
 msgstr "Pipe collection events to Slack, your API, or any HTTPS endpoint."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "PKCE"
+msgstr "PKCE"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Placeholder"
 msgstr "Placeholder"
@@ -9968,6 +10089,7 @@ msgstr "provider"
 msgid "Provider"
 msgstr "Provider"
 
+#: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Provider created."
 msgstr "Provider created."
@@ -9981,6 +10103,7 @@ msgstr "Provider deleted."
 msgid "Provider discovery"
 msgstr "Provider discovery"
 
+#: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Provider saved."
 msgstr "Provider saved."
@@ -10268,6 +10391,7 @@ msgstr "Reading time"
 msgid "Readonly"
 msgstr "Readonly"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Ready to create."
 msgstr "Ready to create."
@@ -10276,6 +10400,7 @@ msgstr "Ready to create."
 msgid "Ready to register <0>{slugClean}</0>"
 msgstr "Ready to register <0>{slugClean}</0>"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Ready to save."
 msgstr "Ready to save."
@@ -10355,6 +10480,10 @@ msgstr "Recorded in the delivery log. Defaults to <0>flow.run</0>."
 msgid "Redelivered."
 msgstr "Redelivered."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Redirect URI"
+msgstr "Redirect URI"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Redirect URL"
 msgstr "Redirect URL"
@@ -10430,6 +10559,10 @@ msgstr "Register a physical table as a backlex collection. No DDL is run on the 
 #: src/client/admin/collections-index.tsx
 msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
 msgstr "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "register this with the IdP"
+msgstr "register this with the IdP"
 
 #: src/client/admin/pages/extensions.tsx
 msgid "Reinstall / upgrade"
@@ -11025,6 +11158,7 @@ msgstr "Revoking key"
 msgid "Revoking…"
 msgstr "Revoking…"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Risk: a hostile IdP can take over any local account that shares an email. Off by default."
 msgstr "Risk: a hostile IdP can take over any local account that shares an email. Off by default."
@@ -11353,6 +11487,7 @@ msgstr "Sat"
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/parity/email-templates.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/sheet.tsx
@@ -11585,6 +11720,10 @@ msgstr "Scope the embed to a role so it only exposes what that role can read."
 #: src/client/pages/api-keys.tsx
 msgid "Scope to role"
 msgstr "Scope to role"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Scopes"
+msgstr "Scopes"
 
 #: src/client/admin/collection-settings.tsx
 msgid "scoping & lifecycle"
@@ -11841,6 +11980,10 @@ msgstr "semantic embeddings"
 msgid "Send"
 msgstr "Send"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Send a code challenge on the authorize request. Leave on unless the IdP rejects it."
+msgstr "Send a code challenge on the authorize request. Leave on unless the IdP rejects it."
+
 #: src/client/pages/sign-in.tsx
 msgid "Send a magic link instead"
 msgstr "Send a magic link instead"
@@ -12021,6 +12164,10 @@ msgstr "set"
 #: src/client/pages/sign-up.tsx
 msgid "Set <0>openSignup</0> to <1>true</1> in admin → Auth Settings to re-open."
 msgstr "Set <0>openSignup</0> to <1>true</1> in admin → Auth Settings to re-open."
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Set a discovery URL, or both the authorization and token URLs."
+msgstr "Set a discovery URL, or both the authorization and token URLs."
 
 #: src/client/pages/reset-password.tsx
 msgid "Set a new password for your account — at least 8 characters."
@@ -12496,6 +12643,7 @@ msgstr "Slowest endpoints"
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/app-orgs.tsx
+#: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Slug"
 msgstr "Slug"
@@ -12619,6 +12767,15 @@ msgstr "SP entity ID"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "SP URLs <0>(paste into the IdP console)</0>"
 msgstr "SP URLs <0>(paste into the IdP console)</0>"
+
+#. placeholder {0}: discoveredScopes.join(", ")
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Space-separated. Advertised by the IdP: {0}"
+msgstr "Space-separated. Advertised by the IdP: {0}"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Space-separated. Defaults to openid profile email."
+msgstr "Space-separated. Defaults to openid profile email."
 
 #: src/client/admin/pages/traces.tsx
 msgid "span"
@@ -12793,6 +12950,10 @@ msgstr "Store one value per language in the translations sidecar. Read/write a s
 #: src/client/admin/edit-field.tsx
 msgid "Store one value per language in the translations sidecar. Turning this on for a field that already has data does not move existing values — backfill them afterwards."
 msgstr "Store one value per language in the translations sidecar. Turning this on for a field that already has data does not move existing values — backfill them afterwards."
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "stored"
+msgstr "stored"
 
 #: src/client/admin/item-form.tsx
 msgid "Stored as a one-way hash — it's never shown again. Leave blank to keep the current value."
@@ -13650,6 +13811,10 @@ msgstr "Toggle theme"
 msgid "Toggle tools below to edit the allowlist."
 msgstr "Toggle tools below to edit the allowlist."
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Token URL"
+msgstr "Token URL"
+
 #: src/client/admin/pages/chat.tsx
 msgid "tokens"
 msgstr "tokens"
@@ -14326,6 +14491,10 @@ msgstr "User filter"
 msgid "User-Agent"
 msgstr "User-Agent"
 
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "UserInfo URL"
+msgstr "UserInfo URL"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Username"
 msgstr "Username"
@@ -14686,6 +14855,10 @@ msgstr "Which columns real list requests filter and sort on — the input behind
 #: src/client/admin/collection-settings.tsx
 msgid "which field the board groups cards by"
 msgstr "which field the board groups cards by"
+
+#: src/client/admin/parity/oidc-provider-dialog.tsx
+msgid "Which ID-token claim carries the user's email address."
+msgstr "Which ID-token claim carries the user's email address."
 
 #: src/client/admin/pages/_agents-shared.tsx
 msgid "Whichever agent fits best"

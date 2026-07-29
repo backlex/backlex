@@ -1470,6 +1470,85 @@ export const samlAdminApi = {
     }),
 };
 
+/** Sanitized generic OIDC / OAuth2 provider row from GET /api/admin/oidc/providers.
+ *  The client secret has no read-back path — the server only tells us whether one
+ *  is stored via `hasClientSecret`, so the edit form must never treat a blank
+ *  secret field as "clear the credential". */
+export interface ApiOidcProvider {
+  id: string;
+  name: string;
+  slug: string;
+  clientId: string;
+  /** True when an encrypted client secret is stored. Plaintext never returned. */
+  hasClientSecret: boolean;
+  discoveryUrl: string | null;
+  authorizationUrl: string | null;
+  tokenUrl: string | null;
+  userInfoUrl: string | null;
+  scopes: string[];
+  pkce: boolean;
+  emailClaim: string | null;
+  groupsClaim: string | null;
+  defaultRoleId: string | null;
+  groupsToRoles: Record<string, string> | null;
+  linkByVerifiedEmail: boolean;
+  enabled: boolean;
+  createdAt: string | number | null;
+  updatedAt: string | number | null;
+}
+
+export interface OidcProviderCreate {
+  name: string;
+  slug: string;
+  clientId: string;
+  /** Plaintext, write-only. Omit on PATCH to keep the stored credential. */
+  clientSecret?: string;
+  discoveryUrl?: string | null;
+  authorizationUrl?: string | null;
+  tokenUrl?: string | null;
+  userInfoUrl?: string | null;
+  scopes?: string[];
+  pkce?: boolean;
+  emailClaim?: string | null;
+  groupsClaim?: string | null;
+  defaultRoleId?: string | null;
+  groupsToRoles?: Record<string, string> | null;
+  linkByVerifiedEmail?: boolean;
+  enabled?: boolean;
+}
+
+/** What POST /api/admin/oidc/discover resolves out of an IdP's
+ *  `.well-known/openid-configuration`. Every field is optional because a
+ *  discovery document is only required to carry authorize + token. */
+export interface OidcDiscovery {
+  issuer?: string;
+  authorizationUrl?: string;
+  tokenUrl?: string;
+  userInfoUrl?: string;
+  scopesSupported?: string[];
+}
+
+export const oidcAdminApi = {
+  list: () => api<Envelope<ApiOidcProvider[]>>(`/api/admin/oidc/providers`),
+  create: (body: OidcProviderCreate) =>
+    api<Envelope<ApiOidcProvider>>(`/api/admin/oidc/providers`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  update: (id: string, body: Partial<OidcProviderCreate>) =>
+    api<Envelope<ApiOidcProvider>>(`/api/admin/oidc/providers/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/admin/oidc/providers/${id}`, { method: "DELETE" }),
+  discover: (url: string) =>
+    api<Envelope<OidcDiscovery>>(`/api/admin/oidc/discover`, {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }),
+};
+
 /** Sanitized LDAP config row returned by GET /api/admin/ldap-config. The
  *  encrypted `bindPassword` + `caPem` never travel the wire — `secretsSet`
  *  carries a "is this set" flag per key instead. */

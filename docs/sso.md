@@ -1,6 +1,6 @@
 ---
-title: SSO (SAML & LDAP)
-description: Per-tenant SAML 2.0 and LDAP/Active Directory sign-in for the workspace end-user pool.
+title: SSO (SAML, OIDC & LDAP)
+description: Per-tenant SAML 2.0, generic OIDC/OAuth2 and LDAP/Active Directory sign-in for the workspace end-user pool.
 ---
 
 Backlex supports per-tenant SAML 2.0 SSO **and** LDAP / Active Directory
@@ -141,6 +141,50 @@ assignments aren't touched.
 - **Cloudflare Workers runtime** — samlify imports `xml-crypto` which uses
   `node:crypto`. Workers expose those under `nodejs_compat`
   (`apps/web/wrangler.toml`); deploying without that flag will fail at boot.
+
+---
+
+## Generic OIDC / OAuth2
+
+For IdPs that speak OpenID Connect rather than SAML — Okta, Auth0, Keycloak,
+Entra ID, Authentik, GitLab, Discord, LinkedIn — each provider is a row in
+`oidc_providers` rather than a hand-written integration. Rows are fed to
+better-auth's `genericOAuth` plugin when the tenant auth instance is built.
+
+Configure them in the admin under **Authentication → OIDC / OAuth2 SSO → Add
+OIDC**. The dialog needs four things — display name, slug, client ID, client
+secret — plus the endpoints, which you almost never type by hand:
+
+1. Paste the IdP's discovery URL (either the full
+   `…/.well-known/openid-configuration` or just the issuer origin — the
+   well-known path is appended for you).
+2. Hit **Fetch endpoints**. The server resolves the document (https only, and
+   through the deployment's SSRF policy) and fills authorization / token /
+   userinfo. Anything that goes wrong — wrong scheme, 404, a document with no
+   `authorization_endpoint` — is reported inline with the exact reason.
+
+**Advanced** holds scopes (default `openid profile email`), the PKCE toggle,
+the email / groups claim names, "link by verified email", and the enabled
+toggle. Leave PKCE on unless the IdP rejects the code challenge; leave
+link-by-verified-email off unless you trust the IdP not to assert an email it
+doesn't own — it is an account-takeover primitive otherwise.
+
+Register the redirect URI shown at the bottom of the dialog with the IdP:
+
+```
+${APP_URL}/api/t/<workspace-slug>/auth/oauth2/callback/<provider-slug>
+```
+
+The client secret is encrypted at rest with `AUTH_SECRET` and has **no
+read-back path** — the API only reports `hasClientSecret: true`. In edit mode
+the secret field starts blank and a blank field is omitted from the PATCH, so
+saving an unrelated change never disturbs the stored credential. To rotate,
+type the new secret; to keep it, leave the field alone.
+
+A provider whose stored secret can no longer be decrypted (rotated
+`AUTH_SECRET`, corrupt ciphertext) is dropped from the auth instance rather
+than passed through with a blank secret — it would otherwise fail the token
+exchange in a way that looks like an IdP outage instead of a config problem.
 
 ---
 

@@ -136,21 +136,29 @@ export async function disconnectIntegration(ctx: DbCtx, tenantId: string | null,
 /**
  * Fan a data event out to the workspace's connected integrations. Called from
  * `publishEvent` (fire-and-forget). Best-effort; never throws into the caller.
+ *
+ * `originTenantId` is the workspace the event happened in, taken from the
+ * request context by `publishEvent`. It is AUTHORITATIVE and must never be
+ * re-derived from the payload: this used to read `data.tenantId ?? data.tenant_id`,
+ * but `deserializeRow` only emits declared collection fields, so item events
+ * carry no tenant at all. The value was therefore always undefined in
+ * production and the query fell through to an UNSCOPED fan-out, delivering
+ * every workspace's record events to every connected integration on the
+ * instance. `dispatchWebhooks` had the identical bug and the identical fix.
+ * With no origin tenant, match only the genuinely global integrations rather
+ * than all of them.
  */
 export async function dispatchIntegrations(
   env: Env,
   ctx: DbCtx,
+  originTenantId: string | null,
   channel: string,
   evt: { event: string; data: unknown },
   fetchImpl?: FetchLike,
 ): Promise<void> {
   const t = tableFor(ctx.dialect);
   const data = evt.data as Record<string, unknown> | null | undefined;
-  const tenantId = (data && typeof data === "object" ? (data.tenantId ?? data.tenant_id) : null) as
-    | string
-    | null
-    | undefined;
-  const where = tenantId ? and(eq(t.status, "connected"), eq(t.tenantId, tenantId)) : eq(t.status, "connected");
+  const where = and(eq(t.status, "connected"), tenantEq(t, originTenantId));
   const rows = (await (ctx.db as AnyDb).select().from(t).where(where)) as IntegrationRow[];
   if (rows.length === 0) return;
 

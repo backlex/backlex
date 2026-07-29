@@ -31,7 +31,11 @@ beforeEach(() => {
 });
 afterEach(() => h.cleanup());
 
-const created = (id: string, tenantId: string) => ({ event: "created", data: { id, tenantId } });
+/** A real item event as `publishEvent` produces it: `deserializeRow` emits only
+ *  declared collection fields, so there is NO tenant marker in `data`. Tests
+ *  that invented one here made the tenant scoping look correct while production
+ *  fanned out unscoped. */
+const created = (id: string) => ({ event: "created", data: { id } });
 
 describe("admin integrations service", () => {
   test("connect encrypts secrets at rest; list masks them", async () => {
@@ -59,7 +63,7 @@ describe("admin integrations service", () => {
       h.env.AUTH_SECRET,
     );
     const rec = recorder();
-    await dispatchIntegrations(h.env, ctx, "items:posts", created("r1", "t1"), rec.fetch);
+    await dispatchIntegrations(h.env, ctx, "t1", "items:posts", created("r1"), rec.fetch);
     expect(rec.calls).toHaveLength(1);
     expect(rec.calls[0]!.url).toBe("https://hooks.slack.com/services/X");
     expect(rec.calls[0]!.body).toEqual({ text: "*posts: record created #r1*" });
@@ -72,21 +76,61 @@ describe("admin integrations service", () => {
       h.env.AUTH_SECRET,
     );
     const rec = recorder();
-    await dispatchIntegrations(h.env, ctx, "items:posts", { event: "updated", data: { id: "r1", tenantId: "t1" } }, rec.fetch);
+    await dispatchIntegrations(h.env, ctx, "t1", "items:posts", { event: "updated", data: { id: "r1" } }, rec.fetch);
     expect(rec.calls).toHaveLength(0); // updated is not subscribed
-    await dispatchIntegrations(h.env, ctx, "items:posts", created("r1", "t1"), rec.fetch);
+    await dispatchIntegrations(h.env, ctx, "t1", "items:posts", created("r1"), rec.fetch);
     expect(rec.calls).toHaveLength(1); // created is
   });
 
-  test("dispatch only hits the originating tenant's integrations", async () => {
+  test("an event from another workspace never reaches this one's integrations", async () => {
     await connectIntegration(
       ctx,
       { tenantId: "t1", kind: "slack", config: { webhookUrl: "https://hooks.slack.com/services/X" } },
       h.env.AUTH_SECRET,
     );
     const rec = recorder();
-    await dispatchIntegrations(h.env, ctx, "items:posts", created("r9", "t2"), rec.fetch);
-    expect(rec.calls).toHaveLength(0); // t2 has none; t1's must not fire
+    // The payload carries no tenant marker — exactly as a real item event
+    // doesn't. Scoping must come from the authoritative origin argument, so t1's
+    // Slack must stay silent for a t2 event.
+    await dispatchIntegrations(h.env, ctx, "t2", "items:posts", created("r9"), rec.fetch);
+    expect(rec.calls).toHaveLength(0);
+  });
+
+  test("a payload-supplied tenant cannot widen the scope", async () => {
+    await connectIntegration(
+      ctx,
+      { tenantId: "t1", kind: "slack", config: { webhookUrl: "https://hooks.slack.com/services/X" } },
+      h.env.AUTH_SECRET,
+    );
+    const rec = recorder();
+    // A collection is free to declare its own `tenantId` field, so the payload
+    // is attacker-influenced. It must not be consulted for scoping.
+    await dispatchIntegrations(
+      h.env,
+      ctx,
+      "t2",
+      "items:posts",
+      { event: "created", data: { id: "r9", tenantId: "t1" } },
+      rec.fetch,
+    );
+    expect(rec.calls).toHaveLength(0);
+  });
+
+  test("with no origin tenant only globally-scoped integrations fire", async () => {
+    await connectIntegration(
+      ctx,
+      { tenantId: "t1", kind: "slack", config: { webhookUrl: "https://hooks.slack.com/services/TENANT" } },
+      h.env.AUTH_SECRET,
+    );
+    await connectIntegration(
+      ctx,
+      { tenantId: null, kind: "discord", config: { webhookUrl: "https://discord.com/api/webhooks/GLOBAL" } },
+      h.env.AUTH_SECRET,
+    );
+    const rec = recorder();
+    await dispatchIntegrations(h.env, ctx, null, "items:posts", created("r1"), rec.fetch);
+    expect(rec.calls).toHaveLength(1);
+    expect(rec.calls[0]!.url).toContain("GLOBAL");
   });
 
   test("disconnect removes the integration", async () => {

@@ -19,10 +19,13 @@ import {
   maskConfig,
   matchesEventFilter,
   type FetchLike,
+  type IntegrationEvent,
   type IntegrationKind,
 } from "@backlex/integrations";
+import type { Ctx } from "../context";
 import type { Env } from "../env";
 import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/crypto";
+import { enqueueJob } from "./jobs";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
 // The PgDb|SqliteDb union can't be queried without per-dialect narrowing; the
@@ -36,8 +39,18 @@ type AnyDb = any;
 const tableFor = (dialect: "pg" | "sqlite") =>
   (dialect === "pg" ? pg.schema.integrations : sqlite.schema.integrations) as typeof pg.schema.integrations;
 
+const deliveriesTableFor = (dialect: "pg" | "sqlite") =>
+  (dialect === "pg"
+    ? pg.schema.integrationDeliveries
+    : sqlite.schema.integrationDeliveries) as typeof pg.schema.integrationDeliveries;
+
 const tenantEq = (t: typeof pg.schema.integrations, tenantId: string | null) =>
   tenantId === null ? isNull(t.tenantId) : eq(t.tenantId, tenantId);
+
+/** Consecutive failed deliveries that trip the auto-disable circuit breaker.
+ *  Every attempt counts (including queue retries); any success resets it to 0.
+ *  Matches the webhook breaker so the two behave the same for an operator. */
+export const INTEGRATION_AUTODISABLE_THRESHOLD = 15;
 
 export interface IntegrationRow {
   id: string;
@@ -48,6 +61,21 @@ export interface IntegrationRow {
   status: string;
   lastEventAt: Date | number | null;
   createdAt: Date | number | null;
+  consecutiveFailures?: number;
+  lastFailureAt?: Date | number | null;
+  disabledReason?: string | null;
+}
+
+export interface IntegrationDeliveryRow {
+  id: string;
+  integrationId: string;
+  tenantId: string | null;
+  event: string;
+  status: number;
+  ms: number;
+  error: string | null;
+  attempts: number;
+  deliveredAt: Date | number;
 }
 
 const secretKeys = (kind: string) => new Set(SECRET_KEYS[kind as IntegrationKind] ?? []);
@@ -81,6 +109,9 @@ export function toPublic(row: IntegrationRow) {
     config: maskConfig(row.kind, (row.config ?? {}) as Record<string, unknown>),
     lastEventAt: row.lastEventAt,
     createdAt: row.createdAt,
+    consecutiveFailures: row.consecutiveFailures ?? 0,
+    lastFailureAt: row.lastFailureAt ?? null,
+    disabledReason: row.disabledReason ?? null,
   };
 }
 
@@ -130,7 +161,140 @@ export async function listIntegrations(ctx: DbCtx, tenantId: string | null) {
 
 export async function disconnectIntegration(ctx: DbCtx, tenantId: string | null, id: string): Promise<void> {
   const t = tableFor(ctx.dialect);
-  await (ctx.db as AnyDb).delete(t).where(and(tenantEq(t, tenantId), eq(t.id, id)));
+  const d = deliveriesTableFor(ctx.dialect);
+  const db = ctx.db as AnyDb;
+  // Confirm ownership BEFORE touching anything. The integration delete is
+  // tenant-scoped on its own, but the delivery cleanup keys off the id alone;
+  // running it unconditionally would let one workspace erase another's log by
+  // passing a foreign id that the first delete harmlessly ignores.
+  const [owned] = (await db
+    .select()
+    .from(t)
+    .where(and(tenantEq(t, tenantId), eq(t.id, id)))) as IntegrationRow[];
+  if (!owned) return;
+  await db.delete(t).where(and(tenantEq(t, tenantId), eq(t.id, id)));
+  // The log is meaningless once the integration is gone, and leaving it behind
+  // would let a later row reuse the id and inherit a stranger's history.
+  await db.delete(d).where(eq(d.integrationId, id));
+}
+
+/** Re-enable an integration the breaker paused, clearing its failure state. */
+export async function resumeIntegration(
+  ctx: DbCtx,
+  tenantId: string | null,
+  id: string,
+): Promise<ReturnType<typeof toPublic> | null> {
+  const t = tableFor(ctx.dialect);
+  const db = ctx.db as AnyDb;
+  await db
+    .update(t)
+    .set({
+      status: "connected",
+      consecutiveFailures: 0,
+      lastFailureAt: null,
+      disabledReason: null,
+      updatedAt: new Date(),
+    })
+    .where(and(tenantEq(t, tenantId), eq(t.id, id)));
+  const [row] = (await db
+    .select()
+    .from(t)
+    .where(and(tenantEq(t, tenantId), eq(t.id, id)))) as IntegrationRow[];
+  return row ? toPublic(row) : null;
+}
+
+/** Recent delivery attempts for one integration, newest first. Tenant-guarded
+ *  through the integration row so a workspace can't read another's log. */
+export async function listIntegrationDeliveries(
+  ctx: DbCtx,
+  tenantId: string | null,
+  integrationId: string,
+  limit = 50,
+): Promise<IntegrationDeliveryRow[]> {
+  const t = tableFor(ctx.dialect);
+  const d = deliveriesTableFor(ctx.dialect);
+  const db = ctx.db as AnyDb;
+  const [owner] = (await db
+    .select()
+    .from(t)
+    .where(and(tenantEq(t, tenantId), eq(t.id, integrationId)))) as IntegrationRow[];
+  if (!owner) return [];
+  return (await db
+    .select()
+    .from(d)
+    .where(eq(d.integrationId, integrationId))
+    .orderBy(desc(d.deliveredAt))
+    .limit(Math.min(Math.max(limit, 1), 200))) as IntegrationDeliveryRow[];
+}
+
+/** Append one delivery attempt to the log. Best-effort — a full log must never
+ *  break the delivery it is recording. */
+async function recordDelivery(
+  ctx: DbCtx,
+  input: {
+    integrationId: string;
+    tenantId: string | null;
+    event: string;
+    status: number;
+    ms: number;
+    error: string | null;
+    attempts: number;
+  },
+): Promise<void> {
+  try {
+    await (ctx.db as AnyDb)
+      .insert(deliveriesTableFor(ctx.dialect))
+      .values({ id: crypto.randomUUID(), deliveredAt: new Date(), ...input });
+  } catch (e) {
+    console.error("[integration] delivery log write failed", e);
+  }
+}
+
+/** Circuit breaker: fold one outcome into the integration's failure counter. A
+ *  success resets it; a failure bumps it and, past the threshold, flips status
+ *  to `disabled` with a reason so the queue stops re-attempting a dead target.
+ *  Best-effort — never throws into the delivery path. */
+async function applyDeliveryOutcome(
+  ctx: DbCtx,
+  row: IntegrationRow,
+  ok: boolean,
+  detail: string,
+): Promise<void> {
+  const t = tableFor(ctx.dialect);
+  const now = new Date();
+  const prior = row.consecutiveFailures ?? 0;
+  try {
+    if (ok) {
+      // Only write when there is state to clear — keeps the happy path quiet.
+      if (prior > 0) {
+        await (ctx.db as AnyDb)
+          .update(t)
+          .set({ consecutiveFailures: 0, lastFailureAt: null, disabledReason: null, updatedAt: now })
+          .where(eq(t.id, row.id));
+      }
+      return;
+    }
+    const next = prior + 1;
+    if (next >= INTEGRATION_AUTODISABLE_THRESHOLD) {
+      await (ctx.db as AnyDb)
+        .update(t)
+        .set({
+          status: "disabled",
+          consecutiveFailures: next,
+          lastFailureAt: now,
+          disabledReason: `Auto-disabled after ${next} consecutive failed deliveries (last: ${detail})`,
+          updatedAt: now,
+        })
+        .where(eq(t.id, row.id));
+    } else {
+      await (ctx.db as AnyDb)
+        .update(t)
+        .set({ consecutiveFailures: next, lastFailureAt: now, updatedAt: now })
+        .where(eq(t.id, row.id));
+    }
+  } catch (e) {
+    console.error("[integration] breaker update failed", e);
+  }
 }
 
 /**
@@ -157,23 +321,111 @@ export async function dispatchIntegrations(
   fetchImpl?: FetchLike,
 ): Promise<void> {
   const t = tableFor(ctx.dialect);
-  const data = evt.data as Record<string, unknown> | null | undefined;
   const where = and(eq(t.status, "connected"), tenantEq(t, originTenantId));
   const rows = (await (ctx.db as AnyDb).select().from(t).where(where)) as IntegrationRow[];
   if (rows.length === 0) return;
 
-  const collection = channel.startsWith("items:") ? channel.slice("items:".length) : channel;
-  const eventName = `${collection}.${evt.event}`;
-  const id = data && typeof data === "object" ? data.id : undefined;
-  const text = `${collection}: record ${evt.event}${id ? ` #${String(id)}` : ""}`;
-  const payload = { collection, event: evt.event, id };
+  const message = buildEventMessage(channel, evt);
+  const matching = rows.filter((row) => matchesEventFilter(row.events, message.event));
+  if (matching.length === 0) return;
 
-  for (const row of rows) {
-    if (!matchesEventFilter(row.events, eventName)) continue;
-    const cfg = await decryptConfig(row.kind, (row.config ?? {}) as Record<string, unknown>, env.AUTH_SECRET);
-    const out = await deliverToIntegration(row.kind, cfg, { event: eventName, text, payload }, fetchImpl);
-    if (out.ok) {
-      await (ctx.db as AnyDb).update(t).set({ lastEventAt: new Date() }).where(eq(t.id, row.id));
-    }
+  // Prefer the durable queue: one integration.deliver job per matching row, so
+  // a provider outage is retried with backoff and dead-lettered instead of
+  // being dropped on the floor. The handler re-loads and tenant-guards the row
+  // at delivery time, so a disconnect between enqueue and run is respected.
+  // `fetchImpl` is a test seam; when it's supplied stay inline so specs observe
+  // the request directly.
+  const full = !fetchImpl && "env" in ctx ? (ctx as Ctx) : null;
+  if (full) {
+    await Promise.all(
+      matching.map((row) =>
+        enqueueJob(full, {
+          type: "integration.deliver",
+          queue: "integrations",
+          tenantId: row.tenantId ?? originTenantId ?? null,
+          payload: { integrationId: row.id, message },
+        }),
+      ),
+    );
+    return;
   }
+
+  // Fallback (no env, or a test seam): best-effort inline delivery, no retry.
+  for (const row of matching) {
+    await deliverOne(env, ctx, row, message, 1, fetchImpl);
+  }
+}
+
+/** Render the chat text + machine payload for one item event. Shared by the
+ *  dispatcher and the queue handler so a retry sends byte-identical content to
+ *  the first attempt. */
+function buildEventMessage(channel: string, evt: { event: string; data: unknown }): IntegrationEvent {
+  const data = evt.data as Record<string, unknown> | null | undefined;
+  const collection = channel.startsWith("items:") ? channel.slice("items:".length) : channel;
+  const id = data && typeof data === "object" ? data.id : undefined;
+  return {
+    event: `${collection}.${evt.event}`,
+    text: `${collection}: record ${evt.event}${id ? ` #${String(id)}` : ""}`,
+    payload: { collection, event: evt.event, id },
+  };
+}
+
+/** Decrypt, deliver, log, and fold the outcome into the breaker. Returns the
+ *  HTTP outcome so the job handler can throw a non-2xx into the retry path. */
+async function deliverOne(
+  env: Env,
+  ctx: DbCtx,
+  row: IntegrationRow,
+  message: IntegrationEvent,
+  attempt: number,
+  fetchImpl?: FetchLike,
+): Promise<{ ok: boolean; status: number }> {
+  const t = tableFor(ctx.dialect);
+  const started = Date.now();
+  const cfg = await decryptConfig(row.kind, (row.config ?? {}) as Record<string, unknown>, env.AUTH_SECRET);
+  const out = await deliverToIntegration(row.kind, cfg, message, fetchImpl);
+  const ms = Date.now() - started;
+  // status 0 is the adapters' "misconfigured or the request threw" sentinel —
+  // there is no response to quote, so say so rather than logging a bare 0.
+  const error = out.ok ? null : out.status === 0 ? "provider misconfigured or unreachable" : `HTTP ${out.status}`;
+
+  await recordDelivery(ctx, {
+    integrationId: row.id,
+    tenantId: row.tenantId,
+    event: message.event,
+    status: out.status,
+    ms,
+    error,
+    attempts: attempt,
+  });
+  if (out.ok) {
+    await (ctx.db as AnyDb).update(t).set({ lastEventAt: new Date() }).where(eq(t.id, row.id));
+  }
+  await applyDeliveryOutcome(ctx, row, out.ok, error ?? String(out.status));
+  return out;
+}
+
+/**
+ * Deliver one queued event to one integration — the runtime behind the
+ * `integration.deliver` job. An integration that no longer exists, or that the
+ * breaker has since disabled, is a terminal no-op (reported ok) so the queue
+ * stops retrying a target nobody is listening on any more.
+ */
+export async function deliverIntegrationById(
+  env: Env,
+  ctx: DbCtx,
+  input: {
+    integrationId: string;
+    tenantId: string | null;
+    message: IntegrationEvent;
+    attempt?: number;
+  },
+): Promise<{ ok: boolean; status: number; skipped?: boolean }> {
+  const t = tableFor(ctx.dialect);
+  const [row] = (await (ctx.db as AnyDb)
+    .select()
+    .from(t)
+    .where(and(tenantEq(t, input.tenantId), eq(t.id, input.integrationId)))) as IntegrationRow[];
+  if (!row || row.status !== "connected") return { ok: true, status: 200, skipped: true };
+  return deliverOne(env, ctx, row, input.message, input.attempt ?? 1);
 }

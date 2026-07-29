@@ -478,6 +478,11 @@ msgstr "{0} istek / {1}g"
 msgid "{0} result(s)"
 msgstr "{0} sonuç"
 
+#. placeholder {0}: brandFor(it.kind).name
+#: src/client/admin/pages/integrations.tsx
+msgid "{0} resumed."
+msgstr "{0} yeniden başlatıldı."
+
 #. placeholder {0}: collections.reduce((a, c) => a + c.count, 0).toLocaleString()
 #: src/client/admin/collections-index.tsx
 msgid "{0} rows"
@@ -632,6 +637,17 @@ msgstr "{0}s önce"
 msgid "{0}m ago"
 msgstr "{0}dk önce"
 
+#. placeholder {0}: d.ms
+#: src/client/admin/pages/integrations.tsx
+msgid "{0}ms"
+msgstr "{0}ms"
+
+#. placeholder {0}: d.ms
+#. placeholder {1}: d.attempts
+#: src/client/admin/pages/integrations.tsx
+msgid "{0}ms · try {1}"
+msgstr "{0}ms · deneme {1}"
+
 #. placeholder {0}: a.title
 #: src/client/admin/permissions-matrix.tsx
 msgid "{activeRole} · {0} · {c}: {state}"
@@ -679,6 +695,10 @@ msgstr "{eligibleCount} uygun alan"
 msgid "{email} is already a member."
 msgstr "{email} zaten üye."
 
+#: src/client/admin/pages/integrations.tsx
+msgid "{failures} failed deliveries in a row"
+msgstr "üst üste {failures} başarısız teslimat"
+
 #: src/client/admin/storage/index.tsx
 msgid "{folder}/<derived>"
 msgstr "{folder}/<türetilmiş>"
@@ -690,6 +710,10 @@ msgstr "{key} → {next}."
 #: src/client/admin/storage/index.tsx
 msgid "{key} deleted."
 msgstr "{key} silindi."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "{name} deliveries"
+msgstr "{name} teslimatları"
 
 #: src/client/components/social-buttons.tsx
 msgid "{provider} sign-in"
@@ -2667,6 +2691,7 @@ msgstr "kapat"
 #: src/client/admin/extras.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/extensions.tsx
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/users.tsx
@@ -3998,6 +4023,7 @@ msgstr "silindi."
 msgid "deliver one webhook"
 msgstr "tek bir webhook gönder"
 
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Deliveries"
 msgstr "Teslimatlar"
@@ -5163,6 +5189,7 @@ msgstr "Akışı hata ile sonlandır"
 
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/extensions.tsx
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/storage/index.tsx
 msgid "failed"
@@ -7879,6 +7906,10 @@ msgstr "Yeni webhook"
 msgid "New workspace"
 msgstr "Yeni çalışma alanı"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Newest first. One row per attempt, including queue retries."
+msgstr "En yeni önce. Kuyruk yeniden denemeleri dahil, her deneme için bir satır."
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/app.tsx
@@ -8096,6 +8127,10 @@ msgstr "henüz teslimat yok"
 #: src/client/admin/pages/webhooks.tsx
 msgid "No deliveries yet"
 msgstr "Henüz teslimat yok"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "No deliveries yet — they appear here as records change."
+msgstr "Henüz teslimat yok — kayıtlar değiştikçe burada görünür."
 
 #: src/client/admin/app.tsx
 msgid "No display template set — cards label rows from their first text fields. Define a template in Settings for proper labels."
@@ -9255,6 +9290,10 @@ msgstr "Duraklat"
 #: src/client/admin/pages/webhooks.tsx
 msgid "paused"
 msgstr "duraklatıldı"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Paused"
+msgstr "Duraklatıldı"
 
 #: src/client/admin/pages/forms.tsx
 msgid "pausing returns 410 on the public link"
@@ -10805,6 +10844,7 @@ msgstr "sürdürülebilir"
 #~ msgstr "<0>GET /mcp</0> üzerinde sürdürülebilir SSE"
 
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Resume"
@@ -10813,6 +10853,10 @@ msgstr "Devam et"
 #: src/client/admin/pages/webhooks.tsx
 msgid "resumed"
 msgstr "devam ettirildi"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Resuming…"
+msgstr "Başlatılıyor…"
 
 #: src/client/admin/parity/database.tsx
 msgid "Retain (auto)"

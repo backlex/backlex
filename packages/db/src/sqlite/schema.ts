@@ -2100,12 +2100,52 @@ export const integrations = sqliteTable(
     kind: text("kind").notNull(),
     config: text("config", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
     events: text("events", { mode: "json" }).$type<string[] | null>(),
+    /** `connected` while delivering; `disabled` once the breaker trips (or an
+     *  admin pauses it). `dispatchIntegrations` only fans out to `connected`. */
     status: text("status").notNull().default("connected"),
     lastEventAt: integer("last_event_at", { mode: "timestamp_ms" }),
+    /** Consecutive failed deliveries since the last success — drives the
+     *  auto-disable circuit breaker. Reset to 0 on any success. */
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    /** Timestamp of the most recent failed delivery (null once healthy). */
+    lastFailureAt: integer("last_failure_at", { mode: "timestamp_ms" }),
+    /** Human-readable reason set when the breaker auto-disables this
+     *  integration; null while healthy or when paused manually. */
+    disabledReason: text("disabled_reason"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },
   (t) => [index("integrations_tenant_idx").on(t.tenantId)],
+);
+
+/**
+ * One row per attempt to deliver an event to a connected integration — the
+ * audit trail behind the admin's delivery log and the `integration.deliver`
+ * job's retries. Mirror of the PG table; carries `tenant_id` so a workspace's
+ * log can be scoped without joining back to `integrations`.
+ */
+export const integrationDeliveries = sqliteTable(
+  "integration_deliveries",
+  {
+    id: text("id").primaryKey(),
+    integrationId: text("integration_id").notNull(),
+    tenantId: text("tenant_id"),
+    /** The event name that triggered this delivery, e.g. `posts.created`. */
+    event: text("event").notNull(),
+    /** HTTP status; 0 when the provider was misconfigured or the fetch threw. */
+    status: integer("status").notNull(),
+    /** Round-trip duration in milliseconds. */
+    ms: integer("ms").notNull(),
+    error: text("error"),
+    /** Attempts so far, from the queue's counter (1 = first try). */
+    attempts: integer("attempts").notNull().default(1),
+    deliveredAt: ts("delivered_at"),
+  },
+  (t) => [
+    index("integration_deliveries_integration_idx").on(t.integrationId),
+    index("integration_deliveries_tenant_idx").on(t.tenantId),
+    index("integration_deliveries_at_idx").on(t.deliveredAt),
+  ],
 );
 
 /**

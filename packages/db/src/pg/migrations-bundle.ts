@@ -81,6 +81,7 @@ import m74 from "../../drizzle/pg/20260727090000_mcp_role_guards/migration.sql" 
 import m75 from "../../drizzle/pg/20260727090000_product_analytics/migration.sql" with { type: "text" };
 import m76 from "../../drizzle/pg/20260727100000_agent_semantic_memory/migration.sql" with { type: "text" };
 import m77 from "../../drizzle/pg/20260727120000_payments/migration.sql" with { type: "text" };
+import m78 from "../../drizzle/pg/20260729120000_integration_deliveries/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -166,4 +167,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260727090000_product_analytics", sql: m75 },
   { name: "20260727100000_agent_semantic_memory", sql: m76 },
   { name: "20260727120000_payments", sql: m77 },
+  { name: "20260729120000_integration_deliveries", sql: m78 },
 ];

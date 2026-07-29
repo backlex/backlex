@@ -478,6 +478,11 @@ msgstr "{0} req / {1}d"
 msgid "{0} result(s)"
 msgstr "{0} result(s)"
 
+#. placeholder {0}: brandFor(it.kind).name
+#: src/client/admin/pages/integrations.tsx
+msgid "{0} resumed."
+msgstr "{0} resumed."
+
 #. placeholder {0}: collections.reduce((a, c) => a + c.count, 0).toLocaleString()
 #: src/client/admin/collections-index.tsx
 msgid "{0} rows"
@@ -632,6 +637,17 @@ msgstr "{0}h ago"
 msgid "{0}m ago"
 msgstr "{0}m ago"
 
+#. placeholder {0}: d.ms
+#: src/client/admin/pages/integrations.tsx
+msgid "{0}ms"
+msgstr "{0}ms"
+
+#. placeholder {0}: d.ms
+#. placeholder {1}: d.attempts
+#: src/client/admin/pages/integrations.tsx
+msgid "{0}ms · try {1}"
+msgstr "{0}ms · try {1}"
+
 #. placeholder {0}: a.title
 #: src/client/admin/permissions-matrix.tsx
 msgid "{activeRole} · {0} · {c}: {state}"
@@ -679,6 +695,10 @@ msgstr "{eligibleCount} eligible fields"
 msgid "{email} is already a member."
 msgstr "{email} is already a member."
 
+#: src/client/admin/pages/integrations.tsx
+msgid "{failures} failed deliveries in a row"
+msgstr "{failures} failed deliveries in a row"
+
 #: src/client/admin/storage/index.tsx
 msgid "{folder}/<derived>"
 msgstr "{folder}/<derived>"
@@ -690,6 +710,10 @@ msgstr "{key} → {next}."
 #: src/client/admin/storage/index.tsx
 msgid "{key} deleted."
 msgstr "{key} deleted."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "{name} deliveries"
+msgstr "{name} deliveries"
 
 #: src/client/components/social-buttons.tsx
 msgid "{provider} sign-in"
@@ -2667,6 +2691,7 @@ msgstr "close"
 #: src/client/admin/extras.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/extensions.tsx
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/users.tsx
@@ -3998,6 +4023,7 @@ msgstr "deleted."
 msgid "deliver one webhook"
 msgstr "deliver one webhook"
 
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Deliveries"
 msgstr "Deliveries"
@@ -5163,6 +5189,7 @@ msgstr "Fail flow"
 
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/extensions.tsx
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/storage/index.tsx
 msgid "failed"
@@ -7879,6 +7906,10 @@ msgstr "New webhook"
 msgid "New workspace"
 msgstr "New workspace"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Newest first. One row per attempt, including queue retries."
+msgstr "Newest first. One row per attempt, including queue retries."
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/app.tsx
@@ -8096,6 +8127,10 @@ msgstr "no deliveries yet"
 #: src/client/admin/pages/webhooks.tsx
 msgid "No deliveries yet"
 msgstr "No deliveries yet"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "No deliveries yet — they appear here as records change."
+msgstr "No deliveries yet — they appear here as records change."
 
 #: src/client/admin/app.tsx
 msgid "No display template set — cards label rows from their first text fields. Define a template in Settings for proper labels."
@@ -9255,6 +9290,10 @@ msgstr "Pause"
 #: src/client/admin/pages/webhooks.tsx
 msgid "paused"
 msgstr "paused"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Paused"
+msgstr "Paused"
 
 #: src/client/admin/pages/forms.tsx
 msgid "pausing returns 410 on the public link"
@@ -10805,6 +10844,7 @@ msgstr "resumable"
 #~ msgstr "Resumable SSE on <0>GET /mcp</0>"
 
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Resume"
@@ -10813,6 +10853,10 @@ msgstr "Resume"
 #: src/client/admin/pages/webhooks.tsx
 msgid "resumed"
 msgstr "resumed"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Resuming…"
+msgstr "Resuming…"
 
 #: src/client/admin/parity/database.tsx
 msgid "Retain (auto)"

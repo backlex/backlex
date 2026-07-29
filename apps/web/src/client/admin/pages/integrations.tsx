@@ -31,6 +31,18 @@ type Integration = {
   config: Record<string, unknown>;
   events: string[] | null;
   lastEventAt?: number | string | null;
+  consecutiveFailures?: number;
+  lastFailureAt?: number | string | null;
+  disabledReason?: string | null;
+};
+type Delivery = {
+  id: string;
+  event: string;
+  status: number;
+  ms: number;
+  error: string | null;
+  attempts: number;
+  deliveredAt: number | string;
 };
 
 const GithubMark = () => (
@@ -89,6 +101,7 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
   const [loaded, setLoaded] = useState(false);
   const [connectKind, setConnectKind] = useState<string | null>(null);
   const [busyKind, setBusyKind] = useState<string | null>(null);
+  const [logFor, setLogFor] = useState<Integration | null>(null);
 
   const reload = async () => {
     const [cat, list] = await Promise.all([
@@ -143,17 +156,34 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
     }
   };
 
+  // Every mutation below is optimistic: snapshot → apply → reconcile, rolling
+  // back to the snapshot on failure. The card must flip the moment it's
+  // clicked, never after a round-trip.
   const connect = async (kind: string, config: Record<string, string>, events: string[]) => {
+    const snapshot = connected;
+    const optimistic: Integration = {
+      // Provisional id — replaced by the server's row on reconcile. Nothing
+      // addresses the row by id until then.
+      id: `pending:${kind}`,
+      kind,
+      status: "connected",
+      config: {},
+      events: events.length ? events : null,
+      lastEventAt: null,
+      consecutiveFailures: 0,
+    };
+    setConnected([...snapshot.filter((i) => i.kind !== kind), optimistic]);
+    setConnectKind(null);
     setBusyKind(kind);
     try {
-      await api("/api/admin/integrations", {
+      const res = await api<{ data: Integration }>("/api/admin/integrations", {
         method: "POST",
         body: JSON.stringify({ kind, config, events: events.length ? events : null }),
       });
+      setConnected((prev) => prev.map((i) => (i.id === optimistic.id ? res.data : i)));
       pushToast(t`${brandFor(kind).name} connected.`);
-      setConnectKind(null);
-      await reload();
     } catch (e) {
+      setConnected(snapshot);
       pushToast((e as Error).message);
     } finally {
       setBusyKind(null);
@@ -161,12 +191,34 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
   };
 
   const disconnect = async (it: Integration) => {
+    const snapshot = connected;
+    setConnected(snapshot.filter((i) => i.id !== it.id));
     setBusyKind(it.kind);
     try {
       await api(`/api/admin/integrations/${it.id}`, { method: "DELETE" });
       pushToast(t`${brandFor(it.kind).name} disconnected.`);
-      await reload();
     } catch (e) {
+      setConnected(snapshot);
+      pushToast((e as Error).message);
+    } finally {
+      setBusyKind(null);
+    }
+  };
+
+  const resume = async (it: Integration) => {
+    const snapshot = connected;
+    setConnected(
+      snapshot.map((i) =>
+        i.id === it.id ? { ...i, status: "connected", consecutiveFailures: 0, disabledReason: null } : i,
+      ),
+    );
+    setBusyKind(it.kind);
+    try {
+      const res = await api<{ data: Integration }>(`/api/admin/integrations/${it.id}/resume`, { method: "POST" });
+      setConnected((prev) => prev.map((i) => (i.id === it.id ? res.data : i)));
+      pushToast(t`${brandFor(it.kind).name} resumed.`);
+    } catch (e) {
+      setConnected(snapshot);
       pushToast((e as Error).message);
     } finally {
       setBusyKind(null);
@@ -198,6 +250,8 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
               const brand = brandFor(kind);
               const it = byKind.get(kind);
               const isConnected = it?.status === "connected";
+              const isDisabled = it?.status === "disabled";
+              const failures = it?.consecutiveFailures ?? 0;
               const busy = busyKind === kind;
               return (
                 <div key={kind} className="rounded-control border border-border bg-card p-5 flex flex-col gap-3">
@@ -216,20 +270,44 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
                             <Trans>Connected</Trans>
                           </Badge>
                         )}
+                        {isDisabled && (
+                          <Badge variant="destructive" className="text-[10px]">
+                            <Trans>Paused</Trans>
+                          </Badge>
+                        )}
                       </div>
                       {isConnected && it?.lastEventAt ? (
                         <div className="text-[11.5px] text-muted-foreground truncate">
                           <Trans>last event {relativeTime(it.lastEventAt)}</Trans>
                         </div>
                       ) : null}
+                      {isConnected && failures > 0 ? (
+                        <div className="text-[11.5px] text-destructive truncate">
+                          <Trans>{failures} failed deliveries in a row</Trans>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
-                  <p className="text-[12px] text-muted-foreground leading-snug flex-1">{blurb(kind)}</p>
-                  <div className="mt-auto">
-                    {isConnected ? (
-                      <Button variant="ghost" disabled={busy} onClick={() => void disconnect(it!)}>
-                        {busy ? <Trans>Disconnecting…</Trans> : <Trans>Disconnect</Trans>}
-                      </Button>
+                  {isDisabled && it?.disabledReason ? (
+                    <p className="text-[11.5px] text-destructive leading-snug">{it.disabledReason}</p>
+                  ) : (
+                    <p className="text-[12px] text-muted-foreground leading-snug flex-1">{blurb(kind)}</p>
+                  )}
+                  <div className="mt-auto flex flex-wrap items-center gap-2">
+                    {it ? (
+                      <>
+                        {isDisabled && (
+                          <Button disabled={busy} onClick={() => void resume(it)}>
+                            {busy ? <Trans>Resuming…</Trans> : <Trans>Resume</Trans>}
+                          </Button>
+                        )}
+                        <Button variant="ghost" onClick={() => setLogFor(it)}>
+                          <Trans>Deliveries</Trans>
+                        </Button>
+                        <Button variant="ghost" disabled={busy} onClick={() => void disconnect(it)}>
+                          {busy ? <Trans>Disconnecting…</Trans> : <Trans>Disconnect</Trans>}
+                        </Button>
+                      </>
                     ) : (
                       <Button disabled={busy} onClick={() => setConnectKind(kind)}>
                         {busy ? <Trans>Connecting…</Trans> : <Trans>Connect</Trans>}
@@ -252,7 +330,105 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
           onConnect={(config, events) => void connect(connectKind, config, events)}
         />
       )}
+
+      {logFor && (
+        <DeliveryLogDialog
+          integration={logFor}
+          name={brandFor(logFor.kind).name}
+          onClose={() => setLogFor(null)}
+        />
+      )}
     </div>
+  );
+}
+
+/* ── Delivery log: every attempt for one integration, newest first ── */
+function DeliveryLogDialog({
+  integration,
+  name,
+  onClose,
+}: {
+  integration: Integration;
+  name: string;
+  onClose: () => void;
+}) {
+  const { t } = useLingui();
+  const [rows, setRows] = useState<Delivery[] | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const res = await fetchSafely<{ data: Delivery[] }>(
+        `/api/admin/integrations/${integration.id}/deliveries`,
+      );
+      if (live) setRows(res?.data ?? []);
+    })();
+    return () => {
+      live = false;
+    };
+  }, [integration.id]);
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[560px]">
+        <DialogHeader className="shrink-0 space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
+          <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">{t`${name} deliveries`}</DialogTitle>
+          <DialogDescription className="text-[12.5px] text-muted-foreground">
+            <Trans>Newest first. One row per attempt, including queue retries.</Trans>
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-13rem)]">
+          <div className="flex flex-col gap-1.5 px-5 py-4">
+            {rows === null ? (
+              [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-11 w-full" />)
+            ) : rows.length === 0 ? (
+              <p className="text-[12px] text-muted-foreground">
+                <Trans>No deliveries yet — they appear here as records change.</Trans>
+              </p>
+            ) : (
+              rows.map((d) => {
+                const ok = d.status >= 200 && d.status < 300;
+                return (
+                  <div
+                    key={d.id}
+                    className="flex items-center gap-3 rounded-control border border-border px-3 py-2"
+                  >
+                    <Badge variant={ok ? "default" : "destructive"} className="shrink-0 text-[10px] tabular-nums">
+                      {d.status === 0 ? t`failed` : d.status}
+                    </Badge>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-mono text-[11.5px]">{d.event}</div>
+                      {d.error ? (
+                        <div className="truncate text-[11px] text-destructive">{d.error}</div>
+                      ) : null}
+                    </div>
+                    <div className="shrink-0 text-right text-[11px] text-muted-foreground">
+                      <div>{relativeTime(d.deliveredAt)}</div>
+                      <div className="tabular-nums">
+                        {d.attempts > 1 ? (
+                          <Trans>
+                            {d.ms}ms · try {d.attempts}
+                          </Trans>
+                        ) : (
+                          <Trans>{d.ms}ms</Trans>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </ScrollArea>
+
+        <DialogFooter className="shrink-0 border-t border-border px-5 py-3.5">
+          <Button variant="ghost" onClick={onClose}>
+            <Trans>Close</Trans>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

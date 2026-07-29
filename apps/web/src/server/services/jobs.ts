@@ -9,6 +9,7 @@ import { buildContext } from "../context";
 import { findByName } from "./functions";
 import { runFunction } from "./sandbox";
 import { deliverWebhookById } from "./webhooks";
+import { deliverIntegrationById } from "./integrations";
 import { reconcileProvider } from "./payments";
 import { publishEvent } from "./events";
 import { recordActivity } from "./activity";
@@ -24,6 +25,7 @@ const SYSTEM_AUTH: AuthSubject = { userId: null, email: null, roles: [] };
 export type JobType =
   | "function"
   | "webhook.deliver"
+  | "integration.deliver"
   | "agent.turn"
   | "payments.reconcile"
   | "agent.distill_memory";
@@ -266,6 +268,26 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
       throw new Error(`webhook responded ${out.status}${out.error ? `: ${out.error}` : ""}`);
     }
     return { status: out.status };
+  }
+  if (job.type === "integration.deliver") {
+    const p = job.payload as {
+      integrationId?: string;
+      message?: { event?: string; text?: string; payload?: Record<string, unknown> };
+    };
+    const m = p.message;
+    if (!p.integrationId || !m || typeof m.event !== "string" || typeof m.text !== "string") {
+      throw new Error("integration.deliver job has an invalid payload");
+    }
+    const out = await deliverIntegrationById(ctx.env, ctx, {
+      integrationId: p.integrationId,
+      tenantId: job.tenantId,
+      message: { event: m.event, text: m.text, payload: m.payload ?? {} },
+      attempt: job.attempts,
+    });
+    // A provider failure is thrown so the queue retries with backoff; the
+    // breaker in deliverOne independently pauses a target that stays dead.
+    if (!out.ok) throw new Error(`integration responded ${out.status}`);
+    return { status: out.status, skipped: out.skipped ?? false };
   }
   if (job.type === "payments.reconcile") {
     const p = job.payload as {

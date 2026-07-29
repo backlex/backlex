@@ -4,7 +4,13 @@ import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import { INTEGRATION_CATALOG, INTEGRATION_FIELDS, INTEGRATION_KINDS } from "@backlex/integrations";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { connectIntegration, disconnectIntegration, listIntegrations } from "../services/integrations";
+import {
+  connectIntegration,
+  disconnectIntegration,
+  listIntegrationDeliveries,
+  listIntegrations,
+  resumeIntegration,
+} from "../services/integrations";
 import { logActivity } from "../services/activity";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
@@ -18,8 +24,24 @@ const IntegrationView = z
     config: z.record(z.string(), z.unknown()),
     lastEventAt: z.union([z.number(), z.date()]).nullable(),
     createdAt: z.union([z.number(), z.date()]).nullable(),
+    consecutiveFailures: z.number(),
+    lastFailureAt: z.union([z.number(), z.date()]).nullable(),
+    disabledReason: z.string().nullable(),
   })
   .openapi("Integration");
+
+const DeliveryView = z
+  .object({
+    id: z.string(),
+    integrationId: z.string(),
+    event: z.string(),
+    status: z.number(),
+    ms: z.number(),
+    error: z.string().nullable(),
+    attempts: z.number(),
+    deliveredAt: z.union([z.number(), z.date()]),
+  })
+  .openapi("IntegrationDelivery");
 
 const CatalogView = z
   .object({
@@ -175,5 +197,62 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       await disconnectIntegration(ctx, tenantId, id);
       await logActivity(c, { action: "delete", collection: "system_integrations", itemId: id });
       return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{id}/deliveries",
+      tags,
+      summary: "Recent delivery attempts",
+      description:
+        "Admin-only. Newest first. One row per attempt, including queue retries — `status` 0 means the provider " +
+        "was misconfigured or unreachable.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: {
+        params: z.object({ id: z.string() }),
+        query: z.object({
+          limit: z.coerce.number().int().min(1).max(200).optional().openapi({ description: "Default 50." }),
+        }),
+      },
+      responses: {
+        200: { description: "OK", content: { "application/json": { schema: z.object({ data: z.array(DeliveryView) }) } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      const { limit } = c.req.valid("query");
+      return c.json({ data: await listIntegrationDeliveries(ctx, tenantId, id, limit ?? 50) });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{id}/resume",
+      tags,
+      summary: "Resume an auto-disabled integration",
+      description:
+        "Admin-only. Clears the failure counter and flips `status` back to `connected` after the circuit breaker " +
+        "paused the integration. Fix the provider config first, or it will trip again.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: { description: "OK", content: { "application/json": { schema: z.object({ data: IntegrationView }) } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      const data = await resumeIntegration(ctx, tenantId, id);
+      if (!data) throw new AppError("NOT_FOUND", "Integration not found");
+      await logActivity(c, { action: "update", collection: "system_integrations", itemId: id, payload: { resumed: true } });
+      return c.json({ data });
     },
   );

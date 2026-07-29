@@ -140,6 +140,11 @@ End-to-end coverage lives in `tests/mcp-oauth.test.ts`.
 
 ## Requirements
 
+> Which providers exist, which models each can run, and the workspace →
+> global → deployment resolution order all live in
+> **[AI providers + model catalog](./ai-providers.md)**. A workspace default
+> model set in Settings · AI is used here when `/plan` doesn't name one.
+
 - An AI provider credential on the Backlex deployment. Backlex routes
   through [Vercel AI Gateway](https://ai-gateway.vercel.sh) by default —
   set `AI_GATEWAY_API_KEY` and one key reaches Anthropic, OpenAI, Google,

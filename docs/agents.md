@@ -341,6 +341,10 @@ The feature mirrors `flows` across every surface ([parity](./service-map.md)):
   short-lived `ANTHROPIC_AUTH_TOKEN` — see [Ask AI](./ask-ai.md#requirements), or a
   workspace bring-your-own key, or the managed-cloud gateway). With none
   configured a turn returns `503 UNAVAILABLE` and the thread is marked `error`.
+- An agent left on **Default** now follows the workspace's default model from
+  Settings · AI before falling back to `anthropic/claude-sonnet-5`, so switching
+  the workspace to OpenAI or Gemini moves the agents with it. Full resolution
+  order in [AI providers + model catalog](./ai-providers.md).
 - Episodic memory written before the episodic/semantic split lived under the
   `agentmem:*` namespaces and is no longer retrieved. Memory is opt-in and
   best-effort, so this is a cold start rather than data loss.

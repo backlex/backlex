@@ -17,6 +17,8 @@
   "dependencies": {
     "@ai-sdk/anthropic": "3.0.79",
     "@ai-sdk/gateway": "3.0.120",
+    "@ai-sdk/google": "3.0.102",
+    "@ai-sdk/openai": "3.0.89",
     "@asteasolutions/zod-to-openapi": "^8.5.0",
     "@backlex/auth": "workspace:*",
     "@backlex/auth-ui": "workspace:*",

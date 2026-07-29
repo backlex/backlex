@@ -35,6 +35,8 @@ import { emailConfigRoutes } from "./email-config";
 import { workspaceConfigRoutes } from "./workspace-config";
 import { authAdminRoutes } from "./auth-admin";
 import { samlAdminRoutes } from "./saml-admin";
+import { oidcAdminRoutes } from "./oidc-admin";
+import { integrationsRoutes } from "./integrations";
 import { ldapAdminRoutes } from "./ldap-admin";
 import { adoptRoutes } from "./adopt";
 import { panelsRoutes } from "./panels";
@@ -78,6 +80,8 @@ export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/workspace-config", workspaceConfigRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/auth", authAdminRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/saml", samlAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/oidc", oidcAdminRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/integrations", integrationsRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/ldap-config", ldapAdminRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/adopt", adoptRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/panels", panelsRoutes as unknown as OpenAPIHono<any>],

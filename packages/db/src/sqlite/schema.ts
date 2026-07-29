@@ -2085,9 +2085,10 @@ export const emailConfig = sqliteTable(
 
 /**
  * Per-workspace bring-your-own AI provider key — SQLite mirror of the pg
- * `ai_config` table. See the pg schema for the full contract. `provider`:
- * `inherit` | `gateway` | `anthropic`; `secrets` holds encrypted key material
- * (`gatewayKey`, `anthropicKey`).
+ * `ai_config` table. See the pg schema for the full contract. `provider` and
+ * the `secrets` key names are driven by the server's provider registry
+ * (`apps/web/src/server/services/ai-providers.ts`), so adding a provider needs
+ * no migration here — `secrets` is an opaque encrypted JSON blob.
  */
 export const aiConfig = sqliteTable(
   "ai_config",

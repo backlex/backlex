@@ -127,10 +127,12 @@ describe("i18n — admin catalog + public bundle", () => {
   });
 
   test("POST /_auto-translate without any AI config is 503 UNAVAILABLE with a setup hint", async () => {
-    // No ANTHROPIC_API_KEY in the harness env and no workspace AI override —
+    // No provider credential in the harness env and no workspace AI override —
     // missing AI config is a deployment precondition, not a server fault, so
     // the route throws AppError("UNAVAILABLE", …) → 503 (same convention as
     // the AI gateway / MCP AI tools), keeping the helpful message.
+    // Auto-translate is no longer Anthropic-only, so the hint names the whole
+    // provider surface rather than a single vendor.
     const res = await h.fetch("/api/admin/i18n/_auto-translate", {
       method: "POST",
       headers: JSON_HEADERS,
@@ -139,7 +141,8 @@ describe("i18n — admin catalog + public bundle", () => {
     expect(res.status).toBe(503);
     const body = (await res.json()) as { error: { code: string; message: string } };
     expect(body.error.code).toBe("UNAVAILABLE");
-    expect(body.error.message).toContain("Anthropic");
+    expect(body.error.message).toContain("Settings → AI");
+    expect(body.error.message).toContain("ANTHROPIC_API_KEY");
   });
 
   test("public GET /api/i18n returns locale metadata without auth", async () => {

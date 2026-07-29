@@ -2,11 +2,7 @@ import type { Context } from "hono";
 import { dispatch, SUPPORTED_PROTOCOL_VERSIONS } from "./dispatch";
 import type { McpServerWiring } from "./types";
 import { isWorkspaceAllowedOrigin } from "../services/cors-origins";
-import {
-  GLOBAL_AI_CONFIG_ID,
-  applyAiOverride,
-  resolveAiOverride,
-} from "../services/ai-config";
+import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai-config";
 
 /**
  * For an `ai.*` tool call, overlay the workspace's bring-your-own AI key onto
@@ -29,13 +25,11 @@ const withAiOverride = async (
       | undefined;
     const auth = c.get("auth") as { tenantId?: string | null } | undefined;
     if (!ctx) return wiring;
-    const override = await resolveAiOverride(
+    const { env } = await resolveAiRuntime(
       { db: ctx.db, dialect: ctx.dialect, env: wiring.env },
       auth?.tenantId ?? GLOBAL_AI_CONFIG_ID,
     );
-    return override
-      ? { ...wiring, env: applyAiOverride(wiring.env, override) }
-      : wiring;
+    return env === wiring.env ? wiring : { ...wiring, env };
   } catch {
     return wiring;
   }

@@ -3,11 +3,13 @@
  * `services/i18n-translate.ts::autoTranslateBatch` through
  * `POST /api/admin/i18n/_auto-translate`.
  *
- * The service calls `fetch("https://api.anthropic.com/v1/messages", …)` on the
- * GLOBAL fetch. The harness's `h.fetch` invokes the Hono app in-process
- * (`app.fetch`), so it never touches `globalThis.fetch` — only the OUTBOUND
- * Anthropic call hits the mock installed here. The mock passes any other URL
- * through to the real fetch and is restored in a `finally` on every test.
+ * The service now generates through the shared `callClaude` path (AI SDK), so
+ * with a direct-Anthropic workspace key the OUTBOUND request is the AI SDK's
+ * POST to `https://api.anthropic.com/v1/messages` on the GLOBAL fetch. The
+ * harness's `h.fetch` invokes the Hono app in-process (`app.fetch`), so it never
+ * touches `globalThis.fetch` — only that outbound call hits the mock installed
+ * here. The mock passes any other URL through to the real fetch and is restored
+ * in a `finally` on every test.
  *
  * The no-AI-config error path is covered in i18n-admin-catalog.test.ts and is
  * deliberately NOT asserted here.
@@ -27,10 +29,42 @@ interface AnthropicCall {
   headers: Record<string, string>;
   body: {
     model: string;
-    system: string;
-    messages: { role: string; content: string }[];
+    /** The AI SDK sends `system` as an array of text blocks; the raw API also
+     *  accepts a plain string. Normalized by {@link systemText}. */
+    system: string | { type: string; text?: string }[];
+    messages: { role: string; content: string | { type: string; text?: string }[] }[];
   };
 }
+
+/** Flatten a system field that may be a string or an array of text blocks. */
+const systemText = (body: AnthropicCall["body"]): string =>
+  typeof body.system === "string"
+    ? body.system
+    : body.system.map((b) => b.text ?? "").join("\n");
+
+/** Flatten the first user message's content (string or content-part array). */
+const userText = (body: AnthropicCall["body"]): string => {
+  const c = body.messages[0]?.content;
+  if (typeof c === "string") return c;
+  return (c ?? []).map((p) => p.text ?? "").join("\n");
+};
+
+/** A complete Anthropic Messages response — the AI SDK validates the envelope,
+ *  so a bare `{content:[…]}` would fail parsing before our code ever sees it. */
+const anthropicReply = (text: string): Response =>
+  new Response(
+    JSON.stringify({
+      id: "msg_test",
+      type: "message",
+      role: "assistant",
+      model: "claude-haiku-4-5-20251001",
+      content: [{ type: "text", text }],
+      stop_reason: "end_turn",
+      stop_sequence: null,
+      usage: { input_tokens: 10, output_tokens: 20 },
+    }),
+    { status: 200, headers: { "content-type": "application/json" } },
+  );
 
 /**
  * Intercept ONLY calls to api.anthropic.com on the global fetch; everything
@@ -71,7 +105,7 @@ const installAnthropicMock = (
 const translatorRespond =
   (dict: Record<string, string>, wrap: (json: string) => string = (j) => j) =>
   (call: AnthropicCall): Response => {
-    const user = call.body.messages[0]?.content ?? "";
+    const user = userText(call.body);
     const out: Record<string, string> = {};
     for (const line of user.split("\n")) {
       const m = line.match(/^(\d+)\. (".*")$/);
@@ -79,12 +113,7 @@ const translatorRespond =
       const src = JSON.parse(m[2] as string) as string;
       out[m[1] as string] = dict[src] ?? `UNTRANSLATED:${src}`;
     }
-    return new Response(
-      JSON.stringify({
-        content: [{ type: "text", text: wrap(JSON.stringify(out)) }],
-      }),
-      { status: 200, headers: { "content-type": "application/json" } },
-    );
+    return anthropicReply(wrap(JSON.stringify(out)));
   };
 
 interface I18nListResponse {
@@ -159,7 +188,7 @@ describe("POST /api/admin/i18n/_auto-translate (mocked Anthropic)", () => {
       expect(call.headers["x-api-key"]).toBe(BYO_KEY);
       expect(call.headers["anthropic-version"]).toBe("2023-06-01");
       expect(call.body.model).toBe("claude-haiku-4-5-20251001");
-      expect(call.body.system).toContain("from en to de");
+      expect(systemText(call.body)).toContain("from en to de");
 
       // The translations actually landed in the catalog.
       const rows = await listRows(h);
@@ -221,14 +250,8 @@ describe("POST /api/admin/i18n/_auto-translate (mocked Anthropic)", () => {
   });
 
   test("a malformed (non-JSON) model response fails cleanly and writes nothing", async () => {
-    const mock = installAnthropicMock(
-      () =>
-        new Response(
-          JSON.stringify({
-            content: [{ type: "text", text: "Sure! Here are the translations: Startseite …" }],
-          }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        ),
+    const mock = installAnthropicMock(() =>
+      anthropicReply("Sure! Here are the translations: Startseite …"),
     );
     try {
       const res = await h.fetch(
@@ -255,7 +278,7 @@ describe("POST /api/admin/i18n/_auto-translate (mocked Anthropic)", () => {
     // so the English string got upserted as the German "translation" and
     // onlyMissing never retried it.
     const partial = installAnthropicMock((call) => {
-      const user = call.body.messages[0]?.content ?? "";
+      const user = userText(call.body);
       const out: Record<string, string> = {};
       for (const line of user.split("\n")) {
         const m = line.match(/^(\d+)\. (".*")$/);
@@ -264,10 +287,7 @@ describe("POST /api/admin/i18n/_auto-translate (mocked Anthropic)", () => {
           out[m[1] as string] = "Startseite";
         }
       }
-      return new Response(
-        JSON.stringify({ content: [{ type: "text", text: JSON.stringify(out) }] }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
+      return anthropicReply(JSON.stringify(out));
     });
     try {
       const res = await h.fetch(
@@ -304,13 +324,7 @@ describe("POST /api/admin/i18n/_auto-translate (mocked Anthropic)", () => {
   });
 
   test("valid JSON that isn't an object (null) is rejected as malformed, not a TypeError", async () => {
-    const mock = installAnthropicMock(
-      () =>
-        new Response(
-          JSON.stringify({ content: [{ type: "text", text: "null" }] }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        ),
-    );
+    const mock = installAnthropicMock(() => anthropicReply("null"));
     try {
       const res = await h.fetch(
         "/api/admin/i18n/_auto-translate",
@@ -325,19 +339,25 @@ describe("POST /api/admin/i18n/_auto-translate (mocked Anthropic)", () => {
     }
   });
 
-  test("an Anthropic HTTP error surfaces as a clean AppError, not a crash", async () => {
+  test("a provider HTTP error surfaces as a clean 503 AppError, not a crash", async () => {
+    // 401 rather than 429: the AI SDK retries retryable statuses with backoff,
+    // which would blow the test timeout without testing anything extra.
     const mock = installAnthropicMock(
-      () => new Response("rate limited", { status: 429 }),
+      () =>
+        new Response(JSON.stringify({ error: { message: "invalid x-api-key" } }), {
+          status: 401,
+          headers: { "content-type": "application/json" },
+        }),
     );
     try {
       const res = await h.fetch(
         "/api/admin/i18n/_auto-translate",
         postJson({ targetLocale: "de", sourceLocale: "en" }),
       );
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(503);
       const body = (await res.json()) as { error: { code: string; message: string } };
-      expect(body.error.code).toBe("INTERNAL");
-      expect(body.error.message).toContain("Anthropic API error (429)");
+      expect(body.error.code).toBe("UNAVAILABLE");
+      expect(body.error.message).toContain("AI provider call failed (anthropic");
     } finally {
       mock.restore();
     }

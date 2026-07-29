@@ -15,7 +15,9 @@ import {
 } from "../services/i18n";
 import { autoTranslateBatch } from "../services/i18n-translate";
 import { loadAppSettings } from "../services/settings";
-import { GLOBAL_AI_CONFIG_ID, resolveAiOverride } from "../services/ai-config";
+import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai-config";
+import { hasDirectAiCredential } from "../mcp/ai-client";
+import { cloudConfigured } from "../lib/cloud-report";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 
@@ -262,24 +264,22 @@ export const i18nRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      // Auto-translate uses a direct Anthropic client. Prefer the workspace's
-      // bring-your-own Anthropic key (Settings → AI) over the deployment env —
-      // this is what makes auto-translate usable on managed cloud, where no
-      // ANTHROPIC_API_KEY is provisioned. A gateway-only BYO config can't power
-      // this Anthropic-direct path.
-      const override = await resolveAiOverride(
+      // Auto-translate runs on the shared AI config path — the workspace's
+      // bring-your-own key (Settings → AI) or, failing that, the deployment
+      // env, with the workspace's default model. It used to be pinned to a
+      // direct Anthropic key, so a gateway-only or OpenAI-only workspace was
+      // told to go get a second credential for no technical reason.
+      const { env: aiEnv, model: aiModel } = await resolveAiRuntime(
         { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
         auth.tenantId ?? GLOBAL_AI_CONFIG_ID,
       );
-      const apiKey =
-        override?.provider === "anthropic" ? override.key : ctx.env.ANTHROPIC_API_KEY;
-      if (!apiKey) {
+      if (!hasDirectAiCredential(aiEnv) && !cloudConfigured(aiEnv)) {
         // Missing AI config is a deployment precondition, not a server fault —
         // surface it as 503 UNAVAILABLE (same convention as the AI gateway /
         // MCP AI tools), keeping the setup hint.
         throw new AppError(
           "UNAVAILABLE",
-          "Add an Anthropic key in Settings → AI (or set ANTHROPIC_API_KEY in env) to enable AI auto-translate.",
+          "Add an AI provider key in Settings → AI (or set AI_GATEWAY_API_KEY / ANTHROPIC_API_KEY in env) to enable AI auto-translate.",
         );
       }
       const body = c.req.valid("json");
@@ -339,7 +339,8 @@ export const i18nRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const items = slice.map((k) => ({ key: k, value: idx.get(k)!.get(source)! }));
 
       const translated = await autoTranslateBatch({
-        apiKey,
+        env: aiEnv,
+        model: aiModel,
         sourceLocale: source,
         targetLocale: body.targetLocale,
         items,

@@ -4,6 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { bearer } from "better-auth/plugins/bearer";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { emailOTP } from "better-auth/plugins/email-otp";
+import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { and, eq } from "drizzle-orm";
 import type { EmailAdapter } from "@backlex/core";
 import * as pgSchema from "@backlex/db/pg/schema";
@@ -11,7 +12,7 @@ import * as sqliteSchema from "@backlex/db/sqlite/schema";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import { withTenantScope } from "./tenant-adapter";
-import type { AuthHooks, AuthPlugin, OAuthProviderConfig } from "./index";
+import type { AuthHooks, AuthPlugin, GenericOidcProvider, OAuthProviderConfig } from "./index";
 
 const appAuthSchemaFor = (provider: "pg" | "sqlite") => {
   const s = provider === "pg" ? pgSchema : sqliteSchema;
@@ -51,6 +52,9 @@ export interface TenantAuthConfig {
   };
   email?: EmailAdapter;
   plugins?: ReadonlyArray<AuthPlugin>;
+  /** Workspace-defined OIDC / OAuth2 providers — the app-plane SSO path.
+   *  Absent/empty keeps the `genericOAuth` plugin out of the instance. */
+  oidcProviders?: ReadonlyArray<GenericOidcProvider>;
 }
 
 const buildPlugins = (config: TenantAuthConfig) => {
@@ -67,6 +71,25 @@ const buildPlugins = (config: TenantAuthConfig) => {
           });
         },
       }),
+    );
+  }
+  // Workspace-defined OIDC / OAuth2 identity providers — the app-plane SSO
+  // path. Registered only when at least one is configured.
+  if (config.oidcProviders && config.oidcProviders.length > 0) {
+    out.push(
+      genericOAuth({
+        config: config.oidcProviders.map((p) => ({
+          providerId: p.providerId,
+          clientId: p.clientId,
+          clientSecret: p.clientSecret,
+          ...(p.discoveryUrl ? { discoveryUrl: p.discoveryUrl } : {}),
+          ...(p.authorizationUrl ? { authorizationUrl: p.authorizationUrl } : {}),
+          ...(p.tokenUrl ? { tokenUrl: p.tokenUrl } : {}),
+          ...(p.userInfoUrl ? { userInfoUrl: p.userInfoUrl } : {}),
+          scopes: p.scopes ?? ["openid", "profile", "email"],
+          pkce: p.pkce ?? true,
+        })),
+      }) as unknown as ReturnType<typeof magicLink>,
     );
   }
   if (enabled.has("email-otp") && config.email) {

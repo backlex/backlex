@@ -1817,6 +1817,66 @@ export const samlProviders = sqliteTable(
 );
 
 /**
+ * A workspace-defined OIDC / OAuth2 identity provider — the generic twin of
+ * `saml_providers`. One row per IdP, so Okta, Auth0, Keycloak, Entra,
+ * Authentik, GitLab and friends are all the *same* code path rather than a
+ * hand-written provider each. Mirror of the PG table.
+ *
+ * `discoveryUrl` is the preferred wiring: the endpoints below are resolved
+ * from `.well-known/openid-configuration` at save time. The explicit URLs are
+ * kept for plain OAuth2 providers that publish no discovery document.
+ */
+export const oidcProviders = sqliteTable(
+  "oidc_providers",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** Display name shown on the sign-in button. */
+    name: text("name").notNull(),
+    /** URL-safe id; also the better-auth `providerId`. */
+    slug: text("slug").notNull(),
+    clientId: text("client_id").notNull(),
+    /** AES-256-GCM ciphertext of the client secret. */
+    clientSecretEnc: text("client_secret_enc").notNull(),
+    discoveryUrl: text("discovery_url"),
+    authorizationUrl: text("authorization_url"),
+    tokenUrl: text("token_url"),
+    userInfoUrl: text("user_info_url"),
+    scopes: text("scopes", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default(["openid", "profile", "email"]),
+    /** PKCE on by default — required by Entra and most modern IdPs. */
+    pkce: integer("pkce", { mode: "boolean" }).notNull().default(true),
+    /** Claim to read the user's email from, when the IdP is non-standard. */
+    emailClaim: text("email_claim"),
+    /** Claim carrying group membership, for `groups_to_roles`. */
+    groupsClaim: text("groups_claim"),
+    defaultRoleId: text("default_role_id").references(() => roles.id, {
+      onDelete: "set null",
+    }),
+    groupsToRoles: text("groups_to_roles", { mode: "json" }).$type<
+      Record<string, string>
+    >(),
+    /** Attach to an existing local account when the IdP asserts a verified
+     *  email. Off by default: an IdP that does not verify emails would let a
+     *  new sign-in take over an existing account. */
+    linkByVerifiedEmail: integer("link_by_verified_email", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("oidc_providers_tenant_slug_idx").on(t.tenantId, t.slug),
+    index("oidc_providers_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
  * Federated identity link — see packages/db/src/pg/schema.ts for full docs.
  * `plane` is `'platform' | 'app'`; `user_id` references the matching pool.
  */

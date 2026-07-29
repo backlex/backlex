@@ -87,6 +87,7 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "1bd1de2c8b4f0e1a9a5855df2bd87269a8c2122a525861446c047895fff4f5c9": "20260727100000_agent_semantic_memory",
   "efcb1a7db8f2e3550c5a7a48e8f3df5e1faf4243ef400dddbd82122404477c5f": "20260727120000_payments",
   "02a7152d2965fffa70a8f4d98bb0a734de8d11b5bdca0d7f8b52c50d1e9e9f49": "20260729120000_integration_deliveries",
+  "cf2dbb4c108c65d29d922fbfd537e0b7c7f0db738e44e8529416c9417179738f": "20260729140000_oidc_providers",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -169,4 +170,5 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "f353178ad6f010fb18e797ac80ad8166b362d03fc05c800d426beef4c4d78df9": "20260727100000_agent_semantic_memory",
   "6d59e19d0fb557b8e70839207e5e1ca5a63dfa7dfa51ae2100578281b5511d1d": "20260727120000_payments",
   "d2ee00b5598f5da479fa076c134867a6645d07402ab4e4d95fa07dbe49029ac7": "20260729120000_integration_deliveries",
+  "e0ea91ce4d44dc37d7d5a98f9754ecf6a68085736989386f48dcd03ad6d3611f": "20260729140000_oidc_providers",
 };

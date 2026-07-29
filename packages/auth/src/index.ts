@@ -10,6 +10,7 @@ import { APIError } from "better-auth/api";
 import { anonymous } from "better-auth/plugins/anonymous";
 import { bearer } from "better-auth/plugins/bearer";
 import { emailOTP } from "better-auth/plugins/email-otp";
+import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { twoFactor } from "better-auth/plugins/two-factor";
 
@@ -32,6 +33,29 @@ export interface OAuthProviderConfig {
 
 export type AuthPlugin = "magic-link" | "email-otp" | "anonymous" | "passkey" | "two-factor";
 
+/**
+ * One workspace-defined OIDC / OAuth2 identity provider, in the shape
+ * better-auth's `genericOAuth` plugin consumes.
+ *
+ * This is the generic path: Okta, Auth0, Keycloak, Entra, Authentik, GitLab,
+ * Discord and LinkedIn are all *configuration*, not code. `discoveryUrl` is the
+ * preferred wiring — the caller resolves the explicit endpoints from it and
+ * passes both, so a provider whose discovery document later moves keeps
+ * working from the stored values.
+ */
+export interface GenericOidcProvider {
+  /** better-auth `providerId` — also the sign-in route segment. */
+  providerId: string;
+  clientId: string;
+  clientSecret: string;
+  discoveryUrl?: string;
+  authorizationUrl?: string;
+  tokenUrl?: string;
+  userInfoUrl?: string;
+  scopes?: string[];
+  pkce?: boolean;
+}
+
 export interface AuthConfig {
   baseURL: string;
   secret: string;
@@ -48,6 +72,9 @@ export interface AuthConfig {
    *  provided. `passkey` adds a `passkey` table — run migrations after
    *  enabling. */
   plugins?: ReadonlyArray<AuthPlugin>;
+  /** Workspace-defined OIDC / OAuth2 providers. Each becomes a `genericOAuth`
+   *  entry; an empty/absent list keeps the plugin out of the instance. */
+  oidcProviders?: ReadonlyArray<GenericOidcProvider>;
   /** Require a confirmed email before password sign-in. better-auth mails a
    *  verification link on sign-up (and blocks login until it's clicked). The
    *  caller MUST only set this when `email` is a real transport — gating login
@@ -119,6 +146,26 @@ const buildPlugins = async (config: AuthConfig) => {
   }
   if (enabled.has("anonymous")) {
     out.push(anonymous() as unknown as ReturnType<typeof magicLink>);
+  }
+  // Workspace-defined OIDC / OAuth2 identity providers. Registered only when
+  // at least one is configured, so instances without SSO don't carry the
+  // plugin's routes.
+  if (config.oidcProviders && config.oidcProviders.length > 0) {
+    out.push(
+      genericOAuth({
+        config: config.oidcProviders.map((p) => ({
+          providerId: p.providerId,
+          clientId: p.clientId,
+          clientSecret: p.clientSecret,
+          ...(p.discoveryUrl ? { discoveryUrl: p.discoveryUrl } : {}),
+          ...(p.authorizationUrl ? { authorizationUrl: p.authorizationUrl } : {}),
+          ...(p.tokenUrl ? { tokenUrl: p.tokenUrl } : {}),
+          ...(p.userInfoUrl ? { userInfoUrl: p.userInfoUrl } : {}),
+          scopes: p.scopes ?? ["openid", "profile", "email"],
+          pkce: p.pkce ?? true,
+        })),
+      }) as unknown as ReturnType<typeof magicLink>,
+    );
   }
   // Always on: turns this instance into an OAuth 2.1 authorization server for
   // the MCP endpoint (discovery metadata, dynamic client registration, PKCE

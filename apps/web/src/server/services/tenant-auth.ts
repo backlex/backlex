@@ -15,6 +15,7 @@ import { loadAuthConfigRow } from "./auth-config";
 import { resolveEmailAdapter } from "./email-config";
 import { envExtraOrigins, redirectUrlOrigins } from "./cors-origins";
 import { autoLinkAppUser } from "./portal-links";
+import { loadOidcProvidersForAuth } from "./oidc-providers";
 
 /** Parse a session-lifetime string like `30d` / `24h` / `90m` / `3600s` into
  *  seconds. Returns `undefined` for unrecognised input so callers fall back to
@@ -183,6 +184,15 @@ export const getTenantAuth = async (
     ]),
   );
 
+  // Workspace-defined OIDC / OAuth2 IdPs (Okta / Auth0 / Keycloak / Entra / …).
+  // Loaded here so the auth instance carries them; the cache is dropped via
+  // `invalidateTenantAuth` when the admin route edits one.
+  const oidcProviders = await loadOidcProvidersForAuth(
+    { db: ctx.db, dialect: ctx.dialect },
+    env,
+    tenant.id,
+  );
+
   const auth = createTenantAuth(ctx.db, ctx.dialect, {
     tenantId: tenant.id,
     tenantSlug: tenant.slug,
@@ -193,6 +203,7 @@ export const getTenantAuth = async (
     sessionExpiresInSeconds,
     email: tenantEmail,
     socialProviders: Object.keys(social).length > 0 ? social : undefined,
+    oidcProviders: oidcProviders.length > 0 ? oidcProviders : undefined,
     plugins: pluginList,
     hooks: {
       // Workspace end-user sign-up gate. Only an EXPLICIT

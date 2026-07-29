@@ -88,6 +88,7 @@ import {
   usersRoutes,
 } from "./routes/roles";
 import { samlAdminRoutes } from "./routes/saml-admin";
+import { oidcAdminRoutes } from "./routes/oidc-admin";
 import { platformSamlAdminRoutes } from "./routes/platform-saml-admin";
 import { platformLdapAdminRoutes } from "./routes/platform-ldap-admin";
 import { sandboxRpcRoutes } from "./routes/sandbox-rpc";
@@ -804,6 +805,7 @@ export const createApp = (env: Env) => {
   app.route("/api/workspace-config", workspaceConfigRoutes);
   app.route("/api/admin/auth", authAdminRoutes);
   app.route("/api/admin/saml", samlAdminRoutes);
+  app.route("/api/admin/oidc", oidcAdminRoutes);
   app.route("/api/admin/ldap-config", ldapAdminRoutes);
   app.route("/api/admin/platform-saml", platformSamlAdminRoutes);
   app.route("/api/admin/platform-ldap-config", platformLdapAdminRoutes);

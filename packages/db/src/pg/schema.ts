@@ -2156,6 +2156,59 @@ export const samlProviders = pgTable(
 );
 
 /**
+ * A workspace-defined OIDC / OAuth2 identity provider — the generic twin of
+ * `saml_providers`. One row per IdP, so Okta, Auth0, Keycloak, Entra,
+ * Authentik, GitLab and friends are all the *same* code path rather than a
+ * hand-written provider each.
+ *
+ * `discovery_url` is the preferred wiring: the endpoints below are resolved
+ * from `.well-known/openid-configuration` at save time. The explicit URLs are
+ * kept for plain OAuth2 providers that publish no discovery document.
+ */
+export const oidcProviders = pgTable(
+  "oidc_providers",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** Display name shown on the sign-in button. */
+    name: text("name").notNull(),
+    /** URL-safe id; also the better-auth `providerId`. */
+    slug: text("slug").notNull(),
+    clientId: text("client_id").notNull(),
+    /** AES-256-GCM ciphertext of the client secret. */
+    clientSecretEnc: text("client_secret_enc").notNull(),
+    discoveryUrl: text("discovery_url"),
+    authorizationUrl: text("authorization_url"),
+    tokenUrl: text("token_url"),
+    userInfoUrl: text("user_info_url"),
+    scopes: jsonb("scopes").$type<string[]>().notNull().default(["openid", "profile", "email"]),
+    /** PKCE on by default — required by Entra and most modern IdPs. */
+    pkce: boolean("pkce").notNull().default(true),
+    /** Claim to read the user's email from, when the IdP is non-standard. */
+    emailClaim: text("email_claim"),
+    /** Claim carrying group membership, for `groups_to_roles`. */
+    groupsClaim: text("groups_claim"),
+    defaultRoleId: text("default_role_id").references(() => roles.id, {
+      onDelete: "set null",
+    }),
+    groupsToRoles: jsonb("groups_to_roles").$type<Record<string, string>>(),
+    /** Attach to an existing local account when the IdP asserts a verified
+     *  email. Off by default: an IdP that does not verify emails would let a
+     *  new sign-in take over an existing account. */
+    linkByVerifiedEmail: boolean("link_by_verified_email").notNull().default(false),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("oidc_providers_tenant_slug_idx").on(t.tenantId, t.slug),
+    index("oidc_providers_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
  * Federated identity link between a workspace user (or platform user) and an
  * external IdP. `plane` decides which pool `user_id` references:
  *   - `platform` → `users.id` (the admin app's identity pool)

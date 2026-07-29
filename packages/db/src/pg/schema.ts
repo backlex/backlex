@@ -2458,9 +2458,14 @@ export const emailConfig = pgTable(
  * provider instead. `provider = "inherit"` (or no usable key) falls through to
  * the deployment's behaviour (cloud gateway on cloud, env keys on self-host).
  *
- * `provider`: `inherit` | `gateway` (Vercel AI Gateway, multi-provider) |
- * `anthropic` (direct Anthropic). `secrets` holds the encrypted key material
- * (`gatewayKey`, `anthropicKey`); never returned in the clear.
+ * `provider` is `inherit` or an id from the server's provider registry
+ * (`apps/web/src/server/services/ai-providers.ts`) — today `gateway` (Vercel AI
+ * Gateway, multi-provider), `anthropic`, `openai`, `google`. `secrets` holds
+ * the encrypted key material under that registry's per-provider key names
+ * (`gatewayKey`, `anthropicKey`, `openaiKey`, `googleKey`) and is never
+ * returned in the clear; because it is an opaque JSON blob, widening the
+ * registry needs no migration. `config.model` optionally pins a default model
+ * id (stored gateway-style, provider-prefixed).
  */
 export const aiConfig = pgTable(
   "ai_config",

@@ -13,12 +13,16 @@ import { cloudConfigured } from "../lib/cloud-report";
 import { callClaude } from "../mcp/ai-client";
 import { defaultHook } from "../lib/openapi-router";
 import {
-  AI_SECRET_KEYS,
   GLOBAL_AI_CONFIG_ID,
-  applyAiOverride,
-  resolveAiOverride,
-  type AiSecretKey,
+  resolveAiRuntime,
 } from "../services/ai-config";
+import {
+  AI_MODELS,
+  AI_PROVIDERS,
+  AI_PROVIDER_IDS,
+  isAiSecretKey,
+  modelsForProvider,
+} from "../services/ai-providers";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.aiConfig : sqlite.schema.aiConfig;
@@ -31,7 +35,11 @@ const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   await next();
 };
 
-const AiProvider = z.enum(["inherit", "gateway", "anthropic"]);
+// Registry-driven, so adding a provider to `services/ai-providers.ts` widens
+// the accepted enum without touching this file.
+const AiProvider = z.enum(AI_PROVIDER_IDS as [string, ...string[]]);
+
+const secretKeyList = AI_PROVIDERS.map((p) => `\`${p.secretKey}\``).join(", ");
 
 const PutInput = z
   .object({
@@ -39,29 +47,34 @@ const PutInput = z
     /** Non-secret params (currently just an optional default `model` id).
      *  Replaces the stored `config` wholesale. */
     config: z.record(z.string(), z.unknown()).optional(),
-    /** Per-key plaintext secret (`gatewayKey`, `anthropicKey`). Non-empty
-     *  string = encrypt + store; empty/null = clear; omitted = left untouched. */
+    /** Per-key plaintext secret. Non-empty string = encrypt + store;
+     *  empty/null = clear; omitted = left untouched. */
     secrets: z
       .record(z.string(), z.union([z.string(), z.null()]))
       .optional()
       .openapi({
-        description:
-          "Per-key plaintext AI key (`gatewayKey`, `anthropicKey`). Non-empty = encrypt + store; empty/null = clear; omitted keys left untouched.",
+        description: `Per-key plaintext AI key (${secretKeyList}). Non-empty = encrypt + store; empty/null = clear; omitted keys left untouched.`,
       }),
   })
   .openapi("AiConfigPutInput");
 
 const AiTestInput = z.object({}).openapi("AiConfigTestInput");
 
-/** Which secret keys have a stored ciphertext — never returns the ciphertext. */
+/**
+ * Which secret keys have a stored ciphertext — a boolean per registry provider,
+ * never the ciphertext and never the plaintext. This is the ONLY thing the read
+ * endpoint says about a stored key.
+ */
 const secretsSet = (
   stored: Record<string, string> | null | undefined,
-): Record<AiSecretKey, boolean> => {
+): Record<string, boolean> => {
   const s = stored ?? {};
-  return {
-    gatewayKey: typeof s.gatewayKey === "string" && s.gatewayKey.length > 0,
-    anthropicKey: typeof s.anthropicKey === "string" && s.anthropicKey.length > 0,
-  };
+  const out: Record<string, boolean> = {};
+  for (const p of AI_PROVIDERS) {
+    const v = s[p.secretKey];
+    out[p.secretKey] = typeof v === "string" && v.length > 0;
+  }
+  return out;
 };
 
 const tags = ["ai-config"];
@@ -128,7 +141,28 @@ export const aiConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
               ctx.env.ANTHROPIC_API_KEY?.trim() || ctx.env.ANTHROPIC_AUTH_TOKEN?.trim(),
             ),
           },
-          providerIds: ["inherit", "gateway", "anthropic"],
+          providerIds: AI_PROVIDER_IDS,
+          /** Provider registry — what the picker renders. Descriptive metadata
+           *  only; no credential material of any kind crosses this boundary,
+           *  `envKey` is just the NAME of the variable an operator would set. */
+          providers: AI_PROVIDERS.map((p) => ({
+            id: p.id,
+            label: p.label,
+            secretKey: p.secretKey,
+            secretLabel: p.secretLabel,
+            envKey: p.envKey,
+            transport: p.transport,
+            defaultModel: p.defaultModel,
+            hint: p.hint,
+            docsUrl: p.docsUrl,
+          })),
+          /** Full model catalog plus, for convenience, the ids each provider
+           *  can actually run — so the admin can filter the dropdown the moment
+           *  the provider changes without a second round-trip. */
+          models: AI_MODELS,
+          modelsByProvider: Object.fromEntries(
+            AI_PROVIDER_IDS.map((id) => [id, modelsForProvider(id).map((m) => m.id)]),
+          ),
         },
       });
     },
@@ -173,9 +207,11 @@ export const aiConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // Merge secrets: encrypt new values, drop cleared ones, keep the rest.
       const secrets: Record<string, string> = { ...(existing[0]?.secrets ?? {}) };
       if (body.secrets) {
-        for (const k of AI_SECRET_KEYS) {
-          if (!(k in body.secrets)) continue;
-          const v = body.secrets[k];
+        for (const [k, v] of Object.entries(body.secrets)) {
+          // Registry-gated: an unrecognised key is dropped rather than written
+          // through, so a client can't stuff arbitrary attacker-chosen material
+          // into the encrypted blob this workspace's admins later read back.
+          if (!isAiSecretKey(k)) continue;
           if (typeof v === "string" && v.trim()) {
             secrets[k] = await encryptSecret(v.trim(), ctx.env.AUTH_SECRET);
           } else {
@@ -237,13 +273,15 @@ export const aiConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       await enforceIpRateLimit(c, "ai-test", 5);
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      const override = await resolveAiOverride(
+      // Same shared resolution path every other AI caller uses, so "Test key"
+      // proves the config that will actually run — provider AND model.
+      const { env, model } = await resolveAiRuntime(
         { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
         auth.tenantId ?? GLOBAL_AI_CONFIG_ID,
       );
-      const env = override ? applyAiOverride(ctx.env, override) : ctx.env;
       const reply = await callClaude(env, {
         user: "Reply with exactly the word: ok",
+        model,
         maxTokens: 16,
       });
       return c.json({ ok: true, reply: reply.text.trim().slice(0, 200) });

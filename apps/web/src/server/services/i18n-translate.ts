@@ -1,9 +1,16 @@
 import { AppError } from "@backlex/core";
+import { callClaude } from "../mcp/ai-client";
+import type { Env } from "../env";
 
 /**
- * Auto-translate a batch of source strings into a target locale using the
- * Anthropic Messages API. We hit the HTTP endpoint directly so the Workers
- * runtime doesn't need an SDK dependency.
+ * Auto-translate a batch of source strings into a target locale.
+ *
+ * Generation goes through the shared `callClaude` path, which means
+ * auto-translate now runs on whatever the workspace configured in Settings · AI
+ * — AI Gateway, Anthropic, OpenAI or Gemini — instead of the direct-Anthropic
+ * HTTP call it used to hard-code. That call predated the AI SDK being in the
+ * bundle at all; keeping it meant a gateway-only or OpenAI-only workspace got a
+ * "set an Anthropic key" error for a feature its key could perfectly well run.
  *
  * Returns one entry per input the model actually translated, in input order.
  * Slots the model omitted (or answered with an empty string) are DROPPED, not
@@ -13,18 +20,19 @@ import { AppError } from "@backlex/core";
  * retried on the next run.
  */
 export const autoTranslateBatch = async (params: {
-  apiKey: string;
+  /** Env with the workspace's resolved AI credential already overlaid
+   *  (`resolveAiRuntime().env`). */
+  env: Env;
   sourceLocale: string;
   targetLocale: string;
   items: { key: string; value: string }[];
-  /** Override the default Claude model. Haiku is fine for translation; opus
-   *  is overkill but available for tricky tonal work. */
+  /** Model id from the shared config path. Undefined → the provider registry's
+   *  default; translation is a cheap-tier job, so that default is the right
+   *  one unless an operator deliberately chose otherwise. */
   model?: string;
 }): Promise<{ key: string; value: string }[]> => {
-  const { apiKey, sourceLocale, targetLocale, items } = params;
+  const { env, sourceLocale, targetLocale, items, model } = params;
   if (items.length === 0) return [];
-
-  const model = params.model ?? "claude-haiku-4-5-20251001";
 
   // Encode as a numbered list so the model can return a JSON object keyed by
   // the same index. We avoid sending the original i18n key (which might leak
@@ -45,34 +53,13 @@ export const autoTranslateBatch = async (params: {
 
   const user = `Translate these ${items.length} strings:\n${numbered}`;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: Math.min(4096, 256 + items.length * 128),
-      system,
-      messages: [{ role: "user", content: user }],
-    }),
+  const reply = await callClaude(env, {
+    system,
+    user,
+    model,
+    maxTokens: Math.min(4096, 256 + items.length * 128),
   });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new AppError(
-      "INTERNAL",
-      `Anthropic API error (${res.status}): ${text.slice(0, 200)}`,
-    );
-  }
-
-  const body = (await res.json()) as {
-    content?: { type: string; text?: string }[];
-  };
-  const text =
-    body.content?.find((b) => b.type === "text")?.text?.trim() ?? "";
+  const text = reply.text.trim();
 
   // The model is asked for raw JSON, but tolerate fenced code just in case.
   const json = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "");

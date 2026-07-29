@@ -180,6 +180,25 @@ export interface Env {
    *  short-lived jobs; a long-running deployment wants `AI_GATEWAY_API_KEY`
    *  or `ANTHROPIC_API_KEY`. Lower precedence than both. */
   ANTHROPIC_AUTH_TOKEN?: string;
+  /** Direct Google AI Studio (Gemini) API key. Only used for generation when
+   *  the provider is picked explicitly via {@link Env.AI_PROVIDER} or a
+   *  workspace BYO config — it is deliberately NOT part of the ambient
+   *  auto-detect chain (see `AI_PROVIDER`). */
+  GOOGLE_GENERATIVE_AI_API_KEY?: string;
+  /** Force which entry of the AI provider registry (`services/ai-providers.ts`)
+   *  generation runs on: `gateway` | `anthropic` | `openai` | `google`.
+   *
+   *  Without it, credentials are auto-detected in the historical order
+   *  (`AI_GATEWAY_API_KEY` → `ANTHROPIC_API_KEY` → `ANTHROPIC_AUTH_TOKEN`).
+   *  That chain deliberately does NOT sniff `OPENAI_API_KEY`, which many
+   *  deployments already set purely for embeddings — silently promoting it to
+   *  the generation credential would reroute (and re-bill) every AI feature.
+   *  Setting `AI_PROVIDER` is the explicit opt-in; a workspace's bring-your-own
+   *  provider choice sets it internally via `applyAiOverride`.
+   *
+   *  An unknown value, or a value whose key is missing, falls back to the
+   *  auto-detect chain rather than failing. */
+  AI_PROVIDER?: string;
   /** Base URL of a self-hosted, OpenAI-compatible embeddings container
    *  (e.g. HuggingFace TEI, Ollama, vLLM, LiteLLM). The adapter posts to
    *  `${EMBEDDING_HTTP_URL}/v1/embeddings`. Required to use any model whose
@@ -510,6 +529,8 @@ export const STRING_ENV_KEYS = [
   "AI_GATEWAY_API_KEY",
   "ANTHROPIC_API_KEY",
   "ANTHROPIC_AUTH_TOKEN",
+  "GOOGLE_GENERATIVE_AI_API_KEY",
+  "AI_PROVIDER",
   "EMBEDDING_HTTP_URL",
   "EMBEDDING_HTTP_TOKEN",
   "EMBEDDING_DEFAULT_MODEL",

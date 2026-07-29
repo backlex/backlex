@@ -101,6 +101,7 @@ export default defineConfig({
             { slug: "vector-search" },
             { slug: "full-text-search" },
             { slug: "ask-ai" },
+            { slug: "ai-providers" },
           ],
         },
         {

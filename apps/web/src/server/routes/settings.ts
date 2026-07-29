@@ -306,6 +306,12 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         { key: "SMTP_USER", set: present("SMTP_USER"), source: "env", secret: false },
         { key: "SMTP_PASSWORD", set: present("SMTP_PASSWORD"), source: "env", secret: true },
         { key: "OPENAI_API_KEY", set: present("OPENAI_API_KEY"), source: "env", secret: true },
+        // Generation credentials (see docs/ai-providers.md). Presence only —
+        // this endpoint never returns a value for anything marked secret.
+        { key: "AI_PROVIDER", set: present("AI_PROVIDER"), source: "env", secret: false },
+        { key: "AI_GATEWAY_API_KEY", set: present("AI_GATEWAY_API_KEY"), source: "env", secret: true },
+        { key: "ANTHROPIC_API_KEY", set: present("ANTHROPIC_API_KEY"), source: "env", secret: true },
+        { key: "GOOGLE_GENERATIVE_AI_API_KEY", set: present("GOOGLE_GENERATIVE_AI_API_KEY"), source: "env", secret: true },
         { key: "OAUTH_GOOGLE_CLIENT_ID", set: present("OAUTH_GOOGLE_CLIENT_ID"), source: "env", secret: false },
         { key: "OAUTH_GOOGLE_CLIENT_SECRET", set: present("OAUTH_GOOGLE_CLIENT_SECRET"), source: "env", secret: true },
         { key: "OAUTH_GITHUB_CLIENT_ID", set: present("OAUTH_GITHUB_CLIENT_ID"), source: "env", secret: false },

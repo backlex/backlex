@@ -1517,8 +1517,12 @@ msgid "AI key works — model replied: {0}"
 msgstr "AI anahtarı çalışıyor — model yanıtı: {0}"
 
 #: src/client/admin/pages/settings/ai-card.tsx
-msgid "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
-msgstr "<0>Bu çalışma alanı</0> için AI sağlayıcı anahtarı. Ayarlandığında, AI üretimi için dağıtım varsayılanını geçersiz kılar (Ask AI,<1> ai.*</1> araçları, otomatik çeviri) — managed cloud dahil; burada ölçülen platform AI ağ geçidinden çıkıp kendi sağlayıcınızı kullanabilirsiniz. Anahtarlar beklerken şifrelenir ve bir daha asla gösterilmez."
+msgid "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, agents, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
+msgstr "<0>Bu çalışma alanı</0> için AI sağlayıcı anahtarı. Ayarlandığında AI üretimi (Ask AI, ajanlar,<1> ai.*</1> araçları, otomatik çeviri) için dağıtım varsayılanını geçersiz kılar — ölçülen platform AI ağ geçidinden çıkıp kendi sağlayıcınızı faturalandırmanıza izin veren yönetilen bulut dahil. Anahtarlar şifreli saklanır ve bir daha gösterilmez."
+
+#: src/client/admin/pages/settings/ai-card.tsx
+#~ msgid "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
+#~ msgstr "<0>Bu çalışma alanı</0> için AI sağlayıcı anahtarı. Ayarlandığında, AI üretimi için dağıtım varsayılanını geçersiz kılar (Ask AI,<1> ai.*</1> araçları, otomatik çeviri) — managed cloud dahil; burada ölçülen platform AI ağ geçidinden çıkıp kendi sağlayıcınızı kullanabilirsiniz. Anahtarlar beklerken şifrelenir ve bir daha asla gösterilmez."
 
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "AI settings saved."
@@ -1710,6 +1714,10 @@ msgstr "OAuth destekleyen her istemci anahtar olmadan bağlanır — keşif, ona
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
 #~ msgstr "OAuth destekleyen her MCP istemcisi anahtarsız bağlanır — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code ve yeni Claude Desktop. MCP URL'sini uzak / özel bağlayıcı olarak ekleyip onay ekranını kabul edin; araçlar rolleriniz ve izin kurallarınızla çalışır."
+
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "any provider model id"
+msgstr "herhangi bir sağlayıcı model kimliği"
 
 #: src/client/admin/pages/agents.tsx
 msgid "any provider/model id"
@@ -3711,6 +3719,7 @@ msgid "custom rule"
 msgstr "özel kural"
 
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
 msgid "Custom…"
 msgstr "Özel…"
 
@@ -3807,6 +3816,10 @@ msgstr "Ondalık basamak"
 msgid "default"
 msgstr "varsayılan"
 
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "Default"
+msgstr "Varsayılan"
+
 #: src/client/admin/edit-field.tsx
 msgid "Default (auto)"
 msgstr "Varsayılan (otomatik)"
@@ -3824,8 +3837,12 @@ msgid "Default locale"
 msgstr "Varsayılan yerel ayar"
 
 #: src/client/admin/pages/settings/ai-card.tsx
-msgid "Default model (optional)"
-msgstr "Varsayılan model (isteğe bağlı)"
+msgid "Default model"
+msgstr "Varsayılan model"
+
+#: src/client/admin/pages/settings/ai-card.tsx
+#~ msgid "Default model (optional)"
+#~ msgstr "Varsayılan model (isteğe bağlı)"
 
 #: src/client/admin/collection-settings.tsx
 msgid "default order when <0>?sort=</0> is omitted"
@@ -6255,6 +6272,10 @@ msgstr "Veri alma anahtarı"
 msgid "Ingest key revoked."
 msgstr "Veri alma anahtarı iptal edildi."
 
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "Inherit — deployment default"
+msgstr "Devral — dağıtım varsayılanı"
+
 #: src/client/admin/parity/revisions.tsx
 msgid "initial"
 msgstr "ilk"
@@ -6945,8 +6966,8 @@ msgid "Leave blank to keep the stored cert."
 msgstr "Saklanan sertifikayı korumak için boş bırakın."
 
 #: src/client/admin/pages/settings/ai-card.tsx
-msgid "Leave blank to use the built-in default. Callers may still override per request."
-msgstr "Yerleşik varsayılanı kullanmak için boş bırakın. Çağıranlar yine de istek bazında değiştirebilir."
+#~ msgid "Leave blank to use the built-in default. Callers may still override per request."
+#~ msgstr "Yerleşik varsayılanı kullanmak için boş bırakın. Çağıranlar yine de istek bazında değiştirebilir."
 
 #. placeholder {0}: folder ? <>currently in <span className="font-mono">{folder}/</span></> : <>root by default</>
 #: src/client/admin/storage/index.tsx
@@ -7604,6 +7625,10 @@ msgstr "Taşındı."
 #: src/client/admin/parity/translations.tsx
 msgid "Multi-locale content. Field-level translations attach to <0>c_*_translations</0> sibling tables; UI strings live here."
 msgstr "Çok dilli içerik. Alan düzeyindeki çeviriler <0>c_*_translations</0> kardeş tablolarına eklenir; UI dizeleri burada bulunur."
+
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "multi-provider"
+msgstr "çoklu sağlayıcı"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "multiple ok"
@@ -9971,6 +9996,10 @@ msgstr "Sağlayıcı"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Provider created."
 msgstr "Sağlayıcı oluşturuldu."
+
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "provider default"
+msgstr "sağlayıcı varsayılanı"
 
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -12458,6 +12487,10 @@ msgstr "Tekli (relation)"
 msgid "single scalar value"
 msgstr "tek skaler değer"
 
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "single vendor"
+msgstr "tek sağlayıcı"
+
 #: src/client/admin/collections-index.tsx
 msgid "singleton"
 msgstr "tekil"
@@ -14290,6 +14323,10 @@ msgstr "Harf, rakam, nokta, tire veya alt çizgi kullanın. Harf veya rakamla ba
 #: src/client/admin/parity/translations.tsx
 msgid "Used as fallback when the requested locale has no string for a key."
 msgstr "İstenen yerel ayarın bir anahtar için dizesi olmadığında yedek olarak kullanılır."
+
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "Used by Ask AI, agents left on “Default”, auto-translate and the ai.* tools. Callers may still override per request. Ids are written provider-prefixed; a direct provider gets the prefix stripped for you."
+msgstr "Ask AI, “Varsayılan” bırakılan ajanlar, otomatik çeviri ve ai.* araçları tarafından kullanılır. Çağıranlar istek başına yine de geçersiz kılabilir. Kimlikler sağlayıcı önekiyle yazılır; doğrudan bir sağlayıcıda önek sizin için kaldırılır."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Used by revision tracking and the updated_at projection."

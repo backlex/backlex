@@ -23,11 +23,7 @@ import type { Env } from "../env";
 import { requireUser } from "../middleware/session";
 import { enforceIpRateLimit } from "../lib/auth-rate-limit";
 import { callClaude, extractJson } from "../mcp/ai-client";
-import {
-  GLOBAL_AI_CONFIG_ID,
-  applyAiOverride,
-  resolveAiOverride,
-} from "../services/ai-config";
+import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../services/ai-config";
 import { allTools } from "../mcp/tools";
 import { makeInternalFetch, readJson } from "../mcp/internal-fetch";
 import type { ToolCtx } from "../mcp/types";
@@ -353,25 +349,25 @@ const planHandler = async (
   if (!prompt) {
     throw new AppError("VALIDATION", "prompt is required");
   }
-  const model =
-    typeof body.model === "string" && body.model.trim()
-      ? body.model.trim()
-      : DEFAULT_PLAN_MODEL;
-
   const fetchInternal = makeInternalFetch(app as unknown as Hono, c.req.raw, env);
   const schemaDigest = await loadSchemaDigest(fetchInternal);
   const todayIso = new Date().toISOString().slice(0, 10);
   const system = buildPlanSystem(schemaDigest, todayIso);
 
-  // Prefer the workspace's bring-your-own AI key when set (overrides the
-  // deployment default, and on managed cloud bypasses the metered gateway).
+  // Shared config path: the workspace's bring-your-own key AND its default
+  // model, resolved workspace row → global row → deployment default. (On
+  // managed cloud a BYO key also bypasses the metered gateway.)
   const ctx = c.get("ctx");
   const auth = c.get("auth");
-  const override = await resolveAiOverride(
+  const { env: aiEnv, model: configModel } = await resolveAiRuntime(
     { db: ctx.db, dialect: ctx.dialect, env },
     auth.tenantId ?? GLOBAL_AI_CONFIG_ID,
   );
-  const aiEnv = override ? applyAiOverride(env, override) : env;
+  // Per-request pick wins over the workspace default, which wins over ours.
+  const model =
+    typeof body.model === "string" && body.model.trim()
+      ? body.model.trim()
+      : (configModel ?? DEFAULT_PLAN_MODEL);
 
   const reply = await callClaude(aiEnv, {
     system,

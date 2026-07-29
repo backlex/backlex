@@ -126,21 +126,31 @@ export const modelLabel = (m?: string | null): string => {
   return m.includes("/") ? m.split("/").pop()! : m;
 };
 
-/** Workspace AI config (subset of GET /api/admin/ai-config). */
+/** Workspace AI config (subset of GET /api/admin/ai-config). `secretsSet` is
+ *  keyed by the registry's per-provider secret key, so it grows with the
+ *  registry rather than naming providers here. */
 export interface AiCfg {
   provider: string;
-  secretsSet: { gatewayKey: boolean; anthropicKey: boolean };
+  secretsSet: Record<string, boolean>;
   env: { cloud: boolean; hasGatewayKey: boolean; hasAnthropicKey: boolean };
+  /** Provider registry from the server. Optional so an older cached payload
+   *  (or a narrower caller) still type-checks. */
+  providers?: readonly { id: string; secretKey: string }[];
 }
 
 /** Does the workspace/deployment effectively have a direct AI key, so BYO
- *  (Claude / Kimi / GLM) models actually run instead of falling back? */
-export const hasEffectiveKey = (c: AiCfg | null): boolean =>
-  !!c &&
-  ((c.provider === "gateway" && c.secretsSet.gatewayKey) ||
-    (c.provider === "anthropic" && c.secretsSet.anthropicKey) ||
-    c.env.hasGatewayKey ||
-    c.env.hasAnthropicKey);
+ *  (Claude / GPT / Gemini) models actually run instead of falling back?
+ *  Registry-driven: whichever provider is selected, we ask whether ITS secret
+ *  is stored — hard-coding gateway/anthropic here is what would silently make a
+ *  workspace on an OpenAI key look keyless. */
+export const hasEffectiveKey = (c: AiCfg | null): boolean => {
+  if (!c) return false;
+  if (c.env.hasGatewayKey || c.env.hasAnthropicKey) return true;
+  if (c.provider === "inherit") return false;
+  const secretKey =
+    c.providers?.find((p) => p.id === c.provider)?.secretKey ?? `${c.provider}Key`;
+  return c.secretsSet[secretKey] === true;
+};
 
 /** BYO models silently fall back to Workers AI on managed cloud when no key. */
 export const keylessManaged = (c: AiCfg | null): boolean =>

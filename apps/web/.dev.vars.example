@@ -104,6 +104,13 @@ TEST_ADMIN_PASSWORD = "correct-horse-battery"
 # --access-token`). Lowest precedence of the three, and it EXPIRES — handy for
 # local dev, not for a long-running deployment.
 # ANTHROPIC_AUTH_TOKEN = "sk-ant-oat01-..."
+# Direct OpenAI / Google generation needs an EXPLICIT pick — `OPENAI_API_KEY` is
+# already set on many deployments purely for embeddings, so it is deliberately
+# not auto-promoted to the generation credential. Set AI_PROVIDER to opt in.
+# See docs/ai-providers.md.
+# AI_PROVIDER = "openai"           # gateway | anthropic | openai | google
+# OPENAI_API_KEY = "sk-..."
+# GOOGLE_GENERATIVE_AI_API_KEY = "AIza..."
 
 # OAuth providers — both id+secret required to enable. Each is auto-wired
 # into better-auth's socialProviders if both are present. The admin Auth

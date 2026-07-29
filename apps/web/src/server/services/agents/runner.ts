@@ -22,11 +22,7 @@ import { callClaudeTools, type AiEffort } from "../../mcp/ai-client";
 import { allTools } from "../../mcp/tools";
 import type { McpTool, ToolCtx } from "../../mcp/types";
 import type { ModelMessage } from "ai";
-import {
-  GLOBAL_AI_CONFIG_ID,
-  applyAiOverride,
-  resolveAiOverride,
-} from "../ai-config";
+import { GLOBAL_AI_CONFIG_ID, resolveAiRuntime } from "../ai-config";
 import { publishEvent } from "../events";
 import type { Ctx } from "../../context";
 import {
@@ -269,14 +265,17 @@ export const runAgentTurn = async (
     }
   };
 
-  // Bring-your-own AI key (workspace override) wins over the deployment default,
-  // mirroring the Ask-AI planner.
-  const override = await resolveAiOverride(
+  // Shared config path (same one Ask AI, auto-translate and the ai.* tools
+  // use): the workspace's bring-your-own key plus its default model, resolved
+  // workspace row → global row → deployment default.
+  const { env: aiEnv, model: configModel } = await resolveAiRuntime(
     { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
     tenantId ?? GLOBAL_AI_CONFIG_ID,
   );
-  const aiEnv = override ? applyAiOverride(ctx.env, override) : ctx.env;
-  const model = agent.model || DEFAULT_MODEL;
+  // The agent's own pick is the most specific, then the workspace default,
+  // then ours — an agent left on "Default" now follows Settings · AI instead
+  // of pinning Sonnet regardless of which provider the workspace configured.
+  const model = agent.model || configModel || DEFAULT_MODEL;
 
   const toolCtx: ToolCtx = {
     fetchInternal,

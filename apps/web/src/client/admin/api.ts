@@ -1247,15 +1247,44 @@ export const smsConfigApi = {
     }),
 };
 
+/** One entry of the server's AI provider registry (`services/ai-providers.ts`).
+ *  Descriptive only — `envKey` is the NAME of an env var, never its value. */
+export interface ApiAiProvider {
+  id: string;
+  label: string;
+  secretKey: string;
+  secretLabel: string;
+  envKey: string;
+  transport: "gateway" | "direct";
+  defaultModel: string;
+  hint: string;
+  docsUrl: string;
+}
+
+/** One selectable model from the server's catalog. */
+export interface ApiAiModel {
+  id: string;
+  label: string;
+  namespace: string;
+  hint: string;
+  tier: "flagship" | "balanced" | "fast";
+}
+
 export interface ApiAiConfig {
   tenantId: string;
-  /** inherit | gateway | anthropic */
+  /** `inherit` or a registry provider id. */
   provider: string;
   config: Record<string, unknown>;
-  secretsSet: { gatewayKey: boolean; anthropicKey: boolean };
+  /** Per-provider "is a key stored" flag, keyed by `ApiAiProvider.secretKey`.
+   *  Never the key itself. */
+  secretsSet: Record<string, boolean>;
   updatedAt: number | string | null;
   env: { cloud: boolean; hasGatewayKey: boolean; hasAnthropicKey: boolean };
   providerIds: readonly string[];
+  providers: readonly ApiAiProvider[];
+  models: readonly ApiAiModel[];
+  /** Model ids each provider id can actually run — drives the picker filter. */
+  modelsByProvider: Record<string, readonly string[]>;
 }
 
 export const aiConfigApi = {

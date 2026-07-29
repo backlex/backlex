@@ -1517,8 +1517,12 @@ msgid "AI key works — model replied: {0}"
 msgstr "AI key works — model replied: {0}"
 
 #: src/client/admin/pages/settings/ai-card.tsx
-msgid "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
-msgstr "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
+msgid "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, agents, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
+msgstr "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, agents, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
+
+#: src/client/admin/pages/settings/ai-card.tsx
+#~ msgid "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
+#~ msgstr "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
 
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "AI settings saved."
@@ -1710,6 +1714,10 @@ msgstr "Any OAuth-capable client connects with no key — the browser handles di
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
 #~ msgstr "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
+
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "any provider model id"
+msgstr "any provider model id"
 
 #: src/client/admin/pages/agents.tsx
 msgid "any provider/model id"
@@ -3711,6 +3719,7 @@ msgid "custom rule"
 msgstr "custom rule"
 
 #: src/client/admin/pages/agents.tsx
+#: src/client/admin/pages/settings/ai-card.tsx
 msgid "Custom…"
 msgstr "Custom…"
 
@@ -3807,6 +3816,10 @@ msgstr "Decimal places"
 msgid "default"
 msgstr "default"
 
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "Default"
+msgstr "Default"
+
 #: src/client/admin/edit-field.tsx
 msgid "Default (auto)"
 msgstr "Default (auto)"
@@ -3824,8 +3837,12 @@ msgid "Default locale"
 msgstr "Default locale"
 
 #: src/client/admin/pages/settings/ai-card.tsx
-msgid "Default model (optional)"
-msgstr "Default model (optional)"
+msgid "Default model"
+msgstr "Default model"
+
+#: src/client/admin/pages/settings/ai-card.tsx
+#~ msgid "Default model (optional)"
+#~ msgstr "Default model (optional)"
 
 #: src/client/admin/collection-settings.tsx
 msgid "default order when <0>?sort=</0> is omitted"
@@ -6255,6 +6272,10 @@ msgstr "Ingest key"
 msgid "Ingest key revoked."
 msgstr "Ingest key revoked."
 
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "Inherit — deployment default"
+msgstr "Inherit — deployment default"
+
 #: src/client/admin/parity/revisions.tsx
 msgid "initial"
 msgstr "initial"
@@ -6945,8 +6966,8 @@ msgid "Leave blank to keep the stored cert."
 msgstr "Leave blank to keep the stored cert."
 
 #: src/client/admin/pages/settings/ai-card.tsx
-msgid "Leave blank to use the built-in default. Callers may still override per request."
-msgstr "Leave blank to use the built-in default. Callers may still override per request."
+#~ msgid "Leave blank to use the built-in default. Callers may still override per request."
+#~ msgstr "Leave blank to use the built-in default. Callers may still override per request."
 
 #. placeholder {0}: folder ? <>currently in <span className="font-mono">{folder}/</span></> : <>root by default</>
 #: src/client/admin/storage/index.tsx
@@ -7604,6 +7625,10 @@ msgstr "Moved."
 #: src/client/admin/parity/translations.tsx
 msgid "Multi-locale content. Field-level translations attach to <0>c_*_translations</0> sibling tables; UI strings live here."
 msgstr "Multi-locale content. Field-level translations attach to <0>c_*_translations</0> sibling tables; UI strings live here."
+
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "multi-provider"
+msgstr "multi-provider"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "multiple ok"
@@ -9971,6 +9996,10 @@ msgstr "Provider"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Provider created."
 msgstr "Provider created."
+
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "provider default"
+msgstr "provider default"
 
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -12458,6 +12487,10 @@ msgstr "Single (relation)"
 msgid "single scalar value"
 msgstr "single scalar value"
 
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "single vendor"
+msgstr "single vendor"
+
 #: src/client/admin/collections-index.tsx
 msgid "singleton"
 msgstr "singleton"
@@ -14290,6 +14323,10 @@ msgstr "Use letters, digits, dots, dashes, or underscores. Must start with a let
 #: src/client/admin/parity/translations.tsx
 msgid "Used as fallback when the requested locale has no string for a key."
 msgstr "Used as fallback when the requested locale has no string for a key."
+
+#: src/client/admin/pages/settings/ai-card.tsx
+msgid "Used by Ask AI, agents left on “Default”, auto-translate and the ai.* tools. Callers may still override per request. Ids are written provider-prefixed; a direct provider gets the prefix stripped for you."
+msgstr "Used by Ask AI, agents left on “Default”, auto-translate and the ai.* tools. Callers may still override per request. Ids are written provider-prefixed; a direct provider gets the prefix stripped for you."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Used by revision tracking and the updated_at projection."

@@ -15,12 +15,18 @@
 import { generateText, jsonSchema, tool, type JSONValue, type ModelMessage } from "ai";
 import { createGateway } from "@ai-sdk/gateway";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { AppError } from "@backlex/core";
 import { cloudConfigured, cloudPost, reportToCloud } from "../lib/cloud-report";
+import {
+  AI_PROVIDERS,
+  getAiProvider,
+  type AiProviderId,
+} from "../services/ai-providers";
 import type { Env } from "../env";
 
 const DEFAULT_GATEWAY_MODEL = "anthropic/claude-haiku-4-5";
-const DEFAULT_DIRECT_MODEL = "claude-haiku-4-5-20251001";
 const DEFAULT_MAX_TOKENS = 4096;
 
 export interface ClaudeRequest {
@@ -50,7 +56,7 @@ export interface ClaudeResponse {
   };
 }
 
-type Provider = "gateway" | "anthropic";
+type Provider = AiProviderId;
 
 export interface AiCredential {
   kind: Provider;
@@ -61,18 +67,24 @@ export interface AiCredential {
   oauth?: boolean;
 }
 
-/** Is any direct provider credential configured on this env? Used to decide
- *  whether to route through the managed-cloud gateway instead. */
-export const hasDirectAiCredential = (env: Env): boolean =>
-  Boolean(
-    env.AI_GATEWAY_API_KEY?.trim() ||
-      env.ANTHROPIC_API_KEY?.trim() ||
-      env.ANTHROPIC_AUTH_TOKEN?.trim(),
-  );
-
 /**
- * Resolve which credential to call Anthropic with, in the same precedence the
- * official SDKs use: API key first, then an OAuth bearer token.
+ * Resolve which credential to generate with, or `null` when none is configured.
+ *
+ * Two stages, and the ordering is load-bearing:
+ *
+ *  1. **Explicit pick** — `AI_PROVIDER` names a registry entry and that entry's
+ *     env key is present. This is what a workspace's bring-your-own provider
+ *     choice sets (`applyAiOverride`), and it is the ONLY way `openai` /
+ *     `google` are reached. `OPENAI_API_KEY` is already set on plenty of
+ *     deployments purely for embeddings; auto-promoting it to the generation
+ *     credential would silently reroute and re-bill every AI feature, so the
+ *     sniffing chain below deliberately ignores it.
+ *  2. **Auto-detect** — the historical order: gateway key, then the legacy
+ *     direct Anthropic key, then a short-lived Anthropic OAuth bearer token.
+ *
+ * An `AI_PROVIDER` naming an unknown provider (a value written by a newer build,
+ * or a typo) falls through to stage 2 rather than throwing — a bad config value
+ * degrades to the deployment default instead of taking AI offline.
  *
  * `ANTHROPIC_AUTH_TOKEN` exists so a deployment doesn't have to store a
  * long-lived API key: it holds a short-lived token minted elsewhere (e.g.
@@ -82,16 +94,41 @@ export const hasDirectAiCredential = (env: Env): boolean =>
  * workspace BYO secret — a tenant pasting one into Settings · AI would watch
  * it stop working within the hour.
  */
-export const pickProvider = (env: Env): AiCredential => {
+export const resolveAiCredential = (env: Env): AiCredential | null => {
+  const forced = getAiProvider(env.AI_PROVIDER?.trim());
+  if (forced) {
+    // `envKey` is a union of real `Env` keys, so this stays type-checked.
+    const key = env[forced.envKey];
+    if (typeof key === "string" && key.trim())
+      return { kind: forced.id, key: key.trim() };
+    // Anthropic can still be satisfied by the OAuth bearer token.
+    if (forced.id === "anthropic") {
+      const token = env.ANTHROPIC_AUTH_TOKEN?.trim();
+      if (token) return { kind: "anthropic", key: token, oauth: true };
+    }
+  }
   const gw = env.AI_GATEWAY_API_KEY?.trim();
   if (gw) return { kind: "gateway", key: gw };
   const direct = env.ANTHROPIC_API_KEY?.trim();
   if (direct) return { kind: "anthropic", key: direct };
   const token = env.ANTHROPIC_AUTH_TOKEN?.trim();
   if (token) return { kind: "anthropic", key: token, oauth: true };
+  return null;
+};
+
+/** Is any direct provider credential configured on this env? Used to decide
+ *  whether to route through the managed-cloud gateway instead. */
+export const hasDirectAiCredential = (env: Env): boolean =>
+  resolveAiCredential(env) !== null;
+
+/** {@link resolveAiCredential}, but throwing the actionable setup error when
+ *  nothing is configured. */
+export const pickProvider = (env: Env): AiCredential => {
+  const cred = resolveAiCredential(env);
+  if (cred) return cred;
   throw new AppError(
     "UNAVAILABLE",
-    "No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider), the legacy ANTHROPIC_API_KEY, or a short-lived ANTHROPIC_AUTH_TOKEN on the backlex deployment.",
+    `No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider), the legacy ANTHROPIC_API_KEY, a short-lived ANTHROPIC_AUTH_TOKEN, or AI_PROVIDER plus one of ${AI_PROVIDERS.map((p) => p.envKey).join(" / ")} on the backlex deployment.`,
   );
 };
 
@@ -99,10 +136,18 @@ export const pickProvider = (env: Env): AiCredential => {
  *  provider's `authToken` option, which sends `Authorization: Bearer` and
  *  omits `x-api-key` — sending both is rejected by the API. */
 const modelFor = (cred: AiCredential, modelId: string) => {
-  if (cred.kind === "gateway") return createGateway({ apiKey: cred.key })(modelId);
-  return cred.oauth
-    ? createAnthropic({ authToken: cred.key })(modelId)
-    : createAnthropic({ apiKey: cred.key })(modelId);
+  switch (cred.kind) {
+    case "gateway":
+      return createGateway({ apiKey: cred.key })(modelId);
+    case "openai":
+      return createOpenAI({ apiKey: cred.key })(modelId);
+    case "google":
+      return createGoogleGenerativeAI({ apiKey: cred.key })(modelId);
+    default:
+      return cred.oauth
+        ? createAnthropic({ authToken: cred.key })(modelId)
+        : createAnthropic({ apiKey: cred.key })(modelId);
+  }
 };
 
 /** Reasoning effort. Lower effort = fewer thinking tokens and fewer, more
@@ -146,15 +191,34 @@ export const anthropicProviderOptions = (
   },
 });
 
-const resolveModelId = (provider: Provider, model: string | undefined): string => {
-  if (provider === "gateway") {
-    if (!model) return DEFAULT_GATEWAY_MODEL;
-    return model.includes("/") ? model : `anthropic/${model}`;
+/**
+ * Normalize a stored/requested model id for the transport it is about to go out
+ * over. Model ids are stored gateway-style (`anthropic/claude-haiku-4-5`) on
+ * every surface, so this is the one place that knows about prefixes.
+ *
+ *  - **gateway** — pass provider-prefixed ids through. A BARE id (no `/`) is a
+ *    setting saved before the catalog existed, when bare meant Anthropic; it
+ *    still gets the `anthropic/` prefix so those rows keep working.
+ *  - **direct** — strip this vendor's own prefix. An id carrying a DIFFERENT
+ *    vendor's prefix (`openai/gpt-5` on a direct Anthropic key) cannot run:
+ *    rather than forwarding a guaranteed 404, fall back to the provider's
+ *    default so a stale cross-provider model id degrades instead of breaking.
+ */
+export const resolveModelId = (
+  provider: Provider,
+  model: string | undefined,
+): string => {
+  const def = getAiProvider(provider);
+  if (!def || def.transport === "gateway") {
+    if (!model) return def?.defaultModel ?? DEFAULT_GATEWAY_MODEL;
+    return model.includes("/") ? model : `${def?.namespace ?? "anthropic"}/${model}`;
   }
-  // Direct Anthropic — strip any leading `anthropic/` prefix coming from a
-  // UI that still ships gateway-style ids, then fall back to the dated id.
-  if (!model) return DEFAULT_DIRECT_MODEL;
-  return model.startsWith("anthropic/") ? model.slice("anthropic/".length) : model;
+  const fallback =
+    def.directDefaultModel ?? def.defaultModel.slice(def.namespace.length + 1);
+  if (!model) return fallback;
+  const prefix = `${def.namespace}/`;
+  if (model.startsWith(prefix)) return model.slice(prefix.length);
+  return model.includes("/") ? fallback : model;
 };
 
 /**

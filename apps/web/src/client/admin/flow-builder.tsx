@@ -6,7 +6,7 @@ import { Badge, Button, IconButton, Switch } from "./ui";
 import { Select } from "./select";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
-import { emailTemplatesApi, functionsApi, collectionsApi, type ApiEmailTemplate, type ApiFunction, type ApiCollection } from "./api";
+import { emailTemplatesApi, functionsApi, collectionsApi, integrationsApi, type ApiEmailTemplate, type ApiFunction, type ApiCollection, type ApiIntegration } from "./api";
 
 const dataInterpolationExample = "{{ data.* }}";
 
@@ -33,7 +33,7 @@ const ACTIONS = [
   { id: "fn", label: "Run function", desc: "Invoke a saved backlex function", icon: "Function" },
   { id: "item.create", label: "Create item", desc: "Insert into a collection", icon: "Plus" },
   { id: "item.update", label: "Update item", desc: "Patch an existing row", icon: "Pencil" },
-  { id: "slack", label: "Slack message", desc: "Post to a channel", icon: "Webhook", pending: "phase 2" },
+  { id: "integration", label: "Integration message", desc: "Send through a connected provider", icon: "Webhook" },
   { id: "delay", label: "Delay", desc: "Wait inline (≤ 30s) or persist to scheduler", icon: "Clock" },
 ];
 const CONTROLS = [
@@ -83,19 +83,22 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   const [emailTemplates, setEmailTemplates] = useState<ApiEmailTemplate[]>([]);
   const [fns, setFns] = useState<ApiFunction[]>([]);
   const [collections, setCollections] = useState<ApiCollection[]>([]);
+  const [integrations, setIntegrations] = useState<ApiIntegration[]>([]);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const [tpls, funcs, cols] = await Promise.all([
+        const [tpls, funcs, cols, ints] = await Promise.all([
           emailTemplatesApi.list().catch(() => ({ data: [] as ApiEmailTemplate[] })),
           functionsApi.list().catch(() => ({ data: [] as ApiFunction[] })),
           collectionsApi.list().catch(() => ({ data: [] as ApiCollection[] })),
+          integrationsApi.list().catch(() => ({ data: [] as ApiIntegration[] })),
         ]);
         if (cancelled) return;
         if (Array.isArray(tpls.data)) setEmailTemplates(tpls.data);
         if (Array.isArray(funcs.data)) setFns(funcs.data);
         if (Array.isArray(cols.data)) setCollections(cols.data);
+        if (Array.isArray(ints.data)) setIntegrations(ints.data);
       } catch {
         // keep empty — UI falls back to "no items" hints
       }
@@ -108,11 +111,18 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   // the SPA URL stays where it was. On programmatic close (Save / Cancel)
   // we pop the sentinel ourselves so the back stack stays clean and the
   // address bar's back button doesn't end up needing two presses.
+  // `onClose` is an inline arrow in the parent, so its identity changes on
+  // every parent render. Depending on it here re-ran this effect on any
+  // re-render: the cleanup called `history.back()`, which fired `popstate`,
+  // which called `onClose` — the builder closed itself milliseconds after
+  // opening. Read it through a ref and mount the effect exactly once.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     const sentinel = { __backlexFlowBuilder: true };
     history.pushState(sentinel, "", location.pathname + location.search);
     let popped = false;
-    const onPop = () => { popped = true; onClose(); };
+    const onPop = () => { popped = true; onCloseRef.current(); };
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("popstate", onPop);
@@ -121,7 +131,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
         history.back();
       }
     };
-  }, [onClose]);
+  }, []);
 
   const selected = nodes.find((n) => n.id === selectedId);
 
@@ -365,6 +375,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
             emailTemplates={emailTemplates}
             fns={fns}
             collections={collections}
+            integrations={integrations}
           />
         </div>
       </div>
@@ -389,11 +400,11 @@ function defaultConfigFor(kind: string, type: string) {
   if (kind === "action" && type === "delay") return { duration: "5m" };
   if (kind === "action" && type === "item.create") return { collection: "", data: "{{ data }}" };
   if (kind === "action" && type === "item.update") return { collection: "", id: "{{ data.id }}", data: "{{ data }}" };
-  if (kind === "action" && type === "slack") return { channel: "#general", text: "New event" };
+  if (kind === "action" && type === "integration") return { kind: "", text: "New event", event: "", payload: "" };
   return {};
 }
 
-function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[] }) {
+function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [], integrations = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[] }) {
   const { t } = useLingui();
   if (!node) return (
     <div className="fb-inspector">
@@ -497,6 +508,40 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
               <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Input</Trans></label>
               <Textarea className="font-mono" rows={3} value={node.config.input || ""} onChange={(e) => onChange({ config: { input: e.target.value } })} placeholder={t`leave empty to pass the trigger payload`} />
               <span className="text-[11.5px] text-muted-foreground"><Trans>JSON or template string. Becomes <span className="font-mono">data</span> inside the function.</Trans></span>
+            </div>
+          </>
+        )}
+        {node.kind === "action" && node.type === "integration" && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Provider</Trans></label>
+              <Select
+                value={node.config.kind || ""}
+                onChange={(v) => onChange({ config: { kind: v } })}
+                options={[
+                  { value: "", label: integrations.length === 0 ? t`(none — connect one on Integrations)` : t`Select a provider…` },
+                  ...integrations.map((i) => ({
+                    value: i.kind,
+                    label: `${i.kind}${i.status === "connected" ? "" : t` (paused)`}`,
+                  })),
+                ]}
+              />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>Resolved per workspace at run time. Credentials never enter the flow.</Trans></span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Message</Trans></label>
+              <Textarea rows={2} value={node.config.text || ""} onChange={(e) => onChange({ config: { text: e.target.value } })} placeholder="New order {{ data.id }}" />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>The one-line text chat providers render.</Trans></span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Event label</Trans></label>
+              <Input value={node.config.event || ""} onChange={(e) => onChange({ config: { event: e.target.value } })} placeholder="flow.run" />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>Recorded in the delivery log. Defaults to <span className="font-mono">flow.run</span>.</Trans></span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Payload</Trans></label>
+              <Textarea className="font-mono" rows={3} value={node.config.payload || ""} onChange={(e) => onChange({ config: { payload: e.target.value } })} placeholder='{ "id": "{{ data.id }}" }' />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>JSON or template string — used by structured providers (GitHub, Algolia).</Trans></span>
             </div>
           </>
         )}

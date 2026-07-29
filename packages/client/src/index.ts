@@ -1050,6 +1050,61 @@ export interface PaymentCatalogEntry {
  * provider pushes lands there, so you query billing data with the same
  * `client.from(...)` you use for the rest of the workspace.
  */
+/** One connected third-party integration, secrets masked. */
+export interface Integration {
+  id: string;
+  kind: string;
+  status: string;
+  events: string[] | null;
+  config: Record<string, unknown>;
+  lastEventAt?: number | string | null;
+  createdAt?: number | string | null;
+  consecutiveFailures?: number;
+  lastFailureAt?: number | string | null;
+  disabledReason?: string | null;
+}
+
+/** One delivery attempt against an integration. */
+export interface IntegrationDelivery {
+  id: string;
+  integrationId: string;
+  event: string;
+  /** HTTP status; 0 when the provider was misconfigured or unreachable. */
+  status: number;
+  ms: number;
+  error: string | null;
+  attempts: number;
+  deliveredAt: number | string;
+}
+
+/** A provider the instance can connect, and the config fields it needs. */
+export interface IntegrationProvider {
+  id: string;
+  label: string;
+  category: string;
+  capabilities: string[];
+  fields: { key: string; label: string; placeholder?: string; secret?: boolean }[];
+}
+
+export interface IntegrationsClient {
+  /** Providers available to connect, with their config field schema. */
+  catalog: () => Promise<{ data: { kinds: string[]; providers: IntegrationProvider[] } }>;
+  /** Connected integrations in the active workspace (secrets masked). */
+  list: () => Promise<{ data: Integration[] }>;
+  /** Connect or reconfigure one provider. Secret config is encrypted at rest. */
+  connect: (input: {
+    kind: string;
+    config?: Record<string, unknown>;
+    events?: string[] | null;
+  }) => Promise<{ data: Integration }>;
+  /** Disconnect by id; the delivery log goes with it. */
+  disconnect: (id: string) => Promise<{ ok: boolean }>;
+  /** Recent delivery attempts, newest first. */
+  deliveries: (id: string, opts?: { limit?: number }) => Promise<{ data: IntegrationDelivery[] }>;
+  /** Clear the failure counter and re-enable a breaker-paused integration. */
+  resume: (id: string) => Promise<{ data: Integration }>;
+}
+
 export interface PaymentsClient {
   /** Supported providers and the config fields each one needs. */
   catalog(): Promise<{ providers: PaymentCatalogEntry[]; recordKinds: string[] }>;
@@ -2121,6 +2176,8 @@ export interface BacklexClient {
   flows: FlowsClient;
   /** Connected payment providers (Stripe / Polar / Lemon Squeezy). */
   payments: PaymentsClient;
+  /** Connected third-party integrations (Slack, Jira, Algolia, …). */
+  integrations: IntegrationsClient;
   extensions: ExtensionsClient;
   /** Embedded BI dashboards. */
   dashboards: DashboardsClient;
@@ -2951,6 +3008,26 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<FlowRunResult>("POST", `/api/flows/${encodeURIComponent(id)}/run`, input ?? {}),
   };
 
+  // Third-party integrations. Admin-scoped over `/api/admin/integrations`.
+  // Credentials only ever travel inbound: `list` returns them masked and there
+  // is no read-back endpoint.
+  const integ = (id: string) => `/api/admin/integrations/${encodeURIComponent(id)}`;
+  const integrations: IntegrationsClient = {
+    catalog: () =>
+      request<{ data: { kinds: string[]; providers: IntegrationProvider[] } }>(
+        "GET",
+        "/api/admin/integrations/catalog",
+      ),
+    list: () => request<{ data: Integration[] }>("GET", "/api/admin/integrations"),
+    connect: (input) => request<{ data: Integration }>("POST", "/api/admin/integrations", input),
+    disconnect: (id) => request<{ ok: boolean }>("DELETE", integ(id)),
+    deliveries: (id, opts) => {
+      const qs = opts?.limit === undefined ? "" : `?limit=${opts.limit}`;
+      return request<{ data: IntegrationDelivery[] }>("GET", `${integ(id)}/deliveries${qs}`);
+    },
+    resume: (id) => request<{ data: Integration }>("POST", `${integ(id)}/resume`, {}),
+  };
+
   // Payment providers. Admin-scoped over `/api/admin/payments`; the synced
   // business data is read through the ordinary collection surface.
   const pay = (id: string) => `/api/admin/payments/providers/${encodeURIComponent(id)}`;
@@ -3685,6 +3762,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     jobs,
     flows,
     payments,
+    integrations,
     extensions,
     dashboards,
     analytics,

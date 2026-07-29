@@ -406,6 +406,33 @@ async function deliverOne(
 }
 
 /**
+ * Deliver one message through the workspace's integration of a given `kind` —
+ * the runtime behind the `integration` flow operation. Addressing by kind
+ * rather than id is what lets a flow name a provider ("slack") without
+ * embedding a row id that differs per workspace. A kind the workspace hasn't
+ * connected (or that the breaker disabled) is reported as skipped rather than
+ * failing the flow, so a paused integration doesn't take the automation with
+ * it. Credentials never leave this module.
+ */
+export async function deliverIntegrationByKind(
+  env: Env,
+  ctx: DbCtx,
+  tenantId: string | null,
+  kind: string,
+  message: IntegrationEvent,
+  fetchImpl?: FetchLike,
+): Promise<{ ok: boolean; status: number; skipped?: boolean }> {
+  if (!isIntegrationKind(kind)) return { ok: false, status: 0, skipped: true };
+  const t = tableFor(ctx.dialect);
+  const [row] = (await (ctx.db as AnyDb)
+    .select()
+    .from(t)
+    .where(and(tenantEq(t, tenantId), eq(t.kind, kind), eq(t.status, "connected")))) as IntegrationRow[];
+  if (!row) return { ok: false, status: 0, skipped: true };
+  return deliverOne(env, ctx, row, message, 1, fetchImpl);
+}
+
+/**
  * Deliver one queued event to one integration — the runtime behind the
  * `integration.deliver` job. An integration that no longer exists, or that the
  * breaker has since disabled, is a terminal no-op (reported ok) so the queue

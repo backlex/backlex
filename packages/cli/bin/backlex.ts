@@ -21,6 +21,7 @@ import { runAgents } from "../src/agents";
 import { runTemplates } from "../src/templates";
 import { runPayments } from "../src/payments";
 import { runWebhooks } from "../src/webhooks";
+import { runIntegrations } from "../src/integrations";
 import { runJobs } from "../src/jobs";
 import { runMessaging } from "../src/messaging";
 import { runAdvisor } from "../src/advisor";
@@ -126,6 +127,10 @@ Usage:
 
   backlex webhooks <list|create|test|deliveries|retry|resume|delete>
       Outbound webhooks + delivery ops. \`resume\` re-enables an auto-disabled hook.
+
+  backlex integrations <catalog|list|connect|deliveries|resume|disconnect>
+      Slack / Jira / Algolia / … — connect providers, read the delivery log, and
+      re-enable one the circuit breaker paused.
 
   backlex payments <catalog|list|connect|sync|events|rotate-token|provision|disconnect>
       Stripe / Polar / Lemon Squeezy. \`connect\` also provisions the four sync
@@ -289,6 +294,10 @@ const run = async () => {
     case "webhooks":
     case "webhook":
       await runWebhooks(rest);
+      return;
+    case "integrations":
+    case "integration":
+      await runIntegrations(rest);
       return;
     case "payments":
     case "payment":

@@ -145,6 +145,7 @@ export default defineConfig({
           items: [
             { slug: "graphql" },
             { slug: "webhooks" },
+            { slug: "integrations" },
             { slug: "sandbox" },
             { slug: "extensions" },
             { slug: "sdk-and-cli" },

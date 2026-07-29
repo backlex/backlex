@@ -843,6 +843,21 @@ export const functionsApi = {
   list: () => api<Envelope<ApiFunction[]>>(`/api/functions`),
 };
 
+// ── Integrations (connected third-party providers) ──────────────────────────
+export interface ApiIntegration {
+  id: string;
+  kind: string;
+  status: string;
+  events: string[] | null;
+  lastEventAt?: number | string | null;
+  consecutiveFailures?: number;
+  disabledReason?: string | null;
+}
+
+export const integrationsApi = {
+  list: () => api<Envelope<ApiIntegration[]>>(`/api/admin/integrations`),
+};
+
 // ── Extensions (installable admin add-ons, #13) ─────────────────────────────
 export interface ApiExtensionPanel {
   id: string;

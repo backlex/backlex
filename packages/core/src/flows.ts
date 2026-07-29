@@ -100,6 +100,24 @@ export type Operation =
       onSuccess?: Operation[];
       onError?: Operation[];
     }
+  /** Send a message through one of the workspace's connected integrations,
+   *  addressed by provider `kind` (there is one row per (workspace, kind)).
+   *  Turns every provider in the registry into a flow step: post to Slack,
+   *  open a Jira issue, index into Algolia. Credentials stay server-side —
+   *  the flow only names the provider, never its secrets. Delivery is logged
+   *  and folded into the same circuit breaker as event fan-out. */
+  | {
+      type: "integration";
+      kind: string;
+      /** One-line human text — what chat sinks render. */
+      text: string;
+      /** Event label recorded in the delivery log; defaults to `flow.run`. */
+      event?: string;
+      /** Machine payload for structured sinks (GitHub dispatch, Algolia doc). */
+      payload?: Record<string, unknown> | string;
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
   /** Insert a row into a dynamic collection. Tenant-scoped via the running
    *  flow's auth context. Permission checks are bypassed — flows are
    *  admin-authored, so the trust boundary lives at flow creation time. */
@@ -142,6 +160,7 @@ export const OPERATION_TYPES: OperationType[] = [
   "notification",
   "push",
   "function",
+  "integration",
   "item.create",
   "item.update",
   "delay",
@@ -245,6 +264,15 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       type: z.literal("function"),
       name: z.string().min(1),
       input: z.unknown().optional(),
+      onSuccess: z.array(OperationSchema).optional(),
+      onError: z.array(OperationSchema).optional(),
+    }),
+    z.object({
+      type: z.literal("integration"),
+      kind: z.string().min(1),
+      text: z.string().min(1),
+      event: z.string().min(1).optional(),
+      payload: z.union([z.record(z.string(), z.unknown()), z.string()]).optional(),
       onSuccess: z.array(OperationSchema).optional(),
       onError: z.array(OperationSchema).optional(),
     }),

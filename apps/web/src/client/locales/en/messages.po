@@ -57,6 +57,10 @@ msgstr " (admin)"
 msgid " (inactive)"
 msgstr " (inactive)"
 
+#: src/client/admin/flow-builder.tsx
+msgid " (paused)"
+msgstr " (paused)"
+
 #: src/client/admin/pages/logs.tsx
 msgid " of {totalCount}"
 msgstr " of {totalCount}"
@@ -136,6 +140,10 @@ msgstr "(no folder)"
 #: src/client/admin/relational-pickers.tsx
 msgid "(no label)"
 msgstr "(no label)"
+
+#: src/client/admin/flow-builder.tsx
+msgid "(none — connect one on Integrations)"
+msgstr "(none — connect one on Integrations)"
 
 #: src/client/admin/flow-builder.tsx
 msgid "(none — no collections)"
@@ -4994,6 +5002,10 @@ msgstr "Event"
 msgid "Event hooks also fire on their matching pattern; running one here executes it once with your payload."
 msgstr "Event hooks also fire on their matching pattern; running one here executes it once with your payload."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Event label"
+msgstr "Event label"
+
 #: src/client/admin/pages/functions.tsx
 msgid "Event pattern"
 msgstr "Event pattern"
@@ -6578,6 +6590,10 @@ msgstr "JSON body passed to the hook as its input."
 #: src/client/admin/flow-builder.tsx
 msgid "JSON object — template strings are interpolated before insert/update."
 msgstr "JSON object — template strings are interpolated before insert/update."
+
+#: src/client/admin/flow-builder.tsx
+msgid "JSON or template string — used by structured providers (GitHub, Algolia)."
+msgstr "JSON or template string — used by structured providers (GitHub, Algolia)."
 
 #: src/client/admin/flow-builder.tsx
 msgid "JSON or template string. Becomes <0>data</0> inside the function."
@@ -9304,6 +9320,7 @@ msgid "payload"
 msgstr "payload"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Payload"
@@ -9944,6 +9961,7 @@ msgstr "Profile saved."
 msgid "provider"
 msgstr "provider"
 
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/pages/users.tsx
@@ -10328,6 +10346,10 @@ msgstr "Recommended"
 #: src/client/admin/collection-settings.tsx
 msgid "Record every read of this collection (list + by-id) to the audit log under the <0>Access</0> lens — a \"who viewed this\" trail for sensitive data. Off by default; reads are otherwise not logged. Only request metadata is stored (who, when, query, item ids) — never row values."
 msgstr "Record every read of this collection (list + by-id) to the audit log under the <0>Access</0> lens — a \"who viewed this\" trail for sensitive data. Off by default; reads are otherwise not logged. Only request metadata is stored (who, when, query, item ids) — never row values."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Recorded in the delivery log. Defaults to <0>flow.run</0>."
+msgstr "Recorded in the delivery log. Defaults to <0>flow.run</0>."
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Redelivered."
@@ -10760,6 +10782,10 @@ msgstr "Resolve"
 #: src/client/admin/pages/analytics.tsx
 msgid "Resolved"
 msgstr "Resolved"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Resolved per workspace at run time. Credentials never enter the flow."
+msgstr "Resolved per workspace at run time. Credentials never enter the flow."
 
 #: src/client/pages/rest-explorer.tsx
 msgid "Resolved schemes"
@@ -11753,6 +11779,10 @@ msgstr "Select a function to save."
 #: src/client/admin/flow-builder.tsx
 msgid "Select a function…"
 msgstr "Select a function…"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Select a provider…"
+msgstr "Select a provider…"
 
 #: src/client/admin/pages/agents.tsx
 msgid "Select all"
@@ -13269,6 +13299,10 @@ msgstr "The key \"{0}\" will stop working immediately. This cannot be undone."
 #: src/client/admin/pages/advisor.tsx
 msgid "The oldest recorded span is newer than the start of this window — span retention, not traffic, is what bounds it."
 msgstr "The oldest recorded span is newer than the start of this window — span retention, not traffic, is what bounds it."
+
+#: src/client/admin/flow-builder.tsx
+msgid "The one-line text chat providers render."
+msgstr "The one-line text chat providers render."
 
 #: src/client/admin/app.tsx
 msgid "The physical table and all rows are dropped. This is irreversible."

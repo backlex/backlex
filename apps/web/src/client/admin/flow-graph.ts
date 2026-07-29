@@ -46,13 +46,11 @@ const SUPPORTED_ACTIONS = new Set([
   "fn",
   "item.create",
   "item.update",
-  "slack",
+  "integration",
   "delay",
 ]);
 
-const PHASE_PENDING: Record<string, string> = {
-  slack: "slack action is a phase-2 alias for webhook",
-};
+const PHASE_PENDING: Record<string, string> = {};
 
 /**
  * Parse a duration string like "30s", "5m", "1h", "2d" into milliseconds.
@@ -330,6 +328,29 @@ const compileAction = (node: GraphNode): Operation => {
         ...(c.input !== undefined ? { input: tryParseJson(c.input) } : {}),
       };
     }
+    case "integration": {
+      // The builder stores the provider kind ("slack", "jira", …); the row is
+      // resolved per-workspace at run time, so nothing workspace-specific is
+      // baked into the flow definition.
+      const kind = String(c.kind ?? "").trim();
+      const text = String(c.text ?? "").trim();
+      if (!kind) throw new FlowCompileError("Integration step needs a provider");
+      if (!text) throw new FlowCompileError("Integration step needs a message");
+      return {
+        type: "integration",
+        kind,
+        text,
+        ...(c.event ? { event: String(c.event).trim() } : {}),
+        ...(c.payload !== undefined && c.payload !== ""
+          ? {
+              payload:
+                typeof c.payload === "string"
+                  ? c.payload
+                  : (tryParseJson(c.payload) as Record<string, unknown>),
+            }
+          : {}),
+      };
+    }
     case "item.create": {
       const collection = String(c.collection ?? "").trim();
       if (!collection)
@@ -568,6 +589,18 @@ const opToConfig = (op: Operation): Record<string, any> => {
             : typeof op.input === "string"
               ? op.input
               : JSON.stringify(op.input, null, 2),
+      };
+    case "integration":
+      return {
+        kind: op.kind,
+        text: op.text,
+        event: op.event ?? "",
+        payload:
+          op.payload === undefined
+            ? ""
+            : typeof op.payload === "string"
+              ? op.payload
+              : JSON.stringify(op.payload, null, 2),
       };
     case "item.create":
       return {

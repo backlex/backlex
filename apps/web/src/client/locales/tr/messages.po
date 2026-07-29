@@ -57,6 +57,10 @@ msgstr " (admin)"
 msgid " (inactive)"
 msgstr " (etkin değil)"
 
+#: src/client/admin/flow-builder.tsx
+msgid " (paused)"
+msgstr " (duraklatıldı)"
+
 #: src/client/admin/pages/logs.tsx
 msgid " of {totalCount}"
 msgstr " / {totalCount}"
@@ -136,6 +140,10 @@ msgstr "(klasör yok)"
 #: src/client/admin/relational-pickers.tsx
 msgid "(no label)"
 msgstr "(etiket yok)"
+
+#: src/client/admin/flow-builder.tsx
+msgid "(none — connect one on Integrations)"
+msgstr "(yok — Entegrasyonlar sayfasından bağlayın)"
 
 #: src/client/admin/flow-builder.tsx
 msgid "(none — no collections)"
@@ -4994,6 +5002,10 @@ msgstr "Olay"
 msgid "Event hooks also fire on their matching pattern; running one here executes it once with your payload."
 msgstr "Olay kancaları eşleşen desenlerinde de tetiklenir; burada çalıştırmak yalnızca sizin yükünüzle bir kez yürütür."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Event label"
+msgstr "Olay etiketi"
+
 #: src/client/admin/pages/functions.tsx
 msgid "Event pattern"
 msgstr "Olay deseni"
@@ -6578,6 +6590,10 @@ msgstr "Kancaya girdi olarak iletilen JSON gövdesi."
 #: src/client/admin/flow-builder.tsx
 msgid "JSON object — template strings are interpolated before insert/update."
 msgstr "JSON nesnesi — şablon dizeler insert/update'ten önce işlenir."
+
+#: src/client/admin/flow-builder.tsx
+msgid "JSON or template string — used by structured providers (GitHub, Algolia)."
+msgstr "JSON veya şablon dizesi — yapılandırılmış sağlayıcılar (GitHub, Algolia) kullanır."
 
 #: src/client/admin/flow-builder.tsx
 msgid "JSON or template string. Becomes <0>data</0> inside the function."
@@ -9304,6 +9320,7 @@ msgid "payload"
 msgstr "yük"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Payload"
@@ -9944,6 +9961,7 @@ msgstr "Profil kaydedildi."
 msgid "provider"
 msgstr "sağlayıcı"
 
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/pages/users.tsx
@@ -10328,6 +10346,10 @@ msgstr "Önerilen"
 #: src/client/admin/collection-settings.tsx
 msgid "Record every read of this collection (list + by-id) to the audit log under the <0>Access</0> lens — a \"who viewed this\" trail for sensitive data. Off by default; reads are otherwise not logged. Only request metadata is stored (who, when, query, item ids) — never row values."
 msgstr "Bu koleksiyonun her okumasını (liste + tekil) <0>Access</0> merceği altında denetim günlüğüne kaydet — hassas veriler için bir \"kim görüntüledi\" izi. Varsayılan kapalı; okumalar aksi halde loglanmaz. Yalnızca istek meta verisi saklanır (kim, ne zaman, sorgu, kayıt id'leri) — asla satır değerleri."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Recorded in the delivery log. Defaults to <0>flow.run</0>."
+msgstr "Teslimat loguna yazılır. Varsayılan <0>flow.run</0>."
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Redelivered."
@@ -10760,6 +10782,10 @@ msgstr "Çözümle"
 #: src/client/admin/pages/analytics.tsx
 msgid "Resolved"
 msgstr "Çözümlendi"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Resolved per workspace at run time. Credentials never enter the flow."
+msgstr "Çalışma anında workspace bazında çözülür. Kimlik bilgileri akışa hiç girmez."
 
 #: src/client/pages/rest-explorer.tsx
 msgid "Resolved schemes"
@@ -11753,6 +11779,10 @@ msgstr "Kaydedilecek bir fonksiyon seçin."
 #: src/client/admin/flow-builder.tsx
 msgid "Select a function…"
 msgstr "Bir fonksiyon seçin…"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Select a provider…"
+msgstr "Bir sağlayıcı seçin…"
 
 #: src/client/admin/pages/agents.tsx
 msgid "Select all"
@@ -13269,6 +13299,10 @@ msgstr "\"{0}\" anahtarı hemen çalışmayı durduracak. Bu geri alınamaz."
 #: src/client/admin/pages/advisor.tsx
 msgid "The oldest recorded span is newer than the start of this window — span retention, not traffic, is what bounds it."
 msgstr "En eski kayıtlı span bu pencerenin başlangıcından daha yeni — pencereyi sınırlayan trafik değil, span saklama süresi."
+
+#: src/client/admin/flow-builder.tsx
+msgid "The one-line text chat providers render."
+msgstr "Sohbet sağlayıcılarının gösterdiği tek satırlık metin."
 
 #: src/client/admin/app.tsx
 msgid "The physical table and all rows are dropped. This is irreversible."

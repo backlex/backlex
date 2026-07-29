@@ -7,6 +7,7 @@ import type { Ctx } from "../context";
 import { runFunction } from "./sandbox";
 import { sendTemplatedEmail } from "./email";
 import { sendPushToUsers } from "./push";
+import { deliverIntegrationByKind } from "./integrations";
 import { createItem, updateItem } from "./items-helpers";
 import { enqueueTask, type ResumePayload } from "./scheduled-tasks";
 import { recordActivity } from "./activity";
@@ -306,6 +307,43 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
       return { sent: result.sent, failed: result.failed };
     } catch (e) {
       throw new FlowOpError(`push send failed: ${(e as Error).message}`);
+    }
+  }
+
+  if (op.type === "integration") {
+    const kind = interpolate(op.kind, ctx) as string;
+    const text = interpolate(op.text, ctx) as string;
+    const event = op.event ? (interpolate(op.event, ctx) as string) : "flow.run";
+    // `payload` may be an object of templates or a single template string that
+    // renders to JSON — mirrors how item.create/update accept `data`.
+    let payload: Record<string, unknown> = {};
+    const raw = op.payload === undefined ? {} : interpolate(op.payload, ctx);
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") payload = parsed as Record<string, unknown>;
+      } catch {
+        throw new FlowOpError("integration payload string is not valid JSON");
+      }
+    } else if (raw && typeof raw === "object") {
+      payload = raw as Record<string, unknown>;
+    }
+    try {
+      const out = await deliverIntegrationByKind(
+        ctx.ctx.env,
+        ctx.ctx,
+        ctx.authSubject.tenantId ?? null,
+        kind,
+        { event, text, payload },
+      );
+      // A kind that isn't connected (or is paused) is reported, not thrown:
+      // an integration outage shouldn't take the whole automation down.
+      if (out.skipped) return { skipped: true, kind };
+      if (!out.ok) throw new FlowOpError(`integration ${kind} responded ${out.status}`);
+      return { status: out.status, kind };
+    } catch (e) {
+      if (e instanceof FlowOpError) throw e;
+      throw new FlowOpError(`integration ${kind} failed: ${(e as Error).message}`);
     }
   }
 

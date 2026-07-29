@@ -261,6 +261,66 @@ const gitSha = (): string => {
   }
 };
 
+/**
+ * Literal attack payloads that must never ship inside the bundle.
+ *
+ * The downstream cloud repo publishes this tarball by PUTting every file to
+ * `api.cloudflare.com`, which sits behind Cloudflare's own managed WAF. The
+ * worker build keeps comments (they're what makes Observability stack traces
+ * readable), so a payload written anywhere in bundled source — **including a
+ * plain doc comment** — is inspected as request-body content and that one
+ * object 403s with an HTML "Attention Required" page. Deterministically:
+ * re-running the release fails on the exact same key.
+ *
+ * That burned `worker-v0.4.98`, whose storage-traversal comment spelled out a
+ * root-relative password-file path. Catching it here turns a 20-minute release
+ * failure in another repo into a named file at tag time.
+ *
+ * Keep this list narrow and empirically grounded — every entry is verified
+ * absent from a bundle that uploaded cleanly. `<script`, `javascript:` and
+ * `onerror=` are deliberately NOT listed: they already ship inside vendor
+ * chunks and upload fine, so listing them would only produce false failures.
+ *
+ * Fixing a hit means rewording, not deleting the guard: describe the payload
+ * in prose ("a key made of parent-directory segments"). Payloads under
+ * `apps/web/tests/**` are fine — tests are never bundled.
+ */
+const WAF_SIGNATURES: { name: string; pattern: RegExp }[] = [
+  { name: "local-file-inclusion path", pattern: /\/etc\/(passwd|shadow|hosts)/i },
+  { name: "SQL injection UNION", pattern: /\bunion\s+select\b/i },
+  { name: "PHP tag", pattern: /<\?php/i },
+  { name: "command-injection shell", pattern: /\/bin\/(ba)?sh\s+-c|cmd\.exe/i },
+];
+
+/** Extensions worth scanning — everything the bundle ships as text. */
+const TEXT_EXT = new Set(["js", "mjs", "cjs", "json", "sql", "html", "css", "toml", "txt", "map"]);
+
+const assertNoWafSignatures = (stageDir: string): void => {
+  const hits: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir)) {
+      const p = join(dir, entry);
+      if (statSync(p).isDirectory()) {
+        walk(p);
+        continue;
+      }
+      if (!TEXT_EXT.has(entry.split(".").pop() ?? "")) continue;
+      const text = readFileSync(p, "utf8");
+      for (const sig of WAF_SIGNATURES) {
+        const m = text.match(sig.pattern);
+        if (m) hits.push(`${relative(stageDir, p)}: ${sig.name} (${JSON.stringify(m[0])})`);
+      }
+    }
+  };
+  walk(stageDir);
+  if (hits.length === 0) return;
+  throw new Error(
+    `bundle carries ${hits.length} WAF-tripping literal(s) — the cloud publish step would 403 on these objects:\n` +
+      hits.map((h) => `  · ${h}`).join("\n") +
+      "\nReword the source (describe the payload in prose); see WAF_SIGNATURES above.",
+  );
+};
+
 const main = async (): Promise<void> => {
   const args = parseArgs(process.argv.slice(2));
 
@@ -371,6 +431,12 @@ const main = async (): Promise<void> => {
     `${JSON.stringify(meta, null, 2)}\n`,
   );
 
+  // 3d. Release gate: nothing in the staged tree may carry a literal attack
+  //     payload, or the cloud publish step 403s object-by-object. See
+  //     WAF_SIGNATURES.
+  console.log("→ scan for WAF-tripping literals");
+  assertNoWafSignatures(stageDir);
+
   // 4. Tar + gzip. Use the system tar — every reasonable runner (Linux,
   //    macOS, modern Windows) has it, and it preserves mtimes + perms
   //    cleanly. `-C` so the archive root is the stageDir name, not the
@@ -394,7 +460,13 @@ const main = async (): Promise<void> => {
   console.log(`  migrations: ${migrations.length}`);
 };
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+// Guarded so the release gate below can be imported (and unit-tested) without
+// kicking off a full bundle build as a side effect.
+if (import.meta.main) {
+  main().catch((err) => {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  });
+}
+
+export { assertNoWafSignatures, WAF_SIGNATURES };

@@ -238,8 +238,12 @@ function TokenRow({
   onCopy: () => void;
 }) {
   return (
-    <div className="mb-2 flex items-center gap-2">
-      <span className="w-24 shrink-0 text-[11.5px] text-muted-foreground">{label}</span>
+    // Stacks on a phone: a fixed-width label left only ~156px for a 69-char
+    // token, so the value was almost entirely scrolled out of view. The label
+    // moves above the field below `sm`, giving the input the full row.
+    <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+      <span className="text-[11.5px] text-muted-foreground sm:w-24 sm:shrink-0">{label}</span>
+      <div className="flex min-w-0 items-center gap-2 sm:contents">
       <input
         readOnly
         value={value}
@@ -249,6 +253,7 @@ function TokenRow({
       <Button size="sm" variant="outline" onClick={onCopy}>
         <Trans>Copy</Trans>
       </Button>
+      </div>
     </div>
   );
 }

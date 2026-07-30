@@ -13,6 +13,8 @@ import {
   OAUTH_KINDS,
   SOURCE_KINDS,
   SOURCE_SETTING_FIELDS,
+  DESTINATION_KINDS,
+  DESTINATION_SETTING_FIELDS,
   OAUTH_SECRET_KEYS,
   PROVIDERS,
   SECRET_KEYS,
@@ -47,6 +49,9 @@ describe("provider registry", () => {
       expect(p.capabilities.length).toBeGreaterThan(0);
       if (p.capabilities.includes("sink")) expect(typeof p.deliver).toBe("function");
       if (p.capabilities.includes("source")) expect(typeof p.source?.pull).toBe("function");
+      if (p.capabilities.includes("destination")) {
+        expect(typeof p.destination?.push).toBe("function");
+      }
     }
   });
 
@@ -156,6 +161,29 @@ describe("SOURCE_KINDS is derived, not hand-listed", () => {
 
   test("it names exactly the providers that can pull", () => {
     expect([...SOURCE_KINDS].sort()).toEqual(KINDS.filter((k) => PROVIDERS[k].source).sort());
+  });
+
+  test("destinations agree the same way, in both directions", () => {
+    for (const kind of KINDS) {
+      const p = PROVIDERS[kind];
+      // Same trap as `source`: a block without the capability is invisible to
+      // the catalog, and the capability without a block is a sync that throws
+      // on its first push.
+      expect(Boolean(p.destination)).toBe(p.capabilities.includes("destination"));
+    }
+    expect([...DESTINATION_KINDS].sort()).toEqual(KINDS.filter((k) => PROVIDERS[k].destination).sort());
+  });
+
+  test("every destination declares the settings it will read", () => {
+    for (const kind of DESTINATION_KINDS) {
+      const fields = DESTINATION_SETTING_FIELDS[kind];
+      expect(fields?.length ?? 0).toBeGreaterThan(0);
+      for (const f of fields!) {
+        expect(f.key).toBeTruthy();
+        // Settings are stored and returned in cleartext by contract.
+        expect(f.secret).toBeFalsy();
+      }
+    }
   });
 
   test("every source declares the settings it will read", () => {

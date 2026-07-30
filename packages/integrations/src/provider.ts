@@ -34,7 +34,8 @@ export type IntegrationCategory =
   | "issue-tracking"
   | "search"
   | "productivity"
-  | "accounting";
+  | "accounting"
+  | "warehouse";
 
 /**
  * What a provider can do. Today every provider is a `sink` (receives events
@@ -43,7 +44,7 @@ export type IntegrationCategory =
  * declared here so the catalog and the routes can branch on capability before
  * the first provider implements them.
  */
-export type IntegrationCapability = "sink" | "action" | "source";
+export type IntegrationCapability = "sink" | "action" | "source" | "destination";
 
 /** An event to fan out: machine name, one-line human text, and a machine payload. */
 export interface IntegrationEvent {
@@ -192,6 +193,43 @@ export interface IntegrationSource {
   pull(ctx: SourcePullContext): Promise<SourcePullPage>;
 }
 
+/** One row on its way OUT, already mapped to the destination's column names. */
+export type DestinationRow = Record<string, unknown>;
+
+/** What a destination provider's `push` receives. */
+export interface DestinationPushContext {
+  /** Connection config — credentials, already decrypted. */
+  config: Record<string, unknown>;
+  /** Per-sync settings (which dataset, which table). Never secret. */
+  settings: Record<string, unknown>;
+  /** The batch. Never empty — the engine skips the call when there is nothing. */
+  rows: readonly DestinationRow[];
+  /**
+   * Destination column name → the source field's type, for providers that have
+   * to declare a schema before they can accept a row. Types are backlex field
+   * types (`text`, `number`, `boolean`, `timestamp`, `json`, …).
+   */
+  columns: Readonly<Record<string, string>>;
+  fetch: FetchLike;
+  str(key: string): string | null;
+  setting(key: string): string | null;
+}
+
+/**
+ * A provider that receives rows from a collection.
+ *
+ * The mirror image of {@link IntegrationSource}. `push` must be IDEMPOTENT on
+ * the row's primary key: the engine re-sends the last batch after a crash, and
+ * a warehouse that appends blindly would double-count. Throwing marks the run
+ * failed and holds the watermark, so the batch is retried rather than skipped.
+ */
+export interface IntegrationDestination {
+  /** Per-sync config the admin fills in when pointing a collection at it. */
+  settingFields: readonly IntegrationConfigField[];
+  /** Send one batch. Throwing retries it; returning marks it delivered. */
+  push(ctx: DestinationPushContext): Promise<void>;
+}
+
 /**
  * A single integration provider. `deliver` returns `null` when the stored
  * config is missing/invalid; the dispatcher turns that (and any thrown error)
@@ -209,6 +247,9 @@ export interface IntegrationProvider<Id extends string = string> {
   /** Present only on providers that can pull rows in. Implies `source` in
    *  `capabilities`; the registry test enforces the two agree. */
   source?: IntegrationSource;
+  /** Present only on providers that can receive rows. Implies `destination`
+   *  in `capabilities`; the registry test enforces the two agree. */
+  destination?: IntegrationDestination;
   deliver?(ctx: DeliverContext): Promise<DeliveryOutcome | null>;
 }
 

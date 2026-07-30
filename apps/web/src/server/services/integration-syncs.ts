@@ -24,10 +24,12 @@ import * as sqlite from "@backlex/db/sqlite";
 import { AppError } from "@backlex/core";
 import {
   SECRET_KEYS,
+  DESTINATION_SETTING_FIELDS,
   SOURCE_SETTING_FIELDS,
   isIntegrationKind,
   providerFor,
   pullFromSource,
+  pushToDestination,
   type FetchLike,
   type IntegrationKind,
 } from "@backlex/integrations";
@@ -35,6 +37,7 @@ import type { Ctx } from "../context";
 import { decryptSecret, isEncryptedSecret } from "../lib/crypto";
 import { loadCollection } from "./items/collection-loader";
 import { ingestRows } from "./migrate-ingest";
+import { queryAll } from "./items/sql-helpers";
 import { ensureAccessToken } from "./integrations-oauth";
 import { enqueueJob } from "./jobs";
 
@@ -61,11 +64,15 @@ const PAGE_SIZE = 200;
 /** Hard ceiling on rows one run may write, whatever the provider offers. */
 const MAX_ROWS_PER_RUN = 2000;
 
+export type SyncDirection = "pull" | "push";
+export const SYNC_DIRECTIONS: readonly SyncDirection[] = ["pull", "push"];
+
 export interface SyncRow {
   id: string;
   integrationId: string;
   tenantId: string;
   collection: string;
+  direction: string;
   settings: Record<string, unknown>;
   mapping: Record<string, string>;
   intervalMinutes: number;
@@ -85,6 +92,7 @@ export const toPublicSync = (row: SyncRow) => ({
   id: row.id,
   integrationId: row.integrationId,
   collection: row.collection,
+  direction: row.direction,
   settings: row.settings ?? {},
   mapping: row.mapping ?? {},
   intervalMinutes: row.intervalMinutes,
@@ -123,8 +131,13 @@ const loadOwnedIntegration = async (ctx: Ctx, tenantId: string, integrationId: s
 /** Reject anything the provider did not ask for, and require what it did.
  *  Settings reach `pull` and end up in URLs, so an unknown key is refused
  *  rather than passed along on the chance a provider might read it. */
-const validateSettings = (kind: string, settings: Record<string, unknown>): Record<string, unknown> => {
-  const fields = SOURCE_SETTING_FIELDS[kind] ?? [];
+const validateSettings = (
+  kind: string,
+  settings: Record<string, unknown>,
+  direction: SyncDirection,
+): Record<string, unknown> => {
+  const fields =
+    (direction === "push" ? DESTINATION_SETTING_FIELDS[kind] : SOURCE_SETTING_FIELDS[kind]) ?? [];
   const allowed = new Set(fields.map((f) => f.key));
   for (const key of Object.keys(settings)) {
     if (!allowed.has(key)) throw new AppError("VALIDATION", `${kind} has no setting "${key}"`);
@@ -160,6 +173,8 @@ const validateSettings = (kind: string, settings: Record<string, unknown>): Reco
 export interface CreateSyncInput {
   integrationId: string;
   collection: string;
+  /** Defaults to `pull`; a destination-only provider must be `push`. */
+  direction?: SyncDirection;
   settings?: Record<string, unknown>;
   mapping?: Record<string, string>;
   intervalMinutes?: number;
@@ -170,8 +185,16 @@ export interface CreateSyncInput {
  *  would write rows into whichever workspace ran it. */
 export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncInput): Promise<PublicSync> {
   const integration = await loadOwnedIntegration(ctx, tenantId, input.integrationId);
-  if (!isIntegrationKind(integration.kind) || !providerFor(integration.kind)?.source) {
+  const direction: SyncDirection = input.direction ?? "pull";
+  if (!SYNC_DIRECTIONS.includes(direction)) {
+    throw new AppError("VALIDATION", `direction must be one of: ${SYNC_DIRECTIONS.join(", ")}`);
+  }
+  const provider = isIntegrationKind(integration.kind) ? providerFor(integration.kind) : undefined;
+  if (direction === "pull" && !provider?.source) {
     throw new AppError("BAD_REQUEST", `${integration.kind} cannot be used as a source`);
+  }
+  if (direction === "push" && !provider?.destination) {
+    throw new AppError("BAD_REQUEST", `${integration.kind} cannot be used as a destination`);
   }
   // Resolves within the caller's tenant and throws if the slug is unknown, so a
   // sync can never be aimed at another workspace's collection.
@@ -182,8 +205,8 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
       `Collection "${input.collection}" is adopted — a sync only writes to managed collections`,
     );
   }
-  const settings = validateSettings(integration.kind, input.settings ?? {});
-  const mapping = validateMapping(input.mapping ?? {}, collection);
+  const settings = validateSettings(integration.kind, input.settings ?? {}, direction);
+  const mapping = validateMapping(input.mapping ?? {}, collection, direction);
 
   const id = crypto.randomUUID();
   const now = new Date();
@@ -192,6 +215,7 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
     integrationId: integration.id,
     tenantId,
     collection: input.collection,
+    direction,
     settings,
     mapping,
     intervalMinutes: clampInterval(input.intervalMinutes),
@@ -220,21 +244,30 @@ const clampInterval = (v: number | undefined): number => {
 const validateMapping = (
   mapping: Record<string, string>,
   collection: Awaited<ReturnType<typeof loadCollection>>,
+  direction: SyncDirection,
 ): Record<string, string> => {
-  const writable = new Set(collection.fields.filter((f) => !f.computed).map((f) => f.name));
   const out: Record<string, string> = {};
-  for (const [external, target] of Object.entries(mapping)) {
-    if (typeof target !== "string" || !target.trim()) {
-      throw new AppError("VALIDATION", `Mapping for "${external}" must name a field`);
+  // The mapping is read in the direction of travel. On a pull the collection
+  // field is the TARGET and must be writable; on a push it is the SOURCE and
+  // may be any field the collection has, computed ones included — reading one
+  // out is fine, writing to it is not.
+  const known = new Set(collection.fields.map((f) => f.name));
+  const writable = new Set(collection.fields.filter((f) => !f.computed).map((f) => f.name));
+  for (const [left, right] of Object.entries(mapping)) {
+    if (typeof right !== "string" || !right.trim()) {
+      throw new AppError("VALIDATION", `Mapping for "${left}" must name a column`);
     }
-    const field = target.trim();
-    if (!writable.has(field)) {
+    const value = right.trim();
+    if (direction === "pull" && !writable.has(value)) {
       throw new AppError(
         "VALIDATION",
-        `Collection "${collection.slug}" has no writable field "${field}"`,
+        `Collection "${collection.slug}" has no writable field "${value}"`,
       );
     }
-    out[external] = field;
+    if (direction === "push" && !known.has(left)) {
+      throw new AppError("VALIDATION", `Collection "${collection.slug}" has no field "${left}"`);
+    }
+    out[left] = value;
   }
   if (Object.keys(out).length === 0) {
     // Without this the sync would insert rows that are nothing but ids.
@@ -285,13 +318,21 @@ export async function updateSync(
 
   const set: Record<string, unknown> = { updatedAt: new Date() };
   if (patch.settings !== undefined) {
-    set.settings = validateSettings(integration.kind, patch.settings);
+    set.settings = validateSettings(
+      integration.kind,
+      patch.settings,
+      existing.direction as SyncDirection,
+    );
     // The cursor is only meaningful for the source it came from; pointing the
     // sync at a different sheet while keeping a row offset would read garbage.
     set.cursor = null;
   }
   if (patch.mapping !== undefined) {
-    set.mapping = validateMapping(patch.mapping, await loadCollection(ctx, tenantId, existing.collection));
+    set.mapping = validateMapping(
+      patch.mapping,
+      await loadCollection(ctx, tenantId, existing.collection),
+      existing.direction as SyncDirection,
+    );
   }
   if (patch.intervalMinutes !== undefined) set.intervalMinutes = clampInterval(patch.intervalMinutes);
   if (patch.enabled !== undefined) {
@@ -423,16 +464,20 @@ export async function runSync(
   if (!row) throw new AppError("NOT_FOUND", "Sync not found");
   const integration = await loadOwnedIntegration(ctx, tenantId, row.integrationId);
   const provider = providerFor(integration.kind);
-  if (!provider?.source) throw new AppError("BAD_REQUEST", `${integration.kind} cannot be used as a source`);
-
-  const collection = await loadCollection(ctx, tenantId, row.collection);
+  const direction = (row.direction ?? "pull") as SyncDirection;
+  if (direction === "pull" && !provider?.source) {
+    throw new AppError("BAD_REQUEST", `${integration.kind} cannot be used as a source`);
+  }
+  if (direction === "push" && !provider?.destination) {
+    throw new AppError("BAD_REQUEST", `${integration.kind} cannot be used as a destination`);
+  }
 
   let config = await decryptConfig(
     integration.kind,
     (integration.config ?? {}) as Record<string, unknown>,
     ctx.env.AUTH_SECRET,
   );
-  if (provider.oauth) {
+  if (provider?.oauth) {
     const token = await ensureAccessToken(ctx, integration, ctx.env.AUTH_SECRET);
     if (!token) {
       const error = "OAuth connection needs re-authorizing";
@@ -442,6 +487,19 @@ export async function runSync(
     config = { ...config, _oauthAccessToken: token };
   }
 
+  if (direction === "push") {
+    try {
+      return await pushCollection(ctx, tenantId, row, integration, config, fetchImpl);
+    } catch (e) {
+      await applyRunOutcome(ctx, row, {
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      });
+      throw e;
+    }
+  }
+
+  const collection = await loadCollection(ctx, tenantId, row.collection);
   let cursor = row.cursor;
   let written = 0;
   let pages = 0;
@@ -519,4 +577,131 @@ export async function enqueueDueSyncs(ctx: Ctx): Promise<number> {
     ),
   );
   return due.length;
+}
+
+// ── Push: a collection out to a warehouse ────────────────────────────────────
+
+/**
+ * The watermark a push resumes from.
+ *
+ * Compound on purpose. A plain `updated_at > last` SKIPS every row that shares
+ * the last row's timestamp, and `>=` re-sends the same row forever. Pairing the
+ * timestamp with the primary key gives a total order with neither failure.
+ */
+interface Watermark {
+  updatedAt: number;
+  id: string;
+}
+
+const parseWatermark = (cursor: string | null): Watermark | null => {
+  if (!cursor) return null;
+  const at = cursor.lastIndexOf("|");
+  if (at <= 0) return null;
+  const updatedAt = Number(cursor.slice(0, at));
+  const id = cursor.slice(at + 1);
+  return Number.isFinite(updatedAt) && id ? { updatedAt, id } : null;
+};
+
+const formatWatermark = (w: Watermark): string => `${w.updatedAt}|${w.id}`;
+
+/** Timestamps arrive as epoch ms on SQLite and as a Date on PG. */
+const toMs = (v: unknown): number =>
+  v instanceof Date ? v.getTime() : typeof v === "number" ? v : Number(v ?? 0);
+
+/**
+ * Mirror a collection out, one batch at a time.
+ *
+ * Deletes are the known gap and it is stated rather than hidden: a watermark
+ * walk only ever sees rows that still exist, so a hard delete is invisible to
+ * the warehouse. A soft-delete collection is fine — the tombstone is an update
+ * and travels like any other row.
+ */
+async function pushCollection(
+  ctx: Ctx,
+  tenantId: string,
+  row: SyncRow,
+  integration: { kind: string; config: Record<string, unknown> },
+  config: Record<string, unknown>,
+  fetchImpl?: FetchLike,
+): Promise<SyncRunResult> {
+  const collection = await loadCollection(ctx, tenantId, row.collection);
+  if (!collection.hasUpdatedAt) {
+    // Without it there is no total order to resume from, so a run would either
+    // re-send everything forever or skip rows silently.
+    throw new AppError(
+      "VALIDATION",
+      `Collection "${row.collection}" has no updated_at column, so it cannot be mirrored incrementally`,
+    );
+  }
+  const updatedAtCol = collection.updatedAtColumn ?? "updated_at";
+  const mapping = row.mapping ?? {};
+  const byField = new Map(Object.entries(mapping));
+  // Column types travel with the batch: a warehouse that has to declare a
+  // schema cannot infer one from JSON.
+  const columns: Record<string, string> = { id: "text" };
+  for (const f of collection.fields) {
+    const target = byField.get(f.name);
+    if (target) columns[target] = f.type;
+  }
+
+  let mark = parseWatermark(row.cursor);
+  let written = 0;
+  let pages = 0;
+  let complete = false;
+
+  for (; pages < MAX_PAGES && written < MAX_ROWS_PER_RUN; pages++) {
+    let where = collection.tenantScoped
+      ? sql`${sql.identifier("tenant_id")} = ${tenantId}`
+      : sql`1 = 1`;
+    if (mark) {
+      where = sql`${where} AND (${sql.identifier(updatedAtCol)} > ${mark.updatedAt} OR (${sql.identifier(updatedAtCol)} = ${mark.updatedAt} AND ${sql.identifier(collection.pkColumn)} > ${mark.id}))`;
+    }
+    const batch = await queryAll<Record<string, unknown>>(
+      ctx,
+      sql`SELECT * FROM ${sql.identifier(collection.physicalTable)} WHERE ${where} ORDER BY ${sql.identifier(updatedAtCol)} ASC, ${sql.identifier(collection.pkColumn)} ASC LIMIT ${PAGE_SIZE}`,
+    );
+    if (batch.length === 0) {
+      complete = true;
+      break;
+    }
+
+    const out = batch.map((r: Record<string, unknown>) => {
+      // The primary key always travels, whatever the mapping says: it is what
+      // makes a re-sent batch an upsert rather than a duplicate.
+      const mapped: Record<string, unknown> = { id: String(r[collection.pkColumn] ?? "") };
+      for (const [field, target] of byField) {
+        if (r[field] !== undefined) mapped[target] = r[field];
+      }
+      return mapped;
+    });
+
+    await pushToDestination(
+      integration.kind,
+      { config, settings: row.settings ?? {}, rows: out, columns },
+      fetchImpl,
+    );
+
+    const last = batch[batch.length - 1]!;
+    // Advanced only AFTER the push resolves. A throw above leaves it where it
+    // was, so the batch is retried rather than skipped.
+    mark = {
+      updatedAt: toMs(last[updatedAtCol]),
+      id: String(last[collection.pkColumn] ?? ""),
+    };
+    written += out.length;
+    if (batch.length < PAGE_SIZE) {
+      complete = true;
+      break;
+    }
+  }
+
+  await applyRunOutcome(ctx, row, {
+    ok: true,
+    written,
+    // Kept even when complete: the next run resumes from the last row it sent
+    // rather than re-sending the table. That is the difference between a mirror
+    // and a nightly full reload.
+    cursor: mark ? formatWatermark(mark) : null,
+  });
+  return { written, pages, complete };
 }

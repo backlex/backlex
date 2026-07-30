@@ -12,12 +12,16 @@ import { renderWithProviders } from "./render";
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
-const SOURCES = [{ id: "i1", kind: "google-sheets", label: "Google Sheets" }];
+const SOURCES = [
+  { id: "i1", kind: "google-sheets", label: "Google Sheets", direction: "pull" as const },
+  { id: "i2", kind: "clickhouse", label: "ClickHouse", direction: "push" as const },
+];
 const SETTING_FIELDS = {
-  "google-sheets": [
+  "google-sheets:pull": [
     { key: "spreadsheetId", label: "Spreadsheet ID" },
     { key: "sheetName", label: "Sheet name" },
   ],
+  "clickhouse:push": [{ key: "table", label: "Target table" }],
 };
 
 const SYNC = {
@@ -26,6 +30,7 @@ const SYNC = {
   collection: "leads",
   settings: { spreadsheetId: "abc", sheetName: "Sheet1" },
   mapping: { Name: "name" },
+  direction: "pull",
   intervalMinutes: 60,
   enabled: true,
   resuming: false,
@@ -220,5 +225,37 @@ describe("the create dialog cannot build a sync the server would reject", () => 
     // "60" typed into a box invites "0", "5" and "90000", all of which the
     // server refuses; the useful cadences are a short list.
     expect(document.querySelector('input[type="number"]')).toBeNull();
+  });
+});
+
+// One card serves both directions, so the arrow and the labels have to follow
+// the rows rather than the schema. Drawing a push as "ClickHouse → leads" would
+// say the opposite of what happens.
+describe("direction", () => {
+  test("a pull reads connection → collection", async () => {
+    mockRoutes([SYNC]);
+    render();
+    await waitFor(() => expect(screen.getByText("Google Sheets")).toBeDefined());
+    expect(screen.getByText("leads")).toBeDefined();
+  });
+
+  test("a push reads collection → connection", async () => {
+    mockRoutes([{ ...SYNC, direction: "push", integrationId: "i2" }]);
+    render();
+    await waitFor(() => expect(screen.getByText("leads")).toBeDefined());
+    // The collection comes first on a push. Read off the row itself rather
+    // than the page, whose header also mentions collections.
+    const row = screen.getByText("leads").parentElement!;
+    const text = row.textContent ?? "";
+    expect(text).toContain("ClickHouse");
+    expect(text.indexOf("leads")).toBeLessThan(text.indexOf("ClickHouse"));
+  });
+
+  test("a disconnected integration does not read as an anonymous one", async () => {
+    mockRoutes([{ ...SYNC, integrationId: "gone" }]);
+    render();
+    // A blank name would look like a sync with no source rather than one whose
+    // connection was removed.
+    await waitFor(() => expect(screen.getByText("Disconnected source")).toBeDefined());
   });
 });

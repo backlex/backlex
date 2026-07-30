@@ -10,7 +10,9 @@
  */
 import type { IntegrationProvider } from "../provider";
 import { airtable } from "./airtable";
+import { bigquery } from "./bigquery";
 import { algolia } from "./algolia";
+import { clickhouse } from "./clickhouse";
 import { datadog } from "./datadog";
 import { discord } from "./discord";
 import { elasticsearch } from "./elasticsearch";
@@ -62,6 +64,9 @@ export const INTEGRATION_KINDS = [
   // accounting (OAuth-connected sources)
   "quickbooks",
   "xero",
+  // warehouse destinations
+  "clickhouse",
+  "bigquery",
 ] as const;
 
 export type IntegrationKind = (typeof INTEGRATION_KINDS)[number];
@@ -89,6 +94,8 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   airtable,
   quickbooks,
   xero,
+  clickhouse,
+  bigquery,
 };
 
 /** Look a provider up by id; `undefined` for anything unregistered. */

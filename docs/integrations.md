@@ -20,7 +20,7 @@ receiving endpoint and backlex signs what it sends.
 
 ## Providers
 
-Twenty-two providers ship in the registry, grouped by category:
+Twenty-four providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -31,6 +31,7 @@ Twenty-two providers ship in the registry, grouped by category:
 | search | Algolia, Meilisearch, Typesense, Elasticsearch / OpenSearch |
 | productivity | Notion, Google Sheets, Airtable — all *(OAuth)*, all sources |
 | accounting | QuickBooks Online, Xero — both *(OAuth)*, both sources |
+| warehouse | ClickHouse, Google BigQuery — both *destinations* |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -176,6 +177,51 @@ differently:
 Both are read-only: the scopes requested cover reading, not writing. Mirroring
 accounting data in is the case people ask for; pushing entries back out is a
 different feature with different failure modes.
+
+## Mirroring a collection out
+
+A **destination** is the other direction: rows leave a collection for a
+warehouse, on the same schedule, breaker and mapping machinery as a pull. One
+table backs both — only the direction of travel differs.
+
+```bash
+backlex integrations sync-create --integration <id> --collection leads \
+  --direction push --set table=leads \
+  --map name=customer_name --map email=customer_email --every 60
+```
+
+The mapping is read **in the direction of travel**: `external → field` on a pull,
+`field → external column` on a push.
+
+The row's **primary key always travels**, whatever the mapping says. That is what
+makes a re-sent batch an upsert rather than a duplicate — ClickHouse collapses it
+on merge (the target should be a `ReplacingMergeTree` ordered by `id`), BigQuery
+de-duplicates on `insertId`.
+
+### The watermark
+
+A push resumes from `<updated_at>|<id>`, and the pairing is load-bearing:
+
+- `updated_at > last` alone **skips** every row sharing the last one's timestamp,
+  forever, because the watermark never moves past them.
+- `updated_at >= last` **re-sends** the last row on every run.
+
+The watermark advances only **after** the push resolves, so a failed batch is
+retried rather than skipped. A collection with no `updated_at` column is refused
+outright — there is no total order to resume from.
+
+### What a push cannot do
+
+**Hard deletes are invisible.** A watermark walk only ever sees rows that still
+exist. Use a soft-delete collection if the warehouse needs to know: a tombstone
+is an update and travels like any other row.
+
+### The target table
+
+backlex does not create it. Creating tables needs privileges an insert-only
+credential should not have, and partitioning, ordering and TTL are decisions the
+cluster owner should make rather than have guessed. Run the DDL once —
+`backlex integrations catalog <kind>` prints a starting point.
 
 ### Runs, cursors and failure
 

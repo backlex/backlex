@@ -41,6 +41,8 @@ type Catalog = {
   oauthRedirectUri?: string;
   /** Per-sync settings each source provider asks for, keyed by kind. */
   sourceSettings?: Record<string, SettingField[]>;
+  /** Same, for providers that receive rows rather than supply them. */
+  destinationSettings?: Record<string, SettingField[]>;
 };
 
 /** Config key holding the OAuth access token. Present (masked) once authorized,
@@ -128,6 +130,8 @@ const BRANDS: Record<string, Brand> = {
   "google-sheets": { name: "Google Sheets", mark: <SI d={ICONS.googlesheets!} />, markBg: "#34A853" },
   airtable: { name: "Airtable", mark: <SI d={ICONS.airtable!} />, markBg: "#18BFFF" },
   quickbooks: { name: "QuickBooks Online", mark: <SI d={ICONS.quickbooks!} />, markBg: "#2CA01C" },
+  clickhouse: { name: "ClickHouse", mark: "CH", markBg: "#FFCC01" },
+  bigquery: { name: "Google BigQuery", mark: "BQ", markBg: "#4285F4" },
   xero: { name: "Xero", mark: <SI d={ICONS.xero!} />, markBg: "#13B5EA" },
 };
 const brandFor = (kind: string): Brand => BRANDS[kind] ?? { name: kind, mark: kind.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };
@@ -180,6 +184,9 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
   const sourceKinds = new Set(
     (catalog.providers ?? []).filter((p) => p.capabilities.includes("source")).map((p) => p.id),
   );
+  const destinationKinds = new Set(
+    (catalog.providers ?? []).filter((p) => p.capabilities.includes("destination")).map((p) => p.id),
+  );
   /** An OAuth row exists but has no token yet — credentials saved, not authorized. */
   const needsAuthorize = (it: Integration | undefined) =>
     Boolean(it) && oauthKinds.has(it!.kind) && !it!.config?.[OAUTH_TOKEN_KEY];
@@ -209,6 +216,10 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
         return t`Pull a spreadsheet into a collection on a schedule.`;
       case "airtable":
         return t`Pull an Airtable table into a collection on a schedule.`;
+      case "clickhouse":
+        return t`Mirror a collection into a ClickHouse table on a schedule.`;
+      case "bigquery":
+        return t`Mirror a collection into a BigQuery dataset on a schedule.`;
       case "quickbooks":
         return t`Mirror QuickBooks customers, invoices and payments into a collection.`;
       case "xero":
@@ -456,10 +467,26 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
       <IntegrationSyncsCard
         // Only authorized sources can be pulled from: an unauthorized row would
         // offer a sync that fails on its first run with a credential error.
-        sources={connected
-          .filter((i) => sourceKinds.has(i.kind) && !needsAuthorize(i))
-          .map((i) => ({ id: i.id, kind: i.kind, label: brandFor(i.kind).name }))}
-        settingFields={catalog.sourceSettings ?? {}}
+        sources={[
+          // Only authorized sources: an unauthorized row would offer a sync
+          // that fails on its first run with a credential error.
+          ...connected
+            .filter((i) => sourceKinds.has(i.kind) && !needsAuthorize(i))
+            .map((i) => ({ id: i.id, kind: i.kind, label: brandFor(i.kind).name, direction: "pull" as const })),
+          ...connected
+            .filter((i) => destinationKinds.has(i.kind))
+            .map((i) => ({ id: i.id, kind: i.kind, label: brandFor(i.kind).name, direction: "push" as const })),
+        ]}
+        // Keyed by direction so one provider could declare both without the
+        // dialog having to guess which set it is looking at.
+        settingFields={{
+          ...Object.fromEntries(
+            Object.entries(catalog.sourceSettings ?? {}).map(([k, v]) => [`${k}:pull`, v]),
+          ),
+          ...Object.fromEntries(
+            Object.entries(catalog.destinationSettings ?? {}).map(([k, v]) => [`${k}:push`, v]),
+          ),
+        }}
         pushToast={pushToast}
       />
 

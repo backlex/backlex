@@ -41,7 +41,10 @@ export type {
   IntegrationEvent,
   IntegrationOAuth,
   IntegrationProvider,
+  IntegrationDestination,
   IntegrationSource,
+  DestinationPushContext,
+  DestinationRow,
   SourcePullContext,
   SourcePullPage,
   SourceRecord,
@@ -89,6 +92,50 @@ export const OAUTH_KINDS = entries.filter(([, p]) => p.oauth).map(([id]) => id);
 
 /** Kinds that can pull rows into a collection. Derived, like OAUTH_KINDS. */
 export const SOURCE_KINDS = entries.filter(([, p]) => p.source).map(([id]) => id);
+
+/** Kinds that can receive rows from a collection. */
+export const DESTINATION_KINDS = entries.filter(([, p]) => p.destination).map(([id]) => id);
+
+/** Per-sync settings each destination provider asks for, keyed by kind. */
+export const DESTINATION_SETTING_FIELDS = Object.fromEntries(
+  entries.filter(([, p]) => p.destination).map(([id, p]) => [id, [...p.destination!.settingFields]]),
+) as Record<string, IntegrationConfigField[]>;
+
+/**
+ * Send one batch to a destination provider.
+ *
+ * Like `pullFromSource` and unlike `deliverToIntegration`, this does NOT swallow
+ * errors: a failed push that reported success would advance the watermark past
+ * rows the warehouse never received.
+ */
+export async function pushToDestination(
+  kind: string,
+  args: {
+    config: Record<string, unknown>;
+    settings: Record<string, unknown>;
+    rows: readonly Record<string, unknown>[];
+    columns: Record<string, string>;
+  },
+  fetchImpl?: FetchLike,
+): Promise<void> {
+  const provider = providerFor(kind);
+  if (!provider?.destination) throw new Error(`${kind} cannot be used as a destination`);
+  if (args.rows.length === 0) return;
+  const doFetch: FetchLike = fetchImpl ?? ((i, init) => fetch(i, init));
+  const pick = (bag: Record<string, unknown>, key: string) => {
+    const v = bag[key];
+    return typeof v === "string" && v ? v : null;
+  };
+  await provider.destination.push({
+    config: args.config,
+    settings: args.settings,
+    rows: args.rows,
+    columns: args.columns,
+    fetch: doFetch,
+    str: (key) => pick(args.config, key),
+    setting: (key) => pick(args.settings, key),
+  });
+}
 
 /** Per-sync settings each source provider asks for, keyed by kind. */
 export const SOURCE_SETTING_FIELDS = Object.fromEntries(

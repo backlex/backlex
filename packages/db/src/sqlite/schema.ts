@@ -2538,11 +2538,17 @@ export const integrationSyncs = sqliteTable(
     integrationId: text("integration_id").notNull(),
     /** Never null: an instance-wide sync would write another tenant's rows. */
     tenantId: text("tenant_id").notNull(),
-    /** Collection slug the rows land in. Must be managed, never adopted. */
+    /** Collection slug the rows land in (pull) or come from (push). */
     collection: text("collection").notNull(),
+    /** `pull` draws rows in from a source; `push` mirrors them out to a
+     *  destination. One table, because the schedule, the breaker, the cursor
+     *  and the field mapping are identical — only the direction of travel
+     *  differs, and splitting them would duplicate all four. */
+    direction: text("direction").notNull().default("pull"),
     /** Which spreadsheet / base / database — per-sync, never secret. */
     settings: text("settings", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
-    /** External field name → collection field name. Unmapped fields are dropped. */
+    /** Field mapping. Read in the direction of travel: `external → field` on a
+     *  pull, `field → external column` on a push. Unmapped keys are dropped. */
     mapping: text("mapping", { mode: "json" }).$type<Record<string, string>>().notNull().default({}),
     /** How often the scheduler runs it. 0 = manual only. */
     intervalMinutes: integer("interval_minutes").notNull().default(60),

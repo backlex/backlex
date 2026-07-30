@@ -44,6 +44,7 @@ export type ApiSync = {
   collection: string;
   settings: Record<string, unknown>;
   mapping: Record<string, string>;
+  direction: string;
   intervalMinutes: number;
   enabled: boolean;
   resuming: boolean;
@@ -54,8 +55,8 @@ export type ApiSync = {
   disabledReason: string | null;
 };
 
-/** Connected integrations that can act as a source, for the picker. */
-export type SourceOption = { id: string; kind: string; label: string };
+/** A connected integration the picker can offer, with which way it travels. */
+export type SourceOption = { id: string; kind: string; label: string; direction: "pull" | "push" };
 
 /** Cadences worth offering. The labels live at the call site rather than here,
  *  because Lingui extracts `t` only where it is lexically in scope — passing it
@@ -68,7 +69,9 @@ export function IntegrationSyncsCard({
   settingFields,
   pushToast,
 }: {
+  /** Both directions; the dialog reads `direction` off the chosen entry. */
   sources: SourceOption[];
+  /** Keyed `<kind>:<direction>` so one provider can declare both. */
   settingFields: Record<string, SettingField[]>;
   pushToast: (m: string) => void;
 }) {
@@ -221,9 +224,17 @@ export function IntegrationSyncsCard({
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[13px] font-medium">{labelFor(row.integrationId)}</span>
+                  {/* Drawn in the direction of travel, so a glance says which
+                      way the rows are moving. Showing a push as
+                      "ClickHouse → leads" would say the opposite of what
+                      happens. */}
+                  <span className="text-[13px] font-medium">
+                    {row.direction === "push" ? row.collection : labelFor(row.integrationId)}
+                  </span>
                   <I.ArrowRight size={13} className="text-muted-foreground" />
-                  <code className="text-[12px] text-muted-foreground">{row.collection}</code>
+                  <code className="text-[12px] text-muted-foreground">
+                    {row.direction === "push" ? labelFor(row.integrationId) : row.collection}
+                  </code>
                   {!row.enabled && (
                     <Badge variant="destructive" className="text-[10px]">
                       <Trans>Paused</Trans>
@@ -320,8 +331,9 @@ function SyncDialog({
     { id: crypto.randomUUID(), external: "", field: "" },
   ]);
 
-  const kind = sources.find((s) => s.id === integrationId)?.kind ?? "";
-  const fields = settingFields[kind] ?? [];
+  const chosen = sources.find((s) => s.id === integrationId);
+  const direction = chosen?.direction ?? "pull";
+  const fields = settingFields[`${chosen?.kind ?? ""}:${direction}`] ?? [];
 
   // Only writable fields can be a mapping target; a computed column regenerates
   // itself and the server would refuse it anyway.
@@ -357,10 +369,23 @@ function SyncDialog({
 
   const submit = () => {
     const mapping: Record<string, string> = {};
-    for (const p of pairs) if (p.external.trim() && p.field) mapping[p.external.trim()] = p.field;
+    // Written in the direction of travel: the collection field is the value on
+    // a pull and the key on a push.
+    for (const p of pairs) {
+      if (!p.external.trim() || !p.field) continue;
+      if (direction === "push") mapping[p.field] = p.external.trim();
+      else mapping[p.external.trim()] = p.field;
+    }
     const cleaned: Record<string, string> = {};
     for (const [k, v] of Object.entries(settings)) if (v.trim()) cleaned[k] = v.trim();
-    onCreate({ integrationId, collection, settings: cleaned, mapping, intervalMinutes: interval });
+    onCreate({
+      integrationId,
+      collection,
+      direction,
+      settings: cleaned,
+      mapping,
+      intervalMinutes: interval,
+    });
   };
 
   return (
@@ -382,7 +407,7 @@ function SyncDialog({
           <div className="flex flex-col gap-3.5 px-5 py-4">
             <label className="block">
               <span className="mb-1 block text-[11.5px] font-medium">
-                <Trans>Source</Trans>
+                <Trans>Connection</Trans>
               </span>
               <Select
                 value={integrationId}
@@ -399,7 +424,7 @@ function SyncDialog({
 
             <label className="block">
               <span className="mb-1 block text-[11.5px] font-medium">
-                <Trans>Into collection</Trans>
+                {direction === "push" ? <Trans>From collection</Trans> : <Trans>Into collection</Trans>}
               </span>
               <Select
                 // `undefined`, not `""`: the shared Select maps "" to a
@@ -453,7 +478,7 @@ function SyncDialog({
                   <div key={p.id} className="flex items-center gap-2">
                     <Input
                       className="min-w-0 flex-1"
-                      placeholder={t`External column`}
+                      placeholder={direction === "push" ? t`Destination column` : t`External column`}
                       value={p.external}
                       onChange={(e) =>
                         setPairs((prev) =>

@@ -5,6 +5,7 @@ import {
   INTEGRATION_CATALOG,
   INTEGRATION_FIELDS,
   INTEGRATION_KINDS,
+  DESTINATION_SETTING_FIELDS,
   SOURCE_SETTING_FIELDS,
 } from "@backlex/integrations";
 import type { AppBindings } from "../app";
@@ -77,6 +78,8 @@ const CatalogView = z
     oauthRedirectUri: z.string(),
     /** Per-sync settings each source provider needs, keyed by kind. */
     sourceSettings: z.record(z.string(), z.unknown()),
+    /** Same, for providers that receive rows rather than supply them. */
+    destinationSettings: z.record(z.string(), z.unknown()),
   })
   .openapi("IntegrationCatalog");
 
@@ -85,6 +88,7 @@ const SyncView = z
     id: z.string(),
     integrationId: z.string(),
     collection: z.string(),
+    direction: z.string(),
     settings: z.record(z.string(), z.unknown()),
     mapping: z.record(z.string(), z.string()),
     intervalMinutes: z.number(),
@@ -102,12 +106,20 @@ const SyncView = z
 const SyncInput = z
   .object({
     integrationId: z.string().min(1),
-    collection: z.string().min(1).openapi({ description: "Managed collection slug the rows land in." }),
+    collection: z.string().min(1).openapi({
+      description: "Managed collection slug the rows land in (pull) or come from (push).",
+    }),
+    direction: z.enum(["pull", "push"]).optional().openapi({
+      description:
+        "`pull` draws rows in from a source (default); `push` mirrors the collection out to a warehouse.",
+    }),
     settings: z.record(z.string(), z.unknown()).optional().openapi({
       description: "Which spreadsheet / base / database. Keys come from the catalog's `sourceSettings`.",
     }),
     mapping: z.record(z.string(), z.string()).openapi({
-      description: "External field name → collection field name. Unmapped external fields are dropped.",
+      description:
+        "Read in the direction of travel: `external field → collection field` on a pull, " +
+        "`collection field → external column` on a push. Unmapped keys are dropped.",
     }),
     intervalMinutes: z.number().int().min(0).max(10_080).optional().openapi({
       description: "How often the scheduler runs it. 0 = manual only. Default 60.",
@@ -181,6 +193,7 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           })),
           oauthRedirectUri: oauthRedirectUri(c.get("ctx").env.APP_URL),
           sourceSettings: SOURCE_SETTING_FIELDS,
+          destinationSettings: DESTINATION_SETTING_FIELDS,
         },
       }),
   )

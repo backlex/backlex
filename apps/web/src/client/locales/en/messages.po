@@ -3274,6 +3274,10 @@ msgstr "Connecting to your workspace…"
 msgid "Connecting…"
 msgstr "Connecting…"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Connection"
+msgstr "Connection"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "Connection failed."
 msgstr "Connection failed."
@@ -4341,6 +4345,10 @@ msgstr "Description"
 #: src/client/admin/pages/forms.tsx
 msgid "Deselect"
 msgstr "Deselect"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Destination column"
+msgstr "Destination column"
 
 #: src/client/admin/pages/schema-versions.tsx
 msgid "destructive"
@@ -6021,6 +6029,10 @@ msgstr "From a schema template"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "From address"
 msgstr "From address"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "From collection"
+msgstr "From collection"
 
 #: src/client/admin/collections-index.tsx
 msgid "From existing table"
@@ -7971,6 +7983,14 @@ msgstr "Minting a new key immediately invalidates the old one."
 #: src/client/admin/pages/forms.tsx
 msgid "Mints a new token; the current link stops working"
 msgstr "Mints a new token; the current link stops working"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Mirror a collection into a BigQuery dataset on a schedule."
+msgstr "Mirror a collection into a BigQuery dataset on a schedule."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Mirror a collection into a ClickHouse table on a schedule."
+msgstr "Mirror a collection into a ClickHouse table on a schedule."
 
 #: src/client/admin/pages/payments.tsx
 msgid "Mirror customers, subscriptions, invoices and payments from Stripe, Polar or Lemon Squeezy into your collections. Deliveries are signature-verified; credentials are encrypted at rest."
@@ -13286,7 +13306,6 @@ msgstr "Sorted by"
 
 #: src/client/admin/item-form.tsx
 #: src/client/admin/pages/extensions.tsx
-#: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Source"
 msgstr "Source"
 

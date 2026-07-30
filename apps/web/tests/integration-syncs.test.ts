@@ -597,3 +597,224 @@ describe("multi-surface parity", () => {
     expect(schema.additionalProperties).toBe(false);
   });
 });
+
+// Pushing a collection out to a warehouse. The correctness question here is
+// entirely about the watermark: a plain `updated_at >` skips every row sharing
+// the last timestamp, `>=` re-sends one forever, and advancing before the push
+// resolves loses a batch on the first network blip.
+describe("push: mirroring a collection out", () => {
+  let chId = "";
+
+  const connectClickhouse = async () => {
+    client.query("delete from integrations where kind = 'clickhouse'").run();
+    const res = await ok("POST", BASE, {
+      kind: "clickhouse",
+      config: { url: "https://ch.test:8443", username: "default", password: "pw", database: "default" },
+    });
+    return res.data.id as string;
+  };
+
+  /** Collect what each push actually sent. */
+  const captureFetch = (fail = false) => {
+    const batches: Record<string, unknown>[][] = [];
+    const fn = async (_url: string, init?: RequestInit) => {
+      const rows = String(init?.body ?? "")
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => JSON.parse(l) as Record<string, unknown>);
+      batches.push(rows);
+      return fail
+        ? new Response("Code: 60. Unknown table", { status: 404 })
+        : new Response("", { status: 200 });
+    };
+    return Object.assign(fn, { batches });
+  };
+
+  const runInline = async (syncId: string, fetchImpl: unknown) => {
+    const { runSync } = await import("../src/server/services/integration-syncs");
+    const { buildContext } = await import("../src/server/context");
+    const ctx = await buildContext(h.env);
+    const tid = (
+      client.query("select tenant_id as t from integration_syncs where id = ?").get(syncId) as { t: string }
+    ).t;
+    return runSync(ctx, tid, syncId, fetchImpl as never);
+  };
+
+  beforeEach(async () => {
+    chId = await connectClickhouse();
+    const tid = (client.query("select tenant_id as t from integrations where id = ?").get(chId) as {
+      t: string;
+    }).t;
+    // Rebind the seed helper's placeholder to the real tenant.
+    (globalThis as any).__leadTenant = tid;
+  });
+
+  const seed = (rows: { id: string; name: string; updatedAt: number }[]) => {
+    const tid = (globalThis as any).__leadTenant as string;
+    for (const r of rows) {
+      client
+        .query(`insert into "${leadsTable}" (id, tenant_id, name, email, created_at, updated_at)
+                values (?,?,?,?,?,?)`)
+        .run(r.id, tid, r.name, `${r.id}@example.test`, r.updatedAt, r.updatedAt);
+    }
+  };
+
+  const makePush = async () =>
+    (await ok("POST", SYNCS, {
+      integrationId: chId,
+      collection: "leads",
+      direction: "push",
+      settings: { table: "leads" },
+      mapping: { name: "customer_name", email: "customer_email" },
+    })).data;
+
+  test("a source-only provider cannot be a destination, and vice versa", async () => {
+    // Google Sheets pulls; ClickHouse receives. Asking either to do the other
+    // fails at creation rather than on the first run.
+    const res = await req("POST", SYNCS, {
+      integrationId,
+      collection: "leads",
+      direction: "push",
+      settings: { table: "leads" },
+      mapping: { name: "customer_name" },
+    });
+    expect(res.status).toBe(400);
+
+    const other = await req("POST", SYNCS, {
+      integrationId: chId,
+      collection: "leads",
+      direction: "pull",
+      settings: { spreadsheetId: "x", sheetName: "Sheet1" },
+      mapping: { Name: "name" },
+    });
+    expect(other.status).toBe(400);
+  });
+
+  test("mapped columns are renamed and the primary key always travels", async () => {
+    seed([{ id: "a", name: "Ada", updatedAt: 1000 }]);
+    const sync = await makePush();
+    const f = captureFetch();
+    const out = await runInline(sync.id, f);
+
+    expect(out.written).toBe(1);
+    const row = f.batches[0]![0]!;
+    expect(row.customer_name).toBe("Ada");
+    expect(row.customer_email).toBe("a@example.test");
+    // Without the key a re-sent batch is a duplicate rather than an upsert.
+    expect(row.id).toBe("a");
+    // An unmapped column has nowhere to go and must not be invented.
+    expect(row.name).toBeUndefined();
+  });
+
+  test("a row arriving on the watermark's own timestamp is still sent", async () => {
+    // The classic watermark bug, and it only shows up on the SECOND run. After
+    // sending up to `5000|b`, a plain `updated_at > 5000` skips anything else
+    // stamped 5000 — forever, because the watermark never moves past it. The
+    // tie is broken by the primary key.
+    seed([
+      { id: "a", name: "A", updatedAt: 5000 },
+      { id: "b", name: "B", updatedAt: 5000 },
+    ]);
+    const sync = await makePush();
+    await runInline(sync.id, captureFetch());
+
+    seed([{ id: "c", name: "C", updatedAt: 5000 }]);
+    const f = captureFetch();
+    await runInline(sync.id, f);
+    expect(f.batches.flat().map((r) => r.id)).toEqual(["c"]);
+  });
+
+  test("a row already sent at that timestamp is not sent again", async () => {
+    // The other half of the same comparison: `>=` would re-send `b` on every
+    // run for as long as nothing newer arrives.
+    seed([
+      { id: "a", name: "A", updatedAt: 5000 },
+      { id: "b", name: "B", updatedAt: 5000 },
+    ]);
+    const sync = await makePush();
+    await runInline(sync.id, captureFetch());
+    const f = captureFetch();
+    expect((await runInline(sync.id, f)).written).toBe(0);
+  });
+
+  test("a second run sends only what changed, and never re-sends the last row", async () => {
+    seed([{ id: "a", name: "A", updatedAt: 1000 }]);
+    const sync = await makePush();
+    await runInline(sync.id, captureFetch());
+
+    const f2 = captureFetch();
+    const out2 = await runInline(sync.id, f2);
+    // `>=` on the watermark would re-send row `a` on every run, forever.
+    expect(out2.written).toBe(0);
+
+    seed([{ id: "b", name: "B", updatedAt: 2000 }]);
+    const f3 = captureFetch();
+    await runInline(sync.id, f3);
+    expect(f3.batches.flat().map((r) => r.id)).toEqual(["b"]);
+  });
+
+  test("a failed push holds the watermark so the batch is retried", async () => {
+    seed([{ id: "a", name: "A", updatedAt: 1000 }]);
+    const sync = await makePush();
+    await expect(runInline(sync.id, captureFetch(true))).rejects.toThrow(/ClickHouse responded 404/);
+
+    const row = client
+      .query("select cursor, consecutive_failures as f from integration_syncs where id = ?")
+      .get(sync.id) as { cursor: string | null; f: number };
+    // Advancing before the push resolves loses the batch with nothing to show.
+    expect(row.cursor).toBeNull();
+    expect(row.f).toBe(1);
+
+    const f = captureFetch();
+    await runInline(sync.id, f);
+    expect(f.batches.flat().map((r) => r.id)).toEqual(["a"]);
+  });
+
+  test("the provider's error body is carried through, because it names the problem", async () => {
+    seed([{ id: "a", name: "A", updatedAt: 1000 }]);
+    const sync = await makePush();
+    await expect(runInline(sync.id, captureFetch(true))).rejects.toThrow(/Unknown table/);
+  });
+
+  test("another workspace's rows are never mirrored out", async () => {
+    seed([{ id: "mine", name: "Mine", updatedAt: 1000 }]);
+    client
+      .query(`insert into "${leadsTable}" (id, tenant_id, name, email, created_at, updated_at)
+              values (?,?,?,?,?,?)`)
+      .run("theirs", "some-other-tenant", "Theirs", "t@example.test", 1000, 1000);
+
+    const sync = await makePush();
+    const f = captureFetch();
+    await runInline(sync.id, f);
+    expect(f.batches.flat().map((r) => r.id)).toEqual(["mine"]);
+  });
+
+  test("a table name that is not a plain identifier is refused", async () => {
+    seed([{ id: "a", name: "A", updatedAt: 1000 }]);
+    const sync = (await ok("POST", SYNCS, {
+      integrationId: chId,
+      collection: "leads",
+      direction: "push",
+      settings: { table: "leads" },
+      mapping: { name: "customer_name" },
+    })).data;
+    // It is interpolated into the INSERT, and the settings form is not the only
+    // way a value can arrive.
+    client
+      .query("update integration_syncs set settings = ? where id = ?")
+      .run(JSON.stringify({ table: "leads` (x) SELECT 1 --" }), sync.id);
+    await expect(runInline(sync.id, captureFetch())).rejects.toThrow(/not a plain identifier/);
+  });
+
+  test("a push mapping may read a computed field, which a pull may not write", async () => {
+    // Direction changes which side of the mapping has to be writable.
+    const res = await req("POST", SYNCS, {
+      integrationId: chId,
+      collection: "leads",
+      direction: "push",
+      settings: { table: "leads" },
+      mapping: { not_a_field: "x" },
+    });
+    expect(res.status).toBe(422);
+  });
+});

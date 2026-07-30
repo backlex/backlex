@@ -1877,6 +1877,45 @@ export const oidcProviders = sqliteTable(
 );
 
 /**
+ * SCIM 2.0 provisioning endpoint config — one row per workspace.
+ *
+ * An IdP (Okta, Entra, OneLogin) calls `/api/scim/v2/*` with a bearer token to
+ * create, update and deactivate app-plane users without anyone signing in
+ * first. That is the half SSO alone cannot do: SAML/OIDC provision on first
+ * login, SCIM provisions and — crucially — DEPROVISIONS on the IdP's schedule.
+ *
+ * The token is stored as a SHA-256 hash (same treatment as `api_keys`) and
+ * shown exactly once, at create/rotate. `token_prefix` is a short display
+ * fragment so an admin can tell two tokens apart without revealing either.
+ */
+export const scimConfig = sqliteTable(
+  "scim_config",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** SHA-256 of the bearer token. Never the token itself. */
+    tokenHash: text("token_hash").notNull(),
+    /** First few chars of the token, for display only. */
+    tokenPrefix: text("token_prefix").notNull(),
+    /** Role granted to every SCIM-provisioned user, on top of group mapping. */
+    defaultRoleId: text("default_role_id").references(() => roles.id, {
+      onDelete: "set null",
+    }),
+    /** Last time the IdP called any SCIM endpoint — the "is it wired up" signal. */
+    lastRequestAt: integer("last_request_at", { mode: "timestamp_ms" }),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("scim_config_tenant_idx").on(t.tenantId),
+    index("scim_config_token_idx").on(t.tokenHash),
+  ],
+);
+
+/**
  * Federated identity link — see packages/db/src/pg/schema.ts for full docs.
  * `plane` is `'platform' | 'app'`; `user_id` references the matching pool.
  */

@@ -319,3 +319,63 @@ the client; the server always escapes.
 - **`hostname-mismatch` / `unable to get issuer cert`** — the LDAPS cert
   chain isn't trusted by the host's CA store. Paste the issuing CA's PEM
   into *Custom CA PEM*.
+
+## SCIM 2.0 provisioning
+
+SSO answers *who is signing in*. SCIM answers *who exists* — and, the part SSO
+structurally cannot do, **who no longer does**. A user removed in Okta loses
+access here on the directory's schedule, without ever opening the app again.
+
+Enable it under **Authentication → SCIM provisioning**, then paste the two
+values into your IdP:
+
+| IdP field | Value |
+|---|---|
+| Base URL / Tenant URL | `https://<your-instance>/api/scim/v2` |
+| Bearer token | shown **once** when you create or rotate it |
+
+The token is stored only as a SHA-256 hash, so a lost token is rotated, never
+recovered. Rotating invalidates the previous one immediately — the IdP will fail
+its next sync until you paste the new value.
+
+### What maps to what
+
+| SCIM | backlex |
+|---|---|
+| User | an **app-plane** user (`app_users`) — the same plane SAML/OIDC provisioning targets |
+| `userName` | the user's email, lower-cased |
+| `active: false` | status `suspended` |
+| Group | a backlex **role** |
+| Group members | role assignments (`app_user_roles`) |
+
+A **default role** on the SCIM config is granted to every provisioned user, on
+top of whatever group membership the IdP pushes.
+
+### Deliberate limits
+
+- **`DELETE /Users/:id` deactivates; it does not delete.** Unassigning and
+  re-assigning a user is routine in Okta, and a hard delete would destroy the
+  account plus everything keyed to its id. RFC 7644 only requires the resource
+  become inaccessible.
+- **`POST /Groups` returns 501.** Roles are what permission rows bind to, so a
+  directory cannot mint one. Create the role in backlex, then let SCIM fill its
+  membership.
+- **Filters support `attribute eq "value"` only** — what Okta and Entra actually
+  send. Anything else is refused with `400 invalidFilter` rather than ignored:
+  silently dropping a filter would return the whole directory to a caller asking
+  for one user, which an IdP reads as "everyone is a duplicate".
+- **A member from another workspace is dropped, not bound.** Binding a foreign
+  user to a role would hand them that workspace's permissions.
+- No `bulk`, no `sort`, no `changePassword`. `ServiceProviderConfig` advertises
+  exactly this, so an IdP never sends a request that fails mid-sync.
+
+### Endpoints
+
+`GET ServiceProviderConfig` · `GET ResourceTypes` · `GET Schemas` ·
+`GET/POST Users` · `GET/PUT/PATCH/DELETE Users/:id` ·
+`GET Groups` · `GET/PATCH Groups/:id`
+
+Everything requires the bearer token. This is the only route group not behind
+the session or API-key middleware, so each handler resolves the workspace from
+the token and refuses the request when it cannot — there is no ambient workspace
+to fall back on.

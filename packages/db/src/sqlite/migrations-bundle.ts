@@ -88,6 +88,7 @@ import m81 from "../../drizzle/sqlite/20260727100000_agent_semantic_memory/migra
 import m82 from "../../drizzle/sqlite/20260727120000_payments/migration.sql" with { type: "text" };
 import m83 from "../../drizzle/sqlite/20260729120000_integration_deliveries/migration.sql" with { type: "text" };
 import m84 from "../../drizzle/sqlite/20260729140000_oidc_providers/migration.sql" with { type: "text" };
+import m85 from "../../drizzle/sqlite/20260730090000_scim_config/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -180,4 +181,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260727120000_payments", sql: m82 },
   { name: "20260729120000_integration_deliveries", sql: m83 },
   { name: "20260729140000_oidc_providers", sql: m84 },
+  { name: "20260730090000_scim_config", sql: m85 },
 ];

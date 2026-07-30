@@ -34,6 +34,9 @@ import {
   PAYMENT_SECRET_KEYS,
   fetchPaymentPage,
   isCallbackProvider,
+  isRetrieveProvider,
+  isWebhookProvider,
+  retrieveIyzicoPayment,
   parseCallbackBody,
   isPaymentProvider,
   maskPaymentConfig,
@@ -661,27 +664,49 @@ export async function receiveWebhook(
     (provider.config ?? {}) as Record<string, unknown>,
     ctx.env.AUTH_SECRET,
   );
-  const secret = typeof config.webhookSecret === "string" ? config.webhookSecret : "";
-  const verdict = await verifyPaymentSignature(provider.provider, {
-    rawBody: input.rawBody,
-    headers: input.headers,
-    secret,
-    // A callback provider signs with its merchant credentials rather than a
-    // dedicated webhook secret, so it needs the whole decrypted config.
-    config,
-    nowMs: input.nowMs,
-  });
-  if (!verdict.ok) return { ok: false, status: "invalid_signature", reason: verdict.reason };
-
   let payload: unknown;
-  if (isCallbackProvider(provider.provider)) {
+
+  if (isRetrieveProvider(provider.provider)) {
+    // There is nothing on this request to verify. iyzico posts a bare token
+    // with no signature, so the request body is NOT the evidence — it is
+    // discarded except for the token, and the payment is fetched from iyzico
+    // with the merchant's own credentials. What gets recorded is iyzico's
+    // answer. A forged, replayed or foreign token comes back rejected.
+    const token = parseCallbackBody(input.rawBody).token;
+    if (!token) return { ok: false, status: "invalid_signature", reason: "missing_signature" };
+    const retrieved = await retrieveIyzicoPayment({ config, token });
+    if (!retrieved.ok) {
+      if (retrieved.reason === "unreachable") {
+        // Transport failure is not a verdict. Throwing gives the provider's own
+        // retry schedule a chance rather than filing a payment that may well
+        // have succeeded as a forgery.
+        throw new AppError("UNAVAILABLE", "Could not reach iyzico to confirm the payment");
+      }
+      return { ok: false, status: "invalid_signature", reason: retrieved.reason };
+    }
+    payload = retrieved.payload;
+  } else {
+    const secret = typeof config.webhookSecret === "string" ? config.webhookSecret : "";
+    const verdict = await verifyPaymentSignature(provider.provider, {
+      rawBody: input.rawBody,
+      headers: input.headers,
+      secret,
+      // A callback provider signs with its merchant credentials rather than a
+      // dedicated webhook secret, so it needs the whole decrypted config.
+      config,
+      nowMs: input.nowMs,
+    });
+    if (!verdict.ok) return { ok: false, status: "invalid_signature", reason: verdict.reason };
+  }
+
+  if (payload === undefined && isCallbackProvider(provider.provider)) {
     // Callback providers post application/x-www-form-urlencoded, not JSON.
     // MUST go through the shared parser: doing it here with
     // `Object.fromEntries` would take the LAST value of a repeated key while
     // the verifier took the FIRST, so a signed `status=failed` could be
     // recorded as a success.
     payload = parseCallbackBody(input.rawBody);
-  } else {
+  } else if (payload === undefined) {
     try {
       payload = JSON.parse(input.rawBody);
     } catch {
@@ -852,18 +877,19 @@ export async function reconcileProvider(
   );
   await ensurePaymentCollections(ctx, tenantId);
 
-  // A callback provider has no listable object catalog — the callback IS the
-  // whole surface. Walking pages would 404 forever; reporting a clean sync that
-  // synced nothing would be worse.
-  if (isCallbackProvider(row.provider)) {
+  // Only a webhook provider exposes a listable object catalog. Asked this way
+  // round rather than as `isCallbackProvider`, because with a third mode the
+  // negation stops meaning "not a webhook provider" and a retrieve provider
+  // would be sent off to page a catalog that does not exist.
+  if (!isWebhookProvider(row.provider)) {
     return {
       provider: row.provider,
       written: 0,
       failed: 0,
       cursors: (row.syncCursor ?? {}) as Record<string, string | null>,
       error:
-        `${row.provider} is a callback-style provider: it reports each payment to the callback URL ` +
-        `and exposes no object catalog to reconcile against.`,
+        `${row.provider} reports each payment to the callback URL and exposes no object catalog ` +
+        `to reconcile against.`,
     };
   }
 

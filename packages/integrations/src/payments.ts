@@ -25,6 +25,7 @@ export const PAYMENT_PROVIDERS = [
   "lemonsqueezy",
   "paddle",
   "paytr",
+  "iyzico",
 ] as const;
 export type PaymentProvider = (typeof PAYMENT_PROVIDERS)[number];
 
@@ -38,6 +39,7 @@ export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
   lemonsqueezy: "Lemon Squeezy",
   paddle: "Paddle",
   paytr: "PayTR",
+  iyzico: "iyzico",
 };
 
 /**
@@ -54,14 +56,16 @@ export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
  * not merely unimplemented for these, it is *impossible*, and pretending
  * otherwise would report a successful sync that synced nothing.
  *
- * iyzico is the other obvious member and is deliberately NOT here yet: its
- * callback carries a `token` and authenticity comes from calling iyzico back to
- * retrieve the payment, not from a hash on the request. That needs an outbound
- * call inside the receive path, which `verifyPaymentSignature` has no shape for.
- * Guessing a signature format instead would be worse than absent — it would
- * either reject every real callback or accept forged ones.
+ * `retrieve` (iyzico): the provider POSTs a bare `token` with NO signature on
+ * it, and the payment result is fetched by calling the provider back with the
+ * merchant's own API credentials. Authenticity therefore comes from the
+ * RESPONSE, not the request — the posted body is discarded except for the
+ * token, and everything recorded is what the provider told us when we asked.
+ * A forged or foreign token yields an error or a stranger's `failure`, never a
+ * recorded payment. Inventing a signature scheme for this instead would either
+ * reject every real callback or accept forgeries.
  */
-export type PaymentProviderMode = "webhook" | "callback";
+export type PaymentProviderMode = "webhook" | "callback" | "retrieve";
 
 export const PAYMENT_PROVIDER_MODES: Record<PaymentProvider, PaymentProviderMode> = {
   stripe: "webhook",
@@ -71,10 +75,27 @@ export const PAYMENT_PROVIDER_MODES: Record<PaymentProvider, PaymentProviderMode
   // paginated catalog, so it fits the webhook shape exactly.
   paddle: "webhook",
   paytr: "callback",
+  iyzico: "retrieve",
 };
 
 export const isCallbackProvider = (p: string): boolean =>
   PAYMENT_PROVIDER_MODES[p as PaymentProvider] === "callback";
+
+export const isRetrieveProvider = (p: string): boolean =>
+  PAYMENT_PROVIDER_MODES[p as PaymentProvider] === "retrieve";
+
+/**
+ * Only a `webhook` provider signs its request and exposes a listable catalog.
+ *
+ * Everything that used to ask `isCallbackProvider` to mean "not a webhook
+ * provider" asks this instead. The difference is not cosmetic: with a third
+ * mode, `!isCallbackProvider` becomes TRUE for iyzico, so the signature
+ * backstop would let it fall through to a branch that HMACs with an empty key,
+ * and the reconcile gate would send it off to page a catalog that does not
+ * exist. Deriving from the mode table keeps a fourth mode from doing the same.
+ */
+export const isWebhookProvider = (p: string): boolean =>
+  PAYMENT_PROVIDER_MODES[p as PaymentProvider] === "webhook";
 
 /** The PayTR fields that go into the hash, in signing order. */
 export const PAYTR_SIGNED_FIELDS = ["merchant_oid", "status", "total_amount"] as const;
@@ -109,6 +130,8 @@ export const PAYMENT_ACK: Record<PaymentProvider, { body: string; contentType: s
   lemonsqueezy: null,
   paddle: null,
   paytr: { body: "OK", contentType: "text/plain; charset=utf-8" },
+  // iyzico is happy with any 2xx; the default envelope is fine.
+  iyzico: null,
 };
 
 /** One config field a UI should collect. Mirrors `IntegrationConfigField`. */
@@ -193,6 +216,22 @@ export const PAYMENT_PROVIDER_FIELDS: Record<PaymentProvider, PaymentConfigField
     { key: "merchantKey", label: "Merchant key", placeholder: "From the PayTR panel", secret: true },
     { key: "merchantSalt", label: "Merchant salt", placeholder: "From the PayTR panel", secret: true },
   ],
+  iyzico: [
+    {
+      key: "apiKey",
+      label: "API key",
+      placeholder: "sandbox-… or the live key",
+      secret: true,
+      hint: "Used to authenticate the call that retrieves each payment — the callback itself carries no signature.",
+    },
+    { key: "secretKey", label: "Secret key", placeholder: "From the iyzico merchant panel", secret: true },
+    {
+      key: "environment",
+      label: "Environment",
+      choices: ["production", "sandbox"],
+      hint: "Sandbox points at sandbox-api.iyzipay.com.",
+    },
+  ],
 };
 
 /** Config keys holding secrets, per provider — encrypt at rest, mask on read. */
@@ -204,6 +243,9 @@ export const PAYMENT_SECRET_KEYS: Record<PaymentProvider, string[]> = {
   // A callback provider signs with its merchant credential rather than a
   // separate webhook secret, so the signing material IS that credential.
   paytr: ["merchantKey", "merchantSalt"],
+  // iyzico signs nothing inbound; these authenticate the outbound retrieve,
+  // which is what makes a callback trustworthy at all.
+  iyzico: ["apiKey", "secretKey"],
 };
 
 /**
@@ -331,8 +373,8 @@ export async function verifyPaymentSignature(
   input: VerifyInput,
 ): Promise<VerifyResult> {
   if (!isPaymentProvider(provider)) return { ok: false, reason: "unknown_provider" };
-  // Callback providers carry their signing material in `config`, not `secret`.
-  if (!isCallbackProvider(provider) && !input.secret) {
+  // Non-webhook providers carry their credentials in `config`, not `secret`.
+  if (isWebhookProvider(provider) && !input.secret) {
     return { ok: false, reason: "missing_secret" };
   }
 
@@ -375,10 +417,12 @@ export async function verifyPaymentSignature(
       : { ok: false, reason: "signature_mismatch" };
   }
   // Backstop. Every branch below assumes a `webhook` provider with a real
-  // signing secret; a callback provider that reached here has no branch of its
-  // own and would fall through to the last one, which HMACs with an empty key —
-  // and an empty-key HMAC is computable by anyone, so it would accept forgeries.
-  if (isCallbackProvider(provider)) return { ok: false, reason: "unknown_provider" };
+  // signing secret; a non-webhook provider that reached here has no branch of
+  // its own and would fall through to the last one, which HMACs with an empty
+  // key — and an empty-key HMAC is computable by anyone, so it would accept
+  // forgeries. Asked as "is this a webhook provider" rather than "is this the
+  // callback provider", so a mode added later fails closed by default.
+  if (!isWebhookProvider(provider)) return { ok: false, reason: "unknown_provider" };
 
   const toleranceSec = input.toleranceSec ?? 300;
   const nowSec = Math.floor((input.nowMs ?? Date.now()) / 1000);
@@ -1146,6 +1190,158 @@ const normalizePayTR = (body: Record<string, unknown>): NormalizedPaymentEvent =
   };
 };
 
+// ── iyzico: retrieve-based verification ─────────────────────────────────────
+
+/** iyzico's two hosts. Fixed constants — never assembled from config. */
+const IYZICO_HOSTS = {
+  production: "https://api.iyzipay.com",
+  sandbox: "https://sandbox-api.iyzipay.com",
+} as const;
+
+/** The one endpoint this integration calls. */
+const IYZICO_RETRIEVE_PATH = "/payment/iyzipos/checkoutform/auth/ecom/detail";
+
+/**
+ * iyzico's IYZWSv2 request authentication.
+ *
+ * signature = hex(HMAC-SHA256(secretKey, randomKey + uriPath + requestBody))
+ * Authorization: IYZWSv2 base64("apiKey:…&randomKey:…&signature:…")
+ *
+ * The random key also travels as `x-iyzi-rnd` so iyzico can recompute it.
+ */
+const iyzicoAuthHeaders = async (
+  apiKey: string,
+  secretKey: string,
+  uriPath: string,
+  body: string,
+  randomKey: string,
+): Promise<Record<string, string>> => {
+  const signature = toHex(await hmac(enc.encode(secretKey), `${randomKey}${uriPath}${body}`));
+  const params = `apiKey:${apiKey}&randomKey:${randomKey}&signature:${signature}`;
+  return {
+    Authorization: `IYZWSv2 ${btoa(params)}`,
+    "x-iyzi-rnd": randomKey,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+};
+
+export interface IyzicoRetrieveInput {
+  /** Decrypted provider config: apiKey, secretKey, environment. */
+  config: Record<string, unknown>;
+  /** The token iyzico posted to the callback. Opaque; never interpolated
+   *  into a URL — it travels in the JSON body. */
+  token: string;
+  fetchImpl?: FetchLike;
+  /** Injectable so tests do not depend on randomness. */
+  randomKey?: string;
+}
+
+export type IyzicoRetrieveResult =
+  | { ok: true; payload: Record<string, unknown> }
+  | { ok: false; reason: "missing_secret" | "unreachable" | "rejected" };
+
+/**
+ * Ask iyzico what happened for a token.
+ *
+ * This IS the verification step for iyzico. The callback that triggered it is
+ * unauthenticated and its body is thrown away; only the token is carried over,
+ * and what gets recorded is iyzico's own answer, fetched with the merchant's
+ * credentials. A token that is forged, replayed from another merchant, or
+ * simply invented comes back as a `failure` (or an error) and produces no
+ * payment record.
+ */
+export async function retrieveIyzicoPayment(
+  input: IyzicoRetrieveInput,
+): Promise<IyzicoRetrieveResult> {
+  const apiKey = str(input.config.apiKey);
+  const secretKey = str(input.config.secretKey);
+  if (!apiKey || !secretKey) return { ok: false, reason: "missing_secret" };
+
+  const host =
+    str(input.config.environment) === "sandbox" ? IYZICO_HOSTS.sandbox : IYZICO_HOSTS.production;
+  const body = JSON.stringify({ locale: "tr", token: input.token });
+  const randomKey = input.randomKey ?? `${Date.now()}${Math.random().toString(36).slice(2, 10)}`;
+  const headers = await iyzicoAuthHeaders(apiKey, secretKey, IYZICO_RETRIEVE_PATH, body, randomKey);
+
+  const doFetch: FetchLike = input.fetchImpl ?? ((i, init) => fetch(i, init));
+  let res: Response;
+  try {
+    res = await doFetch(`${host}${IYZICO_RETRIEVE_PATH}`, { method: "POST", headers, body });
+  } catch {
+    // Transport failure, not a verdict. The caller turns this into a retry
+    // rather than recording a payment that may well have succeeded.
+    return { ok: false, reason: "unreachable" };
+  }
+  if (!res.ok) return { ok: false, reason: "unreachable" };
+
+  let payload: unknown;
+  try {
+    payload = await res.json();
+  } catch {
+    return { ok: false, reason: "unreachable" };
+  }
+  const parsed = obj(payload);
+  if (!parsed) return { ok: false, reason: "unreachable" };
+  // iyzico answers 200 with `status: "failure"` for a token it does not
+  // recognise, which is exactly what a forged callback looks like. That is a
+  // verdict, not an outage — no retry, no record.
+  if (str(parsed.status) !== "success") return { ok: false, reason: "rejected" };
+  return { ok: true, payload: parsed };
+}
+
+/**
+ * Normalize a retrieved iyzico payment.
+ *
+ * The shape here is the RETRIEVE response, never the callback body — see
+ * `retrieveIyzicoPayment` for why that distinction is the whole security model.
+ */
+const normalizeIyzico = (body: Record<string, unknown>): NormalizedPaymentEvent => {
+  const paymentId = str(body.paymentId) ?? str(body.token) ?? "";
+  // `paymentStatus` is the settlement verdict; `status` above it only says the
+  // API call itself succeeded, and conflating the two records a declined card
+  // as a completed payment.
+  const paymentStatus = str(body.paymentStatus) ?? "";
+  const succeeded = paymentStatus === "SUCCESS";
+  return {
+    eventId: paymentId,
+    type: succeeded ? "payment.success" : "payment.failed",
+    // The sandbox key prefix is the only signal iyzico gives here.
+    livemode: !String(str(body.token) ?? "").startsWith("sandbox-"),
+    records: paymentId
+      ? [
+          {
+            kind: "payment",
+            row: {
+              id: paymentRowId("iyzico", paymentId),
+              provider: "iyzico",
+              external_id: paymentId,
+              customer: null,
+              invoice: null,
+              // `paidPrice` is what was actually charged (it includes the
+              // installment surcharge); `price` is the basket total.
+              amount: num(body.paidPrice) ?? num(body.price),
+              amount_refunded: 0,
+              currency: str(body.currency) ?? "TRY",
+              status: succeeded ? "succeeded" : "failed",
+              method: str(body.paymentChannel),
+              failure_reason: succeeded
+                ? null
+                : (str(body.errorMessage) ?? str(body.errorCode) ?? (paymentStatus || null)),
+              processed_at: null,
+              metadata: {
+                ...(str(body.basketId) ? { basket_id: str(body.basketId) } : {}),
+                ...(str(body.conversationId) ? { conversation_id: str(body.conversationId) } : {}),
+                ...(str(body.installment) ? { installment: str(body.installment) } : {}),
+                ...(str(body.cardAssociation) ? { card_association: str(body.cardAssociation) } : {}),
+              },
+            },
+          },
+        ]
+      : [],
+  };
+};
+
 export function normalizePaymentEvent(
   provider: string,
   payload: unknown,
@@ -1153,6 +1349,7 @@ export function normalizePaymentEvent(
 ): NormalizedPaymentEvent {
   const body = obj(payload) ?? {};
   const headerEventId = opts.headerEventId ?? null;
+  if (provider === "iyzico") return normalizeIyzico(body);
   if (provider === "stripe") return normalizeStripe(body);
   if (provider === "polar") return normalizePolar(body, headerEventId);
   if (provider === "lemonsqueezy") return normalizeLemonSqueezy(body, headerEventId);

@@ -1,6 +1,6 @@
 ---
 title: Payments
-description: Connect Stripe, Polar, Lemon Squeezy, Paddle or PayTR and mirror customers, subscriptions, invoices and payments into your collections.
+description: Connect Stripe, Polar, Lemon Squeezy, Paddle, PayTR or iyzico and mirror customers, subscriptions, invoices and payments into your collections.
 ---
 
 Connect a payment provider once, and backlex keeps a mirror of its billing
@@ -16,15 +16,17 @@ Two mechanisms keep the mirror honest:
   repairs anything a missed delivery left stale. Runs every six hours, and on
   demand.
 
-Supported providers: **Stripe**, **Polar**, **Lemon Squeezy**, **Paddle**, **PayTR**.
+Supported providers: **Stripe**, **Polar**, **Lemon Squeezy**, **Paddle**,
+**PayTR**, **iyzico**.
 
-Providers come in two shapes, and the difference decides what backlex can do
-with them:
+Providers come in three shapes, and the difference decides both what backlex can
+do with them and where the trust comes from:
 
 | Mode | Providers | Behaviour |
 |---|---|---|
 | `webhook` | Stripe, Polar, Lemon Squeezy, Paddle | Signed events **and** a listable object catalog, so backlex can also **reconcile** by walking the API |
-| `callback` | PayTR | Posts a form-encoded result per payment; there is no catalog, so reconcile is refused with a reason rather than reporting a sync that synced nothing |
+| `callback` | PayTR | Posts a form-encoded result per payment, signed with your merchant credentials. No catalog, so reconcile is refused with a reason rather than reporting a sync that synced nothing |
+| `retrieve` | iyzico | Posts a bare token with **no signature**. backlex calls iyzico back with your API credentials to ask what the token means, and records that answer. No catalog |
 
 ## Why collections, not system tables
 
@@ -54,6 +56,7 @@ Only the connection itself (`payment_providers`) and the delivery log
 | Lemon Squeezy | API key + the signing secret you set on the webhook. Optional `storeId` scopes the reconcile pull to one store |
 | Paddle | API key (`pdl_…`) + the **notification secret** (`pdl_ntfset_…`) shown once when you create the destination. Set `environment: sandbox` for the sandbox API |
 | PayTR | Merchant ID, **merchant key** and **merchant salt** from the PayTR panel — the key and salt together sign the callback |
+| iyzico | **API key** and **secret key** from the merchant panel. They do not verify anything inbound; they authenticate the call backlex makes to confirm each payment. Set `environment: sandbox` for `sandbox-api.iyzipay.com` |
 
 For Stripe a restricted key with **read** access to customers, subscriptions,
 invoices and charges is enough — backlex never writes to the provider.
@@ -146,6 +149,12 @@ backlex session. Four things stand in for auth:
    - Polar — [standard-webhooks](https://www.standardwebhooks.com/):
      `webhook-signature: v1,<base64>` over `<webhook-id>.<webhook-timestamp>.<body>`.
    - Lemon Squeezy — `X-Signature`, hex HMAC-SHA256 over the body.
+   - PayTR — base64 HMAC-SHA256 over specific form *fields*, not the raw body.
+   - iyzico — **nothing to verify**; see below. Its trust comes from step 2′.
+
+   2′. **Or the result is fetched, not accepted.** For iyzico the request body
+   is discarded except for the token, and the payment is retrieved from iyzico
+   with your API credentials. What lands in the ledger is iyzico's answer.
 3. **Replays are dropped** by a unique index on `(provider_id, event_id)`. The
    insert *is* the lock, so two concurrent retries can't both apply.
 4. **Rate limits** bound a token-guessing attack: 240/min per IP and 600/min per
@@ -317,3 +326,42 @@ comes from calling iyzico back to retrieve the payment rather than from a hash
 on the request, which needs an outbound call inside the receive path. A guessed
 signature format would be worse than none.
 :::
+
+## iyzico: retrieve-style, and why the callback body is ignored
+
+iyzico's Checkout Form posts to your callback URL with a single field, `token`,
+and **no signature over it**. There is nothing on that request to verify — so
+backlex does not try.
+
+Instead the token is the only thing carried forward. backlex calls
+`/payment/iyzipos/checkoutform/auth/ecom/detail` with your API key and secret
+(IYZWSv2 request signing) and records what iyzico reports. The consequence is
+worth stating plainly:
+
+- **Everything else in the POST is thrown away.** A caller who finds your
+  callback URL and posts `paymentStatus=SUCCESS&paidPrice=999999` gets nothing:
+  the amount, the status and the payment id all come from iyzico.
+- **A forged or foreign token yields no record.** iyzico answers `status:
+  failure` for a token that is not yours, and that is treated as a verdict —
+  refused, not retried.
+- **An unreachable iyzico is a `500`, not a rejection.** Calling a network blip
+  a forgery would drop a payment that really settled, so the delivery is failed
+  and iyzico's own retry gets a turn.
+
+Two statuses in the response mean different things and conflating them files
+every decline as a completed payment:
+
+| Field | Means |
+|---|---|
+| `status` | whether the **API call** worked |
+| `paymentStatus` | whether the **card was charged** (`SUCCESS` / `FAILURE`) |
+
+The recorded amount is `paidPrice`, not `price` — `paidPrice` includes the
+installment surcharge and is what the customer was actually charged.
+
+Set the callback URL on your `checkoutFormInitialize` request (iyzico takes it
+per-request rather than from a panel setting). It is the same
+`/api/payments/webhook/<token>` path the connect dialog shows.
+
+**Reconcile does not apply.** iyzico exposes no object catalog to page through,
+so `sync` is refused with a reason rather than reporting a clean empty sync.

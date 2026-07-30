@@ -87,6 +87,9 @@ const BRANDS: Record<string, Brand> = {
   },
   polar: { mark: "P", markBg: "#0062FF" },
   lemonsqueezy: { mark: "\u{1F34B}", markBg: "#FFC233" },
+  paddle: { mark: "Pd", markBg: "#FDDD35" },
+  paytr: { mark: "PT", markBg: "#00A0E9" },
+  iyzico: { mark: "iy", markBg: "#1E64FF" },
 };
 const brandFor = (provider: string): Brand =>
   BRANDS[provider] ?? { mark: provider.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };

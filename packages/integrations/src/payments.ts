@@ -19,7 +19,12 @@
  * `eventId`, and writing the normalized rows into collections.
  */
 
-export const PAYMENT_PROVIDERS = ["stripe", "polar", "lemonsqueezy"] as const;
+export const PAYMENT_PROVIDERS = [
+  "stripe",
+  "polar",
+  "lemonsqueezy",
+  "paytr",
+] as const;
 export type PaymentProvider = (typeof PAYMENT_PROVIDERS)[number];
 
 export const isPaymentProvider = (v: string): v is PaymentProvider =>
@@ -30,6 +35,74 @@ export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
   stripe: "Stripe",
   polar: "Polar",
   lemonsqueezy: "Lemon Squeezy",
+  paytr: "PayTR",
+};
+
+/**
+ * How a provider talks to us — the distinction the rest of this module branches
+ * on.
+ *
+ * `webhook` (Stripe / Polar / Lemon Squeezy): the provider pushes signed JSON
+ * events AND exposes a listable object catalog, so backlex can reconcile by
+ * walking customers/subscriptions/invoices/payments.
+ *
+ * `callback` (PayTR, and the Turkish PSPs generally): the provider POSTs a
+ * form-encoded result to a callback URL when a payment settles, and that is the
+ * whole surface — there is no catalog to page through. Reconcile is therefore
+ * not merely unimplemented for these, it is *impossible*, and pretending
+ * otherwise would report a successful sync that synced nothing.
+ *
+ * iyzico is the other obvious member and is deliberately NOT here yet: its
+ * callback carries a `token` and authenticity comes from calling iyzico back to
+ * retrieve the payment, not from a hash on the request. That needs an outbound
+ * call inside the receive path, which `verifyPaymentSignature` has no shape for.
+ * Guessing a signature format instead would be worse than absent — it would
+ * either reject every real callback or accept forged ones.
+ */
+export type PaymentProviderMode = "webhook" | "callback";
+
+export const PAYMENT_PROVIDER_MODES: Record<PaymentProvider, PaymentProviderMode> = {
+  stripe: "webhook",
+  polar: "webhook",
+  lemonsqueezy: "webhook",
+  paytr: "callback",
+};
+
+export const isCallbackProvider = (p: string): boolean =>
+  PAYMENT_PROVIDER_MODES[p as PaymentProvider] === "callback";
+
+/** The PayTR fields that go into the hash, in signing order. */
+export const PAYTR_SIGNED_FIELDS = ["merchant_oid", "status", "total_amount"] as const;
+
+/**
+ * Parse a callback provider's form body into the object the normalizer sees.
+ *
+ * Exported so the consumer uses the SAME extraction the verifier does. Doing it
+ * ad hoc with `Object.fromEntries` picks the LAST value of a repeated key while
+ * the verifier reads the FIRST — the divergence that lets a signed
+ * `status=failed` be recorded as a success.
+ */
+export const parseCallbackBody = (rawBody: string): Record<string, string> => {
+  const form = new URLSearchParams(rawBody);
+  const out: Record<string, string> = {};
+  // First occurrence wins, matching `URLSearchParams.get` in the verifier.
+  for (const [k, v] of form) if (!(k in out)) out[k] = v;
+  return out;
+};
+
+/**
+ * What the receive endpoint must write back, per provider.
+ *
+ * PayTR is the reason this exists: it requires the literal body `OK` and treats
+ * anything else — including a perfectly good JSON success — as a failure, then
+ * retries the callback on a schedule and eventually disables the merchant's
+ * notification URL. `null` means "the default JSON envelope is fine".
+ */
+export const PAYMENT_ACK: Record<PaymentProvider, { body: string; contentType: string } | null> = {
+  stripe: null,
+  polar: null,
+  lemonsqueezy: null,
+  paytr: { body: "OK", contentType: "text/plain; charset=utf-8" },
 };
 
 /** One config field a UI should collect. Mirrors `IntegrationConfigField`. */
@@ -87,6 +160,11 @@ export const PAYMENT_PROVIDER_FIELDS: Record<PaymentProvider, PaymentConfigField
       hint: "Scopes the reconcile pull to one store. Leave blank to sync every store on the account.",
     },
   ],
+  paytr: [
+    { key: "merchantId", label: "Merchant ID", placeholder: "123456" },
+    { key: "merchantKey", label: "Merchant key", placeholder: "From the PayTR panel", secret: true },
+    { key: "merchantSalt", label: "Merchant salt", placeholder: "From the PayTR panel", secret: true },
+  ],
 };
 
 /** Config keys holding secrets, per provider — encrypt at rest, mask on read. */
@@ -94,6 +172,9 @@ export const PAYMENT_SECRET_KEYS: Record<PaymentProvider, string[]> = {
   stripe: ["apiKey", "webhookSecret"],
   polar: ["apiKey", "webhookSecret"],
   lemonsqueezy: ["apiKey", "webhookSecret"],
+  // A callback provider signs with its merchant credential rather than a
+  // separate webhook secret, so the signing material IS that credential.
+  paytr: ["merchantKey", "merchantSalt"],
 };
 
 /**
@@ -124,8 +205,13 @@ export interface VerifyInput {
   rawBody: string;
   /** Case-insensitive header lookup is done internally. */
   headers: Record<string, string> | Headers;
-  /** Decrypted signing secret from the provider config. */
+  /** Decrypted signing secret from the provider config. Used by the `webhook`
+   *  providers, which have a dedicated signing secret. */
   secret: string;
+  /** Whole decrypted provider config. A `callback` provider signs with its
+   *  merchant credentials (PayTR needs BOTH the key and the salt), so one
+   *  `secret` string cannot express it. */
+  config?: Record<string, unknown>;
   /** Replay window in seconds for the timestamped schemes. Default 300. */
   toleranceSec?: number;
   /** Injectable clock (ms) so tests don't depend on wall time. */
@@ -216,7 +302,55 @@ export async function verifyPaymentSignature(
   input: VerifyInput,
 ): Promise<VerifyResult> {
   if (!isPaymentProvider(provider)) return { ok: false, reason: "unknown_provider" };
-  if (!input.secret) return { ok: false, reason: "missing_secret" };
+  // Callback providers carry their signing material in `config`, not `secret`.
+  if (!isCallbackProvider(provider) && !input.secret) {
+    return { ok: false, reason: "missing_secret" };
+  }
+
+  if (provider === "paytr") {
+    const cfg = input.config ?? {};
+    const merchantKey = str(cfg.merchantKey);
+    const merchantSalt = str(cfg.merchantSalt);
+    if (!merchantKey || !merchantSalt) return { ok: false, reason: "missing_secret" };
+
+    // PayTR posts application/x-www-form-urlencoded, and signs a concatenation
+    // of specific FIELDS — not the raw body — so the body has to be parsed
+    // before anything can be checked.
+    const form = new URLSearchParams(input.rawBody);
+    // Parameter pollution is a real forgery path here: `URLSearchParams.get`
+    // returns the FIRST value while `Object.fromEntries` keeps the LAST, so a
+    // body carrying `status` twice could be verified against one value and
+    // recorded as the other — turning a genuine failed payment into a recorded
+    // success. Duplicates of a signed field have no legitimate use; refuse.
+    for (const field of PAYTR_SIGNED_FIELDS) {
+      if (form.getAll(field).length > 1) return { ok: false, reason: "malformed_signature" };
+    }
+    if (form.getAll("hash").length > 1) return { ok: false, reason: "malformed_signature" };
+    const merchantOid = form.get("merchant_oid");
+    const status = form.get("status");
+    const totalAmount = form.get("total_amount");
+    const provided = form.get("hash");
+    if (!provided) return { ok: false, reason: "missing_signature" };
+    if (merchantOid === null || status === null || totalAmount === null) {
+      return { ok: false, reason: "malformed_signature" };
+    }
+    // hash = base64(HMAC-SHA256(merchant_oid + merchant_salt + status + total_amount, merchant_key))
+    const expected = toBase64(
+      await hmac(enc.encode(merchantKey), `${merchantOid}${merchantSalt}${status}${totalAmount}`),
+    );
+    // PayTR's callback carries no timestamp, so there is no replay window to
+    // enforce here; `merchant_oid` is the merchant's own unique order id and the
+    // consumer dedupes on it.
+    return timingSafeEqual(provided, expected)
+      ? { ok: true }
+      : { ok: false, reason: "signature_mismatch" };
+  }
+  // Backstop. Every branch below assumes a `webhook` provider with a real
+  // signing secret; a callback provider that reached here has no branch of its
+  // own and would fall through to the last one, which HMACs with an empty key —
+  // and an empty-key HMAC is computable by anyone, so it would accept forgeries.
+  if (isCallbackProvider(provider)) return { ok: false, reason: "unknown_provider" };
+
   const toleranceSec = input.toleranceSec ?? 300;
   const nowSec = Math.floor((input.nowMs ?? Date.now()) / 1000);
 
@@ -771,6 +905,64 @@ const normalizeLemonSqueezy = (
  * Unknown event types normalize to `records: []` — the consumer still records
  * the event (so the log is complete) but writes nothing.
  */
+/**
+ * PayTR callback → one `payment` record.
+ *
+ * Unlike the webhook providers there is no event envelope and no customer /
+ * subscription / invoice objects — the callback IS the payment result, so this
+ * produces exactly one row and never more.
+ *
+ * `merchant_oid` is the merchant's own order id, which makes it both the
+ * external id and the dedupe key: PayTR retries the same callback until it gets
+ * `OK`, so the consumer will legitimately see it more than once.
+ *
+ * Amounts arrive in KURUŞ (1/100 TRY) as `total_amount`, matching how the other
+ * providers report minor units, so no conversion is applied. `payment_amount`
+ * is the pre-commission figure and is kept in metadata rather than overwriting
+ * the settled amount.
+ */
+const normalizePayTR = (body: Record<string, unknown>): NormalizedPaymentEvent => {
+  const merchantOid = str(body.merchant_oid) ?? "";
+  const status = str(body.status) ?? "";
+  const succeeded = status === "success";
+  return {
+    // PayTR sends no event id of its own; the order id is the stable key.
+    eventId: merchantOid,
+    type: succeeded ? "payment.success" : "payment.failed",
+    // `test_mode` is "1" on the sandbox merchant.
+    livemode: str(body.test_mode) === "1" ? false : true,
+    records: merchantOid
+      ? [
+          {
+            kind: "payment",
+            row: {
+              id: paymentRowId("paytr", merchantOid),
+              provider: "paytr",
+              external_id: merchantOid,
+              customer: null,
+              invoice: null,
+              amount: num(body.total_amount),
+              amount_refunded: 0,
+              currency: str(body.currency) ?? "TRY",
+              status: succeeded ? "succeeded" : "failed",
+              method: str(body.payment_type),
+              failure_reason: succeeded
+                ? null
+                : (str(body.failed_reason_msg) ?? str(body.failed_reason_code)),
+              processed_at: null,
+              metadata: {
+                ...(str(body.payment_amount) ? { payment_amount: str(body.payment_amount) } : {}),
+                ...(str(body.installment_count)
+                  ? { installment_count: str(body.installment_count) }
+                  : {}),
+              },
+            },
+          },
+        ]
+      : [],
+  };
+};
+
 export function normalizePaymentEvent(
   provider: string,
   payload: unknown,
@@ -781,6 +973,7 @@ export function normalizePaymentEvent(
   if (provider === "stripe") return normalizeStripe(body);
   if (provider === "polar") return normalizePolar(body, headerEventId);
   if (provider === "lemonsqueezy") return normalizeLemonSqueezy(body, headerEventId);
+  if (provider === "paytr") return normalizePayTR(body);
   return { eventId: headerEventId ?? "", type: "", livemode: null, records: [] };
 }
 

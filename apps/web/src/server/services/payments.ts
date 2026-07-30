@@ -33,6 +33,8 @@ import {
   PAYMENT_MARKER_COLUMNS,
   PAYMENT_SECRET_KEYS,
   fetchPaymentPage,
+  isCallbackProvider,
+  parseCallbackBody,
   isPaymentProvider,
   maskPaymentConfig,
   normalizePaymentEvent,
@@ -664,15 +666,27 @@ export async function receiveWebhook(
     rawBody: input.rawBody,
     headers: input.headers,
     secret,
+    // A callback provider signs with its merchant credentials rather than a
+    // dedicated webhook secret, so it needs the whole decrypted config.
+    config,
     nowMs: input.nowMs,
   });
   if (!verdict.ok) return { ok: false, status: "invalid_signature", reason: verdict.reason };
 
   let payload: unknown;
-  try {
-    payload = JSON.parse(input.rawBody);
-  } catch {
-    return { ok: false, status: "invalid_signature", reason: "malformed_signature" };
+  if (isCallbackProvider(provider.provider)) {
+    // Callback providers post application/x-www-form-urlencoded, not JSON.
+    // MUST go through the shared parser: doing it here with
+    // `Object.fromEntries` would take the LAST value of a repeated key while
+    // the verifier took the FIRST, so a signed `status=failed` could be
+    // recorded as a success.
+    payload = parseCallbackBody(input.rawBody);
+  } else {
+    try {
+      payload = JSON.parse(input.rawBody);
+    } catch {
+      return { ok: false, status: "invalid_signature", reason: "malformed_signature" };
+    }
   }
 
   const headerEventId =
@@ -837,6 +851,21 @@ export async function reconcileProvider(
     ctx.env.AUTH_SECRET,
   );
   await ensurePaymentCollections(ctx, tenantId);
+
+  // A callback provider has no listable object catalog — the callback IS the
+  // whole surface. Walking pages would 404 forever; reporting a clean sync that
+  // synced nothing would be worse.
+  if (isCallbackProvider(row.provider)) {
+    return {
+      provider: row.provider,
+      written: 0,
+      failed: 0,
+      cursors: (row.syncCursor ?? {}) as Record<string, string | null>,
+      error:
+        `${row.provider} is a callback-style provider: it reports each payment to the callback URL ` +
+        `and exposes no object catalog to reconcile against.`,
+    };
+  }
 
   const kinds = input.kinds?.length ? input.kinds : [...PAYMENT_RECORD_KINDS];
   const maxPages = Math.min(Math.max(input.maxPages ?? DEFAULT_MAX_PAGES, 1), 100);

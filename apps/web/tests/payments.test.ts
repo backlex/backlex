@@ -1,3 +1,4 @@
+import { PAYMENT_PROVIDERS, PAYMENT_SECRET_KEYS, type PaymentProvider } from "@backlex/integrations/payments";
 import { describe, expect, test, afterAll, beforeAll } from "bun:test";
 import {
   fetchPaymentPage,
@@ -473,9 +474,18 @@ describe("payments — connect, receive, reconcile", () => {
       providers: { provider: string; fields: { key: string; secret?: boolean }[] }[];
       recordKinds: string[];
     };
-    expect(body.providers.map((p) => p.provider)).toEqual(["stripe", "polar", "lemonsqueezy"]);
+    // Derived from the source list, not a literal: a hardcoded array here just
+    // breaks whenever a provider is added, which teaches nothing.
+    expect(body.providers.map((p) => p.provider).sort()).toEqual([...PAYMENT_PROVIDERS].sort());
     for (const p of body.providers) {
-      expect(p.fields.some((f) => f.key === "webhookSecret" && f.secret)).toBe(true);
+      // Every provider must declare at least one secret field, and every key
+      // named in PAYMENT_SECRET_KEYS must actually exist in its field list —
+      // a secret key naming a field nobody collects is never encrypted.
+      const secretFields = p.fields.filter((f) => f.secret).map((f) => f.key);
+      expect(secretFields.length).toBeGreaterThan(0);
+      expect(secretFields.sort()).toEqual(
+        [...PAYMENT_SECRET_KEYS[p.provider as PaymentProvider]].sort(),
+      );
     }
     expect(body.recordKinds).toEqual(["customer", "subscription", "invoice", "payment"]);
   });

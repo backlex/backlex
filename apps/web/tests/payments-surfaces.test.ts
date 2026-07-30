@@ -1,3 +1,4 @@
+import { PAYMENT_PROVIDERS } from "@backlex/integrations/payments";
 import { describe, expect, test, afterAll, beforeAll } from "bun:test";
 import { createClient } from "../../../packages/client/src/index";
 import { allTools } from "../src/server/mcp/tools";
@@ -134,7 +135,8 @@ describe("payments — SDK surface", () => {
 
   test("client.payments.* mirrors the REST endpoints", async () => {
     const catalog = await client.payments.catalog();
-    expect(catalog.providers.map((p) => p.provider)).toEqual(["stripe", "polar", "lemonsqueezy"]);
+    // Derived, not literal — see payments.test.ts.
+    expect(catalog.providers.map((p) => p.provider).sort()).toEqual([...PAYMENT_PROVIDERS].sort());
     expect(catalog.recordKinds).toEqual(["customer", "subscription", "invoice", "payment"]);
 
     const connected = await client.payments.connect({ provider: "lemonsqueezy", config: CONFIG });

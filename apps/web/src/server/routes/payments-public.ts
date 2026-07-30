@@ -1,3 +1,4 @@
+import { PAYMENT_ACK, type PaymentProvider } from "@backlex/integrations/payments";
 /**
  * Public payment-webhook receiver — `POST /api/payments/webhook/:token`.
  *
@@ -117,5 +118,14 @@ export const paymentsPublicRoutes = new Hono<AppBindings>().post("/webhook/:toke
     throw new AppError("BAD_REQUEST", `Signature verification failed (${outcome.reason})`);
   }
 
+  // Some providers demand a specific ACK body. PayTR requires the literal `OK`
+  // and treats anything else — including a perfectly good JSON success — as a
+  // failure, retrying on a schedule and eventually disabling the merchant's
+  // notification URL. Returning JSON to it would look fine in our logs and be
+  // broken at the merchant's end.
+  const ack = PAYMENT_ACK[provider.provider as PaymentProvider];
+  if (ack) {
+    return c.body(ack.body, 200, { "content-type": ack.contentType });
+  }
   return c.json({ ok: true, status: outcome.status, written: outcome.written });
 });

@@ -368,3 +368,131 @@ export async function runSyncHooks(
 
   return { data, ran };
 }
+
+/* ───────────────────────── admin CRUD ───────────────────────── */
+
+export interface SyncHookInput {
+  name: string;
+  url: string;
+  events: string[];
+  onError: OnHookError;
+  secret?: string | null;
+  headers?: Record<string, string> | null;
+  timeoutMs?: number;
+  canMutate?: boolean;
+  priority?: number;
+  enabled?: boolean;
+}
+
+/**
+ * `tenantId` is a required `string`, never nullable — that is the enforcement
+ * of the instance-wide rule stated on `loadHooksFor`. A route derives it from
+ * the session, so an API caller has no way to express `tenant_id = NULL` and
+ * therefore no way to create a hook that sees other workspaces' writes. Making
+ * it unrepresentable beats a check somebody can forget.
+ */
+export async function createSyncHook(
+  ctx: Ctx,
+  tenantId: string,
+  input: SyncHookInput,
+): Promise<ReturnType<typeof toPublic>> {
+  const t = tableFor(ctx.dialect);
+  const id = crypto.randomUUID();
+  await (ctx.db as AnyDb).insert(t).values({
+    id,
+    tenantId,
+    name: input.name,
+    url: input.url,
+    events: input.events,
+    onError: input.onError,
+    secret: input.secret ?? null,
+    headers: input.headers ?? null,
+    timeoutMs: Math.min(Math.max(input.timeoutMs ?? 2000, 50), MAX_HOOK_TIMEOUT_MS),
+    canMutate: input.canMutate ?? false,
+    priority: input.priority ?? 0,
+    enabled: input.enabled ?? true,
+  });
+  const [row] = (await (ctx.db as AnyDb).select().from(t).where(eq(t.id, id))) as SyncHookRow[];
+  if (!row) throw new AppError("INTERNAL", "sync_hooks row missing after insert");
+  return toPublic(row);
+}
+
+export async function listSyncHooks(ctx: Ctx, tenantId: string) {
+  const t = tableFor(ctx.dialect);
+  try {
+    const rows = (await (ctx.db as AnyDb)
+      .select()
+      .from(t)
+      .where(eq(t.tenantId, tenantId))
+      .orderBy(asc(t.priority), asc(t.createdAt))) as SyncHookRow[];
+    return rows.map(toPublic);
+  } catch {
+    return [];
+  }
+}
+
+export async function updateSyncHook(
+  ctx: Ctx,
+  tenantId: string,
+  id: string,
+  patch: Partial<SyncHookInput>,
+): Promise<ReturnType<typeof toPublic>> {
+  const t = tableFor(ctx.dialect);
+  const db = ctx.db as AnyDb;
+  const set: Record<string, unknown> = { updatedAt: new Date() };
+  for (const k of ["name", "url", "events", "onError", "headers", "canMutate", "priority"] as const) {
+    if (patch[k] !== undefined) set[k] = patch[k];
+  }
+  // An empty/absent secret keeps the stored one: the UI cannot read it back, so
+  // a blank field must not blank the credential.
+  if (patch.secret?.trim()) set.secret = patch.secret.trim();
+  if (patch.timeoutMs !== undefined) {
+    set.timeoutMs = Math.min(Math.max(patch.timeoutMs, 50), MAX_HOOK_TIMEOUT_MS);
+  }
+  if (patch.enabled !== undefined) {
+    set.enabled = patch.enabled;
+    // Re-enabling by hand clears the breaker, or it would trip again instantly.
+    if (patch.enabled) {
+      set.consecutiveFailures = 0;
+      set.lastFailureAt = null;
+      set.disabledReason = null;
+    }
+  }
+  await db.update(t).set(set).where(and(eq(t.tenantId, tenantId), eq(t.id, id)));
+  const [row] = (await db
+    .select()
+    .from(t)
+    .where(and(eq(t.tenantId, tenantId), eq(t.id, id)))) as SyncHookRow[];
+  if (!row) throw new AppError("NOT_FOUND", "Sync hook not found");
+  return toPublic(row);
+}
+
+export async function deleteSyncHook(ctx: Ctx, tenantId: string, id: string): Promise<void> {
+  const t = tableFor(ctx.dialect);
+  await (ctx.db as AnyDb).delete(t).where(and(eq(t.tenantId, tenantId), eq(t.id, id)));
+}
+
+/**
+ * Fire one test call with a synthetic payload and report what came back —
+ * without it, the only way to find out a hook is misconfigured is a blocked
+ * write in production.
+ */
+export async function testSyncHook(
+  ctx: Ctx,
+  tenantId: string,
+  id: string,
+): Promise<{ ok: boolean; verdict?: HookVerdict; error?: string; ms: number }> {
+  const t = tableFor(ctx.dialect);
+  const [row] = (await (ctx.db as AnyDb)
+    .select()
+    .from(t)
+    .where(and(eq(t.tenantId, tenantId), eq(t.id, id)))) as SyncHookRow[];
+  if (!row) throw new AppError("NOT_FOUND", "Sync hook not found");
+  return callHook(ctx, row, {
+    collection: "__test__",
+    phase: "beforeCreate",
+    id: null,
+    data: { __backlex_test: true },
+    actor: { userId: null, email: null, roles: [] },
+  });
+}

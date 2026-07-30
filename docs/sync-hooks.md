@@ -125,3 +125,28 @@ the hook — do not rely on backlex quietly not calling it.
 Hooks run **last in the validation phase**: after schema validation, relation
 checks, field conditions, validation rules, and after `hash` fields have been
 digested — so a hook never sees a plaintext password.
+
+## Managing hooks
+
+`/api/admin/sync-hooks`, admin-only:
+
+| Method | Path | |
+|---|---|---|
+| GET | `/` | list (secrets never included) |
+| POST | `/` | create |
+| PATCH | `/{id}` | update — omit `secret` to keep the stored one; re-enabling clears the breaker |
+| DELETE | `/{id}` | remove |
+| POST | `/{id}/test` | fire one synthetic call and report the verdict |
+
+Use **test** before you rely on a hook. It sends a `__test__.beforeCreate`
+payload and shows you what came back, so a misconfiguration surfaces there
+rather than as a blocked write in production. It does not touch the failure
+counter.
+
+:::caution
+A hook is bound to the workspace that created it, and the API has no way to
+create an **instance-wide** one. That is deliberate rather than an omission: a
+hook with no workspace receives the pending row data of *every* workspace on the
+instance, so it would be a read channel into everyone else's writes. Instance
+operators who genuinely want one insert the row directly.
+:::

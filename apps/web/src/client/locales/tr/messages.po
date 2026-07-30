@@ -167,6 +167,7 @@ msgid "(none — use literal subject/body)"
 msgstr "(yok — doğrudan konu/içerik kullanın)"
 
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/scim-card.tsx
 msgid "(none)"
 msgstr "(yok)"
 
@@ -724,6 +725,10 @@ msgstr "{key} → {next}."
 msgid "{key} deleted."
 msgstr "{key} silindi."
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "{label} copied."
+msgstr "{label} kopyalandı."
+
 #: src/client/admin/pages/integrations.tsx
 msgid "{name} deliveries"
 msgstr "{name} teslimatları"
@@ -1101,6 +1106,7 @@ msgstr "Etkinleştir"
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/scim-card.tsx
 msgid "active"
 msgstr "etkin"
 
@@ -2207,6 +2213,10 @@ msgstr "Base DN"
 msgid "Base DN (search root)"
 msgstr "Temel DN (arama kökü)"
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "Base URL"
+msgstr "Temel URL"
+
 #: src/client/admin/parity/translations.tsx
 msgid "Base value"
 msgstr "Temel değer"
@@ -2218,6 +2228,10 @@ msgstr "BCP-47 kodları — bir dil ve isteğe bağlı bölge/yazı sistemi (ör
 #: src/client/admin/parity/translations.tsx
 msgid "BCP-47 short codes — e.g. <0>tr</0>, <1>en-GB</1>, <2>pt-BR</2>."
 msgstr "BCP-47 kısa kodlar — örn. <0>tr</0>, <1>en-GB</1>, <2>pt-BR</2>."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "Bearer token"
+msgstr "Bearer token"
 
 #: src/client/admin/parity/revisions.tsx
 msgid "before"
@@ -3251,6 +3265,7 @@ msgstr "kopyala"
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
+#: src/client/admin/parity/scim-card.tsx
 #: src/client/components/mcp-key-modal.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Copy"
@@ -3307,6 +3322,10 @@ msgstr "Linki kopyala"
 msgid "Copy order:"
 msgstr "Kopyalama sırası:"
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "Copy these into your IdP now"
+msgstr "Bunları şimdi IdP'nize kopyalayın"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Copy URL"
 msgstr "URL'yi kopyala"
@@ -3334,6 +3353,10 @@ msgstr "Düzeltme uygulanamadı."
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Could not copy — clipboard blocked."
 msgstr "Kopyalanamadı — pano engellendi."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "Could not copy — select the text manually."
+msgstr "Kopyalanamadı — metni elle seçin."
 
 #: src/client/admin/pages/logs.tsx
 msgid "Could not copy entry id."
@@ -3899,6 +3922,7 @@ msgstr "Varsayılan proje"
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
+#: src/client/admin/parity/scim-card.tsx
 msgid "Default role"
 msgstr "Varsayılan rol"
 
@@ -4240,8 +4264,13 @@ msgstr "Kapsamı değiştirmek için gömmeyi kapatın."
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/scim-card.tsx
 msgid "disabled"
 msgstr "devre dışı"
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "Disabling refuses every SCIM request without discarding the token."
+msgstr "Kapatmak, token'ı silmeden her SCIM isteğini reddeder."
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/condition-editor.tsx
@@ -4828,6 +4857,10 @@ msgstr "Yine de etkinleştir"
 msgid "Enable public embed"
 msgstr "Herkese açık gömmeyi etkinleştir"
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "Enable SCIM"
+msgstr "SCIM'i etkinleştir"
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "enabled"
@@ -4839,6 +4872,7 @@ msgstr "etkin"
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
+#: src/client/admin/parity/scim-card.tsx
 msgid "Enabled"
 msgstr "Etkin"
 
@@ -5945,6 +5979,10 @@ msgstr "Agents sayfasına git"
 msgid "goto"
 msgstr "git"
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "Granted to every provisioned user, on top of pushed group membership."
+msgstr "Sağlanan her kullanıcıya, gönderilen grup üyeliğinin üstüne verilir."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Graph refreshed from collections metadata."
 msgstr "Graf, koleksiyonlar metadata'sından yenilendi."
@@ -6168,6 +6206,10 @@ msgstr "Kopyaladım — bağlantıyı gizle"
 #: src/client/admin/pages/schema-versions.tsx
 msgid "I understand this drops columns/tables or changes types and will lose data."
 msgstr "Bunun sütun/tablo düşüreceğini veya tür değiştireceğini ve veri kaybına yol açacağını anlıyorum."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "I've saved it"
+msgstr "Kaydettim"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Icon"
@@ -6957,6 +6999,11 @@ msgstr "Son görülme adresi"
 msgid "Last submission"
 msgstr "Son gönderim"
 
+#. placeholder {0}: relativeTime(config.lastRequestAt)
+#: src/client/admin/parity/scim-card.tsx
+msgid "last sync {0}"
+msgstr "son eşitleme {0}"
+
 #. placeholder {0}: row.lastSyncError
 #: src/client/admin/pages/payments.tsx
 msgid "Last sync failed: {0}"
@@ -7097,6 +7144,10 @@ msgstr "eski üretim"
 #: src/client/admin/edit-field.tsx
 msgid "Let editors fold the \"{0}\" section. Applies to the whole section."
 msgstr "Editörlerin \"{0}\" bölümünü katlamasına izin ver. Tüm bölüme uygulanır."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "Let your identity provider create, update and — the part SSO alone cannot do — deactivate this workspace's end-users on its own schedule. Enable it to get a base URL and a bearer token for Okta, Entra ID or OneLogin."
+msgstr "Kimlik sağlayıcınızın bu workspace'in son kullanıcılarını kendi programına göre oluşturmasına, güncellemesine ve — tek başına SSO'nun yapamadığı kısım — pasifleştirmesine izin verin. Okta, Entra ID veya OneLogin için temel URL ve bearer token almak üzere etkinleştirin."
 
 #: src/client/admin/pages/analytics.tsx
 msgid "Level"
@@ -7879,6 +7930,10 @@ msgstr "ağ hatası"
 #: src/client/pages/api-keys.tsx
 msgid "Never (no expiry)"
 msgstr "Hiçbir zaman (son kullanma tarihi yok)"
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "never used"
+msgstr "hiç kullanılmadı"
 
 #: src/client/pages/api-keys.tsx
 msgid "New"
@@ -10729,6 +10784,10 @@ msgstr "Dili kaldır"
 msgid "Remove sample data"
 msgstr "Örnek verileri kaldır"
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "Remove SCIM"
+msgstr "SCIM'i kaldır"
+
 #: src/client/admin/pages/analytics.tsx
 msgid "Remove step"
 msgstr "Adımı kaldır"
@@ -11277,6 +11336,7 @@ msgstr "Form bağlantısı yenilensin mi?"
 #~ msgstr "Yeni bir gömme kodu için token'ı yenileyin."
 
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/parity/scim-card.tsx
 msgid "Rotate token"
 msgstr "Token'ı yenile"
 
@@ -11737,6 +11797,22 @@ msgstr "Şema sürümleri"
 #: src/client/pages/openapi-export.tsx
 msgid "Schemas"
 msgstr "Şemalar"
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "SCIM provisioning"
+msgstr "SCIM sağlama"
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "SCIM provisioning enabled."
+msgstr "SCIM sağlama etkinleştirildi."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "SCIM provisioning removed."
+msgstr "SCIM sağlama kaldırıldı."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "SCIM token rotated."
+msgstr "SCIM token'ı döndürüldü."
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Scope"
@@ -13567,6 +13643,10 @@ msgstr "Paylaşım bağlantısı iptal edilmiş olabilir ya da işaret ettiği k
 msgid "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
 msgstr "Token tekrar gösterilemez — yeni bir bağlantı üretmek tek yoldur. Eski bağlantı anında çalışmayı durdurur; gömülü kullanımları güncelleyin."
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "The token is shown only once — it is stored hashed and cannot be recovered. If you lose it, rotate for a new one."
+msgstr "Token yalnızca bir kez gösterilir — hash'lenmiş saklanır ve geri alınamaz. Kaybederseniz yenisi için döndürün."
+
 #: src/client/admin/pages/traces.tsx
 msgid "The traces endpoint returned an error. Refresh to try again."
 msgstr "İzler uç noktası hata döndürdü. Yeniden denemek için yenileyin."
@@ -13851,6 +13931,10 @@ msgstr "Temayı değiştir"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Toggle tools below to edit the allowlist."
 msgstr "İzin listesini düzenlemek için aşağıdaki araçları açıp kapatın."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "Token"
+msgstr "Token"
 
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Token URL"
@@ -14965,6 +15049,7 @@ msgid "worker thread + RPC"
 msgstr "worker thread + RPC"
 
 #: src/client/admin/pages/payments.tsx
+#: src/client/admin/parity/scim-card.tsx
 #: src/client/components/confirm-action.tsx
 msgid "Working…"
 msgstr "İşleniyor…"

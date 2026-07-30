@@ -167,6 +167,7 @@ msgid "(none — use literal subject/body)"
 msgstr "(none — use literal subject/body)"
 
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/scim-card.tsx
 msgid "(none)"
 msgstr "(none)"
 
@@ -724,6 +725,10 @@ msgstr "{key} → {next}."
 msgid "{key} deleted."
 msgstr "{key} deleted."
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "{label} copied."
+msgstr "{label} copied."
+
 #: src/client/admin/pages/integrations.tsx
 msgid "{name} deliveries"
 msgstr "{name} deliveries"
@@ -1101,6 +1106,7 @@ msgstr "Activate"
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/scim-card.tsx
 msgid "active"
 msgstr "active"
 
@@ -2207,6 +2213,10 @@ msgstr "Base DN"
 msgid "Base DN (search root)"
 msgstr "Base DN (search root)"
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "Base URL"
+msgstr "Base URL"
+
 #: src/client/admin/parity/translations.tsx
 msgid "Base value"
 msgstr "Base value"
@@ -2218,6 +2228,10 @@ msgstr "BCP-47 codes — a language plus an optional region/script (e.g. <0>pt-B
 #: src/client/admin/parity/translations.tsx
 msgid "BCP-47 short codes — e.g. <0>tr</0>, <1>en-GB</1>, <2>pt-BR</2>."
 msgstr "BCP-47 short codes — e.g. <0>tr</0>, <1>en-GB</1>, <2>pt-BR</2>."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "Bearer token"
+msgstr "Bearer token"
 
 #: src/client/admin/parity/revisions.tsx
 msgid "before"
@@ -3251,6 +3265,7 @@ msgstr "copy"
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
+#: src/client/admin/parity/scim-card.tsx
 #: src/client/components/mcp-key-modal.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Copy"
@@ -3307,6 +3322,10 @@ msgstr "Copy link"
 msgid "Copy order:"
 msgstr "Copy order:"
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "Copy these into your IdP now"
+msgstr "Copy these into your IdP now"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Copy URL"
 msgstr "Copy URL"
@@ -3334,6 +3353,10 @@ msgstr "Could not apply the fix."
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Could not copy — clipboard blocked."
 msgstr "Could not copy — clipboard blocked."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "Could not copy — select the text manually."
+msgstr "Could not copy — select the text manually."
 
 #: src/client/admin/pages/logs.tsx
 msgid "Could not copy entry id."
@@ -3899,6 +3922,7 @@ msgstr "Default project"
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
+#: src/client/admin/parity/scim-card.tsx
 msgid "Default role"
 msgstr "Default role"
 
@@ -4240,8 +4264,13 @@ msgstr "Disable the embed to change the scope."
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/scim-card.tsx
 msgid "disabled"
 msgstr "disabled"
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "Disabling refuses every SCIM request without discarding the token."
+msgstr "Disabling refuses every SCIM request without discarding the token."
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/condition-editor.tsx
@@ -4828,6 +4857,10 @@ msgstr "Enable anyway"
 msgid "Enable public embed"
 msgstr "Enable public embed"
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "Enable SCIM"
+msgstr "Enable SCIM"
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "enabled"
@@ -4839,6 +4872,7 @@ msgstr "enabled"
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
+#: src/client/admin/parity/scim-card.tsx
 msgid "Enabled"
 msgstr "Enabled"
 
@@ -5945,6 +5979,10 @@ msgstr "Go to Agents"
 msgid "goto"
 msgstr "goto"
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "Granted to every provisioned user, on top of pushed group membership."
+msgstr "Granted to every provisioned user, on top of pushed group membership."
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Graph refreshed from collections metadata."
 msgstr "Graph refreshed from collections metadata."
@@ -6168,6 +6206,10 @@ msgstr "I copied it — hide the link"
 #: src/client/admin/pages/schema-versions.tsx
 msgid "I understand this drops columns/tables or changes types and will lose data."
 msgstr "I understand this drops columns/tables or changes types and will lose data."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "I've saved it"
+msgstr "I've saved it"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Icon"
@@ -6957,6 +6999,11 @@ msgstr "Last seen at"
 msgid "Last submission"
 msgstr "Last submission"
 
+#. placeholder {0}: relativeTime(config.lastRequestAt)
+#: src/client/admin/parity/scim-card.tsx
+msgid "last sync {0}"
+msgstr "last sync {0}"
+
 #. placeholder {0}: row.lastSyncError
 #: src/client/admin/pages/payments.tsx
 msgid "Last sync failed: {0}"
@@ -7097,6 +7144,10 @@ msgstr "legacy production"
 #: src/client/admin/edit-field.tsx
 msgid "Let editors fold the \"{0}\" section. Applies to the whole section."
 msgstr "Let editors fold the \"{0}\" section. Applies to the whole section."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "Let your identity provider create, update and — the part SSO alone cannot do — deactivate this workspace's end-users on its own schedule. Enable it to get a base URL and a bearer token for Okta, Entra ID or OneLogin."
+msgstr "Let your identity provider create, update and — the part SSO alone cannot do — deactivate this workspace's end-users on its own schedule. Enable it to get a base URL and a bearer token for Okta, Entra ID or OneLogin."
 
 #: src/client/admin/pages/analytics.tsx
 msgid "Level"
@@ -7879,6 +7930,10 @@ msgstr "network error"
 #: src/client/pages/api-keys.tsx
 msgid "Never (no expiry)"
 msgstr "Never (no expiry)"
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "never used"
+msgstr "never used"
 
 #: src/client/pages/api-keys.tsx
 msgid "New"
@@ -10729,6 +10784,10 @@ msgstr "Remove language"
 msgid "Remove sample data"
 msgstr "Remove sample data"
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "Remove SCIM"
+msgstr "Remove SCIM"
+
 #: src/client/admin/pages/analytics.tsx
 msgid "Remove step"
 msgstr "Remove step"
@@ -11277,6 +11336,7 @@ msgstr "Rotate the form link?"
 #~ msgstr "Rotate the token to mint a fresh embed snippet."
 
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/parity/scim-card.tsx
 msgid "Rotate token"
 msgstr "Rotate token"
 
@@ -11737,6 +11797,22 @@ msgstr "Schema versions"
 #: src/client/pages/openapi-export.tsx
 msgid "Schemas"
 msgstr "Schemas"
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "SCIM provisioning"
+msgstr "SCIM provisioning"
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "SCIM provisioning enabled."
+msgstr "SCIM provisioning enabled."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "SCIM provisioning removed."
+msgstr "SCIM provisioning removed."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "SCIM token rotated."
+msgstr "SCIM token rotated."
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Scope"
@@ -13567,6 +13643,10 @@ msgstr "The share link may have been revoked, or the record it pointed to was re
 msgid "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
 msgstr "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
 
+#: src/client/admin/parity/scim-card.tsx
+msgid "The token is shown only once — it is stored hashed and cannot be recovered. If you lose it, rotate for a new one."
+msgstr "The token is shown only once — it is stored hashed and cannot be recovered. If you lose it, rotate for a new one."
+
 #: src/client/admin/pages/traces.tsx
 msgid "The traces endpoint returned an error. Refresh to try again."
 msgstr "The traces endpoint returned an error. Refresh to try again."
@@ -13851,6 +13931,10 @@ msgstr "Toggle theme"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Toggle tools below to edit the allowlist."
 msgstr "Toggle tools below to edit the allowlist."
+
+#: src/client/admin/parity/scim-card.tsx
+msgid "Token"
+msgstr "Token"
 
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Token URL"
@@ -14965,6 +15049,7 @@ msgid "worker thread + RPC"
 msgstr "worker thread + RPC"
 
 #: src/client/admin/pages/payments.tsx
+#: src/client/admin/parity/scim-card.tsx
 #: src/client/components/confirm-action.tsx
 msgid "Working…"
 msgstr "Working…"

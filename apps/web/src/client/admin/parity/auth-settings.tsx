@@ -34,6 +34,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { apiOrigin, copyText, fmtRelative } from "./_shared";
 import { SamlProviderDialog } from "./saml-provider-dialog";
 import { OidcProviderDialog } from "./oidc-provider-dialog";
+import { ScimCard } from "./scim-card";
 import { LdapConfigCard } from "./ldap-config-card";
 import { shouldWarnTwoFactorBypass } from "./mfa-bypass";
 import { AuthSettingsSkeleton } from "../page-skeletons";
@@ -635,6 +636,8 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
           </div>
         ))}
       </Card>
+
+      <ScimCard availableRoles={availableRoles} pushToast={pushToast} />
 
       <LdapConfigCard availableRoles={availableRoles} pushToast={pushToast} />
 

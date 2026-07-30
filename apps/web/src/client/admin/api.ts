@@ -1557,6 +1557,35 @@ export interface OidcDiscovery {
   scopesSupported?: string[];
 }
 
+/** SCIM provisioning config. The bearer token is write-only: this shape carries
+ *  a display prefix, never the token, and `POST /token` is the only place the
+ *  plaintext ever appears. */
+export interface ApiScimConfig {
+  id: string;
+  enabled: boolean;
+  tokenPrefix: string;
+  defaultRoleId: string | null;
+  lastRequestAt: number | string | null;
+  createdAt: number | string | null;
+  updatedAt: number | string | null;
+}
+
+export const scimAdminApi = {
+  get: () => api<Envelope<ApiScimConfig | null>>(`/api/admin/scim`),
+  /** Creates or rotates. `token` is returned ONCE and is not recoverable. */
+  issueToken: (body: { defaultRoleId?: string | null } = {}) =>
+    api<Envelope<ApiScimConfig> & { token: string; baseUrl: string }>(`/api/admin/scim/token`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  update: (body: { enabled?: boolean; defaultRoleId?: string | null }) =>
+    api<Envelope<ApiScimConfig>>(`/api/admin/scim`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  remove: () => api<{ ok: true }>(`/api/admin/scim`, { method: "DELETE" }),
+};
+
 export const oidcAdminApi = {
   list: () => api<Envelope<ApiOidcProvider[]>>(`/api/admin/oidc/providers`),
   create: (body: OidcProviderCreate) =>

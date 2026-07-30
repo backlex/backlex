@@ -17,6 +17,7 @@ import { github } from "./github";
 import { jira } from "./jira";
 import { linear } from "./linear";
 import { meilisearch } from "./meilisearch";
+import { notion } from "./notion";
 import { opsgenie } from "./opsgenie";
 import { pagerduty } from "./pagerduty";
 import { posthog } from "./posthog";
@@ -50,6 +51,8 @@ export const INTEGRATION_KINDS = [
   "meilisearch",
   "typesense",
   "elasticsearch",
+  // productivity (OAuth-connected)
+  "notion",
 ] as const;
 
 export type IntegrationKind = (typeof INTEGRATION_KINDS)[number];
@@ -72,6 +75,7 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   meilisearch,
   typesense,
   elasticsearch,
+  notion,
 };
 
 /** Look a provider up by id; `undefined` for anything unregistered. */

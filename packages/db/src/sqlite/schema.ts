@@ -2483,3 +2483,38 @@ export const errorEvents = sqliteTable(
     index("error_events_tenant_ts_idx").on(t.tenantId, t.ts),
   ],
 );
+
+/**
+ * In-flight OAuth authorization-code flows for workspace integrations.
+ *
+ * One short-lived row per "connect" click. It exists so the callback can prove
+ * the code it was handed belongs to a flow this instance started: the `state`
+ * value is never stored, only its SHA-256, so a database read cannot be used to
+ * finish someone else's pending authorization. Rows are deleted on use — a
+ * replayed callback finds nothing and is refused, which is also why "already
+ * used" and "never existed" are deliberately indistinguishable.
+ *
+ * Mirror of the PG table.
+ */
+export const integrationOauthStates = sqliteTable(
+  "integration_oauth_states",
+  {
+    /** SHA-256 (hex) of the state parameter. The raw value lives only in the URL. */
+    id: text("id").primaryKey(),
+    integrationId: text("integration_id").notNull(),
+    /** Never null: an instance-wide OAuth connection is not a thing we offer. */
+    tenantId: text("tenant_id").notNull(),
+    /** The admin who started the flow; the same one has to finish it. */
+    userId: text("user_id").notNull(),
+    /** PKCE code_verifier, null for providers we do not send PKCE to. */
+    codeVerifier: text("code_verifier"),
+    /** Pinned at authorize time and replayed at exchange, as the RFC requires. */
+    redirectUri: text("redirect_uri").notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    index("integration_oauth_states_integration_idx").on(t.integrationId),
+    index("integration_oauth_states_expires_idx").on(t.expiresAt),
+  ],
+);

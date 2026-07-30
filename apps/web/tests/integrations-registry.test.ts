@@ -9,6 +9,9 @@ import {
   INTEGRATION_CATALOG,
   INTEGRATION_FIELDS,
   INTEGRATION_KINDS,
+  OAUTH_CONFIG_KEYS,
+  OAUTH_KINDS,
+  OAUTH_SECRET_KEYS,
   PROVIDERS,
   SECRET_KEYS,
   deliverToIntegration,
@@ -40,14 +43,46 @@ describe("provider registry", () => {
     }
   });
 
-  test("SECRET_KEYS is derived from the fields marked secret", () => {
+  test("SECRET_KEYS is derived from the fields marked secret, plus OAuth tokens", () => {
     for (const kind of KINDS) {
       const declared = INTEGRATION_FIELDS[kind].filter((f) => f.secret).map((f) => f.key);
-      expect(SECRET_KEYS[kind]).toEqual(declared);
-      // Every secret key must name a real field, or encryption-at-rest would
-      // silently skip a value the UI does collect.
+      // An OAuth provider also holds the two bearer tokens, which no provider
+      // author lists as a field. Deriving them here is what stops an access
+      // token being returned in cleartext by the admin API.
+      const expected = PROVIDERS[kind].oauth ? [...declared, ...OAUTH_SECRET_KEYS] : declared;
+      expect(SECRET_KEYS[kind]).toEqual(expected);
+      // Every non-reserved secret key must name a real field, or
+      // encryption-at-rest would silently skip a value the UI does collect.
       const keys = INTEGRATION_FIELDS[kind].map((f) => f.key);
-      for (const s of SECRET_KEYS[kind]) expect(keys).toContain(s);
+      const reserved = new Set<string>(OAUTH_CONFIG_KEYS);
+      for (const s of SECRET_KEYS[kind]) if (!reserved.has(s)) expect(keys).toContain(s);
+    }
+  });
+
+  test("only OAuth providers carry the reserved token keys", () => {
+    const reserved = new Set<string>(OAUTH_SECRET_KEYS);
+    for (const kind of KINDS) {
+      if (PROVIDERS[kind].oauth) continue;
+      // A key-pasting provider that picked one of these up would have a config
+      // slot nothing writes and the masking layer would hide the mistake.
+      for (const s of SECRET_KEYS[kind]) expect(reserved.has(s)).toBe(false);
+    }
+  });
+
+  test("every OAuth provider declares the client credentials it needs", () => {
+    for (const kind of KINDS) {
+      const oauth = PROVIDERS[kind].oauth;
+      if (!oauth) continue;
+      const keys = INTEGRATION_FIELDS[kind].map((f) => f.key);
+      // `beginOAuth` refuses to start without these two, so a provider that
+      // omits them from its fields can never be connected at all.
+      expect(keys).toContain("clientId");
+      expect(keys).toContain("clientSecret");
+      expect(INTEGRATION_FIELDS[kind].find((f) => f.key === "clientSecret")?.secret).toBe(true);
+      // Both endpoints are fixed constants; a templated one would mean a
+      // caller could influence where the credentials are sent.
+      expect(oauth.authorizeUrl).toStartWith("https://");
+      expect(oauth.tokenUrl).toStartWith("https://");
     }
   });
 
@@ -83,5 +118,20 @@ describe("provider registry", () => {
     expect(
       await deliverToIntegration("slack", { webhookUrl: "https://hooks.slack.com/services/x" }, evt, boom),
     ).toEqual({ ok: false, status: 0 });
+  });
+});
+
+describe("OAUTH_KINDS is derived, not hand-listed", () => {
+  test("it names exactly the providers with an oauth block", () => {
+    // The connect UI branches on this to show "Connect with …" instead of a
+    // paste-a-key form; a hand-kept copy would eventually disagree with the
+    // descriptors and offer a form for a provider that has no key to paste.
+    expect([...OAUTH_KINDS].sort()).toEqual(KINDS.filter((k) => PROVIDERS[k].oauth).sort());
+  });
+
+  test("the catalog's oauth flag agrees with the registry", () => {
+    for (const entry of INTEGRATION_CATALOG) {
+      expect(entry.oauth).toBe(Boolean(PROVIDERS[entry.id as IntegrationKind].oauth));
+    }
   });
 });

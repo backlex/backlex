@@ -32,9 +32,10 @@ interface ProviderRow {
   category: string;
   capabilities: string[];
   fields: { key: string; label: string; secret?: boolean }[];
+  oauth?: boolean;
 }
 
-const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|deliveries|resume|disconnect>
+const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|authorize|deliveries|resume|disconnect>
 
   catalog                              providers available to connect
   catalog <kind>                       the config fields one provider needs
@@ -42,9 +43,15 @@ const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|deliveries
   connect --kind <k> --set k=v [...]   connect or reconfigure a provider
          [--events a,b]                scope which events reach it (default all)
   connect --kind <k> --data <json|@file|->
+  authorize <id>                       print the OAuth link to open in a browser
   deliveries <id> [--limit N]          recent attempts, newest first
   resume <id>                          re-enable a breaker-paused integration
   disconnect <id>
+
+Providers marked oauth=yes in the catalog are connected by redirect, not by a
+pasted key: save clientId + clientSecret with \`connect\`, then open the link
+\`authorize\` prints. The link is single-use, expires in 10 minutes, and only
+completes in a browser already signed in as the same admin.
 `;
 
 const BASE = "/api/admin/integrations";
@@ -86,10 +93,9 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
   try {
     switch (sub) {
       case "catalog": {
-        const { data } = await client.request<{ data: { providers: ProviderRow[] } }>(
-          "GET",
-          `${BASE}/catalog`,
-        );
+        const { data } = await client.request<{
+          data: { providers: ProviderRow[]; oauthRedirectUri?: string };
+        }>("GET", `${BASE}/catalog`);
         const providers = data.providers ?? [];
         const only = rest[0] && !rest[0].startsWith("--") ? rest[0] : null;
         if (only) {
@@ -113,8 +119,14 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
               label: p.label,
               category: p.category,
               capabilities: p.capabilities.join(", "),
+              oauth: p.oauth ? "yes" : "",
             })),
           );
+        if (!json && data.oauthRedirectUri && providers.some((p) => p.oauth)) {
+          // Whoever registers the OAuth app needs this exact string, and
+          // guessing it from the browser's origin gets it wrong behind a proxy.
+          process.stdout.write(`\nOAuth redirect URI to register: ${data.oauthRedirectUri}\n`);
+        }
         return;
       }
       case "list": {
@@ -154,6 +166,24 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
         });
         if (json) printJson(res.data);
         else printKeyValues({ id: res.data.id, kind: res.data.kind, status: res.data.status });
+        return;
+      }
+      case "authorize": {
+        const id = rest[0];
+        if (!id || id.startsWith("--")) {
+          process.stderr.write("Usage: backlex integrations authorize <id>\n");
+          process.exit(1);
+        }
+        const { data } = await client.request<{ data: { url: string } }>(
+          "POST",
+          `${BASE}/${encodeURIComponent(id)}/oauth/authorize`,
+        );
+        if (json) printJson(data);
+        else {
+          // Printed rather than opened: the CLI may be on a server with no
+          // browser, and the flow has to finish in the admin's own session.
+          process.stdout.write(`Open this in a browser signed in as this admin:\n\n${data.url}\n`);
+        }
         return;
       }
       case "deliveries": {

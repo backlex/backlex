@@ -162,6 +162,7 @@ describe("integrations — MCP surface", () => {
       "integrations.deliveries",
       "integrations.disconnect",
       "integrations.list",
+      "integrations.oauth_authorize",
       "integrations.resume",
     ]);
   });

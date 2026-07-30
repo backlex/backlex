@@ -23,7 +23,18 @@ import {
 import { fetchSafely } from "./_shared";
 
 type Field = { key: string; label: string; placeholder?: string; secret?: boolean };
-type Catalog = { kinds: string[]; fields: Record<string, Field[]> };
+type Provider = { id: string; label: string; category: string; capabilities: string[]; oauth: boolean };
+type Catalog = {
+  kinds: string[];
+  fields: Record<string, Field[]>;
+  providers?: Provider[];
+  /** The exact URI to register with each OAuth provider, derived server-side. */
+  oauthRedirectUri?: string;
+};
+
+/** Config key holding the OAuth access token. Present (masked) once authorized,
+ *  which is how the card tells "credentials saved" from "account connected". */
+const OAUTH_TOKEN_KEY = "_oauthAccessToken";
 type Integration = {
   id: string;
   kind: string;
@@ -67,6 +78,7 @@ const ICONS: Record<string, string> = {
   algolia: "M12 0C5.445 0 .103 5.285.01 11.817c-.097 6.634 5.285 12.131 11.92 12.17a11.91 11.91 0 0 0 5.775-1.443.281.281 0 0 0 .052-.457l-1.122-.994a.79.79 0 0 0-.833-.14 9.693 9.693 0 0 1-3.923.77c-5.36-.067-9.692-4.527-9.607-9.888.084-5.293 4.417-9.573 9.73-9.573h9.73v17.296l-5.522-4.907a.407.407 0 0 0-.596.063 4.52 4.52 0 0 1-3.934 1.793 4.538 4.538 0 0 1-4.192-4.168 4.53 4.53 0 0 1 4.512-4.872 4.532 4.532 0 0 1 4.509 4.126c.018.205.11.397.265.533l1.438 1.275a.28.28 0 0 0 .462-.158 6.82 6.82 0 0 0 .099-1.725c-.232-3.376-2.966-6.092-6.345-6.3-3.873-.24-7.11 2.79-7.214 6.588-.1 3.7 2.933 6.892 6.634 6.974a6.75 6.75 0 0 0 4.136-1.294l7.212 6.394a.48.48 0 0 0 .797-.36V.456A.456.456 0 0 0 23.54 0Z",
   meilisearch: "m6.505 18.998 4.434-11.345a4.168 4.168 0 0 1 3.882-2.651h2.674l-4.434 11.345a4.169 4.169 0 0 1-3.883 2.651H6.505Zm6.505 0 4.434-11.345a4.169 4.169 0 0 1 3.883-2.651H24l-4.434 11.345a4.168 4.168 0 0 1-3.882 2.651H13.01Zm-13.01 0L4.434 7.653a4.168 4.168 0 0 1 3.882-2.651h2.674L6.556 16.347a4.169 4.169 0 0 1-3.883 2.651H0Z",
   typesense: "M12 0 1.607 6v12L12 24l10.393-6V6L12 0Zm0 2.31 8.393 4.845v9.69L12 21.69 3.607 16.845V7.155L12 2.31Zm0 3.267a2.077 2.077 0 1 0 0 4.154 2.077 2.077 0 0 0 0-4.154Zm-3.75 5.538v1.731h1.442v4.037c0 1.36 1.014 2.135 2.481 2.135.567 0 1.128-.086 1.577-.23v-1.788a3.51 3.51 0 0 1-.98.144c-.66 0-1.096-.288-1.096-.98v-3.318h2.076v-1.73H11.674V8.712l-2.058.605v1.798H8.25Z",
+  notion: "M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.7.513.934.653.934 1.213v16.378c0 1.026-.373 1.634-1.68 1.726l-15.458.934c-.98.047-1.448-.093-1.962-.747l-3.129-4.06c-.56-.747-.793-1.306-.793-1.96V2.667c0-.839.374-1.54 1.447-1.632z",
   elasticsearch: "M13.394 0C10.07 0 7.147 1.699 5.44 4.276h13.531A6.61 6.61 0 0 0 13.394 0ZM4.298 6.276a10.53 10.53 0 0 0-.548 2.752h15.727a3.377 3.377 0 0 0 0-2.752H4.298Zm-.548 6.696c.062.945.25 1.867.548 2.752h15.179a3.377 3.377 0 0 0 0-2.752H3.75Zm1.69 6.752A10.588 10.588 0 0 0 13.394 24a6.61 6.61 0 0 0 5.577-4.276H5.44Z",
 };
 const SI = ({ d }: { d: string }) => (
@@ -97,6 +109,7 @@ const BRANDS: Record<string, Brand> = {
   // One card covers both engines — OpenSearch is an Elasticsearch 7.x fork and
   // speaks the same index/update API, so the adapter and the credentials match.
   elasticsearch: { name: "Elasticsearch / OpenSearch", mark: <SI d={ICONS.elasticsearch!} />, markBg: "#005571" },
+  notion: { name: "Notion", mark: <SI d={ICONS.notion!} />, markBg: "#000000" },
 };
 const brandFor = (kind: string): Brand => BRANDS[kind] ?? { name: kind, mark: kind.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };
 
@@ -122,11 +135,54 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
     void reload();
   }, []);
 
+  // The OAuth callback redirects here with a fixed status slug. Report it and
+  // drop the param so a refresh does not repeat the toast.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("oauth");
+    if (!status) return;
+    pushToast(
+      status === "connected"
+        ? t`Account connected.`
+        : status === "denied"
+          ? t`Authorization was cancelled.`
+          : status === "signed_out"
+            ? t`Sign in again and retry the connection.`
+            : t`Authorization failed. Check the client ID, secret and redirect URI, then retry.`,
+    );
+    params.delete("oauth");
+    const qs = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    if (status === "connected") void reload();
+  }, []);
+
   const byKind = new Map(connected.map((i) => [i.kind, i]));
+  const oauthKinds = new Set((catalog.providers ?? []).filter((p) => p.oauth).map((p) => p.id));
+  /** An OAuth row exists but has no token yet — credentials saved, not authorized. */
+  const needsAuthorize = (it: Integration | undefined) =>
+    Boolean(it) && oauthKinds.has(it!.kind) && !it!.config?.[OAUTH_TOKEN_KEY];
+
+  // Send the admin to the provider's consent screen. A full navigation, not a
+  // popup: the callback has to land back in this same session, and a popup
+  // blocked by the browser would look like the button doing nothing.
+  const authorize = async (it: Integration) => {
+    setBusyKind(it.kind);
+    try {
+      const res = await api<{ data: { url: string } }>(`/api/admin/integrations/${it.id}/oauth/authorize`, {
+        method: "POST",
+      });
+      window.location.href = res.data.url;
+    } catch (e) {
+      pushToast((e as Error).message);
+      setBusyKind(null);
+    }
+  };
 
   // Data-plane event blurb per provider (kept inline so Lingui extracts them).
   const blurb = (kind: string): string => {
     switch (kind) {
+      case "notion":
+        return t`Append data events to a Notion page. Connected with OAuth.`;
       case "slack":
         return t`Post data events to a Slack channel.`;
       case "discord":
@@ -263,6 +319,9 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
               const isDisabled = it?.status === "disabled";
               const failures = it?.consecutiveFailures ?? 0;
               const busy = busyKind === kind;
+              // Credentials are saved but the admin has not been to the consent
+              // screen yet, so nothing will actually deliver.
+              const pending = needsAuthorize(it);
               return (
                 <div key={kind} className="rounded-control border border-border bg-card p-5 flex flex-col gap-3">
                   <div className="flex items-start gap-3">
@@ -275,9 +334,14 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="text-[14px] font-semibold">{brand.name}</h3>
-                        {isConnected && (
+                        {isConnected && !pending && (
                           <Badge variant="default" className="text-[10px]">
                             <Trans>Connected</Trans>
+                          </Badge>
+                        )}
+                        {pending && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            <Trans>Not authorized</Trans>
                           </Badge>
                         )}
                         {isDisabled && (
@@ -300,15 +364,32 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
                   </div>
                   {isDisabled && it?.disabledReason ? (
                     <p className="text-[11.5px] text-destructive leading-snug">{it.disabledReason}</p>
+                  ) : pending ? (
+                    <p className="text-[12px] text-muted-foreground leading-snug flex-1">
+                      <Trans>
+                        Client credentials saved. Finish by authorizing the account — nothing is delivered until
+                        you do.
+                      </Trans>
+                    </p>
                   ) : (
                     <p className="text-[12px] text-muted-foreground leading-snug flex-1">{blurb(kind)}</p>
                   )}
                   <div className="mt-auto flex flex-wrap items-center gap-2">
                     {it ? (
                       <>
+                        {pending && (
+                          <Button disabled={busy} onClick={() => void authorize(it)}>
+                            {busy ? <Trans>Opening…</Trans> : <Trans>Authorize</Trans>}
+                          </Button>
+                        )}
                         {isDisabled && (
                           <Button disabled={busy} onClick={() => void resume(it)}>
                             {busy ? <Trans>Resuming…</Trans> : <Trans>Resume</Trans>}
+                          </Button>
+                        )}
+                        {oauthKinds.has(kind) && !pending && (
+                          <Button variant="ghost" disabled={busy} onClick={() => void authorize(it)}>
+                            <Trans>Reauthorize</Trans>
                           </Button>
                         )}
                         <Button variant="ghost" onClick={() => setLogFor(it)}>
@@ -334,6 +415,7 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
           kind={connectKind}
           name={brandFor(connectKind).name}
           fields={catalog.fields[connectKind] ?? []}
+          redirectUri={oauthKinds.has(connectKind) ? (catalog.oauthRedirectUri ?? null) : null}
           existing={byKind.get(connectKind) ?? null}
           busy={busyKind === connectKind}
           onClose={() => setConnectKind(null)}
@@ -446,6 +528,7 @@ function DeliveryLogDialog({
 function ConnectDialog({
   name,
   fields,
+  redirectUri,
   existing,
   busy,
   onClose,
@@ -454,6 +537,8 @@ function ConnectDialog({
   kind: string;
   name: string;
   fields: Field[];
+  /** Non-null for OAuth providers: the URI to register with the provider. */
+  redirectUri: string | null;
   existing: Integration | null;
   busy: boolean;
   onClose: () => void;
@@ -494,12 +579,30 @@ function ConnectDialog({
         <DialogHeader className="space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
           <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">{t`Connect ${name}`}</DialogTitle>
           <DialogDescription className="text-[12.5px] text-muted-foreground">
-            <Trans>Credentials are encrypted at rest and never shown again.</Trans>
+            {redirectUri ? (
+              <Trans>
+                Register your own OAuth app with {name}, then save its client ID and secret here. Saving does not
+                connect the account — you authorize it in the next step.
+              </Trans>
+            ) : (
+              <Trans>Credentials are encrypted at rest and never shown again.</Trans>
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
           <div className="flex flex-col gap-3.5 px-5 py-4">
+            {redirectUri ? (
+              <div className="rounded-control border border-border bg-muted/40 px-3 py-2.5">
+                <span className="mb-1 block text-[11.5px] font-medium">
+                  <Trans>Redirect URI to register</Trans>
+                </span>
+                {/* Read-only and selectable rather than a copy button with its
+                    own state: the provider's form needs this pasted verbatim,
+                    and typing it by hand is the usual cause of a failed leg 2. */}
+                <code className="block break-all text-[11px] text-muted-foreground select-all">{redirectUri}</code>
+              </div>
+            ) : null}
             {fields.map((f) => (
               <label key={f.key} className="block">
                 <span className="mb-1 block text-[11.5px] font-medium">{f.label}</span>
@@ -553,7 +656,13 @@ function ConnectDialog({
             <Trans>Cancel</Trans>
           </Button>
           <Button onClick={submit} disabled={busy || !ready}>
-            {busy ? <Trans>Connecting…</Trans> : <Trans>Connect</Trans>}
+            {busy ? (
+              <Trans>Connecting…</Trans>
+            ) : redirectUri ? (
+              <Trans>Save credentials</Trans>
+            ) : (
+              <Trans>Connect</Trans>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

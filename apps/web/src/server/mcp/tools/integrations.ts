@@ -133,6 +133,32 @@ export const resumeIntegrationTool: McpTool = {
   },
 };
 
+export const startIntegrationOAuthTool: McpTool = {
+  name: "integrations.oauth_authorize",
+  description:
+    "Begin an OAuth connect flow for a provider whose catalog entry has `oauth: true` " +
+    "(Notion and friends) and return a URL for the operator to open in their browser. " +
+    "Save `clientId` and `clientSecret` with `integrations.connect` first — backlex is " +
+    "self-hostable, so each workspace registers its own OAuth app. You cannot finish the " +
+    "flow yourself: the link is single-use, expires in 10 minutes, and only completes in " +
+    "a browser signed in as the same admin. Hand it to the operator and stop.",
+  inputSchema: {
+    type: "object",
+    properties: { id: { type: "string", description: "Integration id from `integrations.list`." } },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.id ?? "");
+    if (!id) throw new Error("VALIDATION: id is required");
+    const res = await ctx.fetchInternal(
+      `/api/admin/integrations/${encodeURIComponent(id)}/oauth/authorize`,
+      { method: "POST" },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const integrationsTools: McpTool[] = [
   integrationCatalogTool,
   listIntegrationsTool,
@@ -140,4 +166,5 @@ export const integrationsTools: McpTool[] = [
   disconnectIntegrationTool,
   integrationDeliveriesTool,
   resumeIntegrationTool,
+  startIntegrationOAuthTool,
 ];

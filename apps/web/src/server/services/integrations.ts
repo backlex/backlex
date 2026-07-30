@@ -13,11 +13,15 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { PgDb } from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import {
+  OAUTH_ACCESS_TOKEN_KEY,
+  OAUTH_CONFIG_KEYS,
   SECRET_KEYS,
   deliverToIntegration,
   isIntegrationKind,
   maskConfig,
   matchesEventFilter,
+  providerFor,
+  stripOAuthKeys,
   type FetchLike,
   type IntegrationEvent,
   type IntegrationKind,
@@ -25,6 +29,7 @@ import {
 import type { Ctx } from "../context";
 import type { Env } from "../env";
 import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/crypto";
+import { ensureAccessToken } from "./integrations-oauth";
 import { enqueueJob } from "./jobs";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
@@ -61,6 +66,8 @@ export interface IntegrationRow {
   status: string;
   lastEventAt: Date | number | null;
   createdAt: Date | number | null;
+  /** The OAuth refresh path compares against this before writing new tokens. */
+  updatedAt: Date | number | null;
   consecutiveFailures?: number;
   lastFailureAt?: Date | number | null;
   disabledReason?: string | null;
@@ -123,7 +130,10 @@ export async function connectIntegration(
 ): Promise<ReturnType<typeof toPublic>> {
   if (!isIntegrationKind(input.kind)) throw new Error(`Unknown integration kind: ${input.kind}`);
   const t = tableFor(ctx.dialect);
-  const config = await encryptConfig(input.kind, input.config ?? {}, authSecret);
+  // Reserved `_oauth*` keys are written only by the OAuth flow. Dropping them
+  // from caller input keeps "this token came from the provider" true, and stops
+  // an admin pasting a token the UI could never have shown them.
+  const config = await encryptConfig(input.kind, stripOAuthKeys(input.config ?? {}), authSecret);
   const events = input.events ?? null;
   const db = ctx.db as AnyDb;
 
@@ -133,6 +143,13 @@ export async function connectIntegration(
     .where(and(tenantEq(t, input.tenantId), eq(t.kind, input.kind)))) as IntegrationRow[];
 
   if (existing[0]) {
+    // …and carry the stored ones over. This save replaces `config` wholesale,
+    // so without the carry-over an admin correcting a typo in an unrelated
+    // field would silently disconnect the OAuth account.
+    const priorConfig = (existing[0].config ?? {}) as Record<string, unknown>;
+    for (const key of OAUTH_CONFIG_KEYS) {
+      if (key in priorConfig) config[key] = priorConfig[key];
+    }
     await db
       .update(t)
       .set({ config, events, status: "connected", updatedAt: new Date() })
@@ -383,6 +400,27 @@ async function deliverOne(
   const t = tableFor(ctx.dialect);
   const started = Date.now();
   const cfg = await decryptConfig(row.kind, (row.config ?? {}) as Record<string, unknown>, env.AUTH_SECRET);
+  // OAuth providers hold a token with a lifetime; renew it before the call
+  // rather than letting the provider answer 401 and the breaker count it as an
+  // outage. `null` means the grant was revoked — that is a reconnect, not
+  // something a retry can fix, so report it as misconfigured straight away.
+  if (providerFor(row.kind)?.oauth && "env" in ctx) {
+    const fresh = await ensureAccessToken(ctx as Ctx, row, env.AUTH_SECRET);
+    if (!fresh) {
+      await applyDeliveryOutcome(ctx, row, false, "OAuth grant expired or revoked");
+      await recordDelivery(ctx, {
+        integrationId: row.id,
+        tenantId: row.tenantId,
+        event: message.event,
+        status: 0,
+        ms: Date.now() - started,
+        error: "OAuth connection needs re-authorizing",
+        attempts: attempt,
+      });
+      return { ok: false, status: 0 };
+    }
+    cfg[OAUTH_ACCESS_TOKEN_KEY] = fresh;
+  }
   const out = await deliverToIntegration(row.kind, cfg, message, fetchImpl);
   const ms = Date.now() - started;
   // status 0 is the adapters' "misconfigured or the request threw" sentinel —

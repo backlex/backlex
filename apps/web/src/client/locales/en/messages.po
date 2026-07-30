@@ -1066,6 +1066,10 @@ msgstr "Access"
 msgid "Account"
 msgstr "Account"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Account connected."
+msgstr "Account connected."
+
 #: src/client/admin/ui.tsx
 msgid "Account menu"
 msgstr "Account menu"
@@ -1821,6 +1825,10 @@ msgstr "App-layer trigger — backlex has no DB foreign keys, so it's enforced o
 msgid "Appearance"
 msgstr "Appearance"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Append data events to a Notion page. Connected with OAuth."
+msgstr "Append data events to a Notion page. Connected with OAuth."
+
 #: src/client/admin/parity/database.tsx
 msgid "applied"
 msgstr "applied"
@@ -2042,6 +2050,10 @@ msgstr "Authentication succeeded"
 msgid "Author"
 msgstr "Author"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Authorization failed. Check the client ID, secret and redirect URI, then retry."
+msgstr "Authorization failed. Check the client ID, secret and redirect URI, then retry."
+
 #: src/client/pages/oauth-consent.tsx
 msgid "Authorization request not found"
 msgstr "Authorization request not found"
@@ -2050,6 +2062,11 @@ msgstr "Authorization request not found"
 msgid "Authorization URL"
 msgstr "Authorization URL"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Authorization was cancelled."
+msgstr "Authorization was cancelled."
+
+#: src/client/admin/pages/integrations.tsx
 #: src/client/pages/oauth-consent.tsx
 msgid "Authorize"
 msgstr "Authorize"
@@ -2769,6 +2786,10 @@ msgstr "Click the preview to set the crop pivot — <0>focal {0},{1}</0> — app
 #: src/client/admin/pages/flows.tsx
 msgid "Click to edit"
 msgstr "Click to edit"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Client credentials saved. Finish by authorizing the account — nothing is delivered until you do."
+msgstr "Client credentials saved. Finish by authorizing the account — nothing is delivered until you do."
 
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
@@ -8957,6 +8978,10 @@ msgstr "none (public)"
 msgid "none selected = all"
 msgstr "none selected = all"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Not authorized"
+msgstr "Not authorized"
+
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -9327,6 +9352,10 @@ msgstr "OpenAPI spec refreshed."
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "OpenID Connect / OAuth2 sign-in for this workspace's end-users."
 msgstr "OpenID Connect / OAuth2 sign-in for this workspace's end-users."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Opening…"
+msgstr "Opening…"
 
 #: src/client/admin/pages/traces.tsx
 msgid "Operation"
@@ -10610,6 +10639,10 @@ msgstr "Realtime"
 msgid "Reasoning effort"
 msgstr "Reasoning effort"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Reauthorize"
+msgstr "Reauthorize"
+
 #: src/client/admin/pages/agents.tsx
 msgid "Recall past turns and remember durable facts (needs an embedding provider)."
 msgstr "Recall past turns and remember durable facts (needs an embedding provider)."
@@ -10678,6 +10711,10 @@ msgstr "Redelivered."
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Redirect URI"
 msgstr "Redirect URI"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Redirect URI to register"
+msgstr "Redirect URI to register"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Redirect URL"
@@ -10758,6 +10795,10 @@ msgstr "Register a table that already exists in your database. No DDL is run on 
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "register this with the IdP"
 msgstr "register this with the IdP"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Register your own OAuth app with {name}, then save its client ID and secret here. Saving does not connect the account — you authorize it in the next step."
+msgstr "Register your own OAuth app with {name}, then save its client ID and secret here. Saving does not connect the account — you authorize it in the next step."
 
 #: src/client/admin/pages/extensions.tsx
 msgid "Reinstall / upgrade"
@@ -11732,6 +11773,10 @@ msgstr "Save as <0>(optional)</0>"
 msgid "Save changes"
 msgstr "Save changes"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Save credentials"
+msgstr "Save credentials"
+
 #: src/client/admin/pages/forms.tsx
 msgid "save failed"
 msgstr "save failed"
@@ -12694,6 +12739,10 @@ msgstr "Sign in"
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Sign in & approve"
 msgstr "Sign in & approve"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Sign in again and retry the connection."
+msgstr "Sign in again and retry the connection."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Sign in and approve the authorization screen"

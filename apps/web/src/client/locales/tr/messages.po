@@ -1066,6 +1066,10 @@ msgstr "Erişim"
 msgid "Account"
 msgstr "Hesap"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Account connected."
+msgstr "Hesap bağlandı."
+
 #: src/client/admin/ui.tsx
 msgid "Account menu"
 msgstr "Hesap menüsü"
@@ -1821,6 +1825,10 @@ msgstr "Uygulama katmanı tetikleyicisi — backlex'te DB yabancı anahtarı yok
 msgid "Appearance"
 msgstr "Görünüm"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Append data events to a Notion page. Connected with OAuth."
+msgstr "Veri olaylarını bir Notion sayfasına ekler. OAuth ile bağlanır."
+
 #: src/client/admin/parity/database.tsx
 msgid "applied"
 msgstr "uygulandı"
@@ -2042,6 +2050,10 @@ msgstr "Kimlik doğrulama başarılı"
 msgid "Author"
 msgstr "Yazar"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Authorization failed. Check the client ID, secret and redirect URI, then retry."
+msgstr "Yetkilendirme başarısız. İstemci kimliğini, gizli anahtarı ve yönlendirme adresini kontrol edip tekrar deneyin."
+
 #: src/client/pages/oauth-consent.tsx
 msgid "Authorization request not found"
 msgstr "Yetkilendirme isteği bulunamadı"
@@ -2050,6 +2062,11 @@ msgstr "Yetkilendirme isteği bulunamadı"
 msgid "Authorization URL"
 msgstr "Yetkilendirme URL’si"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Authorization was cancelled."
+msgstr "Yetkilendirme iptal edildi."
+
+#: src/client/admin/pages/integrations.tsx
 #: src/client/pages/oauth-consent.tsx
 msgid "Authorize"
 msgstr "Yetkilendir"
@@ -2769,6 +2786,10 @@ msgstr "Kırpma merkezini ayarlamak için önizlemeye tıklayın — <0>focal {0
 #: src/client/admin/pages/flows.tsx
 msgid "Click to edit"
 msgstr "Düzenlemek için tıklayın"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Client credentials saved. Finish by authorizing the account — nothing is delivered until you do."
+msgstr "İstemci bilgileri kaydedildi. Hesabı yetkilendirerek tamamlayın — bunu yapana kadar hiçbir olay iletilmez."
 
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
@@ -8957,6 +8978,10 @@ msgstr "yok (herkese açık)"
 msgid "none selected = all"
 msgstr "hiçbiri seçili değil = tümü"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Not authorized"
+msgstr "Yetkilendirilmedi"
+
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -9327,6 +9352,10 @@ msgstr "OpenAPI spec yenilendi."
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "OpenID Connect / OAuth2 sign-in for this workspace's end-users."
 msgstr "Bu çalışma alanının son kullanıcıları için OpenID Connect / OAuth2 girişi."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Opening…"
+msgstr "Açılıyor…"
 
 #: src/client/admin/pages/traces.tsx
 msgid "Operation"
@@ -10610,6 +10639,10 @@ msgstr "Gerçek zamanlı"
 msgid "Reasoning effort"
 msgstr "Akıl yürütme eforu"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Reauthorize"
+msgstr "Yeniden yetkilendir"
+
 #: src/client/admin/pages/agents.tsx
 msgid "Recall past turns and remember durable facts (needs an embedding provider)."
 msgstr "Geçmiş turları hatırlar ve kalıcı bilgileri saklar (gömme sağlayıcısı gerekir)."
@@ -10678,6 +10711,10 @@ msgstr "Yeniden teslim edildi."
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Redirect URI"
 msgstr "Yönlendirme URI’si"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Redirect URI to register"
+msgstr "Kaydedilecek yönlendirme adresi"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Redirect URL"
@@ -10758,6 +10795,10 @@ msgstr "Veritabanınızda zaten var olan bir tabloyu kaydet. Tabloda hiç DDL ç
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "register this with the IdP"
 msgstr "bunu IdP tarafına kaydedin"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Register your own OAuth app with {name}, then save its client ID and secret here. Saving does not connect the account — you authorize it in the next step."
+msgstr "{name} tarafında kendi OAuth uygulamanızı oluşturun, ardından istemci kimliğini ve gizli anahtarını buraya kaydedin. Kaydetmek hesabı bağlamaz — bir sonraki adımda yetkilendirirsiniz."
 
 #: src/client/admin/pages/extensions.tsx
 msgid "Reinstall / upgrade"
@@ -11732,6 +11773,10 @@ msgstr "Farklı kaydet <0>(isteğe bağlı)</0>"
 msgid "Save changes"
 msgstr "Değişiklikleri kaydet"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Save credentials"
+msgstr "Bilgileri kaydet"
+
 #: src/client/admin/pages/forms.tsx
 msgid "save failed"
 msgstr "kayıt başarısız"
@@ -12694,6 +12739,10 @@ msgstr "Giriş yap"
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Sign in & approve"
 msgstr "Giriş yapın ve onaylayın"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Sign in again and retry the connection."
+msgstr "Tekrar oturum açıp bağlantıyı yeniden deneyin."
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Sign in and approve the authorization screen"

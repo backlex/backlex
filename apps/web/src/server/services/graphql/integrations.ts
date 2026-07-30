@@ -1,6 +1,7 @@
 import { AppError } from "@backlex/core";
 import { INTEGRATION_CATALOG, isIntegrationKind } from "@backlex/integrations";
 import {
+  GraphQLBoolean,
   GraphQLError,
   GraphQLID,
   GraphQLInt,
@@ -12,6 +13,7 @@ import {
 } from "graphql";
 import { JSONScalar, type GqlCtx } from "./core";
 import { requireFlowAdmin } from "./flows";
+import { beginOAuth } from "../integrations-oauth";
 import {
   connectIntegration,
   disconnectIntegration,
@@ -67,6 +69,16 @@ const IntegrationProviderType = new GraphQLObjectType({
     category: { type: new GraphQLNonNull(GraphQLString) },
     capabilities: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     fields: { type: JSONScalar },
+    /** Connected by redirect rather than by pasting a key — see `startIntegrationOAuth`. */
+    oauth: { type: new GraphQLNonNull(GraphQLBoolean) },
+  },
+});
+
+const OAuthStartType = new GraphQLObjectType({
+  name: "IntegrationOAuthStart",
+  fields: {
+    /** Open this in a browser. Single-use, expires in 10 minutes. */
+    url: { type: new GraphQLNonNull(GraphQLString) },
   },
 });
 
@@ -188,6 +200,23 @@ export const integrationMutationFields: Record<string, GraphQLFieldConfig<unknow
           payload: { resumed: true },
         });
         return data;
+      }),
+  },
+  startIntegrationOAuth: {
+    type: new GraphQLNonNull(OAuthStartType),
+    description:
+      "Begin an OAuth connect flow and return the provider URL to open (admin-only). Save the integration's " +
+      "`clientId` and `clientSecret` first. The redirect lands back in the admin UI, so the browser that opens " +
+      "the link must be signed in as the same admin — a link opened elsewhere is refused.",
+    args: { id: { type: new GraphQLNonNull(GraphQLString) } },
+    resolve: (_src, args, gqlCtx) =>
+      surfacing(async () => {
+        const tenantId = requireFlowAdmin(gqlCtx);
+        const userId = gqlCtx.auth.userId;
+        // The flow is pinned to a person, so a token-authenticated caller with
+        // no user behind it has nobody to pin it to.
+        if (!userId) throw new AppError("FORBIDDEN", "A signed-in admin is required to start an OAuth flow");
+        return beginOAuth(gqlCtx.ctx, { tenantId, userId, integrationId: (args as { id: string }).id });
       }),
   },
 };

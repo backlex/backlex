@@ -20,7 +20,7 @@ receiving endpoint and backlex signs what it sends.
 
 ## Providers
 
-Seventeen providers ship in the registry, grouped by category:
+Eighteen providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -29,6 +29,7 @@ Seventeen providers ship in the registry, grouped by category:
 | analytics | PostHog, Segment |
 | issue tracking | GitHub, Linear, Jira |
 | search | Algolia, Meilisearch, Typesense, Elasticsearch / OpenSearch |
+| productivity | Notion *(OAuth)* |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -56,6 +57,58 @@ backlex integrations connect --kind slack \
 `--events` scopes which record events reach the provider. Patterns are
 `<collection>.<action>` and support `*` and `prefix.*`; omit it for **all**
 events.
+
+## Connecting with OAuth
+
+Some providers are connected by redirect rather than by pasting a key. They are
+flagged `oauth` in the catalog:
+
+```bash
+backlex integrations catalog        # oauth=yes column, plus the redirect URI
+```
+
+backlex is self-hostable, so there is no platform OAuth client to fall back on —
+**each workspace registers its own app** with the provider. Three steps:
+
+1. Create an OAuth app at the provider and register the redirect URI that
+   `integrations catalog` prints. It is derived from `APP_URL` server-side; do
+   not retype it from the browser's address bar, because behind a proxy the two
+   differ and the provider rejects the mismatch.
+2. Save the client credentials. This does **not** connect the account:
+
+   ```bash
+   backlex integrations connect --kind notion \
+     --set clientId=… --set clientSecret=… --set pageId=…
+   ```
+
+   The card shows **Not authorized** at this point and nothing is delivered.
+3. Authorize. In the admin UI this is the **Authorize** button; elsewhere:
+
+   ```bash
+   backlex integrations authorize <integration-id>   # prints a link to open
+   ```
+
+   The link is single-use, expires in 10 minutes, and only completes in a
+   browser already signed in as the same admin who asked for it.
+
+### What the flow guarantees
+
+| | |
+|---|---|
+| `state` | Random, never stored — only its SHA-256 is, so reading the database cannot complete a pending authorization |
+| Single use | The state row is consumed with `DELETE … RETURNING`, so two concurrent callbacks cannot both proceed |
+| Session binding | The row pins the workspace *and* the admin; a code redeemed from another session or another workspace is refused |
+| `redirect_uri` | Derived from `APP_URL`, never from the request host, and replayed at exchange time |
+| PKCE | Sent (S256) for every provider that supports it |
+| Tokens | Written only by the flow, under reserved `_oauth*` config keys that admin writes are stripped of, encrypted at rest and masked on read |
+
+Access tokens are renewed automatically ahead of expiry. If the grant is revoked
+at the provider, delivery reports *"OAuth connection needs re-authorizing"* and
+stops rather than retrying — use **Reauthorize** to reconnect.
+
+Failures on the callback all land on one message on purpose: telling an unknown
+state apart from an expired or already-used one would confirm to a prober which
+values were ever real.
 
 ## What gets sent
 
@@ -138,11 +191,15 @@ dropdown lists what the workspace has connected.
 
 | Surface | Entry point |
 |---|---|
-| REST | `/api/admin/integrations` (+ `/catalog`, `/{id}/deliveries`, `/{id}/resume`) |
+| REST | `/api/admin/integrations` (+ `/catalog`, `/{id}/deliveries`, `/{id}/resume`, `/{id}/oauth/authorize`) |
 | SDK | `client.integrations.*` |
-| GraphQL | `integrationCatalog`, `integrations`, `integrationDeliveries`, `connectIntegration`, `resumeIntegration`, `disconnectIntegration` |
-| MCP | `integrations.catalog` / `.list` / `.connect` / `.deliveries` / `.resume` / `.disconnect` |
+| GraphQL | `integrationCatalog`, `integrations`, `integrationDeliveries`, `connectIntegration`, `resumeIntegration`, `disconnectIntegration`, `startIntegrationOAuth` |
+| MCP | `integrations.catalog` / `.list` / `.connect` / `.deliveries` / `.resume` / `.disconnect` / `.oauth_authorize` |
 | CLI | `backlex integrations …` |
+
+`/api/admin/integrations/oauth/callback` is the provider's redirect target. It
+is not part of the API you call: it always answers with a redirect into the
+admin UI, because the caller is a browser mid-navigation.
 
 All five funnel through one service, so the tenant guards, the encryption at
 rest and the breaker are shared rather than restated per surface.
@@ -181,6 +238,25 @@ other is a compile error.
 `SECRET_KEYS` is **derived** from the fields you mark `secret` — there is no
 second table to keep in sync, and a field marked secret cannot be missed by
 encryption at rest.
+
+For an OAuth provider, add an `oauth` block and declare `clientId` +
+`clientSecret` as ordinary fields:
+
+```ts
+oauth: {
+  authorizeUrl: "https://acme.test/oauth/authorize",
+  tokenUrl: "https://acme.test/oauth/token",
+  scopes: ["records:write"],
+  authorizeParams: { access_type: "offline", prompt: "consent" }, // or no refresh token is issued
+  pkce: true,
+  tokenAuth: "body",              // "basic" when the provider rejects body credentials
+  keepFromTokenResponse: ["realmId"],
+},
+```
+
+Both endpoints must be fixed constants. The two token keys are added to
+`SECRET_KEYS` automatically — a provider author never lists them, and deriving
+them is what stops an access token coming back in cleartext.
 
 Returning `null` from `deliver` marks the integration misconfigured; any throw
 is caught. A broken provider can never break the write path that fired the

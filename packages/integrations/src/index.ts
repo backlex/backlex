@@ -24,6 +24,7 @@ import {
   type FetchLike,
   type IntegrationEvent,
   type IntegrationProvider,
+  OAUTH_CONFIG_KEYS,
   secretKeysOf,
 } from "./provider";
 import { INTEGRATION_KINDS, type IntegrationKind, PROVIDERS, providerFor } from "./providers";
@@ -36,9 +37,19 @@ export type {
   IntegrationCategory,
   IntegrationConfigField,
   IntegrationEvent,
+  IntegrationOAuth,
   IntegrationProvider,
 } from "./provider";
-export { defineProvider } from "./provider";
+export {
+  defineProvider,
+  OAUTH_ACCESS_TOKEN_KEY,
+  OAUTH_CONFIG_KEYS,
+  OAUTH_CONNECTED_AT_KEY,
+  OAUTH_EXPIRES_AT_KEY,
+  OAUTH_REFRESH_TOKEN_KEY,
+  OAUTH_SCOPE_KEY,
+  OAUTH_SECRET_KEYS,
+} from "./provider";
 export { INTEGRATION_KINDS, PROVIDERS, providerFor };
 export type { IntegrationKind };
 
@@ -63,7 +74,24 @@ export const INTEGRATION_CATALOG = entries.map(([id, p]) => ({
   category: p.category,
   capabilities: [...p.capabilities],
   fields: [...p.configFields],
+  /** The UI shows "Connect with <provider>" instead of a paste-a-key form. */
+  oauth: Boolean(p.oauth),
 }));
+
+/** Kinds connected through the OAuth flow rather than a pasted credential. */
+export const OAUTH_KINDS = entries.filter(([, p]) => p.oauth).map(([id]) => id);
+
+/**
+ * Strip the OAuth-owned keys from caller-supplied config.
+ *
+ * Applied to every admin write. Two reasons: a pasted `_oauthAccessToken` would
+ * be indistinguishable from one the provider issued, and an admin editing an
+ * unrelated field would otherwise silently drop the tokens by omitting them.
+ */
+export function stripOAuthKeys(config: Record<string, unknown>): Record<string, unknown> {
+  const reserved = new Set<string>(OAUTH_CONFIG_KEYS);
+  return Object.fromEntries(Object.entries(config).filter(([k]) => !reserved.has(k)));
+}
 
 const maskValue = (v: string): string => (v.length <= 8 ? "••••" : `${v.slice(0, 4)}…${v.slice(-4)}`);
 

@@ -90,6 +90,7 @@ import m83 from "../../drizzle/sqlite/20260729120000_integration_deliveries/migr
 import m84 from "../../drizzle/sqlite/20260729140000_oidc_providers/migration.sql" with { type: "text" };
 import m85 from "../../drizzle/sqlite/20260730090000_scim_config/migration.sql" with { type: "text" };
 import m86 from "../../drizzle/sqlite/20260730120000_sync_hooks/migration.sql" with { type: "text" };
+import m87 from "../../drizzle/sqlite/20260730150000_integration_oauth_states/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -184,4 +185,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260729140000_oidc_providers", sql: m84 },
   { name: "20260730090000_scim_config", sql: m85 },
   { name: "20260730120000_sync_hooks", sql: m86 },
+  { name: "20260730150000_integration_oauth_states", sql: m87 },
 ];

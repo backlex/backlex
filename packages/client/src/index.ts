@@ -1084,11 +1084,21 @@ export interface IntegrationProvider {
   category: string;
   capabilities: string[];
   fields: { key: string; label: string; placeholder?: string; secret?: boolean }[];
+  /** Connected by redirect rather than by pasting a key — use `oauthAuthorize`. */
+  oauth: boolean;
 }
 
 export interface IntegrationsClient {
   /** Providers available to connect, with their config field schema. */
-  catalog: () => Promise<{ data: { kinds: string[]; providers: IntegrationProvider[] } }>;
+  catalog: () => Promise<{
+    data: {
+      kinds: string[];
+      providers: IntegrationProvider[];
+      /** Register this exact URI with each OAuth provider. Server-derived, so
+       *  it stays right behind a proxy where the browser's origin would not. */
+      oauthRedirectUri: string;
+    };
+  }>;
   /** Connected integrations in the active workspace (secrets masked). */
   list: () => Promise<{ data: Integration[] }>;
   /** Connect or reconfigure one provider. Secret config is encrypted at rest. */
@@ -1103,6 +1113,14 @@ export interface IntegrationsClient {
   deliveries: (id: string, opts?: { limit?: number }) => Promise<{ data: IntegrationDelivery[] }>;
   /** Clear the failure counter and re-enable a breaker-paused integration. */
   resume: (id: string) => Promise<{ data: Integration }>;
+  /**
+   * Begin an OAuth connect flow and get the provider URL to open.
+   *
+   * Save `clientId` + `clientSecret` via `connect` first. The returned link is
+   * single-use, expires in 10 minutes, and only completes in a browser signed
+   * in as the same admin — so this returns the URL rather than following it.
+   */
+  oauthAuthorize: (id: string) => Promise<{ data: { url: string } }>;
 }
 
 /** A blocking hook: runs before a write and decides whether it happens. */
@@ -3071,7 +3089,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const integ = (id: string) => `/api/admin/integrations/${encodeURIComponent(id)}`;
   const integrations: IntegrationsClient = {
     catalog: () =>
-      request<{ data: { kinds: string[]; providers: IntegrationProvider[] } }>(
+      request<{ data: { kinds: string[]; providers: IntegrationProvider[]; oauthRedirectUri: string } }>(
         "GET",
         "/api/admin/integrations/catalog",
       ),
@@ -3083,6 +3101,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       return request<{ data: IntegrationDelivery[] }>("GET", `${integ(id)}/deliveries${qs}`);
     },
     resume: (id) => request<{ data: Integration }>("POST", `${integ(id)}/resume`, {}),
+    oauthAuthorize: (id) => request<{ data: { url: string } }>("POST", `${integ(id)}/oauth/authorize`, {}),
   };
 
   // Sync hooks. Admin-scoped over `/api/admin/sync-hooks`. Signing secrets only

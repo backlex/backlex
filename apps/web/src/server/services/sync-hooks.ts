@@ -359,7 +359,7 @@ export async function runSyncHooks(
         verdict.reason?.slice(0, 500) || `Write rejected by hook "${hook.name}"`,
       );
     }
-    if (verdict.data && Boolean(hook.canMutate)) {
+    if (verdict.data && hook.canMutate) {
       // Shallow merge: a hook patches fields, it does not replace the row.
       // Deep-merging would make it impossible to clear a nested value.
       data = { ...data, ...verdict.data };

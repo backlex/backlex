@@ -12,6 +12,7 @@ import {
   resumeIntegration,
 } from "../services/integrations";
 import { logActivity } from "../services/activity";
+import { beginOAuth, completeOAuth, oauthRedirectUri } from "../services/integrations-oauth";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 
@@ -55,8 +56,13 @@ const CatalogView = z
         label: z.string(),
         category: z.string(),
         capabilities: z.array(z.string()),
+        /** Show "Connect with …" instead of a paste-a-key form. */
+        oauth: z.boolean(),
       }),
     ),
+    /** The exact URI to register with each OAuth provider. Deriving it in the
+     *  UI would get it wrong behind a proxy; the server knows its own APP_URL. */
+    oauthRedirectUri: z.string(),
   })
   .openapi("IntegrationCatalog");
 
@@ -112,12 +118,14 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         data: {
           kinds: [...INTEGRATION_KINDS],
           fields: INTEGRATION_FIELDS,
-          providers: INTEGRATION_CATALOG.map(({ id, label, category, capabilities }) => ({
+          providers: INTEGRATION_CATALOG.map(({ id, label, category, capabilities, oauth }) => ({
             id,
             label,
             category,
             capabilities,
+            oauth,
           })),
+          oauthRedirectUri: oauthRedirectUri(c.get("ctx").env.APP_URL),
         },
       }),
   )
@@ -254,5 +262,95 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (!data) throw new AppError("NOT_FOUND", "Integration not found");
       await logActivity(c, { action: "update", collection: "system_integrations", itemId: id, payload: { resumed: true } });
       return c.json({ data });
+    },
+  )
+  // ── OAuth connect ──────────────────────────────────────────────────────────
+  // Two legs. `authorize` is a POST because it writes a single-use state row;
+  // the callback has to be a GET because the provider redirects a browser to it.
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{id}/oauth/authorize",
+      tags,
+      summary: "Start an OAuth connect flow",
+      description:
+        "Admin-only. Returns the provider URL to send the admin to. Requires the integration's `clientId` and " +
+        "`clientSecret` to be saved first — backlex is self-hostable, so each workspace brings its own OAuth app. " +
+        "The returned link is single-use and expires in 10 minutes.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: { "application/json": { schema: z.object({ data: z.object({ url: z.string() }) }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
+      const userId = c.get("auth").userId as string;
+      const { id } = c.req.valid("param");
+      const data = await beginOAuth(ctx, { tenantId, userId, integrationId: id });
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/oauth/callback",
+      tags,
+      summary: "OAuth redirect target",
+      description:
+        "Where the provider sends the admin back to. Always redirects into the admin UI rather than answering " +
+        "with JSON, because the caller is a browser mid-navigation. Not called directly.",
+      request: {
+        query: z.object({
+          code: z.string().optional(),
+          state: z.string().optional(),
+          error: z.string().optional(),
+        }),
+      },
+      responses: {
+        302: { description: "Redirect back to the admin integrations page" },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      // A fixed relative path with a fixed set of status slugs. Nothing the
+      // provider sent is echoed into the destination, so this cannot be turned
+      // into an open redirect or a reflection sink.
+      const back = (status: string) => c.redirect(`/integrations?oauth=${status}`, 302);
+
+      const auth = c.get("auth");
+      if (!auth?.userId || !auth.roles?.includes(SYSTEM_ROLES.admin) || !auth.tenantId) {
+        return back("signed_out");
+      }
+      const { code, state, error } = c.req.valid("query");
+      // The provider reports a declined consent screen this way; it is the
+      // normal "user clicked Cancel" path, not a failure worth logging as one.
+      if (error || !code || !state) return back("denied");
+
+      try {
+        const { kind } = await completeOAuth(c.get("ctx"), {
+          state,
+          code,
+          tenantId: auth.tenantId,
+          userId: auth.userId,
+        });
+        await logActivity(c, {
+          action: "update",
+          collection: "system_integrations",
+          payload: { kind, oauth: "connected" },
+        });
+        return back("connected");
+      } catch {
+        // Swallowed on purpose: the reasons completeOAuth distinguishes
+        // (unknown state, wrong session, failed exchange) are exactly the
+        // reasons an attacker probing this endpoint would want told apart.
+        return back("failed");
+      }
     },
   );

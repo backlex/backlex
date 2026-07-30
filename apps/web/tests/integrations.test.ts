@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   INTEGRATION_KINDS,
   INTEGRATION_FIELDS,
+  OAUTH_SECRET_KEYS,
   SECRET_KEYS,
   deliverToIntegration,
   isIntegrationKind,
@@ -271,8 +272,11 @@ describe("@backlex/integrations helpers", () => {
     for (const kind of INTEGRATION_KINDS) {
       expect(isIntegrationKind(kind)).toBe(true);
       expect(INTEGRATION_FIELDS[kind].length).toBeGreaterThan(0);
-      // every secret key is a declared field
+      // Every secret key is either a declared field or one of the two reserved
+      // OAuth token keys the flow owns — no provider author lists those, so
+      // they are derived from the `oauth` block rather than declared.
       for (const sk of SECRET_KEYS[kind]) {
+        if ((OAUTH_SECRET_KEYS as readonly string[]).includes(sk)) continue;
         expect(INTEGRATION_FIELDS[kind].some((f) => f.key === sk && f.secret)).toBe(true);
       }
     }

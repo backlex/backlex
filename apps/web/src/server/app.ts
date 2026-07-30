@@ -91,6 +91,7 @@ import { samlAdminRoutes } from "./routes/saml-admin";
 import { oidcAdminRoutes } from "./routes/oidc-admin";
 import { scimAdminRoutes } from "./routes/scim-admin";
 import { syncHooksRoutes } from "./routes/sync-hooks";
+import { erasureRoutes } from "./routes/erasure";
 import { scimRoutes } from "./routes/scim";
 import { platformSamlAdminRoutes } from "./routes/platform-saml-admin";
 import { platformLdapAdminRoutes } from "./routes/platform-ldap-admin";
@@ -811,6 +812,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/oidc", oidcAdminRoutes);
   app.route("/api/admin/scim", scimAdminRoutes);
   app.route("/api/admin/sync-hooks", syncHooksRoutes);
+  app.route("/api/admin/erasure", erasureRoutes);
   // SCIM itself is NOT session/api-key authenticated — the IdP presents the
   // workspace's SCIM bearer token and every handler resolves the tenant from it.
   app.route("/api/scim/v2", scimRoutes);

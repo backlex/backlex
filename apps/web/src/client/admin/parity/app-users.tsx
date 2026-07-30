@@ -23,6 +23,7 @@ import {
   type ApiRole,
 } from "../api";
 import { AppUsersSkeleton } from "../page-skeletons";
+import { ErasureCard } from "../pages/erasure-card";
 
 /* ──────────────────────────────────────────────────────────────────────
  * App users — the workspace end-user pool (the `app_users` table). Distinct
@@ -185,6 +186,10 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
         onConfirm={() => confirmDelete && void doDelete(confirmDelete)}
         onCancel={() => setConfirmDelete(null)}
       />
+      {/* Erasure lives here because this is where an operator is standing when
+          a deletion request arrives. Deleting the end-user row above removes
+          the account; erasure removes the person. */}
+      <ErasureCard pushToast={pushToast} />
     </div>
   );
 }

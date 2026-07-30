@@ -2566,3 +2566,58 @@ export const integrationSyncs = sqliteTable(
     index("integration_syncs_due_idx").on(t.enabled, t.lastRunAt),
   ],
 );
+
+/**
+ * One data-subject erasure request (GDPR Art. 17 and friends).
+ *
+ * Two-step by design: a request is PREVIEWED first, producing a plan of what
+ * would be touched, and only then executed. Erasure is irreversible and spans
+ * surfaces an operator cannot see from one screen, so "run it and find out" is
+ * not an acceptable interface.
+ *
+ * The row deliberately does NOT store the subject's email or id. An audit trail
+ * that records "we erased alice@example.com" re-creates the very data the
+ * request existed to remove, and it outlives every row it deleted. What is kept
+ * is a salted hash — enough to prove two requests concerned the same person and
+ * to find this record again from a fresh lookup, and useless as a source of the
+ * address itself. `reference` is the operator's own ticket id, which is theirs
+ * to keep clean.
+ *
+ * Mirror of the PG table.
+ */
+export const erasureRequests = sqliteTable(
+  "erasure_requests",
+  {
+    id: text("id").primaryKey(),
+    /** Never null: erasure is scoped to one workspace's data. */
+    tenantId: text("tenant_id").notNull(),
+    /** `app_user` (resolved from the workspace's end-user table) or `email`. */
+    subjectType: text("subject_type").notNull(),
+    /** SHA-256 of `tenantId + "\0" + normalized subject`. Never the subject. */
+    subjectHash: text("subject_hash").notNull(),
+    /** `anonymize` keeps rows with identifying fields scrubbed — often the only
+     *  lawful option, since an invoice usually cannot be deleted. `delete`
+     *  removes them. */
+    mode: text("mode").notNull(),
+    /** `pending` → `previewed` → `running` → `completed` / `failed`. */
+    status: text("status").notNull().default("pending"),
+    /** What the preview found: per-surface counts. Counts only, never values. */
+    plan: text("plan", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    /** What the run actually did, in the same shape as `plan`. */
+    report: text("report", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    error: text("error"),
+    /** The operator's own ticket / case id. Free text, and theirs to manage. */
+    reference: text("reference"),
+    /** Admin who filed it — an erasure needs an accountable requester. */
+    requestedBy: text("requested_by"),
+    previewedAt: integer("previewed_at", { mode: "timestamp_ms" }),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("erasure_requests_tenant_idx").on(t.tenantId),
+    // "Has this person asked before?" is a lookup by hash within a workspace.
+    index("erasure_requests_subject_idx").on(t.tenantId, t.subjectHash),
+  ],
+);

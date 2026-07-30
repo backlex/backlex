@@ -130,6 +130,7 @@ export default defineConfig({
             { slug: "usage-metering" },
             { slug: "product-analytics" },
             { slug: "audit-logs" },
+            { slug: "erasure" },
             { slug: "demo-mode" },
           ],
         },

@@ -1737,6 +1737,10 @@ msgstr "always on"
 msgid "An active share link exists for this record. For security the link URL is shown only once, at creation. Revoke it and create a new one if you need a fresh copyable URL."
 msgstr "An active share link exists for this record. For security the link URL is shown only once, at creation. Revoke it and create a new one if you need a fresh copyable URL."
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "An address with no account still counts — it may appear in a collection."
+msgstr "An address with no account still counts — it may appear in a collection."
+
 #: src/client/pages/sign-up.tsx
 msgid "An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
 msgstr "An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
@@ -1770,6 +1774,18 @@ msgstr "Analytics ingest key"
 #: src/client/admin/pages/analytics.tsx
 msgid "Analytics refreshed."
 msgstr "Analytics refreshed."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Anonymize"
+msgstr "Anonymize"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Anonymize — keep rows, scrub who they name"
+msgstr "Anonymize — keep rows, scrub who they name"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Anonymize is usually the lawful option — an invoice generally cannot be deleted. Revision history goes either way."
+msgstr "Anonymize is usually the lawful option — an invoice generally cannot be deleted. Revision history goes either way."
 
 #: src/client/admin/pages/analytics.tsx
 msgid "any event"
@@ -2488,6 +2504,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/erasure-card.tsx
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
@@ -2578,6 +2595,10 @@ msgstr "Capturing…"
 msgid "Cardinality"
 msgstr "Cardinality"
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Carried out"
+msgstr "Carried out"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/relational-pickers.tsx
 msgid "Change"
@@ -2644,6 +2665,10 @@ msgstr "Checked against the half-hourly row gauge — approximate by design."
 #: src/client/pages/invite.tsx
 msgid "Checking your invite…"
 msgstr "Checking your invite…"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Checking…"
+msgstr "Checking…"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Checks"
@@ -3162,6 +3187,10 @@ msgstr "Confirm"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Confirm & run"
 msgstr "Confirm & run"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Confirm erasure"
+msgstr "Confirm erasure"
 
 #: src/client/admin/account-page.tsx
 msgid "Confirm new password"
@@ -4065,6 +4094,7 @@ msgstr "Defaults to the URL's filename"
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/erasure-card.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
@@ -4082,6 +4112,10 @@ msgstr "Defaults to the URL's filename"
 #: src/client/admin/storage/widgets.tsx
 msgid "Delete"
 msgstr "Delete"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Delete — remove the rows entirely"
+msgstr "Delete — remove the rows entirely"
 
 #. placeholder {0}: pendingDelete.item.name
 #: src/client/admin/pages/schema-versions.tsx
@@ -4846,6 +4880,10 @@ msgstr "Email (for $user.email)"
 msgid "Email + password is always available — toggle it off to hide the form from the sign-in screen."
 msgstr "Email + password is always available — toggle it off to hide the form from the sign-in screen."
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Email address"
+msgstr "Email address"
+
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Email attribute"
@@ -5002,6 +5040,10 @@ msgstr "Enabling…"
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Encrypted at rest; it is never returned by the API."
 msgstr "Encrypted at rest; it is never returned by the API."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "End-user ID"
+msgstr "End-user ID"
 
 #: src/client/admin/parity/app-users.tsx
 msgid "End-users"
@@ -5177,6 +5219,26 @@ msgstr "Environment"
 #: src/client/admin/pages/settings/index.tsx
 msgid "Environment variables are read-only here"
 msgstr "Environment variables are read-only here"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Erase permanently"
+msgstr "Erase permanently"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Erasing…"
+msgstr "Erasing…"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Erasure carried out. Rows were kept with identifying fields scrubbed."
+msgstr "Erasure carried out. Rows were kept with identifying fields scrubbed."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Erasure carried out. The rows are gone."
+msgstr "Erasure carried out. The rows are gone."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Erasure requests"
+msgstr "Erasure requests"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "err"
@@ -5480,6 +5542,7 @@ msgid "failed"
 msgstr "failed"
 
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/erasure-card.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Failed"
 msgstr "Failed"
@@ -6402,6 +6465,10 @@ msgstr "id"
 #: src/client/admin/sheet.tsx
 msgid "id <0>{itemId}</0>"
 msgstr "id <0>{itemId}</0>"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Identify the person by"
+msgstr "Identify the person by"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/pages/graphql.tsx
@@ -8203,6 +8270,10 @@ msgstr "New dashboard"
 msgid "New data sync"
 msgstr "New data sync"
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "New erasure request"
+msgstr "New erasure request"
+
 #: src/client/admin/pages/feature-flags.tsx
 msgid "New flag"
 msgstr "New flag"
@@ -8271,6 +8342,10 @@ msgstr "New post"
 #: src/client/admin/pages/schema-graph.tsx
 msgid "New relation"
 msgstr "New relation"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "New request"
+msgstr "New request"
 
 #: src/client/admin/role-editor.tsx
 msgid "New role"
@@ -8596,6 +8671,10 @@ msgstr "No end-users match \"{q}\"."
 #: src/client/admin/parity/app-users.tsx
 msgid "No end-users yet — they appear here after signing up via the workspace auth endpoint."
 msgstr "No end-users yet — they appear here after signing up via the workspace auth endpoint."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "No erasure requests"
+msgstr "No erasure requests"
 
 #: src/client/admin/pages/overview.tsx
 msgid "No errors recorded."
@@ -9151,6 +9230,14 @@ msgstr "Note"
 msgid "Note <0>(optional)</0>"
 msgstr "Note <0>(optional)</0>"
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "nothing found"
+msgstr "nothing found"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Nothing is removed at this step — the preview only counts."
+msgstr "Nothing is removed at this step — the preview only counts."
+
 #: src/client/admin/pages/logs.tsx
 msgid "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
 msgstr "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
@@ -9192,6 +9279,10 @@ msgstr "Nothing to export — the current view is empty."
 #: src/client/admin/grid-edit.tsx
 msgid "Nothing to paste."
 msgstr "Nothing to paste."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Nothing was found for this person. There is nothing to carry out."
+msgstr "Nothing was found for this person. There is nothing to carry out."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Nothing was recorded in the last {days} day(s). Request spans appear here once the API serves traffic, unless `TRACES_SAMPLE_RATE` is 0 or span retention already pruned this window."
@@ -10334,6 +10425,7 @@ msgstr "preview"
 
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/item-form.tsx
+#: src/client/admin/pages/erasure-card.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Preview"
 msgstr "Preview"
@@ -10360,6 +10452,10 @@ msgstr "Preview:"
 #: src/client/admin/account-page.tsx
 msgid "Preview: "
 msgstr "Preview: "
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Previewed"
+msgstr "Previewed"
 
 #: src/client/admin/item-views.tsx
 msgid "Previous month"
@@ -11099,6 +11195,10 @@ msgstr "Remove it from the list"
 msgid "Remove language"
 msgstr "Remove language"
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Remove one person from collections, revision history, activity, comments, notifications, analytics, crash reports, devices and files. Preview first — a run cannot be undone."
+msgstr "Remove one person from collections, revision history, activity, comments, notifications, analytics, crash reports, devices and files. Preview first — a run cannot be undone."
+
 #: src/client/admin/collections-index.tsx
 msgid "Remove sample data"
 msgstr "Remove sample data"
@@ -11500,6 +11600,10 @@ msgstr "Review & apply — {0}"
 #: src/client/admin/pages/database-import.tsx
 msgid "Review the plan — copy order follows foreign keys, primary keys are preserved verbatim."
 msgstr "Review the plan — copy order follows foreign keys, primary keys are preserved verbatim."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Review what will go. This cannot be undone."
+msgstr "Review what will go. This cannot be undone."
 
 #. placeholder {0}: e.v
 #: src/client/admin/parity/revisions.tsx
@@ -13413,6 +13517,10 @@ msgstr "Stored as a one-way hash — it's never shown again. Leave blank to keep
 msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup, then hit Preview."
 msgstr "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup, then hit Preview."
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Stored as typed — keep personal data out of it."
+msgstr "Stored as typed — keep personal data out of it."
+
 #: src/client/admin/pages/overview.tsx
 msgid "stored objects"
 msgstr "stored objects"
@@ -14010,6 +14118,10 @@ msgstr "The traces endpoint returned an error. Refresh to try again."
 msgid "The usage endpoint returned an error. Refresh to try again."
 msgstr "The usage endpoint returned an error. Refresh to try again."
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "the user's id"
+msgstr "the user's id"
+
 #: src/client/admin/relational-pickers.tsx
 msgid "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
 msgstr "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
@@ -14085,6 +14197,10 @@ msgstr "This deletes the room and its whole transcript for everyone on the team.
 #: src/client/admin/collection-settings.tsx
 msgid "This deployment has no vector store — connect a Vectorize binding (Cloudflare), pgvector (Postgres), or libSQL before vector search can run."
 msgstr "This deployment has no vector store — connect a Vectorize binding (Cloudflare), pgvector (Postgres), or libSQL before vector search can run."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "This does not reach"
+msgstr "This does not reach"
 
 #: src/client/pages/public-form.tsx
 msgid "This form is no longer available"
@@ -15296,6 +15412,10 @@ msgstr "What this file is about…"
 msgid "What this role can do…"
 msgstr "What this role can do…"
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "What to do"
+msgstr "What to do"
+
 #: src/client/admin/pages/search-playground.tsx
 msgid "whatever the collection has enabled"
 msgstr "whatever the collection has enabled"
@@ -15328,6 +15448,10 @@ msgstr "When set, body is rendered from the stored template at run time. Otherwi
 #: src/client/pages/api-keys.tsx
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "When someone asks to be removed, start here — the preview shows everything that would go."
+msgstr "When someone asks to be removed, start here — the preview shows everything that would go."
 
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "When the hook cannot answer"
@@ -15610,6 +15734,10 @@ msgstr "Your password"
 #: src/client/admin/account-page.tsx
 msgid "Your personal profile, preferences, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page."
 msgstr "Your personal profile, preferences, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Your reference (optional)"
+msgstr "Your reference (optional)"
 
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Your registered devices"

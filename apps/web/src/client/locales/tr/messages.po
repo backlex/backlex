@@ -1737,6 +1737,10 @@ msgstr "her zaman açık"
 msgid "An active share link exists for this record. For security the link URL is shown only once, at creation. Revoke it and create a new one if you need a fresh copyable URL."
 msgstr "Bu kayıt için etkin bir paylaşım bağlantısı mevcut. Güvenlik amacıyla bağlantı URL'si yalnızca oluşturulduğunda bir kez gösterilir. Kopyalanabilir yeni bir URL için mevcut bağlantıyı iptal edip yenisini oluşturun."
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "An address with no account still counts — it may appear in a collection."
+msgstr "Hesabı olmayan bir adres de sayılır — bir koleksiyonda geçiyor olabilir."
+
 #: src/client/pages/sign-up.tsx
 msgid "An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
 msgstr "Bir admin bu örnek için genel kayıt kapatmış. Davet isteyin veya zaten bir hesabınız varsa giriş yapın."
@@ -1770,6 +1774,18 @@ msgstr "Analitik veri alma anahtarı"
 #: src/client/admin/pages/analytics.tsx
 msgid "Analytics refreshed."
 msgstr "Analitik yenilendi."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Anonymize"
+msgstr "Anonimleştir"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Anonymize — keep rows, scrub who they name"
+msgstr "Anonimleştir — satırlar kalsın, kimi işaret ettikleri silinsin"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Anonymize is usually the lawful option — an invoice generally cannot be deleted. Revision history goes either way."
+msgstr "Genelde hukuka uygun seçenek anonimleştirmedir — bir fatura çoğunlukla silinemez. Revizyon geçmişi her iki durumda da silinir."
 
 #: src/client/admin/pages/analytics.tsx
 msgid "any event"
@@ -2488,6 +2504,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/erasure-card.tsx
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
@@ -2578,6 +2595,10 @@ msgstr "Yakalanıyor…"
 msgid "Cardinality"
 msgstr "Kardinalite"
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Carried out"
+msgstr "Uygulandı"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/relational-pickers.tsx
 msgid "Change"
@@ -2644,6 +2665,10 @@ msgstr "Yarım saatlik satır göstergesine göre denetlenir — tasarım gereğ
 #: src/client/pages/invite.tsx
 msgid "Checking your invite…"
 msgstr "Davetin kontrol ediliyor…"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Checking…"
+msgstr "Kontrol ediliyor…"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Checks"
@@ -3162,6 +3187,10 @@ msgstr "Onayla"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Confirm & run"
 msgstr "Doğrulayıp çalıştır"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Confirm erasure"
+msgstr "Silmeyi onayla"
 
 #: src/client/admin/account-page.tsx
 msgid "Confirm new password"
@@ -4065,6 +4094,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/erasure-card.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
@@ -4082,6 +4112,10 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/storage/widgets.tsx
 msgid "Delete"
 msgstr "Sil"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Delete — remove the rows entirely"
+msgstr "Sil — satırları tamamen kaldır"
 
 #. placeholder {0}: pendingDelete.item.name
 #: src/client/admin/pages/schema-versions.tsx
@@ -4846,6 +4880,10 @@ msgstr "E-posta ($user.email için)"
 msgid "Email + password is always available — toggle it off to hide the form from the sign-in screen."
 msgstr "E-posta + parola her zaman kullanılabilir — giriş ekranındaki formu gizlemek için kapatın."
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Email address"
+msgstr "E-posta adresi"
+
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Email attribute"
@@ -5002,6 +5040,10 @@ msgstr "Etkinleştiriliyor…"
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Encrypted at rest; it is never returned by the API."
 msgstr "Saklanırken şifrelenir; API tarafından hiçbir zaman döndürülmez."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "End-user ID"
+msgstr "Son kullanıcı kimliği"
 
 #: src/client/admin/parity/app-users.tsx
 msgid "End-users"
@@ -5177,6 +5219,26 @@ msgstr "Ortam"
 #: src/client/admin/pages/settings/index.tsx
 msgid "Environment variables are read-only here"
 msgstr "Ortam değişkenleri burada salt okunur"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Erase permanently"
+msgstr "Kalıcı olarak sil"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Erasing…"
+msgstr "Siliniyor…"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Erasure carried out. Rows were kept with identifying fields scrubbed."
+msgstr "Silme uygulandı. Satırlar korundu, kimlik belirten alanlar temizlendi."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Erasure carried out. The rows are gone."
+msgstr "Silme uygulandı. Satırlar kaldırıldı."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Erasure requests"
+msgstr "Silme talepleri"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "err"
@@ -5480,6 +5542,7 @@ msgid "failed"
 msgstr "başarısız"
 
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/erasure-card.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Failed"
 msgstr "Başarısız"
@@ -6402,6 +6465,10 @@ msgstr "id"
 #: src/client/admin/sheet.tsx
 msgid "id <0>{itemId}</0>"
 msgstr "id <0>{itemId}</0>"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Identify the person by"
+msgstr "Kişiyi şununla tanımla"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/pages/graphql.tsx
@@ -8203,6 +8270,10 @@ msgstr "Yeni pano"
 msgid "New data sync"
 msgstr "Yeni veri senkronu"
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "New erasure request"
+msgstr "Yeni silme talebi"
+
 #: src/client/admin/pages/feature-flags.tsx
 msgid "New flag"
 msgstr "Yeni bayrak"
@@ -8271,6 +8342,10 @@ msgstr "Yeni gönderi"
 #: src/client/admin/pages/schema-graph.tsx
 msgid "New relation"
 msgstr "Yeni ilişki"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "New request"
+msgstr "Yeni talep"
 
 #: src/client/admin/role-editor.tsx
 msgid "New role"
@@ -8596,6 +8671,10 @@ msgstr "\"{q}\" ile eşleşen son kullanıcı yok."
 #: src/client/admin/parity/app-users.tsx
 msgid "No end-users yet — they appear here after signing up via the workspace auth endpoint."
 msgstr "Henüz son kullanıcı yok — çalışma alanı kimlik doğrulama uç noktası aracılığıyla kaydolduklarında burada görünürler."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "No erasure requests"
+msgstr "Silme talebi yok"
 
 #: src/client/admin/pages/overview.tsx
 msgid "No errors recorded."
@@ -9151,6 +9230,14 @@ msgstr "Not"
 msgid "Note <0>(optional)</0>"
 msgstr "Not <0>(isteğe bağlı)</0>"
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "nothing found"
+msgstr "bir şey bulunamadı"
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Nothing is removed at this step — the preview only counts."
+msgstr "Bu adımda hiçbir şey silinmez — önizleme yalnızca sayar."
+
 #: src/client/admin/pages/logs.tsx
 msgid "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
 msgstr "Son {range} içinde hiçbir şey gelmedi. Aralığı genişletin veya isteklerin, öğe yazmalarının ve otomasyon çalıştırmalarının akmasını bekleyin."
@@ -9192,6 +9279,10 @@ msgstr "Dışa aktarılacak şey yok — mevcut görünüm boş."
 #: src/client/admin/grid-edit.tsx
 msgid "Nothing to paste."
 msgstr "Yapıştırılacak bir şey yok."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Nothing was found for this person. There is nothing to carry out."
+msgstr "Bu kişi için hiçbir şey bulunamadı. Uygulanacak bir işlem yok."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Nothing was recorded in the last {days} day(s). Request spans appear here once the API serves traffic, unless `TRACES_SAMPLE_RATE` is 0 or span retention already pruned this window."
@@ -10334,6 +10425,7 @@ msgstr "önizleme"
 
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/item-form.tsx
+#: src/client/admin/pages/erasure-card.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Preview"
 msgstr "Önizleme"
@@ -10360,6 +10452,10 @@ msgstr "Önizleme:"
 #: src/client/admin/account-page.tsx
 msgid "Preview: "
 msgstr "Önizleme: "
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Previewed"
+msgstr "Önizlendi"
 
 #: src/client/admin/item-views.tsx
 msgid "Previous month"
@@ -11099,6 +11195,10 @@ msgstr "Listeden çıkar"
 msgid "Remove language"
 msgstr "Dili kaldır"
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Remove one person from collections, revision history, activity, comments, notifications, analytics, crash reports, devices and files. Preview first — a run cannot be undone."
+msgstr "Bir kişiyi koleksiyonlardan, revizyon geçmişinden, etkinlik kaydından, yorumlardan, bildirimlerden, analitikten, hata raporlarından, cihazlardan ve dosyalardan kaldırır. Önce önizleyin — uygulama geri alınamaz."
+
 #: src/client/admin/collections-index.tsx
 msgid "Remove sample data"
 msgstr "Örnek verileri kaldır"
@@ -11500,6 +11600,10 @@ msgstr "İncele ve uygula — {0}"
 #: src/client/admin/pages/database-import.tsx
 msgid "Review the plan — copy order follows foreign keys, primary keys are preserved verbatim."
 msgstr "Planı gözden geçirin — kopyalama sırası yabancı anahtarları izler, birincil anahtarlar birebir korunur."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Review what will go. This cannot be undone."
+msgstr "Nelerin gideceğini gözden geçirin. Bu geri alınamaz."
 
 #. placeholder {0}: e.v
 #: src/client/admin/parity/revisions.tsx
@@ -13413,6 +13517,10 @@ msgstr "Tek yönlü hash olarak saklanır — bir daha asla gösterilmez. Mevcut
 msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup, then hit Preview."
 msgstr "HTML olarak saklanır. Tam WYSIWYG düzenleyici henüz bağlı değil — önceden biçimlendirilmiş HTML veya temel işaretleme yapıştırın, ardından Önizle'ye basın."
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Stored as typed — keep personal data out of it."
+msgstr "Yazdığınız gibi saklanır — içine kişisel veri koymayın."
+
 #: src/client/admin/pages/overview.tsx
 msgid "stored objects"
 msgstr "depolanan nesneler"
@@ -14010,6 +14118,10 @@ msgstr "İzler uç noktası hata döndürdü. Yeniden denemek için yenileyin."
 msgid "The usage endpoint returned an error. Refresh to try again."
 msgstr "Kullanım uç noktası hata döndürdü. Tekrar denemek için yenileyin."
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "the user's id"
+msgstr "kullanıcının kimliği"
+
 #: src/client/admin/relational-pickers.tsx
 msgid "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
 msgstr "Çalışma alanının son kullanıcı havuzu (<0>app_users</0>). E-posta veya ada göre arayın."
@@ -14085,6 +14197,10 @@ msgstr "Bu, odayı ve tüm konuşma dökümünü ekipteki herkes için siler. Ag
 #: src/client/admin/collection-settings.tsx
 msgid "This deployment has no vector store — connect a Vectorize binding (Cloudflare), pgvector (Postgres), or libSQL before vector search can run."
 msgstr "Bu dağıtımda vektör deposu yok — vektör araması çalışmadan önce bir Vectorize binding'i (Cloudflare), pgvector (Postgres) veya libSQL bağlayın."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "This does not reach"
+msgstr "Bunun ulaşamadıkları"
 
 #: src/client/pages/public-form.tsx
 msgid "This form is no longer available"
@@ -15296,6 +15412,10 @@ msgstr "Bu dosya hakkında…"
 msgid "What this role can do…"
 msgstr "Bu rolün yapabilecekleri…"
 
+#: src/client/admin/pages/erasure-card.tsx
+msgid "What to do"
+msgstr "Ne yapılsın"
+
 #: src/client/admin/pages/search-playground.tsx
 msgid "whatever the collection has enabled"
 msgstr "koleksiyonda etkin olan neyse"
@@ -15328,6 +15448,10 @@ msgstr "Ayarlandığında, gövde çalışma zamanında depolanan şablondan iş
 #: src/client/pages/api-keys.tsx
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "Ayarlandığında, bu anahtarla yapılan istekler yalnızca bu rolün izinlerini alır — ve yalnızca sahip bu role hâlâ sahip olduğu sürece."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "When someone asks to be removed, start here — the preview shows everything that would go."
+msgstr "Biri kaldırılmayı talep ettiğinde buradan başlayın — önizleme gidecek her şeyi gösterir."
 
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "When the hook cannot answer"
@@ -15610,6 +15734,10 @@ msgstr "Şifreniz"
 #: src/client/admin/account-page.tsx
 msgid "Your personal profile, preferences, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page."
 msgstr "Kişisel profiliniz, tercihleriniz, parolanız, oturumlarınız ve bağlı kimlik bilgileriniz. Çalışma alanı genelindeki ayarlar Ayarlar sayfasındadır."
+
+#: src/client/admin/pages/erasure-card.tsx
+msgid "Your reference (optional)"
+msgstr "Kendi referansınız (isteğe bağlı)"
 
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Your registered devices"

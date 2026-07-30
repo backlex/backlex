@@ -138,6 +138,21 @@ digested — so a hook never sees a plaintext password.
 | DELETE | `/{id}` | remove |
 | POST | `/{id}/test` | fire one synthetic call and report the verdict |
 
+All five surfaces reach the same service, so a hook is configured identically
+whichever you use:
+
+| Surface | Entry point |
+|---|---|
+| REST | `/api/admin/sync-hooks` |
+| SDK | `client.syncHooks.*` |
+| GraphQL | `syncHooks`, `createSyncHook`, `updateSyncHook`, `deleteSyncHook`, `testSyncHook` |
+| MCP | `sync_hooks.list` / `.create` / `.update` / `.test` / `.delete` |
+| CLI | `backlex sync-hooks …` |
+
+`onError` is required on every one of them, and none of them will pick it for
+you. A hook that is safe over REST and lax over GraphQL would be worse than no
+hook at all.
+
 Use **test** before you rely on a hook. It sends a `__test__.beforeCreate`
 payload and shows you what came back, so a misconfiguration surfaces there
 rather than as a blocked write in production. It does not touch the failure

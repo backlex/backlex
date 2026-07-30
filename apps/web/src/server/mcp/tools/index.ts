@@ -9,6 +9,7 @@ import { bulkTools } from "./bulk";
 import { itemsPublishTools } from "./items-publish";
 import { featureFlagsTools } from "./feature-flags";
 import { integrationsTools } from "./integrations";
+import { syncHooksTools } from "./sync-hooks";
 import { storageTools } from "./storage";
 import { uploadsTools } from "./uploads";
 import { functionsTools } from "./functions";
@@ -63,6 +64,7 @@ export const allTools: McpTool[] = [
   ...itemsPublishTools,
   ...featureFlagsTools,
   ...integrationsTools,
+  ...syncHooksTools,
   ...storageTools,
   ...uploadsTools,
   ...vectorTools,

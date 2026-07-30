@@ -33,6 +33,7 @@ import { advisorQueryFields, advisorMutationFields } from "./advisor";
 import { backupQueryFields, backupMutationFields } from "./backups";
 import { webhookQueryFields, webhookMutationFields } from "./webhooks";
 import { integrationQueryFields, integrationMutationFields } from "./integrations";
+import { syncHookQueryFields, syncHookMutationFields } from "./sync-hooks";
 import { i18nQueryFields, i18nMutationFields } from "./i18n";
 import { storageQueryFields, storageMutationFields } from "./storage";
 import { schemaVersionQueryFields, schemaVersionMutationFields } from "./schema-versions";
@@ -87,6 +88,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...backupQueryFields,
           ...webhookQueryFields,
           ...integrationQueryFields,
+          ...syncHookQueryFields,
           ...i18nQueryFields,
           ...storageQueryFields,
           ...schemaVersionQueryFields,
@@ -111,6 +113,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...backupMutationFields,
           ...webhookMutationFields,
           ...integrationMutationFields,
+          ...syncHookMutationFields,
           ...i18nMutationFields,
           ...storageMutationFields,
           ...schemaVersionMutationFields,
@@ -137,6 +140,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...backupQueryFields,
     ...webhookQueryFields,
     ...integrationQueryFields,
+    ...syncHookQueryFields,
     ...i18nQueryFields,
     ...storageQueryFields,
     ...schemaVersionQueryFields,
@@ -158,6 +162,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...backupMutationFields,
     ...webhookMutationFields,
     ...integrationMutationFields,
+    ...syncHookMutationFields,
     ...i18nMutationFields,
     ...storageMutationFields,
     ...schemaVersionMutationFields,

@@ -22,6 +22,7 @@ import { runTemplates } from "../src/templates";
 import { runPayments } from "../src/payments";
 import { runWebhooks } from "../src/webhooks";
 import { runIntegrations } from "../src/integrations";
+import { runSyncHooks } from "../src/sync-hooks";
 import { runJobs } from "../src/jobs";
 import { runMessaging } from "../src/messaging";
 import { runAdvisor } from "../src/advisor";
@@ -127,6 +128,10 @@ Usage:
 
   backlex webhooks <list|create|test|deliveries|retry|resume|delete>
       Outbound webhooks + delivery ops. \`resume\` re-enables an auto-disabled hook.
+
+  backlex sync-hooks <list|create|update|test|delete>
+      Services that run BEFORE a write and decide whether it happens.
+      \`--on-error\` is required on create and has no safe default.
 
   backlex integrations <catalog|list|connect|deliveries|resume|disconnect>
       Slack / Jira / Algolia / … — connect providers, read the delivery log, and
@@ -298,6 +303,10 @@ const run = async () => {
     case "integrations":
     case "integration":
       await runIntegrations(rest);
+      return;
+    case "sync-hooks":
+    case "sync-hook":
+      await runSyncHooks(rest);
       return;
     case "payments":
     case "payment":

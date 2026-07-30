@@ -27,6 +27,7 @@ import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Card } from "@backlex/ui/components/card";
 import { fetchSafely } from "./_shared";
 import { WebhooksSkeleton } from "../page-skeletons";
+import { SyncHooksCard } from "./sync-hooks-card";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -303,6 +304,11 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
         </Table>
         )}
       </Card>
+
+      {/* Sync hooks live here rather than on their own page: the contrast with
+          the list above is the point. One is told what happened; the other
+          decides whether it happens. */}
+      <SyncHooksCard pushToast={pushToast} />
 
       {editor && <WebhookEditorDialog mode={editor.mode} hook={editor.hook} onClose={() => setEditor(null)} onSave={saveHook} pushToast={pushToast} />}
     </div>

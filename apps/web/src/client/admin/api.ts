@@ -1571,6 +1571,64 @@ export interface ApiScimConfig {
   updatedAt: number | string | null;
 }
 
+/** A blocking hook: runs before a write and decides whether it happens. */
+export interface ApiSyncHook {
+  id: string;
+  name: string;
+  url: string;
+  events: string[];
+  headers: Record<string, string> | null;
+  timeoutMs: number;
+  onError: "allow" | "deny";
+  canMutate: boolean;
+  priority: number;
+  enabled: boolean;
+  /** Presence only — the signing secret has no read-back path. */
+  hasSecret: boolean;
+  consecutiveFailures: number;
+  lastFailureAt: number | string | null;
+  disabledReason: string | null;
+  createdAt: number | string | null;
+  updatedAt: number | string | null;
+}
+
+export interface SyncHookInput {
+  name: string;
+  url: string;
+  events: string[];
+  onError: "allow" | "deny";
+  secret?: string | null;
+  headers?: Record<string, string> | null;
+  timeoutMs?: number;
+  canMutate?: boolean;
+  priority?: number;
+  enabled?: boolean;
+}
+
+export interface SyncHookTestResult {
+  ok: boolean;
+  ms: number;
+  error?: string;
+  verdict?: { allow: boolean; reason?: string; data?: Record<string, unknown> };
+}
+
+export const syncHooksApi = {
+  list: () => api<Envelope<ApiSyncHook[]>>(`/api/admin/sync-hooks`),
+  create: (body: SyncHookInput) =>
+    api<Envelope<ApiSyncHook>>(`/api/admin/sync-hooks`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  update: (id: string, body: Partial<SyncHookInput>) =>
+    api<Envelope<ApiSyncHook>>(`/api/admin/sync-hooks/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) => api<{ ok: true }>(`/api/admin/sync-hooks/${id}`, { method: "DELETE" }),
+  test: (id: string) =>
+    api<SyncHookTestResult>(`/api/admin/sync-hooks/${id}/test`, { method: "POST" }),
+};
+
 export const scimAdminApi = {
   get: () => api<Envelope<ApiScimConfig | null>>(`/api/admin/scim`),
   /** Creates or rotates. `token` is returned ONCE and is not recoverable. */

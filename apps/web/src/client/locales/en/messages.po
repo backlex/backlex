@@ -87,6 +87,10 @@ msgstr "— none —"
 msgid "— None (root) —"
 msgstr "— None (root) —"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "— writes to matching collections are being blocked."
+msgstr "— writes to matching collections are being blocked."
+
 #. placeholder {0}: rows.length - max
 #: src/client/admin/parity/insights.tsx
 msgid "… and {0} more"
@@ -285,6 +289,8 @@ msgid "{0} connected."
 msgstr "{0} connected."
 
 #. placeholder {0}: h.consecutiveFailures
+#. placeholder {0}: row.consecutiveFailures
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "{0} consecutive failures"
 msgstr "{0} consecutive failures"
@@ -1011,6 +1017,10 @@ msgstr "A template with key \"{trimmedKey}\" already exists."
 msgid "A value is stored. Type a new one to replace it, or leave blank to keep it."
 msgstr "A value is stored. Type a new one to replace it, or leave blank to keep it."
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "A webhook is told what happened. A sync hook runs before the write and decides whether it happens — it can reject the write or, when allowed to, patch the payload."
+msgstr "A webhook is told what happened. A sync hook runs before the write and decides whether it happens — it can reject the write or, when allowed to, patch the payload."
+
 #: src/client/admin/rule-builder.tsx
 msgid "a, b, c"
 msgstr "a, b, c"
@@ -1308,6 +1318,10 @@ msgstr "Add filter"
 msgid "Add from template"
 msgstr "Add from template"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Add hook"
+msgstr "Add hook"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Add language"
 msgstr "Add language"
@@ -1324,6 +1338,10 @@ msgstr "Add OIDC"
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Add OIDC provider"
 msgstr "Add OIDC provider"
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Add one to let your own service validate, enrich or reject writes."
+msgstr "Add one to let your own service validate, enrich or reject writes."
 
 #: src/client/admin/account-page.tsx
 msgid "Add passkey"
@@ -1646,6 +1664,10 @@ msgstr "All tools, read & write (default) — tap to restrict"
 msgid "Allow all"
 msgstr "Allow all"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Allow this hook to patch the payload"
+msgstr "Allow this hook to patch the payload"
+
 #: src/client/admin/permission-tester.tsx
 msgid "Allowed"
 msgstr "Allowed"
@@ -1658,9 +1680,18 @@ msgstr "Allowed email domains (optional, comma-separated)"
 msgid "Allowed email domains (optional)"
 msgstr "Allowed email domains (optional)"
 
+#. placeholder {0}: result.res.ms
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Allowed in {0}ms"
+msgstr "Allowed in {0}ms"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Allowed redirect URLs"
 msgstr "Allowed redirect URLs"
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "allows on failure"
+msgstr "allows on failure"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "already exists"
@@ -2267,6 +2298,10 @@ msgstr "Blank"
 msgid "Block all"
 msgstr "Block all"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Block the write (deny)"
+msgstr "Block the write (deny)"
+
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "blocked"
 msgstr "blocked"
@@ -2282,6 +2317,10 @@ msgstr "Blocked so far"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Blocks every write tool at the dispatcher."
 msgstr "Blocks every write tool at the dispatcher."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "blocks on failure"
+msgstr "blocks on failure"
 
 #: src/client/admin/parity/app-users.tsx
 msgid "Blocks sign-in and drops all active sessions immediately."
@@ -2392,6 +2431,10 @@ msgstr "Calendar"
 msgid "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
 msgstr "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "can patch"
+msgstr "can patch"
+
 #: src/client/components/boot-screen.tsx
 msgid "Can't reach your workspace"
 msgstr "Can't reach your workspace"
@@ -2422,6 +2465,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/schema-versions.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/template-onboarding.tsx
 #: src/client/admin/pages/usage.tsx
 #: src/client/admin/pages/users.tsx
@@ -2601,6 +2645,10 @@ msgstr "Choose a new password"
 #: src/client/admin/pages/extensions.tsx
 msgid "Choose folder…"
 msgstr "Choose folder…"
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Choose…"
+msgstr "Choose…"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Choosing <0>_status</0> tracks the draft/published lifecycle."
@@ -3490,6 +3538,7 @@ msgstr "Count a visitor as active when they fire"
 msgid "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
 msgstr "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
 
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/pages/api-keys.tsx
@@ -3966,6 +4015,7 @@ msgstr "Defaults to the URL's filename"
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/schema-versions.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-orgs.tsx
@@ -4585,6 +4635,7 @@ msgstr "edit"
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Edit"
 msgstr "Edit"
@@ -4663,6 +4714,10 @@ msgstr "Edit raw DSL. Click Builder to round-trip back to visual."
 #: src/client/admin/permissions-matrix.tsx
 msgid "Edit rule"
 msgstr "Edit rule"
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Edit sync hook"
+msgstr "Edit sync hook"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Edit them in <0>wrangler.toml</0> and redeploy. This panel reflects the live binding map from <1>env</1>."
@@ -5134,6 +5189,7 @@ msgstr "Event pattern"
 
 #: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Events"
 msgstr "Events"
@@ -6166,12 +6222,29 @@ msgstr "History"
 msgid "Honeypot"
 msgstr "Honeypot"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "hook"
+msgstr "hook"
+
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Hook"
 msgstr "Hook"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Hook created."
+msgstr "Hook created."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Hook removed."
+msgstr "Hook removed."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Hook updated."
+msgstr "Hook updated."
+
 #: src/client/admin/pages/extensions.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 msgid "hooks"
 msgstr "hooks"
 
@@ -6182,6 +6255,10 @@ msgstr "hooks"
 #: src/client/admin/pages/agents.tsx
 msgid "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
 msgstr "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "How long a write may block on this hook. Max 10000."
+msgstr "How long a write may block on this hook. Max 10000."
 
 #: src/client/admin/collection-settings.tsx
 msgid "how this collection shows up in nav and lists"
@@ -7097,6 +7174,10 @@ msgstr "leave blank to keep current"
 msgid "leave blank to keep the current secret"
 msgstr "leave blank to keep the current secret"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Leave blank to keep the current secret."
+msgstr "Leave blank to keep the current secret."
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Leave blank to keep the stored cert."
 msgstr "Leave blank to keep the stored cert."
@@ -7144,6 +7225,10 @@ msgstr "legacy production"
 #: src/client/admin/edit-field.tsx
 msgid "Let editors fold the \"{0}\" section. Applies to the whole section."
 msgstr "Let editors fold the \"{0}\" section. Applies to the whole section."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Let it through (allow)"
+msgstr "Let it through (allow)"
 
 #: src/client/admin/parity/scim-card.tsx
 msgid "Let your identity provider create, update and — the part SSO alone cannot do — deactivate this workspace's end-users on its own schedule. Enable it to get a base URL and a bearer token for Okta, Entra ID or OneLogin."
@@ -7860,6 +7945,7 @@ msgstr "My theme"
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/settings/index.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-orgs.tsx
@@ -8074,6 +8160,10 @@ msgstr "New slug"
 #: src/client/admin/pages/forms.tsx
 msgid "New step"
 msgstr "New step"
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "New sync hook"
+msgstr "New sync hook"
 
 #: src/client/admin/parity/email-templates.tsx
 msgid "New template"
@@ -8312,6 +8402,10 @@ msgstr "No data."
 #: src/client/admin/adopt-wizard.tsx
 msgid "No DDL on the table."
 msgstr "No DDL on the table."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "No default on purpose: \"allow\" drops the guarantee this hook provides, \"deny\" turns your app's outage into your customers'."
+msgstr "No default on purpose: \"allow\" drops the guarantee this hook provides, \"deny\" turns your app's outage into your customers'."
 
 #: src/client/admin/collection-settings.tsx
 msgid "No default sort configured — list responses fall back to<0> -created_at</0> (newest first). Add one or more fields below to pin a different order."
@@ -8753,6 +8847,10 @@ msgstr "No spans recorded for this trace."
 msgid "No submissions yet"
 msgstr "No submissions yet"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "No sync hooks"
+msgstr "No sync hooks"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "No tables found in this source."
 msgstr "No tables found in this source."
@@ -9045,6 +9143,10 @@ msgstr "off"
 msgid "Off"
 msgstr "Off"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Off for a hook that only validates — otherwise returning `data` would let it rewrite rows. A patch is re-validated against the schema."
+msgstr "Off for a hook that only validates — otherwise returning `data` would let it rewrite rows. A patch is re-validated against the schema."
+
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Off keeps the provider configured but hidden from sign-in."
@@ -9111,6 +9213,10 @@ msgstr "One moment."
 #: src/client/admin/adopt-wizard.tsx
 msgid "One or more adopted FKs are missing a target collection."
 msgstr "One or more adopted FKs are missing a target collection."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "One per line. `orders.beforeCreate`, `orders.*`, `*.beforeDelete`, or `*`."
+msgstr "One per line. `orders.beforeCreate`, `orders.*`, `*.beforeDelete`, or `*`."
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "One per line. <0>Content-Type</0> and <1>X-Backlex-*</1> are reserved."
@@ -9260,6 +9366,10 @@ msgstr "Optional — a timestamped name is generated if you leave this blank."
 #: src/client/pages/api-keys.tsx
 msgid "Optional — the key stops working after this time."
 msgstr "Optional — the key stops working after this time."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Optional. Signs each call so your service can verify it came from backlex."
+msgstr "Optional. Signs each call so your service can verify it came from backlex."
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "or"
@@ -9505,6 +9615,7 @@ msgid "paused"
 msgstr "paused"
 
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Paused"
 msgstr "Paused"
 
@@ -10668,6 +10779,12 @@ msgstr "Reject responses whose assertion isn't signed by the IdP."
 msgid "Reject unauthorized certs (recommended)"
 msgstr "Reject unauthorized certs (recommended)"
 
+#. placeholder {0}: result.res.ms
+#. placeholder {1}: result.res.verdict?.reason ?? "—"
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Rejected in {0}ms: {1}"
+msgstr "Rejected in {0}ms: {1}"
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "relation"
 msgstr "relation"
@@ -11572,6 +11689,7 @@ msgstr "Sat"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/usage.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/database.tsx
@@ -12678,6 +12796,7 @@ msgstr "Signed URL copied (1h)."
 msgid "Signing in…"
 msgstr "Signing in…"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Signing secret"
 msgstr "Signing secret"
@@ -13245,6 +13364,10 @@ msgstr "suspended"
 msgid "Sync customers, subscriptions, invoices and payments from {0}."
 msgstr "Sync customers, subscriptions, invoices and payments from {0}."
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Sync hooks"
+msgstr "Sync hooks"
+
 #: src/client/admin/pages/payments.tsx
 msgid "Sync now"
 msgstr "Sync now"
@@ -13400,6 +13523,7 @@ msgstr "Terms of Service URL"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Test"
 msgstr "Test"
 
@@ -13474,6 +13598,7 @@ msgstr "Tester"
 
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Testing…"
 msgstr "Testing…"
 
@@ -13822,6 +13947,10 @@ msgstr "this room"
 msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
 msgstr "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "This runs on the write path — a slow or failing hook affects live writes."
+msgstr "This runs on the write path — a slow or failing hook affects live writes."
+
 #: src/client/components/boot-screen.tsx
 msgid "This usually clears on its own in a moment. We'll keep trying automatically."
 msgstr "This usually clears on its own in a moment. We'll keep trying automatically."
@@ -13863,6 +13992,7 @@ msgstr "Timeline"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Timeout (ms)"
 msgstr "Timeout (ms)"
 
@@ -14346,6 +14476,11 @@ msgstr "Unpublish"
 msgid "Unpublish on"
 msgstr "Unpublish on"
 
+#. placeholder {0}: result.res.error ?? "—"
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Unreachable: {0}"
+msgstr "Unreachable: {0}"
+
 #: src/client/admin/ui.tsx
 msgid "Unread"
 msgstr "Unread"
@@ -14476,6 +14611,7 @@ msgstr "Uploads are rejected once stored bytes reach this. 1 GB = 1073741824."
 
 #: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 msgid "URL"
 msgstr "URL"
 
@@ -14958,6 +15094,10 @@ msgstr "When set, body is rendered from the stored template at run time. Otherwi
 #: src/client/pages/api-keys.tsx
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "When the hook cannot answer"
+msgstr "When the hook cannot answer"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx

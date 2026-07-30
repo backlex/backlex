@@ -87,6 +87,10 @@ msgstr "— yok —"
 msgid "— None (root) —"
 msgstr "— Yok (kök) —"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "— writes to matching collections are being blocked."
+msgstr "— eşleşen koleksiyonlara yazmalar bloklanıyor."
+
 #. placeholder {0}: rows.length - max
 #: src/client/admin/parity/insights.tsx
 msgid "… and {0} more"
@@ -285,6 +289,8 @@ msgid "{0} connected."
 msgstr "{0} bağlandı."
 
 #. placeholder {0}: h.consecutiveFailures
+#. placeholder {0}: row.consecutiveFailures
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "{0} consecutive failures"
 msgstr "{0} ardışık başarısızlık"
@@ -1011,6 +1017,10 @@ msgstr "\"{trimmedKey}\" anahtarlı bir şablon zaten mevcut."
 msgid "A value is stored. Type a new one to replace it, or leave blank to keep it."
 msgstr "Bir değer saklandı. Değiştirmek için yeni bir değer yazın ya da korumak için boş bırakın."
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "A webhook is told what happened. A sync hook runs before the write and decides whether it happens — it can reject the write or, when allowed to, patch the payload."
+msgstr "Webhook olan biteni haber alır. Sync hook ise yazmadan önce çalışır ve olup olmayacağına karar verir — yazmayı reddedebilir veya izin verildiyse yükü yamalayabilir."
+
 #: src/client/admin/rule-builder.tsx
 msgid "a, b, c"
 msgstr "a, b, c"
@@ -1308,6 +1318,10 @@ msgstr "Filtre ekle"
 msgid "Add from template"
 msgstr "Şablondan ekle"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Add hook"
+msgstr "Hook ekle"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Add language"
 msgstr "Dil ekle"
@@ -1324,6 +1338,10 @@ msgstr "OIDC ekle"
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Add OIDC provider"
 msgstr "OIDC sağlayıcı ekle"
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Add one to let your own service validate, enrich or reject writes."
+msgstr "Kendi servisinizin yazmaları doğrulaması, zenginleştirmesi veya reddetmesi için bir tane ekleyin."
 
 #: src/client/admin/account-page.tsx
 msgid "Add passkey"
@@ -1646,6 +1664,10 @@ msgstr "Tüm araçlar, okuma ve yazma (varsayılan) — kısıtlamak için dokun
 msgid "Allow all"
 msgstr "Tümüne izin ver"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Allow this hook to patch the payload"
+msgstr "Bu hook yükü yamalayabilsin"
+
 #: src/client/admin/permission-tester.tsx
 msgid "Allowed"
 msgstr "İzin verildi"
@@ -1658,9 +1680,18 @@ msgstr "İzin verilen e-posta alanları (isteğe bağlı, virgülle ayrılmış)
 msgid "Allowed email domains (optional)"
 msgstr "İzin verilen e-posta alan adları (isteğe bağlı)"
 
+#. placeholder {0}: result.res.ms
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Allowed in {0}ms"
+msgstr "{0}ms içinde izin verildi"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Allowed redirect URLs"
 msgstr "İzin verilen yönlendirme URL'leri"
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "allows on failure"
+msgstr "hatada izin verir"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "already exists"
@@ -2267,6 +2298,10 @@ msgstr "Boş"
 msgid "Block all"
 msgstr "Tümünü engelle"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Block the write (deny)"
+msgstr "Yazmayı blokla (deny)"
+
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "blocked"
 msgstr "engellendi"
@@ -2282,6 +2317,10 @@ msgstr "Şimdiye dek engellenen"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Blocks every write tool at the dispatcher."
 msgstr "Yazma işlemi yapan her aracı yönlendiricide engeller."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "blocks on failure"
+msgstr "hatada bloklar"
 
 #: src/client/admin/parity/app-users.tsx
 msgid "Blocks sign-in and drops all active sessions immediately."
@@ -2392,6 +2431,10 @@ msgstr "Takvim"
 msgid "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
 msgstr "Yakalanmamış hataları ve işlenmemiş reddetmeleri otomatik iletmek için uygulamanızda client.analytics.captureErrors() çağırın."
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "can patch"
+msgstr "yamalayabilir"
+
 #: src/client/components/boot-screen.tsx
 msgid "Can't reach your workspace"
 msgstr "Çalışma alanınıza ulaşılamıyor"
@@ -2422,6 +2465,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/schema-versions.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/template-onboarding.tsx
 #: src/client/admin/pages/usage.tsx
 #: src/client/admin/pages/users.tsx
@@ -2601,6 +2645,10 @@ msgstr "Yeni parola seçin"
 #: src/client/admin/pages/extensions.tsx
 msgid "Choose folder…"
 msgstr "Klasör seç…"
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Choose…"
+msgstr "Seçin…"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Choosing <0>_status</0> tracks the draft/published lifecycle."
@@ -3490,6 +3538,7 @@ msgstr "Ziyaretçiyi şunu gerçekleştirdiğinde aktif say"
 msgid "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
 msgstr "Sayaç, 1. satırın ilk sayısal sütununu alır; kıvılcım grafik / çubuklar tüm satırlarda gösterir; halka / tablo ilk iki sütunu eşleştirir."
 
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/pages/api-keys.tsx
@@ -3966,6 +4015,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/schema-versions.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-orgs.tsx
@@ -4585,6 +4635,7 @@ msgstr "düzenle"
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Edit"
 msgstr "Düzenle"
@@ -4663,6 +4714,10 @@ msgstr "Ham DSL'i düzenle. Görsel moduna dönmek için Oluşturucu'ya tıklay�
 #: src/client/admin/permissions-matrix.tsx
 msgid "Edit rule"
 msgstr "Kuralı düzenle"
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Edit sync hook"
+msgstr "Sync hook düzenle"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Edit them in <0>wrangler.toml</0> and redeploy. This panel reflects the live binding map from <1>env</1>."
@@ -5134,6 +5189,7 @@ msgstr "Olay deseni"
 
 #: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Events"
 msgstr "Olaylar"
@@ -6166,12 +6222,29 @@ msgstr "Geçmiş"
 msgid "Honeypot"
 msgstr "Honeypot"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "hook"
+msgstr "hook"
+
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Hook"
 msgstr "Hook"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Hook created."
+msgstr "Hook oluşturuldu."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Hook removed."
+msgstr "Hook kaldırıldı."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Hook updated."
+msgstr "Hook güncellendi."
+
 #: src/client/admin/pages/extensions.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 msgid "hooks"
 msgstr "kanca"
 
@@ -6182,6 +6255,10 @@ msgstr "kanca"
 #: src/client/admin/pages/agents.tsx
 msgid "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
 msgstr "Modelin her adımda ne kadar düşüneceği. Düşük efor daha az düşünme token'ı ve daha az araç çağrısı demek — daha ucuz ve hızlı, daha az kapsamlı. Desteklemeyen modellerde yok sayılır."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "How long a write may block on this hook. Max 10000."
+msgstr "Bir yazmanın bu hook üzerinde ne kadar bloklanabileceği. En fazla 10000."
 
 #: src/client/admin/collection-settings.tsx
 msgid "how this collection shows up in nav and lists"
@@ -7097,6 +7174,10 @@ msgstr "mevcut değeri korumak için boş bırakın"
 msgid "leave blank to keep the current secret"
 msgstr "mevcut gizli anahtarı korumak için boş bırakın"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Leave blank to keep the current secret."
+msgstr "Mevcut sırrı korumak için boş bırakın."
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Leave blank to keep the stored cert."
 msgstr "Saklanan sertifikayı korumak için boş bırakın."
@@ -7144,6 +7225,10 @@ msgstr "eski üretim"
 #: src/client/admin/edit-field.tsx
 msgid "Let editors fold the \"{0}\" section. Applies to the whole section."
 msgstr "Editörlerin \"{0}\" bölümünü katlamasına izin ver. Tüm bölüme uygulanır."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Let it through (allow)"
+msgstr "Geçmesine izin ver (allow)"
 
 #: src/client/admin/parity/scim-card.tsx
 msgid "Let your identity provider create, update and — the part SSO alone cannot do — deactivate this workspace's end-users on its own schedule. Enable it to get a base URL and a bearer token for Okta, Entra ID or OneLogin."
@@ -7860,6 +7945,7 @@ msgstr "Temam"
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/settings/index.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-orgs.tsx
@@ -8074,6 +8160,10 @@ msgstr "Yeni slug"
 #: src/client/admin/pages/forms.tsx
 msgid "New step"
 msgstr "Yeni adım"
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "New sync hook"
+msgstr "Yeni sync hook"
 
 #: src/client/admin/parity/email-templates.tsx
 msgid "New template"
@@ -8312,6 +8402,10 @@ msgstr "Veri yok."
 #: src/client/admin/adopt-wizard.tsx
 msgid "No DDL on the table."
 msgstr "Tabloda DDL yok."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "No default on purpose: \"allow\" drops the guarantee this hook provides, \"deny\" turns your app's outage into your customers'."
+msgstr "Bilerek varsayılan yok: \"allow\" bu hook'un sağladığı garantiyi düşürür, \"deny\" uygulamanızın kesintisini müşterinizinkine çevirir."
 
 #: src/client/admin/collection-settings.tsx
 msgid "No default sort configured — list responses fall back to<0> -created_at</0> (newest first). Add one or more fields below to pin a different order."
@@ -8753,6 +8847,10 @@ msgstr "Bu iz için kayıtlı span yok."
 msgid "No submissions yet"
 msgstr "Henüz gönderim yok"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "No sync hooks"
+msgstr "Sync hook yok"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "No tables found in this source."
 msgstr "Bu kaynakta tablo bulunamadı."
@@ -9045,6 +9143,10 @@ msgstr "kapalı"
 msgid "Off"
 msgstr "Kapalı"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Off for a hook that only validates — otherwise returning `data` would let it rewrite rows. A patch is re-validated against the schema."
+msgstr "Yalnızca doğrulama yapan bir hook için kapalı olmalı — aksi halde `data` döndürerek satırları yeniden yazabilir. Yama şemaya karşı yeniden doğrulanır."
+
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Off keeps the provider configured but hidden from sign-in."
@@ -9111,6 +9213,10 @@ msgstr "Bir saniye."
 #: src/client/admin/adopt-wizard.tsx
 msgid "One or more adopted FKs are missing a target collection."
 msgstr "Bir veya daha fazla benimsenmiş FK'da hedef koleksiyon eksik."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "One per line. `orders.beforeCreate`, `orders.*`, `*.beforeDelete`, or `*`."
+msgstr "Her satıra bir tane. `orders.beforeCreate`, `orders.*`, `*.beforeDelete` veya `*`."
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "One per line. <0>Content-Type</0> and <1>X-Backlex-*</1> are reserved."
@@ -9260,6 +9366,10 @@ msgstr "İsteğe bağlı — boş bırakırsanız zaman damgalı bir ad oluştur
 #: src/client/pages/api-keys.tsx
 msgid "Optional — the key stops working after this time."
 msgstr "İsteğe bağlı — anahtar bu sürenin ardından çalışmayı durdurur."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Optional. Signs each call so your service can verify it came from backlex."
+msgstr "İsteğe bağlı. Her çağrıyı imzalar, böylece servisiniz backlex'ten geldiğini doğrulayabilir."
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "or"
@@ -9505,6 +9615,7 @@ msgid "paused"
 msgstr "duraklatıldı"
 
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Paused"
 msgstr "Duraklatıldı"
 
@@ -10668,6 +10779,12 @@ msgstr "Onayı IdP tarafından imzalanmamış yanıtları reddet."
 msgid "Reject unauthorized certs (recommended)"
 msgstr "Yetkisiz sertifikaları reddet (önerilen)"
 
+#. placeholder {0}: result.res.ms
+#. placeholder {1}: result.res.verdict?.reason ?? "—"
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Rejected in {0}ms: {1}"
+msgstr "{0}ms içinde reddedildi: {1}"
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "relation"
 msgstr "ilişki"
@@ -11572,6 +11689,7 @@ msgstr "Cmt"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/usage.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/database.tsx
@@ -12678,6 +12796,7 @@ msgstr "İmzalı URL kopyalandı (1 saat)."
 msgid "Signing in…"
 msgstr "Giriş yapılıyor…"
 
+#: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Signing secret"
 msgstr "İmzalama gizli anahtarı"
@@ -13245,6 +13364,10 @@ msgstr "askıya alındı"
 msgid "Sync customers, subscriptions, invoices and payments from {0}."
 msgstr "{0} üzerindeki müşterileri, abonelikleri, faturaları ve ödemeleri eşitleyin."
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Sync hooks"
+msgstr "Sync hook'lar"
+
 #: src/client/admin/pages/payments.tsx
 msgid "Sync now"
 msgstr "Şimdi eşitle"
@@ -13400,6 +13523,7 @@ msgstr "Hizmet Şartları URL'si"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Test"
 msgstr "Test"
 
@@ -13474,6 +13598,7 @@ msgstr "Test aracı"
 
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Testing…"
 msgstr "Test ediliyor…"
 
@@ -13822,6 +13947,10 @@ msgstr "bu oda"
 msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
 msgstr "<1>c_{1}</1> üzerinde <0>ALTER TABLE … DROP COLUMN {0}</0> çalıştırır. Sütun ve tüm verileri kaldırılır. Bu geri alınamaz."
 
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "This runs on the write path — a slow or failing hook affects live writes."
+msgstr "Bu yazma yolunda çalışır — yavaş veya hatalı bir hook canlı yazmaları etkiler."
+
 #: src/client/components/boot-screen.tsx
 msgid "This usually clears on its own in a moment. We'll keep trying automatically."
 msgstr "Bu genellikle kısa sürede kendiliğinden düzelir. Otomatik olarak denemeye devam edeceğiz."
@@ -13863,6 +13992,7 @@ msgstr "Zaman çizelgesi"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Timeout (ms)"
 msgstr "Zaman aşımı (ms)"
 
@@ -14346,6 +14476,11 @@ msgstr "Yayından kaldır"
 msgid "Unpublish on"
 msgstr "Kaldırma tarihi"
 
+#. placeholder {0}: result.res.error ?? "—"
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "Unreachable: {0}"
+msgstr "Erişilemedi: {0}"
+
 #: src/client/admin/ui.tsx
 msgid "Unread"
 msgstr "Okunmamış"
@@ -14476,6 +14611,7 @@ msgstr "Depolanan bayt bu değere ulaşınca yüklemeler reddedilir. 1 GB = 1073
 
 #: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/sync-hooks-card.tsx
 msgid "URL"
 msgstr "URL"
 
@@ -14958,6 +15094,10 @@ msgstr "Ayarlandığında, gövde çalışma zamanında depolanan şablondan iş
 #: src/client/pages/api-keys.tsx
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "Ayarlandığında, bu anahtarla yapılan istekler yalnızca bu rolün izinlerini alır — ve yalnızca sahip bu role hâlâ sahip olduğu sürece."
+
+#: src/client/admin/pages/sync-hooks-card.tsx
+msgid "When the hook cannot answer"
+msgstr "Hook cevap veremediğinde"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx

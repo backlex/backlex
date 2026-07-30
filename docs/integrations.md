@@ -20,7 +20,7 @@ receiving endpoint and backlex signs what it sends.
 
 ## Providers
 
-Eighteen providers ship in the registry, grouped by category:
+Twenty providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -29,7 +29,7 @@ Eighteen providers ship in the registry, grouped by category:
 | analytics | PostHog, Segment |
 | issue tracking | GitHub, Linear, Jira |
 | search | Algolia, Meilisearch, Typesense, Elasticsearch / OpenSearch |
-| productivity | Notion *(OAuth)* |
+| productivity | Notion, Google Sheets, Airtable — all *(OAuth)*, all sources |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -109,6 +109,65 @@ stops rather than retrying — use **Reauthorize** to reconnect.
 Failures on the callback all land on one message on purpose: telling an unknown
 state apart from an expired or already-used one would confirm to a prober which
 values were ever real.
+
+## Pulling data in
+
+A **source** provider goes the other way: it reads rows from the external system
+into one of your collections on a schedule.
+
+Rows land in an **ordinary collection**, not a system table, so everything the
+platform already does applies to them for free — the permission DSL, REST and
+GraphQL querying, realtime, revisions, exports, the BI panels.
+
+```bash
+backlex integrations sync-create --integration <id> --collection leads \
+  --set spreadsheetId=1AbC… --set sheetName=Sheet1 \
+  --map Name=name --map Email=email \
+  --every 30
+
+backlex integrations sync-run <sync-id>   # pull now, see what landed
+backlex integrations syncs                # schedules + health
+```
+
+- `--set` keys come from the catalog's `sourceSettings` for that provider.
+  Anything else is **rejected**, not forwarded — settings end up in URLs.
+- `--map` is `ExternalField=collection_field`. Every target must be a writable
+  field on the collection; an unknown one is refused rather than silently
+  dropped, which would report a clean run while losing a column every time.
+- The collection must be **managed**. An adopted table already owns its data.
+- `--every 0` makes the sync manual-only.
+
+### How rows are identified
+
+A pulled row's primary key is `<provider>_<sync-prefix>_<external-id>`, e.g.
+`airtable_9f3c1a20_recAbC123`. That namespacing is what makes it safe to aim a
+sync at a collection that already holds data:
+
+- re-pulling **updates in place** instead of duplicating,
+- a row **a person created** can never be overwritten,
+- **two syncs** into the same collection cannot collide, even when both number
+  their rows from 1.
+
+The three connectors differ in exactly one way that matters. Airtable and Notion
+give every record a stable id, so a row that moves stays the same record. Sheets
+has no row id, so the **row number** is the identity — moving a row there reads
+as a different record.
+
+### Runs, cursors and failure
+
+A run is bounded to 20 pages / 2000 rows. If the provider still has more, the
+cursor is kept and the next run resumes there — a mid-cursor sync is due
+immediately rather than waiting out its interval, so a large first import does
+not take days.
+
+A failed page **does not advance the cursor**: those rows are re-read on the next
+attempt rather than skipped. A run where the collection rejected a row fails
+loudly for the same reason — reporting success would move past data nobody
+stored. Five consecutive failures pause the sync with the reason on the row;
+re-enabling clears the counter.
+
+If the OAuth grant is revoked, the run reports *"needs re-authorizing"* and stops
+instead of retrying something no retry can fix.
 
 ## What gets sent
 
@@ -191,10 +250,10 @@ dropdown lists what the workspace has connected.
 
 | Surface | Entry point |
 |---|---|
-| REST | `/api/admin/integrations` (+ `/catalog`, `/{id}/deliveries`, `/{id}/resume`, `/{id}/oauth/authorize`) |
+| REST | `/api/admin/integrations` (+ `/catalog`, `/syncs`, `/{id}/deliveries`, `/{id}/resume`, `/{id}/oauth/authorize`) |
 | SDK | `client.integrations.*` |
-| GraphQL | `integrationCatalog`, `integrations`, `integrationDeliveries`, `connectIntegration`, `resumeIntegration`, `disconnectIntegration`, `startIntegrationOAuth` |
-| MCP | `integrations.catalog` / `.list` / `.connect` / `.deliveries` / `.resume` / `.disconnect` / `.oauth_authorize` |
+| GraphQL | `integrationCatalog`, `integrations`, `integrationSyncs`, `integrationDeliveries`, `connectIntegration`, `resumeIntegration`, `disconnectIntegration`, `startIntegrationOAuth`, `createIntegrationSync`, `updateIntegrationSync`, `deleteIntegrationSync`, `runIntegrationSync` |
+| MCP | `integrations.catalog` / `.list` / `.connect` / `.deliveries` / `.resume` / `.disconnect` / `.oauth_authorize` / `.syncs` / `.create_sync` / `.update_sync` / `.delete_sync` / `.run_sync` |
 | CLI | `backlex integrations …` |
 
 `/api/admin/integrations/oauth/callback` is the provider's redirect target. It
@@ -257,6 +316,34 @@ oauth: {
 Both endpoints must be fixed constants. The two token keys are added to
 `SECRET_KEYS` automatically — a provider author never lists them, and deriving
 them is what stops an access token coming back in cleartext.
+
+For a source provider, add `"source"` to `capabilities` and a `source` block.
+The registry test asserts the two agree in both directions: a block without the
+capability is invisible to the catalog, and the capability without the block is a
+sync that throws on its first run.
+
+```ts
+capabilities: ["source"],
+source: {
+  settingFields: [{ key: "baseId", label: "Base ID" }],
+  async pull(ctx) {
+    const url = new URL(`https://api.acme.test/v1/${encodeURIComponent(ctx.setting("baseId")!)}/rows`);
+    if (ctx.cursor) url.searchParams.set("offset", ctx.cursor);   // query param, never a path segment
+    const res = await ctx.fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${ctx.str(OAUTH_ACCESS_TOKEN_KEY)}` },
+    });
+    if (!res.ok) throw new Error(`Acme responded ${res.status}`);  // throwing is how a run fails
+    const body = await res.json();
+    return { records: body.rows.map((r) => ({ externalId: r.id, data: r })), cursor: body.next ?? null };
+  },
+},
+```
+
+Treat both the settings and the cursor as untrusted: the first came from an admin
+form, the second from the provider's own previous answer. Unlike `deliver`, a
+`pull` that throws is **not** swallowed — a failed delivery loses one
+notification, but a failed pull that reported success would advance the cursor
+past rows nobody read.
 
 Returning `null` from `deliver` marks the integration misconfigured; any throw
 is caught. A broken provider can never break the write path that fired the

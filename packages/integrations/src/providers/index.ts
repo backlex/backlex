@@ -9,11 +9,13 @@
  * runtime hole.
  */
 import type { IntegrationProvider } from "../provider";
+import { airtable } from "./airtable";
 import { algolia } from "./algolia";
 import { datadog } from "./datadog";
 import { discord } from "./discord";
 import { elasticsearch } from "./elasticsearch";
 import { github } from "./github";
+import { googleSheets } from "./google-sheets";
 import { jira } from "./jira";
 import { linear } from "./linear";
 import { meilisearch } from "./meilisearch";
@@ -53,6 +55,8 @@ export const INTEGRATION_KINDS = [
   "elasticsearch",
   // productivity (OAuth-connected)
   "notion",
+  "google-sheets",
+  "airtable",
 ] as const;
 
 export type IntegrationKind = (typeof INTEGRATION_KINDS)[number];
@@ -76,6 +80,8 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   typesense,
   elasticsearch,
   notion,
+  "google-sheets": googleSheets,
+  airtable,
 };
 
 /** Look a provider up by id; `undefined` for anything unregistered. */

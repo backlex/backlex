@@ -16,6 +16,19 @@ import {
   resolveContext,
 } from "./client";
 
+interface SyncRow {
+  id: string;
+  integrationId: string;
+  collection: string;
+  intervalMinutes: number;
+  enabled: boolean;
+  resuming: boolean;
+  lastRunAt?: number | string | null;
+  lastRowCount: number;
+  lastError?: string | null;
+  disabledReason?: string | null;
+}
+
 interface IntegrationRow {
   id: string;
   kind: string;
@@ -35,7 +48,7 @@ interface ProviderRow {
   oauth?: boolean;
 }
 
-const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|authorize|deliveries|resume|disconnect>
+const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|authorize|syncs|deliveries|resume|disconnect>
 
   catalog                              providers available to connect
   catalog <kind>                       the config fields one provider needs
@@ -44,6 +57,14 @@ const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|authorize|
          [--events a,b]                scope which events reach it (default all)
   connect --kind <k> --data <json|@file|->
   authorize <id>                       print the OAuth link to open in a browser
+  syncs [--integration <id>]           scheduled pulls + health
+  sync-create --integration <id> --collection <slug>
+              --set k=v [...]          provider settings (see catalog)
+              --map External=field [...]
+              [--every <minutes>]      0 = manual only, default 60
+  sync-run <id>                        pull now and report what landed
+  sync-update <id> [--every N] [--enable|--disable]
+  sync-delete <id>
   deliveries <id> [--limit N]          recent attempts, newest first
   resume <id>                          re-enable a breaker-paused integration
   disconnect <id>
@@ -66,10 +87,10 @@ const csv = (v: string | undefined): string[] =>
   (v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 
 /** Collect repeated `--set key=value` pairs into a config object. */
-const collectSet = (args: string[]): Record<string, string> => {
+const collectSet = (args: string[], flagName = "--set"): Record<string, string> => {
   const out: Record<string, string> = {};
   for (let i = 0; i < args.length; i++) {
-    if (args[i] !== "--set") continue;
+    if (args[i] !== flagName) continue;
     const pair = args[i + 1];
     if (!pair) continue;
     const eq = pair.indexOf("=");
@@ -184,6 +205,104 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
           // browser, and the flow has to finish in the admin's own session.
           process.stdout.write(`Open this in a browser signed in as this admin:\n\n${data.url}\n`);
         }
+        return;
+      }
+      case "syncs": {
+        const only = flag(args, "--integration");
+        const qs = only ? `?integrationId=${encodeURIComponent(only)}` : "";
+        const { data } = await client.request<{ data: SyncRow[] }>("GET", `${BASE}/syncs${qs}`);
+        if (json) printJson(data);
+        else
+          printTable(
+            data.map((sc) => ({
+              id: sc.id,
+              collection: sc.collection,
+              every: sc.intervalMinutes === 0 ? "manual" : `${sc.intervalMinutes}m`,
+              state: sc.enabled ? (sc.resuming ? "resuming" : "on") : "paused",
+              rows: sc.lastRowCount,
+              // The reason a sync is paused matters more than the fact of it.
+              error: sc.disabledReason ?? sc.lastError ?? "",
+            })),
+          );
+        return;
+      }
+      case "sync-create": {
+        const integrationId = flag(args, "--integration");
+        const collection = flag(args, "--collection");
+        if (!integrationId || !collection) {
+          process.stderr.write("sync-create needs --integration <id> and --collection <slug>\n");
+          process.exit(1);
+        }
+        const mapping = collectSet(args, "--map");
+        if (Object.keys(mapping).length === 0) {
+          // The server rejects an empty mapping too, but saying so here saves a
+          // round trip and names the flag.
+          process.stderr.write("sync-create needs at least one --map External=field\n");
+          process.exit(1);
+        }
+        const every = flag(args, "--every");
+        const { data } = await client.request<{ data: SyncRow }>("POST", `${BASE}/syncs`, {
+          integrationId,
+          collection,
+          settings: collectSet(args),
+          mapping,
+          ...(every === undefined ? {} : { intervalMinutes: Number(every) }),
+        });
+        if (json) printJson(data);
+        else printKeyValues({ id: data.id, collection: data.collection, every: `${data.intervalMinutes}m` });
+        return;
+      }
+      case "sync-run": {
+        const id = rest[0];
+        if (!id || id.startsWith("--")) {
+          process.stderr.write("Usage: backlex integrations sync-run <id>\n");
+          process.exit(1);
+        }
+        const { data } = await client.request<{
+          data: { written: number; pages: number; complete: boolean };
+        }>("POST", `${BASE}/syncs/${encodeURIComponent(id)}/run`);
+        if (json) printJson(data);
+        else
+          printKeyValues({
+            rows: String(data.written),
+            pages: String(data.pages),
+            // `false` is not a failure — it means more pages are waiting.
+            complete: data.complete ? "yes" : "no (resumes on the schedule)",
+          });
+        return;
+      }
+      case "sync-update": {
+        const id = rest[0];
+        if (!id || id.startsWith("--")) {
+          process.stderr.write("Usage: backlex integrations sync-update <id> [--every N] [--enable|--disable]\n");
+          process.exit(1);
+        }
+        const every = flag(args, "--every");
+        const patch: Record<string, unknown> = {};
+        if (every !== undefined) patch.intervalMinutes = Number(every);
+        if (has(args, "--enable")) patch.enabled = true;
+        if (has(args, "--disable")) patch.enabled = false;
+        if (Object.keys(patch).length === 0) {
+          process.stderr.write("Nothing to change — pass --every, --enable or --disable\n");
+          process.exit(1);
+        }
+        const { data } = await client.request<{ data: SyncRow }>(
+          "PATCH",
+          `${BASE}/syncs/${encodeURIComponent(id)}`,
+          patch,
+        );
+        if (json) printJson(data);
+        else printKeyValues({ id: data.id, every: `${data.intervalMinutes}m`, enabled: String(data.enabled) });
+        return;
+      }
+      case "sync-delete": {
+        const id = rest[0];
+        if (!id || id.startsWith("--")) {
+          process.stderr.write("Usage: backlex integrations sync-delete <id>\n");
+          process.exit(1);
+        }
+        await client.request("DELETE", `${BASE}/syncs/${encodeURIComponent(id)}`);
+        process.stdout.write("Deleted. Rows already pulled stay in the collection.\n");
         return;
       }
       case "deliveries": {

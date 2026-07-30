@@ -508,6 +508,12 @@ msgstr "{0} resumed."
 msgid "{0} rows"
 msgstr "{0} rows"
 
+#. placeholder {0}: row.lastRowCount
+#. placeholder {1}: relativeTime(row.lastRunAt)
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "{0} rows {1}"
+msgstr "{0} rows {1}"
+
 #. placeholder {0}: r.data.failed
 #: src/client/admin/app.tsx
 msgid "{0} rows failed — see the API response for details."
@@ -1296,6 +1302,7 @@ msgid "Add choice"
 msgstr "Add choice"
 
 #: src/client/admin/add-field.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Add column"
 msgstr "Add column"
 
@@ -1383,6 +1390,10 @@ msgstr "Add source"
 #: src/client/admin/pages/analytics.tsx
 msgid "Add step"
 msgstr "Add step"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Add sync"
+msgstr "Add sync"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Add to <0>~/.codex/config.toml</0> (native Streamable HTTP). Or skip the key and connect over OAuth above with <1>codex mcp login</1>."
@@ -1826,8 +1837,12 @@ msgid "Appearance"
 msgstr "Appearance"
 
 #: src/client/admin/pages/integrations.tsx
-msgid "Append data events to a Notion page. Connected with OAuth."
-msgstr "Append data events to a Notion page. Connected with OAuth."
+msgid "Append data events to a Notion page, or pull a database into a collection."
+msgstr "Append data events to a Notion page, or pull a database into a collection."
+
+#: src/client/admin/pages/integrations.tsx
+#~ msgid "Append data events to a Notion page. Connected with OAuth."
+#~ msgstr "Append data events to a Notion page. Connected with OAuth."
 
 #: src/client/admin/parity/database.tsx
 msgid "applied"
@@ -2477,6 +2492,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/payments.tsx
@@ -3180,6 +3196,10 @@ msgstr "Connect an <0>agent</0>."
 #~ msgid "Connect an MCP client"
 #~ msgstr "Connect an MCP client"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Connect Google Sheets, Airtable or Notion above, authorize it, then schedule a pull."
+msgstr "Connect Google Sheets, Airtable or Notion above, authorize it, then schedule a pull."
+
 #: src/client/pages/api-keys.tsx
 msgid "Connect MCP"
 msgstr "Connect MCP"
@@ -3667,6 +3687,10 @@ msgstr "Create room"
 msgid "Create share link"
 msgstr "Create share link"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Create sync"
+msgstr "Create sync"
+
 #: src/client/admin/extras.tsx
 msgid "Create the first row in <0>{tableName}</0> via the API or use the New row button."
 msgstr "Create the first row in <0>{tableName}</0> via the API or use the New row button."
@@ -3865,6 +3889,7 @@ msgstr "Custom…"
 msgid "Customize…"
 msgstr "Customize…"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Daily"
@@ -3902,6 +3927,10 @@ msgstr "Data"
 #: src/client/admin/parity/insights.tsx
 msgid "Data scope"
 msgstr "Data scope"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Data syncs"
+msgstr "Data syncs"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/database.tsx
@@ -4034,6 +4063,7 @@ msgstr "Defaults to the URL's filename"
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/sync-hooks-card.tsx
@@ -4366,6 +4396,10 @@ msgstr "Discard unsaved changes?"
 #: src/client/admin/pages/payments.tsx
 msgid "Disconnect"
 msgstr "Disconnect"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Disconnected source"
+msgstr "Disconnected source"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Disconnecting…"
@@ -5223,6 +5257,36 @@ msgstr "Events / visitor"
 msgid "Events per day"
 msgstr "Events per day"
 
+#. placeholder {0}: m / 60
+#: src/client/admin/pages/integration-syncs-card.tsx
+#~ msgid "Every {0} hours"
+#~ msgstr "Every {0} hours"
+
+#. placeholder {0}: row.intervalMinutes
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "every {0} min"
+msgstr "every {0} min"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+#~ msgid "Every {m} minutes"
+#~ msgstr "Every {m} minutes"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Every 12 hours"
+msgstr "Every 12 hours"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Every 15 minutes"
+msgstr "Every 15 minutes"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Every 3 hours"
+msgstr "Every 3 hours"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Every 30 minutes"
+msgstr "Every 30 minutes"
+
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 msgstr "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
@@ -5390,6 +5454,10 @@ msgstr "Extensions"
 msgid "Extensions add sandboxed admin panels, custom field editors, and server hooks. Install any npm package that ships a backlex-extension.json manifest."
 msgstr "Extensions add sandboxed admin panels, custom field editors, and server hooks. Install any npm package that ships a backlex-extension.json manifest."
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "External column"
+msgstr "External column"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "External identity rows are kept as an audit trail."
 msgstr "External identity rows are kept as an audit trail."
@@ -5496,6 +5564,7 @@ msgstr "field"
 #: src/client/admin/add-field.tsx
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/edit-field.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Field"
@@ -5517,6 +5586,10 @@ msgstr "Field \"{0}\" updated. Search index rebuilt ({1} of {2} rows indexed)."
 #: src/client/admin/pages/extensions.tsx
 msgid "field editors"
 msgstr "field editors"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Field mapping"
+msgstr "Field mapping"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Field name"
@@ -6273,6 +6346,10 @@ msgstr "hooks"
 #~ msgid "Hosted Claude"
 #~ msgstr "Hosted Claude"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Hourly"
+msgstr "Hourly"
+
 #: src/client/admin/pages/agents.tsx
 msgid "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
 msgstr "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
@@ -6591,6 +6668,10 @@ msgstr "Internal column — stored and writable, but never returned by the API (
 #: src/client/admin/adopt-wizard.tsx
 msgid "Internal description for teammates."
 msgstr "Internal description for teammates."
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Into collection"
+msgstr "Into collection"
 
 #: src/client/pages/graphql.tsx
 msgid "Introspection-driven explorer for /api/graphql. Schema is generated from your workspace's collections at request time — click a query or mutation in the tree to drop a runnable snippet into the editor."
@@ -7572,6 +7653,10 @@ msgstr "Manual entry"
 msgid "manual invoke via POST /api/functions/:name/invoke"
 msgstr "manual invoke via POST /api/functions/:name/invoke"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Manual only"
+msgstr "Manual only"
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Many (relation_many)"
 msgstr "Many (relation_many)"
@@ -7850,6 +7935,10 @@ msgstr "more"
 msgid "More actions"
 msgstr "More actions"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "More pages pending"
+msgstr "More pages pending"
+
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "More save options"
@@ -8038,6 +8127,10 @@ msgstr "network error"
 msgid "Never (no expiry)"
 msgstr "Never (no expiry)"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "never run"
+msgstr "never run"
+
 #: src/client/admin/parity/scim-card.tsx
 msgid "never used"
 msgstr "never used"
@@ -8092,6 +8185,10 @@ msgstr "New collection"
 #: src/client/admin/parity/insights.tsx
 msgid "New dashboard"
 msgstr "New dashboard"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "New data sync"
+msgstr "New data sync"
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "New flag"
@@ -8856,6 +8953,10 @@ msgstr "No snapshots yet"
 msgid "No social providers are enabled for this workspace."
 msgstr "No social providers are enabled for this workspace."
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "No source connected"
+msgstr "No source connected"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "No sources yet"
 msgstr "No sources yet"
@@ -8871,6 +8972,10 @@ msgstr "No submissions yet"
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "No sync hooks"
 msgstr "No sync hooks"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "No syncs"
+msgstr "No syncs"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "No tables found in this source."
@@ -9292,6 +9397,10 @@ msgstr "Only translate missing keys"
 msgid "Only what I select"
 msgstr "Only what I select"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Only when I ask"
+msgstr "Only when I ask"
+
 #: src/client/admin/extras.tsx
 msgid "open"
 msgstr "open"
@@ -9634,6 +9743,7 @@ msgstr "Paths"
 msgid "Pattern (regex)"
 msgstr "Pattern (regex)"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Pause"
 msgstr "Pause"
@@ -9643,6 +9753,7 @@ msgstr "Pause"
 msgid "paused"
 msgstr "paused"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Paused"
@@ -9792,6 +9903,7 @@ msgstr "Photographer, designer, source…"
 msgid "physical c_<slug> tables"
 msgstr "physical c_<slug> tables"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/search-playground.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "Pick a collection"
@@ -9801,6 +9913,7 @@ msgstr "Pick a collection"
 msgid "Pick a collection and an aggregate below — no query to write."
 msgstr "Pick a collection and an aggregate below — no query to write."
 
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Pick a collection first"
 msgstr "Pick a collection first"
@@ -10132,6 +10245,10 @@ msgstr "PNG, JPG or WebP. Shown in the header and on any author display."
 msgid "PNG, JPG, SVG or WebP — square images display best. Replaces any previous upload."
 msgstr "PNG, JPG, SVG or WebP — square images display best. Replaces any previous upload."
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Point a connected source at a collection and pick how often it should run."
+msgstr "Point a connected source at a collection and pick how often it should run."
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Policy"
 msgstr "Policy"
@@ -10437,6 +10554,33 @@ msgstr "published only"
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Published."
 #~ msgstr "Published."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Pull a spreadsheet into a collection on a schedule."
+msgstr "Pull a spreadsheet into a collection on a schedule."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Pull an Airtable table into a collection on a schedule."
+msgstr "Pull an Airtable table into a collection on a schedule."
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
+msgstr "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
+
+#. placeholder {0}: res.data.written
+#. placeholder {1}: row.collection
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Pulled {0} rows into {1}."
+msgstr "Pulled {0} rows into {1}."
+
+#. placeholder {0}: res.data.written
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Pulled {0} rows; more pages resume on the schedule."
+msgstr "Pulled {0} rows; more pages resume on the schedule."
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Pulling…"
+msgstr "Pulling…"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Push"
@@ -10907,6 +11051,10 @@ msgstr "Remove {tag}"
 msgid "Remove choice"
 msgstr "Remove choice"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Remove column"
+msgstr "Remove column"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 #: src/client/admin/pages/forms.tsx
@@ -11249,6 +11397,7 @@ msgstr "resumable"
 #~ msgstr "Resumable SSE on <0>GET /mcp</0>"
 
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -11539,6 +11688,10 @@ msgstr "Rows created by {r} must match this rule."
 msgid "Rows in collection"
 msgstr "Rows in collection"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Rows land in an ordinary collection, so permissions, querying and exports apply to them like any other data."
+msgstr "Rows land in an ordinary collection, so permissions, querying and exports apply to them like any other data."
+
 #. placeholder {0}: form.collection
 #: src/client/admin/pages/forms.tsx
 msgid "rows live in <0>{0}</0>"
@@ -11560,6 +11713,7 @@ msgstr "rules"
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Run"
 msgstr "Run"
@@ -11589,6 +11743,7 @@ msgid "Run hook"
 msgstr "Run hook"
 
 #: src/client/admin/pages/flows.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Run now"
 msgstr "Run now"
 
@@ -11651,6 +11806,10 @@ msgstr "Runs"
 #: src/client/admin/flow-builder.tsx
 msgid "runs daily at 09:00 UTC"
 msgstr "runs daily at 09:00 UTC"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "runs only when you ask"
+msgstr "runs only when you ask"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Runtime"
@@ -13010,6 +13169,7 @@ msgstr "Sorted by"
 
 #: src/client/admin/item-form.tsx
 #: src/client/admin/pages/extensions.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Source"
 msgstr "Source"
 
@@ -13408,10 +13568,18 @@ msgstr "Suspend end-user"
 msgid "suspended"
 msgstr "suspended"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Sync created. Run it now to check the mapping."
+msgstr "Sync created. Run it now to check the mapping."
+
 #. placeholder {0}: entry.label
 #: src/client/admin/pages/payments.tsx
 msgid "Sync customers, subscriptions, invoices and payments from {0}."
 msgstr "Sync customers, subscriptions, invoices and payments from {0}."
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Sync deleted. Rows already pulled stay in the collection."
+msgstr "Sync deleted. Rows already pulled stay in the collection."
 
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Sync hooks"
@@ -14502,6 +14670,10 @@ msgstr "Unlink"
 #: src/client/admin/account-page.tsx
 msgid "Unlinked {0}."
 msgstr "Unlinked {0}."
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "unmapped columns are dropped"
+msgstr "unmapped columns are dropped"
 
 #: src/client/admin/pages/usage.tsx
 msgid "unmetered"

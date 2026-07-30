@@ -22,6 +22,8 @@
 import {
   type DeliveryOutcome,
   type FetchLike,
+  type IntegrationConfigField,
+  type SourcePullPage,
   type IntegrationEvent,
   type IntegrationProvider,
   OAUTH_CONFIG_KEYS,
@@ -39,6 +41,10 @@ export type {
   IntegrationEvent,
   IntegrationOAuth,
   IntegrationProvider,
+  IntegrationSource,
+  SourcePullContext,
+  SourcePullPage,
+  SourceRecord,
 } from "./provider";
 export {
   defineProvider,
@@ -80,6 +86,49 @@ export const INTEGRATION_CATALOG = entries.map(([id, p]) => ({
 
 /** Kinds connected through the OAuth flow rather than a pasted credential. */
 export const OAUTH_KINDS = entries.filter(([, p]) => p.oauth).map(([id]) => id);
+
+/** Kinds that can pull rows into a collection. Derived, like OAUTH_KINDS. */
+export const SOURCE_KINDS = entries.filter(([, p]) => p.source).map(([id]) => id);
+
+/** Per-sync settings each source provider asks for, keyed by kind. */
+export const SOURCE_SETTING_FIELDS = Object.fromEntries(
+  entries.filter(([, p]) => p.source).map(([id, p]) => [id, [...p.source!.settingFields]]),
+) as Record<string, IntegrationConfigField[]>;
+
+/**
+ * Pull one page from a source provider.
+ *
+ * Unlike `deliverToIntegration`, this deliberately does NOT swallow errors. A
+ * failed delivery is one lost notification; a failed pull that reported success
+ * would advance the cursor past rows nobody ever read.
+ */
+export async function pullFromSource(
+  kind: string,
+  args: {
+    config: Record<string, unknown>;
+    settings: Record<string, unknown>;
+    cursor: string | null;
+    limit: number;
+  },
+  fetchImpl?: FetchLike,
+): Promise<SourcePullPage> {
+  const provider = providerFor(kind);
+  if (!provider?.source) throw new Error(`${kind} cannot be used as a source`);
+  const doFetch: FetchLike = fetchImpl ?? ((i, init) => fetch(i, init));
+  const pick = (bag: Record<string, unknown>, key: string) => {
+    const v = bag[key];
+    return typeof v === "string" && v ? v : null;
+  };
+  return provider.source.pull({
+    config: args.config,
+    settings: args.settings,
+    cursor: args.cursor,
+    limit: args.limit,
+    fetch: doFetch,
+    str: (key) => pick(args.config, key),
+    setting: (key) => pick(args.settings, key),
+  });
+}
 
 /**
  * Strip the OAuth-owned keys from caller-supplied config.

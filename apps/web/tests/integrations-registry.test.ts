@@ -11,6 +11,8 @@ import {
   INTEGRATION_KINDS,
   OAUTH_CONFIG_KEYS,
   OAUTH_KINDS,
+  SOURCE_KINDS,
+  SOURCE_SETTING_FIELDS,
   OAUTH_SECRET_KEYS,
   PROVIDERS,
   SECRET_KEYS,
@@ -38,8 +40,13 @@ describe("provider registry", () => {
 
   test("every provider can actually receive events", () => {
     for (const kind of KINDS) {
-      expect(PROVIDERS[kind].capabilities).toContain("sink");
-      expect(typeof PROVIDERS[kind].deliver).toBe("function");
+      const p = PROVIDERS[kind];
+      // A provider is a sink, a source, or both — but whichever it claims, the
+      // matching implementation has to be there. A capability with no code
+      // behind it shows up in the catalog and then does nothing.
+      expect(p.capabilities.length).toBeGreaterThan(0);
+      if (p.capabilities.includes("sink")) expect(typeof p.deliver).toBe("function");
+      if (p.capabilities.includes("source")) expect(typeof p.source?.pull).toBe("function");
     }
   });
 
@@ -132,6 +139,38 @@ describe("OAUTH_KINDS is derived, not hand-listed", () => {
   test("the catalog's oauth flag agrees with the registry", () => {
     for (const entry of INTEGRATION_CATALOG) {
       expect(entry.oauth).toBe(Boolean(PROVIDERS[entry.id as IntegrationKind].oauth));
+    }
+  });
+});
+
+describe("SOURCE_KINDS is derived, not hand-listed", () => {
+  test("capabilities and the source block agree in both directions", () => {
+    for (const kind of KINDS) {
+      const p = PROVIDERS[kind];
+      // Two ways to say the same thing is two ways to be wrong: a `source`
+      // block without the capability is invisible to the catalog, and the
+      // capability without the block is a sync that throws on its first run.
+      expect(Boolean(p.source)).toBe(p.capabilities.includes("source"));
+    }
+  });
+
+  test("it names exactly the providers that can pull", () => {
+    expect([...SOURCE_KINDS].sort()).toEqual(KINDS.filter((k) => PROVIDERS[k].source).sort());
+  });
+
+  test("every source declares the settings it will read", () => {
+    for (const kind of SOURCE_KINDS) {
+      const fields = SOURCE_SETTING_FIELDS[kind];
+      // The engine refuses any setting not declared here, so an empty list
+      // would make the provider unconfigurable rather than permissive.
+      expect(fields?.length ?? 0).toBeGreaterThan(0);
+      for (const f of fields!) {
+        expect(f.key).toBeTruthy();
+        expect(f.label).toBeTruthy();
+        // Settings are stored and returned in cleartext by contract; a secret
+        // one would be published by the sync list endpoint.
+        expect(f.secret).toBeFalsy();
+      }
     }
   });
 });

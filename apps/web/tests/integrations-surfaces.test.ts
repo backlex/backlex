@@ -159,11 +159,16 @@ describe("integrations — MCP surface", () => {
     expect(integrationsTools.map((t) => t.name).sort()).toEqual([
       "integrations.catalog",
       "integrations.connect",
+      "integrations.create_sync",
+      "integrations.delete_sync",
       "integrations.deliveries",
       "integrations.disconnect",
       "integrations.list",
       "integrations.oauth_authorize",
       "integrations.resume",
+      "integrations.run_sync",
+      "integrations.syncs",
+      "integrations.update_sync",
     ]);
   });
 

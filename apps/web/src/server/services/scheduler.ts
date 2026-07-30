@@ -23,6 +23,7 @@ const parseExpression = (
 ).parseExpression;
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 import { enqueueJob, processJobs } from "./jobs";
+import { enqueueDueSyncs } from "./integration-syncs";
 import { sweepExpiredUploads } from "./uploads";
 import { sweepStaleFormUploads } from "./form-uploads";
 import { publishDueItems, unpublishDueItems } from "./items/scheduled-publish";
@@ -302,6 +303,17 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
       }
     }),
   );
+
+  // Source integrations: enqueue a pull for every sync whose interval has
+  // elapsed. Enqueued rather than run inline so a slow provider cannot stall
+  // the tick, and so a failing pull inherits the queue's retry + backoff.
+  // Deliberately runs BEFORE processJobs so a due sync starts this tick rather
+  // than waiting for the next one.
+  try {
+    await enqueueDueSyncs(ctx);
+  } catch (e) {
+    console.error("[integration-sync] enqueue failed", e);
+  }
 
   // Durable job queue: claim + run a batch of due jobs (function handlers,
   // webhook deliveries with retry/dead-letter). Reuses the ctx built above so

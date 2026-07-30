@@ -10,6 +10,7 @@ import { findByName } from "./functions";
 import { runFunction } from "./sandbox";
 import { deliverWebhookById } from "./webhooks";
 import { deliverIntegrationById } from "./integrations";
+import { runSync } from "./integration-syncs";
 import { reconcileProvider } from "./payments";
 import { publishEvent } from "./events";
 import { recordActivity } from "./activity";
@@ -19,13 +20,15 @@ const SYSTEM_AUTH: AuthSubject = { userId: null, email: null, roles: [] };
 /** Built-in handler discriminators. `function` runs a named user function in the
  *  sandbox; `webhook.deliver` re-attempts a single outbound webhook (so webhooks
  *  inherit the queue's retry + dead-letter); `payments.reconcile` walks a
- *  payment provider's API and upserts what it finds; `agent.turn` runs one
+ *  payment provider's API and upserts what it finds; `integration.sync` pulls a
+ *  page of rows from a source integration into a collection; `agent.turn` runs one
  *  queued agent turn; `agent.distill_memory` extracts durable facts from a
  *  thread's recent transcript out of band. */
 export type JobType =
   | "function"
   | "webhook.deliver"
   | "integration.deliver"
+  | "integration.sync"
   | "agent.turn"
   | "payments.reconcile"
   | "agent.distill_memory";
@@ -288,6 +291,15 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
     // breaker in deliverOne independently pauses a target that stays dead.
     if (!out.ok) throw new Error(`integration responded ${out.status}`);
     return { status: out.status, skipped: out.skipped ?? false };
+  }
+  if (job.type === "integration.sync") {
+    const p = job.payload as { syncId?: string };
+    if (!p.syncId) throw new Error("integration.sync job missing payload.syncId");
+    // Every subsequent query in runSync is scoped by this, so a job without a
+    // tenant has nothing to scope by and must not fall through to "global".
+    if (!job.tenantId) throw new Error("integration.sync job missing tenantId");
+    const out = await runSync(ctx, job.tenantId, p.syncId);
+    return { written: out.written, pages: out.pages, complete: out.complete };
   }
   if (job.type === "payments.reconcile") {
     const p = job.payload as {

@@ -508,6 +508,12 @@ msgstr "{0} yeniden başlatıldı."
 msgid "{0} rows"
 msgstr "{0} satır"
 
+#. placeholder {0}: row.lastRowCount
+#. placeholder {1}: relativeTime(row.lastRunAt)
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "{0} rows {1}"
+msgstr "{0} satır {1}"
+
 #. placeholder {0}: r.data.failed
 #: src/client/admin/app.tsx
 msgid "{0} rows failed — see the API response for details."
@@ -1296,6 +1302,7 @@ msgid "Add choice"
 msgstr "Seçenek ekle"
 
 #: src/client/admin/add-field.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Add column"
 msgstr "Sütun ekle"
 
@@ -1383,6 +1390,10 @@ msgstr "Kaynak ekle"
 #: src/client/admin/pages/analytics.tsx
 msgid "Add step"
 msgstr "Adım ekle"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Add sync"
+msgstr "Senkron ekle"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Add to <0>~/.codex/config.toml</0> (native Streamable HTTP). Or skip the key and connect over OAuth above with <1>codex mcp login</1>."
@@ -1826,8 +1837,12 @@ msgid "Appearance"
 msgstr "Görünüm"
 
 #: src/client/admin/pages/integrations.tsx
-msgid "Append data events to a Notion page. Connected with OAuth."
-msgstr "Veri olaylarını bir Notion sayfasına ekler. OAuth ile bağlanır."
+msgid "Append data events to a Notion page, or pull a database into a collection."
+msgstr "Veri olaylarını bir Notion sayfasına ekler ya da bir veritabanını koleksiyona çeker."
+
+#: src/client/admin/pages/integrations.tsx
+#~ msgid "Append data events to a Notion page. Connected with OAuth."
+#~ msgstr "Veri olaylarını bir Notion sayfasına ekler. OAuth ile bağlanır."
 
 #: src/client/admin/parity/database.tsx
 msgid "applied"
@@ -2477,6 +2492,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/payments.tsx
@@ -3180,6 +3196,10 @@ msgstr "Bir <0>ajan</0> bağlayın."
 #~ msgid "Connect an MCP client"
 #~ msgstr "Bir MCP istemcisi bağlayın"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Connect Google Sheets, Airtable or Notion above, authorize it, then schedule a pull."
+msgstr "Yukarıdan Google Sheets, Airtable veya Notion bağlayın, yetkilendirin, sonra çekimi zamanlayın."
+
 #: src/client/pages/api-keys.tsx
 msgid "Connect MCP"
 msgstr "MCP'yi bağla"
@@ -3667,6 +3687,10 @@ msgstr "Oda oluştur"
 msgid "Create share link"
 msgstr "Paylaşım bağlantısı oluştur"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Create sync"
+msgstr "Senkronu oluştur"
+
 #: src/client/admin/extras.tsx
 msgid "Create the first row in <0>{tableName}</0> via the API or use the New row button."
 msgstr "API aracılığıyla <0>{tableName}</0> tablosuna ilk satırı ekleyin veya Yeni satır düğmesini kullanın."
@@ -3865,6 +3889,7 @@ msgstr "Özel…"
 msgid "Customize…"
 msgstr "Özelleştir…"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Daily"
@@ -3902,6 +3927,10 @@ msgstr "Veri"
 #: src/client/admin/parity/insights.tsx
 msgid "Data scope"
 msgstr "Veri kapsamı"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Data syncs"
+msgstr "Veri senkronları"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/database.tsx
@@ -4034,6 +4063,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/sync-hooks-card.tsx
@@ -4366,6 +4396,10 @@ msgstr "Kaydedilmemiş değişiklikler atılsın mı?"
 #: src/client/admin/pages/payments.tsx
 msgid "Disconnect"
 msgstr "Bağlantıyı kes"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Disconnected source"
+msgstr "Bağlantısı kesilmiş kaynak"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Disconnecting…"
@@ -5223,6 +5257,36 @@ msgstr "Olay / ziyaretçi"
 msgid "Events per day"
 msgstr "Günlük olay sayısı"
 
+#. placeholder {0}: m / 60
+#: src/client/admin/pages/integration-syncs-card.tsx
+#~ msgid "Every {0} hours"
+#~ msgstr "{0} saatte bir"
+
+#. placeholder {0}: row.intervalMinutes
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "every {0} min"
+msgstr "{0} dakikada bir"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+#~ msgid "Every {m} minutes"
+#~ msgstr "{m} dakikada bir"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Every 12 hours"
+msgstr "12 saatte bir"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Every 15 minutes"
+msgstr "15 dakikada bir"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Every 3 hours"
+msgstr "3 saatte bir"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Every 30 minutes"
+msgstr "30 dakikada bir"
+
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 msgstr "İzinlere bağlı olarak her MCP aracı çağrılabilir. Bu anahtarı bir izin listesiyle daraltmak için aşağıdan bir araç işaretleyin."
@@ -5390,6 +5454,10 @@ msgstr "Eklentiler"
 msgid "Extensions add sandboxed admin panels, custom field editors, and server hooks. Install any npm package that ships a backlex-extension.json manifest."
 msgstr "Eklentiler; korumalı yönetim panelleri, özel alan editörleri ve sunucu kancaları ekler. backlex-extension.json manifestosu içeren herhangi bir npm paketini kurabilirsiniz."
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "External column"
+msgstr "Dış sütun"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "External identity rows are kept as an audit trail."
 msgstr "Harici kimlik satırları denetim kaydı olarak tutulur."
@@ -5496,6 +5564,7 @@ msgstr "alan"
 #: src/client/admin/add-field.tsx
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/edit-field.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Field"
@@ -5517,6 +5586,10 @@ msgstr "\"{0}\" alanı güncellendi. Arama indeksi yeniden oluşturuldu ({2} sat
 #: src/client/admin/pages/extensions.tsx
 msgid "field editors"
 msgstr "alan editörü"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Field mapping"
+msgstr "Alan eşleme"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Field name"
@@ -6273,6 +6346,10 @@ msgstr "kanca"
 #~ msgid "Hosted Claude"
 #~ msgstr "Barındırılan Claude"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Hourly"
+msgstr "Saatlik"
+
 #: src/client/admin/pages/agents.tsx
 msgid "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
 msgstr "Modelin her adımda ne kadar düşüneceği. Düşük efor daha az düşünme token'ı ve daha az araç çağrısı demek — daha ucuz ve hızlı, daha az kapsamlı. Desteklemeyen modellerde yok sayılır."
@@ -6591,6 +6668,10 @@ msgstr "Dahili sütun — saklanır ve yazılabilir, ancak API tarafından asla 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Internal description for teammates."
 msgstr "Ekip arkadaşları için dahili açıklama."
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Into collection"
+msgstr "Hedef koleksiyon"
 
 #: src/client/pages/graphql.tsx
 msgid "Introspection-driven explorer for /api/graphql. Schema is generated from your workspace's collections at request time — click a query or mutation in the tree to drop a runnable snippet into the editor."
@@ -7572,6 +7653,10 @@ msgstr "Manuel giriş"
 msgid "manual invoke via POST /api/functions/:name/invoke"
 msgstr "POST /api/functions/:name/invoke aracılığıyla manuel çağrı"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Manual only"
+msgstr "Yalnızca elle"
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Many (relation_many)"
 msgstr "Çoklu (relation_many)"
@@ -7850,6 +7935,10 @@ msgstr "daha fazla"
 msgid "More actions"
 msgstr "Diğer işlemler"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "More pages pending"
+msgstr "Bekleyen sayfalar var"
+
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "More save options"
@@ -8038,6 +8127,10 @@ msgstr "ağ hatası"
 msgid "Never (no expiry)"
 msgstr "Hiçbir zaman (son kullanma tarihi yok)"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "never run"
+msgstr "hiç çalışmadı"
+
 #: src/client/admin/parity/scim-card.tsx
 msgid "never used"
 msgstr "hiç kullanılmadı"
@@ -8092,6 +8185,10 @@ msgstr "Yeni koleksiyon"
 #: src/client/admin/parity/insights.tsx
 msgid "New dashboard"
 msgstr "Yeni pano"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "New data sync"
+msgstr "Yeni veri senkronu"
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "New flag"
@@ -8856,6 +8953,10 @@ msgstr "Henüz anlık görüntü yok"
 msgid "No social providers are enabled for this workspace."
 msgstr "Bu çalışma alanı için sosyal sağlayıcı etkin değil."
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "No source connected"
+msgstr "Bağlı kaynak yok"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "No sources yet"
 msgstr "Henüz kaynak yok"
@@ -8871,6 +8972,10 @@ msgstr "Henüz gönderim yok"
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "No sync hooks"
 msgstr "Sync hook yok"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "No syncs"
+msgstr "Senkron yok"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "No tables found in this source."
@@ -9292,6 +9397,10 @@ msgstr "Yalnızca eksik anahtarları çevir"
 msgid "Only what I select"
 msgstr "Yalnızca seçtiklerim"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Only when I ask"
+msgstr "Yalnızca istediğimde"
+
 #: src/client/admin/extras.tsx
 msgid "open"
 msgstr "aç"
@@ -9634,6 +9743,7 @@ msgstr "Yollar"
 msgid "Pattern (regex)"
 msgstr "Desen (regex)"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Pause"
 msgstr "Duraklat"
@@ -9643,6 +9753,7 @@ msgstr "Duraklat"
 msgid "paused"
 msgstr "duraklatıldı"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Paused"
@@ -9792,6 +9903,7 @@ msgstr "Fotoğrafçı, tasarımcı, kaynak…"
 msgid "physical c_<slug> tables"
 msgstr "fiziksel c_<slug> tabloları"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/search-playground.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "Pick a collection"
@@ -9801,6 +9913,7 @@ msgstr "Bir koleksiyon seçin"
 msgid "Pick a collection and an aggregate below — no query to write."
 msgstr "Aşağıdan bir koleksiyon ve toplam seçin — yazılacak sorgu yok."
 
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Pick a collection first"
 msgstr "Önce bir koleksiyon seçin"
@@ -10132,6 +10245,10 @@ msgstr "PNG, JPG veya WebP. Başlıkta ve yazar görünümlerinde gösterilir."
 msgid "PNG, JPG, SVG or WebP — square images display best. Replaces any previous upload."
 msgstr "PNG, JPG, SVG veya WebP — kare görseller en iyi görüntülenir. Önceki yüklemeyi değiştirir."
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Point a connected source at a collection and pick how often it should run."
+msgstr "Bağlı bir kaynağı bir koleksiyona yöneltin ve ne sıklıkla çalışacağını seçin."
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Policy"
 msgstr "Politika"
@@ -10437,6 +10554,33 @@ msgstr "yalnızca yayınlananlar"
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Published."
 #~ msgstr "Yayınlandı."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Pull a spreadsheet into a collection on a schedule."
+msgstr "Bir e-tabloyu zamanlanmış olarak koleksiyona çeker."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Pull an Airtable table into a collection on a schedule."
+msgstr "Bir Airtable tablosunu zamanlanmış olarak koleksiyona çeker."
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Pull rows from a connected source into a collection on a schedule. Pulled rows update in place and never overwrite rows created here."
+msgstr "Bağlı bir kaynaktan satırları zamanlanmış olarak bir koleksiyona çeker. Çekilen satırlar yerinde güncellenir ve burada oluşturulan satırların üzerine asla yazmaz."
+
+#. placeholder {0}: res.data.written
+#. placeholder {1}: row.collection
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Pulled {0} rows into {1}."
+msgstr "{1} koleksiyonuna {0} satır çekildi."
+
+#. placeholder {0}: res.data.written
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Pulled {0} rows; more pages resume on the schedule."
+msgstr "{0} satır çekildi; kalan sayfalar zamanlamada devam edecek."
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Pulling…"
+msgstr "Çekiliyor…"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Push"
@@ -10907,6 +11051,10 @@ msgstr "{tag} etiketini kaldır"
 msgid "Remove choice"
 msgstr "Seçeneği kaldır"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Remove column"
+msgstr "Sütunu kaldır"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 #: src/client/admin/pages/forms.tsx
@@ -11249,6 +11397,7 @@ msgstr "sürdürülebilir"
 #~ msgstr "<0>GET /mcp</0> üzerinde sürdürülebilir SSE"
 
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -11539,6 +11688,10 @@ msgstr "{r} tarafından oluşturulan satırlar bu kuralı karşılamalıdır."
 msgid "Rows in collection"
 msgstr "Koleksiyondaki satırlar"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Rows land in an ordinary collection, so permissions, querying and exports apply to them like any other data."
+msgstr "Satırlar sıradan bir koleksiyona düşer; izinler, sorgulama ve dışa aktarma diğer veriler gibi geçerlidir."
+
 #. placeholder {0}: form.collection
 #: src/client/admin/pages/forms.tsx
 msgid "rows live in <0>{0}</0>"
@@ -11560,6 +11713,7 @@ msgstr "kurallar"
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Run"
 msgstr "Çalıştır"
@@ -11589,6 +11743,7 @@ msgid "Run hook"
 msgstr "Kanca çalıştır"
 
 #: src/client/admin/pages/flows.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Run now"
 msgstr "Şimdi çalıştır"
 
@@ -11651,6 +11806,10 @@ msgstr "Çalışmalar"
 #: src/client/admin/flow-builder.tsx
 msgid "runs daily at 09:00 UTC"
 msgstr "her gün 09:00 UTC'de çalışır"
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "runs only when you ask"
+msgstr "yalnızca istediğinizde çalışır"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Runtime"
@@ -13010,6 +13169,7 @@ msgstr "Sıralanan"
 
 #: src/client/admin/item-form.tsx
 #: src/client/admin/pages/extensions.tsx
+#: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Source"
 msgstr "Kaynak"
 
@@ -13408,10 +13568,18 @@ msgstr "Son kullanıcıyı askıya al"
 msgid "suspended"
 msgstr "askıya alındı"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Sync created. Run it now to check the mapping."
+msgstr "Senkron oluşturuldu. Eşlemeyi doğrulamak için şimdi çalıştırın."
+
 #. placeholder {0}: entry.label
 #: src/client/admin/pages/payments.tsx
 msgid "Sync customers, subscriptions, invoices and payments from {0}."
 msgstr "{0} üzerindeki müşterileri, abonelikleri, faturaları ve ödemeleri eşitleyin."
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "Sync deleted. Rows already pulled stay in the collection."
+msgstr "Senkron silindi. Daha önce çekilen satırlar koleksiyonda kalır."
 
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Sync hooks"
@@ -14502,6 +14670,10 @@ msgstr "Bağlantıyı kaldır"
 #: src/client/admin/account-page.tsx
 msgid "Unlinked {0}."
 msgstr "{0} bağlantısı kaldırıldı."
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "unmapped columns are dropped"
+msgstr "eşlenmemiş sütunlar atılır"
 
 #: src/client/admin/pages/usage.tsx
 msgid "unmetered"

@@ -2906,3 +2906,51 @@ export const integrationOauthStates = pgTable(
     index("integration_oauth_states_expires_idx").on(t.expiresAt),
   ],
 );
+
+/**
+ * One scheduled pull from a source integration into a collection.
+ *
+ * Separate from `integrations` because one connection legitimately feeds
+ * several collections — an Airtable base has many tables, a spreadsheet many
+ * sheets. Pinning it to the connection row would cap a workspace at one sync
+ * per provider, which is a limit we would have to undo immediately.
+ *
+ * `cursor` is the provider's own resume token. It is written back into the next
+ * request, so it is treated as untrusted on the way out, not just on the way
+ * in. Mirror of the SQLite table.
+ */
+export const integrationSyncs = pgTable(
+  "integration_syncs",
+  {
+    id: text("id").primaryKey(),
+    integrationId: text("integration_id").notNull(),
+    /** Never null: an instance-wide sync would write another tenant's rows. */
+    tenantId: text("tenant_id").notNull(),
+    /** Collection slug the rows land in. Must be managed, never adopted. */
+    collection: text("collection").notNull(),
+    /** Which spreadsheet / base / database — per-sync, never secret. */
+    settings: jsonb("settings").$type<Record<string, unknown>>().notNull().default({}),
+    /** External field name → collection field name. Unmapped fields are dropped. */
+    mapping: jsonb("mapping").$type<Record<string, string>>().notNull().default({}),
+    /** How often the scheduler runs it. 0 = manual only. */
+    intervalMinutes: integer("interval_minutes").notNull().default(60),
+    enabled: boolean("enabled").notNull().default(true),
+    /** Provider resume token; null starts from the beginning. */
+    cursor: text("cursor"),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    /** Rows written by the most recent completed run. */
+    lastRowCount: integer("last_row_count").notNull().default(0),
+    lastError: text("last_error"),
+    /** Drives the same auto-disable breaker the delivery path uses. */
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    disabledReason: text("disabled_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("integration_syncs_tenant_idx").on(t.tenantId),
+    index("integration_syncs_integration_idx").on(t.integrationId),
+    // The scheduler sweeps "enabled and due", so it reads both together.
+    index("integration_syncs_due_idx").on(t.enabled, t.lastRunAt),
+  ],
+);

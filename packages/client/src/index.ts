@@ -1088,6 +1088,39 @@ export interface IntegrationProvider {
   oauth: boolean;
 }
 
+/** A scheduled pull from a source integration into a collection. */
+export interface IntegrationSync {
+  id: string;
+  integrationId: string;
+  collection: string;
+  /** Which spreadsheet / base / database. Non-secret by contract. */
+  settings: Record<string, unknown>;
+  /** External field name → collection field name. */
+  mapping: Record<string, string>;
+  /** 0 = manual only. */
+  intervalMinutes: number;
+  enabled: boolean;
+  /** A run is part-way through more pages. The token itself is not exposed. */
+  resuming: boolean;
+  lastRunAt: number | string | null;
+  lastRowCount: number;
+  lastError: string | null;
+  consecutiveFailures: number;
+  disabledReason: string | null;
+  createdAt: number | string | null;
+}
+
+export interface IntegrationSyncInput {
+  integrationId: string;
+  /** Managed collection slug. Adopted tables are refused. */
+  collection: string;
+  settings?: Record<string, unknown>;
+  /** At least one entry; every target must be a writable field. */
+  mapping: Record<string, string>;
+  intervalMinutes?: number;
+  enabled?: boolean;
+}
+
 export interface IntegrationsClient {
   /** Providers available to connect, with their config field schema. */
   catalog: () => Promise<{
@@ -1121,6 +1154,21 @@ export interface IntegrationsClient {
    * in as the same admin — so this returns the URL rather than following it.
    */
   oauthAuthorize: (id: string) => Promise<{ data: { url: string } }>;
+  /** Scheduled pulls, optionally filtered to one connection. */
+  syncs: (opts?: { integrationId?: string }) => Promise<{ data: IntegrationSync[] }>;
+  /** Create a scheduled pull into a collection. */
+  createSync: (input: IntegrationSyncInput) => Promise<{ data: IntegrationSync }>;
+  /** Patch a sync. Changing `settings` resets the resume cursor. */
+  updateSync: (
+    id: string,
+    patch: Partial<Omit<IntegrationSyncInput, "integrationId" | "collection">>,
+  ) => Promise<{ data: IntegrationSync }>;
+  deleteSync: (id: string) => Promise<{ ok: boolean }>;
+  /**
+   * Run one sync now and report what landed. Bounded to 20 pages / 2000 rows;
+   * a longer import resumes on the schedule.
+   */
+  runSync: (id: string) => Promise<{ data: { written: number; pages: number; complete: boolean } }>;
 }
 
 /** A blocking hook: runs before a write and decides whether it happens. */
@@ -3102,6 +3150,26 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     },
     resume: (id) => request<{ data: Integration }>("POST", `${integ(id)}/resume`, {}),
     oauthAuthorize: (id) => request<{ data: { url: string } }>("POST", `${integ(id)}/oauth/authorize`, {}),
+    syncs: (opts) => {
+      const qs = opts?.integrationId ? `?integrationId=${encodeURIComponent(opts.integrationId)}` : "";
+      return request<{ data: IntegrationSync[] }>("GET", `/api/admin/integrations/syncs${qs}`);
+    },
+    createSync: (input) =>
+      request<{ data: IntegrationSync }>("POST", "/api/admin/integrations/syncs", input),
+    updateSync: (id, patch) =>
+      request<{ data: IntegrationSync }>(
+        "PATCH",
+        `/api/admin/integrations/syncs/${encodeURIComponent(id)}`,
+        patch,
+      ),
+    deleteSync: (id) =>
+      request<{ ok: boolean }>("DELETE", `/api/admin/integrations/syncs/${encodeURIComponent(id)}`),
+    runSync: (id) =>
+      request<{ data: { written: number; pages: number; complete: boolean } }>(
+        "POST",
+        `/api/admin/integrations/syncs/${encodeURIComponent(id)}/run`,
+        {},
+      ),
   };
 
   // Sync hooks. Admin-scoped over `/api/admin/sync-hooks`. Signing secrets only

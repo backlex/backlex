@@ -159,6 +159,127 @@ export const startIntegrationOAuthTool: McpTool = {
   },
 };
 
+const SYNCS = "/api/admin/integrations/syncs";
+
+export const listIntegrationSyncsTool: McpTool = {
+  name: "integrations.syncs",
+  description:
+    "List scheduled pulls from source integrations into collections, with health: when each last ran, " +
+    "how many rows landed, the last error, and whether the breaker paused it. Use this to answer \"why is " +
+    "my collection not updating\".",
+  inputSchema: {
+    type: "object",
+    properties: { integrationId: { type: "string", description: "Filter to one connection." } },
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const filter = args.integrationId ? `?integrationId=${encodeURIComponent(String(args.integrationId))}` : "";
+    const res = await ctx.fetchInternal(`${SYNCS}${filter}`);
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const createIntegrationSyncTool: McpTool = {
+  name: "integrations.create_sync",
+  description:
+    "Schedule a pull from a source integration into a collection. `settings` keys come from the catalog's " +
+    "`sourceSettings` for that provider — anything else is rejected. `mapping` is external field name → " +
+    "collection field name, and every target must be a writable field on a MANAGED collection (adopted " +
+    "tables are refused). Pulled rows get a namespaced primary key, so they never overwrite rows a person " +
+    "created. Set `intervalMinutes: 0` for manual-only.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      integrationId: { type: "string" },
+      collection: { type: "string", description: "Managed collection slug." },
+      settings: { type: "object", additionalProperties: true },
+      mapping: {
+        type: "object",
+        additionalProperties: { type: "string" },
+        description: "External field → collection field. At least one entry.",
+      },
+      intervalMinutes: { type: "number", description: "0 = manual only. Default 60. Max 10080." },
+      enabled: { type: "boolean" },
+    },
+    required: ["integrationId", "collection", "mapping"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const res = await ctx.fetchInternal(SYNCS, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(args),
+    });
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const updateIntegrationSyncTool: McpTool = {
+  name: "integrations.update_sync",
+  description:
+    "Patch a sync. Changing `settings` resets the resume cursor, because a row offset from one spreadsheet " +
+    "points at unrelated rows in another. Re-enabling clears the failure counter.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      settings: { type: "object", additionalProperties: true },
+      mapping: { type: "object", additionalProperties: { type: "string" } },
+      intervalMinutes: { type: "number" },
+      enabled: { type: "boolean" },
+    },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const { id, ...patch } = args as { id?: string } & Record<string, unknown>;
+    if (!id) throw new Error("VALIDATION: id is required");
+    const res = await ctx.fetchInternal(`${SYNCS}/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const deleteIntegrationSyncTool: McpTool = {
+  name: "integrations.delete_sync",
+  description: "Delete a sync. Rows already pulled stay in the collection; only the schedule goes.",
+  inputSchema: {
+    type: "object",
+    properties: { id: { type: "string" } },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.id ?? "");
+    if (!id) throw new Error("VALIDATION: id is required");
+    const res = await ctx.fetchInternal(`${SYNCS}/${encodeURIComponent(id)}`, { method: "DELETE" });
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const runIntegrationSyncTool: McpTool = {
+  name: "integrations.run_sync",
+  description:
+    "Run one sync now and report what landed. Use it after creating a sync to see the first pull succeed " +
+    "or fail with a reason, rather than waiting for the schedule. Bounded to 20 pages / 2000 rows; " +
+    "`complete: false` means more pages are pending and the next run resumes where this one stopped.",
+  inputSchema: {
+    type: "object",
+    properties: { id: { type: "string" } },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.id ?? "");
+    if (!id) throw new Error("VALIDATION: id is required");
+    const res = await ctx.fetchInternal(`${SYNCS}/${encodeURIComponent(id)}/run`, { method: "POST" });
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const integrationsTools: McpTool[] = [
   integrationCatalogTool,
   listIntegrationsTool,
@@ -167,4 +288,9 @@ export const integrationsTools: McpTool[] = [
   integrationDeliveriesTool,
   resumeIntegrationTool,
   startIntegrationOAuthTool,
+  listIntegrationSyncsTool,
+  createIntegrationSyncTool,
+  updateIntegrationSyncTool,
+  deleteIntegrationSyncTool,
+  runIntegrationSyncTool,
 ];

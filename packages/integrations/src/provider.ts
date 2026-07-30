@@ -117,6 +117,64 @@ export interface IntegrationOAuth {
   keepFromTokenResponse?: readonly string[];
 }
 
+/** One external record, as a source provider hands it over. */
+export interface SourceRecord {
+  /**
+   * The provider's own id for this row. Stable across pulls — it is what makes
+   * a re-pull an update rather than a duplicate. The engine namespaces it, so a
+   * provider must NOT try to make it globally unique itself.
+   */
+  externalId: string;
+  /** Raw external field names → values. Mapped to collection fields by config. */
+  data: Record<string, unknown>;
+}
+
+/** One page of a pull. */
+export interface SourcePullPage {
+  records: SourceRecord[];
+  /**
+   * Opaque resume token, echoed back on the next call. `null` ends the run.
+   * It round-trips through the database and back into a request, so it must be
+   * short and must never be interpolated into a URL path by the provider.
+   */
+  cursor: string | null;
+}
+
+/** What a source provider's `pull` receives. */
+export interface SourcePullContext {
+  /** Connection config — credentials, already decrypted. */
+  config: Record<string, unknown>;
+  /** Per-sync settings (which spreadsheet, which table). Never secret. */
+  settings: Record<string, unknown>;
+  /** Resume token from the previous page, or `null` on the first. */
+  cursor: string | null;
+  /** Upper bound on records this page may return. */
+  limit: number;
+  fetch: FetchLike;
+  /** Non-empty string from `config`, else `null`. */
+  str(key: string): string | null;
+  /** Non-empty string from `settings`, else `null`. */
+  setting(key: string): string | null;
+}
+
+/**
+ * A provider that pulls external rows into a collection.
+ *
+ * `pull` must treat everything it reads — settings and the cursor alike — as
+ * untrusted: they reach it from an admin form and from the provider's own
+ * previous answer. Build URLs with `encodeURIComponent`, and keep the cursor in
+ * a query parameter rather than a path segment.
+ */
+export interface IntegrationSource {
+  /** Per-sync config the admin fills in when pointing a sync at a collection. */
+  settingFields: readonly IntegrationConfigField[];
+  /**
+   * Fetch one page. Throwing marks the run failed and it is retried with
+   * backoff; the cursor is only advanced once a page lands.
+   */
+  pull(ctx: SourcePullContext): Promise<SourcePullPage>;
+}
+
 /**
  * A single integration provider. `deliver` returns `null` when the stored
  * config is missing/invalid; the dispatcher turns that (and any thrown error)
@@ -131,6 +189,9 @@ export interface IntegrationProvider<Id extends string = string> {
   configFields: readonly IntegrationConfigField[];
   /** Present only on providers connected via OAuth rather than a pasted key. */
   oauth?: IntegrationOAuth;
+  /** Present only on providers that can pull rows in. Implies `source` in
+   *  `capabilities`; the registry test enforces the two agree. */
+  source?: IntegrationSource;
   deliver?(ctx: DeliverContext): Promise<DeliveryOutcome | null>;
 }
 

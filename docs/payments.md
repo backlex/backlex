@@ -1,6 +1,6 @@
 ---
 title: Payments
-description: Connect Stripe, Polar or Lemon Squeezy and mirror customers, subscriptions, invoices and payments into your collections.
+description: Connect Stripe, Polar, Lemon Squeezy, Paddle or PayTR and mirror customers, subscriptions, invoices and payments into your collections.
 ---
 
 Connect a payment provider once, and backlex keeps a mirror of its billing
@@ -16,7 +16,15 @@ Two mechanisms keep the mirror honest:
   repairs anything a missed delivery left stale. Runs every six hours, and on
   demand.
 
-Supported providers: **Stripe**, **Polar**, **Lemon Squeezy**.
+Supported providers: **Stripe**, **Polar**, **Lemon Squeezy**, **Paddle**, **PayTR**.
+
+Providers come in two shapes, and the difference decides what backlex can do
+with them:
+
+| Mode | Providers | Behaviour |
+|---|---|---|
+| `webhook` | Stripe, Polar, Lemon Squeezy, Paddle | Signed events **and** a listable object catalog, so backlex can also **reconcile** by walking the API |
+| `callback` | PayTR | Posts a form-encoded result per payment; there is no catalog, so reconcile is refused with a reason rather than reporting a sync that synced nothing |
 
 ## Why collections, not system tables
 
@@ -44,6 +52,8 @@ Only the connection itself (`payment_providers`) and the delivery log
 | Stripe | Secret (or restricted) API key + the endpoint's **webhook signing secret** (`whsec_…`) |
 | Polar | Organization access token + webhook secret. Set `server: sandbox` to point at the sandbox API |
 | Lemon Squeezy | API key + the signing secret you set on the webhook. Optional `storeId` scopes the reconcile pull to one store |
+| Paddle | API key (`pdl_…`) + the **notification secret** (`pdl_ntfset_…`) shown once when you create the destination. Set `environment: sandbox` for the sandbox API |
+| PayTR | Merchant ID, **merchant key** and **merchant salt** from the PayTR panel — the key and salt together sign the callback |
 
 For Stripe a restricted key with **read** access to customers, subscriptions,
 invoices and charges is enough — backlex never writes to the provider.
@@ -253,3 +263,57 @@ The provider can't reach `localhost`, so use the provider's CLI tunnel
 (`stripe listen --forward-to localhost:5173/api/payments/webhook/pwh_…`) or any
 tunnel of your choice. The signing secret that tunnel prints is the one to
 paste into the connect dialog — it differs from the dashboard endpoint's.
+
+## Paddle is a merchant of record
+
+Paddle is not a gateway — it is the **seller**, which is the reason to pick it.
+It determines and remits VAT/sales tax itself, so a Paddle-backed product does
+not need a separate tax engine (Avalara, TaxJar, Stripe Tax) to sell
+internationally.
+
+Two consequences show up in the synced data:
+
+- **Amounts are what Paddle collected**, not vendor net. `payment_invoices.tax`
+  is populated separately because it is the figure Paddle remits, not revenue.
+- **Money arrives as strings** of minor units (`"11988"`), because Paddle
+  refuses to round-trip currency through a float. backlex coerces to numbers on
+  the way in — storing the string would break every aggregate over the column.
+
+One Paddle *transaction* backs both an invoice row and a payment row; their ids
+are distinct so the second upsert cannot overwrite the first. The reconcile path
+runs pulled objects through the same normalizer as webhook events, so a
+reconciled row and a webhook row are byte-identical.
+
+## PayTR: callback-style, and the `OK` requirement
+
+PayTR posts `application/x-www-form-urlencoded` to the callback URL and signs
+specific **fields** rather than the body:
+
+```
+hash = base64(HMAC-SHA256(merchant_oid + merchant_salt + status + total_amount, merchant_key))
+```
+
+Two things are easy to get wrong and both fail quietly:
+
+- **The endpoint must answer with the literal body `OK`.** Anything else —
+  including a perfectly good JSON success — is read as a failure. PayTR retries
+  on a schedule and eventually disables the merchant's notification URL, while
+  the logs on your side look entirely healthy. backlex sends the right ack
+  automatically.
+- **A repeated signed field is refused.** `merchant_oid`, `status` and
+  `total_amount` may each appear once. Without that rule a genuine
+  `status=failed` callback could be replayed with `&status=success` appended:
+  the hash still covers the first value while a naive parser records the last.
+
+`merchant_oid` is your own order id and doubles as the dedupe key, since PayTR
+re-sends until it gets `OK`. Amounts are already in kuruş and are stored as-is.
+
+**Reconcile does not apply.** PayTR exposes no object catalog, so
+`POST /providers/:id/sync` returns an explanatory error instead of pretending.
+
+:::note
+iyzico is not supported yet. Its callback carries a `token` and authenticity
+comes from calling iyzico back to retrieve the payment rather than from a hash
+on the request, which needs an outbound call inside the receive path. A guessed
+signature format would be worse than none.
+:::

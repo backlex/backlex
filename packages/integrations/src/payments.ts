@@ -23,6 +23,7 @@ export const PAYMENT_PROVIDERS = [
   "stripe",
   "polar",
   "lemonsqueezy",
+  "paddle",
   "paytr",
 ] as const;
 export type PaymentProvider = (typeof PAYMENT_PROVIDERS)[number];
@@ -35,6 +36,7 @@ export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
   stripe: "Stripe",
   polar: "Polar",
   lemonsqueezy: "Lemon Squeezy",
+  paddle: "Paddle",
   paytr: "PayTR",
 };
 
@@ -65,6 +67,9 @@ export const PAYMENT_PROVIDER_MODES: Record<PaymentProvider, PaymentProviderMode
   stripe: "webhook",
   polar: "webhook",
   lemonsqueezy: "webhook",
+  // Paddle is a merchant of record: it pushes signed events AND exposes a
+  // paginated catalog, so it fits the webhook shape exactly.
+  paddle: "webhook",
   paytr: "callback",
 };
 
@@ -102,6 +107,7 @@ export const PAYMENT_ACK: Record<PaymentProvider, { body: string; contentType: s
   stripe: null,
   polar: null,
   lemonsqueezy: null,
+  paddle: null,
   paytr: { body: "OK", contentType: "text/plain; charset=utf-8" },
 };
 
@@ -160,6 +166,28 @@ export const PAYMENT_PROVIDER_FIELDS: Record<PaymentProvider, PaymentConfigField
       hint: "Scopes the reconcile pull to one store. Leave blank to sync every store on the account.",
     },
   ],
+  paddle: [
+    {
+      key: "apiKey",
+      label: "API key",
+      placeholder: "pdl_live_… or pdl_sdbx_…",
+      secret: true,
+      hint: "A read-only key is enough — reconcile only lists customers, subscriptions and transactions.",
+    },
+    {
+      key: "webhookSecret",
+      label: "Notification secret",
+      placeholder: "pdl_ntfset_…",
+      secret: true,
+      hint: "Shown once when you create the notification destination in Paddle.",
+    },
+    {
+      key: "environment",
+      label: "Environment",
+      choices: ["production", "sandbox"],
+      hint: "Sandbox points at sandbox-api.paddle.com.",
+    },
+  ],
   paytr: [
     { key: "merchantId", label: "Merchant ID", placeholder: "123456" },
     { key: "merchantKey", label: "Merchant key", placeholder: "From the PayTR panel", secret: true },
@@ -172,6 +200,7 @@ export const PAYMENT_SECRET_KEYS: Record<PaymentProvider, string[]> = {
   stripe: ["apiKey", "webhookSecret"],
   polar: ["apiKey", "webhookSecret"],
   lemonsqueezy: ["apiKey", "webhookSecret"],
+  paddle: ["apiKey", "webhookSecret"],
   // A callback provider signs with its merchant credential rather than a
   // separate webhook secret, so the signing material IS that credential.
   paytr: ["merchantKey", "merchantSalt"],
@@ -374,6 +403,35 @@ export async function verifyPaymentSignature(
     const expected = toHex(await hmac(enc.encode(input.secret), `${timestamp}.${input.rawBody}`));
     // Stripe sends every active endpoint secret's signature during a rotation,
     // so any one matching v1 is a pass.
+    return candidates.some((c) => timingSafeEqual(c, expected))
+      ? { ok: true }
+      : { ok: false, reason: "signature_mismatch" };
+  }
+
+  if (provider === "paddle") {
+    // `Paddle-Signature: ts=<unix>;h1=<hex>` — HMAC-SHA256 over `ts:rawBody`
+    // keyed by the notification secret. Same shape as Stripe's, different
+    // separator, and the secret is used raw (no base64 decode).
+    const header = headerOf(input.headers, "paddle-signature");
+    if (!header) return { ok: false, reason: "missing_signature" };
+    let timestamp = "";
+    const candidates: string[] = [];
+    for (const part of header.split(";")) {
+      const eq = part.indexOf("=");
+      if (eq < 0) continue;
+      const k = part.slice(0, eq).trim();
+      const v = part.slice(eq + 1).trim();
+      if (k === "ts") timestamp = v;
+      else if (k === "h1") candidates.push(v);
+    }
+    if (!timestamp || candidates.length === 0) return { ok: false, reason: "malformed_signature" };
+    const ts = Number(timestamp);
+    if (!Number.isFinite(ts)) return { ok: false, reason: "malformed_signature" };
+    // Without the window a captured event could be replayed indefinitely.
+    if (Math.abs(nowSec - ts) > toleranceSec) {
+      return { ok: false, reason: "timestamp_out_of_tolerance" };
+    }
+    const expected = toHex(await hmac(enc.encode(input.secret), `${timestamp}:${input.rawBody}`));
     return candidates.some((c) => timingSafeEqual(c, expected))
       ? { ok: true }
       : { ok: false, reason: "signature_mismatch" };
@@ -906,6 +964,131 @@ const normalizeLemonSqueezy = (
  * the event (so the log is complete) but writes nothing.
  */
 /**
+ * Paddle Billing (v2) event → normalized records.
+ *
+ * Paddle is a **merchant of record**: it is the seller, so it owns tax
+ * determination and remittance. That is the whole reason to support it — it
+ * removes the need for a separate tax engine. It also means the amounts here
+ * are what Paddle collected, not what the vendor nets.
+ *
+ * Envelope: `{ event_id, event_type, occurred_at, data: {...} }`. Money is a
+ * STRING of minor units (`"1999"`), not a number, because Paddle refuses to
+ * round-trip currency through a float — so every amount goes through `num()`
+ * rather than being read directly.
+ */
+const normalizePaddle = (
+  body: Record<string, unknown>,
+  headerEventId: string | null,
+): NormalizedPaymentEvent => {
+  const eventId = str(body.event_id) ?? headerEventId ?? "";
+  const type = str(body.event_type) ?? "";
+  const d = obj(body.data) ?? {};
+  const id = str(d.id);
+  const records: PaymentRecord[] = [];
+
+  if (id) {
+    if (type.startsWith("customer.")) {
+      records.push({
+        kind: "customer",
+        row: {
+          id: paymentRowId("paddle", id),
+          provider: "paddle",
+          external_id: id,
+          email: str(d.email),
+          name: str(d.name),
+          currency: null,
+          delinquent: null,
+          metadata: meta(d.custom_data),
+          source_created_at: isoToMs(d.created_at),
+        },
+      });
+    } else if (type.startsWith("subscription.")) {
+      const items = Array.isArray(d.items) ? d.items : [];
+      const first = obj(items[0]);
+      const price = obj(first?.price);
+      const unit = obj(price?.unit_price);
+      const period = obj(price?.billing_cycle) ?? obj(d.billing_cycle);
+      const billing = obj(d.current_billing_period);
+      records.push({
+        kind: "subscription",
+        row: {
+          id: paymentRowId("paddle", id),
+          provider: "paddle",
+          external_id: id,
+          customer: rel("paddle", d.customer_id),
+          status: str(d.status),
+          product_name: str(price?.name) ?? str(price?.description),
+          price_amount: num(unit?.amount),
+          currency: str(unit?.currency_code) ?? str(d.currency_code),
+          billing_interval: str(period?.interval),
+          quantity: num(first?.quantity),
+          current_period_start: isoToMs(billing?.starts_at),
+          current_period_end: isoToMs(billing?.ends_at),
+          cancel_at_period_end: str(d.scheduled_change) ? null : null,
+          canceled_at: isoToMs(d.canceled_at),
+          trial_end: null,
+          metadata: meta(d.custom_data),
+          source_created_at: isoToMs(d.created_at),
+        },
+      });
+    } else if (type.startsWith("transaction.")) {
+      // A Paddle transaction is the billable event: it carries both the invoice
+      // view (totals, tax) and the payment view (what was collected).
+      const details = obj(d.details);
+      const totals = obj(details?.totals);
+      records.push({
+        kind: "invoice",
+        row: {
+          id: paymentRowId("paddle", id),
+          provider: "paddle",
+          external_id: id,
+          customer: rel("paddle", d.customer_id),
+          subscription: rel("paddle", d.subscription_id),
+          number: str(d.invoice_number),
+          status: str(d.status),
+          // Paddle reports tax separately because it is the one remitting it.
+          amount_due: num(totals?.total),
+          amount_paid: num(totals?.total),
+          tax: num(totals?.tax),
+          currency: str(d.currency_code),
+          issued_at: isoToMs(d.billed_at ?? d.created_at),
+          paid_at: isoToMs(d.billed_at),
+          metadata: meta(d.custom_data),
+          source_created_at: isoToMs(d.created_at),
+        },
+      });
+      records.push({
+        kind: "payment",
+        row: {
+          id: paymentRowId("paddle", `${id}:payment`),
+          provider: "paddle",
+          external_id: `${id}:payment`,
+          customer: rel("paddle", d.customer_id),
+          invoice: rel("paddle", id),
+          amount: num(totals?.total),
+          amount_refunded: 0,
+          currency: str(d.currency_code),
+          status: str(d.status) === "completed" ? "succeeded" : str(d.status),
+          method: null,
+          failure_reason: null,
+          processed_at: isoToMs(d.billed_at),
+          metadata: meta(d.custom_data),
+        },
+      });
+    }
+  }
+
+  return {
+    eventId,
+    type,
+    // Paddle exposes the environment on the notification, not the event body;
+    // absent means we cannot tell, which is different from "test".
+    livemode: null,
+    records,
+  };
+};
+
+/**
  * PayTR callback → one `payment` record.
  *
  * Unlike the webhook providers there is no event envelope and no customer /
@@ -973,6 +1156,7 @@ export function normalizePaymentEvent(
   if (provider === "stripe") return normalizeStripe(body);
   if (provider === "polar") return normalizePolar(body, headerEventId);
   if (provider === "lemonsqueezy") return normalizeLemonSqueezy(body, headerEventId);
+  if (provider === "paddle") return normalizePaddle(body, headerEventId);
   if (provider === "paytr") return normalizePayTR(body);
   return { eventId: headerEventId ?? "", type: "", livemode: null, records: [] };
 }
@@ -1138,6 +1322,53 @@ export async function fetchPaymentPage(input: FetchPageInput): Promise<FetchPage
       }
       const lastPage = num(body.meta?.page?.lastPage) ?? page;
       return { records, nextCursor: page < lastPage ? String(page + 1) : null };
+    }
+
+    if (input.provider === "paddle") {
+      // Paddle pages by an opaque `after` cursor carried in
+      // `meta.pagination.next` as a full URL; the cursor stored here is just
+      // the id to resume after, so a stale absolute URL can never be replayed.
+      const base =
+        str(config.environment) === "sandbox"
+          ? "https://sandbox-api.paddle.com"
+          : "https://api.paddle.com";
+      const path: Record<PaymentRecordKind, string> = {
+        customer: "customers",
+        subscription: "subscriptions",
+        // Paddle has one billable object; it backs both kinds.
+        invoice: "transactions",
+        payment: "transactions",
+      };
+      const qs = new URLSearchParams({ per_page: String(Math.min(Math.max(input.limit ?? 100, 1), 200)) });
+      if (input.cursor) qs.set("after", input.cursor);
+      const res = await doFetch(`${base}/${path[input.kind]}?${qs}`, {
+        headers: { Authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+      });
+      if (!res.ok) return { ...empty, error: `paddle ${res.status}` };
+      const body = (await res.json()) as {
+        data?: unknown[];
+        meta?: { pagination?: { has_more?: boolean; next?: string } };
+      };
+      const rows = Array.isArray(body.data) ? body.data : [];
+      const records: PaymentRecord[] = [];
+      for (const raw of rows) {
+        const o = obj(raw);
+        if (!o || typeof o.id !== "string") continue;
+        // Reuse the event normalizer so a reconciled row and a webhook row are
+        // byte-identical — two shapes for one object is how sync drift starts.
+        const kindEvent =
+          input.kind === "customer"
+            ? "customer.updated"
+            : input.kind === "subscription"
+              ? "subscription.updated"
+              : "transaction.updated";
+        const out = normalizePaddle({ event_type: kindEvent, data: o }, null);
+        records.push(...out.records.filter((r) => r.kind === input.kind));
+      }
+      const last = rows.length > 0 ? obj(rows[rows.length - 1]) : null;
+      const hasMore = body.meta?.pagination?.has_more === true;
+      const nextCursor = hasMore && last && typeof last.id === "string" ? last.id : null;
+      return { records, nextCursor };
     }
 
     return { ...empty, error: "unknown_provider" };

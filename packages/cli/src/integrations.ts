@@ -44,7 +44,7 @@ interface ProviderRow {
   label: string;
   category: string;
   capabilities: string[];
-  fields: { key: string; label: string; secret?: boolean }[];
+  fields: { key: string; label: string; secret?: boolean; options?: { value: string }[] }[];
   oauth?: boolean;
 }
 
@@ -128,7 +128,13 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
           if (json) printJson(p);
           else
             printTable(
-              p.fields.map((f) => ({ key: f.key, label: f.label, secret: f.secret ? "yes" : "" })),
+              p.fields.map((f) => ({
+                key: f.key,
+                label: f.label,
+                secret: f.secret ? "yes" : "",
+                // A closed set — printing it saves a round trip through a 422.
+                values: f.options ? f.options.map((o) => o.value).join(" | ") : "",
+              })),
             );
           return;
         }

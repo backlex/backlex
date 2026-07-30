@@ -2679,6 +2679,11 @@ msgstr "Choose a new password"
 msgid "Choose folder…"
 msgstr "Choose folder…"
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+#: src/client/admin/pages/integrations.tsx
+msgid "Choose one"
+msgstr "Choose one"
+
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Choose…"
 msgstr "Choose…"
@@ -7903,6 +7908,14 @@ msgstr "Mints a new token; the current link stops working"
 #: src/client/admin/pages/payments.tsx
 msgid "Mirror customers, subscriptions, invoices and payments from Stripe, Polar or Lemon Squeezy into your collections. Deliveries are signature-verified; credentials are encrypted at rest."
 msgstr "Mirror customers, subscriptions, invoices and payments from Stripe, Polar or Lemon Squeezy into your collections. Deliveries are signature-verified; credentials are encrypted at rest."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Mirror QuickBooks customers, invoices and payments into a collection."
+msgstr "Mirror QuickBooks customers, invoices and payments into a collection."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Mirror Xero contacts, invoices and payments into a collection."
+msgstr "Mirror Xero contacts, invoices and payments into a collection."
 
 #. placeholder {0}: data.filter((r) => locales.some((l) => !r[l])).length
 #: src/client/admin/parity/translations.tsx

@@ -23,11 +23,13 @@ import { notion } from "./notion";
 import { opsgenie } from "./opsgenie";
 import { pagerduty } from "./pagerduty";
 import { posthog } from "./posthog";
+import { quickbooks } from "./quickbooks";
 import { segment } from "./segment";
 import { sentry } from "./sentry";
 import { slack } from "./slack";
 import { teams } from "./teams";
 import { telegram } from "./telegram";
+import { xero } from "./xero";
 import { typesense } from "./typesense";
 
 export const INTEGRATION_KINDS = [
@@ -57,6 +59,9 @@ export const INTEGRATION_KINDS = [
   "notion",
   "google-sheets",
   "airtable",
+  // accounting (OAuth-connected sources)
+  "quickbooks",
+  "xero",
 ] as const;
 
 export type IntegrationKind = (typeof INTEGRATION_KINDS)[number];
@@ -82,6 +87,8 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   notion,
   "google-sheets": googleSheets,
   airtable,
+  quickbooks,
+  xero,
 };
 
 /** Look a provider up by id; `undefined` for anything unregistered. */

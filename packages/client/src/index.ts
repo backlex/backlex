@@ -1083,7 +1083,14 @@ export interface IntegrationProvider {
   label: string;
   category: string;
   capabilities: string[];
-  fields: { key: string; label: string; placeholder?: string; secret?: boolean }[];
+  fields: {
+    key: string;
+    label: string;
+    placeholder?: string;
+    secret?: boolean;
+    /** A closed set — the server refuses anything outside it. */
+    options?: { value: string; label: string }[];
+  }[];
   /** Connected by redirect rather than by pasting a key — use `oauthAuthorize`. */
   oauth: boolean;
 }

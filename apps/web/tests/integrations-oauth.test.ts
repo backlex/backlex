@@ -59,7 +59,7 @@ const mockToken = (body: unknown, status = 200) => {
   const real = globalThis.fetch;
   globalThis.fetch = (async (input: any, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input?.url ?? String(input);
-    if (url.includes("api.notion.com/v1/oauth/token")) {
+    if (url.includes("/oauth/token") || url.includes("/tokens/bearer")) {
       return new Response(JSON.stringify(body), {
         status,
         headers: { "content-type": "application/json" },
@@ -369,5 +369,69 @@ describe("the token keys belong to the flow, not to the admin form", () => {
     const after = storedConfig(id);
     expect(after.pageId).toBe("page-2");
     expect(after[OAUTH_ACCESS_TOKEN_KEY]).toBe(before as string);
+  });
+});
+
+// QuickBooks is the one provider whose connection needs a value that arrives on
+// the REDIRECT rather than in the token response. That makes the callback query
+// an input path into stored config, so what it may carry has to be bounded.
+describe("parameters captured from the redirect", () => {
+  const storedConfig = (id: string) =>
+    JSON.parse(
+      (client.query("select config from integrations where id = ?").get(id) as { config: string }).config,
+    ) as Record<string, unknown>;
+
+  const startQuickbooks = async () => {
+    client.query("delete from integrations where kind = 'quickbooks'").run();
+    client.query("delete from integration_oauth_states").run();
+    const res = await h.fetch(
+      BASE,
+      json({ kind: "quickbooks", config: { clientId: "cid", clientSecret: "csecret" } }),
+    );
+    const id = ((await res.json()) as any).data.id as string;
+    const url = ((await (await h.fetch(`${BASE}/${id}/oauth/authorize`, { method: "POST" })).json()) as any)
+      .data.url as string;
+    return { id, state: stateOf(url) };
+  };
+
+  test("the company id is kept, because every later call needs it", async () => {
+    const { id, state } = await startQuickbooks();
+    const restore = mockToken({ access_token: ACCESS, refresh_token: "rt", expires_in: 3600 });
+    try {
+      await callback(`code=abc&state=${encodeURIComponent(state)}&realmId=9130354674992756`);
+    } finally {
+      restore();
+    }
+    expect(storedConfig(id).realmId).toBe("9130354674992756");
+  });
+
+  test("a parameter the provider never asked for is dropped", async () => {
+    const { id, state } = await startQuickbooks();
+    const restore = mockToken({ access_token: ACCESS, expires_in: 3600 });
+    try {
+      await callback(
+        `code=abc&state=${encodeURIComponent(state)}&realmId=1&pageId=hijacked&clientSecret=hijacked`,
+      );
+    } finally {
+      restore();
+    }
+    const config = storedConfig(id);
+    // The redirect is written by a third party; only the keys the descriptor
+    // named may reach the config, or it becomes a way to rewrite a connection.
+    expect(config.pageId).toBeUndefined();
+    expect(config.clientSecret).not.toBe("hijacked");
+  });
+
+  test("an absurdly long value is not stored", async () => {
+    const { id, state } = await startQuickbooks();
+    const restore = mockToken({ access_token: ACCESS, expires_in: 3600 });
+    try {
+      await callback(`code=abc&state=${encodeURIComponent(state)}&realmId=${"9".repeat(5000)}`);
+    } finally {
+      restore();
+    }
+    // These are ids — a realm id is ~16 digits. Anything longer is not one, and
+    // storing it would let a redirect stuff arbitrary text into the config.
+    expect(storedConfig(id).realmId).toBeUndefined();
   });
 });

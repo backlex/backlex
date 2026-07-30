@@ -20,7 +20,7 @@ receiving endpoint and backlex signs what it sends.
 
 ## Providers
 
-Twenty providers ship in the registry, grouped by category:
+Twenty-two providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -30,6 +30,7 @@ Twenty providers ship in the registry, grouped by category:
 | issue tracking | GitHub, Linear, Jira |
 | search | Algolia, Meilisearch, Typesense, Elasticsearch / OpenSearch |
 | productivity | Notion, Google Sheets, Airtable — all *(OAuth)*, all sources |
+| accounting | QuickBooks Online, Xero — both *(OAuth)*, both sources |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -131,6 +132,9 @@ backlex integrations syncs                # schedules + health
 
 - `--set` keys come from the catalog's `sourceSettings` for that provider.
   Anything else is **rejected**, not forwarded — settings end up in URLs.
+- A setting with a `values` column in `integrations catalog <kind>` is a **closed
+  set** (QuickBooks' record type, Xero's endpoint). The admin UI renders those as
+  a picker, and anything outside the list is refused.
 - `--map` is `ExternalField=collection_field`. Every target must be a writable
   field on the collection; an unknown one is refused rather than silently
   dropped, which would report a clean run while losing a column every time.
@@ -152,6 +156,26 @@ The three connectors differ in exactly one way that matters. Airtable and Notion
 give every record a stable id, so a row that moves stays the same record. Sheets
 has no row id, so the **row number** is the identity — moving a row there reads
 as a different record.
+
+### Accounting sources
+
+QuickBooks and Xero each need one thing beyond an access token, and they get it
+differently:
+
+- **QuickBooks** returns the company id as `?realmId=…` on the *redirect* and
+  nowhere in the token response. The descriptor names it in
+  `keepFromCallbackQuery`, so the connect flow captures it. Its refresh token
+  rotates on every renewal, which is why the refresh path is a compare-and-set.
+- **Xero** needs an `Xero-Tenant-Id` header naming which organisation to read,
+  discoverable only by calling `/connections` after authorizing. The connector
+  resolves it at the start of each run — one small request against a page budget
+  of twenty, which beats adding a post-connect hook for a single provider and
+  cannot go stale when the admin changes what they granted. Leave
+  **Organisation** blank to use the first one granted.
+
+Both are read-only: the scopes requested cover reading, not writing. Mirroring
+accounting data in is the case people ask for; pushing entries back out is a
+different feature with different failure modes.
 
 ### Runs, cursors and failure
 
@@ -308,10 +332,27 @@ oauth: {
   scopes: ["records:write"],
   authorizeParams: { access_type: "offline", prompt: "consent" }, // or no refresh token is issued
   pkce: true,
-  tokenAuth: "body",              // "basic" when the provider rejects body credentials
-  keepFromTokenResponse: ["realmId"],
+  tokenAuth: "body",                    // "basic" when the provider rejects body credentials
+  keepFromTokenResponse: ["workspace_name"],
+  keepFromCallbackQuery: ["realmId"],   // for values that arrive on the redirect only
 },
 ```
+
+`keepFromCallbackQuery` reads a third party's redirect, so only the keys named
+here are kept, they are stored as opaque strings, and they are length-capped.
+
+Give a setting `options` when it has a closed set of values — anything a provider
+interpolates into a URL path or query string should be one:
+
+```ts
+settingFields: [{ key: "entity", label: "Record type", options: [
+  { value: "Customer", label: "Customers" },
+  { value: "Invoice", label: "Invoices" },
+]}],
+```
+
+The UI renders a picker and the engine refuses anything outside the list. The
+provider still re-checks its own value — the admin form is not the only way in.
 
 Both endpoints must be fixed constants. The two token keys are added to
 `SECRET_KEYS` automatically — a provider author never lists them, and deriving

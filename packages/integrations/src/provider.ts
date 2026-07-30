@@ -17,6 +17,13 @@ export interface IntegrationConfigField {
   placeholder?: string;
   /** Secret fields are encrypted at rest and masked when read back. */
   secret?: boolean;
+  /**
+   * A closed set of acceptable values. Present when the field is a choice
+   * rather than free text — the UI renders a picker and the server refuses
+   * anything outside the list, so a typo fails at the form instead of at the
+   * first run with a provider error nobody can act on.
+   */
+  options?: readonly { value: string; label: string }[];
 }
 
 /** Grouping for the connect UI's catalog. */
@@ -110,11 +117,21 @@ export interface IntegrationOAuth {
    */
   nonExpiring?: boolean;
   /**
-   * Extra top-level keys from the token response worth keeping — e.g.
-   * QuickBooks' `realmId`, Notion's `workspace_name`. Copied verbatim into
-   * config under the same key; never secrets.
+   * Extra top-level keys from the token response worth keeping — e.g. Notion's
+   * `workspace_name`. Copied verbatim into config under the same key; never
+   * secrets.
    */
   keepFromTokenResponse?: readonly string[];
+  /**
+   * Query parameters on the redirect worth keeping. QuickBooks returns the
+   * company id as `?realmId=…` on the callback and nowhere else — without this
+   * an admin would have to go and find it by hand, and every API call needs it.
+   *
+   * These come from a third party's redirect, so they are stored as opaque
+   * strings, length-capped, and only kept when the provider asked for them by
+   * name. Never secrets.
+   */
+  keepFromCallbackQuery?: readonly string[];
 }
 
 /** One external record, as a source provider hands it over. */

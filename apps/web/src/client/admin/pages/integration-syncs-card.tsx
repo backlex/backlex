@@ -30,7 +30,13 @@ import { api } from "@/lib/api";
 import { useCollections } from "../queries";
 import { fetchSafely } from "./_shared";
 
-export type SettingField = { key: string; label: string; placeholder?: string };
+export type SettingField = {
+  key: string;
+  label: string;
+  placeholder?: string;
+  /** Present when the field is a choice; the UI renders a picker, not a box. */
+  options?: { value: string; label: string }[];
+};
 
 export type ApiSync = {
   id: string;
@@ -415,11 +421,23 @@ function SyncDialog({
             {fields.map((f) => (
               <label key={f.key} className="block">
                 <span className="mb-1 block text-[11.5px] font-medium">{f.label}</span>
-                <Input
-                  placeholder={f.placeholder}
-                  value={settings[f.key] ?? ""}
-                  onChange={(e) => setSettings((v) => ({ ...v, [f.key]: e.target.value }))}
-                />
+                {f.options ? (
+                  // A closed set the server enforces anyway — typing it would
+                  // fail on submit with a list the operator had to guess at.
+                  <Select
+                    value={settings[f.key] || undefined}
+                    onChange={(v: string) => setSettings((s) => ({ ...s, [f.key]: v }))}
+                    placeholder={f.placeholder ?? t`Choose one`}
+                    options={f.options}
+                    className="min-w-0"
+                  />
+                ) : (
+                  <Input
+                    placeholder={f.placeholder}
+                    value={settings[f.key] ?? ""}
+                    onChange={(e) => setSettings((v) => ({ ...v, [f.key]: e.target.value }))}
+                  />
+                )}
               </label>
             ))}
 

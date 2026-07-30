@@ -513,11 +513,16 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         "Where the provider sends the admin back to. Always redirects into the admin UI rather than answering " +
         "with JSON, because the caller is a browser mid-navigation. Not called directly.",
       request: {
-        query: z.object({
-          code: z.string().optional(),
-          state: z.string().optional(),
-          error: z.string().optional(),
-        }),
+        // Providers add their own parameters here (QuickBooks returns the
+        // company id as `realmId`), so the schema is permissive and the service
+        // keeps only what the provider's descriptor named.
+        query: z
+          .object({
+            code: z.string().optional(),
+            state: z.string().optional(),
+            error: z.string().optional(),
+          })
+          .catchall(z.string()),
       },
       responses: {
         302: { description: "Redirect back to the admin integrations page" },
@@ -545,6 +550,7 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           code,
           tenantId: auth.tenantId,
           userId: auth.userId,
+          query: Object.fromEntries(new URL(c.req.url).searchParams),
         });
         await logActivity(c, {
           action: "update",

@@ -138,6 +138,19 @@ const validateSettings = (kind: string, settings: Record<string, unknown>): Reco
     if (!f.label.toLowerCase().includes("optional") && !(typeof v === "string" && v.trim())) {
       throw new AppError("VALIDATION", `Setting "${f.key}" is required for ${kind}`);
     }
+    // A field with `options` is a closed set. Providers build query strings and
+    // URL paths out of these, and each one re-checks its own value, but the
+    // list is declared here so a bad value is refused at the form rather than
+    // surfacing as a provider error on the first run.
+    if (f.options && typeof v === "string" && v.trim()) {
+      const allowedValues = f.options.map((o) => o.value);
+      if (!allowedValues.includes(v.trim())) {
+        throw new AppError(
+          "VALIDATION",
+          `Setting "${f.key}" must be one of: ${allowedValues.join(", ")}`,
+        );
+      }
+    }
   }
   return Object.fromEntries(
     Object.entries(settings).map(([k, v]) => [k, typeof v === "string" ? v.trim() : v]),

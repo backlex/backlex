@@ -174,3 +174,51 @@ describe("SOURCE_KINDS is derived, not hand-listed", () => {
     }
   });
 });
+
+describe("choice settings are a closed set end to end", () => {
+  test("every option-bearing field declares real, distinct values", () => {
+    for (const kind of SOURCE_KINDS) {
+      for (const f of SOURCE_SETTING_FIELDS[kind] ?? []) {
+        if (!f.options) continue;
+        expect(f.options.length).toBeGreaterThan(1);
+        const values = f.options.map((o) => o.value);
+        // A duplicate would make one entry unreachable in the picker while
+        // still passing the server's membership check.
+        expect(new Set(values).size).toBe(values.length);
+        for (const o of f.options) {
+          expect(o.value).toBeTruthy();
+          expect(o.label).toBeTruthy();
+        }
+      }
+    }
+  });
+
+  test("a provider that builds a URL from a setting constrains it", () => {
+    // QuickBooks interpolates the record type into its query string and Xero
+    // into a URL path segment. Free text there is the difference between a
+    // typo and a request nobody intended, so both must be closed sets.
+    for (const kind of ["quickbooks", "xero"] as const) {
+      const fields = SOURCE_SETTING_FIELDS[kind] ?? [];
+      const recordType = fields.find((f) => f.key === "entity" || f.key === "endpoint");
+      expect(recordType?.options?.length ?? 0).toBeGreaterThan(1);
+    }
+  });
+});
+
+describe("OAuth providers that need more than a token say so", () => {
+  test("QuickBooks captures the company id from the redirect", () => {
+    // It is on the callback query and nowhere in the token response; without
+    // this the connection authorizes cleanly and then fails on every call.
+    expect(PROVIDERS.quickbooks.oauth?.keepFromCallbackQuery).toContain("realmId");
+  });
+
+  test("Xero asks for offline_access, without which no refresh token is issued", () => {
+    expect(PROVIDERS.xero.oauth?.scopes).toContain("offline_access");
+  });
+
+  test("Google asks for the two params that make a refresh token appear", () => {
+    const params = PROVIDERS["google-sheets"].oauth?.authorizeParams ?? {};
+    expect(params.access_type).toBe("offline");
+    expect(params.prompt).toBe("consent");
+  });
+});

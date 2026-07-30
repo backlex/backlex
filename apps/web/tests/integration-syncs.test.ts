@@ -157,6 +157,25 @@ describe("creating a sync", () => {
     expect([404, 422]).toContain(res.status);
   });
 
+  test("a choice setting only accepts a value from its own list", async () => {
+    // Providers interpolate these into query strings and URL paths. Each one
+    // re-checks its own value, but the closed list is declared once and the
+    // form must not be able to submit past it.
+    client.query("delete from integrations where kind = 'quickbooks'").run();
+    const qb = await ok("POST", BASE, {
+      kind: "quickbooks",
+      config: { clientId: "cid", clientSecret: "sec" },
+    });
+    const res = await req("POST", SYNCS, {
+      integrationId: qb.data.id,
+      collection: "leads",
+      settings: { entity: "Customer'; drop table x --", environment: "production" },
+      mapping: { Id: "name" },
+    });
+    expect(res.status).toBe(422);
+    expect(await res.text()).toContain("must be one of");
+  });
+
   test("an out-of-range interval is refused rather than clamped", async () => {
     // Clamping would let a caller build a schedule on a number nobody agreed to.
     expect((await req("POST", SYNCS, { integrationId, ...VALID, intervalMinutes: 99_999 })).status).toBe(422);

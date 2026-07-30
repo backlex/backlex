@@ -257,6 +257,27 @@ const tokensIntoConfig = async (
   return next;
 };
 
+/** Longest a captured callback parameter may be. These are ids (QuickBooks'
+ *  realm id is ~16 digits); anything longer is not one, and storing it would
+ *  let a redirect stuff arbitrary text into the config blob. */
+const MAX_CALLBACK_PARAM = 128;
+
+/** Copy across the redirect parameters this provider asked for by name. */
+const withCallbackParams = (
+  config: Record<string, unknown>,
+  oauth: IntegrationOAuth,
+  query: Record<string, string>,
+): Record<string, unknown> => {
+  const wanted = oauth.keepFromCallbackQuery;
+  if (!wanted || wanted.length === 0) return config;
+  const out = { ...config };
+  for (const key of wanted) {
+    const v = query[key];
+    if (typeof v === "string" && v && v.length <= MAX_CALLBACK_PARAM) out[key] = v;
+  }
+  return out;
+};
+
 export interface CompleteResult {
   integrationId: string;
   kind: string;
@@ -271,7 +292,14 @@ export interface CompleteResult {
  */
 export async function completeOAuth(
   ctx: Ctx,
-  args: { state: string; code: string; tenantId: string; userId: string },
+  args: {
+    state: string;
+    code: string;
+    tenantId: string;
+    userId: string;
+    /** The full callback query. Only keys the provider named are ever read. */
+    query?: Record<string, string>;
+  },
 ): Promise<CompleteResult> {
   const t = statesTableFor(ctx.dialect);
   const stateId = await sha256Hex(args.state);
@@ -321,7 +349,11 @@ export async function completeOAuth(
   await (ctx.db as AnyDb)
     .update(it)
     .set({
-      config: await tokensIntoConfig(config, token, oauth, ctx.env.AUTH_SECRET),
+      config: withCallbackParams(
+        await tokensIntoConfig(config, token, oauth, ctx.env.AUTH_SECRET),
+        oauth,
+        args.query ?? {},
+      ),
       status: "connected",
       consecutiveFailures: 0,
       lastFailureAt: null,

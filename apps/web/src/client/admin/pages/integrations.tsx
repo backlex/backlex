@@ -10,6 +10,7 @@ import { Badge, Button, PageHeader, relativeTime } from "../ui";
 import { useCollections } from "../queries";
 import { api } from "@/lib/api";
 import { Input } from "@backlex/ui/components/input";
+import { Select } from "../select";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
@@ -23,7 +24,14 @@ import {
 import { fetchSafely } from "./_shared";
 import { IntegrationSyncsCard, type SettingField } from "./integration-syncs-card";
 
-type Field = { key: string; label: string; placeholder?: string; secret?: boolean };
+type Field = {
+  key: string;
+  label: string;
+  placeholder?: string;
+  secret?: boolean;
+  /** Present when the field is a choice; the UI renders a picker, not a box. */
+  options?: { value: string; label: string }[];
+};
 type Provider = { id: string; label: string; category: string; capabilities: string[]; oauth: boolean };
 type Catalog = {
   kinds: string[];
@@ -83,6 +91,8 @@ const ICONS: Record<string, string> = {
   typesense: "M12 0 1.607 6v12L12 24l10.393-6V6L12 0Zm0 2.31 8.393 4.845v9.69L12 21.69 3.607 16.845V7.155L12 2.31Zm0 3.267a2.077 2.077 0 1 0 0 4.154 2.077 2.077 0 0 0 0-4.154Zm-3.75 5.538v1.731h1.442v4.037c0 1.36 1.014 2.135 2.481 2.135.567 0 1.128-.086 1.577-.23v-1.788a3.51 3.51 0 0 1-.98.144c-.66 0-1.096-.288-1.096-.98v-3.318h2.076v-1.73H11.674V8.712l-2.058.605v1.798H8.25Z",
   googlesheets: "M11.318 12.545H7.91v-1.909h3.408v1.91zM14.727 0v6h6l-6-6zm1.363 10.636H7.91v6.982h8.18v-6.982zm-1.363 5.62h-3.41v-1.91h3.41v1.91zM20.727 6.68v15.045c0 .724-.588 1.312-1.312 1.312H4.585a1.313 1.313 0 0 1-1.312-1.312V2.275c0-.724.588-1.312 1.312-1.312h9.446L20.727 6.68zm-3.273 2.32H6.545v9.818h10.91V9z",
   airtable: "M11.992 1.966c-.434 0-.87.086-1.28.257L1.779 5.917c-.503.208-.49.908.012 1.116l8.982 3.558a3.266 3.266 0 0 0 2.454 0l8.982-3.558c.503-.196.503-.908.012-1.116l-8.957-3.694a3.255 3.255 0 0 0-1.272-.257zM23.4 8.056a.589.589 0 0 0-.222.045l-10.012 3.877a.612.612 0 0 0-.38.564v9.884a.606.606 0 0 0 .831.552L23.63 19.1a.612.612 0 0 0 .38-.564V8.653a.6.6 0 0 0-.61-.597zM.676 8.075a.61.61 0 0 0-.485.24.62.62 0 0 0-.114.363v9.885c0 .245.146.466.38.564l10.011 3.877c.398.171.83-.135.83-.552v-9.884a.612.612 0 0 0-.38-.564L.907 8.13a.606.606 0 0 0-.231-.055z",
+  quickbooks: "M12 24C5.383 24 0 18.617 0 12S5.383 0 12 0s12 5.383 12 12-5.383 12-12 12zM6.667 7.333a4.667 4.667 0 1 0 0 9.334h.666v-1.734h-.666a2.933 2.933 0 1 1 0-5.866h1.6v9.2a1.734 1.734 0 0 0 1.733 1.733V7.333H6.667zm10.666 9.334a4.667 4.667 0 1 0 0-9.334h-.666v1.734h.666a2.933 2.933 0 1 1 0 5.866h-1.6v-9.2a1.734 1.734 0 0 0-1.733-1.733v12.667h3.333z",
+  xero: "M12 0C5.372 0 0 5.372 0 12s5.372 12 12 12 12-5.372 12-12S18.628 0 12 0zM7.06 15.516a.79.79 0 0 1-1.116 0 .79.79 0 0 1 0-1.117l2.4-2.399-2.4-2.4a.79.79 0 0 1 1.117-1.117l2.399 2.4 2.4-2.4a.79.79 0 1 1 1.117 1.117l-2.4 2.4 2.4 2.399a.79.79 0 0 1-1.117 1.117l-2.4-2.4-2.399 2.4zm10.06.076a1.09 1.09 0 1 1 0-2.18 1.09 1.09 0 0 1 0 2.18z",
   notion: "M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.7.513.934.653.934 1.213v16.378c0 1.026-.373 1.634-1.68 1.726l-15.458.934c-.98.047-1.448-.093-1.962-.747l-3.129-4.06c-.56-.747-.793-1.306-.793-1.96V2.667c0-.839.374-1.54 1.447-1.632z",
   elasticsearch: "M13.394 0C10.07 0 7.147 1.699 5.44 4.276h13.531A6.61 6.61 0 0 0 13.394 0ZM4.298 6.276a10.53 10.53 0 0 0-.548 2.752h15.727a3.377 3.377 0 0 0 0-2.752H4.298Zm-.548 6.696c.062.945.25 1.867.548 2.752h15.179a3.377 3.377 0 0 0 0-2.752H3.75Zm1.69 6.752A10.588 10.588 0 0 0 13.394 24a6.61 6.61 0 0 0 5.577-4.276H5.44Z",
 };
@@ -117,6 +127,8 @@ const BRANDS: Record<string, Brand> = {
   notion: { name: "Notion", mark: <SI d={ICONS.notion!} />, markBg: "#000000" },
   "google-sheets": { name: "Google Sheets", mark: <SI d={ICONS.googlesheets!} />, markBg: "#34A853" },
   airtable: { name: "Airtable", mark: <SI d={ICONS.airtable!} />, markBg: "#18BFFF" },
+  quickbooks: { name: "QuickBooks Online", mark: <SI d={ICONS.quickbooks!} />, markBg: "#2CA01C" },
+  xero: { name: "Xero", mark: <SI d={ICONS.xero!} />, markBg: "#13B5EA" },
 };
 const brandFor = (kind: string): Brand => BRANDS[kind] ?? { name: kind, mark: kind.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };
 
@@ -197,6 +209,10 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
         return t`Pull a spreadsheet into a collection on a schedule.`;
       case "airtable":
         return t`Pull an Airtable table into a collection on a schedule.`;
+      case "quickbooks":
+        return t`Mirror QuickBooks customers, invoices and payments into a collection.`;
+      case "xero":
+        return t`Mirror Xero contacts, invoices and payments into a collection.`;
       case "slack":
         return t`Post data events to a Slack channel.`;
       case "discord":
@@ -630,12 +646,22 @@ function ConnectDialog({
             {fields.map((f) => (
               <label key={f.key} className="block">
                 <span className="mb-1 block text-[11.5px] font-medium">{f.label}</span>
-                <Input
-                  type={f.secret ? "password" : "text"}
-                  placeholder={f.placeholder}
-                  value={values[f.key] ?? ""}
-                  onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                />
+                {f.options ? (
+                  <Select
+                    value={values[f.key] || undefined}
+                    onChange={(v: string) => setValues((prev) => ({ ...prev, [f.key]: v }))}
+                    placeholder={f.placeholder ?? t`Choose one`}
+                    options={f.options}
+                    className="min-w-0"
+                  />
+                ) : (
+                  <Input
+                    type={f.secret ? "password" : "text"}
+                    placeholder={f.placeholder}
+                    value={values[f.key] ?? ""}
+                    onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                  />
+                )}
               </label>
             ))}
 

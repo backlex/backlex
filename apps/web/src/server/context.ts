@@ -48,6 +48,8 @@ import {
 } from "./adapters/vector.cf";
 import { pgvectorAdapter } from "./adapters/vector.pg";
 import { libsqlVectorAdapter } from "./adapters/vector.libsql";
+import { pineconeVectorAdapter, type PineconeHostMap } from "./adapters/vector.pinecone";
+import { qdrantVectorAdapter, type QdrantCollectionMap } from "./adapters/vector.qdrant";
 import type { Env } from "./env";
 import { cloudConfigured, reportToCloud } from "./lib/cloud-report";
 import { buildEmailAdapter, selectEmailSpec } from "./lib/email-select";
@@ -85,7 +87,7 @@ import { getTemplate } from "./templates/catalog";
  */
 export interface VectorCapabilities {
   /** Where vectors are stored. `none` → vector search cannot work at all. */
-  store: "vectorize" | "pgvector" | "libsql" | "none";
+  store: "vectorize" | "pinecone" | "qdrant" | "pgvector" | "libsql" | "none";
   /** `env.EMBEDDING_DEFAULT_MODEL` when it names a known model, else null. */
   defaultModel: EmbeddingModel | null;
   /** Per-model readiness: the model's embedding provider is configured AND
@@ -681,16 +683,49 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   if (env.VECTORIZE_SELF_HOST_BGE_M3) vectorizeBindings["self-host-bge-m3"] = env.VECTORIZE_SELF_HOST_BGE_M3;
   const hasAnyVectorize =
     Object.keys(vectorizeBindings).length > 0;
+
+  // External stores are per-model for the same reason Vectorize is: an index /
+  // collection fixes its vector dimension at creation. A configured API key
+  // with no index for a model still counts as "this store is in use" — the
+  // adapter throws a specific "no index for <model>" on that model rather than
+  // silently falling through to a different store.
+  const pineconeHosts: PineconeHostMap = {};
+  if (env.PINECONE_INDEX_OPENAI) pineconeHosts["openai-3-small"] = env.PINECONE_INDEX_OPENAI;
+  if (env.PINECONE_INDEX_OPENAI_LARGE) pineconeHosts["openai-3-large"] = env.PINECONE_INDEX_OPENAI_LARGE;
+  if (env.PINECONE_INDEX_BGE_M3) pineconeHosts["bge-m3"] = env.PINECONE_INDEX_BGE_M3;
+  if (env.PINECONE_INDEX_SELF_HOST_BGE_M3)
+    pineconeHosts["self-host-bge-m3"] = env.PINECONE_INDEX_SELF_HOST_BGE_M3;
+  const hasPinecone = Boolean(env.PINECONE_API_KEY) && Object.keys(pineconeHosts).length > 0;
+
+  const qdrantCollections: QdrantCollectionMap = {};
+  if (env.QDRANT_COLLECTION_OPENAI) qdrantCollections["openai-3-small"] = env.QDRANT_COLLECTION_OPENAI;
+  if (env.QDRANT_COLLECTION_OPENAI_LARGE)
+    qdrantCollections["openai-3-large"] = env.QDRANT_COLLECTION_OPENAI_LARGE;
+  if (env.QDRANT_COLLECTION_BGE_M3) qdrantCollections["bge-m3"] = env.QDRANT_COLLECTION_BGE_M3;
+  if (env.QDRANT_COLLECTION_SELF_HOST_BGE_M3)
+    qdrantCollections["self-host-bge-m3"] = env.QDRANT_COLLECTION_SELF_HOST_BGE_M3;
+  const hasQdrant = Boolean(env.QDRANT_URL) && Object.keys(qdrantCollections).length > 0;
+
   const pgHasPgvector = dialect === "pg" && !isXataPgUrl(pgUrl);
   const sqliteHasLibsqlVectors =
     !override && dialect === "sqlite" && !!env.LIBSQL_URL && !env.D1;
+  // Explicitly-configured stores win over the dialect's implicit one: someone
+  // who wires Pinecone on a Postgres deployment means it.
   const vector: VectorAdapter = hasAnyVectorize
     ? vectorizeAdapter(vectorizeBindings)
-    : pgHasPgvector
-      ? pgvectorAdapter(db as PgDb)
-      : sqliteHasLibsqlVectors
-        ? libsqlVectorAdapter(db as SqliteDb)
-        : noVectorAdapter();
+    : hasPinecone
+      ? pineconeVectorAdapter({ apiKey: env.PINECONE_API_KEY!, hosts: pineconeHosts })
+      : hasQdrant
+        ? qdrantVectorAdapter({
+            url: env.QDRANT_URL!,
+            ...(env.QDRANT_API_KEY ? { apiKey: env.QDRANT_API_KEY } : {}),
+            collections: qdrantCollections,
+          })
+        : pgHasPgvector
+          ? pgvectorAdapter(db as PgDb)
+          : sqliteHasLibsqlVectors
+            ? libsqlVectorAdapter(db as SqliteDb)
+            : noVectorAdapter();
 
   // Embedding (text → vector). Models are routed to providers by the
   // registry: bge-m3 → Workers AI, openai-3-small → OpenAI. A model whose
@@ -736,11 +771,15 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   };
   const vectorStore = hasAnyVectorize
     ? ("vectorize" as const)
-    : pgHasPgvector
-      ? ("pgvector" as const)
-      : sqliteHasLibsqlVectors
-        ? ("libsql" as const)
-        : ("none" as const);
+    : hasPinecone
+      ? ("pinecone" as const)
+      : hasQdrant
+        ? ("qdrant" as const)
+        : pgHasPgvector
+          ? ("pgvector" as const)
+          : sqliteHasLibsqlVectors
+            ? ("libsql" as const)
+            : ("none" as const);
   const vectorCaps: VectorCapabilities = {
     store: vectorStore,
     defaultModel: isEmbeddingModel(env.EMBEDDING_DEFAULT_MODEL)
@@ -750,7 +789,15 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
       EMBEDDING_MODEL_NAMES.map((m) => [
         m,
         providerReady[EMBEDDING_MODELS[m].provider] &&
-          (vectorStore === "vectorize" ? Boolean(vectorizeBindings[m]) : vectorStore !== "none"),
+          // Per-model stores are only ready for the models they have an index
+          // for; pgvector/libsql hold any dimension in one table.
+          (vectorStore === "vectorize"
+            ? Boolean(vectorizeBindings[m])
+            : vectorStore === "pinecone"
+              ? Boolean(pineconeHosts[m])
+              : vectorStore === "qdrant"
+                ? Boolean(qdrantCollections[m])
+                : vectorStore !== "none"),
       ]),
     ) as Record<EmbeddingModel, boolean>,
   };

@@ -427,7 +427,7 @@ export interface VectorCapabilityModel {
 }
 
 export interface VectorCapabilities {
-  store: "vectorize" | "pgvector" | "libsql" | "none";
+  store: "vectorize" | "pinecone" | "qdrant" | "pgvector" | "libsql" | "none";
   defaultModel: string | null;
   models: VectorCapabilityModel[];
 }

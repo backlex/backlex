@@ -122,7 +122,7 @@ const CapabilityModel = z
 
 const Capabilities = z
   .object({
-    store: z.enum(["vectorize", "pgvector", "libsql", "none"]),
+    store: z.enum(["vectorize", "pinecone", "qdrant", "pgvector", "libsql", "none"]),
     defaultModel: ModelEnum.nullable(),
     models: z.array(CapabilityModel),
   })

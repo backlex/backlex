@@ -89,7 +89,7 @@ export const vectorCapabilities: McpTool = {
   kind: "read",
   description:
     "What vector search can do on this deployment: which store holds the " +
-    "vectors (`vectorize` / `pgvector` / `libsql` / `none`) and, per " +
+    "vectors (`vectorize` / `pinecone` / `qdrant` / `pgvector` / `libsql` / `none`) and, per " +
     "embedding model, whether it's usable right now (provider configured + " +
     "store ready). Call this before enabling `vectorize` on a collection or " +
     "running `schema.vectorize_backfill` — a `store: \"none\"` deployment " +

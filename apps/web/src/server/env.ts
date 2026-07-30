@@ -121,6 +121,30 @@ export interface Env {
   VECTORIZE_OPENAI_LARGE?: VectorizeIndex;
   VECTORIZE_BGE_M3?: VectorizeIndex;
   VECTORIZE_SELF_HOST_BGE_M3?: VectorizeIndex;
+
+  /** External vector stores. Both are PER-MODEL, for the same reason Vectorize
+   *  is: an index/collection fixes its vector dimension at creation, so one
+   *  cannot hold two embedding models. A model with no entry errors on use
+   *  rather than writing into the wrong space.
+   *
+   *  Precedence in `buildContext`: Vectorize bindings → Pinecone → Qdrant →
+   *  pgvector (implicit on Postgres) → libSQL (implicit on Turso) → none.
+   *  Explicitly-configured stores win over the dialect's implicit one. */
+  PINECONE_API_KEY?: string;
+  /** Index HOST, not name — e.g. `my-idx-abc123.svc.us-east-1.pinecone.io`.
+   *  Pinecone's data plane is addressed per index; taking the host avoids a
+   *  control-plane lookup on every cold start. */
+  PINECONE_INDEX_OPENAI?: string;
+  PINECONE_INDEX_OPENAI_LARGE?: string;
+  PINECONE_INDEX_BGE_M3?: string;
+  PINECONE_INDEX_SELF_HOST_BGE_M3?: string;
+  /** Base URL including port, e.g. `https://xyz.eu-central.aws.cloud.qdrant.io:6333`. */
+  QDRANT_URL?: string;
+  QDRANT_API_KEY?: string;
+  QDRANT_COLLECTION_OPENAI?: string;
+  QDRANT_COLLECTION_OPENAI_LARGE?: string;
+  QDRANT_COLLECTION_BGE_M3?: string;
+  QDRANT_COLLECTION_SELF_HOST_BGE_M3?: string;
   HYPERDRIVE?: Hyperdrive;
   /** Optional read-replica Hyperdrive binding. When present (Workers only),
    *  `ctx.dbRead` is built from its connection string; takes precedence over
@@ -531,6 +555,17 @@ export const STRING_ENV_KEYS = [
   "CRON_SECRET",
   "SQLITE_PATH",
   "LIBSQL_URL",
+  "PINECONE_API_KEY",
+  "PINECONE_INDEX_OPENAI",
+  "PINECONE_INDEX_OPENAI_LARGE",
+  "PINECONE_INDEX_BGE_M3",
+  "PINECONE_INDEX_SELF_HOST_BGE_M3",
+  "QDRANT_URL",
+  "QDRANT_API_KEY",
+  "QDRANT_COLLECTION_OPENAI",
+  "QDRANT_COLLECTION_OPENAI_LARGE",
+  "QDRANT_COLLECTION_BGE_M3",
+  "QDRANT_COLLECTION_SELF_HOST_BGE_M3",
   "LIBSQL_AUTH_TOKEN",
   "CLOUD_REPORT_URL",
   "CLOUD_REPORT_SECRET",

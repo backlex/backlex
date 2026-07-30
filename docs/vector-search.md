@@ -32,6 +32,9 @@ Where vectors live depends on the database:
 | **Bun SQLite** (`bun:sqlite`) | none — use Turso/libSQL or Postgres instead | switch to `LIBSQL_URL` (even `file:`) for in-DB vectors |
 | **Xata Postgres** | Cloudflare Vectorize | Xata ships no `pgvector`, so pair it with Vectorize |
 
+Any deployment can instead point at an **external vector database** — see
+[Bring your own vector database](#bring-your-own-vector-database).
+
 If none is configured, the vector endpoints fail loudly with a "configure a
 vector backend" message rather than silently no-op'ing.
 
@@ -182,3 +185,74 @@ them with Reciprocal Rank Fusion, returning whole rows with the caller's read
 permission and tenant scope enforced. See
 [Full-text & hybrid search](/full-text-search) for the endpoint, RRF details,
 and the `fts` / `searchable` collection flags.
+
+## Bring your own vector database
+
+If you already run **Pinecone** or **Qdrant**, point backlex at it instead of
+using the database-native store. Both are configured by environment variables
+and take precedence over `pgvector` / libSQL — wiring one on a Postgres
+deployment is read as "I mean it".
+
+Resolution order: Vectorize bindings → Pinecone → Qdrant → `pgvector` → libSQL →
+none.
+
+### Per-model indexes are not optional
+
+An index (Pinecone) or collection (Qdrant) **fixes its vector dimension at
+creation**, and the embedding models do not share dimensions:
+
+| Model | Dimensions |
+| --- | --- |
+| `bge-m3`, `self-host-bge-m3` | 1024 |
+| `openai-3-small` | 1536 |
+| `openai-3-large` | 3072 |
+
+So each model you intend to use needs its own index. A model with no index
+configured **throws** on use rather than falling back to another one — a
+cross-dimension write would be rejected anyway, but a same-dimension write would
+succeed and silently poison every search result in that index.
+
+The admin's model picker reads this: a model without an index shows as
+unavailable rather than failing at first embed.
+
+### Pinecone
+
+```bash
+PINECONE_API_KEY=pcsk_…
+# The index HOST, not its name — copy it from the Pinecone console or
+# `describe_index`. Taking the host avoids a control-plane lookup per cold start.
+PINECONE_INDEX_OPENAI=my-1536-idx-abc123.svc.us-east-1.pinecone.io
+PINECONE_INDEX_OPENAI_LARGE=my-3072-idx-abc123.svc.us-east-1.pinecone.io
+PINECONE_INDEX_BGE_M3=my-1024-idx-abc123.svc.us-east-1.pinecone.io
+PINECONE_INDEX_SELF_HOST_BGE_M3=…
+```
+
+Namespaces map onto Pinecone's native namespaces. Because Pinecone carries the
+namespace on the *request* rather than the record, an upsert batch spanning
+several namespaces is split into one call each.
+
+### Qdrant
+
+Works with Qdrant Cloud or a self-hosted instance; the API key is optional, so a
+local Qdrant needs only a URL.
+
+```bash
+QDRANT_URL=https://xyz.eu-central.aws.cloud.qdrant.io:6333
+QDRANT_API_KEY=…                      # omit for a local/anonymous instance
+QDRANT_COLLECTION_OPENAI=items-1536
+QDRANT_COLLECTION_OPENAI_LARGE=items-3072
+QDRANT_COLLECTION_BGE_M3=items-1024
+QDRANT_COLLECTION_SELF_HOST_BGE_M3=…
+```
+
+Create each collection with the matching size, e.g.:
+
+```bash
+curl -X PUT "$QDRANT_URL/collections/items-1024" \
+  -H "api-key: $QDRANT_API_KEY" -H 'content-type: application/json' \
+  -d '{"vectors":{"size":1024,"distance":"Cosine"}}'
+```
+
+Namespaces are stored as a `namespace` payload field and filtered on, rather
+than as a collection each: Qdrant filters payload cheaply, and
+collection-per-namespace would multiply setup without adding isolation.

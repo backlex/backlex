@@ -84,6 +84,7 @@ import m77 from "../../drizzle/pg/20260727120000_payments/migration.sql" with { 
 import m78 from "../../drizzle/pg/20260729120000_integration_deliveries/migration.sql" with { type: "text" };
 import m79 from "../../drizzle/pg/20260729140000_oidc_providers/migration.sql" with { type: "text" };
 import m80 from "../../drizzle/pg/20260730090000_scim_config/migration.sql" with { type: "text" };
+import m81 from "../../drizzle/pg/20260730120000_sync_hooks/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -172,4 +173,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260729120000_integration_deliveries", sql: m78 },
   { name: "20260729140000_oidc_providers", sql: m79 },
   { name: "20260730090000_scim_config", sql: m80 },
+  { name: "20260730120000_sync_hooks", sql: m81 },
 ];

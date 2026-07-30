@@ -1916,6 +1916,59 @@ export const scimConfig = sqliteTable(
 );
 
 /**
+ * A SYNCHRONOUS hook — an external service that participates in a write.
+ *
+ * Outbound webhooks tell someone what already happened. A sync hook runs BEFORE
+ * the row is written and its answer decides the outcome: it can reject the
+ * write, or (when `can_mutate`) patch the payload. That is what lets a third
+ * party own validation, enrichment, pricing or tax without backlex shipping an
+ * integration for each — the thing Saleor's sync webhooks and Shopify Functions
+ * exist to provide.
+ *
+ * It sits on the request path, so every field here is about bounding the blast
+ * radius of a slow or broken app.
+ */
+export const syncHooks = sqliteTable(
+  "sync_hooks",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    url: text("url").notNull(),
+    /** HMAC signing secret, so the app can prove the call came from us. */
+    secret: text("secret"),
+    /** `<collection>.beforeCreate|beforeUpdate|beforeDelete`, `*` wildcards. */
+    events: text("events", { mode: "json" }).$type<string[]>().notNull(),
+    headers: text("headers", { mode: "json" }).$type<Record<string, string> | null>(),
+    /** Hard ceiling on how long a write may block on this hook. */
+    timeoutMs: integer("timeout_ms").notNull().default(2000),
+    /**
+     * What happens when the hook cannot answer (timeout, non-2xx, malformed).
+     * Deliberately has NO default at the API layer: `allow` silently drops the
+     * guarantee the hook exists to provide, `deny` turns the app's outage into
+     * yours. Only the operator can say which is correct for a given hook.
+     */
+    onError: text("on_error").notNull(),
+    /** Whether this hook's `data` patch is applied. A hook that only validates
+     *  must not be able to rewrite rows, so this is off unless asked for. */
+    canMutate: integer("can_mutate", { mode: "boolean" }).notNull().default(false),
+    /** Execution order; ties broken by `created_at`. Hooks run SEQUENTIALLY and
+     *  each sees the previous one's patch. */
+    priority: integer("priority").notNull().default(0),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    lastFailureAt: integer("last_failure_at", { mode: "timestamp_ms" }),
+    disabledReason: text("disabled_reason"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("sync_hooks_tenant_idx").on(t.tenantId),
+    index("sync_hooks_enabled_idx").on(t.enabled),
+  ],
+);
+
+/**
  * Federated identity link — see packages/db/src/pg/schema.ts for full docs.
  * `plane` is `'platform' | 'app'`; `user_id` references the matching pool.
  */

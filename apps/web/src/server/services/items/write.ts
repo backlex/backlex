@@ -4,6 +4,7 @@ import { AppError, type AuthSubject } from "@backlex/core";
 import type { Ctx } from "../../context";
 import { publishEvent } from "../events";
 import { recordActivity } from "../activity";
+import { runSyncHooks } from "../sync-hooks";
 import { recordRevision } from "../revisions";
 import { embedAndUpsert, deleteVector } from "../vectorize";
 import { indexFts, deleteFts } from "../fts";
@@ -81,6 +82,16 @@ export interface WriteEnv {
   durationMs: () => number;
   /** ?locale= write target for `localized` (sidecar) fields. */
   locale: string | null;
+  /**
+   * Skip synchronous hooks for this write.
+   *
+   * Opt-OUT rather than opt-in on purpose: a validation hook that silently does
+   * not run is a worse failure than a restore being slow, so a caller who
+   * forgets the flag still gets the guarantee. Set it for machine-driven bulk
+   * writes — restore, seed, template apply, CSV import — where firing a
+   * blocking HTTP call per row is both pointless and ruinous.
+   */
+  skipSyncHooks?: boolean;
   /** Physical-write DB handle. Defaults to ctx.db; an atomic batch passes its
    *  transaction handle so the writes commit/roll back together. */
   db?: unknown;
@@ -124,9 +135,10 @@ const authSubjectOf = (env: WriteEnv): AuthSubject => ({
 
 export const performCreate = async (
   env: WriteEnv,
-  data: Record<string, unknown>,
+  dataIn: Record<string, unknown>,
   perm: ResolvedPerm,
 ): Promise<WriteResult> => {
+  let data = dataIn;
   const { ctx, collection } = env;
   const table = collection.physicalTable;
   // Hard workspace row cap (#12) — checked against the half-hourly sweep
@@ -169,6 +181,25 @@ export const performCreate = async (
   // Replace any `hash` field's plaintext with its scrypt digest before the row
   // is built. Empty values are dropped (see hashIncomingFields).
   await hashIncomingFields(data, collection.fields);
+
+  // Synchronous hooks run LAST in the validation phase — after
+  // `hashIncomingFields`, so a hook never sees a plaintext password — and can
+  // reject the write or patch the payload. A patched body is re-validated:
+  // the hook is external, so its output is no more trusted than the client's.
+  if (!env.skipSyncHooks) {
+    const hooked = await runSyncHooks(ctx, {
+      tenantId: env.tenantId ?? null,
+      collection: collection.slug,
+      phase: "beforeCreate",
+      id: null,
+      data,
+      actor: { userId: env.userId, email: env.email ?? null, roles: env.roles },
+    });
+    if (hooked.data !== data) {
+      data = hooked.data;
+      validateBody(data, collection.fields, false, perm.fields);
+    }
+  }
 
   if (collection.singleton) {
     const existingOne = await queryAll<{ one: number }>(
@@ -287,7 +318,7 @@ export const performCreate = async (
 export const performUpdate = async (
   env: WriteEnv,
   id: string,
-  patch: Record<string, unknown>,
+  patchIn: Record<string, unknown>,
   perm: ResolvedPerm,
   opts?: {
     /** Optimistic-concurrency precondition: the `updatedAt` the caller loaded
@@ -300,6 +331,7 @@ export const performUpdate = async (
     live?: boolean;
   },
 ): Promise<WriteResult> => {
+  let patch = patchIn;
   const { ctx, collection } = env;
   const table = collection.physicalTable;
   // Split localized fields out before base validation/write (same as create).
@@ -311,6 +343,24 @@ export const performUpdate = async (
   // Hash `hash`-typed fields; an empty/omitted value is dropped so the existing
   // digest is left untouched ("leave blank to keep").
   await hashIncomingFields(patch, collection.fields);
+
+  // Same placement and reasoning as create: after hashing (so a hook never
+  // sees plaintext), and a patched body is re-validated because the hook's
+  // output is no more trusted than the client's.
+  if (!env.skipSyncHooks) {
+    const hooked = await runSyncHooks(ctx, {
+      tenantId: env.tenantId ?? null,
+      collection: collection.slug,
+      phase: "beforeUpdate",
+      id,
+      data: patch,
+      actor: { userId: env.userId, email: env.email ?? null, roles: env.roles },
+    });
+    if (hooked.data !== patch) {
+      patch = hooked.data;
+      validateBody(patch, collection.fields, true, perm.fields);
+    }
+  }
 
   const tenantWhere = tenantFilter(collection, authOf(env));
   const existing = await queryAll<Record<string, unknown>>(
@@ -549,6 +599,19 @@ export const performDelete = async (
   );
   if (!existing[0]) throw new AppError("NOT_FOUND", "Item not found");
   const oldRow = deserializeRow(existing[0], collection.fields, ctx.dialect, collection.ownerScoped);
+
+  // Delete hooks can only veto — a `data` patch has nothing to patch — so the
+  // returned payload is ignored and only the allow/deny verdict matters.
+  if (!env.skipSyncHooks) {
+    await runSyncHooks(ctx, {
+      tenantId: env.tenantId ?? null,
+      collection: collection.slug,
+      phase: "beforeDelete",
+      id,
+      data: oldRow,
+      actor: { userId: env.userId, email: env.email ?? null, roles: env.roles },
+    });
+  }
 
   if (collection.softDelete) {
     // Bump `updated_at` alongside `deleted_at` so the soft-delete surfaces in the

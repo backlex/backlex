@@ -2248,6 +2248,59 @@ export const scimConfig = pgTable(
 );
 
 /**
+ * A SYNCHRONOUS hook — an external service that participates in a write.
+ *
+ * Outbound webhooks tell someone what already happened. A sync hook runs BEFORE
+ * the row is written and its answer decides the outcome: it can reject the
+ * write, or (when `can_mutate`) patch the payload. That is what lets a third
+ * party own validation, enrichment, pricing or tax without backlex shipping an
+ * integration for each — the thing Saleor's sync webhooks and Shopify Functions
+ * exist to provide.
+ *
+ * It sits on the request path, so every field here is about bounding the blast
+ * radius of a slow or broken app.
+ */
+export const syncHooks = pgTable(
+  "sync_hooks",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    url: text("url").notNull(),
+    /** HMAC signing secret, so the app can prove the call came from us. */
+    secret: text("secret"),
+    /** `<collection>.beforeCreate|beforeUpdate|beforeDelete`, `*` wildcards. */
+    events: jsonb("events").$type<string[]>().notNull(),
+    headers: jsonb("headers").$type<Record<string, string> | null>(),
+    /** Hard ceiling on how long a write may block on this hook. */
+    timeoutMs: integer("timeout_ms").notNull().default(2000),
+    /**
+     * What happens when the hook cannot answer (timeout, non-2xx, malformed).
+     * Deliberately has NO default at the API layer: `allow` silently drops the
+     * guarantee the hook exists to provide, `deny` turns the app's outage into
+     * yours. Only the operator can say which is correct for a given hook.
+     */
+    onError: text("on_error").notNull(),
+    /** Whether this hook's `data` patch is applied. A hook that only validates
+     *  must not be able to rewrite rows, so this is off unless asked for. */
+    canMutate: boolean("can_mutate").notNull().default(false),
+    /** Execution order; ties broken by `created_at`. Hooks run SEQUENTIALLY and
+     *  each sees the previous one's patch. */
+    priority: integer("priority").notNull().default(0),
+    enabled: boolean("enabled").notNull().default(true),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    lastFailureAt: timestamp("last_failure_at", { withTimezone: true }),
+    disabledReason: text("disabled_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("sync_hooks_tenant_idx").on(t.tenantId),
+    index("sync_hooks_enabled_idx").on(t.enabled),
+  ],
+);
+
+/**
  * Federated identity link between a workspace user (or platform user) and an
  * external IdP. `plane` decides which pool `user_id` references:
  *   - `platform` → `users.id` (the admin app's identity pool)

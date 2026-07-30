@@ -79,3 +79,26 @@ export const isEmbeddingModel = (v: unknown): v is EmbeddingModel =>
 
 export const getEmbeddingModel = (m: EmbeddingModel): EmbeddingModelDef =>
   EMBEDDING_MODELS[m];
+
+/**
+ * Every vector store backlex can put embeddings in.
+ *
+ * Single source of truth on purpose. This list was previously restated in four
+ * places — the capability type, the vector route's zod enum, the admin client's
+ * type, and an MCP tool description — and a hand-maintained list restated N
+ * times is the exact shape of bug that has already shipped here twice: the next
+ * store gets added to three of them and is silently missing from the fourth.
+ *
+ * `none` is a real member: it is what a deployment reports when nothing can
+ * hold a vector, and the admin UI branches on it.
+ */
+export const VECTOR_STORES = [
+  "vectorize",
+  "pinecone",
+  "qdrant",
+  "pgvector",
+  "libsql",
+  "none",
+] as const;
+
+export type VectorStore = (typeof VECTOR_STORES)[number];

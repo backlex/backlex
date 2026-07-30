@@ -4,6 +4,7 @@ import {
   EMBEDDING_MODELS,
   EMBEDDING_MODEL_NAMES,
   type EmbeddingModel,
+  VECTOR_STORES,
 } from "@backlex/core";
 import type { Context } from "hono";
 import type { AppBindings } from "../app";
@@ -122,7 +123,7 @@ const CapabilityModel = z
 
 const Capabilities = z
   .object({
-    store: z.enum(["vectorize", "pinecone", "qdrant", "pgvector", "libsql", "none"]),
+    store: z.enum(VECTOR_STORES),
     defaultModel: ModelEnum.nullable(),
     models: z.array(CapabilityModel),
   })

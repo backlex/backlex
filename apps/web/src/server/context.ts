@@ -6,6 +6,7 @@ import {
   SYSTEM_ROLES,
   isEmbeddingModel,
   type EmbeddingModel,
+  type VectorStore,
 } from "@backlex/core";
 import type {
   EdgeImageAdapter,
@@ -87,7 +88,7 @@ import { getTemplate } from "./templates/catalog";
  */
 export interface VectorCapabilities {
   /** Where vectors are stored. `none` → vector search cannot work at all. */
-  store: "vectorize" | "pinecone" | "qdrant" | "pgvector" | "libsql" | "none";
+  store: VectorStore;
   /** `env.EMBEDDING_DEFAULT_MODEL` when it names a known model, else null. */
   defaultModel: EmbeddingModel | null;
   /** Per-model readiness: the model's embedding provider is configured AND

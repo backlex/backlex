@@ -1,3 +1,4 @@
+import type { VectorStore } from "@backlex/core";
 // Lightweight typed client for the admin pages. Wraps the shared `api()`
 // helper so the rest of the admin module only sees domain-shaped payloads.
 import { api } from "@/lib/api";
@@ -427,7 +428,7 @@ export interface VectorCapabilityModel {
 }
 
 export interface VectorCapabilities {
-  store: "vectorize" | "pinecone" | "qdrant" | "pgvector" | "libsql" | "none";
+  store: VectorStore;
   defaultModel: string | null;
   models: VectorCapabilityModel[];
 }

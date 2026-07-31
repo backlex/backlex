@@ -119,12 +119,32 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   useEffect(() => {
-    const sentinel = { __backlexFlowBuilder: true };
-    history.pushState(sentinel, "", location.pathname + location.search);
+    let cancelled = false;
+    let pushed = false;
     let popped = false;
     const onPop = () => { popped = true; onCloseRef.current(); };
-    window.addEventListener("popstate", onPop);
+    // Touch history on a deferred tick rather than during the effect itself.
+    // React StrictMode runs mount → cleanup → mount synchronously in dev, and
+    // doing the work inline meant the throwaway first pass pushed a sentinel
+    // and then `history.back()`-ed it in its cleanup. `popstate` is async, so
+    // that back landed *after* the second mount had subscribed — it called
+    // `onClose` and the builder shut itself the instant it opened, which made
+    // the whole builder unreachable in dev. Deferring means the discarded pass
+    // never touches history: its cleanup just cancels the pending tick.
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      pushed = true;
+      history.pushState(
+        { __backlexFlowBuilder: true },
+        "",
+        location.pathname + location.search,
+      );
+      window.addEventListener("popstate", onPop);
+    }, 0);
     return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      if (!pushed) return;
       window.removeEventListener("popstate", onPop);
       if (!popped) {
         // Programmatic close — drop the sentinel we pushed.

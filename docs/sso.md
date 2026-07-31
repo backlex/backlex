@@ -379,3 +379,19 @@ Everything requires the bearer token. This is the only route group not behind
 the session or API-key middleware, so each handler resolves the workspace from
 the token and refuses the request when it cannot — there is no ambient workspace
 to fall back on.
+
+### Member removal forms
+
+An IdP can name the member to remove in three ways, and all three work:
+
+| Form | Sent by |
+|---|---|
+| `{"op":"remove","path":"members","value":[{"value":"<id>"}]}` | Entra |
+| `{"op":"remove","path":"members[value eq \"<id>\"]"}` | Okta |
+| `{"op":"remove","path":"members"}` *(no value)* | clears the whole membership, per RFC 7644 |
+
+"Named nobody" and "named somebody we could not resolve" are treated as
+different things. A `remove` carrying `value: []`, a stale id, an id from
+another workspace, or a filter backlex could not parse removes **nothing** —
+only the valueless, filterless form clears everyone. Otherwise a single dangling
+id from an IdP would revoke a whole role.

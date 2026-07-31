@@ -673,6 +673,39 @@ export async function getScimGroup(ctx: DbCtx, tenantId: string, id: string) {
  * permission rows are bound to. An IdP pushing an unknown group gets 404 so the
  * operator sees it and creates the role deliberately.
  */
+/**
+ * Split a SCIM PATCH `path` into its attribute and any inline member filter.
+ *
+ * RFC 7644 §3.5.2.2's canonical removal form is `members[value eq "<id>"]`, and
+ * it is what Okta emits — matching `path` against the literal `"members"` drops
+ * it silently, which means a deprovision answers 200 while the role stays.
+ * Entra sends `{path: "members", value: [...]}` instead, which is why the gap
+ * survives a smoke test against one IdP.
+ *
+ * The attribute is lower-cased; the operand deliberately is NOT. User ids are
+ * case-sensitive, so folding the whole path would turn a real id into one that
+ * matches nobody — the same silent no-op by another route.
+ */
+export const parseMemberPath = (
+  raw: string | undefined,
+): { attr: string; filtered: string[]; hadFilter: boolean } => {
+  const path = (raw ?? "").trim();
+  if (!path) return { attr: "", filtered: [], hadFilter: false };
+  const open = path.indexOf("[");
+  if (open < 0 || !path.endsWith("]")) {
+    return { attr: path.toLowerCase(), filtered: [], hadFilter: false };
+  }
+  const attr = path.slice(0, open).trim().toLowerCase();
+  const filter = path.slice(open + 1, -1);
+  // Only `value eq <id>` is recognised. Anything else is left unresolved rather
+  // than guessed at — but `hadFilter` still says a subset was NAMED, so the
+  // caller treats it as a no-op instead of letting it reach the clear-all
+  // branch. An unparsed filter must never mean "everyone".
+  const m = /^\s*value\s+eq\s+(?:"([^"]*)"|'([^']*)'|(\S+))\s*$/i.exec(filter);
+  const operand = m?.[1] ?? m?.[2] ?? m?.[3];
+  return { attr, filtered: operand ? [operand] : [], hadFilter: true };
+};
+
 export async function patchScimGroup(
   ctx: DbCtx,
   tenantId: string,
@@ -711,16 +744,19 @@ export async function patchScimGroup(
 
   for (const op of ops) {
     const kind = (op.op ?? "").toLowerCase();
-    const path = (op.path ?? "").trim().toLowerCase();
-    // A path-less replace carries `{ members: [...] }`.
-    const raw =
-      path === "members" || path === ""
-        ? path === ""
-          ? (op.value as { members?: unknown })?.members
-          : op.value
-        : undefined;
-    if (raw === undefined) continue;
-    const ids = await ownedBy(memberIds(raw));
+    const { attr, filtered, hadFilter } = parseMemberPath(op.path);
+    if (attr !== "members" && attr !== "") continue;
+    // A path-less op carries `{ members: [...] }`; `path: "members"` carries the
+    // list directly; `members[value eq "id"]` carries it in the path itself.
+    const fromValue = attr === "" ? (op.value as { members?: unknown })?.members : op.value;
+    // Whether a target set was NAMED, not whether it resolved. Three cases the
+    // clear-all fallback below has to tell apart, and only the first may clear:
+    //   no value and no filter   → "everyone"      (RFC 7644)
+    //   value: []                → "nobody"
+    //   value: [<stale id>]      → "nobody we own"
+    //   an unparsed filter       → "nobody we could name"
+    const namedAny = fromValue !== undefined || hadFilter;
+    const ids = await ownedBy([...memberIds(fromValue), ...filtered]);
 
     if (kind === "add") {
       for (const uid of ids) {
@@ -731,14 +767,21 @@ export async function patchScimGroup(
         }
       }
     } else if (kind === "remove") {
-      // `remove` with no value clears the whole membership.
-      const targets = ids.length ? ids : (await membersOf(ctx, tenantId, id)).map((m) => m.value);
+      // A `remove` that names nobody at all clears the whole membership, per
+      // RFC 7644. A `remove` that DID name someone but resolved to nothing —
+      // a stale id, or one belonging to another workspace — must be a no-op:
+      // treating it as "clear everything" would let a single dangling id from
+      // an IdP mass-revoke a role.
+      const targets = namedAny
+        ? ids
+        : (await membersOf(ctx, tenantId, id)).map((m) => m.value);
       for (const uid of targets) {
         await db
           .delete(t.appUserRoles)
           .where(and(eq(t.appUserRoles.appUserId, uid), eq(t.appUserRoles.roleId, id)));
       }
     } else if (kind === "replace") {
+      if (!namedAny) continue;
       const current = (await membersOf(ctx, tenantId, id)).map((m) => m.value);
       const keep = new Set(ids);
       for (const uid of current) {

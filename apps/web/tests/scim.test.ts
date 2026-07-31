@@ -20,6 +20,7 @@ import {
   listScimGroups,
   listScimUsers,
   parseEqFilter,
+  parseMemberPath,
   patchScimGroup,
   patchScimUser,
   replaceScimUser,
@@ -296,6 +297,101 @@ describe("groups map onto roles", () => {
       { op: "remove", path: "members", value: [{ value: user.id }] },
     ]);
     expect(after?.members).toEqual([]);
+  });
+
+  // The removal form RFC 7644 §3.5.2.2 gives as its own example, and the one
+  // Okta emits. Matching `path` against the literal "members" drops it, and the
+  // endpoint still answers 200 — so the IdP records the deprovision as done and
+  // never retries, while the role stays bound.
+  test("a filtered removal path unbinds the role", async () => {
+    const user = await createScimUser(ctx, "t1", null, { userName: "a@x.test" });
+    await patchScimGroup(ctx, "t1", "r-eng", [
+      { op: "add", path: "members", value: [{ value: user.id }] },
+    ]);
+    const after = await patchScimGroup(ctx, "t1", "r-eng", [
+      { op: "remove", path: `members[value eq "${user.id}"]` },
+    ]);
+    expect(after?.members).toEqual([]);
+  });
+
+  test("the parser keeps the operand's case and names a subset either way", () => {
+    // Lower-casing the whole path would turn a mixed-case id — what better-auth
+    // mints for users created through the auth flow, as opposed to the UUIDs
+    // SCIM assigns — into one matching nobody. The same silent no-op by a
+    // different route.
+    expect(parseMemberPath('members[value eq "AbCdEf123"]')).toEqual({
+      attr: "members",
+      filtered: ["AbCdEf123"],
+      hadFilter: true,
+    });
+    expect(parseMemberPath("MEMBERS[value EQ 'xY']")).toEqual({
+      attr: "members",
+      filtered: ["xY"],
+      hadFilter: true,
+    });
+    // Unparsed, but still a named subset — that is what keeps it away from the
+    // clear-all branch.
+    expect(parseMemberPath('members[displayName sw "a"]')).toEqual({
+      attr: "members",
+      filtered: [],
+      hadFilter: true,
+    });
+    expect(parseMemberPath("members")).toEqual({ attr: "members", filtered: [], hadFilter: false });
+    expect(parseMemberPath(undefined)).toEqual({ attr: "", filtered: [], hadFilter: false });
+  });
+
+  test("a remove that names nobody at all clears the membership", async () => {
+    const a = await createScimUser(ctx, "t1", null, { userName: "a@x.test" });
+    const b = await createScimUser(ctx, "t1", null, { userName: "b@x.test" });
+    await patchScimGroup(ctx, "t1", "r-eng", [
+      { op: "add", path: "members", value: [{ value: a.id }, { value: b.id }] },
+    ]);
+    const after = await patchScimGroup(ctx, "t1", "r-eng", [{ op: "remove", path: "members" }]);
+    expect(after?.members).toEqual([]);
+  });
+
+  test("a remove naming an unresolvable id is a no-op, not a mass revoke", async () => {
+    const a = await createScimUser(ctx, "t1", null, { userName: "a@x.test" });
+    const foreign = await createScimUser(ctx, "t2", null, { userName: "spy@x.test" });
+    await patchScimGroup(ctx, "t1", "r-eng", [
+      { op: "add", path: "members", value: [{ value: a.id }] },
+    ]);
+    // A stale id from an IdP, or one belonging to another workspace, resolves
+    // to nothing. Treating that as "clear everything" lets one dangling id
+    // revoke a whole role.
+    const stale = await patchScimGroup(ctx, "t1", "r-eng", [
+      { op: "remove", path: "members", value: [{ value: "no-such-user" }] },
+    ]);
+    expect(stale?.members).toHaveLength(1);
+    const cross = await patchScimGroup(ctx, "t1", "r-eng", [
+      { op: "remove", path: `members[value eq "${foreign.id}"]` },
+    ]);
+    expect(cross?.members).toHaveLength(1);
+  });
+
+  test("a remove naming an explicitly empty set removes nothing", async () => {
+    const a = await createScimUser(ctx, "t1", null, { userName: "a@x.test" });
+    await patchScimGroup(ctx, "t1", "r-eng", [
+      { op: "add", path: "members", value: [{ value: a.id }] },
+    ]);
+    // `value: []` is "nobody", not "everyone".
+    const after = await patchScimGroup(ctx, "t1", "r-eng", [
+      { op: "remove", path: "members", value: [] },
+    ]);
+    expect(after?.members).toHaveLength(1);
+  });
+
+  test("a filter we do not understand is refused, not guessed at", async () => {
+    const a = await createScimUser(ctx, "t1", null, { userName: "a@x.test" });
+    await patchScimGroup(ctx, "t1", "r-eng", [
+      { op: "add", path: "members", value: [{ value: a.id }] },
+    ]);
+    // Acting on a filter nobody parsed is worse than refusing it — and it must
+    // not fall through to the clear-all branch either.
+    const after = await patchScimGroup(ctx, "t1", "r-eng", [
+      { op: "remove", path: `members[displayName sw "a"]` },
+    ]);
+    expect(after?.members).toHaveLength(1);
   });
 
   test("replace sets the membership to exactly the given set", async () => {

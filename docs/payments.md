@@ -92,6 +92,14 @@ updates in place instead of duplicating.
 Money is stored in **minor units** (an integer: `2500` = €25.00) with a
 separate `currency` column. No float rounding, no locale guessing.
 
+Providers disagree about what they quote, so the normalizer converts rather
+than trusting the wire value. Stripe, Paddle and PayTR already send minor units
+and pass through untouched; **iyzico quotes major-unit decimals** (`"108.90"`)
+and is multiplied on the way in. The scale is per-currency, not a flat ×100 —
+`JPY` and `KRW` have no minor unit at all (¥500 is `500`), and the Gulf dinars
+carry three digits (`KWD 1.500` is `1500`). One sum over
+`payment_transactions.amount` therefore means one thing across providers.
+
 | Collection | Notable columns |
 |---|---|
 | `payment_customers` | `email`, `name`, `currency`, `delinquent`, `metadata` |
@@ -357,7 +365,10 @@ every decline as a completed payment:
 | `paymentStatus` | whether the **card was charged** (`SUCCESS` / `FAILURE`) |
 
 The recorded amount is `paidPrice`, not `price` — `paidPrice` includes the
-installment surcharge and is what the customer was actually charged.
+installment surcharge and is what the customer was actually charged. iyzico
+quotes it as a major-unit decimal (`"108.90"`), so it is converted to minor
+units (`10890`) before it reaches the ledger — see the note under
+[Where the data lands](#where-the-data-lands).
 
 Set the callback URL on your `checkoutFormInitialize` request (iyzico takes it
 per-request rather than from a panel setting). It is the same

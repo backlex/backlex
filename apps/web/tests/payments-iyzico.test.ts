@@ -202,7 +202,12 @@ describe("normalizing what iyzico answered", () => {
     expect(row.status).toBe("succeeded");
     // `paidPrice` includes the installment surcharge; `price` is the basket
     // total, and recording that would under-report what the customer paid.
-    expect(row.amount).toBe(108.9);
+    //
+    // Stored in MINOR units, like every other provider's rows in this ledger.
+    // iyzico is the one provider that quotes major-unit decimals ("108.90"),
+    // so it converts on the way in — writing 108.9 through verbatim made
+    // iyzico rows 100x smaller than Stripe's in the same collection.
+    expect(row.amount).toBe(10890);
     expect(row.currency).toBe("TRY");
     expect(row.external_id).toBe("17654321");
     expect((row.metadata as Record<string, unknown>).basket_id).toBe("B-9001");
@@ -331,7 +336,7 @@ describe("the callback body is discarded except for the token", () => {
     expect(res.status).toBe(200);
     const row = paymentRows().find((r) => r.external_id === "PAY-REAL-1");
     expect(row).toBeDefined();
-    expect(Number(row!.amount)).toBe(108.9);
+    expect(Number(row!.amount)).toBe(10890);
     expect(row!.status).toBe("succeeded");
   });
 

@@ -570,6 +570,64 @@ const num = (v: unknown): number | null => {
 
 const bool = (v: unknown): boolean => v === true || v === 1 || v === "true";
 
+/**
+ * ISO-4217 currencies whose minor unit is NOT two digits. Everything absent
+ * from this table is assumed to be 2 (the overwhelming majority).
+ *
+ * This matters because `payment_transactions.amount` is an integer in minor
+ * units, and providers disagree about what they quote: Stripe and PayTR send
+ * minor units already, while iyzico quotes major-unit decimals ("108.90").
+ * Hard-coding ×100 would be wrong for JPY (¥500 is 500, not 50000) and for the
+ * three-digit Gulf dinars — and JPY in particular is unavoidable the moment a
+ * Japanese provider is wired up.
+ */
+const CURRENCY_EXPONENTS: Record<string, number> = {
+  BIF: 0, CLP: 0, DJF: 0, GNF: 0, ISK: 0, JPY: 0, KMF: 0, KRW: 0, PYG: 0,
+  RWF: 0, UGX: 0, VND: 0, VUV: 0, XAF: 0, XOF: 0, XPF: 0,
+  BHD: 3, IQD: 3, JOD: 3, KWD: 3, LYD: 3, OMR: 3, TND: 3,
+};
+
+/**
+ * Digits after the decimal point for a currency's minor unit. Unknown or
+ * malformed input falls back to 2.
+ *
+ * The `typeof` check rather than `?? 2` is belt-and-braces: an inherited
+ * `Object.prototype` member would be an object, not `undefined`, and `??`
+ * would pass it straight through into `10 ** it` as `NaN`. Upper-casing the
+ * key already makes every such name non-matching (`"__PROTO__"` is not
+ * `"__proto__"`), so this is defence for a future edit that drops the
+ * normalisation, not a live hole.
+ */
+export const currencyExponent = (currency: string | null | undefined): number => {
+  const e = CURRENCY_EXPONENTS[String(currency ?? "").toUpperCase()];
+  return typeof e === "number" ? e : 2;
+};
+
+/**
+ * A provider's major-unit figure ("108.90") → the integer minor units the
+ * ledger stores (10890). Rounds rather than truncates: `108.9 * 100` is
+ * `10889.999999999998` in binary floating point, and truncation would quietly
+ * bill a cent short on a large fraction of real amounts.
+ */
+export const toMinorUnits = (
+  value: unknown,
+  currency: string | null | undefined,
+): number | null => {
+  const n = num(value);
+  if (n === null) return null;
+  return Math.round(n * 10 ** currencyExponent(currency));
+};
+
+/** Minor units (10890) → the major-unit decimal string providers such as
+ *  iyzico expect on the way out ("108.90"). */
+export const toMajorUnits = (
+  minor: number,
+  currency: string | null | undefined,
+): string => {
+  const e = currencyExponent(currency);
+  return (minor / 10 ** e).toFixed(e);
+};
+
 /** Unix seconds → ms. */
 const secToMs = (v: unknown): number | null => {
   const n = num(v);
@@ -1298,6 +1356,7 @@ export async function retrieveIyzicoPayment(
  */
 const normalizeIyzico = (body: Record<string, unknown>): NormalizedPaymentEvent => {
   const paymentId = str(body.paymentId) ?? str(body.token) ?? "";
+  const currency = str(body.currency) ?? "TRY";
   // `paymentStatus` is the settlement verdict; `status` above it only says the
   // API call itself succeeded, and conflating the two records a declined card
   // as a completed payment.
@@ -1320,9 +1379,16 @@ const normalizeIyzico = (body: Record<string, unknown>): NormalizedPaymentEvent 
               invoice: null,
               // `paidPrice` is what was actually charged (it includes the
               // installment surcharge); `price` is the basket total.
-              amount: num(body.paidPrice) ?? num(body.price),
+              //
+              // iyzico quotes MAJOR units ("108.90") where Stripe and PayTR
+              // both send minor units. Writing it through verbatim put iyzico
+              // rows in the ledger 100x smaller than every other provider's —
+              // and `amount` is an integer column, so the fraction was lost on
+              // top. Convert on the way in so one `payment_transactions` sum
+              // means one thing.
+              amount: toMinorUnits(body.paidPrice ?? body.price, currency),
               amount_refunded: 0,
-              currency: str(body.currency) ?? "TRY",
+              currency,
               status: succeeded ? "succeeded" : "failed",
               method: str(body.paymentChannel),
               failure_reason: succeeded

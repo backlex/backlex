@@ -9,7 +9,7 @@ import type { Env } from "./env";
 import { apiRateLimitMiddleware } from "./lib/api-rate-limit";
 import { usageMeterMiddleware } from "./lib/usage-meter";
 import { authLockoutMiddleware, authRateLimitMiddleware } from "./lib/auth-rate-limit";
-import { configureLogLevel, levelForStatus, log } from "./lib/log";
+import { configureLogBuffer, configureLogLevel, levelForStatus, log } from "./lib/log";
 import {
   type TraceContext,
   deriveTraceContext,
@@ -17,6 +17,7 @@ import {
 } from "./lib/trace";
 import { recordSpan, traceSampleRate } from "./services/traces";
 import { exportSpanOtlp, otlpEnabled } from "./services/otlp";
+import { flushLogsOtlp } from "./services/otlp-logs";
 import { isDemoMode } from "./services/demo";
 import { demoGuardMiddleware } from "./middleware/demo";
 import { errorHandler } from "./middleware/error";
@@ -268,6 +269,9 @@ export const createApp = (env: Env) => {
 
   // Set the structured-log threshold once per isolate from env (default info).
   configureLogLevel(env.LOG_LEVEL);
+  // Only buffer when there is a collector to buffer FOR — otherwise it is a
+  // per-isolate memory cost with no consumer.
+  configureLogBuffer(otlpEnabled(env));
 
   // Outermost middleware: assign a correlation id and emit the SINGLE structured
   // JSON access line per request. Runs first so `requestId` is available to
@@ -327,6 +331,19 @@ export const createApp = (env: Env) => {
       // Present only on error responses (stashed by the global error handler).
       code,
     });
+    // Ship the lines this request produced. Deliberately OUTSIDE the trace
+    // sampling gate below: logs and traces do not share a sampling story, and
+    // at any rate under 1 most requests would never flush — the buffer would
+    // fill and start dropping lines that were never exported. Each line still
+    // carries `traceId`, so a collector joins it to its span when there is one.
+    if (otlpEnabled(env)) {
+      const flush = flushLogsOtlp(env);
+      try {
+        c.executionCtx?.waitUntil?.(flush);
+      } catch {
+        void flush;
+      }
+    }
     // Persist the span for the admin Traces panel. Probes are skipped, as are
     // the traces endpoints themselves (avoid a self-referential feedback loop).
     // Non-blocking: never add latency or fail the request over telemetry.
@@ -357,6 +374,8 @@ export const createApp = (env: Env) => {
           errorCode: code,
           queryShape: shape,
         };
+        // Same sampled span feeds the local table AND (when OTLP_ENDPOINT is
+        // set) the external OpenTelemetry collector. Both never throw.
         // Same sampled span feeds the local table AND (when OTLP_ENDPOINT is
         // set) the external OpenTelemetry collector. Both never throw.
         const write = otlpEnabled(ctx.env)

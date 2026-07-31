@@ -116,3 +116,27 @@ OTLP_HEADERS="authorization=Bearer <token>"   # optional
   stitch with upstream/downstream services reporting to the same collector.
 - Same non-blocking contract as the local write: a down or slow collector never
   adds latency to or fails the request (errors are logged and swallowed).
+
+### Logs go too
+
+The same `OTLP_ENDPOINT` also receives the structured log lines each request
+produced, POSTed to `<endpoint>/v1/logs`. That is the point of shipping logs to a
+collector rather than reading them in a platform dashboard: `traceId` lands on
+the log record itself, so a collector joins a line to the span it was written
+under.
+
+- **Logs do NOT follow `TRACES_SAMPLE_RATE`.** Every request'"'"'s lines ship. Traces
+  are sampled because a span per request is expensive to store; a log line you
+  chose to write is not something to throw dice over.
+- **`LOG_LEVEL` still applies.** A line the threshold suppressed is never
+  buffered and never exported — the collector sees exactly what the platform'"'"'s
+  own drain sees, not more.
+- Lines are **batched per request** and flushed in the same `waitUntil` as the
+  span. One HTTP request per log entry would cost more than the request being
+  logged.
+- The buffer is **bounded at 512 lines** and drops the OLDEST on overflow —
+  during an incident the newest lines are the ones being read. A `warn` line
+  saying how many were dropped is appended to the batch, so the gap is never
+  silent.
+- On Workers, `console.log` still reaches Workers Observability regardless. This
+  is in addition, not instead: losing an export must never mean losing the log.

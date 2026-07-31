@@ -10,6 +10,7 @@ import { sendTemplatedEmail } from "./email";
 import { sendPushToUsers } from "./push";
 import { sendSmsToNumbers, sendSmsToUsers } from "./sms";
 import { deliverIntegrationByKind } from "./integrations";
+import { createPaymentCheckout } from "./payments";
 import { createItem, updateItem } from "./items-helpers";
 import { enqueueTask, type ResumePayload } from "./scheduled-tasks";
 import { recordActivity } from "./activity";
@@ -360,6 +361,78 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
     } catch (e) {
       if (e instanceof FlowOpError) throw e;
       throw new FlowOpError(`sms send failed: ${(e as Error).message}`);
+    }
+  }
+
+  if (op.type === "payment.checkout") {
+    const tenantId = ctx.authSubject.tenantId ?? null;
+    if (!tenantId) {
+      throw new FlowOpError(
+        "payment.checkout requires a tenant — the flow run has no workspace bound",
+      );
+    }
+    // Almost every field here is a template over the triggering row, so the
+    // interesting failures are render-time, not save-time.
+    const rendered = String(interpolate(op.amount, ctx) ?? "").trim();
+    const amount = Number(rendered);
+    if (!Number.isInteger(amount) || amount <= 0) {
+      // Name the template, not the rendered value: this message lands on the
+      // persisted `flow.run` activity row, and the value is a customer's
+      // invoice total. The template alone says which column to go fix.
+      throw new FlowOpError(
+        `payment.checkout amount "${op.amount}" did not render to a positive integer ` +
+          `in minor units (1050 = 10.50)`,
+      );
+    }
+    const text = (v: string | undefined): string | undefined => {
+      if (v === undefined) return undefined;
+      const out = String(interpolate(v, ctx) ?? "").trim();
+      return out || undefined;
+    };
+    const writeBack = op.writeBack
+      ? {
+          collection: String(interpolate(op.writeBack.collection, ctx) ?? "").trim(),
+          itemId: String(interpolate(op.writeBack.itemId, ctx) ?? "").trim(),
+          urlField: op.writeBack.urlField,
+          referenceField: op.writeBack.referenceField,
+        }
+      : undefined;
+    if (writeBack && (!writeBack.collection || !writeBack.itemId)) {
+      // A blank target would mint a live payment link and drop it on the
+      // floor. Better a failed run than an unrecorded way to pay.
+      throw new FlowOpError(
+        `payment.checkout write-back target rendered empty ` +
+          `("${op.writeBack?.collection}" / "${op.writeBack?.itemId}")`,
+      );
+    }
+
+    const email = text(op.email);
+    const name = text(op.customerName);
+    try {
+      const out = await createPaymentCheckout(ctx.ctx, tenantId, {
+        provider: op.provider,
+        providerId: op.providerId,
+        amount,
+        currency: String(interpolate(op.currency, ctx) ?? "").trim().toUpperCase(),
+        description: text(op.description),
+        customer: email || name ? { email, name } : undefined,
+        successUrl: text(op.successUrl),
+        cancelUrl: text(op.cancelUrl),
+        reference: text(op.reference),
+        writeBack,
+      });
+      // The URL is returned into `$last` so a following `email`/`sms` op can
+      // actually send it — that pairing is the point of the op.
+      return {
+        url: out.url,
+        reference: out.reference,
+        provider: out.provider,
+        expiresAt: out.expiresAt,
+        writtenBack: Boolean(out.writtenBack),
+      };
+    } catch (e) {
+      if (e instanceof FlowOpError) throw e;
+      throw new FlowOpError(`payment.checkout failed: ${(e as Error).message}`);
     }
   }
 

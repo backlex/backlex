@@ -23,7 +23,7 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import type { FieldDef } from "@backlex/db";
+import { applyCollection, type FieldDef } from "@backlex/db";
 import { AppError } from "@backlex/core";
 import {
   PAYMENT_COLLECTION_SLUGS,
@@ -47,10 +47,18 @@ import {
   type PaymentRecord,
   type PaymentRecordKind,
 } from "@backlex/integrations/payments";
+import {
+  createCheckout,
+  toCheckoutReference,
+  type CheckoutCustomer,
+  type CheckoutFailure,
+} from "@backlex/integrations/checkout";
 import type { Ctx } from "../context";
 import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/crypto";
 import { createManagedCollection } from "./collections";
+import { invalidateTenantCollections } from "./collections-cache";
 import { loadCollection } from "./items/collection-loader";
+import { updateItem } from "./items-helpers";
 import { ingestRows } from "./migrate-ingest";
 
 type DbCtx = Pick<Ctx, "db" | "dialect">;
@@ -113,6 +121,20 @@ const decryptConfig = async (provider: string, config: Record<string, unknown>, 
   return out;
 };
 
+/**
+ * Decrypt a stored provider config for a caller that already holds the row.
+ *
+ * Exported for the hosted `dummy` checkout page, which needs the signing
+ * secret and has no session to authorise a normal read. Everything else should
+ * be going through the functions in this module rather than handling
+ * plaintext credentials itself.
+ */
+export const decryptProviderConfig = (
+  ctx: Pick<Ctx, "env">,
+  row: PaymentProviderRow,
+): Promise<Record<string, unknown>> =>
+  decryptConfig(row.provider, (row.config ?? {}) as Record<string, unknown>, ctx.env.AUTH_SECRET);
+
 /** Public (masked) view — never leaks a decrypted key. */
 export const toPublicProvider = (row: PaymentProviderRow) => ({
   id: row.id,
@@ -138,6 +160,40 @@ const newWebhookToken = (): string => {
   return `pwh_${btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}`;
 };
 
+// ── The `dummy` provider's production guard ─────────────────────────────────
+
+/**
+ * `dummy` settles payments locally and always says they succeeded. That is
+ * exactly what a demo instance and a smoke test want, and exactly what nobody
+ * wants on a production workspace — a connected `dummy` provider would let
+ * anyone who can reach the origin file "succeeded" rows in the same ledger the
+ * real acquirer writes to, and revenue reporting could not tell them apart.
+ *
+ * Unlike the `console` SMS/email adapters, which an operator selects by setting
+ * an env var, this one is USER-connectable from the admin UI — so the gate has
+ * to live at connect time rather than in adapter selection.
+ */
+const isNonProductionRuntime = (env: { DEMO_MODE?: string }): boolean => {
+  if (env.DEMO_MODE) return true;
+  // Vite replaces this at build time, so a production Worker bundle carries a
+  // literal `false` here — the same signal `lib/openapi.ts` gates on.
+  if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV === true) return true;
+  // `process` is absent on Workers; on Bun/Node it distinguishes the dev
+  // server and the test runner from a real deploy.
+  const nodeEnv = typeof process !== "undefined" ? process.env?.NODE_ENV : undefined;
+  return nodeEnv === "development" || nodeEnv === "test";
+};
+
+function assertDummyAllowed(env: { DEMO_MODE?: string }): void {
+  if (isNonProductionRuntime(env)) return;
+  throw new AppError(
+    "FORBIDDEN",
+    "The dummy payment provider records payments as succeeded without charging " +
+      "anything, so it can only be connected on a demo or development instance " +
+      "(set DEMO_MODE).",
+  );
+}
+
 // ── Provider CRUD ───────────────────────────────────────────────────────────
 
 export interface ConnectProviderInput {
@@ -155,7 +211,7 @@ export interface ConnectProviderInput {
  * secret key is treated as "unchanged".
  */
 export async function connectProvider(
-  ctx: DbCtx,
+  ctx: Pick<Ctx, "db" | "dialect" | "env">,
   tenantId: string,
   input: ConnectProviderInput,
   authSecret: string,
@@ -166,6 +222,7 @@ export async function connectProvider(
       `Unknown payment provider "${input.provider}" — expected one of ${PAYMENT_PROVIDERS.join(", ")}`,
     );
   }
+  if (input.provider === "dummy") assertDummyAllowed(ctx.env);
   const t = providersTable(ctx.dialect);
   const db = ctx.db as AnyDb;
   const existing = (await db
@@ -184,6 +241,13 @@ export async function connectProvider(
       continue;
     }
     merged[k] = v;
+  }
+  // The dummy provider signs its own hosted checkout and the settlement it
+  // posts back. There is no dashboard to copy a secret from, so one is minted
+  // here — an admin who left the field blank still gets a signed loop rather
+  // than an unsigned one.
+  if (input.provider === "dummy" && !merged.secret) {
+    merged.secret = crypto.randomUUID().replace(/-/g, "");
   }
   const config = await encryptConfig(input.provider, merged, authSecret);
   const status = input.status ?? "connected";
@@ -441,6 +505,18 @@ const PAYMENT_COLLECTION_FIELDS: Record<PaymentRecordKind, FieldDef[]> = {
     },
     { name: "method", type: "text", width: "half" },
     { name: "failure_reason", type: "text", width: "half" },
+    {
+      name: "reference",
+      type: "text",
+      indexed: true,
+      width: "half",
+      label: "Reference",
+      // The return leg of an outbound checkout: the row id that asked for the
+      // money travels out with the link and the provider echoes it back here.
+      // Indexed because the only reason to store it is to look a payment up by
+      // the invoice it settles.
+      description: "The backlex row this payment was requested for.",
+    },
     { name: "processed_at", type: "timestamp", indexed: true, width: "half" },
     METADATA_FIELD,
     SOURCE_CREATED_FIELD,
@@ -494,6 +570,12 @@ export interface ProvisionResult {
    * missing without anyone noticing.
    */
   conflicts: string[];
+  /**
+   * Columns added to an ALREADY-EXISTING sync target, by slug. Empty on a
+   * steady-state run; non-empty the first time a workspace provisioned before
+   * a new column catches up.
+   */
+  addedFields: Record<string, string[]>;
 }
 
 /** Does this collection look like one of ours? A pre-existing collection with
@@ -504,10 +586,60 @@ const isSyncTarget = (collection: { fields: FieldDef[] }): boolean => {
 };
 
 /**
+ * Add any columns a sync target is missing, without touching the ones it has.
+ *
+ * A workspace that connected a provider before a new column existed would
+ * otherwise never get it, and the first delivery carrying that key fails the
+ * whole event with `Unknown column` — which is how `reference` (added with
+ * outbound checkout) would have broken every pre-existing installation.
+ *
+ * Strictly additive in both directions: only fields absent by NAME are
+ * appended, so an admin's own extra columns and any local edits to ours
+ * survive, and `applyCollection` never drops or alters what is already there.
+ */
+async function backfillSyncTargetFields(
+  ctx: DbCtx,
+  tenantId: string,
+  kind: PaymentRecordKind,
+  collection: Awaited<ReturnType<typeof loadCollection>>,
+): Promise<string[]> {
+  const have = new Set(collection.fields.map((f) => f.name));
+  const missing = PAYMENT_COLLECTION_FIELDS[kind].filter((f) => !have.has(f.name));
+  if (missing.length === 0) return [];
+  // An adopted table is somebody else's; DDL on it is exactly what adoption
+  // exists not to do. `applyCollection` short-circuits on `adopted` anyway,
+  // but returning early keeps us from rewriting the metadata row to claim
+  // columns the table doesn't have.
+  if (collection.adopted) return [];
+
+  const fields = [...collection.fields, ...missing];
+  const t = (ctx.dialect === "pg" ? pg.schema.collections : sqlite.schema.collections) as
+    typeof pg.schema.collections;
+  await applyCollection(ctx.db as AnyDb, ctx.dialect, {
+    table: collection.physicalTable,
+    fields,
+    ownerScoped: collection.ownerScoped,
+    tenantScoped: collection.tenantScoped,
+    versioned: collection.versioned,
+    fts: collection.fts,
+    softDelete: collection.softDelete,
+    adopted: false,
+  });
+  await (ctx.db as AnyDb)
+    .update(t)
+    .set({ fields, updatedAt: new Date() })
+    .where(and(eq(t.tenantId, tenantId), eq(t.slug, collection.slug)));
+  // The loader caches per isolate; without this the next write still sees the
+  // old field list and rejects the very column we just added.
+  invalidateTenantCollections(tenantId);
+  return missing.map((f) => f.name);
+}
+
+/**
  * Create the four sync targets if they're missing. Idempotent and additive —
- * an existing collection (even one an admin has extended with extra fields) is
- * never modified. Order matters: `payment_customers` first, because the other
- * three hold a relation to it.
+ * an existing collection (even one an admin has extended with extra fields)
+ * only ever gains columns it was missing. Order matters: `payment_customers`
+ * first, because the other three hold a relation to it.
  */
 export async function ensurePaymentCollections(
   ctx: DbCtx,
@@ -516,6 +648,7 @@ export async function ensurePaymentCollections(
   const created: string[] = [];
   const existing: string[] = [];
   const conflicts: string[] = [];
+  const addedFields: Record<string, string[]> = {};
   for (const kind of PAYMENT_RECORD_KINDS) {
     const slug = PAYMENT_COLLECTION_SLUGS[kind];
     const m = COLLECTION_META[kind];
@@ -542,7 +675,13 @@ export async function ensurePaymentCollections(
     // with payments.
     try {
       const collection = await loadCollection(ctx, tenantId, slug);
-      (isSyncTarget(collection) ? existing : conflicts).push(slug);
+      if (!isSyncTarget(collection)) {
+        conflicts.push(slug);
+        continue;
+      }
+      existing.push(slug);
+      const added = await backfillSyncTargetFields(ctx, tenantId, kind, collection);
+      if (added.length > 0) addedFields[slug] = added;
     } catch {
       // The slug is taken by a physical table with no active collection row
       // (archived / adopted-then-archived). Treat as a conflict — we can't
@@ -550,7 +689,7 @@ export async function ensurePaymentCollections(
       conflicts.push(slug);
     }
   }
-  return { created, existing, conflicts };
+  return { created, existing, conflicts, addedFields };
 }
 
 // ── Writing normalized records into the collections ─────────────────────────
@@ -606,6 +745,14 @@ export async function applyPaymentRecords(
           `(no ${PAYMENT_MARKER_COLUMNS.join(" / ")} column). Rename it, then reconnect.`,
       );
     }
+    // A workspace provisioned before a column existed still has to be able to
+    // receive an event carrying it. The diff is a set comparison and the DDL
+    // only runs when something is genuinely absent, so the steady-state cost
+    // on this hot path is nil — and the alternative is the whole delivery
+    // failing with `Unknown column` until someone re-provisions by hand.
+    const added = await backfillSyncTargetFields(ctx, tenantId, kind, collection);
+    if (added.length > 0) collection = await loadCollection(ctx, tenantId, slug);
+
     // Last write wins within one batch: a reconcile page can legitimately
     // carry the same id twice (a Polar order maps to invoice + payment).
     const deduped = new Map<string, Record<string, unknown>>();
@@ -779,6 +926,219 @@ export async function receiveWebhook(
       .where(eq(e.id, rowId));
     throw err;
   }
+}
+
+// ── Outbound: asking for money ──────────────────────────────────────────────
+
+export interface CheckoutWriteBack {
+  /** Collection holding the row that is asking to be paid. */
+  collection: string;
+  itemId: string;
+  /** Field the hosted checkout URL is written into. */
+  urlField: string;
+  /** Optional field the reference is written into, so the row and the
+   *  eventual `payment_transactions` row can be joined on it. */
+  referenceField?: string;
+}
+
+export interface CreateCheckoutInput {
+  /** Connected provider row id. Takes precedence over `provider`. */
+  providerId?: string;
+  /** Provider name, for callers that don't hold the connection id. */
+  provider?: string;
+  /** MINOR units, matching `payment_transactions.amount`. */
+  amount: number;
+  currency: string;
+  description?: string;
+  customer?: CheckoutCustomer;
+  successUrl?: string;
+  cancelUrl?: string;
+  /** Overrides the reference derived from `writeBack.itemId`. */
+  reference?: string;
+  /** The PAYING CUSTOMER's IP — PayTR folds it into the token hash. */
+  customerIp?: string;
+  expiresInSec?: number;
+  locale?: string;
+  writeBack?: CheckoutWriteBack;
+  /** Origin the callback + hosted-page URLs are built from. Defaults to
+   *  `APP_URL`; the route passes the request's own origin so a preview deploy
+   *  doesn't send customers to production. */
+  baseUrl?: string;
+  fetchImpl?: FetchLike;
+}
+
+export interface CreateCheckoutOutput {
+  provider: string;
+  providerId: string;
+  url: string;
+  externalId: string;
+  expiresAt: number | null;
+  reference: string;
+  /** Which fields on which row were updated. Null when no write-back was
+   *  asked for. */
+  writtenBack: { collection: string; itemId: string; fields: string[] } | null;
+}
+
+/**
+ * A checkout refusal is not one kind of problem, and collapsing them all into
+ * a 422 would tell an admin to go fix their input when the provider is simply
+ * down.
+ */
+const CHECKOUT_ERROR_CODES: Record<CheckoutFailure, "VALIDATION" | "UNAVAILABLE" | "BAD_REQUEST"> = {
+  unknown_provider: "VALIDATION",
+  unsupported: "VALIDATION",
+  catalog_only: "VALIDATION",
+  missing_secret: "VALIDATION",
+  invalid_input: "VALIDATION",
+  // Transport failure. Retryable, and nothing about the request was wrong.
+  unreachable: "UNAVAILABLE",
+  // The provider answered and said no — the request reached it and was
+  // understood, so this is a 400, not a 422 about our own field shapes.
+  rejected: "BAD_REQUEST",
+};
+
+/** Resolve a connected provider by row id, or by name when the caller only
+ *  knows which provider it wants. */
+async function resolveProviderFor(
+  ctx: DbCtx,
+  tenantId: string,
+  input: Pick<CreateCheckoutInput, "providerId" | "provider">,
+): Promise<PaymentProviderRow> {
+  if (input.providerId) return getProviderRow(ctx, tenantId, input.providerId);
+  if (!input.provider) {
+    throw new AppError("VALIDATION", "Either `providerId` or `provider` is required");
+  }
+  const t = providersTable(ctx.dialect);
+  const rows = (await (ctx.db as AnyDb)
+    .select()
+    .from(t)
+    .where(and(tenantEq(t, tenantId), eq(t.provider, input.provider)))
+    .limit(1)) as PaymentProviderRow[];
+  if (!rows[0]) {
+    throw new AppError("NOT_FOUND", `No connected "${input.provider}" payment provider`);
+  }
+  return rows[0];
+}
+
+/**
+ * Open a hosted checkout and (optionally) write the link back onto the row
+ * that is asking to be paid.
+ *
+ * This is the outbound half of payments. Until it existed, a workspace could
+ * mirror every payment it received and had no way to ASK for one — fifteen of
+ * the schema templates model money arriving (invoices, quotes, donations,
+ * rental orders) and not one of them could produce a link.
+ *
+ * The write-back is the part that makes it a feature rather than a URL
+ * generator. `reference` — our own row id, stripped to what every provider
+ * will carry — travels out with the checkout and comes back on the settlement,
+ * where the normalizer lifts it onto `payment_transactions.reference`. Storing
+ * the same value on the source row is what lets the two be joined.
+ *
+ * Ordering is deliberate: the target row and field are validated BEFORE the
+ * provider is called. A checkout minted against a field that doesn't exist
+ * would leave a live payment link that nothing in the workspace knows about.
+ */
+export async function createPaymentCheckout(
+  ctx: Ctx,
+  tenantId: string,
+  input: CreateCheckoutInput,
+): Promise<CreateCheckoutOutput> {
+  const row = await resolveProviderFor(ctx, tenantId, input);
+  if (row.status !== "connected") {
+    throw new AppError("VALIDATION", `The ${row.provider} connection is disabled`);
+  }
+
+  // Validate the write-back target first — see the doc comment. `loadCollection`
+  // throws NOT_FOUND for a missing collection, which is the right answer here.
+  if (input.writeBack) {
+    const target = await loadCollection(ctx, tenantId, input.writeBack.collection);
+    const names = new Set(target.fields.map((f) => f.name));
+    for (const field of [input.writeBack.urlField, input.writeBack.referenceField]) {
+      if (field && !names.has(field)) {
+        throw new AppError(
+          "VALIDATION",
+          `Collection "${input.writeBack.collection}" has no field "${field}" to write the ` +
+            `checkout into — add a text field for it first`,
+        );
+      }
+    }
+  }
+
+  const reference = input.reference
+    ? toCheckoutReference(input.reference)
+    : toCheckoutReference(input.writeBack?.itemId ?? crypto.randomUUID());
+
+  const config = await decryptConfig(
+    row.provider,
+    (row.config ?? {}) as Record<string, unknown>,
+    ctx.env.AUTH_SECRET,
+  );
+  const baseUrl = (input.baseUrl ?? ctx.env.APP_URL ?? "").replace(/\/+$/, "");
+  if (!baseUrl) {
+    throw new AppError(
+      "VALIDATION",
+      "APP_URL is not configured, so there is no origin to build the settlement " +
+        "callback from — set it or pass `baseUrl`",
+    );
+  }
+
+  const result = await createCheckout(row.provider, {
+    config,
+    amount: input.amount,
+    currency: input.currency,
+    reference,
+    description: input.description,
+    customer: input.customer,
+    // Landing the customer back on the admin origin is a poor default but a
+    // working one; a caller that cares passes its own page.
+    successUrl: input.successUrl || baseUrl,
+    cancelUrl: input.cancelUrl,
+    // PayTR and iyzico carry the settlement URL per checkout — there is no
+    // dashboard endpoint for a hosted form. It is this workspace's own receive
+    // URL, so a settlement lands on the connection that opened the checkout.
+    callbackUrl: `${baseUrl}/api/payments/webhook/${row.webhookToken}`,
+    customerIp: input.customerIp,
+    expiresInSec: input.expiresInSec,
+    locale: input.locale,
+    hostedBaseUrl: baseUrl,
+    hostedToken: row.webhookToken,
+    fetchImpl: input.fetchImpl,
+  });
+
+  if (!result.ok) {
+    throw new AppError(CHECKOUT_ERROR_CODES[result.reason], result.message, {
+      provider: row.provider,
+      reason: result.reason,
+    });
+  }
+
+  let writtenBack: CreateCheckoutOutput["writtenBack"] = null;
+  if (input.writeBack) {
+    const data: Record<string, unknown> = { [input.writeBack.urlField]: result.url };
+    if (input.writeBack.referenceField) data[input.writeBack.referenceField] = reference;
+    await updateItem(ctx, {
+      slug: input.writeBack.collection,
+      tenantId,
+      id: input.writeBack.itemId,
+      data,
+    });
+    writtenBack = {
+      collection: input.writeBack.collection,
+      itemId: input.writeBack.itemId,
+      fields: Object.keys(data),
+    };
+  }
+
+  return {
+    provider: row.provider,
+    providerId: row.id,
+    url: result.url,
+    externalId: result.externalId,
+    expiresAt: result.expiresAt,
+    reference,
+    writtenBack,
+  };
 }
 
 // ── Event log ───────────────────────────────────────────────────────────────

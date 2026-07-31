@@ -170,6 +170,10 @@ msgstr "(yok — henüz şablon yok)"
 msgid "(none — use literal subject/body)"
 msgstr "(yok — doğrudan konu/içerik kullanın)"
 
+#: src/client/admin/flow-builder.tsx
+msgid "(none connected — connect one on Payments)"
+msgstr "(bağlı yok — Ödemeler'den bir tane bağlayın)"
+
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/scim-card.tsx
 msgid "(none)"
@@ -741,6 +745,10 @@ msgstr "{key} silindi."
 msgid "{label} copied."
 msgstr "{label} kopyalandı."
 
+#: src/client/admin/pages/payments.tsx
+msgid "{label} payment link"
+msgstr "{label} ödeme bağlantısı"
+
 #: src/client/admin/pages/integrations.tsx
 msgid "{name} deliveries"
 msgstr "{name} teslimatları"
@@ -965,6 +973,10 @@ msgstr "Huni, ilk olayı gerçekleştiren ziyaretçilerden kaçının sonraki ol
 #: src/client/admin/parity/translations.tsx
 msgid "A key with this name already exists."
 msgstr "Bu isimde bir anahtar zaten mevcut."
+
+#: src/client/admin/pages/payments.tsx
+msgid "A local stand-in that settles payments without charging anything. Demo and development instances only."
+msgstr "Hiçbir ücret çekmeden ödemeleri sonuçlandıran yerel bir taklit. Yalnızca demo ve geliştirme kurulumları için."
 
 #: src/client/admin/parity/insights.tsx
 msgid "A panel with that name already exists."
@@ -1740,6 +1752,11 @@ msgstr "Zaten doğrulandı mı?"
 #: src/client/admin/pages/forms.tsx
 msgid "always on"
 msgstr "her zaman açık"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Amount"
+msgstr "Tutar"
 
 #: src/client/admin/item-collaboration.tsx
 msgid "An active share link exists for this record. For security the link URL is shown only once, at creation. Revoke it and create a new one if you need a fresh copyable URL."
@@ -3453,6 +3470,7 @@ msgid "Copy JSON"
 msgstr "JSON'u kopyala"
 
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/users.tsx
 msgid "Copy link"
 msgstr "Linki kopyala"
@@ -3705,6 +3723,10 @@ msgstr "Anahtar oluştur"
 msgid "Create Linear issues from data events."
 msgstr "Veri olaylarından Linear kayıtları (issue) oluştur."
 
+#: src/client/admin/pages/payments.tsx
+msgid "Create link"
+msgstr "Bağlantı oluştur"
+
 #: src/client/admin/item-collaboration.tsx
 msgid "Create new link"
 msgstr "Yeni bağlantı oluştur"
@@ -3840,6 +3862,8 @@ msgid "curl example"
 msgstr "curl örneği"
 
 #: src/client/admin/field-format-editor.tsx
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Currency"
 msgstr "Para birimi"
 
@@ -3934,6 +3958,11 @@ msgstr "özel kural"
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Custom…"
 msgstr "Özel…"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Customer email"
+msgstr "Müşteri e-postası"
 
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Customize…"
@@ -4345,8 +4374,10 @@ msgid "Descending"
 msgstr "Azalan"
 
 #: src/client/admin/collection-settings.tsx
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/role-editor.tsx
@@ -4541,8 +4572,17 @@ msgstr "Belgeler"
 msgid "Don't have an account?"
 msgstr "Hesabınız yok mu?"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Don't store the reference"
+msgstr "Referansı saklama"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Don't write it back"
+msgstr "Geri yazma"
+
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Done"
@@ -5830,6 +5870,10 @@ msgstr "Veri olaylarında bir repository_dispatch tetikler."
 msgid "fires on matching pub-sub channel events"
 msgstr "eşleşen pub-sub kanal olaylarında tetiklenir"
 
+#: src/client/admin/flow-builder.tsx
+msgid "First connected provider"
+msgstr "İlk bağlı sağlayıcı"
+
 #: src/client/admin/collection-settings.tsx
 msgid "first dropdown"
 msgstr "ilk açılır liste"
@@ -6873,6 +6917,10 @@ msgstr "Davetler 7 gün geçerlidir. Bir yöneticiden yenisini göndermesini ist
 msgid "invocations · p95"
 msgstr "çağrılar · p95"
 
+#: src/client/admin/pages/payments.tsx
+msgid "Invoice INV-42"
+msgstr "Fatura INV-42"
+
 #: src/client/admin/pages/extensions.tsx
 msgid "Invoke one of this extension's server-side hooks with a JSON payload and inspect the sandbox result."
 msgstr "Bu eklentinin sunucu tarafı kancalarından birini JSON yüküyle çalıştırın ve sandbox sonucunu inceleyin."
@@ -7503,6 +7551,10 @@ msgstr "Doğrulanmış e-postayla bağla"
 msgid "Link copied."
 msgstr "Bağlantı kopyalandı."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Link field"
+msgstr "Bağlantı alanı"
+
 #: src/client/admin/pages/forms.tsx
 msgid "link pins this language"
 msgstr "bağlantı bu dili sabitler"
@@ -7988,6 +8040,10 @@ msgstr "Min uzunluk"
 msgid "Min selected"
 msgstr "Min seçili"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Minor units — 1050 is 10.50. Matches how payments are stored."
+msgstr "Alt birim — 1050, 10,50 demektir. Ödemelerin saklanma biçimiyle aynıdır."
+
 #: src/client/admin/item-collaboration.tsx
 msgid "Mint a public link that shows this record read-only — no sign-in required to view it."
 msgstr "Bu kaydı salt okunur olarak gösteren bir genel bağlantı oluşturun — görüntülemek için giriş gerekmez."
@@ -8008,6 +8064,11 @@ msgstr "Yeni anahtar oluşturmak eskisini anında geçersiz kılar."
 msgid "Mints a new token; the current link stops working"
 msgstr "Yeni bir token üretir; mevcut bağlantı çalışmayı durdurur"
 
+#. placeholder {0}: entry.label
+#: src/client/admin/pages/payments.tsx
+msgid "Mirror {0}'s billing objects, and open checkouts to ask for payment."
+msgstr "{0} faturalama nesnelerini yansıtın ve ödeme istemek için ödeme oturumu açın."
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Mirror a calendar's events into a collection, including cancellations."
 msgstr "Bir takvimin etkinliklerini iptaller dahil bir koleksiyona yansıtır."
@@ -8020,9 +8081,18 @@ msgstr "Bir koleksiyonu zamanlanmış olarak bir BigQuery veri kümesine yansıt
 msgid "Mirror a collection into a ClickHouse table on a schedule."
 msgstr "Bir koleksiyonu zamanlanmış olarak bir ClickHouse tablosuna yansıtır."
 
+#. placeholder {0}: entry.label
 #: src/client/admin/pages/payments.tsx
-msgid "Mirror customers, subscriptions, invoices and payments from Stripe, Polar or Lemon Squeezy into your collections. Deliveries are signature-verified; credentials are encrypted at rest."
-msgstr "Stripe, Polar veya Lemon Squeezy'deki müşterileri, abonelikleri, faturaları ve ödemeleri koleksiyonlarınıza yansıtın. Gelen teslimatlar imzayla doğrulanır; kimlik bilgileri şifrelenerek saklanır."
+msgid "Mirror customers, subscriptions, invoices and payments from {0}."
+msgstr "{0} üzerindeki müşterileri, abonelikleri, faturaları ve ödemeleri yansıtın."
+
+#: src/client/admin/pages/payments.tsx
+#~ msgid "Mirror customers, subscriptions, invoices and payments from Stripe, Polar or Lemon Squeezy into your collections. Deliveries are signature-verified; credentials are encrypted at rest."
+#~ msgstr "Stripe, Polar veya Lemon Squeezy'deki müşterileri, abonelikleri, faturaları ve ödemeleri koleksiyonlarınıza yansıtın. Gelen teslimatlar imzayla doğrulanır; kimlik bilgileri şifrelenerek saklanır."
+
+#: src/client/admin/pages/payments.tsx
+msgid "Mirror customers, subscriptions, invoices and payments into your collections — and open hosted checkouts to ask for payment. Deliveries are signature-verified; credentials are encrypted at rest."
+msgstr "Müşterileri, abonelikleri, faturaları ve ödemeleri koleksiyonlarınıza yansıtın — ve ödeme istemek için barındırılan ödeme sayfaları açın. Bildirimler imzayla doğrulanır; kimlik bilgileri şifreli saklanır."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Mirror QuickBooks customers, invoices and payments into a collection."
@@ -9619,8 +9689,13 @@ msgid "OpenID Connect / OAuth2 sign-in for this workspace's end-users."
 msgstr "Bu çalışma alanının son kullanıcıları için OpenID Connect / OAuth2 girişi."
 
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Opening…"
 msgstr "Açılıyor…"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Opens a hosted checkout and gives you a link to send. To bill a row automatically, use the payment-link step in a flow."
+msgstr "Barındırılan bir ödeme sayfası açar ve gönderebileceğiniz bir bağlantı verir. Bir satırı otomatik faturalandırmak için akıştaki ödeme bağlantısı adımını kullanın."
 
 #: src/client/admin/pages/traces.tsx
 msgid "Operation"
@@ -9943,9 +10018,22 @@ msgid "Payload must be valid JSON."
 msgstr "Yük geçerli JSON olmalıdır."
 
 #: src/client/admin/pages/payments.tsx
+msgid "Payment link"
+msgstr "Ödeme bağlantısı"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Payment link copied."
+msgstr "Ödeme bağlantısı kopyalandı."
+
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/ui.tsx
 msgid "Payments"
 msgstr "Ödemeler"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "PayTR and iyzico both require one."
+msgstr "PayTR ve iyzico bunu zorunlu tutar."
 
 #: src/client/admin/pages/forms.tsx
 msgid "PDF"
@@ -11045,6 +11133,15 @@ msgstr "Yönlendirme URL'si"
 msgid "Redirecting…"
 msgstr "Yönlendiriliyor…"
 
+#. placeholder {0}: result.reference
+#: src/client/admin/pages/payments.tsx
+msgid "Reference <0>{0}</0> comes back on the settlement, so the payment can be matched to whatever you opened this for."
+msgstr "<0>{0}</0> referansı ödeme bildirimiyle geri döner; böylece ödeme, bunu açtığınız kayıtla eşleştirilebilir."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Reference field (optional)"
+msgstr "Referans alanı (isteğe bağlı)"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "References collection"
@@ -11607,6 +11704,10 @@ msgstr "Elde tutma, ilk gün etkinliği seçili aralığa düşen ziyaretçilere
 #: src/client/admin/pages/webhooks.tsx
 msgid "Retry"
 msgstr "Yeniden dene"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Return URL (optional)"
+msgstr "Dönüş adresi (isteğe bağlı)"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Revenue overview"
@@ -12510,6 +12611,10 @@ msgstr "Ayarlarını düzenlemek için tuvalde bir blok seçin. Skaler ve dosya 
 #: src/client/admin/flow-builder.tsx
 msgid "Select a collection…"
 msgstr "Bir koleksiyon seçin…"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Select a field…"
+msgstr "Bir alan seçin…"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Select a function"
@@ -13621,6 +13726,10 @@ msgstr "bir id dizisi saklar"
 msgid "stores one target id"
 msgstr "tek bir hedef id saklar"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Stores the id the settlement comes back with, so the payment can be matched to this row."
+msgstr "Ödeme bildiriminin geri getirdiği kimliği saklar; böylece ödeme bu satırla eşleştirilebilir."
+
 #: src/client/admin/item-form.tsx
 msgid "Stores the storage key. Upload new files on the <0>Storage</0> page."
 msgstr "Depolama anahtarını saklar. Yeni dosyaları <0>Depolama</0> sayfasında yükleyin."
@@ -13766,8 +13875,8 @@ msgstr "Senkron oluşturuldu. Eşlemeyi doğrulamak için şimdi çalıştırın
 
 #. placeholder {0}: entry.label
 #: src/client/admin/pages/payments.tsx
-msgid "Sync customers, subscriptions, invoices and payments from {0}."
-msgstr "{0} üzerindeki müşterileri, abonelikleri, faturaları ve ödemeleri eşitleyin."
+#~ msgid "Sync customers, subscriptions, invoices and payments from {0}."
+#~ msgstr "{0} üzerindeki müşterileri, abonelikleri, faturaları ve ödemeleri eşitleyin."
 
 #: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Sync deleted. Rows already pulled stay in the collection."
@@ -14103,6 +14212,10 @@ msgstr "Davet edilen kişinin bu e-postayla bir son kullanıcı hesabı zaten ol
 #: src/client/pages/api-keys.tsx
 msgid "The key \"{0}\" will stop working immediately. This cannot be undone."
 msgstr "\"{0}\" anahtarı hemen çalışmayı durduracak. Bu geri alınamaz."
+
+#: src/client/admin/flow-builder.tsx
+msgid "The link is returned into $last either way — writing it back is what puts it on the invoice."
+msgstr "Bağlantı her hâlükârda $last içine döner — faturaya yazılmasını sağlayan şey geri yazmadır."
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "The link was shown once when it was minted. Generate a new one to see it here — the old link stops working."
@@ -15491,6 +15604,10 @@ msgstr "Öğrendikleri"
 msgid "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
 msgstr "Ekip arkadaşlarının bir odada bu agent'a seslenmek için @ sonrasına yazdığı ad. Boş bırakılırsa addan türetilir."
 
+#: src/client/admin/flow-builder.tsx
+msgid "What the customer sees on the checkout line item."
+msgstr "Müşterinin ödeme sayfasındaki kalemde gördüğü metin."
+
 #: src/client/admin/pages/agents.tsx
 msgid "What this agent is for"
 msgstr "Bu ajan ne için"
@@ -15722,6 +15839,10 @@ msgstr "Yorum yaz · ⌘+Enter ile gönder"
 msgid "Write a read-only SELECT below."
 msgstr "Aşağıya salt okunur bir SELECT yazın."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Write the link onto"
+msgstr "Bağlantıyı şuraya yaz"
+
 #: src/client/admin/pages/overview.tsx
 msgid "Writes (1h)"
 msgstr "Yazma işlemleri (1s)"
@@ -15809,6 +15930,10 @@ msgstr "adresiniz"
 #: src/client/admin/pages/agents.tsx
 msgid "your API key"
 msgstr "kendi API anahtarın"
+
+#: src/client/admin/flow-builder.tsx
+msgid "your app's thank-you page"
+msgstr "uygulamanızın teşekkür sayfası"
 
 #: src/client/admin/account-page.tsx
 msgid "Your display name"

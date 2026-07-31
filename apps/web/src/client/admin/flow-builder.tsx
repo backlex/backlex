@@ -7,6 +7,10 @@ import { Select } from "./select";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { emailTemplatesApi, functionsApi, collectionsApi, integrationsApi, type ApiEmailTemplate, type ApiFunction, type ApiCollection, type ApiIntegration } from "./api";
+import { api } from "@/lib/api";
+
+/** Just what the payment-link step needs off `/api/admin/payments/providers`. */
+type PaymentProviderOption = { id: string; provider: string; status: string };
 
 const dataInterpolationExample = "{{ data.* }}";
 const smsBodyExample = "Reminder: your appointment is at {{ data.starts_at }}.";
@@ -31,6 +35,7 @@ const ACTIONS = [
   { id: "notification", label: "In-app notification", desc: "Drop a row in the notifications table", icon: "Bell" },
   { id: "push", label: "Push notification", desc: "Send to a user's registered devices", icon: "Send" },
   { id: "sms", label: "Send SMS", desc: "Text a number on the row, or a user", icon: "MessageSquare" },
+  { id: "payment.checkout", label: "Payment link", desc: "Open a checkout and write the link onto the row", icon: "CreditCard" },
   { id: "transform", label: "Transform", desc: "Compute a value and pipe it into $last", icon: "Function" },
   { id: "run-script", label: "Run script", desc: "Sandboxed JS — full ctx, `data`, `last`", icon: "Code" },
   { id: "fn", label: "Run function", desc: "Invoke a saved backlex function", icon: "Function" },
@@ -87,21 +92,30 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   const [fns, setFns] = useState<ApiFunction[]>([]);
   const [collections, setCollections] = useState<ApiCollection[]>([]);
   const [integrations, setIntegrations] = useState<ApiIntegration[]>([]);
+  // Connected payment providers, so the payment-link step offers the ones this
+  // workspace actually has rather than a free-text provider name.
+  const [paymentProviders, setPaymentProviders] = useState<PaymentProviderOption[]>([]);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const [tpls, funcs, cols, ints] = await Promise.all([
+        const [tpls, funcs, cols, ints, pays] = await Promise.all([
           emailTemplatesApi.list().catch(() => ({ data: [] as ApiEmailTemplate[] })),
           functionsApi.list().catch(() => ({ data: [] as ApiFunction[] })),
           collectionsApi.list().catch(() => ({ data: [] as ApiCollection[] })),
           integrationsApi.list().catch(() => ({ data: [] as ApiIntegration[] })),
+          api<{ data: PaymentProviderOption[] }>("/api/admin/payments/providers").catch(() => ({
+            data: [] as PaymentProviderOption[],
+          })),
         ]);
         if (cancelled) return;
         if (Array.isArray(tpls.data)) setEmailTemplates(tpls.data);
         if (Array.isArray(funcs.data)) setFns(funcs.data);
         if (Array.isArray(cols.data)) setCollections(cols.data);
         if (Array.isArray(ints.data)) setIntegrations(ints.data);
+        if (Array.isArray(pays.data)) {
+          setPaymentProviders(pays.data.filter((p) => p.status === "connected"));
+        }
       } catch {
         // keep empty — UI falls back to "no items" hints
       }
@@ -399,6 +413,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
             fns={fns}
             collections={collections}
             integrations={integrations}
+            paymentProviders={paymentProviders}
           />
         </div>
       </div>
@@ -421,6 +436,23 @@ function defaultConfigFor(kind: string, type: string) {
   // Defaults to the row-carried number — the reminder case, and the reason the
   // op has a `to` mode at all.
   if (kind === "action" && type === "sms") return { mode: "to", to: "{{ data.phone }}", userId: "", body: "", from: "" };
+  // Seeded for the invoicing shape the op exists for: an invoice row carries
+  // its own total, its own customer email, and a field to hold the link.
+  if (kind === "action" && type === "payment.checkout")
+    return {
+      provider: "",
+      amount: "{{ data.amount_due }}",
+      currency: "USD",
+      description: "",
+      email: "{{ data.email }}",
+      customerName: "",
+      successUrl: "",
+      cancelUrl: "",
+      writeBackCollection: "",
+      writeBackItemId: "{{ data.id }}",
+      writeBackUrlField: "",
+      writeBackReferenceField: "",
+    };
   if (kind === "action" && type === "transform") return { value: "" };
   if (kind === "action" && type === "run-script") return { code: "// data, last, ctx, auth available\nreturn data;", timeoutMs: 5000 };
   if (kind === "action" && type === "fn") return { fn: "", async: true, retries: 3 };
@@ -431,7 +463,7 @@ function defaultConfigFor(kind: string, type: string) {
   return {};
 }
 
-function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [], integrations = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[] }) {
+function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [], integrations = [], paymentProviders = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[]; paymentProviders?: PaymentProviderOption[] }) {
   const { t } = useLingui();
   if (!node) return (
     <div className="fb-inspector">
@@ -444,6 +476,14 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
   );
   const m = nodeMeta(node);
   const Icon = (I as Record<string, IconComponent>)[m?.icon as IconKey] || I.Function;
+  // Where a payment link can be stored: any text-ish column on the chosen
+  // collection. Offered as a dropdown rather than free text because a typo
+  // here is only discovered when a real checkout has already been opened.
+  const writeBackFields = (
+    collections.find((c) => c.slug === node.config?.writeBackCollection)?.fields ?? []
+  )
+    .filter((f) => f.type === "text" || f.type === "longtext")
+    .map((f) => f.name);
   return (
     <div className="fb-inspector">
       <div className="fb-inspector-head">
@@ -626,6 +666,76 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
             )}
             <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Message</Trans></label><Textarea rows={3} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} placeholder={smsBodyExample} /></div>
             <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Sender (optional)</Trans></label><Input value={node.config.from || ""} onChange={(e) => onChange({ config: { from: e.target.value } })} placeholder={t`transport default`} /><span className="text-[11.5px] text-muted-foreground"><Trans>Overrides the workspace transport's configured sender id.</Trans></span></div>
+          </>
+        )}
+        {node.kind === "action" && node.type === "payment.checkout" && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Provider</Trans></label>
+              <Select
+                value={node.config.provider || ""}
+                onChange={(v) => onChange({ config: { provider: v } })}
+                className="min-w-0"
+                options={[
+                  {
+                    value: "",
+                    label:
+                      paymentProviders.length === 0
+                        ? t`(none connected — connect one on Payments)`
+                        : t`First connected provider`,
+                  },
+                  ...paymentProviders.map((p) => ({ value: p.provider, label: p.provider })),
+                ]}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Amount</Trans></label><Input value={node.config.amount || ""} onChange={(e) => onChange({ config: { amount: e.target.value } })} placeholder="{{ data.amount_due }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>Minor units — 1050 is 10.50. Matches how payments are stored.</Trans></span></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Currency</Trans></label><Input value={node.config.currency || ""} onChange={(e) => onChange({ config: { currency: e.target.value.toUpperCase() } })} placeholder="USD" /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Description</Trans></label><Input value={node.config.description || ""} onChange={(e) => onChange({ config: { description: e.target.value } })} placeholder="Invoice {{ data.number }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>What the customer sees on the checkout line item.</Trans></span></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Customer email</Trans></label><Input value={node.config.email || ""} onChange={(e) => onChange({ config: { email: e.target.value } })} placeholder="{{ data.email }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>PayTR and iyzico both require one.</Trans></span></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Return URL (optional)</Trans></label><Input value={node.config.successUrl || ""} onChange={(e) => onChange({ config: { successUrl: e.target.value } })} placeholder={t`your app's thank-you page`} /></div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Write the link onto</Trans></label>
+              <Select
+                value={node.config.writeBackCollection || ""}
+                onChange={(v) => onChange({ config: { writeBackCollection: v } })}
+                className="min-w-0"
+                options={[
+                  { value: "", label: t`Don't write it back` },
+                  ...collections.map((c) => ({ value: c.slug, label: c.slug })),
+                ]}
+              />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>The link is returned into $last either way — writing it back is what puts it on the invoice.</Trans></span>
+            </div>
+            {node.config.writeBackCollection && (
+              <>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Row id</Trans></label><Input value={node.config.writeBackItemId || ""} onChange={(e) => onChange({ config: { writeBackItemId: e.target.value } })} placeholder="{{ data.id }}" /></div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Link field</Trans></label>
+                  <Select
+                    value={node.config.writeBackUrlField || ""}
+                    onChange={(v) => onChange({ config: { writeBackUrlField: v } })}
+                    className="min-w-0"
+                    options={[
+                      { value: "", label: t`Select a field…` },
+                      ...writeBackFields.map((f) => ({ value: f, label: f })),
+                    ]}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Reference field (optional)</Trans></label>
+                  <Select
+                    value={node.config.writeBackReferenceField || ""}
+                    onChange={(v) => onChange({ config: { writeBackReferenceField: v } })}
+                    className="min-w-0"
+                    options={[
+                      { value: "", label: t`Don't store the reference` },
+                      ...writeBackFields.map((f) => ({ value: f, label: f })),
+                    ]}
+                  />
+                  <span className="text-[11.5px] text-muted-foreground"><Trans>Stores the id the settlement comes back with, so the payment can be matched to this row.</Trans></span>
+                </div>
+              </>
+            )}
           </>
         )}
         {node.kind === "action" && node.type === "transform" && (

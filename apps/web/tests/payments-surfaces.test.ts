@@ -170,6 +170,7 @@ describe("payments — MCP surface", () => {
     const names = allTools.map((t) => t.name).filter((n) => n.startsWith("payments."));
     expect(names.sort()).toEqual([
       "payments.catalog",
+      "payments.checkout",
       "payments.connect",
       "payments.disconnect",
       "payments.events",
@@ -189,8 +190,24 @@ describe("payments — MCP surface", () => {
       properties: { provider: { enum: string[] } };
       required: string[];
     };
-    expect(schema.properties.provider.enum).toEqual(["stripe", "polar", "lemonsqueezy"]);
+    // Asserted against the registry rather than a hand-written list: this
+    // enum had silently drifted three providers behind it, so an agent could
+    // not connect Paddle, PayTR or iyzico even though REST accepted them.
+    expect(schema.properties.provider.enum).toEqual([...PAYMENT_PROVIDERS]);
     expect(schema.required).toEqual(["provider"]);
+  });
+
+  test("the checkout tool takes an amount and a currency, and nothing else is required", () => {
+    const tool = allTools.find((t) => t.name === "payments.checkout")!;
+    const schema = tool.inputSchema as {
+      properties: Record<string, unknown>;
+      required: string[];
+    };
+    expect(schema.required).toEqual(["amount", "currency"]);
+    // `writeBack` is what turns a URL generator into a feature — an agent that
+    // can't see it can't put the link on the invoice.
+    expect(Object.keys(schema.properties)).toContain("writeBack");
+    expect(Object.keys(schema.properties)).toContain("reference");
   });
 });
 
@@ -209,6 +226,7 @@ describe("payments — CLI surface", () => {
       "catalog",
       "list",
       "connect",
+      "checkout",
       "sync",
       "events",
       "rotate-token",
@@ -220,5 +238,80 @@ describe("payments — CLI surface", () => {
     // Every CLI call must go through the shared admin endpoints, not a
     // hand-rolled second implementation.
     expect(mod).toContain('const BASE = "/api/admin/payments"');
+  });
+});
+
+describe("payments — checkout parity across surfaces", () => {
+  let h: TestHarness;
+  let client: ReturnType<typeof createClient>;
+
+  const gql = async (query: string, variables?: unknown) =>
+    (await (await h.fetch("/api/graphql", json({ query, variables }))).json()) as {
+      data?: Record<string, any>;
+      errors?: { message: string; extensions?: { code?: string } }[];
+    };
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    client = createClient({
+      url: h.env.APP_URL,
+      fetch: (input, init) => h.fetch(String(input), init as RequestInit),
+    });
+    await client.payments.connect({ provider: "dummy", config: {} });
+  });
+  afterAll(() => h.cleanup());
+
+  test("the catalog reports each provider's checkout mode", async () => {
+    const catalog = await client.payments.catalog();
+    const modes = Object.fromEntries(catalog.providers.map((p) => [p.provider, p.checkoutMode]));
+    // The split the whole feature branches on: an ad-hoc provider takes an
+    // amount, a catalog one needs a pre-made price.
+    expect(modes.stripe).toBe("adhoc");
+    expect(modes.paytr).toBe("adhoc");
+    expect(modes.iyzico).toBe("adhoc");
+    expect(modes.dummy).toBe("adhoc");
+    expect(modes.polar).toBe("catalog");
+    expect(modes.lemonsqueezy).toBe("catalog");
+    expect(modes.paddle).toBe("catalog");
+  });
+
+  test("SDK and GraphQL open the same checkout as REST", async () => {
+    const viaSdk = await client.payments.checkout({
+      provider: "dummy",
+      amount: 2500,
+      currency: "USD",
+      description: "SDK checkout",
+    });
+    expect(viaSdk.data.url).toContain("/api/payments/dummy/");
+    expect(viaSdk.data.reference).toMatch(/^[A-Za-z0-9]{1,48}$/);
+    expect(viaSdk.data.writtenBack).toBeNull();
+
+    const viaGql = await gql(
+      `mutation($d:PaymentCheckoutInput!){ createPaymentCheckout(data:$d){ provider url reference } }`,
+      { d: { provider: "dummy", amount: 2500, currency: "USD" } },
+    );
+    expect(viaGql.errors).toBeUndefined();
+    expect(viaGql.data?.createPaymentCheckout.provider).toBe("dummy");
+    expect(viaGql.data?.createPaymentCheckout.url).toContain("/api/payments/dummy/");
+
+    const viaRest = (await (
+      await h.fetch(
+        "/api/admin/payments/checkout",
+        json({ provider: "dummy", amount: 2500, currency: "USD" }),
+      )
+    ).json()) as { data: { url: string } };
+    expect(viaRest.data.url).toContain("/api/payments/dummy/");
+  });
+
+  test("a catalog provider is refused with an explanation, not a confusing failure", async () => {
+    await client.payments.connect({ provider: "polar", config: CONFIG });
+    const res = await h.fetch(
+      "/api/admin/payments/checkout",
+      json({ provider: "polar", amount: 1000, currency: "USD" }),
+    );
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error?: { message?: string } };
+    expect(JSON.stringify(body)).toContain("existing product price");
   });
 });

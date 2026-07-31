@@ -247,6 +247,9 @@ function describeOpShort(op: any): string {
     case "push": return (op.title ?? "").toString().slice(0, 22) || "push";
     // Whichever addressing mode the op uses is the useful thing to show.
     case "sms": return `sms ${(op.to ?? op.userId ?? "").toString().slice(0, 18)}`.trim();
+    // The amount is the thing that identifies one payment step from another;
+    // it is usually a template, so show it as written.
+    case "payment.checkout": return `pay ${(op.amount ?? "").toString().slice(0, 16)} ${op.currency ?? ""}`.trim();
     case "function": return `fn:${(op.name ?? "").toString().slice(0, 18)}`;
     case "item.create": return `+${op.collection ?? ""}`;
     case "item.update": return `~${op.collection ?? ""}`;

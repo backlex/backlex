@@ -24,12 +24,19 @@ interface ProviderRow {
   lastSyncError: string | null;
 }
 
-const PAYMENTS_HELP = `backlex payments <catalog|list|connect|sync|events|rotate-token|provision|disconnect>
+const PAYMENTS_HELP = `backlex payments <catalog|list|connect|checkout|sync|events|rotate-token|provision|disconnect>
 
   catalog                       supported providers + the config each one needs
   list                          connected providers (secrets masked)
-  connect --provider <p> --api-key <k> --webhook-secret <s> [--store-id <id>] [--server <env>]
-                                connect Stripe / Polar / Lemon Squeezy
+  connect --provider <p> [--api-key <k>] [--webhook-secret <s>] [--store-id <id>]
+          [--server <env>] [--set key=value ...]
+                                connect a provider; --set carries any config key
+                                (merchantId, merchantSalt, secretKey, environment …)
+  checkout --amount <minor> --currency <cur> [--provider <p> | --provider-id <id>]
+           [--description <t>] [--email <e>] [--name <n>] [--success-url <u>]
+           [--cancel-url <u>] [--reference <r>] [--customer-ip <ip>]
+           [--write-back <collection>:<itemId>:<urlField>[:<referenceField>]]
+                                open a hosted checkout and print the payment link
   sync <id> [--kinds a,b] [--max-pages N] [--resume] [--async]
                                 pull objects back from the provider API
   events [--provider <id>] [--limit N]
@@ -37,6 +44,8 @@ const PAYMENTS_HELP = `backlex payments <catalog|list|connect|sync|events|rotate
   rotate-token <id>             new receive URL (the old one stops working)
   provision                     (re-)create the four sync collections
   disconnect <id>               remove the connection (synced rows are kept)
+
+  Amounts are MINOR units — 1050 is $10.50, matching payment_transactions.amount.
 `;
 
 const BASE = "/api/admin/payments";
@@ -49,6 +58,25 @@ const die = (e: unknown, what: string): never => {
 
 const csv = (v: string | undefined): string[] =>
   (v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+
+/**
+ * Repeatable `--set key=value`. The named flags below only ever covered the
+ * three webhook providers' keys, so PayTR, iyzico and the dummy provider were
+ * unreachable from the CLI even though the endpoint accepted them. Rather than
+ * chase every provider's field names with a flag each, this passes any config
+ * key straight through — `payments catalog` lists what a given provider wants.
+ */
+const collectSet = (args: string[]): Record<string, string> => {
+  const out: Record<string, string> = {};
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] !== "--set") continue;
+    const pair = args[i + 1];
+    if (!pair) continue;
+    const eq = pair.indexOf("=");
+    if (eq > 0) out[pair.slice(0, eq)] = pair.slice(eq + 1);
+  }
+  return out;
+};
 
 export const runPayments = async (args: string[]): Promise<void> => {
   const sub = args[0];
@@ -101,13 +129,15 @@ export const runPayments = async (args: string[]): Promise<void> => {
       case "connect": {
         const provider = flag(rest, "--provider");
         if (!provider) {
-          process.stderr.write("payments connect --provider <stripe|polar|lemonsqueezy> …\n");
+          process.stderr.write(
+            "payments connect --provider <name> … (see `backlex payments catalog`)\n",
+          );
           process.exit(1);
         }
         // Only the flags actually passed are sent: an omitted secret means
         // "keep the stored one", which is how a reconnect edits just the
         // store id without re-pasting the API key.
-        const config: Record<string, string> = {};
+        const config: Record<string, string> = collectSet(rest);
         const apiKey = flag(rest, "--api-key");
         const webhookSecret = flag(rest, "--webhook-secret");
         const storeId = flag(rest, "--store-id");
@@ -137,6 +167,78 @@ export const runPayments = async (args: string[]): Promise<void> => {
             process.stderr.write(
               `\nWARNING: ${res.collections.conflicts.join(", ")} already exist and are NOT ` +
                 `payments sync targets. Nothing will be written to them until they're renamed.\n`,
+            );
+          }
+        }
+        return;
+      }
+      case "checkout": {
+        const amount = flag(rest, "--amount");
+        const currency = flag(rest, "--currency");
+        if (!amount || !currency) {
+          process.stderr.write(
+            "payments checkout --amount <minor units> --currency <ISO-4217> …\n",
+          );
+          process.exit(1);
+        }
+        const body: Record<string, unknown> = {
+          amount: Number(amount),
+          currency,
+        };
+        const provider = flag(rest, "--provider");
+        const providerId = flag(rest, "--provider-id");
+        const description = flag(rest, "--description");
+        const successUrl = flag(rest, "--success-url");
+        const cancelUrl = flag(rest, "--cancel-url");
+        const reference = flag(rest, "--reference");
+        const customerIp = flag(rest, "--customer-ip");
+        const email = flag(rest, "--email");
+        const name = flag(rest, "--name");
+        if (provider) body.provider = provider;
+        if (providerId) body.providerId = providerId;
+        if (description) body.description = description;
+        if (successUrl) body.successUrl = successUrl;
+        if (cancelUrl) body.cancelUrl = cancelUrl;
+        if (reference) body.reference = reference;
+        if (customerIp) body.customerIp = customerIp;
+        if (email || name) body.customer = { ...(email ? { email } : {}), ...(name ? { name } : {}) };
+
+        // `collection:itemId:urlField[:referenceField]` — one flag rather than
+        // four, because all of them are required together or not at all.
+        const writeBack = flag(rest, "--write-back");
+        if (writeBack) {
+          const [collection, itemId, urlField, referenceField] = writeBack.split(":");
+          if (!collection || !itemId || !urlField) {
+            process.stderr.write(
+              "--write-back needs <collection>:<itemId>:<urlField>[:<referenceField>]\n",
+            );
+            process.exit(1);
+          }
+          body.writeBack = {
+            collection,
+            itemId,
+            urlField,
+            ...(referenceField ? { referenceField } : {}),
+          };
+        }
+
+        const res = await client.request<{ data: Record<string, unknown> }>(
+          "POST",
+          `${BASE}/checkout`,
+          body,
+        );
+        if (json) printJson(res.data);
+        else {
+          printKeyValues({
+            provider: res.data.provider as string,
+            url: res.data.url as string,
+            reference: res.data.reference as string,
+            expiresAt: String(res.data.expiresAt ?? "—"),
+          });
+          if (res.data.writtenBack) {
+            const w = res.data.writtenBack as { collection: string; itemId: string; fields: string[] };
+            process.stderr.write(
+              `\nWrote ${w.fields.join(", ")} onto ${w.collection}/${w.itemId}.\n`,
             );
           }
         }

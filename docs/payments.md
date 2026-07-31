@@ -1,6 +1,6 @@
 ---
 title: Payments
-description: Connect Stripe, Polar, Lemon Squeezy, Paddle, PayTR or iyzico and mirror customers, subscriptions, invoices and payments into your collections.
+description: Connect Stripe, Polar, Lemon Squeezy, Paddle, PayTR or iyzico — mirror customers, subscriptions, invoices and payments into your collections, and open hosted checkouts to ask for money.
 ---
 
 Connect a payment provider once, and backlex keeps a mirror of its billing
@@ -16,8 +16,13 @@ Two mechanisms keep the mirror honest:
   repairs anything a missed delivery left stale. Runs every six hours, and on
   demand.
 
+Going the other way, backlex can also **[ask for money](#asking-for-money)**:
+open a hosted checkout for an arbitrary amount and write the payment link onto
+the invoice, quote or donation row that needs paying.
+
 Supported providers: **Stripe**, **Polar**, **Lemon Squeezy**, **Paddle**,
-**PayTR**, **iyzico**.
+**PayTR**, **iyzico**, plus a local **`dummy`** provider for demos and smoke
+tests.
 
 Providers come in three shapes, and the difference decides both what backlex can
 do with them and where the trust comes from:
@@ -209,6 +214,126 @@ status:
 Start here when billing data looks stale. `bun backlex payments events --limit 50`
 prints the same log.
 
+## Asking for money
+
+Everything above is inbound: it records payments that already happened. The
+outbound half opens a **hosted checkout** and gives you a link to send the
+customer — and, more usefully, writes that link straight onto the row that is
+asking to be paid.
+
+```ts
+const { data } = await client.payments.checkout({
+  provider: "stripe",
+  amount: 10890,          // MINOR units — 108.90, matching the ledger
+  currency: "TRY",
+  description: "Invoice INV-42",
+  customer: { email: "buyer@example.com", name: "Ada Lovelace" },
+  successUrl: "https://shop.example/thanks",
+  writeBack: {
+    collection: "invoices",
+    itemId: invoice.id,
+    urlField: "pay_url",
+    referenceField: "pay_ref",
+  },
+});
+data.url;        // send the customer here
+data.reference;  // comes back on the settlement
+```
+
+### `reference` is the whole point
+
+Without it this would be a URL generator. backlex sends the id of the row that
+asked for the money out with the checkout — Stripe's `client_reference_id`,
+PayTR's `merchant_oid`, iyzico's `conversationId` — and the provider echoes it
+back on the settlement event, where it lands on
+`payment_transactions.reference`. Store the same value on your own row
+(`referenceField`) and the two join:
+
+```ts
+const paid = await client
+  .from("payment_transactions")
+  .filter({ reference: invoice.pay_ref, status: "succeeded" })
+  .list();
+```
+
+The reference contract is the narrowest one any provider imposes —
+**1–48 alphanumeric characters**, because PayTR's `merchant_oid` accepts
+nothing else. Left to itself backlex derives one from `writeBack.itemId` by
+stripping the characters PayTR would refuse, so a UUID becomes its 32-hex form.
+
+### Which providers can do this
+
+| Mode | Providers | Behaviour |
+|---|---|---|
+| `adhoc` | Stripe, PayTR, iyzico, `dummy` | Hand it an amount and get a one-off checkout. This is the shape the templates need — an invoice total exists nowhere in the provider's catalog |
+| `catalog` | Polar, Lemon Squeezy, Paddle | Checkouts are opened against a **pre-existing** product/price id, with no amount parameter. Not supported yet: a checkout call is refused with a `catalog_only` explanation naming what's missing, rather than failing in a way that reads like an outage |
+
+`GET /api/admin/payments/catalog` reports each provider's `checkoutMode`, so a
+UI can hide the button rather than offer one that will be refused.
+
+Per-provider requirements worth knowing before you wire one up:
+
+- **Stripe** — nothing beyond the API key. Amounts go out in minor units
+  verbatim, since Stripe quotes the same unit the ledger stores.
+- **PayTR** — needs the customer's **email** and the **paying customer's IP**.
+  The IP is folded into the token hash and scored for fraud, so backlex refuses
+  rather than sending a placeholder that would work in testing and get real
+  transactions declined. The REST endpoint falls back to the calling request's
+  IP, which is right when a customer clicks a button in your app; a flow that
+  has no request IP must pass one. TRY is sent as PayTR's `TL`.
+- **iyzico** — needs the customer's **email**. Amounts are converted to
+  major-unit decimals on the way out (`10890` → `"108.90"`), the mirror of what
+  the inbound normalizer does. `identityNumber` defaults to iyzico's own
+  documented placeholder if you don't collect one.
+
+### The `dummy` provider
+
+A local stand-in that settles payments without touching an acquirer — the
+payment sibling of the `console` SMS and email adapters. Its checkout is a page
+backlex hosts itself with **Pay** and **Decline** buttons, and paying drives the
+*ordinary* receive path: signature verification, dedupe, normalize, upsert. A
+test provider that bypassed any of that would be testing nothing.
+
+Connecting it is refused unless the instance is running with `DEMO_MODE` set or
+in development. A provider that records payments as succeeded is a foot-gun in
+production, and unlike the console adapters this one is user-connectable from
+the admin UI, so the gate lives at connect time.
+
+The hosted link is HMAC-signed with the connection's own generated secret:
+editing the amount in the URL fails before anything is recorded.
+
+### As a flow step
+
+The `payment.checkout` operation is where this stops being an API call and
+becomes automation — *an invoice row lands, and it gets a payment link*:
+
+```json
+{
+  "type": "payment.checkout",
+  "provider": "stripe",
+  "amount": "{{ data.amount_due }}",
+  "currency": "USD",
+  "email": "{{ data.email }}",
+  "description": "Invoice {{ data.number }}",
+  "writeBack": {
+    "collection": "invoices",
+    "itemId": "{{ data.id }}",
+    "urlField": "pay_url",
+    "referenceField": "pay_ref"
+  }
+}
+```
+
+The link is also returned into `$last`, so the next step can send it:
+`{{ $last.url }}` in an `email` or `sms` body.
+
+Failures are loud on purpose. An `amount` that renders to something other than a
+positive integer, or a write-back target that renders empty, fails the run
+rather than minting a live payment link that nothing in the workspace records.
+The error names the *template* and never the rendered value — that message is
+persisted on the `flow.run` activity row, and the value is a customer's invoice
+total.
+
 ## API surface
 
 Everything below hits the same service, so behaviour is identical across
@@ -224,10 +349,12 @@ surfaces.
 | `DELETE` | `/providers/:id` | Disconnect (synced rows are kept) |
 | `POST` | `/providers/:id/rotate-token` | New receive URL |
 | `POST` | `/providers/:id/sync` | Reconcile (`async: true` to queue) |
+| `POST` | `/checkout` | Open a hosted checkout, optionally writing the link onto a row |
 | `POST` | `/collections` | (Re-)provision the four collections |
 | `GET` | `/events` | Delivery log |
 
-Plus the public receiver: `POST /api/payments/webhook/:token`.
+Plus the public receiver: `POST /api/payments/webhook/:token`, and the `dummy`
+provider's hosted page at `GET|POST /api/payments/dummy/:token`.
 
 **SDK**
 
@@ -252,12 +379,16 @@ const active = await client
 
 **GraphQL** — `paymentProviders`, `paymentEvents`; mutations
 `connectPaymentProvider`, `disconnectPaymentProvider`,
-`rotatePaymentWebhookToken`, `syncPaymentProvider`,
+`rotatePaymentWebhookToken`, `syncPaymentProvider`, `createPaymentCheckout`,
 `provisionPaymentCollections`.
+
+**CLI** — `bun backlex payments checkout --amount 10890 --currency TRY
+--provider stripe --write-back invoices:<id>:pay_url:pay_ref`. `connect` takes
+any provider's config keys through repeatable `--set key=value`.
 
 **MCP** — `payments.catalog`, `payments.list`, `payments.connect`,
 `payments.disconnect`, `payments.rotate_token`, `payments.sync`,
-`payments.events`, `payments.provision_collections`. The synced rows are read
+`payments.checkout`, `payments.events`, `payments.provision_collections`. The synced rows are read
 with the normal `collections-*` tools, so an agent sees exactly the permissions
 its key grants.
 

@@ -65,6 +65,7 @@ are nested operation arrays run after the op succeeds / throws.
 | `notification` | Drops a row into the in-app `notifications` feed; `userId: null` broadcasts to admins. `push: true` also fans out to that user's devices | `title`, `body?`, `url?`, `userId?`, `push?` |
 | `push` | Sends a native push to a user's registered devices (no-op if none) | `title`, `body`, `userId`, `url?` |
 | `sms` | Sends an SMS through the workspace [SMS transport](/sms-messaging/). Addressed *either* by `to` (a number carried on the row) *or* by `userId` (a user's registered numbers) — exactly one, see below | `body`, `to?`, `userId?`, `from?` |
+| `payment.checkout` | Opens a hosted checkout with a connected [payment provider](/payments/) and optionally writes the link onto a row. Returns `{ url, reference, … }` into `{{ $last }}` | `amount` (minor units), `currency`, `provider?` \| `providerId?`, `email?`, `description?`, `successUrl?`, `writeBack?` |
 | `webhook` | Fires an outbound HTTP request, body JSON-encoded | `url`, `method?`, `headers?`, `body?` |
 | `request` | Like `webhook` but captures the parsed response into `{{ $last }}` for later ops | `url`, `method?`, `headers?`, `query?`, `body?`, `timeoutMs?` (≤60s) |
 | `function` | Invokes a saved [sandbox function](/sandbox/) by name | `name`, `input?` (defaults to `data`) |
@@ -103,6 +104,32 @@ you pick exactly one:
 
 Setting both, or neither, is rejected when the flow is saved. `from` overrides
 the transport's configured sender id where the provider supports it.
+
+### Billing the row that just landed
+
+`payment.checkout` is the step that turns "an invoice was created" into "the
+invoice has a payment link on it":
+
+```json
+{
+  "type": "payment.checkout",
+  "provider": "stripe",
+  "amount": "{{ data.amount_due }}",
+  "currency": "USD",
+  "email": "{{ data.email }}",
+  "writeBack": { "collection": "invoices", "itemId": "{{ data.id }}", "urlField": "pay_url" }
+}
+```
+
+`amount` is in **minor units** — `1050` is 10.50 — matching how payments are
+stored, and it is usually a template. A render that isn't a positive integer
+fails the run, as does a `writeBack` target that renders empty: a live payment
+link nothing records is worse than a visible failure. The error names the
+offending template and never the rendered value, which would put a customer's
+invoice total on the persisted `flow.run` activity row.
+
+The link also lands in `{{ $last.url }}`, so the next step can email or text it.
+Full provider matrix in [Payments](/payments/#asking-for-money).
 
 ## Surfaces
 

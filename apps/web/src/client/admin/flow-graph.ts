@@ -41,6 +41,7 @@ const SUPPORTED_ACTIONS = new Set([
   "notification",
   "push",
   "sms",
+  "payment.checkout",
   "transform",
   "run-script",
   // Wired in later phases — listed so the compiler emits a clearer warning
@@ -336,6 +337,53 @@ const compileAction = (node: GraphNode): Operation => {
       if (!to) throw new FlowCompileError("SMS step needs a recipient number");
       return { type: "sms", body, to, ...from };
     }
+    case "payment.checkout": {
+      const amount = String(c.amount ?? "").trim();
+      const currency = String(c.currency ?? "").trim().toUpperCase();
+      if (!amount) throw new FlowCompileError("Payment link step needs an amount");
+      if (currency.length !== 3) {
+        throw new FlowCompileError("Payment link step needs a 3-letter currency code");
+      }
+      const opt = (key: string): Record<string, string> => {
+        const v = String(c[key] ?? "").trim();
+        return v ? { [key]: v } : {};
+      };
+      // The write-back fields travel together: a target row with no field to
+      // put the link in records nothing, so the compiler asks for all three
+      // rather than emitting a half-specified target the server will reject.
+      const wbCollection = String(c.writeBackCollection ?? "").trim();
+      const wbItemId = String(c.writeBackItemId ?? "").trim();
+      const wbUrlField = String(c.writeBackUrlField ?? "").trim();
+      const wbRefField = String(c.writeBackReferenceField ?? "").trim();
+      let writeBack:
+        | { collection: string; itemId: string; urlField: string; referenceField?: string }
+        | undefined;
+      if (wbCollection || wbUrlField) {
+        if (!wbCollection || !wbUrlField || !wbItemId) {
+          throw new FlowCompileError(
+            "Payment link write-back needs a collection, a row id and a URL field",
+          );
+        }
+        writeBack = {
+          collection: wbCollection,
+          itemId: wbItemId,
+          urlField: wbUrlField,
+          ...(wbRefField ? { referenceField: wbRefField } : {}),
+        };
+      }
+      return {
+        type: "payment.checkout",
+        amount,
+        currency,
+        ...opt("provider"),
+        ...opt("description"),
+        ...opt("email"),
+        ...opt("customerName"),
+        ...opt("successUrl"),
+        ...opt("cancelUrl"),
+        ...(writeBack ? { writeBack } : {}),
+      };
+    }
     case "transform": {
       return {
         type: "transform",
@@ -618,6 +666,23 @@ const opToConfig = (op: Operation): Record<string, any> => {
         userId: op.userId ?? "",
         body: op.body,
         from: op.from ?? "",
+      };
+    case "payment.checkout":
+      // Flattened for the inspector: the nested `writeBack` object becomes
+      // four sibling fields, which is what the editor binds inputs to.
+      return {
+        provider: op.provider ?? "",
+        amount: String(op.amount ?? ""),
+        currency: op.currency,
+        description: op.description ?? "",
+        email: op.email ?? "",
+        customerName: op.customerName ?? "",
+        successUrl: op.successUrl ?? "",
+        cancelUrl: op.cancelUrl ?? "",
+        writeBackCollection: op.writeBack?.collection ?? "",
+        writeBackItemId: op.writeBack?.itemId ?? "",
+        writeBackUrlField: op.writeBack?.urlField ?? "",
+        writeBackReferenceField: op.writeBack?.referenceField ?? "",
       };
     case "transform":
       return {

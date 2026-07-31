@@ -46,7 +46,14 @@ type Field = {
   choices?: string[];
   hint?: string;
 };
-type CatalogEntry = { provider: string; label: string; fields: Field[] };
+type CheckoutMode = "adhoc" | "catalog" | null;
+type CatalogEntry = {
+  provider: string;
+  label: string;
+  /** `adhoc` takes an amount; `catalog` needs a pre-made price and can't yet. */
+  checkoutMode: CheckoutMode;
+  fields: Field[];
+};
 type Catalog = { providers: CatalogEntry[]; recordKinds: string[] };
 type Connection = {
   id: string;
@@ -90,6 +97,7 @@ const BRANDS: Record<string, Brand> = {
   paddle: { mark: "Pd", markBg: "#FDDD35" },
   paytr: { mark: "PT", markBg: "#00A0E9" },
   iyzico: { mark: "iy", markBg: "#1E64FF" },
+  dummy: { mark: "TE", markBg: "oklch(0.55 0.13 75)" },
 };
 const brandFor = (provider: string): Brand =>
   BRANDS[provider] ?? { mark: provider.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };
@@ -111,6 +119,7 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
   const [events, setEvents] = useState<DeliveryRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [connectProvider, setConnectProvider] = useState<string | null>(null);
+  const [checkoutFor, setCheckoutFor] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const reload = async () => {
@@ -239,7 +248,7 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
     <div className="flex flex-col gap-4.5">
       <PageHeader
         title={t`Payments`}
-        description={t`Mirror customers, subscriptions, invoices and payments from Stripe, Polar or Lemon Squeezy into your collections. Deliveries are signature-verified; credentials are encrypted at rest.`}
+        description={t`Mirror customers, subscriptions, invoices and payments into your collections — and open hosted checkouts to ask for payment. Deliveries are signature-verified; credentials are encrypted at rest.`}
       />
 
       <div className="grid grid-cols-3 gap-3 max-[920px]:grid-cols-2 max-[560px]:grid-cols-1">
@@ -311,6 +320,11 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
                         </p>
                       ) : null}
                       <div className="mt-auto flex flex-wrap gap-1.5">
+                        {entry.checkoutMode === "adhoc" ? (
+                          <Button variant="outline" onClick={() => setCheckoutFor(entry.provider)}>
+                            <Trans>Payment link</Trans>
+                          </Button>
+                        ) : null}
                         <Button disabled={isBusy} onClick={() => void sync(row)}>
                           {isBusy ? <Trans>Working…</Trans> : <Trans>Sync now</Trans>}
                         </Button>
@@ -325,9 +339,22 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
                   ) : (
                     <>
                       <p className="flex-1 text-[12px] leading-snug text-muted-foreground">
-                        <Trans>
-                          Sync customers, subscriptions, invoices and payments from {entry.label}.
-                        </Trans>
+                        {entry.provider === "dummy" ? (
+                          <Trans>
+                            A local stand-in that settles payments without charging anything.
+                            Demo and development instances only.
+                          </Trans>
+                        ) : entry.checkoutMode === "adhoc" ? (
+                          <Trans>
+                            Mirror {entry.label}'s billing objects, and open checkouts to ask for
+                            payment.
+                          </Trans>
+                        ) : (
+                          <Trans>
+                            Mirror customers, subscriptions, invoices and payments from{" "}
+                            {entry.label}.
+                          </Trans>
+                        )}
                       </p>
                       <div className="mt-auto">
                         <Button disabled={isBusy} onClick={() => setConnectProvider(entry.provider)}>
@@ -417,7 +444,184 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
           onConnect={(config) => void connect(connectProvider, config)}
         />
       )}
+      {checkoutFor && (
+        <CheckoutDialog
+          provider={checkoutFor}
+          label={labelFor(checkoutFor)}
+          onClose={() => setCheckoutFor(null)}
+          onCopy={copy}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * Open a one-off checkout from the admin.
+ *
+ * Deliberately not a full invoicing screen: the useful automation is the
+ * `payment.checkout` flow step, which bills a row the moment it lands. This is
+ * the manual escape hatch — and the fastest way to check a freshly connected
+ * provider actually works before wiring a flow around it.
+ */
+function CheckoutDialog({
+  provider,
+  label,
+  onClose,
+  onCopy,
+}: {
+  provider: string;
+  label: string;
+  onClose: () => void;
+  onCopy: (text: string, message: string) => void;
+}) {
+  const { t } = useLingui();
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("USD");
+  const [description, setDescription] = useState("");
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ url: string; reference: string } | null>(null);
+
+  // Typed in major units because that is what an admin has in front of them;
+  // the API takes minor units, so the conversion happens here rather than
+  // asking somebody to multiply their invoice total by 100.
+  const minorUnits = Math.round(Number(amount.replace(",", ".")) * 100);
+  const ready = Number.isInteger(minorUnits) && minorUnits > 0 && currency.length === 3;
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await api<{ data: { url: string; reference: string } }>(
+        "/api/admin/payments/checkout",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            provider,
+            amount: minorUnits,
+            currency: currency.toUpperCase(),
+            ...(description.trim() ? { description: description.trim() } : {}),
+            ...(email.trim() ? { customer: { email: email.trim() } } : {}),
+          }),
+        },
+      );
+      setResult(res.data);
+    } catch (e) {
+      // The service distinguishes a bad amount from an unreachable provider,
+      // and the message says which — surface it rather than "failed".
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]">
+        <DialogHeader className="space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
+          <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">
+            {t`${label} payment link`}
+          </DialogTitle>
+          <DialogDescription className="text-[12.5px] text-muted-foreground">
+            <Trans>
+              Opens a hosted checkout and gives you a link to send. To bill a row automatically,
+              use the payment-link step in a flow.
+            </Trans>
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+          <div className="flex flex-col gap-3.5 px-5 py-4">
+            {result ? (
+              <>
+                <label className="block">
+                  <span className="mb-1 block text-[11.5px] font-medium">
+                    <Trans>Payment link</Trans>
+                  </span>
+                  <Input readOnly value={result.url} onFocus={(e) => e.currentTarget.select()} />
+                </label>
+                <p className="text-[11.5px] leading-snug text-muted-foreground">
+                  <Trans>
+                    Reference <span className="font-mono">{result.reference}</span> comes back on
+                    the settlement, so the payment can be matched to whatever you opened this for.
+                  </Trans>
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-[1fr_7rem] gap-3 [&>*]:min-w-0">
+                  <label className="block">
+                    <span className="mb-1 block text-[11.5px] font-medium">
+                      <Trans>Amount</Trans>
+                    </span>
+                    <Input
+                      inputMode="decimal"
+                      placeholder="108.90"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-[11.5px] font-medium">
+                      <Trans>Currency</Trans>
+                    </span>
+                    <Input
+                      value={currency}
+                      maxLength={3}
+                      onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                    />
+                  </label>
+                </div>
+                <label className="block">
+                  <span className="mb-1 block text-[11.5px] font-medium">
+                    <Trans>Description</Trans>
+                  </span>
+                  <Input
+                    placeholder={t`Invoice INV-42`}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11.5px] font-medium">
+                    <Trans>Customer email</Trans>
+                  </span>
+                  <Input
+                    type="email"
+                    placeholder="buyer@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
+                    <Trans>PayTR and iyzico both require one.</Trans>
+                  </span>
+                </label>
+                {error ? (
+                  <p className="text-[11.5px] leading-snug text-destructive">{error}</p>
+                ) : null}
+              </>
+            )}
+          </div>
+        </ScrollArea>
+
+        <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border px-5 py-3.5 sm:flex-row sm:justify-end">
+          <Button variant="ghost" onClick={onClose}>
+            {result ? <Trans>Done</Trans> : <Trans>Cancel</Trans>}
+          </Button>
+          {result ? (
+            <Button onClick={() => onCopy(result.url, t`Payment link copied.`)}>
+              <Trans>Copy link</Trans>
+            </Button>
+          ) : (
+            <Button disabled={!ready || busy} onClick={() => void submit()}>
+              {busy ? <Trans>Opening…</Trans> : <Trans>Create link</Trans>}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

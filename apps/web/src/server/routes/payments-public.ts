@@ -1,4 +1,9 @@
-import { PAYMENT_ACK, type PaymentProvider } from "@backlex/integrations/payments";
+import {
+  PAYMENT_ACK,
+  toMajorUnits,
+  type PaymentProvider,
+} from "@backlex/integrations/payments";
+import { signDummySettlement, verifyDummyCheckout } from "@backlex/integrations/checkout";
 /**
  * Public payment-webhook receiver — `POST /api/payments/webhook/:token`.
  *
@@ -15,13 +20,18 @@ import { PAYMENT_ACK, type PaymentProvider } from "@backlex/integrations/payment
  * not retry those, which is what we want), and 5xx means "we broke — please
  * retry", which is how a transient DB failure gets a second chance.
  */
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { rateLimitOk } from "../lib/rate-limit";
 import { assertWorkspaceRequestQuota, setMeterTenant } from "../lib/usage-meter";
 import { requestMeta } from "../services/activity";
-import { getProviderByToken, receiveWebhook } from "../services/payments";
+import {
+  decryptProviderConfig,
+  getProviderByToken,
+  receiveWebhook,
+  type PaymentProviderRow,
+} from "../services/payments";
 import { log } from "../lib/log";
 
 /** A busy Stripe account bursts on subscription renewals, so the per-endpoint
@@ -34,7 +44,149 @@ const MINUTE_MS = 60_000;
  *  real delivery and shouldn't be buffered into memory to find out. */
 const MAX_BODY_BYTES = 1_000_000;
 
-export const paymentsPublicRoutes = new Hono<AppBindings>().post("/webhook/:token", async (c) => {
+/**
+ * The `dummy` provider's hosted checkout — `/api/payments/dummy/:token`.
+ *
+ * Every real provider hosts its own payment page; the dummy one has nowhere to
+ * host it but here. GET renders a page with the amount and two buttons; POST
+ * settles, by signing a callback body and driving it through the SAME
+ * `receiveWebhook` a real provider's delivery goes through. Nothing about the
+ * settlement path is special-cased for it, which is the point: a test provider
+ * that bypassed verification and dedupe would be testing nothing.
+ *
+ * The query string is HMAC-signed by `createCheckout`, so this endpoint cannot
+ * be used to invent a payment for an arbitrary amount — an unsigned or edited
+ * link is refused before anything is recorded.
+ */
+const dummyPage = (params: {
+  amount: string;
+  currency: string;
+  description: string;
+  reference: string;
+  action: string;
+}) => `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Test checkout — ${escapeHtml(params.description)}</title>
+<style>
+  /* This page is served raw by the Worker, with none of the admin SPA's
+     reset behind it. Without border-box the card's padding is ADDED to its
+     min(24rem, 100vw - 2rem) width, so it overflows a phone viewport by
+     exactly the padding — which only shows up at 390px. */
+  *, *::before, *::after { box-sizing: border-box; }
+  :root { color-scheme: light dark; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; overflow-x:hidden;
+    font:16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    background:#f6f7f9; color:#111; }
+  @media (prefers-color-scheme: dark) { body { background:#0b0c0e; color:#f2f2f3; } }
+  .card { width:min(24rem,calc(100vw - 2rem)); padding:1.75rem; border-radius:14px;
+    background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.08); }
+  @media (prefers-color-scheme: dark) { .card { background:#17181b; box-shadow:none; border:1px solid #2a2c31; } }
+  .tag { display:inline-block; font-size:.75rem; letter-spacing:.04em; text-transform:uppercase;
+    padding:.15rem .5rem; border-radius:999px; background:#fde68a; color:#713f12; }
+  h1 { font-size:1.05rem; margin:.9rem 0 .25rem; }
+  .amount { font-size:2rem; font-weight:650; letter-spacing:-.02em; margin:.25rem 0 .1rem; }
+  .ref { font-size:.8rem; opacity:.6; word-break:break-all; margin-bottom:1.25rem; }
+  form { display:flex; flex-direction:column; gap:.5rem; }
+  button { font:inherit; padding:.65rem 1rem; border-radius:9px; border:1px solid transparent; cursor:pointer; }
+  .pay { background:#111; color:#fff; }
+  @media (prefers-color-scheme: dark) { .pay { background:#f2f2f3; color:#111; } }
+  .fail { background:transparent; border-color:#d1d5db; color:inherit; }
+  @media (prefers-color-scheme: dark) { .fail { border-color:#3a3c42; } }
+</style></head>
+<body><main class="card">
+  <span class="tag">Test mode</span>
+  <h1>${escapeHtml(params.description)}</h1>
+  <div class="amount">${escapeHtml(params.amount)} ${escapeHtml(params.currency)}</div>
+  <div class="ref">Reference ${escapeHtml(params.reference)}</div>
+  <form method="post" action="${escapeHtml(params.action)}">
+    <button class="pay" name="outcome" value="success" type="submit">Pay</button>
+    <button class="fail" name="outcome" value="failure" type="submit">Decline</button>
+  </form>
+</main></body></html>`;
+
+const escapeHtml = (s: string): string =>
+  s.replace(/[&<>"']/g, (ch) =>
+    ch === "&" ? "&amp;" : ch === "<" ? "&lt;" : ch === ">" ? "&gt;" : ch === '"' ? "&quot;" : "&#39;",
+  );
+
+/** Resolve + authenticate a dummy-page request. Shared by GET and POST so the
+ *  render and the settlement can never disagree about what is allowed. */
+const loadDummyCheckout = async (
+  c: Context<AppBindings>,
+): Promise<{ provider: PaymentProviderRow; secret: string; params: URLSearchParams }> => {
+  const ctx = c.get("ctx");
+  const token = c.req.param("token") ?? "";
+  const provider = await getProviderByToken(ctx, token);
+  // A wrong token and a token belonging to a REAL provider are the same answer
+  // on purpose — this endpoint must never be a way to probe which providers a
+  // workspace has connected.
+  if (!provider || provider.provider !== "dummy" || provider.status !== "connected") {
+    throw new AppError("NOT_FOUND", "Unknown checkout");
+  }
+  const config = await decryptProviderConfig(ctx, provider);
+  const secret = typeof config.secret === "string" ? config.secret : "";
+  if (!secret) throw new AppError("NOT_FOUND", "Unknown checkout");
+
+  const params = new URL(c.req.url).searchParams;
+  if (!(await verifyDummyCheckout(secret, params))) {
+    // The signature is what stops this page recording a payment for an amount
+    // nobody asked for. An edited link fails here, before anything is written.
+    throw new AppError("BAD_REQUEST", "This checkout link is not valid");
+  }
+  return { provider, secret, params };
+};
+
+export const paymentsPublicRoutes = new Hono<AppBindings>()
+  .get("/dummy/:token", async (c) => {
+    const { params } = await loadDummyCheckout(c);
+    const currency = params.get("c") ?? "USD";
+    const amount = params.get("a") ?? "0";
+    const url = new URL(c.req.url);
+    return c.html(
+      dummyPage({
+        amount: toMajorUnits(Number(amount), currency),
+        currency,
+        description: params.get("d") || "Payment",
+        reference: params.get("r") ?? "",
+        // Same URL, same query string — the POST re-verifies the signature
+        // rather than trusting that a GET already did.
+        action: `${url.pathname}${url.search}`,
+      }),
+    );
+  })
+  .post("/dummy/:token", async (c) => {
+    const ctx = c.get("ctx");
+    const { provider, secret, params } = await loadDummyCheckout(c);
+    const form = await c.req.formData();
+    const succeeded = form.get("outcome") !== "failure";
+
+    // Built and signed exactly the way a provider would, then pushed through
+    // the ordinary receive path — verification, dedupe, normalize, upsert.
+    const body = new URLSearchParams({
+      reference: params.get("r") ?? "",
+      status: succeeded ? "success" : "failed",
+      amount: params.get("a") ?? "0",
+      currency: params.get("c") ?? "USD",
+      at: String(Date.now()),
+      ...(succeeded ? {} : { reason: "declined by the tester" }),
+    }).toString();
+    const signature = await signDummySettlement(secret, body);
+
+    await receiveWebhook(ctx, {
+      token: provider.webhookToken,
+      rawBody: body,
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        "x-backlex-signature": signature,
+      },
+    });
+
+    const back = params.get(succeeded ? "s" : "f");
+    if (back) return c.redirect(back, 303);
+    return c.json({ ok: true, status: succeeded ? "success" : "failed" });
+  })
+  .post("/webhook/:token", async (c) => {
   const ctx = c.get("ctx");
   const token = c.req.param("token");
 
@@ -128,4 +280,4 @@ export const paymentsPublicRoutes = new Hono<AppBindings>().post("/webhook/:toke
     return c.body(ack.body, 200, { "content-type": ack.contentType });
   }
   return c.json({ ok: true, status: outcome.status, written: outcome.written });
-});
+  });

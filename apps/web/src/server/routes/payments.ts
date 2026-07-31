@@ -15,14 +15,16 @@ import {
   PAYMENT_PROVIDER_LABELS,
   PAYMENT_RECORD_KINDS,
 } from "@backlex/integrations/payments";
+import { PAYMENT_CHECKOUT_MODES } from "@backlex/integrations/checkout";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
-import { logActivity } from "../services/activity";
+import { logActivity, requestMeta } from "../services/activity";
 import { enqueueJob } from "../services/jobs";
 import {
   connectProvider,
+  createPaymentCheckout,
   disconnectProvider,
   ensurePaymentCollections,
   listPaymentEvents,
@@ -84,6 +86,82 @@ const ProviderInput = z
   })
   .openapi("PaymentProviderInput");
 
+const CheckoutInput = z
+  .object({
+    providerId: z.string().optional().openapi({
+      description: "Connected provider row id. Takes precedence over `provider`.",
+    }),
+    provider: z.enum(PAYMENT_PROVIDERS).optional().openapi({
+      description: "Provider name, for callers that don't hold the connection id.",
+    }),
+    amount: z.number().int().positive().openapi({
+      description: "MINOR units (cents), matching `payment_transactions.amount`.",
+    }),
+    currency: z.string().length(3),
+    description: z.string().max(200).optional(),
+    customer: z
+      .object({
+        email: z.string().email().optional(),
+        name: z.string().optional(),
+        phone: z.string().optional(),
+        address: z.string().optional(),
+        city: z.string().optional(),
+        country: z.string().optional(),
+        identityNumber: z.string().optional(),
+      })
+      .optional()
+      .openapi({
+        description:
+          "PayTR and iyzico both require an email address; the rest is optional " +
+          "and improves the provider's own fraud scoring.",
+      }),
+    successUrl: z.string().url().optional(),
+    cancelUrl: z.string().url().optional(),
+    reference: z.string().max(48).optional().openapi({
+      description:
+        "Overrides the reference derived from `writeBack.itemId`. Non-alphanumeric " +
+        "characters are stripped — PayTR's `merchant_oid` accepts nothing else.",
+    }),
+    customerIp: z.string().optional(),
+    expiresInSec: z.number().int().positive().optional(),
+    locale: z.string().max(10).optional(),
+    writeBack: z
+      .object({
+        collection: z.string(),
+        itemId: z.string(),
+        urlField: z.string(),
+        referenceField: z.string().optional(),
+      })
+      .optional()
+      .openapi({
+        description:
+          "Store the link on the row that is asking to be paid. The fields must " +
+          "already exist on the collection — a checkout is never opened against a " +
+          "field that can't record it.",
+      }),
+  })
+  .openapi("PaymentCheckoutInput");
+
+const CheckoutResultSchema = z
+  .object({
+    data: z.object({
+      provider: z.string(),
+      providerId: z.string(),
+      url: z.string(),
+      externalId: z.string(),
+      expiresAt: z.number().nullable(),
+      reference: z.string(),
+      writtenBack: z
+        .object({
+          collection: z.string(),
+          itemId: z.string(),
+          fields: z.array(z.string()),
+        })
+        .nullable(),
+    }),
+  })
+  .openapi("PaymentCheckoutResult");
+
 const EventRow = z
   .object({
     id: z.string(),
@@ -120,6 +198,12 @@ export const paymentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
                   z.object({
                     provider: z.string(),
                     label: z.string(),
+                    checkoutMode: z.enum(["adhoc", "catalog"]).nullable().openapi({
+                      description:
+                        "`adhoc` takes an amount and mints a one-off checkout; `catalog` " +
+                        "needs a pre-existing price id and is not supported yet; `null` " +
+                        "means the provider has no hosted checkout at all.",
+                    }),
                     fields: z.array(
                       z.object({
                         key: z.string(),
@@ -146,6 +230,7 @@ export const paymentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         providers: PAYMENT_PROVIDERS.map((p) => ({
           provider: p,
           label: PAYMENT_PROVIDER_LABELS[p],
+          checkoutMode: PAYMENT_CHECKOUT_MODES[p],
           fields: PAYMENT_PROVIDER_FIELDS[p],
         })),
         recordKinds: [...PAYMENT_RECORD_KINDS],
@@ -423,6 +508,59 @@ export const paymentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const tenantId = requireTenant(c);
       const out = await ensurePaymentCollections(ctx, tenantId);
       return c.json(out);
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/checkout",
+      tags,
+      summary: "Open a hosted checkout and get a payment link",
+      description:
+        "The outbound half of payments: hand a connected provider an amount and " +
+        "get back a URL to send the customer to. `writeBack` stores that URL on " +
+        "the row that is asking to be paid, and the `reference` it travels with " +
+        "comes back on the settlement event as `payment_transactions.reference`, " +
+        "which is what ties the payment to the invoice. Amounts are MINOR units " +
+        "(cents), matching the ledger.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: {
+        body: { content: { "application/json": { schema: CheckoutInput } } },
+      },
+      responses: {
+        200: {
+          description: "Checkout opened",
+          content: { "application/json": { schema: CheckoutResultSchema } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
+      const body = c.req.valid("json");
+      const out = await createPaymentCheckout(ctx, tenantId, {
+        ...body,
+        // PayTR hashes the payer's IP. When an admin opens a link on a
+        // customer's behalf the request IP is the best available answer, and
+        // it beats refusing outright — but an explicit value always wins.
+        customerIp: body.customerIp ?? requestMeta(c.req.raw).ip ?? undefined,
+        // A preview or staging deploy must not send customers to production,
+        // and its settlement callback has to come back to itself.
+        baseUrl: new URL(c.req.url).origin,
+      });
+      await logActivity(c, {
+        action: "payments.checkout",
+        collection: "system_payment_providers",
+        itemId: out.providerId,
+        // Deliberately no URL and no customer details: this row is persisted
+        // and readable by anyone with activity access, and the URL is a
+        // bearer link to a payment page.
+        payload: { provider: out.provider, amount: body.amount, currency: body.currency },
+        response: { reference: out.reference, writtenBack: Boolean(out.writtenBack) },
+      });
+      return c.json({ data: out });
     },
   )
   .openapi(

@@ -1,3 +1,4 @@
+import { PAYMENT_PROVIDERS } from "@backlex/integrations/payments";
 import type { McpTool, ToolResult } from "../types";
 import { readJson } from "../internal-fetch";
 
@@ -55,10 +56,10 @@ export const connectPaymentProvider: McpTool = {
   inputSchema: {
     type: "object",
     properties: {
-      provider: {
-        type: "string",
-        enum: ["stripe", "polar", "lemonsqueezy"],
-      },
+      // Derived, not hand-listed: this enum had drifted three providers behind
+      // the registry, so an agent could not connect Paddle, PayTR or iyzico at
+      // all even though the REST endpoint accepted them.
+      provider: { type: "string", enum: [...PAYMENT_PROVIDERS] },
       config: {
         type: "object",
         description:
@@ -200,6 +201,63 @@ export const provisionPaymentCollections: McpTool = {
   },
 };
 
+export const createPaymentCheckout: McpTool = {
+  name: "payments.checkout",
+  description:
+    "Open a hosted checkout and get a payment link to send the customer. This is " +
+    "how you ASK for money — the rest of these tools only mirror payments that " +
+    "already happened. `amount` is in MINOR units (cents), matching the ledger. " +
+    "Use `writeBack` to store the link on the invoice/quote/donation row that is " +
+    "asking to be paid; the `reference` it travels with comes back on the " +
+    "settlement as `payment_transactions.reference`, which is what ties the two " +
+    "together. Stripe, PayTR, iyzico and the test `dummy` provider take an ad-hoc " +
+    "amount; Polar, Lemon Squeezy and Paddle need a pre-made price and will " +
+    "refuse. Admin-only.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      providerId: { type: "string", description: "Connected provider id. Wins over `provider`." },
+      provider: { type: "string", enum: [...PAYMENT_PROVIDERS] },
+      amount: { type: "number", description: "MINOR units — 1050 is $10.50." },
+      currency: { type: "string", description: "3-letter ISO-4217 code." },
+      description: { type: "string", description: "What the customer sees on the line item." },
+      customer: {
+        type: "object",
+        description:
+          "PayTR and iyzico both require `email`. `name`, `phone`, `address`, " +
+          "`city`, `country` sharpen the provider's own fraud scoring.",
+      },
+      successUrl: { type: "string" },
+      cancelUrl: { type: "string" },
+      reference: {
+        type: "string",
+        description:
+          "Overrides the reference derived from `writeBack.itemId`. Alphanumeric, " +
+          "max 48 — non-alphanumeric characters are stripped.",
+      },
+      customerIp: { type: "string", description: "The PAYING customer's IP (PayTR needs it)." },
+      expiresInSec: { type: "number" },
+      locale: { type: "string" },
+      writeBack: {
+        type: "object",
+        description:
+          "Store the link on a row: { collection, itemId, urlField, referenceField? }. " +
+          "Both fields must already exist on the collection.",
+      },
+    },
+    required: ["amount", "currency"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const res = await ctx.fetchInternal(`${BASE}/checkout`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(args),
+    });
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const paymentsTools: McpTool[] = [
   paymentsCatalog,
   listPaymentProviders,
@@ -207,6 +265,7 @@ export const paymentsTools: McpTool[] = [
   disconnectPaymentProvider,
   rotatePaymentToken,
   syncPaymentProvider,
+  createPaymentCheckout,
   listPaymentEvents,
   provisionPaymentCollections,
 ];

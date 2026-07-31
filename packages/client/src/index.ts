@@ -1025,11 +1025,79 @@ export interface PaymentCollectionsResult {
   /** Slugs taken by an unrelated collection — nothing is written to these
    *  until one of the two is renamed. */
   conflicts: string[];
+  /** Columns added to an already-existing sync target, by slug. Empty in the
+   *  steady state; populated when a workspace catches up to a new column. */
+  addedFields: Record<string, string[]>;
+}
+
+/** Where the customer pays, plus the reference that ties it back. */
+export interface PaymentCheckout {
+  provider: string;
+  providerId: string;
+  /** Hosted payment page — send the customer here. */
+  url: string;
+  /** The provider's own id for the checkout (session id / token). */
+  externalId: string;
+  /** Epoch ms, or null when the provider doesn't say. */
+  expiresAt: number | null;
+  /**
+   * Travels out with the checkout and comes back on the settlement event as
+   * `payment_transactions.reference` — this is what ties the payment to the
+   * row that asked for it.
+   */
+  reference: string;
+  /** Set when `writeBack` was given: what was updated where. */
+  writtenBack: { collection: string; itemId: string; fields: string[] } | null;
+}
+
+export interface PaymentCheckoutInput {
+  /** Connected provider row id. Takes precedence over `provider`. */
+  providerId?: string;
+  /** Provider name, for callers that don't hold the connection id. */
+  provider?: string;
+  /** MINOR units (cents), matching `payment_transactions.amount`. */
+  amount: number;
+  currency: string;
+  description?: string;
+  /** PayTR and iyzico both require `email`; the rest sharpens fraud scoring. */
+  customer?: {
+    email?: string;
+    name?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    country?: string;
+    identityNumber?: string;
+  };
+  successUrl?: string;
+  cancelUrl?: string;
+  /** Overrides the reference derived from `writeBack.itemId`. Non-alphanumeric
+   *  characters are stripped — PayTR's order id accepts nothing else. */
+  reference?: string;
+  /** The PAYING customer's IP. PayTR folds it into the token hash; the server
+   *  falls back to the calling request's IP. */
+  customerIp?: string;
+  expiresInSec?: number;
+  locale?: string;
+  /** Store the link on the row that is asking to be paid. Both fields must
+   *  already exist on the collection. */
+  writeBack?: {
+    collection: string;
+    itemId: string;
+    urlField: string;
+    referenceField?: string;
+  };
 }
 
 export interface PaymentCatalogEntry {
   provider: string;
   label: string;
+  /**
+   * `adhoc` takes an amount and mints a one-off checkout; `catalog` needs a
+   * pre-existing price id and is not supported yet; `null` means the provider
+   * has no hosted checkout at all.
+   */
+  checkoutMode: "adhoc" | "catalog" | null;
   fields: {
     key: string;
     label: string;
@@ -1251,6 +1319,19 @@ export interface PaymentsClient {
     id: string,
     opts?: { kinds?: string[]; maxPages?: number; resume?: boolean; async?: boolean },
   ): Promise<PaymentSyncResult>;
+  /**
+   * Open a hosted checkout and get a link to send the customer to.
+   *
+   * The outbound half of payments. `writeBack` stores the URL on the row that
+   * is asking to be paid; the `reference` it travels with comes back on the
+   * settlement as `payment_transactions.reference`, which is what ties the
+   * money to the invoice. Amounts are MINOR units, matching the ledger.
+   *
+   * Stripe, PayTR, iyzico and the test `dummy` provider take an ad-hoc amount.
+   * Polar, Lemon Squeezy and Paddle need a pre-made price and are refused with
+   * a `catalog_only` explanation rather than a confusing failure.
+   */
+  checkout(input: PaymentCheckoutInput): Promise<{ data: PaymentCheckout }>;
   /** Recent webhook deliveries, newest first. */
   events(opts?: { providerId?: string; limit?: number }): Promise<{ data: PaymentEvent[] }>;
   /** (Re-)provision the four sync collections. Idempotent. */
@@ -3215,6 +3296,8 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<{ data: PaymentProviderConnection }>("POST", `${pay(id)}/rotate-token`, {}),
     sync: (id: string, opts?: { kinds?: string[]; maxPages?: number; resume?: boolean; async?: boolean }) =>
       request<PaymentSyncResult>("POST", `${pay(id)}/sync`, opts ?? {}),
+    checkout: (input: PaymentCheckoutInput) =>
+      request<{ data: PaymentCheckout }>("POST", "/api/admin/payments/checkout", input),
     events: (opts?: { providerId?: string; limit?: number }) => {
       const qs = new URLSearchParams();
       if (opts?.providerId) qs.set("providerId", opts.providerId);

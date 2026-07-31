@@ -110,6 +110,48 @@ export type Operation =
       onSuccess?: Operation[];
       onError?: Operation[];
     }
+  /**
+   * Open a hosted checkout with a connected payment provider and (optionally)
+   * write the link back onto the row that triggered the flow.
+   *
+   * This is the automation the payments feature was missing: fifteen of the
+   * schema templates model money arriving — invoices, quotes, donations,
+   * rental orders — and until now a row landing in one of them could be
+   * emailed about but never actually billed. With this op, "an invoice was
+   * created" produces a payment link on the invoice.
+   *
+   * `amount` is in MINOR units, matching `payment_transactions.amount`, and is
+   * usually a template (`{{ data.amount_due }}`). The `reference` that travels
+   * out with the checkout comes back on the settlement event, so the payment
+   * that eventually arrives is tied to this row rather than floating free.
+   */
+  | {
+      type: "payment.checkout";
+      /** Provider name (`stripe`, `paytr`, …). Omit when `providerId` is set. */
+      provider?: string;
+      /** A specific connection, for a workspace with more than one. */
+      providerId?: string;
+      /** MINOR units. A template is interpolated then parsed as an integer. */
+      amount: string | number;
+      currency: string;
+      description?: string;
+      /** Required by PayTR and iyzico. Usually `{{ data.email }}`. */
+      email?: string;
+      customerName?: string;
+      successUrl?: string;
+      cancelUrl?: string;
+      /** Overrides the reference derived from `writeBack.itemId`. */
+      reference?: string;
+      /** Store the link (and optionally the reference) on a row. */
+      writeBack?: {
+        collection: string;
+        itemId: string;
+        urlField: string;
+        referenceField?: string;
+      };
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
   /** Invoke a saved backlex function by name, tenant-scoped. The
    *  function's stored `code` is run in the same sandbox as `run-script`
    *  but the body lives in the `functions` table so it's reusable across
@@ -181,6 +223,7 @@ export const OPERATION_TYPES: OperationType[] = [
   "notification",
   "push",
   "sms",
+  "payment.checkout",
   "function",
   "integration",
   "item.create",
@@ -299,6 +342,39 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       // executor, against the interpolated value.
       .refine((op) => (op.to == null) !== (op.userId == null), {
         message: "sms needs exactly one of `to` or `userId`",
+      }),
+    z
+      .object({
+        type: z.literal("payment.checkout"),
+        provider: z.string().min(1).optional(),
+        providerId: z.string().min(1).optional(),
+        // Either a literal integer or a `{{ … }}` template that renders to
+        // one; the executor parses and rejects a non-integer render, because
+        // a checkout for `NaN` minor units is worse than a failed run.
+        amount: z.union([z.string().min(1), z.number().int().positive()]),
+        currency: z.string().min(3).max(3),
+        description: z.string().max(200).optional(),
+        email: z.string().min(1).optional(),
+        customerName: z.string().min(1).optional(),
+        successUrl: z.string().min(1).optional(),
+        cancelUrl: z.string().min(1).optional(),
+        reference: z.string().min(1).optional(),
+        writeBack: z
+          .object({
+            collection: z.string().min(1),
+            itemId: z.string().min(1),
+            urlField: z.string().min(1),
+            referenceField: z.string().min(1).optional(),
+          })
+          .optional(),
+        onSuccess: z.array(OperationSchema).optional(),
+        onError: z.array(OperationSchema).optional(),
+      })
+      // Naming both is contradictory rather than redundant — `providerId`
+      // silently wins and the `provider` the author wrote is ignored, which
+      // reads as a working flow charging through the wrong connection.
+      .refine((op) => !(op.provider && op.providerId), {
+        message: "payment.checkout takes `provider` or `providerId`, not both",
       }),
     z.object({
       type: z.literal("function"),

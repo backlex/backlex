@@ -15,12 +15,14 @@ import {
 import { requireFlowAdmin } from "./flows";
 import {
   connectProvider,
+  createPaymentCheckout,
   disconnectProvider,
   ensurePaymentCollections,
   listPaymentEvents,
   listProviders,
   reconcileProvider,
   rotateWebhookToken,
+  type CreateCheckoutInput,
 } from "../payments";
 
 // ── Payments (connected providers) ──────────────────────────────────────────
@@ -98,6 +100,69 @@ const PaymentCollectionsType = new GraphQLObjectType({
     created: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     existing: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     conflicts: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
+    addedFields: {
+      type: new GraphQLNonNull(JSONScalar),
+      description: "Columns added to an already-existing sync target, by slug.",
+    },
+  },
+});
+
+const PaymentCheckoutWriteBackInputType = new GraphQLInputObjectType({
+  name: "PaymentCheckoutWriteBackInput",
+  description:
+    "Store the link on the row that is asking to be paid. Both fields must " +
+    "already exist on the collection.",
+  fields: {
+    collection: { type: new GraphQLNonNull(GraphQLString) },
+    itemId: { type: new GraphQLNonNull(GraphQLID) },
+    urlField: { type: new GraphQLNonNull(GraphQLString) },
+    referenceField: { type: GraphQLString },
+  },
+});
+
+const PaymentCheckoutInputType = new GraphQLInputObjectType({
+  name: "PaymentCheckoutInput",
+  fields: {
+    providerId: { type: GraphQLID },
+    provider: { type: GraphQLString },
+    amount: {
+      type: new GraphQLNonNull(GraphQLInt),
+      description: "MINOR units (cents), matching `payment_transactions.amount`.",
+    },
+    currency: { type: new GraphQLNonNull(GraphQLString) },
+    description: { type: GraphQLString },
+    customer: {
+      type: JSONScalar,
+      description: "PayTR and iyzico both require `email`; the rest is optional.",
+    },
+    successUrl: { type: GraphQLString },
+    cancelUrl: { type: GraphQLString },
+    reference: { type: GraphQLString },
+    customerIp: { type: GraphQLString },
+    expiresInSec: { type: GraphQLInt },
+    locale: { type: GraphQLString },
+    writeBack: { type: PaymentCheckoutWriteBackInputType },
+  },
+});
+
+const PaymentCheckoutType = new GraphQLObjectType({
+  name: "PaymentCheckout",
+  fields: {
+    provider: { type: new GraphQLNonNull(GraphQLString) },
+    providerId: { type: new GraphQLNonNull(GraphQLID) },
+    url: {
+      type: new GraphQLNonNull(GraphQLString),
+      description: "Hosted payment page — send the customer here.",
+    },
+    externalId: { type: new GraphQLNonNull(GraphQLString) },
+    expiresAt: { type: JSONScalar },
+    reference: {
+      type: new GraphQLNonNull(GraphQLString),
+      description:
+        "Comes back on the settlement as `payment_transactions.reference` — " +
+        "this is what ties the payment to the row that asked for it.",
+    },
+    writtenBack: { type: JSONScalar },
   },
 });
 
@@ -208,6 +273,23 @@ export const paymentMutationFields: Record<string, GraphQLFieldConfig<unknown, G
         }),
       );
     },
+  },
+  createPaymentCheckout: {
+    type: new GraphQLNonNull(PaymentCheckoutType),
+    description:
+      "Open a hosted checkout and get a link to send the customer to (admin-only). " +
+      "Amounts are MINOR units. Stripe, PayTR, iyzico and the test `dummy` provider " +
+      "take an ad-hoc amount; Polar, Lemon Squeezy and Paddle need a pre-made price " +
+      "and are refused with an explanation.",
+    args: { data: { type: new GraphQLNonNull(PaymentCheckoutInputType) } },
+    resolve: (_src, args, gqlCtx) =>
+      wrap(() =>
+        createPaymentCheckout(
+          gqlCtx.ctx,
+          requireFlowAdmin(gqlCtx),
+          (args as { data: CreateCheckoutInput }).data,
+        ),
+      ),
   },
   provisionPaymentCollections: {
     type: new GraphQLNonNull(PaymentCollectionsType),

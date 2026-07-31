@@ -19,6 +19,16 @@
  * `eventId`, and writing the normalized rows into collections.
  */
 
+import {
+  DUMMY_SETTLEMENT_DOMAIN,
+  enc,
+  fromBase64,
+  hmac,
+  timingSafeEqual,
+  toBase64,
+  toHex,
+} from "./payment-crypto";
+
 export const PAYMENT_PROVIDERS = [
   "stripe",
   "polar",
@@ -26,6 +36,13 @@ export const PAYMENT_PROVIDERS = [
   "paddle",
   "paytr",
   "iyzico",
+  // Not a PSP. A local, self-hosted stand-in that settles payments without
+  // touching a real acquirer — the payment sibling of the `console` SMS and
+  // email adapters, for demo instances and for smoke-testing a checkout flow
+  // end to end without live keys. Connecting it is gated to demo/dev by the
+  // consumer, because a provider that records payments as succeeded is a
+  // foot-gun in production.
+  "dummy",
 ] as const;
 export type PaymentProvider = (typeof PAYMENT_PROVIDERS)[number];
 
@@ -40,6 +57,7 @@ export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
   paddle: "Paddle",
   paytr: "PayTR",
   iyzico: "iyzico",
+  dummy: "Dummy (test only)",
 };
 
 /**
@@ -76,6 +94,11 @@ export const PAYMENT_PROVIDER_MODES: Record<PaymentProvider, PaymentProviderMode
   paddle: "webhook",
   paytr: "callback",
   iyzico: "retrieve",
+  // The dummy page POSTs a form back the way a Turkish PSP does, and signs it
+  // with the provider's own generated secret. It sits in `callback` rather
+  // than getting a fourth mode precisely so it exercises the real code path —
+  // a test provider that bypassed verification would test nothing.
+  dummy: "callback",
 };
 
 export const isCallbackProvider = (p: string): boolean =>
@@ -132,6 +155,7 @@ export const PAYMENT_ACK: Record<PaymentProvider, { body: string; contentType: s
   paytr: { body: "OK", contentType: "text/plain; charset=utf-8" },
   // iyzico is happy with any 2xx; the default envelope is fine.
   iyzico: null,
+  dummy: null,
 };
 
 /** One config field a UI should collect. Mirrors `IntegrationConfigField`. */
@@ -215,6 +239,13 @@ export const PAYMENT_PROVIDER_FIELDS: Record<PaymentProvider, PaymentConfigField
     { key: "merchantId", label: "Merchant ID", placeholder: "123456" },
     { key: "merchantKey", label: "Merchant key", placeholder: "From the PayTR panel", secret: true },
     { key: "merchantSalt", label: "Merchant salt", placeholder: "From the PayTR panel", secret: true },
+    {
+      key: "environment",
+      label: "Environment",
+      optional: true,
+      choices: ["production", "test"],
+      hint: "Test opens checkouts with PayTR's `test_mode` set, so no card is charged.",
+    },
   ],
   iyzico: [
     {
@@ -232,6 +263,16 @@ export const PAYMENT_PROVIDER_FIELDS: Record<PaymentProvider, PaymentConfigField
       hint: "Sandbox points at sandbox-api.iyzipay.com.",
     },
   ],
+  dummy: [
+    {
+      key: "secret",
+      label: "Signing secret",
+      placeholder: "Generated for you if left blank",
+      secret: true,
+      optional: true,
+      hint: "Signs both the hosted test checkout and the settlement it posts back.",
+    },
+  ],
 };
 
 /** Config keys holding secrets, per provider — encrypt at rest, mask on read. */
@@ -246,6 +287,7 @@ export const PAYMENT_SECRET_KEYS: Record<PaymentProvider, string[]> = {
   // iyzico signs nothing inbound; these authenticate the outbound retrieve,
   // which is what makes a callback trustworthy at all.
   iyzico: ["apiKey", "secretKey"],
+  dummy: ["secret"],
 };
 
 /**
@@ -310,52 +352,9 @@ const headerOf = (headers: Record<string, string> | Headers, name: string): stri
   return null;
 };
 
-const enc = new TextEncoder();
-
-const importHmacKey = (keyBytes: Uint8Array): Promise<CryptoKey> =>
-  crypto.subtle.importKey(
-    "raw",
-    // A fresh copy pins the exact byte range — some runtimes reject a view
-    // whose underlying buffer is larger than the view itself.
-    keyBytes.slice().buffer as ArrayBuffer,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-
-const hmac = async (keyBytes: Uint8Array, message: string): Promise<Uint8Array> => {
-  const key = await importHmacKey(keyBytes);
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(message));
-  return new Uint8Array(sig);
-};
-
-const toHex = (bytes: Uint8Array): string =>
-  Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-
-const toBase64 = (bytes: Uint8Array): string => {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s);
-};
-
-const fromBase64 = (b64: string): Uint8Array | null => {
-  try {
-    const bin = atob(b64);
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
-  } catch {
-    return null;
-  }
-};
-
-/** Length-independent, content-constant-time string compare. */
-const timingSafeEqual = (a: string, b: string): boolean => {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-};
+// The HMAC + encoding primitives live in `./payment-crypto` so the outbound
+// checkout builder signs with the same implementation this verifier checks
+// against — see that module's header for why one copy matters.
 
 /**
  * Verify a provider webhook signature. Never throws — a malformed header is a
@@ -416,6 +415,29 @@ export async function verifyPaymentSignature(
       ? { ok: true }
       : { ok: false, reason: "signature_mismatch" };
   }
+  if (provider === "dummy") {
+    // Hex HMAC over the raw body, keyed by the provider's own generated
+    // secret. The hosted page is served by backlex, so this verifies that the
+    // settlement came from a checkout we minted rather than from anyone who
+    // found the receive URL.
+    //
+    // The domain prefix is what stops the OTHER thing that secret signs — the
+    // outbound checkout link — from being replayed here. Without it both are
+    // `hex(HMAC(secret, text))` over attacker-visible bytes, so a link's `sig`
+    // would verify as a settlement signature for the same bytes. It must match
+    // `signDummySettlement` in `@backlex/integrations/checkout` exactly.
+    const secret = str((input.config ?? {}).secret);
+    if (!secret) return { ok: false, reason: "missing_secret" };
+    const given = headerOf(input.headers, "x-backlex-signature");
+    if (!given) return { ok: false, reason: "missing_signature" };
+    const want = toHex(
+      await hmac(enc.encode(secret), `${DUMMY_SETTLEMENT_DOMAIN}${input.rawBody}`),
+    );
+    return timingSafeEqual(given.trim(), want)
+      ? { ok: true }
+      : { ok: false, reason: "signature_mismatch" };
+  }
+
   // Backstop. Every branch below assumes a `webhook` provider with a real
   // signing secret; a non-webhook provider that reached here has no branch of
   // its own and would fall through to the last one, which HMACs with an empty
@@ -652,6 +674,22 @@ const rel = (provider: string, externalId: unknown): string | null => {
   return id ? paymentRowId(provider, id) : null;
 };
 
+/**
+ * The merchant's own identifier, coming back on a settlement.
+ *
+ * This is the return leg of `@backlex/integrations/checkout`: a checkout is
+ * minted carrying the id of the row that asked for the money, and the provider
+ * echoes it here. Without it a received payment is an orphan — the amount is
+ * known and what it paid for is not.
+ *
+ * Stripe exposes it two ways. `client_reference_id` rides the Checkout Session
+ * and is the documented field; `metadata.backlex_reference` is set on the
+ * PaymentIntent as well, because a charge- or intent-shaped event never carries
+ * the session's field. A reconcile that walks charges sees only the second one.
+ */
+const checkoutReference = (o: Record<string, unknown>): string | null =>
+  str(o.client_reference_id) ?? str(meta(o.metadata)?.backlex_reference);
+
 // ── Stripe mappers ──────────────────────────────────────────────────────────
 
 const stripeCustomer = (o: Record<string, unknown>): PaymentRecord => ({
@@ -744,6 +782,7 @@ const stripeChargePayment = (o: Record<string, unknown>): PaymentRecord => {
       status: str(o.status),
       method: str(methodDetails?.type) ?? str(o.payment_method),
       failure_reason: str(o.failure_message) ?? str(o.failure_code),
+      reference: checkoutReference(o),
       processed_at: secToMs(o.created),
       metadata: meta(o.metadata),
       source_created_at: secToMs(o.created),
@@ -767,7 +806,47 @@ const stripeIntentPayment = (o: Record<string, unknown>): PaymentRecord => {
       status: str(o.status),
       method: str(o.payment_method_types ? (o.payment_method_types as unknown[])[0] : null),
       failure_reason: str(err?.message) ?? str(err?.code),
+      reference: checkoutReference(o),
       processed_at: secToMs(o.created),
+      metadata: meta(o.metadata),
+      source_created_at: secToMs(o.created),
+    },
+  };
+};
+
+/**
+ * A completed Checkout Session → the payment it produced.
+ *
+ * Keyed on the PAYMENT INTENT id, not the session id, on purpose. Stripe fires
+ * `checkout.session.completed` and `payment_intent.succeeded` for the same
+ * money; keying on `cs_…` would file two payment rows for one charge. Sharing
+ * the intent's row id makes the two events upsert over each other instead —
+ * and the session is the one carrying `client_reference_id`, so whichever
+ * arrives second, the reference survives.
+ *
+ * A session with no payment intent (subscription setup, a zero-total order) is
+ * not a payment and produces nothing.
+ */
+const stripeSessionPayment = (o: Record<string, unknown>): PaymentRecord | null => {
+  const intentId = str(o.payment_intent);
+  if (!intentId) return null;
+  const paid = str(o.payment_status) === "paid";
+  return {
+    kind: "payment",
+    row: {
+      id: paymentRowId("stripe", intentId),
+      provider: "stripe",
+      external_id: intentId,
+      customer: rel("stripe", o.customer),
+      invoice: rel("stripe", o.invoice),
+      amount: num(o.amount_total),
+      amount_refunded: 0,
+      currency: str(o.currency),
+      status: paid ? "succeeded" : "pending",
+      method: null,
+      failure_reason: null,
+      reference: checkoutReference(o),
+      processed_at: paid ? secToMs(o.created) : null,
       metadata: meta(o.metadata),
       source_created_at: secToMs(o.created),
     },
@@ -785,6 +864,10 @@ const normalizeStripe = (payload: Record<string, unknown>): NormalizedPaymentEve
     else if (type.startsWith("invoice.")) records.push(stripeInvoice(o));
     else if (type.startsWith("charge.")) records.push(stripeChargePayment(o));
     else if (type.startsWith("payment_intent.")) records.push(stripeIntentPayment(o));
+    else if (type.startsWith("checkout.session.")) {
+      const session = stripeSessionPayment(o);
+      if (session) records.push(session);
+    }
   }
   return {
     eventId: str(payload.id) ?? "",
@@ -1234,6 +1317,10 @@ const normalizePayTR = (body: Record<string, unknown>): NormalizedPaymentEvent =
               failure_reason: succeeded
                 ? null
                 : (str(body.failed_reason_msg) ?? str(body.failed_reason_code)),
+              // `merchant_oid` IS the reference — the checkout builder sends
+              // our row identifier as the order id, which is why the reference
+              // contract is restricted to what PayTR accepts there.
+              reference: merchantOid,
               processed_at: null,
               metadata: {
                 ...(str(body.payment_amount) ? { payment_amount: str(body.payment_amount) } : {}),
@@ -1394,6 +1481,10 @@ const normalizeIyzico = (body: Record<string, unknown>): NormalizedPaymentEvent 
               failure_reason: succeeded
                 ? null
                 : (str(body.errorMessage) ?? str(body.errorCode) ?? (paymentStatus || null)),
+              // iyzico echoes the `conversationId` the checkout was opened
+              // with; `basketId` carries the same value as a fallback for a
+              // checkout opened by something other than backlex.
+              reference: str(body.conversationId) ?? str(body.basketId),
               processed_at: null,
               metadata: {
                 ...(str(body.basketId) ? { basket_id: str(body.basketId) } : {}),
@@ -1401,6 +1492,50 @@ const normalizeIyzico = (body: Record<string, unknown>): NormalizedPaymentEvent 
                 ...(str(body.installment) ? { installment: str(body.installment) } : {}),
                 ...(str(body.cardAssociation) ? { card_association: str(body.cardAssociation) } : {}),
               },
+            },
+          },
+        ]
+      : [],
+  };
+};
+
+/**
+ * The dummy provider's settlement → one payment record.
+ *
+ * Shaped like PayTR's on purpose: a form-encoded body with an order id, a
+ * status and a minor-unit total. The point of the provider is to exercise the
+ * real receive path — verification, dedupe, normalize, upsert — so its payload
+ * deliberately looks like a real one rather than a privileged shortcut.
+ */
+const normalizeDummy = (body: Record<string, unknown>): NormalizedPaymentEvent => {
+  const reference = str(body.reference) ?? "";
+  const succeeded = str(body.status) === "success";
+  return {
+    eventId: reference,
+    type: succeeded ? "payment.success" : "payment.failed",
+    // Nothing about this provider is live money, and saying otherwise would
+    // let a dummy row through a `livemode` filter meant to hide test data.
+    livemode: false,
+    records: reference
+      ? [
+          {
+            kind: "payment",
+            row: {
+              id: paymentRowId("dummy", reference),
+              provider: "dummy",
+              external_id: reference,
+              customer: null,
+              invoice: null,
+              amount: num(body.amount),
+              amount_refunded: 0,
+              currency: str(body.currency) ?? "USD",
+              status: succeeded ? "succeeded" : "failed",
+              method: "dummy",
+              failure_reason: succeeded ? null : (str(body.reason) ?? "declined by the tester"),
+              reference,
+              processed_at: num(body.at),
+              metadata: {},
+              source_created_at: num(body.at),
             },
           },
         ]
@@ -1421,6 +1556,7 @@ export function normalizePaymentEvent(
   if (provider === "lemonsqueezy") return normalizeLemonSqueezy(body, headerEventId);
   if (provider === "paddle") return normalizePaddle(body, headerEventId);
   if (provider === "paytr") return normalizePayTR(body);
+  if (provider === "dummy") return normalizeDummy(body);
   return { eventId: headerEventId ?? "", type: "", livemode: null, records: [] };
 }
 

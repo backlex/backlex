@@ -170,6 +170,10 @@ msgstr "(none — no templates yet)"
 msgid "(none — use literal subject/body)"
 msgstr "(none — use literal subject/body)"
 
+#: src/client/admin/flow-builder.tsx
+msgid "(none connected — connect one on Payments)"
+msgstr "(none connected — connect one on Payments)"
+
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/scim-card.tsx
 msgid "(none)"
@@ -741,6 +745,10 @@ msgstr "{key} deleted."
 msgid "{label} copied."
 msgstr "{label} copied."
 
+#: src/client/admin/pages/payments.tsx
+msgid "{label} payment link"
+msgstr "{label} payment link"
+
 #: src/client/admin/pages/integrations.tsx
 msgid "{name} deliveries"
 msgstr "{name} deliveries"
@@ -965,6 +973,10 @@ msgstr "A funnel measures how many visitors who did the first event went on to d
 #: src/client/admin/parity/translations.tsx
 msgid "A key with this name already exists."
 msgstr "A key with this name already exists."
+
+#: src/client/admin/pages/payments.tsx
+msgid "A local stand-in that settles payments without charging anything. Demo and development instances only."
+msgstr "A local stand-in that settles payments without charging anything. Demo and development instances only."
 
 #: src/client/admin/parity/insights.tsx
 msgid "A panel with that name already exists."
@@ -1740,6 +1752,11 @@ msgstr "Already verified?"
 #: src/client/admin/pages/forms.tsx
 msgid "always on"
 msgstr "always on"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Amount"
+msgstr "Amount"
 
 #: src/client/admin/item-collaboration.tsx
 msgid "An active share link exists for this record. For security the link URL is shown only once, at creation. Revoke it and create a new one if you need a fresh copyable URL."
@@ -3453,6 +3470,7 @@ msgid "Copy JSON"
 msgstr "Copy JSON"
 
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/users.tsx
 msgid "Copy link"
 msgstr "Copy link"
@@ -3705,6 +3723,10 @@ msgstr "Create key"
 msgid "Create Linear issues from data events."
 msgstr "Create Linear issues from data events."
 
+#: src/client/admin/pages/payments.tsx
+msgid "Create link"
+msgstr "Create link"
+
 #: src/client/admin/item-collaboration.tsx
 msgid "Create new link"
 msgstr "Create new link"
@@ -3840,6 +3862,8 @@ msgid "curl example"
 msgstr "curl example"
 
 #: src/client/admin/field-format-editor.tsx
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Currency"
 msgstr "Currency"
 
@@ -3934,6 +3958,11 @@ msgstr "custom rule"
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Custom…"
 msgstr "Custom…"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Customer email"
+msgstr "Customer email"
 
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Customize…"
@@ -4345,8 +4374,10 @@ msgid "Descending"
 msgstr "Descending"
 
 #: src/client/admin/collection-settings.tsx
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/role-editor.tsx
@@ -4541,8 +4572,17 @@ msgstr "Documents"
 msgid "Don't have an account?"
 msgstr "Don't have an account?"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Don't store the reference"
+msgstr "Don't store the reference"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Don't write it back"
+msgstr "Don't write it back"
+
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Done"
@@ -5830,6 +5870,10 @@ msgstr "Fire a repository_dispatch on data events."
 msgid "fires on matching pub-sub channel events"
 msgstr "fires on matching pub-sub channel events"
 
+#: src/client/admin/flow-builder.tsx
+msgid "First connected provider"
+msgstr "First connected provider"
+
 #: src/client/admin/collection-settings.tsx
 msgid "first dropdown"
 msgstr "first dropdown"
@@ -6873,6 +6917,10 @@ msgstr "Invites are valid for 7 days. Ask an admin to send a new one."
 msgid "invocations · p95"
 msgstr "invocations · p95"
 
+#: src/client/admin/pages/payments.tsx
+msgid "Invoice INV-42"
+msgstr "Invoice INV-42"
+
 #: src/client/admin/pages/extensions.tsx
 msgid "Invoke one of this extension's server-side hooks with a JSON payload and inspect the sandbox result."
 msgstr "Invoke one of this extension's server-side hooks with a JSON payload and inspect the sandbox result."
@@ -7503,6 +7551,10 @@ msgstr "Link by verified email"
 msgid "Link copied."
 msgstr "Link copied."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Link field"
+msgstr "Link field"
+
 #: src/client/admin/pages/forms.tsx
 msgid "link pins this language"
 msgstr "link pins this language"
@@ -7988,6 +8040,10 @@ msgstr "Min length"
 msgid "Min selected"
 msgstr "Min selected"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Minor units — 1050 is 10.50. Matches how payments are stored."
+msgstr "Minor units — 1050 is 10.50. Matches how payments are stored."
+
 #: src/client/admin/item-collaboration.tsx
 msgid "Mint a public link that shows this record read-only — no sign-in required to view it."
 msgstr "Mint a public link that shows this record read-only — no sign-in required to view it."
@@ -8008,6 +8064,11 @@ msgstr "Minting a new key immediately invalidates the old one."
 msgid "Mints a new token; the current link stops working"
 msgstr "Mints a new token; the current link stops working"
 
+#. placeholder {0}: entry.label
+#: src/client/admin/pages/payments.tsx
+msgid "Mirror {0}'s billing objects, and open checkouts to ask for payment."
+msgstr "Mirror {0}'s billing objects, and open checkouts to ask for payment."
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Mirror a calendar's events into a collection, including cancellations."
 msgstr "Mirror a calendar's events into a collection, including cancellations."
@@ -8020,9 +8081,18 @@ msgstr "Mirror a collection into a BigQuery dataset on a schedule."
 msgid "Mirror a collection into a ClickHouse table on a schedule."
 msgstr "Mirror a collection into a ClickHouse table on a schedule."
 
+#. placeholder {0}: entry.label
 #: src/client/admin/pages/payments.tsx
-msgid "Mirror customers, subscriptions, invoices and payments from Stripe, Polar or Lemon Squeezy into your collections. Deliveries are signature-verified; credentials are encrypted at rest."
-msgstr "Mirror customers, subscriptions, invoices and payments from Stripe, Polar or Lemon Squeezy into your collections. Deliveries are signature-verified; credentials are encrypted at rest."
+msgid "Mirror customers, subscriptions, invoices and payments from {0}."
+msgstr "Mirror customers, subscriptions, invoices and payments from {0}."
+
+#: src/client/admin/pages/payments.tsx
+#~ msgid "Mirror customers, subscriptions, invoices and payments from Stripe, Polar or Lemon Squeezy into your collections. Deliveries are signature-verified; credentials are encrypted at rest."
+#~ msgstr "Mirror customers, subscriptions, invoices and payments from Stripe, Polar or Lemon Squeezy into your collections. Deliveries are signature-verified; credentials are encrypted at rest."
+
+#: src/client/admin/pages/payments.tsx
+msgid "Mirror customers, subscriptions, invoices and payments into your collections — and open hosted checkouts to ask for payment. Deliveries are signature-verified; credentials are encrypted at rest."
+msgstr "Mirror customers, subscriptions, invoices and payments into your collections — and open hosted checkouts to ask for payment. Deliveries are signature-verified; credentials are encrypted at rest."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Mirror QuickBooks customers, invoices and payments into a collection."
@@ -9619,8 +9689,13 @@ msgid "OpenID Connect / OAuth2 sign-in for this workspace's end-users."
 msgstr "OpenID Connect / OAuth2 sign-in for this workspace's end-users."
 
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Opening…"
 msgstr "Opening…"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Opens a hosted checkout and gives you a link to send. To bill a row automatically, use the payment-link step in a flow."
+msgstr "Opens a hosted checkout and gives you a link to send. To bill a row automatically, use the payment-link step in a flow."
 
 #: src/client/admin/pages/traces.tsx
 msgid "Operation"
@@ -9943,9 +10018,22 @@ msgid "Payload must be valid JSON."
 msgstr "Payload must be valid JSON."
 
 #: src/client/admin/pages/payments.tsx
+msgid "Payment link"
+msgstr "Payment link"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Payment link copied."
+msgstr "Payment link copied."
+
+#: src/client/admin/pages/payments.tsx
 #: src/client/admin/ui.tsx
 msgid "Payments"
 msgstr "Payments"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "PayTR and iyzico both require one."
+msgstr "PayTR and iyzico both require one."
 
 #: src/client/admin/pages/forms.tsx
 msgid "PDF"
@@ -11045,6 +11133,15 @@ msgstr "Redirect URL"
 msgid "Redirecting…"
 msgstr "Redirecting…"
 
+#. placeholder {0}: result.reference
+#: src/client/admin/pages/payments.tsx
+msgid "Reference <0>{0}</0> comes back on the settlement, so the payment can be matched to whatever you opened this for."
+msgstr "Reference <0>{0}</0> comes back on the settlement, so the payment can be matched to whatever you opened this for."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Reference field (optional)"
+msgstr "Reference field (optional)"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "References collection"
@@ -11607,6 +11704,10 @@ msgstr "Retention needs visitors whose first-ever day falls inside the selected 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Retry"
 msgstr "Retry"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Return URL (optional)"
+msgstr "Return URL (optional)"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Revenue overview"
@@ -12510,6 +12611,10 @@ msgstr "Select a block on the canvas to edit its settings. Scalar and file field
 #: src/client/admin/flow-builder.tsx
 msgid "Select a collection…"
 msgstr "Select a collection…"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Select a field…"
+msgstr "Select a field…"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Select a function"
@@ -13621,6 +13726,10 @@ msgstr "stores an array of ids"
 msgid "stores one target id"
 msgstr "stores one target id"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Stores the id the settlement comes back with, so the payment can be matched to this row."
+msgstr "Stores the id the settlement comes back with, so the payment can be matched to this row."
+
 #: src/client/admin/item-form.tsx
 msgid "Stores the storage key. Upload new files on the <0>Storage</0> page."
 msgstr "Stores the storage key. Upload new files on the <0>Storage</0> page."
@@ -13766,8 +13875,8 @@ msgstr "Sync created. Run it now to check the mapping."
 
 #. placeholder {0}: entry.label
 #: src/client/admin/pages/payments.tsx
-msgid "Sync customers, subscriptions, invoices and payments from {0}."
-msgstr "Sync customers, subscriptions, invoices and payments from {0}."
+#~ msgid "Sync customers, subscriptions, invoices and payments from {0}."
+#~ msgstr "Sync customers, subscriptions, invoices and payments from {0}."
 
 #: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Sync deleted. Rows already pulled stay in the collection."
@@ -14103,6 +14212,10 @@ msgstr "The invitee must already have an end-user account with this email, and a
 #: src/client/pages/api-keys.tsx
 msgid "The key \"{0}\" will stop working immediately. This cannot be undone."
 msgstr "The key \"{0}\" will stop working immediately. This cannot be undone."
+
+#: src/client/admin/flow-builder.tsx
+msgid "The link is returned into $last either way — writing it back is what puts it on the invoice."
+msgstr "The link is returned into $last either way — writing it back is what puts it on the invoice."
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "The link was shown once when it was minted. Generate a new one to see it here — the old link stops working."
@@ -15491,6 +15604,10 @@ msgstr "What it has learned"
 msgid "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
 msgstr "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
 
+#: src/client/admin/flow-builder.tsx
+msgid "What the customer sees on the checkout line item."
+msgstr "What the customer sees on the checkout line item."
+
 #: src/client/admin/pages/agents.tsx
 msgid "What this agent is for"
 msgstr "What this agent is for"
@@ -15722,6 +15839,10 @@ msgstr "Write a comment · ⌘+Enter to send"
 msgid "Write a read-only SELECT below."
 msgstr "Write a read-only SELECT below."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Write the link onto"
+msgstr "Write the link onto"
+
 #: src/client/admin/pages/overview.tsx
 msgid "Writes (1h)"
 msgstr "Writes (1h)"
@@ -15809,6 +15930,10 @@ msgstr "your address"
 #: src/client/admin/pages/agents.tsx
 msgid "your API key"
 msgstr "your API key"
+
+#: src/client/admin/flow-builder.tsx
+msgid "your app's thank-you page"
+msgstr "your app's thank-you page"
 
 #: src/client/admin/account-page.tsx
 msgid "Your display name"

@@ -20,7 +20,7 @@ receiving endpoint and backlex signs what it sends.
 
 ## Providers
 
-Twenty-eight providers ship in the registry, grouped by category:
+Thirty-one providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -29,7 +29,7 @@ Twenty-eight providers ship in the registry, grouped by category:
 | analytics | PostHog, Segment, Mixpanel, Amplitude |
 | issue tracking | GitHub, Linear, Jira |
 | search | Algolia, Meilisearch, Typesense, Elasticsearch / OpenSearch |
-| productivity | Notion, Google Sheets, Airtable — all *(OAuth)*, all sources |
+| productivity | Notion, Google Sheets, Google Drive, Google Calendar *(OAuth)*, Airtable *(OAuth)*, Contentful — all sources |
 | accounting | QuickBooks Online, Xero — both *(OAuth)*, both sources |
 | warehouse | ClickHouse, Google BigQuery — both *destinations* |
 | crm | HubSpot — *receives record contents*, see below |
@@ -223,6 +223,25 @@ backlex does not create it. Creating tables needs privileges an insert-only
 credential should not have, and partitioning, ordering and TTL are decisions the
 cluster owner should make rather than have guessed. Run the DDL once —
 `backlex integrations catalog <kind>` prints a starting point.
+
+### Two kinds of resume
+
+Most sources page to the end and then start over, so the next run notices edits.
+A few hand back a marker that makes the next run **incremental** — and that is a
+different thing from a page cursor:
+
+| | Means |
+|---|---|
+| `cursor` | more pages in **this** run |
+| `resumeToken` | this run is done; begin **here** next time |
+
+Google Calendar is the example. Its `nextSyncToken` returns only what changed
+since the last run — including **cancellations**, which a page walk never sees.
+Returning it as a cursor would leave the engine believing there is another page
+and it would ask forever, so the two are separate fields.
+
+A stale sync token gets a `410` from Google, and the only recovery is a full
+re-read: clear the sync's settings, which resets the cursor.
 
 ### Runs, cursors and failure
 

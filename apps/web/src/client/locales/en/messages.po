@@ -2410,6 +2410,10 @@ msgstr "Branding saved."
 msgid "Breadcrumb"
 msgstr "Breadcrumb"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Bring Contentful entries into a collection. One-way."
+msgstr "Bring Contentful entries into a collection. One-way."
+
 #: src/client/admin/pages/database-import.tsx
 msgid "Build plan"
 msgstr "Build plan"
@@ -6634,6 +6638,10 @@ msgstr "Includes {0} sample rows to explore — removable in one click later"
 msgid "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
 msgstr "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Index a Drive folder's files as a collection. Metadata only."
+msgstr "Index a Drive folder's files as a collection. Metadata only."
+
 #: src/client/admin/add-field.tsx
 msgid "Indexed"
 msgstr "Indexed"
@@ -7987,6 +7995,10 @@ msgstr "Minting a new key immediately invalidates the old one."
 #: src/client/admin/pages/forms.tsx
 msgid "Mints a new token; the current link stops working"
 msgstr "Mints a new token; the current link stops working"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Mirror a calendar's events into a collection, including cancellations."
+msgstr "Mirror a calendar's events into a collection, including cancellations."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Mirror a collection into a BigQuery dataset on a schedule."

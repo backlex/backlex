@@ -2410,6 +2410,10 @@ msgstr "Marka ayarları kaydedildi."
 msgid "Breadcrumb"
 msgstr "Yer imi"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Bring Contentful entries into a collection. One-way."
+msgstr "Contentful içeriklerini bir koleksiyona getirir. Tek yönlü."
+
 #: src/client/admin/pages/database-import.tsx
 msgid "Build plan"
 msgstr "Plan oluştur"
@@ -6634,6 +6638,10 @@ msgstr "Keşfetmek için {0} örnek satır içerir — sonradan tek tıkla kald�
 msgid "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
 msgstr "Gelen veriler insert/update başarılı olmadan önce bu kuralla eşleşmelidir. Başarısızlıklar <0>422 invalid_payload</0> döndürür."
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Index a Drive folder's files as a collection. Metadata only."
+msgstr "Bir Drive klasöründeki dosyaları koleksiyon olarak dizinler. Yalnızca üst veri."
+
 #: src/client/admin/add-field.tsx
 msgid "Indexed"
 msgstr "İndeksli"
@@ -7987,6 +7995,10 @@ msgstr "Yeni anahtar oluşturmak eskisini anında geçersiz kılar."
 #: src/client/admin/pages/forms.tsx
 msgid "Mints a new token; the current link stops working"
 msgstr "Yeni bir token üretir; mevcut bağlantı çalışmayı durdurur"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Mirror a calendar's events into a collection, including cancellations."
+msgstr "Bir takvimin etkinliklerini iptaller dahil bir koleksiyona yansıtır."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Mirror a collection into a BigQuery dataset on a schedule."

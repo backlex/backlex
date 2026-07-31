@@ -136,6 +136,9 @@ const BRANDS: Record<string, Brand> = {
   elasticsearch: { name: "Elasticsearch / OpenSearch", mark: <SI d={ICONS.elasticsearch!} />, markBg: "#005571" },
   notion: { name: "Notion", mark: <SI d={ICONS.notion!} />, markBg: "#000000" },
   "google-sheets": { name: "Google Sheets", mark: <SI d={ICONS.googlesheets!} />, markBg: "#34A853" },
+  "google-drive": { name: "Google Drive", mark: "GD", markBg: "#1FA463" },
+  "google-calendar": { name: "Google Calendar", mark: "GC", markBg: "#4285F4" },
+  contentful: { name: "Contentful", mark: "Cf", markBg: "#2478CC" },
   airtable: { name: "Airtable", mark: <SI d={ICONS.airtable!} />, markBg: "#18BFFF" },
   quickbooks: { name: "QuickBooks Online", mark: <SI d={ICONS.quickbooks!} />, markBg: "#2CA01C" },
   hubspot: { name: "HubSpot", mark: "Hs", markBg: "#FF7A59" },
@@ -229,6 +232,12 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
         return t`Append data events to a Notion page, or pull a database into a collection.`;
       case "google-sheets":
         return t`Pull a spreadsheet into a collection on a schedule.`;
+      case "google-drive":
+        return t`Index a Drive folder's files as a collection. Metadata only.`;
+      case "google-calendar":
+        return t`Mirror a calendar's events into a collection, including cancellations.`;
+      case "contentful":
+        return t`Bring Contentful entries into a collection. One-way.`;
       case "airtable":
         return t`Pull an Airtable table into a collection on a schedule.`;
       case "clickhouse":

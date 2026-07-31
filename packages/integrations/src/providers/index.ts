@@ -14,11 +14,14 @@ import { bigquery } from "./bigquery";
 import { algolia } from "./algolia";
 import { amplitude } from "./amplitude";
 import { clickhouse } from "./clickhouse";
+import { contentful } from "./contentful";
 import { datadog } from "./datadog";
 import { discord } from "./discord";
 import { elasticsearch } from "./elasticsearch";
 import { github } from "./github";
+import { googleCalendar } from "./google-calendar";
 import { googleChat } from "./google-chat";
+import { googleDrive } from "./google-drive";
 import { googleSheets } from "./google-sheets";
 import { hubspot } from "./hubspot";
 import { jira } from "./jira";
@@ -69,7 +72,10 @@ export const INTEGRATION_KINDS = [
   // productivity (OAuth-connected)
   "notion",
   "google-sheets",
+  "google-drive",
+  "google-calendar",
   "airtable",
+  "contentful",
   // accounting (OAuth-connected sources)
   "quickbooks",
   "xero",
@@ -104,7 +110,10 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   elasticsearch,
   notion,
   "google-sheets": googleSheets,
+  "google-drive": googleDrive,
+  "google-calendar": googleCalendar,
   airtable,
+  contentful,
   quickbooks,
   xero,
   clickhouse,

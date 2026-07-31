@@ -501,6 +501,7 @@ export async function runSync(
 
   const collection = await loadCollection(ctx, tenantId, row.collection);
   let cursor = row.cursor;
+  let resumeToken: string | null = null;
   let written = 0;
   let pages = 0;
   let complete = false;
@@ -527,6 +528,10 @@ export async function runSync(
       cursor = page.cursor;
       if (cursor === null) {
         complete = true;
+        // A provider with a real incremental marker says where to pick up next
+        // time. Without one the next run reads from the top again, which is how
+        // a page-walk source notices edits at all.
+        resumeToken = page.resumeToken ?? null;
         break;
       }
     }
@@ -536,7 +541,11 @@ export async function runSync(
     throw e;
   }
 
-  await applyRunOutcome(ctx, row, { ok: true, written, cursor: complete ? null : cursor });
+  await applyRunOutcome(ctx, row, {
+    ok: true,
+    written,
+    cursor: complete ? resumeToken : cursor,
+  });
   return { written, pages, complete };
 }
 

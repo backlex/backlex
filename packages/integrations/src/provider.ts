@@ -161,11 +161,26 @@ export interface SourceRecord {
 export interface SourcePullPage {
   records: SourceRecord[];
   /**
-   * Opaque resume token, echoed back on the next call. `null` ends the run.
-   * It round-trips through the database and back into a request, so it must be
-   * short and must never be interpolated into a URL path by the provider.
+   * More pages in THIS run. `null` ends it.
+   *
+   * Opaque, echoed back on the next call. It round-trips through the database
+   * and back into a request, so it must be short and must never be
+   * interpolated into a URL path by the provider.
    */
   cursor: string | null;
+  /**
+   * Where the NEXT run should start, once this one is finished.
+   *
+   * Most providers have no such thing: a page walk ends, and the next run reads
+   * the source from the top again to pick up edits. A few — Google Calendar's
+   * sync token is the example — hand back a marker that makes the next run
+   * incremental, and crucially lets it see deletions a page walk never would.
+   *
+   * Distinct from `cursor` because the engine treats them differently: a
+   * cursor means "keep going now", a resume token means "stop, and begin here
+   * next time". Conflating them would either loop forever or discard the token.
+   */
+  resumeToken?: string;
 }
 
 /** What a source provider's `pull` receives. */

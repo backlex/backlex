@@ -602,6 +602,57 @@ describe("multi-surface parity", () => {
 // entirely about the watermark: a plain `updated_at >` skips every row sharing
 // the last timestamp, `>=` re-sends one forever, and advancing before the push
 // resolves loses a batch on the first network blip.
+// A provider with a real incremental marker ends its run with a token that says
+// where the NEXT one starts. Discarding it turns an incremental sync into a full
+// re-read every time — which still "works", and is why it needs a test.
+describe("a source that resumes incrementally", () => {
+  const runInline = async (syncId: string, fetchImpl: unknown) => {
+    const { runSync } = await import("../src/server/services/integration-syncs");
+    const { buildContext } = await import("../src/server/context");
+    const ctx = await buildContext(h.env);
+    const tid = (
+      client.query("select tenant_id as t from integration_syncs where id = ?").get(syncId) as { t: string }
+    ).t;
+    return runSync(ctx, tid, syncId, fetchImpl as never);
+  };
+
+  test("the resume token is stored as the cursor once the run completes", async () => {
+    client.query("delete from integrations where kind = 'google-calendar'").run();
+    const cal = await ok("POST", BASE, {
+      kind: "google-calendar",
+      config: { clientId: "cid", clientSecret: "sec" },
+    });
+    const row = client.query("select config from integrations where id = ?").get(cal.data.id) as {
+      config: string;
+    };
+    client
+      .query("update integrations set config = ? where id = ?")
+      .run(JSON.stringify({ ...JSON.parse(row.config), _oauthAccessToken: "tok" }), cal.data.id);
+
+    const sync = (await ok("POST", SYNCS, {
+      integrationId: cal.data.id,
+      collection: "leads",
+      settings: { calendarId: "primary" },
+      mapping: { summary: "name" },
+    })).data;
+
+    const out = await runInline(sync.id, async () =>
+      new Response(JSON.stringify({ items: [{ id: "e1", summary: "Standup" }], nextSyncToken: "st-1" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    expect(out.complete).toBe(true);
+
+    const stored = client.query("select cursor from integration_syncs where id = ?").get(sync.id) as {
+      cursor: string | null;
+    };
+    // A page-walk source stores null here and starts over; this one carries the
+    // token so the next run sees only what changed — including cancellations.
+    expect(stored.cursor).toBe("s:st-1");
+  });
+});
+
 describe("push: mirroring a collection out", () => {
   let chId = "";
 

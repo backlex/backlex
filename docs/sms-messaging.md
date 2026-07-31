@@ -115,7 +115,30 @@ POST /api/messaging/sms   { "userId": "u_123", "body": "Your code is 4821" }
 The `messaging.send_sms` tool sends to one user's registered numbers — see the
 [MCP tool reference](/mcp/).
 
-### Templates / flows
+### From a flow
+
+The [`sms` flow operation](/flows/#who-an-sms-op-texts) turns any trigger into a
+text message — the reason it exists is the reminder pattern, where a row landing
+in a collection should text the person named on it:
+
+```json
+{
+  "name": "Appointment reminder",
+  "trigger": "event:items:appointments:created",
+  "operations": [
+    { "type": "delay", "durationMs": 82800000 },
+    { "type": "sms", "to": "{{ data.phone }}",
+      "body": "Reminder: your appointment is at {{ data.starts_at }}." }
+  ]
+}
+```
+
+Note the addressing: `to` sends to a number **carried on the row**, so the
+recipient does not need a backlex account. Use `userId` instead when the target
+*is* a platform user and you want their registered numbers. The op takes exactly
+one of the two — see the flows guide for the validation rules.
+
+### Templates
 
 SMS has no template table of its own yet; compose the body inline. (Push/email
 templates are tracked separately.)
@@ -125,8 +148,9 @@ templates are tracked separately.)
 - **In-app** (`/api/notifications`) — the bell feed inside the app.
 - **Push** (`messaging.send_push`) — OS/browser notification; also drops an
   in-app row.
-- **SMS** (`messaging.send_sms`) — a text message to the phone. Standalone: it
-  does **not** create an in-app row.
+- **SMS** (`messaging.send_sms`, or the `sms` flow op) — a text message to the
+  phone. Standalone: it does **not** create an in-app row. The only one of the
+  three that can reach someone without an account.
 
 ## Multi-tenant: cloud gateway
 

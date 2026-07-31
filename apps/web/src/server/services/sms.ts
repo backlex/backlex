@@ -70,3 +70,23 @@ export const sendSmsToUsers = async (
   }
   return result;
 };
+
+/**
+ * Send an SMS to raw E.164 numbers for one workspace — no `phone_numbers`
+ * lookup, and so no pruning either (there is no row to deactivate).
+ *
+ * This is the path for recipients who are *not* platform users: an appointment
+ * reminder goes to the customer whose number lives on the booking row. Callers
+ * must have resolved and validated the numbers themselves; `sendSmsToUsers`
+ * stays the right entry point whenever the recipient is a registered user.
+ */
+export const sendSmsToNumbers = async (
+  ctx: Pick<DbCtx, "smsFor">,
+  tenantId: string | null | undefined,
+  dispatch: { numbers: string[]; body: string; from?: string },
+): Promise<SMSSendResult> => {
+  const numbers = [...new Set(dispatch.numbers)];
+  if (numbers.length === 0) return { sent: 0, failed: 0, invalidNumbers: [] };
+  const adapter = await ctx.smsFor(tenantId ?? null);
+  return adapter.send({ to: numbers, body: dispatch.body, from: dispatch.from });
+};

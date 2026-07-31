@@ -9,6 +9,7 @@ import { Textarea } from "@backlex/ui/components/textarea";
 import { emailTemplatesApi, functionsApi, collectionsApi, integrationsApi, type ApiEmailTemplate, type ApiFunction, type ApiCollection, type ApiIntegration } from "./api";
 
 const dataInterpolationExample = "{{ data.* }}";
+const smsBodyExample = "Reminder: your appointment is at {{ data.starts_at }}.";
 
 // `pending` marks steps the runtime doesn't execute yet. The compiler will
 // drop them with a warning, so the palette disables the entries entirely
@@ -28,6 +29,8 @@ const ACTIONS = [
   { id: "request", label: "HTTP request", desc: "GET/POST/PUT — read response into $last", icon: "Globe" },
   { id: "log", label: "Log", desc: "Write a line to the server log", icon: "Function" },
   { id: "notification", label: "In-app notification", desc: "Drop a row in the notifications table", icon: "Bell" },
+  { id: "push", label: "Push notification", desc: "Send to a user's registered devices", icon: "Send" },
+  { id: "sms", label: "Send SMS", desc: "Text a number on the row, or a user", icon: "MessageSquare" },
   { id: "transform", label: "Transform", desc: "Compute a value and pipe it into $last", icon: "Function" },
   { id: "run-script", label: "Run script", desc: "Sandboxed JS — full ctx, `data`, `last`", icon: "Code" },
   { id: "fn", label: "Run function", desc: "Invoke a saved backlex function", icon: "Function" },
@@ -414,6 +417,10 @@ function defaultConfigFor(kind: string, type: string) {
   if (kind === "action" && type === "request") return { url: "https://api.example.com/data", method: "GET", body: "" };
   if (kind === "action" && type === "log") return { message: "{{ data }}" };
   if (kind === "action" && type === "notification") return { title: "New event", body: "", url: "", userId: null };
+  if (kind === "action" && type === "push") return { title: "New event", body: "", url: "", userId: "{{ data.author }}" };
+  // Defaults to the row-carried number — the reminder case, and the reason the
+  // op has a `to` mode at all.
+  if (kind === "action" && type === "sms") return { mode: "to", to: "{{ data.phone }}", userId: "", body: "", from: "" };
   if (kind === "action" && type === "transform") return { value: "" };
   if (kind === "action" && type === "run-script") return { code: "// data, last, ctx, auth available\nreturn data;", timeoutMs: 5000 };
   if (kind === "action" && type === "fn") return { fn: "", async: true, retries: 3 };
@@ -588,6 +595,37 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
             <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Body</Trans></label><Textarea rows={2} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} /></div>
             <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>URL</Trans></label><Input value={node.config.url || ""} onChange={(e) => onChange({ config: { url: e.target.value } })} placeholder="/posts/{{ data.id }}" /></div>
             <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Recipient (userId)</Trans></label><Input value={node.config.userId ?? ""} onChange={(e) => onChange({ config: { userId: e.target.value || null } })} placeholder={t`leave empty for admins`} /></div>
+          </>
+        )}
+        {node.kind === "action" && node.type === "push" && (
+          <>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Title</Trans></label><Input value={node.config.title || ""} onChange={(e) => onChange({ config: { title: e.target.value } })} /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Body</Trans></label><Textarea rows={2} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>URL</Trans></label><Input value={node.config.url || ""} onChange={(e) => onChange({ config: { url: e.target.value } })} placeholder="/posts/{{ data.id }}" /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Recipient (userId)</Trans></label><Input value={node.config.userId || ""} onChange={(e) => onChange({ config: { userId: e.target.value } })} placeholder="{{ data.author }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>Goes to that user's registered devices. No devices is a silent no-op.</Trans></span></div>
+          </>
+        )}
+        {node.kind === "action" && node.type === "sms" && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Send to</Trans></label>
+              <Select
+                value={node.config.mode === "user" ? "user" : "to"}
+                onChange={(v) => onChange({ config: { mode: v } })}
+                className="min-w-0"
+                options={[
+                  { value: "to", label: t`A phone number on the row` },
+                  { value: "user", label: t`A user's registered numbers` },
+                ]}
+              />
+            </div>
+            {node.config.mode === "user" ? (
+              <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Recipient (userId)</Trans></label><Input value={node.config.userId || ""} onChange={(e) => onChange({ config: { userId: e.target.value } })} placeholder="{{ data.author }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>Texts every active number the user registered. None is a silent no-op.</Trans></span></div>
+            ) : (
+              <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Recipient number</Trans></label><Input value={node.config.to || ""} onChange={(e) => onChange({ config: { to: e.target.value } })} placeholder="{{ data.phone }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>Must render to E.164, e.g. +14155552671. Use this for customers, who are not platform users.</Trans></span></div>
+            )}
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Message</Trans></label><Textarea rows={3} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} placeholder={smsBodyExample} /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Sender (optional)</Trans></label><Input value={node.config.from || ""} onChange={(e) => onChange({ config: { from: e.target.value } })} placeholder={t`transport default`} /><span className="text-[11.5px] text-muted-foreground"><Trans>Overrides the workspace transport's configured sender id.</Trans></span></div>
           </>
         )}
         {node.kind === "action" && node.type === "transform" && (

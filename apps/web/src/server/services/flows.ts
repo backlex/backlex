@@ -2,11 +2,13 @@ import { and, eq } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { matchesCondition } from "@backlex/db";
+import { E164_PATTERN } from "@backlex/core";
 import type { AuthSubject, Condition, Operation } from "@backlex/core";
 import type { Ctx } from "../context";
 import { runFunction } from "./sandbox";
 import { sendTemplatedEmail } from "./email";
 import { sendPushToUsers } from "./push";
+import { sendSmsToNumbers, sendSmsToUsers } from "./sms";
 import { deliverIntegrationByKind } from "./integrations";
 import { createItem, updateItem } from "./items-helpers";
 import { enqueueTask, type ResumePayload } from "./scheduled-tasks";
@@ -307,6 +309,57 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
       return { sent: result.sent, failed: result.failed };
     } catch (e) {
       throw new FlowOpError(`push send failed: ${(e as Error).message}`);
+    }
+  }
+
+  if (op.type === "sms") {
+    const body = interpolate(op.body, ctx) as string;
+    const from = op.from ? (interpolate(op.from, ctx) as string) : undefined;
+    const tenantId = ctx.authSubject.tenantId ?? null;
+    // The schema already rejects "both" and "neither" at save time; re-check
+    // here because a flow row can predate the op or be written by the API.
+    if ((op.to == null) === (op.userId == null)) {
+      throw new FlowOpError("sms needs exactly one of `to` or `userId`");
+    }
+    try {
+      if (op.to != null) {
+        const to = String(interpolate(op.to, ctx) ?? "").trim();
+        // Interpolation is where a bad recipient actually shows up: the op
+        // stores `{{ data.phone }}` and the row supplies the value. An empty
+        // render means the field was missing — say so rather than handing the
+        // provider a blank number and reporting a "successful" 0-send.
+        if (!to) {
+          throw new FlowOpError(`sms recipient "${op.to}" rendered empty`);
+        }
+        if (!E164_PATTERN.test(to)) {
+          // Name the misconfigured field, never the rendered value: this
+          // message is persisted on the `flow.run` activity row, and the
+          // value here is a customer's phone number. The template alone
+          // says which column to go fix.
+          throw new FlowOpError(
+            `sms recipient "${op.to}" did not render to E.164 (e.g. +14155552671)`,
+          );
+        }
+        const result = await sendSmsToNumbers(ctx.ctx, tenantId, {
+          numbers: [to],
+          body,
+          from,
+        });
+        return { sent: result.sent, failed: result.failed };
+      }
+      const userId = String(interpolate(op.userId, ctx) ?? "").trim();
+      if (!userId) {
+        throw new FlowOpError(`sms userId "${op.userId}" rendered empty`);
+      }
+      const result = await sendSmsToUsers(ctx.ctx, tenantId, {
+        userIds: [userId],
+        body,
+        from,
+      });
+      return { sent: result.sent, failed: result.failed };
+    } catch (e) {
+      if (e instanceof FlowOpError) throw e;
+      throw new FlowOpError(`sms send failed: ${(e as Error).message}`);
     }
   }
 

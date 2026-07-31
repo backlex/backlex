@@ -64,6 +64,7 @@ are nested operation arrays run after the op succeeds / throws.
 | `email` | Sends a templated email (renders an `email_templates` row when `templateKey` is set, else uses `subject`/`html`/`text`) | `to`, `templateKey?`, `vars?`, `subject?`, `html?`, `text?` |
 | `notification` | Drops a row into the in-app `notifications` feed; `userId: null` broadcasts to admins. `push: true` also fans out to that user's devices | `title`, `body?`, `url?`, `userId?`, `push?` |
 | `push` | Sends a native push to a user's registered devices (no-op if none) | `title`, `body`, `userId`, `url?` |
+| `sms` | Sends an SMS through the workspace [SMS transport](/sms-messaging/). Addressed *either* by `to` (a number carried on the row) *or* by `userId` (a user's registered numbers) — exactly one, see below | `body`, `to?`, `userId?`, `from?` |
 | `webhook` | Fires an outbound HTTP request, body JSON-encoded | `url`, `method?`, `headers?`, `body?` |
 | `request` | Like `webhook` but captures the parsed response into `{{ $last }}` for later ops | `url`, `method?`, `headers?`, `query?`, `body?`, `timeoutMs?` (≤60s) |
 | `function` | Invokes a saved [sandbox function](/sandbox/) by name | `name`, `input?` (defaults to `data`) |
@@ -77,6 +78,31 @@ are nested operation arrays run after the op succeeds / throws.
 A run stops at the first op that throws without an `onError` branch and returns
 `{ ok: false, error }`. A flow that checkpointed on a long `delay` still returns
 `{ ok: true }` — the remainder is queued, not failed.
+
+### Who an `sms` op texts
+
+`push` can only reach a *platform user*, because a device has to be registered
+against an account. SMS has the opposite centre of gravity: the message you most
+want to automate — an appointment reminder, a delivery notice — goes to a
+customer, who has no account at all. So the op carries two addressing modes and
+you pick exactly one:
+
+```json
+{ "type": "sms", "to": "{{ data.phone }}", "body": "Reminder: {{ data.starts_at }}" }
+{ "type": "sms", "userId": "{{ data.assigned_to }}", "body": "New job assigned" }
+```
+
+- **`to`** — a literal or templated number. It must render to **E.164**
+  (`+14155552671`); anything else fails the op rather than handing the provider
+  a number it will silently drop. A template that renders empty (the row has no
+  phone) fails the same way — a reminder that quietly goes nowhere is worse than
+  a visibly failed run.
+- **`userId`** — texts every active number that user registered via
+  `/api/phone-numbers`. A user with none is a **silent no-op**, matching `push`:
+  an unreachable recipient shouldn't take the automation down.
+
+Setting both, or neither, is rejected when the flow is saved. `from` overrides
+the transport's configured sender id where the provider supports it.
 
 ## Surfaces
 

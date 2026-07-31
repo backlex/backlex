@@ -970,6 +970,10 @@ msgstr "Bu isimde bir anahtar zaten mevcut."
 msgid "A panel with that name already exists."
 msgstr "Bu isimde bir panel zaten mevcut."
 
+#: src/client/admin/flow-builder.tsx
+msgid "A phone number on the row"
+msgstr "Satırdaki bir telefon numarası"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "A Postgres connection the server can reach. The URL is encrypted at rest and only ever shown masked."
 msgstr "Sunucunun erişebildiği bir Postgres bağlantısı. URL bekleme durumunda şifrelenir ve yalnızca maskelenmiş gösterilir."
@@ -1017,6 +1021,10 @@ msgstr "\"{trimmedKey}\" anahtarlı bir şablon zaten mevcut."
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A turn is still running on this thread — wait for it to finish."
 #~ msgstr "Bu görüşmede bir tur hâlâ çalışıyor — bitmesini bekleyin."
+
+#: src/client/admin/flow-builder.tsx
+msgid "A user's registered numbers"
+msgstr "Bir kullanıcının kayıtlı numaraları"
 
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
@@ -6209,6 +6217,10 @@ msgstr "Canlıya geç"
 msgid "Go to Agents"
 msgstr "Agents sayfasına git"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Goes to that user's registered devices. No devices is a silent no-op."
+msgstr "O kullanıcının kayıtlı cihazlarına gider. Cihaz yoksa sessizce atlanır."
+
 #: src/client/admin/extras.tsx
 msgid "goto"
 msgstr "git"
@@ -8132,6 +8144,10 @@ msgstr "50 ile 60000 arasında olmalıdır."
 msgid "must be valid json"
 msgstr "geçerli JSON olmalıdır"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Must render to E.164, e.g. +14155552671. Use this for customers, who are not platform users."
+msgstr "E.164 biçimine çözülmeli, örn. +14155552671. Platform kullanıcısı olmayan müşteriler için bunu kullanın."
+
 #: src/client/admin/collections-index.tsx
 msgid "must start with a letter"
 msgstr "bir harfle başlamalıdır"
@@ -9713,6 +9729,10 @@ msgstr "aşım raporlanır, hiçbir şey engellenmez"
 msgid "Overrides the `--primary` token used across the admin and any published surfaces."
 msgstr "Admin ve yayımlanan yüzeylerde kullanılan `--primary` token'ını geçersiz kılar."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Overrides the workspace transport's configured sender id."
+msgstr "Çalışma alanı taşıyıcısında tanımlı gönderici kimliğini geçersiz kılar."
+
 #: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/ui.tsx
@@ -10978,6 +10998,10 @@ msgstr "Son çalışmalar"
 #: src/client/admin/flow-builder.tsx
 msgid "Recipient (userId)"
 msgstr "Alıcı (userId)"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Recipient number"
+msgstr "Alıcı numarası"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
@@ -12622,6 +12646,14 @@ msgstr "Test push gönder"
 msgid "Send test SMS"
 msgstr "Test SMS gönder"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Send to"
+msgstr "Gönderilecek yer"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Sender (optional)"
+msgstr "Gönderici (isteğe bağlı)"
+
 #: src/client/admin/pages/settings/index.tsx
 msgid "Sender address for transactional email — set via <0>wrangler secret put</0> / <1>.env</1>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here."
 msgstr "İşlemsel e-posta gönderici adresi — <0>wrangler secret put</0> / <1>.env</1> üzerinden ayarlanır. Ayarlanmadığında (veya RESEND_API_KEY eksikse) e-posta stdout'a kaydedilir. Burada salt okunur."
@@ -13979,6 +14011,10 @@ msgstr "Test aracı"
 msgid "Testing…"
 msgstr "Test ediliyor…"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Texts every active number the user registered. None is a silent no-op."
+msgstr "Kullanıcının kayıtlı tüm aktif numaralarına SMS gider. Numara yoksa sessizce atlanır."
+
 #: src/client/pages/public-form.tsx
 msgid "Thank you"
 msgstr "Teşekkürler"
@@ -14642,6 +14678,10 @@ msgstr "{base} için çeviri"
 #: src/client/admin/ui.tsx
 msgid "Translations"
 msgstr "Çeviriler"
+
+#: src/client/admin/flow-builder.tsx
+msgid "transport default"
+msgstr "taşıyıcı varsayılanı"
 
 #: src/client/admin/pages/functions.tsx
 msgid "Trigger"

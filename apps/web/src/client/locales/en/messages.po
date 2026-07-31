@@ -970,6 +970,10 @@ msgstr "A key with this name already exists."
 msgid "A panel with that name already exists."
 msgstr "A panel with that name already exists."
 
+#: src/client/admin/flow-builder.tsx
+msgid "A phone number on the row"
+msgstr "A phone number on the row"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "A Postgres connection the server can reach. The URL is encrypted at rest and only ever shown masked."
 msgstr "A Postgres connection the server can reach. The URL is encrypted at rest and only ever shown masked."
@@ -1017,6 +1021,10 @@ msgstr "A template with key \"{trimmedKey}\" already exists."
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A turn is still running on this thread — wait for it to finish."
 #~ msgstr "A turn is still running on this thread — wait for it to finish."
+
+#: src/client/admin/flow-builder.tsx
+msgid "A user's registered numbers"
+msgstr "A user's registered numbers"
 
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
@@ -6209,6 +6217,10 @@ msgstr "Go live"
 msgid "Go to Agents"
 msgstr "Go to Agents"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Goes to that user's registered devices. No devices is a silent no-op."
+msgstr "Goes to that user's registered devices. No devices is a silent no-op."
+
 #: src/client/admin/extras.tsx
 msgid "goto"
 msgstr "goto"
@@ -8132,6 +8144,10 @@ msgstr "Must be between 50 and 60000."
 msgid "must be valid json"
 msgstr "must be valid json"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Must render to E.164, e.g. +14155552671. Use this for customers, who are not platform users."
+msgstr "Must render to E.164, e.g. +14155552671. Use this for customers, who are not platform users."
+
 #: src/client/admin/collections-index.tsx
 msgid "must start with a letter"
 msgstr "must start with a letter"
@@ -9713,6 +9729,10 @@ msgstr "overage is reported, nothing is blocked"
 msgid "Overrides the `--primary` token used across the admin and any published surfaces."
 msgstr "Overrides the `--primary` token used across the admin and any published surfaces."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Overrides the workspace transport's configured sender id."
+msgstr "Overrides the workspace transport's configured sender id."
+
 #: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/ui.tsx
@@ -10978,6 +10998,10 @@ msgstr "Recent runs"
 #: src/client/admin/flow-builder.tsx
 msgid "Recipient (userId)"
 msgstr "Recipient (userId)"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Recipient number"
+msgstr "Recipient number"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
@@ -12622,6 +12646,14 @@ msgstr "Send test push"
 msgid "Send test SMS"
 msgstr "Send test SMS"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Send to"
+msgstr "Send to"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Sender (optional)"
+msgstr "Sender (optional)"
+
 #: src/client/admin/pages/settings/index.tsx
 msgid "Sender address for transactional email — set via <0>wrangler secret put</0> / <1>.env</1>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here."
 msgstr "Sender address for transactional email — set via <0>wrangler secret put</0> / <1>.env</1>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here."
@@ -13979,6 +14011,10 @@ msgstr "Tester"
 msgid "Testing…"
 msgstr "Testing…"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Texts every active number the user registered. None is a silent no-op."
+msgstr "Texts every active number the user registered. None is a silent no-op."
+
 #: src/client/pages/public-form.tsx
 msgid "Thank you"
 msgstr "Thank you"
@@ -14642,6 +14678,10 @@ msgstr "Translation for {base}"
 #: src/client/admin/ui.tsx
 msgid "Translations"
 msgstr "Translations"
+
+#: src/client/admin/flow-builder.tsx
+msgid "transport default"
+msgstr "transport default"
 
 #: src/client/admin/pages/functions.tsx
 msgid "Trigger"

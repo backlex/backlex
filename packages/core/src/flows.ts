@@ -89,6 +89,27 @@ export type Operation =
       onSuccess?: Operation[];
       onError?: Operation[];
     }
+  /** Send an SMS through the workspace's configured transport (Twilio / SNS /
+   *  NetGSM / İletimerkezi). Two addressing modes, exactly one per op:
+   *
+   *  - `to` — a literal or templated E.164 number. This is the mode the
+   *    reminder use case needs: an appointment's recipient is a *customer*
+   *    carried on the row (`{{ data.phone }}`), not a platform user, so there
+   *    is no `phone_numbers` registration to look up. Mirrors `email.to`.
+   *  - `userId` — a platform user's registered, active numbers. Mirrors
+   *    `push.userId`; a user with none is a silent no-op.
+   */
+  | {
+      type: "sms";
+      body: string;
+      to?: string;
+      userId?: string;
+      /** Sender override (provider sender id / alphanumeric). Falls back to
+       *  the transport's configured sender. */
+      from?: string;
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
   /** Invoke a saved backlex function by name, tenant-scoped. The
    *  function's stored `code` is run in the same sandbox as `run-script`
    *  but the body lives in the `functions` table so it's reusable across
@@ -159,6 +180,7 @@ export const OPERATION_TYPES: OperationType[] = [
   "condition",
   "notification",
   "push",
+  "sms",
   "function",
   "integration",
   "item.create",
@@ -260,6 +282,24 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       onSuccess: z.array(OperationSchema).optional(),
       onError: z.array(OperationSchema).optional(),
     }),
+    z
+      .object({
+        type: z.literal("sms"),
+        body: z.string().min(1).max(1600),
+        to: z.string().min(1).optional(),
+        userId: z.string().min(1).optional(),
+        from: z.string().min(1).optional(),
+        onSuccess: z.array(OperationSchema).optional(),
+        onError: z.array(OperationSchema).optional(),
+      })
+      // Exactly one addressing mode. Both set is ambiguous (which recipient
+      // wins?); neither is a silent no-op that looks like a working flow.
+      // `to` isn't regex-checked here — it is usually a `{{ ... }}` template
+      // that only resolves at run time, so the E.164 check lives in the
+      // executor, against the interpolated value.
+      .refine((op) => (op.to == null) !== (op.userId == null), {
+        message: "sms needs exactly one of `to` or `userId`",
+      }),
     z.object({
       type: z.literal("function"),
       name: z.string().min(1),

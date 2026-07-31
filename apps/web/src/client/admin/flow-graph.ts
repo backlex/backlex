@@ -39,6 +39,8 @@ const SUPPORTED_ACTIONS = new Set([
   "request",
   "log",
   "notification",
+  "push",
+  "sms",
   "transform",
   "run-script",
   // Wired in later phases — listed so the compiler emits a clearer warning
@@ -302,6 +304,37 @@ const compileAction = (node: GraphNode): Operation => {
         ...(c.url ? { url: String(c.url) } : {}),
         ...(c.userId !== undefined ? { userId: c.userId ?? null } : {}),
       };
+    }
+    case "push": {
+      const title = String(c.title ?? "").trim();
+      const body = String(c.body ?? "").trim();
+      const userId = String(c.userId ?? "").trim();
+      if (!title) throw new FlowCompileError("Push step needs a Title");
+      if (!body) throw new FlowCompileError("Push step needs a message");
+      if (!userId) throw new FlowCompileError("Push step needs a recipient user");
+      return {
+        type: "push",
+        title,
+        body,
+        userId,
+        ...(c.url ? { url: String(c.url).trim() } : {}),
+      };
+    }
+    case "sms": {
+      const body = String(c.body ?? "").trim();
+      if (!body) throw new FlowCompileError("SMS step needs a message");
+      const from = c.from ? { from: String(c.from).trim() } : {};
+      // The editor's recipient toggle. `to` addresses a number carried on the
+      // row (a customer), `user` a platform user's registered numbers — the op
+      // accepts exactly one, so the mode decides which field is emitted.
+      if (c.mode === "user") {
+        const userId = String(c.userId ?? "").trim();
+        if (!userId) throw new FlowCompileError("SMS step needs a recipient user");
+        return { type: "sms", body, userId, ...from };
+      }
+      const to = String(c.to ?? "").trim();
+      if (!to) throw new FlowCompileError("SMS step needs a recipient number");
+      return { type: "sms", body, to, ...from };
     }
     case "transform": {
       return {
@@ -568,6 +601,23 @@ const opToConfig = (op: Operation): Record<string, any> => {
         body: op.body ?? "",
         url: op.url ?? "",
         userId: op.userId ?? null,
+      };
+    case "push":
+      return {
+        title: op.title,
+        body: op.body,
+        url: op.url ?? "",
+        userId: op.userId,
+      };
+    case "sms":
+      // `mode` is derived, not stored on the op — the presence of `userId` is
+      // what distinguishes the two addressing modes.
+      return {
+        mode: op.userId != null ? "user" : "to",
+        to: op.to ?? "",
+        userId: op.userId ?? "",
+        body: op.body,
+        from: op.from ?? "",
       };
     case "transform":
       return {

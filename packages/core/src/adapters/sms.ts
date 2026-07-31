@@ -11,6 +11,15 @@
 
 export type SMSProvider = "twilio" | "sns" | "netgsm" | "iletimerkezi" | "console";
 
+/**
+ * Loose E.164 check: leading `+` and 7–15 digits. Deliberately not a
+ * carrier/country validation — the provider rejects truly bad numbers at send
+ * time and the caller prunes them from `invalidNumbers`. Shared so that
+ * registration (`/api/phone-numbers`) and the `sms` flow op agree on what a
+ * number looks like.
+ */
+export const E164_PATTERN = /^\+[1-9]\d{6,14}$/;
+
 export interface SMSMessage {
   /** Target phone numbers in E.164 format, e.g. "+14155552671". */
   to: string[];

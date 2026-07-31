@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { and, desc, eq } from "drizzle-orm";
-import { AppError } from "@backlex/core";
+import { AppError, E164_PATTERN } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
@@ -11,10 +11,9 @@ import { defaultHook } from "../lib/openapi-router";
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.phoneNumbers : sqlite.schema.phoneNumbers;
 
-/** Loose E.164 check: leading + and 7–15 digits. We don't try to validate the
- *  carrier/country here — the provider rejects truly bad numbers at send time
- *  and the row is deactivated then. */
-const E164 = /^\+[1-9]\d{6,14}$/;
+/** Shared with the `sms` flow op so registration and sending agree on what a
+ *  number looks like — see the contract note on `E164_PATTERN`. */
+const E164 = E164_PATTERN;
 
 const RegisterInput = z
   .object({

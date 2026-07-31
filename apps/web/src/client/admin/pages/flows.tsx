@@ -244,6 +244,9 @@ function describeOpShort(op: any): string {
       try { return Object.keys(op.filter ?? {})[0] ?? "if"; } catch { return "if"; }
     }
     case "notification": return (op.title ?? "").toString().slice(0, 22) || "notify";
+    case "push": return (op.title ?? "").toString().slice(0, 22) || "push";
+    // Whichever addressing mode the op uses is the useful thing to show.
+    case "sms": return `sms ${(op.to ?? op.userId ?? "").toString().slice(0, 18)}`.trim();
     case "function": return `fn:${(op.name ?? "").toString().slice(0, 18)}`;
     case "item.create": return `+${op.collection ?? ""}`;
     case "item.update": return `~${op.collection ?? ""}`;

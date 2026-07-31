@@ -20,18 +20,19 @@ receiving endpoint and backlex signs what it sends.
 
 ## Providers
 
-Twenty-four providers ship in the registry, grouped by category:
+Twenty-eight providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
-| chat | Slack, Discord, Microsoft Teams, Telegram |
+| chat | Slack, Discord, Microsoft Teams, Telegram, Google Chat |
 | observability | Datadog, Sentry, PagerDuty, Opsgenie |
-| analytics | PostHog, Segment |
+| analytics | PostHog, Segment, Mixpanel, Amplitude |
 | issue tracking | GitHub, Linear, Jira |
 | search | Algolia, Meilisearch, Typesense, Elasticsearch / OpenSearch |
 | productivity | Notion, Google Sheets, Airtable — all *(OAuth)*, all sources |
 | accounting | QuickBooks Online, Xero — both *(OAuth)*, both sources |
 | warehouse | ClickHouse, Google BigQuery — both *destinations* |
+| crm | HubSpot — *receives record contents*, see below |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -238,6 +239,32 @@ re-enabling clears the counter.
 
 If the OAuth grant is revoked, the run reports *"needs re-authorizing"* and stops
 instead of retrying something no retry can fix.
+
+## What a sink receives
+
+By default a sink is told that something **changed**, not what it **said**:
+
+```json
+{ "collection": "orders", "event": "created", "id": "ord_123" }
+```
+
+That is deliberate. Handing every connected chat channel the contents of every
+row is not a default anyone would choose, and most sinks — chat, alerting,
+analytics — only need the event.
+
+A provider that genuinely needs the row declares `recordPayload`, and then:
+
+- the record is attached **only** to that provider's message,
+- it is scoped **before the queue row is written**, so row contents never park in
+  the jobs table for a provider that will not use them,
+- it is re-checked **before it reaches a provider**, so a job written by hand
+  cannot smuggle one through,
+- the connect dialog **says so before you connect**, and the event filter is how
+  you scope which collections that applies to.
+
+**HubSpot** is the only provider that asks for it today: a CRM cannot upsert a
+contact from an id alone. It keys the upsert on `email`, so the queue's retries
+update the same contact rather than creating a second one.
 
 ## What gets sent
 

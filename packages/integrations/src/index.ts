@@ -85,7 +85,12 @@ export const INTEGRATION_CATALOG = entries.map(([id, p]) => ({
   fields: [...p.configFields],
   /** The UI shows "Connect with <provider>" instead of a paste-a-key form. */
   oauth: Boolean(p.oauth),
+  /** The UI warns that row contents will leave the instance. */
+  recordPayload: Boolean(p.recordPayload),
 }));
+
+/** Kinds that receive the row itself, not just the fact that it changed. */
+export const RECORD_PAYLOAD_KINDS = entries.filter(([, p]) => p.recordPayload).map(([id]) => id);
 
 /** Kinds connected through the OAuth flow rather than a pasted credential. */
 export const OAUTH_KINDS = entries.filter(([, p]) => p.oauth).map(([id]) => id);

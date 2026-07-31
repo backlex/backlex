@@ -7045,6 +7045,10 @@ msgstr "kanban"
 msgid "Kanban"
 msgstr "Kanban"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Keep HubSpot contacts in step with a collection. Receives record contents."
+msgstr "Keep HubSpot contacts in step with a collection. Receives record contents."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "key"
 msgstr "key"
@@ -10390,6 +10394,10 @@ msgstr "Post \"{0}{1}\" created."
 #: src/client/admin/pages/integrations.tsx
 msgid "Post data events to a Discord channel."
 msgstr "Post data events to a Discord channel."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Post data events to a Google Chat space."
+msgstr "Post data events to a Google Chat space."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Post data events to a Microsoft Teams channel."
@@ -14284,6 +14292,10 @@ msgstr "This permanently removes the function and its code. Triggers, flow steps
 msgid "This plan failed validation — review or edit the args before running."
 msgstr "This plan failed validation — review or edit the args before running."
 
+#: src/client/admin/pages/integrations.tsx
+msgid "This provider receives your record contents"
+msgstr "This provider receives your record contents"
+
 #: src/client/admin/item-editor.tsx
 msgid "This record was changed by someone else after you opened it. Reload to get the latest version (your edits will be lost), or save anyway to overwrite theirs."
 msgstr "This record was changed by someone else after you opened it. Reload to get the latest version (your edits will be lost), or save anyway to overwrite theirs."
@@ -14540,6 +14552,14 @@ msgstr "Traces refreshed."
 #: src/client/admin/pages/analytics.tsx
 msgid "Track at least two different event names, then come back to measure how visitors move between them."
 msgstr "Track at least two different event names, then come back to measure how visitors move between them."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Track data events in Amplitude."
+msgstr "Track data events in Amplitude."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Track data events in Mixpanel."
+msgstr "Track data events in Mixpanel."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Track data events through Segment."
@@ -14805,6 +14825,10 @@ msgstr "unknown client"
 #: src/client/admin/parity/app-users.tsx
 msgid "Unknown device"
 msgstr "Unknown device"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Unlike the other integrations, it needs the row itself — not just the fact that one changed. Use the event list below to scope which collections that applies to."
+msgstr "Unlike the other integrations, it needs the row itself — not just the fact that one changed. Use the event list below to scope which collections that applies to."
 
 #: src/client/admin/pages/usage.tsx
 msgid "unlimited"

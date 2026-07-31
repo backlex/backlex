@@ -7045,6 +7045,10 @@ msgstr "kanban"
 msgid "Kanban"
 msgstr "Kanban"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Keep HubSpot contacts in step with a collection. Receives record contents."
+msgstr "HubSpot kişilerini bir koleksiyonla eşzamanlı tutar. Kayıt içeriğini alır."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "key"
 msgstr "anahtar"
@@ -10390,6 +10394,10 @@ msgstr "\"{0}{1}\" gönderisi oluşturuldu."
 #: src/client/admin/pages/integrations.tsx
 msgid "Post data events to a Discord channel."
 msgstr "Veri olaylarını bir Discord kanalına gönderir."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Post data events to a Google Chat space."
+msgstr "Veri olaylarını bir Google Chat alanına gönderir."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Post data events to a Microsoft Teams channel."
@@ -14284,6 +14292,10 @@ msgstr "Bu, fonksiyonu ve kodunu kalıcı olarak kaldırır. Ona başvuran tetik
 msgid "This plan failed validation — review or edit the args before running."
 msgstr "Bu plan doğrulamadan geçemedi — çalıştırmadan önce argümanları gözden geçirin veya düzenleyin."
 
+#: src/client/admin/pages/integrations.tsx
+msgid "This provider receives your record contents"
+msgstr "Bu sağlayıcı kayıt içeriğinizi alır"
+
 #: src/client/admin/item-editor.tsx
 msgid "This record was changed by someone else after you opened it. Reload to get the latest version (your edits will be lost), or save anyway to overwrite theirs."
 msgstr "Bu kayıt siz açtıktan sonra başka biri tarafından değiştirildi. En son sürümü almak için yeniden yükleyin (düzenlemeleriniz kaybolur) ya da yine de kaydedip onların değişikliklerinin üzerine yazın."
@@ -14540,6 +14552,14 @@ msgstr "İzler yenilendi."
 #: src/client/admin/pages/analytics.tsx
 msgid "Track at least two different event names, then come back to measure how visitors move between them."
 msgstr "En az iki farklı olay adı izleyin, sonra ziyaretçilerin bunlar arasında nasıl ilerlediğini ölçmek için geri dönün."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Track data events in Amplitude."
+msgstr "Veri olaylarını Amplitude'da izler."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Track data events in Mixpanel."
+msgstr "Veri olaylarını Mixpanel'de izler."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Track data events through Segment."
@@ -14805,6 +14825,10 @@ msgstr "bilinmeyen istemci"
 #: src/client/admin/parity/app-users.tsx
 msgid "Unknown device"
 msgstr "Bilinmeyen cihaz"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Unlike the other integrations, it needs the row itself — not just the fact that one changed. Use the event list below to scope which collections that applies to."
+msgstr "Diğer entegrasyonların aksine satırın kendisine ihtiyaç duyar — yalnızca bir şeyin değiştiği bilgisine değil. Bunun hangi koleksiyonlar için geçerli olacağını aşağıdaki olay listesiyle sınırlayın."
 
 #: src/client/admin/pages/usage.tsx
 msgid "unlimited"

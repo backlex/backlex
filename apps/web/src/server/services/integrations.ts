@@ -360,7 +360,10 @@ export async function dispatchIntegrations(
           type: "integration.deliver",
           queue: "integrations",
           tenantId: row.tenantId ?? originTenantId ?? null,
-          payload: { integrationId: row.id, message },
+          // Scoped per integration BEFORE the job row is written. A single
+          // message carrying the record would park row contents in the queue
+          // for every provider, including the ones that must never see it.
+          payload: { integrationId: row.id, message: messageFor(row.kind, message) },
         }),
       ),
     );
@@ -369,7 +372,7 @@ export async function dispatchIntegrations(
 
   // Fallback (no env, or a test seam): best-effort inline delivery, no retry.
   for (const row of matching) {
-    await deliverOne(env, ctx, row, message, 1, fetchImpl);
+    await deliverOne(env, ctx, row, messageFor(row.kind, message), 1, fetchImpl);
   }
 }
 
@@ -384,8 +387,28 @@ function buildEventMessage(channel: string, evt: { event: string; data: unknown 
     event: `${collection}.${evt.event}`,
     text: `${collection}: record ${evt.event}${id ? ` #${String(id)}` : ""}`,
     payload: { collection, event: evt.event, id },
+    // Carried on the message but NOT attached here — `deliverOne` decides
+    // per provider. Building one message per integration would mean rendering
+    // the same event N times, and building it once with the record always
+    // present would put it in the queue payload for every provider, including
+    // the ones that must never see it.
+    record: (data ?? null) as Record<string, unknown> | null,
   };
 }
+
+/**
+ * Narrow one event to what this provider is allowed to receive.
+ *
+ * The record is attached only to providers that declared `recordPayload`.
+ * Everything else gets the same message with the field absent — not emptied,
+ * absent, so a provider that reads it defensively cannot mistake `{}` for a row
+ * that happened to have no fields.
+ */
+export const messageFor = (kind: string, message: IntegrationEvent): IntegrationEvent => {
+  if (providerFor(kind)?.recordPayload) return message;
+  const { record: _withheld, ...rest } = message;
+  return rest;
+};
 
 /** Decrypt, deliver, log, and fold the outcome into the breaker. Returns the
  *  HTTP outcome so the job handler can throw a non-2xx into the retry path. */
@@ -421,7 +444,10 @@ async function deliverOne(
     }
     cfg[OAUTH_ACCESS_TOKEN_KEY] = fresh;
   }
-  const out = await deliverToIntegration(row.kind, cfg, message, fetchImpl);
+  // Re-applied here because the queue handler reconstructs the message from a
+  // stored payload: a job written before this rule existed, or hand-enqueued,
+  // must not be able to hand a record to a provider that never asked for one.
+  const out = await deliverToIntegration(row.kind, cfg, messageFor(row.kind, message), fetchImpl);
   const ms = Date.now() - started;
   // status 0 is the adapters' "misconfigured or the request threw" sentinel —
   // there is no response to quote, so say so rather than logging a bare 0.

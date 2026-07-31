@@ -35,7 +35,8 @@ export type IntegrationCategory =
   | "search"
   | "productivity"
   | "accounting"
-  | "warehouse";
+  | "warehouse"
+  | "crm";
 
 /**
  * What a provider can do. Today every provider is a `sink` (receives events
@@ -54,6 +55,15 @@ export interface IntegrationEvent {
   text: string;
   /** machine body for GitHub client_payload / structured sinks */
   payload: Record<string, unknown>;
+  /**
+   * The record itself, present ONLY for providers that declared
+   * {@link IntegrationProvider.recordPayload}.
+   *
+   * Kept out of `payload` deliberately. Most sinks want to know that something
+   * changed, not what it said, and quietly handing every connected chat channel
+   * the contents of every row is not a default anyone would choose.
+   */
+  record?: Record<string, unknown> | null;
 }
 
 export interface DeliveryOutcome {
@@ -242,6 +252,15 @@ export interface IntegrationProvider<Id extends string = string> {
   category: IntegrationCategory;
   capabilities: readonly IntegrationCapability[];
   configFields: readonly IntegrationConfigField[];
+  /**
+   * This provider needs the ROW, not just the fact that it changed.
+   *
+   * A CRM cannot upsert a contact from `{collection, event, id}`. Opting in
+   * puts the record on {@link IntegrationEvent.record} — and because that means
+   * row contents leave the instance, the connect UI says so before an admin
+   * connects it, and the event filter is the way to scope which collections.
+   */
+  recordPayload?: boolean;
   /** Present only on providers connected via OAuth rather than a pasted key. */
   oauth?: IntegrationOAuth;
   /** Present only on providers that can pull rows in. Implies `source` in

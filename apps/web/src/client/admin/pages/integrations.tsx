@@ -32,7 +32,15 @@ type Field = {
   /** Present when the field is a choice; the UI renders a picker, not a box. */
   options?: { value: string; label: string }[];
 };
-type Provider = { id: string; label: string; category: string; capabilities: string[]; oauth: boolean };
+type Provider = {
+  id: string;
+  label: string;
+  category: string;
+  capabilities: string[];
+  oauth: boolean;
+  /** This provider receives row CONTENTS, not just the fact of a change. */
+  recordPayload?: boolean;
+};
 type Catalog = {
   kinds: string[];
   fields: Record<string, Field[]>;
@@ -130,6 +138,10 @@ const BRANDS: Record<string, Brand> = {
   "google-sheets": { name: "Google Sheets", mark: <SI d={ICONS.googlesheets!} />, markBg: "#34A853" },
   airtable: { name: "Airtable", mark: <SI d={ICONS.airtable!} />, markBg: "#18BFFF" },
   quickbooks: { name: "QuickBooks Online", mark: <SI d={ICONS.quickbooks!} />, markBg: "#2CA01C" },
+  hubspot: { name: "HubSpot", mark: "Hs", markBg: "#FF7A59" },
+  mixpanel: { name: "Mixpanel", mark: "Mp", markBg: "#7856FF" },
+  amplitude: { name: "Amplitude", mark: "Am", markBg: "#1E61F0" },
+  "google-chat": { name: "Google Chat", mark: "GC", markBg: "#00AC47" },
   clickhouse: { name: "ClickHouse", mark: "CH", markBg: "#FFCC01" },
   bigquery: { name: "Google BigQuery", mark: "BQ", markBg: "#4285F4" },
   xero: { name: "Xero", mark: <SI d={ICONS.xero!} />, markBg: "#13B5EA" },
@@ -184,6 +196,9 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
   const sourceKinds = new Set(
     (catalog.providers ?? []).filter((p) => p.capabilities.includes("source")).map((p) => p.id),
   );
+  const recordPayloadKinds = new Set(
+    (catalog.providers ?? []).filter((p) => p.recordPayload).map((p) => p.id),
+  );
   const destinationKinds = new Set(
     (catalog.providers ?? []).filter((p) => p.capabilities.includes("destination")).map((p) => p.id),
   );
@@ -226,6 +241,14 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
         return t`Mirror Xero contacts, invoices and payments into a collection.`;
       case "slack":
         return t`Post data events to a Slack channel.`;
+      case "google-chat":
+        return t`Post data events to a Google Chat space.`;
+      case "mixpanel":
+        return t`Track data events in Mixpanel.`;
+      case "amplitude":
+        return t`Track data events in Amplitude.`;
+      case "hubspot":
+        return t`Keep HubSpot contacts in step with a collection. Receives record contents.`;
       case "discord":
         return t`Post data events to a Discord channel.`;
       case "teams":
@@ -457,6 +480,7 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
           name={brandFor(connectKind).name}
           fields={catalog.fields[connectKind] ?? []}
           redirectUri={oauthKinds.has(connectKind) ? (catalog.oauthRedirectUri ?? null) : null}
+          receivesRecords={recordPayloadKinds.has(connectKind)}
           existing={byKind.get(connectKind) ?? null}
           busy={busyKind === connectKind}
           onClose={() => setConnectKind(null)}
@@ -596,6 +620,7 @@ function ConnectDialog({
   name,
   fields,
   redirectUri,
+  receivesRecords,
   existing,
   busy,
   onClose,
@@ -606,6 +631,8 @@ function ConnectDialog({
   fields: Field[];
   /** Non-null for OAuth providers: the URI to register with the provider. */
   redirectUri: string | null;
+  /** True when row contents — not just event names — leave the instance. */
+  receivesRecords: boolean;
   existing: Integration | null;
   busy: boolean;
   onClose: () => void;
@@ -668,6 +695,21 @@ function ConnectDialog({
                     own state: the provider's form needs this pasted verbatim,
                     and typing it by hand is the usual cause of a failed leg 2. */}
                 <code className="block break-all text-[11px] text-muted-foreground select-all">{redirectUri}</code>
+              </div>
+            ) : null}
+            {receivesRecords ? (
+              // Said before connecting, not after. Every other sink is told
+              // that something changed; this one is told what it said.
+              <div className="rounded-control border border-destructive/40 bg-destructive/5 px-3 py-2.5">
+                <span className="mb-1 block text-[11.5px] font-medium text-destructive">
+                  <Trans>This provider receives your record contents</Trans>
+                </span>
+                <span className="block text-[11px] leading-snug text-muted-foreground">
+                  <Trans>
+                    Unlike the other integrations, it needs the row itself — not just the fact that one
+                    changed. Use the event list below to scope which collections that applies to.
+                  </Trans>
+                </span>
               </div>
             ) : null}
             {fields.map((f) => (

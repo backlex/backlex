@@ -12,15 +12,19 @@ import type { IntegrationProvider } from "../provider";
 import { airtable } from "./airtable";
 import { bigquery } from "./bigquery";
 import { algolia } from "./algolia";
+import { amplitude } from "./amplitude";
 import { clickhouse } from "./clickhouse";
 import { datadog } from "./datadog";
 import { discord } from "./discord";
 import { elasticsearch } from "./elasticsearch";
 import { github } from "./github";
+import { googleChat } from "./google-chat";
 import { googleSheets } from "./google-sheets";
+import { hubspot } from "./hubspot";
 import { jira } from "./jira";
 import { linear } from "./linear";
 import { meilisearch } from "./meilisearch";
+import { mixpanel } from "./mixpanel";
 import { notion } from "./notion";
 import { opsgenie } from "./opsgenie";
 import { pagerduty } from "./pagerduty";
@@ -40,6 +44,7 @@ export const INTEGRATION_KINDS = [
   "discord",
   "teams",
   "telegram",
+  "google-chat",
   // observability / alerting
   "datadog",
   "sentry",
@@ -48,10 +53,14 @@ export const INTEGRATION_KINDS = [
   // analytics
   "posthog",
   "segment",
+  "mixpanel",
+  "amplitude",
   // automation / issue tracking
   "github",
   "linear",
   "jira",
+  // crm
+  "hubspot",
   // search sync
   "algolia",
   "meilisearch",
@@ -76,15 +85,19 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   discord,
   teams,
   telegram,
+  "google-chat": googleChat,
   datadog,
   sentry,
   pagerduty,
   opsgenie,
   posthog,
   segment,
+  mixpanel,
+  amplitude,
   github,
   linear,
   jira,
+  hubspot,
   algolia,
   meilisearch,
   typesense,

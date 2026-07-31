@@ -275,7 +275,12 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
   if (job.type === "integration.deliver") {
     const p = job.payload as {
       integrationId?: string;
-      message?: { event?: string; text?: string; payload?: Record<string, unknown> };
+      message?: {
+        event?: string;
+        text?: string;
+        payload?: Record<string, unknown>;
+        record?: Record<string, unknown> | null;
+      };
     };
     const m = p.message;
     if (!p.integrationId || !m || typeof m.event !== "string" || typeof m.text !== "string") {
@@ -284,7 +289,9 @@ const runHandler = async (ctx: Ctx, job: JobRow): Promise<unknown> => {
     const out = await deliverIntegrationById(ctx.env, ctx, {
       integrationId: p.integrationId,
       tenantId: job.tenantId,
-      message: { event: m.event, text: m.text, payload: m.payload ?? {} },
+      // `record` is carried through only when the enqueuer put it there —
+      // `deliverOne` re-checks the provider before it reaches one.
+      message: { event: m.event, text: m.text, payload: m.payload ?? {}, ...(m.record ? { record: m.record } : {}) },
       attempt: job.attempts,
     });
     // A provider failure is thrown so the queue retries with backoff; the

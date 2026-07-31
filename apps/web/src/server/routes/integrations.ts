@@ -71,6 +71,8 @@ const CatalogView = z
         capabilities: z.array(z.string()),
         /** Show "Connect with …" instead of a paste-a-key form. */
         oauth: z.boolean(),
+        /** Warn that row CONTENTS leave the instance for this provider. */
+        recordPayload: z.boolean(),
       }),
     ),
     /** The exact URI to register with each OAuth provider. Deriving it in the
@@ -184,13 +186,16 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         data: {
           kinds: [...INTEGRATION_KINDS],
           fields: INTEGRATION_FIELDS,
-          providers: INTEGRATION_CATALOG.map(({ id, label, category, capabilities, oauth }) => ({
-            id,
-            label,
-            category,
-            capabilities,
-            oauth,
-          })),
+          providers: INTEGRATION_CATALOG.map(
+            ({ id, label, category, capabilities, oauth, recordPayload }) => ({
+              id,
+              label,
+              category,
+              capabilities,
+              oauth,
+              recordPayload,
+            }),
+          ),
           oauthRedirectUri: oauthRedirectUri(c.get("ctx").env.APP_URL),
           sourceSettings: SOURCE_SETTING_FIELDS,
           destinationSettings: DESTINATION_SETTING_FIELDS,

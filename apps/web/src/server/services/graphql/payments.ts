@@ -278,8 +278,8 @@ export const paymentMutationFields: Record<string, GraphQLFieldConfig<unknown, G
     type: new GraphQLNonNull(PaymentCheckoutType),
     description:
       "Open a hosted checkout and get a link to send the customer to (admin-only). " +
-      "Amounts are MINOR units. Stripe, Adyen, Authorize.net, PayTR, iyzico and the " +
-      "test `dummy` provider take an ad-hoc amount; Polar, Lemon Squeezy and Paddle " +
+      "Amounts are MINOR units. Stripe, Adyen, Authorize.net, PayTR, iyzico, Klarna " +
+      "and the test `dummy` provider take an ad-hoc amount; Polar, Lemon Squeezy and Paddle " +
       "need a pre-made price and are refused with an explanation. Authorize.net " +
       "charges only in its account's own currency and caps the reference at 20 " +
       "characters.",

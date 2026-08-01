@@ -85,7 +85,10 @@ type DeliveryRow = {
 const STRIPE_MARK =
   "M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z";
 
-type Brand = { mark: ReactNode; markBg: string };
+/** `markFg` defaults to white. It exists for the brands whose colour is a pale
+ *  one — Klarna's pink and Paddle's yellow render a white monogram as very
+ *  nearly nothing, in either theme. */
+type Brand = { mark: ReactNode; markBg: string; markFg?: string };
 const BRANDS: Record<string, Brand> = {
   stripe: {
     mark: (
@@ -97,11 +100,12 @@ const BRANDS: Record<string, Brand> = {
   },
   polar: { mark: "P", markBg: "#0062FF" },
   lemonsqueezy: { mark: "\u{1F34B}", markBg: "#FFC233" },
-  paddle: { mark: "Pd", markBg: "#FDDD35" },
+  paddle: { mark: "Pd", markBg: "#FDDD35", markFg: "#1B1B1B" },
   paytr: { mark: "PT", markBg: "#00A0E9" },
   iyzico: { mark: "iy", markBg: "#1E64FF" },
   adyen: { mark: "A", markBg: "#0ABF53" },
   authorizenet: { mark: "An", markBg: "#25529C" },
+  klarna: { mark: "K", markBg: "#FFB3C7", markFg: "#0B051D" },
   dummy: { mark: "TE", markBg: "oklch(0.55 0.13 75)" },
 };
 const brandFor = (provider: string): Brand =>
@@ -279,8 +283,8 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
                 >
                   <div className="flex items-start gap-3">
                     <span
-                      className="grid h-10 w-10 shrink-0 place-items-center rounded-control text-[14px] font-bold text-white"
-                      style={{ background: brand.markBg }}
+                      className="grid h-10 w-10 shrink-0 place-items-center rounded-control text-[14px] font-bold"
+                      style={{ background: brand.markBg, color: brand.markFg ?? "#fff" }}
                     >
                       {brand.mark}
                     </span>

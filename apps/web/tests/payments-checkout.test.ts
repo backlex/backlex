@@ -60,6 +60,7 @@ describe("the capability table", () => {
       iyzico: "adhoc",
       adyen: "adhoc",
       authorizenet: "adhoc",
+      klarna: "adhoc",
       dummy: "adhoc",
       polar: "catalog",
       lemonsqueezy: "catalog",

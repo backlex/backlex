@@ -47,6 +47,13 @@ export const PAYMENT_PROVIDERS = [
   // merchant reference. What ties a payment to the row that asked for it has to
   // be fetched back. See `retrieveAuthorizeNetTransaction`.
   "authorizenet",
+  // Buy-now-pay-later rather than a card acquirer, which changes what the
+  // integration is FOR: Klarna's value is at the checkout moment, so an
+  // inbound-only connection would only ever watch payments backlex never
+  // initiated. It also authenticates nothing on the way in — its hosted page
+  // posts an unsigned status change and the truth is fetched back — which puts
+  // it in `retrieve` alongside iyzico. See `retrieveKlarnaPayment`.
+  "klarna",
   // Not a PSP. A local, self-hosted stand-in that settles payments without
   // touching a real acquirer — the payment sibling of the `console` SMS and
   // email adapters, for demo instances and for smoke-testing a checkout flow
@@ -70,6 +77,7 @@ export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
   iyzico: "iyzico",
   adyen: "Adyen",
   authorizenet: "Authorize.net",
+  klarna: "Klarna",
   dummy: "Dummy (test only)",
 };
 
@@ -92,14 +100,17 @@ export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
  * not merely unimplemented for these, it is *impossible*, and pretending
  * otherwise would report a successful sync that synced nothing.
  *
- * `retrieve` (iyzico): the provider POSTs a bare `token` with NO signature on
- * it, and the payment result is fetched by calling the provider back with the
- * merchant's own API credentials. Authenticity therefore comes from the
- * RESPONSE, not the request — the posted body is discarded except for the
- * token, and everything recorded is what the provider told us when we asked.
- * A forged or foreign token yields an error or a stranger's `failure`, never a
+ * `retrieve` (iyzico, Klarna): the provider POSTs an unsigned body carrying
+ * nothing but a HANDLE — iyzico a payment `token`, Klarna an HPP
+ * `session.session_id` — and the result is fetched by calling the provider back
+ * with the merchant's own API credentials. Authenticity therefore comes from
+ * the RESPONSE, not the request: the posted body is discarded except for that
+ * handle, and everything recorded is what the provider told us when we asked.
+ * A forged or foreign handle yields an error or a stranger's `failure`, never a
  * recorded payment. Inventing a signature scheme for this instead would either
- * reject every real callback or accept forgeries.
+ * reject every real callback or accept forgeries. Klarna is explicit about it —
+ * its own documentation tells merchants to put a one-time token in the callback
+ * URL, because there is no signature to check.
  */
 export type PaymentProviderMode = "webhook" | "callback" | "retrieve";
 
@@ -120,6 +131,11 @@ export const PAYMENT_PROVIDER_MODES: Record<PaymentProvider, PaymentProviderMode
   // shape as Stripe's. The delivery is therefore the evidence — what it is NOT
   // is self-contained, which is a separate problem handled at normalize time.
   authorizenet: "webhook",
+  // Klarna's Hosted Payment Page POSTs `{event_id, session:{session_id,status}}`
+  // to the `status_update` URL with no signature over it at all, so the body is
+  // a notification rather than evidence. The session is read back over Basic
+  // auth, and a session id belonging to another merchant simply 404s.
+  klarna: "retrieve",
   // The dummy page POSTs a form back the way a Turkish PSP does, and signs it
   // with the provider's own generated secret. It sits in `callback` rather
   // than getting a fourth mode precisely so it exercises the real code path —
@@ -177,6 +193,11 @@ export const PAYMENT_HAS_CATALOG: Record<PaymentProvider, boolean> = {
   // loop is built around, and offering it here would return a clean sync that
   // covered whichever batch happened to be first.
   authorizenet: false,
+  // Klarna's Order Management API is addressed one `order_id` at a time; there
+  // is no endpoint that pages over an account's orders, and no customer or
+  // subscription object to mirror at all. Settlement reports come out of the
+  // Merchant Portal as files, which is not a cursor.
+  klarna: false,
   dummy: false,
 };
 
@@ -226,6 +247,8 @@ export const PAYMENT_ACK: Record<PaymentProvider, { body: string; contentType: s
   adyen: { body: "[accepted]", contentType: "text/plain; charset=utf-8" },
   // Any 2xx satisfies Authorize.net; it reads the status and ignores the body.
   authorizenet: null,
+  // Klarna reads the status code and ignores the body.
+  klarna: null,
   dummy: null,
 };
 
@@ -243,6 +266,20 @@ export interface PaymentConfigField {
   choices?: string[];
   hint?: string;
 }
+
+/**
+ * The countries Klarna sells in, as ISO-3166 alpha-2.
+ *
+ * A list rather than "any two letters" because `purchase_country` is not a
+ * formality — it selects which BNPL methods the consumer is shown, and Klarna
+ * rejects a market the merchant account is not enabled for. Offering a free-text
+ * box would turn a typo into a rejected checkout with a message about payment
+ * methods rather than about the country.
+ */
+export const KLARNA_MARKETS: readonly string[] = [
+  "AT", "AU", "BE", "CA", "CH", "CZ", "DE", "DK", "ES", "FI", "FR", "GB",
+  "GR", "IE", "IT", "MX", "NL", "NO", "NZ", "PL", "PT", "RO", "SE", "US",
+];
 
 export const PAYMENT_PROVIDER_FIELDS: Record<PaymentProvider, PaymentConfigField[]> = {
   stripe: [
@@ -407,6 +444,45 @@ export const PAYMENT_PROVIDER_FIELDS: Record<PaymentProvider, PaymentConfigField
       hint: "The single currency this merchant account settles in. Authorize.net never states it on a payment, so every recorded amount is filed under this.",
     },
   ],
+  klarna: [
+    {
+      key: "username",
+      label: "API username",
+      placeholder: "PK00000_0a0a0a0a",
+      hint: "Merchant Portal → Settings → Klarna API credentials. Half of a Basic-auth pair, not a bearer token.",
+    },
+    {
+      key: "password",
+      label: "API password",
+      placeholder: "Shown once when the credential is created",
+      secret: true,
+    },
+    {
+      key: "region",
+      // Klarna's regions are separate deployments, not a routing hint: a
+      // European credential does not authenticate against the North American
+      // host, and the failure reads as a bad password.
+      label: "Region",
+      choices: ["europe", "north_america", "oceania"],
+      hint: "The region the API credential was issued in. Klarna runs one deployment per region and a credential works in exactly one.",
+    },
+    {
+      key: "environment",
+      label: "Environment",
+      choices: ["playground", "production"],
+      hint: "Playground points at api.playground.klarna.com and needs playground credentials.",
+    },
+    {
+      key: "purchaseCountry",
+      // Required by Klarna Payments and NOT derivable: it decides which BNPL
+      // methods the consumer is offered, and Klarna refuses a country the
+      // merchant account is not enabled for. A customer address can override it
+      // per checkout when one is supplied.
+      label: "Default purchase country",
+      choices: [...KLARNA_MARKETS],
+      hint: "Used when a checkout carries no customer country. Klarna decides which payment methods to offer from it, and refuses markets this account is not enabled for.",
+    },
+  ],
   dummy: [
     {
       key: "secret",
@@ -438,6 +514,10 @@ export const PAYMENT_SECRET_KEYS: Record<PaymentProvider, string[]> = {
   // to read back; the transaction key is the half worth hiding. `currency` and
   // `environment` are settings, not secrets.
   authorizenet: ["transactionKey", "webhookSecret"],
+  // The username is the half an admin needs to read back to tell two Klarna
+  // credentials apart; `region`, `environment` and `purchaseCountry` are
+  // settings whose values the admin has to be able to check.
+  klarna: ["password"],
   dummy: ["secret"],
 };
 
@@ -2361,6 +2441,327 @@ const normalizeAuthorizeNet = (
   };
 };
 
+// ── Klarna ──────────────────────────────────────────────────────────────────
+
+/**
+ * Klarna's six hosts. Region is a DEPLOYMENT, not a routing hint: a European
+ * credential does not authenticate against the North American host, and the
+ * refusal comes back as a 401 that reads exactly like a wrong password.
+ *
+ * Fixed constants, never assembled from config — see `klarnaHost`.
+ */
+const KLARNA_HOSTS = {
+  europe: {
+    playground: "https://api.playground.klarna.com",
+    production: "https://api.klarna.com",
+  },
+  north_america: {
+    playground: "https://api-na.playground.klarna.com",
+    production: "https://api-na.klarna.com",
+  },
+  oceania: {
+    playground: "https://api-oc.playground.klarna.com",
+    production: "https://api-oc.klarna.com",
+  },
+} as const;
+
+/**
+ * Which Klarna host this connection talks to.
+ *
+ * Defaults to `playground` rather than production, the opposite of the other
+ * providers here. Klarna's credentials are region- AND environment-scoped, so a
+ * connection that never chose is far more likely to be a merchant wiring things
+ * up than a live account — and pointing a half-configured connection at
+ * production is the more expensive way to be wrong.
+ */
+export const klarnaHost = (config: Record<string, unknown>): string => {
+  const region = str(config.region) ?? "europe";
+  const hosts = KLARNA_HOSTS[region as keyof typeof KLARNA_HOSTS] ?? KLARNA_HOSTS.europe;
+  return str(config.environment) === "production" ? hosts.production : hosts.playground;
+};
+
+/**
+ * Basic auth over the credential pair from the Merchant Portal.
+ *
+ * Encoded through UTF-8 rather than handed straight to `btoa`, which throws on
+ * any code point above U+00FF. Klarna's own credentials are ASCII, but the
+ * value comes from a text box an admin typed into — and a throw here would
+ * escape `createCheckout`, which documents itself as never throwing, turning a
+ * bad credential into a 500 instead of a `missing_secret` an admin can act on.
+ */
+export const klarnaAuthHeader = (username: string, password: string): string =>
+  `Basic ${toBase64(enc.encode(`${username}:${password}`))}`;
+
+/**
+ * Both Klarna ids this module interpolates into a URL path.
+ *
+ * iyzico's token never needed this — it travels in a JSON body. Klarna's do go
+ * in the path (`/hpp/v1/sessions/<id>`), and both arrive from an UNAUTHENTICATED
+ * callback, so a value carrying `../` or a query string would let the caller
+ * choose which endpoint the merchant's credentials are sent to. Klarna's own ids
+ * are UUIDs; anything else is refused rather than escaped.
+ */
+const KLARNA_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+
+/**
+ * The HPP session handle out of Klarna's unsigned status callback.
+ *
+ * Exported so the consumer lifts it the same way every time. The body is
+ * `{ event_id, session: { session_id, status, updated_at, expires_at } }`, and
+ * `session_id` is the ONLY field carried over — everything else is re-read from
+ * Klarna, because none of it is authenticated.
+ */
+export const klarnaSessionIdFrom = (rawBody: string): string | null => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawBody);
+  } catch {
+    return null;
+  }
+  const body = obj(parsed);
+  const id = str(obj(body?.session)?.session_id) ?? str(body?.session_id);
+  return id && KLARNA_ID_PATTERN.test(id) ? id : null;
+};
+
+export interface KlarnaRetrieveInput {
+  /** Decrypted provider config: username, password, region, environment. */
+  config: Record<string, unknown>;
+  /** The HPP session id the callback carried. */
+  sessionId: string;
+  fetchImpl?: FetchLike;
+}
+
+export type KlarnaRetrieveResult =
+  | { ok: true; payload: Record<string, unknown> }
+  | { ok: false; reason: "missing_secret" | "unreachable" | "rejected" };
+
+const klarnaGet = async (
+  doFetch: FetchLike,
+  url: string,
+  auth: string,
+): Promise<{ ok: true; body: Record<string, unknown> } | { ok: false; status: number }> => {
+  let res: Response;
+  try {
+    res = await doFetch(url, { method: "GET", headers: { Authorization: auth, Accept: "application/json" } });
+  } catch {
+    // Transport failure. Reported as 0 so the caller can tell it from a verdict.
+    return { ok: false, status: 0 };
+  }
+  if (!res.ok) return { ok: false, status: res.status };
+  let parsed: unknown;
+  try {
+    parsed = await res.json();
+  } catch {
+    return { ok: false, status: 0 };
+  }
+  const body = obj(parsed);
+  return body ? { ok: true, body } : { ok: false, status: 0 };
+};
+
+/**
+ * Ask Klarna what happened for an HPP session.
+ *
+ * This IS the verification step, the same way iyzico's retrieve is: the callback
+ * that triggered it carries no signature — Klarna's own documentation tells
+ * merchants to put a one-time token in the URL instead — so the posted body is
+ * discarded except for the session id, and what gets recorded is Klarna's answer
+ * fetched with the merchant's own credentials. A session id belonging to another
+ * merchant, or invented, 404s and produces nothing.
+ *
+ * ## Two calls, and why the second one is not optional
+ *
+ * The session read says only whether the consumer got through
+ * (`status: COMPLETED`) and, in `CAPTURE_ORDER` mode, hands back an `order_id`.
+ * The money — amount, currency, what was captured, what was refunded, and the
+ * `merchant_reference1` that ties it to the invoice row — lives on the ORDER, so
+ * the order is read too. A session that completed but whose order cannot be
+ * read is reported `unreachable` rather than recorded with a guessed amount:
+ * Klarna retries the callback, and a payment filed at the wrong figure is worse
+ * than one filed late.
+ *
+ * ## Why a non-completed session is `ok`
+ *
+ * Klarna calls `status_update` on EVERY transition, including `IN_PROGRESS` and
+ * the retryable `FAILED`/`BACK`/`ERROR`. Those are genuine deliveries about a
+ * session we own, so refusing them would 400 in Klarna's dashboard and read as a
+ * broken endpoint. They come back `ok` with no order attached, and the
+ * normalizer writes no row — the delivery is still logged in `payment_events`.
+ */
+export async function retrieveKlarnaPayment(
+  input: KlarnaRetrieveInput,
+): Promise<KlarnaRetrieveResult> {
+  const username = str(input.config.username);
+  const password = str(input.config.password);
+  if (!username || !password) return { ok: false, reason: "missing_secret" };
+  if (!KLARNA_ID_PATTERN.test(input.sessionId)) return { ok: false, reason: "rejected" };
+
+  const doFetch: FetchLike = input.fetchImpl ?? ((i, init) => fetch(i, init));
+  const host = klarnaHost(input.config);
+  const auth = klarnaAuthHeader(username, password);
+
+  const session = await klarnaGet(doFetch, `${host}/hpp/v1/sessions/${input.sessionId}`, auth);
+  if (!session.ok) {
+    // 4xx is a verdict — an unknown session, or one belonging to somebody else.
+    // Anything else (0, 5xx) is an outage, and the caller turns it into a retry
+    // rather than filing a payment that may well have succeeded as a forgery.
+    return { ok: false, reason: session.status >= 400 && session.status < 500 ? "rejected" : "unreachable" };
+  }
+
+  const status = str(session.body.status) ?? "";
+  const orderId = str(session.body.order_id);
+  // Only a completed session has an order behind it. A completed session with
+  // NO order id is a session opened in `NONE` place-order mode by something
+  // other than backlex's checkout — Klarna is waiting for that integration to
+  // place the order itself, and there is nothing here to record yet.
+  if (status !== "COMPLETED" || !orderId || !KLARNA_ID_PATTERN.test(orderId)) {
+    return { ok: true, payload: { ...session.body, session_id: input.sessionId } };
+  }
+
+  const order = await klarnaGet(doFetch, `${host}/ordermanagement/v1/orders/${orderId}`, auth);
+  if (!order.ok) return { ok: false, reason: "unreachable" };
+  return {
+    ok: true,
+    // The session fields stay under their own key so the normalizer can tell
+    // "the consumer got through" from "this is what the order says", and so an
+    // order field never silently shadows a session one of the same name.
+    payload: { ...order.body, session_id: input.sessionId, session_status: status, order_id: orderId },
+  };
+}
+
+/**
+ * Klarna order status → the ledger's own vocabulary.
+ *
+ * `AUTHORIZED` is deliberately `pending`: the money is reserved and not taken,
+ * the same reading Authorize.net's bare `authorization` gets. Checkouts opened
+ * by backlex ask for `CAPTURE_ORDER`, so they arrive `CAPTURED` — a session
+ * created elsewhere against this connection may not.
+ */
+const klarnaStatusFor = (orderStatus: string, fraudStatus: string): string => {
+  if (fraudStatus === "REJECTED") return "failed";
+  switch (orderStatus) {
+    case "CAPTURED":
+    case "PART_CAPTURED":
+      return fraudStatus === "PENDING" ? "pending" : "succeeded";
+    case "AUTHORIZED":
+      return "pending";
+    case "CANCELLED":
+      return "canceled";
+    case "EXPIRED":
+      return "failed";
+    default:
+      return orderStatus ? orderStatus.toLowerCase() : "pending";
+  }
+};
+
+/**
+ * A retrieved Klarna order → one payment record.
+ *
+ * ## Amounts need no conversion
+ *
+ * Klarna quotes MINOR units, the same as the ledger — unlike iyzico, whose
+ * major-unit decimals put its rows in at a hundredth of everyone else's until
+ * that was fixed. `captured_amount` is preferred over `order_amount` because it
+ * is what actually moved; an authorised-not-captured order reports
+ * `captured_amount: 0`, and filing the authorisation's full total as money
+ * received would overstate the ledger. `order_amount` is the fallback for the
+ * partially-captured and cancelled cases, where 0 would be a lie in the other
+ * direction.
+ *
+ * ## What a session-only delivery produces
+ *
+ * Nothing. `IN_PROGRESS`, `CANCELLED`, `TIMEOUT` and the retryable states carry
+ * no order, so they write no row — an abandoned checkout is not a payment, and
+ * a `failed` row for one that the consumer then retries successfully would sit
+ * in the ledger for ever next to the real payment. The delivery is still in
+ * `payment_events`, which is where an admin looks for "did anyone open it".
+ */
+const normalizeKlarna = (body: Record<string, unknown>): NormalizedPaymentEvent => {
+  const sessionId = str(body.session_id) ?? "";
+  const sessionStatus = str(body.session_status) ?? str(body.status) ?? "";
+  const orderId = str(body.order_id);
+  // Dedupe key. `updated_at` is what makes a genuine transition distinct from
+  // Klarna's retry of the same one: the retry repeats the timestamp, a real
+  // progression does not. Falling back to the status keeps a session with no
+  // timestamp from collapsing every delivery onto one event.
+  const stamp = str(body.updated_at) ?? sessionStatus;
+  const eventId = sessionId ? `klarna_${sessionId}_${stamp}` : "";
+
+  if (!orderId) {
+    return {
+      eventId,
+      type: `session.${sessionStatus || "unknown"}`,
+      livemode: null,
+      records: [],
+    };
+  }
+
+  const currency = str(body.purchase_currency) ?? "EUR";
+  const captured = num(body.captured_amount);
+  const orderStatus = str(body.status) ?? "";
+  const fraudStatus = str(body.fraud_status) ?? "";
+  const billing = obj(body.billing_address);
+  return {
+    eventId,
+    type: `order.${orderStatus || "unknown"}`,
+    // The playground is a separate HOST, not a flag on the payload — Klarna
+    // says nothing about it here, and the connection's `environment` is what
+    // actually knows.
+    livemode: null,
+    records: [
+      {
+        kind: "payment",
+        row: {
+          id: paymentRowId("klarna", orderId),
+          provider: "klarna",
+          external_id: orderId,
+          customer: null,
+          invoice: null,
+          amount: captured !== null && captured > 0 ? captured : num(body.order_amount),
+          amount_refunded: num(body.refunded_amount) ?? 0,
+          currency,
+          status: klarnaStatusFor(orderStatus, fraudStatus),
+          // Klarna is one payment method as far as the ledger is concerned;
+          // which BNPL plan the consumer picked is not on the order.
+          method: "klarna",
+          failure_reason:
+            fraudStatus === "REJECTED"
+              ? "rejected in Klarna's fraud review"
+              : orderStatus === "EXPIRED"
+                ? "the authorization expired before it was captured"
+                : null,
+          // `merchant_reference1` is what the checkout travelled out with.
+          reference: str(body.merchant_reference1) ?? str(body.merchant_reference2),
+          processed_at: isoToMs(body.completed_at) ?? isoToMs(body.created_at),
+          metadata: {
+            session_id: sessionId,
+            ...(sessionStatus ? { session_status: sessionStatus } : {}),
+            ...(str(body.klarna_reference) ? { klarna_reference: str(body.klarna_reference) } : {}),
+            ...(fraudStatus ? { fraud_status: fraudStatus } : {}),
+            ...(str(billing?.email) ? { email: str(billing?.email) } : {}),
+            ...(str(billing?.country) ? { country: str(billing?.country) } : {}),
+          },
+          source_created_at: isoToMs(body.created_at),
+        },
+      },
+    ],
+  };
+};
+
+/**
+ * The handle a `retrieve` provider's unsigned callback carries, per provider.
+ *
+ * Exported so the consumer never re-derives it per provider at the call site.
+ * The two bodies are not the same shape at all — iyzico posts form-encoded
+ * `token=…`, Klarna posts JSON — and picking the wrong parser yields `null`,
+ * which the receive path reports as a missing signature. That reads as a forged
+ * callback rather than as a parser mismatch, so the two live together here.
+ */
+export const parseRetrieveHandle = (provider: string, rawBody: string): string | null => {
+  if (provider === "iyzico") return parseCallbackBody(rawBody).token ?? null;
+  if (provider === "klarna") return klarnaSessionIdFrom(rawBody);
+  return null;
+};
+
 /**
  * The dummy provider's settlement → one payment record.
  *
@@ -2440,6 +2841,7 @@ export function normalizePaymentEvent(
       obj(opts.detail),
     );
   }
+  if (provider === "klarna") return normalizeKlarna(body);
   if (provider === "dummy") return normalizeDummy(body);
   return { eventId: headerEventId ?? "", type: "", livemode: null, records: [] };
 }

@@ -39,7 +39,9 @@ import {
   isRetrieveProvider,
   retrieveAuthorizeNetTransaction,
   retrieveIyzicoPayment,
+  retrieveKlarnaPayment,
   parseCallbackBody,
+  parseRetrieveHandle,
   isPaymentProvider,
   maskPaymentConfig,
   normalizePaymentEvent,
@@ -843,20 +845,32 @@ export async function receiveWebhook(
   let payload: unknown;
 
   if (isRetrieveProvider(provider.provider)) {
-    // There is nothing on this request to verify. iyzico posts a bare token
-    // with no signature, so the request body is NOT the evidence — it is
-    // discarded except for the token, and the payment is fetched from iyzico
-    // with the merchant's own credentials. What gets recorded is iyzico's
-    // answer. A forged, replayed or foreign token comes back rejected.
-    const token = parseCallbackBody(input.rawBody).token;
-    if (!token) return { ok: false, status: "invalid_signature", reason: "missing_signature" };
-    const retrieved = await retrieveIyzicoPayment({ config, token });
+    // There is nothing on this request to verify. iyzico posts a bare token and
+    // Klarna an unsigned JSON status change, so the request body is NOT the
+    // evidence — it is discarded except for the handle, and the payment is
+    // fetched from the provider with the merchant's own credentials. What gets
+    // recorded is the provider's answer. A forged, replayed or foreign handle
+    // comes back rejected.
+    //
+    // The handle is lifted by the SHARED parser rather than per provider here:
+    // the two bodies are not the same shape (form-encoded vs JSON) and picking
+    // the wrong one yields null, which reads as a forged callback rather than
+    // as a parser mismatch.
+    const handle = parseRetrieveHandle(provider.provider, input.rawBody);
+    if (!handle) return { ok: false, status: "invalid_signature", reason: "missing_signature" };
+    const retrieved =
+      provider.provider === "klarna"
+        ? await retrieveKlarnaPayment({ config, sessionId: handle })
+        : await retrieveIyzicoPayment({ config, token: handle });
     if (!retrieved.ok) {
       if (retrieved.reason === "unreachable") {
         // Transport failure is not a verdict. Throwing gives the provider's own
         // retry schedule a chance rather than filing a payment that may well
         // have succeeded as a forgery.
-        throw new AppError("UNAVAILABLE", "Could not reach iyzico to confirm the payment");
+        throw new AppError(
+          "UNAVAILABLE",
+          `Could not reach ${provider.provider} to confirm the payment`,
+        );
       }
       return { ok: false, status: "invalid_signature", reason: retrieved.reason };
     }

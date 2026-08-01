@@ -1,6 +1,6 @@
 ---
 title: Payments
-description: Connect Stripe, Polar, Lemon Squeezy, Paddle, Adyen, Authorize.net, PayTR or iyzico — mirror customers, subscriptions, invoices and payments into your collections, and open hosted checkouts to ask for money.
+description: Connect Stripe, Polar, Lemon Squeezy, Paddle, Adyen, Authorize.net, PayTR, iyzico or Klarna — mirror customers, subscriptions, invoices and payments into your collections, and open hosted checkouts to ask for money.
 ---
 
 Connect a payment provider once, and backlex keeps a mirror of its billing
@@ -21,8 +21,8 @@ open a hosted checkout for an arbitrary amount and write the payment link onto
 the invoice, quote or donation row that needs paying.
 
 Supported providers: **Stripe**, **Polar**, **Lemon Squeezy**, **Paddle**,
-**Adyen**, **Authorize.net**, **PayTR**, **iyzico**, plus a local **`dummy`**
-provider for demos and smoke tests.
+**Adyen**, **Authorize.net**, **PayTR**, **iyzico**, **Klarna**, plus a local
+**`dummy`** provider for demos and smoke tests.
 
 Providers differ along **two independent axes**, and conflating them is the
 usual way to get this wrong.
@@ -34,7 +34,7 @@ payment happened:
 |---|---|---|
 | `webhook` | Stripe, Polar, Lemon Squeezy, Paddle, Adyen, Authorize.net | Signs each delivery, so the request itself is the evidence |
 | `callback` | PayTR | Posts a form-encoded result per payment, signed with your merchant credentials |
-| `retrieve` | iyzico | Posts a bare token with **no signature**. backlex calls iyzico back with your API credentials to ask what the token means, and records that answer |
+| `retrieve` | iyzico, Klarna | Posts an unsigned body carrying nothing but a **handle** — iyzico a payment token, Klarna an HPP session id. backlex calls the provider back with your API credentials to ask what that handle means, and records the answer |
 
 **Whether there is a catalog to walk** decides whether [reconcile](#reconcile)
 is possible at all:
@@ -42,7 +42,7 @@ is possible at all:
 | Catalog | Providers | Behaviour |
 |---|---|---|
 | Yes | Stripe, Polar, Lemon Squeezy, Paddle | Customers, subscriptions, invoices and payments can be paged through, so backlex can backfill history and repair drift |
-| No | **Adyen**, **Authorize.net**, PayTR, iyzico, `dummy` | Each payment is reported as it happens and nothing is stored to page through. Reconcile is refused with a reason rather than reporting a sync that synced nothing |
+| No | **Adyen**, **Authorize.net**, **Klarna**, PayTR, iyzico, `dummy` | Each payment is reported as it happens, and there is no cursor to walk — Klarna's Order Management API is addressed one order id at a time. Reconcile is refused with a reason rather than reporting a sync that synced nothing |
 
 Adyen is why these are two tables rather than one. It signs its notifications
 exactly the way Stripe does, but it is an **acquirer** rather than a billing
@@ -86,6 +86,7 @@ Only the connection itself (`payment_providers`) and the delivery log
 | iyzico | **API key** and **secret key** from the merchant panel. They do not verify anything inbound; they authenticate the call backlex makes to confirm each payment. Set `environment: sandbox` for `sandbox-api.iyzipay.com` |
 | Adyen | **API key** (Customer Area → Developers → API credentials, with the Checkout role), the **merchant account** code, and the **HMAC key** generated alongside the webhook. On `environment: live` you also need the **live URL prefix** issued with the live credential — see [Adyen](#adyen-an-acquirer-not-a-billing-platform) |
 | Authorize.net | **API login ID**, **transaction key** and **signature key**, all from Account → Settings → Security Settings → API Credentials and Keys — the transaction key authenticates outbound calls, the signature key verifies inbound webhooks, and they are different values on the same page. Plus the **account currency**, because Authorize.net states none — see [Authorize.net](#authorizenet-the-notification-that-doesnt-say-enough) |
+| Klarna | **API username** and **password** from the Merchant Portal, plus the **region** and **environment** the credential was issued for and a default **purchase country**. Nothing inbound is signed; the credentials authenticate the read-back that confirms each payment — see [Klarna](#klarna-buy-now-pay-later-where-the-checkout-is-the-integration) |
 
 For Stripe a restricted key with **read** access to customers, subscriptions,
 invoices and charges is enough — backlex never writes to the provider.
@@ -302,7 +303,7 @@ assuming**: it is what was actually sent, and it is what will come back.
 
 | Mode | Providers | Behaviour |
 |---|---|---|
-| `adhoc` | Stripe, Adyen, Authorize.net, PayTR, iyzico, `dummy` | Hand it an amount and get a one-off checkout. This is the shape the templates need — an invoice total exists nowhere in the provider's catalog |
+| `adhoc` | Stripe, Adyen, Authorize.net, PayTR, iyzico, Klarna, `dummy` | Hand it an amount and get a one-off checkout. This is the shape the templates need — an invoice total exists nowhere in the provider's catalog |
 | `catalog` | Polar, Lemon Squeezy, Paddle | Checkouts are opened against a **pre-existing** product/price id, with no amount parameter. Not supported yet: a checkout call is refused with a `catalog_only` explanation naming what's missing, rather than failing in a way that reads like an outage |
 
 `GET /api/admin/payments/catalog` reports each provider's `checkoutMode`, so a
@@ -337,6 +338,13 @@ Per-provider requirements worth knowing before you wire one up:
   the one the account settles in (Authorize.net has no currency parameter, so
   charging in the account's own currency anyway would be a silent
   mispricing), and a reference longer than 20 characters.
+- **Klarna** — uses the **Hosted Payment Page**, and is the only provider that
+  takes two calls to open one (a payments session for the money, an HPP session
+  for the page). Amounts go out in minor units verbatim. It needs a **callback
+  URL** — Klarna has no dashboard webhook for HPP, so a checkout without one is
+  refused rather than minted as a link nothing is listening to — and a
+  **purchase country** Klarna sells in, taken from `customer.country` when that
+  is an alpha-2 code and from the connection otherwise.
 
 ### The `dummy` provider
 
@@ -771,3 +779,147 @@ per-request rather than from a panel setting). It is the same
 
 **Reconcile does not apply.** iyzico exposes no object catalog to page through,
 so `sync` is refused with a reason rather than reporting a clean empty sync.
+
+## Klarna: buy-now-pay-later, where the checkout *is* the integration
+
+Klarna is the second `retrieve` provider, and the first one where connecting it
+inbound-only would have been close to pointless. It is a BNPL product: its value
+is at the moment somebody is asked to pay, so a connection that could only watch
+payments backlex never initiated would be watching an empty room. Everything
+below assumes you are using it through
+[Asking for money](#asking-for-money).
+
+### Connecting
+
+| Field | Where it comes from |
+|---|---|
+| **API username** | Merchant Portal → Settings → Klarna API credentials. Looks like `PK12345_0a0a0a0a` |
+| **API password** | Generated with the username and shown once |
+| **Region** | `europe`, `north_america` or `oceania` |
+| **Environment** | `playground` or `production` |
+| **Default purchase country** | The market to sell in when a checkout carries no customer country |
+
+**Region is a deployment, not a routing hint.** Klarna runs one API per region
+(`api.klarna.com`, `api-na.klarna.com`, `api-oc.klarna.com`, each with a
+`playground` twin) and a credential authenticates against exactly one of them.
+Pointing a European credential at the North American host fails as a `401` that
+reads precisely like a wrong password.
+
+A connection that has not chosen defaults to the **playground**, the opposite of
+every other provider here. Klarna's credentials are region- *and*
+environment-scoped, so an unconfigured connection is far likelier to be a
+merchant mid-setup than a live account, and the cheaper way to be wrong is not
+to point it at production.
+
+**Purchase country is not a formality.** It decides which BNPL plans the
+consumer is offered, and Klarna refuses a market the merchant account is not
+enabled for — so the field is a dropdown of the countries Klarna sells in rather
+than a text box where a typo becomes a rejected checkout with a message about
+payment methods. A `customer.country` on the checkout call overrides it, but
+only when it really is an ISO-3166 alpha-2 code: that same field also accepts a
+country *name* for iyzico, and Klarna rejects one.
+
+### The checkout takes two calls
+
+Klarna is the only provider here whose hosted checkout is not a single request:
+
+1. **`POST /payments/v1/sessions`** — the money. A Klarna Payments session
+   carries the amount, currency, market and `merchant_reference1`.
+2. **`POST /hpp/v1/sessions`** — the page. It wraps session (1) in something
+   that has a URL, because a bare Klarna Payments session is meant to be
+   rendered by the merchant's own JavaScript widget and has no page to send
+   anybody to.
+
+Amounts go out in **minor units verbatim** — Klarna quotes the same unit the
+ledger stores, so unlike iyzico there is no conversion. backlex synthesises a
+single order line for the whole total, with tax reported as zero rather than
+guessed: it is handed a gross figure with no breakdown, and inventing a rate
+would put a wrong number on the consumer's Klarna statement.
+
+### `place_order_mode` is what makes it a payment
+
+The HPP session is opened with `options.place_order_mode: "CAPTURE_ORDER"`.
+
+Left at Klarna's default (`NONE`), the consumer is *authorised* and the merchant
+is then expected to place the order themselves using an authorization token.
+Nothing in backlex is listening for that, so the failure would be a quiet one:
+the customer sees a confirmation screen, the authorisation expires days later,
+and no money ever moves. `CAPTURE_ORDER` has Klarna place and capture the order —
+and it is also why the settlement carries an `order_id` for the amounts to be
+read off.
+
+### Settlement, and why the callback proves nothing
+
+Klarna reports to the `status_update` URL carried on the HPP session — there is
+no dashboard-configured webhook, so a checkout opened without a callback URL is
+refused rather than minted as a link nothing is listening to. The delivery looks
+like this, and it is **not signed**:
+
+```json
+{
+  "event_id": "270b2adc-…",
+  "session": { "session_id": "35bde117-…", "status": "COMPLETED", "updated_at": "…" }
+}
+```
+
+Klarna's own documentation tells merchants to put a one-time token in that URL,
+because there is nothing to verify. backlex therefore treats it exactly the way
+it treats iyzico's: **only the `session_id` is carried forward**, and the truth
+is fetched back over Basic auth —
+`GET /hpp/v1/sessions/<id>`, then `GET /ordermanagement/v1/orders/<order_id>`.
+
+- **Everything else in the POST is thrown away.** Posting a `captured_amount` of
+  your choosing records nothing.
+- **A session id that is not yours 404s**, and that is a verdict — refused, not
+  retried.
+- **The session id is validated before it is used.** Unlike iyzico's token,
+  which travels in a request body, Klarna's goes into a URL path that carries
+  your credentials — so a value with a separator in it would choose which
+  endpoint they are sent to. Anything that is not a plain id is refused. The
+  same check is applied to the `order_id` Klarna hands back, because that
+  decides the second URL.
+- **A completed session whose order cannot be read is a `500`.** We know a
+  payment happened and not what it was worth; filing it at a guessed figure is
+  worse than filing it a minute later off Klarna's retry.
+
+### Which deliveries write a row
+
+Klarna calls `status_update` on **every** transition, and most of them are not
+money:
+
+| Session status | Row written |
+|---|---|
+| `COMPLETED` (with an order) | The payment, from the order's own figures |
+| `IN_PROGRESS`, `FAILED`, `BACK`, `ERROR` | None — these are retryable; the consumer may still pay |
+| `CANCELLED`, `TIMEOUT`, `DISABLED` | None — an abandoned checkout is not a payment |
+
+Interim deliveries are acknowledged with a **`200`**. Answering `4xx` to a
+perfectly correct notification would show up as a failing endpoint in Klarna's
+dashboard. They are still recorded in the delivery log, which is where to look
+for "did anyone open it".
+
+Order status maps onto the ledger like this:
+
+| Klarna | `payment_transactions.status` |
+|---|---|
+| `CAPTURED`, `PART_CAPTURED` | `succeeded` |
+| `AUTHORIZED` | `pending` — the money is reserved, not taken |
+| `CANCELLED` | `canceled` |
+| `EXPIRED` | `failed` |
+| any, with `fraud_status: REJECTED` | `failed` |
+
+The recorded amount is `captured_amount` when there is one, falling back to
+`order_amount` — an authorised-not-captured order reports `captured_amount: 0`,
+and filing its full total as money received would overstate the ledger.
+`merchant_reference1` is what the checkout travelled out with, and it is what
+lands on `payment_transactions.reference`.
+
+**Refunds issued later do not push.** `status_update` fires on the HPP
+*session*, which is finished once the order is placed; a refund raised
+afterwards in the Merchant Portal changes the order and notifies nobody. With no
+object catalog there is no reconcile to catch it either, so treat the Merchant
+Portal as the source of truth for post-purchase changes.
+
+**Reconcile does not apply.** Klarna's Order Management API is addressed one
+`order_id` at a time and there is no endpoint that pages over an account, so
+`sync` is refused with a reason rather than reporting a clean empty sync.

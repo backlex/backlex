@@ -16,10 +16,10 @@
  *
  * `adhoc` — hand the provider an amount and it mints a one-off checkout.
  * Stripe (`price_data`), PayTR (`get-token`), iyzico
- * (`checkoutform/initialize`), Adyen (`paymentLinks`) and Authorize.net
- * (`getHostedPaymentPage`) all work this way, and it is the shape the templates
- * need: an invoice row carries an amount that exists nowhere in the provider's
- * catalog.
+ * (`checkoutform/initialize`), Adyen (`paymentLinks`), Authorize.net
+ * (`getHostedPaymentPage`) and Klarna (a payments session wrapped in a hosted
+ * page) all work this way, and it is the shape the templates need: an invoice
+ * row carries an amount that exists nowhere in the provider's catalog.
  *
  * `catalog` — Polar, Lemon Squeezy and Paddle mint a checkout against a
  * PRE-EXISTING product/price id. There is no amount parameter; you send a
@@ -33,8 +33,8 @@
  *
  * Without it this module is a URL generator. Our own row identifier travels out
  * with the checkout (Stripe `client_reference_id`, PayTR `merchant_oid`,
- * iyzico `conversationId`, Adyen `reference`) and comes back on the settlement
- * event, where
+ * iyzico `conversationId`, Adyen `reference`, Klarna `merchant_reference1`) and
+ * comes back on the settlement event, where
  * `./payments.ts` lifts it onto the payment record. That is what ties a
  * received payment to the invoice it paid.
  *
@@ -57,11 +57,14 @@ import {
   AUTHORIZENET_API_PATH,
   AUTHORIZENET_DEFAULT_CURRENCY,
   type FetchLike,
+  KLARNA_MARKETS,
   type PaymentProvider,
   authorizeNetErrorText,
   authorizeNetHost,
   authorizeNetOk,
   isPaymentProvider,
+  klarnaAuthHeader,
+  klarnaHost,
   parseAuthorizeNetJson,
   toMajorUnits,
 } from "./payments";
@@ -88,6 +91,9 @@ export const PAYMENT_CHECKOUT_MODES: Record<PaymentProvider, PaymentCheckoutMode
   // Accept Hosted takes a bare amount too, though it answers with a form token
   // rather than a link — see `authorizeNetCheckout` for what that costs.
   authorizenet: "adhoc",
+  // Klarna's Hosted Payment Page takes a bare order total. It is the one
+  // provider here that needs TWO calls to get there — see `klarnaCheckout`.
+  klarna: "adhoc",
   dummy: "adhoc",
   polar: "catalog",
   lemonsqueezy: "catalog",
@@ -133,6 +139,9 @@ export const CHECKOUT_REFERENCE_MAX: Record<PaymentProvider, number> = {
   iyzico: CHECKOUT_REFERENCE_DEFAULT_MAX,
   adyen: CHECKOUT_REFERENCE_DEFAULT_MAX,
   dummy: CHECKOUT_REFERENCE_DEFAULT_MAX,
+  // `merchant_reference1` accepts 255 characters and persists onto the order,
+  // so the default is nowhere near Klarna's ceiling.
+  klarna: CHECKOUT_REFERENCE_DEFAULT_MAX,
   polar: CHECKOUT_REFERENCE_DEFAULT_MAX,
   lemonsqueezy: CHECKOUT_REFERENCE_DEFAULT_MAX,
   paddle: CHECKOUT_REFERENCE_DEFAULT_MAX,
@@ -1031,6 +1040,241 @@ const authorizeNetCheckout = async (input: CheckoutInput): Promise<CheckoutResul
   };
 };
 
+// ── Klarna ──────────────────────────────────────────────────────────────────
+
+/**
+ * Klarna is the only checkout here that takes TWO calls.
+ *
+ *   1. `POST /payments/v1/sessions` — the money. A Klarna Payments session is
+ *      what carries the amount, the currency, the market and, crucially,
+ *      `merchant_reference1`, the one field that persists onto the resulting
+ *      order and comes back on the settlement.
+ *   2. `POST /hpp/v1/sessions` — the page. It wraps session (1) in something
+ *      with a URL, because a bare Klarna Payments session is meant to be
+ *      rendered by the merchant's own JavaScript widget and has no page of its
+ *      own to send anybody to.
+ *
+ * Skipping step 2 and shipping the widget would put a client-side SDK inside a
+ * backend product; skipping step 1 is not possible, because HPP has no amount
+ * parameter of its own — `payment_session_url` is where the money comes from.
+ *
+ * ## `place_order_mode` is what makes this a payment rather than a promise
+ *
+ * Left at its default (`NONE`), Klarna authorises the consumer and then waits
+ * for the merchant to place the order with the authorization token. Nobody is
+ * listening for that here, so the consumer would see a confirmation, the
+ * authorisation would expire days later, and no money would ever move.
+ * `CAPTURE_ORDER` has Klarna place AND capture it, which is what an invoice
+ * being paid actually means, and it is why the settlement carries an `order_id`
+ * for `retrieveKlarnaPayment` to read the amounts off.
+ */
+const KLARNA_PAYMENTS_SESSION_PATH = "/payments/v1/sessions";
+const KLARNA_HPP_SESSION_PATH = "/hpp/v1/sessions";
+
+/** Klarna's own bound on an HPP session: it will not hold one open past 7
+ *  days. Outside the range the value is dropped and Klarna's default applies,
+ *  which beats a 400 on a checkout that was otherwise fine. */
+const KLARNA_MIN_EXPIRY_SEC = 60;
+const KLARNA_MAX_EXPIRY_SEC = 7 * 24 * 60 * 60;
+
+/**
+ * Klarna wants a full BCP-47 tag (`en-GB`), not a bare language.
+ *
+ * A bare `en` is accepted by some markets and rejected by others, so the country
+ * is filled in from the purchase country rather than left to chance.
+ */
+const klarnaLocale = (locale: string | undefined, country: string): string => {
+  const given = String(locale ?? "").trim();
+  if (/^[A-Za-z]{2}-[A-Za-z]{2}$/.test(given)) return given;
+  if (/^[A-Za-z]{2}$/.test(given)) return `${given.toLowerCase()}-${country}`;
+  return `en-${country}`;
+};
+
+const klarnaCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {
+  const username = str(input.config.username);
+  const password = str(input.config.password);
+  if (!username || !password) {
+    return fail("missing_secret", "Klarna needs its API username and password to open a checkout");
+  }
+  // The customer's country wins when it is a real alpha-2 code — Klarna decides
+  // which payment methods to offer from it, and the connection's default is only
+  // a default. `CheckoutCustomer.country` also accepts a country NAME (iyzico
+  // wants one), which Klarna would reject, so it is only used when it is two
+  // letters.
+  const given = str(input.customer?.country);
+  const country = (
+    given && /^[A-Za-z]{2}$/.test(given) ? given : (str(input.config.purchaseCountry) ?? "")
+  ).toUpperCase();
+  if (!KLARNA_MARKETS.includes(country)) {
+    return fail(
+      "invalid_input",
+      country
+        ? `Klarna does not sell in "${country}" — set a purchase country the merchant account is enabled for`
+        : "Klarna needs a purchase country: set one on the connection or pass an ISO-3166 alpha-2 customer country",
+    );
+  }
+  if (!input.callbackUrl) {
+    // Klarna has no dashboard-configured webhook for HPP. The status callback
+    // travels WITH the session, so without it a completed payment would never
+    // be told to anybody — the same shape of failure PayTR and iyzico have.
+    return fail(
+      "invalid_input",
+      "Klarna needs a callback URL: its Hosted Payment Page reports settlement to " +
+        "a per-session `status_update` URL, not to a dashboard endpoint",
+    );
+  }
+
+  const host = klarnaHost(input.config);
+  const auth = klarnaAuthHeader(username, password);
+  const description = input.description || "Payment";
+  const currency = input.currency.toUpperCase();
+
+  // Klarna validates that `order_amount` equals the sum of the lines' totals, so
+  // the single synthesised line carries the whole amount. Tax is reported as
+  // zero rather than guessed: backlex is handed a gross total with no breakdown,
+  // and inventing a rate would put a wrong figure on the consumer's Klarna
+  // statement. Markets that require a breakdown will refuse the session, which
+  // is the honest outcome.
+  const orderLine = {
+    name: description,
+    quantity: 1,
+    unit_price: input.amount,
+    total_amount: input.amount,
+    total_tax_amount: 0,
+    tax_rate: 0,
+    quantity_unit: "pcs",
+    reference: input.reference,
+  };
+  const paymentsPayload: Record<string, unknown> = {
+    purchase_country: country,
+    purchase_currency: currency,
+    locale: klarnaLocale(input.locale, country),
+    // Minor units on both sides — no conversion, unlike iyzico.
+    order_amount: input.amount,
+    order_tax_amount: 0,
+    order_lines: [orderLine],
+    // The whole point: this is the only merchant identifier that survives onto
+    // the order and comes back on the settlement read.
+    merchant_reference1: input.reference,
+    billing_address: str(input.customer?.email)
+      ? {
+          email: str(input.customer?.email),
+          country,
+          ...(str(input.customer?.city) ? { city: str(input.customer?.city) } : {}),
+          ...(str(input.customer?.address) ? { street_address: str(input.customer?.address) } : {}),
+          ...(str(input.customer?.phone) ? { phone: str(input.customer?.phone) } : {}),
+        }
+      : undefined,
+  };
+  for (const k of Object.keys(paymentsPayload)) {
+    if (paymentsPayload[k] === undefined) delete paymentsPayload[k];
+  }
+
+  let sessionRes: Response;
+  try {
+    sessionRes = await doFetch(input)(`${host}${KLARNA_PAYMENTS_SESSION_PATH}`, {
+      method: "POST",
+      headers: { Authorization: auth, "Content-Type": "application/json" },
+      body: JSON.stringify(paymentsPayload),
+    });
+  } catch (e) {
+    return fail("unreachable", `Could not reach Klarna: ${(e as Error).message}`);
+  }
+  const sessionBody = await klarnaJson(sessionRes);
+  if (!sessionRes.ok) {
+    return fail("rejected", klarnaError(sessionBody, sessionRes.status, "payment session"));
+  }
+  const paymentSessionId = str(sessionBody?.session_id);
+  if (!paymentSessionId) {
+    return fail("rejected", "Klarna created a payment session with no session id");
+  }
+
+  // HPP is pointed at the payments session by URL rather than by id. It is
+  // built from the SAME host constant the session was created on — accepting
+  // one from the response would let Klarna's own answer decide where the next
+  // request goes, and the two must be the same deployment anyway.
+  const hppPayload: Record<string, unknown> = {
+    payment_session_url: `${host}${KLARNA_PAYMENTS_SESSION_PATH}/${paymentSessionId}`,
+    merchant_urls: {
+      success: input.successUrl,
+      cancel: input.cancelUrl ?? input.successUrl,
+      back: input.cancelUrl ?? input.successUrl,
+      failure: input.cancelUrl ?? input.successUrl,
+      error: input.cancelUrl ?? input.successUrl,
+      // Server-to-server, and the only one of these that is load-bearing: the
+      // browser redirects above are not guaranteed to happen at all if the
+      // consumer closes the window.
+      status_update: input.callbackUrl,
+    },
+    options: { place_order_mode: "CAPTURE_ORDER" },
+    expires_at: klarnaExpiry(input.nowMs ?? Date.now(), input.expiresInSec),
+  };
+  if (hppPayload.expires_at === undefined) delete hppPayload.expires_at;
+
+  let hppRes: Response;
+  try {
+    hppRes = await doFetch(input)(`${host}${KLARNA_HPP_SESSION_PATH}`, {
+      method: "POST",
+      headers: { Authorization: auth, "Content-Type": "application/json" },
+      body: JSON.stringify(hppPayload),
+    });
+  } catch (e) {
+    return fail("unreachable", `Could not reach Klarna: ${(e as Error).message}`);
+  }
+  const hppBody = await klarnaJson(hppRes);
+  if (!hppRes.ok) {
+    return fail("rejected", klarnaError(hppBody, hppRes.status, "hosted payment page"));
+  }
+
+  const url = str(hppBody?.redirect_url);
+  // The HPP session id, NOT the payments session id: it is what the status
+  // callback reports on and what `retrieveKlarnaPayment` reads back.
+  const id = str(hppBody?.session_id);
+  if (!url || !id) return fail("rejected", "Klarna returned a hosted page with no redirect URL");
+  const expiresAt = str(hppBody?.expires_at);
+  const parsedExpiry = expiresAt ? Date.parse(expiresAt) : Number.NaN;
+  return {
+    ok: true,
+    url,
+    externalId: id,
+    expiresAt: Number.isNaN(parsedExpiry) ? null : parsedExpiry,
+    reference: input.reference,
+  };
+};
+
+const klarnaJson = async (res: Response): Promise<Record<string, unknown> | null> => {
+  try {
+    const parsed = await res.json();
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Klarna's error envelope is `{ error_code, error_messages: [...],
+ * correlation_id }`. The correlation id is included because it is the only
+ * thing Klarna's support will act on.
+ */
+const klarnaError = (
+  body: Record<string, unknown> | null,
+  status: number,
+  what: string,
+): string => {
+  const messages = body?.error_messages;
+  const first = Array.isArray(messages) ? str(messages[0]) : null;
+  const code = str(body?.error_code);
+  const correlation = str(body?.correlation_id);
+  const detail = first ?? code ?? `HTTP ${status}`;
+  return `Klarna rejected the ${what}: ${detail}${correlation ? ` (correlation id ${correlation})` : ""}`;
+};
+
+const klarnaExpiry = (nowMs: number, expiresInSec: number | undefined): string | undefined => {
+  if (!expiresInSec) return undefined;
+  if (expiresInSec < KLARNA_MIN_EXPIRY_SEC || expiresInSec > KLARNA_MAX_EXPIRY_SEC) return undefined;
+  return new Date(nowMs + expiresInSec * 1000).toISOString();
+};
+
 // ── dummy ───────────────────────────────────────────────────────────────────
 
 /**
@@ -1170,6 +1414,8 @@ export async function createCheckout(
       return adyenCheckout(input);
     case "authorizenet":
       return authorizeNetCheckout(input);
+    case "klarna":
+      return klarnaCheckout(input);
     case "dummy":
       return dummyCheckout(input);
     default:

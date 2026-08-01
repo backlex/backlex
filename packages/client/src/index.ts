@@ -1327,8 +1327,8 @@ export interface PaymentsClient {
    * settlement as `payment_transactions.reference`, which is what ties the
    * money to the invoice. Amounts are MINOR units, matching the ledger.
    *
-   * Stripe, Adyen, Authorize.net, PayTR, iyzico and the test `dummy` provider
-   * take an ad-hoc amount. Polar, Lemon Squeezy and Paddle need a pre-made
+   * Stripe, Adyen, Authorize.net, PayTR, iyzico, Klarna and the test `dummy`
+   * provider take an ad-hoc amount. Polar, Lemon Squeezy and Paddle need a pre-made
    * price and are refused with a `catalog_only` explanation rather than a
    * confusing failure.
    *

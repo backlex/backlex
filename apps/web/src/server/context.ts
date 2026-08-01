@@ -13,6 +13,7 @@ import type {
   EmailAdapter,
   EmbeddingAdapter,
   ImageAdapter,
+  PdfAdapter,
   PushAdapter,
   SMSAdapter,
   StorageAdapter,
@@ -37,6 +38,8 @@ import { bunImage } from "./adapters/image.bun";
 import { cfEdgeImage } from "./adapters/image.cf";
 import { netlifyEdgeImage } from "./adapters/image.netlify";
 import { passthroughImage } from "./adapters/image.passthrough";
+import { cfBrowserPdf } from "./adapters/pdf.cf-browser";
+import { gotenbergPdf } from "./adapters/pdf.gotenberg";
 import { sharpImage } from "./adapters/image.sharp";
 import { wasmImage } from "./adapters/image.photon";
 import { fsStorage } from "./adapters/storage.fs";
@@ -142,12 +145,50 @@ export interface Ctx {
   /** Deployment-level vector-search readiness (store + per-model providers). */
   vectorCaps: VectorCapabilities;
   image: ImageAdapter;
+  /**
+   * HTML → PDF renderer, or `undefined` when none is configured.
+   *
+   * Undefined rather than a no-op fallback, like {@link Ctx.edgeImage}: there
+   * is no renderer that works everywhere without either a browser or a font
+   * problem, so callers check for it and refuse with a message naming the env
+   * vars. See `packages/core/src/adapters/pdf.ts`.
+   */
+  pdf?: PdfAdapter;
   /** URL-based edge transform backend (CF Image Resizing / Netlify Image
    *  CDN); undefined on runtimes without one. The serve path prefers it over
    *  `image` when the file is publicly reachable — no bytes through the
    *  runtime. */
   edgeImage?: EdgeImageAdapter;
 }
+
+/**
+ * Pick the PDF renderer, or none.
+ *
+ * Mirrors `selectEmailAdapter` / `selectSmsAdapter`: an explicit `PDF_PROVIDER`
+ * pins one and is REFUSED if its credentials are missing, rather than quietly
+ * falling through to the other — an operator who named a provider wants that
+ * provider, and a silent substitution is how a contract ends up rendered
+ * somewhere they did not intend.
+ */
+export const selectPdfAdapter = (env: Env): PdfAdapter | undefined => {
+  const cf =
+    env.PDF_CF_ACCOUNT_ID?.trim() && env.PDF_CF_API_TOKEN?.trim()
+      ? cfBrowserPdf(env.PDF_CF_ACCOUNT_ID.trim(), env.PDF_CF_API_TOKEN.trim())
+      : undefined;
+  const goten = env.PDF_GOTENBERG_URL?.trim()
+    ? gotenbergPdf(
+        env.PDF_GOTENBERG_URL.trim(),
+        env.PDF_GOTENBERG_USER?.trim() && env.PDF_GOTENBERG_PASS
+          ? { user: env.PDF_GOTENBERG_USER.trim(), pass: env.PDF_GOTENBERG_PASS }
+          : undefined,
+      )
+    : undefined;
+
+  const pinned = env.PDF_PROVIDER?.trim().toLowerCase();
+  if (pinned === "cf-browser" || pinned === "cloudflare") return cf;
+  if (pinned === "gotenberg") return goten;
+  return cf ?? goten;
+};
 
 // Memoize the assembled Ctx by Env reference. Workers reuse the same `env`
 // object across requests in the same isolate, so we can keep one Ctx alive —
@@ -817,6 +858,12 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
       ? netlifyEdgeImage()
       : undefined;
 
+  // PDF: an explicit `PDF_PROVIDER` wins; otherwise whichever has usable
+  // credentials, Cloudflare first because it needs no infrastructure. Left
+  // undefined when neither is configured — there is deliberately no fallback
+  // renderer (see the adapter contract for why).
+  const pdf = selectPdfAdapter(env);
+
   const ctx: Ctx = {
     env,
     dialect,
@@ -835,6 +882,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     embedding,
     vectorCaps,
     image,
+    pdf,
     edgeImage,
   };
   // Late-bind so the `onUserCreated` closure can publish events through the

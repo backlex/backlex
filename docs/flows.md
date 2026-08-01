@@ -61,11 +61,12 @@ are nested operation arrays run after the op succeeds / throws.
 | `type` | Does | Key fields |
 |---|---|---|
 | `log` | Writes a `[flow] …` line to the server log | `message` |
-| `email` | Sends a templated email (renders an `email_templates` row when `templateKey` is set, else uses `subject`/`html`/`text`). `ics` attaches a calendar invite — see below | `to`, `templateKey?`, `vars?`, `subject?`, `html?`, `text?`, `ics?` |
+| `email` | Sends a templated email (renders an `email_templates` row when `templateKey` is set, else uses `subject`/`html`/`text`). `attach` carries generated documents, `ics` a calendar invite — see below | `to`, `templateKey?`, `vars?`, `subject?`, `html?`, `text?`, `attach?`, `ics?` |
 | `notification` | Drops a row into the in-app `notifications` feed; `userId: null` broadcasts to admins. `push: true` also fans out to that user's devices | `title`, `body?`, `url?`, `userId?`, `push?` |
 | `push` | Sends a native push to a user's registered devices (no-op if none) | `title`, `body`, `userId`, `url?` |
 | `sms` | Sends an SMS through the workspace [SMS transport](/sms-messaging/). Addressed *either* by `to` (a number carried on the row) *or* by `userId` (a user's registered numbers) — exactly one, see below | `body`, `to?`, `userId?`, `from?` |
 | `payment.checkout` | Opens a hosted checkout with a connected [payment provider](/payments/) and optionally writes the link onto a row. Returns `{ url, reference, … }` into `{{ $last }}` | `amount` (minor units), `currency`, `provider?` \| `providerId?`, `email?`, `description?`, `successUrl?`, `writeBack?` |
+| `document.render` | Renders a [document template](/documents/) against the row and stores the PDF. Returns `{ key, filename, size }` into `{{ $last }}` | `templateKey?` \| `html?`, `vars?`, `filename?`, `writeBack?` |
 | `webhook` | Fires an outbound HTTP request, body JSON-encoded | `url`, `method?`, `headers?`, `body?` |
 | `request` | Like `webhook` but captures the parsed response into `{{ $last }}` for later ops | `url`, `method?`, `headers?`, `query?`, `body?`, `timeoutMs?` (≤60s) |
 | `function` | Invokes a saved [sandbox function](/sandbox/) by name | `name`, `input?` (defaults to `data`) |

@@ -40,6 +40,15 @@ export type Operation =
       html?: string;
       text?: string;
       /**
+       * Storage keys to attach, usually produced by an earlier
+       * `document.render` op (`attach: ["{{ $last.key }}"]`). Templated.
+       *
+       * Keys only — never a URL. A caller-supplied URL would make the mail
+       * sender fetch whatever it was pointed at and post the bytes onward,
+       * which is a request forgery with an email as the exfiltration channel.
+       */
+      attach?: string[];
+      /**
        * Attach a calendar invite.
        *
        * Eight of the schema templates model a scheduled thing, and this is the
@@ -77,6 +86,31 @@ export type Operation =
         method?: "REQUEST" | "PUBLISH" | "CANCEL";
         filename?: string;
       };
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
+  /**
+   * Render a stored HTML document template against the triggering row and put
+   * the PDF in storage.
+   *
+   * Fourteen of the schema templates carry documents — contracts, quotes,
+   * invoices, agreements — and this is what turns the row that holds one into
+   * the artefact somebody can sign or pay. The result lands on `{{ $last }}` as
+   * `{ key, filename, size, renderer }`, so the usual next step is an `email`
+   * op with `attach: ["{{ $last.key }}"]`.
+   */
+  | {
+      type: "document.render";
+      /** A stored template's key. Omit when passing `html`. */
+      templateKey?: string;
+      /** A complete HTML document, for a one-off that needs no stored template. */
+      html?: string;
+      /** Extra values on top of `data` / `$user` / `$last`. */
+      vars?: Record<string, unknown>;
+      /** Overrides the template's suggested name. Templated. */
+      filename?: string;
+      /** Write the stored key onto a row once it renders. */
+      writeBack?: { collection: string; id: string; field: string };
       onSuccess?: Operation[];
       onError?: Operation[];
     }
@@ -261,6 +295,7 @@ export const OPERATION_TYPES: OperationType[] = [
   "notification",
   "push",
   "sms",
+  "document.render",
   "payment.checkout",
   "function",
   "integration",
@@ -320,6 +355,7 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       subject: z.string().optional(),
       html: z.string().optional(),
       text: z.string().optional(),
+      attach: z.array(z.string().min(1).max(500)).max(5).optional(),
       ics: z
         .object({
           summary: z.string().min(1).max(300),
@@ -343,6 +379,28 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       onSuccess: z.array(OperationSchema).optional(),
       onError: z.array(OperationSchema).optional(),
     }),
+    z
+      .object({
+        type: z.literal("document.render"),
+        templateKey: z.string().min(1).max(200).optional(),
+        html: z.string().min(1).optional(),
+        vars: z.record(z.string(), z.unknown()).optional(),
+        filename: z.string().min(1).max(200).optional(),
+        writeBack: z
+          .object({
+            collection: z.string().min(1),
+            id: z.string().min(1),
+            field: z.string().min(1),
+          })
+          .optional(),
+        onSuccess: z.array(OperationSchema).optional(),
+        onError: z.array(OperationSchema).optional(),
+      })
+      // One source of HTML, not none and not both. Neither is a run that
+      // renders nothing; both is a template silently losing to an inline body.
+      .refine((op) => (op.templateKey == null) !== (op.html == null), {
+        message: "document.render needs exactly one of `templateKey` or `html`",
+      }),
     z.object({
       type: z.literal("transform"),
       value: z.unknown(),

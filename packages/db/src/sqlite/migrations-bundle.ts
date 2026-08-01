@@ -94,6 +94,7 @@ import m87 from "../../drizzle/sqlite/20260730150000_integration_oauth_states/mi
 import m88 from "../../drizzle/sqlite/20260730160000_integration_syncs/migration.sql" with { type: "text" };
 import m89 from "../../drizzle/sqlite/20260730180000_erasure_requests/migration.sql" with { type: "text" };
 import m90 from "../../drizzle/sqlite/20260730190000_integration_syncs_direction/migration.sql" with { type: "text" };
+import m91 from "../../drizzle/sqlite/20260801200000_document_templates/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -192,4 +193,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260730160000_integration_syncs", sql: m88 },
   { name: "20260730180000_erasure_requests", sql: m89 },
   { name: "20260730190000_integration_syncs_direction", sql: m90 },
+  { name: "20260801200000_document_templates", sql: m91 },
 ];

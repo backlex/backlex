@@ -1605,6 +1605,32 @@ export const emailTemplates = sqliteTable(
   (t) => [uniqueIndex("email_templates_tenant_key_idx").on(t.tenantId, t.key)],
 );
 
+export const documentTemplates = sqliteTable(
+  "document_templates",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** A COMPLETE html document, not a fragment — a contract sets its own
+     *  fonts, page size and print styles, and wrapping it would fight that. */
+    bodyHtml: text("body_html").notNull(),
+    /** Running header / footer, rendered by the browser on every page. */
+    headerHtml: text("header_html"),
+    footerHtml: text("footer_html"),
+    /** {@link PdfPageOptions} minus the two html fields above. */
+    pageOptions: text("page_options", { mode: "json" }).$type<Record<string, unknown>>(),
+    /** Suggested output name; templated like the body (`invoice-{{ data.no }}.pdf`). */
+    filename: text("filename"),
+    variables: text("variables", { mode: "json" }).$type<string[]>(),
+    updatedBy: text("updated_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [uniqueIndex("document_templates_tenant_key_idx").on(t.tenantId, t.key)],
+);
+
 export const i18nStrings = sqliteTable(
   "i18n_strings",
   {

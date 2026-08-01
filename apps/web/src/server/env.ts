@@ -304,6 +304,22 @@ export interface Env {
   // credentials is used (twilio → sns → netgsm → iletimerkezi), falling back to
   // `console`.
   SMS_PROVIDER?: string;
+  // ── PDF rendering (document generation) ────────────────────────────────
+  // `PDF_PROVIDER` pins one; otherwise the first with usable credentials wins
+  // (cf-browser → gotenberg). No fallback renderer exists on purpose — see the
+  // note in `packages/core/src/adapters/pdf.ts`; an unconfigured deployment
+  // refuses to render rather than producing a document with broken glyphs.
+  PDF_PROVIDER?: string;
+  // Cloudflare Browser Rendering, over its REST API (works from every runtime,
+  // not just Workers). The token needs the "Browser Rendering — Edit" scope.
+  PDF_CF_ACCOUNT_ID?: string;
+  PDF_CF_API_TOKEN?: string;
+  // Gotenberg — self-hosted Chromium behind HTTP. `PDF_GOTENBERG_URL` is the
+  // service root (e.g. http://gotenberg:3000); the basic-auth pair is optional
+  // and only needed if it sits behind one.
+  PDF_GOTENBERG_URL?: string;
+  PDF_GOTENBERG_USER?: string;
+  PDF_GOTENBERG_PASS?: string;
   // Twilio Programmable Messaging — `TWILIO_FROM` is an E.164 number or approved
   // alphanumeric sender id; alternatively set `TWILIO_MESSAGING_SERVICE_SID`
   // (MGxxxx) to use a Messaging Service sender pool.
@@ -609,6 +625,12 @@ export const STRING_ENV_KEYS = [
   "WEBPUSH_SUBJECT",
   "WEBPUSH_VAPID_PUBLIC_KEY",
   "WEBPUSH_VAPID_PRIVATE_KEY",
+  "PDF_PROVIDER",
+  "PDF_CF_ACCOUNT_ID",
+  "PDF_CF_API_TOKEN",
+  "PDF_GOTENBERG_URL",
+  "PDF_GOTENBERG_USER",
+  "PDF_GOTENBERG_PASS",
   "SMS_PROVIDER",
   "TWILIO_ACCOUNT_SID",
   "TWILIO_AUTH_TOKEN",

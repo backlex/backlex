@@ -7,6 +7,7 @@ import type { AuthSubject, Condition, EmailAttachment, Operation } from "@backle
 import type { Ctx } from "../context";
 import { runFunction } from "./sandbox";
 import { sendTemplatedEmail } from "./email";
+import { renderDocument } from "./documents";
 import { sendPushToUsers } from "./push";
 import { sendSmsToNumbers, sendSmsToUsers } from "./sms";
 import { deliverIntegrationByKind } from "./integrations";
@@ -203,6 +204,60 @@ const buildInvite = (
   };
 };
 
+/**
+ * Collect an `email` op's attachments: stored objects plus an optional invite.
+ *
+ * `attach` carries STORAGE KEYS, never URLs, and this is the enforcement rather
+ * than a convention. A key is looked up in the deployment's own storage; a URL
+ * would turn the mail path into a fetcher that posts whatever it was pointed at
+ * to an address the same flow chose — request forgery with the mail as the
+ * exfiltration channel. The key is also prefix-checked, so a flow cannot mail
+ * out an arbitrary uploaded object by guessing its path.
+ */
+const emailAttachments = async (
+  op: Extract<Operation, { type: "email" }>,
+  ctx: RunCtx,
+  recipient: string,
+): Promise<{ attachments?: EmailAttachment[] }> => {
+  const out: EmailAttachment[] = [];
+  // Scoped to THIS workspace's own documents, not just to the prefix. Storage
+  // is one namespace across every tenant, so `documents/` alone would let a
+  // flow in one workspace mail out another's contract given its key — and a
+  // key can travel in through the row a flow reads.
+  const prefix = `documents/${ctx.authSubject.tenantId ?? "shared"}/`;
+  for (const raw of op.attach ?? []) {
+    const key = String(interpolate(raw, ctx) ?? "").trim();
+    if (!key) throw new FlowOpError(`email attachment "${raw}" rendered empty`);
+    if (!key.startsWith(prefix)) {
+      // Only what a `document.render` op produced FOR THIS WORKSPACE. Anything
+      // else is a user upload this flow was never handed, or another
+      // workspace's document.
+      throw new FlowOpError(`email attachment "${raw}" is not a generated document`);
+    }
+    const object = await ctx.ctx.storage.get(key);
+    if (!object) throw new FlowOpError(`email attachment "${key}" is not in storage`);
+    const bytes = new Uint8Array(await new Response(object.body).arrayBuffer());
+    out.push({
+      filename: key.split("/").pop() || "document.pdf",
+      content: toBase64(bytes),
+      contentType: object.meta.contentType ?? "application/pdf",
+    });
+  }
+  if (op.ics) out.push(buildInvite(op.ics, ctx, recipient));
+  return out.length > 0 ? { attachments: out } : {};
+};
+
+/** Chunked so a multi-megabyte document does not blow the argument limit the
+ *  spread form of `String.fromCharCode` has. */
+const toBase64 = (bytes: Uint8Array): string => {
+  let bin = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(bin);
+};
+
 const parseWhen = (rendered: string, template: string, field: string): Date => {
   const ms = Date.parse(rendered);
   const asNumber = Number(rendered);
@@ -294,9 +349,70 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
         html: op.html,
         text: op.text,
       },
-      ...(op.ics ? { attachments: [buildInvite(op.ics, ctx, to)] } : {}),
+      ...(await emailAttachments(op, ctx, to)),
     });
     return result;
+  }
+
+  if (op.type === "document.render") {
+    const tenantId = ctx.authSubject.tenantId ?? null;
+    const vars: Record<string, unknown> = {
+      data: ctx.data,
+      $user: {
+        id: ctx.authSubject.userId,
+        email: ctx.authSubject.email,
+        roles: ctx.authSubject.roles,
+      },
+      $last: ctx.last,
+      ...(op.vars ? (interpolate(op.vars, ctx) as Record<string, unknown>) : {}),
+    };
+    let rendered: Awaited<ReturnType<typeof renderDocument>>;
+    try {
+      rendered = await renderDocument(ctx.ctx, tenantId, {
+        ...(op.templateKey ? { templateKey: op.templateKey } : {}),
+        ...(op.html ? { html: op.html } : {}),
+        vars,
+        ...(op.filename ? { filename: interpolate(op.filename, ctx) as string } : {}),
+      });
+    } catch (e) {
+      throw new FlowOpError(`document.render failed: ${(e as Error).message}`);
+    }
+
+    // Stored under a tenant-prefixed, RANDOM key. Not derived from the
+    // filename: two invoices called `invoice.pdf` would otherwise overwrite
+    // each other, and a filename comes from row data, so deriving the object
+    // path from it lets a row decide where it lands.
+    const key = `documents/${tenantId ?? "shared"}/${crypto.randomUUID()}/${rendered.filename}`;
+    const stored = await ctx.ctx.storage.put({
+      key,
+      body: rendered.bytes,
+      contentType: rendered.contentType,
+    });
+
+    if (op.writeBack) {
+      const rowId = String(interpolate(op.writeBack.id, ctx) ?? "").trim();
+      if (!rowId) {
+        throw new FlowOpError(`document.render writeBack id "${op.writeBack.id}" rendered empty`);
+      }
+      if (!tenantId) {
+        // The write is tenant-scoped; without one it would have to guess which
+        // workspace's row to patch.
+        throw new FlowOpError("document.render writeBack requires a workspace-bound run");
+      }
+      await updateItem(ctx.ctx, {
+        slug: op.writeBack.collection,
+        tenantId,
+        id: rowId,
+        data: { [op.writeBack.field]: key },
+      });
+    }
+
+    return {
+      key,
+      filename: rendered.filename,
+      size: stored.size,
+      renderer: rendered.renderer,
+    };
   }
 
   if (op.type === "transform") {

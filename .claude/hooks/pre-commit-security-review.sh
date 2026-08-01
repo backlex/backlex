@@ -40,7 +40,9 @@ reason='Security review gate: this diff has not been security-reviewed yet.
 
 Review the FULL diff about to be committed (`git diff --cached` plus any unstaged changes, or run /security-review) before committing. Look for the classes that have actually shipped in this repo: cross-tenant leakage (missing tenant scoping in a query), fail-open auth/permission arms, path traversal, stored XSS, secrets or tokens in logs/responses, and raw SQL built from user input.
 
-Then re-run the exact same commit command — this gate fires once per distinct diff, so the retry will go through. If the review turns up problems, fix them first (that changes the diff, and the new diff gets gated once more).'
+Then re-run the exact same commit command — this gate fires once per distinct diff, so the retry will go through. If the review turns up problems, fix them first (that changes the diff, and the new diff gets gated once more).
+
+NOTE: this denial drops the WHOLE command, so anything chained ahead of the commit never ran either. If you used `git add … && git commit …`, nothing is staged now and the retry will fail with "no changes added to commit". Stage in a separate call, then commit on its own.'
 
 jq -n --arg reason "$reason" '{
   hookSpecificOutput: {

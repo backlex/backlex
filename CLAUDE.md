@@ -87,9 +87,16 @@ git push origin main
 
 # 5. Confirm the test gate started (Actions)
 gh run list --workflow test.yml --limit 1
+
+# 6. After the gate is green, prove WHICH bundle is live
+bun scripts/verify-deploy.ts --marker <string-only-in-this-commit> --wait 600
 ```
 
-After pushing, report the test.yml run URL back to the user. The actual Worker deploy runs in **Cloudflare dashboard → Workers & Pages → backlex-admin → Deployments** (not visible to `gh`). Don't claim "deployed" until both are green — `gh run watch` confirms the gate; the CF dashboard (or `wrangler deployments list`) confirms the deploy.
+**`git push` runs the full pre-push suite (~5-6 min): lint + typecheck + `bun test` + `build:targets`.** Give the command a generous timeout — never `--no-verify`.
+
+After pushing, report the test.yml run URL back to the user. Don't claim "deployed" until both are green — `gh run watch` confirms the gate, and `scripts/verify-deploy.ts` confirms the deploy.
+
+**Do not use `wrangler deployments list` to confirm a deploy.** It is stale for Workers Builds deploys (the native git integration this repo uses) and will show a days-old deployment while the new bundle is already serving. `scripts/verify-deploy.ts` checks behaviourally instead: it probes `/health` (**not** `/api/health`, which is a 404 that reads exactly like "deploy hasn't landed"), walks the entry chunks *and the lazy chunks they reference* (admin pages are lazy — grepping `index.html`'s chunks alone finds nothing), and fails if a marker you know is new is absent. Pick a marker that exists only in the commit just shipped: a new provider id, a brand hex, a fresh route path.
 
 **After the deploy run goes green**, smoke-test the change against the live URL with the puppeteer MCP server (`mcp__puppeteer__puppeteer_*` tools). The default target is the production deploy unless the user names a specific URL. Drive the relevant flow end-to-end (sign in, exercise the feature touched by this branch, watch for console/network errors via `puppeteer_evaluate`) and screenshot the result. Report what you tested and what you saw — don't call it shipped without that pass.
 

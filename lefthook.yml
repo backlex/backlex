@@ -2,22 +2,26 @@
 # script invokes `lefthook install` automatically). After that every commit
 # routes through these checks.
 #
-# Why both biome and tsc:
-#   - Biome catches lint-level issues fast (~200ms) — incremental on the
-#     staged file list, so single-file commits are nearly free.
-#   - `bun run typecheck` is a slower whole-repo pass but cheap relative to
-#     a CI round-trip, and is the only way to surface dual-dialect type
-#     drift before push. Skip with `git commit --no-verify` only when the
-#     hook is the actual blocker (failing CI for an unrelated reason).
+# Biome only, and deliberately so: it is incremental on the staged file list,
+# so a commit costs ~200ms.
+#
+# `bun run typecheck` USED to run here as well. It was removed because it was
+# strictly redundant — it ignored {staged_files} and typechecked the whole repo
+# (~145s), which is the same job pre-push already runs before anything can
+# reach a remote. So it bought "know 145 seconds sooner" and charged that on
+# every single commit, including doc-only and test-only ones.
+#
+# It also had a concrete failure mode: 145s exceeds the default command timeout
+# of most tooling (including agent shells), so `git commit` would be killed
+# mid-hook and the commit silently would not land. Type errors are still caught
+# before they can leave the machine — pre-push runs typecheck, and test.yml
+# runs it again in CI.
 pre-commit:
   parallel: true
   jobs:
     - name: biome-lint
       glob: "*.{ts,tsx,js,jsx,json}"
       run: bunx --bun biome lint --no-errors-on-unmatched {staged_files}
-    - name: typecheck
-      glob: "*.{ts,tsx}"
-      run: bun run typecheck
     # Catches "added a migration but forgot to regenerate the bundle". The
     # generator is idempotent, so if the staged tree already has the
     # right bundles this is a no-op; otherwise the diff fails the hook.

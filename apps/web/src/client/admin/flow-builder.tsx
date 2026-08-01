@@ -1,5 +1,6 @@
 // Flow builder — detailed editor opened from Flows page
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { Badge, Button, IconButton, Switch } from "./ui";
@@ -230,7 +231,19 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
     setDrag({ id: n.id, dx: px - n.x, dy: py - n.y });
   };
 
-  return (
+  // Portalled to `document.body`, and it has to be.
+  //
+  // `.page` carries `view-transition-name: main-pane` (admin.css) so only the
+  // content area animates on navigation — and a named view-transition element
+  // creates a STACKING CONTEXT. Rendered in place, this overlay's `z-index: 60`
+  // therefore competes only inside `.page`, which itself sits below the app
+  // sidebar's `z-10` in the root context: the sidebar painted straight through
+  // the builder. Raising the z-index cannot fix that, because the number is
+  // being compared against the wrong siblings. The portal moves the whole
+  // subtree — builder, step palette and test panel all live inside it — out to
+  // the root stacking context, which is where a full-screen overlay belongs
+  // anyway (it is what Radix's Dialog does).
+  return createPortal(
     <div className="fb-overlay">
       <div className="fb-shell">
         <div className="fb-header">
@@ -420,7 +433,8 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
 
       {paletteOpen && <NodePalette onSelect={addNodeFromPalette} onClose={() => { setPaletteOpen(false); setPaletteFor(null); }} branch={paletteFor?.branch} />}
       {testOpen && <TestRunPanel name={name} nodes={nodes} edges={edges} onClose={() => setTestOpen(false)} />}
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -127,7 +127,9 @@ row, and that value is customer data.
 **Transports.** Every self-hosted transport carries the file (Resend, SendGrid,
 Mailgun, SES, SMTP, console). The **managed-cloud** gateway does not yet: there
 the mail is still sent and the result carries `attachmentsDropped: true`, so the
-run says the invite did not travel rather than leaving the recipient to find out.
+run says the invite did not travel rather than leaving the recipient to find
+out. Nothing is silently lost either way — the flag is what the running
+transport actually does, not what it intends to.
 
 ### Who an `sms` op texts
 

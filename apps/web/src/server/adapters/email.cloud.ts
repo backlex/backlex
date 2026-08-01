@@ -20,14 +20,16 @@ export function cloudEmailAdapter(env: Env): EmailAdapter {
     /**
      * Declared UNSUPPORTED, and the field is forwarded anyway.
      *
-     * The gateway lives in the control-plane repo and does not yet accept
-     * attachments, so a `.ics` sent through here would be dropped between two
+     * A `.ics` sent through here would otherwise be dropped between two
      * services that both reported success — the exact failure this flag exists
      * to name. Saying so lets the caller tell the operator the invite did not
      * travel, instead of the recipient finding out.
      *
-     * Forwarded regardless so that the day the gateway learns the field, only
-     * this line changes.
+     * **The gateway side is written and waiting** on
+     * `feat/gateway-email-attachments` in the control-plane repo. Flip this to
+     * `true` once that branch is merged and DEPLOYED — not when it is merged.
+     * Until the running gateway accepts the field, `true` here is a claim the
+     * live system does not honour, which is worse than the current answer.
      */
     attachments: false,
     async send(msg: EmailMessage): Promise<void> {

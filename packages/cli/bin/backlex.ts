@@ -23,6 +23,7 @@ import { runPayments } from "../src/payments";
 import { runWebhooks } from "../src/webhooks";
 import { runIntegrations } from "../src/integrations";
 import { runSyncHooks } from "../src/sync-hooks";
+import { runDocuments } from "../src/documents";
 import { runJobs } from "../src/jobs";
 import { runMessaging } from "../src/messaging";
 import { runAdvisor } from "../src/advisor";
@@ -130,6 +131,7 @@ Usage:
       Outbound webhooks + delivery ops. \`resume\` re-enables an auto-disabled hook.
 
   backlex sync-hooks <list|create|update|test|delete>
+  backlex documents <list|save|delete|render>
       Services that run BEFORE a write and decide whether it happens.
       \`--on-error\` is required on create and has no safe default.
 
@@ -307,6 +309,10 @@ const run = async () => {
     case "sync-hooks":
     case "sync-hook":
       await runSyncHooks(rest);
+      return;
+    case "documents":
+    case "document":
+      await runDocuments(rest);
       return;
     case "payments":
     case "payment":

@@ -100,6 +100,10 @@ msgstr "… and {0} more"
 msgid "…or a custom code (e.g. zh-Hant)"
 msgstr "…or a custom code (e.g. zh-Hant)"
 
+#: src/client/admin/parity/documents.tsx
+msgid "· approximate — use Render PDF for the real thing"
+msgstr "· approximate — use Render PDF for the real thing"
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "· keep last"
 msgstr "· keep last"
@@ -134,6 +138,7 @@ msgstr "\"New post\" buttons, etc. Falls back to the slug."
 msgid "(item)"
 msgstr "(item)"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "(new template)"
 msgstr "(new template)"
@@ -183,6 +188,7 @@ msgstr "(none)"
 msgid "(not set)"
 msgstr "(not set)"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "(unnamed)"
 msgstr "(unnamed)"
@@ -1025,6 +1031,10 @@ msgstr "A single value — counter fits best; sparkline / bars need multiple row
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A teammate is running a turn…"
 #~ msgstr "A teammate is running a turn…"
+
+#: src/client/admin/parity/documents.tsx
+msgid "A template needs a key."
+msgstr "A template needs a key."
 
 #: src/client/admin/parity/email-templates.tsx
 msgid "A template with key \"{trimmedKey}\" already exists."
@@ -2403,6 +2413,7 @@ msgstr "Blocks sign-in and drops all active sessions immediately."
 msgid "Body"
 msgstr "Body"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Body (HTML)"
 msgstr "Body (HTML)"
@@ -4281,6 +4292,10 @@ msgstr "Delete source?"
 msgid "Delete submission"
 msgstr "Delete submission"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Delete template"
+msgstr "Delete template"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Delete this collection"
 msgstr "Delete this collection"
@@ -4572,6 +4587,15 @@ msgstr "Do nothing"
 msgid "Docs"
 msgstr "Docs"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Document preview"
+msgstr "Document preview"
+
+#: src/client/admin/parity/documents.tsx
+#: src/client/admin/ui.tsx
+msgid "Document templates"
+msgstr "Document templates"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Documents"
 msgstr "Documents"
@@ -4664,6 +4688,10 @@ msgstr "Drag to reorder"
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to resize"
 msgstr "Drag to resize"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Drawn on every page by the renderer, not in the preview."
+msgstr "Drawn on every page by the renderer, not in the preview."
 
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
@@ -4918,6 +4946,7 @@ msgstr "Editing a <0>published</0> item stages the change instead of updating wh
 msgid "editor"
 msgstr "editor"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Editor"
 msgstr "Editor"
@@ -5815,6 +5844,10 @@ msgstr "Fill in a start to attach one. Reaches every calendar app — nothing to
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Fill the required fields."
 msgstr "Fill the required fields."
+
+#: src/client/admin/parity/documents.tsx
+msgid "Fills the preview and the test render. The row arrives as `data`."
+msgstr "Fills the preview and the test render. The row arrives as `data`."
 
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Fills the public key + private key fields above with a fresh VAPID pair. Click Save to store it."
@@ -6941,6 +6974,14 @@ msgstr "Invites are valid for 7 days. Ask an admin to send a new one."
 msgid "invocations · p95"
 msgstr "invocations · p95"
 
+#: src/client/admin/parity/documents.tsx
+msgid "invoice"
+msgstr "invoice"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Invoice"
+msgstr "Invoice"
+
 #: src/client/admin/pages/payments.tsx
 msgid "Invoice INV-42"
 msgstr "Invoice INV-42"
@@ -7147,6 +7188,7 @@ msgstr "key"
 
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings/index.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/storage/index.tsx
@@ -7230,6 +7272,10 @@ msgstr "Label shown in the item form. Falls back to the column name."
 #: src/client/admin/flow-builder.tsx
 msgid "Lands in {pending}"
 msgstr "Lands in {pending}"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Landscape"
+msgstr "Landscape"
 
 #: src/client/admin/pages/forms.tsx
 msgid "language"
@@ -8287,6 +8333,7 @@ msgstr "My theme"
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -8518,6 +8565,7 @@ msgstr "New step"
 msgid "New sync hook"
 msgstr "New sync hook"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "New template"
 msgstr "New template"
@@ -9244,6 +9292,7 @@ msgstr "No templates available."
 msgid "No templates match your search."
 msgstr "No templates match your search."
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "No templates yet — use \"New template\" to add one."
 msgstr "No templates yet — use \"New template\" to add one."
@@ -9796,6 +9845,10 @@ msgstr "Organiser email"
 msgid "Organizations"
 msgstr "Organizations"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Orientation"
+msgstr "Orientation"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Original"
 msgstr "Original"
@@ -9811,6 +9864,10 @@ msgstr "Outgoing HTTP on collection events. Failed deliveries retry with exponen
 #: src/client/admin/pages/webhooks.tsx
 msgid "Outgoing webhook deliveries will show up here once a collection event fires."
 msgstr "Outgoing webhook deliveries will show up here once a collection event fires."
+
+#: src/client/admin/parity/documents.tsx
+msgid "Output filename"
+msgstr "Output filename"
 
 #. placeholder {0}: over.join(", ")
 #: src/client/admin/pages/usage.tsx
@@ -9882,6 +9939,14 @@ msgstr "p95 latency"
 #: src/client/admin/app.tsx
 #~ msgid "page {page} / {totalPages}"
 #~ msgstr "page {page} / {totalPages}"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Page footer (HTML)"
+msgstr "Page footer (HTML)"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Page size"
+msgstr "Page size"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Page titles, badges. Falls back to the slug."
@@ -10539,6 +10604,10 @@ msgstr "Policy"
 msgid "Policy URL"
 msgstr "Policy URL"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Portrait"
+msgstr "Portrait"
+
 #. placeholder {0}: (nu.title ?? "").slice(0, 38)
 #. placeholder {1}: (nu.title ?? "").length > 38 ? "…" : ""
 #: src/client/admin/app.tsx
@@ -10608,6 +10677,7 @@ msgstr "preview"
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/item-form.tsx
 #: src/client/admin/pages/erasure-card.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Preview"
 msgstr "Preview"
@@ -11453,9 +11523,21 @@ msgstr "Renamed to c_{nextSlug}{0}."
 msgid "Renaming…"
 msgstr "Renaming…"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Render PDF"
+msgstr "Render PDF"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Rendered to PDF from a complete HTML document. Values interpolate with <0>{rowExample}</0> against the row."
+msgstr "Rendered to PDF from a complete HTML document. Values interpolate with <0>{rowExample}</0> against the row."
+
 #: src/client/admin/field-format-editor.tsx
 msgid "rendering only — never affects storage or sorting"
 msgstr "rendering only — never affects storage or sorting"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Rendering…"
+msgstr "Rendering…"
 
 #: src/client/admin/pages/analytics.tsx
 msgid "Reopen"
@@ -12000,6 +12082,10 @@ msgstr "Rows carry a <0>tenant_id</0>. Disabling on an existing collection is un
 msgid "Rows created by {r} must match this rule."
 msgstr "Rows created by {r} must match this rule."
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "rows in"
+msgstr "rows in"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Rows in collection"
 msgstr "Rows in collection"
@@ -12016,6 +12102,10 @@ msgstr "rows live in <0>{0}</0>"
 #: src/client/admin/condition-editor.tsx
 msgid "Rows matching this rule are visible to {r}."
 msgstr "Rows matching this rule are visible to {r}."
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "rows out"
+msgstr "rows out"
 
 #: src/client/admin/pages/search-playground.tsx
 msgid "RRF fusion of both"
@@ -12148,6 +12238,14 @@ msgstr "SAML 2.0 SSO"
 msgid "SAML 2.0 SSO — workspace end-users."
 msgstr "SAML 2.0 SSO — workspace end-users."
 
+#: src/client/admin/parity/documents.tsx
+msgid "Sample data"
+msgstr "Sample data"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Sample data must be valid JSON."
+msgstr "Sample data must be valid JSON."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Sample event payload"
 msgstr "Sample event payload"
@@ -12209,6 +12307,7 @@ msgstr "Sat"
 #: src/client/admin/pages/usage.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/database.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
@@ -12304,6 +12403,10 @@ msgstr "Save source"
 msgid "Save the current live schema as an immutable checkpoint."
 msgstr "Save the current live schema as an immutable checkpoint."
 
+#: src/client/admin/parity/documents.tsx
+msgid "Save the template before rendering."
+msgstr "Save the template before rendering."
+
 #: src/client/admin/parity/email-templates.tsx
 msgid "Save the template before sending a test."
 msgstr "Save the template before sending a test."
@@ -12353,6 +12456,7 @@ msgstr "saving…"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/parity/translations.tsx
@@ -13049,6 +13153,10 @@ msgstr "Share the public link — rows land here (and in the collection) as they
 #: src/client/admin/item-collaboration.tsx
 msgid "share this record"
 msgstr "share this record"
+
+#: src/client/admin/parity/documents.tsx
+msgid "shared"
+msgstr "shared"
 
 #: src/client/admin/pages/usage.tsx
 msgid "shared global budget"
@@ -14059,6 +14167,11 @@ msgstr "Teams inside this workspace — the customer accounts your end-users bel
 msgid "Template"
 msgstr "Template"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Template deleted."
+msgstr "Template deleted."
+
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Template saved."
 msgstr "Template saved."
@@ -14458,6 +14571,10 @@ msgstr "This invite link is invalid or has already been used."
 #: src/client/pages/invite.tsx
 msgid "This invite to {0} has expired."
 msgstr "This invite to {0} has expired."
+
+#: src/client/admin/parity/documents.tsx
+msgid "This is a shared default. Saving creates a copy for this workspace and leaves the shared one untouched."
+msgstr "This is a shared default. Saving creates a copy for this workspace and leaves the shared one untouched."
 
 #: src/client/admin/parity/revisions.tsx
 msgid "This is already the current state"
@@ -15093,6 +15210,7 @@ msgstr "unrestricted"
 msgid "Unrestricted — no row filter applies."
 msgstr "Unrestricted — no row filter applies."
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "unsaved"

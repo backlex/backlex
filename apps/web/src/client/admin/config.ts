@@ -198,6 +198,7 @@ export const NAV_SETTINGS: NavItem[] = [
   { id: "app-orgs", icon: "Building" },
   { id: "api-keys", icon: "Code" },
   { id: "email-templates", icon: "Mail" },
+  { id: "documents", icon: "ScrollText" },
   { id: "settings", icon: "Settings" },
 ];
 

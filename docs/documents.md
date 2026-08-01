@@ -164,9 +164,24 @@ Five files per message. See [Flows](/flows/) for the calendar-invite sibling,
 
 ## Surfaces
 
-REST today (`/api/admin/documents`), admin-only throughout — a template is
-interpolated and handed to a browser, so authoring one is the same trust level
-as authoring a flow, not a content-editor permission.
+Admin-only throughout — a template is interpolated and handed to a browser, so
+authoring one is the same trust level as authoring a flow, not a content-editor
+permission. Every surface funnels through one service, so the workspace-override
+rule and the no-renderer refusal hold identically on all of them.
 
-The SDK, GraphQL, MCP and CLI surfaces plus the admin editor page are the next
-slice; the flow op already reaches every surface that runs flows.
+| Surface | |
+|---|---|
+| **REST** | `GET/PUT/DELETE /api/admin/documents/templates[/:key]`, `POST /api/admin/documents/render` (returns the PDF) |
+| **SDK** | `client.documents.list / save / delete / render` — `render` resolves to `Uint8Array` |
+| **GraphQL** | `documentTemplates`, `saveDocumentTemplate`, `deleteDocumentTemplate`, `renderDocument` (base64, since GraphQL has no byte type) |
+| **MCP** | `documents.templates_list / _save / _delete`, `documents.render` |
+| **CLI** | `backlex documents <list\|save\|delete\|render>` |
+| **Admin** | *Document templates* under Settings — editor, live HTML preview, and a **Render PDF** button that produces the real thing |
+
+`documents.render` over MCP returns the metadata and a byte count, **not** the
+bytes: base64 in a tool result fills an agent's context window for no benefit.
+Use the flow op or the SDK when the file has to go somewhere.
+
+The admin preview is an **approximation** — page breaks, running headers and
+margins exist only in the renderer, so *Render PDF* is what tells you whether a
+template actually works.

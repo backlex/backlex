@@ -1,7 +1,7 @@
 import type { VectorStore } from "@backlex/core";
 // Lightweight typed client for the admin pages. Wraps the shared `api()`
 // helper so the rest of the admin module only sees domain-shaped payloads.
-import { api } from "@/lib/api";
+import { api, API_BASE, captureBookmark, sessionHeaders } from "@/lib/api";
 
 export interface ApiTenant {
   id: string;
@@ -201,6 +201,28 @@ export interface ApiEmailTemplate {
   bodyHtml: string;
   bodyText: string | null;
   variables: string[] | null;
+}
+
+export interface ApiDocumentTemplate {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  /** A COMPLETE html document, not a fragment. */
+  bodyHtml: string;
+  headerHtml: string | null;
+  footerHtml: string | null;
+  pageOptions: {
+    format?: "A4" | "Letter" | "Legal" | "A3" | "A5";
+    landscape?: boolean;
+    margin?: string;
+    printBackground?: boolean;
+  };
+  filename: string | null;
+  variables: string[] | null;
+  /** An instance-wide default this workspace has not overridden. Saving one
+   *  creates the override; it never changes the shared row. */
+  inherited: boolean;
 }
 
 export interface ApiFunction {
@@ -1097,6 +1119,34 @@ export const schemaVersionsApi = {
       method: "POST",
       body: JSON.stringify({ target, confirmDestructive }),
     }),
+};
+
+export const documentsApi = {
+  list: () => api<Envelope<ApiDocumentTemplate[]>>(`/api/admin/documents/templates`),
+  save: (key: string, body: Partial<ApiDocumentTemplate>) =>
+    api<Envelope<ApiDocumentTemplate>>(`/api/admin/documents/templates/${encodeURIComponent(key)}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  remove: (key: string) =>
+    api<{ ok: true }>(`/api/admin/documents/templates/${encodeURIComponent(key)}`, {
+      method: "DELETE",
+    }),
+  /** Returns the PDF itself, so this bypasses the JSON envelope helper. */
+  render: async (body: Record<string, unknown>): Promise<Blob> => {
+    const res = await fetch(`${API_BASE}/api/admin/documents/render`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json", ...sessionHeaders() },
+      body: JSON.stringify(body),
+    });
+    captureBookmark(res);
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+      throw new Error(err.error?.message ?? `Render failed (${res.status})`);
+    }
+    return res.blob();
+  },
 };
 
 export const emailTemplatesApi = {

@@ -4,6 +4,7 @@ export { PlatformSsoSettingsPage } from "./parity/platform-auth-settings";
 export { RevisionsPage } from "./parity/revisions";
 export { InsightsPage } from "./parity/insights";
 export { EmailTemplatesPage } from "./parity/email-templates";
+export { DocumentsPage } from "./parity/documents";
 export { TranslationsPage } from "./parity/translations";
 export { AppUsersPage } from "./parity/app-users";
 export { AppOrgsPage } from "./parity/app-orgs";

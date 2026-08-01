@@ -91,6 +91,7 @@ import {
   PlatformSsoSettingsPage,
   DatabasePage,
   EmailTemplatesPage,
+  DocumentsPage,
   InsightsPage,
   RevisionsPage,
   TranslationsPage,
@@ -1099,6 +1100,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "app-orgs" && <AppOrgsPage pushToast={pushToast} />}
             {activeNav === "api-keys" && <ApiKeys />}
             {activeNav === "email-templates" && <EmailTemplatesPage pushToast={pushToast} />}
+            {activeNav === "documents" && <DocumentsPage pushToast={pushToast} />}
             {activeNav === "settings" && <SettingsPage adapter={tweaks.adapter} pushToast={pushToast} />}
             {activeNav === "extensions" && <ExtensionsPage pushToast={pushToast} />}
             {/* Extension-contributed panel pages — a sandboxed iframe host per

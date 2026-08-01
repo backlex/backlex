@@ -100,6 +100,10 @@ msgstr "… ve {0} tane daha"
 msgid "…or a custom code (e.g. zh-Hant)"
 msgstr "…ya da özel bir kod (örn. zh-Hant)"
 
+#: src/client/admin/parity/documents.tsx
+msgid "· approximate — use Render PDF for the real thing"
+msgstr "· yaklaşık — gerçeği için PDF Oluştur'u kullanın"
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "· keep last"
 msgstr "· son"
@@ -134,6 +138,7 @@ msgstr "\"Yeni gönderi\" düğmeleri vb. Slug'a geri döner."
 msgid "(item)"
 msgstr "(öğe)"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "(new template)"
 msgstr "(yeni şablon)"
@@ -183,6 +188,7 @@ msgstr "(yok)"
 msgid "(not set)"
 msgstr "(ayarlanmadı)"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "(unnamed)"
 msgstr "(isimsiz)"
@@ -1025,6 +1031,10 @@ msgstr "Tek değer — sayaç en uygunudur; kıvılcım grafik / çubuklar birde
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A teammate is running a turn…"
 #~ msgstr "Bir takım arkadaşı bir tur çalıştırıyor…"
+
+#: src/client/admin/parity/documents.tsx
+msgid "A template needs a key."
+msgstr "Bir şablonun anahtarı olmalı."
 
 #: src/client/admin/parity/email-templates.tsx
 msgid "A template with key \"{trimmedKey}\" already exists."
@@ -2403,6 +2413,7 @@ msgstr "Girişi engeller ve tüm etkin oturumları hemen sonlandırır."
 msgid "Body"
 msgstr "İçerik"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Body (HTML)"
 msgstr "İçerik (HTML)"
@@ -4281,6 +4292,10 @@ msgstr "Kaynak silinsin mi?"
 msgid "Delete submission"
 msgstr "Gönderimi sil"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Delete template"
+msgstr "Şablonu sil"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Delete this collection"
 msgstr "Bu koleksiyonu sil"
@@ -4572,6 +4587,15 @@ msgstr "Hiçbir şey yapma"
 msgid "Docs"
 msgstr "Belgeler"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Document preview"
+msgstr "Belge önizlemesi"
+
+#: src/client/admin/parity/documents.tsx
+#: src/client/admin/ui.tsx
+msgid "Document templates"
+msgstr "Belge şablonları"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Documents"
 msgstr "Belgeler"
@@ -4664,6 +4688,10 @@ msgstr "Sürükleyerek sırala"
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to resize"
 msgstr "Yeniden boyutlandırmak için sürükleyin"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Drawn on every page by the renderer, not in the preview."
+msgstr "Her sayfaya renderer tarafından çizilir, önizlemede görünmez."
 
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
@@ -4918,6 +4946,7 @@ msgstr "<0>Yayında</0> olan bir kaydı düzenlemek, canlı içeriği değiştir
 msgid "editor"
 msgstr "editör"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Editor"
 msgstr "Editör"
@@ -5815,6 +5844,10 @@ msgstr "Eklemek için bir başlangıç girin. Bağlanacak bir şey olmadan her t
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Fill the required fields."
 msgstr "Zorunlu alanları doldurun."
+
+#: src/client/admin/parity/documents.tsx
+msgid "Fills the preview and the test render. The row arrives as `data`."
+msgstr "Önizlemeyi ve deneme çıktısını doldurur. Satır `data` olarak gelir."
 
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Fills the public key + private key fields above with a fresh VAPID pair. Click Save to store it."
@@ -6941,6 +6974,14 @@ msgstr "Davetler 7 gün geçerlidir. Bir yöneticiden yenisini göndermesini ist
 msgid "invocations · p95"
 msgstr "çağrılar · p95"
 
+#: src/client/admin/parity/documents.tsx
+msgid "invoice"
+msgstr "fatura"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Invoice"
+msgstr "Fatura"
+
 #: src/client/admin/pages/payments.tsx
 msgid "Invoice INV-42"
 msgstr "Fatura INV-42"
@@ -7147,6 +7188,7 @@ msgstr "anahtar"
 
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings/index.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/storage/index.tsx
@@ -7230,6 +7272,10 @@ msgstr "Öğe formunda gösterilen etiket. Ayarlanmazsa sütun adına döner."
 #: src/client/admin/flow-builder.tsx
 msgid "Lands in {pending}"
 msgstr "{pending} içine düşer"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Landscape"
+msgstr "Yatay"
 
 #: src/client/admin/pages/forms.tsx
 msgid "language"
@@ -8287,6 +8333,7 @@ msgstr "Temam"
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -8518,6 +8565,7 @@ msgstr "Yeni adım"
 msgid "New sync hook"
 msgstr "Yeni sync hook"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "New template"
 msgstr "Yeni şablon"
@@ -9244,6 +9292,7 @@ msgstr "Kullanılabilir şablon yok."
 msgid "No templates match your search."
 msgstr "Aramanızla eşleşen şablon yok."
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "No templates yet — use \"New template\" to add one."
 msgstr "Henüz şablon yok — eklemek için \"Yeni şablon\"u kullanın."
@@ -9796,6 +9845,10 @@ msgstr "Organizatör e-postası"
 msgid "Organizations"
 msgstr "Organizasyonlar"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Orientation"
+msgstr "Yön"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Original"
 msgstr "Orijinal"
@@ -9811,6 +9864,10 @@ msgstr "Koleksiyon olaylarında giden HTTP. Başarısız teslimatlar üstel geri
 #: src/client/admin/pages/webhooks.tsx
 msgid "Outgoing webhook deliveries will show up here once a collection event fires."
 msgstr "Koleksiyon olayı tetiklendiğinde giden webhook teslimatları burada görünecek."
+
+#: src/client/admin/parity/documents.tsx
+msgid "Output filename"
+msgstr "Çıktı dosya adı"
 
 #. placeholder {0}: over.join(", ")
 #: src/client/admin/pages/usage.tsx
@@ -9882,6 +9939,14 @@ msgstr "p95 gecikme"
 #: src/client/admin/app.tsx
 #~ msgid "page {page} / {totalPages}"
 #~ msgstr "sayfa {page} / {totalPages}"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Page footer (HTML)"
+msgstr "Sayfa altbilgisi (HTML)"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Page size"
+msgstr "Sayfa boyutu"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Page titles, badges. Falls back to the slug."
@@ -10539,6 +10604,10 @@ msgstr "Politika"
 msgid "Policy URL"
 msgstr "Sözleşme URL'si"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Portrait"
+msgstr "Dikey"
+
 #. placeholder {0}: (nu.title ?? "").slice(0, 38)
 #. placeholder {1}: (nu.title ?? "").length > 38 ? "…" : ""
 #: src/client/admin/app.tsx
@@ -10608,6 +10677,7 @@ msgstr "önizleme"
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/item-form.tsx
 #: src/client/admin/pages/erasure-card.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Preview"
 msgstr "Önizleme"
@@ -11453,9 +11523,21 @@ msgstr "c_{nextSlug}{0} olarak yeniden adlandırıldı."
 msgid "Renaming…"
 msgstr "Yeniden adlandırılıyor…"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Render PDF"
+msgstr "PDF oluştur"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Rendered to PDF from a complete HTML document. Values interpolate with <0>{rowExample}</0> against the row."
+msgstr "Tam bir HTML belgesinden PDF'e dönüştürülür. Değerler satıra karşı <0>{rowExample}</0> ile yerleştirilir."
+
 #: src/client/admin/field-format-editor.tsx
 msgid "rendering only — never affects storage or sorting"
 msgstr "yalnızca gösterim — depolama veya sıralamayı etkilemez"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Rendering…"
+msgstr "Oluşturuluyor…"
 
 #: src/client/admin/pages/analytics.tsx
 msgid "Reopen"
@@ -12000,6 +12082,10 @@ msgstr "Satırlar bir <0>tenant_id</0> taşır. Mevcut bir koleksiyonda devre d�
 msgid "Rows created by {r} must match this rule."
 msgstr "{r} tarafından oluşturulan satırlar bu kuralı karşılamalıdır."
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "rows in"
+msgstr "satır girişi"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Rows in collection"
 msgstr "Koleksiyondaki satırlar"
@@ -12016,6 +12102,10 @@ msgstr "satırlar <0>{0}</0> içinde yaşar"
 #: src/client/admin/condition-editor.tsx
 msgid "Rows matching this rule are visible to {r}."
 msgstr "Bu kuralla eşleşen satırlar {r} için görünür."
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "rows out"
+msgstr "satır çıkışı"
 
 #: src/client/admin/pages/search-playground.tsx
 msgid "RRF fusion of both"
@@ -12148,6 +12238,14 @@ msgstr "SAML 2.0 SSO"
 msgid "SAML 2.0 SSO — workspace end-users."
 msgstr "SAML 2.0 SSO — çalışma alanı son kullanıcıları."
 
+#: src/client/admin/parity/documents.tsx
+msgid "Sample data"
+msgstr "Örnek veri"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Sample data must be valid JSON."
+msgstr "Örnek veri geçerli JSON olmalı."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Sample event payload"
 msgstr "Örnek etkinlik yükü"
@@ -12209,6 +12307,7 @@ msgstr "Cmt"
 #: src/client/admin/pages/usage.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/database.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
@@ -12304,6 +12403,10 @@ msgstr "Kaynağı kaydet"
 msgid "Save the current live schema as an immutable checkpoint."
 msgstr "Mevcut canlı şemayı değiştirilemez bir denetim noktası olarak kaydedin."
 
+#: src/client/admin/parity/documents.tsx
+msgid "Save the template before rendering."
+msgstr "Oluşturmadan önce şablonu kaydedin."
+
 #: src/client/admin/parity/email-templates.tsx
 msgid "Save the template before sending a test."
 msgstr "Test göndermeden önce şablonu kaydedin."
@@ -12353,6 +12456,7 @@ msgstr "kaydediliyor…"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/parity/translations.tsx
@@ -13049,6 +13153,10 @@ msgstr "Herkese açık bağlantıyı paylaşın — satırlar geldikçe buraya (
 #: src/client/admin/item-collaboration.tsx
 msgid "share this record"
 msgstr "bu kaydı paylaş"
+
+#: src/client/admin/parity/documents.tsx
+msgid "shared"
+msgstr "paylaşılan"
 
 #: src/client/admin/pages/usage.tsx
 msgid "shared global budget"
@@ -14059,6 +14167,11 @@ msgstr "Bu çalışma alanı içindeki ekipler — son kullanıcılarınızın b
 msgid "Template"
 msgstr "Şablon"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Template deleted."
+msgstr "Şablon silindi."
+
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Template saved."
 msgstr "Şablon kaydedildi."
@@ -14458,6 +14571,10 @@ msgstr "Bu davet bağlantısı geçersiz veya zaten kullanılmış."
 #: src/client/pages/invite.tsx
 msgid "This invite to {0} has expired."
 msgstr "{0} çalışma alanına yapılan bu davetin süresi dolmuş."
+
+#: src/client/admin/parity/documents.tsx
+msgid "This is a shared default. Saving creates a copy for this workspace and leaves the shared one untouched."
+msgstr "Bu paylaşılan bir varsayılan. Kaydetmek bu çalışma alanı için bir kopya oluşturur, paylaşılana dokunmaz."
 
 #: src/client/admin/parity/revisions.tsx
 msgid "This is already the current state"
@@ -15093,6 +15210,7 @@ msgstr "kısıtsız"
 msgid "Unrestricted — no row filter applies."
 msgstr "Kısıtlamasız — satır filtresi uygulanmaz."
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "unsaved"

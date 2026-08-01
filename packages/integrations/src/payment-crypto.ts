@@ -28,19 +28,32 @@ export const enc = new TextEncoder();
 export const DUMMY_CHECKOUT_DOMAIN = "backlex.dummy.checkout.v1\n";
 export const DUMMY_SETTLEMENT_DOMAIN = "backlex.dummy.settlement.v1\n";
 
-const importHmacKey = (keyBytes: Uint8Array): Promise<CryptoKey> =>
+/**
+ * The digests any provider here signs with. Every one used SHA-256 until
+ * Authorize.net, which uses SHA-512 — so the algorithm became a parameter
+ * rather than a constant. It is spelled out per call site instead of being read
+ * off the signature's length: inferring it from the value would let a sender
+ * choose the weaker one.
+ */
+export type HmacHash = "SHA-256" | "SHA-512";
+
+const importHmacKey = (keyBytes: Uint8Array, hash: HmacHash): Promise<CryptoKey> =>
   crypto.subtle.importKey(
     // A fresh copy pins the exact byte range — some runtimes reject a view
     // whose underlying buffer is larger than the view itself.
     "raw",
     keyBytes.slice().buffer as ArrayBuffer,
-    { name: "HMAC", hash: "SHA-256" },
+    { name: "HMAC", hash },
     false,
     ["sign"],
   );
 
-export const hmac = async (keyBytes: Uint8Array, message: string): Promise<Uint8Array> => {
-  const key = await importHmacKey(keyBytes);
+export const hmac = async (
+  keyBytes: Uint8Array,
+  message: string,
+  hash: HmacHash = "SHA-256",
+): Promise<Uint8Array> => {
+  const key = await importHmacKey(keyBytes, hash);
   const sig = await crypto.subtle.sign("HMAC", key, enc.encode(message));
   return new Uint8Array(sig);
 };

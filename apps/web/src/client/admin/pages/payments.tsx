@@ -101,6 +101,7 @@ const BRANDS: Record<string, Brand> = {
   paytr: { mark: "PT", markBg: "#00A0E9" },
   iyzico: { mark: "iy", markBg: "#1E64FF" },
   adyen: { mark: "A", markBg: "#0ABF53" },
+  authorizenet: { mark: "An", markBg: "#25529C" },
   dummy: { mark: "TE", markBg: "oklch(0.55 0.13 75)" },
 };
 const brandFor = (provider: string): Brand =>

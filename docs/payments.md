@@ -1,6 +1,6 @@
 ---
 title: Payments
-description: Connect Stripe, Polar, Lemon Squeezy, Paddle, Adyen, PayTR or iyzico — mirror customers, subscriptions, invoices and payments into your collections, and open hosted checkouts to ask for money.
+description: Connect Stripe, Polar, Lemon Squeezy, Paddle, Adyen, Authorize.net, PayTR or iyzico — mirror customers, subscriptions, invoices and payments into your collections, and open hosted checkouts to ask for money.
 ---
 
 Connect a payment provider once, and backlex keeps a mirror of its billing
@@ -21,8 +21,8 @@ open a hosted checkout for an arbitrary amount and write the payment link onto
 the invoice, quote or donation row that needs paying.
 
 Supported providers: **Stripe**, **Polar**, **Lemon Squeezy**, **Paddle**,
-**Adyen**, **PayTR**, **iyzico**, plus a local **`dummy`** provider for demos
-and smoke tests.
+**Adyen**, **Authorize.net**, **PayTR**, **iyzico**, plus a local **`dummy`**
+provider for demos and smoke tests.
 
 Providers differ along **two independent axes**, and conflating them is the
 usual way to get this wrong.
@@ -32,7 +32,7 @@ payment happened:
 
 | Mode | Providers | Behaviour |
 |---|---|---|
-| `webhook` | Stripe, Polar, Lemon Squeezy, Paddle, Adyen | Signs each delivery, so the request itself is the evidence |
+| `webhook` | Stripe, Polar, Lemon Squeezy, Paddle, Adyen, Authorize.net | Signs each delivery, so the request itself is the evidence |
 | `callback` | PayTR | Posts a form-encoded result per payment, signed with your merchant credentials |
 | `retrieve` | iyzico | Posts a bare token with **no signature**. backlex calls iyzico back with your API credentials to ask what the token means, and records that answer |
 
@@ -42,7 +42,7 @@ is possible at all:
 | Catalog | Providers | Behaviour |
 |---|---|---|
 | Yes | Stripe, Polar, Lemon Squeezy, Paddle | Customers, subscriptions, invoices and payments can be paged through, so backlex can backfill history and repair drift |
-| No | **Adyen**, PayTR, iyzico, `dummy` | Each payment is reported as it happens and nothing is stored to page through. Reconcile is refused with a reason rather than reporting a sync that synced nothing |
+| No | **Adyen**, **Authorize.net**, PayTR, iyzico, `dummy` | Each payment is reported as it happens and nothing is stored to page through. Reconcile is refused with a reason rather than reporting a sync that synced nothing |
 
 Adyen is why these are two tables rather than one. It signs its notifications
 exactly the way Stripe does, but it is an **acquirer** rather than a billing
@@ -85,6 +85,7 @@ Only the connection itself (`payment_providers`) and the delivery log
 | PayTR | Merchant ID, **merchant key** and **merchant salt** from the PayTR panel — the key and salt together sign the callback |
 | iyzico | **API key** and **secret key** from the merchant panel. They do not verify anything inbound; they authenticate the call backlex makes to confirm each payment. Set `environment: sandbox` for `sandbox-api.iyzipay.com` |
 | Adyen | **API key** (Customer Area → Developers → API credentials, with the Checkout role), the **merchant account** code, and the **HMAC key** generated alongside the webhook. On `environment: live` you also need the **live URL prefix** issued with the live credential — see [Adyen](#adyen-an-acquirer-not-a-billing-platform) |
+| Authorize.net | **API login ID**, **transaction key** and **signature key**, all from Account → Settings → Security Settings → API Credentials and Keys — the transaction key authenticates outbound calls, the signature key verifies inbound webhooks, and they are different values on the same page. Plus the **account currency**, because Authorize.net states none — see [Authorize.net](#authorizenet-the-notification-that-doesnt-say-enough) |
 
 For Stripe a restricted key with **read** access to customers, subscriptions,
 invoices and charges is enough — backlex never writes to the provider.
@@ -285,16 +286,23 @@ const paid = await client
   .list();
 ```
 
-The reference contract is the narrowest one any provider imposes —
-**1–48 alphanumeric characters**, because PayTR's `merchant_oid` accepts
-nothing else. Left to itself backlex derives one from `writeBack.itemId` by
-stripping the characters PayTR would refuse, so a UUID becomes its 32-hex form.
+The reference contract takes the strictest limit each provider imposes, rather
+than mangling the value per provider — mangling would make what comes back
+differ from what went out. PayTR's `merchant_oid` sets the **alphabet**
+(alphanumerics only). Authorize.net's `order.invoiceNumber` sets the **length**,
+at 20; every other provider takes 48.
+
+Left to itself backlex derives the reference from `writeBack.itemId`, stripping
+the characters PayTR would refuse and trimming to the connected provider's
+ceiling — so a UUID becomes its 32-hex form everywhere except Authorize.net,
+where it becomes the first 20 of those. **Read `data.reference` rather than
+assuming**: it is what was actually sent, and it is what will come back.
 
 ### Which providers can do this
 
 | Mode | Providers | Behaviour |
 |---|---|---|
-| `adhoc` | Stripe, Adyen, PayTR, iyzico, `dummy` | Hand it an amount and get a one-off checkout. This is the shape the templates need — an invoice total exists nowhere in the provider's catalog |
+| `adhoc` | Stripe, Adyen, Authorize.net, PayTR, iyzico, `dummy` | Hand it an amount and get a one-off checkout. This is the shape the templates need — an invoice total exists nowhere in the provider's catalog |
 | `catalog` | Polar, Lemon Squeezy, Paddle | Checkouts are opened against a **pre-existing** product/price id, with no amount parameter. Not supported yet: a checkout call is refused with a `catalog_only` explanation naming what's missing, rather than failing in a way that reads like an outage |
 
 `GET /api/admin/payments/catalog` reports each provider's `checkoutMode`, so a
@@ -321,6 +329,14 @@ Per-provider requirements worth knowing before you wire one up:
   way, with the outcome in the query string. `customer.country` is only sent
   when it really is an ISO-3166 alpha-2 code, because that same field also
   accepts a country *name* for iyzico and Adyen rejects one.
+- **Authorize.net** — uses **Accept Hosted**, and is the only provider whose
+  checkout is not a link on the provider's side: the API returns a form token
+  that has to be POSTed, so `data.url` points at a small page backlex hosts
+  which does the POST and forwards the shopper. The token is valid for 15
+  minutes. Two refusals happen before any network call: a currency other than
+  the one the account settles in (Authorize.net has no currency parameter, so
+  charging in the account's own currency anyway would be a silent
+  mispricing), and a reference longer than 20 characters.
 
 ### The `dummy` provider
 
@@ -563,6 +579,129 @@ Adyen exposes no object catalog, so `POST /providers/{id}/sync` returns
 admin UI hides the button entirely. If a delivery is missed, replay it from
 **Customer Area → Developers → Webhooks → the delivery log**; backlex dedupes on
 `pspReference`, so a replay is safe and idempotent.
+
+## Authorize.net: the notification that doesn't say enough
+
+Authorize.net signs its webhooks the way Stripe does — an HMAC over the raw body
+in a header — so the delivery *is* the evidence. What is different is how little
+that delivery contains, and three of its quirks are silent rather than loud.
+
+### The signing key is plain text, and SHA-512
+
+`X-ANET-Signature: sha512=<hex>` over the raw body, keyed by the **Signature
+Key** from the merchant interface, used as its literal characters.
+
+That is the opposite of Adyen, whose HMAC key is the hex *encoding* of key bytes
+and must be decoded first. Both keys are long printable hex-looking strings, so
+nothing about the value tells you which it is — and using the wrong form
+produces a perfectly well-formed signature that matches nothing. If every
+delivery is rejected with `signature_mismatch`, this is the first thing to
+check; the second is that you pasted the **signature key** and not the
+**transaction key**, which sits directly above it on the same page.
+
+The algorithm is pinned rather than read off the header: a delivery announcing
+`sha256=` is refused as malformed, not verified against a weaker digest.
+
+### There is no currency. Anywhere
+
+Not on a transaction, not on a notification, not in Authorize.net's XSD. A
+merchant account settles in exactly one currency, so an amount is a bare
+decimal.
+
+This is why the connect dialog asks for the **account currency**. Every amount
+that arrives is filed under it, and every checkout is refused if it asks for
+anything else — Authorize.net has no currency parameter to send, so charging in
+the account's own currency regardless would be a mispricing nothing downstream
+could detect.
+
+Amounts also arrive in **major units** (`45.00`), unlike Adyen and Stripe, so
+they are converted to the minor units the ledger stores.
+
+### The invoice number is fetched, not received
+
+The notification carries a transaction id, an amount and a response code — and
+no merchant reference. `refId`, the obvious place for one, is echoed on the API
+*response* and is not stored against the transaction, so it can never come back
+on a later event. Only `order.invoiceNumber` persists, and it is not in the
+webhook.
+
+So for every payment notification backlex makes a second call —
+`getTransactionDetailsRequest` — and lifts the invoice number, card type,
+settlement status and (for a refund) the original transaction it reverses onto
+the row. Without it a payment would arrive with an amount and no idea what it
+paid for, which is exactly the failure [`reference`](#reference-is-the-whole-point)
+exists to prevent. It is also why the reference is capped at 20 characters for
+this provider: that is all `order.invoiceNumber` will hold.
+
+That second call is **best-effort**. The HMAC already proved the delivery is
+real, so a lookup that fails still records the payment — losing the invoice
+number rather than the money event. Failing hard instead would mean one wrong
+credential 500-loops every delivery until Authorize.net disables the endpoint.
+The failure is logged as `payments.authorizenet_detail_unavailable`.
+
+### Which event writes which row
+
+| Event | Row written | Why |
+|---|---|---|
+| `authorization.created` | Keyed on the transaction id, status `pending` | Authorised, not captured. The money is held, not taken |
+| `authcapture.created`, `capture.created`, `priorAuthCapture.created` | Upserts the **same** transaction id | Authorize.net reuses the id when an authorisation is captured, so no `originalReference` bookkeeping is needed |
+| `void.created` | Same id, status `canceled` | |
+| `refund.created` | Its **own** row | A refund is a new transaction whose amount is the refunded portion. Filing it against the payment would overwrite a $45 payment with the $10 that came back |
+| `fraud.held` / `.approved` / `.declined` | `pending` / `succeeded` / `failed` | A hold is the gateway asking for a human, which is neither a success nor a failure yet |
+| `customer.subscription.*` | A `payment_subscriptions` row | |
+| `customer.*`, `customer.paymentProfile.*` | **Nothing** | The payload carries an id and no email or name, so there is no customer row worth writing |
+
+The response code decides the verdict regardless of the event name: `1` is
+approved, `4` is held for review (recorded as `pending`), anything else is
+`failed`.
+
+### Two things about their API worth knowing
+
+- **Errors come back as HTTP 200.** The verdict is `messages.resultCode`, so the
+  status code is never trusted on its own.
+- **Responses begin with a UTF-8 BOM**, which `JSON.parse` rejects while naming
+  a character that does not appear when the body is printed. It is stripped
+  before parsing.
+
+### The checkout is a form POST, not a link
+
+Accept Hosted returns a **form token** which has to be POSTed to
+`accept.authorize.net` (or `test.authorize.net` on sandbox). There is no URL to
+hand anybody, so `data.url` points at a small page backlex hosts —
+`/api/payments/authorizenet/<connection-id>` — that performs the POST and
+forwards the shopper. The destination host comes from the connection's own
+environment, never from the link, so the page cannot be used as a form relay;
+and it ships its own Content-Security-Policy, because the app-wide
+`form-action 'self'` would otherwise block the cross-origin submit outright.
+
+Note the routing key: the **connection id**, not the webhook token. This URL
+goes out in a payment link and is read by every customer asked to pay, while
+the webhook token is the shared secret guarding your unauthenticated receive
+endpoint — putting it in front of payers would spend it. The connection id is
+an unguessable UUID that grants nothing on its own.
+
+The token is valid for 15 minutes.
+
+One diagnostic worth knowing before you lose an afternoon to it: Authorize.net
+validates the **host** of your `successUrl` and reports a failure as
+
+> Invalid Setting Value. hostedPaymentReturnOptionsurl must begin with http://
+> or https://.
+
+which blames the scheme. It is not the scheme. `http://localhost:5173/…` and
+reserved-TLD hosts like `https://shop.example/…` are both refused with that
+message while `https://example.com/…` is accepted, so testing a checkout
+locally needs a real public return URL even though nobody is going to visit it.
+
+### Reconcile does not apply
+
+Authorize.net's reporting endpoints are batch-scoped —
+`getTransactionListRequest` wants a settlement batch id — so there is no cursor
+over the account to page through. `POST /providers/{id}/sync` returns
+`written: 0` with an explanation and the admin UI hides the button, rather than
+reporting a clean run that covered one arbitrary batch. A missed delivery can be
+replayed from **Account → Settings → Webhooks → Notifications**; backlex dedupes
+on `notificationId`.
 
 ## PayTR: callback-style, and the `OK` requirement
 

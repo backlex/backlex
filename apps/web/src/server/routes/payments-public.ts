@@ -3,7 +3,12 @@ import {
   toMajorUnits,
   type PaymentProvider,
 } from "@backlex/integrations/payments";
-import { signDummySettlement, verifyDummyCheckout } from "@backlex/integrations/checkout";
+import {
+  AUTHORIZENET_FORM_ACTION_ORIGINS,
+  authorizeNetPaymentPageUrl,
+  signDummySettlement,
+  verifyDummyCheckout,
+} from "@backlex/integrations/checkout";
 /**
  * Public payment-webhook receiver — `POST /api/payments/webhook/:token`.
  *
@@ -28,6 +33,7 @@ import { assertWorkspaceRequestQuota, setMeterTenant } from "../lib/usage-meter"
 import { requestMeta } from "../services/activity";
 import {
   decryptProviderConfig,
+  getProviderByPublicId,
   getProviderByToken,
   receiveWebhook,
   type PaymentProviderRow,
@@ -110,6 +116,97 @@ const escapeHtml = (s: string): string =>
     ch === "&" ? "&amp;" : ch === "<" ? "&lt;" : ch === ">" ? "&gt;" : ch === '"' ? "&quot;" : "&#39;",
   );
 
+/**
+ * Authorize.net's Accept Hosted bridge — `GET /api/payments/authorizenet/:token`.
+ *
+ * Accept Hosted is the one checkout here that cannot be a link. The API returns
+ * a form TOKEN and the payment page is reached by POSTing it; there is no URL
+ * to hand anybody. So this renders the smallest possible page that performs
+ * that POST and gets out of the way.
+ *
+ * What it is NOT is a relay. The destination comes from the CONNECTION's
+ * environment, server-side, so the only thing a caller controls is which
+ * Authorize.net token gets rendered — and anyone holding the link already holds
+ * the token and could post it to Authorize.net themselves. That is also why the
+ * link is not separately signed the way the `dummy` provider's is: the dummy
+ * page settles a payment, this one only forwards to Authorize.net, and the
+ * token is already bound by them to one amount and fifteen minutes.
+ *
+ * The form submits on load, with a real button behind it for the no-JS case and
+ * for the moment before the script runs — a bare `<form>` and nothing else
+ * would leave anybody with scripting disabled staring at a blank page.
+ */
+const AUTHORIZENET_TOKEN_MAX = 8192;
+
+/**
+ * The auto-submit, kept as ONE string so the page and the CSP hash that permits
+ * it are derived from the same bytes. Written out as a literal that a hash can
+ * be taken of, rather than allowing `'unsafe-inline'` on a page whose whole job
+ * is to forward a payment token.
+ */
+const AUTHORIZENET_BRIDGE_SCRIPT = 'document.getElementById("f").submit();';
+
+/** `'sha256-…'`, computed once per isolate from the script above. */
+let bridgeScriptHash: Promise<string> | null = null;
+const authorizeNetBridgeScriptHash = (): Promise<string> => {
+  bridgeScriptHash ??= crypto.subtle
+    .digest("SHA-256", new TextEncoder().encode(AUTHORIZENET_BRIDGE_SCRIPT))
+    .then((digest) => {
+      let bin = "";
+      for (const b of new Uint8Array(digest)) bin += String.fromCharCode(b);
+      return `'sha256-${btoa(bin)}'`;
+    });
+  return bridgeScriptHash;
+};
+
+/**
+ * The bridge's own Content-Security-Policy.
+ *
+ * The app-wide policy is `script-src 'self'; form-action 'self'`, and this page
+ * needs to break BOTH — an inline script and a cross-origin form POST are the
+ * only way to redeem an Accept Hosted token. So the exceptions are made as
+ * narrowly as they can be: exactly one script, named by hash, and exactly the
+ * two Authorize.net origins as form targets. Everything else is `'none'`; the
+ * page loads no image, font or stylesheet of its own.
+ */
+const authorizeNetBridgeCsp = async (): Promise<string> =>
+  [
+    "default-src 'none'",
+    `script-src ${await authorizeNetBridgeScriptHash()}`,
+    "style-src 'unsafe-inline'",
+    `form-action ${AUTHORIZENET_FORM_ACTION_ORIGINS.join(" ")}`,
+    "base-uri 'none'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+
+const authorizeNetBridgePage = (params: { action: string; token: string }) => `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Opening secure checkout…</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root { color-scheme: light dark; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; overflow-x:hidden;
+    font:16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    background:#f6f7f9; color:#111; }
+  @media (prefers-color-scheme: dark) { body { background:#0b0c0e; color:#f2f2f3; } }
+  .card { width:min(24rem,calc(100vw - 2rem)); padding:1.75rem; border-radius:14px; text-align:center;
+    background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.08); }
+  @media (prefers-color-scheme: dark) { .card { background:#17181b; box-shadow:none; border:1px solid #2a2c31; } }
+  p { margin:0 0 1.25rem; opacity:.7; font-size:.9rem; }
+  button { font:inherit; width:100%; padding:.65rem 1rem; border-radius:9px;
+    border:1px solid transparent; cursor:pointer; background:#111; color:#fff; }
+  @media (prefers-color-scheme: dark) { button { background:#f2f2f3; color:#111; } }
+</style></head>
+<body><main class="card">
+  <p>Taking you to Authorize.net to complete your payment…</p>
+  <form id="f" method="post" action="${escapeHtml(params.action)}">
+    <input type="hidden" name="token" value="${escapeHtml(params.token)}">
+    <button type="submit">Continue to payment</button>
+  </form>
+  <script>${AUTHORIZENET_BRIDGE_SCRIPT}</script>
+</main></body></html>`;
+
 /** Resolve + authenticate a dummy-page request. Shared by GET and POST so the
  *  render and the settlement can never disagree about what is allowed. */
 const loadDummyCheckout = async (
@@ -138,6 +235,38 @@ const loadDummyCheckout = async (
 };
 
 export const paymentsPublicRoutes = new Hono<AppBindings>()
+  .get("/authorizenet/:id", async (c) => {
+    const ctx = c.get("ctx");
+    // Keyed on the connection id, NOT the webhook token. This URL travels in a
+    // payment link and is read by every customer asked to pay; the webhook
+    // token is the shared secret guarding this workspace's unauthenticated
+    // receive endpoint, and putting it in front of payers would spend it.
+    const provider = await getProviderByPublicId(ctx, c.req.param("id") ?? "");
+    // A wrong id and an id belonging to a different provider give the same
+    // answer, so this cannot be used to enumerate what a workspace connected.
+    if (!provider || provider.provider !== "authorizenet" || provider.status !== "connected") {
+      throw new AppError("NOT_FOUND", "Unknown checkout");
+    }
+    const formToken = new URL(c.req.url).searchParams.get("t") ?? "";
+    if (!formToken || formToken.length > AUTHORIZENET_TOKEN_MAX) {
+      throw new AppError("BAD_REQUEST", "This checkout link is not valid");
+    }
+    const config = await decryptProviderConfig(ctx, provider);
+    return c.html(
+      authorizeNetBridgePage({
+        action: authorizeNetPaymentPageUrl(config),
+        token: formToken,
+      }),
+      200,
+      {
+        // The page carries a live payment token and nothing worth keeping.
+        "cache-control": "no-store",
+        // Set here rather than inherited: the app-wide policy would block both
+        // the inline submit and the cross-origin POST this page exists to make.
+        "content-security-policy": await authorizeNetBridgeCsp(),
+      },
+    );
+  })
   .get("/dummy/:token", async (c) => {
     const { params } = await loadDummyCheckout(c);
     const currency = params.get("c") ?? "USD";

@@ -41,6 +41,12 @@ export const PAYMENT_PROVIDERS = [
   // and reports what happened, but owns no customer/subscription/invoice
   // catalog to mirror. That distinction is why `PAYMENT_HAS_CATALOG` exists.
   "adyen",
+  // The other acquirer shape, and the one that keeps the LEAST in its
+  // notifications: Authorize.net signs the delivery like a webhook provider but
+  // tells us only a transaction id and an amount — no currency, no order, no
+  // merchant reference. What ties a payment to the row that asked for it has to
+  // be fetched back. See `retrieveAuthorizeNetTransaction`.
+  "authorizenet",
   // Not a PSP. A local, self-hosted stand-in that settles payments without
   // touching a real acquirer — the payment sibling of the `console` SMS and
   // email adapters, for demo instances and for smoke-testing a checkout flow
@@ -63,6 +69,7 @@ export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
   paytr: "PayTR",
   iyzico: "iyzico",
   adyen: "Adyen",
+  authorizenet: "Authorize.net",
   dummy: "Dummy (test only)",
 };
 
@@ -109,6 +116,10 @@ export const PAYMENT_PROVIDER_MODES: Record<PaymentProvider, PaymentProviderMode
   // evidence — the same shape as Stripe's, even though the signature travels
   // inside the JSON body rather than in a header.
   adyen: "webhook",
+  // Authorize.net HMACs the raw body and puts the result in a header, the same
+  // shape as Stripe's. The delivery is therefore the evidence — what it is NOT
+  // is self-contained, which is a separate problem handled at normalize time.
+  authorizenet: "webhook",
   // The dummy page POSTs a form back the way a Turkish PSP does, and signs it
   // with the provider's own generated secret. It sits in `callback` rather
   // than getting a fourth mode precisely so it exercises the real code path —
@@ -159,6 +170,13 @@ export const PAYMENT_HAS_CATALOG: Record<PaymentProvider, boolean> = {
   paytr: false,
   iyzico: false,
   adyen: false,
+  // Authorize.net has reporting endpoints, but nothing that pages over
+  // everything: `getTransactionListRequest` wants a settlement BATCH id, so
+  // "walk the account" means enumerating batches by date range first. That is a
+  // different, date-windowed operation rather than the cursor the reconcile
+  // loop is built around, and offering it here would return a clean sync that
+  // covered whichever batch happened to be first.
+  authorizenet: false,
   dummy: false,
 };
 
@@ -206,6 +224,8 @@ export const PAYMENT_ACK: Record<PaymentProvider, { body: string; contentType: s
   // Without it an older account's endpoint keeps retrying and is eventually
   // disabled, exactly the way PayTR's does.
   adyen: { body: "[accepted]", contentType: "text/plain; charset=utf-8" },
+  // Any 2xx satisfies Authorize.net; it reads the status and ignores the body.
+  authorizenet: null,
   dummy: null,
 };
 
@@ -349,6 +369,44 @@ export const PAYMENT_PROVIDER_FIELDS: Record<PaymentProvider, PaymentConfigField
       hint: "Required on live only. Adyen gives every merchant its own endpoint host; the prefix is shown next to the live API credential.",
     },
   ],
+  authorizenet: [
+    {
+      key: "apiLoginId",
+      label: "API login ID",
+      placeholder: "5KP3u95bQpv",
+      hint: "Account → Settings → Security Settings → API Credentials and Keys. Not the merchant login you sign in with.",
+    },
+    {
+      key: "transactionKey",
+      label: "Transaction key",
+      placeholder: "346HZ32z3fP4hTG2",
+      secret: true,
+      hint: "Generated beside the API login ID, and shown only once.",
+    },
+    {
+      key: "webhookSecret",
+      label: "Signature key",
+      placeholder: "The signature key from API Credentials and Keys",
+      secret: true,
+      hint: "Signs every webhook. A different value from the transaction key, on the same page — sending one where the other belongs fails every delivery.",
+    },
+    {
+      key: "environment",
+      label: "Environment",
+      choices: ["production", "sandbox"],
+      hint: "Sandbox points at apitest.authorize.net and needs sandbox credentials — a production key will not authenticate against it.",
+    },
+    {
+      key: "currency",
+      // Not a preference. Authorize.net's API carries no currency field
+      // ANYWHERE — not on a transaction, not on a webhook, not in the schema —
+      // because a merchant account settles in exactly one. Without this the
+      // ledger would have to guess what an amount means.
+      label: "Account currency",
+      choices: ["USD", "CAD", "GBP", "EUR", "AUD", "NZD", "DKK", "NOK", "PLN", "SEK", "ZAR"],
+      hint: "The single currency this merchant account settles in. Authorize.net never states it on a payment, so every recorded amount is filed under this.",
+    },
+  ],
   dummy: [
     {
       key: "secret",
@@ -376,6 +434,10 @@ export const PAYMENT_SECRET_KEYS: Record<PaymentProvider, string[]> = {
   // `merchantAccount` and `liveUrlPrefix` are identifiers, not credentials —
   // masking them would hide the two fields an admin most often needs to check.
   adyen: ["apiKey", "webhookSecret"],
+  // `apiLoginId` is half a credential and the field an admin most often needs
+  // to read back; the transaction key is the half worth hiding. `currency` and
+  // `environment` are settings, not secrets.
+  authorizenet: ["transactionKey", "webhookSecret"],
   dummy: ["secret"],
 };
 
@@ -597,6 +659,32 @@ export async function verifyPaymentSignature(
     // Stripe sends every active endpoint secret's signature during a rotation,
     // so any one matching v1 is a pass.
     return candidates.some((c) => timingSafeEqual(c, expected))
+      ? { ok: true }
+      : { ok: false, reason: "signature_mismatch" };
+  }
+
+  if (provider === "authorizenet") {
+    // `X-ANET-Signature: sha512=<HEX>` — HMAC-SHA512 over the raw body.
+    //
+    // The key is the Signature Key from the merchant interface, used as its
+    // literal characters. That is the OPPOSITE of Adyen, whose HMAC key is the
+    // hex ENCODING of the key bytes and has to be decoded first — and both keys
+    // are long printable hex-looking strings, so the two are easy to confuse
+    // and impossible to tell apart by eye. Getting it wrong produces a
+    // well-formed signature that never matches any delivery.
+    const header = headerOf(input.headers, "x-anet-signature");
+    if (!header) return { ok: false, reason: "missing_signature" };
+    const eq = header.indexOf("=");
+    if (eq < 0) return { ok: false, reason: "malformed_signature" };
+    const scheme = header.slice(0, eq).trim().toLowerCase();
+    const given = header.slice(eq + 1).trim();
+    // Pinned rather than inferred from the value's length: accepting whatever
+    // algorithm the sender names is how a downgrade gets in.
+    if (scheme !== "sha512" || !given) return { ok: false, reason: "malformed_signature" };
+    const expected = toHex(await hmac(enc.encode(input.secret), input.rawBody, "SHA-512"));
+    // Authorize.net sends the digest upper-cased; compare on one case so a
+    // change of mind on their side isn't a total outage.
+    return timingSafeEqual(given.toLowerCase(), expected)
       ? { ok: true }
       : { ok: false, reason: "signature_mismatch" };
   }
@@ -1876,6 +1964,403 @@ const normalizeAdyen = (body: Record<string, unknown>): NormalizedPaymentEvent =
   };
 };
 
+// ── Authorize.net ───────────────────────────────────────────────────────────
+
+/** The two hosts. Fixed constants — never assembled from config. */
+const AUTHORIZENET_HOSTS = {
+  production: "https://api.authorize.net",
+  sandbox: "https://apitest.authorize.net",
+} as const;
+
+/** One endpoint serves the whole API; the request's single top-level key is
+ *  what selects the operation. */
+export const AUTHORIZENET_API_PATH = "/xml/v1/request.api";
+
+/**
+ * What an Authorize.net amount is assumed to be worth when the connection
+ * never said. USD because it is the only currency every Authorize.net account
+ * can settle in — but a wrong guess is a silently mispriced ledger, which is
+ * why the connect dialog asks for it rather than leaving it to this.
+ */
+export const AUTHORIZENET_DEFAULT_CURRENCY = "USD";
+
+export const authorizeNetHost = (config: Record<string, unknown>): string =>
+  str(config.environment) === "sandbox"
+    ? AUTHORIZENET_HOSTS.sandbox
+    : AUTHORIZENET_HOSTS.production;
+
+/**
+ * Parse an Authorize.net JSON response.
+ *
+ * It answers `application/json` with a UTF-8 BOM in front of the opening brace,
+ * which `JSON.parse` rejects with a bare "Unexpected token" naming a character
+ * that does not appear when the body is printed. Every client for this API ends
+ * up with this line; ours is here so both call sites share it.
+ */
+export const parseAuthorizeNetJson = (text: string): Record<string, unknown> | null => {
+  try {
+    const parsed = JSON.parse(text.replace(/^﻿/, "").trim());
+    return obj(parsed);
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Did Authorize.net accept the call?
+ *
+ * It answers **HTTP 200 for errors too**, with the verdict in
+ * `messages.resultCode`. Trusting the status code here would read an
+ * authentication failure as a successful lookup that happened to return nothing.
+ */
+export const authorizeNetOk = (body: Record<string, unknown>): boolean =>
+  str(obj(body.messages)?.resultCode) === "Ok";
+
+/** The first error text, for a caller that has to explain the refusal. */
+export const authorizeNetErrorText = (body: Record<string, unknown>): string | null => {
+  const list = obj(body.messages)?.message;
+  const first = obj(Array.isArray(list) ? list[0] : list);
+  return str(first?.text) ?? str(first?.code);
+};
+
+/**
+ * The transaction id a notification is about, or null when it is about
+ * something else (a customer profile, a subscription).
+ *
+ * Exported so the consumer decides whether to fetch detail using the SAME test
+ * the normalizer uses to decide whether a payment row is written — the two
+ * disagreeing would mean fetching detail that is thrown away, or worse, writing
+ * a payment row while never looking for the invoice number that completes it.
+ */
+export const authorizeNetTransactionId = (payload: unknown): string | null => {
+  const p = obj(obj(payload)?.payload);
+  if (!p || str(p.entityName) !== "transaction") return null;
+  return str(p.id);
+};
+
+export interface AuthorizeNetRetrieveInput {
+  /** Decrypted provider config: apiLoginId, transactionKey, environment. */
+  config: Record<string, unknown>;
+  /** The transaction id the notification carried. */
+  transId: string;
+  fetchImpl?: FetchLike;
+}
+
+export type AuthorizeNetRetrieveResult =
+  | { ok: true; transaction: Record<string, unknown> }
+  | { ok: false; reason: "missing_secret" | "unreachable" | "rejected"; message?: string };
+
+/**
+ * Ask Authorize.net for the full detail behind a transaction id.
+ *
+ * Unlike iyzico's retrieve this is NOT the authentication step — the webhook's
+ * HMAC already established that. It exists because an Authorize.net
+ * notification is the thinnest of any provider here: a transaction id, an
+ * amount and a response code. The order — and therefore the invoice number the
+ * checkout travelled out with — lives only on the transaction itself.
+ *
+ * That matters more than it sounds. `refId`, the obvious place to put a
+ * merchant's own identifier, is echoed on the API RESPONSE and is not stored
+ * against the transaction, so it cannot come back on a later event. Only
+ * `order.invoiceNumber` persists. Without this call an Authorize.net payment
+ * arrives with an amount and no idea what it paid for, which is precisely the
+ * "URL generator" failure the checkout module exists to avoid.
+ */
+export async function retrieveAuthorizeNetTransaction(
+  input: AuthorizeNetRetrieveInput,
+): Promise<AuthorizeNetRetrieveResult> {
+  const name = str(input.config.apiLoginId);
+  const transactionKey = str(input.config.transactionKey);
+  if (!name || !transactionKey) return { ok: false, reason: "missing_secret" };
+
+  const body = JSON.stringify({
+    getTransactionDetailsRequest: {
+      merchantAuthentication: { name, transactionKey },
+      transId: input.transId,
+    },
+  });
+
+  const doFetch: FetchLike = input.fetchImpl ?? ((i, init) => fetch(i, init));
+  let res: Response;
+  try {
+    res = await doFetch(`${authorizeNetHost(input.config)}${AUTHORIZENET_API_PATH}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+  } catch {
+    return { ok: false, reason: "unreachable" };
+  }
+  if (!res.ok) return { ok: false, reason: "unreachable" };
+
+  const parsed = parseAuthorizeNetJson(await res.text());
+  if (!parsed) return { ok: false, reason: "unreachable" };
+  if (!authorizeNetOk(parsed)) {
+    return { ok: false, reason: "rejected", message: authorizeNetErrorText(parsed) ?? undefined };
+  }
+  const transaction = obj(parsed.transaction);
+  if (!transaction) return { ok: false, reason: "rejected", message: "no transaction in response" };
+  return { ok: true, transaction };
+}
+
+/**
+ * `net.authorize.payment.authcapture.created` → `{ subject: "authcapture",
+ * action: "created" }`.
+ *
+ * The last two segments are the load-bearing pair, and it is the SECOND-TO-LAST
+ * that names the operation — `…payment.refund.created` is a refund, not a
+ * creation of something called payment. The families nest to different depths
+ * (`net.authorize.payment.*` vs `net.authorize.customer.subscription.*`), so
+ * both are taken from the end rather than by index from the front.
+ */
+const authorizeNetEvent = (eventType: string): { subject: string; action: string } => {
+  const parts = eventType.split(".");
+  return {
+    subject: parts.length >= 2 ? (parts[parts.length - 2] as string) : "",
+    action: parts.length >= 1 ? (parts[parts.length - 1] as string) : "",
+  };
+};
+
+/**
+ * Authorize.net's response codes. 1 is the only one that means the money moved.
+ * 4 is held for fraud review — approved by the gateway, not yet by the
+ * merchant — so it is `pending` rather than a success or a failure.
+ */
+const authorizeNetStatusFor = (
+  responseCode: number | null,
+  settled: "succeeded" | "pending" | "canceled" | "refunded",
+): string => {
+  if (responseCode === 4) return "pending";
+  if (responseCode !== null && responseCode !== 1) return "failed";
+  return settled;
+};
+
+/**
+ * One Authorize.net notification → at most one payment or subscription row.
+ *
+ * ## Keying, and why it needs less care than Adyen's
+ *
+ * Authorize.net REUSES the original transaction id for a capture and for a
+ * void: capturing an authorisation does not mint a new transaction, it settles
+ * the existing one. So `payload.id` upserts onto the same row on its own, with
+ * none of the `originalReference` bookkeeping Adyen needs.
+ *
+ * A REFUND is the exception, and it is the same trap Adyen documents: a refund
+ * is a NEW transaction whose amount is the refunded portion, not the payment's
+ * total. Since the ledger's upsert REPLACES the row, filing it against the
+ * original would overwrite a $100 payment with the $10 that came back. It gets
+ * its own row keyed on its own transaction id, and `SUM(amount)` still means
+ * what it should.
+ */
+const authorizeNetPaymentRecord = (
+  eventType: string,
+  p: Record<string, unknown>,
+  currency: string,
+  detail: Record<string, unknown> | null,
+): PaymentRecord | null => {
+  const id = str(p.id);
+  if (!id) return null;
+  const { subject, action } = authorizeNetEvent(eventType);
+  const responseCode = num(p.responseCode);
+
+  let settled: "succeeded" | "pending" | "canceled" | "refunded";
+  if (subject === "fraud") {
+    // `fraud.held` is the gateway saying a human has to look at this, which is
+    // exactly `pending`; approve and decline resolve it either way. A decline
+    // is a failure regardless of the response code the held authorisation
+    // carried, so it does not go through the shared status mapping.
+    if (action === "declined") return failedFraudRecord(id, p, currency, detail);
+    settled = action === "approved" ? "succeeded" : "pending";
+  } else {
+    switch (subject) {
+      case "authorization":
+        // Authorised but not captured: the money is held, not taken.
+        settled = "pending";
+        break;
+      case "authcapture":
+      case "capture":
+      case "priorAuthCapture":
+        settled = "succeeded";
+        break;
+      case "void":
+        settled = "canceled";
+        break;
+      case "refund":
+        settled = "refunded";
+        break;
+      default:
+        // Anything Authorize.net adds later is logged as an event and writes
+        // no row, rather than being guessed into the ledger.
+        return null;
+    }
+  }
+
+  const amount = toMinorUnits(p.authAmount, currency);
+  const order = obj(detail?.order);
+  const refunded = settled === "refunded";
+  return {
+    kind: "payment",
+    row: {
+      id: paymentRowId("authorizenet", id),
+      provider: "authorizenet",
+      external_id: id,
+      customer: null,
+      invoice: null,
+      amount,
+      amount_refunded: refunded ? amount : 0,
+      currency,
+      status: authorizeNetStatusFor(responseCode, settled),
+      method: authorizeNetMethod(detail),
+      failure_reason:
+        responseCode !== null && responseCode !== 1 && responseCode !== 4
+          ? (str(detail?.responseReasonDescription) ?? `response code ${responseCode}`)
+          : null,
+      // The invoice number is the only merchant identifier Authorize.net keeps
+      // with a transaction, so it is what the checkout sends and what comes
+      // back. `merchantReferenceId` is read first for the case where the
+      // notification does carry one and no detail was fetched.
+      reference: str(order?.invoiceNumber) ?? str(p.merchantReferenceId),
+      processed_at: isoToMs(detail?.submitTimeUTC),
+      metadata: authorizeNetMetadata(eventType, p, detail),
+      source_created_at: isoToMs(detail?.submitTimeUTC),
+    },
+  };
+};
+
+/** A declined fraud review: the authorisation is dead, and the amount is the
+ *  one that will NOT be collected. */
+const failedFraudRecord = (
+  id: string,
+  p: Record<string, unknown>,
+  currency: string,
+  detail: Record<string, unknown> | null,
+): PaymentRecord => {
+  const order = obj(detail?.order);
+  return {
+    kind: "payment",
+    row: {
+      id: paymentRowId("authorizenet", id),
+      provider: "authorizenet",
+      external_id: id,
+      customer: null,
+      invoice: null,
+      amount: toMinorUnits(p.authAmount, currency),
+      amount_refunded: 0,
+      currency,
+      status: "failed",
+      method: authorizeNetMethod(detail),
+      failure_reason: str(detail?.responseReasonDescription) ?? "declined in fraud review",
+      reference: str(order?.invoiceNumber) ?? str(p.merchantReferenceId),
+      processed_at: isoToMs(detail?.submitTimeUTC),
+      metadata: authorizeNetMetadata("net.authorize.payment.fraud.declined", p, detail),
+      source_created_at: isoToMs(detail?.submitTimeUTC),
+    },
+  };
+};
+
+/** How it was paid, from the retrieved detail — the notification never says. */
+const authorizeNetMethod = (detail: Record<string, unknown> | null): string | null => {
+  const payment = obj(detail?.payment);
+  if (!payment) return null;
+  const card = obj(payment.creditCard);
+  if (card) return str(card.cardType) ?? "card";
+  if (obj(payment.bankAccount)) return "bank_account";
+  return null;
+};
+
+const authorizeNetMetadata = (
+  eventType: string,
+  p: Record<string, unknown>,
+  detail: Record<string, unknown> | null,
+): Record<string, unknown> => ({
+  event_type: eventType,
+  ...(str(p.authCode) ? { auth_code: str(p.authCode) } : {}),
+  ...(str(p.avsResponse) ? { avs_response: str(p.avsResponse) } : {}),
+  // A refund's link back to what it refunded. Only the retrieved detail has it.
+  ...(str(detail?.refTransId) ? { original_reference: str(detail?.refTransId) } : {}),
+  ...(str(detail?.transactionStatus) ? { transaction_status: str(detail?.transactionStatus) } : {}),
+  ...(str(obj(detail?.order)?.description)
+    ? { description: str(obj(detail?.order)?.description) }
+    : {}),
+});
+
+/** An ARB subscription event. The payload is its own small shape — a name, an
+ *  amount in MAJOR units and a status — with no customer attached. */
+const authorizeNetSubscriptionRecord = (
+  p: Record<string, unknown>,
+  currency: string,
+): PaymentRecord | null => {
+  const id = str(p.id);
+  if (!id) return null;
+  return {
+    kind: "subscription",
+    row: {
+      id: paymentRowId("authorizenet", id),
+      provider: "authorizenet",
+      external_id: id,
+      customer: null,
+      status: str(p.status),
+      product_name: str(p.name),
+      price_amount: toMinorUnits(p.amount, currency),
+      currency,
+      billing_interval: null,
+      quantity: 1,
+      current_period_start: null,
+      current_period_end: null,
+      cancel_at_period_end: false,
+      canceled_at: null,
+      trial_end: null,
+      metadata: null,
+      source_created_at: null,
+    },
+  };
+};
+
+/**
+ * An Authorize.net notification → normalized records.
+ *
+ * `accountCurrency` is not a nicety. Authorize.net's API carries no currency
+ * field anywhere — not on a transaction, not on a notification, not in its
+ * schema — because a merchant account settles in exactly one. It is collected
+ * on the connection and threaded through here so an amount lands in the ledger
+ * meaning something.
+ *
+ * `detail` is the optional result of `retrieveAuthorizeNetTransaction`. Absent,
+ * the payment is still recorded — the signature already proved it happened —
+ * but without the invoice number that ties it to the row that asked for it.
+ */
+const normalizeAuthorizeNet = (
+  body: Record<string, unknown>,
+  accountCurrency: string,
+  detail: Record<string, unknown> | null,
+): NormalizedPaymentEvent => {
+  const type = str(body.eventType) ?? "";
+  const p = obj(body.payload) ?? {};
+  const entityName = str(p.entityName) ?? "";
+  const records: PaymentRecord[] = [];
+
+  if (entityName === "transaction") {
+    const record = authorizeNetPaymentRecord(type, p, accountCurrency, detail);
+    if (record) records.push(record);
+  } else if (entityName === "subscription") {
+    const record = authorizeNetSubscriptionRecord(p, accountCurrency);
+    if (record) records.push(record);
+  }
+  // Customer-profile and payment-profile events carry an id and nothing else —
+  // no email, no name — so there is no customer row worth writing from one.
+  // They are still recorded in `payment_events`.
+
+  return {
+    // Unique per delivery and stable across Authorize.net's own retries.
+    eventId: str(body.notificationId) ?? "",
+    type,
+    // Nothing on the notification distinguishes the sandbox; the connection's
+    // environment does, and saying "live" from here would be a guess.
+    livemode: null,
+    records,
+  };
+};
+
 /**
  * The dummy provider's settlement → one payment record.
  *
@@ -1923,7 +2408,21 @@ const normalizeDummy = (body: Record<string, unknown>): NormalizedPaymentEvent =
 export function normalizePaymentEvent(
   provider: string,
   payload: unknown,
-  opts: { headerEventId?: string | null } = {},
+  opts: {
+    headerEventId?: string | null;
+    /**
+     * The currency the connected account settles in. Only Authorize.net needs
+     * it, and it needs it absolutely: its API states a currency nowhere, so an
+     * amount arrives as a bare decimal.
+     */
+    accountCurrency?: string | null;
+    /**
+     * Provider detail fetched separately because the notification was too thin
+     * to write a useful row from — today only Authorize.net's
+     * `getTransactionDetailsRequest` result.
+     */
+    detail?: unknown;
+  } = {},
 ): NormalizedPaymentEvent {
   const body = obj(payload) ?? {};
   const headerEventId = opts.headerEventId ?? null;
@@ -1934,6 +2433,13 @@ export function normalizePaymentEvent(
   if (provider === "paddle") return normalizePaddle(body, headerEventId);
   if (provider === "paytr") return normalizePayTR(body);
   if (provider === "adyen") return normalizeAdyen(body);
+  if (provider === "authorizenet") {
+    return normalizeAuthorizeNet(
+      body,
+      (opts.accountCurrency ?? "").toUpperCase() || AUTHORIZENET_DEFAULT_CURRENCY,
+      obj(opts.detail),
+    );
+  }
   if (provider === "dummy") return normalizeDummy(body);
   return { eventId: headerEventId ?? "", type: "", livemode: null, records: [] };
 }

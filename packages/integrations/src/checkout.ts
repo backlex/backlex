@@ -16,9 +16,10 @@
  *
  * `adhoc` — hand the provider an amount and it mints a one-off checkout.
  * Stripe (`price_data`), PayTR (`get-token`), iyzico
- * (`checkoutform/initialize`) and Adyen (`paymentLinks`) all work this way,
- * and it is the shape the templates need: an invoice row carries an amount
- * that exists nowhere in the provider's catalog.
+ * (`checkoutform/initialize`), Adyen (`paymentLinks`) and Authorize.net
+ * (`getHostedPaymentPage`) all work this way, and it is the shape the templates
+ * need: an invoice row carries an amount that exists nowhere in the provider's
+ * catalog.
  *
  * `catalog` — Polar, Lemon Squeezy and Paddle mint a checkout against a
  * PRE-EXISTING product/price id. There is no amount parameter; you send a
@@ -37,10 +38,12 @@
  * `./payments.ts` lifts it onto the payment record. That is what ties a
  * received payment to the invoice it paid.
  *
- * The catch is PayTR: `merchant_oid` must be ALPHANUMERIC. So the reference
- * contract for every provider is the narrowest one any of them imposes —
- * `[A-Za-z0-9]{1,48}` — rather than per-provider mangling that would make the
- * value that comes back differ from the value that went out.
+ * Two providers narrow what that value may be, and the contract takes the
+ * strictest of each rather than mangling per provider — mangling would make the
+ * value that comes back differ from the value that went out. PayTR's
+ * `merchant_oid` sets the ALPHABET (alphanumerics only); Authorize.net's
+ * `order.invoiceNumber` sets the LENGTH, at 20, which is why the ceiling is
+ * per-provider (`CHECKOUT_REFERENCE_MAX`) rather than a single 48.
  */
 
 import {
@@ -51,9 +54,15 @@ import {
   toHex,
 } from "./payment-crypto";
 import {
+  AUTHORIZENET_API_PATH,
+  AUTHORIZENET_DEFAULT_CURRENCY,
   type FetchLike,
   type PaymentProvider,
+  authorizeNetErrorText,
+  authorizeNetHost,
+  authorizeNetOk,
   isPaymentProvider,
+  parseAuthorizeNetJson,
   toMajorUnits,
 } from "./payments";
 
@@ -76,6 +85,9 @@ export const PAYMENT_CHECKOUT_MODES: Record<PaymentProvider, PaymentCheckoutMode
   // Pay by Link takes a bare amount, so Adyen is `adhoc` despite being an
   // acquirer rather than a billing platform.
   adyen: "adhoc",
+  // Accept Hosted takes a bare amount too, though it answers with a form token
+  // rather than a link — see `authorizeNetCheckout` for what that costs.
+  authorizenet: "adhoc",
   dummy: "adhoc",
   polar: "catalog",
   lemonsqueezy: "catalog",
@@ -92,16 +104,59 @@ export const supportsAdhocCheckout = (provider: string): boolean =>
 // ── Contract ────────────────────────────────────────────────────────────────
 
 /**
- * The reference contract, set by the strictest provider (PayTR's
- * `merchant_oid`). The consumer derives one from its own row id; 48 characters
- * comfortably fits a dash-stripped UUID.
+ * The reference ALPHABET, set by the strictest provider (PayTR's
+ * `merchant_oid` accepts nothing but alphanumerics). Length is a separate
+ * question — see `CHECKOUT_REFERENCE_MAX`.
  */
-export const CHECKOUT_REFERENCE_PATTERN = /^[A-Za-z0-9]{1,48}$/;
+export const CHECKOUT_REFERENCE_PATTERN = /^[A-Za-z0-9]+$/;
 
-/** Strip a row id down to something every provider will carry. A UUID becomes
- *  its 32-hex form, which is still unique and still recognisable. */
-export const toCheckoutReference = (raw: string): string =>
-  String(raw ?? "").replace(/[^A-Za-z0-9]/g, "").slice(0, 48);
+/** The default ceiling. 48 comfortably fits a dash-stripped UUID. */
+export const CHECKOUT_REFERENCE_DEFAULT_MAX = 48;
+
+/**
+ * How long a reference this provider will carry back.
+ *
+ * A single global limit worked until Authorize.net. The only merchant
+ * identifier it STORES against a transaction is `order.invoiceNumber`, capped
+ * at 20 characters — `refId` is roomier but is echoed on the API response only
+ * and never appears on a later event, so it cannot close the loop. A 32-hex
+ * reference would therefore be rejected outright, or worse, truncated into
+ * something that no longer matches the value written onto the row.
+ *
+ * Shortening instead is safe because the reference is echoed back to the caller
+ * and written onto the source row: 20 hex characters is still 80 bits, and what
+ * comes back is exactly what went out.
+ */
+export const CHECKOUT_REFERENCE_MAX: Record<PaymentProvider, number> = {
+  stripe: CHECKOUT_REFERENCE_DEFAULT_MAX,
+  paytr: CHECKOUT_REFERENCE_DEFAULT_MAX,
+  iyzico: CHECKOUT_REFERENCE_DEFAULT_MAX,
+  adyen: CHECKOUT_REFERENCE_DEFAULT_MAX,
+  dummy: CHECKOUT_REFERENCE_DEFAULT_MAX,
+  polar: CHECKOUT_REFERENCE_DEFAULT_MAX,
+  lemonsqueezy: CHECKOUT_REFERENCE_DEFAULT_MAX,
+  paddle: CHECKOUT_REFERENCE_DEFAULT_MAX,
+  authorizenet: 20,
+};
+
+export const checkoutReferenceMax = (provider: string): number =>
+  CHECKOUT_REFERENCE_MAX[provider as PaymentProvider] ?? CHECKOUT_REFERENCE_DEFAULT_MAX;
+
+/**
+ * Strip a row id down to something the provider will carry. A UUID becomes its
+ * 32-hex form, which is still unique and still recognisable.
+ *
+ * `max` defaults to the loosest limit so an existing caller is unaffected;
+ * the consumer passes `checkoutReferenceMax(provider)` so a reference is never
+ * built longer than the provider it is about to be sent to.
+ */
+export const toCheckoutReference = (
+  raw: string,
+  max: number = CHECKOUT_REFERENCE_DEFAULT_MAX,
+): string =>
+  String(raw ?? "")
+    .replace(/[^A-Za-z0-9]/g, "")
+    .slice(0, Math.max(1, max));
 
 export interface CheckoutCustomer {
   email?: string;
@@ -161,8 +216,18 @@ export interface CheckoutInput {
   /** Origin the `dummy` provider's hosted page is served from. Ignored by
    *  every real provider. */
   hostedBaseUrl?: string;
-  /** The provider row's webhook token — routing key for the `dummy` page. */
+  /** The provider row's webhook token — routing key for the `dummy` page,
+   *  which also VERIFIES with the connection's secret and is demo/dev only. */
   hostedToken?: string;
+  /**
+   * The provider row's id — routing key for the Authorize.net bridge.
+   *
+   * Deliberately not `hostedToken`. That URL goes out in a payment link and is
+   * seen by every customer who is asked to pay, and the webhook token is the
+   * shared secret guarding this workspace's unauthenticated receive endpoint.
+   * The row id is an unguessable UUID that grants nothing by itself.
+   */
+  hostedProviderId?: string;
   fetchImpl?: FetchLike;
   /** Injectable clock (ms) so tests don't depend on wall time. */
   nowMs?: number;
@@ -238,7 +303,7 @@ const splitName = (full: string | undefined): { name: string; surname: string } 
  * is worse than no checkout: the money arrives and nothing knows what it paid
  * for.
  */
-const validateCommon = (input: CheckoutInput): CheckoutResult | null => {
+const validateCommon = (input: CheckoutInput, maxReference: number): CheckoutResult | null => {
   if (!Number.isInteger(input.amount) || input.amount <= 0) {
     return fail(
       "invalid_input",
@@ -248,12 +313,14 @@ const validateCommon = (input: CheckoutInput): CheckoutResult | null => {
   if (!/^[A-Za-z]{3}$/.test(String(input.currency ?? ""))) {
     return fail("invalid_input", `currency must be a 3-letter ISO-4217 code (got "${input.currency}")`);
   }
-  if (!CHECKOUT_REFERENCE_PATTERN.test(String(input.reference ?? ""))) {
+  const reference = String(input.reference ?? "");
+  if (!CHECKOUT_REFERENCE_PATTERN.test(reference) || reference.length > maxReference) {
     return fail(
       "invalid_input",
-      "reference must be 1–48 alphanumeric characters — it travels out with the " +
-        "checkout and comes back on the settlement event, and PayTR's `merchant_oid` " +
-        "accepts nothing else",
+      `reference must be 1–${maxReference} alphanumeric characters — it travels out with ` +
+        "the checkout and comes back on the settlement event, so it is bounded by " +
+        "what this provider will carry (PayTR's `merchant_oid` sets the alphabet; " +
+        "Authorize.net's invoice number sets the shortest length)",
     );
   }
   if (!input.successUrl) return fail("invalid_input", "successUrl is required");
@@ -754,6 +821,216 @@ const adyenCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {
   };
 };
 
+// ── Authorize.net ───────────────────────────────────────────────────────────
+
+/**
+ * Accept Hosted is the odd one out: it does not hand back a URL.
+ *
+ * `getHostedPaymentPageRequest` returns a form TOKEN, and the payment page is
+ * reached by POSTing that token to Authorize.net — there is no GET link to send
+ * anyone. So the URL this returns points at a small backlex-hosted bridge that
+ * does the POST, the same way the `dummy` provider's page is hosted here for
+ * want of anywhere else. The bridge's target host is decided server-side from
+ * the connection's environment and never from the link, so it cannot be turned
+ * into a redirector.
+ *
+ * The token is bound by Authorize.net to this exact amount and expires in 15
+ * minutes, which is also why it is not separately signed: anyone holding the
+ * link already holds the token and could POST it to Authorize.net themselves.
+ */
+const AUTHORIZENET_TOKEN_TTL_SEC = 15 * 60;
+
+/**
+ * Where the form token is redeemed. NOT the same hosts as the API
+ * (`api`/`apitest`.authorize.net) — Accept Hosted is served from `accept` and
+ * `test`, and posting a token to the API host renders nothing.
+ */
+const AUTHORIZENET_PAY_HOSTS = {
+  production: "https://accept.authorize.net/payment/payment",
+  sandbox: "https://test.authorize.net/payment/payment",
+} as const;
+
+/**
+ * The fixed Authorize.net endpoint the hosted bridge posts to, chosen from the
+ * CONNECTION's environment.
+ *
+ * Exported so the bridge never takes its target from the link it was opened
+ * with. A page that posted wherever a query parameter said would be an open
+ * form-relay wearing the workspace's own origin.
+ */
+export const authorizeNetPaymentPageUrl = (config: Record<string, unknown>): string =>
+  str(config.environment) === "sandbox"
+    ? AUTHORIZENET_PAY_HOSTS.sandbox
+    : AUTHORIZENET_PAY_HOSTS.production;
+
+/**
+ * Both redemption ORIGINS, for the bridge page's `form-action`.
+ *
+ * The app's default CSP is `form-action 'self'`, which would refuse the
+ * cross-origin POST outright — the browser blocks the submission and the
+ * shopper gets a page that does nothing when clicked. Derived from the same
+ * table the bridge posts to so the allow-list and the target cannot drift.
+ */
+export const AUTHORIZENET_FORM_ACTION_ORIGINS: readonly string[] = Object.values(
+  AUTHORIZENET_PAY_HOSTS,
+).map((u) => new URL(u).origin);
+
+/** Authorize.net's own field caps, applied here so a long description is
+ *  trimmed rather than 422'd after the credentials have already gone out. */
+const AUTHORIZENET_DESCRIPTION_MAX = 255;
+const AUTHORIZENET_NAME_MAX = 50;
+
+const authorizeNetCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {
+  const name = str(input.config.apiLoginId);
+  const transactionKey = str(input.config.transactionKey);
+  if (!name || !transactionKey) {
+    return fail(
+      "missing_secret",
+      "Authorize.net needs its API login ID and transaction key to open a checkout",
+    );
+  }
+  if (!input.hostedBaseUrl || !input.hostedProviderId) {
+    return fail(
+      "invalid_input",
+      "Authorize.net's hosted payment page is reached by POSTing a form token, so " +
+        "backlex hosts the page that does it — that needs the origin and the " +
+        "connection's id",
+    );
+  }
+
+  // Authorize.net has no currency parameter ANYWHERE: a merchant account
+  // settles in exactly one, and the amount is a bare decimal. Charging in
+  // whatever the account happens to use while the caller asked for something
+  // else is a money bug that nothing downstream could detect, so a mismatch is
+  // refused instead of being quietly reinterpreted.
+  const accountCurrency = (str(input.config.currency) ?? AUTHORIZENET_DEFAULT_CURRENCY).toUpperCase();
+  if (input.currency.toUpperCase() !== accountCurrency) {
+    return fail(
+      "invalid_input",
+      `This Authorize.net account settles in ${accountCurrency}, and Authorize.net has ` +
+        `no way to charge in another currency — the checkout asked for ` +
+        `${input.currency.toUpperCase()}`,
+    );
+  }
+
+  const description = (input.description || "Payment").slice(0, AUTHORIZENET_DESCRIPTION_MAX);
+  const country = str(input.customer?.country);
+  // Built only from what the caller actually supplied, and omitted entirely
+  // when that is nothing. Unlike iyzico — where the buyer name is a required
+  // API field the customer never sees, so `splitName`'s "Customer" placeholder
+  // is harmless — Accept Hosted renders `billTo` INTO the payment form. Sending
+  // the placeholder would prefill the shopper's billing name with the word
+  // "Customer" and make them delete it before paying.
+  const billTo: Record<string, unknown> = {};
+  if (input.customer?.name) {
+    const { name: firstName, surname: lastName } = splitName(input.customer.name);
+    billTo.firstName = firstName.slice(0, AUTHORIZENET_NAME_MAX);
+    billTo.lastName = lastName.slice(0, AUTHORIZENET_NAME_MAX);
+  }
+  if (input.customer?.address) billTo.address = input.customer.address;
+  if (input.customer?.city) billTo.city = input.customer.city;
+  // Authorize.net accepts a country name as well as a code, unlike Adyen.
+  if (country) billTo.country = country;
+
+  const transactionRequest: Record<string, unknown> = {
+    transactionType: "authCaptureTransaction",
+    // Major-unit decimal string, the mirror of the conversion the notification
+    // normalizer does on the way back in.
+    amount: toMajorUnits(input.amount, input.currency),
+    order: {
+      // The ONLY merchant identifier Authorize.net stores against a
+      // transaction, and therefore the one thing that can carry our row id back
+      // on a settlement. Capped at 20 characters, which is why the reference
+      // was built shorter for this provider.
+      invoiceNumber: input.reference,
+      description,
+    },
+    customer: input.customer?.email ? { email: input.customer.email } : undefined,
+    billTo: Object.keys(billTo).length > 0 ? billTo : undefined,
+  };
+  for (const k of Object.keys(transactionRequest)) {
+    if (transactionRequest[k] === undefined) delete transactionRequest[k];
+  }
+
+  const payload = {
+    getHostedPaymentPageRequest: {
+      merchantAuthentication: { name, transactionKey },
+      // Echoed on this response only — Authorize.net does not store it against
+      // the transaction, which is exactly why `invoiceNumber` carries the
+      // reference instead. Sent anyway so the call is traceable in their logs.
+      refId: input.reference,
+      transactionRequest,
+      hostedPaymentSettings: {
+        setting: [
+          {
+            settingName: "hostedPaymentReturnOptions",
+            // `showReceipt: true` leaves the shopper on a receipt with a link
+            // back. The alternative POSTs the transaction result to the return
+            // URL, which would break any ordinary GET-only success page.
+            settingValue: JSON.stringify({
+              showReceipt: true,
+              url: input.successUrl,
+              urlText: "Continue",
+              cancelUrl: input.cancelUrl ?? input.successUrl,
+              cancelUrlText: "Cancel",
+            }),
+          },
+          { settingName: "hostedPaymentButtonOptions", settingValue: JSON.stringify({ text: "Pay" }) },
+          {
+            settingName: "hostedPaymentOrderOptions",
+            // The invoice number is our row id, which means nothing to the
+            // person paying — showing it would put an opaque hex string on the
+            // receipt where an order summary belongs.
+            settingValue: JSON.stringify({ show: false }),
+          },
+          {
+            settingName: "hostedPaymentBillingAddressOptions",
+            settingValue: JSON.stringify({ show: true, required: false }),
+          },
+          {
+            settingName: "hostedPaymentCustomerOptions",
+            settingValue: JSON.stringify({ showEmail: true, requiredEmail: false }),
+          },
+        ],
+      },
+    },
+  };
+
+  let res: Response;
+  try {
+    res = await doFetch(input)(`${authorizeNetHost(input.config)}${AUTHORIZENET_API_PATH}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    return fail("unreachable", `Could not reach Authorize.net: ${(e as Error).message}`);
+  }
+  if (!res.ok) return fail("unreachable", `Authorize.net returned HTTP ${res.status}`);
+
+  const body = parseAuthorizeNetJson(await res.text());
+  if (!body) return fail("unreachable", "Authorize.net returned a response that was not JSON");
+  // 200 is not the verdict — Authorize.net reports its refusals with an OK
+  // status and an `Error` result code.
+  if (!authorizeNetOk(body)) {
+    return fail("rejected", authorizeNetErrorText(body) ?? "Authorize.net rejected the checkout");
+  }
+  const token = str(body.token);
+  if (!token) return fail("rejected", "Authorize.net reported success with no form token");
+
+  const base = input.hostedBaseUrl.replace(/\/+$/, "");
+  const params = new URLSearchParams({ t: token });
+  return {
+    ok: true,
+    url: `${base}/api/payments/authorizenet/${encodeURIComponent(input.hostedProviderId)}?${params}`,
+    // Accept Hosted issues no id of its own; the form token IS the handle, and
+    // it is what a support conversation with Authorize.net would be about.
+    externalId: token,
+    expiresAt: (input.nowMs ?? Date.now()) + AUTHORIZENET_TOKEN_TTL_SEC * 1000,
+    reference: input.reference,
+  };
+};
+
 // ── dummy ───────────────────────────────────────────────────────────────────
 
 /**
@@ -879,7 +1156,7 @@ export async function createCheckout(
     );
   }
 
-  const invalid = validateCommon(input);
+  const invalid = validateCommon(input, checkoutReferenceMax(provider));
   if (invalid) return invalid;
 
   switch (provider) {
@@ -891,6 +1168,8 @@ export async function createCheckout(
       return iyzicoCheckout(input);
     case "adyen":
       return adyenCheckout(input);
+    case "authorizenet":
+      return authorizeNetCheckout(input);
     case "dummy":
       return dummyCheckout(input);
     default:

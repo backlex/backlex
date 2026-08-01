@@ -1327,9 +1327,17 @@ export interface PaymentsClient {
    * settlement as `payment_transactions.reference`, which is what ties the
    * money to the invoice. Amounts are MINOR units, matching the ledger.
    *
-   * Stripe, Adyen, PayTR, iyzico and the test `dummy` provider take an ad-hoc
-   * amount. Polar, Lemon Squeezy and Paddle need a pre-made price and are
-   * refused with a `catalog_only` explanation rather than a confusing failure.
+   * Stripe, Adyen, Authorize.net, PayTR, iyzico and the test `dummy` provider
+   * take an ad-hoc amount. Polar, Lemon Squeezy and Paddle need a pre-made
+   * price and are refused with a `catalog_only` explanation rather than a
+   * confusing failure.
+   *
+   * Authorize.net is the one with extra rules: its API states no currency
+   * anywhere, so it charges only in the currency the connected account settles
+   * in and refuses anything else, and the reference is shortened to 20
+   * characters because that is all its invoice number will carry back. The
+   * returned `reference` is what was actually sent — store that, not the value
+   * you passed in.
    */
   checkout(input: PaymentCheckoutInput): Promise<{ data: PaymentCheckout }>;
   /** Recent webhook deliveries, newest first. */

@@ -32,10 +32,12 @@ import {
   MASKED_SECRET,
   PAYMENT_MARKER_COLUMNS,
   PAYMENT_SECRET_KEYS,
+  authorizeNetTransactionId,
   fetchPaymentPage,
   hasObjectCatalog,
   isCallbackProvider,
   isRetrieveProvider,
+  retrieveAuthorizeNetTransaction,
   retrieveIyzicoPayment,
   parseCallbackBody,
   isPaymentProvider,
@@ -48,6 +50,7 @@ import {
   type PaymentRecordKind,
 } from "@backlex/integrations/payments";
 import {
+  checkoutReferenceMax,
   createCheckout,
   toCheckoutReference,
   type CheckoutCustomer,
@@ -55,6 +58,7 @@ import {
 } from "@backlex/integrations/checkout";
 import type { Ctx } from "../context";
 import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/crypto";
+import { log } from "../lib/log";
 import { createManagedCollection } from "./collections";
 import { invalidateTenantCollections } from "./collections-cache";
 import { loadCollection } from "./items/collection-loader";
@@ -304,6 +308,31 @@ export async function getProviderRow(
     .limit(1)) as PaymentProviderRow[];
   if (!rows[0]) throw new AppError("NOT_FOUND", "Payment provider not connected");
   return rows[0];
+}
+
+/**
+ * Resolve a connection id to its provider row, without a tenant.
+ *
+ * For pages a CUSTOMER opens, where `getProviderByToken` would be the wrong
+ * key: the webhook token is a shared secret (it is all that stands between an
+ * unauthenticated request and this workspace's receive endpoint), and anything
+ * that travels in a payment link is seen by every payer. The row id is an
+ * unguessable UUID that grants nothing on its own, so leaking it costs nothing.
+ *
+ * Secrets come back ENCRYPTED, same as `getProviderRow`.
+ */
+export async function getProviderByPublicId(
+  ctx: DbCtx,
+  id: string,
+): Promise<PaymentProviderRow | null> {
+  if (!id) return null;
+  const t = providersTable(ctx.dialect);
+  const rows = (await (ctx.db as AnyDb)
+    .select()
+    .from(t)
+    .where(eq(t.id, id))
+    .limit(1)) as PaymentProviderRow[];
+  return rows[0] ?? null;
 }
 
 /** Resolve a public webhook token to its provider row. Tenant-free by design —
@@ -865,7 +894,42 @@ export async function receiveWebhook(
     typeof (input.headers as Headers).get === "function"
       ? (input.headers as Headers).get("webhook-id")
       : ((input.headers as Record<string, string>)["webhook-id"] ?? null);
-  const normalized = normalizePaymentEvent(provider.provider, payload, { headerEventId });
+
+  // Authorize.net's notification is the thinnest of any provider here: a
+  // transaction id, an amount and a response code. The order — and with it the
+  // invoice number the checkout travelled out with — lives only on the
+  // transaction, so it is fetched back before normalizing.
+  //
+  // BEST-EFFORT on purpose, unlike iyzico's retrieve. There the retrieve IS the
+  // authentication and a failure means nothing may be recorded; here the HMAC
+  // already proved the delivery is real, so refusing to record a verified
+  // payment because a secondary lookup failed would lose the money event
+  // entirely to save the invoice number. Failing hard would also mean that one
+  // bad credential 500-loops every delivery until Authorize.net disables the
+  // endpoint — the PayTR failure mode this codebase already pays attention to.
+  let detail: Record<string, unknown> | undefined;
+  if (provider.provider === "authorizenet") {
+    const transId = authorizeNetTransactionId(payload);
+    if (transId) {
+      const got = await retrieveAuthorizeNetTransaction({ config, transId });
+      if (got.ok) detail = got.transaction;
+      else {
+        log.warn("payments.authorizenet_detail_unavailable", {
+          providerId: provider.id,
+          transId,
+          reason: got.reason,
+        });
+      }
+    }
+  }
+
+  const normalized = normalizePaymentEvent(provider.provider, payload, {
+    headerEventId,
+    // Authorize.net states a currency nowhere in its API, so the connection's
+    // own setting is the only thing that says what an amount means.
+    accountCurrency: typeof config.currency === "string" ? config.currency : null,
+    detail,
+  });
   const eventId = normalized.eventId || crypto.randomUUID();
   const tenantId = provider.tenantId;
 
@@ -1065,9 +1129,16 @@ export async function createPaymentCheckout(
     }
   }
 
+  // Built to the CONNECTED provider's ceiling, not to a global one.
+  // Authorize.net stores a merchant reference only in `order.invoiceNumber`,
+  // which stops at 20 characters — a 32-hex row id would be refused outright,
+  // and truncating it later would write one value onto the row and send a
+  // different one to the provider. Shortening up front keeps "what comes back
+  // is what went out" true, and 20 hex characters is still 80 bits.
+  const maxReference = checkoutReferenceMax(row.provider);
   const reference = input.reference
-    ? toCheckoutReference(input.reference)
-    : toCheckoutReference(input.writeBack?.itemId ?? crypto.randomUUID());
+    ? toCheckoutReference(input.reference, maxReference)
+    : toCheckoutReference(input.writeBack?.itemId ?? crypto.randomUUID(), maxReference);
 
   const config = await decryptConfig(
     row.provider,
@@ -1106,6 +1177,9 @@ export async function createPaymentCheckout(
     locale: input.locale,
     hostedBaseUrl: baseUrl,
     hostedToken: row.webhookToken,
+    // The Authorize.net bridge is opened by the CUSTOMER, so it is keyed on the
+    // connection id rather than the webhook token — see `hostedProviderId`.
+    hostedProviderId: row.id,
     fetchImpl: input.fetchImpl,
   });
 

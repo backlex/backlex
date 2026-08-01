@@ -210,9 +210,10 @@ export const createPaymentCheckout: McpTool = {
     "Use `writeBack` to store the link on the invoice/quote/donation row that is " +
     "asking to be paid; the `reference` it travels with comes back on the " +
     "settlement as `payment_transactions.reference`, which is what ties the two " +
-    "together. Stripe, Adyen, PayTR, iyzico and the test `dummy` provider take an " +
-    "ad-hoc amount; Polar, Lemon Squeezy and Paddle need a pre-made price and will " +
-    "refuse. Admin-only.",
+    "together. Stripe, Adyen, Authorize.net, PayTR, iyzico and the test `dummy` " +
+    "provider take an ad-hoc amount; Polar, Lemon Squeezy and Paddle need a pre-made " +
+    "price and will refuse. Authorize.net charges only in the currency its account " +
+    "settles in, and shortens the reference to 20 characters. Admin-only.",
   inputSchema: {
     type: "object",
     properties: {

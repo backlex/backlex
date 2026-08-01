@@ -59,6 +59,7 @@ describe("the capability table", () => {
       paytr: "adhoc",
       iyzico: "adhoc",
       adyen: "adhoc",
+      authorizenet: "adhoc",
       dummy: "adhoc",
       polar: "catalog",
       lemonsqueezy: "catalog",

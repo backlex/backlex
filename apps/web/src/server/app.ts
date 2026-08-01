@@ -511,6 +511,21 @@ export const createApp = (env: Env) => {
     // Extension iframe entries set their own inline-only CSP in the route
     // (default-src 'none'; script-src 'unsafe-inline') — don't overwrite it.
     if (/^\/api\/extensions\/[^/]+\/assets\//.test(path)) return;
+    // Authorize.net's Accept Hosted bridge sets its own policy, and has to:
+    // redeeming a form token means POSTing it cross-origin from an inline
+    // script, and STRICT_CSP forbids both (`form-action 'self'` alone would
+    // make the page silently do nothing). Its policy is narrower than this one
+    // everywhere else — `default-src 'none'`, one script named by hash, and
+    // exactly the two Authorize.net origins as form targets.
+    //
+    // Conditioned on the header actually being there, so a 404 or an error
+    // rendered under that path still gets the strict policy rather than none.
+    if (
+      c.res.headers.has("content-security-policy") &&
+      path.startsWith("/api/payments/authorizenet/")
+    ) {
+      return;
+    }
     // Routes that stream user-uploaded bytes opt into an inert sandbox policy
     // of their own (`default-src 'none'; sandbox` — see
     // services/storage/content-type.ts). Replacing it with STRICT_CSP would

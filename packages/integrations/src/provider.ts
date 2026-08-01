@@ -284,6 +284,21 @@ export interface IntegrationDestination {
    * allowed. Clamped by the engine; it never enlarges the batch.
    */
   batchSize?: number;
+  /**
+   * An OAuth scope this direction needs that merely *connecting* does not imply.
+   *
+   * A provider that gains a capability after people have already connected it
+   * leaves those connections holding a narrower grant than the new direction
+   * needs — reading a calendar is not permission to write to it. The provider's
+   * refusal for that is a 403 at the far end of a scheduled job, which reaches
+   * an operator as a paused sync hours later.
+   *
+   * Declared here, the mismatch is caught when the sync is SAVED, against the
+   * scope list the token exchange recorded. Absence of a recorded scope is not
+   * treated as denial: some providers return none, and refusing on silence
+   * would block connections that are perfectly able to do the work.
+   */
+  requiredScope?: string;
   /** Send one batch. Throwing retries it; returning marks it delivered. */
   push(ctx: DestinationPushContext): Promise<void>;
 }

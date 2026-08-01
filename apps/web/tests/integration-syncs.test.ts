@@ -934,3 +934,74 @@ describe("push: a destination with a closed column set", () => {
     expect(res.status).toBe(422);
   });
 });
+
+/**
+ * A connection authorized before the direction existed.
+ *
+ * Google Calendar was source-only first, so every connection made back then
+ * holds `calendar.readonly`. The provider's refusal for a write on that grant
+ * is a 403 at the far end of a scheduled job — which reaches an operator as a
+ * sync that paused itself hours later, with nothing saying re-authorizing is
+ * the fix.
+ */
+describe("push: a grant that predates the capability", () => {
+  const connectWithScope = async (scope: string | null) => {
+    client.query("delete from integrations where kind = 'google-calendar'").run();
+    const res = await ok("POST", BASE, {
+      kind: "google-calendar",
+      config: { clientId: "cid", clientSecret: "csecret" },
+    });
+    const id = res.data.id as string;
+    const row = client.query("select config from integrations where id = ?").get(id) as {
+      config: string;
+    };
+    const config = { ...JSON.parse(row.config), _oauthAccessToken: "tok" };
+    if (scope === null) delete config._oauthScope;
+    else config._oauthScope = scope;
+    client.query("update integrations set config = ? where id = ?").run(JSON.stringify(config), id);
+    return id;
+  };
+
+  const create = (id: string) =>
+    req("POST", SYNCS, {
+      integrationId: id,
+      collection: "leads",
+      direction: "push",
+      settings: { calendarId: "primary" },
+      mapping: { name: "summary" },
+    });
+
+  test("a read-only grant is refused at save time, saying what to do", async () => {
+    const res = await create(await connectWithScope("https://www.googleapis.com/auth/calendar.readonly"));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toMatch(/reconnect/i);
+  });
+
+  test("a grant that includes write is accepted", async () => {
+    const scope =
+      "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
+    expect((await create(await connectWithScope(scope))).status).toBe(201);
+  });
+
+  test("silence is not denial", async () => {
+    // A provider that returns no scope list leaves the field empty. Refusing on
+    // that would block connections that can do the work; the far end's 403
+    // stays the backstop.
+    expect((await create(await connectWithScope(null))).status).toBe(201);
+  });
+
+  test("the same connection can still be used as a SOURCE", async () => {
+    // The narrower grant is exactly what a pull needs — only the new direction
+    // is affected.
+    const id = await connectWithScope("https://www.googleapis.com/auth/calendar.readonly");
+    const res = await req("POST", SYNCS, {
+      integrationId: id,
+      collection: "leads",
+      direction: "pull",
+      settings: { calendarId: "primary" },
+      mapping: { summary: "name" },
+    });
+    expect(res.status).toBe(201);
+  });
+});

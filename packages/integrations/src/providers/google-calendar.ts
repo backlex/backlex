@@ -163,6 +163,9 @@ export const googleCalendar = defineProvider({
   },
   destination: {
     batchSize: PUSH_BATCH,
+    // Calendar was source-only first, so every connection made before the
+    // write-back landed holds `calendar.readonly` and nothing else.
+    requiredScope: "https://www.googleapis.com/auth/calendar.events",
     columns: [
       { value: "summary", label: "Title" },
       { value: "description", label: "Description" },

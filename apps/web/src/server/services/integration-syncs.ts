@@ -29,6 +29,7 @@ import {
   DESTINATION_SETTING_FIELDS,
   SOURCE_SETTING_FIELDS,
   isIntegrationKind,
+  OAUTH_SCOPE_KEY,
   providerFor,
   pullFromSource,
   pushToDestination,
@@ -172,6 +173,29 @@ const validateSettings = (
   );
 };
 
+/**
+ * Refuse a sync whose connection was authorized before this direction existed.
+ *
+ * The recorded scope comes from the token exchange, so it is what the provider
+ * actually GRANTED rather than what was asked for. Silence is not denial: a
+ * provider that returns no scope list leaves the field empty, and refusing on
+ * that would block connections that can do the work perfectly well. The far
+ * end's 403 remains the backstop for anything this cannot see.
+ */
+const assertScope = (
+  integration: { kind: string; config: Record<string, unknown> },
+  required: string | undefined,
+): void => {
+  if (!required) return;
+  const granted = integration.config?.[OAUTH_SCOPE_KEY];
+  if (typeof granted !== "string" || !granted.trim()) return;
+  if (granted.split(/\s+/).includes(required)) return;
+  throw new AppError(
+    "BAD_REQUEST",
+    `This ${integration.kind} connection was authorized for reading only. Reconnect it to grant write access, then create the sync.`,
+  );
+};
+
 export interface CreateSyncInput {
   integrationId: string;
   collection: string;
@@ -198,6 +222,7 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
   if (direction === "push" && !provider?.destination) {
     throw new AppError("BAD_REQUEST", `${integration.kind} cannot be used as a destination`);
   }
+  if (direction === "push") assertScope(integration, provider?.destination?.requiredScope);
   // Resolves within the caller's tenant and throws if the slug is unknown, so a
   // sync can never be aimed at another workspace's collection.
   const collection = await loadCollection(ctx, tenantId, input.collection);

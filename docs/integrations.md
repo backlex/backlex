@@ -283,7 +283,11 @@ Other behaviour worth knowing:
 
 **Existing connections need re-authorizing.** Write needs the
 `calendar.events` scope, which a connection authorized when Calendar was
-source-only never granted. Pulls keep working; the first push says so.
+source-only never granted. Pulls keep working, and creating a push sync on such
+a connection is **refused when you save it** — checked against the scope list
+the token exchange recorded, not against what was asked for. A provider that
+records no scope list is allowed through; the far end's 403 is the backstop.
+Reconnect the integration and the sync saves.
 
 ### Two kinds of resume
 

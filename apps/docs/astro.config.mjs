@@ -120,6 +120,8 @@ export default defineConfig({
             { slug: "jobs" },
             { slug: "flows" },
             { slug: "payments" },
+            { slug: "documents" },
+            { slug: "e-signature" },
             { slug: "agents" },
             { slug: "feature-flags" },
             { slug: "embedded-dashboards" },

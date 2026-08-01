@@ -81,6 +81,8 @@ import { schemaVersionsRoutes } from "./routes/schema-versions";
 import { dashboardsPublicRoutes } from "./routes/dashboards-public";
 import { formsRoutes } from "./routes/forms";
 import { formsPublicRoutes } from "./routes/forms-public";
+import { signaturesPublicRoutes } from "./routes/signatures-public";
+import { signaturesRoutes } from "./routes/signatures";
 import { realtimeRoutes } from "./routes/realtime";
 import { realtimeAdminRoutes } from "./routes/realtime-admin";
 import { revisionsRoutes } from "./routes/revisions";
@@ -837,6 +839,7 @@ export const createApp = (env: Env) => {
   app.route("/api/tenants", tenantsRoutes);
   app.route("/api/admin/email-templates", emailTemplatesRoutes);
   app.route("/api/admin/documents", documentsRoutes);
+  app.route("/api/admin/signatures", signaturesRoutes);
   app.route("/api/admin/email-config", emailConfigRoutes);
   app.route("/api/admin/push-templates", pushTemplatesRoutes);
   app.route("/api/admin/push-config", pushConfigRoutes);
@@ -907,6 +910,9 @@ export const createApp = (env: Env) => {
   // Public form definition + submit — no `requireUser`; the `/api/public/`
   // prefix inherits the framable CSP + XFO-strip for the iframe embed page.
   app.route("/api/public/forms", formsPublicRoutes);
+  // The signer's side of an e-signature request. Same shape as the form
+  // endpoints above: no `requireUser`, the link token is the whole grant.
+  app.route("/api/public/sign", signaturesPublicRoutes);
 
   // Public dashboard embed page. `/embed/*` is in `run_worker_first`, so the
   // Worker (not CF Static Assets) serves the SPA shell here — which lets the

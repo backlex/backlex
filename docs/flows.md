@@ -67,6 +67,7 @@ are nested operation arrays run after the op succeeds / throws.
 | `sms` | Sends an SMS through the workspace [SMS transport](/sms-messaging/). Addressed *either* by `to` (a number carried on the row) *or* by `userId` (a user's registered numbers) — exactly one, see below | `body`, `to?`, `userId?`, `from?` |
 | `payment.checkout` | Opens a hosted checkout with a connected [payment provider](/payments/) and optionally writes the link onto a row. Returns `{ url, reference, … }` into `{{ $last }}` | `amount` (minor units), `currency`, `provider?` \| `providerId?`, `email?`, `description?`, `successUrl?`, `writeBack?` |
 | `document.render` | Renders a [document template](/documents/) against the row and stores the PDF. Returns `{ key, filename, size }` into `{{ $last }}` | `templateKey?` \| `html?`, `vars?`, `filename?`, `writeBack?` |
+| `document.sign` | Freezes a [document](/documents/) and sends it out [for signature](/e-signature/) — one public link per signer, emailed by the op. Returns `{ id, status, signers }` (and deliberately no links) into `{{ $last }}` | `templateKey?` \| `html?`, `signers`, `title?`, `message?`, `ordered?`, `expiresInDays?`, `writeBack?` |
 | `webhook` | Fires an outbound HTTP request, body JSON-encoded | `url`, `method?`, `headers?`, `body?` |
 | `request` | Like `webhook` but captures the parsed response into `{{ $last }}` for later ops | `url`, `method?`, `headers?`, `query?`, `body?`, `timeoutMs?` (≤60s) |
 | `function` | Invokes a saved [sandbox function](/sandbox/) by name | `name`, `input?` (defaults to `data`) |
@@ -182,6 +183,33 @@ invoice total on the persisted `flow.run` activity row.
 
 The link also lands in `{{ $last.url }}`, so the next step can email or text it.
 Full provider matrix in [Payments](/payments/#asking-for-money).
+
+### Getting the agreement signed
+
+`document.sign` is the step after `document.render` for anything somebody has
+to sign:
+
+```json
+{
+  "type": "document.sign",
+  "templateKey": "lease",
+  "title": "Lease {{ data.no }}",
+  "signers": "{{ data.parties }}",
+  "ordered": true,
+  "writeBack": { "collection": "leases", "id": "{{ data.id }}", "field": "signed_doc" }
+}
+```
+
+`signers` is a list **or one template that resolves to an array** — a lease
+with two tenants carries its own counterparties, and `interpolate` builds
+strings, so a whole-value placeholder resolves to the value itself here rather
+than to `[object Object]`.
+
+Unlike `payment.checkout`, `{{ $last }}` carries **no link**. Everything on
+`$last` is readable by every op after it, and a signing link is a bearer
+credential for somebody else's signature — the op sends the invitation itself,
+and the `signature_request` email template is where its wording lives. Details
+in [E-signature](/e-signature/).
 
 ## Surfaces
 

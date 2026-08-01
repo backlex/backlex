@@ -1631,6 +1631,104 @@ export const documentTemplates = sqliteTable(
   (t) => [uniqueIndex("document_templates_tenant_key_idx").on(t.tenantId, t.key)],
 );
 
+export const signatureRequests = sqliteTable(
+  "signature_requests",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    /** What the signer is told they are signing. */
+    title: text("title").notNull(),
+    /** Optional note carried into the invitation email. */
+    message: text("message"),
+    /** Which document template it came from — provenance only. The bytes are
+     *  never re-derived from it, because the template may have changed. */
+    templateKey: text("template_key"),
+    /** THE SNAPSHOT: the interpolated HTML, frozen at send time. This is what
+     *  was signed, so it — not the row it came from — is what renders later. */
+    bodyHtml: text("body_html").notNull(),
+    pageOptions: text("page_options", { mode: "json" }).$type<Record<string, unknown>>(),
+    filename: text("filename"),
+    /** SHA-256 of `body_html`. Hashing the SOURCE rather than the PDF: two
+     *  renders of one document are not byte-identical across renderer
+     *  versions, so a PDF hash would fail a re-verification that is fine. */
+    documentHash: text("document_hash").notNull(),
+    /** Stored unsigned PDF — what the signer downloads before signing. */
+    documentKey: text("document_key"),
+    signedDocumentKey: text("signed_document_key"),
+    /** SHA-256 of the signed PDF bytes, so a downloaded copy can be checked. */
+    signedDocumentHash: text("signed_document_hash"),
+    /** pending | completed | declined | voided. Expiry is DERIVED from
+     *  `expires_at` rather than stored, so nothing has to run to make a
+     *  request stop being signable. */
+    status: text("status").notNull().default("pending"),
+    /** Sequential signing — each signer's link only works once the one before
+     *  has signed. Off means everyone may sign at any time. */
+    ordered: integer("ordered", { mode: "boolean" }).notNull().default(false),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+    voidedAt: integer("voided_at", { mode: "timestamp_ms" }),
+    voidReason: text("void_reason"),
+    /** `{ collection, id, field }` — where the signed document's key lands. */
+    writeBack: text("write_back", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    /** Extra addresses that receive the completed copy. */
+    notifyEmails: text("notify_emails", { mode: "json" }).$type<string[]>(),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("signature_requests_tenant_idx").on(t.tenantId),
+    index("signature_requests_status_idx").on(t.tenantId, t.status),
+  ],
+);
+
+export const signatureSigners = sqliteTable(
+  "signature_signers",
+  {
+    id: text("id").primaryKey(),
+    requestId: text("request_id").notNull(),
+    email: text("email").notNull(),
+    name: text("name"),
+    /** "Tenant", "Landlord" — shown on the certificate beside the signature. */
+    role: text("role"),
+    /** Position in the signing order. Meaningless unless the request is
+     *  `ordered`, but always written so the certificate lists people in the
+     *  order the operator entered them. */
+    orderIndex: integer("order_index").notNull().default(0),
+    /** SHA-256 of the plaintext link token — the token itself is shown once,
+     *  in the email. A readable token in this table would let anyone with
+     *  database access sign as the customer. */
+    tokenHash: text("token_hash").notNull(),
+    /** pending | viewed | signed | declined */
+    status: text("status").notNull().default("pending"),
+    sentAt: integer("sent_at", { mode: "timestamp_ms" }),
+    viewedAt: integer("viewed_at", { mode: "timestamp_ms" }),
+    signedAt: integer("signed_at", { mode: "timestamp_ms" }),
+    declinedAt: integer("declined_at", { mode: "timestamp_ms" }),
+    declineReason: text("decline_reason"),
+    /** drawn | typed */
+    signatureKind: text("signature_kind"),
+    /** A `data:image/png;base64,…` of the drawn signature. Validated and
+     *  re-encoded on the way in — it is interpolated into the HTML the
+     *  renderer is handed. */
+    signatureImage: text("signature_image"),
+    /** The typed name, for the keyboard path. */
+    signatureText: text("signature_text"),
+    /** The exact consent wording that was on screen, kept verbatim: a
+     *  certificate that cites today's wording for a signature given last year
+     *  is evidence of nothing. */
+    consentText: text("consent_text"),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("signature_signers_token_idx").on(t.tokenHash),
+    index("signature_signers_request_idx").on(t.requestId, t.orderIndex),
+  ],
+);
+
 export const i18nStrings = sqliteTable(
   "i18n_strings",
   {

@@ -11,6 +11,7 @@ import { MagicLink } from "@/pages/magic-link";
 import { SharedRecord } from "@/pages/shared-record";
 import { EmbedDashboard } from "@/pages/embed-dashboard";
 import { PublicForm } from "@/pages/public-form";
+import { SignDocument } from "@/pages/sign-document";
 import { SignIn } from "@/pages/sign-in";
 import { SignUp } from "@/pages/sign-up";
 import { Invite } from "@/pages/invite";
@@ -48,6 +49,9 @@ export const App = () => {
         {/* Public form — outside AuthGate; /embed variant is iframe-friendly. */}
         <Route path="/f/:token" element={<PublicForm />} />
         <Route path="/embed/f/:token" element={<PublicForm embed />} />
+        {/* Public signing page — outside AuthGate; the signer has no account
+            and the link token is the whole grant. */}
+        <Route path="/sign/:token" element={<SignDocument />} />
         <Route
           path="/*"
           element={

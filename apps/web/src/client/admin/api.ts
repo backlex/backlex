@@ -225,6 +225,71 @@ export interface ApiDocumentTemplate {
   inherited: boolean;
 }
 
+export interface ApiSignatureSigner {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string | null;
+  order: number;
+  status: "pending" | "viewed" | "signed" | "declined";
+  sentAt: number | string | null;
+  viewedAt: number | string | null;
+  signedAt: number | string | null;
+  declinedAt: number | string | null;
+  declineReason: string | null;
+  signatureKind: string | null;
+  ip: string | null;
+  userAgent: string | null;
+}
+
+export interface ApiSignatureRequest {
+  id: string;
+  title: string;
+  message: string | null;
+  templateKey: string | null;
+  /** `expired` is derived from the expiry timestamp, not stored. */
+  status: "pending" | "completed" | "declined" | "voided" | "expired";
+  ordered: boolean;
+  documentHash: string;
+  documentKey: string | null;
+  signedDocumentKey: string | null;
+  signedDocumentHash: string | null;
+  filename: string | null;
+  expiresAt: number | string | null;
+  completedAt: number | string | null;
+  voidedAt: number | string | null;
+  voidReason: string | null;
+  writeBack: { collection: string; id: string; field: string } | null;
+  notifyEmails: string[];
+  createdBy: string | null;
+  createdAt: number | string | null;
+  updatedAt: number | string | null;
+  signers: ApiSignatureSigner[];
+  /** Only on the single-request read — the frozen document that was sent. */
+  bodyHtml?: string;
+}
+
+/** The signer's view of their own link (`GET /api/public/sign/:token`). */
+export interface ApiSignerView {
+  title: string;
+  message: string | null;
+  status: ApiSignatureRequest["status"];
+  signerStatus: ApiSignatureSigner["status"];
+  signerName: string | null;
+  signerEmail: string;
+  signerRole: string | null;
+  yourTurn: boolean;
+  signedCount: number;
+  signerCount: number;
+  expiresAt: number | string | null;
+  documentHash: string;
+  /** Server-owned wording; the page displays it verbatim and never composes
+   *  its own — the certificate quotes this exact string. */
+  consentText: string;
+  html: string;
+  completedAt: number | string | null;
+}
+
 export interface ApiFunction {
   id: string;
   tenantId: string | null;
@@ -1147,6 +1212,63 @@ export const documentsApi = {
     }
     return res.blob();
   },
+};
+
+export const signaturesApi = {
+  list: (status?: string) =>
+    api<Envelope<ApiSignatureRequest[]> & { total: number }>(
+      `/api/admin/signatures${status ? `?status=${encodeURIComponent(status)}` : ""}`,
+    ),
+  get: (id: string) => api<Envelope<ApiSignatureRequest>>(`/api/admin/signatures/${encodeURIComponent(id)}`),
+  create: (body: Record<string, unknown>) =>
+    api<
+      Envelope<{
+        request: ApiSignatureRequest;
+        /** Shown once, right after creation — only hashes are stored. */
+        links: Array<{ signerId: string; email: string; url: string }>;
+        sent: boolean;
+      }>
+    >(`/api/admin/signatures`, { method: "POST", body: JSON.stringify(body) }),
+  void: (id: string, reason?: string) =>
+    api<Envelope<ApiSignatureRequest>>(`/api/admin/signatures/${encodeURIComponent(id)}/void`, {
+      method: "POST",
+      body: JSON.stringify({ reason: reason ?? null }),
+    }),
+  resend: (id: string, signerId: string) =>
+    api<Envelope<{ sent: boolean; email: string }>>(
+      `/api/admin/signatures/${encodeURIComponent(id)}/signers/${encodeURIComponent(signerId)}/resend`,
+      { method: "POST" },
+    ),
+  /** The stored PDF — bytes, so it bypasses the JSON envelope helper (and the
+   *  bookmark capture that rides on it, which is why it is done by hand). */
+  document: async (id: string, which: "original" | "signed" = "signed"): Promise<Blob> => {
+    const res = await fetch(
+      `${API_BASE}/api/admin/signatures/${encodeURIComponent(id)}/document?which=${which}`,
+      { credentials: "include", headers: sessionHeaders() },
+    );
+    captureBookmark(res);
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+      throw new Error(err.error?.message ?? `Download failed (${res.status})`);
+    }
+    return res.blob();
+  },
+};
+
+/** The signer's side — unauthenticated, token in the path. */
+export const signPublicApi = {
+  get: (token: string) => api<Envelope<ApiSignerView>>(`/api/public/sign/${encodeURIComponent(token)}`),
+  sign: (token: string, body: { kind: "drawn" | "typed"; image?: string; text?: string; consent: boolean }) =>
+    api<Envelope<{ status: string; signedCount: number; signerCount: number }>>(
+      `/api/public/sign/${encodeURIComponent(token)}/sign`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  decline: (token: string, reason: string | null) =>
+    api<Envelope<{ status: string }>>(`/api/public/sign/${encodeURIComponent(token)}/decline`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+  documentUrl: (token: string) => `${API_BASE}/api/public/sign/${encodeURIComponent(token)}/document`,
 };
 
 export const emailTemplatesApi = {

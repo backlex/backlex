@@ -114,6 +114,53 @@ export type Operation =
       onSuccess?: Operation[];
       onError?: Operation[];
     }
+  /**
+   * Freeze a document and send it out for signature.
+   *
+   * The step after `document.render` for the five templates that end in a
+   * signature — rental `agreements`, field-service `contracts`, real-estate
+   * `offers`. The document is interpolated and snapshot NOW, so an edit to the
+   * template or the row afterwards cannot change what the signer reads.
+   *
+   * `{{ $last }}` carries `{ id, status, signers: [{ id, email, status }] }`.
+   * It carries NO signing links: everything on `$last` is readable by every op
+   * after this one — a `webhook` posting it onward, a `log` writing it to the
+   * server log — and a link is a bearer credential for somebody else's
+   * signature. The invitation email is sent by the op itself and its wording
+   * is customised through the `signature_request` email template.
+   */
+  | {
+      type: "document.sign";
+      /** A stored document template's key. Omit when passing `html`. */
+      templateKey?: string;
+      /** A complete HTML document, for a one-off. */
+      html?: string;
+      /** Extra values on top of `data` / `$user` / `$last`. */
+      vars?: Record<string, unknown>;
+      /** What the signer is told they are signing. Templated. */
+      title?: string;
+      /** A note carried into the invitation email. Templated. */
+      message?: string;
+      /** Overrides the template's suggested name. Templated. */
+      filename?: string;
+      /**
+       * Who signs. `email` is templated (`{{ data.customer_email }}`); the
+       * whole list may also be a template resolving to an array, for a row
+       * that carries its own counterparties.
+       */
+      signers:
+        | Array<{ email: string; name?: string; role?: string }>
+        | string;
+      /** Each link only opens once the one before it has signed. */
+      ordered?: boolean;
+      expiresInDays?: number;
+      /** Where the SIGNED document's storage key lands, once everyone signs. */
+      writeBack?: { collection: string; id: string; field: string };
+      /** Extra addresses that receive the completed copy. Templated. */
+      notifyEmails?: string[] | string;
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
   | {
       type: "transform";
       value?: unknown;
@@ -296,6 +343,7 @@ export const OPERATION_TYPES: OperationType[] = [
   "push",
   "sms",
   "document.render",
+  "document.sign",
   "payment.checkout",
   "function",
   "integration",
@@ -400,6 +448,48 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       // renders nothing; both is a template silently losing to an inline body.
       .refine((op) => (op.templateKey == null) !== (op.html == null), {
         message: "document.render needs exactly one of `templateKey` or `html`",
+      }),
+    z
+      .object({
+        type: z.literal("document.sign"),
+        templateKey: z.string().min(1).max(200).optional(),
+        html: z.string().min(1).optional(),
+        vars: z.record(z.string(), z.unknown()).optional(),
+        title: z.string().min(1).max(200).optional(),
+        message: z.string().max(2000).optional(),
+        filename: z.string().min(1).max(200).optional(),
+        // Either a literal list or one template that resolves to an array —
+        // a row that carries its own counterparties cannot be written out
+        // statically. Emails are NOT validated here: they are almost always
+        // `{{ … }}` at save time, so the check lives where the value is real.
+        signers: z.union([
+          z
+            .array(
+              z.object({
+                email: z.string().min(1).max(320),
+                name: z.string().max(120).optional(),
+                role: z.string().max(80).optional(),
+              }),
+            )
+            .min(1)
+            .max(10),
+          z.string().min(1).max(500),
+        ]),
+        ordered: z.boolean().optional(),
+        expiresInDays: z.number().int().min(1).max(365).optional(),
+        writeBack: z
+          .object({
+            collection: z.string().min(1),
+            id: z.string().min(1),
+            field: z.string().min(1),
+          })
+          .optional(),
+        notifyEmails: z.union([z.array(z.string().max(320)).max(10), z.string().max(500)]).optional(),
+        onSuccess: z.array(OperationSchema).optional(),
+        onError: z.array(OperationSchema).optional(),
+      })
+      .refine((op) => (op.templateKey == null) !== (op.html == null), {
+        message: "document.sign needs exactly one of `templateKey` or `html`",
       }),
     z.object({
       type: z.literal("transform"),

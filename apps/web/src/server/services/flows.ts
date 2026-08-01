@@ -8,6 +8,7 @@ import type { Ctx } from "../context";
 import { runFunction } from "./sandbox";
 import { sendTemplatedEmail } from "./email";
 import { renderDocument } from "./documents";
+import { createSignatureRequest } from "./signatures";
 import { sendPushToUsers } from "./push";
 import { sendSmsToNumbers, sendSmsToUsers } from "./sms";
 import { deliverIntegrationByKind } from "./integrations";
@@ -71,6 +72,34 @@ interface RunCtx {
    *  op so subsequent ops can read `{{ $last.* }}`. */
   last: unknown;
 }
+
+/**
+ * Resolve a string that is EXACTLY one placeholder to the value itself rather
+ * than to its string form.
+ *
+ * `interpolate` exists to build strings, so `"{{ data.parties }}"` over an
+ * array yields `"[object Object],[object Object]"`. Where an op takes a
+ * structure — a signer list a row carries — that is not a formatting quirk but
+ * a silently wrong value, so those fields resolve through here first and fall
+ * back to ordinary interpolation for anything with text around the braces.
+ */
+const resolveWhole = (value: unknown, ctx: RunCtx): unknown => {
+  if (typeof value !== "string") return interpolate(value, ctx);
+  const only = /^\{\{\s*([\w$.]+)\s*\}\}$/.exec(value);
+  if (!only?.[1]) return interpolate(value, ctx);
+  const root: Record<string, unknown> = {
+    data: ctx.data,
+    $user: { id: ctx.authSubject.userId, email: ctx.authSubject.email, roles: ctx.authSubject.roles },
+    $last: ctx.last,
+  };
+  let cur: unknown = root;
+  for (const part of only[1].split(".")) {
+    if (cur && typeof cur === "object" && part in (cur as object)) {
+      cur = (cur as Record<string, unknown>)[part];
+    } else return undefined;
+  }
+  return cur;
+};
 
 const interpolate = (value: unknown, ctx: RunCtx): unknown => {
   if (typeof value === "string") {
@@ -412,6 +441,90 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
       filename: rendered.filename,
       size: stored.size,
       renderer: rendered.renderer,
+    };
+  }
+
+  if (op.type === "document.sign") {
+    const tenantId = ctx.authSubject.tenantId ?? null;
+    const vars: Record<string, unknown> = {
+      data: ctx.data,
+      $user: {
+        id: ctx.authSubject.userId,
+        email: ctx.authSubject.email,
+        roles: ctx.authSubject.roles,
+      },
+      $last: ctx.last,
+      ...(op.vars ? (interpolate(op.vars, ctx) as Record<string, unknown>) : {}),
+    };
+
+    // `signers` may be a literal list or a single template that resolves to
+    // one — a row that carries its own counterparties (a lease with two
+    // tenants) cannot be written out as a static array in the flow.
+    const resolved = resolveWhole(op.signers as unknown, ctx);
+    const list = Array.isArray(resolved) ? resolved : [];
+    if (list.length === 0) {
+      throw new FlowOpError("document.sign resolved to no signers");
+    }
+    const signers = list.map((entry) => {
+      const person = (typeof entry === "string" ? { email: entry } : entry) as Record<string, unknown>;
+      return {
+        email: String(person.email ?? "").trim(),
+        ...(person.name ? { name: String(person.name) } : {}),
+        ...(person.role ? { role: String(person.role) } : {}),
+      };
+    });
+
+    const str = (v: string | undefined): string | undefined => {
+      if (v === undefined) return undefined;
+      const out = String(interpolate(v, ctx) ?? "").trim();
+      return out || undefined;
+    };
+    const notify = resolveWhole(op.notifyEmails as unknown, ctx);
+
+    let created: Awaited<ReturnType<typeof createSignatureRequest>>;
+    try {
+      created = await createSignatureRequest(
+        ctx.ctx,
+        tenantId,
+        {
+          ...(op.templateKey ? { templateKey: op.templateKey } : {}),
+          ...(op.html ? { html: op.html } : {}),
+          vars,
+          ...(str(op.title) ? { title: str(op.title)! } : {}),
+          ...(str(op.message) ? { message: str(op.message)! } : {}),
+          ...(str(op.filename) ? { filename: str(op.filename)! } : {}),
+          signers,
+          ...(op.ordered !== undefined ? { ordered: op.ordered } : {}),
+          ...(op.expiresInDays !== undefined ? { expiresInDays: op.expiresInDays } : {}),
+          ...(op.writeBack
+            ? {
+                writeBack: {
+                  collection: op.writeBack.collection,
+                  id: String(interpolate(op.writeBack.id, ctx) ?? "").trim(),
+                  field: op.writeBack.field,
+                },
+              }
+            : {}),
+          ...(Array.isArray(notify) ? { notifyEmails: notify.map((e) => String(e)) } : {}),
+        },
+        ctx.authSubject.userId ?? null,
+      );
+    } catch (e) {
+      throw new FlowOpError(`document.sign failed: ${(e as Error).message}`);
+    }
+
+    // NO signing links on the result. Whatever an op returns lands on `$last`,
+    // which every op after it can read — a `webhook` posting `{{ $last }}`
+    // onward, a `log` writing it to the server log. A link is a bearer
+    // credential for somebody else's signature, so handing it to the flow
+    // graph means it leaves through whichever op the author adds next.
+    // Customise the invitation through the `signature_request` email template
+    // instead, which is the right seam for it anyway.
+    return {
+      id: created.request.id,
+      status: created.request.status,
+      sent: created.sent,
+      signers: created.request.signers.map((s) => ({ id: s.id, email: s.email, status: s.status })),
     };
   }
 

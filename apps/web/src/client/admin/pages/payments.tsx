@@ -52,6 +52,9 @@ type CatalogEntry = {
   label: string;
   /** `adhoc` takes an amount; `catalog` needs a pre-made price and can't yet. */
   checkoutMode: CheckoutMode;
+  /** False for acquirers and callback PSPs — they have no object catalog to
+   *  walk, so offering "Sync now" would only ever produce an explanation. */
+  reconcilable?: boolean;
   fields: Field[];
 };
 type Catalog = { providers: CatalogEntry[]; recordKinds: string[] };
@@ -97,6 +100,7 @@ const BRANDS: Record<string, Brand> = {
   paddle: { mark: "Pd", markBg: "#FDDD35" },
   paytr: { mark: "PT", markBg: "#00A0E9" },
   iyzico: { mark: "iy", markBg: "#1E64FF" },
+  adyen: { mark: "A", markBg: "#0ABF53" },
   dummy: { mark: "TE", markBg: "oklch(0.55 0.13 75)" },
 };
 const brandFor = (provider: string): Brand =>
@@ -325,9 +329,11 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
                             <Trans>Payment link</Trans>
                           </Button>
                         ) : null}
-                        <Button disabled={isBusy} onClick={() => void sync(row)}>
-                          {isBusy ? <Trans>Working…</Trans> : <Trans>Sync now</Trans>}
-                        </Button>
+                        {entry.reconcilable === false ? null : (
+                          <Button disabled={isBusy} onClick={() => void sync(row)}>
+                            {isBusy ? <Trans>Working…</Trans> : <Trans>Sync now</Trans>}
+                          </Button>
+                        )}
                         <Button variant="outline" disabled={isBusy} onClick={() => void rotate(row)}>
                           <Trans>New URL</Trans>
                         </Button>
@@ -343,6 +349,11 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
                           <Trans>
                             A local stand-in that settles payments without charging anything.
                             Demo and development instances only.
+                          </Trans>
+                        ) : entry.reconcilable === false ? (
+                          <Trans>
+                            Open checkouts through {entry.label} and record each settlement as it
+                            is reported. There are no billing objects to mirror.
                           </Trans>
                         ) : entry.checkoutMode === "adhoc" ? (
                           <Trans>
@@ -437,6 +448,9 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
 
       {connectProvider && (
         <ConnectDialog
+          // Keyed so switching provider remounts and re-seeds the dropdown
+          // defaults rather than carrying the previous provider's values.
+          key={connectProvider}
           label={labelFor(connectProvider)}
           fields={catalog.providers.find((p) => p.provider === connectProvider)?.fields ?? []}
           busy={busy === connectProvider}
@@ -640,7 +654,20 @@ function ConnectDialog({
   onConnect: (config: Record<string, string>) => void;
 }) {
   const { t } = useLingui();
-  const [values, setValues] = useState<Record<string, string>>({});
+  // Seeded with each dropdown's first choice, because that is what the trigger
+  // already SHOWS. Left unseeded, a required `choices` field displays a value
+  // it does not hold, so `ready` stays false and Connect is disabled until the
+  // admin opens the dropdown and re-picks the option already on screen — with
+  // nothing on the form saying which field is unsatisfied. That made Paddle and
+  // iyzico (both with a required `environment`) unconnectable from this dialog.
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    const seed: Record<string, string> = {};
+    for (const f of fields) {
+      const first = f.choices?.[0];
+      if (first) seed[f.key] = first;
+    }
+    return seed;
+  });
 
   const ready = fields.every((f) => f.optional || (values[f.key]?.trim().length ?? 0) > 0);
 

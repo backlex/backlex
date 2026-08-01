@@ -15,10 +15,10 @@
  * ## The two provider shapes
  *
  * `adhoc` — hand the provider an amount and it mints a one-off checkout.
- * Stripe (`price_data`), PayTR (`get-token`) and iyzico
- * (`checkoutform/initialize`) all work this way, and it is the shape the
- * templates need: an invoice row carries an amount that exists nowhere in the
- * provider's catalog.
+ * Stripe (`price_data`), PayTR (`get-token`), iyzico
+ * (`checkoutform/initialize`) and Adyen (`paymentLinks`) all work this way,
+ * and it is the shape the templates need: an invoice row carries an amount
+ * that exists nowhere in the provider's catalog.
  *
  * `catalog` — Polar, Lemon Squeezy and Paddle mint a checkout against a
  * PRE-EXISTING product/price id. There is no amount parameter; you send a
@@ -32,7 +32,8 @@
  *
  * Without it this module is a URL generator. Our own row identifier travels out
  * with the checkout (Stripe `client_reference_id`, PayTR `merchant_oid`,
- * iyzico `conversationId`) and comes back on the settlement event, where
+ * iyzico `conversationId`, Adyen `reference`) and comes back on the settlement
+ * event, where
  * `./payments.ts` lifts it onto the payment record. That is what ties a
  * received payment to the invoice it paid.
  *
@@ -72,6 +73,9 @@ export const PAYMENT_CHECKOUT_MODES: Record<PaymentProvider, PaymentCheckoutMode
   stripe: "adhoc",
   paytr: "adhoc",
   iyzico: "adhoc",
+  // Pay by Link takes a bare amount, so Adyen is `adhoc` despite being an
+  // acquirer rather than a billing platform.
+  adyen: "adhoc",
   dummy: "adhoc",
   polar: "catalog",
   lemonsqueezy: "catalog",
@@ -633,6 +637,123 @@ const iyzicoCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => 
   };
 };
 
+// ── Adyen ───────────────────────────────────────────────────────────────────
+
+const ADYEN_API_VERSION = "v71";
+const ADYEN_TEST_BASE = "https://checkout-test.adyen.com";
+
+/**
+ * Adyen's live endpoints are per-merchant: the host carries a prefix issued
+ * with the live API credential. It is interpolated into a URL, so it is
+ * validated as an opaque token rather than trusted — a prefix carrying `/` or
+ * `@` would redirect the API key to a host of someone else's choosing.
+ */
+const ADYEN_LIVE_PREFIX_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
+
+/** Adyen's own bounds on a payment link's lifetime: at least a minute, at most
+ *  70 days. Outside that it 422s, so an out-of-range value is dropped and
+ *  Adyen's 24-hour default applies instead. */
+const ADYEN_MIN_EXPIRY_SEC = 60;
+const ADYEN_MAX_EXPIRY_SEC = 70 * 24 * 60 * 60;
+
+const adyenBase = (config: Record<string, unknown>): { base: string } | { error: string } => {
+  if (str(config.environment) !== "live") return { base: ADYEN_TEST_BASE };
+  const prefix = str(config.liveUrlPrefix);
+  if (!prefix) {
+    return {
+      error:
+        "Adyen live payments need the live URL prefix from the Customer Area — " +
+        "the live API has no shared host",
+    };
+  }
+  if (!ADYEN_LIVE_PREFIX_PATTERN.test(prefix)) {
+    return { error: "The Adyen live URL prefix must be letters, digits and dashes only" };
+  }
+  return { base: `https://${prefix}-checkout-live.adyenpayments.com/checkout` };
+};
+
+/**
+ * Adyen wants `expiresAt` as an ISO-8601 instant WITH an offset. `toISOString`
+ * emits `…Z`, which qualifies.
+ */
+const adyenExpiry = (nowMs: number, expiresInSec: number | undefined): string | undefined => {
+  if (!expiresInSec) return undefined;
+  if (expiresInSec < ADYEN_MIN_EXPIRY_SEC || expiresInSec > ADYEN_MAX_EXPIRY_SEC) return undefined;
+  return new Date(nowMs + expiresInSec * 1000).toISOString();
+};
+
+const adyenCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {
+  const apiKey = str(input.config.apiKey);
+  const merchantAccount = str(input.config.merchantAccount);
+  if (!apiKey) return fail("missing_secret", "Adyen needs its API key to open a payment link");
+  if (!merchantAccount) {
+    return fail("missing_secret", "Adyen needs the merchant account code to open a payment link");
+  }
+  const host = adyenBase(input.config);
+  if ("error" in host) return fail("missing_secret", host.error);
+
+  const now = input.nowMs ?? Date.now();
+  // Adyen quotes minor units, the same as the ledger — no conversion, unlike
+  // iyzico. `countryCode` is only sent when it really is ISO-3166 alpha-2;
+  // `CheckoutCustomer.country` also accepts a country NAME (iyzico wants one),
+  // and Adyen 422s on anything that isn't two letters.
+  const country = str(input.customer?.country);
+  const payload: Record<string, unknown> = {
+    amount: { currency: input.currency.toUpperCase(), value: input.amount },
+    merchantAccount,
+    // Comes back as `merchantReference` on every notification item.
+    reference: input.reference,
+    description: input.description || "Payment",
+    shopperEmail: str(input.customer?.email) ?? undefined,
+    shopperLocale: input.locale || undefined,
+    countryCode: country && /^[A-Za-z]{2}$/.test(country) ? country.toUpperCase() : undefined,
+    // Adyen has ONE return URL — the shopper lands there whether they paid or
+    // gave up, with the outcome in the query string. `cancelUrl` has nowhere
+    // to go, so it is deliberately unused rather than quietly substituted.
+    returnUrl: input.successUrl,
+    expiresAt: adyenExpiry(now, input.expiresInSec),
+  };
+  for (const k of Object.keys(payload)) if (payload[k] === undefined) delete payload[k];
+
+  let res: Response;
+  try {
+    res = await doFetch(input)(`${host.base}/${ADYEN_API_VERSION}/paymentLinks`, {
+      method: "POST",
+      headers: { "x-API-key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    return fail("unreachable", `Could not reach Adyen: ${(e as Error).message}`);
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await res.json()) as Record<string, unknown>;
+  } catch {
+    return fail("unreachable", `Adyen returned a non-JSON response (HTTP ${res.status})`);
+  }
+  if (!res.ok) {
+    // Adyen's error envelope is `{ status, errorCode, message, errorType }`.
+    return fail(
+      "rejected",
+      str(body.message) ?? `Adyen rejected the payment link (HTTP ${res.status})`,
+    );
+  }
+
+  const url = str(body.url);
+  const id = str(body.id);
+  if (!url || !id) return fail("rejected", "Adyen returned a payment link with no URL");
+  const expiresAt = str(body.expiresAt);
+  const parsedExpiry = expiresAt ? Date.parse(expiresAt) : Number.NaN;
+  return {
+    ok: true,
+    url,
+    externalId: id,
+    expiresAt: Number.isNaN(parsedExpiry) ? null : parsedExpiry,
+    reference: input.reference,
+  };
+};
+
 // ── dummy ───────────────────────────────────────────────────────────────────
 
 /**
@@ -768,6 +889,8 @@ export async function createCheckout(
       return paytrCheckout(input);
     case "iyzico":
       return iyzicoCheckout(input);
+    case "adyen":
+      return adyenCheckout(input);
     case "dummy":
       return dummyCheckout(input);
     default:

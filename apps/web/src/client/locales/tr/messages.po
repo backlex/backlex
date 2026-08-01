@@ -9641,6 +9641,11 @@ msgstr "Aç"
 msgid "Open chat"
 msgstr "Sohbeti aç"
 
+#. placeholder {0}: entry.label
+#: src/client/admin/pages/payments.tsx
+msgid "Open checkouts through {0} and record each settlement as it is reported. There are no billing objects to mirror."
+msgstr "{0} üzerinden ödeme bağlantısı açın; her tahsilat bildirildiği anda kaydedilir. Aynalanacak bir faturalama nesnesi yok."
+
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Open collection"

@@ -54,6 +54,23 @@ export const toBase64 = (bytes: Uint8Array): string => {
   return btoa(s);
 };
 
+/**
+ * Hex string → bytes, or null if it isn't valid hex.
+ *
+ * Adyen is why this exists: the HMAC key its Customer Area hands out is the
+ * hex ENCODING of the key bytes, so signing with the ASCII of that string
+ * produces a signature that never matches. There is no way to tell the two
+ * apart from the value alone — both are printable — which makes the mistake
+ * silent and total.
+ */
+export const fromHex = (hex: string): Uint8Array | null => {
+  const s = hex.trim();
+  if (s.length === 0 || s.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(s)) return null;
+  const out = new Uint8Array(s.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = Number.parseInt(s.slice(i * 2, i * 2 + 2), 16);
+  return out;
+};
+
 export const fromBase64 = (b64: string): Uint8Array | null => {
   try {
     const bin = atob(b64);

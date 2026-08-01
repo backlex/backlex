@@ -23,6 +23,7 @@ import {
   DUMMY_SETTLEMENT_DOMAIN,
   enc,
   fromBase64,
+  fromHex,
   hmac,
   timingSafeEqual,
   toBase64,
@@ -36,6 +37,10 @@ export const PAYMENT_PROVIDERS = [
   "paddle",
   "paytr",
   "iyzico",
+  // A global acquirer rather than a billing platform: Adyen processes the card
+  // and reports what happened, but owns no customer/subscription/invoice
+  // catalog to mirror. That distinction is why `PAYMENT_HAS_CATALOG` exists.
+  "adyen",
   // Not a PSP. A local, self-hosted stand-in that settles payments without
   // touching a real acquirer — the payment sibling of the `console` SMS and
   // email adapters, for demo instances and for smoke-testing a checkout flow
@@ -57,6 +62,7 @@ export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
   paddle: "Paddle",
   paytr: "PayTR",
   iyzico: "iyzico",
+  adyen: "Adyen",
   dummy: "Dummy (test only)",
 };
 
@@ -64,9 +70,14 @@ export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
  * How a provider talks to us — the distinction the rest of this module branches
  * on.
  *
- * `webhook` (Stripe / Polar / Lemon Squeezy): the provider pushes signed JSON
- * events AND exposes a listable object catalog, so backlex can reconcile by
- * walking customers/subscriptions/invoices/payments.
+ * `webhook` (Stripe / Polar / Lemon Squeezy / Paddle / Adyen): the provider
+ * pushes signed JSON events, so authenticity is established by checking a
+ * signature against the delivery.
+ *
+ * Whether that same provider also exposes a LISTABLE object catalog is a
+ * separate question — see `PAYMENT_HAS_CATALOG`. The two travelled together
+ * until Adyen, which signs its notifications but is an acquirer with no
+ * customer/subscription/invoice catalog to page through.
  *
  * `callback` (PayTR, and the Turkish PSPs generally): the provider POSTs a
  * form-encoded result to a callback URL when a payment settles, and that is the
@@ -94,6 +105,10 @@ export const PAYMENT_PROVIDER_MODES: Record<PaymentProvider, PaymentProviderMode
   paddle: "webhook",
   paytr: "callback",
   iyzico: "retrieve",
+  // Adyen signs every notification item with an HMAC, so the delivery IS the
+  // evidence — the same shape as Stripe's, even though the signature travels
+  // inside the JSON body rather than in a header.
+  adyen: "webhook",
   // The dummy page POSTs a form back the way a Turkish PSP does, and signs it
   // with the provider's own generated secret. It sits in `callback` rather
   // than getting a fourth mode precisely so it exercises the real code path —
@@ -119,6 +134,36 @@ export const isRetrieveProvider = (p: string): boolean =>
  */
 export const isWebhookProvider = (p: string): boolean =>
   PAYMENT_PROVIDER_MODES[p as PaymentProvider] === "webhook";
+
+/**
+ * Does this provider expose a listable object catalog to reconcile against?
+ *
+ * Split out from `isWebhookProvider` when Adyen arrived. Until then "signs its
+ * pushes" and "can be paged through" were the same set, so one predicate did
+ * both jobs — but Adyen is an ACQUIRER, not a billing platform. It authorises
+ * cards and reports what happened; the customer, subscription and invoice
+ * objects the other providers own simply do not exist on its side, and its
+ * historical data comes out as scheduled report files rather than a paginated
+ * API.
+ *
+ * Keeping the questions separate is what stops a reconcile from being offered
+ * for a provider that has nothing to walk — which would either error out or,
+ * worse, report a clean sync that synced nothing.
+ */
+export const PAYMENT_HAS_CATALOG: Record<PaymentProvider, boolean> = {
+  stripe: true,
+  polar: true,
+  lemonsqueezy: true,
+  paddle: true,
+  // No catalog: each of these reports a settlement and nothing else.
+  paytr: false,
+  iyzico: false,
+  adyen: false,
+  dummy: false,
+};
+
+export const hasObjectCatalog = (p: string): boolean =>
+  PAYMENT_HAS_CATALOG[p as PaymentProvider] === true;
 
 /** The PayTR fields that go into the hash, in signing order. */
 export const PAYTR_SIGNED_FIELDS = ["merchant_oid", "status", "total_amount"] as const;
@@ -155,6 +200,12 @@ export const PAYMENT_ACK: Record<PaymentProvider, { body: string; contentType: s
   paytr: { body: "OK", contentType: "text/plain; charset=utf-8" },
   // iyzico is happy with any 2xx; the default envelope is fine.
   iyzico: null,
+  // Adyen's documented acknowledgement. Newer versions of its docs say any 2xx
+  // is accepted and the body is ignored, but `[accepted]` was required for
+  // years and is still honoured — so it costs nothing and covers both.
+  // Without it an older account's endpoint keeps retrying and is eventually
+  // disabled, exactly the way PayTR's does.
+  adyen: { body: "[accepted]", contentType: "text/plain; charset=utf-8" },
   dummy: null,
 };
 
@@ -263,6 +314,41 @@ export const PAYMENT_PROVIDER_FIELDS: Record<PaymentProvider, PaymentConfigField
       hint: "Sandbox points at sandbox-api.iyzipay.com.",
     },
   ],
+  adyen: [
+    {
+      key: "apiKey",
+      label: "API key",
+      placeholder: "AQE1hmfx…",
+      secret: true,
+      hint: "Customer Area → Developers → API credentials. Needs the Checkout role to open payment links.",
+    },
+    {
+      key: "merchantAccount",
+      label: "Merchant account",
+      placeholder: "YourCompanyECOM",
+      hint: "The account code, not the company account — Adyen rejects a payment link opened against the wrong one.",
+    },
+    {
+      key: "webhookSecret",
+      label: "HMAC key",
+      placeholder: "The hex key generated with the webhook",
+      secret: true,
+      hint: "Customer Area → Developers → Webhooks → Generate HMAC key. It signs each notification item.",
+    },
+    {
+      key: "environment",
+      label: "Environment",
+      choices: ["test", "live"],
+      hint: "Test points at checkout-test.adyen.com.",
+    },
+    {
+      key: "liveUrlPrefix",
+      label: "Live URL prefix",
+      placeholder: "1797a841fbb37ca7-AdyenDemo",
+      optional: true,
+      hint: "Required on live only. Adyen gives every merchant its own endpoint host; the prefix is shown next to the live API credential.",
+    },
+  ],
   dummy: [
     {
       key: "secret",
@@ -287,6 +373,9 @@ export const PAYMENT_SECRET_KEYS: Record<PaymentProvider, string[]> = {
   // iyzico signs nothing inbound; these authenticate the outbound retrieve,
   // which is what makes a callback trustworthy at all.
   iyzico: ["apiKey", "secretKey"],
+  // `merchantAccount` and `liveUrlPrefix` are identifiers, not credentials —
+  // masking them would hide the two fields an admin most often needs to check.
+  adyen: ["apiKey", "webhookSecret"],
   dummy: ["secret"],
 };
 
@@ -436,6 +525,44 @@ export async function verifyPaymentSignature(
     return timingSafeEqual(given.trim(), want)
       ? { ok: true }
       : { ok: false, reason: "signature_mismatch" };
+  }
+
+  if (provider === "adyen") {
+    // Adyen is the one provider whose signature travels INSIDE the body: each
+    // notification item carries its own `additionalData.hmacSignature` over a
+    // canonical join of eight of its own fields, not over the raw bytes.
+    //
+    // The HMAC key from the Customer Area is HEX — signing with the ASCII of
+    // that string silently never matches, so a bad decode is treated as a
+    // missing credential rather than a mismatch.
+    const keyBytes = fromHex(input.secret);
+    if (!keyBytes) return { ok: false, reason: "missing_secret" };
+
+    let body: unknown;
+    try {
+      body = JSON.parse(input.rawBody);
+    } catch {
+      return { ok: false, reason: "malformed_signature" };
+    }
+    const items = adyenNotificationItems(body);
+    // An empty batch has nothing to authenticate, so accepting it would accept
+    // an unsigned request that happens to parse.
+    if (items.length === 0) return { ok: false, reason: "missing_signature" };
+
+    // EVERY item must verify, and the same extractor feeds the normalizer.
+    // Checking only the first would let anyone append extra items to a genuine
+    // delivery and have them recorded — Adyen may legitimately batch several
+    // notifications into one POST, so extra items are not by themselves odd.
+    for (const item of items) {
+      const given = str(obj(item.additionalData)?.hmacSignature);
+      if (!given) return { ok: false, reason: "missing_signature" };
+      const expected = toBase64(await hmac(keyBytes, adyenSigningString(item)));
+      if (!timingSafeEqual(given, expected)) return { ok: false, reason: "signature_mismatch" };
+    }
+    // Adyen signs no timestamp, so there is no replay window to enforce here.
+    // `pspReference` is unique per event and the consumer dedupes on it, which
+    // is what makes a replayed delivery a no-op.
+    return { ok: true };
   }
 
   // Backstop. Every branch below assumes a `webhook` provider with a real
@@ -1499,6 +1626,256 @@ const normalizeIyzico = (body: Record<string, unknown>): NormalizedPaymentEvent 
   };
 };
 
+// ── Adyen ───────────────────────────────────────────────────────────────────
+
+/**
+ * The eight fields Adyen signs, in signing order.
+ *
+ * Exported because the order is load-bearing and invisible in the output: a
+ * wrong order produces a well-formed signature that never matches, and Adyen
+ * reports nothing beyond a rejected webhook.
+ */
+export const ADYEN_SIGNED_FIELDS = [
+  "pspReference",
+  "originalReference",
+  "merchantAccountCode",
+  "merchantReference",
+  "amount.value",
+  "amount.currency",
+  "eventCode",
+  "success",
+] as const;
+
+/**
+ * Adyen's field escaping: backslash first, then colon.
+ *
+ * Order matters. Escaping colons first would turn `:` into `\:` and the second
+ * pass would then double the backslash it just wrote, yielding `\\:` — a
+ * different string from the one Adyen signed.
+ */
+const adyenEscape = (v: string): string => v.replace(/\\/g, "\\\\").replace(/:/g, "\\:");
+
+/** The canonical string Adyen HMACs, for one notification item. */
+export const adyenSigningString = (item: Record<string, unknown>): string => {
+  const amount = obj(item.amount) ?? {};
+  return [
+    str(item.pspReference) ?? "",
+    str(item.originalReference) ?? "",
+    str(item.merchantAccountCode) ?? "",
+    str(item.merchantReference) ?? "",
+    // A JSON number in the body; the signature is over its decimal text.
+    str(amount.value) ?? "",
+    str(amount.currency) ?? "",
+    str(item.eventCode) ?? "",
+    str(item.success) ?? "",
+  ]
+    .map(adyenEscape)
+    .join(":");
+};
+
+/**
+ * Unwrap `{ notificationItems: [{ NotificationRequestItem: {...} }] }`.
+ *
+ * Shared by the verifier and the normalizer on purpose: if they disagreed
+ * about which entries count, an item could be verified and not recorded — or,
+ * far worse, recorded without having been verified.
+ */
+export const adyenNotificationItems = (payload: unknown): Record<string, unknown>[] => {
+  const body = obj(payload);
+  const list = Array.isArray(body?.notificationItems) ? body.notificationItems : [];
+  const out: Record<string, unknown>[] = [];
+  for (const entry of list) {
+    const item = obj(obj(entry)?.NotificationRequestItem);
+    if (item) out.push(item);
+  }
+  return out;
+};
+
+/**
+ * One Adyen notification item → at most one payment row.
+ *
+ * ## Why some events key on `originalReference` and others don't
+ *
+ * Adyen sends DELTAS, not object snapshots. Every other provider here re-sends
+ * the whole object on every event, so a refund simply restates the order with
+ * `amount_refunded` filled in. Adyen instead sends a REFUND item whose
+ * `amount` is the refunded amount and whose `originalReference` points at the
+ * authorisation.
+ *
+ * That matters because the ledger's upsert REPLACES the row rather than
+ * merging into it. Filing a refund against the original payment's row id would
+ * therefore overwrite `amount` — the payment total — with the refunded portion,
+ * silently shrinking a €100 payment to the €10 that came back.
+ *
+ * So the split is by what the item's own `amount` actually means:
+ *
+ *   AUTHORISATION / CAPTURE / CANCELLATION — the item's amount IS the
+ *   payment's amount, so these upsert the authorisation's row (`CAPTURE` and
+ *   `CANCELLATION` carry it as `originalReference`) and the row stays one
+ *   payment. A partial capture legitimately narrows the amount to what was
+ *   actually taken, which is the more truthful figure anyway.
+ *
+ *   REFUND / CHARGEBACK — the amount is a different, smaller movement, so it
+ *   gets its OWN row keyed on its own `pspReference`, with the authorisation
+ *   recorded in `metadata.original_reference`. `SUM(amount) WHERE status =
+ *   'succeeded'` therefore still returns what was collected, and the reversals
+ *   are their own rows rather than a mutation that loses the original.
+ *
+ * A FAILED modification (`CAPTURE_FAILED`, a `success:false` cancellation)
+ * writes nothing at all: the authorisation still stands, and the only honest
+ * options are "leave the row alone" or "rewrite it from a payload that does not
+ * describe it". The event is still recorded in `payment_events`, so the failure
+ * is visible without corrupting the ledger.
+ */
+const adyenPaymentRecord = (item: Record<string, unknown>): PaymentRecord | null => {
+  const psp = str(item.pspReference);
+  if (!psp) return null;
+  const eventCode = (str(item.eventCode) ?? "").toUpperCase();
+  const success = str(item.success) === "true";
+  const original = str(item.originalReference);
+  const amountObj = obj(item.amount) ?? {};
+  // Adyen quotes minor units already, matching what the ledger stores.
+  const amount = num(amountObj.value);
+  const currency = str(amountObj.currency);
+  const at = isoToMs(item.eventDate);
+  const reason = str(item.reason);
+  const additional = obj(item.additionalData) ?? {};
+
+  // `CANCEL_OR_REFUND` is one event code for two outcomes; Adyen says which in
+  // `additionalData["modification.action"]`. Without this it would be filed as
+  // a cancellation even when money was actually sent back.
+  const resolved =
+    eventCode === "CANCEL_OR_REFUND"
+      ? str(additional["modification.action"])?.toLowerCase() === "refund"
+        ? "REFUND"
+        : "CANCELLATION"
+      : eventCode;
+
+  const common = {
+    provider: "adyen",
+    customer: null,
+    invoice: null,
+    currency,
+    method: str(item.paymentMethod),
+    // Our own row id, echoed back from the payment link's `reference`. This is
+    // what ties the money to the invoice row that asked for it.
+    reference: str(item.merchantReference),
+    processed_at: at,
+    source_created_at: at,
+  };
+
+  if (resolved === "AUTHORISATION") {
+    return {
+      kind: "payment",
+      row: {
+        ...common,
+        id: paymentRowId("adyen", psp),
+        external_id: psp,
+        amount,
+        amount_refunded: 0,
+        status: success ? "succeeded" : "failed",
+        failure_reason: success ? null : reason,
+        metadata: adyenMetadata(item, null),
+      },
+    };
+  }
+
+  // Everything past here is a modification of an existing authorisation, and a
+  // modification with nothing to modify is not something to guess at.
+  if (!success) return null;
+
+  if (resolved === "CAPTURE" || resolved === "CANCELLATION") {
+    const target = original ?? psp;
+    return {
+      kind: "payment",
+      row: {
+        ...common,
+        id: paymentRowId("adyen", target),
+        external_id: target,
+        amount,
+        amount_refunded: 0,
+        status: resolved === "CAPTURE" ? "succeeded" : "canceled",
+        failure_reason: null,
+        metadata: adyenMetadata(item, psp === target ? null : psp),
+      },
+    };
+  }
+
+  if (resolved === "REFUND" || resolved === "CHARGEBACK") {
+    return {
+      kind: "payment",
+      row: {
+        ...common,
+        id: paymentRowId("adyen", psp),
+        external_id: psp,
+        amount,
+        amount_refunded: amount,
+        status: resolved === "REFUND" ? "refunded" : "chargeback",
+        failure_reason: resolved === "CHARGEBACK" ? reason : null,
+        metadata: adyenMetadata(item, null),
+      },
+    };
+  }
+
+  // REPORT_AVAILABLE, NOTIFICATION_OF_CHARGEBACK, the *_FAILED codes and
+  // anything Adyen adds later: recorded as an event, no row written.
+  return null;
+};
+
+/** Provider detail worth keeping without inventing columns for it. */
+const adyenMetadata = (
+  item: Record<string, unknown>,
+  modificationPsp: string | null,
+): Record<string, unknown> => {
+  const additional = obj(item.additionalData) ?? {};
+  return {
+    event_code: str(item.eventCode),
+    ...(str(item.originalReference) ? { original_reference: str(item.originalReference) } : {}),
+    ...(modificationPsp ? { modification_reference: modificationPsp } : {}),
+    ...(str(item.merchantAccountCode) ? { merchant_account: str(item.merchantAccountCode) } : {}),
+    ...(str(additional.paymentMethodVariant)
+      ? { payment_method_variant: str(additional.paymentMethodVariant) }
+      : {}),
+    ...(str(additional.authCode) ? { auth_code: str(additional.authCode) } : {}),
+  };
+};
+
+/**
+ * An Adyen notification batch → normalized records.
+ *
+ * Every item in the batch has already had its HMAC checked by
+ * `verifyPaymentSignature`, which refuses the whole delivery if any single one
+ * fails — so this function does not re-authenticate and must never be called
+ * on an unverified body.
+ */
+const normalizeAdyen = (body: Record<string, unknown>): NormalizedPaymentEvent => {
+  const items = adyenNotificationItems(body);
+  const records: PaymentRecord[] = [];
+  const keys: string[] = [];
+  const types = new Set<string>();
+
+  for (const item of items) {
+    const psp = str(item.pspReference);
+    const code = str(item.eventCode) ?? "";
+    if (psp) keys.push(`${psp}:${code}`);
+    if (code) types.add(code);
+    const record = adyenPaymentRecord(item);
+    if (record) records.push(record);
+  }
+
+  return {
+    // Adyen retries resend the identical batch, so the joined per-item keys are
+    // stable across retries. Row writes are idempotent by row id anyway, so a
+    // batch that later arrives split into single deliveries re-applies cleanly
+    // rather than duplicating.
+    eventId: keys.join(","),
+    type: [...types].join(","),
+    // The envelope's `live` flag is a STRING ("false" on the test platform).
+    livemode: str(body.live) === "true",
+    records,
+  };
+};
+
 /**
  * The dummy provider's settlement → one payment record.
  *
@@ -1556,6 +1933,7 @@ export function normalizePaymentEvent(
   if (provider === "lemonsqueezy") return normalizeLemonSqueezy(body, headerEventId);
   if (provider === "paddle") return normalizePaddle(body, headerEventId);
   if (provider === "paytr") return normalizePayTR(body);
+  if (provider === "adyen") return normalizeAdyen(body);
   if (provider === "dummy") return normalizeDummy(body);
   return { eventId: headerEventId ?? "", type: "", livemode: null, records: [] };
 }
@@ -1594,6 +1972,11 @@ export async function fetchPaymentPage(input: FetchPageInput): Promise<FetchPage
   const config = input.config;
   const apiKey = str(config.apiKey) ?? "";
   const empty: FetchPageResult = { records: [], nextCursor: null };
+  // Asked before the credential check so the answer names the real obstacle: a
+  // provider with no catalog is not fixable by supplying a better API key.
+  // Adyen is the case that makes this worth stating — it authenticates fine and
+  // still has nothing to page through.
+  if (!hasObjectCatalog(input.provider)) return { ...empty, error: "no_object_catalog" };
   if (!apiKey) return { ...empty, error: "missing_api_key" };
 
   try {

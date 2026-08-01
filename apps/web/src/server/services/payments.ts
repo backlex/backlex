@@ -33,9 +33,9 @@ import {
   PAYMENT_MARKER_COLUMNS,
   PAYMENT_SECRET_KEYS,
   fetchPaymentPage,
+  hasObjectCatalog,
   isCallbackProvider,
   isRetrieveProvider,
-  isWebhookProvider,
   retrieveIyzicoPayment,
   parseCallbackBody,
   isPaymentProvider,
@@ -1097,6 +1097,9 @@ export async function createPaymentCheckout(
     // PayTR and iyzico carry the settlement URL per checkout — there is no
     // dashboard endpoint for a hosted form. It is this workspace's own receive
     // URL, so a settlement lands on the connection that opened the checkout.
+    // Stripe and Adyen ignore it: both take their webhook endpoint from the
+    // dashboard once, which is why an Adyen connection is not fully wired until
+    // the URL below is registered in the Customer Area by hand.
     callbackUrl: `${baseUrl}/api/payments/webhook/${row.webhookToken}`,
     customerIp: input.customerIp,
     expiresInSec: input.expiresInSec,
@@ -1237,18 +1240,19 @@ export async function reconcileProvider(
   );
   await ensurePaymentCollections(ctx, tenantId);
 
-  // Only a webhook provider exposes a listable object catalog. Asked this way
-  // round rather than as `isCallbackProvider`, because with a third mode the
-  // negation stops meaning "not a webhook provider" and a retrieve provider
-  // would be sent off to page a catalog that does not exist.
-  if (!isWebhookProvider(row.provider)) {
+  // Gated on the CATALOG capability, not on the delivery mode. Those were the
+  // same set until Adyen: it signs its notifications like a webhook provider
+  // but is an acquirer, so there are no customer/subscription/invoice objects
+  // to page through. Asking `isWebhookProvider` here would send it off to walk
+  // a catalog that does not exist.
+  if (!hasObjectCatalog(row.provider)) {
     return {
       provider: row.provider,
       written: 0,
       failed: 0,
       cursors: (row.syncCursor ?? {}) as Record<string, string | null>,
       error:
-        `${row.provider} reports each payment to the callback URL and exposes no object catalog ` +
+        `${row.provider} reports each payment as it happens and exposes no object catalog ` +
         `to reconcile against.`,
     };
   }

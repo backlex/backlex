@@ -58,6 +58,7 @@ describe("the capability table", () => {
       stripe: "adhoc",
       paytr: "adhoc",
       iyzico: "adhoc",
+      adyen: "adhoc",
       dummy: "adhoc",
       polar: "catalog",
       lemonsqueezy: "catalog",
@@ -76,7 +77,9 @@ describe("the capability table", () => {
   });
 
   test("an unknown provider is distinguishable from an unsupported one", async () => {
-    const res = await createCheckout("adyen", { ...BASE, config: {} });
+    // Deliberately a name that will never be a provider. This used to be
+    // "adyen", which quietly stopped testing anything the day Adyen shipped.
+    const res = await createCheckout("not-a-psp", { ...BASE, config: {} });
     expect(res.ok).toBe(false);
     if (res.ok) throw new Error("unreachable");
     expect(res.reason).toBe("unknown_provider");

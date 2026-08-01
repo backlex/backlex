@@ -10,6 +10,7 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import {
+  PAYMENT_HAS_CATALOG,
   PAYMENT_PROVIDERS,
   PAYMENT_PROVIDER_FIELDS,
   PAYMENT_PROVIDER_LABELS,
@@ -204,6 +205,14 @@ export const paymentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
                         "needs a pre-existing price id and is not supported yet; `null` " +
                         "means the provider has no hosted checkout at all.",
                     }),
+                    reconcilable: z.boolean().openapi({
+                      description:
+                        "Whether the provider exposes a listable object catalog to sync " +
+                        "against. False for the acquirers and callback-style PSPs, which " +
+                        "report each payment as it happens and store no objects to walk — " +
+                        "`POST /providers/{id}/sync` returns an explanation rather than " +
+                        "pretending to have synced.",
+                    }),
                     fields: z.array(
                       z.object({
                         key: z.string(),
@@ -231,6 +240,7 @@ export const paymentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           provider: p,
           label: PAYMENT_PROVIDER_LABELS[p],
           checkoutMode: PAYMENT_CHECKOUT_MODES[p],
+          reconcilable: PAYMENT_HAS_CATALOG[p],
           fields: PAYMENT_PROVIDER_FIELDS[p],
         })),
         recordKinds: [...PAYMENT_RECORD_KINDS],

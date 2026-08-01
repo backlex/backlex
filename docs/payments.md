@@ -1,6 +1,6 @@
 ---
 title: Payments
-description: Connect Stripe, Polar, Lemon Squeezy, Paddle, PayTR or iyzico — mirror customers, subscriptions, invoices and payments into your collections, and open hosted checkouts to ask for money.
+description: Connect Stripe, Polar, Lemon Squeezy, Paddle, Adyen, PayTR or iyzico — mirror customers, subscriptions, invoices and payments into your collections, and open hosted checkouts to ask for money.
 ---
 
 Connect a payment provider once, and backlex keeps a mirror of its billing
@@ -21,17 +21,39 @@ open a hosted checkout for an arbitrary amount and write the payment link onto
 the invoice, quote or donation row that needs paying.
 
 Supported providers: **Stripe**, **Polar**, **Lemon Squeezy**, **Paddle**,
-**PayTR**, **iyzico**, plus a local **`dummy`** provider for demos and smoke
-tests.
+**Adyen**, **PayTR**, **iyzico**, plus a local **`dummy`** provider for demos
+and smoke tests.
 
-Providers come in three shapes, and the difference decides both what backlex can
-do with them and where the trust comes from:
+Providers differ along **two independent axes**, and conflating them is the
+usual way to get this wrong.
+
+**How trust is established** decides what backlex will accept as evidence that a
+payment happened:
 
 | Mode | Providers | Behaviour |
 |---|---|---|
-| `webhook` | Stripe, Polar, Lemon Squeezy, Paddle | Signed events **and** a listable object catalog, so backlex can also **reconcile** by walking the API |
-| `callback` | PayTR | Posts a form-encoded result per payment, signed with your merchant credentials. No catalog, so reconcile is refused with a reason rather than reporting a sync that synced nothing |
-| `retrieve` | iyzico | Posts a bare token with **no signature**. backlex calls iyzico back with your API credentials to ask what the token means, and records that answer. No catalog |
+| `webhook` | Stripe, Polar, Lemon Squeezy, Paddle, Adyen | Signs each delivery, so the request itself is the evidence |
+| `callback` | PayTR | Posts a form-encoded result per payment, signed with your merchant credentials |
+| `retrieve` | iyzico | Posts a bare token with **no signature**. backlex calls iyzico back with your API credentials to ask what the token means, and records that answer |
+
+**Whether there is a catalog to walk** decides whether [reconcile](#reconcile)
+is possible at all:
+
+| Catalog | Providers | Behaviour |
+|---|---|---|
+| Yes | Stripe, Polar, Lemon Squeezy, Paddle | Customers, subscriptions, invoices and payments can be paged through, so backlex can backfill history and repair drift |
+| No | **Adyen**, PayTR, iyzico, `dummy` | Each payment is reported as it happens and nothing is stored to page through. Reconcile is refused with a reason rather than reporting a sync that synced nothing |
+
+Adyen is why these are two tables rather than one. It signs its notifications
+exactly the way Stripe does, but it is an **acquirer** rather than a billing
+platform: it authorises cards and reports what happened, and the customer /
+subscription / invoice objects simply do not exist on its side. Treating
+"signs its webhooks" as "can be reconciled" would send backlex off to page a
+catalog that isn't there.
+
+`GET /api/admin/payments/catalog` reports `reconcilable` per provider, so the
+admin UI hides **Sync now** rather than offering a button that can only ever
+return an explanation.
 
 ## Why collections, not system tables
 
@@ -62,6 +84,7 @@ Only the connection itself (`payment_providers`) and the delivery log
 | Paddle | API key (`pdl_…`) + the **notification secret** (`pdl_ntfset_…`) shown once when you create the destination. Set `environment: sandbox` for the sandbox API |
 | PayTR | Merchant ID, **merchant key** and **merchant salt** from the PayTR panel — the key and salt together sign the callback |
 | iyzico | **API key** and **secret key** from the merchant panel. They do not verify anything inbound; they authenticate the call backlex makes to confirm each payment. Set `environment: sandbox` for `sandbox-api.iyzipay.com` |
+| Adyen | **API key** (Customer Area → Developers → API credentials, with the Checkout role), the **merchant account** code, and the **HMAC key** generated alongside the webhook. On `environment: live` you also need the **live URL prefix** issued with the live credential — see [Adyen](#adyen-an-acquirer-not-a-billing-platform) |
 
 For Stripe a restricted key with **read** access to customers, subscriptions,
 invoices and charges is enough — backlex never writes to the provider.
@@ -179,6 +202,12 @@ replay the delivery.
 
 ## Reconcile
 
+Only providers with an **object catalog** can be reconciled — Stripe, Polar,
+Lemon Squeezy and Paddle. Adyen, PayTR, iyzico and `dummy` report each payment
+as it happens and store nothing to page through, so a sync against them returns
+`written: 0` with an explanation. Replay a missed delivery from the provider's
+own webhook log instead; every receive path dedupes, so a replay is safe.
+
 Webhooks carry the steady state; reconcile catches what they can't:
 
 - deliveries that failed while the workspace was down,
@@ -265,7 +294,7 @@ stripping the characters PayTR would refuse, so a UUID becomes its 32-hex form.
 
 | Mode | Providers | Behaviour |
 |---|---|---|
-| `adhoc` | Stripe, PayTR, iyzico, `dummy` | Hand it an amount and get a one-off checkout. This is the shape the templates need — an invoice total exists nowhere in the provider's catalog |
+| `adhoc` | Stripe, Adyen, PayTR, iyzico, `dummy` | Hand it an amount and get a one-off checkout. This is the shape the templates need — an invoice total exists nowhere in the provider's catalog |
 | `catalog` | Polar, Lemon Squeezy, Paddle | Checkouts are opened against a **pre-existing** product/price id, with no amount parameter. Not supported yet: a checkout call is refused with a `catalog_only` explanation naming what's missing, rather than failing in a way that reads like an outage |
 
 `GET /api/admin/payments/catalog` reports each provider's `checkoutMode`, so a
@@ -285,6 +314,13 @@ Per-provider requirements worth knowing before you wire one up:
   major-unit decimals on the way out (`10890` → `"108.90"`), the mirror of what
   the inbound normalizer does. `identityNumber` defaults to iyzico's own
   documented placeholder if you don't collect one.
+- **Adyen** — uses **Pay by Link**. Nothing is required beyond the API key and
+  merchant account; amounts go out in minor units verbatim. Adyen has a single
+  `returnUrl`, so `cancelUrl` has nowhere to go and is deliberately ignored
+  rather than quietly substituted — the shopper lands on `successUrl` either
+  way, with the outcome in the query string. `customer.country` is only sent
+  when it really is an ISO-3166 alpha-2 code, because that same field also
+  accepts a country *name* for iyzico and Adyen rejects one.
 
 ### The `dummy` provider
 
@@ -432,6 +468,102 @@ are distinct so the second upsert cannot overwrite the first. The reconcile path
 runs pulled objects through the same normalizer as webhook events, so a
 reconciled row and a webhook row are byte-identical.
 
+## Adyen: an acquirer, not a billing platform
+
+Adyen processes the card. It does not sell anything on your behalf, and it does
+not keep a customer/subscription/invoice catalog — which shapes almost
+everything below.
+
+### Connecting
+
+1. **Customer Area → Developers → API credentials.** Create (or reuse) a
+   credential with the **Checkout** role and copy the API key. Note the
+   **merchant account** code next to it — the account, not the company account.
+   Opening a payment link against the wrong one is rejected.
+2. **Customer Area → Developers → Webhooks.** Add a *Standard* webhook pointing
+   at the URL shown on the backlex Payments card, then **Generate HMAC key** and
+   paste it into the connect dialog. Unlike PayTR and iyzico, Adyen takes its
+   endpoint from the dashboard rather than from each checkout — so a connection
+   is not finished until you have registered that URL by hand.
+3. On **live**, also copy the **live URL prefix** shown with the live
+   credential (`1797a841fbb37ca7-AdyenDemo`). Adyen gives every merchant its own
+   API host and there is no shared live endpoint. backlex validates the prefix
+   as letters, digits and dashes before interpolating it into a URL, so a value
+   carrying `/` or `@` is refused rather than redirecting your API key to
+   somebody else's host.
+
+### The HMAC key is hex
+
+The key the Customer Area hands you is the **hex encoding of the key bytes**,
+and it has to be decoded before it is used. Signing with the ASCII of that
+string produces a perfectly well-formed signature that never matches anything
+Adyen sends — and because both forms are printable there is nothing in the value
+to tell them apart. A stored key that isn't valid hex is reported as a missing
+credential, not as a signature mismatch, because that is what it is.
+
+### The signature is inside the body, once per item
+
+Every other webhook provider signs the raw bytes and puts the result in a
+header. Adyen signs a canonical join of **eight fields** and carries the result
+in `additionalData.hmacSignature` on each notification item:
+
+```
+pspReference : originalReference : merchantAccountCode : merchantReference
+             : amount.value : amount.currency : eventCode : success
+```
+
+Values are escaped **backslash first, then colon** (`\` → `\\`, `:` → `\:`).
+Reversing that order double-escapes the backslash it just wrote and yields a
+different string, with no diagnostic beyond a rejected webhook.
+
+One delivery may legitimately carry **several** items, so backlex verifies
+**every** item and refuses the whole delivery if any single one fails. Checking
+only the first would let anyone append items of their choosing to a genuine
+delivery and have them recorded.
+
+### Acknowledgement
+
+Adyen is acknowledged with the literal body `[accepted]`. Current Adyen docs say
+any `2xx` is fine and the body is ignored, but `[accepted]` was required for
+years and is still honoured — so backlex sends it and covers both. An older
+account that doesn't get it keeps retrying and eventually disables the endpoint,
+the same trap PayTR's `OK` sets.
+
+### Notifications are deltas, and what that means for refunds
+
+Every other provider re-sends the **whole object** on every event, so a refund
+simply restates the order with `amount_refunded` filled in. Adyen instead sends
+a `REFUND` item whose `amount` is *the refunded portion* and whose
+`originalReference` points back at the authorisation.
+
+That matters because the ledger's upsert **replaces** a row rather than merging
+into it. Filing a refund against the original payment's row id would overwrite
+`amount` — the payment total — with the refunded portion, silently shrinking a
+€100 payment to the €10 that came back. So rows are keyed by what the item's own
+amount actually *means*:
+
+| Event | Row written | Why |
+|---|---|---|
+| `AUTHORISATION` | Keyed on its own `pspReference` | This is the payment |
+| `CAPTURE`, `CANCELLATION` | Upserts the **authorisation's** row (via `originalReference`) | Same money. A partial capture narrows `amount` to what was actually taken, which is the truer figure |
+| `REFUND`, `CHARGEBACK` | Its **own** row, with `metadata.original_reference` | A different, smaller movement. `SUM(amount) WHERE status = 'succeeded'` still returns what was collected |
+| `CANCEL_OR_REFUND` | Resolved by `additionalData["modification.action"]` | One event code, two outcomes — guessing would file real refunds as cancellations |
+| Failed modifications (`CAPTURE_FAILED`, an unsuccessful cancellation) | **Nothing** | The authorisation still stands. The only alternatives are "leave the row alone" or "rewrite it from a payload that doesn't describe it". The event is still recorded in `payment_events`, so the failure stays visible |
+
+Anything else — `REPORT_AVAILABLE`, `NOTIFICATION_OF_CHARGEBACK`, event codes
+Adyen adds later — is logged as an event and writes no row.
+
+Amounts need no conversion in either direction: Adyen quotes minor units, which
+is what the ledger stores.
+
+### Reconcile does not apply
+
+Adyen exposes no object catalog, so `POST /providers/{id}/sync` returns
+`written: 0` with an explanation rather than pretending to have synced. The
+admin UI hides the button entirely. If a delivery is missed, replay it from
+**Customer Area → Developers → Webhooks → the delivery log**; backlex dedupes on
+`pspReference`, so a replay is safe and idempotent.
+
 ## PayTR: callback-style, and the `OK` requirement
 
 PayTR posts `application/x-www-form-urlencoded` to the callback URL and signs
@@ -458,13 +590,6 @@ re-sends until it gets `OK`. Amounts are already in kuruş and are stored as-is.
 
 **Reconcile does not apply.** PayTR exposes no object catalog, so
 `POST /providers/:id/sync` returns an explanatory error instead of pretending.
-
-:::note
-iyzico is not supported yet. Its callback carries a `token` and authenticity
-comes from calling iyzico back to retrieve the payment rather than from a hash
-on the request, which needs an outbound call inside the receive path. A guessed
-signature format would be worse than none.
-:::
 
 ## iyzico: retrieve-style, and why the callback body is ignored
 

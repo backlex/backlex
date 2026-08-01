@@ -59,6 +59,9 @@ type CatalogEntry = {
   /** `catalog` walks the provider's listing; `refresh` re-reads the payments
    *  we already recorded, to catch refunds and late captures nobody pushed. */
   syncMode?: "catalog" | "refresh" | null;
+  /** How much of a payment this provider gives back. `full_only` is Paddle,
+   *  whose partial refunds adjust line items a payment row doesn't carry. */
+  refundSupport?: "full_and_partial" | "full_only" | null;
   fields: Field[];
 };
 type Catalog = { providers: CatalogEntry[]; recordKinds: string[] };
@@ -133,6 +136,7 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
   const [loaded, setLoaded] = useState(false);
   const [connectProvider, setConnectProvider] = useState<string | null>(null);
   const [checkoutFor, setCheckoutFor] = useState<string | null>(null);
+  const [refundFor, setRefundFor] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const reload = async () => {
@@ -350,6 +354,11 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
                             <Trans>Payment link</Trans>
                           </Button>
                         ) : null}
+                        {entry.refundSupport ? (
+                          <Button variant="outline" onClick={() => setRefundFor(entry.provider)}>
+                            <Trans>Refund</Trans>
+                          </Button>
+                        ) : null}
                         {entry.reconcilable === false ? null : (
                           <Button disabled={isBusy} onClick={() => void sync(row)}>
                             {isBusy ? <Trans>Working…</Trans> : <Trans>Sync now</Trans>}
@@ -491,6 +500,16 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
           label={labelFor(checkoutFor)}
           onClose={() => setCheckoutFor(null)}
           onCopy={copy}
+        />
+      )}
+      {refundFor && (
+        <RefundDialog
+          provider={refundFor}
+          label={labelFor(refundFor)}
+          fullOnly={
+            catalog?.providers.find((p) => p.provider === refundFor)?.refundSupport === "full_only"
+          }
+          onClose={() => setRefundFor(null)}
         />
       )}
     </div>
@@ -658,6 +677,248 @@ function CheckoutDialog({
           ) : (
             <Button disabled={!ready || busy} onClick={() => void submit()}>
               {busy ? <Trans>Opening…</Trans> : <Trans>Create link</Trans>}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Give money back from the admin.
+ *
+ * The mirror of `CheckoutDialog`, and the same kind of escape hatch: the useful
+ * automation is the `payment.refund` flow step, fired when an order is
+ * cancelled or a return approved. This is for the one-off, and for proving a
+ * freshly connected provider can actually reverse a charge.
+ *
+ * Amount is optional here in a way it never is on a checkout — blank means the
+ * whole remaining balance, which is what most refunds are.
+ */
+/** Radix `SelectItem` rejects `value=""`, so "send no reason" needs a sentinel
+ *  that is stripped before the request rather than an empty option. */
+const NO_REASON = "__none__";
+
+function RefundDialog({
+  provider,
+  label,
+  fullOnly,
+  onClose,
+}: {
+  provider: string;
+  label: string;
+  /** Paddle: a partial refund adjusts line items a payment row doesn't carry. */
+  fullOnly: boolean;
+  onClose: () => void;
+}) {
+  const { t } = useLingui();
+  const [target, setTarget] = useState<"reference" | "externalId" | "paymentRowId">("reference");
+  const [handle, setHandle] = useState("");
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("requested_by_customer");
+  const [description, setDescription] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    refundId: string;
+    amount: number;
+    currency: string;
+    status: string;
+    full: boolean;
+    ledger: unknown;
+    note?: string;
+  } | null>(null);
+
+  // Major units in the box, minor units on the wire — the same conversion the
+  // checkout dialog does, for the same reason.
+  const trimmedAmount = amount.replace(",", ".").trim();
+  const minorUnits = trimmedAmount ? Math.round(Number(trimmedAmount) * 100) : null;
+  const amountValid = minorUnits === null || (Number.isInteger(minorUnits) && minorUnits > 0);
+  const ready = handle.trim().length > 0 && amountValid && !(fullOnly && minorUnits !== null);
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await api<{ data: NonNullable<typeof result> }>("/api/admin/payments/refund", {
+        method: "POST",
+        body: JSON.stringify({
+          provider,
+          [target]: handle.trim(),
+          ...(minorUnits !== null ? { amount: minorUnits } : {}),
+          ...(reason !== NO_REASON ? { reason } : {}),
+          ...(description.trim() ? { description: description.trim() } : {}),
+        }),
+      });
+      setResult(res.data);
+    } catch (e) {
+      // The service tells an over-refund apart from an unreachable provider,
+      // and the message says which — surface it rather than "failed".
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]">
+        <DialogHeader className="space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
+          <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">
+            {t`${label} refund`}
+          </DialogTitle>
+          <DialogDescription className="text-[12.5px] text-muted-foreground">
+            <Trans>
+              Gives money back for a payment already recorded in this workspace. To refund
+              automatically, use the refund step in a flow.
+            </Trans>
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+          <div className="flex flex-col gap-3.5 px-5 py-4">
+            {result ? (
+              <>
+                <p className="text-[12.5px] leading-snug">
+                  <Trans>
+                    Refunded {(result.amount / 100).toFixed(2)} {result.currency}
+                    {result.full ? " — the payment is now fully refunded." : "."}
+                  </Trans>
+                </p>
+                {result.refundId ? (
+                  <label className="block">
+                    <span className="mb-1 block text-[11.5px] font-medium">
+                      <Trans>Provider refund id</Trans>
+                    </span>
+                    <Input
+                      readOnly
+                      value={result.refundId}
+                      onFocus={(e) => e.currentTarget.select()}
+                    />
+                  </label>
+                ) : null}
+                {result.status === "pending" ? (
+                  <p className="text-[11.5px] leading-snug text-destructive">
+                    <Trans>
+                      Not settled yet: {result.note || t`the provider has not decided this refund`}.
+                    </Trans>
+                  </p>
+                ) : null}
+                {result.ledger ? null : (
+                  <p className="text-[11.5px] leading-snug text-muted-foreground">
+                    <Trans>
+                      {label} files refunds as their own transaction, so the payment row is updated
+                      when that notification arrives rather than now.
+                    </Trans>
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <label className="block">
+                  <span className="mb-1 block text-[11.5px] font-medium">
+                    <Trans>Find the payment by</Trans>
+                  </span>
+                  <Select
+                    value={target}
+                    onValueChange={(v) => setTarget(v as typeof target)}
+                  >
+                    <SelectTrigger className="w-full min-w-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="reference">{t`Checkout reference`}</SelectItem>
+                      <SelectItem value="externalId">{t`Provider's payment id`}</SelectItem>
+                      <SelectItem value="paymentRowId">{t`Payment row id`}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11.5px] font-medium">
+                    {target === "reference" ? (
+                      <Trans>Reference</Trans>
+                    ) : target === "externalId" ? (
+                      <Trans>Provider payment id</Trans>
+                    ) : (
+                      <Trans>Payment row id</Trans>
+                    )}
+                  </span>
+                  <Input value={handle} onChange={(e) => setHandle(e.target.value)} />
+                  <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
+                    {target === "reference" ? (
+                      <Trans>What the payment link travelled out with. Refused if it matches more than one payment.</Trans>
+                    ) : (
+                      <Trans>Both are on the row in the payment_transactions collection.</Trans>
+                    )}
+                  </span>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11.5px] font-medium">
+                    <Trans>Amount</Trans>
+                  </span>
+                  <Input
+                    inputMode="decimal"
+                    placeholder={t`whole remaining balance`}
+                    value={amount}
+                    disabled={fullOnly}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                  <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
+                    {fullOnly ? (
+                      <Trans>
+                        {label} can only refund in full from here — a partial refund there adjusts
+                        individual line items, which a payment row doesn't carry.
+                      </Trans>
+                    ) : (
+                      <Trans>Leave blank to give back everything still refundable.</Trans>
+                    )}
+                  </span>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11.5px] font-medium">
+                    <Trans>Reason</Trans>
+                  </span>
+                  <Select value={reason} onValueChange={setReason}>
+                    <SelectTrigger className="w-full min-w-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Radix refuses an empty-string item value, so "don't
+                          send one" needs a sentinel rather than "". */}
+                      <SelectItem value={NO_REASON}>{t`Not stated`}</SelectItem>
+                      <SelectItem value="requested_by_customer">{t`Requested by customer`}</SelectItem>
+                      <SelectItem value="duplicate">{t`Duplicate`}</SelectItem>
+                      <SelectItem value="fraudulent">{t`Fraudulent`}</SelectItem>
+                      <SelectItem value="other">{t`Other`}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11.5px] font-medium">
+                    <Trans>Description</Trans>
+                  </span>
+                  <Input
+                    placeholder={t`Order cancelled`}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </label>
+                {error ? (
+                  <p className="text-[11.5px] leading-snug text-destructive">{error}</p>
+                ) : null}
+              </>
+            )}
+          </div>
+        </ScrollArea>
+
+        <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border px-5 py-3.5 sm:flex-row sm:justify-end">
+          <Button variant="ghost" onClick={onClose}>
+            {result ? <Trans>Done</Trans> : <Trans>Cancel</Trans>}
+          </Button>
+          {result ? null : (
+            <Button disabled={!ready || busy} onClick={() => void submit()}>
+              {busy ? <Trans>Refunding…</Trans> : <Trans>Refund</Trans>}
             </Button>
           )}
         </DialogFooter>

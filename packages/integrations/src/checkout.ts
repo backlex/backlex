@@ -54,15 +54,19 @@ import {
   toHex,
 } from "./payment-crypto";
 import {
+  ADYEN_API_VERSION,
   AUTHORIZENET_API_PATH,
   AUTHORIZENET_DEFAULT_CURRENCY,
   type FetchLike,
   KLARNA_MARKETS,
   type PaymentProvider,
+  adyenBase,
   authorizeNetErrorText,
   authorizeNetHost,
   authorizeNetOk,
   isPaymentProvider,
+  iyzicoAuthHeaders,
+  iyzicoHost,
   klarnaAuthHeader,
   klarnaHost,
   parseAuthorizeNetJson,
@@ -575,37 +579,7 @@ const paytrCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => {
 
 // ── iyzico ──────────────────────────────────────────────────────────────────
 
-const IYZICO_HOSTS = {
-  production: "https://api.iyzipay.com",
-  sandbox: "https://sandbox-api.iyzipay.com",
-} as const;
-
 const IYZICO_INIT_PATH = "/payment/iyzipos/checkoutform/initialize/auth/ecom";
-
-/**
- * iyzico's IYZWSv2 request authentication — the same construction the retrieve
- * call in `./payments.ts` uses, against a different path.
- *
- * signature = hex(HMAC-SHA256(secretKey, randomKey + uriPath + requestBody))
- * Authorization: IYZWSv2 base64("apiKey:…&randomKey:…&signature:…")
- */
-const iyzicoAuthHeaders = async (
-  apiKey: string,
-  secretKey: string,
-  uriPath: string,
-  body: string,
-  randomKey: string,
-): Promise<Record<string, string>> => {
-  const signature = toHex(
-    await hmac(new TextEncoder().encode(secretKey), `${randomKey}${uriPath}${body}`),
-  );
-  return {
-    Authorization: `IYZWSv2 ${btoa(`apiKey:${apiKey}&randomKey:${randomKey}&signature:${signature}`)}`,
-    "x-iyzi-rnd": randomKey,
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  };
-};
 
 /** iyzico's documented placeholder for merchants that don't collect one. */
 const IYZICO_PLACEHOLDER_IDENTITY = "11111111111";
@@ -622,8 +596,7 @@ const iyzicoCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => 
     return fail("invalid_input", "iyzico requires a callback URL to report the settlement to");
   }
 
-  const host =
-    str(input.config.environment) === "sandbox" ? IYZICO_HOSTS.sandbox : IYZICO_HOSTS.production;
+  const host = iyzicoHost(input.config);
   // iyzico quotes money as major-unit decimals on the way out, while the
   // ledger stores minor units — the same conversion the inbound normalizer
   // does in reverse.
@@ -715,38 +688,11 @@ const iyzicoCheckout = async (input: CheckoutInput): Promise<CheckoutResult> => 
 
 // ── Adyen ───────────────────────────────────────────────────────────────────
 
-const ADYEN_API_VERSION = "v71";
-const ADYEN_TEST_BASE = "https://checkout-test.adyen.com";
-
-/**
- * Adyen's live endpoints are per-merchant: the host carries a prefix issued
- * with the live API credential. It is interpolated into a URL, so it is
- * validated as an opaque token rather than trusted — a prefix carrying `/` or
- * `@` would redirect the API key to a host of someone else's choosing.
- */
-const ADYEN_LIVE_PREFIX_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
-
 /** Adyen's own bounds on a payment link's lifetime: at least a minute, at most
  *  70 days. Outside that it 422s, so an out-of-range value is dropped and
  *  Adyen's 24-hour default applies instead. */
 const ADYEN_MIN_EXPIRY_SEC = 60;
 const ADYEN_MAX_EXPIRY_SEC = 70 * 24 * 60 * 60;
-
-const adyenBase = (config: Record<string, unknown>): { base: string } | { error: string } => {
-  if (str(config.environment) !== "live") return { base: ADYEN_TEST_BASE };
-  const prefix = str(config.liveUrlPrefix);
-  if (!prefix) {
-    return {
-      error:
-        "Adyen live payments need the live URL prefix from the Customer Area — " +
-        "the live API has no shared host",
-    };
-  }
-  if (!ADYEN_LIVE_PREFIX_PATTERN.test(prefix)) {
-    return { error: "The Adyen live URL prefix must be letters, digits and dashes only" };
-  }
-  return { base: `https://${prefix}-checkout-live.adyenpayments.com/checkout` };
-};
 
 /**
  * Adyen wants `expiresAt` as an ISO-8601 instant WITH an offset. `toISOString`

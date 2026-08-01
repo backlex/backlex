@@ -1089,6 +1089,56 @@ export interface PaymentCheckoutInput {
   };
 }
 
+/** What a provider gave back, and what that did to the ledger. */
+export interface PaymentRefund {
+  provider: string;
+  providerId: string;
+  /** The `payment_transactions` row that was refunded. */
+  paymentRowId: string;
+  /** The provider's own id for the payment. */
+  externalId: string;
+  /** The provider's own id for the refund. Empty when it issues none. */
+  refundId: string;
+  /** MINOR units actually refunded. */
+  amount: number;
+  currency: string;
+  /**
+   * `pending` means the provider accepted the refund but has not decided it —
+   * Adyen resolves this in a REFUND webhook and Paddle holds live refunds for
+   * human approval. Treating it as done reports money that may not move.
+   */
+  status: "succeeded" | "pending";
+  /** Whether this took the payment's refunded total to its full amount. */
+  full: boolean;
+  /**
+   * What was written to `payment_transactions`, or null for providers that file
+   * a refund as its own transaction (Adyen, Authorize.net) — there the refund's
+   * own notification writes the row, and bumping the original would be undone.
+   */
+  ledger: { amountRefunded: number; status: string } | null;
+  /** Set when the provider said something the operator should see. */
+  note?: string;
+}
+
+export interface PaymentRefundInput {
+  /** Connected provider row id. Takes precedence over `provider`. */
+  providerId?: string;
+  provider?: string;
+  /** Which payment. One of these three; tried in this order. */
+  paymentRowId?: string;
+  externalId?: string;
+  /** The reference an outbound checkout travelled with. Refused when it matches
+   *  more than one payment. */
+  reference?: string;
+  /** MINOR units. Omitted refunds the whole remaining balance. */
+  amount?: number;
+  reason?: "duplicate" | "fraudulent" | "requested_by_customer" | "other";
+  description?: string;
+  /** Overrides the derived key. The default is derived from the payment and the
+   *  amount already refunded, so a retry dedupes and a second refund does not. */
+  idempotencyKey?: string;
+}
+
 export interface PaymentCatalogEntry {
   provider: string;
   label: string;
@@ -1098,6 +1148,11 @@ export interface PaymentCatalogEntry {
    * has no hosted checkout at all.
    */
   checkoutMode: "adhoc" | "catalog" | null;
+  /**
+   * How much of a payment this provider will give back. `full_only` is Paddle,
+   * whose partial refunds adjust individual line items backlex does not store.
+   */
+  refundSupport?: "full_and_partial" | "full_only" | null;
   fields: {
     key: string;
     label: string;
@@ -1340,6 +1395,25 @@ export interface PaymentsClient {
    * you passed in.
    */
   checkout(input: PaymentCheckoutInput): Promise<{ data: PaymentCheckout }>;
+  /**
+   * Give back some or all of a payment.
+   *
+   * Say which payment by `paymentRowId`, `externalId` or the checkout
+   * `reference`; omit `amount` to refund everything still refundable. The
+   * remainder is computed from `payment_transactions` and checked BEFORE the
+   * provider is called, so a refund can never take the total past what was
+   * charged.
+   *
+   * Every provider can refund. Paddle can only refund in FULL from here — a
+   * partial Paddle refund adjusts individual transaction line items, which a
+   * payment row does not carry.
+   *
+   * Watch `status`: Adyen decides refunds asynchronously (the outcome arrives
+   * as a REFUND webhook) and Paddle holds live refunds for review, so both can
+   * come back `pending`. For those two `ledger` is null as well — they file a
+   * refund as its own transaction, and its own notification writes the row.
+   */
+  refund(input: PaymentRefundInput): Promise<{ data: PaymentRefund }>;
   /** Recent webhook deliveries, newest first. */
   events(opts?: { providerId?: string; limit?: number }): Promise<{ data: PaymentEvent[] }>;
   /** (Re-)provision the four sync collections. Idempotent. */
@@ -3306,6 +3380,8 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<PaymentSyncResult>("POST", `${pay(id)}/sync`, opts ?? {}),
     checkout: (input: PaymentCheckoutInput) =>
       request<{ data: PaymentCheckout }>("POST", "/api/admin/payments/checkout", input),
+    refund: (input: PaymentRefundInput) =>
+      request<{ data: PaymentRefund }>("POST", "/api/admin/payments/refund", input),
     events: (opts?: { providerId?: string; limit?: number }) => {
       const qs = new URLSearchParams();
       if (opts?.providerId) qs.set("providerId", opts.providerId);

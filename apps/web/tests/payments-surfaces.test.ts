@@ -176,6 +176,7 @@ describe("payments — MCP surface", () => {
       "payments.events",
       "payments.list",
       "payments.provision_collections",
+      "payments.refund",
       "payments.rotate_token",
       "payments.sync",
     ]);
@@ -209,6 +210,22 @@ describe("payments — MCP surface", () => {
     expect(Object.keys(schema.properties)).toContain("writeBack");
     expect(Object.keys(schema.properties)).toContain("reference");
   });
+
+  test("the refund tool requires nothing, because every field has a default meaning", () => {
+    const tool = allTools.find((t) => t.name === "payments.refund")!;
+    const schema = tool.inputSchema as {
+      properties: Record<string, unknown>;
+      required?: string[];
+    };
+    // Deliberately no `required`: which payment is named by ONE of three
+    // fields, and an omitted amount means "the whole remaining balance". A
+    // JSON-Schema `required` cannot express either, so the check lives in the
+    // service where it can say which of the three is missing.
+    expect(schema.required).toBeUndefined();
+    for (const key of ["paymentRowId", "externalId", "reference", "amount"]) {
+      expect(Object.keys(schema.properties)).toContain(key);
+    }
+  });
 });
 
 describe("payments — CLI surface", () => {
@@ -227,6 +244,7 @@ describe("payments — CLI surface", () => {
       "list",
       "connect",
       "checkout",
+      "refund",
       "sync",
       "events",
       "rotate-token",
@@ -302,6 +320,70 @@ describe("payments — checkout parity across surfaces", () => {
       )
     ).json()) as { data: { url: string } };
     expect(viaRest.data.url).toContain("/api/payments/dummy/");
+  });
+
+  test("the catalog reports how much of a payment each provider gives back", async () => {
+    const catalog = await client.payments.catalog();
+    const support = Object.fromEntries(
+      catalog.providers.map((p) => [p.provider, p.refundSupport]),
+    );
+    // Unlike checkout, the split here is not adhoc-vs-catalog: every provider
+    // can refund, and only Paddle is limited, because its partial refund
+    // adjusts line items a payment row does not carry.
+    expect(support.stripe).toBe("full_and_partial");
+    expect(support.klarna).toBe("full_and_partial");
+    expect(support.polar).toBe("full_and_partial");
+    expect(support.paddle).toBe("full_only");
+  });
+
+  test("SDK and GraphQL refund through the same service as REST", async () => {
+    // One paid payment, refunded a third at a time through each surface — so a
+    // surface that silently no-ops shows up as an untouched ledger rather than
+    // as a passing assertion on its own response.
+    const checkout = await client.payments.checkout({
+      provider: "dummy",
+      amount: 9000,
+      currency: "USD",
+    });
+    const url = new URL(checkout.data.url);
+    await h.fetch(url.pathname + url.search, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ outcome: "success" }).toString(),
+    });
+    const reference = checkout.data.reference;
+
+    const viaSdk = await client.payments.refund({ provider: "dummy", reference, amount: 3000 });
+    expect(viaSdk.data).toMatchObject({ amount: 3000, currency: "USD", full: false });
+    expect(viaSdk.data.ledger).toEqual({ amountRefunded: 3000, status: "succeeded" });
+
+    const viaGql = await gql(
+      `mutation($d:PaymentRefundInput!){ refundPayment(data:$d){ amount currency status full } }`,
+      { d: { provider: "dummy", reference, amount: 3000 } },
+    );
+    expect(viaGql.errors).toBeUndefined();
+    expect(viaGql.data?.refundPayment).toMatchObject({ amount: 3000, status: "succeeded" });
+
+    const viaRest = (await (
+      await h.fetch(
+        "/api/admin/payments/refund",
+        json({ provider: "dummy", reference, amount: 3000 }),
+      )
+    ).json()) as { data: { full: boolean; ledger: { amountRefunded: number } } };
+    // The third one takes it to the whole amount, which is the only one that
+    // may flip the status.
+    expect(viaRest.data.full).toBe(true);
+    expect(viaRest.data.ledger.amountRefunded).toBe(9000);
+  });
+
+  test("GraphQL reports an over-refund with the service's own error code", async () => {
+    const res = await gql(
+      `mutation($d:PaymentRefundInput!){ refundPayment(data:$d){ amount } }`,
+      { d: { provider: "dummy", externalId: "not_a_payment", amount: 1 } },
+    );
+    // NOT_FOUND rather than a generic failure: the payment is missing, which
+    // is a different thing from the provider refusing.
+    expect(res.errors?.[0]?.extensions?.code).toBe("NOT_FOUND");
   });
 
   test("a catalog provider is refused with an explanation, not a confusing failure", async () => {

@@ -152,6 +152,38 @@ export type Operation =
       onSuccess?: Operation[];
       onError?: Operation[];
     }
+  /**
+   * Give money back.
+   *
+   * The mirror of `payment.checkout`, and the automation that pairs with a
+   * status changing: an order row moving to `cancelled` or a return being
+   * approved is exactly the moment a refund should go out, and until now that
+   * meant an operator remembering to open the PSP's dashboard.
+   *
+   * Say which payment with ONE of `paymentRowId`, `externalId` or `reference`.
+   * `reference` is usually the right one in a flow — the row that was billed
+   * knows what reference it was billed under and nothing else about the
+   * payment. Omit `amount` to give back everything still refundable.
+   */
+  | {
+      type: "payment.refund";
+      /** Provider name (`stripe`, `klarna`, …). Omit when `providerId` is set. */
+      provider?: string;
+      /** A specific connection, for a workspace with more than one. */
+      providerId?: string;
+      /** The `payment_transactions` row. A template is interpolated first. */
+      paymentRowId?: string;
+      /** The provider's own id for the payment. */
+      externalId?: string;
+      /** The reference the checkout travelled out with. */
+      reference?: string;
+      /** MINOR units. Omitted refunds the whole remaining balance. */
+      amount?: string | number;
+      reason?: "duplicate" | "fraudulent" | "requested_by_customer" | "other";
+      description?: string;
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
   /** Invoke a saved backlex function by name, tenant-scoped. The
    *  function's stored `code` is run in the same sandbox as `run-script`
    *  but the body lives in the `functions` table so it's reusable across
@@ -224,6 +256,7 @@ export const OPERATION_TYPES: OperationType[] = [
   "push",
   "sms",
   "payment.checkout",
+  "payment.refund",
   "function",
   "integration",
   "item.create",
@@ -376,6 +409,37 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       .refine((op) => !(op.provider && op.providerId), {
         message: "payment.checkout takes `provider` or `providerId`, not both",
       }),
+    z
+      .object({
+        type: z.literal("payment.refund"),
+        provider: z.string().min(1).optional(),
+        providerId: z.string().min(1).optional(),
+        paymentRowId: z.string().min(1).optional(),
+        externalId: z.string().min(1).optional(),
+        reference: z.string().min(1).optional(),
+        // Omitted means "everything still refundable", so this is optional in a
+        // way `payment.checkout`'s amount is not.
+        amount: z.union([z.string().min(1), z.number().int().positive()]).optional(),
+        reason: z.enum(["duplicate", "fraudulent", "requested_by_customer", "other"]).optional(),
+        description: z.string().max(200).optional(),
+        onSuccess: z.array(OperationSchema).optional(),
+        onError: z.array(OperationSchema).optional(),
+      })
+      .refine((op) => !(op.provider && op.providerId), {
+        message: "payment.refund takes `provider` or `providerId`, not both",
+      })
+      // Caught at SAVE time rather than at run time, because a refund op that
+      // names no payment is not a flow that sometimes fails — it is one that
+      // can never do anything, and the author should hear about it while they
+      // are still looking at the builder.
+      .refine(
+        (op) => Boolean(op.paymentRowId || op.externalId || op.reference),
+        {
+          message:
+            "payment.refund needs one of `paymentRowId`, `externalId` or `reference` to say " +
+            "which payment to refund",
+        },
+      ),
     z.object({
       type: z.literal("function"),
       name: z.string().min(1),

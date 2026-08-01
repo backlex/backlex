@@ -1699,8 +1699,19 @@ const IYZICO_HOSTS = {
   sandbox: "https://sandbox-api.iyzipay.com",
 } as const;
 
-/** The one endpoint this integration calls. */
+/** The endpoint the inbound retrieve calls. */
 const IYZICO_RETRIEVE_PATH = "/payment/iyzipos/checkoutform/auth/ecom/detail";
+
+/**
+ * Which iyzico deployment a connection speaks to.
+ *
+ * Exported for the same reason `klarnaHost` and `authorizeNetHost` are: three
+ * modules now call iyzico (retrieve here, checkout, refund) and a host chosen
+ * separately in each is a host that can differ in one of them. The value is
+ * picked from a fixed table and never assembled out of config.
+ */
+export const iyzicoHost = (config: Record<string, unknown>): string =>
+  str(config.environment) === "sandbox" ? IYZICO_HOSTS.sandbox : IYZICO_HOSTS.production;
 
 /**
  * iyzico's IYZWSv2 request authentication.
@@ -1709,8 +1720,13 @@ const IYZICO_RETRIEVE_PATH = "/payment/iyzipos/checkoutform/auth/ecom/detail";
  * Authorization: IYZWSv2 base64("apiKey:…&randomKey:…&signature:…")
  *
  * The random key also travels as `x-iyzi-rnd` so iyzico can recompute it.
+ *
+ * Exported rather than re-derived per module. The signature covers the URI PATH
+ * as well as the body, so a second copy is free to disagree about how the path
+ * is spelled — and iyzico answers a mismatched signature with a generic
+ * authentication failure that reads exactly like a wrong API key.
  */
-const iyzicoAuthHeaders = async (
+export const iyzicoAuthHeaders = async (
   apiKey: string,
   secretKey: string,
   uriPath: string,
@@ -1759,8 +1775,7 @@ export async function retrieveIyzicoPayment(
   const secretKey = str(input.config.secretKey);
   if (!apiKey || !secretKey) return { ok: false, reason: "missing_secret" };
 
-  const host =
-    str(input.config.environment) === "sandbox" ? IYZICO_HOSTS.sandbox : IYZICO_HOSTS.production;
+  const host = iyzicoHost(input.config);
   const body = JSON.stringify({ locale: "tr", token: input.token });
   const randomKey = input.randomKey ?? `${Date.now()}${Math.random().toString(36).slice(2, 10)}`;
   const headers = await iyzicoAuthHeaders(apiKey, secretKey, IYZICO_RETRIEVE_PATH, body, randomKey);
@@ -1856,6 +1871,45 @@ const normalizeIyzico = (body: Record<string, unknown>): NormalizedPaymentEvent 
 };
 
 // ── Adyen ───────────────────────────────────────────────────────────────────
+
+/** The Checkout API version every outbound Adyen call is pinned to. */
+export const ADYEN_API_VERSION = "v71";
+
+const ADYEN_TEST_BASE = "https://checkout-test.adyen.com";
+
+/**
+ * Adyen's live endpoints are per-merchant: the host carries a prefix issued
+ * with the live API credential. It is interpolated into a URL, so it is
+ * validated as an opaque token rather than trusted — a prefix carrying `/` or
+ * `@` would redirect the API key to a host of someone else's choosing.
+ */
+const ADYEN_LIVE_PREFIX_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
+
+/**
+ * Which Adyen deployment a connection speaks to.
+ *
+ * Exported so the checkout and the refund resolve the host identically. Unlike
+ * every other provider's host helper this one can FAIL, because a live
+ * connection with no prefix has no host to fall back to — defaulting to the
+ * test base would send a live refund somewhere it silently does nothing.
+ */
+export const adyenBase = (
+  config: Record<string, unknown>,
+): { base: string } | { error: string } => {
+  if (str(config.environment) !== "live") return { base: ADYEN_TEST_BASE };
+  const prefix = str(config.liveUrlPrefix);
+  if (!prefix) {
+    return {
+      error:
+        "Adyen live payments need the live URL prefix from the Customer Area — " +
+        "the live API has no shared host",
+    };
+  }
+  if (!ADYEN_LIVE_PREFIX_PATTERN.test(prefix)) {
+    return { error: "The Adyen live URL prefix must be letters, digits and dashes only" };
+  }
+  return { base: `https://${prefix}-checkout-live.adyenpayments.com/checkout` };
+};
 
 /**
  * The eight fields Adyen signs, in signing order.
@@ -2674,7 +2728,15 @@ export const klarnaAuthHeader = (username: string, password: string): string =>
  * choose which endpoint the merchant's credentials are sent to. Klarna's own ids
  * are UUIDs; anything else is refused rather than escaped.
  */
-const KLARNA_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+/**
+ * What a Klarna handle may contain before it is put in a URL PATH.
+ *
+ * Exported because the refund module interpolates an order id the same way the
+ * retrieve does, and a handle in a path is a different threat from one in a
+ * body: it chooses which endpoint the merchant's Basic-auth credentials are
+ * sent to. One pattern, applied at every interpolation site.
+ */
+export const KLARNA_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
 /**
  * The HPP session handle out of Klarna's unsigned status callback.
@@ -3134,8 +3196,16 @@ export interface FetchPageResult {
   error?: string;
 }
 
-const polarBase = (config: Record<string, unknown>): string =>
+/** Polar's two deployments. Exported for the same reason the others are —
+ *  reconcile reads through it and the refund path writes through it. */
+export const polarBase = (config: Record<string, unknown>): string =>
   str(config.server) === "sandbox" ? "https://sandbox-api.polar.sh" : "https://api.polar.sh";
+
+/** Paddle's two deployments. */
+export const paddleBase = (config: Record<string, unknown>): string =>
+  str(config.environment) === "sandbox"
+    ? "https://sandbox-api.paddle.com"
+    : "https://api.paddle.com";
 
 /** Provider path + response shape per kind. Stripe pages by object id
  *  (`starting_after`), Polar and LS by page number. */
@@ -3282,10 +3352,7 @@ export async function fetchPaymentPage(input: FetchPageInput): Promise<FetchPage
       // Paddle pages by an opaque `after` cursor carried in
       // `meta.pagination.next` as a full URL; the cursor stored here is just
       // the id to resume after, so a stale absolute URL can never be replayed.
-      const base =
-        str(config.environment) === "sandbox"
-          ? "https://sandbox-api.paddle.com"
-          : "https://api.paddle.com";
+      const base = paddleBase(config);
       const path: Record<PaymentRecordKind, string> = {
         customer: "customers",
         subscription: "subscriptions",

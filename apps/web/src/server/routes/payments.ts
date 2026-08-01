@@ -17,6 +17,7 @@ import {
   PAYMENT_RECORD_KINDS,
 } from "@backlex/integrations/payments";
 import { PAYMENT_CHECKOUT_MODES } from "@backlex/integrations/checkout";
+import { PAYMENT_REFUND_SUPPORT, REFUND_REASONS } from "@backlex/integrations/refunds";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
@@ -32,6 +33,7 @@ import {
   listProviders,
   paymentEventStats,
   reconcileProvider,
+  refundPayment,
   rotateWebhookToken,
 } from "../services/payments";
 
@@ -163,6 +165,65 @@ const CheckoutResultSchema = z
   })
   .openapi("PaymentCheckoutResult");
 
+const RefundInputSchema = z
+  .object({
+    providerId: z.string().optional().openapi({
+      description: "Connected provider row id. Takes precedence over `provider`.",
+    }),
+    provider: z.enum(PAYMENT_PROVIDERS).optional(),
+    paymentRowId: z.string().optional().openapi({
+      description: "The `payment_transactions` row to refund.",
+    }),
+    externalId: z.string().optional().openapi({
+      description: "The provider's own id for the payment.",
+    }),
+    reference: z.string().optional().openapi({
+      description:
+        "The reference an outbound checkout travelled with. Refused when it matches " +
+        "more than one payment — one invoice can be billed more than once.",
+    }),
+    amount: z.number().int().positive().optional().openapi({
+      description:
+        "MINOR units. Omitted refunds the whole remaining balance. Checked against " +
+        "`amount - amount_refunded` on the ledger row before the provider is called.",
+    }),
+    reason: z.enum(REFUND_REASONS).optional(),
+    description: z.string().max(200).optional(),
+    idempotencyKey: z.string().max(255).optional().openapi({
+      description:
+        "Overrides the derived key. The default is derived from the payment and the " +
+        "amount already refunded, so a retry is deduplicated while a genuine second " +
+        "refund is not.",
+    }),
+  })
+  .openapi("PaymentRefundInput");
+
+const RefundResultSchema = z
+  .object({
+    data: z.object({
+      provider: z.string(),
+      providerId: z.string(),
+      paymentRowId: z.string(),
+      externalId: z.string(),
+      refundId: z.string(),
+      amount: z.number().int(),
+      currency: z.string(),
+      status: z.enum(["succeeded", "pending"]),
+      full: z.boolean(),
+      ledger: z
+        .object({ amountRefunded: z.number().int(), status: z.string() })
+        .nullable()
+        .openapi({
+          description:
+            "What was written to `payment_transactions`, or null for providers that " +
+            "file a refund as its own transaction (Adyen, Authorize.net) — there the " +
+            "refund's own notification writes the row.",
+        }),
+      note: z.string().optional(),
+    }),
+  })
+  .openapi("PaymentRefundResult");
+
 const EventRow = z
   .object({
     id: z.string(),
@@ -213,6 +274,16 @@ export const paymentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
                         "payment to be re-read (Adyen, PayTR, iyzico), where sync returns " +
                         "an explanation rather than pretending to have synced.",
                     }),
+                    refundSupport: z
+                      .enum(["full_and_partial", "full_only"])
+                      .nullable()
+                      .openapi({
+                        description:
+                          "How much of a payment this provider will give back. " +
+                          "`full_only` is Paddle: a partial refund there adjusts individual " +
+                          "transaction line items, which backlex does not store. `null` " +
+                          "means the provider cannot refund at all.",
+                      }),
                     syncMode: z.enum(["catalog", "refresh"]).nullable().openapi({
                       description:
                         "`catalog` walks the PROVIDER's own listing of customers, " +
@@ -248,6 +319,7 @@ export const paymentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           provider: p,
           label: PAYMENT_PROVIDER_LABELS[p],
           checkoutMode: PAYMENT_CHECKOUT_MODES[p],
+          refundSupport: PAYMENT_REFUND_SUPPORT[p],
           reconcilable: paymentSyncMode(p) !== null,
           syncMode: paymentSyncMode(p),
           fields: PAYMENT_PROVIDER_FIELDS[p],
@@ -590,6 +662,58 @@ export const paymentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         // bearer link to a payment page.
         payload: { provider: out.provider, amount: body.amount, currency: body.currency },
         response: { reference: out.reference, writtenBack: Boolean(out.writtenBack) },
+      });
+      return c.json({ data: out });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/refund",
+      tags,
+      summary: "Refund some or all of a payment",
+      description:
+        "The reverse of `/checkout`. Say which payment by `paymentRowId`, " +
+        "`externalId` or the checkout `reference`; omit `amount` to give back " +
+        "everything still refundable. The refundable remainder is checked against " +
+        "`payment_transactions` BEFORE the provider is called, so a refund can " +
+        "never take the total past what was charged. Amounts are MINOR units.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: {
+        body: { content: { "application/json": { schema: RefundInputSchema } } },
+      },
+      responses: {
+        200: {
+          description: "Refund accepted by the provider",
+          content: { "application/json": { schema: RefundResultSchema } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
+      const body = c.req.valid("json");
+      const out = await refundPayment(ctx, tenantId, {
+        ...body,
+        // iyzico records an IP against a refund. The admin raising it is the
+        // best answer available, and it beats sending nothing.
+        customerIp: requestMeta(c.req.raw).ip ?? undefined,
+      });
+      await logActivity(c, {
+        action: "payments.refund",
+        collection: "system_payment_providers",
+        itemId: out.providerId,
+        // Money moving is exactly the thing an audit reader needs to see, and
+        // unlike a checkout URL none of this is a bearer credential.
+        payload: {
+          provider: out.provider,
+          paymentRowId: out.paymentRowId,
+          amount: out.amount,
+          currency: out.currency,
+        },
+        response: { refundId: out.refundId, status: out.status, full: out.full },
       });
       return c.json({ data: out });
     },

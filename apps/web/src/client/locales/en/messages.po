@@ -741,13 +741,25 @@ msgstr "{key} → {next}."
 msgid "{key} deleted."
 msgstr "{key} deleted."
 
+#: src/client/admin/pages/payments.tsx
+msgid "{label} can only refund in full from here — a partial refund there adjusts individual line items, which a payment row doesn't carry."
+msgstr "{label} can only refund in full from here — a partial refund there adjusts individual line items, which a payment row doesn't carry."
+
 #: src/client/admin/parity/scim-card.tsx
 msgid "{label} copied."
 msgstr "{label} copied."
 
 #: src/client/admin/pages/payments.tsx
+msgid "{label} files refunds as their own transaction, so the payment row is updated when that notification arrives rather than now."
+msgstr "{label} files refunds as their own transaction, so the payment row is updated when that notification arrives rather than now."
+
+#: src/client/admin/pages/payments.tsx
 msgid "{label} payment link"
 msgstr "{label} payment link"
+
+#: src/client/admin/pages/payments.tsx
+msgid "{label} refund"
+msgstr "{label} refund"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "{name} deliveries"
@@ -1005,6 +1017,10 @@ msgstr "A read-only view of one record from <0>{collection}</0>."
 #: src/client/admin/pages/chat.tsx
 msgid "A room needs at least one agent to talk to. Create one on the Agents page first."
 msgstr "A room needs at least one agent to talk to. Create one on the Agents page first."
+
+#: src/client/admin/flow-builder.tsx
+msgid "A row in the payment_transactions collection."
+msgstr "A row in the payment_transactions collection."
 
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "A secret is stored and cannot be read back. Leave this blank to keep the current secret."
@@ -1758,6 +1774,10 @@ msgstr "always on"
 msgid "Amount"
 msgstr "Amount"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Amount (optional)"
+msgstr "Amount (optional)"
+
 #: src/client/admin/item-collaboration.tsx
 msgid "An active share link exists for this record. For security the link URL is shown only once, at creation. Revoke it and create a new one if you need a fresh copyable URL."
 msgstr "An active share link exists for this record. For security the link URL is shown only once, at creation. Revoke it and create a new one if you need a fresh copyable URL."
@@ -2411,6 +2431,10 @@ msgstr "Body (HTML)"
 msgid "Body (text)"
 msgstr "Body (text)"
 
+#: src/client/admin/pages/payments.tsx
+msgid "Both are on the row in the payment_transactions collection."
+msgstr "Both are on the row in the payment_transactions collection."
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Branch created."
 msgstr "Branch created."
@@ -2698,6 +2722,11 @@ msgstr "Checking your invite…"
 #: src/client/admin/pages/erasure-card.tsx
 msgid "Checking…"
 msgstr "Checking…"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Checkout reference"
+msgstr "Checkout reference"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Checks"
@@ -4720,7 +4749,9 @@ msgid "Dry-run the resolver and see exactly which rule applied."
 msgstr "Dry-run the resolver and see exactly which rule applied."
 
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/item-editor.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Duplicate"
 msgstr "Duplicate"
 
@@ -5854,6 +5885,11 @@ msgstr "Filter tools…"
 msgid "Filtered by"
 msgstr "Filtered by"
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Find the payment by"
+msgstr "Find the payment by"
+
 #: src/client/admin/collections-index.tsx
 msgid "Finish arranging collections"
 msgstr "Finish arranging collections"
@@ -6065,6 +6101,11 @@ msgstr "Forward data events to a Sentry project."
 msgid "Forward data events to the Datadog events API."
 msgstr "Forward data events to the Datadog events API."
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Fraudulent"
+msgstr "Fraudulent"
+
 #: src/client/admin/item-views.tsx
 msgid "Fri"
 msgstr "Fri"
@@ -6240,6 +6281,10 @@ msgstr "Generating…"
 #: src/client/admin/pages/settings/index.tsx
 msgid "GitHub"
 msgstr "GitHub"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Gives money back for a payment already recorded in this workspace. To refund automatically, use the refund step in a flow."
+msgstr "Gives money back for a payment already recorded in this workspace. To refund automatically, use the refund step in a flow."
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Global"
@@ -7117,6 +7162,10 @@ msgstr "Kanban"
 msgid "Keep HubSpot contacts in step with a collection. Receives record contents."
 msgstr "Keep HubSpot contacts in step with a collection. Receives record contents."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Kept on the provider's record. Klarna shows it on the consumer's statement line."
+msgstr "Kept on the provider's record. Klarna shows it on the consumer's statement line."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "key"
 msgstr "key"
@@ -7423,6 +7472,10 @@ msgstr "LDAP username"
 #: src/client/admin/parity/translations.tsx
 msgid "Leave blank to create the key with empty values across all locales."
 msgstr "Leave blank to create the key with empty values across all locales."
+
+#: src/client/admin/pages/payments.tsx
+msgid "Leave blank to give back everything still refundable."
+msgstr "Leave blank to give back everything still refundable."
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "leave blank to keep current"
@@ -8039,6 +8092,10 @@ msgstr "Min length"
 #: src/client/admin/field-validation-editor.tsx
 msgid "Min selected"
 msgstr "Min selected"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Minor units — 1050 is 10.50. Leave blank to give back everything still refundable."
+msgstr "Minor units — 1050 is 10.50. Leave blank to give back everything still refundable."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Minor units — 1050 is 10.50. Matches how payments are stored."
@@ -9335,9 +9392,19 @@ msgstr "Not owner-scoped"
 msgid "not set"
 msgstr "not set"
 
+#. placeholder {0}: result.note || t`the provider has not decided this refund`
+#: src/client/admin/pages/payments.tsx
+msgid "Not settled yet: {0}."
+msgstr "Not settled yet: {0}."
+
 #: src/client/admin/account-page.tsx
 msgid "Not signed in."
 msgstr "Not signed in."
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Not stated"
+msgstr "Not stated"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Not used"
@@ -9763,6 +9830,10 @@ msgstr "Or type a new group name…"
 msgid "or with email"
 msgstr "or with email"
 
+#: src/client/admin/pages/payments.tsx
+msgid "Order cancelled"
+msgstr "Order cancelled"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 #~ msgid "Orders by status"
 #~ msgstr "Orders by status"
@@ -9775,6 +9846,11 @@ msgstr "Organizations"
 #: src/client/admin/storage/widgets.tsx
 msgid "Original"
 msgstr "Original"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Other"
+msgstr "Other"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Other locales stay empty until filled in the matrix."
@@ -10034,6 +10110,11 @@ msgstr "Payment link"
 #: src/client/admin/pages/payments.tsx
 msgid "Payment link copied."
 msgstr "Payment link copied."
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Payment row id"
+msgstr "Payment row id"
 
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/ui.tsx
@@ -10711,10 +10792,24 @@ msgstr "Provider deleted."
 msgid "Provider discovery"
 msgstr "Provider discovery"
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Provider payment id"
+msgstr "Provider payment id"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Provider refund id"
+msgstr "Provider refund id"
+
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Provider saved."
 msgstr "Provider saved."
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Provider's payment id"
+msgstr "Provider's payment id"
 
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -11052,6 +11147,11 @@ msgstr "Ready to save."
 msgid "Realtime"
 msgstr "Realtime"
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Reason"
+msgstr "Reason"
+
 #: src/client/admin/pages/agents.tsx
 msgid "Reasoning effort"
 msgstr "Reasoning effort"
@@ -11149,6 +11249,11 @@ msgstr "Redirect URL"
 msgid "Redirecting…"
 msgstr "Redirecting…"
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Reference"
+msgstr "Reference"
+
 #. placeholder {0}: result.reference
 #: src/client/admin/pages/payments.tsx
 msgid "Reference <0>{0}</0> comes back on the settlement, so the payment can be matched to whatever you opened this for."
@@ -11201,6 +11306,25 @@ msgstr "Refreshed."
 #: src/client/pages/openapi-export.tsx
 msgid "Refreshing…"
 msgstr "Refreshing…"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Refund"
+msgstr "Refund"
+
+#. placeholder {0}: (result.amount / 100).toFixed(2)
+#. placeholder {1}: result.currency
+#. placeholder {2}: result.full ? " — the payment is now fully refunded." : "."
+#: src/client/admin/pages/payments.tsx
+msgid "Refunded {0} {1}{2}"
+msgstr "Refunded {0} {1}{2}"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Refunding…"
+msgstr "Refunding…"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Refused if it matches more than one payment — a row can be billed more than once."
+msgstr "Refused if it matches more than one payment — a row can be billed more than once."
 
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
@@ -11463,6 +11587,11 @@ msgstr "Request"
 #: src/client/pages/reset-password.tsx
 msgid "Request a new link"
 msgstr "Request a new link"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Requested by customer"
+msgstr "Requested by customer"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/usage.tsx
@@ -13762,6 +13891,10 @@ msgstr "Stores the target row's <0>id</0>. The target is immutable — drop & re
 msgid "Stream"
 msgstr "Stream"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Stripe and Polar both record this against the refund."
+msgstr "Stripe and Polar both record this against the refund."
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "strong reasoning · 1M context · low cost"
 msgstr "strong reasoning · 1M context · low cost"
@@ -14257,6 +14390,10 @@ msgstr "The physical table and all rows are dropped. This is irreversible."
 msgid "The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too."
 msgstr "The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too."
 
+#: src/client/admin/pages/payments.tsx
+msgid "the provider has not decided this refund"
+msgstr "the provider has not decided this refund"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "The provider is added disabled. Set its client secret server-side, then enable it here."
 msgstr "The provider is added disabled. Set its client secret server-side, then enable it here."
@@ -14276,6 +14413,10 @@ msgstr "The publishable key your client apps send when tracking."
 #: src/client/admin/parity/insights.tsx
 msgid "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
 msgstr "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
+
+#: src/client/admin/flow-builder.tsx
+msgid "The reference is what a payment link travelled out with, so it is usually the only handle the billed row carries."
+msgstr "The reference is what a payment link travelled out with, so it is usually the only handle the billed row carries."
 
 #: src/client/admin/parity/app-orgs.tsx
 msgid "The role dropdown governs org administration. In-org roles are workspace roles that apply only inside this organization — the <0>admin</0> role can never be granted here."
@@ -15624,6 +15765,10 @@ msgstr "What teammates type after @ to address this agent in a room. Derived fro
 msgid "What the customer sees on the checkout line item."
 msgstr "What the customer sees on the checkout line item."
 
+#: src/client/admin/pages/payments.tsx
+msgid "What the payment link travelled out with. Refused if it matches more than one payment."
+msgstr "What the payment link travelled out with. Refused if it matches more than one payment."
+
 #: src/client/admin/pages/agents.tsx
 msgid "What this agent is for"
 msgstr "What this agent is for"
@@ -15722,6 +15867,11 @@ msgstr "Whichever agent fits best"
 #: src/client/admin/field-validation-editor.tsx
 msgid "Whole numbers only (no decimals)"
 msgstr "Whole numbers only (no decimals)"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "whole remaining balance"
+msgstr "whole remaining balance"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx

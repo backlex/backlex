@@ -21,8 +21,10 @@ import {
   listPaymentEvents,
   listProviders,
   reconcileProvider,
+  refundPayment,
   rotateWebhookToken,
   type CreateCheckoutInput,
+  type RefundPaymentInput,
 } from "../payments";
 
 // ── Payments (connected providers) ──────────────────────────────────────────
@@ -166,6 +168,62 @@ const PaymentCheckoutType = new GraphQLObjectType({
   },
 });
 
+const PaymentRefundInputType = new GraphQLInputObjectType({
+  name: "PaymentRefundInput",
+  fields: {
+    providerId: { type: GraphQLID },
+    provider: { type: GraphQLString },
+    paymentRowId: {
+      type: GraphQLID,
+      description: "The `payment_transactions` row to refund.",
+    },
+    externalId: { type: GraphQLString, description: "The provider's own id for the payment." },
+    reference: {
+      type: GraphQLString,
+      description:
+        "The reference an outbound checkout travelled with. Refused when it matches " +
+        "more than one payment.",
+    },
+    amount: {
+      type: GraphQLInt,
+      description: "MINOR units. Omitted refunds the whole remaining balance.",
+    },
+    reason: { type: GraphQLString },
+    description: { type: GraphQLString },
+    idempotencyKey: { type: GraphQLString },
+  },
+});
+
+const PaymentRefundType = new GraphQLObjectType({
+  name: "PaymentRefund",
+  fields: {
+    provider: { type: new GraphQLNonNull(GraphQLString) },
+    providerId: { type: new GraphQLNonNull(GraphQLID) },
+    paymentRowId: { type: new GraphQLNonNull(GraphQLID) },
+    externalId: { type: new GraphQLNonNull(GraphQLString) },
+    refundId: {
+      type: new GraphQLNonNull(GraphQLString),
+      description: "The provider's own id for the refund. Empty when it issues none.",
+    },
+    amount: { type: new GraphQLNonNull(GraphQLInt), description: "MINOR units refunded." },
+    currency: { type: new GraphQLNonNull(GraphQLString) },
+    status: {
+      type: new GraphQLNonNull(GraphQLString),
+      description:
+        "`pending` means the provider accepted but has not decided — Adyen resolves " +
+        "this in a REFUND webhook, Paddle holds live refunds for review.",
+    },
+    full: { type: new GraphQLNonNull(GraphQLBoolean) },
+    ledger: {
+      type: JSONScalar,
+      description:
+        "What was written to `payment_transactions`, or null for providers that file " +
+        "a refund as its own transaction (Adyen, Authorize.net).",
+    },
+    note: { type: GraphQLString },
+  },
+});
+
 /** Re-throw service AppErrors as GraphQLErrors with the same code, so an
  *  unknown provider reads as VALIDATION here exactly as it does over REST. */
 const wrap = async <T>(fn: () => Promise<T>): Promise<T> => {
@@ -290,6 +348,24 @@ export const paymentMutationFields: Record<string, GraphQLFieldConfig<unknown, G
           gqlCtx.ctx,
           requireFlowAdmin(gqlCtx),
           (args as { data: CreateCheckoutInput }).data,
+        ),
+      ),
+  },
+  refundPayment: {
+    type: new GraphQLNonNull(PaymentRefundType),
+    description:
+      "Give back some or all of a payment (admin-only). Say which payment by " +
+      "`paymentRowId`, `externalId` or the checkout `reference`; omit `amount` to " +
+      "refund everything still refundable. The remainder is checked against " +
+      "`payment_transactions` before the provider is called, so a refund can never " +
+      "exceed what was charged. Paddle can only refund in full from here.",
+    args: { data: { type: new GraphQLNonNull(PaymentRefundInputType) } },
+    resolve: (_src, args, gqlCtx) =>
+      wrap(() =>
+        refundPayment(
+          gqlCtx.ctx,
+          requireFlowAdmin(gqlCtx),
+          (args as { data: RefundPaymentInput }).data,
         ),
       ),
   },

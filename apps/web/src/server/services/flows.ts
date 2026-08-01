@@ -10,7 +10,7 @@ import { sendTemplatedEmail } from "./email";
 import { sendPushToUsers } from "./push";
 import { sendSmsToNumbers, sendSmsToUsers } from "./sms";
 import { deliverIntegrationByKind } from "./integrations";
-import { createPaymentCheckout } from "./payments";
+import { createPaymentCheckout, refundPayment } from "./payments";
 import { createItem, updateItem } from "./items-helpers";
 import { enqueueTask, type ResumePayload } from "./scheduled-tasks";
 import { recordActivity } from "./activity";
@@ -433,6 +433,75 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
     } catch (e) {
       if (e instanceof FlowOpError) throw e;
       throw new FlowOpError(`payment.checkout failed: ${(e as Error).message}`);
+    }
+  }
+
+  if (op.type === "payment.refund") {
+    const tenantId = ctx.authSubject.tenantId ?? null;
+    if (!tenantId) {
+      throw new FlowOpError(
+        "payment.refund requires a tenant — the flow run has no workspace bound",
+      );
+    }
+    const text = (v: string | undefined): string | undefined => {
+      if (v === undefined) return undefined;
+      const out = String(interpolate(v, ctx) ?? "").trim();
+      return out || undefined;
+    };
+    const paymentRowId = text(op.paymentRowId);
+    const externalId = text(op.externalId);
+    const reference = text(op.reference);
+    if (!paymentRowId && !externalId && !reference) {
+      // The schema already refuses an op that names none of the three, so
+      // reaching here means every one of them RENDERED empty — a template
+      // pointing at a column the triggering row doesn't carry. Refunding
+      // "whichever payment" instead is not a recoverable guess.
+      throw new FlowOpError(
+        `payment.refund could not tell which payment to refund — ` +
+          `paymentRowId/externalId/reference all rendered empty`,
+      );
+    }
+
+    // Absent means "everything still refundable", so an omitted amount is not
+    // an error here the way it is for a checkout. A PRESENT one that renders to
+    // nonsense still is.
+    let amount: number | undefined;
+    if (op.amount !== undefined) {
+      const rendered = String(interpolate(op.amount, ctx) ?? "").trim();
+      amount = Number(rendered);
+      if (!Number.isInteger(amount) || amount <= 0) {
+        throw new FlowOpError(
+          `payment.refund amount "${op.amount}" did not render to a positive integer ` +
+            `in minor units (1050 = 10.50) — omit it to refund the whole balance`,
+        );
+      }
+    }
+
+    try {
+      const out = await refundPayment(ctx.ctx, tenantId, {
+        provider: op.provider,
+        providerId: op.providerId,
+        paymentRowId,
+        externalId,
+        reference,
+        amount,
+        reason: op.reason,
+        description: text(op.description),
+      });
+      // `status` rides along so a following `condition` op can branch on a
+      // refund the provider has not actually decided yet.
+      return {
+        refundId: out.refundId,
+        amount: out.amount,
+        currency: out.currency,
+        status: out.status,
+        full: out.full,
+        provider: out.provider,
+        paymentRowId: out.paymentRowId,
+      };
+    } catch (e) {
+      if (e instanceof FlowOpError) throw e;
+      throw new FlowOpError(`payment.refund failed: ${(e as Error).message}`);
     }
   }
 

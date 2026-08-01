@@ -24,7 +24,7 @@ interface ProviderRow {
   lastSyncError: string | null;
 }
 
-const PAYMENTS_HELP = `backlex payments <catalog|list|connect|checkout|sync|events|rotate-token|provision|disconnect>
+const PAYMENTS_HELP = `backlex payments <catalog|list|connect|checkout|refund|sync|events|rotate-token|provision|disconnect>
 
   catalog                       supported providers + the config each one needs
   list                          connected providers (secrets masked)
@@ -37,6 +37,12 @@ const PAYMENTS_HELP = `backlex payments <catalog|list|connect|checkout|sync|even
            [--cancel-url <u>] [--reference <r>] [--customer-ip <ip>]
            [--write-back <collection>:<itemId>:<urlField>[:<referenceField>]]
                                 open a hosted checkout and print the payment link
+  refund (--payment-row <id> | --external-id <id> | --reference <r>)
+         [--amount <minor>] [--provider <p> | --provider-id <id>]
+         [--reason <duplicate|fraudulent|requested_by_customer|other>]
+         [--description <t>] [--idempotency-key <k>]
+                                give money back; --amount omitted refunds the
+                                whole remaining balance
   sync <id> [--kinds a,b] [--max-pages N] [--resume] [--async]
                                 pull objects back from the provider API
   events [--provider <id>] [--limit N]
@@ -239,6 +245,66 @@ export const runPayments = async (args: string[]): Promise<void> => {
             const w = res.data.writtenBack as { collection: string; itemId: string; fields: string[] };
             process.stderr.write(
               `\nWrote ${w.fields.join(", ")} onto ${w.collection}/${w.itemId}.\n`,
+            );
+          }
+        }
+        return;
+      }
+      case "refund": {
+        const paymentRowId = flag(rest, "--payment-row");
+        const externalId = flag(rest, "--external-id");
+        const reference = flag(rest, "--reference");
+        if (!paymentRowId && !externalId && !reference) {
+          process.stderr.write(
+            "payments refund needs one of --payment-row, --external-id or --reference\n",
+          );
+          process.exit(1);
+        }
+        const body: Record<string, unknown> = {};
+        if (paymentRowId) body.paymentRowId = paymentRowId;
+        if (externalId) body.externalId = externalId;
+        if (reference) body.reference = reference;
+        const provider = flag(rest, "--provider");
+        const providerId = flag(rest, "--provider-id");
+        const amount = flag(rest, "--amount");
+        const reason = flag(rest, "--reason");
+        const description = flag(rest, "--description");
+        const idempotencyKey = flag(rest, "--idempotency-key");
+        if (provider) body.provider = provider;
+        if (providerId) body.providerId = providerId;
+        // Omitted on purpose when absent: the server reads it as "refund
+        // everything still refundable", which is not the same as zero.
+        if (amount) body.amount = Number(amount);
+        if (reason) body.reason = reason;
+        if (description) body.description = description;
+        if (idempotencyKey) body.idempotencyKey = idempotencyKey;
+
+        const res = await client.request<{ data: Record<string, unknown> }>(
+          "POST",
+          `${BASE}/refund`,
+          body,
+        );
+        if (json) printJson(res.data);
+        else {
+          printKeyValues({
+            provider: res.data.provider as string,
+            refundId: (res.data.refundId as string) || "—",
+            amount: String(res.data.amount),
+            currency: res.data.currency as string,
+            status: res.data.status as string,
+            full: String(res.data.full),
+          });
+          // `pending` is the one outcome a reader must not skim past — the
+          // money has not moved and the provider may still decline.
+          if (res.data.status === "pending") {
+            process.stderr.write(
+              `\nNOT SETTLED YET: ${(res.data.note as string) || "the provider has not decided this refund"}.\n`,
+            );
+          }
+          if (!res.data.ledger) {
+            process.stderr.write(
+              `\n${res.data.provider} files refunds as their own transaction — ` +
+                `payment_transactions is updated when its notification arrives, not now.\n`,
             );
           }
         }

@@ -9,7 +9,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./payments": "./src/payments.ts",
-    "./checkout": "./src/checkout.ts"
+    "./checkout": "./src/checkout.ts",
+    "./refunds": "./src/refunds.ts"
   },
   "files": ["src"],
   "publishConfig": {

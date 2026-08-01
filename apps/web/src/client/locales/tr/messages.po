@@ -741,13 +741,25 @@ msgstr "{key} → {next}."
 msgid "{key} deleted."
 msgstr "{key} silindi."
 
+#: src/client/admin/pages/payments.tsx
+msgid "{label} can only refund in full from here — a partial refund there adjusts individual line items, which a payment row doesn't carry."
+msgstr "{label} buradan yalnızca tam iade yapabilir — oradaki kısmi iade, ödeme satırının taşımadığı tek tek kalemleri düzeltir."
+
 #: src/client/admin/parity/scim-card.tsx
 msgid "{label} copied."
 msgstr "{label} kopyalandı."
 
 #: src/client/admin/pages/payments.tsx
+msgid "{label} files refunds as their own transaction, so the payment row is updated when that notification arrives rather than now."
+msgstr "{label} iadeleri kendi işlemi olarak kaydeder; bu yüzden ödeme satırı şimdi değil, o bildirim geldiğinde güncellenir."
+
+#: src/client/admin/pages/payments.tsx
 msgid "{label} payment link"
 msgstr "{label} ödeme bağlantısı"
+
+#: src/client/admin/pages/payments.tsx
+msgid "{label} refund"
+msgstr "{label} iadesi"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "{name} deliveries"
@@ -1005,6 +1017,10 @@ msgstr "<0>{collection}</0> koleksiyonundan bir kaydın salt okunur görünümü
 #: src/client/admin/pages/chat.tsx
 msgid "A room needs at least one agent to talk to. Create one on the Agents page first."
 msgstr "Bir odanın konuşacağı en az bir agent gerekir. Önce Agents sayfasından bir tane oluşturun."
+
+#: src/client/admin/flow-builder.tsx
+msgid "A row in the payment_transactions collection."
+msgstr "payment_transactions koleksiyonundaki bir satır."
 
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "A secret is stored and cannot be read back. Leave this blank to keep the current secret."
@@ -1758,6 +1774,10 @@ msgstr "her zaman açık"
 msgid "Amount"
 msgstr "Tutar"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Amount (optional)"
+msgstr "Tutar (isteğe bağlı)"
+
 #: src/client/admin/item-collaboration.tsx
 msgid "An active share link exists for this record. For security the link URL is shown only once, at creation. Revoke it and create a new one if you need a fresh copyable URL."
 msgstr "Bu kayıt için etkin bir paylaşım bağlantısı mevcut. Güvenlik amacıyla bağlantı URL'si yalnızca oluşturulduğunda bir kez gösterilir. Kopyalanabilir yeni bir URL için mevcut bağlantıyı iptal edip yenisini oluşturun."
@@ -2411,6 +2431,10 @@ msgstr "İçerik (HTML)"
 msgid "Body (text)"
 msgstr "İçerik (metin)"
 
+#: src/client/admin/pages/payments.tsx
+msgid "Both are on the row in the payment_transactions collection."
+msgstr "İkisi de payment_transactions koleksiyonundaki satırda yer alır."
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Branch created."
 msgstr "Dal oluşturuldu."
@@ -2698,6 +2722,11 @@ msgstr "Davetin kontrol ediliyor…"
 #: src/client/admin/pages/erasure-card.tsx
 msgid "Checking…"
 msgstr "Kontrol ediliyor…"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Checkout reference"
+msgstr "Ödeme referansı"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Checks"
@@ -4720,7 +4749,9 @@ msgid "Dry-run the resolver and see exactly which rule applied."
 msgstr "Çözümleyiciyi deneme amaçlı çalıştırın ve tam olarak hangi kuralın uygulandığını görün."
 
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/item-editor.tsx
+#: src/client/admin/pages/payments.tsx
 msgid "Duplicate"
 msgstr "Çoğalt"
 
@@ -5854,6 +5885,11 @@ msgstr "Araçları filtrele…"
 msgid "Filtered by"
 msgstr "Filtrelenen"
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Find the payment by"
+msgstr "Ödemeyi şununla bul"
+
 #: src/client/admin/collections-index.tsx
 msgid "Finish arranging collections"
 msgstr "Koleksiyonları düzenlemeyi bitir"
@@ -6065,6 +6101,11 @@ msgstr "Veri olaylarını bir Sentry projesine ilet."
 msgid "Forward data events to the Datadog events API."
 msgstr "Veri olaylarını Datadog olaylar API'sine iletir."
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Fraudulent"
+msgstr "Dolandırıcılık"
+
 #: src/client/admin/item-views.tsx
 msgid "Fri"
 msgstr "Cum"
@@ -6240,6 +6281,10 @@ msgstr "Oluşturuluyor…"
 #: src/client/admin/pages/settings/index.tsx
 msgid "GitHub"
 msgstr "GitHub"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Gives money back for a payment already recorded in this workspace. To refund automatically, use the refund step in a flow."
+msgstr "Bu çalışma alanında zaten kayıtlı bir ödemenin parasını geri verir. Otomatik iade için akıştaki iade adımını kullanın."
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Global"
@@ -7117,6 +7162,10 @@ msgstr "Kanban"
 msgid "Keep HubSpot contacts in step with a collection. Receives record contents."
 msgstr "HubSpot kişilerini bir koleksiyonla eşzamanlı tutar. Kayıt içeriğini alır."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Kept on the provider's record. Klarna shows it on the consumer's statement line."
+msgstr "Sağlayıcının kaydında tutulur. Klarna bunu tüketicinin ekstre satırında gösterir."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "key"
 msgstr "anahtar"
@@ -7423,6 +7472,10 @@ msgstr "LDAP kullanıcı adı"
 #: src/client/admin/parity/translations.tsx
 msgid "Leave blank to create the key with empty values across all locales."
 msgstr "Tüm yerel ayarlarda boş değerlerle anahtar oluşturmak için boş bırakın."
+
+#: src/client/admin/pages/payments.tsx
+msgid "Leave blank to give back everything still refundable."
+msgstr "İade edilebilir tutarın tamamını geri vermek için boş bırakın."
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "leave blank to keep current"
@@ -8039,6 +8092,10 @@ msgstr "Min uzunluk"
 #: src/client/admin/field-validation-editor.tsx
 msgid "Min selected"
 msgstr "Min seçili"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Minor units — 1050 is 10.50. Leave blank to give back everything still refundable."
+msgstr "Alt birim — 1050, 10,50 demektir. İade edilebilir tutarın tamamı için boş bırakın."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Minor units — 1050 is 10.50. Matches how payments are stored."
@@ -9335,9 +9392,19 @@ msgstr "Sahip kapsamlı değil"
 msgid "not set"
 msgstr "tanımlı değil"
 
+#. placeholder {0}: result.note || t`the provider has not decided this refund`
+#: src/client/admin/pages/payments.tsx
+msgid "Not settled yet: {0}."
+msgstr "Henüz kesinleşmedi: {0}."
+
 #: src/client/admin/account-page.tsx
 msgid "Not signed in."
 msgstr "Giriş yapılmamış."
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Not stated"
+msgstr "Belirtilmedi"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Not used"
@@ -9763,6 +9830,10 @@ msgstr "Veya yeni bir grup adı yazın…"
 msgid "or with email"
 msgstr "veya e-postayla"
 
+#: src/client/admin/pages/payments.tsx
+msgid "Order cancelled"
+msgstr "Sipariş iptal edildi"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 #~ msgid "Orders by status"
 #~ msgstr "Duruma göre siparişler"
@@ -9775,6 +9846,11 @@ msgstr "Organizasyonlar"
 #: src/client/admin/storage/widgets.tsx
 msgid "Original"
 msgstr "Orijinal"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Other"
+msgstr "Diğer"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Other locales stay empty until filled in the matrix."
@@ -10034,6 +10110,11 @@ msgstr "Ödeme bağlantısı"
 #: src/client/admin/pages/payments.tsx
 msgid "Payment link copied."
 msgstr "Ödeme bağlantısı kopyalandı."
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Payment row id"
+msgstr "Ödeme satırı kimliği"
 
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/ui.tsx
@@ -10711,10 +10792,24 @@ msgstr "Sağlayıcı silindi."
 msgid "Provider discovery"
 msgstr "Sağlayıcı keşfi"
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Provider payment id"
+msgstr "Sağlayıcı ödeme kimliği"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Provider refund id"
+msgstr "Sağlayıcı iade kimliği"
+
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Provider saved."
 msgstr "Sağlayıcı kaydedildi."
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Provider's payment id"
+msgstr "Sağlayıcının ödeme kimliği"
 
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -11052,6 +11147,11 @@ msgstr "Kaydetmeye hazır."
 msgid "Realtime"
 msgstr "Gerçek zamanlı"
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Reason"
+msgstr "Gerekçe"
+
 #: src/client/admin/pages/agents.tsx
 msgid "Reasoning effort"
 msgstr "Akıl yürütme eforu"
@@ -11149,6 +11249,11 @@ msgstr "Yönlendirme URL'si"
 msgid "Redirecting…"
 msgstr "Yönlendiriliyor…"
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Reference"
+msgstr "Referans"
+
 #. placeholder {0}: result.reference
 #: src/client/admin/pages/payments.tsx
 msgid "Reference <0>{0}</0> comes back on the settlement, so the payment can be matched to whatever you opened this for."
@@ -11201,6 +11306,25 @@ msgstr "Yenilendi."
 #: src/client/pages/openapi-export.tsx
 msgid "Refreshing…"
 msgstr "Yenileniyor…"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Refund"
+msgstr "İade"
+
+#. placeholder {0}: (result.amount / 100).toFixed(2)
+#. placeholder {1}: result.currency
+#. placeholder {2}: result.full ? " — the payment is now fully refunded." : "."
+#: src/client/admin/pages/payments.tsx
+msgid "Refunded {0} {1}{2}"
+msgstr "{0} {1} iade edildi{2}"
+
+#: src/client/admin/pages/payments.tsx
+msgid "Refunding…"
+msgstr "İade ediliyor…"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Refused if it matches more than one payment — a row can be billed more than once."
+msgstr "Birden fazla ödemeyle eşleşirse reddedilir — bir satır birden çok kez faturalandırılabilir."
 
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
@@ -11463,6 +11587,11 @@ msgstr "İstek"
 #: src/client/pages/reset-password.tsx
 msgid "Request a new link"
 msgstr "Yeni bir bağlantı iste"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "Requested by customer"
+msgstr "Müşteri talebi"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/usage.tsx
@@ -13762,6 +13891,10 @@ msgstr "Hedef satırın <0>id</0> değerini saklar. Hedef değiştirilemez — d
 msgid "Stream"
 msgstr "Akış"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Stripe and Polar both record this against the refund."
+msgstr "Stripe ve Polar bunu iadenin kaydına işler."
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "strong reasoning · 1M context · low cost"
 msgstr "güçlü akıl yürütme · 1M bağlam · uygun fiyat"
@@ -14257,6 +14390,10 @@ msgstr "Fiziksel tablo ve tüm satırlar silinir. Bu geri alınamaz."
 msgid "The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too."
 msgstr "Fiziksel tablo ve tüm satırlar silinir. Bu geri alınamaz. Bu koleksiyona bağlı izinler, sürümler ve webhook'lar da kaldırılır."
 
+#: src/client/admin/pages/payments.tsx
+msgid "the provider has not decided this refund"
+msgstr "sağlayıcı bu iade hakkında henüz karar vermedi"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "The provider is added disabled. Set its client secret server-side, then enable it here."
 msgstr "Sağlayıcı devre dışı olarak eklendi. Sunucu tarafında istemci gizli anahtarını ayarlayın, ardından burada etkinleştirin."
@@ -14276,6 +14413,10 @@ msgstr "İstemci uygulamalarınızın izleme sırasında gönderdiği yayınlana
 #: src/client/admin/parity/insights.tsx
 msgid "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
 msgstr "Sorgu aynen çalıştırılır. Yukarıdaki görselleştirme ipucu, sütunların grafikle nasıl eşleştiğini açıklar."
+
+#: src/client/admin/flow-builder.tsx
+msgid "The reference is what a payment link travelled out with, so it is usually the only handle the billed row carries."
+msgstr "Referans, ödeme bağlantısıyla birlikte giden değerdir; bu yüzden genelde faturalanan satırın taşıdığı tek tutamaktır."
 
 #: src/client/admin/parity/app-orgs.tsx
 msgid "The role dropdown governs org administration. In-org roles are workspace roles that apply only inside this organization — the <0>admin</0> role can never be granted here."
@@ -15624,6 +15765,10 @@ msgstr "Ekip arkadaşlarının bir odada bu agent'a seslenmek için @ sonrasına
 msgid "What the customer sees on the checkout line item."
 msgstr "Müşterinin ödeme sayfasındaki kalemde gördüğü metin."
 
+#: src/client/admin/pages/payments.tsx
+msgid "What the payment link travelled out with. Refused if it matches more than one payment."
+msgstr "Ödeme bağlantısıyla birlikte giden değer. Birden fazla ödemeyle eşleşirse reddedilir."
+
 #: src/client/admin/pages/agents.tsx
 msgid "What this agent is for"
 msgstr "Bu ajan ne için"
@@ -15722,6 +15867,11 @@ msgstr "En uygun agent"
 #: src/client/admin/field-validation-editor.tsx
 msgid "Whole numbers only (no decimals)"
 msgstr "Yalnızca tam sayılar (ondalık yok)"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/payments.tsx
+msgid "whole remaining balance"
+msgstr "kalan bakiyenin tamamı"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx

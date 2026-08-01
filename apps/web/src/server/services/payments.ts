@@ -59,6 +59,14 @@ import {
   type CheckoutCustomer,
   type CheckoutFailure,
 } from "@backlex/integrations/checkout";
+import {
+  canRefund,
+  canRefundPartially,
+  createRefund,
+  refundLedgerOf,
+  type RefundFailure,
+  type RefundReason,
+} from "@backlex/integrations/refunds";
 import type { Ctx } from "../context";
 import { decryptSecret, encryptSecret, isEncryptedSecret } from "../lib/crypto";
 import { log } from "../lib/log";
@@ -1238,6 +1246,373 @@ export async function createPaymentCheckout(
     expiresAt: result.expiresAt,
     reference,
     writtenBack,
+  };
+}
+
+// ── Outbound: giving money back ─────────────────────────────────────────────
+
+export interface RefundPaymentInput {
+  /** Connected provider row id. Takes precedence over `provider`. */
+  providerId?: string;
+  /** Provider name, for callers that don't hold the connection id. */
+  provider?: string;
+  /**
+   * How to find the payment. Exactly one is needed, and they are tried in this
+   * order: our own `payment_transactions` row id, the provider's id, then the
+   * `reference` an outbound checkout travelled with.
+   *
+   * `reference` is there because it is the only one a flow naturally holds — the
+   * invoice row that asked for the money knows the reference it was billed
+   * under and nothing else about the payment.
+   */
+  paymentRowId?: string;
+  externalId?: string;
+  reference?: string;
+  /** MINOR units. Omitted refunds the whole remaining balance. */
+  amount?: number;
+  reason?: RefundReason;
+  /** Free text for the provider's record, and for the customer where the
+   *  provider shows it. */
+  description?: string;
+  /** Overrides the derived key. See `refundIdempotencyKey` for why the default
+   *  is derived from the ledger's pre-state rather than being random. */
+  idempotencyKey?: string;
+  /** The requesting IP; iyzico records one against a refund. */
+  customerIp?: string;
+  fetchImpl?: FetchLike;
+}
+
+export interface RefundPaymentOutput {
+  provider: string;
+  providerId: string;
+  /** Our `payment_transactions` row. */
+  paymentRowId: string;
+  /** The provider's id for the payment that was refunded. */
+  externalId: string;
+  /** The provider's id for the refund. Empty when it issues none. */
+  refundId: string;
+  /** MINOR units actually refunded. */
+  amount: number;
+  currency: string;
+  /** `pending` means the provider has accepted but not yet decided. */
+  status: "succeeded" | "pending";
+  /** Whether this took the payment's refunded total to its full amount. */
+  full: boolean;
+  /**
+   * What was written to `payment_transactions`, or null when the provider files
+   * refunds as their own row and the notification will do it instead.
+   */
+  ledger: { amountRefunded: number; status: string } | null;
+  /** Set when the provider said something the operator should see. */
+  note?: string;
+}
+
+/**
+ * A refund refusal is not one kind of problem, and collapsing them into a 422
+ * would tell an admin to fix their input when the provider is simply down.
+ */
+const REFUND_ERROR_CODES: Record<RefundFailure, "VALIDATION" | "UNAVAILABLE" | "BAD_REQUEST" | "NOT_FOUND"> =
+  {
+    unknown_provider: "VALIDATION",
+    unsupported: "VALIDATION",
+    partial_unsupported: "VALIDATION",
+    missing_secret: "VALIDATION",
+    invalid_input: "VALIDATION",
+    // The provider has never heard of this payment. Our row is wrong or the
+    // payment belongs to a different connection — either way, not retryable.
+    not_found: "NOT_FOUND",
+    // Transport failure. Retryable, and nothing about the request was wrong.
+    unreachable: "UNAVAILABLE",
+    // The provider answered and said no.
+    rejected: "BAD_REQUEST",
+  };
+
+/** One `payment_transactions` row, only the columns a refund reasons about. */
+interface PaymentLedgerRow {
+  id: string;
+  external_id: string | null;
+  amount: number | null;
+  amount_refunded: number | null;
+  currency: string | null;
+  status: string | null;
+}
+
+const asInt = (v: unknown): number => {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? Math.round(n) : 0;
+};
+
+/**
+ * The idempotency key, derived from the ledger state the refund is being
+ * applied TO rather than minted fresh.
+ *
+ * A random key protects against nothing: the caller that retries is a flow op
+ * or an HTTP client re-running the whole request, so it would mint a second key
+ * and the provider would move the money twice. A key derived from
+ * (connection, payment, amount-already-refunded, amount-being-refunded) instead
+ * has exactly the property wanted:
+ *
+ *   - a RETRY sees the same pre-state, because the first attempt's outcome was
+ *     never recorded — same key, so Klarna and Stripe return the first result
+ *     instead of refunding again;
+ *   - a genuine SECOND refund happens after the first was written, so the
+ *     pre-state differs — different key, and it goes through.
+ *
+ * Shaped as a UUID because Klarna documents its key as "recommended to be a
+ * UUID version 4"; the bytes are a digest, not randomness.
+ */
+export const refundIdempotencyKey = async (parts: {
+  providerId: string;
+  externalId: string;
+  priorRefunded: number;
+  amount: number;
+}): Promise<string> => {
+  const message = `${parts.providerId}:${parts.externalId}:${parts.priorRefunded}:${parts.amount}`;
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(message)),
+  );
+  const hex = Array.from(digest.slice(0, 16), (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+};
+
+/**
+ * Find the payment being refunded in `payment_transactions`.
+ *
+ * Always scoped to the CONNECTION's provider as well as the tenant: an
+ * `external_id` is only unique within a provider, and refunding a Stripe charge
+ * through a Klarna connection because the ids happened to look alike is not a
+ * failure anyone would diagnose quickly.
+ */
+async function findPaymentRow(
+  ctx: Ctx,
+  tenantId: string,
+  provider: string,
+  input: Pick<RefundPaymentInput, "paymentRowId" | "externalId" | "reference">,
+): Promise<{ row: PaymentLedgerRow; slug: string }> {
+  const slug = PAYMENT_COLLECTION_SLUGS.payment;
+  let collection: Awaited<ReturnType<typeof loadCollection>>;
+  try {
+    collection = await loadCollection(ctx, tenantId, slug);
+  } catch {
+    throw new AppError(
+      "NOT_FOUND",
+      `Collection "${slug}" doesn't exist yet, so there is no payment to refund — ` +
+        "nothing has ever been synced from this provider",
+    );
+  }
+
+  const pk = collection.pkColumn;
+  const match: SQL | null = input.paymentRowId
+    ? sql`${sql.identifier(pk)} = ${input.paymentRowId}`
+    : input.externalId
+      ? sql`${sql.identifier("external_id")} = ${input.externalId}`
+      : input.reference
+        ? sql`${sql.identifier("reference")} = ${input.reference}`
+        : null;
+  if (!match) {
+    throw new AppError(
+      "VALIDATION",
+      "One of `paymentRowId`, `externalId` or `reference` is required to say which payment to refund",
+    );
+  }
+
+  const rows = await queryAll<PaymentLedgerRow>(
+    ctx,
+    sql`SELECT ${sql.identifier(pk)} AS ${sql.identifier("id")},
+               ${sql.identifier("external_id")} AS ${sql.identifier("external_id")},
+               ${sql.identifier("amount")} AS ${sql.identifier("amount")},
+               ${sql.identifier("amount_refunded")} AS ${sql.identifier("amount_refunded")},
+               ${sql.identifier("currency")} AS ${sql.identifier("currency")},
+               ${sql.identifier("status")} AS ${sql.identifier("status")}
+        FROM ${fromOf(collection)}
+        ${whereOf(
+          tenantFilter(collection, { tenantId, roles: [] }),
+          deletedFilter(collection),
+          sql`${sql.identifier("provider")} = ${provider}`,
+          match,
+        )}
+        LIMIT 2`,
+  );
+  const row = rows[0];
+  if (!row) {
+    throw new AppError(
+      "NOT_FOUND",
+      `No ${provider} payment found in "${slug}" for ` +
+        (input.paymentRowId
+          ? `row ${input.paymentRowId}`
+          : input.externalId
+            ? `external id "${input.externalId}"`
+            : `reference "${input.reference}"`),
+    );
+  }
+  if (rows.length > 1) {
+    // Only reachable via `reference`, which is not unique by construction — one
+    // invoice can be billed more than once. Refunding an arbitrary one of them
+    // is worse than refusing.
+    throw new AppError(
+      "VALIDATION",
+      `Reference "${input.reference}" matches more than one ${provider} payment — ` +
+        "refund by `paymentRowId` or `externalId` to say which one",
+    );
+  }
+  return { row, slug };
+}
+
+/**
+ * Give back some or all of a payment.
+ *
+ * The counterpart to `createPaymentCheckout`, and the thing that made the
+ * `refresh` sync mode necessary in the first place: until now a refund could
+ * only be raised in the provider's own dashboard, where it notified nobody and
+ * had to be DISCOVERED by re-reading every payment we knew about. A refund
+ * raised here is known at the moment it happens.
+ *
+ * Two orderings are deliberate.
+ *
+ * The ledger is read BEFORE the provider is called, so the refundable remainder
+ * is checked against a number we hold. A provider will happily accept a second
+ * refund that takes the total past what was paid if its own view has drifted,
+ * and "we refunded more than we charged" is not a state anything downstream
+ * reconciles.
+ *
+ * The ledger is written AFTER, and only for providers that restate the payment
+ * — see `PAYMENT_REFUND_LEDGER`. Adyen and Authorize.net file a refund as its
+ * own transaction and notify about it, so bumping `amount_refunded` on the
+ * original would be undone by the next read of that payment.
+ */
+export async function refundPayment(
+  ctx: Ctx,
+  tenantId: string,
+  input: RefundPaymentInput,
+): Promise<RefundPaymentOutput> {
+  const providerRow = await resolveProviderFor(ctx, tenantId, input);
+  if (providerRow.status !== "connected") {
+    throw new AppError("VALIDATION", `The ${providerRow.provider} connection is disabled`);
+  }
+  if (!canRefund(providerRow.provider)) {
+    throw new AppError("VALIDATION", `${providerRow.provider} cannot issue refunds`);
+  }
+  // The dummy provider records refunds as succeeded without touching a PSP.
+  // Same gate its checkout gets, for the same reason.
+  if (providerRow.provider === "dummy") assertDummyAllowed(ctx.env);
+
+  const { row, slug } = await findPaymentRow(ctx, tenantId, providerRow.provider, input);
+  const externalId = String(row.external_id ?? "");
+  if (!externalId) {
+    throw new AppError(
+      "VALIDATION",
+      "That payment has no provider id recorded against it, so there is nothing to refund",
+    );
+  }
+
+  const paid = asInt(row.amount);
+  const priorRefunded = asInt(row.amount_refunded);
+  const remaining = paid - priorRefunded;
+  if (paid <= 0) {
+    throw new AppError("VALIDATION", "That payment records no amount, so there is nothing to refund");
+  }
+  if (remaining <= 0) {
+    throw new AppError(
+      "VALIDATION",
+      `That payment is already fully refunded (${priorRefunded} of ${paid})`,
+    );
+  }
+
+  const amount = input.amount === undefined ? remaining : Math.round(input.amount);
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new AppError(
+      "VALIDATION",
+      `amount must be a positive integer in minor units (got ${JSON.stringify(input.amount)})`,
+    );
+  }
+  if (amount > remaining) {
+    throw new AppError(
+      "VALIDATION",
+      `Only ${remaining} is left to refund on that payment (${paid} paid, ${priorRefunded} already ` +
+        `refunded) — asked for ${amount}`,
+    );
+  }
+  const full = amount === remaining;
+  if (!full && !canRefundPartially(providerRow.provider)) {
+    throw new AppError(
+      "VALIDATION",
+      `${providerRow.provider} can only refund a payment in full — asked for ${amount} of ${remaining}`,
+    );
+  }
+
+  const currency = String(row.currency ?? "").toUpperCase();
+  if (!/^[A-Z]{3}$/.test(currency)) {
+    throw new AppError(
+      "VALIDATION",
+      "That payment records no currency, so the refund amount cannot be interpreted",
+    );
+  }
+
+  const config = await decryptConfig(
+    providerRow.provider,
+    (providerRow.config ?? {}) as Record<string, unknown>,
+    ctx.env.AUTH_SECRET,
+  );
+
+  const result = await createRefund(providerRow.provider, {
+    config,
+    externalId,
+    amount,
+    currency,
+    reason: input.reason,
+    description: input.description,
+    // The refund's own reference is our payment row, which is what a support
+    // conversation about it would need to look up.
+    reference: row.id,
+    full,
+    accountCurrency: typeof config.currency === "string" ? config.currency : null,
+    customerIp: input.customerIp,
+    idempotencyKey:
+      input.idempotencyKey ??
+      (await refundIdempotencyKey({
+        providerId: providerRow.id,
+        externalId,
+        priorRefunded,
+        amount,
+      })),
+    fetchImpl: input.fetchImpl,
+  });
+
+  if (!result.ok) {
+    throw new AppError(REFUND_ERROR_CODES[result.reason], result.message, {
+      provider: providerRow.provider,
+      reason: result.reason,
+    });
+  }
+
+  let ledger: RefundPaymentOutput["ledger"] = null;
+  if (refundLedgerOf(providerRow.provider) === "restates") {
+    const amountRefunded = priorRefunded + result.amount;
+    // Only a refund that takes the total to the whole amount flips the status.
+    // A partial refund leaves the payment `succeeded`, which is what it still
+    // is — most of the money stayed.
+    const status = amountRefunded >= paid ? "refunded" : (row.status ?? "succeeded");
+    await updateItem(ctx, {
+      slug,
+      tenantId,
+      id: row.id,
+      data: { amount_refunded: amountRefunded, status },
+    });
+    ledger = { amountRefunded, status };
+  }
+
+  return {
+    provider: providerRow.provider,
+    providerId: providerRow.id,
+    paymentRowId: row.id,
+    externalId,
+    refundId: result.refundId,
+    amount: result.amount,
+    currency,
+    status: result.status,
+    full,
+    ledger,
+    note: result.note,
   };
 }
 

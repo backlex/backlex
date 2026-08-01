@@ -36,6 +36,7 @@ const ACTIONS = [
   { id: "push", label: "Push notification", desc: "Send to a user's registered devices", icon: "Send" },
   { id: "sms", label: "Send SMS", desc: "Text a number on the row, or a user", icon: "MessageSquare" },
   { id: "payment.checkout", label: "Payment link", desc: "Open a checkout and write the link onto the row", icon: "CreditCard" },
+  { id: "payment.refund", label: "Refund payment", desc: "Give back some or all of a payment", icon: "CreditCard" },
   { id: "transform", label: "Transform", desc: "Compute a value and pipe it into $last", icon: "Function" },
   { id: "run-script", label: "Run script", desc: "Sandboxed JS — full ctx, `data`, `last`", icon: "Code" },
   { id: "fn", label: "Run function", desc: "Invoke a saved backlex function", icon: "Function" },
@@ -453,6 +454,19 @@ function defaultConfigFor(kind: string, type: string) {
       writeBackUrlField: "",
       writeBackReferenceField: "",
     };
+  // Seeded to match what `payment.checkout` writes back: the row that was
+  // billed knows the reference it was billed under, which is the only handle a
+  // cancellation flow naturally has. Amount blank = the whole balance.
+  if (kind === "action" && type === "payment.refund")
+    return {
+      provider: "",
+      paymentRowId: "",
+      externalId: "",
+      reference: "{{ data.payment_reference }}",
+      amount: "",
+      reason: "requested_by_customer",
+      description: "",
+    };
   if (kind === "action" && type === "transform") return { value: "" };
   if (kind === "action" && type === "run-script") return { code: "// data, last, ctx, auth available\nreturn data;", timeoutMs: 5000 };
   if (kind === "action" && type === "fn") return { fn: "", async: true, retries: 3 };
@@ -484,6 +498,14 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
   )
     .filter((f) => f.type === "text" || f.type === "longtext")
     .map((f) => f.name);
+  // Derived, not stored — the op carries whichever of the three handles is set,
+  // and the selector is only how the inspector decides which input to show.
+  // Defaults to `reference` because that is the one a billed row actually has.
+  const refundTargetMode = node.config?.paymentRowId
+    ? "paymentRowId"
+    : node.config?.externalId
+      ? "externalId"
+      : "reference";
   return (
     <div className="fb-inspector">
       <div className="fb-inspector-head">
@@ -736,6 +758,80 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
                 </div>
               </>
             )}
+          </>
+        )}
+        {node.kind === "action" && node.type === "payment.refund" && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Provider</Trans></label>
+              <Select
+                value={node.config.provider || ""}
+                onChange={(v) => onChange({ config: { provider: v } })}
+                className="min-w-0"
+                options={[
+                  {
+                    value: "",
+                    label:
+                      paymentProviders.length === 0
+                        ? t`(none connected — connect one on Payments)`
+                        : t`First connected provider`,
+                  },
+                  ...paymentProviders.map((p) => ({ value: p.provider, label: p.provider })),
+                ]}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Find the payment by</Trans></label>
+              <Select
+                value={refundTargetMode}
+                onChange={(v) =>
+                  // Clearing the other two keeps the compiled op unambiguous:
+                  // the server tries them in a fixed order, so a leftover value
+                  // in a field the author stopped using would silently win.
+                  onChange({
+                    config: {
+                      reference: v === "reference" ? node.config.reference || "{{ data.payment_reference }}" : "",
+                      paymentRowId: v === "paymentRowId" ? node.config.paymentRowId || "{{ data.payment_id }}" : "",
+                      externalId: v === "externalId" ? node.config.externalId || "" : "",
+                    },
+                  })
+                }
+                className="min-w-0"
+                options={[
+                  { value: "reference", label: t`Checkout reference` },
+                  { value: "paymentRowId", label: t`Payment row id` },
+                  { value: "externalId", label: t`Provider's payment id` },
+                ]}
+              />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>The reference is what a payment link travelled out with, so it is usually the only handle the billed row carries.</Trans></span>
+            </div>
+            {refundTargetMode === "reference" && (
+              <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Reference</Trans></label><Input value={node.config.reference || ""} onChange={(e) => onChange({ config: { reference: e.target.value } })} placeholder="{{ data.payment_reference }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>Refused if it matches more than one payment — a row can be billed more than once.</Trans></span></div>
+            )}
+            {refundTargetMode === "paymentRowId" && (
+              <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Payment row id</Trans></label><Input value={node.config.paymentRowId || ""} onChange={(e) => onChange({ config: { paymentRowId: e.target.value } })} placeholder="{{ data.payment_id }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>A row in the payment_transactions collection.</Trans></span></div>
+            )}
+            {refundTargetMode === "externalId" && (
+              <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Provider payment id</Trans></label><Input value={node.config.externalId || ""} onChange={(e) => onChange({ config: { externalId: e.target.value } })} placeholder="ch_3Ab…" /></div>
+            )}
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Amount (optional)</Trans></label><Input value={node.config.amount || ""} onChange={(e) => onChange({ config: { amount: e.target.value } })} placeholder={t`whole remaining balance`} /><span className="text-[11.5px] text-muted-foreground"><Trans>Minor units — 1050 is 10.50. Leave blank to give back everything still refundable.</Trans></span></div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Reason</Trans></label>
+              <Select
+                value={node.config.reason || ""}
+                onChange={(v) => onChange({ config: { reason: v } })}
+                className="min-w-0"
+                options={[
+                  { value: "", label: t`Not stated` },
+                  { value: "requested_by_customer", label: t`Requested by customer` },
+                  { value: "duplicate", label: t`Duplicate` },
+                  { value: "fraudulent", label: t`Fraudulent` },
+                  { value: "other", label: t`Other` },
+                ]}
+              />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>Stripe and Polar both record this against the refund.</Trans></span>
+            </div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Description</Trans></label><Input value={node.config.description || ""} onChange={(e) => onChange({ config: { description: e.target.value } })} placeholder="Order {{ data.number }} cancelled" /><span className="text-[11.5px] text-muted-foreground"><Trans>Kept on the provider's record. Klarna shows it on the consumer's statement line.</Trans></span></div>
           </>
         )}
         {node.kind === "action" && node.type === "transform" && (

@@ -1,4 +1,5 @@
 import { PAYMENT_PROVIDERS } from "@backlex/integrations/payments";
+import { REFUND_REASONS } from "@backlex/integrations/refunds";
 import type { McpTool, ToolResult } from "../types";
 import { readJson } from "../internal-fetch";
 
@@ -259,6 +260,60 @@ export const createPaymentCheckout: McpTool = {
   },
 };
 
+export const refundPayment: McpTool = {
+  name: "payments.refund",
+  description:
+    "Give back some or all of a payment — the reverse of `payments.checkout`, and " +
+    "the only one of these tools that MOVES MONEY out. Say which payment with " +
+    "`paymentRowId` (a `payment_transactions` row), `externalId` (the provider's " +
+    "own id) or `reference` (what an outbound checkout travelled with). Omit " +
+    "`amount` to refund everything still refundable; it is in MINOR units and is " +
+    "checked against `amount - amount_refunded` on the ledger row before the " +
+    "provider is called, so a refund can never exceed what was charged. Paddle " +
+    "can only refund in FULL from here. Adyen and Paddle may answer `pending` — " +
+    "they decide asynchronously, so the money has not moved yet. Admin-only.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      providerId: { type: "string", description: "Connected provider id. Wins over `provider`." },
+      provider: { type: "string", enum: [...PAYMENT_PROVIDERS] },
+      paymentRowId: { type: "string", description: "The `payment_transactions` row to refund." },
+      externalId: { type: "string", description: "The provider's own id for the payment." },
+      reference: {
+        type: "string",
+        description:
+          "The checkout reference. Refused when it matches more than one payment — " +
+          "one invoice can be billed more than once.",
+      },
+      amount: {
+        type: "number",
+        description: "MINOR units. Omit to refund the whole remaining balance.",
+      },
+      reason: {
+        type: "string",
+        enum: [...REFUND_REASONS],
+        description: "Normalised across providers; Stripe and Polar both record it.",
+      },
+      description: { type: "string", description: "Free text kept on the provider's record." },
+      idempotencyKey: {
+        type: "string",
+        description:
+          "Overrides the derived key. The default is derived from the payment and the " +
+          "amount already refunded, so retrying dedupes but a second refund does not.",
+      },
+    },
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const res = await ctx.fetchInternal(`${BASE}/refund`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(args),
+    });
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const paymentsTools: McpTool[] = [
   paymentsCatalog,
   listPaymentProviders,
@@ -267,6 +322,7 @@ export const paymentsTools: McpTool[] = [
   rotatePaymentToken,
   syncPaymentProvider,
   createPaymentCheckout,
+  refundPayment,
   listPaymentEvents,
   provisionPaymentCollections,
 ];

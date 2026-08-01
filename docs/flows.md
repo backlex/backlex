@@ -66,6 +66,7 @@ are nested operation arrays run after the op succeeds / throws.
 | `push` | Sends a native push to a user's registered devices (no-op if none) | `title`, `body`, `userId`, `url?` |
 | `sms` | Sends an SMS through the workspace [SMS transport](/sms-messaging/). Addressed *either* by `to` (a number carried on the row) *or* by `userId` (a user's registered numbers) — exactly one, see below | `body`, `to?`, `userId?`, `from?` |
 | `payment.checkout` | Opens a hosted checkout with a connected [payment provider](/payments/) and optionally writes the link onto a row. Returns `{ url, reference, … }` into `{{ $last }}` | `amount` (minor units), `currency`, `provider?` \| `providerId?`, `email?`, `description?`, `successUrl?`, `writeBack?` |
+| `payment.refund` | Gives back some or all of a payment through the [provider](/payments/) that took it. Returns `{ amount, currency, status, … }` into `{{ $last }}` | one of `paymentRowId` \| `externalId` \| `reference`, `amount?` (minor units; omitted = the whole balance), `provider?` \| `providerId?`, `reason?`, `description?` |
 | `webhook` | Fires an outbound HTTP request, body JSON-encoded | `url`, `method?`, `headers?`, `body?` |
 | `request` | Like `webhook` but captures the parsed response into `{{ $last }}` for later ops | `url`, `method?`, `headers?`, `query?`, `body?`, `timeoutMs?` (≤60s) |
 | `function` | Invokes a saved [sandbox function](/sandbox/) by name | `name`, `input?` (defaults to `data`) |
@@ -130,6 +131,37 @@ invoice total on the persisted `flow.run` activity row.
 
 The link also lands in `{{ $last.url }}`, so the next step can email or text it.
 Full provider matrix in [Payments](/payments/#asking-for-money).
+
+### Refunding when the row says so
+
+`payment.refund` is the mirror, and it pairs with a status changing — an order
+moving to `cancelled`, a return being approved:
+
+```json
+{
+  "type": "payment.refund",
+  "reference": "{{ data.payment_reference }}",
+  "reason": "requested_by_customer"
+}
+```
+
+Which payment is named by **one** of `paymentRowId`, `externalId` or
+`reference`. `reference` is usually the only handle a flow has: the row that was
+billed knows what it was billed under and nothing else about the payment.
+Naming none of the three is rejected when the flow is **saved**, because that op
+can never do anything.
+
+An **omitted `amount` means the whole remaining balance**, which is the opposite
+of `payment.checkout` — there an amount is required and an unrenderable one is
+fatal. Here only a *present* amount that renders to something other than a
+positive integer fails the run. A `reference` that renders empty fails too:
+refunding whichever payment turns up instead is not a recoverable guess.
+
+The refundable remainder is checked against the ledger before the provider is
+called, so a refund can never take the total past what was charged. The outcome
+lands in `{{ $last.status }}` — Adyen and Paddle both decide asynchronously and
+answer `pending`, so a following `condition` can branch on it. Provider
+specifics in [Payments](/payments/#giving-money-back).
 
 ## Surfaces
 

@@ -250,6 +250,9 @@ function describeOpShort(op: any): string {
     // The amount is the thing that identifies one payment step from another;
     // it is usually a template, so show it as written.
     case "payment.checkout": return `pay ${(op.amount ?? "").toString().slice(0, 16)} ${op.currency ?? ""}`.trim();
+    // An absent amount is the whole balance, so "refund all" is the honest
+    // summary rather than a blank where a figure would go.
+    case "payment.refund": return `refund ${op.amount ? String(op.amount).slice(0, 16) : "all"}`;
     case "function": return `fn:${(op.name ?? "").toString().slice(0, 18)}`;
     case "item.create": return `+${op.collection ?? ""}`;
     case "item.update": return `~${op.collection ?? ""}`;

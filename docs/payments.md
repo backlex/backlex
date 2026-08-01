@@ -16,9 +16,11 @@ Two mechanisms keep the mirror honest:
   repairs anything a missed delivery left stale. Runs every six hours, and on
   demand.
 
-Going the other way, backlex can also **[ask for money](#asking-for-money)**:
+Going the other way, backlex can also **[ask for money](#asking-for-money)** —
 open a hosted checkout for an arbitrary amount and write the payment link onto
-the invoice, quote or donation row that needs paying.
+the invoice, quote or donation row that needs paying — and
+**[give it back](#giving-money-back)**, refunding some or all of a payment
+without leaving the workspace.
 
 Supported providers: **Stripe**, **Polar**, **Lemon Squeezy**, **Paddle**,
 **Adyen**, **Authorize.net**, **PayTR**, **iyzico**, **Klarna**, plus a local
@@ -475,6 +477,165 @@ The error names the *template* and never the rendered value — that message is
 persisted on the `flow.run` activity row, and the value is a customer's invoice
 total.
 
+## Giving money back
+
+Refunds are the third direction, after "record what happened" and "ask for
+money". Until they existed a refund could only be raised in the provider's own
+dashboard, where it notified nobody — which is the entire reason the
+[`refresh` sync mode](#sync-re-reads-what-we-recorded) had to be built. A refund
+raised here is known at the moment it happens and needs no discovery.
+
+```bash
+curl -X POST https://your-app/api/admin/payments/refund \
+  -H 'content-type: application/json' \
+  -d '{ "provider": "stripe", "reference": "inv1234abcd", "amount": 2500 }'
+```
+
+**Every connected provider can refund.** That is different from checkout, where
+Polar, Lemon Squeezy and Paddle are refused because they need a pre-made price —
+a refund needs no catalog.
+
+### Saying which payment
+
+One of three, tried in this order:
+
+| Field | What it is |
+|---|---|
+| `paymentRowId` | A row in `payment_transactions` |
+| `externalId` | The provider's own id for the payment |
+| `reference` | What the checkout travelled out with |
+
+`reference` is usually the only handle a flow has — the invoice row knows what
+it was billed under and nothing else about the payment. It is *not* unique: one
+row can be billed more than once, so a reference matching two payments is
+refused rather than resolved arbitrarily.
+
+### The amount is checked against our ledger first
+
+Omit `amount` and you refund everything still refundable. Supply one and it is
+checked against `amount - amount_refunded` on the payment row **before the
+provider is called**. A provider will happily accept a refund that takes the
+total past what was paid if its own view has drifted, and "we refunded more than
+we charged" is not a state anything downstream reconciles.
+
+Amounts are minor units, like the rest of the ledger. What each provider's API
+actually wants varies, and the conversion happens per call:
+
+| Wants minor units | Wants major-unit decimals |
+|---|---|
+| Stripe, Adyen, Klarna, Polar, Lemon Squeezy | PayTR, iyzico, Authorize.net |
+
+PayTR is the trap. Its refund endpoint takes `return_amount` as `"108.90"` while
+the checkout's token request takes `payment_amount` as `10890` — the same
+provider, the same money, two conventions. Sending minor units to the refund
+gives back a hundred times too much, and PayTR accepts it right up to the
+payment total.
+
+### Where the refund lands in the ledger
+
+Two shapes, and picking the wrong one is silent in both directions:
+
+- **`restates`** (Stripe, Polar, Lemon Squeezy, Paddle, Klarna, iyzico, PayTR) —
+  the refund shows up as a changed field on the payment's own record, so
+  `amount_refunded` is bumped immediately and a later webhook or refresh
+  restates the same figure. The `status` only flips to `refunded` when the total
+  reaches the whole amount; a partial refund leaves it `succeeded`, which is
+  what it still is.
+- **`own_row`** (Adyen, Authorize.net) — the refund is a separate transaction
+  with its own id, and both providers notify about it. Bumping `amount_refunded`
+  on the original would be undone the moment anything re-reads that payment,
+  because its refunded figure genuinely *is* zero. So nothing is written here
+  and `ledger` comes back `null`; the refund's own notification files it, the
+  same path a dashboard-raised refund already takes.
+
+### Watch the status
+
+`status` is `succeeded` or `pending`, and `pending` means the money has not
+moved:
+
+- **Adyen** decides refunds asynchronously. A 201 is "accepted"; the verdict
+  arrives as a `REFUND` webhook.
+- **Paddle** creates live refunds as `pending_approval` and reviews them by
+  hand. Sandbox auto-approves on a ten-minute timer.
+
+### Retrying is the expensive mistake
+
+Only `unreachable` is worth a retry — a `rejected` re-sends a request the
+provider already refused, and a retried refund the provider *accepted* moves the
+money twice.
+
+The `idempotencyKey` guards against exactly that, and its default is derived
+rather than random: it hashes the connection, the payment, the amount already
+refunded and the amount being refunded. A retry sees the same pre-state (the
+first attempt's outcome was never recorded), so it dedupes; a genuine second
+refund happens *after* the first was written, so the pre-state differs and it
+goes through. Stripe, Klarna and Adyen all honour it. Pass your own to override.
+
+### Per-provider notes
+
+- **Stripe** — takes either a charge or a PaymentIntent, told apart by the id
+  prefix. `reason` is translated to Stripe's own three-member enum; `other` is
+  dropped rather than sent, because Stripe rejects an unknown member.
+- **Klarna** — refunds the **order**, not the HPP session, which works because
+  `place_order_mode: CAPTURE_ORDER` is what produced an order id in the first
+  place. The refund id comes back in a `Refund-ID` **response header** with an
+  empty 201 body — reading it off the body yields null while the refund has in
+  fact happened. `description` appears on the consumer's Klarna statement line.
+- **Authorize.net** — the only two-call refund. It will not reverse a
+  transaction on `refTransId` alone; it wants the original payment method, which
+  means the last four digits of the card. Nothing in `payment_transactions`
+  carries those, so the refund starts with a `getTransactionDetails` to read
+  them off the transaction being reversed. Unlike the settlement path's
+  enrichment retrieve this one is *not* best-effort — without the digits there
+  is no request to send. Refusals still arrive as HTTP 200.
+- **iyzico** — uses **Refund V2** (`/v2/payment/refund`), keyed on `paymentId`,
+  which is exactly what `external_id` holds. V1 refunds a single basket *item*
+  and is keyed on a `paymentTransactionId` that is never stored. The trade is
+  that iyzico documents V2 as unsuitable for a basket with more than one item;
+  every checkout backlex mints has exactly one line, so a backlex-originated
+  payment is squarely inside that. A payment that arrived from a multi-item
+  basket created elsewhere is the case to watch.
+- **PayTR** — refunds against `merchant_oid`, which for PayTR *is* the
+  `external_id`. It issues no refund id of its own.
+- **Paddle** — **full refunds only**. A partial Paddle refund is an adjustment
+  over specific transaction line items identified by Paddle ids that a payment
+  row does not carry, so a partial request is refused by name rather than
+  approximated — approximating it means refunding the wrong line. The stored
+  `external_id` carries a `:payment` suffix (one Paddle transaction backs both
+  an invoice and a payment record) which is stripped before the call.
+- **Adyen** — the psp reference goes in the URL path and is pattern-gated, the
+  same guard Klarna's order id gets: a hostile value would choose which endpoint
+  the API key is sent to.
+- **`dummy`** — no network, no failure mode, gated to demo/dev exactly like its
+  checkout.
+
+### As a flow step
+
+The `payment.refund` operation pairs with a status changing — an order moving to
+`cancelled`, a return being approved:
+
+```json
+{
+  "type": "payment.refund",
+  "provider": "stripe",
+  "reference": "{{ data.payment_reference }}",
+  "reason": "requested_by_customer",
+  "description": "Order {{ data.number }} cancelled"
+}
+```
+
+No `amount` means the whole remaining balance, which is the opposite of how
+`payment.checkout` treats its amount — there an unrenderable amount is fatal,
+here an absent one is the common case. A *present* amount that renders to
+something other than a positive integer still fails the run, and so does a flow
+whose `reference` template renders empty: refunding "whichever payment" instead
+is not a recoverable guess. An op that names none of the three handles at all is
+refused at **save** time, while the author is still looking at the builder.
+
+The outcome is returned into `$last` — `{{ $last.status }}`, `{{ $last.amount }}`
+— so a following `condition` can branch on a refund the provider has not
+actually decided yet.
+
 ## API surface
 
 Everything below hits the same service, so behaviour is identical across
@@ -491,6 +652,7 @@ surfaces.
 | `POST` | `/providers/:id/rotate-token` | New receive URL |
 | `POST` | `/providers/:id/sync` | Reconcile (`async: true` to queue) |
 | `POST` | `/checkout` | Open a hosted checkout, optionally writing the link onto a row |
+| `POST` | `/refund` | Give back some or all of a payment |
 | `POST` | `/collections` | (Re-)provision the four collections |
 | `GET` | `/events` | Delivery log |
 
@@ -521,15 +683,17 @@ const active = await client
 **GraphQL** — `paymentProviders`, `paymentEvents`; mutations
 `connectPaymentProvider`, `disconnectPaymentProvider`,
 `rotatePaymentWebhookToken`, `syncPaymentProvider`, `createPaymentCheckout`,
-`provisionPaymentCollections`.
+`refundPayment`, `provisionPaymentCollections`.
 
 **CLI** — `bun backlex payments checkout --amount 10890 --currency TRY
---provider stripe --write-back invoices:<id>:pay_url:pay_ref`. `connect` takes
-any provider's config keys through repeatable `--set key=value`.
+--provider stripe --write-back invoices:<id>:pay_url:pay_ref`, and
+`bun backlex payments refund --reference inv1234abcd --amount 2500`. `connect`
+takes any provider's config keys through repeatable `--set key=value`.
 
 **MCP** — `payments.catalog`, `payments.list`, `payments.connect`,
 `payments.disconnect`, `payments.rotate_token`, `payments.sync`,
-`payments.checkout`, `payments.events`, `payments.provision_collections`. The synced rows are read
+`payments.checkout`, `payments.refund`, `payments.events`,
+`payments.provision_collections`. The synced rows are read
 with the normal `collections-*` tools, so an agent sees exactly the permissions
 its key grants.
 

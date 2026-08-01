@@ -42,6 +42,7 @@ const SUPPORTED_ACTIONS = new Set([
   "push",
   "sms",
   "payment.checkout",
+  "payment.refund",
   "transform",
   "run-script",
   // Wired in later phases — listed so the compiler emits a clearer warning
@@ -384,6 +385,33 @@ const compileAction = (node: GraphNode): Operation => {
         ...(writeBack ? { writeBack } : {}),
       };
     }
+    case "payment.refund": {
+      const opt = (key: string): Record<string, string> => {
+        const v = String(c[key] ?? "").trim();
+        return v ? { [key]: v } : {};
+      };
+      const target = {
+        ...opt("paymentRowId"),
+        ...opt("externalId"),
+        ...opt("reference"),
+      };
+      if (Object.keys(target).length === 0) {
+        throw new FlowCompileError(
+          "Refund step needs a payment row id, a provider payment id, or the checkout reference",
+        );
+      }
+      const amount = String(c.amount ?? "").trim();
+      return {
+        type: "payment.refund",
+        ...target,
+        // Blank means the whole remaining balance, which is the common case —
+        // so unlike the checkout's amount this is not required.
+        ...(amount ? { amount } : {}),
+        ...opt("provider"),
+        ...opt("description"),
+        ...(c.reason ? { reason: String(c.reason) as "other" } : {}),
+      };
+    }
     case "transform": {
       return {
         type: "transform",
@@ -683,6 +711,16 @@ const opToConfig = (op: Operation): Record<string, any> => {
         writeBackItemId: op.writeBack?.itemId ?? "",
         writeBackUrlField: op.writeBack?.urlField ?? "",
         writeBackReferenceField: op.writeBack?.referenceField ?? "",
+      };
+    case "payment.refund":
+      return {
+        provider: op.provider ?? "",
+        paymentRowId: op.paymentRowId ?? "",
+        externalId: op.externalId ?? "",
+        reference: op.reference ?? "",
+        amount: String(op.amount ?? ""),
+        reason: op.reason ?? "",
+        description: op.description ?? "",
       };
     case "transform":
       return {

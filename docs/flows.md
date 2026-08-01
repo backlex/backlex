@@ -61,7 +61,7 @@ are nested operation arrays run after the op succeeds / throws.
 | `type` | Does | Key fields |
 |---|---|---|
 | `log` | Writes a `[flow] …` line to the server log | `message` |
-| `email` | Sends a templated email (renders an `email_templates` row when `templateKey` is set, else uses `subject`/`html`/`text`) | `to`, `templateKey?`, `vars?`, `subject?`, `html?`, `text?` |
+| `email` | Sends a templated email (renders an `email_templates` row when `templateKey` is set, else uses `subject`/`html`/`text`). `ics` attaches a calendar invite — see below | `to`, `templateKey?`, `vars?`, `subject?`, `html?`, `text?`, `ics?` |
 | `notification` | Drops a row into the in-app `notifications` feed; `userId: null` broadcasts to admins. `push: true` also fans out to that user's devices | `title`, `body?`, `url?`, `userId?`, `push?` |
 | `push` | Sends a native push to a user's registered devices (no-op if none) | `title`, `body`, `userId`, `url?` |
 | `sms` | Sends an SMS through the workspace [SMS transport](/sms-messaging/). Addressed *either* by `to` (a number carried on the row) *or* by `userId` (a user's registered numbers) — exactly one, see below | `body`, `to?`, `userId?`, `from?` |
@@ -79,6 +79,55 @@ are nested operation arrays run after the op succeeds / throws.
 A run stops at the first op that throws without an `onError` branch and returns
 `{ ok: false, error }`. A flow that checkpointed on a long `delay` still returns
 `{ ok: true }` — the remainder is queued, not failed.
+
+### Putting the booking in their calendar
+
+An `email` op with an `ics` block attaches a calendar invite. This is the
+write-back that needs **nothing connected**: no OAuth, no account, and it reaches
+Google Calendar, Outlook, Apple Calendar and everything else, from the
+confirmation email the booking was already going to send. (The other direction —
+backlex creating the event in a specific Google calendar — is a
+[Calendar destination sync](/integrations/#bookings-out-to-a-calendar).)
+
+```json
+{
+  "type": "email",
+  "to": "{{ data.email }}",
+  "subject": "Your appointment is confirmed",
+  "text": "See you on {{ data.starts_at }}.",
+  "ics": {
+    "summary": "{{ data.service }}",
+    "start": "{{ data.starts_at }}",
+    "end": "{{ data.ends_at }}",
+    "location": "{{ data.address }}",
+    "organizerEmail": "bookings@example.com"
+  }
+}
+```
+
+Every field is interpolated. `summary` and `start` are required; the rest have
+defaults — guests default to the message's own recipient, and an end that is
+missing becomes an hour (or, for an all-day date, a day).
+
+**The `uid` is what stops a second booking.** A calendar keys an event on it, so
+re-sending with the *same* uid updates the entry the recipient already accepted,
+and a fresh one books the appointment twice. It therefore defaults to the
+**triggering row's id** — the one value stable across every re-run of a
+row-scoped flow. Set it explicitly when the flow isn't row-scoped. Raise
+`sequence` on each re-send, and use `method: "CANCEL"` to withdraw.
+
+`organizerEmail` decides what the recipient sees: **with** it the file is a
+`REQUEST` and mail clients render accept/decline; **without** it, a plain event
+to add.
+
+A `start` that renders empty or unparseable **fails the op**. The message names
+the *template*, never the rendered value — it is persisted on the run's activity
+row, and that value is customer data.
+
+**Transports.** Every self-hosted transport carries the file (Resend, SendGrid,
+Mailgun, SES, SMTP, console). The **managed-cloud** gateway does not yet: there
+the mail is still sent and the result carries `attachmentsDropped: true`, so the
+run says the invite did not travel rather than leaving the recipient to find out.
 
 ### Who an `sms` op texts
 

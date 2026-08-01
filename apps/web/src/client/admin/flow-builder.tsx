@@ -555,6 +555,29 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
                 <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Body (text)</Trans></label><Textarea rows={4} value={node.config.text || ""} onChange={(e) => onChange({ config: { text: e.target.value } })} placeholder="Hi {{ data.author.name }}, …" /></div>
               </>
             )}
+            <div className="flex flex-col gap-1.5 border-t border-border pt-3.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Calendar invite (.ics)</Trans></label>
+              <span className="text-[11.5px] text-muted-foreground"><Trans>Fill in a start to attach one. Reaches every calendar app — nothing to connect.</Trans></span>
+            </div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Event title</Trans></label><Input value={node.config.icsSummary || ""} onChange={(e) => onChange({ config: { icsSummary: e.target.value } })} placeholder="{{ data.service }}" /></div>
+            <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
+              <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Starts</Trans></label><Input value={node.config.icsStart || ""} onChange={(e) => onChange({ config: { icsStart: e.target.value } })} placeholder="{{ data.starts_at }}" /></div>
+              <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Ends</Trans></label><Input value={node.config.icsEnd || ""} onChange={(e) => onChange({ config: { icsEnd: e.target.value } })} placeholder="{{ data.ends_at }}" /></div>
+            </div>
+            {node.config.icsStart ? (
+              <>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Location</Trans></label><Input value={node.config.icsLocation || ""} onChange={(e) => onChange({ config: { icsLocation: e.target.value } })} placeholder="{{ data.address }}" /></div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Organiser email</Trans></label>
+                  <Input value={node.config.icsOrganizerEmail || ""} onChange={(e) => onChange({ config: { icsOrganizerEmail: e.target.value } })} placeholder="bookings@example.com" />
+                  <span className="text-[11.5px] text-muted-foreground"><Trans>Set this to send a real invitation with accept/decline. Left empty it attaches a plain event.</Trans></span>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Guests</Trans></label>
+                  <Input value={node.config.icsAttendees || ""} onChange={(e) => onChange({ config: { icsAttendees: e.target.value } })} placeholder={t`comma-separated — defaults to the recipient`} />
+                </div>
+              </>
+            ) : null}
           </>
         )}
         {node.kind === "action" && node.type === "fn" && (

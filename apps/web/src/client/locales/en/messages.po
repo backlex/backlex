@@ -2504,6 +2504,10 @@ msgstr "c_{target} is empty."
 msgid "Calendar"
 msgstr "Calendar"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Calendar invite (.ics)"
+msgstr "Calendar invite (.ics)"
+
 #: src/client/admin/pages/analytics.tsx
 msgid "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
 msgstr "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
@@ -3085,6 +3089,10 @@ msgstr "Columns"
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
 msgstr "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
+
+#: src/client/admin/flow-builder.tsx
+msgid "comma-separated — defaults to the recipient"
+msgstr "comma-separated — defaults to the recipient"
 
 #: src/client/admin/role-mcp-guards.tsx
 msgid "Comma-separated exact tool ids. Use these when a whole namespace is too broad."
@@ -5150,6 +5158,10 @@ msgstr "Endpoints"
 msgid "Endpoints fetched."
 msgstr "Endpoints fetched."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Ends"
+msgstr "Ends"
+
 #: src/client/admin/pages/usage.tsx
 msgid "Enforced even where the global API limiter is off."
 msgstr "Enforced even where the global API limiter is off."
@@ -5368,6 +5380,10 @@ msgstr "Event label"
 #: src/client/admin/pages/functions.tsx
 msgid "Event pattern"
 msgstr "Event pattern"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Event title"
+msgstr "Event title"
 
 #: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/integrations.tsx
@@ -5790,6 +5806,10 @@ msgstr "Files are read as text in your browser and sent to the server. Files ove
 #: src/client/admin/app.tsx
 msgid "fill down"
 msgstr "fill down"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Fill in a start to attach one. Reaches every calendar app — nothing to connect."
+msgstr "Fill in a start to attach one. Reaches every calendar app — nothing to connect."
 
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
@@ -6338,6 +6358,10 @@ msgstr "Groups organize the Collections page and the sidebar. Rearrange them any
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Guards updated"
 msgstr "Guards updated"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Guests"
+msgstr "Guests"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -7681,6 +7705,7 @@ msgstr "Localized"
 msgid "Localized values filled across every language"
 msgstr "Localized values filled across every language"
 
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "Location"
@@ -9761,6 +9786,10 @@ msgstr "or with email"
 #: src/client/admin/pages/ask-ai/index.tsx
 #~ msgid "Orders by status"
 #~ msgstr "Orders by status"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Organiser email"
+msgstr "Organiser email"
 
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/ui.tsx
@@ -12948,6 +12977,10 @@ msgstr "Set them in <0>wrangler.toml [vars]</0> / <1>wrangler secret put</1> (or
 msgid "Set this field to NULL"
 msgstr "Set this field to NULL"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Set this to send a real invitation with accept/decline. Left empty it attaches a plain event."
+msgstr "Set this to send a real invitation with accept/decline. Left empty it attaches a plain event."
+
 #: src/client/admin/account-page.tsx
 msgid "Set up"
 msgstr "Set up"
@@ -13607,6 +13640,10 @@ msgstr "Start with a template"
 #: src/client/admin/pages/database-import.tsx
 msgid "Starting…"
 msgstr "Starting…"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Starts"
+msgstr "Starts"
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "State"

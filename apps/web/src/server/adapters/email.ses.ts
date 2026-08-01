@@ -1,5 +1,6 @@
 import { AwsClient } from "aws4fetch";
 import type { EmailAdapter } from "@backlex/core";
+import { rawMimeBase64 } from "../lib/mime";
 
 /**
  * Amazon SES v2 send-email API (`POST /v2/email/outbound-emails`). Requests
@@ -16,20 +17,43 @@ export const sesEmail = (
   const aws = new AwsClient({ accessKeyId, secretAccessKey, region, service: "ses" });
   const endpoint = `https://email.${region}.amazonaws.com/v2/email/outbound-emails`;
   return {
+    attachments: true,
     async send(msg) {
-      const body = {
-        FromEmailAddress: msg.from ?? defaultFrom,
-        Destination: { ToAddresses: [msg.to] },
-        Content: {
-          Simple: {
-            Subject: { Data: msg.subject },
-            Body: {
-              Text: { Data: msg.text },
-              ...(msg.html ? { Html: { Data: msg.html } } : {}),
+      const from = msg.from ?? defaultFrom;
+      // SES's `Simple` shape has no attachment field at all, so a message with
+      // one has to be assembled as a whole MIME document and sent as `Raw`.
+      // Only that case pays for it — `Simple` stays the path for ordinary mail,
+      // where SES does the encoding and header work itself.
+      const body = msg.attachments?.length
+        ? {
+            FromEmailAddress: from,
+            Destination: { ToAddresses: [msg.to] },
+            Content: {
+              Raw: {
+                Data: rawMimeBase64({
+                  from,
+                  to: msg.to,
+                  subject: msg.subject,
+                  text: msg.text,
+                  html: msg.html,
+                  attachments: msg.attachments,
+                }),
+              },
             },
-          },
-        },
-      };
+          }
+        : {
+            FromEmailAddress: from,
+            Destination: { ToAddresses: [msg.to] },
+            Content: {
+              Simple: {
+                Subject: { Data: msg.subject },
+                Body: {
+                  Text: { Data: msg.text },
+                  ...(msg.html ? { Html: { Data: msg.html } } : {}),
+                },
+              },
+            },
+          };
       const res = await aws.fetch(endpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },

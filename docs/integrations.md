@@ -224,6 +224,67 @@ credential should not have, and partitioning, ordering and TTL are decisions the
 cluster owner should make rather than have guessed. Run the DDL once —
 `backlex integrations catalog <kind>` prints a starting point.
 
+### Destinations that are not warehouses
+
+A warehouse takes a batch of arbitrary columns in one request. Google Calendar
+does not, and the two differences it forced are declared on the provider rather
+than special-cased in the engine:
+
+| Declaration | Why |
+|---|---|
+| `destination.columns` | A calendar event has a `summary` and a `start`, not arbitrary columns. With the set declared, an unknown mapping target is refused **at the form**; without it the provider would drop the field and the run would report a clean success having written nothing. The connect dialog renders a dropdown from the same list. |
+| `destination.batchSize` | There is no bulk endpoint — one or two HTTP calls **per row**. The engine's 200-row default would be 400 subrequests, past what a Worker invocation is allowed. Clamped down only; a provider cannot ask for a bigger page. |
+
+A warehouse declares neither, and nothing about it changes.
+
+## Bookings out to a calendar
+
+Google Calendar is a source **and** a destination: it mirrors a calendar in, and
+it turns rows into events.
+
+```bash
+backlex integrations sync-create --integration <id> --collection appointments \
+  --direction push --set calendarId=primary --set timeZone=Europe/Istanbul \
+  --map service=summary --map starts_at=start --map ends_at=end \
+  --map address=location --map customer_email=attendees --every 15
+```
+
+Mappable columns: `summary`, `description`, `location`, `start`, `end`,
+`attendees`.
+
+**The event id is derived, and that is the whole design.** A destination's
+contract is that a re-sent batch must not duplicate, and a calendar has no
+natural key to upsert on. Google is unusual in letting the caller **choose** an
+event id, so backlex derives it from `SHA-256(sync, row id)`: the same row always
+addresses the same event, so an edited booking moves the entry the guest already
+accepted instead of booking a second one. The **sync** is in the hash because two
+collections can hold the same primary key, and without it two syncs pointed at
+one calendar would overwrite each other's events.
+
+The write is `insert`, then `update` on the `409` that a duplicate id returns.
+
+Other behaviour worth knowing:
+
+- **Dates.** A `YYYY-MM-DD` value is an **all-day** event; anything else is an
+  instant. An all-day `DTEND` is *exclusive*, so a one-day event ends on the
+  following date. A start with no end gets an hour (or a day).
+- **Guests** come from a text column (comma- or semicolon-separated) or a JSON
+  array of strings or `{email}` objects. Non-addresses and duplicates are
+  dropped and the list is capped at 50 — every surviving entry is somebody
+  Google may email.
+- **Nobody is notified** unless the sync's *Notify attendees* setting says so.
+- **A row with no start is skipped**, not failed: one empty date column should
+  not stop the rest of the batch.
+- **Deletes are invisible**, exactly as for a warehouse — a watermark walk only
+  ever sees rows that still exist.
+- **A `403` means two different things.** Google returns it both for "this token
+  cannot write" and for "you are going too fast", and the two want opposite
+  responses, so they are reported as different messages.
+
+**Existing connections need re-authorizing.** Write needs the
+`calendar.events` scope, which a connection authorized when Calendar was
+source-only never granted. Pulls keep working; the first push says so.
+
 ### Two kinds of resume
 
 Most sources page to the end and then start over, so the next run notices edits.

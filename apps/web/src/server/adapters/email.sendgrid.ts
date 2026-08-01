@@ -5,6 +5,7 @@ interface SendGridErrorBody {
 }
 
 export const sendgridEmail = (apiKey: string, defaultFrom: string): EmailAdapter => ({
+  attachments: true,
   async send(msg) {
     const content: { type: string; value: string }[] = [
       { type: "text/plain", value: msg.text },
@@ -21,6 +22,16 @@ export const sendgridEmail = (apiKey: string, defaultFrom: string): EmailAdapter
         from: { email: msg.from ?? defaultFrom },
         subject: msg.subject,
         content,
+        ...(msg.attachments?.length
+          ? {
+              attachments: msg.attachments.map((a) => ({
+                content: a.content,
+                filename: a.filename,
+                type: a.contentType ?? "application/octet-stream",
+                disposition: "attachment",
+              })),
+            }
+          : {}),
       }),
     });
     if (!res.ok) {

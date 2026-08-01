@@ -255,6 +255,38 @@ const compileNode = (
   return null;
 };
 
+/**
+ * The inspector's calendar-invite fields → the op's nested `ics` block.
+ *
+ * Flat in the inspector because a node's config is a flat record, nested in the
+ * op because that is where a reader looks for it. `icsStart` is what turns the
+ * block on: an invite with no start is not an invite, and the two fields the
+ * builder can't default are exactly summary and start.
+ */
+type EmailOp = Extract<Operation, { type: "email" }>;
+
+const compileIcs = (c: Record<string, any>): { ics?: NonNullable<EmailOp["ics"]> } => {
+  const start = String(c.icsStart ?? "").trim();
+  if (!start) return {};
+  const summary = String(c.icsSummary ?? "").trim();
+  if (!summary) throw new FlowCompileError("Calendar invite needs a title");
+  const opt = (v: unknown) => {
+    const s = String(v ?? "").trim();
+    return s || undefined;
+  };
+  return {
+    ics: {
+      summary,
+      start,
+      ...(opt(c.icsEnd) ? { end: opt(c.icsEnd) } : {}),
+      ...(opt(c.icsLocation) ? { location: opt(c.icsLocation) } : {}),
+      ...(opt(c.icsDescription) ? { description: opt(c.icsDescription) } : {}),
+      ...(opt(c.icsOrganizerEmail) ? { organizerEmail: opt(c.icsOrganizerEmail) } : {}),
+      ...(opt(c.icsAttendees) ? { attendees: opt(c.icsAttendees) } : {}),
+    },
+  };
+};
+
 const compileAction = (node: GraphNode): Operation => {
   const c = node.config;
   switch (node.type) {
@@ -279,6 +311,7 @@ const compileAction = (node: GraphNode): Operation => {
         ...(c.subject ? { subject: String(c.subject) } : {}),
         ...(c.html ? { html: String(c.html) } : {}),
         ...(c.text ? { text: String(c.text) } : {}),
+        ...compileIcs(c),
       };
     }
     case "webhook":
@@ -623,6 +656,15 @@ const opToConfig = (op: Operation): Record<string, any> => {
         subject: op.subject ?? "",
         html: op.html ?? "",
         text: op.text ?? "",
+        // Flattened back out, so a flow written through the API round-trips
+        // into the inspector instead of losing its invite on the first save.
+        icsSummary: op.ics?.summary ?? "",
+        icsStart: op.ics?.start ?? "",
+        icsEnd: op.ics?.end ?? "",
+        icsLocation: op.ics?.location ?? "",
+        icsDescription: op.ics?.description ?? "",
+        icsOrganizerEmail: op.ics?.organizerEmail ?? "",
+        icsAttendees: op.ics?.attendees ?? "",
       };
     case "webhook":
     case "request":

@@ -107,6 +107,26 @@ export const DESTINATION_SETTING_FIELDS = Object.fromEntries(
 ) as Record<string, IntegrationConfigField[]>;
 
 /**
+ * Destination columns a row may be mapped onto, for the providers that have a
+ * closed set. Absent for a warehouse, whose columns are the operator's DDL —
+ * the admin UI reads that absence as "free text" and the sync service as
+ * "nothing to validate against".
+ */
+export const DESTINATION_COLUMNS = Object.fromEntries(
+  entries
+    .filter(([, p]) => p.destination?.columns)
+    .map(([id, p]) => [id, [...p.destination!.columns!]]),
+) as Record<string, { value: string; label: string }[]>;
+
+/** Rows per push call where the provider asked for a smaller batch than the
+ *  engine's default. The engine clamps DOWN to this; it never enlarges. */
+export const DESTINATION_BATCH_SIZE = Object.fromEntries(
+  entries
+    .filter(([, p]) => typeof p.destination?.batchSize === "number")
+    .map(([id, p]) => [id, p.destination!.batchSize!]),
+) as Record<string, number>;
+
+/**
  * Send one batch to a destination provider.
  *
  * Like `pullFromSource` and unlike `deliverToIntegration`, this does NOT swallow
@@ -120,6 +140,8 @@ export async function pushToDestination(
     settings: Record<string, unknown>;
     rows: readonly Record<string, unknown>[];
     columns: Record<string, string>;
+    /** Identifies the sync, for a provider that has to mint ids elsewhere. */
+    syncKey: string;
   },
   fetchImpl?: FetchLike,
 ): Promise<void> {
@@ -136,6 +158,7 @@ export async function pushToDestination(
     settings: args.settings,
     rows: args.rows,
     columns: args.columns,
+    syncKey: args.syncKey,
     fetch: doFetch,
     str: (key) => pick(args.config, key),
     setting: (key) => pick(args.settings, key),

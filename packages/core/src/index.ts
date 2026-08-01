@@ -5,4 +5,5 @@ export * from "./permission";
 export * from "./condition";
 export * from "./flows";
 export * from "./email";
+export * from "./ics";
 export * from "./embedding-models";

@@ -39,6 +39,44 @@ export type Operation =
       subject?: string;
       html?: string;
       text?: string;
+      /**
+       * Attach a calendar invite.
+       *
+       * Eight of the schema templates model a scheduled thing, and this is the
+       * write-back that needs no account connected anywhere: an `.ics` reaches
+       * Google, Outlook, Apple Calendar and everything else, from the
+       * confirmation email the booking was already going to send.
+       *
+       * Every field is interpolated, so the usual shape is
+       * `{ summary: "{{ data.service }}", start: "{{ data.starts_at }}" }`.
+       * `start` is required; the rest have defaults.
+       */
+      ics?: {
+        summary: string;
+        /** ISO instant, epoch ms, or `YYYY-MM-DD` for an all-day event. */
+        start: string;
+        /** Defaults to an hour after `start` (a day, for an all-day). */
+        end?: string;
+        description?: string;
+        location?: string;
+        url?: string;
+        /** Makes it an invitation rather than a plain event. */
+        organizerEmail?: string;
+        organizerName?: string;
+        /** Comma-separated. Defaults to the message's own recipient. */
+        attendees?: string;
+        /**
+         * Stable identity for THIS booking, so a second send updates the
+         * calendar entry instead of creating another one. Defaults to the
+         * triggering row's id; set it explicitly when the flow is not
+         * row-scoped.
+         */
+        uid?: string;
+        /** Raise on each re-send of the same `uid`; `cancel` withdraws it. */
+        sequence?: number;
+        method?: "REQUEST" | "PUBLISH" | "CANCEL";
+        filename?: string;
+      };
       onSuccess?: Operation[];
       onError?: Operation[];
     }
@@ -282,6 +320,26 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       subject: z.string().optional(),
       html: z.string().optional(),
       text: z.string().optional(),
+      ics: z
+        .object({
+          summary: z.string().min(1).max(300),
+          // Not date-validated here: it is almost always a `{{ … }}` template
+          // that only resolves at run time, so the parse lives in the executor
+          // against the interpolated value — same reasoning as `sms.to`.
+          start: z.string().min(1),
+          end: z.string().optional(),
+          description: z.string().max(4000).optional(),
+          location: z.string().max(300).optional(),
+          url: z.string().max(2000).optional(),
+          organizerEmail: z.string().min(1).optional(),
+          organizerName: z.string().max(200).optional(),
+          attendees: z.string().max(2000).optional(),
+          uid: z.string().max(200).optional(),
+          sequence: z.number().int().min(0).max(1_000_000).optional(),
+          method: z.enum(["REQUEST", "PUBLISH", "CANCEL"]).optional(),
+          filename: z.string().max(120).optional(),
+        })
+        .optional(),
       onSuccess: z.array(OperationSchema).optional(),
       onError: z.array(OperationSchema).optional(),
     }),

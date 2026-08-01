@@ -58,6 +58,10 @@ export type ApiSync = {
 /** A connected integration the picker can offer, with which way it travels. */
 export type SourceOption = { id: string; kind: string; label: string; direction: "pull" | "push" };
 
+/** Identifies one ROW of the picker. A connection that can travel both ways
+ *  appears twice under one id, so the direction has to be part of the key. */
+const keyOf = (s: SourceOption): string => `${s.id}:${s.direction}`;
+
 /** Cadences worth offering. The labels live at the call site rather than here,
  *  because Lingui extracts `t` only where it is lexically in scope — passing it
  *  in as a parameter compiles and runs, but the string never reaches a catalog
@@ -67,12 +71,15 @@ const INTERVAL_MINUTES = [15, 30, 60, 180, 720, 1440] as const;
 export function IntegrationSyncsCard({
   sources,
   settingFields,
+  destinationColumns,
   pushToast,
 }: {
   /** Both directions; the dialog reads `direction` off the chosen entry. */
   sources: SourceOption[];
   /** Keyed `<kind>:<direction>` so one provider can declare both. */
   settingFields: Record<string, SettingField[]>;
+  /** Destinations with a closed column set, keyed by kind. Absent = free text. */
+  destinationColumns: Record<string, { value: string; label: string }[]>;
   pushToast: (m: string) => void;
 }) {
   const { t } = useLingui();
@@ -297,6 +304,7 @@ export function IntegrationSyncsCard({
         <SyncDialog
           sources={sources}
           settingFields={settingFields}
+          destinationColumns={destinationColumns}
           onClose={() => setEditing(false)}
           onCreate={(input) => void create(input)}
         />
@@ -309,11 +317,13 @@ export function IntegrationSyncsCard({
 function SyncDialog({
   sources,
   settingFields,
+  destinationColumns,
   onClose,
   onCreate,
 }: {
   sources: SourceOption[];
   settingFields: Record<string, SettingField[]>;
+  destinationColumns: Record<string, { value: string; label: string }[]>;
   onClose: () => void;
   onCreate: (input: Record<string, unknown>) => void;
 }) {
@@ -321,7 +331,11 @@ function SyncDialog({
   const collectionsQuery = useCollections();
   const collections = collectionsQuery.data?.data ?? [];
 
-  const [integrationId, setIntegrationId] = useState(sources[0]?.id ?? "");
+  // Keyed by connection AND direction, never by id alone. A provider that can
+  // do both — Google Calendar mirrors a calendar in and writes bookings out —
+  // appears twice with the SAME connection id, so an id-keyed picker collapses
+  // the two into one option and the second direction becomes unreachable.
+  const [selectionKey, setSelectionKey] = useState(sources[0] ? keyOf(sources[0]) : "");
   const [collection, setCollection] = useState("");
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [interval, setInterval] = useState(60);
@@ -331,9 +345,26 @@ function SyncDialog({
     { id: crypto.randomUUID(), external: "", field: "" },
   ]);
 
-  const chosen = sources.find((s) => s.id === integrationId);
+  /** Connections offered in both directions, so the picker can say which. */
+  const bothWays = useMemo(() => {
+    const seen = new Set<string>();
+    const dupes = new Set<string>();
+    for (const s of sources) {
+      if (seen.has(s.id)) dupes.add(s.id);
+      seen.add(s.id);
+    }
+    return dupes;
+  }, [sources]);
+
+  const chosen = sources.find((s) => keyOf(s) === selectionKey);
+  const integrationId = chosen?.id ?? "";
   const direction = chosen?.direction ?? "pull";
   const fields = settingFields[`${chosen?.kind ?? ""}:${direction}`] ?? [];
+  // A destination that writes into a structured object (a calendar event) has a
+  // fixed set of targets; a warehouse's are whatever its DDL declared and stay
+  // free text. The server refuses an unknown one either way — this is so the
+  // operator doesn't have to guess the spelling.
+  const externalOptions = direction === "push" ? destinationColumns[chosen?.kind ?? ""] : undefined;
 
   // Only writable fields can be a mapping target; a computed column regenerates
   // itself and the server would refuse it anyway.
@@ -410,14 +441,23 @@ function SyncDialog({
                 <Trans>Connection</Trans>
               </span>
               <Select
-                value={integrationId}
+                value={selectionKey}
                 onChange={(v: string) => {
-                  setIntegrationId(v);
-                  // Settings belong to a provider; carrying them across would
-                  // send a spreadsheet id to Airtable.
+                  setSelectionKey(v);
+                  // Settings belong to a provider AND a direction; carrying them
+                  // across would send a spreadsheet id to Airtable, or a
+                  // calendar id to a pull.
                   setSettings({});
+                  setPairs([{ id: crypto.randomUUID(), external: "", field: "" }]);
                 }}
-                options={sources.map((s) => ({ value: s.id, label: s.label }))}
+                options={sources.map((s) => ({
+                  value: keyOf(s),
+                  // Two rows carrying the same provider name are otherwise
+                  // indistinguishable in the list.
+                  label: bothWays.has(s.id)
+                    ? `${s.label} · ${s.direction === "push" ? t`rows out` : t`rows in`}`
+                    : s.label,
+                }))}
                 className="min-w-0"
               />
             </label>
@@ -476,16 +516,32 @@ function SyncDialog({
               <div className="flex flex-col gap-2">
                 {pairs.map((p) => (
                   <div key={p.id} className="flex items-center gap-2">
-                    <Input
-                      className="min-w-0 flex-1"
-                      placeholder={direction === "push" ? t`Destination column` : t`External column`}
-                      value={p.external}
-                      onChange={(e) =>
-                        setPairs((prev) =>
-                          prev.map((x) => (x.id === p.id ? { ...x, external: e.target.value } : x)),
-                        )
-                      }
-                    />
+                    {externalOptions ? (
+                      <div className="min-w-0 flex-1">
+                        <Select
+                          value={p.external || undefined}
+                          onChange={(v: string) =>
+                            setPairs((prev) =>
+                              prev.map((x) => (x.id === p.id ? { ...x, external: v } : x)),
+                            )
+                          }
+                          placeholder={t`Destination column`}
+                          options={externalOptions}
+                          className="min-w-0"
+                        />
+                      </div>
+                    ) : (
+                      <Input
+                        className="min-w-0 flex-1"
+                        placeholder={direction === "push" ? t`Destination column` : t`External column`}
+                        value={p.external}
+                        onChange={(e) =>
+                          setPairs((prev) =>
+                            prev.map((x) => (x.id === p.id ? { ...x, external: e.target.value } : x)),
+                          )
+                        }
+                      />
+                    )}
                     <I.ArrowRight size={13} className="shrink-0 text-muted-foreground" />
                     <div className="min-w-0 flex-1">
                       <Select

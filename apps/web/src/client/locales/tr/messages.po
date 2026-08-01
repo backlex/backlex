@@ -2504,6 +2504,10 @@ msgstr "c_{target} boş."
 msgid "Calendar"
 msgstr "Takvim"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Calendar invite (.ics)"
+msgstr "Takvim daveti (.ics)"
+
 #: src/client/admin/pages/analytics.tsx
 msgid "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
 msgstr "Yakalanmamış hataları ve işlenmemiş reddetmeleri otomatik iletmek için uygulamanızda client.analytics.captureErrors() çağırın."
@@ -3085,6 +3089,10 @@ msgstr "Kolonlar"
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
 msgstr "Virgül veya boşlukla ayrılmış. Ayarlandığında, diğer alan adlarından gelen e-posta görünümlü kullanıcı adları LDAP sorgusundan önce reddedilir."
+
+#: src/client/admin/flow-builder.tsx
+msgid "comma-separated — defaults to the recipient"
+msgstr "virgülle ayrılmış — varsayılan olarak alıcı"
 
 #: src/client/admin/role-mcp-guards.tsx
 msgid "Comma-separated exact tool ids. Use these when a whole namespace is too broad."
@@ -5150,6 +5158,10 @@ msgstr "Uç noktalar"
 msgid "Endpoints fetched."
 msgstr "Uç noktalar alındı."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Ends"
+msgstr "Bitiş"
+
 #: src/client/admin/pages/usage.tsx
 msgid "Enforced even where the global API limiter is off."
 msgstr "Global API sınırlayıcı kapalı olsa bile uygulanır."
@@ -5368,6 +5380,10 @@ msgstr "Olay etiketi"
 #: src/client/admin/pages/functions.tsx
 msgid "Event pattern"
 msgstr "Olay deseni"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Event title"
+msgstr "Etkinlik başlığı"
 
 #: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/integrations.tsx
@@ -5790,6 +5806,10 @@ msgstr "Dosyalar tarayıcınızda metin olarak okunur ve sunucuya gönderilir. 1
 #: src/client/admin/app.tsx
 msgid "fill down"
 msgstr "aşağı doldur"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Fill in a start to attach one. Reaches every calendar app — nothing to connect."
+msgstr "Eklemek için bir başlangıç girin. Bağlanacak bir şey olmadan her takvim uygulamasına ulaşır."
 
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
@@ -6338,6 +6358,10 @@ msgstr "Gruplar, Koleksiyonlar sayfasını ve kenar çubuğunu düzenler. Düzen
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Guards updated"
 msgstr "Koruyucular güncellendi"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Guests"
+msgstr "Konuklar"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -7681,6 +7705,7 @@ msgstr "Yerelleştirilmiş"
 msgid "Localized values filled across every language"
 msgstr "Tüm dillerde doldurulan yerelleştirilmiş değerler"
 
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "Location"
@@ -9761,6 +9786,10 @@ msgstr "veya e-postayla"
 #: src/client/admin/pages/ask-ai/index.tsx
 #~ msgid "Orders by status"
 #~ msgstr "Duruma göre siparişler"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Organiser email"
+msgstr "Organizatör e-postası"
 
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/ui.tsx
@@ -12948,6 +12977,10 @@ msgstr "<0>wrangler.toml [vars]</0> / <1>wrangler secret put</1> (veya öz barı
 msgid "Set this field to NULL"
 msgstr "Bu alanı NULL yap"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Set this to send a real invitation with accept/decline. Left empty it attaches a plain event."
+msgstr "Kabul et/reddet seçenekli gerçek bir davet göndermek için doldurun. Boş bırakılırsa düz bir etkinlik eklenir."
+
 #: src/client/admin/account-page.tsx
 msgid "Set up"
 msgstr "Kur"
@@ -13607,6 +13640,10 @@ msgstr "Bir şablonla başla"
 #: src/client/admin/pages/database-import.tsx
 msgid "Starting…"
 msgstr "Başlatılıyor…"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Starts"
+msgstr "Başlangıç"
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "State"

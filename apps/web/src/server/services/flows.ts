@@ -2,8 +2,8 @@ import { and, eq } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { matchesCondition } from "@backlex/db";
-import { E164_PATTERN } from "@backlex/core";
-import type { AuthSubject, Condition, Operation } from "@backlex/core";
+import { E164_PATTERN, buildIcs, icsContentType } from "@backlex/core";
+import type { AuthSubject, Condition, EmailAttachment, Operation } from "@backlex/core";
 import type { Ctx } from "../context";
 import { runFunction } from "./sandbox";
 import { sendTemplatedEmail } from "./email";
@@ -125,6 +125,92 @@ const buildUrl = (
   return url + sep + qs;
 };
 
+/** `2026-08-01` — an all-day event, which the ics builder handles as a date
+ *  rather than an instant. Passed through verbatim so it stays one. */
+const ICS_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Render the `ics` block of an `email` op into an attachment.
+ *
+ * The `uid` is the part worth reading twice. A calendar keys an event on it, so
+ * a re-send with the SAME uid updates the entry the recipient already accepted
+ * and a fresh one books the appointment a second time. It therefore defaults to
+ * the triggering row's id — the one value that is stable across every re-run of
+ * a row-scoped flow — and only falls back to something random when the flow has
+ * no row at all, where there is nothing to be stable about.
+ */
+const buildInvite = (
+  ics: NonNullable<Extract<Operation, { type: "email" }>["ics"]>,
+  ctx: RunCtx,
+  recipient: string,
+): EmailAttachment => {
+  const str = (v: string | undefined): string | undefined => {
+    if (v === undefined) return undefined;
+    const rendered = String(interpolate(v, ctx) ?? "").trim();
+    return rendered || undefined;
+  };
+
+  const start = str(ics.start);
+  if (!start) throw new FlowOpError(`ics start "${ics.start}" rendered empty`);
+  // A date that does not parse produces `Invalid Date`, which serialises to a
+  // literal "Invalid Date" in the file and is refused by every calendar. Better
+  // to fail the op and name the template that produced it — never the value,
+  // which is persisted on the run's activity row.
+  const startsAt = ICS_DATE_ONLY.test(start) ? start : parseWhen(start, ics.start, "start");
+  const end = str(ics.end);
+  const endsAt = end ? (ICS_DATE_ONLY.test(end) ? end : parseWhen(end, ics.end!, "end")) : undefined;
+
+  const rowId = (ctx.data as { id?: unknown } | undefined)?.id;
+  const uid =
+    str(ics.uid) ??
+    `${rowId !== undefined && rowId !== null && rowId !== "" ? String(rowId) : crypto.randomUUID()}@backlex`;
+
+  const attendeeList = str(ics.attendees) ?? recipient;
+  const organizerEmail = str(ics.organizerEmail);
+
+  const content = buildIcs({
+    uid,
+    dtstamp: new Date(),
+    start: startsAt,
+    ...(endsAt ? { end: endsAt } : {}),
+    summary: str(ics.summary) ?? "Appointment",
+    ...(str(ics.description) ? { description: str(ics.description)! } : {}),
+    ...(str(ics.location) ? { location: str(ics.location)! } : {}),
+    ...(str(ics.url) ? { url: str(ics.url)! } : {}),
+    ...(organizerEmail
+      ? {
+          organizer: {
+            email: organizerEmail,
+            ...(str(ics.organizerName) ? { name: str(ics.organizerName)! } : {}),
+          },
+        }
+      : {}),
+    attendees: attendeeList
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean)
+      .map((email) => ({ email })),
+    ...(ics.sequence !== undefined ? { sequence: ics.sequence } : {}),
+    ...(ics.method ? { method: ics.method } : {}),
+  });
+
+  return {
+    filename: str(ics.filename) ?? "invite.ics",
+    content: btoa(String.fromCharCode(...new TextEncoder().encode(content))),
+    // The `method` parameter is what makes a mail client render accept/decline
+    // rather than offer the file as a download.
+    contentType: icsContentType(ics.method ?? (organizerEmail ? "REQUEST" : "PUBLISH")),
+  };
+};
+
+const parseWhen = (rendered: string, template: string, field: string): Date => {
+  const ms = Date.parse(rendered);
+  const asNumber = Number(rendered);
+  const at = Number.isFinite(ms) ? new Date(ms) : Number.isFinite(asNumber) ? new Date(asNumber) : null;
+  if (!at) throw new FlowOpError(`ics ${field} "${template}" did not render to a date`);
+  return at;
+};
+
 /**
  * Execute a single op and return its result. Throws FlowOpError on failure;
  * the caller wraps with try/catch to dispatch to onError branch.
@@ -208,6 +294,7 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
         html: op.html,
         text: op.text,
       },
+      ...(op.ics ? { attachments: [buildInvite(op.ics, ctx, to)] } : {}),
     });
     return result;
   }

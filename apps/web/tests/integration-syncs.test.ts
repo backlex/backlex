@@ -869,3 +869,68 @@ describe("push: mirroring a collection out", () => {
     expect(res.status).toBe(422);
   });
 });
+
+/**
+ * A destination with a CLOSED column set.
+ *
+ * A warehouse's columns are whatever the operator's DDL declared, so the target
+ * side of a push mapping is free text and the server has nothing to check it
+ * against. Google Calendar is the first destination that writes into a
+ * structured object instead — an event has a `summary` and a `start`, not
+ * arbitrary columns — and there a typo'd target used to be accepted, dropped by
+ * the provider, and the run would report a clean success having written nothing
+ * into that field.
+ */
+describe("push: a destination with a closed column set", () => {
+  let calId = "";
+
+  beforeEach(async () => {
+    client.query("delete from integrations where kind = 'google-calendar'").run();
+    const res = await ok("POST", BASE, {
+      kind: "google-calendar",
+      config: { clientId: "cid", clientSecret: "csecret" },
+    });
+    calId = res.data.id as string;
+  });
+
+  const create = (mapping: Record<string, string>) =>
+    req("POST", SYNCS, {
+      integrationId: calId,
+      collection: "leads",
+      direction: "push",
+      settings: { calendarId: "primary" },
+      mapping,
+    });
+
+  test("accepts a mapping onto the columns the provider declared", async () => {
+    expect((await create({ name: "summary", email: "attendees" })).status).toBe(201);
+  });
+
+  test("refuses a column the provider has no place to put", async () => {
+    const res = await create({ name: "summry" });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { message: string } };
+    // The message lists the real ones — the operator should not have to guess
+    // the spelling from a rejection.
+    expect(body.error.message).toContain("summary");
+  });
+
+  test("the catalog publishes those columns so the form can offer them", async () => {
+    const cat = await ok("GET", `${BASE}/catalog`);
+    expect(cat.data.destinationColumns["google-calendar"].map((c: any) => c.value)).toContain("start");
+    // A warehouse declares none, which the UI reads as "free text".
+    expect(cat.data.destinationColumns.clickhouse).toBeUndefined();
+  });
+
+  test("the closed set applies to a later edit too, not just creation", async () => {
+    const created = await ok("POST", SYNCS, {
+      integrationId: calId,
+      collection: "leads",
+      direction: "push",
+      settings: { calendarId: "primary" },
+      mapping: { name: "summary" },
+    });
+    const res = await req("PATCH", `${SYNCS}/${created.data.id}`, { mapping: { name: "nope" } });
+    expect(res.status).toBe(422);
+  });
+});

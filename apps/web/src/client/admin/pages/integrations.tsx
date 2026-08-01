@@ -51,6 +51,9 @@ type Catalog = {
   sourceSettings?: Record<string, SettingField[]>;
   /** Same, for providers that receive rows rather than supply them. */
   destinationSettings?: Record<string, SettingField[]>;
+  /** Mapping targets for destinations with a closed column set. A kind that is
+   *  absent takes any column name (a warehouse's columns are its own DDL). */
+  destinationColumns?: Record<string, { value: string; label: string }[]>;
 };
 
 /** Config key holding the OAuth access token. Present (masked) once authorized,
@@ -506,8 +509,12 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
           ...connected
             .filter((i) => sourceKinds.has(i.kind) && !needsAuthorize(i))
             .map((i) => ({ id: i.id, kind: i.kind, label: brandFor(i.kind).name, direction: "pull" as const })),
+          // Same authorize gate as the pull side. It only started mattering
+          // when a destination arrived that connects over OAuth (Calendar):
+          // offering an unauthorized one produces a sync that fails on its
+          // first run with a token error.
           ...connected
-            .filter((i) => destinationKinds.has(i.kind))
+            .filter((i) => destinationKinds.has(i.kind) && !needsAuthorize(i))
             .map((i) => ({ id: i.id, kind: i.kind, label: brandFor(i.kind).name, direction: "push" as const })),
         ]}
         // Keyed by direction so one provider could declare both without the
@@ -520,6 +527,7 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
             Object.entries(catalog.destinationSettings ?? {}).map(([k, v]) => [`${k}:push`, v]),
           ),
         }}
+        destinationColumns={catalog.destinationColumns ?? {}}
         pushToast={pushToast}
       />
 

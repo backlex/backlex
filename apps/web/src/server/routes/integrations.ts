@@ -5,6 +5,7 @@ import {
   INTEGRATION_CATALOG,
   INTEGRATION_FIELDS,
   INTEGRATION_KINDS,
+  DESTINATION_COLUMNS,
   DESTINATION_SETTING_FIELDS,
   SOURCE_SETTING_FIELDS,
 } from "@backlex/integrations";
@@ -82,6 +83,9 @@ const CatalogView = z
     sourceSettings: z.record(z.string(), z.unknown()),
     /** Same, for providers that receive rows rather than supply them. */
     destinationSettings: z.record(z.string(), z.unknown()),
+    /** Mapping targets for destinations with a closed column set, keyed by
+     *  kind. A kind that is absent takes any column name. */
+    destinationColumns: z.record(z.string(), z.unknown()),
   })
   .openapi("IntegrationCatalog");
 
@@ -199,6 +203,9 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           oauthRedirectUri: oauthRedirectUri(c.get("ctx").env.APP_URL),
           sourceSettings: SOURCE_SETTING_FIELDS,
           destinationSettings: DESTINATION_SETTING_FIELDS,
+          // Only for the destinations with a closed column set. Absent means
+          // "free text" — a warehouse's columns are the operator's DDL.
+          destinationColumns: DESTINATION_COLUMNS,
         },
       }),
   )

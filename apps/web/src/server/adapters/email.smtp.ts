@@ -29,6 +29,7 @@ export const smtpEmail = (cfg: SmtpConfig, defaultFrom: string): EmailAdapter =>
       : {}),
   });
   return {
+    attachments: true,
     async send(msg) {
       await transport.sendMail({
         from: msg.from ?? defaultFrom,
@@ -36,6 +37,18 @@ export const smtpEmail = (cfg: SmtpConfig, defaultFrom: string): EmailAdapter =>
         subject: msg.subject,
         text: msg.text,
         ...(msg.html ? { html: msg.html } : {}),
+        // nodemailer builds the MIME itself; `encoding` tells it the content
+        // is already base64 rather than text to be encoded a second time.
+        ...(msg.attachments?.length
+          ? {
+              attachments: msg.attachments.map((a) => ({
+                filename: a.filename,
+                content: a.content,
+                encoding: "base64" as const,
+                ...(a.contentType ? { contentType: a.contentType } : {}),
+              })),
+            }
+          : {}),
       });
     },
   };

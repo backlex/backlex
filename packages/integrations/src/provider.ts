@@ -235,6 +235,19 @@ export interface DestinationPushContext {
    * types (`text`, `number`, `boolean`, `timestamp`, `json`, …).
    */
   columns: Readonly<Record<string, string>>;
+  /**
+   * A stable, opaque identifier for THIS sync.
+   *
+   * A warehouse never needs it — the row's own primary key is the whole key.
+   * A destination that has to MINT an id in someone else's namespace does:
+   * Google Calendar events are addressed by a caller-chosen id, so two syncs
+   * mirroring two different collections into one calendar would derive the
+   * same event id from two unrelated rows that happen to share a primary key,
+   * and each run would overwrite the other's events.
+   *
+   * Only ever hash it. It is not a secret, but it is not meant to be shown.
+   */
+  syncKey: string;
   fetch: FetchLike;
   str(key: string): string | null;
   setting(key: string): string | null;
@@ -251,6 +264,26 @@ export interface DestinationPushContext {
 export interface IntegrationDestination {
   /** Per-sync config the admin fills in when pointing a collection at it. */
   settingFields: readonly IntegrationConfigField[];
+  /**
+   * The closed set of column names a row may be mapped onto.
+   *
+   * A warehouse leaves this unset: its columns are whatever the operator's DDL
+   * declared, and the provider has no list. A provider writing into a
+   * structured object — a calendar event has a `summary` and a `start`, not
+   * arbitrary columns — declares it, and then an unknown target is refused at
+   * the form instead of being dropped on the floor by the provider while the
+   * run reports success.
+   */
+  columns?: readonly { value: string; label: string }[];
+  /**
+   * Rows per `push` call, when the engine's default batch is too big.
+   *
+   * Warehouses take a batch in one request, so they want it large. A provider
+   * with no bulk endpoint issues one or two HTTP calls PER ROW, and a
+   * 200-row batch there is 400 subrequests — past what a Worker invocation is
+   * allowed. Clamped by the engine; it never enlarges the batch.
+   */
+  batchSize?: number;
   /** Send one batch. Throwing retries it; returning marks it delivered. */
   push(ctx: DestinationPushContext): Promise<void>;
 }

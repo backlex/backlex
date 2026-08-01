@@ -24,6 +24,8 @@ import * as sqlite from "@backlex/db/sqlite";
 import { AppError } from "@backlex/core";
 import {
   SECRET_KEYS,
+  DESTINATION_BATCH_SIZE,
+  DESTINATION_COLUMNS,
   DESTINATION_SETTING_FIELDS,
   SOURCE_SETTING_FIELDS,
   isIntegrationKind,
@@ -206,7 +208,7 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
     );
   }
   const settings = validateSettings(integration.kind, input.settings ?? {}, direction);
-  const mapping = validateMapping(input.mapping ?? {}, collection, direction);
+  const mapping = validateMapping(input.mapping ?? {}, collection, direction, integration.kind);
 
   const id = crypto.randomUUID();
   const now = new Date();
@@ -245,8 +247,15 @@ const validateMapping = (
   mapping: Record<string, string>,
   collection: Awaited<ReturnType<typeof loadCollection>>,
   direction: SyncDirection,
+  kind: string,
 ): Record<string, string> => {
   const out: Record<string, string> = {};
+  // A destination with a closed column set (a calendar event has a `summary`
+  // and a `start`, not arbitrary columns) is checked here. A warehouse declares
+  // none — its columns are whatever the operator's DDL says — and stays free
+  // text. Without this a typo'd target is accepted, dropped by the provider,
+  // and the run reports a clean success having written nothing.
+  const columns = direction === "push" ? DESTINATION_COLUMNS[kind] : undefined;
   // The mapping is read in the direction of travel. On a pull the collection
   // field is the TARGET and must be writable; on a push it is the SOURCE and
   // may be any field the collection has, computed ones included — reading one
@@ -266,6 +275,12 @@ const validateMapping = (
     }
     if (direction === "push" && !known.has(left)) {
       throw new AppError("VALIDATION", `Collection "${collection.slug}" has no field "${left}"`);
+    }
+    if (columns && !columns.some((c) => c.value === value)) {
+      throw new AppError(
+        "VALIDATION",
+        `${kind} has no destination column "${value}" — one of: ${columns.map((c) => c.value).join(", ")}`,
+      );
     }
     out[left] = value;
   }
@@ -332,6 +347,7 @@ export async function updateSync(
       patch.mapping,
       await loadCollection(ctx, tenantId, existing.collection),
       existing.direction as SyncDirection,
+      integration.kind,
     );
   }
   if (patch.intervalMinutes !== undefined) set.intervalMinutes = clampInterval(patch.intervalMinutes);
@@ -653,6 +669,12 @@ async function pushCollection(
     if (target) columns[target] = f.type;
   }
 
+  // A warehouse takes the whole batch in one request and wants it large. A
+  // provider with no bulk endpoint — Google Calendar issues a call per event —
+  // asks for a smaller one, because 200 rows there is 400 subrequests. Clamped
+  // DOWN only: a provider cannot talk the engine into a bigger page.
+  const batchSize = Math.min(PAGE_SIZE, DESTINATION_BATCH_SIZE[integration.kind] ?? PAGE_SIZE);
+
   let mark = parseWatermark(row.cursor);
   let written = 0;
   let pages = 0;
@@ -667,7 +689,7 @@ async function pushCollection(
     }
     const batch = await queryAll<Record<string, unknown>>(
       ctx,
-      sql`SELECT * FROM ${sql.identifier(collection.physicalTable)} WHERE ${where} ORDER BY ${sql.identifier(updatedAtCol)} ASC, ${sql.identifier(collection.pkColumn)} ASC LIMIT ${PAGE_SIZE}`,
+      sql`SELECT * FROM ${sql.identifier(collection.physicalTable)} WHERE ${where} ORDER BY ${sql.identifier(updatedAtCol)} ASC, ${sql.identifier(collection.pkColumn)} ASC LIMIT ${batchSize}`,
     );
     if (batch.length === 0) {
       complete = true;
@@ -686,7 +708,7 @@ async function pushCollection(
 
     await pushToDestination(
       integration.kind,
-      { config, settings: row.settings ?? {}, rows: out, columns },
+      { config, settings: row.settings ?? {}, rows: out, columns, syncKey: row.id },
       fetchImpl,
     );
 
@@ -698,7 +720,7 @@ async function pushCollection(
       id: String(last[collection.pkColumn] ?? ""),
     };
     written += out.length;
-    if (batch.length < PAGE_SIZE) {
+    if (batch.length < batchSize) {
       complete = true;
       break;
     }

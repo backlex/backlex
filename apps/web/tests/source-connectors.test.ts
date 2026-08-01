@@ -205,15 +205,28 @@ describe("Contentful", () => {
 });
 
 describe("registration", () => {
-  test("all three are sources, and the Google pair asks for its own scope", () => {
+  test("all three pull, and Calendar also pushes", () => {
     for (const kind of ["google-drive", "google-calendar", "contentful"] as const) {
-      expect(PROVIDERS[kind].capabilities).toEqual(["source"]);
+      expect(PROVIDERS[kind].capabilities).toContain("source");
       expect(typeof PROVIDERS[kind].source?.pull).toBe("function");
     }
-    // Least privilege: Drive cannot read a calendar and vice versa.
+    expect(PROVIDERS["google-drive"].capabilities).toEqual(["source"]);
+    expect(PROVIDERS.contentful.capabilities).toEqual(["source"]);
+    // Calendar gained the reverse direction: a booking row becomes an event.
+    expect(PROVIDERS["google-calendar"].capabilities).toEqual(["source", "destination"]);
+    expect(typeof PROVIDERS["google-calendar"].destination?.push).toBe("function");
+  });
+
+  test("the Google pair still asks only for what it uses", () => {
+    // Least privilege: Drive cannot read a calendar and vice versa. Calendar
+    // now asks for write as well, because it writes — `calendar.events` alone
+    // would cover both, but the read scope stays listed so the consent screen
+    // says "read" to an admin connecting this only to mirror a calendar in.
     expect(PROVIDERS["google-calendar"].oauth?.scopes).toEqual([
       "https://www.googleapis.com/auth/calendar.readonly",
+      "https://www.googleapis.com/auth/calendar.events",
     ]);
+    expect(PROVIDERS["google-drive"].oauth?.scopes.join(" ")).not.toContain("calendar");
   });
 
   test("Contentful is a pasted token, not an OAuth flow", () => {

@@ -9643,6 +9643,11 @@ msgstr "Sohbeti aç"
 
 #. placeholder {0}: entry.label
 #: src/client/admin/pages/payments.tsx
+msgid "Open checkouts through {0} and record each settlement as it is reported. There are no billing objects to mirror, so Sync now re-checks recent payments for refunds and late captures instead."
+msgstr "{0} üzerinden ödeme sayfası açın ve her tahsilatı bildirildiği anda kaydedin. Aynalanacak faturalama nesnesi yok; bunun yerine Şimdi eşitle, son ödemeleri iade ve geç tahsilat için yeniden kontrol eder."
+
+#. placeholder {0}: entry.label
+#: src/client/admin/pages/payments.tsx
 msgid "Open checkouts through {0} and record each settlement as it is reported. There are no billing objects to mirror."
 msgstr "{0} üzerinden ödeme bağlantısı açın; her tahsilat bildirildiği anda kaydedilir. Aynalanacak bir faturalama nesnesi yok."
 
@@ -10921,6 +10926,12 @@ msgstr "İstek/dk"
 #: src/client/pages/graphql.tsx
 msgid "Raw"
 msgstr "Ham"
+
+#. placeholder {0}: res.refreshed.checked
+#. placeholder {1}: labelFor(row.provider)
+#: src/client/admin/pages/payments.tsx
+msgid "Re-checked {0} recent payments at {1}."
+msgstr "{1} üzerindeki son {0} ödeme yeniden kontrol edildi."
 
 #: src/client/admin/parity/app-users.tsx
 msgid "Re-enables sign-in for this end-user."

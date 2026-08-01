@@ -204,6 +204,67 @@ export const PAYMENT_HAS_CATALOG: Record<PaymentProvider, boolean> = {
 export const hasObjectCatalog = (p: string): boolean =>
   PAYMENT_HAS_CATALOG[p as PaymentProvider] === true;
 
+/**
+ * Can this provider be asked about ONE payment, by the id we already stored?
+ *
+ * The answer to a different question from `PAYMENT_HAS_CATALOG`, and the one
+ * that rescues the catalog-less providers. Klarna has no endpoint that pages
+ * over an account — but every `order_id` it ever gave us is sitting in
+ * `payment_transactions`. **We are the catalog.** So a sync for these providers
+ * walks OUR rows and re-reads each one, which catches the refunds, late
+ * captures and cancellations that a settlement-time-only integration is
+ * structurally blind to.
+ *
+ * The bar is higher than "has a read endpoint", because the ledger upsert
+ * REPLACES the row: a refresh has to restate EVERY money column it writes, or
+ * it blanks whatever it left out. That is what rules iyzico out despite
+ * `POST /payment/detail` existing and taking the `paymentId` we store — its
+ * refunds live per item transaction in `itemTransactions[].refundHistory`, and
+ * a mapping written on a guess would zero or misstate `amount_refunded` on
+ * every pass. A provider only earns a `true` here once its single-payment read
+ * is known to state the whole row.
+ *
+ * The four catalog providers are `false` because reconcile already walks them
+ * properly; this is not a second way to do the same job.
+ */
+export const PAYMENT_CAN_REFETCH: Record<PaymentProvider, boolean> = {
+  stripe: false,
+  polar: false,
+  lemonsqueezy: false,
+  paddle: false,
+  // No single-payment read at all: PayTR's callback is the entire surface, and
+  // Adyen's history comes out as scheduled report FILES rather than an API.
+  paytr: false,
+  adyen: false,
+  // Endpoint exists and takes the id we store; the refund shape does not.
+  // See the paragraph above before changing this to `true`.
+  iyzico: false,
+  // `getTransactionDetailsRequest` states the transaction in full. Refunds are
+  // separate transactions with their own rows, exactly as the webhook path
+  // already records them, so a refresh restates the same columns it would.
+  authorizenet: true,
+  // `GET /ordermanagement/v1/orders/{id}` states order/captured/refunded amount,
+  // status, fraud status and the merchant reference — the whole row.
+  klarna: true,
+  dummy: false,
+};
+
+export const canRefetchPayment = (p: string): boolean =>
+  PAYMENT_CAN_REFETCH[p as PaymentProvider] === true;
+
+/**
+ * Which kind of sync, if any, this provider gets — the single answer the
+ * service, the catalog endpoint and the admin UI all branch on.
+ *
+ * `catalog` walks the PROVIDER's listing. `refresh` walks OURS. `null` means
+ * the connection genuinely cannot be synced, and saying so is the point: a
+ * button that can only ever return an explanation is worse than no button.
+ */
+export type PaymentSyncMode = "catalog" | "refresh";
+
+export const paymentSyncMode = (p: string): PaymentSyncMode | null =>
+  hasObjectCatalog(p) ? "catalog" : canRefetchPayment(p) ? "refresh" : null;
+
 /** The PayTR fields that go into the hash, in signing order. */
 export const PAYTR_SIGNED_FIELDS = ["merchant_oid", "status", "total_amount"] as const;
 
@@ -2364,6 +2425,118 @@ const authorizeNetMetadata = (
     : {}),
 });
 
+/**
+ * A retrieved Authorize.net transaction's own status → the ledger's vocabulary.
+ *
+ * The refresh path reads `transactionStatus`, which the NOTIFICATION never
+ * carries — and that is most of the value. `capturedPendingSettlement` becoming
+ * `settledSuccessfully` overnight, a `returnedItem` (an ACH bounce, days
+ * later), or a void raised in the merchant interface are all invisible to a
+ * webhook-only integration because Authorize.net sends nothing for them.
+ */
+const AUTHORIZENET_DETAIL_STATUS: Record<string, string> = {
+  settledSuccessfully: "succeeded",
+  // Captured into a batch that has not settled yet. The money is taken.
+  capturedPendingSettlement: "succeeded",
+  // Held, not taken — the same reading the bare `authorization` event gets.
+  authorizedPendingCapture: "pending",
+  refundSettledSuccessfully: "refunded",
+  refundPendingSettlement: "refunded",
+  voided: "canceled",
+  declined: "failed",
+  expired: "failed",
+  // The gateway wants a human to look at it.
+  FDSPendingReview: "pending",
+  FDSAuthorizedPendingReview: "pending",
+  // An ACH debit that came back after the fact. It is not a refund — nobody
+  // chose to give the money back — but it is not money received either.
+  returnedItem: "failed",
+  communicationError: "failed",
+  generalError: "failed",
+};
+
+/**
+ * One retrieved Authorize.net transaction → the payment row.
+ *
+ * Deliberately reads `authAmount` rather than `settleAmount`, matching what the
+ * webhook path writes. The two paths upsert the SAME row and the upsert
+ * replaces it, so reading a different amount field here would make a payment's
+ * recorded figure flip every time a refresh ran.
+ */
+const authorizeNetDetailRecord = (
+  detail: Record<string, unknown>,
+  currency: string,
+): PaymentRecord | null => {
+  const id = str(detail.transId);
+  if (!id) return null;
+  const transactionStatus = str(detail.transactionStatus) ?? "";
+  const status = AUTHORIZENET_DETAIL_STATUS[transactionStatus] ?? "pending";
+  const amount = toMinorUnits(detail.authAmount ?? detail.settleAmount, currency);
+  const order = obj(detail.order);
+  return {
+    kind: "payment",
+    row: {
+      id: paymentRowId("authorizenet", id),
+      provider: "authorizenet",
+      external_id: id,
+      customer: null,
+      invoice: null,
+      amount,
+      // A refund is its own transaction with its own row, exactly as the
+      // webhook path files it — so the refunded figure belongs to THAT row,
+      // never subtracted from the payment it refunded.
+      amount_refunded: status === "refunded" ? amount : 0,
+      currency,
+      status,
+      method: authorizeNetMethod(detail),
+      failure_reason:
+        status === "failed"
+          ? (str(detail.responseReasonDescription) ?? (transactionStatus || "declined"))
+          : null,
+      reference: str(order?.invoiceNumber),
+      processed_at: isoToMs(detail.submitTimeUTC),
+      metadata: {
+        // `event_type` is deliberately absent: a refresh genuinely does not
+        // know which notification first created this row, and inventing one
+        // would put a fabricated event name into the ledger. `transaction_type`
+        // is the equivalent fact, and Authorize.net actually states it.
+        ...(str(detail.transactionType) ? { transaction_type: str(detail.transactionType) } : {}),
+        ...(transactionStatus ? { transaction_status: transactionStatus } : {}),
+        ...(str(detail.authCode) ? { auth_code: str(detail.authCode) } : {}),
+        ...(str(detail.avsResponse) ? { avs_response: str(detail.avsResponse) } : {}),
+        ...(str(detail.refTransId) ? { original_reference: str(detail.refTransId) } : {}),
+        ...(str(order?.description) ? { description: str(order?.description) } : {}),
+      },
+      source_created_at: isoToMs(detail.submitTimeUTC),
+    },
+  };
+};
+
+const refetchAuthorizeNet = async (input: RefetchInput): Promise<RefetchResult> => {
+  const got = await retrieveAuthorizeNetTransaction({
+    config: input.config,
+    transId: input.externalId,
+    fetchImpl: input.fetchImpl,
+  });
+  if (!got.ok) {
+    if (got.reason === "missing_secret") return { ok: false, reason: "missing_secret" };
+    if (got.reason === "unreachable") return { ok: false, reason: "unreachable" };
+    // Authorize.net answers HTTP 200 with an error envelope for a transaction
+    // id it does not recognise, so "rejected" is where a gone payment lands.
+    // Reported as `not_found` when it names that specifically, because the
+    // caller skips those instead of counting them as failures.
+    return {
+      ok: false,
+      reason: /not found|invalid.*transaction/i.test(got.message ?? "") ? "not_found" : "rejected",
+    };
+  }
+  const record = authorizeNetDetailRecord(
+    got.transaction,
+    (input.accountCurrency ?? "").toUpperCase() || AUTHORIZENET_DEFAULT_CURRENCY,
+  );
+  return { ok: true, records: record ? [record] : [] };
+};
+
 /** An ARB subscription event. The payload is its own small shape — a name, an
  *  amount in MAJOR units and a status — with no customer attached. */
 const authorizeNetSubscriptionRecord = (
@@ -2695,56 +2868,98 @@ const normalizeKlarna = (body: Record<string, unknown>): NormalizedPaymentEvent 
     };
   }
 
+  return {
+    eventId,
+    type: `order.${str(body.status) || "unknown"}`,
+    // The playground is a separate HOST, not a flag on the payload — Klarna
+    // says nothing about it here, and the connection's `environment` is what
+    // actually knows.
+    livemode: null,
+    records: [klarnaOrderRecord(body, orderId, sessionId, sessionStatus)],
+  };
+};
+
+/**
+ * A Klarna Order Management order → the payment row.
+ *
+ * Split out from `normalizeKlarna` so the settlement callback and the refresh
+ * sync build the row from ONE mapping. They read the same endpoint, and the
+ * upsert REPLACES the row — two mappings that drifted would mean a refresh
+ * quietly rewriting a payment into a slightly different shape every six hours.
+ *
+ * Every money field the row carries is stated by this one response
+ * (`order_amount`, `captured_amount`, `refunded_amount`), which is precisely
+ * what qualifies Klarna for a refresh at all — see `PAYMENT_CAN_REFETCH`.
+ */
+const klarnaOrderRecord = (
+  body: Record<string, unknown>,
+  orderId: string,
+  sessionId: string,
+  sessionStatus: string,
+): PaymentRecord => {
   const currency = str(body.purchase_currency) ?? "EUR";
   const captured = num(body.captured_amount);
   const orderStatus = str(body.status) ?? "";
   const fraudStatus = str(body.fraud_status) ?? "";
   const billing = obj(body.billing_address);
   return {
-    eventId,
-    type: `order.${orderStatus || "unknown"}`,
-    // The playground is a separate HOST, not a flag on the payload — Klarna
-    // says nothing about it here, and the connection's `environment` is what
-    // actually knows.
-    livemode: null,
-    records: [
-      {
-        kind: "payment",
-        row: {
-          id: paymentRowId("klarna", orderId),
-          provider: "klarna",
-          external_id: orderId,
-          customer: null,
-          invoice: null,
-          amount: captured !== null && captured > 0 ? captured : num(body.order_amount),
-          amount_refunded: num(body.refunded_amount) ?? 0,
-          currency,
-          status: klarnaStatusFor(orderStatus, fraudStatus),
-          // Klarna is one payment method as far as the ledger is concerned;
-          // which BNPL plan the consumer picked is not on the order.
-          method: "klarna",
-          failure_reason:
-            fraudStatus === "REJECTED"
-              ? "rejected in Klarna's fraud review"
-              : orderStatus === "EXPIRED"
-                ? "the authorization expired before it was captured"
-                : null,
-          // `merchant_reference1` is what the checkout travelled out with.
-          reference: str(body.merchant_reference1) ?? str(body.merchant_reference2),
-          processed_at: isoToMs(body.completed_at) ?? isoToMs(body.created_at),
-          metadata: {
-            session_id: sessionId,
-            ...(sessionStatus ? { session_status: sessionStatus } : {}),
-            ...(str(body.klarna_reference) ? { klarna_reference: str(body.klarna_reference) } : {}),
-            ...(fraudStatus ? { fraud_status: fraudStatus } : {}),
-            ...(str(billing?.email) ? { email: str(billing?.email) } : {}),
-            ...(str(billing?.country) ? { country: str(billing?.country) } : {}),
-          },
-          source_created_at: isoToMs(body.created_at),
-        },
+    kind: "payment",
+    row: {
+      id: paymentRowId("klarna", orderId),
+      provider: "klarna",
+      external_id: orderId,
+      customer: null,
+      invoice: null,
+      amount: captured !== null && captured > 0 ? captured : num(body.order_amount),
+      amount_refunded: num(body.refunded_amount) ?? 0,
+      currency,
+      status: klarnaStatusFor(orderStatus, fraudStatus),
+      // Klarna is one payment method as far as the ledger is concerned;
+      // which BNPL plan the consumer picked is not on the order.
+      method: "klarna",
+      failure_reason:
+        fraudStatus === "REJECTED"
+          ? "rejected in Klarna's fraud review"
+          : orderStatus === "EXPIRED"
+            ? "the authorization expired before it was captured"
+            : null,
+      // `merchant_reference1` is what the checkout travelled out with.
+      reference: str(body.merchant_reference1) ?? str(body.merchant_reference2),
+      processed_at: isoToMs(body.completed_at) ?? isoToMs(body.created_at),
+      metadata: {
+        // A refresh has no session behind it, so these are omitted rather than
+        // written as empty — the row keeps whatever the settlement recorded.
+        ...(sessionId ? { session_id: sessionId } : {}),
+        ...(sessionStatus ? { session_status: sessionStatus } : {}),
+        ...(str(body.klarna_reference) ? { klarna_reference: str(body.klarna_reference) } : {}),
+        ...(fraudStatus ? { fraud_status: fraudStatus } : {}),
+        ...(str(billing?.email) ? { email: str(billing?.email) } : {}),
+        ...(str(billing?.country) ? { country: str(billing?.country) } : {}),
       },
-    ],
+      source_created_at: isoToMs(body.created_at),
+    },
   };
+};
+
+/**
+ * Read one Klarna order by id. The refresh sync's half of the retrieve.
+ */
+const refetchKlarna = async (input: RefetchInput): Promise<RefetchResult> => {
+  const username = str(input.config.username);
+  const password = str(input.config.password);
+  if (!username || !password) return { ok: false, reason: "missing_secret" };
+  if (!KLARNA_ID_PATTERN.test(input.externalId)) return { ok: false, reason: "rejected" };
+  const doFetch: FetchLike = input.fetchImpl ?? ((i, init) => fetch(i, init));
+  const order = await klarnaGet(
+    doFetch,
+    `${klarnaHost(input.config)}/ordermanagement/v1/orders/${input.externalId}`,
+    klarnaAuthHeader(username, password),
+  );
+  if (!order.ok) {
+    if (order.status === 404) return { ok: false, reason: "not_found" };
+    return { ok: false, reason: order.status >= 400 && order.status < 500 ? "rejected" : "unreachable" };
+  }
+  return { ok: true, records: [klarnaOrderRecord(order.body, input.externalId, "", "")] };
 };
 
 /**
@@ -2844,6 +3059,55 @@ export function normalizePaymentEvent(
   if (provider === "klarna") return normalizeKlarna(body);
   if (provider === "dummy") return normalizeDummy(body);
   return { eventId: headerEventId ?? "", type: "", livemode: null, records: [] };
+}
+
+// ── Refresh: re-read the payments we already know about ─────────────────────
+
+export interface RefetchInput {
+  /** Decrypted provider config. */
+  config: Record<string, unknown>;
+  /** The provider's own id, exactly as stored in `external_id`. */
+  externalId: string;
+  /** The currency the connected account settles in. Only Authorize.net needs
+   *  it, for the same reason the webhook path does — its API states none. */
+  accountCurrency?: string | null;
+  fetchImpl?: FetchLike;
+}
+
+export type RefetchResult =
+  | { ok: true; records: PaymentRecord[] }
+  /**
+   * `not_found` is a VERDICT that must not be confused with `unreachable`.
+   * A payment the provider no longer knows about is not a reason to retry for
+   * ever, and it is not a reason to blank the row either — the caller skips it
+   * and leaves what the settlement recorded standing.
+   */
+  | { ok: false; reason: "unsupported" | "missing_secret" | "unreachable" | "rejected" | "not_found" };
+
+/**
+ * Ask a provider about one payment we already have a row for.
+ *
+ * This is the primitive behind the `refresh` sync mode. It exists because a
+ * settlement-time-only integration is structurally blind to everything that
+ * happens AFTER the money arrives — a refund raised in the provider's own
+ * dashboard notifies nobody, and for a catalog-less provider there is no
+ * listing to reconcile against either.
+ *
+ * Never throws: every outcome is a `reason` the caller can act on, because the
+ * caller is a loop over hundreds of rows and one bad id must not end the run.
+ */
+export async function refetchPayment(
+  provider: string,
+  input: RefetchInput,
+): Promise<RefetchResult> {
+  if (!canRefetchPayment(provider)) return { ok: false, reason: "unsupported" };
+  if (!input.externalId) return { ok: false, reason: "rejected" };
+  if (provider === "klarna") return refetchKlarna(input);
+  if (provider === "authorizenet") return refetchAuthorizeNet(input);
+  // Unreachable while the capability table and this dispatch agree; a provider
+  // marked refetchable with no branch lands here rather than silently
+  // reporting a clean refresh that refreshed nothing.
+  return { ok: false, reason: "unsupported" };
 }
 
 // ── Reconcile: pull objects back from the provider API ──────────────────────

@@ -42,7 +42,10 @@ is possible at all:
 | Catalog | Providers | Behaviour |
 |---|---|---|
 | Yes | Stripe, Polar, Lemon Squeezy, Paddle | Customers, subscriptions, invoices and payments can be paged through, so backlex can backfill history and repair drift |
-| No | **Adyen**, **Authorize.net**, **Klarna**, PayTR, iyzico, `dummy` | Each payment is reported as it happens, and there is no cursor to walk — Klarna's Order Management API is addressed one order id at a time. Reconcile is refused with a reason rather than reporting a sync that synced nothing |
+| No | **Adyen**, **Authorize.net**, **Klarna**, PayTR, iyzico, `dummy` | Each payment is reported as it happens, and there is no cursor to walk — Klarna's Order Management API is addressed one order id at a time |
+
+Having no catalog does **not** mean a provider cannot be synced. See
+[Sync: two shapes](#sync-two-shapes).
 
 Adyen is why these are two tables rather than one. It signs its notifications
 exactly the way Stripe does, but it is an **acquirer** rather than a billing
@@ -51,9 +54,9 @@ subscription / invoice objects simply do not exist on its side. Treating
 "signs its webhooks" as "can be reconciled" would send backlex off to page a
 catalog that isn't there.
 
-`GET /api/admin/payments/catalog` reports `reconcilable` per provider, so the
-admin UI hides **Sync now** rather than offering a button that can only ever
-return an explanation.
+`GET /api/admin/payments/catalog` reports `reconcilable` and `syncMode` per
+provider, so the admin UI hides **Sync now** only when it really would do
+nothing.
 
 ## Why collections, not system tables
 
@@ -202,13 +205,26 @@ A failed signature is a `400` — providers don't retry those. A processing
 failure is a `500`, which is what makes the provider's own retry schedule
 replay the delivery.
 
-## Reconcile
+## Sync: two shapes
 
-Only providers with an **object catalog** can be reconciled — Stripe, Polar,
-Lemon Squeezy and Paddle. Adyen, PayTR, iyzico and `dummy` report each payment
-as it happens and store nothing to page through, so a sync against them returns
-`written: 0` with an explanation. Replay a missed delivery from the provider's
-own webhook log instead; every receive path dedupes, so a replay is safe.
+**Sync now** does one of two different things, and `GET /api/admin/payments/catalog`
+reports which as `syncMode`:
+
+| `syncMode` | Providers | What it walks |
+|---|---|---|
+| `catalog` | Stripe, Polar, Lemon Squeezy, Paddle | The **provider's** listing of customers, subscriptions, invoices and payments |
+| `refresh` | **Authorize.net**, **Klarna** | **Ours** — the ids already in `payment_transactions` |
+| `null` | Adyen, PayTR, iyzico, `dummy` | Nothing. Sync returns an explanation rather than pretending |
+
+The split exists because "has no catalog" and "cannot be synced" turned out to
+be different statements. Klarna and Authorize.net expose no listing to page
+through — but every id they ever gave us is sitting in our own ledger, and that
+is catalog enough to re-read.
+
+For the three with neither, replay a missed delivery from the provider's own
+webhook log instead; every receive path dedupes, so a replay is safe.
+
+### Reconcile — walking the provider's catalog
 
 Webhooks carry the steady state; reconcile catches what they can't:
 
@@ -229,6 +245,71 @@ holding one request open. A scheduled sweep enqueues a `payments.reconcile`
 [job](/docs/jobs/) per connected provider every six hours; job retry and
 dead-lettering apply as usual, so a rate-limited provider backs off instead of
 failing silently.
+
+### Refresh — walking ours
+
+A settlement-time-only integration is structurally blind to everything that
+happens *after* the money arrives. A refund raised in Klarna's Merchant Portal,
+an Authorize.net capture that settles overnight, an ACH debit that comes back
+days later, a fraud review that resolves: none of them produce a delivery, and
+for a catalog-less provider there is no listing to discover them in either.
+
+The refresh sweep closes that. It re-reads the payments **we already recorded**,
+using the same single-payment endpoint the receive path calls
+(`GET /ordermanagement/v1/orders/{id}` for Klarna,
+`getTransactionDetailsRequest` for Authorize.net). It needs nothing from the
+provider that the integration wasn't already using.
+
+```bash
+bun backlex payments sync <provider-id>            # start the sweep over
+bun backlex payments sync <provider-id> --resume   # continue the rotation
+```
+
+What it does and doesn't touch:
+
+- **Window: 90 days.** A refund is possible for as long as the provider allows
+  one, so "refresh everything" has no bound and grows with the workspace. The
+  window keeps a run's cost proportional to recent trading.
+- **50 rows a run, rotating.** Each row is an HTTP round trip. The sweep takes
+  the next 50 ids after a stored cursor and wraps when it runs out, so a busy
+  workspace still covers everything — across several runs rather than one.
+  `--resume` continues the rotation; a manual **Sync now** starts over, so an
+  admin chasing one payment isn't told to wait their turn.
+- **`failed` and `canceled` rows are skipped.** Nothing further happens to them.
+- **A payment the provider has forgotten is left standing.** A `404` counts as
+  `missing` and writes nothing. Overwriting a real payment because a lookup came
+  back empty would be the worst thing this could do.
+- **A dead credential or a network failure stops the run**, rather than failing
+  fifty rows one at a time with the same error.
+
+The response reports `refreshed: { checked, missing }` alongside `written`.
+Read `checked`: a healthy sweep re-reads unchanged payments and legitimately
+writes every one of them back, so `written` on its own reads as though the
+whole ledger moved.
+
+#### Why only these two providers
+
+The ledger upsert **replaces the row**. A refresh therefore has to restate every
+money column it writes, or it blanks whatever it left out — so a provider only
+qualifies once its single-payment read is known to state the whole row. Klarna's
+order gives `order_amount`, `captured_amount`, `refunded_amount`, status, fraud
+status and the merchant reference. Authorize.net's transaction detail is
+similarly complete, and its refunds are separate transactions with their own
+rows, exactly as the webhook path already files them.
+
+**iyzico is deliberately excluded** even though `POST /payment/detail` exists and
+takes the `paymentId` we store. Its refunds live per item transaction in
+`itemTransactions[].refundHistory`, and a mapping written on a guess would zero
+or misstate `amount_refunded` on every single pass. Adyen and PayTR have no
+single-payment read at all — Adyen's history comes out as scheduled report files
+and PayTR's callback is the entire surface.
+
+#### What it still won't catch
+
+A refund older than the window, on a workspace busy enough that the rotation
+hasn't come back round. And nothing at all for the three `null` providers. If
+you need certainty about a specific payment, the provider's own dashboard
+remains the source of truth for post-purchase changes.
 
 ## Watching what arrives
 
@@ -582,9 +663,11 @@ is what the ledger stores.
 
 ### Reconcile does not apply
 
-Adyen exposes no object catalog, so `POST /providers/{id}/sync` returns
-`written: 0` with an explanation rather than pretending to have synced. The
-admin UI hides the button entirely. If a delivery is missed, replay it from
+Adyen exposes no object catalog **and** no way to re-read one payment — its
+history comes out as scheduled report files rather than an API — so it is one of
+the three providers with no `syncMode` at all. `POST /providers/{id}/sync`
+returns `written: 0` with an explanation rather than pretending to have synced,
+and the admin UI hides the button entirely. If a delivery is missed, replay it from
 **Customer Area → Developers → Webhooks → the delivery log**; backlex dedupes on
 `pspReference`, so a replay is safe and idempotent.
 
@@ -701,15 +784,23 @@ reserved-TLD hosts like `https://shop.example/…` are both refused with that
 message while `https://example.com/…` is accepted, so testing a checkout
 locally needs a real public return URL even though nobody is going to visit it.
 
-### Reconcile does not apply
+### Sync re-reads what we recorded
 
 Authorize.net's reporting endpoints are batch-scoped —
 `getTransactionListRequest` wants a settlement batch id — so there is no cursor
-over the account to page through. `POST /providers/{id}/sync` returns
-`written: 0` with an explanation and the admin UI hides the button, rather than
-reporting a clean run that covered one arbitrary batch. A missed delivery can be
-replayed from **Account → Settings → Webhooks → Notifications**; backlex dedupes
-on `notificationId`.
+over the account to page through, and reconcile in the catalog sense is
+impossible.
+
+`Sync now` therefore runs the [refresh sweep](#refresh--walking-ours) instead:
+it re-reads the transactions already in `payment_transactions` with
+`getTransactionDetailsRequest`. That is worth more here than for most providers,
+because `transactionStatus` is a field the **notification never carries** —
+`capturedPendingSettlement` becoming `settledSuccessfully` overnight, a void
+raised in the merchant interface, or a `returnedItem` (an ACH debit bouncing
+days later) are all otherwise invisible.
+
+A missed delivery can still be replayed from **Account → Settings → Webhooks →
+Notifications**; backlex dedupes on `notificationId`.
 
 ## PayTR: callback-style, and the `OK` requirement
 
@@ -777,8 +868,17 @@ Set the callback URL on your `checkoutFormInitialize` request (iyzico takes it
 per-request rather than from a panel setting). It is the same
 `/api/payments/webhook/<token>` path the connect dialog shows.
 
-**Reconcile does not apply.** iyzico exposes no object catalog to page through,
-so `sync` is refused with a reason rather than reporting a clean empty sync.
+**Reconcile does not apply, and neither does the refresh sweep.** iyzico exposes
+no object catalog to page through, so `sync` is refused with a reason rather than
+reporting a clean empty sync.
+
+It is the one provider that *nearly* qualifies for
+[refresh](#refresh--walking-ours): `POST /payment/detail` exists and takes the
+`paymentId` stored in `external_id`. It is excluded because the ledger upsert
+replaces the row, and iyzico reports refunds per item transaction in
+`itemTransactions[].refundHistory` — a mapping written on a guess would zero or
+misstate `amount_refunded` on every pass. Adding it needs that shape verified
+against a real refunded payment first, not inferred.
 
 ## Klarna: buy-now-pay-later, where the checkout *is* the integration
 
@@ -916,10 +1016,10 @@ lands on `payment_transactions.reference`.
 
 **Refunds issued later do not push.** `status_update` fires on the HPP
 *session*, which is finished once the order is placed; a refund raised
-afterwards in the Merchant Portal changes the order and notifies nobody. With no
-object catalog there is no reconcile to catch it either, so treat the Merchant
-Portal as the source of truth for post-purchase changes.
+afterwards in the Merchant Portal changes the order and notifies nobody.
 
-**Reconcile does not apply.** Klarna's Order Management API is addressed one
-`order_id` at a time and there is no endpoint that pages over an account, so
-`sync` is refused with a reason rather than reporting a clean empty sync.
+**Sync catches them anyway.** Klarna's Order Management API is addressed one
+`order_id` at a time, so there is no catalog to reconcile against — but the
+order ids are all in `payment_transactions`, and the refresh sweep re-reads
+them. See [Refresh — walking ours](#refresh--walking-ours) for the window and
+what it still misses.

@@ -10,7 +10,7 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import {
-  PAYMENT_HAS_CATALOG,
+  paymentSyncMode,
   PAYMENT_PROVIDERS,
   PAYMENT_PROVIDER_FIELDS,
   PAYMENT_PROVIDER_LABELS,
@@ -207,11 +207,19 @@ export const paymentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
                     }),
                     reconcilable: z.boolean().openapi({
                       description:
-                        "Whether the provider exposes a listable object catalog to sync " +
-                        "against. False for the acquirers and callback-style PSPs, which " +
-                        "report each payment as it happens and store no objects to walk — " +
-                        "`POST /providers/{id}/sync` returns an explanation rather than " +
-                        "pretending to have synced.",
+                        "Whether `POST /providers/{id}/sync` does anything at all. True " +
+                        "for both sync shapes — see `syncMode`. False only for the " +
+                        "providers that neither expose a catalog nor allow a single " +
+                        "payment to be re-read (Adyen, PayTR, iyzico), where sync returns " +
+                        "an explanation rather than pretending to have synced.",
+                    }),
+                    syncMode: z.enum(["catalog", "refresh"]).nullable().openapi({
+                      description:
+                        "`catalog` walks the PROVIDER's own listing of customers, " +
+                        "subscriptions, invoices and payments. `refresh` walks OURS: the " +
+                        "provider has no listing, so the sweep re-reads the ids already in " +
+                        "`payment_transactions` to pick up refunds, late captures and " +
+                        "cancellations that were never pushed. `null` means no sync.",
                     }),
                     fields: z.array(
                       z.object({
@@ -240,7 +248,8 @@ export const paymentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           provider: p,
           label: PAYMENT_PROVIDER_LABELS[p],
           checkoutMode: PAYMENT_CHECKOUT_MODES[p],
-          reconcilable: PAYMENT_HAS_CATALOG[p],
+          reconcilable: paymentSyncMode(p) !== null,
+          syncMode: paymentSyncMode(p),
           fields: PAYMENT_PROVIDER_FIELDS[p],
         })),
         recordKinds: [...PAYMENT_RECORD_KINDS],
@@ -408,6 +417,18 @@ export const paymentsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
                 failed: z.number().optional(),
                 cursors: z.record(z.string(), z.string().nullable()).optional(),
                 error: z.string().optional(),
+                refreshed: z
+                  .object({ checked: z.number(), missing: z.number() })
+                  .optional()
+                  .openapi({
+                    description:
+                      "Present only when `syncMode` is `refresh`. `checked` is how many " +
+                      "recorded payments were re-read from the provider this run — a " +
+                      "healthy sweep re-reads unchanged payments, so `written` alone " +
+                      "reads as though everything changed. `missing` counts ids the " +
+                      "provider no longer knows about; those rows are left standing " +
+                      "rather than blanked.",
+                  }),
               }),
             },
           },

@@ -52,9 +52,13 @@ type CatalogEntry = {
   label: string;
   /** `adhoc` takes an amount; `catalog` needs a pre-made price and can't yet. */
   checkoutMode: CheckoutMode;
-  /** False for acquirers and callback PSPs — they have no object catalog to
-   *  walk, so offering "Sync now" would only ever produce an explanation. */
+  /** Whether "Sync now" does anything at all. False only for the providers
+   *  that have neither a catalog nor a single-payment read, where the button
+   *  would only ever produce an explanation. */
   reconcilable?: boolean;
+  /** `catalog` walks the provider's listing; `refresh` re-reads the payments
+   *  we already recorded, to catch refunds and late captures nobody pushed. */
+  syncMode?: "catalog" | "refresh" | null;
   fields: Field[];
 };
 type Catalog = { providers: CatalogEntry[]; recordKinds: string[] };
@@ -235,12 +239,24 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
   const sync = async (row: Connection) => {
     setBusy(row.provider);
     try {
-      const res = await api<{ written?: number; failed?: number; error?: string }>(
-        `/api/admin/payments/providers/${row.id}/sync`,
-        { method: "POST", body: JSON.stringify({ resume: false }) },
-      );
+      const res = await api<{
+        written?: number;
+        failed?: number;
+        error?: string;
+        refreshed?: { checked: number; missing: number };
+      }>(`/api/admin/payments/providers/${row.id}/sync`, {
+        method: "POST",
+        body: JSON.stringify({ resume: false }),
+      });
       if (res.error) pushToast(t`Sync stopped: ${res.error}`);
-      else pushToast(t`Synced ${res.written ?? 0} records from ${labelFor(row.provider)}.`);
+      else if (res.refreshed) {
+        // "Synced 50 records" reads as though 50 things changed, when a healthy
+        // refresh re-reads 50 unchanged payments every time. Report what was
+        // CHECKED — that is the number that means something here.
+        pushToast(
+          t`Re-checked ${res.refreshed.checked} recent payments at ${labelFor(row.provider)}.`,
+        );
+      } else pushToast(t`Synced ${res.written ?? 0} records from ${labelFor(row.provider)}.`);
       void reload();
     } catch (e) {
       pushToast((e as Error).message);
@@ -354,6 +370,12 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
                           <Trans>
                             A local stand-in that settles payments without charging anything.
                             Demo and development instances only.
+                          </Trans>
+                        ) : entry.syncMode === "refresh" ? (
+                          <Trans>
+                            Open checkouts through {entry.label} and record each settlement as it
+                            is reported. There are no billing objects to mirror, so Sync now
+                            re-checks recent payments for refunds and late captures instead.
                           </Trans>
                         ) : entry.reconcilable === false ? (
                           <Trans>

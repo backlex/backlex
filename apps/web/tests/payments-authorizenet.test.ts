@@ -916,12 +916,24 @@ describe("Authorize.net — end to end through the receive endpoint", () => {
     expect(row?.reference).toBeNull();
   });
 
-  test("sync explains that there is no catalog instead of reporting a clean run", async () => {
+  test("sync sweeps the payments we recorded, because there is no catalog to walk", async () => {
+    // This used to assert a refusal. Authorize.net still has no listing to page
+    // through — `getTransactionListRequest` wants a settlement batch id — but it
+    // CAN be asked about one transaction, and every id it ever gave us is in
+    // `payment_transactions`. So the sync re-reads ours instead of refusing.
     const res = await h.fetch(`/api/admin/payments/providers/${providerId}/sync`, json({}));
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { written: number; error?: string };
-    expect(body.written).toBe(0);
-    expect(body.error).toContain("no object catalog");
+    const body = (await res.json()) as {
+      written: number;
+      error?: string;
+      refreshed?: { checked: number; missing: number };
+    };
+    expect(body.error).toBeUndefined();
+    // `refreshed` is what tells an admin the run did something: a healthy sweep
+    // re-reads unchanged payments, so `written` alone reads as though the whole
+    // ledger moved.
+    expect(body.refreshed).toBeDefined();
+    expect(body.refreshed!.checked).toBeGreaterThan(0);
   });
 });
 

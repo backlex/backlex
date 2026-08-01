@@ -20,7 +20,7 @@
  * Every surface (REST, SDK, GraphQL, MCP, CLI) calls these functions — the
  * guards live here, not in the transports.
  */
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { applyCollection, type FieldDef } from "@backlex/db";
@@ -34,8 +34,9 @@ import {
   PAYMENT_SECRET_KEYS,
   authorizeNetTransactionId,
   fetchPaymentPage,
-  hasObjectCatalog,
   isCallbackProvider,
+  paymentSyncMode,
+  refetchPayment,
   isRetrieveProvider,
   retrieveAuthorizeNetTransaction,
   retrieveIyzicoPayment,
@@ -64,6 +65,14 @@ import { log } from "../lib/log";
 import { createManagedCollection } from "./collections";
 import { invalidateTenantCollections } from "./collections-cache";
 import { loadCollection } from "./items/collection-loader";
+import {
+  deletedFilter,
+  fromOf,
+  physicalSystemCol,
+  queryAll,
+  tenantFilter,
+  whereOf,
+} from "./items/sql-helpers";
 import { updateItem } from "./items-helpers";
 import { ingestRows } from "./migrate-ingest";
 
@@ -1301,12 +1310,207 @@ export interface ReconcileResult {
   cursors: Record<string, string | null>;
   /** Set when a provider call failed — the run stops at that kind. */
   error?: string;
+  /**
+   * Present only for a `refresh`-mode sync, where `written` alone reads oddly:
+   * a sweep that re-read 50 unchanged payments legitimately writes 50 rows and
+   * changes nothing. `missing` is the number an admin actually wants when the
+   * counts look wrong.
+   */
+  refreshed?: { checked: number; missing: number };
 }
+
+/**
+ * Where the refresh sweep's position lives inside `syncCursor`.
+ *
+ * That column is otherwise keyed by record KIND, and the four kinds are a
+ * closed set, so the underscore prefix keeps the two from colliding.
+ */
+const REFRESH_CURSOR_KEY = "_refresh";
 
 /** Pages per kind in one reconcile call. 20 × 100 objects is enough to walk a
  *  small account in one go without holding a Worker request open too long;
  *  larger accounts resume from the stored cursor on the next run. */
 const DEFAULT_MAX_PAGES = 20;
+
+// ── Refresh: sync a provider that has no catalog, using ours ────────────────
+
+/**
+ * How far back a refresh looks.
+ *
+ * A refund is possible for as long as the provider allows one, which for a BNPL
+ * order is effectively for ever — so "refresh everything" has no bound and
+ * grows with the workspace. 90 days is where the overwhelming majority of
+ * post-purchase movement happens, and it keeps one run's cost proportional to
+ * recent trading rather than to lifetime volume.
+ */
+const REFRESH_WINDOW_DAYS = 90;
+
+/** Rows per run. Each one is an HTTP round trip, so this is the number that
+ *  decides how long a Worker request is held open. */
+const REFRESH_MAX_ROWS = 50;
+
+/** In-flight refetches. Sequential would make 50 rows a ~10s request; the cap
+ *  keeps a burst from looking like an attack to the provider. */
+const REFRESH_CONCURRENCY = 5;
+
+/**
+ * Statuses a refresh skips.
+ *
+ * A payment that failed or was cancelled is over — nothing further happens to
+ * it, and re-reading it every six hours for 90 days is pure API traffic. A
+ * `refunded` row is deliberately NOT here: for Authorize.net a refund is its
+ * own transaction whose settlement status still moves.
+ */
+const REFRESH_DEAD_STATUSES = ["failed", "canceled"] as const;
+
+export interface RefreshResult {
+  /** Rows re-read from the provider. */
+  checked: number;
+  written: number;
+  /** Rows the provider refused to talk about. Not fatal — the run continues. */
+  failed: number;
+  /** Rows the provider no longer knows about. Left standing, never blanked. */
+  missing: number;
+  /** Where the next run picks up; null means the sweep wrapped to the start. */
+  cursor: string | null;
+  error?: string;
+}
+
+/**
+ * Sync a provider that has no catalog to walk, by walking OURS.
+ *
+ * Klarna and Authorize.net both report a payment once, at the moment it
+ * settles, and expose no listing to reconcile against — so everything that
+ * happens afterwards is invisible. A refund raised in the provider's own
+ * dashboard, a capture that settles overnight, an ACH debit that comes back
+ * days later: none of them produce a delivery, and there is no page to walk to
+ * discover them.
+ *
+ * But there is a catalog. It is `payment_transactions`, and it is ours. Every
+ * `external_id` the provider ever gave us is sitting in it, so a sweep that
+ * re-reads those ids closes the gap without needing anything from the provider
+ * beyond the single-payment endpoint the webhook path already calls.
+ *
+ * The sweep ROTATES rather than starting from the top: it takes the next
+ * `REFRESH_MAX_ROWS` ids after the stored cursor and wraps when it runs out, so
+ * a workspace with more recent payments than one run can hold still covers all
+ * of them — just across several runs rather than one.
+ */
+export async function refreshKnownPayments(
+  ctx: Ctx,
+  tenantId: string,
+  provider: string,
+  config: Record<string, unknown>,
+  input: { cursor?: string | null; maxRows?: number; fetchImpl?: FetchLike } = {},
+): Promise<RefreshResult> {
+  const empty: RefreshResult = { checked: 0, written: 0, failed: 0, missing: 0, cursor: null };
+  const slug = PAYMENT_COLLECTION_SLUGS.payment;
+  let collection: Awaited<ReturnType<typeof loadCollection>>;
+  try {
+    collection = await loadCollection(ctx, tenantId, slug);
+  } catch {
+    // Nothing has ever been synced, so there is nothing to refresh. Not an
+    // error — a connection made five minutes ago is in exactly this state.
+    return empty;
+  }
+  if (collection.adopted || !isSyncTarget(collection)) {
+    return {
+      ...empty,
+      error:
+        `Collection "${slug}" isn't a payments sync target, so there are no rows to refresh`,
+    };
+  }
+
+  const limit = Math.min(Math.max(input.maxRows ?? REFRESH_MAX_ROWS, 1), 500);
+  const cutoffMs = Date.now() - REFRESH_WINDOW_DAYS * 86_400_000;
+  const createdCol = physicalSystemCol(collection, "created_at");
+  const pk = collection.pkColumn;
+
+  const filters: (SQL | null)[] = [
+    tenantFilter(collection, { tenantId, roles: [] }),
+    deletedFilter(collection),
+    sql`${sql.identifier("provider")} = ${provider}`,
+    sql`(${sql.identifier("status")} IS NULL OR ${sql.identifier("status")} NOT IN (${sql.join(
+      REFRESH_DEAD_STATUSES.map((s) => sql`${s}`),
+      sql`, `,
+    )}))`,
+    sql`${sql.identifier("external_id")} IS NOT NULL`,
+  ];
+  if (createdCol) {
+    // Our own record time, not the provider's — `source_created_at` is nullable
+    // and a row with none would fall out of every window for ever.
+    filters.push(
+      sql`${sql.identifier(createdCol)} >= ${
+        ctx.dialect === "pg" ? new Date(cutoffMs).toISOString() : cutoffMs
+      }`,
+    );
+  }
+  // Keyset by primary key. The order is arbitrary but STABLE, which is all a
+  // rotating sweep needs — combined with the window filter it visits every
+  // eligible row before repeating any.
+  if (input.cursor) filters.push(sql`${sql.identifier(pk)} > ${input.cursor}`);
+
+  const rows = await queryAll<{ id: string; external_id: string | null }>(
+    ctx,
+    sql`SELECT ${sql.identifier(pk)} AS ${sql.identifier("id")},
+               ${sql.identifier("external_id")} AS ${sql.identifier("external_id")}
+        FROM ${fromOf(collection)}
+        ${whereOf(...filters)}
+        ORDER BY ${sql.identifier(pk)} ASC
+        LIMIT ${sql.raw(String(limit))}`,
+  );
+  if (rows.length === 0) return empty;
+
+  const accountCurrency = typeof config.currency === "string" ? config.currency : null;
+  const records: PaymentRecord[] = [];
+  let failed = 0;
+  let missing = 0;
+  let fatal: string | undefined;
+
+  for (let i = 0; i < rows.length && !fatal; i += REFRESH_CONCURRENCY) {
+    const batch = rows.slice(i, i + REFRESH_CONCURRENCY);
+    const results = await Promise.all(
+      batch.map((r) =>
+        refetchPayment(provider, {
+          config,
+          externalId: String(r.external_id ?? ""),
+          accountCurrency,
+          fetchImpl: input.fetchImpl,
+        }),
+      ),
+    );
+    for (const res of results) {
+      if (res.ok) {
+        records.push(...res.records);
+        continue;
+      }
+      // A bad credential or a dead network fails EVERY row identically, so
+      // grinding through the rest would just multiply one problem by fifty.
+      if (res.reason === "missing_secret" || res.reason === "unreachable" || res.reason === "unsupported") {
+        fatal = `refresh stopped: ${res.reason}`;
+        break;
+      }
+      // The provider has forgotten this payment. Leave the row exactly as the
+      // settlement recorded it — overwriting it with nothing would destroy a
+      // real payment because a lookup came back empty.
+      if (res.reason === "not_found") missing++;
+      else failed++;
+    }
+  }
+
+  let written = 0;
+  if (records.length > 0) {
+    const out = await applyPaymentRecords(ctx, tenantId, records);
+    written = out.written;
+    failed += out.failed;
+  }
+
+  // Fewer rows than asked for means the sweep reached the end of the window;
+  // wrapping to the start is what makes it a rotation rather than a walk that
+  // stops for ever at the last id.
+  const cursor = rows.length < limit ? null : (rows[rows.length - 1]?.id ?? null);
+  return { checked: rows.length, written, failed, missing, cursor, error: fatal };
+}
 
 /**
  * Pull objects back from the provider API and upsert them. This is what closes
@@ -1328,20 +1532,59 @@ export async function reconcileProvider(
   );
   await ensurePaymentCollections(ctx, tenantId);
 
-  // Gated on the CATALOG capability, not on the delivery mode. Those were the
-  // same set until Adyen: it signs its notifications like a webhook provider
-  // but is an acquirer, so there are no customer/subscription/invoice objects
-  // to page through. Asking `isWebhookProvider` here would send it off to walk
-  // a catalog that does not exist.
-  if (!hasObjectCatalog(row.provider)) {
+  // Which SHAPE of sync this provider gets. Three answers, not two:
+  //
+  //   `catalog`  walk the provider's own listing (Stripe and friends).
+  //   `refresh`  walk OURS — re-read the ids already in `payment_transactions`.
+  //              Klarna and Authorize.net report each payment once and expose
+  //              no listing, so everything after settlement is invisible to
+  //              them; our own rows are the only catalog there is.
+  //   `null`     genuinely cannot be synced. Say so.
+  //
+  // Gated on capability, never on the delivery mode. Those were the same set
+  // until Adyen: it signs its notifications like a webhook provider but is an
+  // acquirer with nothing to page through.
+  const mode = paymentSyncMode(row.provider);
+  const cursors0 = (row.syncCursor ?? {}) as Record<string, string | null>;
+
+  if (mode === null) {
     return {
       provider: row.provider,
       written: 0,
       failed: 0,
-      cursors: (row.syncCursor ?? {}) as Record<string, string | null>,
+      cursors: cursors0,
       error:
-        `${row.provider} reports each payment as it happens and exposes no object catalog ` +
-        `to reconcile against.`,
+        `${row.provider} reports each payment as it happens, exposes no object catalog ` +
+        `to reconcile against, and offers no way to re-read a single payment.`,
+    };
+  }
+
+  if (mode === "refresh") {
+    const out = await refreshKnownPayments(ctx, tenantId, row.provider, config, {
+      // `resume` means the same thing it does for a catalog walk: continue the
+      // sweep rather than restarting it. A manual "Sync now" starts over so an
+      // admin chasing one payment is not told to wait for the rotation.
+      cursor: input.resume ? (cursors0[REFRESH_CURSOR_KEY] ?? null) : null,
+      fetchImpl: input.fetchImpl,
+    });
+    const cursors = { ...cursors0, [REFRESH_CURSOR_KEY]: out.cursor };
+    const t0 = providersTable(ctx.dialect);
+    await (ctx.db as AnyDb)
+      .update(t0)
+      .set({
+        syncCursor: cursors,
+        lastSyncAt: new Date(),
+        lastSyncError: out.error ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(t0.id, row.id));
+    return {
+      provider: row.provider,
+      written: out.written,
+      failed: out.failed,
+      cursors,
+      error: out.error,
+      refreshed: { checked: out.checked, missing: out.missing },
     };
   }
 

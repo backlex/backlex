@@ -107,7 +107,9 @@ describe("provider registration", () => {
 
   test("it has no object catalog to reconcile against", () => {
     // Order Management is addressed one order_id at a time — there is no cursor
-    // to walk, so offering a sync would report a clean run that synced nothing.
+    // to walk. That does NOT mean it cannot be synced: the ids are all in our
+    // own ledger, which is what the `refresh` mode sweeps. See
+    // payments-refresh-sync.test.ts.
     expect(PAYMENT_HAS_CATALOG.klarna).toBe(false);
     expect(hasObjectCatalog("klarna")).toBe(false);
   });
@@ -664,11 +666,21 @@ describe("the callback body is discarded except for the session id", () => {
     expect(res.status).toBeGreaterThanOrEqual(500);
   });
 
-  test("reconcile is refused rather than reported as a clean empty sync", async () => {
+  test("sync sweeps the orders we recorded rather than walking a catalog", async () => {
+    // Klarna's Order Management API is addressed one order id at a time, so
+    // there is still nothing to page through — but every id it gave us is in
+    // `payment_transactions`, and that is catalog enough. The sweep re-reads
+    // ours, which is how a refund raised in the Merchant Portal is ever seen.
+    mockKlarna(() => json({ error_code: "NOT_FOUND" }, 404));
     const providers = (await (await h.fetch("/api/admin/payments/providers")).json()) as any;
     const id = providers.data[0].id as string;
     const res = await h.fetch(`/api/admin/payments/providers/${id}/sync`, { method: "POST" });
-    expect(await res.text()).toContain("no object catalog");
+    const body = (await res.json()) as any;
+    expect(body.refreshed).toBeDefined();
+    // The order is gone as far as Klarna is concerned, so the row is left
+    // standing rather than blanked — see the refresh-sync spec for that rule.
+    expect(body.refreshed.missing).toBeGreaterThan(0);
+    expect(body.written).toBe(0);
   });
 
   test("the password never comes back out, but the username does", async () => {

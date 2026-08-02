@@ -262,6 +262,78 @@ export const joinPresence = (
   };
 };
 
+/** The server-side half of {@link publishEvent}: webhooks, integrations, flows,
+ *  event functions and extension hooks. See {@link dispatchEventHandlers}. */
+export interface EventServerCtx {
+  db: PgDb | SqliteDb;
+  dialect: "pg" | "sqlite";
+  email?: EmailAdapter;
+  fullCtx?: Ctx;
+  /** Active workspace for the originating request. Required for downstream
+   *  fan-out (event functions/flows) so triggers from one workspace never fire
+   *  handlers in another. */
+  tenantId?: string | null;
+}
+
+/**
+ * Run every server-side handler for an event, WITHOUT putting it on the
+ * realtime bus.
+ *
+ * {@link publishEvent} does both, and for item events that is right: the bus is
+ * permission-filtered per subscriber (`renderItemEvent`), so a row only reaches
+ * someone allowed to read it.
+ *
+ * A channel that is not item-shaped gets no such filter — `renderFor` forwards
+ * a raw payload verbatim — and `gateForChannel` leaves unrecognised channel
+ * names open to anyone, signed in or not. So an event whose payload carries
+ * data that is nobody's business to subscribe to must reach its handlers
+ * WITHOUT being broadcast. Bookings are the case this exists for: a booking
+ * carries a customer's name, address and phone number, and it needs to trigger
+ * a reminder flow, not to be readable by whoever opens an SSE stream.
+ *
+ * Kept beside `publishEvent` and called BY it, so there is one implementation
+ * of the fan-out rather than two that drift.
+ */
+export const dispatchEventHandlers = (
+  env: Env,
+  channel: string,
+  /**
+   * Wider than {@link ItemEventPayload}, whose `event` is the three verbs a ROW
+   * can undergo. Every consumer below matches on the event as a plain string
+   * (`matchesTrigger`, `matchesPattern`), so a system channel is free to name
+   * what actually happened — `confirmed`, `cancelled`, `no_show`. Narrowing
+   * here would only force those callers to lie about their event.
+   */
+  evt: { event: string; data: Record<string, unknown>; before?: Record<string, unknown> },
+  serverCtx: EventServerCtx,
+): void => {
+  // Every fan-out below is scoped with the ORIGINATING workspace, taken from
+  // the request context — never re-derived from the payload.
+  const tenantId = serverCtx.tenantId ?? null;
+  // Pass the full Ctx when available so dispatch enqueues durable
+  // webhook.deliver jobs (retry + dead-letter); otherwise it sends inline.
+  void dispatchWebhooks(serverCtx.fullCtx ?? serverCtx, tenantId, channel, evt);
+  void dispatchIntegrations(env, serverCtx, tenantId, channel, evt);
+  if (serverCtx.fullCtx) {
+    void runFlows(serverCtx.fullCtx, tenantId, channel, evt);
+    void runEventFunctions(
+      serverCtx.fullCtx,
+      tenantId,
+      channel,
+      evt,
+      // Functions triggered by events run with the system principal — admin
+      // can toggle the function active flag for trust gating.
+      { userId: null, email: null, roles: [], tenantId },
+    );
+    void runExtensionEventHooks(serverCtx.fullCtx, tenantId, channel, evt, {
+      userId: null,
+      email: null,
+      roles: [],
+      tenantId,
+    });
+  }
+};
+
 export const publishEvent = async (
   env: Env,
   channel: string,
@@ -302,6 +374,10 @@ export const publishEvent = async (
     publishLocal(channel, payload);
   }
   // Webhook + flow dispatch (fire-and-forget) for ItemEvent-shaped payloads.
+  // Item events do not carry `tenant_id` (the serializer only emits declared
+  // fields), so the scope comes from the request context — a payload-derived
+  // one silently falls open and delivers one workspace's rows to every other
+  // workspace's webhooks/flows.
   if (
     serverCtx &&
     typeof payload === "object" &&
@@ -309,35 +385,6 @@ export const publishEvent = async (
     "event" in payload &&
     "data" in payload
   ) {
-    const evt = payload as ItemEventPayload;
-    // Every fan-out below is scoped with the ORIGINATING workspace, taken from
-    // the request context — never re-derived from the payload. Item events do
-    // not carry `tenant_id` (the serializer only emits declared fields), so a
-    // payload-derived scope silently falls open and delivers one workspace's
-    // rows to every other workspace's webhooks/flows.
-    const tenantId = serverCtx.tenantId ?? null;
-    // Pass the full Ctx when available so dispatch enqueues durable
-    // webhook.deliver jobs (retry + dead-letter); otherwise it sends inline.
-    void dispatchWebhooks(serverCtx.fullCtx ?? serverCtx, tenantId, channel, evt);
-    void dispatchIntegrations(env, serverCtx, tenantId, channel, evt);
-    if (serverCtx.fullCtx) {
-      void runFlows(serverCtx.fullCtx, tenantId, channel, evt);
-      void runEventFunctions(
-        serverCtx.fullCtx,
-        serverCtx.tenantId ?? null,
-        channel,
-        evt,
-        // Functions triggered by events run with the system principal — admin
-        // can toggle the function active flag for trust gating.
-        { userId: null, email: null, roles: [], tenantId: serverCtx.tenantId ?? null },
-      );
-      void runExtensionEventHooks(
-        serverCtx.fullCtx,
-        serverCtx.tenantId ?? null,
-        channel,
-        evt,
-        { userId: null, email: null, roles: [], tenantId: serverCtx.tenantId ?? null },
-      );
-    }
+    dispatchEventHandlers(env, channel, payload as ItemEventPayload, serverCtx);
   }
 };

@@ -738,6 +738,25 @@ function DocumentsSkeletonImpl() {
   );
 }
 
+/** Booking — header with one action, then the resource list beside the
+ *  selected resource's summary card and its bookings. Mirrors the real
+ *  two-pane layout so the placeholder does not jump when it resolves; the
+ *  sidebar collapses under the content below `lg`, exactly as the page does. */
+function BookingSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-4.5">
+      <HeaderSkeleton actions={1} />
+      <div className="grid grid-cols-[320px_1fr] items-start gap-4 max-[1024px]:grid-cols-1">
+        <ListCardSkeleton rows={4} />
+        <div className="flex flex-col gap-4">
+          <CardSkeleton lines={2} />
+          <ListCardSkeleton rows={5} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Signatures — header with a filter + a send button, then one collapsed row
  *  per request in a single card. */
 function SignaturesSkeletonImpl() {
@@ -1073,6 +1092,7 @@ export const TranslationsSkeleton = withSkeletonDelay(TranslationsSkeletonImpl);
 export const EmailTemplatesSkeleton = withSkeletonDelay(EmailTemplatesSkeletonImpl);
 export const DocumentsSkeleton = withSkeletonDelay(DocumentsSkeletonImpl);
 export const SignaturesSkeleton = withSkeletonDelay(SignaturesSkeletonImpl);
+export const BookingSkeleton = withSkeletonDelay(BookingSkeletonImpl);
 export const AuthSettingsSkeleton = withSkeletonDelay(AuthSettingsSkeletonImpl);
 export const UsersSkeleton = withSkeletonDelay(UsersSkeletonImpl);
 export const AppUsersSkeleton = withSkeletonDelay(AppUsersSkeletonImpl);

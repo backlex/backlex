@@ -25,6 +25,7 @@ import { runIntegrations } from "../src/integrations";
 import { runSyncHooks } from "../src/sync-hooks";
 import { runDocuments } from "../src/documents";
 import { runSignatures } from "../src/signatures";
+import { runBooking } from "../src/booking";
 import { runJobs } from "../src/jobs";
 import { runMessaging } from "../src/messaging";
 import { runAdvisor } from "../src/advisor";
@@ -141,6 +142,10 @@ Usage:
   backlex signatures <list|get|send|void|resend|finalize|download>
       Send one of those documents out to be signed. \`send\` prints the
       signing links once; \`void\` and \`resend\` both invalidate the old one.
+
+  backlex booking <resources|create|url|slots|list|book|cancel|move|no-show>
+      Publish a calendar and take what is on it. \`create\` and \`url\` print the
+      public page link once; \`slots\` shows the times still open.
 
   backlex integrations <catalog|list|connect|deliveries|resume|disconnect>
       Slack / Jira / Algolia / … — connect providers, read the delivery log, and
@@ -324,6 +329,10 @@ const run = async () => {
     case "signatures":
     case "signature":
       await runSignatures(rest);
+      return;
+    case "booking":
+    case "bookings":
+      await runBooking(rest);
       return;
     case "payments":
     case "payment":

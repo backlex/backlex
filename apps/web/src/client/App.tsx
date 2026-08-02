@@ -11,6 +11,7 @@ import { MagicLink } from "@/pages/magic-link";
 import { SharedRecord } from "@/pages/shared-record";
 import { EmbedDashboard } from "@/pages/embed-dashboard";
 import { PublicForm } from "@/pages/public-form";
+import { Book, ManageBooking } from "@/pages/book";
 import { SignDocument } from "@/pages/sign-document";
 import { SignIn } from "@/pages/sign-in";
 import { SignUp } from "@/pages/sign-up";
@@ -52,6 +53,18 @@ export const App = () => {
         {/* Public signing page — outside AuthGate; the signer has no account
             and the link token is the whole grant. */}
         <Route path="/sign/:token" element={<SignDocument />} />
+        {/* Public booking — outside AuthGate for the same reason: the page
+            token is the grant to see a calendar, and the manage token the
+            grant to change one appointment.
+
+            The manage page lives at `/b/`, NOT at `/booking/`, even though
+            `booking` is the admin nav id it would otherwise pair with. The
+            admin router reads `segs[1]` as a sub-route (as `collections` and
+            `flows` already do), so a future `/booking/<id>` detail view would
+            be swallowed by this route instead. A short prefix is also kinder
+            in an email. */}
+        <Route path="/book/:token" element={<Book />} />
+        <Route path="/b/:token" element={<ManageBooking />} />
         <Route
           path="/*"
           element={

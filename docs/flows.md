@@ -37,6 +37,27 @@ A flow row is `{ id, name, trigger, operations, layout, active }`:
 The matched row that changed (for event triggers) or the run payload (for
 manual / webhook) lands in `data`, available to every op via templating.
 
+### The `booking` channel
+
+[Bookings](/booking/) fire on `booking` — `event:booking:created`,
+`booking:confirmed`, `booking:cancelled`, `booking:rescheduled`,
+`booking:no_show` — with the booking, plus `resourceKey` and `resourceName`, as
+`data`. That is how a reminder, a calendar write-back or a deposit gets attached
+to somebody picking a time.
+
+Unlike an item event, this one is **not** on the realtime bus: it reaches flows,
+webhooks, event functions and extension hooks, and nothing can subscribe to it.
+A booking carries a customer's name, address and telephone number, and the
+realtime plane's per-subscriber permission filter only applies to row-shaped
+payloads. Use the [mirror collection](/booking/) if you want bookings on a
+realtime channel — a mirrored row is a row, and gets the filter.
+
+The channel is singular for a reason worth knowing before you name your own:
+item events publish on `items:<slug>`, and three of the schema templates own a
+collection called `bookings`. Had the system channel been `bookings` too, a
+pattern like `event:bookings:created` would have matched both the template's
+rows and the system's own events, and fired the flow twice.
+
 ## Templating
 
 Any string field in an op is interpolated with `{{ … }}` placeholders resolved

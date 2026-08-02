@@ -237,7 +237,7 @@ let cached: { fingerprint: string; material: Promise<KeyMaterial> } | null = nul
  * deploy time instead.
  */
 export const jwtKeyMaterial = (env: JwtKeyEnv): Promise<KeyMaterial> => {
-  const fingerprint = `${env.AUTH_JWT_PRIVATE_KEY ?? ""} ${env.AUTH_JWT_PUBLIC_KEYS ?? ""}`;
+  const fingerprint = `${env.AUTH_JWT_PRIVATE_KEY ?? ""}\0${env.AUTH_JWT_PUBLIC_KEYS ?? ""}`;
   if (cached && cached.fingerprint === fingerprint) return cached.material;
   const material = load(env).catch((e) => {
     if (cached?.fingerprint === fingerprint) cached = null;

@@ -134,6 +134,7 @@ export const NAV_PRIMARY: NavItem[] = [
 export const NAV_DATA: NavItem[] = [
   { id: "collections", icon: "Database" },
   { id: "forms", icon: "Form" },
+  { id: "booking", icon: "CalendarDays" },
   { id: "access", icon: "Shield" },
   { id: "database", icon: "Server" },
   { id: "storage", icon: "Folder" },

@@ -535,7 +535,7 @@ export const createSignatureRequest = async (
   // The hash covers everything the reader sees, not just the body — a value in
   // a running header is document content too.
   const documentHash = await sha256Hex(
-    `${snapshot} ${frozenOptions.headerHtml ?? ""} ${frozenOptions.footerHtml ?? ""}`,
+    `${snapshot}\0${frozenOptions.headerHtml ?? ""}\0${frozenOptions.footerHtml ?? ""}`,
   );
   const outName = safeFilename(renderTemplate(filename ?? title ?? "document.pdf", vars));
 

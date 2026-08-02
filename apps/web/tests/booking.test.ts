@@ -1,0 +1,725 @@
+/**
+ * Availability and booking, end to end through the HTTP surface.
+ *
+ * The slot arithmetic is proved separately and without a database in
+ * `booking-slots.test.ts`. What is pinned here is everything that only exists
+ * once there IS a database and a clock, in rough order of how much it costs to
+ * get wrong:
+ *
+ * - two people taking one slot produce ONE booking and one refusal — the guard
+ *   is insert-then-verify, so this is the property the whole design turns on;
+ * - the public path may only take what the grid published, while an operator
+ *   taking a call may not be restricted to it;
+ * - a hold occupies the slot and then stops occupying it because the clock
+ *   passed, without anything having run;
+ * - the manage token is the whole grant, so it has to be the only way in and a
+ *   reschedule has to spend the old one.
+ */
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
+import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import {
+  createBooking,
+  effectiveBookingStatus,
+  listSlots,
+  loadResource,
+  stillOccupies,
+  type BookingRow,
+} from "../src/server/services/booking";
+
+const BASE = "/api/admin/booking";
+const PUBLIC = "/api/public/book";
+
+let h: TestHarness;
+let client: Database;
+let emails: string[];
+let restoreLog: typeof console.log;
+
+const json = (method: string, body?: unknown): RequestInit => ({
+  method,
+  ...(body === undefined
+    ? {}
+    : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+});
+
+const ok = async (method: string, path: string, body?: unknown) => {
+  const res = await h.fetch(path, json(method, body));
+  if (!res.ok) throw new Error(`${method} ${path} → ${res.status} ${await res.text()}`);
+  return (await res.json()) as any;
+};
+
+/** 2026-08-03 is a Monday; the resource opens 09:00–12:00 UTC on Mondays. */
+const MONDAY_0900 = "2026-08-03T09:00:00.000Z";
+const SUNDAY = "2026-08-02T00:00:00.000Z";
+
+const makeResource = async (over: Record<string, unknown> = {}) => {
+  const body = {
+    key: "clinic",
+    name: "Dr Yilmaz",
+    timeZone: "UTC",
+    slotMinutes: 30,
+    horizonDays: 365,
+    rules: [{ kind: "open", weekday: 1, startMinute: 540, endMinute: 720 }],
+    ...over,
+  };
+  const out = await ok("POST", `${BASE}/resources`, body);
+  return out.data as { resource: any; token: string; url: string };
+};
+
+const ctxOf = async () => {
+  const { buildContext } = await import("../src/server/context");
+  return (await buildContext(h.env)) as any;
+};
+
+/**
+ * The workspace the harness signed the admin into.
+ *
+ * The tests that go straight at the service — the concurrency ones, which the
+ * HTTP layer would serialise and so prove nothing about — have to scope
+ * themselves the same way the route does, and the route takes it off the
+ * session rather than assuming the null workspace.
+ */
+const tenantId = (): string | null => {
+  const row = client.query("SELECT tenant_id FROM booking_resources LIMIT 1").get() as any;
+  return row?.tenant_id ?? null;
+};
+
+/** The stored resource row, scoped like the route scopes it. */
+const resourceRow = async (key: string) => {
+  const ctx = await ctxOf();
+  const row = await loadResource(ctx, tenantId(), key);
+  if (!row) throw new Error(`resource ${key} not found`);
+  return { ctx, resource: row };
+};
+
+beforeEach(async () => {
+  h = makeHarness();
+  await seedAdmin(h);
+  client = new Database(h.env.SQLITE_PATH as string);
+  emails = [];
+  restoreLog = console.log;
+  console.log = (...args: unknown[]) => {
+    const line = args.map(String).join(" ");
+    if (line.startsWith("[email]")) emails.push(line);
+  };
+});
+
+afterEach(() => {
+  console.log = restoreLog;
+  client.close();
+  h.cleanup();
+});
+
+describe("resources", () => {
+  test("creating one returns the page token exactly once", async () => {
+    const created = await makeResource();
+    expect(created.token).toMatch(/^bkg_[0-9a-f]{48}$/);
+    expect(created.url).toContain(`/book/${created.token}`);
+
+    // Nothing reproduces it afterwards — only the hash is stored.
+    const fetched = await ok("GET", `${BASE}/resources/clinic`);
+    expect(JSON.stringify(fetched)).not.toContain(created.token);
+  });
+
+  test("the key has to be unique in a workspace", async () => {
+    await makeResource();
+    const res = await h.fetch(`${BASE}/resources`, json("POST", { key: "clinic", name: "Another" }));
+    expect(res.status).toBe(409);
+  });
+
+  test("a rule crossing midnight is refused with the shape that replaces it", async () => {
+    const res = await h.fetch(
+      `${BASE}/resources`,
+      json("POST", {
+        key: "bar",
+        name: "Late bar",
+        rules: [{ kind: "open", weekday: 5, startMinute: 1320, endMinute: 1560 }],
+      }),
+    );
+    expect(res.status).toBe(422);
+    expect(await res.text()).toContain("two rules");
+  });
+
+  test("a rule with no weekday and no dates is refused", async () => {
+    // It would apply to every day forever, which as a block reads like the
+    // booking system is broken rather than like a configuration choice.
+    const res = await h.fetch(
+      `${BASE}/resources`,
+      json("POST", {
+        key: "x",
+        name: "X",
+        rules: [{ kind: "block", startMinute: 0, endMinute: 1440 }],
+      }),
+    );
+    expect(res.status).toBe(422);
+  });
+
+  test("an unknown time zone is refused rather than silently treated as UTC", async () => {
+    const res = await h.fetch(
+      `${BASE}/resources`,
+      json("POST", { key: "y", name: "Y", timeZone: "Mars/Olympus" }),
+    );
+    expect(res.status).toBe(422);
+  });
+
+  test("patching rules replaces the whole set", async () => {
+    await makeResource();
+    const out = await ok("PATCH", `${BASE}/resources/clinic`, {
+      rules: [{ kind: "open", weekday: 2, startMinute: 600, endMinute: 660 }],
+    });
+    expect(out.data.rules).toHaveLength(1);
+    expect(out.data.rules[0].weekday).toBe(2);
+  });
+
+  test("rotating the token invalidates the old page link", async () => {
+    const created = await makeResource();
+    const rotated = await ok("POST", `${BASE}/resources/clinic/rotate-token`);
+    expect(rotated.data.token).not.toBe(created.token);
+
+    const oldLink = await h.fetch(`${PUBLIC}/${created.token}/slots`);
+    expect(oldLink.status).toBe(404);
+    const newLink = await h.fetch(`${PUBLIC}/${rotated.data.token}/slots`);
+    expect(newLink.status).toBe(200);
+  });
+
+  test("deleting refuses while upcoming bookings reference it", async () => {
+    const created = await makeResource();
+    await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: MONDAY_0900,
+      name: "Ada",
+      email: "ada@example.com",
+    });
+    const refused = await h.fetch(`${BASE}/resources/clinic`, json("DELETE"));
+    expect(refused.status).toBe(409);
+    const forced = await h.fetch(`${BASE}/resources/clinic?force=true`, json("DELETE"));
+    expect(forced.status).toBe(200);
+  });
+});
+
+describe("the public grid", () => {
+  test("a paused resource and an unknown token refuse identically", async () => {
+    const created = await makeResource();
+    await ok("PATCH", `${BASE}/resources/clinic`, { active: false });
+
+    const paused = await h.fetch(`${PUBLIC}/${created.token}/slots`);
+    const unknown = await h.fetch(`${PUBLIC}/bkg_${"0".repeat(48)}/slots`);
+    expect(paused.status).toBe(404);
+    expect(unknown.status).toBe(404);
+    // Same code and same sentence, so the endpoint is not an oracle for which
+    // tokens ever existed. (`requestId` differs per request by design.)
+    expect((await paused.json()).error).toEqual((await unknown.json()).error);
+  });
+
+  test("slots come back for the published hours only", async () => {
+    const created = await makeResource();
+    const out = await ok(
+      "GET",
+      `${PUBLIC}/${created.token}/slots?from=${SUNDAY}&to=2026-08-04T00:00:00.000Z`,
+    );
+    expect(out.data.slots).toHaveLength(6); // 09:00–12:00 in half hours
+    expect(out.data.slots[0].start).toBe(MONDAY_0900);
+    expect(out.data.resource.name).toBe("Dr Yilmaz");
+    // The booker's view of a resource carries no notify list and no mirror.
+    expect(JSON.stringify(out.data.resource)).not.toContain("mirror");
+  });
+
+  test("a booked slot leaves the grid", async () => {
+    const created = await makeResource();
+    await ok("POST", `${PUBLIC}/${created.token}`, { start: MONDAY_0900, email: "a@example.com" });
+    const out = await ok(
+      "GET",
+      `${PUBLIC}/${created.token}/slots?from=${SUNDAY}&to=2026-08-04T00:00:00.000Z`,
+    );
+    expect(out.data.slots.map((s: any) => s.start)).not.toContain(MONDAY_0900);
+    expect(out.data.slots).toHaveLength(5);
+  });
+
+  test("capacity counts down instead of closing the slot", async () => {
+    const created = await makeResource({ key: "class", capacity: 3 });
+    await ok("POST", `${PUBLIC}/${created.token}`, { start: MONDAY_0900, email: "a@example.com" });
+    const out = await ok("GET", `${PUBLIC}/${created.token}/slots?from=${SUNDAY}`);
+    expect(out.data.slots[0].remaining).toBe(2);
+  });
+});
+
+describe("taking a slot", () => {
+  test("the booker gets a manage link and a confirmation", async () => {
+    const created = await makeResource();
+    const out = await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: MONDAY_0900,
+      name: "Ada",
+      email: "ada@example.com",
+    });
+    expect(out.data.booking.status).toBe("confirmed");
+    expect(out.data.manageUrl).toMatch(/\/b\/bkm_[0-9a-f]{48}$/);
+    expect(out.data.emailed).toBe(true);
+    expect(emails.join("\n")).toContain("ada@example.com");
+  });
+
+  test("the public path refuses a time that is not on the grid", async () => {
+    const created = await makeResource();
+    const offGrid = await h.fetch(
+      `${PUBLIC}/${created.token}`,
+      json("POST", { start: "2026-08-03T09:07:00.000Z", email: "a@example.com" }),
+    );
+    expect(offGrid.status).toBe(422);
+
+    const closed = await h.fetch(
+      `${PUBLIC}/${created.token}`,
+      json("POST", { start: "2026-08-03T15:00:00.000Z", email: "a@example.com" }),
+    );
+    expect(closed.status).toBe(422);
+  });
+
+  test("an operator is NOT restricted to the grid", async () => {
+    // The phone call is exactly the case the published grid cannot describe.
+    await makeResource();
+    const out = await ok("POST", `${BASE}/bookings`, {
+      resource: "clinic",
+      start: "2026-08-03T15:07:00.000Z",
+      end: "2026-08-03T15:37:00.000Z",
+      name: "Walk-in",
+    });
+    expect(out.data.booking.status).toBe("confirmed");
+    expect(out.data.booking.source).toBe("admin");
+  });
+
+  test("a required question has to be answered, and unknown answers are dropped", async () => {
+    const created = await makeResource({
+      key: "q",
+      questions: [
+        { name: "reason", label: "Reason for visit", required: true },
+        { name: "insurer", label: "Insurer", type: "select", options: ["A", "B"] },
+      ],
+    });
+
+    const missing = await h.fetch(
+      `${PUBLIC}/${created.token}`,
+      json("POST", { start: MONDAY_0900, email: "a@example.com" }),
+    );
+    expect(missing.status).toBe(422);
+
+    const badOption = await h.fetch(
+      `${PUBLIC}/${created.token}`,
+      json("POST", {
+        start: MONDAY_0900,
+        email: "a@example.com",
+        answers: { reason: "checkup", insurer: "Z" },
+      }),
+    );
+    expect(badOption.status).toBe(422);
+
+    const out = await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: MONDAY_0900,
+      email: "a@example.com",
+      answers: { reason: "checkup", smuggled: "value" },
+    });
+    // A public form must not be able to grow the stored shape on its own.
+    expect(out.data.booking.answers).toEqual({ reason: "checkup" });
+  });
+});
+
+describe("the overlap guard", () => {
+  test("two racers for one slot produce one booking and one refusal", async () => {
+    await makeResource();
+    const { ctx, resource } = await resourceRow("clinic");
+    const tid = tenantId();
+    const start = Date.parse(MONDAY_0900);
+    const now = Date.parse("2026-08-01T00:00:00.000Z");
+
+    // Straight at the service, both in flight at once — the HTTP layer would
+    // serialise them and prove nothing.
+    const results = await Promise.allSettled([
+      createBooking(ctx, tid, resource, { start, email: "a@example.com" }, { source: "public" }, now),
+      createBooking(ctx, tid, resource, { start, email: "b@example.com" }, { source: "public" }, now),
+    ]);
+
+    const won = results.filter((r) => r.status === "fulfilled");
+    const lost = results.filter((r) => r.status === "rejected");
+    expect(won).toHaveLength(1);
+    expect(lost).toHaveLength(1);
+    expect((lost[0] as PromiseRejectedResult).reason.code).toBe("CONFLICT");
+
+    // And the loser withdrew its own row rather than leaving it behind.
+    const list = await ok("GET", `${BASE}/bookings`);
+    expect(list.total).toBe(1);
+  });
+
+  test("a capacity-3 resource takes three racers and refuses the fourth", async () => {
+    await makeResource({ key: "class", capacity: 3 });
+    const { ctx, resource } = await resourceRow("class");
+    const tid = tenantId();
+    const start = Date.parse(MONDAY_0900);
+    const now = Date.parse("2026-08-01T00:00:00.000Z");
+
+    const results = await Promise.allSettled(
+      ["a", "b", "c", "d"].map((who) =>
+        createBooking(
+          ctx,
+          tid,
+          resource,
+          { start, email: `${who}@example.com` },
+          { source: "public" },
+          now,
+        ),
+      ),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(3);
+    expect(results.filter((r) => r.status === "rejected")).toHaveLength(1);
+  });
+
+  test("buffers keep an adjacent slot from being taken", async () => {
+    const created = await makeResource({
+      key: "buffered",
+      bufferBeforeMinutes: 15,
+      bufferAfterMinutes: 15,
+    });
+    await ok("POST", `${PUBLIC}/${created.token}`, { start: MONDAY_0900, email: "a@example.com" });
+
+    // 09:30 is on the grid but inside the buffers around 09:00–09:30.
+    const adjacent = await h.fetch(
+      `${PUBLIC}/${created.token}`,
+      json("POST", { start: "2026-08-03T09:30:00.000Z", email: "b@example.com" }),
+    );
+    expect(adjacent.status).toBe(409);
+
+    const out = await ok("GET", `${PUBLIC}/${created.token}/slots?from=${SUNDAY}`);
+    expect(out.data.slots.map((s: any) => s.start)).not.toContain("2026-08-03T09:30:00.000Z");
+  });
+});
+
+describe("holds", () => {
+  test("a hold occupies the slot and then lapses by the clock alone", async () => {
+    await makeResource({ key: "held", holdMinutes: 10 });
+    const { ctx, resource } = await resourceRow("held");
+    const start = Date.parse(MONDAY_0900);
+    const now = Date.parse("2026-08-01T00:00:00.000Z");
+
+    const held = await createBooking(
+      ctx,
+      tenantId(),
+      resource,
+      { start, email: "a@example.com", hold: true },
+      { source: "public" },
+      now,
+    );
+    expect(held.booking.status).toBe("held");
+    // No confirmation mail goes out for something that is not yet a booking.
+    expect(held.emailed).toBe(false);
+
+    // While the hold lives, the slot is gone.
+    const during = await listSlots(ctx, resource, { from: Date.parse(SUNDAY) }, now + 60_000);
+    expect(during.slots.map((s) => s.start)).not.toContain(MONDAY_0900);
+
+    // Eleven minutes later nothing has run, and the slot is back.
+    const after = await listSlots(ctx, resource, { from: Date.parse(SUNDAY) }, now + 11 * 60_000);
+    expect(after.slots.map((s) => s.start)).toContain(MONDAY_0900);
+  });
+
+  test("a lapsed hold gives its seat back to the next writer", async () => {
+    // The seat index reads a COLUMN, and a lapsed hold's column still says
+    // `held`. Somebody has to say so out loud, and it is the writer who wants
+    // the seat — not a cron. This is the test that pins that.
+    await makeResource({ key: "held", holdMinutes: 10 });
+    const { ctx, resource } = await resourceRow("held");
+    const tid = tenantId();
+    const start = Date.parse(MONDAY_0900);
+    const now = Date.parse("2026-08-01T00:00:00.000Z");
+
+    const held = await createBooking(
+      ctx,
+      tid,
+      resource,
+      { start, email: "a@example.com", hold: true },
+      { source: "public" },
+      now,
+    );
+
+    // While it lives, the seat is unavailable.
+    await expect(
+      createBooking(ctx, tid, resource, { start, email: "b@example.com" }, { source: "public" }, now + 60_000),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+
+    // Once it lapses the seat is free, and the lapsed row has been told so.
+    const later = await createBooking(
+      ctx,
+      tid,
+      resource,
+      { start, email: "b@example.com" },
+      { source: "public" },
+      now + 11 * 60_000,
+    );
+    expect(later.booking.status).toBe("confirmed");
+
+    const lapsed = await ok("GET", `${BASE}/bookings/${held.booking.id}`);
+    expect(lapsed.data.storedStatus).toBe("expired");
+  });
+
+  test("confirming a lapsed hold is refused", async () => {
+    await makeResource({ key: "held", holdMinutes: 1 });
+    const { ctx, resource } = await resourceRow("held");
+    const tid = tenantId();
+    const now = Date.parse("2026-08-01T00:00:00.000Z");
+    const held = await createBooking(
+      ctx,
+      tid,
+      resource,
+      { start: Date.parse(MONDAY_0900), email: "a@example.com", hold: true },
+      { source: "public" },
+      now,
+    );
+
+    const { confirmBooking } = await import("../src/server/services/booking");
+    await expect(
+      confirmBooking(ctx, tid, held.booking.id, now + 2 * 60_000),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  test("stillOccupies is the single place the question is answered", () => {
+    const row = { status: "held", holdExpiresAt: 1000 } as Pick<BookingRow, "status" | "holdExpiresAt">;
+    expect(stillOccupies(row, 999)).toBe(true);
+    expect(stillOccupies(row, 1001)).toBe(false);
+    expect(stillOccupies({ status: "confirmed", holdExpiresAt: null }, 1e12)).toBe(true);
+    expect(stillOccupies({ status: "cancelled", holdExpiresAt: null }, 0)).toBe(false);
+  });
+});
+
+describe("derived status", () => {
+  test("completed and expired are never written", () => {
+    const base = { startAt: 0, endAt: 1000, holdExpiresAt: null } as BookingRow;
+    expect(effectiveBookingStatus({ ...base, status: "confirmed" }, 500)).toBe("confirmed");
+    expect(effectiveBookingStatus({ ...base, status: "confirmed" }, 2000)).toBe("completed");
+    expect(
+      effectiveBookingStatus({ ...base, status: "held", holdExpiresAt: 900 }, 2000),
+    ).toBe("expired");
+    // A cancellation is a decision somebody made; the clock cannot undo it.
+    expect(effectiveBookingStatus({ ...base, status: "cancelled" }, 2000)).toBe("cancelled");
+  });
+
+  test("filtering by a derived status matches rows nothing has swept", async () => {
+    await makeResource();
+    await ok("POST", `${BASE}/bookings`, {
+      resource: "clinic",
+      start: "2020-01-06T09:00:00.000Z",
+      end: "2020-01-06T09:30:00.000Z",
+      name: "Long ago",
+    });
+    const done = await ok("GET", `${BASE}/bookings?status=completed`);
+    expect(done.total).toBe(1);
+    const upcoming = await ok("GET", `${BASE}/bookings?status=confirmed`);
+    expect(upcoming.total).toBe(0);
+  });
+});
+
+describe("the manage link", () => {
+  const book = async () => {
+    const created = await makeResource();
+    const out = await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: MONDAY_0900,
+      name: "Ada",
+      email: "ada@example.com",
+    });
+    const token = String(out.data.manageUrl).split("/").pop()!;
+    return { created, token };
+  };
+
+  test("it resolves to the booker's view and nothing more", async () => {
+    const { token } = await book();
+    const out = await ok("GET", `${PUBLIC}/manage/${token}`);
+    expect(out.data.customerName).toBe("Ada");
+    expect(out.data.canCancel).toBe(true);
+    // The operator's notes, the mirror target and the source are not the
+    // customer's business.
+    expect(out.data).not.toHaveProperty("notes");
+    expect(out.data).not.toHaveProperty("mirrorCollection");
+    expect(out.data).not.toHaveProperty("source");
+  });
+
+  test("cancelling is idempotent", async () => {
+    const { token } = await book();
+    const first = await ok("POST", `${PUBLIC}/manage/${token}/cancel`, { reason: "Ill" });
+    expect(first.data.status).toBe("cancelled");
+    // A second click on the link in the confirmation mail is not an error.
+    const second = await ok("POST", `${PUBLIC}/manage/${token}/cancel`);
+    expect(second.data.status).toBe("cancelled");
+    expect(second.data.cancelReason).toBe("Ill");
+  });
+
+  test("a cancelled slot returns to the grid", async () => {
+    const { created, token } = await book();
+    await ok("POST", `${PUBLIC}/manage/${token}/cancel`);
+    const out = await ok("GET", `${PUBLIC}/${created.token}/slots?from=${SUNDAY}`);
+    expect(out.data.slots.map((s: any) => s.start)).toContain(MONDAY_0900);
+  });
+
+  test("rescheduling spends the old link and keeps the trail", async () => {
+    const { token } = await book();
+    const moved = await ok("POST", `${PUBLIC}/manage/${token}/reschedule`, {
+      start: "2026-08-03T10:00:00.000Z",
+    });
+    expect(moved.data.booking.start).toBe("2026-08-03T10:00:00.000Z");
+
+    // The old link is spent — it now resolves to the cancelled original.
+    const old = await ok("GET", `${PUBLIC}/manage/${token}`);
+    expect(old.data.status).toBe("cancelled");
+    expect(old.data.canCancel).toBe(false);
+
+    // And the trail from old to new survives on the admin side.
+    const list = await ok("GET", `${BASE}/bookings`);
+    const original = list.data.find((b: any) => b.cancelReason === "Rescheduled");
+    expect(original.rescheduledToId).toBe(moved.data.booking.id);
+  });
+
+  test("a reschedule onto a taken slot leaves the original alone", async () => {
+    const { created, token } = await book();
+    // Somebody else takes 10:00 first.
+    await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: "2026-08-03T10:00:00.000Z",
+      email: "b@example.com",
+    });
+
+    const clash = await h.fetch(
+      `${PUBLIC}/manage/${token}/reschedule`,
+      json("POST", { start: "2026-08-03T10:00:00.000Z" }),
+    );
+    expect(clash.status).toBe(409);
+
+    // The customer still has the appointment they had.
+    const still = await ok("GET", `${PUBLIC}/manage/${token}`);
+    expect(still.data.status).toBe("confirmed");
+    expect(still.data.start).toBe(MONDAY_0900);
+  });
+
+  test("an unknown manage token refuses like every other one", async () => {
+    const res = await h.fetch(`${PUBLIC}/manage/bkm_${"0".repeat(48)}`);
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("operator actions", () => {
+  test("a no-show is distinct from a cancellation", async () => {
+    await makeResource();
+    const made = await ok("POST", `${BASE}/bookings`, {
+      resource: "clinic",
+      start: "2020-01-06T09:00:00.000Z",
+      end: "2020-01-06T09:30:00.000Z",
+      name: "Absent",
+    });
+    const out = await ok("POST", `${BASE}/bookings/${made.data.booking.id}/no-show`);
+    expect(out.data.status).toBe("no_show");
+  });
+
+  test("cancelling with notify:false spares the customer an email", async () => {
+    const created = await makeResource();
+    const made = await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: MONDAY_0900,
+      email: "ada@example.com",
+    });
+    emails.length = 0;
+    await ok("POST", `${BASE}/bookings/${made.data.booking.id}/cancel`, { notify: false });
+    expect(emails).toHaveLength(0);
+  });
+});
+
+describe("what a stranger may not reach", () => {
+  test("a booking is never broadcast on the realtime bus", async () => {
+    // `gateForChannel` leaves an unrecognised channel name open to anyone, and
+    // a payload that is not item-shaped gets no per-subscriber filter — so a
+    // booking put on the bus would stream a customer's name, address and phone
+    // number to whoever opened an SSE stream. Bookings therefore reach their
+    // handlers through `dispatchEventHandlers`, never `publishEvent`.
+    const { subscribeLocal } = await import("../src/server/services/events");
+    const seen: unknown[] = [];
+    const stop = subscribeLocal("booking", { send: (data: string) => seen.push(data) } as never);
+
+    const created = await makeResource();
+    await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: MONDAY_0900,
+      name: "Ada",
+      email: "ada@example.com",
+      phone: "+15551234",
+    });
+    await new Promise((r) => setTimeout(r, 50));
+    stop();
+
+    expect(seen).toHaveLength(0);
+  });
+
+  test("the public path cannot write the operator's notes column", async () => {
+    const created = await makeResource();
+    await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: MONDAY_0900,
+      email: "ada@example.com",
+      notes: "INJECTED",
+    });
+    const list = await ok("GET", `${BASE}/bookings`);
+    // Dropped by the schema rather than stored — `notes` is the operator's
+    // column, and a mirror map can project it into a workspace collection.
+    expect(list.data[0].notes).toBeNull();
+  });
+
+  test("the public path cannot park a slot with a hold, or choose its own end", async () => {
+    const created = await makeResource();
+    const out = await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: MONDAY_0900,
+      email: "ada@example.com",
+      hold: true,
+      end: "2026-08-03T17:00:00.000Z",
+    });
+    expect(out.data.booking.status).toBe("confirmed");
+    expect(Date.parse(out.data.booking.end) - Date.parse(out.data.booking.start)).toBe(30 * 60_000);
+  });
+});
+
+describe("the mirrored row", () => {
+  test("a booking lands in the workspace's own collection", async () => {
+    await ok("POST", "/api/collections", {
+      slug: "appointments",
+      fields: [
+        { name: "starts_at", type: "text" },
+        { name: "patient", type: "text" },
+        { name: "state", type: "text" },
+      ],
+    });
+    const created = await makeResource({
+      key: "mirrored",
+      mirrorCollection: "appointments",
+      mirrorFieldMap: { start: "starts_at", name: "patient", status: "state" },
+    });
+
+    const made = await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: MONDAY_0900,
+      name: "Ada",
+      email: "ada@example.com",
+    });
+    expect(made.data.booking.id).toBeTruthy();
+
+    const items = await ok("GET", "/api/items/appointments");
+    expect(items.data).toHaveLength(1);
+    expect(items.data[0].patient).toBe("Ada");
+    expect(items.data[0].state).toBe("confirmed");
+
+    // And the status follows the booking.
+    const token = String(made.data.manageUrl).split("/").pop()!;
+    await ok("POST", `${PUBLIC}/manage/${token}/cancel`);
+    const after = await ok("GET", "/api/items/appointments");
+    expect(after.data[0].state).toBe("cancelled");
+  });
+
+  test("a broken mirror does not cost the customer their booking", async () => {
+    const created = await makeResource({
+      key: "broken",
+      mirrorCollection: "does_not_exist",
+      mirrorFieldMap: { name: "who" },
+    });
+    const made = await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: MONDAY_0900,
+      email: "ada@example.com",
+    });
+    // The slot is held and the appointment is real; the failure shows up as a
+    // booking with no mirrored row rather than as a 500 for the customer.
+    expect(made.data.booking.status).toBe("confirmed");
+    const list = await ok("GET", `${BASE}/bookings`);
+    expect(list.data[0].mirrorItemId).toBeNull();
+  });
+});

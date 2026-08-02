@@ -248,7 +248,7 @@ export const googleCalendar = defineProvider({
 const eventIdFor = async (syncKey: string, rowId: string): Promise<string> => {
   const digest = await crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(`${syncKey} ${rowId}`),
+    new TextEncoder().encode(`${syncKey}\0${rowId}`),
   );
   return [...new Uint8Array(digest)]
     .map((b) => b.toString(16).padStart(2, "0"))

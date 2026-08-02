@@ -82,6 +82,8 @@ const SyncType = new GraphQLObjectType({
     id: { type: new GraphQLNonNull(GraphQLID) },
     integrationId: { type: new GraphQLNonNull(GraphQLString) },
     collection: { type: new GraphQLNonNull(GraphQLString) },
+    /** Which way the rows travel: `pull` in, `push` out. */
+    direction: { type: new GraphQLNonNull(GraphQLString) },
     settings: { type: JSONScalar },
     mapping: { type: JSONScalar },
     intervalMinutes: { type: new GraphQLNonNull(GraphQLInt) },
@@ -102,6 +104,8 @@ const SyncInputType = new GraphQLInputObjectType({
   fields: {
     integrationId: { type: GraphQLString },
     collection: { type: GraphQLString },
+    /** `pull` (default) brings rows in; `push` mirrors the collection out. */
+    direction: { type: GraphQLString },
     settings: { type: JSONScalar },
     mapping: { type: JSONScalar },
     intervalMinutes: { type: GraphQLInt },
@@ -259,8 +263,9 @@ export const integrationMutationFields: Record<string, GraphQLFieldConfig<unknow
   createIntegrationSync: {
     type: new GraphQLNonNull(SyncType),
     description:
-      "Create a scheduled pull into a collection (admin-only). The collection must be managed and every " +
-      "mapping target must be a writable field on it.",
+      "Create a scheduled sync between an integration and a collection (admin-only). `direction` is `pull` " +
+      "(rows in, the default) or `push` (the collection mirrored out); the provider must declare that " +
+      "capability. The collection must be managed, and a pull's mapping targets must be writable fields.",
     args: { data: { type: new GraphQLNonNull(SyncInputType) } },
     resolve: (_src, args, gqlCtx) =>
       surfacing(async () => {
@@ -271,6 +276,9 @@ export const integrationMutationFields: Record<string, GraphQLFieldConfig<unknow
         const created = await createSync(gqlCtx.ctx, tenantId, {
           integrationId: d.integrationId as string,
           collection: d.collection as string,
+          // Left undefined when absent so the service applies its own default
+          // rather than this surface inventing a second one.
+          direction: d.direction as "pull" | "push" | undefined,
           settings: (d.settings ?? {}) as Record<string, unknown>,
           mapping: (d.mapping ?? {}) as Record<string, string>,
           intervalMinutes: d.intervalMinutes as number | undefined,

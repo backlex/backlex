@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
-import { AppError, SYSTEM_ROLES } from "@backlex/core";
+import { AppError, isAppError, SYSTEM_ROLES } from "@backlex/core";
 import {
   INTEGRATION_CATALOG,
   INTEGRATION_FIELDS,
@@ -485,7 +485,18 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const tenantId = requireTenant(c);
       const { id } = c.req.valid("param");
-      const data = await runSync(c.get("ctx"), tenantId, id);
+      let data: Awaited<ReturnType<typeof runSync>>;
+      try {
+        data = await runSync(c.get("ctx"), tenantId, id);
+      } catch (e) {
+        // The whole point of running one by hand is to see WHY it fails. A
+        // provider's refusal is not an internal error, and reporting it as one
+        // buried the message the connector went to trouble to write — the
+        // operator saw "Internal server error" while the sync row itself said
+        // "reauthorize the connection".
+        if (isAppError(e)) throw e;
+        throw new AppError("UNAVAILABLE", e instanceof Error ? e.message : String(e));
+      }
       await logActivity(c, {
         action: "update",
         collection: "system_integration_syncs",

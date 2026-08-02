@@ -221,6 +221,38 @@ export interface IntegrationSource {
 /** One row on its way OUT, already mapped to the destination's column names. */
 export type DestinationRow = Record<string, unknown>;
 
+/**
+ * One target a row may be mapped onto, in a destination's closed column set.
+ *
+ * `when` exists because a provider's columns are not always fixed for the whole
+ * provider. An accounting destination writes a customer OR an invoice depending
+ * on a setting, and those have nothing in common: offering `dueDate` on a
+ * customer sync is a trap the operator only discovers when the column is
+ * silently dropped. Declaring the dependency keeps ONE list as the source of
+ * truth — the admin picker and the server's save-time check narrow it the same
+ * way, through {@link columnsForSettings}, rather than each having its own idea.
+ *
+ * A column with no `when` always applies.
+ */
+export interface DestinationColumn {
+  value: string;
+  label: string;
+  /** Setting key → the values that make this column available. */
+  when?: Readonly<Record<string, readonly string[]>>;
+}
+
+/** Narrow a destination's columns to the ones this sync's settings allow. */
+export const columnsForSettings = (
+  columns: readonly DestinationColumn[],
+  settings: Record<string, unknown>,
+): DestinationColumn[] =>
+  columns.filter((c) =>
+    Object.entries(c.when ?? {}).every(([key, values]) => {
+      const v = settings[key];
+      return typeof v === "string" && values.includes(v);
+    }),
+  );
+
 /** What a destination provider's `push` receives. */
 export interface DestinationPushContext {
   /** Connection config — credentials, already decrypted. */
@@ -273,8 +305,11 @@ export interface IntegrationDestination {
    * arbitrary columns — declares it, and then an unknown target is refused at
    * the form instead of being dropped on the floor by the provider while the
    * run reports success.
+   *
+   * Where the set depends on a setting, say so per column with
+   * {@link DestinationColumn.when}; this stays the full list.
    */
-  columns?: readonly { value: string; label: string }[];
+  columns?: readonly DestinationColumn[];
   /**
    * Rows per `push` call, when the engine's default batch is too big.
    *
@@ -297,8 +332,17 @@ export interface IntegrationDestination {
    * scope list the token exchange recorded. Absence of a recorded scope is not
    * treated as denial: some providers return none, and refusing on silence
    * would block connections that are perfectly able to do the work.
+   *
+   * A list means EVERY one is needed. Xero splits write access per record type
+   * (`accounting.contacts` and `accounting.transactions` are separate grants),
+   * and a connection reauthorized for this direction receives them together —
+   * so requiring both catches exactly the connections that predate it.
+   *
+   * Not every provider needs one: QuickBooks' single accounting scope is read
+   * AND write, so connections made before the write-back existed can already
+   * push.
    */
-  requiredScope?: string;
+  requiredScope?: string | readonly string[];
   /** Send one batch. Throwing retries it; returning marks it delivered. */
   push(ctx: DestinationPushContext): Promise<void>;
 }

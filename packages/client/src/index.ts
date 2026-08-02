@@ -1163,11 +1163,13 @@ export interface IntegrationProvider {
   oauth: boolean;
 }
 
-/** A scheduled pull from a source integration into a collection. */
+/** A scheduled sync between an integration and a collection, either way. */
 export interface IntegrationSync {
   id: string;
   integrationId: string;
   collection: string;
+  /** `pull` brings rows in; `push` mirrors the collection out. */
+  direction: "pull" | "push";
   /** Which spreadsheet / base / database. Non-secret by contract. */
   settings: Record<string, unknown>;
   /** External field name → collection field name. */
@@ -1189,6 +1191,14 @@ export interface IntegrationSyncInput {
   integrationId: string;
   /** Managed collection slug. Adopted tables are refused. */
   collection: string;
+  /**
+   * Which way the rows travel. Defaults to `pull`.
+   *
+   * The provider has to declare the capability: a source-only provider cannot
+   * be a `push` target and vice versa, and the mapping is read in the direction
+   * of travel — external → field on a pull, field → external on a push.
+   */
+  direction?: "pull" | "push";
   settings?: Record<string, unknown>;
   /** At least one entry; every target must be a writable field. */
   mapping: Record<string, string>;

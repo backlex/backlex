@@ -179,3 +179,70 @@ describe("integrations — MCP surface", () => {
     }
   });
 });
+
+/**
+ * A push sync is creatable from every surface, not just REST.
+ *
+ * `direction` reached the REST route and the admin UI when destinations landed,
+ * and stopped there — so an SDK, GraphQL, MCP or CLI caller asking for a
+ * mirror-out silently got a PULL, which then failed on its first run with an
+ * error about the wrong half of the provider. Pinned here because the failure
+ * is invisible at the call site: the sync is created, it just faces the wrong
+ * way.
+ */
+describe("integrations — direction reaches every surface", () => {
+  let h: TestHarness;
+  let client: ReturnType<typeof createClient>;
+  let integrationId: string;
+
+  const gql = async (query: string, variables?: unknown) =>
+    (await (await h.fetch("/api/graphql", json({ query, variables }))).json()) as {
+      data?: Record<string, any>;
+      errors?: { message: string }[];
+    };
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    client = createClient({ url: "http://localhost", fetch: h.fetch as typeof fetch });
+    await h.fetch(
+      "/api/collections",
+      json({ slug: "ledger", fields: [{ name: "customer", type: "text" }] }),
+    );
+    const made = await client.integrations.connect({
+      kind: "quickbooks",
+      config: { clientId: "cid", clientSecret: "csecret" },
+    });
+    integrationId = made.data.id;
+  });
+  afterAll(() => h.cleanup());
+
+  const PUSH = {
+    collection: "ledger",
+    direction: "push" as const,
+    settings: { entity: "Customer", environment: "production" },
+    mapping: { customer: "displayName" },
+  };
+
+  test("the SDK asks for a push and gets one", async () => {
+    const made = await client.integrations.createSync({ integrationId, ...PUSH });
+    expect(made.data.direction).toBe("push");
+  });
+
+  test("GraphQL does too, and reports it back", async () => {
+    const res = await gql(
+      `mutation($d:IntegrationSyncInput!){ createIntegrationSync(data:$d){ id direction } }`,
+      { d: { integrationId, ...PUSH } },
+    );
+    expect(res.errors).toBeUndefined();
+    expect(res.data?.createIntegrationSync.direction).toBe("push");
+  });
+
+  test("MCP declares it as a closed choice", () => {
+    const tool = integrationsTools.find((t) => t.name === "integrations.create_sync");
+    const direction = (tool?.inputSchema.properties as Record<string, any>).direction;
+    // An enum rather than a free string: an agent guessing "outbound" would
+    // otherwise create a pull and be told nothing.
+    expect(direction.enum).toEqual(["pull", "push"]);
+  });
+});

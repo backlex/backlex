@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@backlex/ui/components/dialog";
+import type { DestinationColumn } from "@backlex/integrations/provider";
 import { fetchSafely } from "./_shared";
 import { IntegrationSyncsCard, type SettingField } from "./integration-syncs-card";
 
@@ -52,8 +53,10 @@ type Catalog = {
   /** Same, for providers that receive rows rather than supply them. */
   destinationSettings?: Record<string, SettingField[]>;
   /** Mapping targets for destinations with a closed column set. A kind that is
-   *  absent takes any column name (a warehouse's columns are its own DDL). */
-  destinationColumns?: Record<string, { value: string; label: string }[]>;
+   *  absent takes any column name (a warehouse's columns are its own DDL).
+   *  The FULL list — a column carrying `when` only applies under some settings,
+   *  and the sync dialog narrows it as the operator chooses them. */
+  destinationColumns?: Record<string, DestinationColumn[]>;
 };
 
 /** Config key holding the OAuth access token. Present (masked) once authorized,

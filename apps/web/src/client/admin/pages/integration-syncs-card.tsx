@@ -27,6 +27,10 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { api } from "@/lib/api";
+// The descriptor subpath, not the package root: it imports nothing, so the
+// column rules are shared with the server without every provider adapter
+// landing in the admin bundle.
+import { columnsForSettings, type DestinationColumn } from "@backlex/integrations/provider";
 import { useCollections } from "../queries";
 import { fetchSafely } from "./_shared";
 
@@ -79,7 +83,7 @@ export function IntegrationSyncsCard({
   /** Keyed `<kind>:<direction>` so one provider can declare both. */
   settingFields: Record<string, SettingField[]>;
   /** Destinations with a closed column set, keyed by kind. Absent = free text. */
-  destinationColumns: Record<string, { value: string; label: string }[]>;
+  destinationColumns: Record<string, DestinationColumn[]>;
   pushToast: (m: string) => void;
 }) {
   const { t } = useLingui();
@@ -323,7 +327,7 @@ function SyncDialog({
 }: {
   sources: SourceOption[];
   settingFields: Record<string, SettingField[]>;
-  destinationColumns: Record<string, { value: string; label: string }[]>;
+  destinationColumns: Record<string, DestinationColumn[]>;
   onClose: () => void;
   onCreate: (input: Record<string, unknown>) => void;
 }) {
@@ -364,7 +368,36 @@ function SyncDialog({
   // fixed set of targets; a warehouse's are whatever its DDL declared and stay
   // free text. The server refuses an unknown one either way — this is so the
   // operator doesn't have to guess the spelling.
-  const externalOptions = direction === "push" ? destinationColumns[chosen?.kind ?? ""] : undefined;
+  //
+  // Narrowed by the settings, because some providers' targets depend on them:
+  // QuickBooks writes customers OR invoices, and offering `dueDate` on a
+  // customer sync is a trap that only shows up as a column nobody wrote.
+  const allColumns = direction === "push" ? destinationColumns[chosen?.kind ?? ""] : undefined;
+  const externalOptions = useMemo(
+    () => (allColumns ? columnsForSettings(allColumns, settings) : undefined),
+    [allColumns, settings],
+  );
+
+  /** Change one setting, and drop any mapping target it just invalidated —
+   *  switching a QuickBooks sync from customers to invoices otherwise leaves
+   *  `email` selected in a picker that no longer offers it. */
+  const setSetting = (key: string, value: string) => {
+    const next = { ...settings, [key]: value };
+    setSettings(next);
+    if (!allColumns) return;
+    const still = new Set(columnsForSettings(allColumns, next).map((c) => c.value));
+    setPairs((prev) =>
+      prev.map((p) =>
+        still.has(p.external)
+          ? p
+          : // A NEW id, not just a cleared value: Radix's Select keeps showing
+            // the last item it rendered when its value goes back to undefined,
+            // so a cleared row would sit there displaying a column that is no
+            // longer on offer. Changing the key remounts it onto the placeholder.
+            { ...p, id: crypto.randomUUID(), external: "" },
+      ),
+    );
+  };
 
   // Only writable fields can be a mapping target; a computed column regenerates
   // itself and the server would refuse it anyway.
@@ -491,7 +524,7 @@ function SyncDialog({
                   // fail on submit with a list the operator had to guess at.
                   <Select
                     value={settings[f.key] || undefined}
-                    onChange={(v: string) => setSettings((s) => ({ ...s, [f.key]: v }))}
+                    onChange={(v: string) => setSetting(f.key, v)}
                     placeholder={f.placeholder ?? t`Choose one`}
                     options={f.options}
                     className="min-w-0"
@@ -500,7 +533,7 @@ function SyncDialog({
                   <Input
                     placeholder={f.placeholder}
                     value={settings[f.key] ?? ""}
-                    onChange={(e) => setSettings((v) => ({ ...v, [f.key]: e.target.value }))}
+                    onChange={(e) => setSetting(f.key, e.target.value)}
                   />
                 )}
               </label>

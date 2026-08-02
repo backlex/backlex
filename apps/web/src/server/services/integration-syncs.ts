@@ -25,8 +25,8 @@ import { AppError } from "@backlex/core";
 import {
   SECRET_KEYS,
   DESTINATION_BATCH_SIZE,
-  DESTINATION_COLUMNS,
   DESTINATION_SETTING_FIELDS,
+  destinationColumnsFor,
   SOURCE_SETTING_FIELDS,
   isIntegrationKind,
   OAUTH_SCOPE_KEY,
@@ -184,12 +184,16 @@ const validateSettings = (
  */
 const assertScope = (
   integration: { kind: string; config: Record<string, unknown> },
-  required: string | undefined,
+  required: string | readonly string[] | undefined,
 ): void => {
-  if (!required) return;
+  // A list means every one is needed: Xero grants write per record type, and a
+  // connection reauthorized for this direction receives them together.
+  const needed = typeof required === "string" ? [required] : (required ?? []);
+  if (needed.length === 0) return;
   const granted = integration.config?.[OAUTH_SCOPE_KEY];
   if (typeof granted !== "string" || !granted.trim()) return;
-  if (granted.split(/\s+/).includes(required)) return;
+  const held = new Set(granted.split(/\s+/));
+  if (needed.every((s) => held.has(s))) return;
   throw new AppError(
     "BAD_REQUEST",
     `This ${integration.kind} connection was authorized for reading only. Reconnect it to grant write access, then create the sync.`,
@@ -233,7 +237,7 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
     );
   }
   const settings = validateSettings(integration.kind, input.settings ?? {}, direction);
-  const mapping = validateMapping(input.mapping ?? {}, collection, direction, integration.kind);
+  const mapping = validateMapping(input.mapping ?? {}, collection, direction, integration.kind, settings);
 
   const id = crypto.randomUUID();
   const now = new Date();
@@ -273,6 +277,7 @@ const validateMapping = (
   collection: Awaited<ReturnType<typeof loadCollection>>,
   direction: SyncDirection,
   kind: string,
+  settings: Record<string, unknown>,
 ): Record<string, string> => {
   const out: Record<string, string> = {};
   // A destination with a closed column set (a calendar event has a `summary`
@@ -280,7 +285,11 @@ const validateMapping = (
   // none — its columns are whatever the operator's DDL says — and stays free
   // text. Without this a typo'd target is accepted, dropped by the provider,
   // and the run reports a clean success having written nothing.
-  const columns = direction === "push" ? DESTINATION_COLUMNS[kind] : undefined;
+  //
+  // Narrowed by the settings, because a provider's columns are not always fixed
+  // for the whole provider: QuickBooks writes a customer OR an invoice, and
+  // `dueDate` on a customer is the same silent drop this check exists to stop.
+  const columns = direction === "push" ? destinationColumnsFor(kind, settings) : undefined;
   // The mapping is read in the direction of travel. On a pull the collection
   // field is the TARGET and must be writable; on a push it is the SOURCE and
   // may be any field the collection has, computed ones included — reading one
@@ -356,23 +365,27 @@ export async function updateSync(
   if (!existing) throw new AppError("NOT_FOUND", "Sync not found");
   const integration = await loadOwnedIntegration(ctx, tenantId, existing.integrationId);
 
+  const direction = (existing.direction ?? "pull") as SyncDirection;
   const set: Record<string, unknown> = { updatedAt: new Date() };
+  let settings = (existing.settings ?? {}) as Record<string, unknown>;
   if (patch.settings !== undefined) {
-    set.settings = validateSettings(
-      integration.kind,
-      patch.settings,
-      existing.direction as SyncDirection,
-    );
+    settings = validateSettings(integration.kind, patch.settings, direction);
+    set.settings = settings;
     // The cursor is only meaningful for the source it came from; pointing the
     // sync at a different sheet while keeping a row offset would read garbage.
     set.cursor = null;
   }
-  if (patch.mapping !== undefined) {
+  // The mapping is re-checked whenever EITHER half changes, because a push's
+  // legal columns depend on the settings: switching a QuickBooks sync from
+  // customers to invoices leaves a mapping that names columns an invoice does
+  // not have, and nothing else would notice until the provider dropped them.
+  if (patch.mapping !== undefined || patch.settings !== undefined) {
     set.mapping = validateMapping(
-      patch.mapping,
+      patch.mapping ?? ((existing.mapping ?? {}) as Record<string, string>),
       await loadCollection(ctx, tenantId, existing.collection),
-      existing.direction as SyncDirection,
+      direction,
       integration.kind,
+      settings,
     );
   }
   if (patch.intervalMinutes !== undefined) set.intervalMinutes = clampInterval(patch.intervalMinutes);

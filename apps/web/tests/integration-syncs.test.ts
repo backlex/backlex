@@ -1005,3 +1005,129 @@ describe("push: a grant that predates the capability", () => {
     expect(res.status).toBe(201);
   });
 });
+
+/**
+ * A destination whose columns depend on a SETTING.
+ *
+ * Google Calendar's targets are fixed for the provider: an event has a
+ * `summary` whichever calendar it lands in. An accounting destination is not
+ * like that — QuickBooks writes a customer or an invoice depending on the
+ * record type, and the two share nothing. Mapping `dueDate` on a customer sync
+ * is the same silent drop the closed column set exists to prevent, so the check
+ * has to narrow by the settings rather than by the provider alone.
+ */
+describe("push: a closed column set that narrows by settings", () => {
+  let qboId = "";
+
+  beforeEach(async () => {
+    client.query("delete from integrations where kind = 'quickbooks'").run();
+    const res = await ok("POST", BASE, {
+      kind: "quickbooks",
+      config: { clientId: "cid", clientSecret: "csecret" },
+    });
+    qboId = res.data.id as string;
+  });
+
+  const create = (entity: string, mapping: Record<string, string>) =>
+    req("POST", SYNCS, {
+      integrationId: qboId,
+      collection: "leads",
+      direction: "push",
+      settings: { entity, environment: "production" },
+      mapping,
+    });
+
+  test("a column of the chosen record type is accepted", async () => {
+    expect((await create("Customer", { name: "displayName", email: "email" })).status).toBe(201);
+  });
+
+  test("a column belonging to the OTHER record type is refused", async () => {
+    const res = await create("Customer", { name: "displayName", score: "amount" });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { message: string } };
+    // The listed alternatives are the customer's, not the union — a list that
+    // included `amount` would say the mapping should have worked.
+    expect(body.error.message).toContain("displayName");
+    expect(body.error.message).not.toContain("dueDate");
+  });
+
+  test("changing the record type re-checks the mapping that is already stored", async () => {
+    const created = await ok("POST", SYNCS, {
+      integrationId: qboId,
+      collection: "leads",
+      direction: "push",
+      settings: { entity: "Customer", environment: "production" },
+      mapping: { name: "displayName" },
+    });
+    // Without this the sync would keep a mapping naming a column an invoice
+    // does not have, and nothing would notice until the provider dropped it.
+    const res = await req("PATCH", `${SYNCS}/${created.data.id}`, {
+      settings: { entity: "Invoice", environment: "production" },
+    });
+    expect(res.status).toBe(422);
+  });
+
+  test("the catalog ships the FULL list, so the form can re-narrow it locally", async () => {
+    const cat = await ok("GET", `${BASE}/catalog`);
+    const columns = cat.data.destinationColumns.quickbooks as { value: string; when?: unknown }[];
+    // Both record types' columns, each carrying the condition that gates it —
+    // otherwise switching the record type would need another round trip.
+    expect(columns.map((c) => c.value)).toContain("dueDate");
+    expect(columns.find((c) => c.value === "dueDate")?.when).toEqual({ entity: ["Invoice"] });
+  });
+});
+
+/**
+ * A grant split across several scopes.
+ *
+ * Xero does not have one "write" permission: contacts and transactions are
+ * separate grants, and a connection made when Xero was source-only holds
+ * neither. Requiring both is what makes the save-time check name exactly those
+ * connections.
+ */
+describe("push: a provider that needs more than one grant", () => {
+  const connectWithScope = async (scope: string) => {
+    client.query("delete from integrations where kind = 'xero'").run();
+    const res = await ok("POST", BASE, {
+      kind: "xero",
+      config: { clientId: "cid", clientSecret: "csecret" },
+    });
+    const id = res.data.id as string;
+    const row = client.query("select config from integrations where id = ?").get(id) as {
+      config: string;
+    };
+    const config = { ...JSON.parse(row.config), _oauthAccessToken: "tok", _oauthScope: scope };
+    client.query("update integrations set config = ? where id = ?").run(JSON.stringify(config), id);
+    return id;
+  };
+
+  const create = (id: string) =>
+    req("POST", SYNCS, {
+      integrationId: id,
+      collection: "leads",
+      direction: "push",
+      settings: { endpoint: "Contacts" },
+      mapping: { name: "name" },
+    });
+
+  test("the read-only grant every existing connection holds is refused", async () => {
+    const res = await create(
+      await connectWithScope("offline_access accounting.contacts.read accounting.transactions.read"),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  test("one of the two is still not enough", async () => {
+    // The message says reconnect, and reconnecting grants both — so a partial
+    // grant must not be mistaken for a complete one.
+    const res = await create(await connectWithScope("offline_access accounting.contacts"));
+    expect(res.status).toBe(400);
+  });
+
+  test("both grants together are accepted", async () => {
+    const res = await create(
+      await connectWithScope("offline_access accounting.contacts accounting.transactions"),
+    );
+    expect(res.status).toBe(201);
+  });
+});

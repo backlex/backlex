@@ -280,7 +280,9 @@ describe("@backlex/integrations helpers", () => {
         expect(INTEGRATION_FIELDS[kind].some((f) => f.key === sk && f.secret)).toBe(true);
       }
     }
-    expect(isIntegrationKind("mailchimp")).toBe(false);
+    // Deliberately not a plausible provider name: this once said "mailchimp",
+    // which stopped being a negative case the day Mailchimp was registered.
+    expect(isIntegrationKind("not-a-provider")).toBe(false);
   });
 
   test("maskConfig masks only secret keys", () => {

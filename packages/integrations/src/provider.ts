@@ -36,7 +36,8 @@ export type IntegrationCategory =
   | "productivity"
   | "accounting"
   | "warehouse"
-  | "crm";
+  | "crm"
+  | "marketing";
 
 /**
  * What a provider can do. Today every provider is a `sink` (receives events

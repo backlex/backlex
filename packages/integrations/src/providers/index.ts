@@ -25,7 +25,9 @@ import { googleDrive } from "./google-drive";
 import { googleSheets } from "./google-sheets";
 import { hubspot } from "./hubspot";
 import { jira } from "./jira";
+import { klaviyo } from "./klaviyo";
 import { linear } from "./linear";
+import { mailchimp } from "./mailchimp";
 import { meilisearch } from "./meilisearch";
 import { mixpanel } from "./mixpanel";
 import { notion } from "./notion";
@@ -64,6 +66,9 @@ export const INTEGRATION_KINDS = [
   "jira",
   // crm
   "hubspot",
+  // marketing lists (two-way: rows out, consent back)
+  "mailchimp",
+  "klaviyo",
   // search sync
   "algolia",
   "meilisearch",
@@ -104,6 +109,8 @@ export const PROVIDERS: Record<IntegrationKind, IntegrationProvider<IntegrationK
   linear,
   jira,
   hubspot,
+  mailchimp,
+  klaviyo,
   algolia,
   meilisearch,
   typesense,

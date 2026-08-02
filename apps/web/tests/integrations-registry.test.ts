@@ -221,6 +221,29 @@ describe("choice settings are a closed set end to end", () => {
     }
   });
 
+  test("an option label is short enough to still read at phone width", () => {
+    // The settings picker draws the SELECTED label in full rather than
+    // truncating it — that is deliberate, so a label always reads whole — which
+    // means a label that does not fit is clipped instead, at exactly the width
+    // where an operator most needs to see which option is chosen. A sentence
+    // belongs in docs/integrations.md; the option gets a phrase.
+    const cap = 40;
+    const tooLong: string[] = [];
+    for (const [kind, fields] of [
+      ...Object.entries(SOURCE_SETTING_FIELDS),
+      ...Object.entries(DESTINATION_SETTING_FIELDS),
+    ]) {
+      for (const f of fields ?? []) {
+        for (const o of f.options ?? []) {
+          if (o.label.length > cap) tooLong.push(`${kind}.${f.key} → "${o.label}"`);
+        }
+      }
+    }
+    // Asserted as a list so a failure names the offender rather than reporting
+    // that some number was larger than forty.
+    expect(tooLong).toEqual([]);
+  });
+
   test("a provider that builds a URL from a setting constrains it", () => {
     // QuickBooks interpolates the record type into its query string and Xero
     // into a URL path segment. Free text there is the difference between a

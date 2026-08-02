@@ -148,6 +148,10 @@ const BRANDS: Record<string, Brand> = {
   airtable: { name: "Airtable", mark: <SI d={ICONS.airtable!} />, markBg: "#18BFFF" },
   quickbooks: { name: "QuickBooks Online", mark: <SI d={ICONS.quickbooks!} />, markBg: "#2CA01C" },
   hubspot: { name: "HubSpot", mark: "Hs", markBg: "#FF7A59" },
+  // Mailchimp's brand yellow is #FFE01B, which the mark cannot use: it is drawn
+  // white-on-brand, and white on that is unreadable. Their dark is the pair.
+  mailchimp: { name: "Mailchimp", mark: "Mc", markBg: "#241C15" },
+  klaviyo: { name: "Klaviyo", mark: "Kl", markBg: "#000000" },
   mixpanel: { name: "Mixpanel", mark: "Mp", markBg: "#7856FF" },
   amplitude: { name: "Amplitude", mark: "Am", markBg: "#1E61F0" },
   "google-chat": { name: "Google Chat", mark: "GC", markBg: "#00AC47" },
@@ -264,6 +268,10 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
         return t`Track data events in Amplitude.`;
       case "hubspot":
         return t`Keep HubSpot contacts in step with a collection. Receives record contents.`;
+      case "mailchimp":
+        return t`Sync a collection into a Mailchimp audience, and pull subscriber status back.`;
+      case "klaviyo":
+        return t`Sync a collection into a Klaviyo list, and pull marketing consent back.`;
       case "discord":
         return t`Post data events to a Discord channel.`;
       case "teams":

@@ -20,7 +20,7 @@ receiving endpoint and backlex signs what it sends.
 
 ## Providers
 
-Thirty-one providers ship in the registry, grouped by category:
+Thirty-three providers ship in the registry, grouped by category:
 
 | Category | Providers |
 |---|---|
@@ -33,6 +33,7 @@ Thirty-one providers ship in the registry, grouped by category:
 | accounting | QuickBooks Online, Xero — both *(OAuth)*, both sources **and destinations** |
 | warehouse | ClickHouse, Google BigQuery — both *destinations* |
 | crm | HubSpot — *receives record contents*, see below |
+| marketing | Mailchimp, Klaviyo — both sources **and destinations** |
 
 Each provider declares its own config fields, so the connect dialog and the CLI
 are generated from the registry rather than hand-maintained. Read the catalog to
@@ -409,6 +410,94 @@ Lookups are **per batch**, not per row: one `in (…)` query for QuickBooks, one
 - **Xero line items** need an `accountCode` for the revenue to post where you
   expect. Xero's default applies without one.
 - **Deletes are invisible**, exactly as for a warehouse.
+
+## Contacts out to a marketing list
+
+Mailchimp and Klaviyo are sources **and** destinations, and unlike every other
+pair here both directions are needed rather than merely available: **consent
+travels the other way.** Someone unsubscribes from an email, and unless the pull
+brings that back, the collection goes on calling them a subscriber and every
+later push argues with the provider about it.
+
+```bash
+# Subscribers out to a Mailchimp audience
+backlex integrations sync-create --integration <id> --collection subscribers \
+  --direction push --set audienceId=abc123 --set status=pending \
+  --map email=email --map first_name=firstName --map last_name=lastName \
+  --map is_subscribed=status --every 60
+
+# …and Mailchimp's answer back, so unsubscribes reach the collection
+backlex integrations sync-create --integration <id> --collection subscribers \
+  --direction pull --set audienceId=abc123 --set status=any \
+  --map email_address=email --map status=mc_status \
+  --map unsubscribe_reason=mc_unsubscribe_reason --every 60
+
+# Profiles out to a Klaviyo list
+backlex integrations sync-create --integration <id> --collection customers \
+  --direction push --set listId=LIST1 \
+  --map email=email --map full_name=firstName --map company=organization --every 60
+```
+
+| Provider | Mappable columns (push) | Notable pull fields |
+|---|---|---|
+| Mailchimp | `email`, `firstName`, `lastName`, `phone`, `birthday`, `status` | `email_address`, `status`, `unsubscribe_reason`, `tags`, plus every merge tag (`FNAME`, `LNAME`, …) at the top level |
+| Klaviyo | `email`, `phone`, `externalId`, `firstName`, `lastName`, `organization`, `title` | `email`, `email_marketing_consent`, `sms_marketing_consent`, `properties`, `location` |
+
+### Consent is never guessed
+
+The two providers model consent differently, and this is the one place where
+that difference is visible rather than smoothed over.
+
+- **Mailchimp gives every contact a status**, so the push setting is required
+  and has **no default**. Picking one on your behalf would be backlex deciding
+  that the people in a database agreed to be marketed to. `pending` is double
+  opt-in — Mailchimp emails them to confirm; `subscribed` is only correct if you
+  already hold consent; `transactional` is receipts and notices, no marketing.
+- **A mapped `status` column wins over that setting** — the mapping is how a
+  collection declares it owns consent, and it is how an unsubscribe held in
+  backlex reaches Mailchimp. A `boolean` column reads as subscribed /
+  unsubscribed. A value that means nothing to Mailchimp **skips the row** rather
+  than falling back to the setting: a guess is worse than a contact that does
+  not travel.
+- **Klaviyo keeps membership and consent as separate facts**, and this provider
+  only ever does membership. There is no setting to grant consent, on purpose —
+  backlex holds no record that anyone agreed, so asserting it would be inventing
+  the one fact that matters. Grant it in Klaviyo's own signup flows; the pull
+  brings the answer back as `email_marketing_consent`.
+
+### Things that will otherwise surprise you
+
+- **A contact the provider refuses is skipped, not failed.** Someone who
+  unsubscribed cannot be re-added by an API call, by design. Failing the batch
+  would hold the [watermark](#the-watermark) on that row forever and the
+  contacts behind it would never be reached again — one opted-out address would
+  wedge the sync. The trade is stated rather than hidden: that contact does not
+  travel, and is retried the next time its row is edited.
+- **A batch where *every* contact was refused does fail.** One refusal is data;
+  all of them is a wrong audience or a mis-mapped email column, and a clean run
+  there would step over rows nothing received.
+- **The Mailchimp host is in the API key.** The key ends `-us14`, and that suffix
+  *is* the data centre. Nothing asks you for it, and a key without a valid one is
+  refused before any request is made.
+- **Tags are never written.** Mailchimp's batch endpoint replaces a contact's
+  tags with the request's, and a sync that has nothing to say about tags would
+  wipe segmentation built by hand. They come back on the pull; they do not go out.
+- **Only Mailchimp's default merge tags are mappable** — `FNAME`, `LNAME`,
+  `PHONE`, `BIRTHDAY`. Custom merge tags are a gap: the endpoint drops an unknown
+  tag without complaint, so accepting one would report a clean run while losing a
+  column.
+- **`BIRTHDAY` is `MM/DD`.** A year makes Mailchimp reject it, so a date column is
+  converted; an unparseable one is dropped and the contact's other fields still go.
+- **A Klaviyo phone that is not E.164 is dropped**, not sent. Klaviyo `400`s the
+  whole profile on a bad number, which would cost the contact its name, its
+  company and its list membership too.
+- **A Klaviyo row with no email, phone or external id is skipped.** There is
+  nothing to upsert *on*, and the call would mint a fresh anonymous profile on
+  every run.
+- **Klaviyo's API revision is pinned** in the provider. An unpinned revision
+  changes response shapes underneath a running sync.
+- **Deletes are invisible**, exactly as everywhere else. Removing a row does not
+  remove the contact — unsubscribe them through a mapped `status` column instead.
 
 ## What a sink receives
 

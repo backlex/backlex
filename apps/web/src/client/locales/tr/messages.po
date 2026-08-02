@@ -14838,6 +14838,14 @@ msgstr "Son kullanıcıyı askıya al"
 msgid "suspended"
 msgstr "askıya alındı"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Sync a collection into a Klaviyo list, and pull marketing consent back."
+msgstr "Bir koleksiyonu Klaviyo listesine aktarın, pazarlama iznini geri çekin."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Sync a collection into a Mailchimp audience, and pull subscriber status back."
+msgstr "Bir koleksiyonu Mailchimp kitlesine aktarın, abonelik durumunu geri çekin."
+
 #: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Sync created. Run it now to check the mapping."
 msgstr "Senkron oluşturuldu. Eşlemeyi doğrulamak için şimdi çalıştırın."

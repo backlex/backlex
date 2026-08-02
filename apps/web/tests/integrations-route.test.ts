@@ -135,7 +135,7 @@ describe("/api/admin/integrations", () => {
     await seedAdmin(h);
     const res = await h.fetch(
       "/api/admin/integrations",
-      json("POST", { kind: "mailchimp", config: {} }),
+      json("POST", { kind: "not-a-provider", config: {} }),
     );
     expect(res.status).toBe(422);
   });

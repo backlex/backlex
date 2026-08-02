@@ -39,6 +39,18 @@ const WINDOW_MS = 60_000;
 
 const NOT_AVAILABLE = "This signing link is not valid";
 
+/**
+ * Which language the consent sentence is chosen in.
+ *
+ * `?lang=` is what the signing page actually renders in (it resolves its own
+ * locale before it calls), with `Accept-Language` as the fallback for anything
+ * else reaching this endpoint. The SERVER still owns the wording — this only
+ * picks which of its sentences applies, and the one it picked is what gets
+ * stored as the evidence.
+ */
+const requestLocale = (c: { req: { query: (k: string) => string | undefined; header: (k: string) => string | undefined } }): string | null =>
+  c.req.query("lang") ?? c.req.header("accept-language") ?? null;
+
 const SignerViewSchema = z
   .object({
     title: z.string(),
@@ -107,7 +119,10 @@ export const signaturesPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook
       description:
         "PUBLIC — no auth. Returns the frozen document HTML, the signer's own state and whose turn it is. Marks the link as viewed. Never exposes the other signers' addresses.",
       security: PUBLIC_SECURITY,
-      request: { params: z.object({ token: z.string() }) },
+      request: {
+        params: z.object({ token: z.string() }),
+        query: z.object({ lang: z.string().optional() }),
+      },
       responses: {
         200: {
           description: "OK",
@@ -133,7 +148,7 @@ export const signaturesPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook
       // attributes the call to a workspace for usage metering.
       setMeterTenant(c, resolved.request.tenantId);
       if (effectiveStatus(resolved.request) === "pending") await markViewed(ctx, resolved.signer);
-      return c.json({ data: signerView(resolved) });
+      return c.json({ data: signerView(resolved, requestLocale(c)) });
     },
   )
   .openapi(
@@ -187,6 +202,7 @@ export const signaturesPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook
       security: PUBLIC_SECURITY,
       request: {
         params: z.object({ token: z.string() }),
+        query: z.object({ lang: z.string().optional() }),
         body: { required: true, content: { "application/json": { schema: SignBody } } },
       },
       responses: {
@@ -209,7 +225,10 @@ export const signaturesPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook
       const ok = await rateLimitOk(ctx.env, `sign:${resolved.signer.id}`, SIGN_MAX_PER_MINUTE, WINDOW_MS);
       if (!ok) throw new AppError("RATE_LIMITED", "Too many attempts — please wait a moment");
 
-      const result = await signDocument(ctx, resolved, body, meta);
+      const result = await signDocument(ctx, resolved, body, {
+        ...meta,
+        locale: requestLocale(c),
+      });
       return c.json({
         data: {
           status: result.status,

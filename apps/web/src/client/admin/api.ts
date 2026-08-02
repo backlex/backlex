@@ -1257,10 +1257,19 @@ export const signaturesApi = {
 
 /** The signer's side — unauthenticated, token in the path. */
 export const signPublicApi = {
-  get: (token: string) => api<Envelope<ApiSignerView>>(`/api/public/sign/${encodeURIComponent(token)}`),
-  sign: (token: string, body: { kind: "drawn" | "typed"; image?: string; text?: string; consent: boolean }) =>
-    api<Envelope<{ status: string; signedCount: number; signerCount: number }>>(
-      `/api/public/sign/${encodeURIComponent(token)}/sign`,
+  /** `lang` is the locale the page actually rendered in — the server picks the
+   *  consent wording from it and stores the sentence it picked. */
+  get: (token: string, lang?: string) =>
+    api<Envelope<ApiSignerView>>(
+      `/api/public/sign/${encodeURIComponent(token)}${lang ? `?lang=${encodeURIComponent(lang)}` : ""}`,
+    ),
+  sign: (
+    token: string,
+    body: { kind: "drawn" | "typed"; image?: string; text?: string; consent: boolean },
+    lang?: string,
+  ) =>
+    api<Envelope<{ status: string; signedCount: number; signerCount: number; finalized: boolean }>>(
+      `/api/public/sign/${encodeURIComponent(token)}/sign${lang ? `?lang=${encodeURIComponent(lang)}` : ""}`,
       { method: "POST", body: JSON.stringify(body) },
     ),
   decline: (token: string, reason: string | null) =>

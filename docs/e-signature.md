@@ -79,10 +79,19 @@ HTML a headless browser is asked to render. An `svg+xml` can carry script; a
 payload with a quote in it could close the `src` attribute. Both are refused at
 the door.
 
-The consent wording is a **server constant**. The page displays exactly the
-string the API sends and the certificate quotes exactly that string. If the
-browser supplied it, the person being held to the signature would be the one
-choosing what the evidence says they agreed to.
+The consent wording is **server-owned**. The page displays exactly the string
+the API sends and the certificate quotes exactly that string. If the browser
+supplied it, the person being held to the signature would be the one choosing
+what the evidence says they agreed to.
+
+It is localised, and that does not weaken the above: the page says which
+language it is painting in (`?lang=`, else `Accept-Language`), the server
+chooses the sentence, and the sentence it chose is what gets stored. Somebody
+signing a Turkish lease is entitled to agree to something they can read — a
+consent notice in a language the signer does not speak is weaker evidence than
+one they do. Unknown tags fall back to English. The certificate lists every
+distinct wording that was agreed to, so two signers shown different languages
+are both represented.
 
 Signing is one-shot. The transition is a conditional update confirmed by its
 own result, so a double-tapped button or a retried request cannot produce two
@@ -192,10 +201,19 @@ side needs no account at all.
 | **REST** | `GET/POST /api/admin/signatures`, `GET /api/admin/signatures/:id`, `.../document`, `.../void`, `.../finalize`, `.../signers/:signerId/resend` |
 | **Public** | `GET /api/public/sign/:token`, `.../document`, `POST .../sign`, `.../decline` |
 | **SDK** | `client.signatures.list / get / create / void / resend / finalize / document` |
-| **GraphQL** | `signatureRequests`, `signatureRequest`, `createSignatureRequest`, `voidSignatureRequest`, `resendSignatureInvite` |
+| **GraphQL** | `signatureRequests`, `signatureRequest`, `createSignatureRequest`, `voidSignatureRequest`, `resendSignatureInvite`, `finalizeSignatureRequest` |
 | **MCP** | `signatures.list / get / send / void / resend` |
-| **CLI** | `backlex signatures <list\|get\|send\|void\|resend>` |
+| **CLI** | `backlex signatures <list\|get\|send\|void\|resend\|finalize\|download>` |
 | **Admin** | *Signatures* under Settings — status per signer, resend, cancel, download the signed copy |
+
+**MCP does not return the signing links, and has no signing tool.** A tool
+result is transcript — summarised, forwarded, stored — and a link is a bearer
+credential for somebody else's signature; the invitation has already gone out
+by email. Signing itself is the *signer's* act, authenticated by a link token
+and nothing else, so an agent holding an admin key signing on somebody's behalf
+is precisely what the design refuses. The CLI is the one surface that does
+print the links, because a terminal is the operator's own screen and
+`--no-send` exists for exactly that.
 
 ## What this is not
 

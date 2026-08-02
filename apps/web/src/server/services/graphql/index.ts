@@ -35,6 +35,7 @@ import { webhookQueryFields, webhookMutationFields } from "./webhooks";
 import { integrationQueryFields, integrationMutationFields } from "./integrations";
 import { syncHookQueryFields, syncHookMutationFields } from "./sync-hooks";
 import { documentQueryFields, documentMutationFields } from "./documents";
+import { signatureQueryFields, signatureMutationFields } from "./signatures";
 import { i18nQueryFields, i18nMutationFields } from "./i18n";
 import { storageQueryFields, storageMutationFields } from "./storage";
 import { schemaVersionQueryFields, schemaVersionMutationFields } from "./schema-versions";
@@ -90,8 +91,8 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...webhookQueryFields,
           ...integrationQueryFields,
           ...syncHookQueryFields,
-    ...documentQueryFields,
           ...documentQueryFields,
+          ...signatureQueryFields,
           ...i18nQueryFields,
           ...storageQueryFields,
           ...schemaVersionQueryFields,
@@ -117,8 +118,8 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...webhookMutationFields,
           ...integrationMutationFields,
           ...syncHookMutationFields,
-    ...documentMutationFields,
           ...documentMutationFields,
+          ...signatureMutationFields,
           ...i18nMutationFields,
           ...storageMutationFields,
           ...schemaVersionMutationFields,
@@ -147,6 +148,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...integrationQueryFields,
     ...syncHookQueryFields,
     ...documentQueryFields,
+    ...signatureQueryFields,
     ...i18nQueryFields,
     ...storageQueryFields,
     ...schemaVersionQueryFields,
@@ -170,6 +172,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...integrationMutationFields,
     ...syncHookMutationFields,
     ...documentMutationFields,
+    ...signatureMutationFields,
     ...i18nMutationFields,
     ...storageMutationFields,
     ...schemaVersionMutationFields,

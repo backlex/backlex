@@ -134,6 +134,10 @@ msgstr "\"{c}\" is not a valid language code."
 msgid "\"New post\" buttons, etc. Falls back to the slug."
 msgstr "\"New post\" buttons, etc. Falls back to the slug."
 
+#: src/client/admin/flow-builder.tsx
+msgid "(don't write it anywhere)"
+msgstr "(don't write it anywhere)"
+
 #: src/client/admin/extras.tsx
 msgid "(item)"
 msgstr "(item)"
@@ -178,6 +182,10 @@ msgstr "(none — use literal subject/body)"
 #: src/client/admin/flow-builder.tsx
 msgid "(none connected — connect one on Payments)"
 msgstr "(none connected — connect one on Payments)"
+
+#: src/client/admin/flow-builder.tsx
+msgid "(none yet — author one on Document templates)"
+msgstr "(none yet — author one on Document templates)"
 
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/scim-card.tsx
@@ -460,6 +468,12 @@ msgstr "{0} of {1} columns mapped"
 #: src/client/admin/grid-edit.tsx
 msgid "{0} of {1} rows could not be updated."
 msgstr "{0} of {1} rows could not be updated."
+
+#. placeholder {0}: view.signedCount
+#. placeholder {1}: view.signerCount
+#: src/client/pages/sign-document.tsx
+msgid "{0} of {1} signed"
+msgstr "{0} of {1} signed"
 
 #. placeholder {0}: allowlist.size
 #. placeholder {1}: tools?.length ?? 0
@@ -787,6 +801,11 @@ msgstr "{r} may update rows matching this rule."
 msgid "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
 msgstr "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
 
+#. placeholder {0}: row.signers.length
+#: src/client/admin/parity/signatures.tsx
+msgid "{signed} of {0} signed"
+msgstr "{signed} of {0} signed"
+
 #: src/client/admin/grid-edit.tsx
 msgid "{skipped} cells skipped (read-only or invalid value)."
 msgstr "{skipped} cells skipped (read-only or invalid value)."
@@ -960,6 +979,10 @@ msgstr "A chosen agent answers"
 msgid "A dashboard with that name already exists."
 msgstr "A dashboard with that name already exists."
 
+#: src/client/admin/parity/signatures.tsx
+msgid "A document template sent out to be signed. The copy is frozen when it goes — editing the template afterwards never changes what somebody already read."
+msgstr "A document template sent out to be signed. The copy is frozen when it goes — editing the template afterwards never changes what somebody already read."
+
 #: src/client/admin/add-field.tsx
 msgid "A dropdown needs at least one choice."
 msgstr "A dropdown needs at least one choice."
@@ -967,6 +990,11 @@ msgstr "A dropdown needs at least one choice."
 #: src/client/admin/pages/feature-flags.tsx
 msgid "A flag is on for a caller when enabled AND its targeting (condition + rollout) matches."
 msgstr "A flag is on for a caller when enabled AND its targeting (condition + rollout) matches."
+
+#. placeholder {0}: res.data.email
+#: src/client/admin/parity/signatures.tsx
+msgid "A fresh link is on its way to {0} — the previous one is dead."
+msgstr "A fresh link is on its way to {0} — the previous one is dead."
 
 #: src/client/admin/pages/functions.tsx
 msgid "A function with that name already exists."
@@ -1315,6 +1343,10 @@ msgstr "Add an end-user…"
 msgid "Add at least one dropdown choice."
 msgstr "Add at least one dropdown choice."
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Add at least one signer."
+msgstr "Add at least one signer."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Add at least one step before saving"
 msgstr "Add at least one step before saving"
@@ -1633,6 +1665,7 @@ msgstr "alice"
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/signatures.tsx
 #: src/client/admin/ui.tsx
 msgid "All"
 msgstr "All"
@@ -1822,6 +1855,10 @@ msgstr "Anonymize — keep rows, scrub who they name"
 msgid "Anonymize is usually the lawful option — an invoice generally cannot be deleted. Revision history goes either way."
 msgstr "Anonymize is usually the lawful option — an invoice generally cannot be deleted. Revision history goes either way."
 
+#: src/client/pages/sign-document.tsx
+msgid "Another signer declined it."
+msgstr "Another signer declined it."
+
 #: src/client/admin/pages/analytics.tsx
 msgid "any event"
 msgstr "any event"
@@ -1837,6 +1874,10 @@ msgstr "Any OAuth-capable client connects with no key — the browser handles di
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
 #~ msgstr "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "any order"
+msgstr "any order"
 
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "any provider model id"
@@ -1857,6 +1898,10 @@ msgstr "Anyone with the URL can fetch this file."
 #: src/client/admin/item-collaboration.tsx
 msgid "Anyone with this link can view the record — copy it now, the token is shown only once."
 msgstr "Anyone with this link can view the record — copy it now, the token is shown only once."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Anyone, any time"
+msgstr "Anyone, any time"
 
 #: src/client/admin/collections-index.tsx
 msgid "API docs"
@@ -2116,6 +2161,10 @@ msgstr "Authentication succeeded"
 msgid "Author"
 msgstr "Author"
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Authored on the Document templates page."
+msgstr "Authored on the Document templates page."
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Authorization failed. Check the client ID, secret and redirect URI, then retry."
 msgstr "Authorization failed. Check the client ID, secret and redirect URI, then retry."
@@ -2248,6 +2297,10 @@ msgstr "Avatar preview"
 #: src/client/admin/pages/users.tsx
 msgid "awaiting accept"
 msgstr "awaiting accept"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Awaiting signature"
+msgstr "Awaiting signature"
 
 #: src/client/admin/add-field.tsx
 msgid "B-tree index — speeds up filter/sort by this column."
@@ -2570,6 +2623,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
+#: src/client/admin/parity/signatures.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/role-editor.tsx
@@ -2595,8 +2649,17 @@ msgstr "Cancel upload"
 
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/parity/signatures.tsx
 msgid "Cancelled"
 msgstr "Cancelled"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Cancelled — every outstanding link is now dead."
+msgstr "Cancelled — every outstanding link is now dead."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Cancelled:"
+msgstr "Cancelled:"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Cannot delete the trigger."
@@ -2815,6 +2878,7 @@ msgstr "clear"
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/relational-pickers.tsx
 #: src/client/components/date-picker.tsx
+#: src/client/pages/sign-document.tsx
 msgid "Clear"
 msgstr "Clear"
 
@@ -3236,6 +3300,10 @@ msgstr "Confirm"
 msgid "Confirm & run"
 msgstr "Confirm & run"
 
+#: src/client/pages/sign-document.tsx
+msgid "Confirm decline"
+msgstr "Confirm decline"
+
 #: src/client/admin/pages/erasure-card.tsx
 msgid "Confirm erasure"
 msgstr "Confirm erasure"
@@ -3573,6 +3641,11 @@ msgstr "Could not post comment."
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not revoke share link."
 msgstr "Could not revoke share link."
+
+#. placeholder {0}: res.data.email
+#: src/client/admin/parity/signatures.tsx
+msgid "Could not send to {0}."
+msgstr "Could not send to {0}."
 
 #: src/client/admin/account-page.tsx
 msgid "Couldn't copy — select and copy them manually."
@@ -4077,6 +4150,15 @@ msgstr "Decimal (1,234.5)"
 msgid "Decimal places"
 msgstr "Decimal places"
 
+#: src/client/pages/sign-document.tsx
+msgid "Decline"
+msgstr "Decline"
+
+#: src/client/admin/parity/signatures.tsx
+#: src/client/pages/sign-document.tsx
+msgid "Declined"
+msgstr "Declined"
+
 #: src/client/admin/pages/agents.tsx
 msgid "default"
 msgstr "default"
@@ -4146,6 +4228,10 @@ msgstr "Default values applied on create. The user cannot override these — the
 #: src/client/admin/condition-editor.tsx
 msgid "defaults"
 msgstr "defaults"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Defaults to the template's name"
+msgstr "Defaults to the template's name"
 
 #: src/client/admin/storage/index.tsx
 msgid "Defaults to the URL's filename"
@@ -4587,9 +4673,25 @@ msgstr "Do nothing"
 msgid "Docs"
 msgstr "Docs"
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Document"
+msgstr "Document"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Document fingerprint"
+msgstr "Document fingerprint"
+
+#: src/client/pages/sign-document.tsx
+msgid "Document fingerprint (SHA-256)"
+msgstr "Document fingerprint (SHA-256)"
+
 #: src/client/admin/parity/documents.tsx
 msgid "Document preview"
 msgstr "Document preview"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Document template"
+msgstr "Document template"
 
 #: src/client/admin/parity/documents.tsx
 #: src/client/admin/ui.tsx
@@ -4617,6 +4719,7 @@ msgstr "Don't write it back"
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/signatures.tsx
 msgid "Done"
 msgstr "Done"
 
@@ -4638,6 +4741,10 @@ msgstr "Download"
 #: src/client/pages/openapi-export.tsx
 msgid "Download JSON"
 msgstr "Download JSON"
+
+#: src/client/pages/sign-document.tsx
+msgid "Download PDF"
+msgstr "Download PDF"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Download YAML"
@@ -4688,6 +4795,14 @@ msgstr "Drag to reorder"
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to resize"
 msgstr "Drag to resize"
+
+#: src/client/pages/sign-document.tsx
+msgid "Draw"
+msgstr "Draw"
+
+#: src/client/pages/sign-document.tsx
+msgid "Draw your signature first"
+msgstr "Draw your signature first"
 
 #: src/client/admin/parity/documents.tsx
 msgid "Drawn on every page by the renderer, not in the preview."
@@ -4807,9 +4922,17 @@ msgstr "Each code works once if you lose your authenticator. Store them somewher
 msgid "Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations."
 msgstr "Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations."
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Each link opens only once the one above it has signed."
+msgstr "Each link opens only once the one above it has signed."
+
 #: src/client/admin/collection-settings.tsx
 msgid "Each row gets an <0>owner_id</0>; the<1> authenticated</1> role can only read/update its own rows. Toggling on auto-seeds owner-scoped permissions; toggling off does not remove existing rows or rules."
 msgstr "Each row gets an <0>owner_id</0>; the<1> authenticated</1> role can only read/update its own rows. Toggling on auto-seeds owner-scoped permissions; toggling off does not remove existing rows or rules."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Each signer has been emailed their own link. These are shown once — only their hashes are stored."
+msgstr "Each signer has been emailed their own link. These are shown once — only their hashes are stored."
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Earliest"
@@ -5479,6 +5602,10 @@ msgstr "Every write is versioned. Inspect, diff, or revert any prior state."
 msgid "everyone"
 msgstr "everyone"
 
+#: src/client/pages/sign-document.tsx
+msgid "Everyone has signed. A copy has been emailed to you."
+msgstr "Everyone has signed. A copy has been emailed to you."
+
 #: src/client/admin/pages/extensions.tsx
 msgid "Exact package name as published on npm."
 msgstr "Exact package name as published on npm."
@@ -5519,10 +5646,15 @@ msgstr "Expects"
 msgid "expired"
 msgstr "expired"
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Expired"
+msgstr "Expired"
+
 #: src/client/admin/parity/app-orgs.tsx
 msgid "expires"
 msgstr "expires"
 
+#: src/client/admin/parity/signatures.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Expires"
 msgstr "Expires"
@@ -5531,6 +5663,11 @@ msgstr "Expires"
 #: src/client/admin/item-editor.tsx
 msgid "Expires {0}"
 msgstr "Expires {0}"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/signatures.tsx
+msgid "Expires in (days)"
+msgstr "Expires in (days)"
 
 #: src/client/admin/item-editor.tsx
 msgid "Expiry cleared."
@@ -5737,6 +5874,7 @@ msgstr "field"
 #: src/client/admin/add-field.tsx
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/edit-field.tsx
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
@@ -5819,6 +5957,10 @@ msgstr "File detail"
 #: src/client/pages/public-form.tsx
 msgid "File is too large — the limit is {0}"
 msgstr "File is too large — the limit is {0}"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Filename (optional)"
+msgstr "Filename (optional)"
 
 #: src/client/admin/storage/index.tsx
 msgid "files"
@@ -6704,6 +6846,10 @@ msgstr "in <0>{folder}/</0>"
 msgid "In Google Authenticator choose “Enter a setup key”, paste the key above, and pick “Time based”."
 msgstr "In Google Authenticator choose “Enter a setup key”, paste the key above, and pick “Time based”."
 
+#: src/client/admin/flow-builder.tsx
+msgid "In order — each link waits for the one above"
+msgstr "In order — each link waits for the one above"
+
 #: src/client/admin/item-views.tsx
 msgid "In review"
 msgstr "In review"
@@ -6874,6 +7020,10 @@ msgstr "Internal column — stored and writable, but never returned by the API (
 msgid "Internal description for teammates."
 msgstr "Internal description for teammates."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Interpolated against the triggering row."
+msgstr "Interpolated against the triggering row."
+
 #: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Into collection"
 msgstr "Into collection"
@@ -7028,6 +7178,10 @@ msgstr "Issuer origin works too — the well-known path is appended."
 msgid "Istanbul, Turkey"
 msgstr "Istanbul, Turkey"
 
+#: src/client/pages/sign-document.tsx
+msgid "It has already been completed."
+msgstr "It has already been completed."
+
 #: src/client/pages/public-form.tsx
 msgid "It isn't accepting submissions right now — try again later."
 msgstr "It isn't accepting submissions right now — try again later."
@@ -7181,6 +7335,10 @@ msgstr "Kanban"
 #: src/client/admin/pages/integrations.tsx
 msgid "Keep HubSpot contacts in step with a collection. Receives record contents."
 msgstr "Keep HubSpot contacts in step with a collection. Receives record contents."
+
+#: src/client/pages/sign-document.tsx
+msgid "Keep reviewing"
+msgstr "Keep reviewing"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "key"
@@ -9426,6 +9584,11 @@ msgstr "Note"
 msgid "Note <0>(optional)</0>"
 msgstr "Note <0>(optional)</0>"
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/signatures.tsx
+msgid "Note in the invitation"
+msgstr "Note in the invitation"
+
 #: src/client/admin/pages/erasure-card.tsx
 msgid "nothing found"
 msgstr "nothing found"
@@ -9442,6 +9605,10 @@ msgstr "Nothing landed in the last {range}. Widen the range, or wait for request
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Nothing new — all {0} collections already exist"
 msgstr "Nothing new — all {0} collections already exist"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Nothing out for signature."
+msgstr "Nothing out for signature."
 
 #: src/client/admin/parity/app-orgs.tsx
 msgid "Nothing outstanding."
@@ -9643,6 +9810,14 @@ msgstr "One moment."
 #: src/client/admin/adopt-wizard.tsx
 msgid "One or more adopted FKs are missing a target collection."
 msgstr "One or more adopted FKs are missing a target collection."
+
+#: src/client/admin/flow-builder.tsx
+msgid "One per line — email, optionally :name:role. A single placeholder may also resolve to a whole list carried on the row."
+msgstr "One per line — email, optionally :name:role. A single placeholder may also resolve to a whole list carried on the row."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "One per line — email, optionally :name:role. Role shows on the certificate."
+msgstr "One per line — email, optionally :name:role. Role shows on the certificate."
 
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "One per line. `orders.beforeCreate`, `orders.*`, `*.beforeDelete`, or `*`."
@@ -9894,6 +10069,10 @@ msgstr "overage is reported, nothing is blocked"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Overrides the `--primary` token used across the admin and any published surfaces."
 msgstr "Overrides the `--primary` token used across the admin and any published surfaces."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Overrides the template's. The stored key stays random — a filename comes from row data."
+msgstr "Overrides the template's. The stored key stays random — a filename comes from row data."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Overrides the workspace transport's configured sender id."
@@ -10291,6 +10470,10 @@ msgstr "pick a column for the aliased system field"
 msgid "Pick a date…"
 msgstr "Pick a date…"
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Pick a document template"
+msgstr "Pick a document template"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Pick a field…"
 msgstr "Pick a field…"
@@ -10360,6 +10543,7 @@ msgstr "pick a target collection for the adopted FK"
 msgid "Pick a target collection."
 msgstr "Pick a target collection."
 
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Pick a template"
 msgstr "Pick a template"
@@ -10457,6 +10641,10 @@ msgstr "Pick row"
 #: src/client/admin/add-field.tsx
 msgid "Pick the collection this relation points to."
 msgstr "Pick the collection this relation points to."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Pick the document to send."
+msgstr "Pick the document to send."
 
 #: src/client/admin/collection-settings.tsx
 msgid "Pick the field whose values become the Kanban columns.<0> Auto</0> uses a field named<1> status</1>, else the first dropdown."
@@ -10747,6 +10935,10 @@ msgstr "Privacy Policy URL"
 #: src/client/admin/storage/widgets.tsx
 msgid "Private"
 msgstr "Private"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Produce signed copy"
+msgstr "Produce signed copy"
 
 #: src/client/admin/pages/analytics.tsx
 msgid "Product events and crash reports from your apps. Visitors are counted by an anonymous id, so pre-signup traffic is measured too."
@@ -11139,6 +11331,10 @@ msgstr "Ready to save."
 #: src/client/admin/ui.tsx
 msgid "Realtime"
 msgstr "Realtime"
+
+#: src/client/pages/sign-document.tsx
+msgid "Reason for declining"
+msgstr "Reason for declining"
 
 #: src/client/admin/pages/agents.tsx
 msgid "Reasoning effort"
@@ -11633,6 +11829,10 @@ msgstr "Requires a signed URL or auth cookie."
 msgid "Reschedule"
 msgstr "Reschedule"
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Resend"
+msgstr "Resend"
+
 #: src/client/pages/sign-in.tsx
 msgid "Resend verification email"
 msgstr "Resend verification email"
@@ -12052,6 +12252,14 @@ msgstr "Row"
 #: src/client/admin/parity/insights.tsx
 msgid "row count (no field needed)"
 msgstr "row count (no field needed)"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Row data"
+msgstr "Row data"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Row data must be valid JSON."
+msgstr "Row data must be valid JSON."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Row id"
@@ -12827,6 +13035,7 @@ msgstr "semantic embeddings"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/signatures.tsx
 #: src/client/pages/rest-explorer.tsx
 msgid "Send"
 msgstr "Send"
@@ -12854,6 +13063,10 @@ msgstr "Send an email invite. The user finishes signup themselves."
 #: src/client/admin/pages/integrations.tsx
 msgid "Send data events to a Telegram chat."
 msgstr "Send data events to a Telegram chat."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Send for signature"
+msgstr "Send for signature"
 
 #: src/client/admin/pages/users.tsx
 msgid "Send invite"
@@ -12912,6 +13125,7 @@ msgstr "Sending reset link"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/parity/signatures.tsx
 #: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/rest-explorer.tsx
@@ -12926,9 +13140,17 @@ msgstr "Sends a one-time sign-in link by email — requires a configured email a
 #~ msgid "Sends the visitor here after submitting, instead of the message."
 #~ msgstr "Sends the visitor here after submitting, instead of the message."
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Sent"
+msgstr "Sent"
+
 #: src/client/admin/item-views.tsx
 msgid "September"
 msgstr "September"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "sequential"
+msgstr "sequential"
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Server default (10 MB)"
@@ -13325,6 +13547,10 @@ msgstr "Shown once — store it now."
 msgid "Side-table (item_ownership)"
 msgstr "Side-table (item_ownership)"
 
+#: src/client/pages/sign-document.tsx
+msgid "Sign document"
+msgstr "Sign document"
+
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
@@ -13346,6 +13572,10 @@ msgstr "Sign in again and retry the connection."
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Sign in and approve the authorization screen"
 #~ msgstr "Sign in and approve the authorization screen"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Sign in order"
+msgstr "Sign in order"
 
 #: src/client/pages/sign-in.tsx
 msgid "Sign in to <0>backlex</0>."
@@ -13435,19 +13665,50 @@ msgstr "Sign-up is disabled"
 msgid "Signature algorithm"
 msgstr "Signature algorithm"
 
+#: src/client/admin/parity/signatures.tsx
+#: src/client/admin/ui.tsx
+msgid "Signatures"
+msgstr "Signatures"
+
+#: src/client/admin/parity/signatures.tsx
+#: src/client/pages/sign-document.tsx
+msgid "Signed"
+msgstr "Signed"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Signed PDF"
+msgstr "Signed PDF"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Signed URL copied (1h)."
 msgstr "Signed URL copied (1h)."
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/signatures.tsx
+msgid "Signers"
+msgstr "Signers"
+
+#: src/client/pages/sign-document.tsx
+msgid "Signing as {who}"
+msgstr "Signing as {who}"
 
 #: src/client/components/platform-sso.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Signing in…"
 msgstr "Signing in…"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Signing order"
+msgstr "Signing order"
+
 #: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Signing secret"
 msgstr "Signing secret"
+
+#: src/client/pages/sign-document.tsx
+msgid "Signing…"
+msgstr "Signing…"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>timestamp.body</2> with <3>X-Backlex-Timestamp</3> for replay protection."
@@ -14331,6 +14592,10 @@ msgstr "The client secret is encrypted at rest. If you leave both fields blank, 
 msgid "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
 msgstr "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
 
+#: src/client/admin/parity/signatures.tsx
+msgid "The document is rendered and frozen now. A later edit to the template will not change it."
+msgstr "The document is rendered and frozen now. A later edit to the template will not change it."
+
 #: src/client/pages/embed-dashboard.tsx
 msgid "The embed link may have been revoked, or the dashboard was removed."
 msgstr "The embed link may have been revoked, or the dashboard was removed."
@@ -14416,6 +14681,10 @@ msgstr "The publishable key your client apps send when tracking."
 msgid "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
 msgstr "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
 
+#: src/client/admin/parity/signatures.tsx
+msgid "The render context — what the template's placeholders resolve against."
+msgstr "The render context — what the template's placeholders resolve against."
+
 #: src/client/admin/parity/app-orgs.tsx
 msgid "The role dropdown governs org administration. In-org roles are workspace roles that apply only inside this organization — the <0>admin</0> role can never be granted here."
 msgstr "The role dropdown governs org administration. In-org roles are workspace roles that apply only inside this organization — the <0>admin</0> role can never be granted here."
@@ -14437,6 +14706,10 @@ msgstr "The section opens folded — useful for advanced or rarely-touched field
 msgid "The selected folder has no backlex-extension.json at its root."
 msgstr "The selected folder has no backlex-extension.json at its root."
 
+#: src/client/pages/sign-document.tsx
+msgid "The sender cancelled this request."
+msgstr "The sender cancelled this request."
+
 #: src/client/admin/pages/forms.tsx
 msgid "The server-wide upload ceiling still applies on top."
 msgstr "The server-wide upload ceiling still applies on top."
@@ -14444,6 +14717,14 @@ msgstr "The server-wide upload ceiling still applies on top."
 #: src/client/pages/shared-record.tsx
 msgid "The share link may have been revoked, or the record it pointed to was removed."
 msgstr "The share link may have been revoked, or the record it pointed to was removed."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "The signed copy has been produced."
+msgstr "The signed copy has been produced."
+
+#: src/client/pages/sign-document.tsx
+msgid "The signing link has expired."
+msgstr "The signing link has expired."
 
 #: src/client/admin/pages/forms.tsx
 msgid "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
@@ -14541,6 +14822,10 @@ msgstr "This deletes the room and its whole transcript for everyone on the team.
 msgid "This deployment has no vector store — connect a Vectorize binding (Cloudflare), pgvector (Postgres), or libSQL before vector search can run."
 msgstr "This deployment has no vector store — connect a Vectorize binding (Cloudflare), pgvector (Postgres), or libSQL before vector search can run."
 
+#: src/client/pages/sign-document.tsx
+msgid "This document is no longer open for signature"
+msgstr "This document is no longer open for signature"
+
 #: src/client/admin/pages/erasure-card.tsx
 msgid "This does not reach"
 msgstr "This does not reach"
@@ -14587,6 +14872,10 @@ msgstr "This is the first user on this instance."
 #: src/client/pages/shared-record.tsx
 msgid "This link is no longer available"
 msgstr "This link is no longer available"
+
+#: src/client/pages/sign-document.tsx
+msgid "This link is not available"
+msgstr "This link is not available"
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "This link is shown once — rotating the token later replaces it and kills the old one."
@@ -14702,6 +14991,7 @@ msgid "Timestamps across the admin render in this zone."
 msgstr "Timestamps across the admin render in this zone."
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/signatures.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Title"
 msgstr "Title"
@@ -15056,6 +15346,11 @@ msgstr "Two-factor authentication is on."
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/storage/index.tsx
+msgid "Type"
+msgstr "Type"
+
+#: src/client/pages/sign-document.tsx
+msgctxt "sign with the keyboard"
 msgid "Type"
 msgstr "Type"
 
@@ -15686,6 +15981,10 @@ msgstr "Visualization"
 msgid "Waiting for browser…"
 msgstr "Waiting for browser…"
 
+#: src/client/pages/sign-document.tsx
+msgid "Waiting on another signer"
+msgstr "Waiting on another signer"
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Want signed assertions"
 msgstr "Want signed assertions"
@@ -15867,6 +16166,10 @@ msgstr "Whichever agent fits best"
 msgid "Whole numbers only (no decimals)"
 msgstr "Whole numbers only (no decimals)"
 
+#: src/client/pages/sign-document.tsx
+msgid "Why are you declining? (optional)"
+msgstr "Why are you declining? (optional)"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 #: src/client/admin/storage/widgets.tsx
@@ -16000,6 +16303,10 @@ msgid "Write a read-only SELECT below."
 msgstr "Write a read-only SELECT below."
 
 #: src/client/admin/flow-builder.tsx
+msgid "Write the key back to"
+msgstr "Write the key back to"
+
+#: src/client/admin/flow-builder.tsx
 msgid "Write the link onto"
 msgstr "Write the link onto"
 
@@ -16043,6 +16350,10 @@ msgstr "Yes"
 msgid "You are a helpful assistant for our workspace…"
 msgstr "You are a helpful assistant for our workspace…"
 
+#: src/client/pages/sign-document.tsx
+msgid "You declined to sign this document. The sender has been notified."
+msgstr "You declined to sign this document. The sender has been notified."
+
 #: src/client/admin/item-editor.tsx
 msgid "You have edits that haven't been saved. Leaving will lose them."
 msgstr "You have edits that haven't been saved. Leaving will lose them."
@@ -16054,6 +16365,10 @@ msgstr "You haven't registered any passkeys yet."
 #: src/client/admin/account-page.tsx
 msgid "You signed in with a social provider. Setting a password lets you also sign in with email + password."
 msgstr "You signed in with a social provider. Setting a password lets you also sign in with email + password."
+
+#: src/client/pages/sign-document.tsx
+msgid "You will be emailed as soon as it is your turn to sign."
+msgstr "You will be emailed as soon as it is your turn to sign."
 
 #: src/client/pages/sign-up.tsx
 msgid "You'll get the authenticated role by default."
@@ -16103,6 +16418,10 @@ msgstr "Your display name"
 msgid "Your email isn't verified yet. Check your inbox for the verification link."
 msgstr "Your email isn't verified yet. Check your inbox for the verification link."
 
+#: src/client/pages/sign-document.tsx
+msgid "Your full name"
+msgstr "Your full name"
+
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Your own preference — stored locally, not synced."
 msgstr "Your own preference — stored locally, not synced."
@@ -16126,6 +16445,10 @@ msgstr "Your registered devices"
 #: src/client/pages/oauth-consent.tsx
 msgid "Your session expired — sign in and retry from the client."
 msgstr "Your session expired — sign in and retry from the client."
+
+#: src/client/pages/sign-document.tsx
+msgid "Your signature is recorded. You will get a copy once everyone has signed."
+msgstr "Your signature is recorded. You will get a copy once everyone has signed."
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/pages/public-form.tsx

@@ -611,6 +611,7 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
   "api-keys": msg`API keys`,
   "email-templates": msg`Email templates`,
   documents: msg`Document templates`,
+  signatures: msg`Signatures`,
   settings: msg`Settings`,
 };
 

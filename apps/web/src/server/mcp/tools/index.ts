@@ -11,6 +11,7 @@ import { featureFlagsTools } from "./feature-flags";
 import { integrationsTools } from "./integrations";
 import { syncHooksTools } from "./sync-hooks";
 import { documentsTools } from "./documents";
+import { signaturesTools } from "./signatures";
 import { storageTools } from "./storage";
 import { uploadsTools } from "./uploads";
 import { functionsTools } from "./functions";
@@ -67,6 +68,7 @@ export const allTools: McpTool[] = [
   ...integrationsTools,
   ...syncHooksTools,
   ...documentsTools,
+  ...signaturesTools,
   ...storageTools,
   ...uploadsTools,
   ...vectorTools,

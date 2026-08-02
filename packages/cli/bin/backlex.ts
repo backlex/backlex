@@ -24,6 +24,7 @@ import { runWebhooks } from "../src/webhooks";
 import { runIntegrations } from "../src/integrations";
 import { runSyncHooks } from "../src/sync-hooks";
 import { runDocuments } from "../src/documents";
+import { runSignatures } from "../src/signatures";
 import { runJobs } from "../src/jobs";
 import { runMessaging } from "../src/messaging";
 import { runAdvisor } from "../src/advisor";
@@ -131,9 +132,15 @@ Usage:
       Outbound webhooks + delivery ops. \`resume\` re-enables an auto-disabled hook.
 
   backlex sync-hooks <list|create|update|test|delete>
-  backlex documents <list|save|delete|render>
       Services that run BEFORE a write and decide whether it happens.
       \`--on-error\` is required on create and has no safe default.
+
+  backlex documents <list|save|delete|render>
+      HTML templates rendered to PDF — contracts, quotes, invoices.
+
+  backlex signatures <list|get|send|void|resend|finalize|download>
+      Send one of those documents out to be signed. \`send\` prints the
+      signing links once; \`void\` and \`resend\` both invalidate the old one.
 
   backlex integrations <catalog|list|connect|deliveries|resume|disconnect>
       Slack / Jira / Algolia / … — connect providers, read the delivery log, and
@@ -313,6 +320,10 @@ const run = async () => {
     case "documents":
     case "document":
       await runDocuments(rest);
+      return;
+    case "signatures":
+    case "signature":
+      await runSignatures(rest);
       return;
     case "payments":
     case "payment":

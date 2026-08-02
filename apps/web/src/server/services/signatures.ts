@@ -352,7 +352,10 @@ export const buildSignatureBlock = (
     )
     .join("");
 
-  const consent = signed.find((s) => s.consentText)?.consentText ?? "";
+  // Every DISTINCT wording that was agreed to, not just the first. Two signers
+  // can be shown the sentence in different languages, and a certificate that
+  // quotes one of them under-states what the other actually agreed to.
+  const consents = [...new Set(signed.map((s) => s.consentText).filter(Boolean))] as string[];
 
   return `
 <div style="page-break-inside:avoid;margin-top:36px">
@@ -372,7 +375,9 @@ export const buildSignatureBlock = (
   <p style="margin:12px 0 0;word-break:break-all">
     Document hash (SHA-256): <code>${escapeHtml(request.documentHash)}</code>
   </p>
-  ${consent ? `<p style="margin:8px 0 0;color:#666">${escapeHtml(consent)}</p>` : ""}
+  ${consents
+    .map((line) => `<p style="margin:8px 0 0;color:#666">${escapeHtml(line)}</p>`)
+    .join("")}
 </div>`;
 };
 
@@ -682,7 +687,7 @@ export const resolveSignerToken = async (ctx: Ctx, token: string): Promise<Resol
 /** What a signer's page needs, and nothing else. No ids that address anything,
  *  no other signer's email — a counterparty's address is not this signer's to
  *  read just because they share a contract. */
-export const signerView = (resolved: ResolvedSigner) => {
+export const signerView = (resolved: ResolvedSigner, locale?: string | null) => {
   const { request, signer, signers } = resolved;
   const status = effectiveStatus(request);
   return {
@@ -701,7 +706,7 @@ export const signerView = (resolved: ResolvedSigner) => {
     documentHash: request.documentHash,
     /** Shown above the sign button, and the exact string the certificate will
      *  quote — the page never composes its own wording. */
-    consentText: ESIGN_CONSENT_TEXT,
+    consentText: esignConsentText(locale),
     /** The snapshot itself — the page shows what is being signed, and the
      *  snapshot is exactly that. Rendered in a sandboxed iframe client-side. */
     html: request.bodyHtml,
@@ -739,16 +744,40 @@ const assertSignable = (resolved: ResolvedSigner): void => {
 };
 
 /**
- * The wording a signer agrees to, and the reason it is a server constant
- * rather than a field on the request.
+ * The wording a signer agrees to, and the reason the SERVER owns it.
  *
- * The signing page displays exactly this string (it comes down with the
- * document) and the certificate quotes exactly this string. If the browser
- * supplied it, the person being held to the signature would be the one
- * choosing what the evidence says they agreed to.
+ * The signing page displays exactly the string the API sends and the
+ * certificate quotes exactly that string. If the browser supplied it, the
+ * person being held to the signature would be the one choosing what the
+ * evidence says they agreed to.
+ *
+ * It is localised, and that does not weaken the above: the page asks for a
+ * language, the server chooses the sentence, and the sentence it chose is what
+ * gets stored. Somebody signing a Turkish lease is entitled to agree to
+ * something they can read — a consent notice in a language the signer does not
+ * speak is weaker evidence than one they do, not stronger.
  */
-export const ESIGN_CONSENT_TEXT =
-  "By signing, I agree that my electronic signature is the legal equivalent of my handwritten signature on this document.";
+/** Null-prototype so a language tag cannot reach an inherited member:
+ *  `?lang=constructor` on a plain object literal resolves to a function, and
+ *  the consent would then travel as a non-bindable value into the signer row. */
+const CONSENT_TEXT: Record<string, string> = Object.assign(Object.create(null) as Record<string, string>, {
+  en: "By signing, I agree that my electronic signature is the legal equivalent of my handwritten signature on this document.",
+  tr: "İmzalayarak, elektronik imzamın bu belgedeki el yazısı imzamla hukuken eşdeğer olduğunu kabul ediyorum.",
+});
+
+export const ESIGN_CONSENT_TEXT = CONSENT_TEXT.en!;
+
+/** Resolve a request's language tag to a consent sentence. Region subtags are
+ *  dropped (`tr-TR` → `tr`); anything unknown falls back to English rather
+ *  than to nothing. */
+export const esignConsentText = (locale: string | null | undefined): string => {
+  const tag = String(locale ?? "")
+    .split(",")[0]!
+    .split("-")[0]!
+    .trim()
+    .toLowerCase();
+  return CONSENT_TEXT[tag] ?? ESIGN_CONSENT_TEXT;
+};
 
 export interface SignInput {
   kind: "drawn" | "typed";
@@ -783,7 +812,7 @@ export const signDocument = async (
   ctx: Ctx,
   resolved: ResolvedSigner,
   input: SignInput,
-  meta: { ip: string | null; userAgent: string | null },
+  meta: { ip: string | null; userAgent: string | null; locale?: string | null },
 ): Promise<SignResult> => {
   assertSignable(resolved);
   if (!input.consent) {
@@ -814,7 +843,7 @@ export const signDocument = async (
       signatureKind: input.kind,
       signatureImage,
       signatureText,
-      consentText: ESIGN_CONSENT_TEXT,
+      consentText: esignConsentText(meta.locale),
       ip: meta.ip,
       userAgent: meta.userAgent?.slice(0, 500) ?? null,
     })

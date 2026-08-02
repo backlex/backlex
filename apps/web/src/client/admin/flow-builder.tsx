@@ -6,7 +6,7 @@ import { Badge, Button, IconButton, Switch } from "./ui";
 import { Select } from "./select";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
-import { emailTemplatesApi, functionsApi, collectionsApi, integrationsApi, type ApiEmailTemplate, type ApiFunction, type ApiCollection, type ApiIntegration } from "./api";
+import { documentsApi, emailTemplatesApi, functionsApi, collectionsApi, integrationsApi, type ApiDocumentTemplate, type ApiEmailTemplate, type ApiFunction, type ApiCollection, type ApiIntegration } from "./api";
 import { api } from "@/lib/api";
 
 /** Just what the payment-link step needs off `/api/admin/payments/providers`. */
@@ -36,6 +36,8 @@ const ACTIONS = [
   { id: "push", label: "Push notification", desc: "Send to a user's registered devices", icon: "Send" },
   { id: "sms", label: "Send SMS", desc: "Text a number on the row, or a user", icon: "MessageSquare" },
   { id: "payment.checkout", label: "Payment link", desc: "Open a checkout and write the link onto the row", icon: "CreditCard" },
+  { id: "document.render", label: "Render document", desc: "Row + HTML template → a stored PDF", icon: "ScrollText" },
+  { id: "document.sign", label: "Send for signature", desc: "Freeze the document and email a link per signer", icon: "Signature" },
   { id: "transform", label: "Transform", desc: "Compute a value and pipe it into $last", icon: "Function" },
   { id: "run-script", label: "Run script", desc: "Sandboxed JS — full ctx, `data`, `last`", icon: "Code" },
   { id: "fn", label: "Run function", desc: "Invoke a saved backlex function", icon: "Function" },
@@ -91,6 +93,9 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   const [emailTemplates, setEmailTemplates] = useState<ApiEmailTemplate[]>([]);
   const [fns, setFns] = useState<ApiFunction[]>([]);
   const [collections, setCollections] = useState<ApiCollection[]>([]);
+  // Document templates, so the two document steps offer the keys this
+  // workspace actually has rather than a free-text key that 404s at run time.
+  const [docTemplates, setDocTemplates] = useState<ApiDocumentTemplate[]>([]);
   const [integrations, setIntegrations] = useState<ApiIntegration[]>([]);
   // Connected payment providers, so the payment-link step offers the ones this
   // workspace actually has rather than a free-text provider name.
@@ -99,10 +104,11 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
     let cancelled = false;
     void (async () => {
       try {
-        const [tpls, funcs, cols, ints, pays] = await Promise.all([
+        const [tpls, funcs, cols, docs, ints, pays] = await Promise.all([
           emailTemplatesApi.list().catch(() => ({ data: [] as ApiEmailTemplate[] })),
           functionsApi.list().catch(() => ({ data: [] as ApiFunction[] })),
           collectionsApi.list().catch(() => ({ data: [] as ApiCollection[] })),
+          documentsApi.list().catch(() => ({ data: [] as ApiDocumentTemplate[] })),
           integrationsApi.list().catch(() => ({ data: [] as ApiIntegration[] })),
           api<{ data: PaymentProviderOption[] }>("/api/admin/payments/providers").catch(() => ({
             data: [] as PaymentProviderOption[],
@@ -112,6 +118,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
         if (Array.isArray(tpls.data)) setEmailTemplates(tpls.data);
         if (Array.isArray(funcs.data)) setFns(funcs.data);
         if (Array.isArray(cols.data)) setCollections(cols.data);
+        if (Array.isArray(docs.data)) setDocTemplates(docs.data);
         if (Array.isArray(ints.data)) setIntegrations(ints.data);
         if (Array.isArray(pays.data)) {
           setPaymentProviders(pays.data.filter((p) => p.status === "connected"));
@@ -414,6 +421,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
             collections={collections}
             integrations={integrations}
             paymentProviders={paymentProviders}
+            docTemplates={docTemplates}
           />
         </div>
       </div>
@@ -453,6 +461,22 @@ function defaultConfigFor(kind: string, type: string) {
       writeBackUrlField: "",
       writeBackReferenceField: "",
     };
+  // Seeded for the invoicing shape: a row carries its number and the field
+  // that should end up holding the file.
+  if (kind === "action" && type === "document.render")
+    return { templateKey: "", filename: "", writeBackCollection: "", writeBackItemId: "{{ data.id }}", writeBackField: "" };
+  if (kind === "action" && type === "document.sign")
+    return {
+      templateKey: "",
+      title: "",
+      message: "",
+      signers: "{{ data.email }}",
+      ordered: false,
+      expiresInDays: "",
+      writeBackCollection: "",
+      writeBackItemId: "{{ data.id }}",
+      writeBackField: "",
+    };
   if (kind === "action" && type === "transform") return { value: "" };
   if (kind === "action" && type === "run-script") return { code: "// data, last, ctx, auth available\nreturn data;", timeoutMs: 5000 };
   if (kind === "action" && type === "fn") return { fn: "", async: true, retries: 3 };
@@ -463,7 +487,7 @@ function defaultConfigFor(kind: string, type: string) {
   return {};
 }
 
-function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [], integrations = [], paymentProviders = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[]; paymentProviders?: PaymentProviderOption[] }) {
+function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [], integrations = [], paymentProviders = [], docTemplates = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[]; paymentProviders?: PaymentProviderOption[]; docTemplates?: ApiDocumentTemplate[] }) {
   const { t } = useLingui();
   if (!node) return (
     <div className="fb-inspector">
@@ -759,6 +783,66 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
                 </div>
               </>
             )}
+          </>
+        )}
+        {node.kind === "action" && (node.type === "document.render" || node.type === "document.sign") && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Document template</Trans></label>
+              <Select
+                value={node.config.templateKey || ""}
+                onChange={(v) => onChange({ config: { templateKey: v } })}
+                className="min-w-0"
+                options={[
+                  {
+                    value: "",
+                    label:
+                      docTemplates.length === 0
+                        ? t`(none yet — author one on Document templates)`
+                        : t`Pick a template`,
+                  },
+                  ...docTemplates.map((d) => ({ value: d.key, label: `${d.name} · ${d.key}` })),
+                ]}
+              />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>Interpolated against the triggering row.</Trans></span>
+            </div>
+            {node.type === "document.render" ? (
+              <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Filename (optional)</Trans></label><Input value={node.config.filename || ""} onChange={(e) => onChange({ config: { filename: e.target.value } })} placeholder="invoice-{{ data.no }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>Overrides the template's. The stored key stays random — a filename comes from row data.</Trans></span></div>
+            ) : (
+              <>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Signers</Trans></label><Textarea rows={2} value={node.config.signers || ""} onChange={(e) => onChange({ config: { signers: e.target.value } })} placeholder="{{ data.email }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>One per line — email, optionally :name:role. A single placeholder may also resolve to a whole list carried on the row.</Trans></span></div>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Title</Trans></label><Input value={node.config.title || ""} onChange={(e) => onChange({ config: { title: e.target.value } })} placeholder="Lease {{ data.no }}" /></div>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Note in the invitation</Trans></label><Input value={node.config.message || ""} onChange={(e) => onChange({ config: { message: e.target.value } })} /></div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Signing order</Trans></label>
+                  <Select
+                    value={node.config.ordered ? "ordered" : "any"}
+                    onChange={(v) => onChange({ config: { ordered: v === "ordered" } })}
+                    className="min-w-0"
+                    options={[
+                      { value: "any", label: t`Anyone, any time` },
+                      { value: "ordered", label: t`In order — each link waits for the one above` },
+                    ]}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Expires in (days)</Trans></label><Input value={node.config.expiresInDays || ""} onChange={(e) => onChange({ config: { expiresInDays: e.target.value } })} placeholder="30" /></div>
+              </>
+            )}
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Write the key back to</Trans></label>
+              <Select
+                value={node.config.writeBackCollection || ""}
+                onChange={(v) => onChange({ config: { writeBackCollection: v } })}
+                className="min-w-0"
+                options={[{ value: "", label: t`(don't write it anywhere)` }, ...collections.map((c) => ({ value: c.slug, label: c.slug }))]}
+              />
+            </div>
+            {node.config.writeBackCollection ? (
+              <>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Row id</Trans></label><Input value={node.config.writeBackItemId || ""} onChange={(e) => onChange({ config: { writeBackItemId: e.target.value } })} placeholder="{{ data.id }}" /></div>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Field</Trans></label><Input value={node.config.writeBackField || ""} onChange={(e) => onChange({ config: { writeBackField: e.target.value } })} placeholder="signed_doc" /></div>
+              </>
+            ) : null}
           </>
         )}
         {node.kind === "action" && node.type === "transform" && (

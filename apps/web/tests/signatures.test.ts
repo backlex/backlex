@@ -605,6 +605,70 @@ describe("the signed artefact", () => {
   });
 });
 
+describe("the consent wording", () => {
+  test("is the server's, chosen by the language the page asked for", async () => {
+    const { data } = await create();
+    const token = data.links[0].url.split("/sign/")[1];
+    const tr = await ok("GET", `${PUBLIC}/${token}?lang=tr-TR`);
+    const en = await ok("GET", `${PUBLIC}/${token}?lang=en`);
+    expect(tr.data.consentText).toMatch(/elektronik imzam/i);
+    expect(en.data.consentText).toMatch(/electronic signature/i);
+    // Unknown languages fall back rather than showing nothing.
+    expect((await ok("GET", `${PUBLIC}/${token}?lang=xx`)).data.consentText).toBe(en.data.consentText);
+    // …including the ones that are members of every object. On a plain object
+    // literal `constructor` resolves to a function, and the consent then
+    // travels as a non-bindable value into the signer row.
+    for (const hostile of ["constructor", "__proto__", "toString", "valueOf"]) {
+      expect((await ok("GET", `${PUBLIC}/${token}?lang=${hostile}`)).data.consentText).toBe(
+        en.data.consentText,
+      );
+    }
+  });
+
+  test("what the signer was shown is what gets stored", async () => {
+    const { data } = await create();
+    const token = data.links[0].url.split("/sign/")[1];
+    await ok("POST", `${PUBLIC}/${token}/sign?lang=tr`, { kind: "typed", text: "A", consent: true });
+    const stored = client
+      .query("select consent_text as c from signature_signers where request_id = ?")
+      .get(data.request.id) as { c: string };
+    expect(stored.c).toMatch(/elektronik imzam/i);
+    // …and it is what the certificate quotes.
+    expect(rendered[rendered.length - 1]).toContain("elektronik imzam");
+  });
+
+  test("a language tag that reaches Object.prototype does not break the write", async () => {
+    // On a plain object literal `constructor` resolves to a function, and the
+    // consent would then travel as a non-bindable value into the signer row.
+    const { data } = await create();
+    const token = data.links[0].url.split("/sign/")[1];
+    const out = await ok("POST", `${PUBLIC}/${token}/sign?lang=constructor`, {
+      kind: "typed",
+      text: "B",
+      consent: true,
+    });
+    expect(out.data.status).toBe("completed");
+    const stored = client
+      .query("select consent_text as c from signature_signers where request_id = ?")
+      .get(data.request.id) as { c: string };
+    expect(stored.c).toMatch(/electronic signature/i);
+  });
+
+  test("the certificate quotes every distinct wording, not just the first", async () => {
+    // Two people can be shown the sentence in different languages; quoting one
+    // under-states what the other agreed to.
+    const { data } = await create({
+      signers: [{ email: "a@example.com" }, { email: "b@example.com" }],
+    });
+    const tokens = data.links.map((l: any) => l.url.split("/sign/")[1]);
+    await ok("POST", `${PUBLIC}/${tokens[0]}/sign?lang=tr`, { kind: "typed", text: "A", consent: true });
+    await ok("POST", `${PUBLIC}/${tokens[1]}/sign?lang=en`, { kind: "typed", text: "B", consent: true });
+    const cert = rendered[rendered.length - 1]!;
+    expect(cert).toContain("elektronik imzam");
+    expect(cert).toContain("electronic signature");
+  });
+});
+
 describe("effectiveStatus", () => {
   test("only pending decays into expired", () => {
     const past = Date.now() - 1;

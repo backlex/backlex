@@ -42,6 +42,8 @@ const SUPPORTED_ACTIONS = new Set([
   "push",
   "sms",
   "payment.checkout",
+  "document.render",
+  "document.sign",
   "transform",
   "run-script",
   // Wired in later phases — listed so the compiler emits a clearer warning
@@ -417,6 +419,64 @@ const compileAction = (node: GraphNode): Operation => {
         ...(writeBack ? { writeBack } : {}),
       };
     }
+    case "document.render":
+    case "document.sign": {
+      const templateKey = String(c.templateKey ?? "").trim();
+      if (!templateKey) throw new FlowCompileError(`${node.type} step needs a document template`);
+      // The three write-back fields travel together: a target row with no
+      // field to put the key in records nothing, so the compiler asks for all
+      // three rather than emitting a half-specified target the server rejects.
+      const wbCollection = String(c.writeBackCollection ?? "").trim();
+      const wbItemId = String(c.writeBackItemId ?? "").trim();
+      const wbField = String(c.writeBackField ?? "").trim();
+      let writeBack: { collection: string; id: string; field: string } | undefined;
+      if (wbCollection || wbField) {
+        if (!wbCollection || !wbField || !wbItemId) {
+          throw new FlowCompileError(
+            `${node.type} write-back needs a collection, a row id and a field`,
+          );
+        }
+        writeBack = { collection: wbCollection, id: wbItemId, field: wbField };
+      }
+      if (node.type === "document.render") {
+        const filename = String(c.filename ?? "").trim();
+        return {
+          type: "document.render",
+          templateKey,
+          ...(filename ? { filename } : {}),
+          ...(writeBack ? { writeBack } : {}),
+        };
+      }
+      // One `email:name:role` per line, which is what the admin page and the
+      // CLI take too. A lone placeholder is passed through untouched — it
+      // resolves to a whole list at run time, off a row that carries its own
+      // counterparties.
+      const raw = String(c.signers ?? "").trim();
+      if (!raw) throw new FlowCompileError("Signature step needs at least one signer");
+      const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+      const lone = lines.length === 1 && /^\{\{\s*[\w$.]+\s*\}\}$/.test(lines[0]!);
+      const signers = lone
+        ? lines[0]!
+        : lines.map((line) => {
+            const [email, name, ...role] = line.split(":");
+            return {
+              email: (email ?? "").trim(),
+              ...(name?.trim() ? { name: name.trim() } : {}),
+              ...(role.join(":").trim() ? { role: role.join(":").trim() } : {}),
+            };
+          });
+      const days = Number(String(c.expiresInDays ?? "").trim());
+      return {
+        type: "document.sign",
+        templateKey,
+        signers,
+        ...(String(c.title ?? "").trim() ? { title: String(c.title).trim() } : {}),
+        ...(String(c.message ?? "").trim() ? { message: String(c.message).trim() } : {}),
+        ...(c.ordered ? { ordered: true } : {}),
+        ...(Number.isFinite(days) && days > 0 ? { expiresInDays: days } : {}),
+        ...(writeBack ? { writeBack } : {}),
+      };
+    }
     case "transform": {
       return {
         type: "transform",
@@ -725,6 +785,34 @@ const opToConfig = (op: Operation): Record<string, any> => {
         writeBackItemId: op.writeBack?.itemId ?? "",
         writeBackUrlField: op.writeBack?.urlField ?? "",
         writeBackReferenceField: op.writeBack?.referenceField ?? "",
+      };
+    case "document.render":
+      // Flattened for the inspector: the nested `writeBack` becomes three
+      // sibling fields, which is what the editor binds inputs to.
+      return {
+        templateKey: op.templateKey ?? "",
+        filename: op.filename ?? "",
+        writeBackCollection: op.writeBack?.collection ?? "",
+        writeBackItemId: op.writeBack?.id ?? "",
+        writeBackField: op.writeBack?.field ?? "",
+      };
+    case "document.sign":
+      return {
+        templateKey: op.templateKey ?? "",
+        title: op.title ?? "",
+        message: op.message ?? "",
+        // Back to one line per signer — the same shape the compiler parses.
+        signers:
+          typeof op.signers === "string"
+            ? op.signers
+            : (op.signers ?? [])
+                .map((s: any) => [s.email, s.name, s.role].filter(Boolean).join(":"))
+                .join("\n"),
+        ordered: Boolean(op.ordered),
+        expiresInDays: op.expiresInDays ? String(op.expiresInDays) : "",
+        writeBackCollection: op.writeBack?.collection ?? "",
+        writeBackItemId: op.writeBack?.id ?? "",
+        writeBackField: op.writeBack?.field ?? "",
       };
     case "transform":
       return {

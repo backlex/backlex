@@ -738,6 +738,17 @@ function DocumentsSkeletonImpl() {
   );
 }
 
+/** Signatures — header with a filter + a send button, then one collapsed row
+ *  per request in a single card. */
+function SignaturesSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-4.5">
+      <HeaderSkeleton actions={2} />
+      <ListCardSkeleton rows={6} />
+    </div>
+  );
+}
+
 /** Authentication — header, a Providers / Policy two-column split, then the
  *  full-width SAML and LDAP cards stacked below. */
 function AuthSettingsSkeletonImpl() {
@@ -1061,6 +1072,7 @@ export const RevisionsSkeleton = withSkeletonDelay(RevisionsSkeletonImpl);
 export const TranslationsSkeleton = withSkeletonDelay(TranslationsSkeletonImpl);
 export const EmailTemplatesSkeleton = withSkeletonDelay(EmailTemplatesSkeletonImpl);
 export const DocumentsSkeleton = withSkeletonDelay(DocumentsSkeletonImpl);
+export const SignaturesSkeleton = withSkeletonDelay(SignaturesSkeletonImpl);
 export const AuthSettingsSkeleton = withSkeletonDelay(AuthSettingsSkeletonImpl);
 export const UsersSkeleton = withSkeletonDelay(UsersSkeletonImpl);
 export const AppUsersSkeleton = withSkeletonDelay(AppUsersSkeletonImpl);

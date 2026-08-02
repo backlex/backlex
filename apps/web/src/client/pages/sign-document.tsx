@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { i18n } from "@/admin/i18n";
 import { signPublicApi, type ApiSignerView } from "@/admin/api";
 
 const CSS = `
@@ -189,8 +190,10 @@ export const SignDocument = () => {
   const padRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, isError, error: loadError, refetch } = useQuery({
-    queryKey: ["public-sign", token],
-    queryFn: () => signPublicApi.get(token).then((r) => r.data),
+    queryKey: ["public-sign", token, i18n.locale],
+    // The locale goes with the request: the consent sentence is the server's,
+    // and it should be in the language this page is painting in.
+    queryFn: () => signPublicApi.get(token, i18n.locale).then((r) => r.data),
     retry: false,
   });
 
@@ -218,12 +221,16 @@ export const SignDocument = () => {
         if (!cropped) throw new Error(t`Draw your signature first`);
         image = cropped;
       }
-      await signPublicApi.sign(token, {
-        kind: mode,
-        ...(image ? { image } : {}),
-        ...(mode === "typed" ? { text: typed.trim() } : {}),
-        consent,
-      });
+      await signPublicApi.sign(
+        token,
+        {
+          kind: mode,
+          ...(image ? { image } : {}),
+          ...(mode === "typed" ? { text: typed.trim() } : {}),
+          consent,
+        },
+        i18n.locale,
+      );
       setDone("signed");
       await refetch();
     } catch (e) {
@@ -379,7 +386,10 @@ export const SignDocument = () => {
                   aria-selected={mode === "typed"}
                   onClick={() => setMode("typed")}
                 >
-                  <Trans>Type</Trans>
+                  {/* `context` splits this from the "Type" that means a field's
+                      data type — which is already translated as such, and read
+                      as "species" on a signature pad. */}
+                  <Trans context="sign with the keyboard">Type</Trans>
                 </button>
               </div>
               {mode === "drawn" ? (

@@ -517,18 +517,32 @@ export const listSlots = async (
 /**
  * Does this error mean a unique index refused the row?
  *
- * Both engines say so in their own words and neither exposes a portable code
- * through the drivers this runs on, so the string is what there is. A miss here
- * turns a lost race into a 500 rather than into a wrong booking, which is the
- * right direction for a guess to fail in.
+ * The CAUSE CHAIN is the whole point. Drizzle wraps a driver error in its own,
+ * whose message is `Failed query: insert into "bookings" …` — the engine's
+ * actual words live on `cause`. On bun:sqlite the top-level message happens to
+ * carry them too, so a check that reads only `err.message` passes every test in
+ * this repo and then fails in production: on D1 the loser of a race got a 500
+ * instead of "that time was taken", because the violation was never recognised.
+ * That is exactly how this shipped the first time.
+ *
+ * No engine here exposes a portable code through its driver, so the string is
+ * what there is. A miss still fails in the safe direction — a lost race becomes
+ * a 500 rather than an overbooking — but it is a miss, so the chain is walked.
  */
-const isUniqueViolation = (err: unknown): boolean => {
-  const message = String((err as { message?: unknown })?.message ?? err ?? "");
-  return (
-    message.includes("UNIQUE constraint failed") ||
-    message.includes("duplicate key value") ||
-    (err as { code?: string })?.code === "23505"
-  );
+export const isUniqueViolation = (err: unknown): boolean => {
+  for (let e: unknown = err, depth = 0; e != null && depth < 5; depth++) {
+    const message = String((e as { message?: unknown })?.message ?? e);
+    if (
+      message.includes("UNIQUE constraint failed") ||
+      message.includes("SQLITE_CONSTRAINT_UNIQUE") ||
+      message.includes("duplicate key value") ||
+      (e as { code?: string })?.code === "23505"
+    ) {
+      return true;
+    }
+    e = (e as { cause?: unknown }).cause;
+  }
+  return false;
 };
 
 /**

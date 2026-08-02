@@ -21,6 +21,7 @@ import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 import {
   createBooking,
   effectiveBookingStatus,
+  isUniqueViolation,
   listSlots,
   loadResource,
   stillOccupies,
@@ -618,6 +619,38 @@ describe("operator actions", () => {
     emails.length = 0;
     await ok("POST", `${BASE}/bookings/${made.data.booking.id}/cancel`, { notify: false });
     expect(emails).toHaveLength(0);
+  });
+});
+
+describe("the unique-violation check", () => {
+  // This is the shape that got through: bun:sqlite puts the engine's words on
+  // the top-level message, so a check reading only `err.message` passes every
+  // test here — and then a lost race on D1 answers 500 instead of "that time
+  // was taken", because drizzle wraps the driver error and the real text is on
+  // `cause`. Both shapes are pinned so the next driver change is caught here.
+  test("recognises the flat bun:sqlite shape", () => {
+    expect(isUniqueViolation(new Error("UNIQUE constraint failed: bookings.seat"))).toBe(true);
+  });
+
+  test("recognises the D1 shape, where drizzle wraps the driver error", () => {
+    const wrapped = new Error('Failed query: insert into "bookings" …', {
+      cause: new Error(
+        "D1_ERROR: UNIQUE constraint failed: bookings.resource_id, bookings.start_at, bookings.seat: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_UNIQUE)",
+      ),
+    });
+    expect(isUniqueViolation(wrapped)).toBe(true);
+  });
+
+  test("recognises the Postgres shape", () => {
+    expect(isUniqueViolation({ code: "23505", message: "duplicate key value violates …" })).toBe(true);
+  });
+
+  test("does not swallow an unrelated failure", () => {
+    // A miss here would turn a genuine error into "that time was taken", which
+    // is a lie; the seat walk would also keep retrying against a broken table.
+    expect(isUniqueViolation(new Error("no such table: bookings"))).toBe(false);
+    expect(isUniqueViolation(new Error("network"))).toBe(false);
+    expect(isUniqueViolation(null)).toBe(false);
   });
 });
 

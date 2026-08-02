@@ -12,6 +12,7 @@
 // flows; this wizard's submit just sets `adopted: true` and passes the
 // introspected `physicalTable`/`pkColumn`/alias columns.
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
@@ -485,7 +486,12 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
 
   if (!open) return null;
 
-  return (
+  // Portalled for the same reason the flow builder is: `.page` carries
+  // `view-transition-name: main-pane`, which creates a stacking context, so a
+  // `z-index: 70` backdrop rendered in place is still painted under the app
+  // sidebar's `z-10`. This is the last hand-rolled `.dialog-backdrop` left —
+  // every other modal in the admin goes through Radix's Dialog, which portals.
+  return createPortal(
     <div className="dialog-backdrop" onClick={onClose}>
       <div
         className="dialog dialog-lg"
@@ -669,7 +675,8 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

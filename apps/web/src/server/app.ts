@@ -47,6 +47,7 @@ import { commentsRoutes } from "./routes/comments";
 import { dbAdminRoutes } from "./routes/db-admin";
 import { emailConfigRoutes } from "./routes/email-config";
 import { emailTemplatesRoutes } from "./routes/email-templates";
+import { documentsRoutes } from "./routes/documents";
 import { flowsRoutes } from "./routes/flows";
 import { foldersRoutes } from "./routes/folders";
 import { functionsRoutes } from "./routes/functions";
@@ -80,6 +81,10 @@ import { schemaVersionsRoutes } from "./routes/schema-versions";
 import { dashboardsPublicRoutes } from "./routes/dashboards-public";
 import { formsRoutes } from "./routes/forms";
 import { formsPublicRoutes } from "./routes/forms-public";
+import { signaturesPublicRoutes } from "./routes/signatures-public";
+import { signaturesRoutes } from "./routes/signatures";
+import { bookingPublicRoutes } from "./routes/booking-public";
+import { bookingRoutes } from "./routes/booking";
 import { realtimeRoutes } from "./routes/realtime";
 import { realtimeAdminRoutes } from "./routes/realtime-admin";
 import { revisionsRoutes } from "./routes/revisions";
@@ -835,6 +840,9 @@ export const createApp = (env: Env) => {
   app.route("/api/t", appOrgsPublicRoutes);
   app.route("/api/tenants", tenantsRoutes);
   app.route("/api/admin/email-templates", emailTemplatesRoutes);
+  app.route("/api/admin/documents", documentsRoutes);
+  app.route("/api/admin/signatures", signaturesRoutes);
+  app.route("/api/admin/booking", bookingRoutes);
   app.route("/api/admin/email-config", emailConfigRoutes);
   app.route("/api/admin/push-templates", pushTemplatesRoutes);
   app.route("/api/admin/push-config", pushConfigRoutes);
@@ -905,6 +913,14 @@ export const createApp = (env: Env) => {
   // Public form definition + submit — no `requireUser`; the `/api/public/`
   // prefix inherits the framable CSP + XFO-strip for the iframe embed page.
   app.route("/api/public/forms", formsPublicRoutes);
+  // The signer's side of an e-signature request. Same shape as the form
+  // endpoints above: no `requireUser`, the link token is the whole grant.
+  app.route("/api/public/sign", signaturesPublicRoutes);
+  // The booker's side. Same shape again: no `requireUser`, the page token is
+  // the grant to see a calendar and the manage token the grant to change one
+  // appointment. Framable, because a booking widget belongs on the operator's
+  // own site rather than on ours.
+  app.route("/api/public/book", bookingPublicRoutes);
 
   // Public dashboard embed page. `/embed/*` is in `run_worker_first`, so the
   // Worker (not CF Static Assets) serves the SPA shell here — which lets the

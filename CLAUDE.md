@@ -204,6 +204,9 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Offline-first sync (changefeed + client store) | `docs/offline-sync.md` |
 | Push messaging (FCM / APNs / Web Push) | `docs/push-messaging.md` |
 | SMS messaging (Twilio / Amazon SNS) | `docs/sms-messaging.md` |
+| Document generation (PDF) | `docs/documents.md` |
+| E-signature (native signing flow) | `docs/e-signature.md` |
+| Availability & booking (public booking page) | `docs/booking.md` |
 | Storage + transforms | `docs/storage.md` |
 | Resumable uploads (TUS) | `docs/resumable-uploads.md` |
 | Functions sandbox | `docs/sandbox.md` |

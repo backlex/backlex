@@ -39,6 +39,125 @@ export type Operation =
       subject?: string;
       html?: string;
       text?: string;
+      /**
+       * Storage keys to attach, usually produced by an earlier
+       * `document.render` op (`attach: ["{{ $last.key }}"]`). Templated.
+       *
+       * Keys only — never a URL. A caller-supplied URL would make the mail
+       * sender fetch whatever it was pointed at and post the bytes onward,
+       * which is a request forgery with an email as the exfiltration channel.
+       */
+      attach?: string[];
+      /**
+       * Attach a calendar invite.
+       *
+       * Eight of the schema templates model a scheduled thing, and this is the
+       * write-back that needs no account connected anywhere: an `.ics` reaches
+       * Google, Outlook, Apple Calendar and everything else, from the
+       * confirmation email the booking was already going to send.
+       *
+       * Every field is interpolated, so the usual shape is
+       * `{ summary: "{{ data.service }}", start: "{{ data.starts_at }}" }`.
+       * `start` is required; the rest have defaults.
+       */
+      ics?: {
+        summary: string;
+        /** ISO instant, epoch ms, or `YYYY-MM-DD` for an all-day event. */
+        start: string;
+        /** Defaults to an hour after `start` (a day, for an all-day). */
+        end?: string;
+        description?: string;
+        location?: string;
+        url?: string;
+        /** Makes it an invitation rather than a plain event. */
+        organizerEmail?: string;
+        organizerName?: string;
+        /** Comma-separated. Defaults to the message's own recipient. */
+        attendees?: string;
+        /**
+         * Stable identity for THIS booking, so a second send updates the
+         * calendar entry instead of creating another one. Defaults to the
+         * triggering row's id; set it explicitly when the flow is not
+         * row-scoped.
+         */
+        uid?: string;
+        /** Raise on each re-send of the same `uid`; `cancel` withdraws it. */
+        sequence?: number;
+        method?: "REQUEST" | "PUBLISH" | "CANCEL";
+        filename?: string;
+      };
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
+  /**
+   * Render a stored HTML document template against the triggering row and put
+   * the PDF in storage.
+   *
+   * Fourteen of the schema templates carry documents — contracts, quotes,
+   * invoices, agreements — and this is what turns the row that holds one into
+   * the artefact somebody can sign or pay. The result lands on `{{ $last }}` as
+   * `{ key, filename, size, renderer }`, so the usual next step is an `email`
+   * op with `attach: ["{{ $last.key }}"]`.
+   */
+  | {
+      type: "document.render";
+      /** A stored template's key. Omit when passing `html`. */
+      templateKey?: string;
+      /** A complete HTML document, for a one-off that needs no stored template. */
+      html?: string;
+      /** Extra values on top of `data` / `$user` / `$last`. */
+      vars?: Record<string, unknown>;
+      /** Overrides the template's suggested name. Templated. */
+      filename?: string;
+      /** Write the stored key onto a row once it renders. */
+      writeBack?: { collection: string; id: string; field: string };
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
+  /**
+   * Freeze a document and send it out for signature.
+   *
+   * The step after `document.render` for the five templates that end in a
+   * signature — rental `agreements`, field-service `contracts`, real-estate
+   * `offers`. The document is interpolated and snapshot NOW, so an edit to the
+   * template or the row afterwards cannot change what the signer reads.
+   *
+   * `{{ $last }}` carries `{ id, status, signers: [{ id, email, status }] }`.
+   * It carries NO signing links: everything on `$last` is readable by every op
+   * after this one — a `webhook` posting it onward, a `log` writing it to the
+   * server log — and a link is a bearer credential for somebody else's
+   * signature. The invitation email is sent by the op itself and its wording
+   * is customised through the `signature_request` email template.
+   */
+  | {
+      type: "document.sign";
+      /** A stored document template's key. Omit when passing `html`. */
+      templateKey?: string;
+      /** A complete HTML document, for a one-off. */
+      html?: string;
+      /** Extra values on top of `data` / `$user` / `$last`. */
+      vars?: Record<string, unknown>;
+      /** What the signer is told they are signing. Templated. */
+      title?: string;
+      /** A note carried into the invitation email. Templated. */
+      message?: string;
+      /** Overrides the template's suggested name. Templated. */
+      filename?: string;
+      /**
+       * Who signs. `email` is templated (`{{ data.customer_email }}`); the
+       * whole list may also be a template resolving to an array, for a row
+       * that carries its own counterparties.
+       */
+      signers:
+        | Array<{ email: string; name?: string; role?: string }>
+        | string;
+      /** Each link only opens once the one before it has signed. */
+      ordered?: boolean;
+      expiresInDays?: number;
+      /** Where the SIGNED document's storage key lands, once everyone signs. */
+      writeBack?: { collection: string; id: string; field: string };
+      /** Extra addresses that receive the completed copy. Templated. */
+      notifyEmails?: string[] | string;
       onSuccess?: Operation[];
       onError?: Operation[];
     }
@@ -255,6 +374,8 @@ export const OPERATION_TYPES: OperationType[] = [
   "notification",
   "push",
   "sms",
+  "document.render",
+  "document.sign",
   "payment.checkout",
   "payment.refund",
   "function",
@@ -315,9 +436,94 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       subject: z.string().optional(),
       html: z.string().optional(),
       text: z.string().optional(),
+      attach: z.array(z.string().min(1).max(500)).max(5).optional(),
+      ics: z
+        .object({
+          summary: z.string().min(1).max(300),
+          // Not date-validated here: it is almost always a `{{ … }}` template
+          // that only resolves at run time, so the parse lives in the executor
+          // against the interpolated value — same reasoning as `sms.to`.
+          start: z.string().min(1),
+          end: z.string().optional(),
+          description: z.string().max(4000).optional(),
+          location: z.string().max(300).optional(),
+          url: z.string().max(2000).optional(),
+          organizerEmail: z.string().min(1).optional(),
+          organizerName: z.string().max(200).optional(),
+          attendees: z.string().max(2000).optional(),
+          uid: z.string().max(200).optional(),
+          sequence: z.number().int().min(0).max(1_000_000).optional(),
+          method: z.enum(["REQUEST", "PUBLISH", "CANCEL"]).optional(),
+          filename: z.string().max(120).optional(),
+        })
+        .optional(),
       onSuccess: z.array(OperationSchema).optional(),
       onError: z.array(OperationSchema).optional(),
     }),
+    z
+      .object({
+        type: z.literal("document.render"),
+        templateKey: z.string().min(1).max(200).optional(),
+        html: z.string().min(1).optional(),
+        vars: z.record(z.string(), z.unknown()).optional(),
+        filename: z.string().min(1).max(200).optional(),
+        writeBack: z
+          .object({
+            collection: z.string().min(1),
+            id: z.string().min(1),
+            field: z.string().min(1),
+          })
+          .optional(),
+        onSuccess: z.array(OperationSchema).optional(),
+        onError: z.array(OperationSchema).optional(),
+      })
+      // One source of HTML, not none and not both. Neither is a run that
+      // renders nothing; both is a template silently losing to an inline body.
+      .refine((op) => (op.templateKey == null) !== (op.html == null), {
+        message: "document.render needs exactly one of `templateKey` or `html`",
+      }),
+    z
+      .object({
+        type: z.literal("document.sign"),
+        templateKey: z.string().min(1).max(200).optional(),
+        html: z.string().min(1).optional(),
+        vars: z.record(z.string(), z.unknown()).optional(),
+        title: z.string().min(1).max(200).optional(),
+        message: z.string().max(2000).optional(),
+        filename: z.string().min(1).max(200).optional(),
+        // Either a literal list or one template that resolves to an array —
+        // a row that carries its own counterparties cannot be written out
+        // statically. Emails are NOT validated here: they are almost always
+        // `{{ … }}` at save time, so the check lives where the value is real.
+        signers: z.union([
+          z
+            .array(
+              z.object({
+                email: z.string().min(1).max(320),
+                name: z.string().max(120).optional(),
+                role: z.string().max(80).optional(),
+              }),
+            )
+            .min(1)
+            .max(10),
+          z.string().min(1).max(500),
+        ]),
+        ordered: z.boolean().optional(),
+        expiresInDays: z.number().int().min(1).max(365).optional(),
+        writeBack: z
+          .object({
+            collection: z.string().min(1),
+            id: z.string().min(1),
+            field: z.string().min(1),
+          })
+          .optional(),
+        notifyEmails: z.union([z.array(z.string().max(320)).max(10), z.string().max(500)]).optional(),
+        onSuccess: z.array(OperationSchema).optional(),
+        onError: z.array(OperationSchema).optional(),
+      })
+      .refine((op) => (op.templateKey == null) !== (op.html == null), {
+        message: "document.sign needs exactly one of `templateKey` or `html`",
+      }),
     z.object({
       type: z.literal("transform"),
       value: z.unknown(),

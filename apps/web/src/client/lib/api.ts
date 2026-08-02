@@ -1,5 +1,27 @@
 const base = import.meta.env.VITE_API_URL ?? "";
 
+/** The same origin prefix `api()` uses. Exported for the few callers that must
+ *  bypass the JSON envelope — a `fetch` whose response is BYTES, not JSON. */
+export const API_BASE = base;
+
+/**
+ * The D1 session headers `api()` would have sent, for those same callers.
+ *
+ * Not cosmetic: a bypassing call is still part of the same session, and the
+ * sequence that matters here is save-then-render — a write immediately followed
+ * by a read of the row it just wrote. Without the bookmark that read can land
+ * on a replica that has not caught up, and the render silently uses the
+ * PREVIOUS version of the template.
+ */
+export const sessionHeaders = (): Record<string, string> =>
+  d1Bookmark ? { "x-d1-bookmark": d1Bookmark } : {};
+
+/** Record a bookmark from a response that bypassed `api()`. */
+export const captureBookmark = (res: Response): void => {
+  const bm = res.headers.get("x-d1-bookmark");
+  if (bm) d1Bookmark = bm;
+};
+
 /**
  * Latest D1 Sessions-API bookmark seen on a response. We round-trip it on
  * subsequent requests as the `x-d1-bookmark` header so a write made in one

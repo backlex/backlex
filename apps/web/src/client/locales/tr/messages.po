@@ -100,6 +100,10 @@ msgstr "… ve {0} tane daha"
 msgid "…or a custom code (e.g. zh-Hant)"
 msgstr "…ya da özel bir kod (örn. zh-Hant)"
 
+#: src/client/admin/parity/documents.tsx
+msgid "· approximate — use Render PDF for the real thing"
+msgstr "· yaklaşık — gerçeği için PDF Oluştur'u kullanın"
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "· keep last"
 msgstr "· son"
@@ -130,10 +134,15 @@ msgstr "\"{c}\" geçerli bir dil kodu değil."
 msgid "\"New post\" buttons, etc. Falls back to the slug."
 msgstr "\"Yeni gönderi\" düğmeleri vb. Slug'a geri döner."
 
+#: src/client/admin/flow-builder.tsx
+msgid "(don't write it anywhere)"
+msgstr "(hiçbir yere yazma)"
+
 #: src/client/admin/extras.tsx
 msgid "(item)"
 msgstr "(öğe)"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "(new template)"
 msgstr "(yeni şablon)"
@@ -149,6 +158,10 @@ msgstr "(klasör yok)"
 #: src/client/admin/relational-pickers.tsx
 msgid "(no label)"
 msgstr "(etiket yok)"
+
+#: src/client/admin/parity/booking.tsx
+msgid "(no name)"
+msgstr "(isimsiz)"
 
 #: src/client/admin/flow-builder.tsx
 msgid "(none — connect one on Integrations)"
@@ -174,6 +187,10 @@ msgstr "(yok — doğrudan konu/içerik kullanın)"
 msgid "(none connected — connect one on Payments)"
 msgstr "(bağlı yok — Ödemeler'den bir tane bağlayın)"
 
+#: src/client/admin/flow-builder.tsx
+msgid "(none yet — author one on Document templates)"
+msgstr "(henüz yok — Belge şablonları sayfasından oluşturun)"
+
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/scim-card.tsx
 msgid "(none)"
@@ -183,6 +200,7 @@ msgstr "(yok)"
 msgid "(not set)"
 msgstr "(ayarlanmadı)"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "(unnamed)"
 msgstr "(isimsiz)"
@@ -421,6 +439,11 @@ msgstr "{0} çalışıyor…"
 msgid "{0} items"
 msgstr "{0} öğe"
 
+#. placeholder {0}: s.remaining
+#: src/client/pages/book.tsx
+msgid "{0} left"
+msgstr "{0} yer kaldı"
+
 #. placeholder {0}: rows.length
 #: src/client/admin/pages/logs.tsx
 msgid "{0} loaded"
@@ -431,6 +454,11 @@ msgstr "{0} yüklendi"
 #: src/client/admin/pages/logs.tsx
 msgid "{0} match · {1} loaded"
 msgstr "{0} eşleşme · {1} yüklendi"
+
+#. placeholder {0}: data.resource.slotMinutes
+#: src/client/pages/book.tsx
+msgid "{0} minutes"
+msgstr "{0} dakika"
 
 #. placeholder {0}: result.durationMs
 #: src/client/admin/pages/extensions.tsx
@@ -454,6 +482,12 @@ msgstr "{1} sütunun {0} tanesi eşlendi"
 #: src/client/admin/grid-edit.tsx
 msgid "{0} of {1} rows could not be updated."
 msgstr "{0} / {1} satır güncellenemedi."
+
+#. placeholder {0}: view.signedCount
+#. placeholder {1}: view.signerCount
+#: src/client/pages/sign-document.tsx
+msgid "{0} of {1} signed"
+msgstr "{1} imzadan {0} tanesi tamam"
 
 #. placeholder {0}: allowlist.size
 #. placeholder {1}: tools?.length ?? 0
@@ -522,6 +556,11 @@ msgstr "{0} satır {1}"
 #: src/client/admin/app.tsx
 msgid "{0} rows failed — see the API response for details."
 msgstr "{0} satır başarısız — ayrıntılar için API yanıtına bakın."
+
+#. placeholder {0}: r.rules.length
+#: src/client/admin/parity/booking.tsx
+msgid "{0} rules"
+msgstr "{0} kural"
 
 #. placeholder {0}: draft.events.length
 #. placeholder {0}: selected.length
@@ -793,6 +832,11 @@ msgstr "{r} bu kuralla eşleşen satırları güncelleyebilir."
 msgid "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
 msgstr "{sampleSeeds} şablon örnek satırı hâlâ bu çalışma alanında. Kendi verilerinize asla dokunulmaz."
 
+#. placeholder {0}: row.signers.length
+#: src/client/admin/parity/signatures.tsx
+msgid "{signed} of {0} signed"
+msgstr "{0} imzadan {signed} tanesi tamam"
+
 #: src/client/admin/grid-edit.tsx
 msgid "{skipped} cells skipped (read-only or invalid value)."
 msgstr "{skipped} hücre atlandı (salt okunur ya da geçersiz değer)."
@@ -962,9 +1006,17 @@ msgstr "90 gün"
 msgid "A chosen agent answers"
 msgstr "Seçilen bir agent cevaplar"
 
+#: src/client/pages/book.tsx
+msgid "A confirmation is on its way, with a calendar invite attached."
+msgstr "Takvim daveti ekli bir onay e-postası yolda."
+
 #: src/client/admin/parity/insights.tsx
 msgid "A dashboard with that name already exists."
 msgstr "Bu adda bir pano zaten var."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "A document template sent out to be signed. The copy is frozen when it goes — editing the template afterwards never changes what somebody already read."
+msgstr "İmzalanmak üzere gönderilen bir belge şablonu. Kopya gönderildiği anda dondurulur — şablonu sonradan düzenlemek, birinin okuduğu metni asla değiştirmez."
 
 #: src/client/admin/add-field.tsx
 msgid "A dropdown needs at least one choice."
@@ -973,6 +1025,11 @@ msgstr "Açılır liste en az bir seçenek içermelidir."
 #: src/client/admin/pages/feature-flags.tsx
 msgid "A flag is on for a caller when enabled AND its targeting (condition + rollout) matches."
 msgstr "Bir bayrak; etkinse VE hedeflemesi (koşul + dağıtım) eşleşiyorsa çağıran için açıktır."
+
+#. placeholder {0}: res.data.email
+#: src/client/admin/parity/signatures.tsx
+msgid "A fresh link is on its way to {0} — the previous one is dead."
+msgstr "{0} adresine yeni bir bağlantı gidiyor — önceki bağlantı artık geçersiz."
 
 #: src/client/admin/pages/functions.tsx
 msgid "A function with that name already exists."
@@ -1022,6 +1079,10 @@ msgstr "Bir odanın konuşacağı en az bir agent gerekir. Önce Agents sayfası
 msgid "A row in the payment_transactions collection."
 msgstr "payment_transactions koleksiyonundaki bir satır."
 
+#: src/client/admin/parity/booking.tsx
+msgid "A rule with no weekday needs a date range."
+msgstr "Gün belirtilmeyen kuralın bir tarih aralığı olmalı."
+
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "A secret is stored and cannot be read back. Leave this blank to keep the current secret."
 msgstr "Kayıtlı bir gizli anahtar var ve geri okunamaz. Mevcut gizli anahtarı korumak için burayı boş bırakın."
@@ -1041,6 +1102,10 @@ msgstr "Tek değer — sayaç en uygunudur; kıvılcım grafik / çubuklar birde
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A teammate is running a turn…"
 #~ msgstr "Bir takım arkadaşı bir tur çalıştırıyor…"
+
+#: src/client/admin/parity/documents.tsx
+msgid "A template needs a key."
+msgstr "Bir şablonun anahtarı olmalı."
 
 #: src/client/admin/parity/email-templates.tsx
 msgid "A template with key \"{trimmedKey}\" already exists."
@@ -1090,6 +1155,10 @@ msgstr "Kabul edilen türler"
 #: src/client/admin/pages/forms.tsx
 msgid "accepted, all time"
 msgstr "kabul edilen, tüm zamanlar"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Accepting bookings"
+msgstr "Rezervasyon alıyor"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Accepting submissions"
@@ -1264,6 +1333,10 @@ msgstr "<0>deleted_at</0> ekle; silme işlemi satırları kaldırmak yerine işa
 msgid "Add a <0>status</0> dropdown with <1>draft / review / published / archived</1> + per-option color. List view auto-shows status tabs and badges."
 msgstr "<0>status</0> açılır listesini <1>taslak / inceleme / yayınlandı / arşivlendi</1> + seçenek başına renk ile ekle. Liste görünümü durum sekmelerini ve rozetleri otomatik gösterir."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Add a booking"
+msgstr "Rezervasyon ekle"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Add a Client ID and secret below first."
 msgstr "Önce aşağıya bir Client ID ve gizli anahtar ekleyin."
@@ -1321,6 +1394,10 @@ msgstr "Son kullanıcı ekle…"
 msgid "Add at least one dropdown choice."
 msgstr "En az bir açılır liste seçeneği ekleyin."
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Add at least one signer."
+msgstr "En az bir imzalayan ekleyin."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Add at least one step before saving"
 msgstr "Kaydetmeden önce en az bir adım ekleyin"
@@ -1332,6 +1409,10 @@ msgstr "blok ekle"
 #: src/client/admin/pages/forms.tsx
 msgid "Add block"
 msgstr "Blok ekle"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Add booking"
+msgstr "Rezervasyon ekle"
 
 #: src/client/admin/edit-field.tsx
 msgid "Add choice"
@@ -1403,6 +1484,10 @@ msgstr "Sağlayıcı ekle"
 #: src/client/admin/app.tsx
 msgid "Add role"
 msgstr "Rol ekle"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Add rule"
+msgstr "Kural ekle"
 
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -1639,6 +1724,7 @@ msgstr "alice"
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/signatures.tsx
 #: src/client/admin/ui.tsx
 msgid "All"
 msgstr "Tümü"
@@ -1778,6 +1864,10 @@ msgstr "Tutar"
 msgid "Amount (optional)"
 msgstr "Tutar (isteğe bağlı)"
 
+#: src/client/admin/parity/booking.tsx
+msgid "An \"open\" rule adds bookable time and a \"block\" takes it away. A span crossing midnight is two rules."
+msgstr "\"Açık\" kuralı rezerve edilebilir zaman ekler, \"kapalı\" ise çıkarır. Gece yarısını aşan aralık iki kuraldır."
+
 #: src/client/admin/item-collaboration.tsx
 msgid "An active share link exists for this record. For security the link URL is shown only once, at creation. Revoke it and create a new one if you need a fresh copyable URL."
 msgstr "Bu kayıt için etkin bir paylaşım bağlantısı mevcut. Güvenlik amacıyla bağlantı URL'si yalnızca oluşturulduğunda bir kez gösterilir. Kopyalanabilir yeni bir URL için mevcut bağlantıyı iptal edip yenisini oluşturun."
@@ -1832,6 +1922,10 @@ msgstr "Anonimleştir — satırlar kalsın, kimi işaret ettikleri silinsin"
 msgid "Anonymize is usually the lawful option — an invoice generally cannot be deleted. Revision history goes either way."
 msgstr "Genelde hukuka uygun seçenek anonimleştirmedir — bir fatura çoğunlukla silinemez. Revizyon geçmişi her iki durumda da silinir."
 
+#: src/client/pages/sign-document.tsx
+msgid "Another signer declined it."
+msgstr "Başka bir imzalayan reddetti."
+
 #: src/client/admin/pages/analytics.tsx
 msgid "any event"
 msgstr "herhangi bir olay"
@@ -1847,6 +1941,10 @@ msgstr "OAuth destekleyen her istemci anahtar olmadan bağlanır — keşif, ona
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Any OAuth-capable MCP client connects with no key — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code, and recent Claude Desktop. Add the MCP URL as a remote / custom connector and approve the consent screen; tools run with your roles and permission rules."
 #~ msgstr "OAuth destekleyen her MCP istemcisi anahtarsız bağlanır — claude.ai, Cursor, Codex, ChatGPT connectors, VS Code ve yeni Claude Desktop. MCP URL'sini uzak / özel bağlayıcı olarak ekleyip onay ekranını kabul edin; araçlar rolleriniz ve izin kurallarınızla çalışır."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "any order"
+msgstr "sıra farketmez"
 
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "any provider model id"
@@ -1867,6 +1965,10 @@ msgstr "URL'ye sahip herkes bu dosyaya erişebilir."
 #: src/client/admin/item-collaboration.tsx
 msgid "Anyone with this link can view the record — copy it now, the token is shown only once."
 msgstr "Bu bağlantıya sahip herkes kaydı görüntüleyebilir — şimdi kopyalayın, token yalnızca bir kez gösterilir."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Anyone, any time"
+msgstr "Herkes, istediği zaman"
 
 #: src/client/admin/collections-index.tsx
 msgid "API docs"
@@ -2126,6 +2228,10 @@ msgstr "Kimlik doğrulama başarılı"
 msgid "Author"
 msgstr "Yazar"
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Authored on the Document templates page."
+msgstr "Belge şablonları sayfasında hazırlanır."
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Authorization failed. Check the client ID, secret and redirect URI, then retry."
 msgstr "Yetkilendirme başarısız. İstemci kimliğini, gizli anahtarı ve yönlendirme adresini kontrol edip tekrar deneyin."
@@ -2259,6 +2365,10 @@ msgstr "Avatar önizlemesi"
 msgid "awaiting accept"
 msgstr "kabul bekleniyor"
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Awaiting signature"
+msgstr "İmza bekliyor"
+
 #: src/client/admin/add-field.tsx
 msgid "B-tree index — speeds up filter/sort by this column."
 msgstr "B-tree indeksi — bu sütuna göre filtreleme/sıralamayı hızlandırır."
@@ -2387,6 +2497,10 @@ msgstr "Bağlamalar yenilendi."
 msgid "Blank"
 msgstr "Boş"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Block"
+msgstr "Kapalı"
+
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Block all"
 msgstr "Tümünü engelle"
@@ -2423,6 +2537,7 @@ msgstr "Girişi engeller ve tüm etkin oturumları hemen sonlandırır."
 msgid "Body"
 msgstr "İçerik"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Body (HTML)"
 msgstr "İçerik (HTML)"
@@ -2431,9 +2546,31 @@ msgstr "İçerik (HTML)"
 msgid "Body (text)"
 msgstr "İçerik (metin)"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Book"
+msgstr "Rezerve et"
+
+#: src/client/admin/parity/booking.tsx
+#: src/client/admin/ui.tsx
+msgid "Booking"
+msgstr "Rezervasyon"
+
+#: src/client/admin/parity/booking.tsx
+#: src/client/pages/book.tsx
+msgid "Booking…"
+msgstr "Rezerve ediliyor…"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Bookings"
+msgstr "Rezervasyonlar"
+
 #: src/client/admin/pages/payments.tsx
 msgid "Both are on the row in the payment_transactions collection."
 msgstr "İkisi de payment_transactions koleksiyonundaki satırda yer alır."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Both sides apply, so 15+15 is a 30-minute gap."
+msgstr "İki taraf da uygulanır; 15+15 otuz dakikalık boşluk demektir."
 
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Branch created."
@@ -2462,6 +2599,14 @@ msgstr "Yer imi"
 #: src/client/admin/pages/integrations.tsx
 msgid "Bring Contentful entries into a collection. One-way."
 msgstr "Contentful içeriklerini bir koleksiyona getirir. Tek yönlü."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Buffer after"
+msgstr "Sonrasında tampon"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Buffer before"
+msgstr "Öncesinde tampon"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Build plan"
@@ -2528,6 +2673,10 @@ msgstr "c_{target} boş."
 msgid "Calendar"
 msgstr "Takvim"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Calendar invite (.ics)"
+msgstr "Takvim daveti (.ics)"
+
 #: src/client/admin/pages/analytics.tsx
 msgid "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
 msgstr "Yakalanmamış hataları ve işlenmemiş reddetmeleri otomatik iletmek için uygulamanızda client.analytics.captureErrors() çağırın."
@@ -2575,10 +2724,12 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
+#: src/client/admin/parity/signatures.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/role-editor.tsx
@@ -2598,14 +2749,36 @@ msgstr "Temizlemeyi iptal et"
 msgid "Cancel schedule"
 msgstr "Zamanlamayı iptal et"
 
+#: src/client/pages/book.tsx
+msgid "Cancel this booking"
+msgstr "Bu rezervasyonu iptal et"
+
 #: src/client/admin/storage/index.tsx
 msgid "Cancel upload"
 msgstr "Yüklemeyi iptal et"
 
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/parity/booking.tsx
+#: src/client/admin/parity/signatures.tsx
 msgid "Cancelled"
 msgstr "İptal edildi"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Cancelled — every outstanding link is now dead."
+msgstr "İptal edildi — açıktaki tüm bağlantılar artık geçersiz."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Cancelled — the slot is free again."
+msgstr "İptal edildi — saat yeniden boş."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Cancelled:"
+msgstr "İptal nedeni:"
+
+#: src/client/pages/book.tsx
+msgid "Cancelling…"
+msgstr "İptal ediliyor…"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Cannot delete the trigger."
@@ -2619,6 +2792,10 @@ msgstr "Kaydedilemedi: {0}"
 #: src/client/admin/pages/forms.tsx
 msgid "canvas · what visitors see"
 msgstr "tuval · ziyaretçinin gördüğü"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Capacity"
+msgstr "Kapasite"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Caps the number of grouped rows returned (default 50, max 200)."
@@ -2660,6 +2837,10 @@ msgstr "Değiştir"
 #: src/client/admin/item-editor.tsx
 msgid "Change auto-unpublish"
 msgstr "Otomatik kaldırmayı değiştir"
+
+#: src/client/pages/book.tsx
+msgid "Change or cancel"
+msgstr "Değiştir veya iptal et"
 
 #: src/client/admin/account-page.tsx
 msgid "Change password"
@@ -2768,6 +2949,7 @@ msgid "Choose one"
 msgstr "Birini seçin"
 
 #: src/client/admin/pages/sync-hooks-card.tsx
+#: src/client/pages/book.tsx
 msgid "Choose…"
 msgstr "Seçin…"
 
@@ -2829,6 +3011,7 @@ msgstr "temizle"
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/relational-pickers.tsx
 #: src/client/components/date-picker.tsx
+#: src/client/pages/sign-document.tsx
 msgid "Clear"
 msgstr "Temizle"
 
@@ -2930,6 +3113,7 @@ msgstr "kapat"
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/components/mcp-key-modal.tsx
@@ -3115,6 +3299,10 @@ msgstr "Kolonlar"
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
 msgstr "Virgül veya boşlukla ayrılmış. Ayarlandığında, diğer alan adlarından gelen e-posta görünümlü kullanıcı adları LDAP sorgusundan önce reddedilir."
 
+#: src/client/admin/flow-builder.tsx
+msgid "comma-separated — defaults to the recipient"
+msgstr "virgülle ayrılmış — varsayılan olarak alıcı"
+
 #: src/client/admin/role-mcp-guards.tsx
 msgid "Comma-separated exact tool ids. Use these when a whole namespace is too broad."
 msgstr "Virgülle ayrılmış tam araç kimlikleri. Bir ad alanının tamamı fazla genişse bunları kullanın."
@@ -3160,6 +3348,7 @@ msgid "Compiled WHERE"
 msgstr "Derlenmiş WHERE"
 
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Completed"
 msgstr "Tamamlandı"
 
@@ -3236,6 +3425,7 @@ msgstr "Etkinleştirmeden önce bu sağlayıcıyı yapılandırın (Client ID ek
 msgid "Configured via <0>AI_GATEWAY_API_KEY</0> on the backlex deployment (or legacy <1>ANTHROPIC_API_KEY</1>)."
 msgstr "Backlex dağıtımında <0>AI_GATEWAY_API_KEY</0> üzerinden (veya eski <1>ANTHROPIC_API_KEY</1> ile) yapılandırılır."
 
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/components/confirm-action.tsx
@@ -3245,6 +3435,14 @@ msgstr "Onayla"
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Confirm & run"
 msgstr "Doğrulayıp çalıştır"
+
+#: src/client/pages/book.tsx
+msgid "Confirm booking"
+msgstr "Rezervasyonu onayla"
+
+#: src/client/pages/sign-document.tsx
+msgid "Confirm decline"
+msgstr "Reddetmeyi onayla"
 
 #: src/client/admin/pages/erasure-card.tsx
 msgid "Confirm erasure"
@@ -3265,6 +3463,18 @@ msgstr "Şifrenizi onaylayın"
 #: src/client/admin/account-page.tsx
 msgid "Confirm your password to begin"
 msgstr "Başlamak için şifrenizi onaylayın"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Confirmation message"
+msgstr "Onay mesajı"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Confirmed"
+msgstr "Onaylandı"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Confirmed."
+msgstr "Onaylandı."
 
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/integrations.tsx
@@ -3494,6 +3704,10 @@ msgstr "ID'yi kopyala"
 msgid "Copy invite link"
 msgstr "Davet linkini kopyala"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Copy it now. Only its hash is stored, so nothing can show it again — \"New link\" mints a replacement and kills this one."
+msgstr "Şimdi kopyalayın. Yalnızca özeti saklanır, bu yüzden bir daha gösterilemez — \"Yeni bağlantı\" yenisini üretir ve bunu geçersiz kılar."
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Copy JSON"
 msgstr "JSON'u kopyala"
@@ -3583,6 +3797,11 @@ msgstr "Yorum gönderilemedi."
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not revoke share link."
 msgstr "Paylaşım bağlantısı iptal edilemedi."
+
+#. placeholder {0}: res.data.email
+#: src/client/admin/parity/signatures.tsx
+msgid "Could not send to {0}."
+msgstr "{0} adresine gönderilemedi."
 
 #: src/client/admin/account-page.tsx
 msgid "Couldn't copy — select and copy them manually."
@@ -3984,6 +4203,7 @@ msgstr "özel kural"
 
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Custom…"
 msgstr "Özel…"
@@ -4087,6 +4307,15 @@ msgstr "Ondalık (1.234,5)"
 msgid "Decimal places"
 msgstr "Ondalık basamak"
 
+#: src/client/pages/sign-document.tsx
+msgid "Decline"
+msgstr "Reddet"
+
+#: src/client/admin/parity/signatures.tsx
+#: src/client/pages/sign-document.tsx
+msgid "Declined"
+msgstr "Reddedildi"
+
 #: src/client/admin/pages/agents.tsx
 msgid "default"
 msgstr "varsayılan"
@@ -4157,6 +4386,10 @@ msgstr "Oluşturma sırasında uygulanan varsayılan değerler. Kullanıcı bunl
 msgid "defaults"
 msgstr "varsayılanlar"
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Defaults to the template's name"
+msgstr "Boş bırakılırsa şablonun adı kullanılır"
+
 #: src/client/admin/storage/index.tsx
 msgid "Defaults to the URL's filename"
 msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
@@ -4181,6 +4414,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/storage/index.tsx
 #: src/client/admin/storage/widgets.tsx
@@ -4302,6 +4536,10 @@ msgstr "Kaynak silinsin mi?"
 msgid "Delete submission"
 msgstr "Gönderimi sil"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Delete template"
+msgstr "Şablonu sil"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Delete this collection"
 msgstr "Bu koleksiyonu sil"
@@ -4330,6 +4568,10 @@ msgstr "Kullanıcıyı sil"
 #: src/client/admin/parity/app-users.tsx
 msgid "deleted."
 msgstr "silindi."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Deleted."
+msgstr "Silindi."
 
 #: src/client/admin/pages/jobs.tsx
 msgid "deliver one webhook"
@@ -4593,6 +4835,31 @@ msgstr "Hiçbir şey yapma"
 msgid "Docs"
 msgstr "Belgeler"
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Document"
+msgstr "Belge"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Document fingerprint"
+msgstr "Belge parmak izi"
+
+#: src/client/pages/sign-document.tsx
+msgid "Document fingerprint (SHA-256)"
+msgstr "Belge parmak izi (SHA-256)"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Document preview"
+msgstr "Belge önizlemesi"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Document template"
+msgstr "Belge şablonu"
+
+#: src/client/admin/parity/documents.tsx
+#: src/client/admin/ui.tsx
+msgid "Document templates"
+msgstr "Belge şablonları"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Documents"
 msgstr "Belgeler"
@@ -4614,6 +4881,7 @@ msgstr "Geri yazma"
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/signatures.tsx
 msgid "Done"
 msgstr "Tamam"
 
@@ -4636,6 +4904,10 @@ msgstr "İndir"
 msgid "Download JSON"
 msgstr "JSON indir"
 
+#: src/client/pages/sign-document.tsx
+msgid "Download PDF"
+msgstr "PDF indir"
+
 #: src/client/pages/openapi-export.tsx
 msgid "Download YAML"
 msgstr "YAML indir"
@@ -4643,6 +4915,10 @@ msgstr "YAML indir"
 #: src/client/pages/openapi-export.tsx
 msgid "Downloading…"
 msgstr "İndiriliyor…"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Dr Yılmaz"
+msgstr "Dr. Yılmaz"
 
 #: src/client/admin/flow-builder.tsx
 msgid "draft"
@@ -4685,6 +4961,18 @@ msgstr "Sürükleyerek sırala"
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to resize"
 msgstr "Yeniden boyutlandırmak için sürükleyin"
+
+#: src/client/pages/sign-document.tsx
+msgid "Draw"
+msgstr "Çiz"
+
+#: src/client/pages/sign-document.tsx
+msgid "Draw your signature first"
+msgstr "Önce imzanızı çizin"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Drawn on every page by the renderer, not in the preview."
+msgstr "Her sayfaya renderer tarafından çizilir, önizlemede görünmez."
 
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
@@ -4802,9 +5090,21 @@ msgstr "Doğrulayıcınızı kaybederseniz her kod bir kez çalışır. Güvenli
 msgid "Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations."
 msgstr "Her koleksiyon, çalışma zamanında oluşturulan fiziksel bir tablodur. Alanları sürükleyin, izinleri ayarlayın veya REST/GraphQL olarak gösterin — tüm bunlar migrasyon yazmadan."
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Each link opens only once the one above it has signed."
+msgstr "Her bağlantı, yalnızca üstündeki kişi imzaladıktan sonra açılır."
+
 #: src/client/admin/collection-settings.tsx
 msgid "Each row gets an <0>owner_id</0>; the<1> authenticated</1> role can only read/update its own rows. Toggling on auto-seeds owner-scoped permissions; toggling off does not remove existing rows or rules."
 msgstr "Her satıra bir <0>owner_id</0> atanır; <1>authenticated</1> rolü yalnızca kendi satırlarını okuyabilir/güncelleyebilir. Açmak sahip kapsamlı izinleri otomatik ekler; kapatmak mevcut satırları veya kuralları kaldırmaz."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Each rule must start before it ends. A span crossing midnight is two rules."
+msgstr "Her kural bitişinden önce başlamalı. Gece yarısını aşan aralık iki kuraldır."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Each signer has been emailed their own link. These are shown once — only their hashes are stored."
+msgstr "Her imzalayana kendi bağlantısı e-postayla gönderildi. Bunlar yalnızca bir kez gösterilir — saklanan tek şey özetleridir."
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Earliest"
@@ -4822,6 +5122,7 @@ msgstr "düzenle"
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Edit"
 msgstr "Düzenle"
 
@@ -4896,6 +5197,10 @@ msgstr "Paneli düzenle"
 msgid "Edit raw DSL. Click Builder to round-trip back to visual."
 msgstr "Ham DSL'i düzenle. Görsel moduna dönmek için Oluşturucu'ya tıklayın."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Edit resource"
+msgstr "Kaynağı düzenle"
+
 #: src/client/admin/permissions-matrix.tsx
 msgid "Edit rule"
 msgstr "Kuralı düzenle"
@@ -4941,6 +5246,7 @@ msgstr "<0>Yayında</0> olan bir kaydı düzenlemek, canlı içeriği değiştir
 msgid "editor"
 msgstr "editör"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Editor"
 msgstr "Editör"
@@ -4955,6 +5261,8 @@ msgstr "Eforu"
 #: src/client/admin/pages/settings/index.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/booking.tsx
+#: src/client/pages/book.tsx
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
@@ -5181,6 +5489,10 @@ msgstr "Uç noktalar"
 msgid "Endpoints fetched."
 msgstr "Uç noktalar alındı."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Ends"
+msgstr "Bitiş"
+
 #: src/client/admin/pages/usage.tsx
 msgid "Enforced even where the global API limiter is off."
 msgstr "Global API sınırlayıcı kapalı olsa bile uygulanır."
@@ -5400,6 +5712,10 @@ msgstr "Olay etiketi"
 msgid "Event pattern"
 msgstr "Olay deseni"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Event title"
+msgstr "Etkinlik başlığı"
+
 #: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/sync-hooks-card.tsx
@@ -5453,6 +5769,10 @@ msgstr "İzinlere bağlı olarak her MCP aracı çağrılabilir. Bu anahtarı bi
 msgid "Every occurrence of this bug, with the latest stack trace and how many visitors it reached."
 msgstr "Bu hatanın tüm görülmeleri; en son yığın izi ve kaç ziyaretçiye ulaştığı ile birlikte."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Every status"
+msgstr "Tüm durumlar"
+
 #: src/client/admin/role-mcp-guards.tsx
 msgid "Every tool"
 msgstr "Her araç"
@@ -5464,6 +5784,10 @@ msgstr "Her yazma işlemi sürümlenir. Önceki herhangi bir durumu inceleyin, k
 #: src/client/admin/role-editor.tsx
 msgid "everyone"
 msgstr "herkes"
+
+#: src/client/pages/sign-document.tsx
+msgid "Everyone has signed. A copy has been emailed to you."
+msgstr "Herkes imzaladı. Bir kopya e-posta ile size gönderildi."
 
 #: src/client/admin/pages/extensions.tsx
 msgid "Exact package name as published on npm."
@@ -5505,10 +5829,16 @@ msgstr "Beklenen"
 msgid "expired"
 msgstr "süresi dolmuş"
 
+#: src/client/admin/parity/booking.tsx
+#: src/client/admin/parity/signatures.tsx
+msgid "Expired"
+msgstr "Süresi doldu"
+
 #: src/client/admin/parity/app-orgs.tsx
 msgid "expires"
 msgstr "bitiş"
 
+#: src/client/admin/parity/signatures.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Expires"
 msgstr "Son kullanma"
@@ -5517,6 +5847,11 @@ msgstr "Son kullanma"
 #: src/client/admin/item-editor.tsx
 msgid "Expires {0}"
 msgstr "Bitiş {0}"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/signatures.tsx
+msgid "Expires in (days)"
+msgstr "Geçerlilik (gün)"
 
 #: src/client/admin/item-editor.tsx
 msgid "Expiry cleared."
@@ -5723,6 +6058,7 @@ msgstr "alan"
 #: src/client/admin/add-field.tsx
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/edit-field.tsx
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
@@ -5806,6 +6142,10 @@ msgstr "Dosya detayı"
 msgid "File is too large — the limit is {0}"
 msgstr "Dosya çok büyük — sınır {0}"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Filename (optional)"
+msgstr "Dosya adı (isteğe bağlı)"
+
 #: src/client/admin/storage/index.tsx
 msgid "files"
 msgstr "dosyalar"
@@ -5822,10 +6162,18 @@ msgstr "Dosyalar tarayıcınızda metin olarak okunur ve sunucuya gönderilir. 1
 msgid "fill down"
 msgstr "aşağı doldur"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Fill in a start to attach one. Reaches every calendar app — nothing to connect."
+msgstr "Eklemek için bir başlangıç girin. Bağlanacak bir şey olmadan her takvim uygulamasına ulaşır."
+
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Fill the required fields."
 msgstr "Zorunlu alanları doldurun."
+
+#: src/client/admin/parity/documents.tsx
+msgid "Fills the preview and the test render. The row arrives as `data`."
+msgstr "Önizlemeyi ve deneme çıktısını doldurur. Satır `data` olarak gelir."
 
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Fills the public key + private key fields above with a fresh VAPID pair. Click Save to store it."
@@ -6282,6 +6630,10 @@ msgstr "Oluşturuluyor…"
 msgid "GitHub"
 msgstr "GitHub"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Give the resource a name."
+msgstr "Kaynağa bir ad verin."
+
 #: src/client/admin/pages/payments.tsx
 msgid "Gives money back for a payment already recorded in this workspace. To refund automatically, use the refund step in a flow."
 msgstr "Bu çalışma alanında zaten kayıtlı bir ödemenin parasını geri verir. Otomatik iade için akıştaki iade adımını kullanın."
@@ -6384,6 +6736,10 @@ msgstr "Gruplar, Koleksiyonlar sayfasını ve kenar çubuğunu düzenler. Düzen
 msgid "Guards updated"
 msgstr "Koruyucular güncellendi"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Guests"
+msgstr "Konuklar"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Half width"
@@ -6442,6 +6798,10 @@ msgstr "sağlıklı"
 msgid "Height"
 msgstr "Yükseklik"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Held"
+msgstr "Tutuluyor"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Help text"
 msgstr "Yardım metni"
@@ -6497,6 +6857,10 @@ msgstr "en yüksek akıl yürütme · daha yavaş · ~3x maliyet"
 msgid "History"
 msgstr "Geçmiş"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Hold"
+msgstr "Tutma"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Honeypot"
 msgstr "Honeypot"
@@ -6527,6 +6891,10 @@ msgstr "Hook güncellendi."
 msgid "hooks"
 msgstr "kanca"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Horizon"
+msgstr "Ufuk"
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Hosted Claude"
 #~ msgstr "Barındırılan Claude"
@@ -6542,6 +6910,18 @@ msgstr "Modelin her adımda ne kadar düşüneceği. Düşük efor daha az düş
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "How long a write may block on this hook. Max 10000."
 msgstr "Bir yazmanın bu hook üzerinde ne kadar bloklanabileceği. En fazla 10000."
+
+#: src/client/admin/parity/booking.tsx
+msgid "How many days ahead the calendar is open."
+msgstr "Takvimin kaç gün ilerisi açık."
+
+#: src/client/admin/parity/booking.tsx
+msgid "How many fit at once."
+msgstr "Aynı anda kaç kişi sığar."
+
+#: src/client/admin/parity/booking.tsx
+msgid "How the API and CLI address it. Cannot be changed later."
+msgstr "API ve CLI bunu böyle adresler. Sonradan değiştirilemez."
 
 #: src/client/admin/collection-settings.tsx
 msgid "how this collection shows up in nav and lists"
@@ -6691,6 +7071,10 @@ msgstr "<0>{folder}/</0> içinde"
 #: src/client/admin/account-page.tsx
 msgid "In Google Authenticator choose “Enter a setup key”, paste the key above, and pick “Time based”."
 msgstr "Google Authenticator'da “Kurulum anahtarı gir” seçeneğini seçin, yukarıdaki anahtarı yapıştırın ve “Zaman tabanlı”yı işaretleyin."
+
+#: src/client/admin/flow-builder.tsx
+msgid "In order — each link waits for the one above"
+msgstr "Sırayla — her bağlantı bir üstündekini bekler"
 
 #: src/client/admin/item-views.tsx
 msgid "In review"
@@ -6862,6 +7246,10 @@ msgstr "Dahili sütun — saklanır ve yazılabilir, ancak API tarafından asla 
 msgid "Internal description for teammates."
 msgstr "Ekip arkadaşları için dahili açıklama."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Interpolated against the triggering row."
+msgstr "Tetikleyen satıra göre doldurulur."
+
 #: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Into collection"
 msgstr "Hedef koleksiyon"
@@ -6962,6 +7350,14 @@ msgstr "Davetler 7 gün geçerlidir. Bir yöneticiden yenisini göndermesini ist
 msgid "invocations · p95"
 msgstr "çağrılar · p95"
 
+#: src/client/admin/parity/documents.tsx
+msgid "invoice"
+msgstr "fatura"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Invoice"
+msgstr "Fatura"
+
 #: src/client/admin/pages/payments.tsx
 msgid "Invoice INV-42"
 msgstr "Fatura INV-42"
@@ -7008,9 +7404,21 @@ msgstr "Yalnızca issuer adresi de olur — well-known yolu otomatik eklenir."
 msgid "Istanbul, Turkey"
 msgstr "İstanbul, Türkiye"
 
+#: src/client/pages/sign-document.tsx
+msgid "It has already been completed."
+msgstr "Zaten tamamlanmış."
+
 #: src/client/pages/public-form.tsx
 msgid "It isn't accepting submissions right now — try again later."
 msgstr "Şu anda gönderim kabul etmiyor — daha sonra tekrar deneyin."
+
+#: src/client/pages/book.tsx
+msgid "It may have been replaced by a newer one."
+msgstr "Yerini daha yenisi almış olabilir."
+
+#: src/client/pages/book.tsx
+msgid "It may have been replaced, or the calendar may be closed."
+msgstr "Yerini yenisi almış ya da takvim kapatılmış olabilir."
 
 #: src/client/admin/item-editor.tsx
 msgid "Item archived."
@@ -7162,6 +7570,14 @@ msgstr "Kanban"
 msgid "Keep HubSpot contacts in step with a collection. Receives record contents."
 msgstr "HubSpot kişilerini bir koleksiyonla eşzamanlı tutar. Kayıt içeriğini alır."
 
+#: src/client/pages/sign-document.tsx
+msgid "Keep reviewing"
+msgstr "İncelemeye devam et"
+
+#: src/client/pages/book.tsx
+msgid "Keep this link — it is how you change or cancel this booking."
+msgstr "Bu bağlantıyı saklayın — rezervasyonu değiştirmenin veya iptal etmenin yolu bu."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Kept on the provider's record. Klarna shows it on the consumer's statement line."
 msgstr "Sağlayıcının kaydında tutulur. Klarna bunu tüketicinin ekstre satırında gösterir."
@@ -7172,6 +7588,8 @@ msgstr "anahtar"
 
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings/index.tsx
+#: src/client/admin/parity/booking.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/storage/index.tsx
@@ -7255,6 +7673,10 @@ msgstr "Öğe formunda gösterilen etiket. Ayarlanmazsa sütun adına döner."
 #: src/client/admin/flow-builder.tsx
 msgid "Lands in {pending}"
 msgstr "{pending} içine düşer"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Landscape"
+msgstr "Yatay"
 
 #: src/client/admin/pages/forms.tsx
 msgid "language"
@@ -7734,6 +8156,7 @@ msgstr "Yerelleştirilmiş"
 msgid "Localized values filled across every language"
 msgstr "Tüm dillerde doldurulan yerelleştirilmiş değerler"
 
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "Location"
@@ -7885,6 +8308,10 @@ msgstr "Mart"
 #: src/client/admin/ui.tsx
 msgid "Mark all read"
 msgstr "Tümünü okundu işaretle"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Marked as a no-show."
+msgstr "Gelmedi olarak işaretlendi."
 
 #. placeholder {0}: node.op === "and" ? "all" : "any"
 #: src/client/admin/rule-builder.tsx
@@ -8093,6 +8520,10 @@ msgstr "Min uzunluk"
 msgid "Min selected"
 msgstr "Min seçili"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Minimum minutes of warning."
+msgstr "En az kaç dakika önceden haber."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Minor units — 1050 is 10.50. Leave blank to give back everything still refundable."
 msgstr "Alt birim — 1050, 10,50 demektir. İade edilebilir tutarın tamamı için boş bırakın."
@@ -8120,6 +8551,14 @@ msgstr "Yeni anahtar oluşturmak eskisini anında geçersiz kılar."
 #: src/client/admin/pages/forms.tsx
 msgid "Mints a new token; the current link stops working"
 msgstr "Yeni bir token üretir; mevcut bağlantı çalışmayı durdurur"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Minutes an unconfirmed hold survives."
+msgstr "Onaylanmamış tutmanın kaç dakika yaşayacağı."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Minutes one booking lasts."
+msgstr "Bir rezervasyonun kaç dakika sürdüğü."
 
 #. placeholder {0}: entry.label
 #: src/client/admin/pages/payments.tsx
@@ -8150,6 +8589,10 @@ msgstr "{0} üzerindeki müşterileri, abonelikleri, faturaları ve ödemeleri y
 #: src/client/admin/pages/payments.tsx
 msgid "Mirror customers, subscriptions, invoices and payments into your collections — and open hosted checkouts to ask for payment. Deliveries are signature-verified; credentials are encrypted at rest."
 msgstr "Müşterileri, abonelikleri, faturaları ve ödemeleri koleksiyonlarınıza yansıtın — ve ödeme istemek için barındırılan ödeme sayfaları açın. Bildirimler imzayla doğrulanır; kimlik bilgileri şifreli saklanır."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Mirror into a collection"
+msgstr "Bir koleksiyona yansıt"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Mirror QuickBooks customers, invoices and payments into a collection."
@@ -8319,6 +8762,8 @@ msgstr "Temam"
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/booking.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -8326,6 +8771,7 @@ msgstr "Temam"
 #: src/client/admin/storage/widgets.tsx
 #: src/client/admin/ui.tsx
 #: src/client/pages/api-keys.tsx
+#: src/client/pages/book.tsx
 msgid "Name"
 msgstr "Ad"
 
@@ -8424,6 +8870,10 @@ msgstr "Yeni API anahtarı"
 msgid "New backup codes generated. Old codes no longer work."
 msgstr "Yeni yedek kodlar oluşturuldu. Eski kodlar artık çalışmıyor."
 
+#: src/client/admin/parity/booking.tsx
+msgid "New bookable resource"
+msgstr "Yeni rezerve edilebilir kaynak"
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "New branch"
 msgstr "Yeni dal"
@@ -8488,6 +8938,14 @@ msgstr "Yeni içgörü paneli"
 msgid "New key"
 msgstr "Yeni anahtar"
 
+#: src/client/admin/parity/booking.tsx
+msgid "New link"
+msgstr "Yeni bağlantı"
+
+#: src/client/admin/parity/booking.tsx
+msgid "New link minted — the old one no longer works."
+msgstr "Yeni bağlantı üretildi — eskisi artık çalışmıyor."
+
 #: src/client/admin/pages/database-import.tsx
 msgid "New migration"
 msgstr "Yeni taşıma"
@@ -8526,6 +8984,10 @@ msgstr "Yeni ilişki"
 msgid "New request"
 msgstr "Yeni talep"
 
+#: src/client/admin/parity/booking.tsx
+msgid "New resource"
+msgstr "Yeni kaynak"
+
 #: src/client/admin/role-editor.tsx
 msgid "New role"
 msgstr "Yeni rol"
@@ -8550,6 +9012,7 @@ msgstr "Yeni adım"
 msgid "New sync hook"
 msgstr "Yeni sync hook"
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "New template"
 msgstr "Yeni şablon"
@@ -8682,6 +9145,10 @@ msgstr "Ziyaretçi tarafında oturum yok — URL'deki token kimlik bilgisidir. H
 #: src/client/admin/pages/forms.tsx
 msgid "No blocks match \"{q}\""
 msgstr "\\\"{q}\\\" ile eşleşen blok yok"
+
+#: src/client/admin/parity/booking.tsx
+msgid "No bookings match."
+msgstr "Eşleşen rezervasyon yok."
 
 #: src/client/admin/pages/schema-versions.tsx
 msgid "No branches yet"
@@ -9276,6 +9743,7 @@ msgstr "Kullanılabilir şablon yok."
 msgid "No templates match your search."
 msgstr "Aramanızla eşleşen şablon yok."
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "No templates yet — use \"New template\" to add one."
 msgstr "Henüz şablon yok — eklemek için \"Yeni şablon\"u kullanın."
@@ -9332,6 +9800,10 @@ msgstr "Henüz webhook yok"
 #: src/client/admin/field-translations-editor.tsx
 msgid "No workspace locales configured — add them under Settings → Localization."
 msgstr "Çalışma alanı dili yapılandırılmamış — Ayarlar → Yerelleştirme'den ekleyin."
+
+#: src/client/admin/parity/booking.tsx
+msgid "No-show"
+msgstr "Gelmedi"
 
 #: src/client/admin/pages/_agents-shared.tsx
 msgid "Nobody answers"
@@ -9419,9 +9891,26 @@ msgstr "Not"
 msgid "Note <0>(optional)</0>"
 msgstr "Not <0>(isteğe bağlı)</0>"
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/signatures.tsx
+msgid "Note in the invitation"
+msgstr "Davet e-postasındaki not"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Notes"
+msgstr "Notlar"
+
 #: src/client/admin/pages/erasure-card.tsx
 msgid "nothing found"
 msgstr "bir şey bulunamadı"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Nothing is bookable yet. A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
+msgstr "Henüz rezerve edilebilir bir şey yok. Kaynak, insanların rezerve ettiği şeydir — bir kişi, bir oda, bir masa — ve çalışma saatlerini, bir rezervasyonun süresini ve aynı anda kaç kişi sığdığını taşır."
+
+#: src/client/pages/book.tsx
+msgid "Nothing is free in the next two weeks."
+msgstr "Önümüzdeki iki hafta içinde boş yer yok."
 
 #: src/client/admin/pages/erasure-card.tsx
 msgid "Nothing is removed at this step — the preview only counts."
@@ -9435,6 +9924,10 @@ msgstr "Son {range} içinde hiçbir şey gelmedi. Aralığı genişletin veya is
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Nothing new — all {0} collections already exist"
 msgstr "Yeni bir şey yok — {0} koleksiyonun tümü zaten var"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Nothing out for signature."
+msgstr "İmzaya gönderilmiş bir şey yok."
 
 #: src/client/admin/parity/app-orgs.tsx
 msgid "Nothing outstanding."
@@ -9480,6 +9973,10 @@ msgstr "Son {days} günde hiçbir şey kaydedilmedi. API trafik almaya başladı
 #: src/client/admin/pages/agents.tsx
 msgid "Nothing yet. Facts are distilled from conversations once a few turns have gone by — and need an embedding provider to be recalled."
 msgstr "Henüz bir şey yok. Bilgiler, birkaç tur geçtikten sonra konuşmalardan damıtılır — hatırlanabilmesi için bir gömme sağlayıcısı gerekir."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Notice"
+msgstr "Ön bildirim"
 
 #: src/client/admin/ui.tsx
 msgid "Notifications"
@@ -9637,6 +10134,14 @@ msgstr "Bir saniye."
 msgid "One or more adopted FKs are missing a target collection."
 msgstr "Bir veya daha fazla benimsenmiş FK'da hedef koleksiyon eksik."
 
+#: src/client/admin/flow-builder.tsx
+msgid "One per line — email, optionally :name:role. A single placeholder may also resolve to a whole list carried on the row."
+msgstr "Satır başına bir kişi — e-posta, isteğe bağlı :ad:rol. Tek bir yer tutucu, satırın taşıdığı bir listenin tamamına da karşılık gelebilir."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "One per line — email, optionally :name:role. Role shows on the certificate."
+msgstr "Satır başına bir kişi — e-posta, isteğe bağlı :ad:rol. Rol sertifikada görünür."
+
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "One per line. `orders.beforeCreate`, `orders.*`, `*.beforeDelete`, or `*`."
 msgstr "Her satıra bir tane. `orders.beforeCreate`, `orders.*`, `*.beforeDelete` veya `*`."
@@ -9700,6 +10205,7 @@ msgstr "aç"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/analytics.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Open"
 msgstr "Aç"
@@ -9765,6 +10271,10 @@ msgstr "OpenAPI spec yenilendi."
 msgid "OpenID Connect / OAuth2 sign-in for this workspace's end-users."
 msgstr "Bu çalışma alanının son kullanıcıları için OpenID Connect / OAuth2 girişi."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Opening hours"
+msgstr "Çalışma saatleri"
+
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/payments.tsx
 msgid "Opening…"
@@ -9813,6 +10323,10 @@ msgstr "İsteğe bağlı — boş bırakırsanız zaman damgalı bir ad oluştur
 msgid "Optional — the key stops working after this time."
 msgstr "İsteğe bağlı — anahtar bu sürenin ardından çalışmayı durdurur."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Optional. Each booking is also written as a row there, so permissions, flows and exports apply to it as usual."
+msgstr "İsteğe bağlı. Her rezervasyon oraya bir satır olarak da yazılır; böylece izinler, akışlar ve dışa aktarmalar her zamanki gibi işler."
+
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Optional. Signs each call so your service can verify it came from backlex."
 msgstr "İsteğe bağlı. Her çağrıyı imzalar, böylece servisiniz backlex'ten geldiğini doğrulayabilir."
@@ -9838,10 +10352,18 @@ msgstr "Sipariş iptal edildi"
 #~ msgid "Orders by status"
 #~ msgstr "Duruma göre siparişler"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Organiser email"
+msgstr "Organizatör e-postası"
+
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/ui.tsx
 msgid "Organizations"
 msgstr "Organizasyonlar"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Orientation"
+msgstr "Yön"
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Original"
@@ -9863,6 +10385,10 @@ msgstr "Koleksiyon olaylarında giden HTTP. Başarısız teslimatlar üstel geri
 #: src/client/admin/pages/webhooks.tsx
 msgid "Outgoing webhook deliveries will show up here once a collection event fires."
 msgstr "Koleksiyon olayı tetiklendiğinde giden webhook teslimatları burada görünecek."
+
+#: src/client/admin/parity/documents.tsx
+msgid "Output filename"
+msgstr "Çıktı dosya adı"
 
 #. placeholder {0}: over.join(", ")
 #: src/client/admin/pages/usage.tsx
@@ -9889,6 +10415,10 @@ msgstr "aşım raporlanır, hiçbir şey engellenmez"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Overrides the `--primary` token used across the admin and any published surfaces."
 msgstr "Admin ve yayımlanan yüzeylerde kullanılan `--primary` token'ını geçersiz kılar."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Overrides the template's. The stored key stays random — a filename comes from row data."
+msgstr "Şablondakini geçersiz kılar. Depolama anahtarı rastgele kalır — dosya adı satır verisinden gelir."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Overrides the workspace transport's configured sender id."
@@ -9934,6 +10464,14 @@ msgstr "p95 gecikme"
 #: src/client/admin/app.tsx
 #~ msgid "page {page} / {totalPages}"
 #~ msgstr "sayfa {page} / {totalPages}"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Page footer (HTML)"
+msgstr "Sayfa altbilgisi (HTML)"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Page size"
+msgstr "Sayfa boyutu"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Page titles, badges. Falls back to the slug."
@@ -10077,6 +10615,7 @@ msgstr "duraklatıldı"
 #: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/sync-hooks-card.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Paused"
 msgstr "Duraklatıldı"
 
@@ -10234,6 +10773,11 @@ msgstr "{activeRole} için izinler"
 msgid "Permissions: {0}."
 msgstr "İzinler: {0}."
 
+#: src/client/admin/parity/booking.tsx
+#: src/client/pages/book.tsx
+msgid "Phone"
+msgstr "Telefon"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Photographer, designer, source…"
 msgstr "Fotoğrafçı, tasarımcı, kaynak…"
@@ -10283,6 +10827,10 @@ msgstr "takma adlı sistem alanı için sütun seçin"
 msgid "Pick a date…"
 msgstr "Tarih seçin…"
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Pick a document template"
+msgstr "Bir belge şablonu seçin"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Pick a field…"
 msgstr "Alan seçin…"
@@ -10331,6 +10879,10 @@ msgstr "Seçmek için bir satıra tıklayın"
 msgid "Pick a source"
 msgstr "Bir kaynak seçin"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Pick a start time."
+msgstr "Bir başlangıç saati seçin."
+
 #: src/client/admin/item-form.tsx
 msgid "Pick a status…"
 msgstr "Durum seçin…"
@@ -10352,6 +10904,7 @@ msgstr "benimsenmiş FK için hedef koleksiyon seçin"
 msgid "Pick a target collection."
 msgstr "Hedef koleksiyon seçin."
 
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Pick a template"
 msgstr "Şablon seçin"
@@ -10406,6 +10959,10 @@ msgstr "Görsel seçin"
 msgid "Pick an interface, name the column — additive ALTER TABLE, no existing rows are rewritten."
 msgstr "Bir arayüz seçin, sütunu adlandırın — eklemeli ALTER TABLE, mevcut satırlar yeniden yazılmaz."
 
+#: src/client/pages/book.tsx
+msgid "Pick another time"
+msgstr "Başka bir saat seç"
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "pick at least one event"
 msgstr "en az bir olay seçin"
@@ -10449,6 +11006,10 @@ msgstr "Satır seç"
 #: src/client/admin/add-field.tsx
 msgid "Pick the collection this relation points to."
 msgstr "Bu ilişkinin işaret ettiği koleksiyonu seçin."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Pick the document to send."
+msgstr "Gönderilecek belgeyi seçin."
 
 #: src/client/admin/collection-settings.tsx
 msgid "Pick the field whose values become the Kanban columns.<0> Auto</0> uses a field named<1> status</1>, else the first dropdown."
@@ -10557,6 +11118,15 @@ msgstr "Oyun alanı — bu paylaşılan bir demodur. Verileri herkes düzenleyeb
 msgid "Please accept \"{0}\""
 msgstr "Lütfen \"{0}\" onayını işaretleyin"
 
+#. placeholder {0}: String(q.label ?? q.name)
+#: src/client/pages/book.tsx
+msgid "Please answer \"{0}\"."
+msgstr "Lütfen \"{0}\" alanını doldurun."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Please arrive ten minutes early."
+msgstr "Lütfen on dakika erken gelin."
+
 #. placeholder {0}: b.label || humanizeLabel(b.name)
 #: src/client/pages/public-form.tsx
 msgid "Please attach a file for \"{0}\""
@@ -10595,6 +11165,10 @@ msgstr "Politika"
 #: src/client/admin/pages/forms.tsx
 msgid "Policy URL"
 msgstr "Sözleşme URL'si"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Portrait"
+msgstr "Dikey"
 
 #. placeholder {0}: (nu.title ?? "").slice(0, 38)
 #. placeholder {1}: (nu.title ?? "").length > 38 ? "…" : ""
@@ -10665,6 +11239,7 @@ msgstr "önizleme"
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/item-form.tsx
 #: src/client/admin/pages/erasure-card.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Preview"
 msgstr "Önizleme"
@@ -10735,6 +11310,10 @@ msgstr "Gizlilik Politikası URL'si"
 msgid "Private"
 msgstr "Özel"
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Produce signed copy"
+msgstr "İmzalı kopyayı üret"
+
 #: src/client/admin/pages/analytics.tsx
 msgid "Product events and crash reports from your apps. Visitors are counted by an anonymous id, so pre-signup traffic is measured too."
 msgstr "Uygulamalarınızdan gelen ürün olayları ve çökme raporları. Ziyaretçiler anonim bir kimlikle sayılır, böylece kayıt öncesi trafik de ölçülür."
@@ -10761,6 +11340,10 @@ msgstr "{0} için profil kaydedildi."
 #: src/client/admin/pages/users.tsx
 msgid "Profile saved."
 msgstr "Profil kaydedildi."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Protected minutes before each booking."
+msgstr "Her rezervasyondan önce korunan dakika."
 
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -10873,6 +11456,10 @@ msgstr "Doğrudan bir koleksiyona yazan herkese açık, gömülebilir formlar �
 #: src/client/admin/sheet.tsx
 msgid "Publish"
 msgstr "Yayınla"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Publish a calendar people can pick a time from, and see who did."
+msgstr "İnsanların saat seçebileceği bir takvim yayınlayın, kimin seçtiğini görün."
 
 #: src/client/admin/item-editor.tsx
 msgid "Publish changes"
@@ -11074,6 +11661,10 @@ msgstr "Oku"
 msgid "Read & write"
 msgstr "Okuma ve yazma"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Read on your own clock, then stored as an instant."
+msgstr "Kendi saatinizle okunur, sonra bir zaman anı olarak saklanır."
+
 #: src/client/admin/pages/forms.tsx
 #: src/client/pages/public-form.tsx
 msgid "read the full text"
@@ -11151,6 +11742,10 @@ msgstr "Gerçek zamanlı"
 #: src/client/admin/pages/payments.tsx
 msgid "Reason"
 msgstr "Gerekçe"
+
+#: src/client/pages/sign-document.tsx
+msgid "Reason for declining"
+msgstr "Reddetme nedeni"
 
 #: src/client/admin/pages/agents.tsx
 msgid "Reasoning effort"
@@ -11500,6 +12095,10 @@ msgstr "Dili kaldır"
 msgid "Remove one person from collections, revision history, activity, comments, notifications, analytics, crash reports, devices and files. Preview first — a run cannot be undone."
 msgstr "Bir kişiyi koleksiyonlardan, revizyon geçmişinden, etkinlik kaydından, yorumlardan, bildirimlerden, analitikten, hata raporlarından, cihazlardan ve dosyalardan kaldırır. Önce önizleyin — uygulama geri alınamaz."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Remove rule"
+msgstr "Kuralı kaldır"
+
 #: src/client/admin/collections-index.tsx
 msgid "Remove sample data"
 msgstr "Örnek verileri kaldır"
@@ -11559,9 +12158,21 @@ msgstr "c_{nextSlug}{0} olarak yeniden adlandırıldı."
 msgid "Renaming…"
 msgstr "Yeniden adlandırılıyor…"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Render PDF"
+msgstr "PDF oluştur"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Rendered to PDF from a complete HTML document. Values interpolate with <0>{rowExample}</0> against the row."
+msgstr "Tam bir HTML belgesinden PDF'e dönüştürülür. Değerler satıra karşı <0>{rowExample}</0> ile yerleştirilir."
+
 #: src/client/admin/field-format-editor.tsx
 msgid "rendering only — never affects storage or sorting"
 msgstr "yalnızca gösterim — depolama veya sıralamayı etkilemez"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Rendering…"
+msgstr "Oluşturuluyor…"
 
 #: src/client/admin/pages/analytics.tsx
 msgid "Reopen"
@@ -11661,6 +12272,10 @@ msgstr "İmzalı URL veya kimlik doğrulama çerezi gerektirir."
 #: src/client/admin/item-editor.tsx
 msgid "Reschedule"
 msgstr "Yeniden planla"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Resend"
+msgstr "Yeniden gönder"
 
 #: src/client/pages/sign-in.tsx
 msgid "Resend verification email"
@@ -12082,6 +12697,14 @@ msgstr "Satır"
 msgid "row count (no field needed)"
 msgstr "satır sayısı (alan gerekmez)"
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Row data"
+msgstr "Satır verisi"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Row data must be valid JSON."
+msgstr "Satır verisi geçerli JSON olmalı."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Row id"
 msgstr "Satır ID"
@@ -12111,6 +12734,10 @@ msgstr "Satırlar bir <0>tenant_id</0> taşır. Mevcut bir koleksiyonda devre d�
 msgid "Rows created by {r} must match this rule."
 msgstr "{r} tarafından oluşturulan satırlar bu kuralı karşılamalıdır."
 
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "rows in"
+msgstr "satır girişi"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Rows in collection"
 msgstr "Koleksiyondaki satırlar"
@@ -12127,6 +12754,10 @@ msgstr "satırlar <0>{0}</0> içinde yaşar"
 #: src/client/admin/condition-editor.tsx
 msgid "Rows matching this rule are visible to {r}."
 msgstr "Bu kuralla eşleşen satırlar {r} için görünür."
+
+#: src/client/admin/pages/integration-syncs-card.tsx
+msgid "rows out"
+msgstr "satır çıkışı"
 
 #: src/client/admin/pages/search-playground.tsx
 msgid "RRF fusion of both"
@@ -12259,6 +12890,14 @@ msgstr "SAML 2.0 SSO"
 msgid "SAML 2.0 SSO — workspace end-users."
 msgstr "SAML 2.0 SSO — çalışma alanı son kullanıcıları."
 
+#: src/client/admin/parity/documents.tsx
+msgid "Sample data"
+msgstr "Örnek veri"
+
+#: src/client/admin/parity/documents.tsx
+msgid "Sample data must be valid JSON."
+msgstr "Örnek veri geçerli JSON olmalı."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Sample event payload"
 msgstr "Örnek etkinlik yükü"
@@ -12319,7 +12958,9 @@ msgstr "Cmt"
 #: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/usage.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/database.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
@@ -12415,6 +13056,10 @@ msgstr "Kaynağı kaydet"
 msgid "Save the current live schema as an immutable checkpoint."
 msgstr "Mevcut canlı şemayı değiştirilemez bir denetim noktası olarak kaydedin."
 
+#: src/client/admin/parity/documents.tsx
+msgid "Save the template before rendering."
+msgstr "Oluşturmadan önce şablonu kaydedin."
+
 #: src/client/admin/parity/email-templates.tsx
 msgid "Save the template before sending a test."
 msgstr "Test göndermeden önce şablonu kaydedin."
@@ -12442,6 +13087,7 @@ msgid "Saved as snippet."
 msgstr "Kod parçacığı olarak kaydedildi."
 
 #: src/client/admin/item-editor.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Saved."
 msgstr "Kaydedildi."
 
@@ -12464,6 +13110,8 @@ msgstr "kaydediliyor…"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/booking.tsx
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/parity/translations.tsx
@@ -12834,6 +13482,7 @@ msgstr "anlamsal embedding'ler"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/signatures.tsx
 #: src/client/pages/rest-explorer.tsx
 msgid "Send"
 msgstr "Gönder"
@@ -12861,6 +13510,10 @@ msgstr "E-posta daveti gönderin. Kullanıcı kaydı kendisi tamamlar."
 #: src/client/admin/pages/integrations.tsx
 msgid "Send data events to a Telegram chat."
 msgstr "Veri olaylarını bir Telegram sohbetine gönder."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Send for signature"
+msgstr "İmzaya gönder"
 
 #: src/client/admin/pages/users.tsx
 msgid "Send invite"
@@ -12919,6 +13572,7 @@ msgstr "Sıfırlama bağlantısı gönderiliyor"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/parity/signatures.tsx
 #: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/rest-explorer.tsx
@@ -12933,9 +13587,17 @@ msgstr "E-posta ile tek kullanımlık giriş bağlantısı gönderir — yapıla
 #~ msgid "Sends the visitor here after submitting, instead of the message."
 #~ msgstr "Gönderimden sonra ziyaretçiyi mesaj yerine buraya yönlendirir."
 
+#: src/client/admin/parity/signatures.tsx
+msgid "Sent"
+msgstr "Gönderildi"
+
 #: src/client/admin/item-views.tsx
 msgid "September"
 msgstr "Eylül"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "sequential"
+msgstr "sırayla"
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Server default (10 MB)"
@@ -13088,6 +13750,10 @@ msgstr "<0>wrangler.toml [vars]</0> / <1>wrangler secret put</1> (veya öz barı
 msgid "Set this field to NULL"
 msgstr "Bu alanı NULL yap"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Set this to send a real invitation with accept/decline. Left empty it attaches a plain event."
+msgstr "Kabul et/reddet seçenekli gerçek bir davet göndermek için doldurun. Boş bırakılırsa düz bir etkinlik eklenir."
+
 #: src/client/admin/account-page.tsx
 msgid "Set up"
 msgstr "Kur"
@@ -13156,6 +13822,10 @@ msgstr "Herkese açık bağlantıyı paylaşın — satırlar geldikçe buraya (
 #: src/client/admin/item-collaboration.tsx
 msgid "share this record"
 msgstr "bu kaydı paylaş"
+
+#: src/client/admin/parity/documents.tsx
+msgid "shared"
+msgstr "paylaşılan"
 
 #: src/client/admin/pages/usage.tsx
 msgid "shared global budget"
@@ -13312,6 +13982,10 @@ msgstr "Varsayılan mesaj yerine gösterilir"
 msgid "Shown instead of the label when the admin UI is in that language."
 msgstr "Admin arayüzü o dildeyken etiket yerine gösterilir."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Shown on the public page."
+msgstr "Herkese açık sayfada görünür."
+
 #: src/client/admin/pages/forms.tsx
 msgid "shown once — copy it now, it won't appear again"
 msgstr "bir kez gösterilir — şimdi kopyalayın, tekrar görünmeyecek"
@@ -13320,9 +13994,17 @@ msgstr "bir kez gösterilir — şimdi kopyalayın, tekrar görünmeyecek"
 msgid "Shown once — store it now."
 msgstr "Yalnızca bir kez gösterilir — şimdi kaydedin."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Shown once. It also went out with the confirmation email."
+msgstr "Bir kez gösterilir. Onay e-postasıyla da gönderildi."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Side-table (item_ownership)"
 msgstr "Yan tablo (item_ownership)"
+
+#: src/client/pages/sign-document.tsx
+msgid "Sign document"
+msgstr "Belgeyi imzala"
 
 #: src/client/pages/forgot.tsx
 #: src/client/pages/invite.tsx
@@ -13345,6 +14027,10 @@ msgstr "Tekrar oturum açıp bağlantıyı yeniden deneyin."
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Sign in and approve the authorization screen"
 #~ msgstr "Giriş yapın ve yetkilendirme ekranını onaylayın"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Sign in order"
+msgstr "Sırayla imzalansın"
 
 #: src/client/pages/sign-in.tsx
 msgid "Sign in to <0>backlex</0>."
@@ -13434,19 +14120,50 @@ msgstr "Kayıt devre dışı"
 msgid "Signature algorithm"
 msgstr "İmza algoritması"
 
+#: src/client/admin/parity/signatures.tsx
+#: src/client/admin/ui.tsx
+msgid "Signatures"
+msgstr "İmzalar"
+
+#: src/client/admin/parity/signatures.tsx
+#: src/client/pages/sign-document.tsx
+msgid "Signed"
+msgstr "İmzalandı"
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Signed PDF"
+msgstr "İmzalı PDF"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Signed URL copied (1h)."
 msgstr "İmzalı URL kopyalandı (1 saat)."
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/signatures.tsx
+msgid "Signers"
+msgstr "İmzalayanlar"
+
+#: src/client/pages/sign-document.tsx
+msgid "Signing as {who}"
+msgstr "İmzalayan: {who}"
 
 #: src/client/components/platform-sso.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Signing in…"
 msgstr "Giriş yapılıyor…"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Signing order"
+msgstr "İmza sırası"
+
 #: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Signing secret"
 msgstr "İmzalama gizli anahtarı"
+
+#: src/client/pages/sign-document.tsx
+msgid "Signing…"
+msgstr "İmzalanıyor…"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>timestamp.body</2> with <3>X-Backlex-Timestamp</3> for replay protection."
@@ -13508,6 +14225,10 @@ msgstr "Slack #content"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "SLO URL"
 msgstr "SLO URL"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Slot length"
+msgstr "Dilim süresi"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Slowest endpoints"
@@ -13669,6 +14390,10 @@ msgstr "Span'ler %{0} oranında örnekleniyor, dolayısıyla sayılar bir örnek
 msgid "Spec unavailable. Try Refresh."
 msgstr "Belirtim kullanılamıyor. Yenilemeyi deneyin."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Specific dates"
+msgstr "Belirli tarihler"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Splits the form into pages"
 msgstr "Formu sayfalara böler"
@@ -13747,6 +14472,11 @@ msgstr "Bir şablonla başla"
 #: src/client/admin/pages/database-import.tsx
 msgid "Starting…"
 msgstr "Başlatılıyor…"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/booking.tsx
+msgid "Starts"
+msgstr "Başlangıç"
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "State"
@@ -14132,6 +14862,10 @@ msgstr "Slogan"
 msgid "Tags"
 msgstr "Etiketler"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Taken over the phone, so it is not limited to the published times — but a slot that is already full is still refused."
+msgstr "Telefonla alındığı için yayınlanan saatlerle sınırlı değil — ama dolu bir saat yine de reddedilir."
+
 #: src/client/admin/item-form.tsx
 msgid "Target"
 msgstr "Hedef"
@@ -14162,10 +14896,19 @@ msgstr "Ekip"
 msgid "Teams inside this workspace — the customer accounts your end-users belong to. Members come from <0>Users</0> (the end-user pool), and the roles you bind here apply only within that organization, which is what <1>$org.id</1> matches in permission rules."
 msgstr "Bu çalışma alanı içindeki ekipler — son kullanıcılarınızın bağlı olduğu müşteri hesapları. Üyeler <0>Kullanıcılar</0> havuzundan gelir ve burada bağladığınız roller yalnızca o organizasyon içinde geçerlidir; izin kurallarında <1>$org.id</1> tam olarak bununla eşleşir."
 
+#: src/client/pages/book.tsx
+msgid "Tell them who is coming."
+msgstr "Kimin geleceğini yazın."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Template"
 msgstr "Şablon"
 
+#: src/client/admin/parity/documents.tsx
+msgid "Template deleted."
+msgstr "Şablon silindi."
+
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Template saved."
 msgstr "Şablon kaydedildi."
@@ -14325,6 +15068,10 @@ msgstr "İstemci gizli anahtarı bekleme sırasında şifrelenir. Her iki alanı
 msgid "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
 msgstr "Mevcut bağlantı anında devre dışı kalır ve yenisi oluşturulur. Eski bağlantının gömülü olduğu her yerin güncellenmesi gerekir."
 
+#: src/client/admin/parity/signatures.tsx
+msgid "The document is rendered and frozen now. A later edit to the template will not change it."
+msgstr "Belge şimdi oluşturulup dondurulur. Şablonda sonradan yapılan düzenleme bunu değiştirmez."
+
 #: src/client/pages/embed-dashboard.tsx
 msgid "The embed link may have been revoked, or the dashboard was removed."
 msgstr "Gömme bağlantısı iptal edilmiş ya da pano kaldırılmış olabilir."
@@ -14362,6 +15109,10 @@ msgstr "Davet edilen kişinin bu e-postayla bir son kullanıcı hesabı zaten ol
 msgid "The key \"{0}\" will stop working immediately. This cannot be undone."
 msgstr "\"{0}\" anahtarı hemen çalışmayı durduracak. Bu geri alınamaz."
 
+#: src/client/admin/parity/booking.tsx
+msgid "The key must be lowercase letters, digits, dash or underscore."
+msgstr "Anahtar küçük harf, rakam, tire veya alt çizgi olmalı."
+
 #: src/client/admin/flow-builder.tsx
 msgid "The link is returned into $last either way — writing it back is what puts it on the invoice."
 msgstr "Bağlantı her hâlükârda $last içine döner — faturaya yazılmasını sağlayan şey geri yazmadır."
@@ -14382,6 +15133,10 @@ msgstr "En eski kayıtlı span bu pencerenin başlangıcından daha yeni — pen
 msgid "The one-line text chat providers render."
 msgstr "Sohbet sağlayıcılarının gösterdiği tek satırlık metin."
 
+#: src/client/admin/parity/booking.tsx
+msgid "The opening hours are written in the resource's own zone, so \"Mondays 09:00\" keeps meaning nine in the morning there when the clocks change."
+msgstr "Çalışma saatleri kaynağın kendi saat diliminde yazılır; böylece saatler değiştiğinde \"Pazartesi 09:00\" orada hâlâ sabah dokuz demektir."
+
 #: src/client/admin/app.tsx
 msgid "The physical table and all rows are dropped. This is irreversible."
 msgstr "Fiziksel tablo ve tüm satırlar silinir. Bu geri alınamaz."
@@ -14397,6 +15152,10 @@ msgstr "sağlayıcı bu iade hakkında henüz karar vermedi"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "The provider is added disabled. Set its client secret server-side, then enable it here."
 msgstr "Sağlayıcı devre dışı olarak eklendi. Sunucu tarafında istemci gizli anahtarını ayarlayın, ardından burada etkinleştirin."
+
+#: src/client/admin/parity/booking.tsx
+msgid "The public booking link"
+msgstr "Herkese açık rezervasyon bağlantısı"
 
 #: src/client/admin/parity/insights.tsx
 msgid "The public embed is live. The link was shown once when it was created — rotate it below if you need the URL again."
@@ -14417,6 +15176,10 @@ msgstr "Sorgu aynen çalıştırılır. Yukarıdaki görselleştirme ipucu, süt
 #: src/client/admin/flow-builder.tsx
 msgid "The reference is what a payment link travelled out with, so it is usually the only handle the billed row carries."
 msgstr "Referans, ödeme bağlantısıyla birlikte giden değerdir; bu yüzden genelde faturalanan satırın taşıdığı tek tutamaktır."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "The render context — what the template's placeholders resolve against."
+msgstr "Şablondaki yer tutucuların karşılık bulduğu veri."
 
 #: src/client/admin/parity/app-orgs.tsx
 msgid "The role dropdown governs org administration. In-org roles are workspace roles that apply only inside this organization — the <0>admin</0> role can never be granted here."
@@ -14439,6 +15202,10 @@ msgstr "Bölüm katlanmış açılır — gelişmiş veya nadiren kullanılan al
 msgid "The selected folder has no backlex-extension.json at its root."
 msgstr "Seçilen klasörün kökünde backlex-extension.json yok."
 
+#: src/client/pages/sign-document.tsx
+msgid "The sender cancelled this request."
+msgstr "Gönderen bu talebi iptal etti."
+
 #: src/client/admin/pages/forms.tsx
 msgid "The server-wide upload ceiling still applies on top."
 msgstr "Sunucu genelindeki yükleme sınırı ayrıca geçerlidir."
@@ -14446,6 +15213,14 @@ msgstr "Sunucu genelindeki yükleme sınırı ayrıca geçerlidir."
 #: src/client/pages/shared-record.tsx
 msgid "The share link may have been revoked, or the record it pointed to was removed."
 msgstr "Paylaşım bağlantısı iptal edilmiş olabilir ya da işaret ettiği kayıt kaldırılmış olabilir."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "The signed copy has been produced."
+msgstr "İmzalı kopya üretildi."
+
+#: src/client/pages/sign-document.tsx
+msgid "The signing link has expired."
+msgstr "İmza bağlantısının süresi doldu."
 
 #: src/client/admin/pages/forms.tsx
 msgid "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
@@ -14471,6 +15246,14 @@ msgstr "kullanıcının kimliği"
 msgid "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
 msgstr "Çalışma alanının son kullanıcı havuzu (<0>app_users</0>). E-posta veya ada göre arayın."
 
+#: src/client/admin/parity/booking.tsx
+msgid "The zone the opening hours are written in — not a display preference."
+msgstr "Çalışma saatlerinin yazıldığı saat dilimi — bir görüntüleme tercihi değil."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Their link to change or cancel"
+msgstr "Değiştirme veya iptal bağlantısı"
+
 #: src/client/admin/pages/forms.tsx
 msgid "theme"
 msgstr "tema"
@@ -14490,6 +15273,18 @@ msgstr "Bu <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> işlemi geri alına
 #: src/client/admin/pages/agents.tsx
 msgid "This agent has no tools — it answers from the model alone. Add tools in Edit to let it read your data."
 msgstr "Bu ajanın aracı yok — yalnızca modelden yanıt verir. Verilerinizi okuyabilmesi için Düzenle’den araç ekleyin."
+
+#: src/client/pages/book.tsx
+msgid "This appointment has already happened."
+msgstr "Bu randevu çoktan gerçekleşti."
+
+#: src/client/pages/book.tsx
+msgid "This booking link is not valid"
+msgstr "Bu rezervasyon bağlantısı geçerli değil"
+
+#: src/client/pages/book.tsx
+msgid "This booking was cancelled."
+msgstr "Bu rezervasyon iptal edildi."
 
 #: src/client/admin/extras.tsx
 msgid "this collection"
@@ -14543,6 +15338,10 @@ msgstr "Bu, odayı ve tüm konuşma dökümünü ekipteki herkes için siler. Ag
 msgid "This deployment has no vector store — connect a Vectorize binding (Cloudflare), pgvector (Postgres), or libSQL before vector search can run."
 msgstr "Bu dağıtımda vektör deposu yok — vektör araması çalışmadan önce bir Vectorize binding'i (Cloudflare), pgvector (Postgres) veya libSQL bağlayın."
 
+#: src/client/pages/sign-document.tsx
+msgid "This document is no longer open for signature"
+msgstr "Bu belge artık imzaya açık değil"
+
 #: src/client/admin/pages/erasure-card.tsx
 msgid "This does not reach"
 msgstr "Bunun ulaşamadıkları"
@@ -14574,6 +15373,10 @@ msgstr "Bu davet bağlantısı geçersiz veya zaten kullanılmış."
 msgid "This invite to {0} has expired."
 msgstr "{0} çalışma alanına yapılan bu davetin süresi dolmuş."
 
+#: src/client/admin/parity/documents.tsx
+msgid "This is a shared default. Saving creates a copy for this workspace and leaves the shared one untouched."
+msgstr "Bu paylaşılan bir varsayılan. Kaydetmek bu çalışma alanı için bir kopya oluşturur, paylaşılana dokunmaz."
+
 #: src/client/admin/parity/revisions.tsx
 msgid "This is already the current state"
 msgstr "Bu zaten mevcut durum"
@@ -14585,6 +15388,10 @@ msgstr "Bu örneğin ilk kullanıcısı bu."
 #: src/client/pages/shared-record.tsx
 msgid "This link is no longer available"
 msgstr "Bu bağlantı artık kullanılamıyor"
+
+#: src/client/pages/sign-document.tsx
+msgid "This link is not available"
+msgstr "Bu bağlantı geçerli değil"
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "This link is shown once — rotating the token later replaces it and kills the old one."
@@ -14678,6 +15485,7 @@ msgid "Time only"
 msgstr "Sadece saat"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Time zone"
 msgstr "Saat dilimi"
 
@@ -14691,6 +15499,17 @@ msgstr "Zaman çizelgesi"
 msgid "Timeout (ms)"
 msgstr "Zaman aşımı (ms)"
 
+#. placeholder {0}: current.timeZone
+#. placeholder {1}: current.capacity
+#. placeholder {2}: current.slotMinutes
+#: src/client/admin/parity/booking.tsx
+msgid "Times are written in {0}. {1} at once, {2} minutes each."
+msgstr "Saatler {0} diliminde yazılır. Aynı anda {1}, her biri {2} dakika."
+
+#: src/client/pages/book.tsx
+msgid "Times shown in {zone}, not your {visitorZone}"
+msgstr "Saatler {zone} diliminde, sizin {visitorZone} diliminizde değil"
+
 #: src/client/admin/collections-index.tsx
 msgid "Timestamps"
 msgstr "Zaman damgaları"
@@ -14700,6 +15519,7 @@ msgid "Timestamps across the admin render in this zone."
 msgstr "Yönetici panelindeki tüm zaman damgaları bu dilimde gösterilir."
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/signatures.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Title"
 msgstr "Başlık"
@@ -15057,6 +15877,11 @@ msgstr "İki adımlı doğrulama açık."
 msgid "Type"
 msgstr "Tür"
 
+#: src/client/pages/sign-document.tsx
+msgctxt "sign with the keyboard"
+msgid "Type"
+msgstr "Yaz"
+
 #: src/client/admin/pages/_agents-shared.tsx
 msgid "type @ to address an agent"
 msgstr "bir agent'a seslenmek için @ yazın"
@@ -15208,6 +16033,7 @@ msgstr "kısıtsız"
 msgid "Unrestricted — no row filter applies."
 msgstr "Kısıtlamasız — satır filtresi uygulanmaz."
 
+#: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "unsaved"
@@ -15683,6 +16509,10 @@ msgstr "Görselleştirme"
 msgid "Waiting for browser…"
 msgstr "Tarayıcı bekleniyor…"
 
+#: src/client/pages/sign-document.tsx
+msgid "Waiting on another signer"
+msgstr "Başka bir imzalayan bekleniyor"
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Want signed assertions"
 msgstr "İmzalı onaylar isteniyor"
@@ -15848,6 +16678,10 @@ msgstr "“Test SMS gönder” işleminin nereye iletileceği. Hesabınızın ka
 #~ msgid "Where submissions are stored."
 #~ msgstr "Gönderimlerin kaydedileceği yer."
 
+#: src/client/pages/book.tsx
+msgid "Where the confirmation and the cancel link go."
+msgstr "Onay ve iptal bağlantısının gideceği yer."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "Which columns real list requests filter and sort on — the input behind the missing-index findings."
 msgstr "Gerçek liste isteklerinin hangi kolonlarda filtreleyip sıraladığı — eksik index bulgularının dayandığı veri."
@@ -15872,6 +16706,10 @@ msgstr "Yalnızca tam sayılar (ondalık yok)"
 #: src/client/admin/pages/payments.tsx
 msgid "whole remaining balance"
 msgstr "kalan bakiyenin tamamı"
+
+#: src/client/pages/sign-document.tsx
+msgid "Why are you declining? (optional)"
+msgstr "Neden reddediyorsunuz? (isteğe bağlı)"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -16006,6 +16844,10 @@ msgid "Write a read-only SELECT below."
 msgstr "Aşağıya salt okunur bir SELECT yazın."
 
 #: src/client/admin/flow-builder.tsx
+msgid "Write the key back to"
+msgstr "Anahtarı şuraya yaz"
+
+#: src/client/admin/flow-builder.tsx
 msgid "Write the link onto"
 msgstr "Bağlantıyı şuraya yaz"
 
@@ -16049,6 +16891,14 @@ msgstr "Evet"
 msgid "You are a helpful assistant for our workspace…"
 msgstr "Çalışma alanımız için yardımcı bir asistansınız…"
 
+#: src/client/pages/book.tsx
+msgid "You are booked in."
+msgstr "Rezervasyonunuz alındı."
+
+#: src/client/pages/sign-document.tsx
+msgid "You declined to sign this document. The sender has been notified."
+msgstr "Bu belgeyi imzalamayı reddettiniz. Gönderen bilgilendirildi."
+
 #: src/client/admin/item-editor.tsx
 msgid "You have edits that haven't been saved. Leaving will lose them."
 msgstr "Kaydedilmemiş değişiklikleriniz var. Ayrılırsanız kaybolur."
@@ -16060,6 +16910,10 @@ msgstr "Henüz hiç passkey kaydetmediniz."
 #: src/client/admin/account-page.tsx
 msgid "You signed in with a social provider. Setting a password lets you also sign in with email + password."
 msgstr "Sosyal sağlayıcıyla giriş yaptınız. Parola belirleyerek e-posta + parola ile de giriş yapabilirsiniz."
+
+#: src/client/pages/sign-document.tsx
+msgid "You will be emailed as soon as it is your turn to sign."
+msgstr "Sıra size geldiğinde e-posta ile bilgilendirileceksiniz."
 
 #: src/client/pages/sign-up.tsx
 msgid "You'll get the authenticated role by default."
@@ -16109,6 +16963,10 @@ msgstr "Görünen adınız"
 msgid "Your email isn't verified yet. Check your inbox for the verification link."
 msgstr "E-postanız henüz doğrulanmadı. Doğrulama bağlantısı için gelen kutunuzu kontrol edin."
 
+#: src/client/pages/sign-document.tsx
+msgid "Your full name"
+msgstr "Adınız ve soyadınız"
+
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Your own preference — stored locally, not synced."
 msgstr "Kişisel tercihiniz — yerel olarak saklanır, senkronize edilmez."
@@ -16133,6 +16991,10 @@ msgstr "Kayıtlı cihazlarınız"
 msgid "Your session expired — sign in and retry from the client."
 msgstr "Oturumunuzun süresi doldu — giriş yapıp istemciden yeniden deneyin."
 
+#: src/client/pages/sign-document.tsx
+msgid "Your signature is recorded. You will get a copy once everyone has signed."
+msgstr "İmzanız kaydedildi. Herkes imzaladığında size bir kopya gönderilecek."
+
 #: src/client/admin/pages/forms.tsx
 #: src/client/pages/public-form.tsx
 msgid "Your submission has been received."
@@ -16141,3 +17003,7 @@ msgstr "Gönderiminiz alındı."
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Your tool calls show up here."
 msgstr "Araç çağrılarınız burada görünür."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Yours only — the customer never sees these."
+msgstr "Yalnızca size ait — müşteri bunları görmez."

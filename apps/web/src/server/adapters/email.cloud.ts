@@ -17,6 +17,21 @@ import { cloudPost } from "../lib/cloud-report";
  */
 export function cloudEmailAdapter(env: Env): EmailAdapter {
   return {
+    /**
+     * Declared UNSUPPORTED, and the field is forwarded anyway.
+     *
+     * A `.ics` sent through here would otherwise be dropped between two
+     * services that both reported success — the exact failure this flag exists
+     * to name. Saying so lets the caller tell the operator the invite did not
+     * travel, instead of the recipient finding out.
+     *
+     * **The gateway side is written and waiting** on
+     * `feat/gateway-email-attachments` in the control-plane repo. Flip this to
+     * `true` once that branch is merged and DEPLOYED — not when it is merged.
+     * Until the running gateway accepts the field, `true` here is a claim the
+     * live system does not honour, which is worse than the current answer.
+     */
+    attachments: false,
     async send(msg: EmailMessage): Promise<void> {
       let res: Response;
       try {
@@ -26,6 +41,7 @@ export function cloudEmailAdapter(env: Env): EmailAdapter {
           text: msg.text,
           html: msg.html,
           from: msg.from,
+          ...(msg.attachments?.length ? { attachments: msg.attachments } : {}),
         });
       } catch (e) {
         throw new AppError(

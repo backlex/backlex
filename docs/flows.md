@@ -37,6 +37,27 @@ A flow row is `{ id, name, trigger, operations, layout, active }`:
 The matched row that changed (for event triggers) or the run payload (for
 manual / webhook) lands in `data`, available to every op via templating.
 
+### The `booking` channel
+
+[Bookings](/booking/) fire on `booking` — `event:booking:created`,
+`booking:confirmed`, `booking:cancelled`, `booking:rescheduled`,
+`booking:no_show` — with the booking, plus `resourceKey` and `resourceName`, as
+`data`. That is how a reminder, a calendar write-back or a deposit gets attached
+to somebody picking a time.
+
+Unlike an item event, this one is **not** on the realtime bus: it reaches flows,
+webhooks, event functions and extension hooks, and nothing can subscribe to it.
+A booking carries a customer's name, address and telephone number, and the
+realtime plane's per-subscriber permission filter only applies to row-shaped
+payloads. Use the [mirror collection](/booking/) if you want bookings on a
+realtime channel — a mirrored row is a row, and gets the filter.
+
+The channel is singular for a reason worth knowing before you name your own:
+item events publish on `items:<slug>`, and three of the schema templates own a
+collection called `bookings`. Had the system channel been `bookings` too, a
+pattern like `event:bookings:created` would have matched both the template's
+rows and the system's own events, and fired the flow twice.
+
 ## Templating
 
 Any string field in an op is interpolated with `{{ … }}` placeholders resolved
@@ -61,12 +82,14 @@ are nested operation arrays run after the op succeeds / throws.
 | `type` | Does | Key fields |
 |---|---|---|
 | `log` | Writes a `[flow] …` line to the server log | `message` |
-| `email` | Sends a templated email (renders an `email_templates` row when `templateKey` is set, else uses `subject`/`html`/`text`) | `to`, `templateKey?`, `vars?`, `subject?`, `html?`, `text?` |
+| `email` | Sends a templated email (renders an `email_templates` row when `templateKey` is set, else uses `subject`/`html`/`text`). `attach` carries generated documents, `ics` a calendar invite — see below | `to`, `templateKey?`, `vars?`, `subject?`, `html?`, `text?`, `attach?`, `ics?` |
 | `notification` | Drops a row into the in-app `notifications` feed; `userId: null` broadcasts to admins. `push: true` also fans out to that user's devices | `title`, `body?`, `url?`, `userId?`, `push?` |
 | `push` | Sends a native push to a user's registered devices (no-op if none) | `title`, `body`, `userId`, `url?` |
 | `sms` | Sends an SMS through the workspace [SMS transport](/sms-messaging/). Addressed *either* by `to` (a number carried on the row) *or* by `userId` (a user's registered numbers) — exactly one, see below | `body`, `to?`, `userId?`, `from?` |
 | `payment.checkout` | Opens a hosted checkout with a connected [payment provider](/payments/) and optionally writes the link onto a row. Returns `{ url, reference, … }` into `{{ $last }}` | `amount` (minor units), `currency`, `provider?` \| `providerId?`, `email?`, `description?`, `successUrl?`, `writeBack?` |
 | `payment.refund` | Gives back some or all of a payment through the [provider](/payments/) that took it. Returns `{ amount, currency, status, … }` into `{{ $last }}` | one of `paymentRowId` \| `externalId` \| `reference`, `amount?` (minor units; omitted = the whole balance), `provider?` \| `providerId?`, `reason?`, `description?` |
+| `document.render` | Renders a [document template](/documents/) against the row and stores the PDF. Returns `{ key, filename, size }` into `{{ $last }}` | `templateKey?` \| `html?`, `vars?`, `filename?`, `writeBack?` |
+| `document.sign` | Freezes a [document](/documents/) and sends it out [for signature](/e-signature/) — one public link per signer, emailed by the op. Returns `{ id, status, signers }` (and deliberately no links) into `{{ $last }}` | `templateKey?` \| `html?`, `signers`, `title?`, `message?`, `ordered?`, `expiresInDays?`, `writeBack?` |
 | `webhook` | Fires an outbound HTTP request, body JSON-encoded | `url`, `method?`, `headers?`, `body?` |
 | `request` | Like `webhook` but captures the parsed response into `{{ $last }}` for later ops | `url`, `method?`, `headers?`, `query?`, `body?`, `timeoutMs?` (≤60s) |
 | `function` | Invokes a saved [sandbox function](/sandbox/) by name | `name`, `input?` (defaults to `data`) |
@@ -80,6 +103,57 @@ are nested operation arrays run after the op succeeds / throws.
 A run stops at the first op that throws without an `onError` branch and returns
 `{ ok: false, error }`. A flow that checkpointed on a long `delay` still returns
 `{ ok: true }` — the remainder is queued, not failed.
+
+### Putting the booking in their calendar
+
+An `email` op with an `ics` block attaches a calendar invite. This is the
+write-back that needs **nothing connected**: no OAuth, no account, and it reaches
+Google Calendar, Outlook, Apple Calendar and everything else, from the
+confirmation email the booking was already going to send. (The other direction —
+backlex creating the event in a specific Google calendar — is a
+[Calendar destination sync](/integrations/#bookings-out-to-a-calendar).)
+
+```json
+{
+  "type": "email",
+  "to": "{{ data.email }}",
+  "subject": "Your appointment is confirmed",
+  "text": "See you on {{ data.starts_at }}.",
+  "ics": {
+    "summary": "{{ data.service }}",
+    "start": "{{ data.starts_at }}",
+    "end": "{{ data.ends_at }}",
+    "location": "{{ data.address }}",
+    "organizerEmail": "bookings@example.com"
+  }
+}
+```
+
+Every field is interpolated. `summary` and `start` are required; the rest have
+defaults — guests default to the message's own recipient, and an end that is
+missing becomes an hour (or, for an all-day date, a day).
+
+**The `uid` is what stops a second booking.** A calendar keys an event on it, so
+re-sending with the *same* uid updates the entry the recipient already accepted,
+and a fresh one books the appointment twice. It therefore defaults to the
+**triggering row's id** — the one value stable across every re-run of a
+row-scoped flow. Set it explicitly when the flow isn't row-scoped. Raise
+`sequence` on each re-send, and use `method: "CANCEL"` to withdraw.
+
+`organizerEmail` decides what the recipient sees: **with** it the file is a
+`REQUEST` and mail clients render accept/decline; **without** it, a plain event
+to add.
+
+A `start` that renders empty or unparseable **fails the op**. The message names
+the *template*, never the rendered value — it is persisted on the run's activity
+row, and that value is customer data.
+
+**Transports.** Every self-hosted transport carries the file (Resend, SendGrid,
+Mailgun, SES, SMTP, console). The **managed-cloud** gateway does not yet: there
+the mail is still sent and the result carries `attachmentsDropped: true`, so the
+run says the invite did not travel rather than leaving the recipient to find
+out. Nothing is silently lost either way — the flag is what the running
+transport actually does, not what it intends to.
 
 ### Who an `sms` op texts
 
@@ -162,6 +236,32 @@ called, so a refund can never take the total past what was charged. The outcome
 lands in `{{ $last.status }}` — Adyen and Paddle both decide asynchronously and
 answer `pending`, so a following `condition` can branch on it. Provider
 specifics in [Payments](/payments/#giving-money-back).
+### Getting the agreement signed
+
+`document.sign` is the step after `document.render` for anything somebody has
+to sign:
+
+```json
+{
+  "type": "document.sign",
+  "templateKey": "lease",
+  "title": "Lease {{ data.no }}",
+  "signers": "{{ data.parties }}",
+  "ordered": true,
+  "writeBack": { "collection": "leases", "id": "{{ data.id }}", "field": "signed_doc" }
+}
+```
+
+`signers` is a list **or one template that resolves to an array** — a lease
+with two tenants carries its own counterparties, and `interpolate` builds
+strings, so a whole-value placeholder resolves to the value itself here rather
+than to `[object Object]`.
+
+Unlike `payment.checkout`, `{{ $last }}` carries **no link**. Everything on
+`$last` is readable by every op after it, and a signing link is a bearer
+credential for somebody else's signature — the op sends the invitation itself,
+and the `signature_request` email template is where its wording lives. Details
+in [E-signature](/e-signature/).
 
 ## Surfaces
 

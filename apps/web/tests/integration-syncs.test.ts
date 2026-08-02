@@ -869,3 +869,265 @@ describe("push: mirroring a collection out", () => {
     expect(res.status).toBe(422);
   });
 });
+
+/**
+ * A destination with a CLOSED column set.
+ *
+ * A warehouse's columns are whatever the operator's DDL declared, so the target
+ * side of a push mapping is free text and the server has nothing to check it
+ * against. Google Calendar is the first destination that writes into a
+ * structured object instead — an event has a `summary` and a `start`, not
+ * arbitrary columns — and there a typo'd target used to be accepted, dropped by
+ * the provider, and the run would report a clean success having written nothing
+ * into that field.
+ */
+describe("push: a destination with a closed column set", () => {
+  let calId = "";
+
+  beforeEach(async () => {
+    client.query("delete from integrations where kind = 'google-calendar'").run();
+    const res = await ok("POST", BASE, {
+      kind: "google-calendar",
+      config: { clientId: "cid", clientSecret: "csecret" },
+    });
+    calId = res.data.id as string;
+  });
+
+  const create = (mapping: Record<string, string>) =>
+    req("POST", SYNCS, {
+      integrationId: calId,
+      collection: "leads",
+      direction: "push",
+      settings: { calendarId: "primary" },
+      mapping,
+    });
+
+  test("accepts a mapping onto the columns the provider declared", async () => {
+    expect((await create({ name: "summary", email: "attendees" })).status).toBe(201);
+  });
+
+  test("refuses a column the provider has no place to put", async () => {
+    const res = await create({ name: "summry" });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { message: string } };
+    // The message lists the real ones — the operator should not have to guess
+    // the spelling from a rejection.
+    expect(body.error.message).toContain("summary");
+  });
+
+  test("the catalog publishes those columns so the form can offer them", async () => {
+    const cat = await ok("GET", `${BASE}/catalog`);
+    expect(cat.data.destinationColumns["google-calendar"].map((c: any) => c.value)).toContain("start");
+    // A warehouse declares none, which the UI reads as "free text".
+    expect(cat.data.destinationColumns.clickhouse).toBeUndefined();
+  });
+
+  test("the closed set applies to a later edit too, not just creation", async () => {
+    const created = await ok("POST", SYNCS, {
+      integrationId: calId,
+      collection: "leads",
+      direction: "push",
+      settings: { calendarId: "primary" },
+      mapping: { name: "summary" },
+    });
+    const res = await req("PATCH", `${SYNCS}/${created.data.id}`, { mapping: { name: "nope" } });
+    expect(res.status).toBe(422);
+  });
+});
+
+/**
+ * A connection authorized before the direction existed.
+ *
+ * Google Calendar was source-only first, so every connection made back then
+ * holds `calendar.readonly`. The provider's refusal for a write on that grant
+ * is a 403 at the far end of a scheduled job — which reaches an operator as a
+ * sync that paused itself hours later, with nothing saying re-authorizing is
+ * the fix.
+ */
+describe("push: a grant that predates the capability", () => {
+  const connectWithScope = async (scope: string | null) => {
+    client.query("delete from integrations where kind = 'google-calendar'").run();
+    const res = await ok("POST", BASE, {
+      kind: "google-calendar",
+      config: { clientId: "cid", clientSecret: "csecret" },
+    });
+    const id = res.data.id as string;
+    const row = client.query("select config from integrations where id = ?").get(id) as {
+      config: string;
+    };
+    const config = { ...JSON.parse(row.config), _oauthAccessToken: "tok" };
+    if (scope === null) delete config._oauthScope;
+    else config._oauthScope = scope;
+    client.query("update integrations set config = ? where id = ?").run(JSON.stringify(config), id);
+    return id;
+  };
+
+  const create = (id: string) =>
+    req("POST", SYNCS, {
+      integrationId: id,
+      collection: "leads",
+      direction: "push",
+      settings: { calendarId: "primary" },
+      mapping: { name: "summary" },
+    });
+
+  test("a read-only grant is refused at save time, saying what to do", async () => {
+    const res = await create(await connectWithScope("https://www.googleapis.com/auth/calendar.readonly"));
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { message: string } };
+    expect(body.error.message).toMatch(/reconnect/i);
+  });
+
+  test("a grant that includes write is accepted", async () => {
+    const scope =
+      "https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
+    expect((await create(await connectWithScope(scope))).status).toBe(201);
+  });
+
+  test("silence is not denial", async () => {
+    // A provider that returns no scope list leaves the field empty. Refusing on
+    // that would block connections that can do the work; the far end's 403
+    // stays the backstop.
+    expect((await create(await connectWithScope(null))).status).toBe(201);
+  });
+
+  test("the same connection can still be used as a SOURCE", async () => {
+    // The narrower grant is exactly what a pull needs — only the new direction
+    // is affected.
+    const id = await connectWithScope("https://www.googleapis.com/auth/calendar.readonly");
+    const res = await req("POST", SYNCS, {
+      integrationId: id,
+      collection: "leads",
+      direction: "pull",
+      settings: { calendarId: "primary" },
+      mapping: { summary: "name" },
+    });
+    expect(res.status).toBe(201);
+  });
+});
+
+/**
+ * A destination whose columns depend on a SETTING.
+ *
+ * Google Calendar's targets are fixed for the provider: an event has a
+ * `summary` whichever calendar it lands in. An accounting destination is not
+ * like that — QuickBooks writes a customer or an invoice depending on the
+ * record type, and the two share nothing. Mapping `dueDate` on a customer sync
+ * is the same silent drop the closed column set exists to prevent, so the check
+ * has to narrow by the settings rather than by the provider alone.
+ */
+describe("push: a closed column set that narrows by settings", () => {
+  let qboId = "";
+
+  beforeEach(async () => {
+    client.query("delete from integrations where kind = 'quickbooks'").run();
+    const res = await ok("POST", BASE, {
+      kind: "quickbooks",
+      config: { clientId: "cid", clientSecret: "csecret" },
+    });
+    qboId = res.data.id as string;
+  });
+
+  const create = (entity: string, mapping: Record<string, string>) =>
+    req("POST", SYNCS, {
+      integrationId: qboId,
+      collection: "leads",
+      direction: "push",
+      settings: { entity, environment: "production" },
+      mapping,
+    });
+
+  test("a column of the chosen record type is accepted", async () => {
+    expect((await create("Customer", { name: "displayName", email: "email" })).status).toBe(201);
+  });
+
+  test("a column belonging to the OTHER record type is refused", async () => {
+    const res = await create("Customer", { name: "displayName", score: "amount" });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { message: string } };
+    // The listed alternatives are the customer's, not the union — a list that
+    // included `amount` would say the mapping should have worked.
+    expect(body.error.message).toContain("displayName");
+    expect(body.error.message).not.toContain("dueDate");
+  });
+
+  test("changing the record type re-checks the mapping that is already stored", async () => {
+    const created = await ok("POST", SYNCS, {
+      integrationId: qboId,
+      collection: "leads",
+      direction: "push",
+      settings: { entity: "Customer", environment: "production" },
+      mapping: { name: "displayName" },
+    });
+    // Without this the sync would keep a mapping naming a column an invoice
+    // does not have, and nothing would notice until the provider dropped it.
+    const res = await req("PATCH", `${SYNCS}/${created.data.id}`, {
+      settings: { entity: "Invoice", environment: "production" },
+    });
+    expect(res.status).toBe(422);
+  });
+
+  test("the catalog ships the FULL list, so the form can re-narrow it locally", async () => {
+    const cat = await ok("GET", `${BASE}/catalog`);
+    const columns = cat.data.destinationColumns.quickbooks as { value: string; when?: unknown }[];
+    // Both record types' columns, each carrying the condition that gates it —
+    // otherwise switching the record type would need another round trip.
+    expect(columns.map((c) => c.value)).toContain("dueDate");
+    expect(columns.find((c) => c.value === "dueDate")?.when).toEqual({ entity: ["Invoice"] });
+  });
+});
+
+/**
+ * A grant split across several scopes.
+ *
+ * Xero does not have one "write" permission: contacts and transactions are
+ * separate grants, and a connection made when Xero was source-only holds
+ * neither. Requiring both is what makes the save-time check name exactly those
+ * connections.
+ */
+describe("push: a provider that needs more than one grant", () => {
+  const connectWithScope = async (scope: string) => {
+    client.query("delete from integrations where kind = 'xero'").run();
+    const res = await ok("POST", BASE, {
+      kind: "xero",
+      config: { clientId: "cid", clientSecret: "csecret" },
+    });
+    const id = res.data.id as string;
+    const row = client.query("select config from integrations where id = ?").get(id) as {
+      config: string;
+    };
+    const config = { ...JSON.parse(row.config), _oauthAccessToken: "tok", _oauthScope: scope };
+    client.query("update integrations set config = ? where id = ?").run(JSON.stringify(config), id);
+    return id;
+  };
+
+  const create = (id: string) =>
+    req("POST", SYNCS, {
+      integrationId: id,
+      collection: "leads",
+      direction: "push",
+      settings: { endpoint: "Contacts" },
+      mapping: { name: "name" },
+    });
+
+  test("the read-only grant every existing connection holds is refused", async () => {
+    const res = await create(
+      await connectWithScope("offline_access accounting.contacts.read accounting.transactions.read"),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  test("one of the two is still not enough", async () => {
+    // The message says reconnect, and reconnecting grants both — so a partial
+    // grant must not be mistaken for a complete one.
+    const res = await create(await connectWithScope("offline_access accounting.contacts"));
+    expect(res.status).toBe(400);
+  });
+
+  test("both grants together are accepted", async () => {
+    const res = await create(
+      await connectWithScope("offline_access accounting.contacts accounting.transactions"),
+    );
+    expect(res.status).toBe(201);
+  });
+});

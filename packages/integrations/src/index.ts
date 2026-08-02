@@ -21,11 +21,13 @@
 
 import {
   type DeliveryOutcome,
+  type DestinationColumn,
   type FetchLike,
   type IntegrationConfigField,
   type SourcePullPage,
   type IntegrationEvent,
   type IntegrationProvider,
+  columnsForSettings,
   OAUTH_CONFIG_KEYS,
   secretKeysOf,
 } from "./provider";
@@ -34,6 +36,7 @@ import { INTEGRATION_KINDS, type IntegrationKind, PROVIDERS, providerFor } from 
 export type {
   DeliverContext,
   DeliveryOutcome,
+  DestinationColumn,
   FetchLike,
   IntegrationCapability,
   IntegrationCategory,
@@ -50,6 +53,7 @@ export type {
   SourceRecord,
 } from "./provider";
 export {
+  columnsForSettings,
   defineProvider,
   OAUTH_ACCESS_TOKEN_KEY,
   OAUTH_CONFIG_KEYS,
@@ -107,6 +111,41 @@ export const DESTINATION_SETTING_FIELDS = Object.fromEntries(
 ) as Record<string, IntegrationConfigField[]>;
 
 /**
+ * Destination columns a row may be mapped onto, for the providers that have a
+ * closed set. Absent for a warehouse, whose columns are the operator's DDL —
+ * the admin UI reads that absence as "free text" and the sync service as
+ * "nothing to validate against".
+ *
+ * The FULL list, including columns that only apply under some settings. Both
+ * consumers narrow it with {@link destinationColumnsFor}; sending the narrowed
+ * list instead would mean the admin UI could not re-narrow it when the operator
+ * changes the record type without another round trip.
+ */
+export const DESTINATION_COLUMNS = Object.fromEntries(
+  entries
+    .filter(([, p]) => p.destination?.columns)
+    .map(([id, p]) => [id, [...p.destination!.columns!]]),
+) as Record<string, DestinationColumn[]>;
+
+/** This kind's destination columns, narrowed to what these settings allow.
+ *  `undefined` (a warehouse) stays undefined — that means "free text". */
+export const destinationColumnsFor = (
+  kind: string,
+  settings: Record<string, unknown>,
+): DestinationColumn[] | undefined => {
+  const all = DESTINATION_COLUMNS[kind];
+  return all ? columnsForSettings(all, settings) : undefined;
+};
+
+/** Rows per push call where the provider asked for a smaller batch than the
+ *  engine's default. The engine clamps DOWN to this; it never enlarges. */
+export const DESTINATION_BATCH_SIZE = Object.fromEntries(
+  entries
+    .filter(([, p]) => typeof p.destination?.batchSize === "number")
+    .map(([id, p]) => [id, p.destination!.batchSize!]),
+) as Record<string, number>;
+
+/**
  * Send one batch to a destination provider.
  *
  * Like `pullFromSource` and unlike `deliverToIntegration`, this does NOT swallow
@@ -120,6 +159,8 @@ export async function pushToDestination(
     settings: Record<string, unknown>;
     rows: readonly Record<string, unknown>[];
     columns: Record<string, string>;
+    /** Identifies the sync, for a provider that has to mint ids elsewhere. */
+    syncKey: string;
   },
   fetchImpl?: FetchLike,
 ): Promise<void> {
@@ -136,6 +177,7 @@ export async function pushToDestination(
     settings: args.settings,
     rows: args.rows,
     columns: args.columns,
+    syncKey: args.syncKey,
     fetch: doFetch,
     str: (key) => pick(args.config, key),
     setting: (key) => pick(args.settings, key),

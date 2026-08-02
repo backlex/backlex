@@ -43,6 +43,8 @@ const SUPPORTED_ACTIONS = new Set([
   "sms",
   "payment.checkout",
   "payment.refund",
+  "document.render",
+  "document.sign",
   "transform",
   "run-script",
   // Wired in later phases — listed so the compiler emits a clearer warning
@@ -256,6 +258,38 @@ const compileNode = (
   return null;
 };
 
+/**
+ * The inspector's calendar-invite fields → the op's nested `ics` block.
+ *
+ * Flat in the inspector because a node's config is a flat record, nested in the
+ * op because that is where a reader looks for it. `icsStart` is what turns the
+ * block on: an invite with no start is not an invite, and the two fields the
+ * builder can't default are exactly summary and start.
+ */
+type EmailOp = Extract<Operation, { type: "email" }>;
+
+const compileIcs = (c: Record<string, any>): { ics?: NonNullable<EmailOp["ics"]> } => {
+  const start = String(c.icsStart ?? "").trim();
+  if (!start) return {};
+  const summary = String(c.icsSummary ?? "").trim();
+  if (!summary) throw new FlowCompileError("Calendar invite needs a title");
+  const opt = (v: unknown) => {
+    const s = String(v ?? "").trim();
+    return s || undefined;
+  };
+  return {
+    ics: {
+      summary,
+      start,
+      ...(opt(c.icsEnd) ? { end: opt(c.icsEnd) } : {}),
+      ...(opt(c.icsLocation) ? { location: opt(c.icsLocation) } : {}),
+      ...(opt(c.icsDescription) ? { description: opt(c.icsDescription) } : {}),
+      ...(opt(c.icsOrganizerEmail) ? { organizerEmail: opt(c.icsOrganizerEmail) } : {}),
+      ...(opt(c.icsAttendees) ? { attendees: opt(c.icsAttendees) } : {}),
+    },
+  };
+};
+
 const compileAction = (node: GraphNode): Operation => {
   const c = node.config;
   switch (node.type) {
@@ -280,6 +314,7 @@ const compileAction = (node: GraphNode): Operation => {
         ...(c.subject ? { subject: String(c.subject) } : {}),
         ...(c.html ? { html: String(c.html) } : {}),
         ...(c.text ? { text: String(c.text) } : {}),
+        ...compileIcs(c),
       };
     }
     case "webhook":
@@ -410,6 +445,64 @@ const compileAction = (node: GraphNode): Operation => {
         ...opt("provider"),
         ...opt("description"),
         ...(c.reason ? { reason: String(c.reason) as "other" } : {}),
+      };
+    }
+    case "document.render":
+    case "document.sign": {
+      const templateKey = String(c.templateKey ?? "").trim();
+      if (!templateKey) throw new FlowCompileError(`${node.type} step needs a document template`);
+      // The three write-back fields travel together: a target row with no
+      // field to put the key in records nothing, so the compiler asks for all
+      // three rather than emitting a half-specified target the server rejects.
+      const wbCollection = String(c.writeBackCollection ?? "").trim();
+      const wbItemId = String(c.writeBackItemId ?? "").trim();
+      const wbField = String(c.writeBackField ?? "").trim();
+      let writeBack: { collection: string; id: string; field: string } | undefined;
+      if (wbCollection || wbField) {
+        if (!wbCollection || !wbField || !wbItemId) {
+          throw new FlowCompileError(
+            `${node.type} write-back needs a collection, a row id and a field`,
+          );
+        }
+        writeBack = { collection: wbCollection, id: wbItemId, field: wbField };
+      }
+      if (node.type === "document.render") {
+        const filename = String(c.filename ?? "").trim();
+        return {
+          type: "document.render",
+          templateKey,
+          ...(filename ? { filename } : {}),
+          ...(writeBack ? { writeBack } : {}),
+        };
+      }
+      // One `email:name:role` per line, which is what the admin page and the
+      // CLI take too. A lone placeholder is passed through untouched — it
+      // resolves to a whole list at run time, off a row that carries its own
+      // counterparties.
+      const raw = String(c.signers ?? "").trim();
+      if (!raw) throw new FlowCompileError("Signature step needs at least one signer");
+      const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+      const lone = lines.length === 1 && /^\{\{\s*[\w$.]+\s*\}\}$/.test(lines[0]!);
+      const signers = lone
+        ? lines[0]!
+        : lines.map((line) => {
+            const [email, name, ...role] = line.split(":");
+            return {
+              email: (email ?? "").trim(),
+              ...(name?.trim() ? { name: name.trim() } : {}),
+              ...(role.join(":").trim() ? { role: role.join(":").trim() } : {}),
+            };
+          });
+      const days = Number(String(c.expiresInDays ?? "").trim());
+      return {
+        type: "document.sign",
+        templateKey,
+        signers,
+        ...(String(c.title ?? "").trim() ? { title: String(c.title).trim() } : {}),
+        ...(String(c.message ?? "").trim() ? { message: String(c.message).trim() } : {}),
+        ...(c.ordered ? { ordered: true } : {}),
+        ...(Number.isFinite(days) && days > 0 ? { expiresInDays: days } : {}),
+        ...(writeBack ? { writeBack } : {}),
       };
     }
     case "transform": {
@@ -651,6 +744,15 @@ const opToConfig = (op: Operation): Record<string, any> => {
         subject: op.subject ?? "",
         html: op.html ?? "",
         text: op.text ?? "",
+        // Flattened back out, so a flow written through the API round-trips
+        // into the inspector instead of losing its invite on the first save.
+        icsSummary: op.ics?.summary ?? "",
+        icsStart: op.ics?.start ?? "",
+        icsEnd: op.ics?.end ?? "",
+        icsLocation: op.ics?.location ?? "",
+        icsDescription: op.ics?.description ?? "",
+        icsOrganizerEmail: op.ics?.organizerEmail ?? "",
+        icsAttendees: op.ics?.attendees ?? "",
       };
     case "webhook":
     case "request":
@@ -721,6 +823,34 @@ const opToConfig = (op: Operation): Record<string, any> => {
         amount: String(op.amount ?? ""),
         reason: op.reason ?? "",
         description: op.description ?? "",
+      };
+    case "document.render":
+      // Flattened for the inspector: the nested `writeBack` becomes three
+      // sibling fields, which is what the editor binds inputs to.
+      return {
+        templateKey: op.templateKey ?? "",
+        filename: op.filename ?? "",
+        writeBackCollection: op.writeBack?.collection ?? "",
+        writeBackItemId: op.writeBack?.id ?? "",
+        writeBackField: op.writeBack?.field ?? "",
+      };
+    case "document.sign":
+      return {
+        templateKey: op.templateKey ?? "",
+        title: op.title ?? "",
+        message: op.message ?? "",
+        // Back to one line per signer — the same shape the compiler parses.
+        signers:
+          typeof op.signers === "string"
+            ? op.signers
+            : (op.signers ?? [])
+                .map((s: any) => [s.email, s.name, s.role].filter(Boolean).join(":"))
+                .join("\n"),
+        ordered: Boolean(op.ordered),
+        expiresInDays: op.expiresInDays ? String(op.expiresInDays) : "",
+        writeBackCollection: op.writeBack?.collection ?? "",
+        writeBackItemId: op.writeBack?.id ?? "",
+        writeBackField: op.writeBack?.field ?? "",
       };
     case "transform":
       return {

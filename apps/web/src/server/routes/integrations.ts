@@ -1,10 +1,11 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
-import { AppError, SYSTEM_ROLES } from "@backlex/core";
+import { AppError, isAppError, SYSTEM_ROLES } from "@backlex/core";
 import {
   INTEGRATION_CATALOG,
   INTEGRATION_FIELDS,
   INTEGRATION_KINDS,
+  DESTINATION_COLUMNS,
   DESTINATION_SETTING_FIELDS,
   SOURCE_SETTING_FIELDS,
 } from "@backlex/integrations";
@@ -82,6 +83,9 @@ const CatalogView = z
     sourceSettings: z.record(z.string(), z.unknown()),
     /** Same, for providers that receive rows rather than supply them. */
     destinationSettings: z.record(z.string(), z.unknown()),
+    /** Mapping targets for destinations with a closed column set, keyed by
+     *  kind. A kind that is absent takes any column name. */
+    destinationColumns: z.record(z.string(), z.unknown()),
   })
   .openapi("IntegrationCatalog");
 
@@ -199,6 +203,9 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           oauthRedirectUri: oauthRedirectUri(c.get("ctx").env.APP_URL),
           sourceSettings: SOURCE_SETTING_FIELDS,
           destinationSettings: DESTINATION_SETTING_FIELDS,
+          // Only for the destinations with a closed column set. Absent means
+          // "free text" — a warehouse's columns are the operator's DDL.
+          destinationColumns: DESTINATION_COLUMNS,
         },
       }),
   )
@@ -478,7 +485,18 @@ export const integrationsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
     async (c) => {
       const tenantId = requireTenant(c);
       const { id } = c.req.valid("param");
-      const data = await runSync(c.get("ctx"), tenantId, id);
+      let data: Awaited<ReturnType<typeof runSync>>;
+      try {
+        data = await runSync(c.get("ctx"), tenantId, id);
+      } catch (e) {
+        // The whole point of running one by hand is to see WHY it fails. A
+        // provider's refusal is not an internal error, and reporting it as one
+        // buried the message the connector went to trouble to write — the
+        // operator saw "Internal server error" while the sync row itself said
+        // "reauthorize the connection".
+        if (isAppError(e)) throw e;
+        throw new AppError("UNAVAILABLE", e instanceof Error ? e.message : String(e));
+      }
       await logActivity(c, {
         action: "update",
         collection: "system_integration_syncs",

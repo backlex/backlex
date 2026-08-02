@@ -1218,11 +1218,13 @@ export interface IntegrationProvider {
   oauth: boolean;
 }
 
-/** A scheduled pull from a source integration into a collection. */
+/** A scheduled sync between an integration and a collection, either way. */
 export interface IntegrationSync {
   id: string;
   integrationId: string;
   collection: string;
+  /** `pull` brings rows in; `push` mirrors the collection out. */
+  direction: "pull" | "push";
   /** Which spreadsheet / base / database. Non-secret by contract. */
   settings: Record<string, unknown>;
   /** External field name → collection field name. */
@@ -1244,6 +1246,14 @@ export interface IntegrationSyncInput {
   integrationId: string;
   /** Managed collection slug. Adopted tables are refused. */
   collection: string;
+  /**
+   * Which way the rows travel. Defaults to `pull`.
+   *
+   * The provider has to declare the capability: a source-only provider cannot
+   * be a `push` target and vice versa, and the mapping is read in the direction
+   * of travel — external → field on a pull, field → external on a push.
+   */
+  direction?: "pull" | "push";
   settings?: Record<string, unknown>;
   /** At least one entry; every target must be a writable field. */
   mapping: Record<string, string>;
@@ -1418,6 +1428,355 @@ export interface PaymentsClient {
   events(opts?: { providerId?: string; limit?: number }): Promise<{ data: PaymentEvent[] }>;
   /** (Re-)provision the four sync collections. Idempotent. */
   provisionCollections(): Promise<PaymentCollectionsResult>;
+}
+
+/** Page setup for a rendered document. Defaults: A4 portrait, 20mm margins. */
+export interface PdfPageOptions {
+  format?: "A4" | "Letter" | "Legal" | "A3" | "A5";
+  landscape?: boolean;
+  margin?: string | { top?: string; right?: string; bottom?: string; left?: string };
+  /** Backgrounds print by DEFAULT here, unlike a browser's print dialog. */
+  printBackground?: boolean;
+}
+
+/** A stored HTML template a document is rendered from. */
+export interface DocumentTemplate {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  /** A COMPLETE html document, not a fragment. */
+  bodyHtml: string;
+  headerHtml: string | null;
+  footerHtml: string | null;
+  pageOptions: PdfPageOptions;
+  filename: string | null;
+  variables: string[];
+  /** True for an instance-wide default this workspace has not overridden.
+   *  Saving one creates the override rather than changing the shared row. */
+  inherited: boolean;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+}
+
+export interface DocumentTemplateInput {
+  name?: string;
+  description?: string | null;
+  bodyHtml?: string;
+  headerHtml?: string | null;
+  footerHtml?: string | null;
+  pageOptions?: PdfPageOptions | null;
+  filename?: string | null;
+  variables?: string[] | null;
+}
+
+export interface RenderDocumentInput {
+  /** Exactly one of these two. */
+  templateKey?: string;
+  html?: string;
+  vars?: Record<string, unknown>;
+  pageOptions?: PdfPageOptions;
+  filename?: string;
+}
+
+/**
+ * Document generation (admin-scoped). Mirrors `/api/admin/documents`.
+ *
+ * `render` resolves to the PDF BYTES. There is deliberately no renderer bundled
+ * with the server, so a deployment with none configured rejects the call rather
+ * than returning a document with broken glyphs — see the Documents guide.
+ */
+export interface DocumentsClient {
+  /** List this workspace's templates; an override hides the shared default. */
+  list(): Promise<{ data: DocumentTemplate[] }>;
+  /** Create or update a template. Always writes a workspace-scoped row. */
+  save(key: string, input: DocumentTemplateInput): Promise<{ data: DocumentTemplate }>;
+  /** Delete this workspace's own row. An inherited default 404s. */
+  delete(key: string): Promise<{ ok: boolean }>;
+  /** Render to PDF bytes. */
+  render(input: RenderDocumentInput): Promise<Uint8Array>;
+}
+
+export type SignatureStatus = "pending" | "completed" | "declined" | "voided" | "expired";
+export type SignerStatus = "pending" | "viewed" | "signed" | "declined";
+
+export interface SignatureSigner {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string | null;
+  order: number;
+  status: SignerStatus;
+  sentAt?: unknown;
+  viewedAt?: unknown;
+  signedAt?: unknown;
+  declinedAt?: unknown;
+  declineReason: string | null;
+  signatureKind: string | null;
+  ip: string | null;
+  userAgent: string | null;
+}
+
+export interface SignatureRequest {
+  id: string;
+  title: string;
+  message: string | null;
+  templateKey: string | null;
+  /** `expired` is derived from the expiry timestamp rather than stored, so it
+   *  becomes true by the clock alone. */
+  status: SignatureStatus;
+  ordered: boolean;
+  /** SHA-256 of the frozen document SOURCE, not of the PDF bytes. */
+  documentHash: string;
+  documentKey: string | null;
+  signedDocumentKey: string | null;
+  signedDocumentHash: string | null;
+  filename: string | null;
+  expiresAt?: unknown;
+  completedAt?: unknown;
+  voidedAt?: unknown;
+  voidReason: string | null;
+  writeBack: { collection: string; id: string; field: string } | null;
+  notifyEmails: string[];
+  createdBy: string | null;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  signers: SignatureSigner[];
+  /** Only on the single-request read: the document as it was frozen. */
+  bodyHtml?: string;
+}
+
+export interface SignatureSignerInput {
+  email: string;
+  name?: string | null;
+  role?: string | null;
+}
+
+export interface CreateSignatureRequestInput {
+  title?: string;
+  message?: string | null;
+  /** Exactly one of these two. */
+  templateKey?: string;
+  html?: string;
+  vars?: Record<string, unknown>;
+  pageOptions?: PdfPageOptions;
+  filename?: string;
+  signers: SignatureSignerInput[];
+  /** Each link only opens once the one before it has signed. */
+  ordered?: boolean;
+  expiresInDays?: number;
+  /** Where the SIGNED document's storage key lands once everyone signs. */
+  writeBack?: { collection: string; id: string; field: string } | null;
+  notifyEmails?: string[];
+  /** Off returns the links without emailing them. */
+  send?: boolean;
+}
+
+/**
+ * E-signature (admin-scoped). Mirrors `/api/admin/signatures`.
+ *
+ * `create` returns the plaintext signing links **once** — only their hashes are
+ * stored, so nothing can reproduce them afterwards. `void` and `resend` both
+ * mint a new token, which is what makes a link that went astray stop working.
+ */
+export interface SignaturesClient {
+  list(opts?: { status?: SignatureStatus; limit?: number; offset?: number }): Promise<{
+    data: SignatureRequest[];
+    total: number;
+  }>;
+  /** Includes the frozen document HTML. */
+  get(id: string): Promise<{ data: SignatureRequest }>;
+  /** Freeze a document and send it out. The links come back here and nowhere
+   *  else. */
+  create(input: CreateSignatureRequestInput): Promise<{
+    data: {
+      request: SignatureRequest;
+      links: Array<{ signerId: string; email: string; url: string }>;
+      sent: boolean;
+    };
+  }>;
+  /** Cancel, invalidating every outstanding link. */
+  void(id: string, reason?: string | null): Promise<{ data: SignatureRequest }>;
+  /** Re-send one signer's invitation with a FRESH link. */
+  resend(id: string, signerId: string): Promise<{ data: { sent: boolean; email: string } }>;
+  /** Produce the signed copy for a request everybody already signed — the
+   *  recovery for a renderer that was down when the last signature landed. */
+  finalize(id: string): Promise<{ data: SignatureRequest }>;
+  /** The stored PDF: the signed copy by default, what was sent with
+   *  `"original"`. */
+  document(id: string, which?: "original" | "signed"): Promise<Uint8Array>;
+}
+
+/* ── Availability & booking (#32) ──────────────────────────────────────── */
+
+export type BookingStatus =
+  | "held"
+  | "confirmed"
+  | "cancelled"
+  | "no_show"
+  | "completed"
+  | "expired";
+
+/** One line of an opening pattern, or one exception to it. Minutes are counted
+ *  from LOCAL midnight in the resource's own zone; a span crossing midnight is
+ *  two rules. */
+export interface BookingRule {
+  id?: string;
+  kind?: "open" | "block";
+  /** 0 = Sunday … 6 = Saturday, or null for every day in the date range. */
+  weekday?: number | null;
+  startMinute: number;
+  endMinute: number;
+  /** `YYYY-MM-DD`, inclusive. */
+  startsOn?: string | null;
+  endsOn?: string | null;
+  reason?: string | null;
+}
+
+export interface BookingResource {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  timeZone: string;
+  slotMinutes: number;
+  stepMinutes: number | null;
+  capacity: number;
+  bufferBeforeMinutes: number;
+  bufferAfterMinutes: number;
+  leadMinutes: number;
+  horizonDays: number;
+  holdMinutes: number;
+  questions: Array<Record<string, unknown>>;
+  mirrorCollection: string | null;
+  mirrorFieldMap: Record<string, string> | null;
+  active: boolean;
+  confirmationMessage: string | null;
+  notifyEmails: string[];
+  rules: BookingRule[];
+}
+
+export interface BookingResourceInput {
+  key?: string;
+  name?: string;
+  description?: string | null;
+  /** IANA zone the rules are written in. */
+  timeZone?: string;
+  slotMinutes?: number;
+  stepMinutes?: number | null;
+  capacity?: number;
+  bufferBeforeMinutes?: number;
+  bufferAfterMinutes?: number;
+  leadMinutes?: number;
+  horizonDays?: number;
+  holdMinutes?: number;
+  questions?: Array<Record<string, unknown>>;
+  mirrorCollection?: string | null;
+  mirrorFieldMap?: Record<string, string> | null;
+  active?: boolean;
+  confirmationMessage?: string | null;
+  notifyEmails?: string[];
+  /** REPLACES the whole rule set — opening hours are edited as one thing. */
+  rules?: BookingRule[];
+}
+
+export interface Booking {
+  id: string;
+  resourceId: string;
+  /** ISO instants. Render them in the resource's `timeZone`. */
+  start: string;
+  end: string;
+  /** Includes the DERIVED `completed` / `expired`. */
+  status: BookingStatus;
+  /** The raw column, for telling a stored `cancelled` from a derived one. */
+  storedStatus: string;
+  holdExpiresAt: number | null;
+  customerName: string | null;
+  customerEmail: string | null;
+  customerPhone: string | null;
+  answers: Record<string, unknown>;
+  notes: string | null;
+  mirrorCollection: string | null;
+  mirrorItemId: string | null;
+  source: string;
+  cancelledAt: number | null;
+  cancelReason: string | null;
+  rescheduledToId: string | null;
+}
+
+export interface BookingSlot {
+  start: string;
+  end: string;
+  /** Capacity left at that instant. Never 0 — a full slot is not returned. */
+  remaining: number;
+}
+
+export interface CreateBookingInput {
+  start: string | number;
+  end?: string | number;
+  name?: string;
+  email?: string;
+  phone?: string;
+  answers?: Record<string, unknown>;
+  notes?: string;
+  /** Park the slot instead of confirming it — what a deposit is taken during. */
+  hold?: boolean;
+}
+
+export interface BookingResult {
+  booking: Booking;
+  /** Returned ONCE. Only its hash is stored. */
+  manageToken: string;
+  manageUrl: string;
+  emailed: boolean;
+}
+
+/**
+ * Availability & booking (admin-scoped). Mirrors `/api/admin/booking`.
+ *
+ * The operator's side. A booking made here is NOT restricted to the published
+ * grid — that is the difference between taking a call and offering a calendar —
+ * but the capacity guarantee applies to both. The booker's own side needs no
+ * credentials at all and lives under `/api/public/book/<token>`.
+ */
+export interface BookingClient {
+  /** Every bookable resource, each with its full rule set. */
+  listResources(): Promise<{ data: BookingResource[] }>;
+  /** One resource, by key or id. */
+  getResource(key: string): Promise<{ data: BookingResource }>;
+  /** Create one. The public page token comes back HERE and nowhere else. */
+  createResource(
+    input: BookingResourceInput & { key: string; name: string },
+  ): Promise<{ data: { resource: BookingResource; token: string; url: string } }>;
+  updateResource(key: string, patch: BookingResourceInput): Promise<{ data: BookingResource }>;
+  /** Refuses while upcoming bookings reference it unless `force`. */
+  deleteResource(key: string, opts?: { force?: boolean }): Promise<{ data: { ok: boolean } }>;
+  /** Mint a new page token, invalidating the old URL. Manage links survive. */
+  rotateToken(key: string): Promise<{ data: { token: string; url: string } }>;
+  /** The open slots, computed from the rules, the exceptions and what is taken. */
+  slots(
+    key: string,
+    window?: { from?: string; to?: string },
+  ): Promise<{ data: { resource: Record<string, unknown>; from: string; to: string; slots: BookingSlot[] } }>;
+  listBookings(opts?: {
+    resource?: string;
+    status?: BookingStatus;
+    from?: string;
+    to?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ data: Booking[]; total: number }>;
+  getBooking(id: string): Promise<{ data: Booking }>;
+  /** Book as an operator — off-grid times allowed. */
+  book(resource: string, input: CreateBookingInput): Promise<{ data: BookingResult }>;
+  /** Promote a hold. A hold that already lapsed answers 409. */
+  confirm(id: string): Promise<{ data: Booking }>;
+  /** Idempotent. `notify:false` spares the customer the email. */
+  cancel(id: string, opts?: { reason?: string; notify?: boolean }): Promise<{ data: Booking }>;
+  /** Cancel-then-book, through the same guard. Returns a NEW manage link. */
+  reschedule(id: string, start: string | number): Promise<{ data: BookingResult }>;
+  /** Distinct from a cancellation: the time was held and spent. */
+  noShow(id: string): Promise<{ data: Booking }>;
 }
 
 /** Visual workflows (admin-scoped). Mirrors `/api/flows`. See `createClient`. */
@@ -2465,6 +2824,12 @@ export interface BacklexClient {
   jobs: JobsClient;
   /** Visual workflows (flows). */
   flows: FlowsClient;
+  /** Document generation — HTML templates rendered to PDF. */
+  documents: DocumentsClient;
+  /** E-signature — send a rendered document out to be signed. */
+  signatures: SignaturesClient;
+  /** Availability & booking — publish a calendar, take what is on it. */
+  booking: BookingClient;
   /** Connected payment providers (Stripe / Polar / Lemon Squeezy). */
   payments: PaymentsClient;
   /** Connected third-party integrations (Slack, Jira, Algolia, …). */
@@ -3301,6 +3666,129 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<FlowRunResult>("POST", `/api/flows/${encodeURIComponent(id)}/run`, input ?? {}),
   };
 
+  const documents: DocumentsClient = {
+    list: () => request<{ data: DocumentTemplate[] }>("GET", "/api/admin/documents/templates"),
+    save: (key: string, input: DocumentTemplateInput) =>
+      request<{ data: DocumentTemplate }>(
+        "PUT",
+        `/api/admin/documents/templates/${encodeURIComponent(key)}`,
+        input,
+      ),
+    delete: (key: string) =>
+      request<{ ok: boolean }>(
+        "DELETE",
+        `/api/admin/documents/templates/${encodeURIComponent(key)}`,
+      ),
+    // Bytes, not JSON: the endpoint answers `application/pdf`, so this goes
+    // through the raw path rather than the JSON one.
+    render: async (input: RenderDocumentInput) => {
+      const res = await requestRaw(
+        "POST",
+        "/api/admin/documents/render",
+        JSON.stringify(input),
+        "application/json",
+      );
+      return new Uint8Array(await res.arrayBuffer());
+    },
+  };
+
+  const sig = (id: string) => `/api/admin/signatures/${encodeURIComponent(id)}`;
+  const signatures: SignaturesClient = {
+    list: (opts) => {
+      const q = new URLSearchParams();
+      if (opts?.status) q.set("status", opts.status);
+      if (opts?.limit != null) q.set("limit", String(opts.limit));
+      if (opts?.offset != null) q.set("offset", String(opts.offset));
+      const qs = q.toString();
+      return request<{ data: SignatureRequest[]; total: number }>(
+        "GET",
+        `/api/admin/signatures${qs ? `?${qs}` : ""}`,
+      );
+    },
+    get: (id: string) => request<{ data: SignatureRequest }>("GET", sig(id)),
+    create: (input: CreateSignatureRequestInput) =>
+      request<{
+        data: {
+          request: SignatureRequest;
+          links: Array<{ signerId: string; email: string; url: string }>;
+          sent: boolean;
+        };
+      }>("POST", "/api/admin/signatures", input),
+    void: (id: string, reason?: string | null) =>
+      request<{ data: SignatureRequest }>("POST", `${sig(id)}/void`, { reason: reason ?? null }),
+    resend: (id: string, signerId: string) =>
+      request<{ data: { sent: boolean; email: string } }>(
+        "POST",
+        `${sig(id)}/signers/${encodeURIComponent(signerId)}/resend`,
+      ),
+    finalize: (id: string) => request<{ data: SignatureRequest }>("POST", `${sig(id)}/finalize`),
+    // Bytes, not JSON — same raw path the document render uses.
+    document: async (id: string, which: "original" | "signed" = "signed") => {
+      const res = await requestRaw("GET", `${sig(id)}/document?which=${which}`);
+      return new Uint8Array(await res.arrayBuffer());
+    },
+  };
+
+  // Availability & booking. Every method here goes through the one service the
+  // REST, GraphQL, MCP and CLI surfaces share, so the capacity guarantee and
+  // the grid check cannot drift between them.
+  const bookRes = (key: string) => `/api/admin/booking/resources/${encodeURIComponent(key)}`;
+  const bookOne = (id: string) => `/api/admin/booking/bookings/${encodeURIComponent(id)}`;
+  const booking: BookingClient = {
+    listResources: () =>
+      request<{ data: BookingResource[] }>("GET", "/api/admin/booking/resources"),
+    getResource: (key) => request<{ data: BookingResource }>("GET", bookRes(key)),
+    createResource: (input) =>
+      request<{ data: { resource: BookingResource; token: string; url: string } }>(
+        "POST",
+        "/api/admin/booking/resources",
+        input,
+      ),
+    updateResource: (key, patch) =>
+      request<{ data: BookingResource }>("PATCH", bookRes(key), patch),
+    deleteResource: (key, opts) =>
+      request<{ data: { ok: boolean } }>(
+        "DELETE",
+        `${bookRes(key)}${opts?.force ? "?force=true" : ""}`,
+      ),
+    rotateToken: (key) =>
+      request<{ data: { token: string; url: string } }>("POST", `${bookRes(key)}/rotate-token`),
+    slots: (key, window) => {
+      const q = new URLSearchParams();
+      if (window?.from) q.set("from", window.from);
+      if (window?.to) q.set("to", window.to);
+      const qs = q.toString();
+      return request<{
+        data: { resource: Record<string, unknown>; from: string; to: string; slots: BookingSlot[] };
+      }>("GET", `${bookRes(key)}/slots${qs ? `?${qs}` : ""}`);
+    },
+    listBookings: (opts) => {
+      const q = new URLSearchParams();
+      if (opts?.resource) q.set("resource", opts.resource);
+      if (opts?.status) q.set("status", opts.status);
+      if (opts?.from) q.set("from", opts.from);
+      if (opts?.to) q.set("to", opts.to);
+      if (opts?.limit != null) q.set("limit", String(opts.limit));
+      if (opts?.offset != null) q.set("offset", String(opts.offset));
+      const qs = q.toString();
+      return request<{ data: Booking[]; total: number }>(
+        "GET",
+        `/api/admin/booking/bookings${qs ? `?${qs}` : ""}`,
+      );
+    },
+    getBooking: (id) => request<{ data: Booking }>("GET", bookOne(id)),
+    book: (resource, input) =>
+      request<{ data: BookingResult }>("POST", "/api/admin/booking/bookings", {
+        resource,
+        ...input,
+      }),
+    confirm: (id) => request<{ data: Booking }>("POST", `${bookOne(id)}/confirm`),
+    cancel: (id, opts) => request<{ data: Booking }>("POST", `${bookOne(id)}/cancel`, opts ?? {}),
+    reschedule: (id, start) =>
+      request<{ data: BookingResult }>("POST", `${bookOne(id)}/reschedule`, { start }),
+    noShow: (id) => request<{ data: Booking }>("POST", `${bookOne(id)}/no-show`),
+  };
+
   // Third-party integrations. Admin-scoped over `/api/admin/integrations`.
   // Credentials only ever travel inbound: `list` returns them masked and there
   // is no read-back endpoint.
@@ -4090,6 +4578,9 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     messaging,
     jobs,
     flows,
+    documents,
+    signatures,
+    booking,
     payments,
     integrations,
     syncHooks,

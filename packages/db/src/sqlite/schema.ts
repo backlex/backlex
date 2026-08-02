@@ -1605,6 +1605,313 @@ export const emailTemplates = sqliteTable(
   (t) => [uniqueIndex("email_templates_tenant_key_idx").on(t.tenantId, t.key)],
 );
 
+export const documentTemplates = sqliteTable(
+  "document_templates",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** A COMPLETE html document, not a fragment — a contract sets its own
+     *  fonts, page size and print styles, and wrapping it would fight that. */
+    bodyHtml: text("body_html").notNull(),
+    /** Running header / footer, rendered by the browser on every page. */
+    headerHtml: text("header_html"),
+    footerHtml: text("footer_html"),
+    /** {@link PdfPageOptions} minus the two html fields above. */
+    pageOptions: text("page_options", { mode: "json" }).$type<Record<string, unknown>>(),
+    /** Suggested output name; templated like the body (`invoice-{{ data.no }}.pdf`). */
+    filename: text("filename"),
+    variables: text("variables", { mode: "json" }).$type<string[]>(),
+    updatedBy: text("updated_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [uniqueIndex("document_templates_tenant_key_idx").on(t.tenantId, t.key)],
+);
+
+export const signatureRequests = sqliteTable(
+  "signature_requests",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    /** What the signer is told they are signing. */
+    title: text("title").notNull(),
+    /** Optional note carried into the invitation email. */
+    message: text("message"),
+    /** Which document template it came from — provenance only. The bytes are
+     *  never re-derived from it, because the template may have changed. */
+    templateKey: text("template_key"),
+    /** THE SNAPSHOT: the interpolated HTML, frozen at send time. This is what
+     *  was signed, so it — not the row it came from — is what renders later. */
+    bodyHtml: text("body_html").notNull(),
+    pageOptions: text("page_options", { mode: "json" }).$type<Record<string, unknown>>(),
+    filename: text("filename"),
+    /** SHA-256 of `body_html`. Hashing the SOURCE rather than the PDF: two
+     *  renders of one document are not byte-identical across renderer
+     *  versions, so a PDF hash would fail a re-verification that is fine. */
+    documentHash: text("document_hash").notNull(),
+    /** Stored unsigned PDF — what the signer downloads before signing. */
+    documentKey: text("document_key"),
+    signedDocumentKey: text("signed_document_key"),
+    /** SHA-256 of the signed PDF bytes, so a downloaded copy can be checked. */
+    signedDocumentHash: text("signed_document_hash"),
+    /** pending | completed | declined | voided. Expiry is DERIVED from
+     *  `expires_at` rather than stored, so nothing has to run to make a
+     *  request stop being signable. */
+    status: text("status").notNull().default("pending"),
+    /** Sequential signing — each signer's link only works once the one before
+     *  has signed. Off means everyone may sign at any time. */
+    ordered: integer("ordered", { mode: "boolean" }).notNull().default(false),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+    voidedAt: integer("voided_at", { mode: "timestamp_ms" }),
+    voidReason: text("void_reason"),
+    /** `{ collection, id, field }` — where the signed document's key lands. */
+    writeBack: text("write_back", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    /** Extra addresses that receive the completed copy. */
+    notifyEmails: text("notify_emails", { mode: "json" }).$type<string[]>(),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("signature_requests_tenant_idx").on(t.tenantId),
+    index("signature_requests_status_idx").on(t.tenantId, t.status),
+  ],
+);
+
+export const signatureSigners = sqliteTable(
+  "signature_signers",
+  {
+    id: text("id").primaryKey(),
+    requestId: text("request_id").notNull(),
+    email: text("email").notNull(),
+    name: text("name"),
+    /** "Tenant", "Landlord" — shown on the certificate beside the signature. */
+    role: text("role"),
+    /** Position in the signing order. Meaningless unless the request is
+     *  `ordered`, but always written so the certificate lists people in the
+     *  order the operator entered them. */
+    orderIndex: integer("order_index").notNull().default(0),
+    /** SHA-256 of the plaintext link token — the token itself is shown once,
+     *  in the email. A readable token in this table would let anyone with
+     *  database access sign as the customer. */
+    tokenHash: text("token_hash").notNull(),
+    /** pending | viewed | signed | declined */
+    status: text("status").notNull().default("pending"),
+    sentAt: integer("sent_at", { mode: "timestamp_ms" }),
+    viewedAt: integer("viewed_at", { mode: "timestamp_ms" }),
+    signedAt: integer("signed_at", { mode: "timestamp_ms" }),
+    declinedAt: integer("declined_at", { mode: "timestamp_ms" }),
+    declineReason: text("decline_reason"),
+    /** drawn | typed */
+    signatureKind: text("signature_kind"),
+    /** A `data:image/png;base64,…` of the drawn signature. Validated and
+     *  re-encoded on the way in — it is interpolated into the HTML the
+     *  renderer is handed. */
+    signatureImage: text("signature_image"),
+    /** The typed name, for the keyboard path. */
+    signatureText: text("signature_text"),
+    /** The exact consent wording that was on screen, kept verbatim: a
+     *  certificate that cites today's wording for a signature given last year
+     *  is evidence of nothing. */
+    consentText: text("consent_text"),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("signature_signers_token_idx").on(t.tokenHash),
+    index("signature_signers_request_idx").on(t.requestId, t.orderIndex),
+  ],
+);
+
+/**
+ * A bookable thing — a dentist, a court, a viewing agent, a table by the window.
+ *
+ * Ten of the schema templates carry a slot-shaped collection and none of them
+ * could express when the thing behind it is free, so this is the piece that was
+ * missing rather than the booking itself. Everything on the row is POLICY:
+ * how long a booking lasts, how many fit at once, how much notice is required,
+ * how far ahead the calendar is open. The opening pattern lives next door in
+ * `booking_rules`, and the slots are computed from both — never stored, because
+ * a stored slot table has to be regenerated every time a rule moves and is
+ * wrong in the meantime.
+ */
+export const bookingResources = sqliteTable(
+  "booking_resources",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    /** Stable handle used by the API and the CLI. */
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** IANA zone the RULES are written in. Load-bearing: "Mondays 09:00" does
+     *  not move when the clocks do, but the instant it names does, and the
+     *  operator's zone is the only one that can settle which. */
+    timeZone: text("time_zone").notNull().default("UTC"),
+    slotMinutes: integer("slot_minutes").notNull().default(30),
+    /** Distance between consecutive slot STARTS. Null = back-to-back. */
+    stepMinutes: integer("step_minutes"),
+    /** How many bookings one instant holds — 1 for a dentist, 12 for a class. */
+    capacity: integer("capacity").notNull().default(1),
+    bufferBeforeMinutes: integer("buffer_before_minutes").notNull().default(0),
+    bufferAfterMinutes: integer("buffer_after_minutes").notNull().default(0),
+    /** Minimum notice, in minutes. */
+    leadMinutes: integer("lead_minutes").notNull().default(0),
+    horizonDays: integer("horizon_days").notNull().default(60),
+    /** How long an unconfirmed hold survives. A hold that never lapsed would
+     *  let one abandoned checkout close a slot forever. */
+    holdMinutes: integer("hold_minutes").notNull().default(10),
+    /** `[{ name, label, type, required, options }]` — what the booker is asked
+     *  beyond name and address. Same shape as `forms.fields`. */
+    questions: text("questions", { mode: "json" }).$type<Array<Record<string, unknown>>>(),
+    /** Optional collection each booking is MIRRORED into, so the workspace owns
+     *  the row in its own shape and every collection surface (permissions,
+     *  flows, realtime, exports) applies to it. The ledger here stays the
+     *  source of truth for the slot — see the migration for why. */
+    mirrorCollection: text("mirror_collection"),
+    /** `{ start, end, name, email, phone, status, resource }` — booking field →
+     *  collection column. Absent keys are simply not written. */
+    mirrorFieldMap: text("mirror_field_map", { mode: "json" }).$type<Record<string, string> | null>(),
+    /** SHA-256 of the public page token (`bkg_<hex>`), which is shown once.
+     *  Mirrors `forms` / `dashboards` embed / `shared_links`. */
+    tokenHash: text("token_hash").notNull(),
+    /** Paused resources answer 410 on the public endpoints without losing their
+     *  bookings or their rules. */
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    /** Shown after a successful booking. */
+    confirmationMessage: text("confirmation_message"),
+    /** Addresses copied on every booking and cancellation. */
+    notifyEmails: text("notify_emails", { mode: "json" }).$type<string[]>(),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("booking_resources_tenant_key_idx").on(t.tenantId, t.key),
+    uniqueIndex("booking_resources_token_idx").on(t.tokenHash),
+    index("booking_resources_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
+ * One line of an opening pattern, or one exception to it.
+ *
+ * `open` adds bookable time and `block` takes it away; blocks are applied after
+ * every open rule has been merged, so a holiday declared once does not have to
+ * be subtracted from each pattern separately. A rule with no `weekday` applies
+ * to every day inside its date range, which is how a one-off closure is said:
+ * a block covering 0–1440 for the dates concerned.
+ *
+ * Times are minutes from LOCAL midnight, never instants. A shift that crosses
+ * midnight is two rules, so that no interval anywhere has to be read as
+ * "wraps around".
+ */
+export const bookingRules = sqliteTable(
+  "booking_rules",
+  {
+    id: text("id").primaryKey(),
+    resourceId: text("resource_id").notNull(),
+    /** open | block */
+    kind: text("kind").notNull().default("open"),
+    /** 0=Sunday … 6=Saturday, or null for "every day in the date range". */
+    weekday: integer("weekday"),
+    startMinute: integer("start_minute").notNull(),
+    endMinute: integer("end_minute").notNull(),
+    /** `YYYY-MM-DD` in the resource's zone, inclusive. Stored as TEXT because
+     *  ISO dates compare correctly as strings and a rule bound is a calendar
+     *  date, not an instant — it must not shift with the offset. */
+    startsOn: text("starts_on"),
+    endsOn: text("ends_on"),
+    /** "Public holiday", "Annual leave" — shown in the admin, never publicly. */
+    reason: text("reason"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [index("booking_rules_resource_idx").on(t.resourceId, t.kind)],
+);
+
+/**
+ * A taken slot.
+ *
+ * `held` is the pre-confirmation state a public booker passes through while a
+ * deposit is paid or a form is completed; it occupies the slot exactly like a
+ * confirmation does, but only until `hold_expires_at`. Expiry is DERIVED at
+ * read time rather than swept by a job, for the same reason a signature request
+ * expires that way: a wedged cron must not be able to keep a slot closed.
+ *
+ * `completed` is derived too — a confirmed booking whose end time has passed —
+ * so nothing has to run for yesterday's appointments to stop looking upcoming.
+ */
+export const bookings = sqliteTable(
+  "bookings",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    resourceId: text("resource_id").notNull(),
+    startAt: integer("start_at", { mode: "timestamp_ms" }).notNull(),
+    endAt: integer("end_at", { mode: "timestamp_ms" }).notNull(),
+    /** held | confirmed | cancelled | no_show | expired. `completed` is always
+     *  derived from the clock. `expired` is derived too, for every read — it is
+     *  only ever WRITTEN lazily, by a writer that needs the seat back. */
+    status: text("status").notNull().default("confirmed"),
+    /**
+     * Which of the resource's `capacity` places this booking holds, `0`-based.
+     *
+     * The reason it exists is the partial unique index below: `(resource, start,
+     * seat)` over the occupying statuses is what makes "no more than capacity
+     * bookings at one instant" a property the DATABASE enforces, atomically, on
+     * a store with no row locks. Without it the guard is a read-after-write
+     * race that a late arrival can win twice.
+     */
+    seat: integer("seat").notNull().default(0),
+    holdExpiresAt: integer("hold_expires_at", { mode: "timestamp_ms" }),
+    customerName: text("customer_name"),
+    customerEmail: text("customer_email"),
+    customerPhone: text("customer_phone"),
+    /** Answers to the resource's `questions`, keyed by question name. */
+    answers: text("answers", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    notes: text("notes"),
+    /** SHA-256 of the manage link token. The token itself reaches the booker in
+     *  one email and is stored nowhere: it is the entire grant to cancel or
+     *  reschedule, so a readable copy here would let anyone with database
+     *  access cancel a stranger's appointment. */
+    tokenHash: text("token_hash").notNull(),
+    /** Where the mirrored row landed, when the resource asked for one. */
+    mirrorCollection: text("mirror_collection"),
+    mirrorItemId: text("mirror_item_id"),
+    /** public | admin | api — who created it, for the admin list and for
+     *  telling a self-service no-show from an operator's data entry. */
+    source: text("source").notNull().default("public"),
+    cancelledAt: integer("cancelled_at", { mode: "timestamp_ms" }),
+    cancelReason: text("cancel_reason"),
+    /** Set when an operator cancelled; null when the booker did it themselves. */
+    cancelledBy: text("cancelled_by"),
+    /** Set on the row a reschedule REPLACED, so the trail survives. */
+    rescheduledToId: text("rescheduled_to_id"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("bookings_token_idx").on(t.tokenHash),
+    // The hard capacity guarantee. Partial, so a cancelled or expired booking
+    // gives its seat back without anything having to move rows around.
+    uniqueIndex("bookings_seat_idx")
+      .on(t.resourceId, t.startAt, t.seat)
+      .where(sql`status IN ('held','confirmed')`),
+    // The overlap query is always "this resource, around this instant", so the
+    // resource leads and the start time follows it.
+    index("bookings_resource_start_idx").on(t.resourceId, t.startAt),
+    index("bookings_tenant_status_idx").on(t.tenantId, t.status),
+  ],
+);
+
 export const i18nStrings = sqliteTable(
   "i18n_strings",
   {

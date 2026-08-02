@@ -574,6 +574,7 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
   "ask-ai": msg`Ask AI`,
   collections: msg`Collections`,
   forms: msg`Forms`,
+  booking: msg`Booking`,
   access: msg`Access`,
   database: msg`Database`,
   storage: msg`Storage`,
@@ -610,6 +611,8 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
   "app-orgs": msg`Organizations`,
   "api-keys": msg`API keys`,
   "email-templates": msg`Email templates`,
+  documents: msg`Document templates`,
+  signatures: msg`Signatures`,
   settings: msg`Settings`,
 };
 

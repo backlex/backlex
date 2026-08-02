@@ -1926,6 +1926,260 @@ export const emailTemplates = pgTable(
   ],
 );
 
+export const documentTemplates = pgTable(
+  "document_templates",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** A COMPLETE html document, not a fragment — a contract sets its own
+     *  fonts, page size and print styles, and wrapping it would fight that. */
+    bodyHtml: text("body_html").notNull(),
+    /** Running header / footer, rendered by the browser on every page. */
+    headerHtml: text("header_html"),
+    footerHtml: text("footer_html"),
+    /** {@link PdfPageOptions} minus the two html fields above. */
+    pageOptions: jsonb("page_options").$type<Record<string, unknown>>(),
+    /** Suggested output name; templated like the body (`invoice-{{ data.no }}.pdf`). */
+    filename: text("filename"),
+    variables: jsonb("variables").$type<string[]>(),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("document_templates_tenant_key_idx").on(t.tenantId, t.key)],
+);
+
+export const signatureRequests = pgTable(
+  "signature_requests",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    /** What the signer is told they are signing. */
+    title: text("title").notNull(),
+    /** Optional note carried into the invitation email. */
+    message: text("message"),
+    /** Which document template it came from — provenance only. The bytes are
+     *  never re-derived from it, because the template may have changed. */
+    templateKey: text("template_key"),
+    /** THE SNAPSHOT: the interpolated HTML, frozen at send time. This is what
+     *  was signed, so it — not the row it came from — is what renders later. */
+    bodyHtml: text("body_html").notNull(),
+    pageOptions: jsonb("page_options").$type<Record<string, unknown>>(),
+    filename: text("filename"),
+    /** SHA-256 of `body_html`. Hashing the SOURCE rather than the PDF: two
+     *  renders of one document are not byte-identical across renderer
+     *  versions, so a PDF hash would fail a re-verification that is fine. */
+    documentHash: text("document_hash").notNull(),
+    /** Stored unsigned PDF — what the signer downloads before signing. */
+    documentKey: text("document_key"),
+    signedDocumentKey: text("signed_document_key"),
+    /** SHA-256 of the signed PDF bytes, so a downloaded copy can be checked. */
+    signedDocumentHash: text("signed_document_hash"),
+    /** pending | completed | declined | voided. Expiry is DERIVED from
+     *  `expires_at` rather than stored, so nothing has to run to make a
+     *  request stop being signable. */
+    status: text("status").notNull().default("pending"),
+    /** Sequential signing — each signer's link only works once the one before
+     *  has signed. Off means everyone may sign at any time. */
+    ordered: boolean("ordered").notNull().default(false),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    voidedAt: timestamp("voided_at", { withTimezone: true }),
+    voidReason: text("void_reason"),
+    /** `{ collection, id, field }` — where the signed document's key lands. */
+    writeBack: jsonb("write_back").$type<Record<string, unknown> | null>(),
+    /** Extra addresses that receive the completed copy. */
+    notifyEmails: jsonb("notify_emails").$type<string[]>(),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("signature_requests_tenant_idx").on(t.tenantId),
+    index("signature_requests_status_idx").on(t.tenantId, t.status),
+  ],
+);
+
+export const signatureSigners = pgTable(
+  "signature_signers",
+  {
+    id: text("id").primaryKey(),
+    requestId: text("request_id").notNull(),
+    email: text("email").notNull(),
+    name: text("name"),
+    /** "Tenant", "Landlord" — shown on the certificate beside the signature. */
+    role: text("role"),
+    /** Position in the signing order. Meaningless unless the request is
+     *  `ordered`, but always written so the certificate lists people in the
+     *  order the operator entered them. */
+    orderIndex: integer("order_index").notNull().default(0),
+    /** SHA-256 of the plaintext link token — the token itself is shown once,
+     *  in the email. A readable token in this table would let anyone with
+     *  database access sign as the customer. */
+    tokenHash: text("token_hash").notNull(),
+    /** pending | viewed | signed | declined */
+    status: text("status").notNull().default("pending"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    viewedAt: timestamp("viewed_at", { withTimezone: true }),
+    signedAt: timestamp("signed_at", { withTimezone: true }),
+    declinedAt: timestamp("declined_at", { withTimezone: true }),
+    declineReason: text("decline_reason"),
+    /** drawn | typed */
+    signatureKind: text("signature_kind"),
+    /** A `data:image/png;base64,…` of the drawn signature. Validated and
+     *  re-encoded on the way in — it is interpolated into the HTML the
+     *  renderer is handed. */
+    signatureImage: text("signature_image"),
+    /** The typed name, for the keyboard path. */
+    signatureText: text("signature_text"),
+    /** The exact consent wording that was on screen, kept verbatim: a
+     *  certificate that cites today's wording for a signature given last year
+     *  is evidence of nothing. */
+    consentText: text("consent_text"),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("signature_signers_token_idx").on(t.tokenHash),
+    index("signature_signers_request_idx").on(t.requestId, t.orderIndex),
+  ],
+);
+
+/**
+ * A bookable thing — a dentist, a court, a viewing agent, a table by the window.
+ * SQLite/D1 twin: packages/db/src/sqlite/schema.ts, where the column-level
+ * reasoning lives.
+ *
+ * Everything on the row is POLICY — duration, capacity, notice, horizon. The
+ * opening pattern lives in `booking_rules` and the slots are computed from
+ * both, never stored: a stored slot table has to be regenerated every time a
+ * rule moves, and is wrong in the meantime.
+ */
+export const bookingResources = pgTable(
+  "booking_resources",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** IANA zone the RULES are written in — the only thing that can settle
+     *  which instant "Mondays 09:00" names. */
+    timeZone: text("time_zone").notNull().default("UTC"),
+    slotMinutes: integer("slot_minutes").notNull().default(30),
+    stepMinutes: integer("step_minutes"),
+    capacity: integer("capacity").notNull().default(1),
+    bufferBeforeMinutes: integer("buffer_before_minutes").notNull().default(0),
+    bufferAfterMinutes: integer("buffer_after_minutes").notNull().default(0),
+    leadMinutes: integer("lead_minutes").notNull().default(0),
+    horizonDays: integer("horizon_days").notNull().default(60),
+    holdMinutes: integer("hold_minutes").notNull().default(10),
+    questions: jsonb("questions").$type<Array<Record<string, unknown>>>(),
+    mirrorCollection: text("mirror_collection"),
+    mirrorFieldMap: jsonb("mirror_field_map").$type<Record<string, string> | null>(),
+    /** SHA-256 of the public page token (`bkg_<hex>`), shown once on create. */
+    tokenHash: text("token_hash").notNull(),
+    active: boolean("active").notNull().default(true),
+    confirmationMessage: text("confirmation_message"),
+    notifyEmails: jsonb("notify_emails").$type<string[]>(),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("booking_resources_tenant_key_idx").on(t.tenantId, t.key),
+    uniqueIndex("booking_resources_token_idx").on(t.tokenHash),
+    index("booking_resources_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
+ * One line of an opening pattern, or one exception to it. Times are minutes
+ * from LOCAL midnight, never instants; a shift crossing midnight is two rules.
+ */
+export const bookingRules = pgTable(
+  "booking_rules",
+  {
+    id: text("id").primaryKey(),
+    resourceId: text("resource_id").notNull(),
+    /** open | block */
+    kind: text("kind").notNull().default("open"),
+    /** 0=Sunday … 6=Saturday, or null for "every day in the date range". */
+    weekday: integer("weekday"),
+    startMinute: integer("start_minute").notNull(),
+    endMinute: integer("end_minute").notNull(),
+    /** `YYYY-MM-DD`, inclusive. TEXT rather than `date` so it cannot shift with
+     *  an offset — a rule bound is a calendar date, not an instant. */
+    startsOn: text("starts_on"),
+    endsOn: text("ends_on"),
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("booking_rules_resource_idx").on(t.resourceId, t.kind)],
+);
+
+/**
+ * A taken slot. `held` occupies the slot exactly like `confirmed` does, but
+ * only until `hold_expires_at`; that expiry — and `completed`, a confirmed
+ * booking whose end has passed — are DERIVED at read time rather than swept by
+ * a job, so a wedged cron cannot keep a slot closed.
+ */
+export const bookings = pgTable(
+  "bookings",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    resourceId: text("resource_id").notNull(),
+    startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+    endAt: timestamp("end_at", { withTimezone: true }).notNull(),
+    /** held | confirmed | cancelled | no_show | expired. `completed` is always
+     *  derived; `expired` is derived for reads and only written lazily, by a
+     *  writer that needs the seat back. */
+    status: text("status").notNull().default("confirmed"),
+    /** Which of the resource's `capacity` places this booking holds, 0-based —
+     *  the column the partial unique index below turns into a hard capacity
+     *  guarantee the database enforces atomically. */
+    seat: integer("seat").notNull().default(0),
+    holdExpiresAt: timestamp("hold_expires_at", { withTimezone: true }),
+    customerName: text("customer_name"),
+    customerEmail: text("customer_email"),
+    customerPhone: text("customer_phone"),
+    answers: jsonb("answers").$type<Record<string, unknown> | null>(),
+    notes: text("notes"),
+    /** SHA-256 of the manage link token — the entire grant to cancel or
+     *  reschedule, so the plaintext is never at rest. */
+    tokenHash: text("token_hash").notNull(),
+    mirrorCollection: text("mirror_collection"),
+    mirrorItemId: text("mirror_item_id"),
+    /** public | admin | api */
+    source: text("source").notNull().default("public"),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    cancelReason: text("cancel_reason"),
+    cancelledBy: text("cancelled_by"),
+    /** Set on the row a reschedule REPLACED, so the trail survives. */
+    rescheduledToId: text("rescheduled_to_id"),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("bookings_token_idx").on(t.tokenHash),
+    // The hard capacity guarantee — partial, so a cancelled or expired booking
+    // gives its seat back without any row having to move.
+    uniqueIndex("bookings_seat_idx")
+      .on(t.resourceId, t.startAt, t.seat)
+      .where(sql`status IN ('held','confirmed')`),
+    index("bookings_resource_start_idx").on(t.resourceId, t.startAt),
+    index("bookings_tenant_status_idx").on(t.tenantId, t.status),
+  ],
+);
+
 export const i18nStrings = pgTable(
   "i18n_strings",
   {

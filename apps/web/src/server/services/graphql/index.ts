@@ -34,6 +34,9 @@ import { backupQueryFields, backupMutationFields } from "./backups";
 import { webhookQueryFields, webhookMutationFields } from "./webhooks";
 import { integrationQueryFields, integrationMutationFields } from "./integrations";
 import { syncHookQueryFields, syncHookMutationFields } from "./sync-hooks";
+import { documentQueryFields, documentMutationFields } from "./documents";
+import { signatureQueryFields, signatureMutationFields } from "./signatures";
+import { bookingQueryFields, bookingMutationFields } from "./booking";
 import { i18nQueryFields, i18nMutationFields } from "./i18n";
 import { storageQueryFields, storageMutationFields } from "./storage";
 import { schemaVersionQueryFields, schemaVersionMutationFields } from "./schema-versions";
@@ -89,6 +92,9 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...webhookQueryFields,
           ...integrationQueryFields,
           ...syncHookQueryFields,
+          ...documentQueryFields,
+          ...signatureQueryFields,
+          ...bookingQueryFields,
           ...i18nQueryFields,
           ...storageQueryFields,
           ...schemaVersionQueryFields,
@@ -114,6 +120,9 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...webhookMutationFields,
           ...integrationMutationFields,
           ...syncHookMutationFields,
+          ...documentMutationFields,
+          ...signatureMutationFields,
+          ...bookingMutationFields,
           ...i18nMutationFields,
           ...storageMutationFields,
           ...schemaVersionMutationFields,
@@ -141,6 +150,9 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...webhookQueryFields,
     ...integrationQueryFields,
     ...syncHookQueryFields,
+    ...documentQueryFields,
+    ...signatureQueryFields,
+    ...bookingQueryFields,
     ...i18nQueryFields,
     ...storageQueryFields,
     ...schemaVersionQueryFields,
@@ -163,6 +175,9 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...webhookMutationFields,
     ...integrationMutationFields,
     ...syncHookMutationFields,
+    ...documentMutationFields,
+    ...signatureMutationFields,
+    ...bookingMutationFields,
     ...i18nMutationFields,
     ...storageMutationFields,
     ...schemaVersionMutationFields,

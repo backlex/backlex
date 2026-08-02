@@ -182,21 +182,30 @@ export const listIntegrationSyncsTool: McpTool = {
 export const createIntegrationSyncTool: McpTool = {
   name: "integrations.create_sync",
   description:
-    "Schedule a pull from a source integration into a collection. `settings` keys come from the catalog's " +
-    "`sourceSettings` for that provider — anything else is rejected. `mapping` is external field name → " +
-    "collection field name, and every target must be a writable field on a MANAGED collection (adopted " +
-    "tables are refused). Pulled rows get a namespaced primary key, so they never overwrite rows a person " +
-    "created. Set `intervalMinutes: 0` for manual-only.",
+    "Schedule a sync between an integration and a collection. `direction: pull` (the default) brings rows " +
+    "in; `direction: push` mirrors the collection out to a destination — the provider must declare that " +
+    "capability. `settings` keys come from the catalog's `sourceSettings` / `destinationSettings` for that " +
+    "provider — anything else is rejected. `mapping` is read in the direction of travel: external → " +
+    "collection field on a pull, collection field → external column on a push. The collection must be " +
+    "MANAGED (adopted tables are refused); a pull's targets must be writable fields, and pulled rows get a " +
+    "namespaced primary key so they never overwrite rows a person created. Set `intervalMinutes: 0` for " +
+    "manual-only.",
   inputSchema: {
     type: "object",
     properties: {
       integrationId: { type: "string" },
       collection: { type: "string", description: "Managed collection slug." },
+      direction: {
+        type: "string",
+        enum: ["pull", "push"],
+        description: "Rows in (default) or the collection mirrored out.",
+      },
       settings: { type: "object", additionalProperties: true },
       mapping: {
         type: "object",
         additionalProperties: { type: "string" },
-        description: "External field → collection field. At least one entry.",
+        description:
+          "Pull: external field → collection field. Push: collection field → destination column. At least one entry.",
       },
       intervalMinutes: { type: "number", description: "0 = manual only. Default 60. Max 10080." },
       enabled: { type: "boolean" },

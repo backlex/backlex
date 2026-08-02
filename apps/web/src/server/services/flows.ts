@@ -2,11 +2,13 @@ import { and, eq } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { matchesCondition } from "@backlex/db";
-import { E164_PATTERN } from "@backlex/core";
-import type { AuthSubject, Condition, Operation } from "@backlex/core";
+import { E164_PATTERN, buildIcs, icsContentType } from "@backlex/core";
+import type { AuthSubject, Condition, EmailAttachment, Operation } from "@backlex/core";
 import type { Ctx } from "../context";
 import { runFunction } from "./sandbox";
 import { sendTemplatedEmail } from "./email";
+import { renderDocument } from "./documents";
+import { createSignatureRequest } from "./signatures";
 import { sendPushToUsers } from "./push";
 import { sendSmsToNumbers, sendSmsToUsers } from "./sms";
 import { deliverIntegrationByKind } from "./integrations";
@@ -71,6 +73,34 @@ interface RunCtx {
   last: unknown;
 }
 
+/**
+ * Resolve a string that is EXACTLY one placeholder to the value itself rather
+ * than to its string form.
+ *
+ * `interpolate` exists to build strings, so `"{{ data.parties }}"` over an
+ * array yields `"[object Object],[object Object]"`. Where an op takes a
+ * structure — a signer list a row carries — that is not a formatting quirk but
+ * a silently wrong value, so those fields resolve through here first and fall
+ * back to ordinary interpolation for anything with text around the braces.
+ */
+const resolveWhole = (value: unknown, ctx: RunCtx): unknown => {
+  if (typeof value !== "string") return interpolate(value, ctx);
+  const only = /^\{\{\s*([\w$.]+)\s*\}\}$/.exec(value);
+  if (!only?.[1]) return interpolate(value, ctx);
+  const root: Record<string, unknown> = {
+    data: ctx.data,
+    $user: { id: ctx.authSubject.userId, email: ctx.authSubject.email, roles: ctx.authSubject.roles },
+    $last: ctx.last,
+  };
+  let cur: unknown = root;
+  for (const part of only[1].split(".")) {
+    if (cur && typeof cur === "object" && part in (cur as object)) {
+      cur = (cur as Record<string, unknown>)[part];
+    } else return undefined;
+  }
+  return cur;
+};
+
 const interpolate = (value: unknown, ctx: RunCtx): unknown => {
   if (typeof value === "string") {
     return value.replace(/\{\{\s*([\w$.]+)\s*\}\}/g, (_, path: string) => {
@@ -123,6 +153,146 @@ const buildUrl = (
   const sep = url.includes("?") ? "&" : "?";
   const qs = new URLSearchParams(query).toString();
   return url + sep + qs;
+};
+
+/** `2026-08-01` — an all-day event, which the ics builder handles as a date
+ *  rather than an instant. Passed through verbatim so it stays one. */
+const ICS_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Render the `ics` block of an `email` op into an attachment.
+ *
+ * The `uid` is the part worth reading twice. A calendar keys an event on it, so
+ * a re-send with the SAME uid updates the entry the recipient already accepted
+ * and a fresh one books the appointment a second time. It therefore defaults to
+ * the triggering row's id — the one value that is stable across every re-run of
+ * a row-scoped flow — and only falls back to something random when the flow has
+ * no row at all, where there is nothing to be stable about.
+ */
+const buildInvite = (
+  ics: NonNullable<Extract<Operation, { type: "email" }>["ics"]>,
+  ctx: RunCtx,
+  recipient: string,
+): EmailAttachment => {
+  const str = (v: string | undefined): string | undefined => {
+    if (v === undefined) return undefined;
+    const rendered = String(interpolate(v, ctx) ?? "").trim();
+    return rendered || undefined;
+  };
+
+  const start = str(ics.start);
+  if (!start) throw new FlowOpError(`ics start "${ics.start}" rendered empty`);
+  // A date that does not parse produces `Invalid Date`, which serialises to a
+  // literal "Invalid Date" in the file and is refused by every calendar. Better
+  // to fail the op and name the template that produced it — never the value,
+  // which is persisted on the run's activity row.
+  const startsAt = ICS_DATE_ONLY.test(start) ? start : parseWhen(start, ics.start, "start");
+  const end = str(ics.end);
+  const endsAt = end ? (ICS_DATE_ONLY.test(end) ? end : parseWhen(end, ics.end!, "end")) : undefined;
+
+  const rowId = (ctx.data as { id?: unknown } | undefined)?.id;
+  const uid =
+    str(ics.uid) ??
+    `${rowId !== undefined && rowId !== null && rowId !== "" ? String(rowId) : crypto.randomUUID()}@backlex`;
+
+  const attendeeList = str(ics.attendees) ?? recipient;
+  const organizerEmail = str(ics.organizerEmail);
+
+  const content = buildIcs({
+    uid,
+    dtstamp: new Date(),
+    start: startsAt,
+    ...(endsAt ? { end: endsAt } : {}),
+    summary: str(ics.summary) ?? "Appointment",
+    ...(str(ics.description) ? { description: str(ics.description)! } : {}),
+    ...(str(ics.location) ? { location: str(ics.location)! } : {}),
+    ...(str(ics.url) ? { url: str(ics.url)! } : {}),
+    ...(organizerEmail
+      ? {
+          organizer: {
+            email: organizerEmail,
+            ...(str(ics.organizerName) ? { name: str(ics.organizerName)! } : {}),
+          },
+        }
+      : {}),
+    attendees: attendeeList
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean)
+      .map((email) => ({ email })),
+    ...(ics.sequence !== undefined ? { sequence: ics.sequence } : {}),
+    ...(ics.method ? { method: ics.method } : {}),
+  });
+
+  return {
+    filename: str(ics.filename) ?? "invite.ics",
+    content: btoa(String.fromCharCode(...new TextEncoder().encode(content))),
+    // The `method` parameter is what makes a mail client render accept/decline
+    // rather than offer the file as a download.
+    contentType: icsContentType(ics.method ?? (organizerEmail ? "REQUEST" : "PUBLISH")),
+  };
+};
+
+/**
+ * Collect an `email` op's attachments: stored objects plus an optional invite.
+ *
+ * `attach` carries STORAGE KEYS, never URLs, and this is the enforcement rather
+ * than a convention. A key is looked up in the deployment's own storage; a URL
+ * would turn the mail path into a fetcher that posts whatever it was pointed at
+ * to an address the same flow chose — request forgery with the mail as the
+ * exfiltration channel. The key is also prefix-checked, so a flow cannot mail
+ * out an arbitrary uploaded object by guessing its path.
+ */
+const emailAttachments = async (
+  op: Extract<Operation, { type: "email" }>,
+  ctx: RunCtx,
+  recipient: string,
+): Promise<{ attachments?: EmailAttachment[] }> => {
+  const out: EmailAttachment[] = [];
+  // Scoped to THIS workspace's own documents, not just to the prefix. Storage
+  // is one namespace across every tenant, so `documents/` alone would let a
+  // flow in one workspace mail out another's contract given its key — and a
+  // key can travel in through the row a flow reads.
+  const prefix = `documents/${ctx.authSubject.tenantId ?? "shared"}/`;
+  for (const raw of op.attach ?? []) {
+    const key = String(interpolate(raw, ctx) ?? "").trim();
+    if (!key) throw new FlowOpError(`email attachment "${raw}" rendered empty`);
+    if (!key.startsWith(prefix)) {
+      // Only what a `document.render` op produced FOR THIS WORKSPACE. Anything
+      // else is a user upload this flow was never handed, or another
+      // workspace's document.
+      throw new FlowOpError(`email attachment "${raw}" is not a generated document`);
+    }
+    const object = await ctx.ctx.storage.get(key);
+    if (!object) throw new FlowOpError(`email attachment "${key}" is not in storage`);
+    const bytes = new Uint8Array(await new Response(object.body).arrayBuffer());
+    out.push({
+      filename: key.split("/").pop() || "document.pdf",
+      content: toBase64(bytes),
+      contentType: object.meta.contentType ?? "application/pdf",
+    });
+  }
+  if (op.ics) out.push(buildInvite(op.ics, ctx, recipient));
+  return out.length > 0 ? { attachments: out } : {};
+};
+
+/** Chunked so a multi-megabyte document does not blow the argument limit the
+ *  spread form of `String.fromCharCode` has. */
+const toBase64 = (bytes: Uint8Array): string => {
+  let bin = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(bin);
+};
+
+const parseWhen = (rendered: string, template: string, field: string): Date => {
+  const ms = Date.parse(rendered);
+  const asNumber = Number(rendered);
+  const at = Number.isFinite(ms) ? new Date(ms) : Number.isFinite(asNumber) ? new Date(asNumber) : null;
+  if (!at) throw new FlowOpError(`ics ${field} "${template}" did not render to a date`);
+  return at;
 };
 
 /**
@@ -208,8 +378,154 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
         html: op.html,
         text: op.text,
       },
+      ...(await emailAttachments(op, ctx, to)),
     });
     return result;
+  }
+
+  if (op.type === "document.render") {
+    const tenantId = ctx.authSubject.tenantId ?? null;
+    const vars: Record<string, unknown> = {
+      data: ctx.data,
+      $user: {
+        id: ctx.authSubject.userId,
+        email: ctx.authSubject.email,
+        roles: ctx.authSubject.roles,
+      },
+      $last: ctx.last,
+      ...(op.vars ? (interpolate(op.vars, ctx) as Record<string, unknown>) : {}),
+    };
+    let rendered: Awaited<ReturnType<typeof renderDocument>>;
+    try {
+      rendered = await renderDocument(ctx.ctx, tenantId, {
+        ...(op.templateKey ? { templateKey: op.templateKey } : {}),
+        ...(op.html ? { html: op.html } : {}),
+        vars,
+        ...(op.filename ? { filename: interpolate(op.filename, ctx) as string } : {}),
+      });
+    } catch (e) {
+      throw new FlowOpError(`document.render failed: ${(e as Error).message}`);
+    }
+
+    // Stored under a tenant-prefixed, RANDOM key. Not derived from the
+    // filename: two invoices called `invoice.pdf` would otherwise overwrite
+    // each other, and a filename comes from row data, so deriving the object
+    // path from it lets a row decide where it lands.
+    const key = `documents/${tenantId ?? "shared"}/${crypto.randomUUID()}/${rendered.filename}`;
+    const stored = await ctx.ctx.storage.put({
+      key,
+      body: rendered.bytes,
+      contentType: rendered.contentType,
+    });
+
+    if (op.writeBack) {
+      const rowId = String(interpolate(op.writeBack.id, ctx) ?? "").trim();
+      if (!rowId) {
+        throw new FlowOpError(`document.render writeBack id "${op.writeBack.id}" rendered empty`);
+      }
+      if (!tenantId) {
+        // The write is tenant-scoped; without one it would have to guess which
+        // workspace's row to patch.
+        throw new FlowOpError("document.render writeBack requires a workspace-bound run");
+      }
+      await updateItem(ctx.ctx, {
+        slug: op.writeBack.collection,
+        tenantId,
+        id: rowId,
+        data: { [op.writeBack.field]: key },
+      });
+    }
+
+    return {
+      key,
+      filename: rendered.filename,
+      size: stored.size,
+      renderer: rendered.renderer,
+    };
+  }
+
+  if (op.type === "document.sign") {
+    const tenantId = ctx.authSubject.tenantId ?? null;
+    const vars: Record<string, unknown> = {
+      data: ctx.data,
+      $user: {
+        id: ctx.authSubject.userId,
+        email: ctx.authSubject.email,
+        roles: ctx.authSubject.roles,
+      },
+      $last: ctx.last,
+      ...(op.vars ? (interpolate(op.vars, ctx) as Record<string, unknown>) : {}),
+    };
+
+    // `signers` may be a literal list or a single template that resolves to
+    // one — a row that carries its own counterparties (a lease with two
+    // tenants) cannot be written out as a static array in the flow.
+    const resolved = resolveWhole(op.signers as unknown, ctx);
+    const list = Array.isArray(resolved) ? resolved : [];
+    if (list.length === 0) {
+      throw new FlowOpError("document.sign resolved to no signers");
+    }
+    const signers = list.map((entry) => {
+      const person = (typeof entry === "string" ? { email: entry } : entry) as Record<string, unknown>;
+      return {
+        email: String(person.email ?? "").trim(),
+        ...(person.name ? { name: String(person.name) } : {}),
+        ...(person.role ? { role: String(person.role) } : {}),
+      };
+    });
+
+    const str = (v: string | undefined): string | undefined => {
+      if (v === undefined) return undefined;
+      const out = String(interpolate(v, ctx) ?? "").trim();
+      return out || undefined;
+    };
+    const notify = resolveWhole(op.notifyEmails as unknown, ctx);
+
+    let created: Awaited<ReturnType<typeof createSignatureRequest>>;
+    try {
+      created = await createSignatureRequest(
+        ctx.ctx,
+        tenantId,
+        {
+          ...(op.templateKey ? { templateKey: op.templateKey } : {}),
+          ...(op.html ? { html: op.html } : {}),
+          vars,
+          ...(str(op.title) ? { title: str(op.title)! } : {}),
+          ...(str(op.message) ? { message: str(op.message)! } : {}),
+          ...(str(op.filename) ? { filename: str(op.filename)! } : {}),
+          signers,
+          ...(op.ordered !== undefined ? { ordered: op.ordered } : {}),
+          ...(op.expiresInDays !== undefined ? { expiresInDays: op.expiresInDays } : {}),
+          ...(op.writeBack
+            ? {
+                writeBack: {
+                  collection: op.writeBack.collection,
+                  id: String(interpolate(op.writeBack.id, ctx) ?? "").trim(),
+                  field: op.writeBack.field,
+                },
+              }
+            : {}),
+          ...(Array.isArray(notify) ? { notifyEmails: notify.map((e) => String(e)) } : {}),
+        },
+        ctx.authSubject.userId ?? null,
+      );
+    } catch (e) {
+      throw new FlowOpError(`document.sign failed: ${(e as Error).message}`);
+    }
+
+    // NO signing links on the result. Whatever an op returns lands on `$last`,
+    // which every op after it can read — a `webhook` posting `{{ $last }}`
+    // onward, a `log` writing it to the server log. A link is a bearer
+    // credential for somebody else's signature, so handing it to the flow
+    // graph means it leaves through whichever op the author adds next.
+    // Customise the invitation through the `signature_request` email template
+    // instead, which is the right seam for it anyway.
+    return {
+      id: created.request.id,
+      status: created.request.status,
+      sent: created.sent,
+      signers: created.request.signers.map((s) => ({ id: s.id, email: s.email, status: s.status })),
+    };
   }
 
   if (op.type === "transform") {

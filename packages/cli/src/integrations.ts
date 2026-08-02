@@ -20,6 +20,8 @@ interface SyncRow {
   id: string;
   integrationId: string;
   collection: string;
+  /** `pull` brings rows in; `push` mirrors the collection out. */
+  direction?: string;
   intervalMinutes: number;
   enabled: boolean;
   resuming: boolean;
@@ -57,12 +59,14 @@ const INTEGRATIONS_HELP = `backlex integrations <catalog|list|connect|authorize|
          [--events a,b]                scope which events reach it (default all)
   connect --kind <k> --data <json|@file|->
   authorize <id>                       print the OAuth link to open in a browser
-  syncs [--integration <id>]           scheduled pulls + health
+  syncs [--integration <id>]           scheduled syncs + health
   sync-create --integration <id> --collection <slug>
+              [--direction pull|push]  rows in (default) or collection out
               --set k=v [...]          provider settings (see catalog)
               --map External=field [...]
+                                       push: --map field=DestinationColumn
               [--every <minutes>]      0 = manual only, default 60
-  sync-run <id>                        pull now and report what landed
+  sync-run <id>                        run now and report what landed
   sync-update <id> [--every N] [--enable|--disable]
   sync-delete <id>
   deliveries <id> [--limit N]          recent attempts, newest first
@@ -223,6 +227,9 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
             data.map((sc) => ({
               id: sc.id,
               collection: sc.collection,
+              // Drawn in the direction of travel, so a glance says which way the
+              // rows are moving rather than which provider is involved.
+              direction: sc.direction === "push" ? "out" : "in",
               every: sc.intervalMinutes === 0 ? "manual" : `${sc.intervalMinutes}m`,
               state: sc.enabled ? (sc.resuming ? "resuming" : "on") : "paused",
               rows: sc.lastRowCount,
@@ -247,15 +254,30 @@ export const runIntegrations = async (args: string[]): Promise<void> => {
           process.exit(1);
         }
         const every = flag(args, "--every");
+        // Checked here rather than left to the server: a typo'd direction would
+        // otherwise fall through to the default and create a PULL, which fails
+        // on its first run with an error about the wrong half of the provider.
+        const direction = flag(args, "--direction");
+        if (direction !== undefined && direction !== "pull" && direction !== "push") {
+          process.stderr.write("--direction must be pull or push\n");
+          process.exit(1);
+        }
         const { data } = await client.request<{ data: SyncRow }>("POST", `${BASE}/syncs`, {
           integrationId,
           collection,
+          ...(direction === undefined ? {} : { direction }),
           settings: collectSet(args),
           mapping,
           ...(every === undefined ? {} : { intervalMinutes: Number(every) }),
         });
         if (json) printJson(data);
-        else printKeyValues({ id: data.id, collection: data.collection, every: `${data.intervalMinutes}m` });
+        else
+          printKeyValues({
+            id: data.id,
+            collection: data.collection,
+            direction: data.direction ?? "pull",
+            every: `${data.intervalMinutes}m`,
+          });
         return;
       }
       case "sync-run": {

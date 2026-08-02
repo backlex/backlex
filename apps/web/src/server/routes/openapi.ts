@@ -54,6 +54,10 @@ import { meRoutes } from "./me";
 import { accountRoutes } from "./account";
 import { formsRoutes } from "./forms";
 import { formsPublicRoutes } from "./forms-public";
+import { documentsRoutes } from "./documents";
+import { signaturesRoutes } from "./signatures";
+import { bookingRoutes } from "./booking";
+import { bookingPublicRoutes } from "./booking-public";
 
 // `any` on purpose — `OpenAPIHono<AppBindings>` for each sub-app blows
 // past TypeScript's inference budget on this many entries. Only the
@@ -102,6 +106,10 @@ export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/account", accountRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/forms", formsRoutes as unknown as OpenAPIHono<any>],
   ["/api/public/forms", formsPublicRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/documents", documentsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/signatures", signaturesRoutes as unknown as OpenAPIHono<any>],
+  ["/api/admin/booking", bookingRoutes as unknown as OpenAPIHono<any>],
+  ["/api/public/book", bookingPublicRoutes as unknown as OpenAPIHono<any>],
 ];
 
 const requireAdmin = (roles: string[]) => {

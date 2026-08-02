@@ -24,9 +24,12 @@ import * as sqlite from "@backlex/db/sqlite";
 import { AppError } from "@backlex/core";
 import {
   SECRET_KEYS,
+  DESTINATION_BATCH_SIZE,
   DESTINATION_SETTING_FIELDS,
+  destinationColumnsFor,
   SOURCE_SETTING_FIELDS,
   isIntegrationKind,
+  OAUTH_SCOPE_KEY,
   providerFor,
   pullFromSource,
   pushToDestination,
@@ -170,6 +173,33 @@ const validateSettings = (
   );
 };
 
+/**
+ * Refuse a sync whose connection was authorized before this direction existed.
+ *
+ * The recorded scope comes from the token exchange, so it is what the provider
+ * actually GRANTED rather than what was asked for. Silence is not denial: a
+ * provider that returns no scope list leaves the field empty, and refusing on
+ * that would block connections that can do the work perfectly well. The far
+ * end's 403 remains the backstop for anything this cannot see.
+ */
+const assertScope = (
+  integration: { kind: string; config: Record<string, unknown> },
+  required: string | readonly string[] | undefined,
+): void => {
+  // A list means every one is needed: Xero grants write per record type, and a
+  // connection reauthorized for this direction receives them together.
+  const needed = typeof required === "string" ? [required] : (required ?? []);
+  if (needed.length === 0) return;
+  const granted = integration.config?.[OAUTH_SCOPE_KEY];
+  if (typeof granted !== "string" || !granted.trim()) return;
+  const held = new Set(granted.split(/\s+/));
+  if (needed.every((s) => held.has(s))) return;
+  throw new AppError(
+    "BAD_REQUEST",
+    `This ${integration.kind} connection was authorized for reading only. Reconnect it to grant write access, then create the sync.`,
+  );
+};
+
 export interface CreateSyncInput {
   integrationId: string;
   collection: string;
@@ -196,6 +226,7 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
   if (direction === "push" && !provider?.destination) {
     throw new AppError("BAD_REQUEST", `${integration.kind} cannot be used as a destination`);
   }
+  if (direction === "push") assertScope(integration, provider?.destination?.requiredScope);
   // Resolves within the caller's tenant and throws if the slug is unknown, so a
   // sync can never be aimed at another workspace's collection.
   const collection = await loadCollection(ctx, tenantId, input.collection);
@@ -206,7 +237,7 @@ export async function createSync(ctx: Ctx, tenantId: string, input: CreateSyncIn
     );
   }
   const settings = validateSettings(integration.kind, input.settings ?? {}, direction);
-  const mapping = validateMapping(input.mapping ?? {}, collection, direction);
+  const mapping = validateMapping(input.mapping ?? {}, collection, direction, integration.kind, settings);
 
   const id = crypto.randomUUID();
   const now = new Date();
@@ -245,8 +276,20 @@ const validateMapping = (
   mapping: Record<string, string>,
   collection: Awaited<ReturnType<typeof loadCollection>>,
   direction: SyncDirection,
+  kind: string,
+  settings: Record<string, unknown>,
 ): Record<string, string> => {
   const out: Record<string, string> = {};
+  // A destination with a closed column set (a calendar event has a `summary`
+  // and a `start`, not arbitrary columns) is checked here. A warehouse declares
+  // none — its columns are whatever the operator's DDL says — and stays free
+  // text. Without this a typo'd target is accepted, dropped by the provider,
+  // and the run reports a clean success having written nothing.
+  //
+  // Narrowed by the settings, because a provider's columns are not always fixed
+  // for the whole provider: QuickBooks writes a customer OR an invoice, and
+  // `dueDate` on a customer is the same silent drop this check exists to stop.
+  const columns = direction === "push" ? destinationColumnsFor(kind, settings) : undefined;
   // The mapping is read in the direction of travel. On a pull the collection
   // field is the TARGET and must be writable; on a push it is the SOURCE and
   // may be any field the collection has, computed ones included — reading one
@@ -266,6 +309,12 @@ const validateMapping = (
     }
     if (direction === "push" && !known.has(left)) {
       throw new AppError("VALIDATION", `Collection "${collection.slug}" has no field "${left}"`);
+    }
+    if (columns && !columns.some((c) => c.value === value)) {
+      throw new AppError(
+        "VALIDATION",
+        `${kind} has no destination column "${value}" — one of: ${columns.map((c) => c.value).join(", ")}`,
+      );
     }
     out[left] = value;
   }
@@ -316,22 +365,27 @@ export async function updateSync(
   if (!existing) throw new AppError("NOT_FOUND", "Sync not found");
   const integration = await loadOwnedIntegration(ctx, tenantId, existing.integrationId);
 
+  const direction = (existing.direction ?? "pull") as SyncDirection;
   const set: Record<string, unknown> = { updatedAt: new Date() };
+  let settings = (existing.settings ?? {}) as Record<string, unknown>;
   if (patch.settings !== undefined) {
-    set.settings = validateSettings(
-      integration.kind,
-      patch.settings,
-      existing.direction as SyncDirection,
-    );
+    settings = validateSettings(integration.kind, patch.settings, direction);
+    set.settings = settings;
     // The cursor is only meaningful for the source it came from; pointing the
     // sync at a different sheet while keeping a row offset would read garbage.
     set.cursor = null;
   }
-  if (patch.mapping !== undefined) {
+  // The mapping is re-checked whenever EITHER half changes, because a push's
+  // legal columns depend on the settings: switching a QuickBooks sync from
+  // customers to invoices leaves a mapping that names columns an invoice does
+  // not have, and nothing else would notice until the provider dropped them.
+  if (patch.mapping !== undefined || patch.settings !== undefined) {
     set.mapping = validateMapping(
-      patch.mapping,
+      patch.mapping ?? ((existing.mapping ?? {}) as Record<string, string>),
       await loadCollection(ctx, tenantId, existing.collection),
-      existing.direction as SyncDirection,
+      direction,
+      integration.kind,
+      settings,
     );
   }
   if (patch.intervalMinutes !== undefined) set.intervalMinutes = clampInterval(patch.intervalMinutes);
@@ -653,6 +707,12 @@ async function pushCollection(
     if (target) columns[target] = f.type;
   }
 
+  // A warehouse takes the whole batch in one request and wants it large. A
+  // provider with no bulk endpoint — Google Calendar issues a call per event —
+  // asks for a smaller one, because 200 rows there is 400 subrequests. Clamped
+  // DOWN only: a provider cannot talk the engine into a bigger page.
+  const batchSize = Math.min(PAGE_SIZE, DESTINATION_BATCH_SIZE[integration.kind] ?? PAGE_SIZE);
+
   let mark = parseWatermark(row.cursor);
   let written = 0;
   let pages = 0;
@@ -667,7 +727,7 @@ async function pushCollection(
     }
     const batch = await queryAll<Record<string, unknown>>(
       ctx,
-      sql`SELECT * FROM ${sql.identifier(collection.physicalTable)} WHERE ${where} ORDER BY ${sql.identifier(updatedAtCol)} ASC, ${sql.identifier(collection.pkColumn)} ASC LIMIT ${PAGE_SIZE}`,
+      sql`SELECT * FROM ${sql.identifier(collection.physicalTable)} WHERE ${where} ORDER BY ${sql.identifier(updatedAtCol)} ASC, ${sql.identifier(collection.pkColumn)} ASC LIMIT ${batchSize}`,
     );
     if (batch.length === 0) {
       complete = true;
@@ -686,7 +746,7 @@ async function pushCollection(
 
     await pushToDestination(
       integration.kind,
-      { config, settings: row.settings ?? {}, rows: out, columns },
+      { config, settings: row.settings ?? {}, rows: out, columns, syncKey: row.id },
       fetchImpl,
     );
 
@@ -698,7 +758,7 @@ async function pushCollection(
       id: String(last[collection.pkColumn] ?? ""),
     };
     written += out.length;
-    if (batch.length < PAGE_SIZE) {
+    if (batch.length < batchSize) {
       complete = true;
       break;
     }

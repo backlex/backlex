@@ -30,7 +30,7 @@ Thirty-one providers ship in the registry, grouped by category:
 | issue tracking | GitHub, Linear, Jira |
 | search | Algolia, Meilisearch, Typesense, Elasticsearch / OpenSearch |
 | productivity | Notion, Google Sheets, Google Drive, Google Calendar *(OAuth)*, Airtable *(OAuth)*, Contentful — all sources |
-| accounting | QuickBooks Online, Xero — both *(OAuth)*, both sources |
+| accounting | QuickBooks Online, Xero — both *(OAuth)*, both sources **and destinations** |
 | warehouse | ClickHouse, Google BigQuery — both *destinations* |
 | crm | HubSpot — *receives record contents*, see below |
 
@@ -175,9 +175,8 @@ differently:
   cannot go stale when the admin changes what they granted. Leave
   **Organisation** blank to use the first one granted.
 
-Both are read-only: the scopes requested cover reading, not writing. Mirroring
-accounting data in is the case people ask for; pushing entries back out is a
-different feature with different failure modes.
+Both can also travel the other way — see [Invoices out to the
+ledger](#invoices-out-to-the-ledger).
 
 ## Mirroring a collection out
 
@@ -224,6 +223,79 @@ credential should not have, and partitioning, ordering and TTL are decisions the
 cluster owner should make rather than have guessed. Run the DDL once —
 `backlex integrations catalog <kind>` prints a starting point.
 
+### Destinations that are not warehouses
+
+A warehouse takes a batch of arbitrary columns in one request. Google Calendar
+does not, and the two differences it forced are declared on the provider rather
+than special-cased in the engine:
+
+| Declaration | Why |
+|---|---|
+| `destination.columns` | A calendar event has a `summary` and a `start`, not arbitrary columns. With the set declared, an unknown mapping target is refused **at the form**; without it the provider would drop the field and the run would report a clean success having written nothing. The connect dialog renders a dropdown from the same list. |
+| `destination.batchSize` | There is no bulk endpoint — one or two HTTP calls **per row**. The engine's 200-row default would be 400 subrequests, past what a Worker invocation is allowed. Clamped down only; a provider cannot ask for a bigger page. |
+| `destination.requiredScope` | The OAuth grant a *write* needs that merely connecting did not imply. Checked when the sync is **saved**, against what the token exchange recorded. A list means every one of them — Xero grants write per record type. |
+
+A column may carry `when`, naming the settings it applies under: QuickBooks
+writes a customer **or** an invoice, and those share no columns at all. The
+catalog ships the full list with each column's condition, so the connect dialog
+narrows the picker as the operator chooses the record type — and the server
+narrows the same list when the mapping is saved, changed, *or* when the record
+type changes underneath a mapping that was already valid.
+
+A warehouse declares none of it, and nothing about it changes.
+
+## Bookings out to a calendar
+
+Google Calendar is a source **and** a destination: it mirrors a calendar in, and
+it turns rows into events.
+
+```bash
+backlex integrations sync-create --integration <id> --collection appointments \
+  --direction push --set calendarId=primary --set timeZone=Europe/Istanbul \
+  --map service=summary --map starts_at=start --map ends_at=end \
+  --map address=location --map customer_email=attendees --every 15
+```
+
+Mappable columns: `summary`, `description`, `location`, `start`, `end`,
+`attendees`.
+
+**The event id is derived, and that is the whole design.** A destination's
+contract is that a re-sent batch must not duplicate, and a calendar has no
+natural key to upsert on. Google is unusual in letting the caller **choose** an
+event id, so backlex derives it from `SHA-256(sync, row id)`: the same row always
+addresses the same event, so an edited booking moves the entry the guest already
+accepted instead of booking a second one. The **sync** is in the hash because two
+collections can hold the same primary key, and without it two syncs pointed at
+one calendar would overwrite each other's events.
+
+The write is `insert`, then `update` on the `409` that a duplicate id returns.
+
+Other behaviour worth knowing:
+
+- **Dates.** A `YYYY-MM-DD` value is an **all-day** event; anything else is an
+  instant. An all-day `DTEND` is *exclusive*, so a one-day event ends on the
+  following date. A start with no end gets an hour (or a day).
+- **Guests** come from a text column (comma- or semicolon-separated) or a JSON
+  array of strings or `{email}` objects. Non-addresses and duplicates are
+  dropped and the list is capped at 50 — every surviving entry is somebody
+  Google may email.
+- **Nobody is notified** unless the sync's *Notify attendees* setting says so.
+- **A row with no start is skipped**, not failed: one empty date column should
+  not stop the rest of the batch.
+- **Deletes are invisible**, exactly as for a warehouse — a watermark walk only
+  ever sees rows that still exist.
+- **A `403` means two different things.** Google returns it both for "this token
+  cannot write" and for "you are going too fast", and the two want opposite
+  responses, so they are reported as different messages.
+
+**Existing connections need re-authorizing.** Write needs the
+`calendar.events` scope, which a connection authorized when Calendar was
+source-only never granted. Pulls keep working, and creating a push sync on such
+a connection is **refused when you save it** — checked against the scope list
+the token exchange recorded, not against what was asked for. A provider that
+records no scope list is allowed through; the far end's 403 is the backstop.
+Reconnect the integration and the sync saves.
+
 ### Two kinds of resume
 
 Most sources page to the end and then start over, so the next run notices edits.
@@ -258,6 +330,85 @@ re-enabling clears the counter.
 
 If the OAuth grant is revoked, the run reports *"needs re-authorizing"* and stops
 instead of retrying something no retry can fix.
+
+## Invoices out to the ledger
+
+QuickBooks and Xero are sources **and** destinations: they mirror your books in,
+and they turn rows into customers, contacts and invoices. This is the case
+invoicing, ecommerce and SaaS collections keep re-keying by hand.
+
+```bash
+# Customers out to QuickBooks
+backlex integrations sync-create --integration <id> --collection customers \
+  --direction push --set entity=Customer --set environment=production \
+  --map company=displayName --map billing_email=email --map phone=phone --every 60
+
+# Invoices out to Xero, left as drafts
+backlex integrations sync-create --integration <id> --collection invoices \
+  --direction push --set endpoint=Invoices --set invoiceStatus=DRAFT \
+  --set accountCode=200 \
+  --map number=invoiceNumber --map customer_name=contactName \
+  --map total=amount --map issued_on=date --map due_on=dueDate --every 60
+```
+
+| Provider | Record types | Mappable columns |
+|---|---|---|
+| QuickBooks | `Customer` | `displayName`, `companyName`, `email`, `phone`, `notes` |
+| QuickBooks | `Invoice` | `docNumber`, `customerName`, `amount`, `description`, `txnDate`, `dueDate`, `currency` |
+| Xero | `Contacts` | `contactNumber`, `name`, `firstName`, `lastName`, `email`, `phone`, `taxNumber` |
+| Xero | `Invoices` | `invoiceNumber`, `contactName`, `amount`, `description`, `date`, `dueDate`, `currency`, `reference` |
+
+### Neither one has an upsert
+
+That is the fact everything else follows from. Google Calendar lets the caller
+choose an event id; an accounting API does not, so a push **finds** the record
+first and only then decides create-or-update. The key it searches on is:
+
+- **an invoice number** — the mapped column when the collection carries one,
+  otherwise `BX-` plus twelve hex characters derived from `SHA-256(sync, row
+  id)`. Same row, same invoice, forever; and the **sync** is in the hash because
+  two collections can hold the same primary key.
+- **a contact code** for Xero contacts, derived the same way, mappable the same
+  way. Map your own customer code to reconcile with contacts Xero already holds.
+- **the display name** for QuickBooks customers, because QuickBooks has nowhere
+  else to put a reference and requires the name unique. That is the one place
+  row data reaches a provider query, and it is escaped before it does — an
+  apostrophe is an ordinary thing for a customer to have in their name.
+
+Lookups are **per batch**, not per row: one `in (…)` query for QuickBooks, one
+`where` expression for Xero.
+
+### What each provider does differently
+
+| | QuickBooks | Xero |
+|---|---|---|
+| Writing a batch | one call **per row** (batch of 20) | **one** call for the batch (batch of 25) |
+| Updating | sparse — fields you did not map are left alone | the fields you send; **line items replace** |
+| An invoice's customer | must exist; created for you unless the sync says *skip* | named on the invoice, Xero creates it |
+| Existing connections | can already push — Intuit's accounting scope is read **and** write | must be **reconnected**; Xero grants write per record type |
+
+### Things that will otherwise surprise you
+
+- **A paid or voided Xero invoice is skipped.** Xero refuses to modify one, and
+  a permanent `400` on a row that is simply finished would be retried until the
+  breaker paused the sync.
+- **Xero invoices are `DRAFT`** unless the sync says otherwise. An automation
+  that posts to the ledger on its first run is not something to opt out of.
+- **A structurally incomplete row is skipped, not failed** — an invoice with no
+  customer or no amount, a contact with no name. One empty column must not
+  strand the rest of the batch.
+- **Amounts are parsed, not assumed.** A `decimal` column arrives as a string,
+  and `1.234,56` and `$1,234.56` both mean the same thing. Anything that is not
+  a number skips the row rather than posting a zero.
+- **Dates become calendar days.** An accounting date is a day, and both APIs
+  reject a timestamp.
+- **QuickBooks line items** point at a product/service when the sync names one
+  (by name — you know what yours are called, not what Intuit numbered them). A
+  name that matches nothing fails the batch: filing every invoice against the
+  wrong account is worse than stopping.
+- **Xero line items** need an `accountCode` for the revenue to post where you
+  expect. Xero's default applies without one.
+- **Deletes are invisible**, exactly as for a warehouse.
 
 ## What a sink receives
 
@@ -377,7 +528,9 @@ is not part of the API you call: it always answers with a redirect into the
 admin UI, because the caller is a browser mid-navigation.
 
 All five funnel through one service, so the tenant guards, the encryption at
-rest and the breaker are shared rather than restated per surface.
+rest and the breaker are shared rather than restated per surface — including
+`direction`, so a mirror-out can be scheduled from any of them and not only
+from the admin UI.
 
 ## Adding a provider
 

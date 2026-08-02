@@ -1,7 +1,7 @@
 import { and, eq, isNull, or } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { renderTemplate, htmlToText } from "@backlex/core";
+import { renderTemplate, htmlToText, type EmailAttachment } from "@backlex/core";
 import type { Ctx } from "../context";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -55,6 +55,9 @@ export interface SendTemplatedOptions {
     text?: string;
     from?: string;
   };
+  /** Files to attach. Independent of the template — a calendar invite rides
+   *  along with whatever body the template produced. */
+  attachments?: EmailAttachment[];
 }
 
 export interface SendTemplatedResult {
@@ -62,6 +65,14 @@ export interface SendTemplatedResult {
   templateKey: string | null;
   /** True when a template was found and used; false when fallback rendered. */
   templateApplied: boolean;
+  /**
+   * Set when attachments were requested and the configured transport cannot
+   * carry them, so the caller can say the mail went WITHOUT its invite.
+   *
+   * The mail is still sent. A booking confirmation that never arrives because
+   * its calendar file could not travel is the worse of the two failures.
+   */
+  attachmentsDropped?: boolean;
 }
 
 /**
@@ -77,6 +88,13 @@ export const sendTemplatedEmail = async (
   const vars = opts.vars ?? {};
   const tenantId = opts.tenantId ?? null;
   const transport = await ctx.emailFor(tenantId);
+
+  // `attachments === false` is an explicit "I would drop this". An adapter that
+  // says nothing is assumed to support them, which is true of every transport
+  // in this repo bar the managed-cloud gateway.
+  const wanted = opts.attachments ?? [];
+  const attachmentsDropped = wanted.length > 0 && transport.attachments === false;
+  const attachments = attachmentsDropped ? undefined : wanted.length > 0 ? wanted : undefined;
 
   let tpl: TemplateRow | null = null;
   if (opts.templateKey) {
@@ -95,8 +113,14 @@ export const sendTemplatedEmail = async (
       subject,
       html,
       text,
+      ...(attachments ? { attachments } : {}),
     });
-    return { sent: true, templateKey: opts.templateKey ?? null, templateApplied: true };
+    return {
+      sent: true,
+      templateKey: opts.templateKey ?? null,
+      templateApplied: true,
+      ...(attachmentsDropped ? { attachmentsDropped } : {}),
+    };
   }
 
   const fb = opts.fallback ?? {};
@@ -122,6 +146,12 @@ export const sendTemplatedEmail = async (
     subject,
     html,
     text: text ?? "",
+    ...(attachments ? { attachments } : {}),
   });
-  return { sent: true, templateKey: opts.templateKey ?? null, templateApplied: false };
+  return {
+    sent: true,
+    templateKey: opts.templateKey ?? null,
+    templateApplied: false,
+    ...(attachmentsDropped ? { attachmentsDropped } : {}),
+  };
 };

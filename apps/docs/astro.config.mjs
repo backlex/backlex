@@ -122,6 +122,7 @@ export default defineConfig({
             { slug: "payments" },
             { slug: "documents" },
             { slug: "e-signature" },
+            { slug: "approvals" },
             { slug: "booking" },
             { slug: "agents" },
             { slug: "feature-flags" },

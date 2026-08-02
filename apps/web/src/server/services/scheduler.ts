@@ -22,6 +22,7 @@ const parseExpression = (
   }
 ).parseExpression;
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
+import { expireDueRequests, expireRequest } from "./approvals";
 import { enqueueJob, processJobs } from "./jobs";
 import { enqueueDueSyncs } from "./integration-syncs";
 import { sweepExpiredUploads } from "./uploads";
@@ -279,6 +280,15 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
   await Promise.all(
     claimed.map(async (task) => {
       try {
+        if (task.payload?.kind === "approval-timeout") {
+          // Nobody answered in time. `expireRequest` goes through the same
+          // one-shot settle guard a decision does, so a person deciding in
+          // this exact second still wins cleanly — one of the two transitions
+          // finds the row already out of `pending` and does nothing.
+          await expireRequest(ctx, task.payload.requestId);
+          await deleteTask(ctx, task.id);
+          return;
+        }
         if (task.payload?.kind !== "flow-continuation") {
           // Unknown payload kind — drop the row so it doesn't keep getting
           // claimed forever.
@@ -354,6 +364,16 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     await unpublishDueItems(ctx);
   } catch (e) {
     console.error("[scheduled-unpublish] tick failed", e);
+  }
+
+  // Approvals safety net. Each request enqueues its OWN timeout task, so this
+  // normally finds nothing; it exists for the request whose enqueue failed, or
+  // whose task row was lost to a restore. Settling twice is impossible — both
+  // paths go through the same one-shot guard — so an overlap is harmless.
+  try {
+    await expireDueRequests(ctx);
+  } catch (e) {
+    console.error("[approvals] expiry sweep failed", e);
   }
 
   // Playground (demo) mode: wipe + reseed the workspace when the persisted

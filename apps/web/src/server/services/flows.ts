@@ -9,6 +9,7 @@ import { runFunction } from "./sandbox";
 import { sendTemplatedEmail } from "./email";
 import { renderDocument } from "./documents";
 import { createSignatureRequest } from "./signatures";
+import { createApprovalRequest } from "./approvals";
 import { deliverReport } from "./reports";
 import { sendPushToUsers } from "./push";
 import { sendSmsToNumbers, sendSmsToUsers } from "./sms";
@@ -72,6 +73,11 @@ interface RunCtx {
   /** Result of the most recently completed operation. Populated after each
    *  op so subsequent ops can read `{{ $last.* }}`. */
   last: unknown;
+  /** The row this run is ABOUT, derived from an item trigger's channel.
+   *  `approval.request` defaults its subject to this so the common case —
+   *  "approve the row that fired this" — needs no restating. Absent on cron,
+   *  manual and non-item channels. */
+  subject?: { collection: string; id: string } | null;
 }
 
 /**
@@ -139,11 +145,57 @@ const interpolate = (value: unknown, ctx: RunCtx): unknown => {
 
 class FlowOpError extends Error {}
 
+/**
+ * The row an item-triggered run is about.
+ *
+ * Item channels are `items:<slug>`; everything else (a booking channel, a cron
+ * tick, a manual invoke) has no single subject row, and guessing one from
+ * `data` would be worse than having none — `approval.request` would then patch
+ * whatever collection happened to share the shape.
+ */
+const itemSubject = (
+  channel: string,
+  data: Record<string, unknown>,
+): { collection: string; id: string } | null => {
+  const [head, slug] = channel.split(":");
+  if (head !== "items" || !slug) return null;
+  const id = data?.id;
+  if (id == null || id === "") return null;
+  return { collection: slug, id: String(id) };
+};
+
+const defaultSubject = (ctx: RunCtx): { collection: string; id: string } | null =>
+  ctx.subject ?? null;
+
 /** Sentinel thrown by long `delay` ops at the top of a flow. The runner
  *  unwinds, persists the rest of the work to `scheduled_tasks`, and the
  *  scheduler picks it back up when the clock catches up. */
 class FlowDeferred {
   constructor(public readonly durationMs: number) {}
+}
+
+/**
+ * Sentinel thrown by `approval.request`. Same unwinding as `FlowDeferred`,
+ * but the checkpoint is stored on the approval request rather than on a timer,
+ * and what wakes it is a person rather than the clock.
+ *
+ * `rejectedOps` rides along because the two branches have to be parked
+ * TOGETHER: the decision that resumes the flow may arrive days later, in
+ * another process, with nothing but the request row to work from.
+ */
+class FlowAwaiting {
+  constructor(
+    public readonly create: (
+      remainingOps: Operation[],
+      rejectedOps: Operation[],
+      state: {
+        data: Record<string, unknown>;
+        authSubject: AuthSubject;
+        last: unknown;
+        subject: { collection: string; id: string } | null;
+      },
+    ) => Promise<{ requestId: string }>,
+  ) {}
 }
 
 const buildUrl = (
@@ -527,6 +579,99 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
       sent: created.sent,
       signers: created.request.signers.map((s) => ({ id: s.id, email: s.email, status: s.status })),
     };
+  }
+
+  if (op.type === "approval.request") {
+    const tenantId = ctx.authSubject.tenantId ?? null;
+    const str = (v: string | undefined): string | undefined => {
+      if (v === undefined) return undefined;
+      const out = String(interpolate(v, ctx) ?? "").trim();
+      return out || undefined;
+    };
+
+    const title = str(op.title);
+    if (!title) throw new FlowOpError(`approval.request title "${op.title}" rendered empty`);
+
+    // Same shape as `document.sign`'s signers: a literal list, or one template
+    // resolving to a list, for a row that carries its own approvers.
+    const resolved = resolveWhole(op.approvers as unknown, ctx);
+    const list = Array.isArray(resolved) ? resolved : [];
+    if (list.length === 0) throw new FlowOpError("approval.request resolved to no approvers");
+    const approvers = list.map((entry) => {
+      const person = (typeof entry === "string" ? { email: entry } : entry) as Record<string, unknown>;
+      return {
+        email: String(person.email ?? "").trim(),
+        ...(person.name ? { name: String(person.name) } : {}),
+        ...(person.role ? { role: String(person.role) } : {}),
+      };
+    });
+
+    // The subject defaults to the triggering row: an event-triggered flow
+    // almost always asks about the row that fired it, and writing it out again
+    // in the op is noise that can drift from the trigger.
+    const subject = op.subject
+      ? {
+          collection: String(interpolate(op.subject.collection, ctx) ?? "").trim(),
+          id: String(interpolate(op.subject.id, ctx) ?? "").trim(),
+        }
+      : defaultSubject(ctx);
+
+    const summaryRaw = resolveWhole(op.summary as unknown, ctx);
+    const summary = Array.isArray(summaryRaw)
+      ? summaryRaw.map((row) => {
+          const cell = (typeof row === "string" ? { label: "", value: row } : row) as Record<string, unknown>;
+          return { label: String(cell.label ?? ""), value: String(cell.value ?? "") };
+        })
+      : undefined;
+
+    const notify = resolveWhole(op.notifyEmails as unknown, ctx);
+
+    // Everything above is computed BEFORE unwinding, so a malformed op fails
+    // here — as an ordinary op error the flow author can see in the run log —
+    // rather than after the flow has already been checkpointed and there is
+    // nobody left to report to.
+    throw new FlowAwaiting(async (remainingOps, rejectedOps, state) => {
+      const created = await createApprovalRequest(
+        ctx.ctx,
+        tenantId,
+        {
+          title,
+          ...(str(op.message) ? { message: str(op.message)! } : {}),
+          approvers,
+          ...(op.policy ? { policy: op.policy } : {}),
+          ...(op.quorum !== undefined ? { quorum: op.quorum } : {}),
+          ...(op.ordered !== undefined ? { ordered: op.ordered } : {}),
+          ...(op.expiresInHours !== undefined ? { expiresInHours: op.expiresInHours } : {}),
+          ...(subject?.collection && subject.id ? { subject } : {}),
+          ...(summary ? { summary } : {}),
+          ...(op.writeBack
+            ? {
+                writeBack: {
+                  ...(op.writeBack.collection ? { collection: op.writeBack.collection } : {}),
+                  ...(op.writeBack.id
+                    ? { id: String(interpolate(op.writeBack.id, ctx) ?? "").trim() }
+                    : {}),
+                  field: op.writeBack.field,
+                  approvedValue: op.writeBack.approvedValue,
+                  rejectedValue: op.writeBack.rejectedValue,
+                },
+              }
+            : {}),
+          ...(Array.isArray(notify) ? { notifyEmails: notify.map((e) => String(e)) } : {}),
+          continuation: {
+            kind: "flow-continuation",
+            remainingOps,
+            rejectedOps,
+            data: state.data,
+            authSubject: state.authSubject,
+            last: state.last,
+            subject: state.subject,
+          },
+        },
+        ctx.authSubject.userId ?? null,
+      );
+      return { requestId: created.request.id };
+    });
   }
 
   if (op.type === "report.deliver") {
@@ -1009,9 +1154,10 @@ const runOperation = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
   try {
     result = await executeOp(op, ctx);
   } catch (e) {
-    // Always bubble FlowDeferred — onError handlers shouldn't swallow a
-    // checkpoint signal.
-    if (e instanceof FlowDeferred) throw e;
+    // Always bubble checkpoint signals — an onError handler swallowing one
+    // would turn "the flow is waiting" into "the flow failed", and the parked
+    // half would never be created.
+    if (e instanceof FlowDeferred || e instanceof FlowAwaiting) throw e;
     const errResult = {
       ok: false,
       error: e instanceof Error ? e.message : String(e),
@@ -1026,9 +1172,13 @@ const runOperation = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
     // No onError handler — bubble up so the flow halts.
     throw e;
   }
-  if (op.onSuccess && op.onSuccess.length > 0) {
+  // Read structurally rather than off the union: `approval.request` has no
+  // `onSuccess`, on purpose — it always unwinds, so a success branch attached
+  // to it could never run and offering one in the builder would be a lie.
+  const onSuccess = (op as { onSuccess?: Operation[] }).onSuccess;
+  if (onSuccess && onSuccess.length > 0) {
     ctx.last = result;
-    for (const sub of op.onSuccess) {
+    for (const sub of onSuccess) {
       ctx.last = await runOperation(sub, ctx);
     }
   }
@@ -1044,6 +1194,32 @@ const runFlowOps = async (
     try {
       runCtx.last = await runOperation(op, runCtx);
     } catch (e) {
+      if (e instanceof FlowAwaiting) {
+        // Everything after this op is the "once approved" branch; the op's own
+        // `onRejected` is the other. Both are parked together, because the
+        // decision may arrive days later in another process with nothing but
+        // the request row to work from.
+        const remainingOps = flow.operations.slice(i + 1) as Operation[];
+        const rejectedOps = ((op as { onRejected?: Operation[] }).onRejected ?? []) as Operation[];
+        try {
+          const { requestId } = await e.create(remainingOps, rejectedOps, {
+            data: runCtx.data,
+            authSubject: runCtx.authSubject,
+            last: runCtx.last,
+            subject: runCtx.subject ?? null,
+          });
+          console.log(
+            `[flow] ${flow.name} awaiting approval ${requestId} — ${remainingOps.length} op(s) parked`,
+          );
+          return { ok: true, error: null };
+        } catch (err) {
+          // Creating the request is what makes the pause real. If it fails the
+          // flow has NOT paused — it has stopped — and saying so is the only
+          // honest outcome; anything else reports a wait that nobody is in.
+          console.error(`[flow] ${flow.name} approval create failed`, err);
+          return { ok: false, error: err instanceof Error ? err.message : String(err) };
+        }
+      }
       if (e instanceof FlowDeferred) {
         const remainingOps = flow.operations.slice(i + 1) as Operation[];
         if (remainingOps.length === 0) return { ok: true, error: null }; // nothing to resume to
@@ -1055,6 +1231,7 @@ const runFlowOps = async (
           data: runCtx.data,
           authSubject: runCtx.authSubject,
           last: runCtx.last,
+          subject: runCtx.subject ?? null,
         };
         try {
           await enqueueTask(runCtx.ctx, {
@@ -1121,6 +1298,7 @@ export const resumeContinuation = async (
     authSubject: payload.authSubject,
     ctx,
     last: payload.last,
+    subject: payload.subject ?? null,
   };
   return runFlowOps(
     {
@@ -1178,6 +1356,7 @@ export const runFlows = async (
       },
       ctx,
       last: undefined,
+      subject: itemSubject(channel, payload.data),
     };
     const startedAt = Date.now();
     const result = await runFlowOps(flow, runCtx);

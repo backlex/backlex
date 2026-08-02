@@ -59,6 +59,7 @@ export const I = {
   Folder: (p: IconProps) => <Icon {...p}><path d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7l-2-2Z" /></Icon>,
   Users: (p: IconProps) => <Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></Icon>,
   Shield: (p: IconProps) => <Icon {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></Icon>,
+  ShieldCheck: (p: IconProps) => <Icon {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></Icon>,
   Webhook: (p: IconProps) => <Icon {...p}><path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2" /><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06" /><path d="m12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8" /></Icon>,
   Function: (p: IconProps) => <Icon {...p}><path d="M9 18V6h6" /><path d="M5 12h7" /></Icon>,
   Bolt: (p: IconProps) => <Icon {...p} fill="none"><path d="M13 2 4.09 12.97a1 1 0 0 0 .77 1.63h6.56l-2.42 7.4 8.91-10.97a1 1 0 0 0-.77-1.63h-6.56Z" /></Icon>,

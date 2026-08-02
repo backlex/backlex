@@ -1071,6 +1071,10 @@ msgstr "A provider with id \"{id}\" already exists."
 msgid "A publishable key you can ship inside browser and mobile bundles. It only allows appending events and crash reports — it can't read any data back. Cross-origin callers still need their origin on the workspace's allowed-origins list."
 msgstr "A publishable key you can ship inside browser and mobile bundles. It only allows appending events and crash reports — it can't read any data back. Cross-origin callers still need their origin on the workspace's allowed-origins list."
 
+#: src/client/admin/flow-builder.tsx
+msgid "A quorum — N of them"
+msgstr "A quorum — N of them"
+
 #: src/client/pages/shared-record.tsx
 msgid "A read-only view of one record from <0>{collection}</0>."
 msgstr "A read-only view of one record from <0>{collection}</0>."
@@ -1341,6 +1345,10 @@ msgstr "Add <0>created_at</0> and <1>updated_at</1>."
 msgid "Add <0>deleted_at</0>; deletes mark rows instead of removing them."
 msgstr "Add <0>deleted_at</0>; deletes mark rows instead of removing them."
 
+#: src/client/admin/parity/approvals.tsx
+msgid "Add a \"Wait for approval\" step to a flow, and the requests it raises show up here."
+msgstr "Add a \"Wait for approval\" step to a flow, and the requests it raises show up here."
+
 #: src/client/admin/collections-index.tsx
 msgid "Add a <0>status</0> dropdown with <1>draft / review / published / archived</1> + per-option color. List view auto-shows status tabs and badges."
 msgstr "Add a <0>status</0> dropdown with <1>draft / review / published / archived</1> + per-option color. List view auto-shows status tabs and badges."
@@ -1373,6 +1381,10 @@ msgstr "Add a helpful note for editors…"
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Add a language"
 msgstr "Add a language"
+
+#: src/client/pages/approve-request.tsx
+msgid "Add a note"
+msgstr "Add a note"
 
 #: src/client/admin/account-page.tsx
 msgid "Add a one-time code from an authenticator app (Google Authenticator, Authy, 1Password…) as a second step when signing in."
@@ -1797,6 +1809,7 @@ msgstr "All roles"
 
 #: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/approvals.tsx
 msgid "All statuses"
 msgstr "All statuses"
 
@@ -1896,6 +1909,10 @@ msgstr "An admin has turned off public sign-up for this instance. Ask for an inv
 msgid "An end-user who can administer the org from your app. You can add one later."
 msgstr "An end-user who can administer the org from your app. You can add one later."
 
+#: src/client/admin/flow-builder.tsx
+msgid "An expiry writes this one too."
+msgstr "An expiry writes this one too."
+
 #. placeholder {0}: created.email
 #: src/client/admin/pages/users.tsx
 msgid "An invite email was sent to <0>{0}</0>. You can also share the link directly:"
@@ -1938,6 +1955,10 @@ msgstr "Anonymize is usually the lawful option — an invoice generally cannot b
 msgid "Another signer declined it."
 msgstr "Another signer declined it."
 
+#: src/client/admin/parity/approvals.tsx
+msgid "Answered"
+msgstr "Answered"
+
 #: src/client/admin/pages/analytics.tsx
 msgid "any event"
 msgstr "any event"
@@ -1969,6 +1990,10 @@ msgstr "any provider/model id"
 #: src/client/admin/role-editor.tsx
 msgid "any signed-in"
 msgstr "any signed-in"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Anyone — the first approval wins"
+msgstr "Anyone — the first approval wins"
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Anyone with the URL can fetch this file."
@@ -2073,6 +2098,19 @@ msgstr "Applying is additive: collections that already exist are skipped, new on
 msgid "Applying…"
 msgstr "Applying…"
 
+#: src/client/admin/parity/approvals.tsx
+#: src/client/admin/ui.tsx
+msgid "Approvals"
+msgstr "Approvals"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Approvals needed"
+msgstr "Approvals needed"
+
+#: src/client/pages/approve-request.tsx
+msgid "Approve"
+msgstr "Approve"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Approve & run"
 msgstr "Approve & run"
@@ -2080,6 +2118,19 @@ msgstr "Approve & run"
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Approve the authorization screen — the connector inherits your roles."
 msgstr "Approve the authorization screen — the connector inherits your roles."
+
+#: src/client/admin/parity/approvals.tsx
+#: src/client/pages/approve-request.tsx
+msgid "Approved"
+msgstr "Approved"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Approvers"
+msgstr "Approvers"
+
+#: src/client/pages/approve-request.tsx
+msgid "Approving…"
+msgstr "Approving…"
 
 #: src/client/admin/item-views.tsx
 msgid "April"
@@ -2771,6 +2822,7 @@ msgstr "Cancel upload"
 
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/parity/approvals.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/signatures.tsx
 msgid "Cancelled"
@@ -3125,6 +3177,7 @@ msgstr "close"
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/approvals.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/sheet.tsx
@@ -5823,6 +5876,10 @@ msgstr "Every panel runs with this flow's identity, then prints to a PDF."
 msgid "Every status"
 msgstr "Every status"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Every step after this one runs once it is approved. Steps for a rejection go on the step's rejected branch."
+msgstr "Every step after this one runs once it is approved. Steps for a rejection go on the step's rejected branch."
+
 #: src/client/admin/role-mcp-guards.tsx
 msgid "Every tool"
 msgstr "Every tool"
@@ -5834,6 +5891,10 @@ msgstr "Every write is versioned. Inspect, diff, or revert any prior state."
 #: src/client/admin/role-editor.tsx
 msgid "everyone"
 msgstr "everyone"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Everyone — one rejection ends it"
+msgstr "Everyone — one rejection ends it"
 
 #: src/client/pages/sign-document.tsx
 msgid "Everyone has signed. A copy has been emailed to you."
@@ -5879,12 +5940,14 @@ msgstr "Expects"
 msgid "expired"
 msgstr "expired"
 
+#: src/client/admin/parity/approvals.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/signatures.tsx
 msgid "Expired"
 msgstr "Expired"
 
 #: src/client/admin/parity/app-orgs.tsx
+#: src/client/admin/parity/approvals.tsx
 msgid "expires"
 msgstr "expires"
 
@@ -5902,6 +5965,10 @@ msgstr "Expires {0}"
 #: src/client/admin/parity/signatures.tsx
 msgid "Expires in (days)"
 msgstr "Expires in (days)"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Expires in (hours)"
+msgstr "Expires in (hours)"
 
 #: src/client/admin/item-editor.tsx
 msgid "Expiry cleared."
@@ -7122,6 +7189,10 @@ msgstr "in <0>{folder}/</0>"
 msgid "In Google Authenticator choose “Enter a setup key”, paste the key above, and pick “Time based”."
 msgstr "In Google Authenticator choose “Enter a setup key”, paste the key above, and pick “Time based”."
 
+#: src/client/admin/parity/approvals.tsx
+msgid "in order"
+msgstr "in order"
+
 #: src/client/admin/flow-builder.tsx
 msgid "In order — each link waits for the one above"
 msgstr "In order — each link waits for the one above"
@@ -7469,6 +7540,10 @@ msgstr "It may have been replaced by a newer one."
 #: src/client/pages/book.tsx
 msgid "It may have been replaced, or the calendar may be closed."
 msgstr "It may have been replaced, or the calendar may be closed."
+
+#: src/client/pages/approve-request.tsx
+msgid "It may have been withdrawn, already used, or replaced by a newer one."
+msgstr "It may have been withdrawn, already used, or replaced by a newer one."
 
 #: src/client/admin/item-editor.tsx
 msgid "Item archived."
@@ -9182,6 +9257,10 @@ msgstr "No agents yet — click + New agent."
 msgid "no AI key configured"
 msgstr "no AI key configured"
 
+#: src/client/admin/parity/approvals.tsx
+msgid "no answer yet"
+msgstr "no answer yet"
+
 #: src/client/pages/api-keys.tsx
 msgid "No API keys yet"
 msgstr "No API keys yet"
@@ -9972,6 +10051,10 @@ msgstr "Nothing is free in the next two weeks."
 msgid "Nothing is removed at this step — the preview only counts."
 msgstr "Nothing is removed at this step — the preview only counts."
 
+#: src/client/admin/parity/approvals.tsx
+msgid "Nothing is waiting on anybody"
+msgstr "Nothing is waiting on anybody"
+
 #: src/client/admin/pages/logs.tsx
 msgid "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
 msgstr "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
@@ -10156,6 +10239,10 @@ msgstr "On create"
 #: src/client/admin/flow-builder.tsx
 msgid "On error"
 msgstr "On error"
+
+#: src/client/admin/flow-builder.tsx
+msgid "On expiry the request rejects — nobody answering is not the same as approval."
+msgstr "On expiry the request rejects — nobody answering is not the same as approval."
 
 #: src/client/admin/pages/forms.tsx
 msgid "On submit"
@@ -10400,6 +10487,10 @@ msgstr "Or type a new group name…"
 msgid "or with email"
 msgstr "or with email"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Order"
+msgstr "Order"
+
 #: src/client/admin/pages/payments.tsx
 msgid "Order cancelled"
 msgstr "Order cancelled"
@@ -10433,6 +10524,10 @@ msgstr "Other"
 #: src/client/admin/parity/translations.tsx
 msgid "Other locales stay empty until filled in the matrix."
 msgstr "Other locales stay empty until filled in the matrix."
+
+#: src/client/admin/parity/approvals.tsx
+msgid "Outcome reason"
+msgstr "Outcome reason"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Outgoing HTTP on collection events. Failed deliveries retry with exponential backoff."
@@ -10736,6 +10831,7 @@ msgstr "pending"
 
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/parity/approvals.tsx
 msgid "Pending"
 msgstr "Pending"
 
@@ -11205,6 +11301,10 @@ msgstr "Please attach a file for \"{0}\""
 #: src/client/pages/public-form.tsx
 msgid "Please fill in \"{0}\""
 msgstr "Please fill in \"{0}\""
+
+#: src/client/pages/approve-request.tsx
+msgid "Please say why you are rejecting this."
+msgstr "Please say why you are rejecting this."
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
@@ -11812,6 +11912,10 @@ msgstr "Realtime"
 msgid "Reason"
 msgstr "Reason"
 
+#: src/client/pages/approve-request.tsx
+msgid "Reason — required to reject, optional to approve"
+msgstr "Reason — required to reject, optional to approve"
+
 #: src/client/pages/sign-document.tsx
 msgid "Reason for declining"
 msgstr "Reason for declining"
@@ -12023,6 +12127,7 @@ msgid "Reinstall / upgrade"
 msgstr "Reinstall / upgrade"
 
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/pages/approve-request.tsx
 msgid "Reject"
 msgstr "Reject"
 
@@ -12038,11 +12143,20 @@ msgstr "Reject responses whose assertion isn't signed by the IdP."
 msgid "Reject unauthorized certs (recommended)"
 msgstr "Reject unauthorized certs (recommended)"
 
+#: src/client/admin/parity/approvals.tsx
+#: src/client/pages/approve-request.tsx
+msgid "Rejected"
+msgstr "Rejected"
+
 #. placeholder {0}: result.res.ms
 #. placeholder {1}: result.res.verdict?.reason ?? "—"
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Rejected in {0}ms: {1}"
 msgstr "Rejected in {0}ms: {1}"
+
+#: src/client/pages/approve-request.tsx
+msgid "Rejecting…"
+msgstr "Rejecting…"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "relation"
@@ -12282,6 +12396,10 @@ msgstr "Request"
 #: src/client/pages/reset-password.tsx
 msgid "Request a new link"
 msgstr "Request a new link"
+
+#: src/client/admin/parity/approvals.tsx
+msgid "Request withdrawn"
+msgstr "Request withdrawn"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/payments.tsx
@@ -13878,6 +13996,10 @@ msgstr "Settings → MCP → Add new MCP server → paste the JSON."
 msgid "Settings → MCP → Add. Same JSON shape Claude Desktop uses. (Or skip the key and connect over OAuth above.)"
 msgstr "Settings → MCP → Add. Same JSON shape Claude Desktop uses. (Or skip the key and connect over OAuth above.)"
 
+#: src/client/admin/parity/approvals.tsx
+msgid "settled"
+msgstr "settled"
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "Severity"
 msgstr "Severity"
@@ -15118,6 +15240,10 @@ msgstr "Texts every active number the user registered. None is a silent no-op."
 msgid "Thank you"
 msgstr "Thank you"
 
+#: src/client/pages/approve-request.tsx
+msgid "Thank you — your answer is recorded"
+msgstr "Thank you — your answer is recorded"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Thanks — we got it!"
 msgstr "Thanks — we got it!"
@@ -15495,6 +15621,10 @@ msgstr "This link is no longer available"
 msgid "This link is not available"
 msgstr "This link is not available"
 
+#: src/client/pages/approve-request.tsx
+msgid "This link is not valid"
+msgstr "This link is not valid"
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "This link is shown once — rotating the token later replaces it and kills the old one."
 #~ msgstr "This link is shown once — rotating the token later replaces it and kills the old one."
@@ -15534,6 +15664,10 @@ msgstr "This removes the panel from <0>saved_panels</0> and any dashboards that 
 #: src/client/admin/item-editor.tsx
 msgid "This removes the row from <0>c_{slug}</0>. Revisions remain available."
 msgstr "This removes the row from <0>c_{slug}</0>. Revisions remain available."
+
+#: src/client/pages/approve-request.tsx
+msgid "This request is decided in order — the next person is asked once you answer."
+msgstr "This request is decided in order — the next person is asked once you answer."
 
 #. placeholder {0}: confirmRev.v
 #. placeholder {1}: fmtRevTs(confirmRev.createdAt)
@@ -16464,6 +16598,14 @@ msgstr "value of {f}"
 msgid "value or $user.id"
 msgstr "value or $user.id"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Value when approved"
+msgstr "Value when approved"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Value when rejected"
+msgstr "Value when rejected"
+
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "VAPID keypair generated — review and Save to store it."
 msgstr "VAPID keypair generated — review and Save to store it."
@@ -16685,13 +16827,25 @@ msgstr "Welcome back. Pick up where you left off — content, data, and APIs all
 msgid "What are you looking for?"
 msgstr "What are you looking for?"
 
+#: src/client/admin/parity/approvals.tsx
+msgid "What is waiting on a person — and what they decided."
+msgstr "What is waiting on a person — and what they decided."
+
 #: src/client/admin/pages/agents.tsx
 msgid "What it has learned"
 msgstr "What it has learned"
 
+#: src/client/admin/flow-builder.tsx
+msgid "What settles it"
+msgstr "What settles it"
+
 #: src/client/admin/pages/agents.tsx
 msgid "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
 msgstr "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
+
+#: src/client/admin/flow-builder.tsx
+msgid "What the approver is told they are deciding."
+msgstr "What the approver is told they are deciding."
 
 #: src/client/admin/flow-builder.tsx
 msgid "What the customer sees on the checkout line item."
@@ -16800,6 +16954,10 @@ msgstr "Which ID-token claim carries the user's email address."
 msgid "Whichever agent fits best"
 msgstr "Whichever agent fits best"
 
+#: src/client/admin/parity/approvals.tsx
+msgid "Who was asked, who answered, and why."
+msgstr "Who was asked, who answered, and why."
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "Whole numbers only (no decimals)"
 msgstr "Whole numbers only (no decimals)"
@@ -16851,6 +17009,10 @@ msgstr "Wire this API key into a Model Context Protocol client (Claude Desktop, 
 #: src/client/admin/pages/analytics.tsx
 msgid "with a session id"
 msgstr "with a session id"
+
+#: src/client/admin/parity/approvals.tsx
+msgid "Withdraw"
+msgstr "Withdraw"
 
 #: src/client/admin/items.tsx
 msgid "Words"
@@ -16953,6 +17115,10 @@ msgstr "Write the key back to"
 msgid "Write the link onto"
 msgstr "Write the link onto"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Write the outcome to"
+msgstr "Write the outcome to"
+
 #: src/client/admin/pages/overview.tsx
 msgid "Writes (1h)"
 msgstr "Writes (1h)"
@@ -16993,6 +17159,12 @@ msgstr "Yes"
 msgid "You are a helpful assistant for our workspace…"
 msgstr "You are a helpful assistant for our workspace…"
 
+#. placeholder {0}: view.you.position
+#. placeholder {1}: view.you.of
+#: src/client/pages/approve-request.tsx
+msgid "You are approver {0} of {1}."
+msgstr "You are approver {0} of {1}."
+
 #: src/client/pages/book.tsx
 msgid "You are booked in."
 msgstr "You are booked in."
@@ -17000,6 +17172,10 @@ msgstr "You are booked in."
 #: src/client/pages/sign-document.tsx
 msgid "You declined to sign this document. The sender has been notified."
 msgstr "You declined to sign this document. The sender has been notified."
+
+#: src/client/pages/approve-request.tsx
+msgid "You have been asked to approve this."
+msgstr "You have been asked to approve this."
 
 #: src/client/admin/item-editor.tsx
 msgid "You have edits that haven't been saved. Leaving will lose them."
@@ -17056,6 +17232,10 @@ msgstr "your API key"
 #: src/client/admin/flow-builder.tsx
 msgid "your app's thank-you page"
 msgstr "your app's thank-you page"
+
+#: src/client/pages/approve-request.tsx
+msgid "Your decision has been recorded. You can close this page."
+msgstr "Your decision has been recorded. You can close this page."
 
 #: src/client/admin/account-page.tsx
 msgid "Your display name"

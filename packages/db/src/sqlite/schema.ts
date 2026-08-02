@@ -1730,6 +1730,106 @@ export const signatureSigners = sqliteTable(
 );
 
 /**
+ * A record waiting on a human decision.
+ *
+ * Fourteen of the twenty-six schema templates carry a collection whose status
+ * goes `pending → approved | rejected` — leave requests, expense claims, offer
+ * approvals, vendor applications, engineering change orders. Every one of them
+ * was hand-rolled the same way: a status column, a notification, an admin who
+ * edits the row, and no record of who decided or why.
+ */
+export const approvalRequests = sqliteTable(
+  "approval_requests",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    /** What the approver is told they are deciding. */
+    title: text("title").notNull(),
+    /** Optional note carried into the invitation email. */
+    message: text("message"),
+    /** The row the decision is ABOUT. Nullable: an approval can gate a flow
+     *  that has no single subject row (a nightly payout batch, say). */
+    subjectCollection: text("subject_collection"),
+    subjectId: text("subject_id"),
+    /** A frozen, display-only rendering of the subject at request time —
+     *  `[{ label, value }]`. Same reason the signature snapshot exists: an
+     *  approver who is later asked "what did you see?" must be answerable
+     *  without re-deriving it from a row that has since moved on. */
+    summary: text("summary", { mode: "json" }).$type<unknown[]>(),
+    /** all | any | quorum — how many approvals settle it. */
+    policy: text("policy").notNull().default("all"),
+    /** Only read when `policy = 'quorum'`. */
+    quorum: integer("quorum").notNull().default(1),
+    /** Sequential approval — each approver's link only works once the one
+     *  before has approved. Off means anyone may decide at any time. */
+    ordered: integer("ordered", { mode: "boolean" }).notNull().default(false),
+    /** pending | approved | rejected | expired | cancelled. Unlike a signature
+     *  request, expiry IS written here, because expiring has a CONSEQUENCE —
+     *  the waiting flow has to be resumed down its rejected branch. A derived
+     *  status would leave that continuation parked forever. */
+    status: text("status").notNull().default("pending"),
+    /** The checkpointed flow continuation, when an `approval.request` op is
+     *  waiting on this. Shape matches `ResumePayload`. */
+    continuation: text("continuation", { mode: "json" }).$type<unknown>(),
+    /** The `scheduled_tasks` row that will expire this request. Kept so
+     *  settling early can delete it instead of leaving a tick that wakes to
+     *  find nothing to do. */
+    timeoutTaskId: text("timeout_task_id"),
+    /** `{ collection, id, field, approvedValue, rejectedValue }` — what is
+     *  patched onto the subject row once the outcome is known. */
+    writeBack: text("write_back", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    /** Extra addresses that receive the outcome. */
+    notifyEmails: text("notify_emails", { mode: "json" }).$type<string[]>(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+    settledAt: integer("settled_at", { mode: "timestamp_ms" }),
+    /** Why it ended the way it did — the deciding approver's reason, or the
+     *  operator's note on a cancellation. */
+    outcomeReason: text("outcome_reason"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("approval_requests_tenant_idx").on(t.tenantId),
+    index("approval_requests_status_idx").on(t.tenantId, t.status),
+    index("approval_requests_subject_idx").on(t.subjectCollection, t.subjectId),
+  ],
+);
+
+export const approvalApprovers = sqliteTable(
+  "approval_approvers",
+  {
+    id: text("id").primaryKey(),
+    requestId: text("request_id").notNull(),
+    email: text("email").notNull(),
+    name: text("name"),
+    /** "Line manager", "Finance" — shown beside the decision in the audit
+     *  trail, so a reader knows in what capacity someone approved. */
+    role: text("role"),
+    orderIndex: integer("order_index").notNull().default(0),
+    /** SHA-256 of the plaintext link token — the token itself is shown once,
+     *  in the email, exactly like a signature link. */
+    tokenHash: text("token_hash").notNull(),
+    /** pending | viewed | approved | rejected */
+    status: text("status").notNull().default("pending"),
+    sentAt: integer("sent_at", { mode: "timestamp_ms" }),
+    viewedAt: integer("viewed_at", { mode: "timestamp_ms" }),
+    decidedAt: integer("decided_at", { mode: "timestamp_ms" }),
+    /** Free text the approver typed. Required on a rejection by default —
+     *  a refusal with no reason is the thing operators complain about. */
+    reason: text("reason"),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("approval_approvers_token_idx").on(t.tokenHash),
+    index("approval_approvers_request_idx").on(t.requestId, t.orderIndex),
+  ],
+);
+
+/**
  * A bookable thing — a dentist, a court, a viewing agent, a table by the window.
  *
  * Ten of the schema templates carry a slot-shaped collection and none of them

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_APPROVERS, MAX_EXPIRY_HOURS } from "./approvals";
 import type { Condition } from "./permission";
 
 const HttpMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
@@ -199,6 +200,65 @@ export type Operation =
         printBackground?: boolean;
       };
       onSuccess?: Operation[];
+      onError?: Operation[];
+    }
+  /**
+   * Stop, and wait for a person.
+   *
+   * The only op that suspends a flow on something other than the clock.
+   * Everything after it at the TOP LEVEL of the flow is the "once approved"
+   * branch: it is checkpointed onto the approval request and resumed when the
+   * decision lands, exactly the way `delay` checkpoints onto `scheduled_tasks`.
+   * `onRejected` is the other branch — a rejection (or an expiry, which is a
+   * rejection nobody bothered to type) runs it and the flow ends there.
+   *
+   * Because the continuation is "the rest of the flow", this op cannot appear
+   * inside `onSuccess` / `onError` / an `if` branch: there is no checkpoint
+   * scope there, and unlike a long `delay` it cannot degrade to waiting inline.
+   * The compiler rejects a nested one rather than silently creating a request
+   * that nothing will ever resume.
+   *
+   * `{{ $last }}` on resume carries `{ requestId, outcome, decidedBy, reason,
+   * approvals, rejections }`.
+   */
+  | {
+      type: "approval.request";
+      /** What the approver is told they are deciding. Templated. */
+      title: string;
+      /** A note carried into the invitation email. Templated. */
+      message?: string;
+      /**
+       * Who decides. `email` is templated (`{{ data.manager_email }}`); the
+       * whole list may also be a template resolving to an array, for a row
+       * that carries its own approvers.
+       */
+      approvers:
+        | Array<{ email: string; name?: string; role?: string }>
+        | string;
+      /** all (default) | any | quorum. */
+      policy?: "all" | "any" | "quorum";
+      /** Only read when `policy` is `quorum`. */
+      quorum?: number;
+      /** Each link only opens once the one before it has decided. */
+      ordered?: boolean;
+      /** Defaults to 72. The request expires — and so rejects — after this. */
+      expiresInHours?: number;
+      /** The row the decision is about; defaults to the triggering row. */
+      subject?: { collection: string; id: string };
+      /** `[{ label, value }]` shown to the approver, frozen at send time. */
+      summary?: Array<{ label: string; value: string }> | string;
+      /** What is patched onto the subject row once the outcome is known. */
+      writeBack?: {
+        collection?: string;
+        id?: string;
+        field: string;
+        approvedValue?: unknown;
+        rejectedValue?: unknown;
+      };
+      /** Extra addresses that receive the outcome. Templated. */
+      notifyEmails?: string[] | string;
+      /** Runs on a rejection or an expiry. The rest of the flow does not. */
+      onRejected?: Operation[];
       onError?: Operation[];
     }
   | {
@@ -417,6 +477,7 @@ export const OPERATION_TYPES: OperationType[] = [
   "document.render",
   "document.sign",
   "report.deliver",
+  "approval.request",
   "payment.checkout",
   "payment.refund",
   "function",
@@ -584,6 +645,62 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       onSuccess: z.array(OperationSchema).optional(),
       onError: z.array(OperationSchema).optional(),
     }),
+    z
+      .object({
+        type: z.literal("approval.request"),
+        title: z.string().min(1).max(300),
+        message: z.string().max(2000).optional(),
+        // Same reasoning as `document.sign`'s signers: a row that carries its
+        // own approvers cannot be written out statically, and the addresses
+        // are almost always `{{ … }}` at save time, so they are validated
+        // where the value is real rather than here.
+        approvers: z.union([
+          z
+            .array(
+              z.object({
+                email: z.string().min(1).max(320),
+                name: z.string().max(120).optional(),
+                role: z.string().max(80).optional(),
+              }),
+            )
+            .min(1)
+            .max(MAX_APPROVERS),
+          z.string().min(1).max(500),
+        ]),
+        policy: z.enum(["all", "any", "quorum"]).optional(),
+        quorum: z.number().int().min(1).max(MAX_APPROVERS).optional(),
+        ordered: z.boolean().optional(),
+        expiresInHours: z.number().int().min(1).max(MAX_EXPIRY_HOURS).optional(),
+        subject: z
+          .object({ collection: z.string().min(1), id: z.string().min(1) })
+          .optional(),
+        summary: z
+          .union([
+            z.array(z.object({ label: z.string().max(120), value: z.string().max(2000) })).max(40),
+            z.string().min(1).max(500),
+          ])
+          .optional(),
+        writeBack: z
+          .object({
+            collection: z.string().min(1).optional(),
+            id: z.string().min(1).optional(),
+            field: z.string().min(1),
+            approvedValue: z.unknown().optional(),
+            rejectedValue: z.unknown().optional(),
+          })
+          .optional(),
+        notifyEmails: z
+          .union([z.array(z.string().max(320)).max(10), z.string().max(500)])
+          .optional(),
+        onRejected: z.array(OperationSchema).optional(),
+        onError: z.array(OperationSchema).optional(),
+      })
+      // A quorum with no number is the one mistake that silently changes the
+      // meaning of the op — it would fall back to 1 and approve on the first
+      // yes, which is `any` wearing a different name.
+      .refine((op) => op.policy !== "quorum" || typeof op.quorum === "number", {
+        message: "approval.request with `policy: \"quorum\"` needs `quorum`",
+      }),
     z.object({
       type: z.literal("transform"),
       value: z.unknown(),

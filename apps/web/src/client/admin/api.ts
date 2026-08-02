@@ -1449,6 +1449,88 @@ export const signPublicApi = {
   documentUrl: (token: string) => `${API_BASE}/api/public/sign/${encodeURIComponent(token)}/document`,
 };
 
+export interface ApiApprover {
+  id: string;
+  email: string;
+  name: string | null;
+  role: string | null;
+  order: number;
+  status: "pending" | "viewed" | "approved" | "rejected";
+  sentAt?: unknown;
+  viewedAt?: unknown;
+  decidedAt?: unknown;
+  reason: string | null;
+  ip: string | null;
+  userAgent: string | null;
+}
+
+export interface ApiApprovalRequest {
+  id: string;
+  title: string;
+  message: string | null;
+  subject: { collection: string; id: string } | null;
+  summary: Array<{ label: string; value: string }>;
+  policy: "all" | "any" | "quorum";
+  quorum: number;
+  ordered: boolean;
+  status: "pending" | "approved" | "rejected" | "expired" | "cancelled";
+  expiresAt?: unknown;
+  settledAt?: unknown;
+  outcomeReason: string | null;
+  writeBack: Record<string, unknown> | null;
+  createdBy: string | null;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+  approvers: ApiApprover[];
+}
+
+/** Approvals, operator side. There is no decide call here on purpose — that is
+ *  the approver's act, authenticated by their own link. */
+export const approvalsApi = {
+  list: (status?: string) =>
+    api<Envelope<ApiApprovalRequest[]>>(
+      `/api/admin/approvals${status ? `?status=${encodeURIComponent(status)}` : ""}`,
+    ),
+  get: (id: string) => api<Envelope<ApiApprovalRequest>>(`/api/admin/approvals/${encodeURIComponent(id)}`),
+  cancel: (id: string, reason: string | null) =>
+    api<Envelope<ApiApprovalRequest>>(`/api/admin/approvals/${encodeURIComponent(id)}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+};
+
+export interface ApiApprovalDecisionView {
+  title: string;
+  message: string | null;
+  summary: Array<{ label: string; value: string }>;
+  status: string;
+  policy: string;
+  ordered: boolean;
+  expiresAt?: unknown;
+  you: {
+    email: string;
+    name: string | null;
+    role: string | null;
+    status: string;
+    position: number;
+    of: number;
+  };
+  decided: Array<{ name: string | null; email: string; status: string; decidedAt?: unknown }>;
+  /** Non-null when the page must explain why it cannot be acted on. */
+  blocked: string | null;
+}
+
+/** The approver's side — unauthenticated, token in the path. */
+export const approvePublicApi = {
+  get: (token: string) =>
+    api<Envelope<ApiApprovalDecisionView>>(`/api/public/approve/${encodeURIComponent(token)}`),
+  decide: (token: string, decision: "approve" | "reject", reason?: string) =>
+    api<Envelope<{ status: string; outcome: string }>>(
+      `/api/public/approve/${encodeURIComponent(token)}`,
+      { method: "POST", body: JSON.stringify({ decision, ...(reason ? { reason } : {}) }) },
+    ),
+};
+
 export interface ApiBookerView {
   id: string;
   resource: { key: string; name: string; timeZone: string };

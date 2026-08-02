@@ -92,6 +92,7 @@ import {
   DatabasePage,
   EmailTemplatesPage,
   DocumentsPage,
+  ApprovalsPage,
   SignaturesPage,
   BookingPage,
   InsightsPage,
@@ -1103,6 +1104,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "api-keys" && <ApiKeys />}
             {activeNav === "email-templates" && <EmailTemplatesPage pushToast={pushToast} />}
             {activeNav === "documents" && <DocumentsPage pushToast={pushToast} />}
+            {activeNav === "approvals" && <ApprovalsPage pushToast={pushToast} />}
             {activeNav === "signatures" && <SignaturesPage pushToast={pushToast} />}
             {activeNav === "booking" && <BookingPage pushToast={pushToast} />}
             {activeNav === "settings" && <SettingsPage adapter={tweaks.adapter} pushToast={pushToast} />}

@@ -6,6 +6,7 @@ export * from "./condition";
 export * from "./flows";
 export * from "./email";
 export * from "./ics";
+export * from "./approvals";
 export * from "./booking";
 export * from "./embedding-models";
 export * from "./panels";

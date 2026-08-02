@@ -2051,6 +2051,73 @@ export const signatureSigners = pgTable(
 );
 
 /**
+ * A record waiting on a human decision. SQLite/D1 twin:
+ * packages/db/src/sqlite/schema.ts, where the column-level reasoning lives.
+ */
+export const approvalRequests = pgTable(
+  "approval_requests",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    title: text("title").notNull(),
+    message: text("message"),
+    subjectCollection: text("subject_collection"),
+    subjectId: text("subject_id"),
+    summary: jsonb("summary").$type<unknown[]>(),
+    /** all | any | quorum */
+    policy: text("policy").notNull().default("all"),
+    quorum: integer("quorum").notNull().default(1),
+    ordered: boolean("ordered").notNull().default(false),
+    /** pending | approved | rejected | expired | cancelled. Expiry IS written
+     *  here (unlike a signature request) because it has to resume a waiting
+     *  flow down its rejected branch. */
+    status: text("status").notNull().default("pending"),
+    continuation: jsonb("continuation").$type<unknown>(),
+    timeoutTaskId: text("timeout_task_id"),
+    writeBack: jsonb("write_back").$type<Record<string, unknown> | null>(),
+    notifyEmails: jsonb("notify_emails").$type<string[]>(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+    outcomeReason: text("outcome_reason"),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("approval_requests_tenant_idx").on(t.tenantId),
+    index("approval_requests_status_idx").on(t.tenantId, t.status),
+    index("approval_requests_subject_idx").on(t.subjectCollection, t.subjectId),
+  ],
+);
+
+export const approvalApprovers = pgTable(
+  "approval_approvers",
+  {
+    id: text("id").primaryKey(),
+    requestId: text("request_id").notNull(),
+    email: text("email").notNull(),
+    name: text("name"),
+    role: text("role"),
+    orderIndex: integer("order_index").notNull().default(0),
+    tokenHash: text("token_hash").notNull(),
+    /** pending | viewed | approved | rejected */
+    status: text("status").notNull().default("pending"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    viewedAt: timestamp("viewed_at", { withTimezone: true }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    reason: text("reason"),
+    ip: text("ip"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("approval_approvers_token_idx").on(t.tokenHash),
+    index("approval_approvers_request_idx").on(t.requestId, t.orderIndex),
+  ],
+);
+
+/**
  * A bookable thing — a dentist, a court, a viewing agent, a table by the window.
  * SQLite/D1 twin: packages/db/src/sqlite/schema.ts, where the column-level
  * reasoning lives.

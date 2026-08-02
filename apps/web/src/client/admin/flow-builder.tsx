@@ -40,6 +40,7 @@ const ACTIONS = [
   { id: "payment.refund", label: "Refund payment", desc: "Give back some or all of a payment", icon: "CreditCard" },
   { id: "document.render", label: "Render document", desc: "Row + HTML template → a stored PDF", icon: "ScrollText" },
   { id: "document.sign", label: "Send for signature", desc: "Freeze the document and email a link per signer", icon: "Signature" },
+  { id: "approval.request", label: "Wait for approval", desc: "Pause until a person approves or rejects", icon: "ShieldCheck" },
   { id: "report.deliver", label: "Deliver report", desc: "Print a dashboard to PDF and mail it", icon: "BarChart" },
   { id: "transform", label: "Transform", desc: "Compute a value and pipe it into $last", icon: "Function" },
   { id: "run-script", label: "Run script", desc: "Sandboxed JS — full ctx, `data`, `last`", icon: "Code" },
@@ -512,6 +513,24 @@ function defaultConfigFor(kind: string, type: string) {
       writeBackItemId: "{{ data.id }}",
       writeBackField: "",
     };
+  // Seeded for the shape 14 of the 26 templates already have: a row with a
+  // status column, waiting on somebody. The write-back target defaults to the
+  // triggering row because that is nearly always what is being approved.
+  if (kind === "action" && type === "approval.request")
+    return {
+      title: "",
+      message: "",
+      approvers: "{{ data.manager_email }}",
+      policy: "all",
+      quorum: "",
+      ordered: false,
+      expiresInHours: "",
+      writeBackCollection: "",
+      writeBackItemId: "{{ data.id }}",
+      writeBackField: "",
+      approvedValue: "approved",
+      rejectedValue: "rejected",
+    };
   // Seeded for the cadence this op exists for: a scheduled report goes to a
   // person, so `to` starts as a prompt rather than blank, and the page setup
   // starts at the workspace default rather than being asked about.
@@ -965,6 +984,60 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
                 <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Field</Trans></label><Input value={node.config.writeBackField || ""} onChange={(e) => onChange({ config: { writeBackField: e.target.value } })} placeholder="signed_doc" /></div>
               </>
             ) : null}
+          </>
+        )}
+        {node.kind === "action" && node.type === "approval.request" && (
+          <>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Title</Trans></label><Input value={node.config.title || ""} onChange={(e) => onChange({ config: { title: e.target.value } })} placeholder="Leave request from {{ data.name }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>What the approver is told they are deciding.</Trans></span></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Approvers</Trans></label><Textarea rows={2} value={node.config.approvers || ""} onChange={(e) => onChange({ config: { approvers: e.target.value } })} placeholder="{{ data.manager_email }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>One per line — email, optionally :name:role. A single placeholder may also resolve to a whole list carried on the row.</Trans></span></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Note in the invitation</Trans></label><Input value={node.config.message || ""} onChange={(e) => onChange({ config: { message: e.target.value } })} /></div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>What settles it</Trans></label>
+              <Select
+                value={node.config.policy || "all"}
+                onChange={(v) => onChange({ config: { policy: v } })}
+                className="min-w-0"
+                options={[
+                  { value: "all", label: t`Everyone — one rejection ends it` },
+                  { value: "any", label: t`Anyone — the first approval wins` },
+                  { value: "quorum", label: t`A quorum — N of them` },
+                ]}
+              />
+            </div>
+            {node.config.policy === "quorum" ? (
+              <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Approvals needed</Trans></label><Input value={node.config.quorum || ""} onChange={(e) => onChange({ config: { quorum: e.target.value } })} placeholder="2" /></div>
+            ) : null}
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Order</Trans></label>
+              <Select
+                value={node.config.ordered ? "ordered" : "any"}
+                onChange={(v) => onChange({ config: { ordered: v === "ordered" } })}
+                className="min-w-0"
+                options={[
+                  { value: "any", label: t`Anyone, any time` },
+                  { value: "ordered", label: t`In order — each link waits for the one above` },
+                ]}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Expires in (hours)</Trans></label><Input value={node.config.expiresInHours || ""} onChange={(e) => onChange({ config: { expiresInHours: e.target.value } })} placeholder="72" /><span className="text-[11.5px] text-muted-foreground"><Trans>On expiry the request rejects — nobody answering is not the same as approval.</Trans></span></div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Write the outcome to</Trans></label>
+              <Select
+                value={node.config.writeBackCollection || ""}
+                onChange={(v) => onChange({ config: { writeBackCollection: v } })}
+                className="min-w-0"
+                options={[{ value: "", label: t`(don't write it anywhere)` }, ...collections.map((c) => ({ value: c.slug, label: c.slug }))]}
+              />
+            </div>
+            {node.config.writeBackCollection ? (
+              <>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Row id</Trans></label><Input value={node.config.writeBackItemId || ""} onChange={(e) => onChange({ config: { writeBackItemId: e.target.value } })} placeholder="{{ data.id }}" /></div>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Field</Trans></label><Input value={node.config.writeBackField || ""} onChange={(e) => onChange({ config: { writeBackField: e.target.value } })} placeholder="status" /></div>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Value when approved</Trans></label><Input value={node.config.approvedValue || ""} onChange={(e) => onChange({ config: { approvedValue: e.target.value } })} placeholder="approved" /></div>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Value when rejected</Trans></label><Input value={node.config.rejectedValue || ""} onChange={(e) => onChange({ config: { rejectedValue: e.target.value } })} placeholder="rejected" /><span className="text-[11.5px] text-muted-foreground"><Trans>An expiry writes this one too.</Trans></span></div>
+              </>
+            ) : null}
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Every step after this one runs once it is approved. Steps for a rejection go on the step's rejected branch.</Trans></span>
           </>
         )}
         {node.kind === "action" && node.type === "report.deliver" && (

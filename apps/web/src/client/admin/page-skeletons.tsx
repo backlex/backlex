@@ -759,6 +759,17 @@ function BookingSkeletonImpl() {
 
 /** Signatures — header with a filter + a send button, then one collapsed row
  *  per request in a single card. */
+/** Approvals — header (1 filter), then the outstanding-requests list. Mirrors
+ *  the real page so the placeholder does not jump when it resolves. */
+function ApprovalsSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-4.5">
+      <HeaderSkeleton actions={1} />
+      <ListCardSkeleton rows={6} />
+    </div>
+  );
+}
+
 function SignaturesSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
@@ -1091,6 +1102,7 @@ export const RevisionsSkeleton = withSkeletonDelay(RevisionsSkeletonImpl);
 export const TranslationsSkeleton = withSkeletonDelay(TranslationsSkeletonImpl);
 export const EmailTemplatesSkeleton = withSkeletonDelay(EmailTemplatesSkeletonImpl);
 export const DocumentsSkeleton = withSkeletonDelay(DocumentsSkeletonImpl);
+export const ApprovalsSkeleton = withSkeletonDelay(ApprovalsSkeletonImpl);
 export const SignaturesSkeleton = withSkeletonDelay(SignaturesSkeletonImpl);
 export const BookingSkeleton = withSkeletonDelay(BookingSkeletonImpl);
 export const AuthSettingsSkeleton = withSkeletonDelay(AuthSettingsSkeletonImpl);

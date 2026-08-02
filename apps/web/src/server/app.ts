@@ -81,7 +81,9 @@ import { schemaVersionsRoutes } from "./routes/schema-versions";
 import { dashboardsPublicRoutes } from "./routes/dashboards-public";
 import { formsRoutes } from "./routes/forms";
 import { formsPublicRoutes } from "./routes/forms-public";
+import { approvalsPublicRoutes } from "./routes/approvals-public";
 import { signaturesPublicRoutes } from "./routes/signatures-public";
+import { approvalsRoutes } from "./routes/approvals";
 import { signaturesRoutes } from "./routes/signatures";
 import { bookingPublicRoutes } from "./routes/booking-public";
 import { bookingRoutes } from "./routes/booking";
@@ -841,6 +843,7 @@ export const createApp = (env: Env) => {
   app.route("/api/tenants", tenantsRoutes);
   app.route("/api/admin/email-templates", emailTemplatesRoutes);
   app.route("/api/admin/documents", documentsRoutes);
+  app.route("/api/admin/approvals", approvalsRoutes);
   app.route("/api/admin/signatures", signaturesRoutes);
   app.route("/api/admin/booking", bookingRoutes);
   app.route("/api/admin/email-config", emailConfigRoutes);
@@ -915,6 +918,7 @@ export const createApp = (env: Env) => {
   app.route("/api/public/forms", formsPublicRoutes);
   // The signer's side of an e-signature request. Same shape as the form
   // endpoints above: no `requireUser`, the link token is the whole grant.
+  app.route("/api/public/approve", approvalsPublicRoutes);
   app.route("/api/public/sign", signaturesPublicRoutes);
   // The booker's side. Same shape again: no `requireUser`, the page token is
   // the grant to see a calendar and the manage token the grant to change one

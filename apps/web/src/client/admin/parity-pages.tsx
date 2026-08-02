@@ -5,6 +5,7 @@ export { RevisionsPage } from "./parity/revisions";
 export { InsightsPage } from "./parity/insights";
 export { EmailTemplatesPage } from "./parity/email-templates";
 export { DocumentsPage } from "./parity/documents";
+export { ApprovalsPage } from "./parity/approvals";
 export { SignaturesPage } from "./parity/signatures";
 export { BookingPage } from "./parity/booking";
 export { TranslationsPage } from "./parity/translations";

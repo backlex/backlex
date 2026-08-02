@@ -14,16 +14,39 @@ export interface ResumePayload {
   kind: "flow-continuation";
   flowName?: string;
   remainingOps: Operation[];
+  /** Present when the continuation was parked by an `approval.request`: the
+   *  branch to run instead when the answer is no. `remainingOps` is the
+   *  approved branch, so one payload carries both outcomes. */
+  rejectedOps?: Operation[];
   data: Record<string, unknown>;
   authSubject: AuthSubject;
   last: unknown;
+  /** The row the run is about, carried across the pause. Without it a second
+   *  `approval.request` after a resume would lose its default subject and
+   *  silently write back nowhere. */
+  subject?: { collection: string; id: string } | null;
 }
+
+/**
+ * A due approval, rather than a due continuation.
+ *
+ * The scheduler already claims rows exactly once on every runtime, so an
+ * approval's deadline rides the same queue instead of growing a second timer.
+ * The payload carries only an id: the request row is the source of truth, and
+ * a copy of its state here could disagree with it by the time the tick runs.
+ */
+export interface ApprovalTimeoutPayload {
+  kind: "approval-timeout";
+  requestId: string;
+}
+
+export type ScheduledPayload = ResumePayload | ApprovalTimeoutPayload;
 
 export interface EnqueueInput {
   flowId?: string | null;
   tenantId?: string | null;
   runAt: Date;
-  payload: ResumePayload;
+  payload: ScheduledPayload;
 }
 
 const nowFor = (dialect: "pg" | "sqlite") =>
@@ -54,7 +77,7 @@ interface PendingRow {
   id: string;
   tenantId: string | null;
   flowId: string | null;
-  payload: ResumePayload;
+  payload: ScheduledPayload;
   runAt: Date | number;
 }
 
@@ -104,7 +127,7 @@ export const claimDueTasks = async (
       id: string;
       tenantId: string | null;
       flowId: string | null;
-      payload: ResumePayload | string;
+      payload: ScheduledPayload | string;
       runAt: number;
     }>;
   if (candidates.length === 0) return [];

@@ -45,6 +45,7 @@ const SUPPORTED_ACTIONS = new Set([
   "payment.refund",
   "document.render",
   "document.sign",
+  "approval.request",
   "report.deliver",
   "transform",
   "run-script",
@@ -506,6 +507,66 @@ const compileAction = (node: GraphNode): Operation => {
         ...(writeBack ? { writeBack } : {}),
       };
     }
+    case "approval.request": {
+      const title = String(c.title ?? "").trim();
+      if (!title) throw new FlowCompileError("Approval step needs a title");
+      // One `email:name:role` per line, the same shape the signature step and
+      // the CLI take. A lone placeholder passes through untouched — it
+      // resolves to a whole list at run time, off a row carrying its own
+      // approvers.
+      const raw = String(c.approvers ?? "").trim();
+      if (!raw) throw new FlowCompileError("Approval step needs at least one approver");
+      const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+      const lone = lines.length === 1 && /^\{\{\s*[\w$.]+\s*\}\}$/.test(lines[0]!);
+      const approvers = lone
+        ? lines[0]!
+        : lines.map((line) => {
+            const [email, name, ...role] = line.split(":");
+            return {
+              email: (email ?? "").trim(),
+              ...(name?.trim() ? { name: name.trim() } : {}),
+              ...(role.join(":").trim() ? { role: role.join(":").trim() } : {}),
+            };
+          });
+      const policy = String(c.policy ?? "").trim() || "all";
+      const quorum = Number(String(c.quorum ?? "").trim());
+      // Refused here rather than server-side so the author is told while they
+      // are still looking at the step: a quorum with no number silently means
+      // 1, which is `any` under a different name.
+      if (policy === "quorum" && !(Number.isFinite(quorum) && quorum > 0)) {
+        throw new FlowCompileError("A quorum policy needs a number of approvals");
+      }
+      const hours = Number(String(c.expiresInHours ?? "").trim());
+      const wbField = String(c.writeBackField ?? "").trim();
+      const writeBack = wbField
+        ? {
+            field: wbField,
+            ...(String(c.writeBackCollection ?? "").trim()
+              ? { collection: String(c.writeBackCollection).trim() }
+              : {}),
+            ...(String(c.writeBackItemId ?? "").trim()
+              ? { id: String(c.writeBackItemId).trim() }
+              : {}),
+            ...(String(c.approvedValue ?? "").trim()
+              ? { approvedValue: String(c.approvedValue).trim() }
+              : {}),
+            ...(String(c.rejectedValue ?? "").trim()
+              ? { rejectedValue: String(c.rejectedValue).trim() }
+              : {}),
+          }
+        : undefined;
+      return {
+        type: "approval.request",
+        title,
+        approvers,
+        ...(String(c.message ?? "").trim() ? { message: String(c.message).trim() } : {}),
+        ...(policy !== "all" ? { policy: policy as "any" } : {}),
+        ...(policy === "quorum" ? { quorum } : {}),
+        ...(c.ordered ? { ordered: true } : {}),
+        ...(Number.isFinite(hours) && hours > 0 ? { expiresInHours: hours } : {}),
+        ...(writeBack ? { writeBack } : {}),
+      };
+    }
     case "report.deliver": {
       const dashboardId = String(c.dashboardId ?? "").trim();
       if (!dashboardId) throw new FlowCompileError("Report step needs a dashboard");
@@ -875,6 +936,28 @@ const opToConfig = (op: Operation): Record<string, any> => {
         writeBackCollection: op.writeBack?.collection ?? "",
         writeBackItemId: op.writeBack?.id ?? "",
         writeBackField: op.writeBack?.field ?? "",
+      };
+    case "approval.request":
+      // Flattened for the inspector, same as the signature step: the nested
+      // `writeBack` becomes sibling fields the editor binds inputs to.
+      return {
+        title: op.title ?? "",
+        message: op.message ?? "",
+        approvers:
+          typeof op.approvers === "string"
+            ? op.approvers
+            : (op.approvers ?? [])
+                .map((a: any) => [a.email, a.name, a.role].filter(Boolean).join(":"))
+                .join("\n"),
+        policy: op.policy ?? "all",
+        quorum: op.quorum ? String(op.quorum) : "",
+        ordered: Boolean(op.ordered),
+        expiresInHours: op.expiresInHours ? String(op.expiresInHours) : "",
+        writeBackCollection: op.writeBack?.collection ?? "",
+        writeBackItemId: op.writeBack?.id ?? "",
+        writeBackField: op.writeBack?.field ?? "",
+        approvedValue: op.writeBack?.approvedValue ?? "",
+        rejectedValue: op.writeBack?.rejectedValue ?? "",
       };
     case "report.deliver":
       return {

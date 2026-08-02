@@ -24,6 +24,7 @@ import { runWebhooks } from "../src/webhooks";
 import { runIntegrations } from "../src/integrations";
 import { runSyncHooks } from "../src/sync-hooks";
 import { runDocuments } from "../src/documents";
+import { runApprovals } from "../src/approvals";
 import { runSignatures } from "../src/signatures";
 import { runBooking } from "../src/booking";
 import { runJobs } from "../src/jobs";
@@ -142,6 +143,10 @@ Usage:
   backlex signatures <list|get|send|void|resend|finalize|download>
       Send one of those documents out to be signed. \`send\` prints the
       signing links once; \`void\` and \`resend\` both invalidate the old one.
+
+  backlex approvals <list|get|request|cancel>
+      Park something on a human decision. \`request\` prints the decision
+      links once; \`--policy\` picks all / any / quorum.
 
   backlex booking <resources|create|url|slots|list|book|cancel|move|no-show>
       Publish a calendar and take what is on it. \`create\` and \`url\` print the
@@ -329,6 +334,10 @@ const run = async () => {
     case "signatures":
     case "signature":
       await runSignatures(rest);
+      return;
+    case "approvals":
+    case "approval":
+      await runApprovals(rest);
       return;
     case "booking":
     case "bookings":

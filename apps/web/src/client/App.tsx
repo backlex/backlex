@@ -12,6 +12,7 @@ import { SharedRecord } from "@/pages/shared-record";
 import { EmbedDashboard } from "@/pages/embed-dashboard";
 import { PublicForm } from "@/pages/public-form";
 import { Book, ManageBooking } from "@/pages/book";
+import { ApproveRequest } from "@/pages/approve-request";
 import { SignDocument } from "@/pages/sign-document";
 import { SignIn } from "@/pages/sign-in";
 import { SignUp } from "@/pages/sign-up";
@@ -53,6 +54,9 @@ export const App = () => {
         {/* Public signing page — outside AuthGate; the signer has no account
             and the link token is the whole grant. */}
         <Route path="/sign/:token" element={<SignDocument />} />
+        {/* Public approval page — outside AuthGate for the same reason: the
+            approver has no account and the link token is the whole grant. */}
+        <Route path="/approve/:token" element={<ApproveRequest />} />
         {/* Public booking — outside AuthGate for the same reason: the page
             token is the grant to see a calendar, and the manage token the
             grant to change one appointment.

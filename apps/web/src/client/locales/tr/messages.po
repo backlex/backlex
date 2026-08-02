@@ -1071,6 +1071,10 @@ msgstr "\"{id}\" kimliğine sahip bir sağlayıcı zaten mevcut."
 msgid "A publishable key you can ship inside browser and mobile bundles. It only allows appending events and crash reports — it can't read any data back. Cross-origin callers still need their origin on the workspace's allowed-origins list."
 msgstr "Tarayıcı ve mobil paketlerin içinde dağıtabileceğiniz yayınlanabilir bir anahtar. Yalnızca olay ve çökme raporu eklemeye izin verir — hiçbir veriyi geri okuyamaz. Farklı kaynaktan çağıranların yine de kaynak adresi çalışma alanının izinli kaynaklar listesinde olmalıdır."
 
+#: src/client/admin/flow-builder.tsx
+msgid "A quorum — N of them"
+msgstr "Yeter sayı — içlerinden N kişi"
+
 #: src/client/pages/shared-record.tsx
 msgid "A read-only view of one record from <0>{collection}</0>."
 msgstr "<0>{collection}</0> koleksiyonundan bir kaydın salt okunur görünümü."
@@ -1341,6 +1345,10 @@ msgstr "<0>created_at</0> ve <1>updated_at</1> ekle."
 msgid "Add <0>deleted_at</0>; deletes mark rows instead of removing them."
 msgstr "<0>deleted_at</0> ekle; silme işlemi satırları kaldırmak yerine işaretler."
 
+#: src/client/admin/parity/approvals.tsx
+msgid "Add a \"Wait for approval\" step to a flow, and the requests it raises show up here."
+msgstr "Bir akışa \"Onay bekle\" adımı ekleyin; oluşturduğu istekler burada görünür."
+
 #: src/client/admin/collections-index.tsx
 msgid "Add a <0>status</0> dropdown with <1>draft / review / published / archived</1> + per-option color. List view auto-shows status tabs and badges."
 msgstr "<0>status</0> açılır listesini <1>taslak / inceleme / yayınlandı / arşivlendi</1> + seçenek başına renk ile ekle. Liste görünümü durum sekmelerini ve rozetleri otomatik gösterir."
@@ -1373,6 +1381,10 @@ msgstr "Editörler için yardımcı bir not ekleyin…"
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Add a language"
 msgstr "Dil ekle"
+
+#: src/client/pages/approve-request.tsx
+msgid "Add a note"
+msgstr "Bir not ekleyin"
 
 #: src/client/admin/account-page.tsx
 msgid "Add a one-time code from an authenticator app (Google Authenticator, Authy, 1Password…) as a second step when signing in."
@@ -1797,6 +1809,7 @@ msgstr "Tüm roller"
 
 #: src/client/admin/pages/analytics.tsx
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/approvals.tsx
 msgid "All statuses"
 msgstr "Tüm durumlar"
 
@@ -1896,6 +1909,10 @@ msgstr "Bir admin bu örnek için genel kayıt kapatmış. Davet isteyin veya za
 msgid "An end-user who can administer the org from your app. You can add one later."
 msgstr "Organizasyonu uygulamanız üzerinden yönetebilecek bir son kullanıcı. Sonradan da ekleyebilirsiniz."
 
+#: src/client/admin/flow-builder.tsx
+msgid "An expiry writes this one too."
+msgstr "Süre dolduğunda da bu değer yazılır."
+
 #. placeholder {0}: created.email
 #: src/client/admin/pages/users.tsx
 msgid "An invite email was sent to <0>{0}</0>. You can also share the link directly:"
@@ -1938,6 +1955,10 @@ msgstr "Genelde hukuka uygun seçenek anonimleştirmedir — bir fatura çoğunl
 msgid "Another signer declined it."
 msgstr "Başka bir imzalayan reddetti."
 
+#: src/client/admin/parity/approvals.tsx
+msgid "Answered"
+msgstr "Yanıtlayan"
+
 #: src/client/admin/pages/analytics.tsx
 msgid "any event"
 msgstr "herhangi bir olay"
@@ -1969,6 +1990,10 @@ msgstr "herhangi bir sağlayıcı/model kimliği"
 #: src/client/admin/role-editor.tsx
 msgid "any signed-in"
 msgstr "oturum açmış herhangi biri"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Anyone — the first approval wins"
+msgstr "Herhangi biri — ilk onay yeterli"
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Anyone with the URL can fetch this file."
@@ -2073,6 +2098,19 @@ msgstr "Uygulama eklemelidir: var olan koleksiyonlar atlanır, yeniler şablonun
 msgid "Applying…"
 msgstr "Uygulanıyor…"
 
+#: src/client/admin/parity/approvals.tsx
+#: src/client/admin/ui.tsx
+msgid "Approvals"
+msgstr "Onaylar"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Approvals needed"
+msgstr "Gereken onay sayısı"
+
+#: src/client/pages/approve-request.tsx
+msgid "Approve"
+msgstr "Onayla"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Approve & run"
 msgstr "Onayla ve çalıştır"
@@ -2080,6 +2118,19 @@ msgstr "Onayla ve çalıştır"
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Approve the authorization screen — the connector inherits your roles."
 msgstr "Yetkilendirme ekranını onaylayın — bağlayıcı rollerinizi devralır."
+
+#: src/client/admin/parity/approvals.tsx
+#: src/client/pages/approve-request.tsx
+msgid "Approved"
+msgstr "Onaylandı"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Approvers"
+msgstr "Onaylayanlar"
+
+#: src/client/pages/approve-request.tsx
+msgid "Approving…"
+msgstr "Onaylanıyor…"
 
 #: src/client/admin/item-views.tsx
 msgid "April"
@@ -2771,6 +2822,7 @@ msgstr "Yüklemeyi iptal et"
 
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/parity/approvals.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/signatures.tsx
 msgid "Cancelled"
@@ -3125,6 +3177,7 @@ msgstr "kapat"
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/approvals.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/sheet.tsx
@@ -5823,6 +5876,10 @@ msgstr "Her panel bu akışın kimliğiyle çalışır, sonra PDF'e basılır."
 msgid "Every status"
 msgstr "Tüm durumlar"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Every step after this one runs once it is approved. Steps for a rejection go on the step's rejected branch."
+msgstr "Bu adımdan sonraki her adım, onay verildiğinde çalışır. Ret durumundaki adımlar bu adımın ret dalına konur."
+
 #: src/client/admin/role-mcp-guards.tsx
 msgid "Every tool"
 msgstr "Her araç"
@@ -5834,6 +5891,10 @@ msgstr "Her yazma işlemi sürümlenir. Önceki herhangi bir durumu inceleyin, k
 #: src/client/admin/role-editor.tsx
 msgid "everyone"
 msgstr "herkes"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Everyone — one rejection ends it"
+msgstr "Herkes — tek bir ret süreci bitirir"
 
 #: src/client/pages/sign-document.tsx
 msgid "Everyone has signed. A copy has been emailed to you."
@@ -5879,12 +5940,14 @@ msgstr "Beklenen"
 msgid "expired"
 msgstr "süresi dolmuş"
 
+#: src/client/admin/parity/approvals.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/signatures.tsx
 msgid "Expired"
 msgstr "Süresi doldu"
 
 #: src/client/admin/parity/app-orgs.tsx
+#: src/client/admin/parity/approvals.tsx
 msgid "expires"
 msgstr "bitiş"
 
@@ -5902,6 +5965,10 @@ msgstr "Bitiş {0}"
 #: src/client/admin/parity/signatures.tsx
 msgid "Expires in (days)"
 msgstr "Geçerlilik (gün)"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Expires in (hours)"
+msgstr "Süre (saat)"
 
 #: src/client/admin/item-editor.tsx
 msgid "Expiry cleared."
@@ -7122,6 +7189,10 @@ msgstr "<0>{folder}/</0> içinde"
 msgid "In Google Authenticator choose “Enter a setup key”, paste the key above, and pick “Time based”."
 msgstr "Google Authenticator'da “Kurulum anahtarı gir” seçeneğini seçin, yukarıdaki anahtarı yapıştırın ve “Zaman tabanlı”yı işaretleyin."
 
+#: src/client/admin/parity/approvals.tsx
+msgid "in order"
+msgstr "sırayla"
+
 #: src/client/admin/flow-builder.tsx
 msgid "In order — each link waits for the one above"
 msgstr "Sırayla — her bağlantı bir üstündekini bekler"
@@ -7469,6 +7540,10 @@ msgstr "Yerini daha yenisi almış olabilir."
 #: src/client/pages/book.tsx
 msgid "It may have been replaced, or the calendar may be closed."
 msgstr "Yerini yenisi almış ya da takvim kapatılmış olabilir."
+
+#: src/client/pages/approve-request.tsx
+msgid "It may have been withdrawn, already used, or replaced by a newer one."
+msgstr "Geri çekilmiş, daha önce kullanılmış ya da yenisiyle değiştirilmiş olabilir."
 
 #: src/client/admin/item-editor.tsx
 msgid "Item archived."
@@ -9182,6 +9257,10 @@ msgstr "Henüz ajan yok — + Yeni ajan’a tıklayın."
 msgid "no AI key configured"
 msgstr "AI anahtarı tanımlı değil"
 
+#: src/client/admin/parity/approvals.tsx
+msgid "no answer yet"
+msgstr "henüz yanıt yok"
+
 #: src/client/pages/api-keys.tsx
 msgid "No API keys yet"
 msgstr "Henüz API anahtarı yok"
@@ -9972,6 +10051,10 @@ msgstr "Önümüzdeki iki hafta içinde boş yer yok."
 msgid "Nothing is removed at this step — the preview only counts."
 msgstr "Bu adımda hiçbir şey silinmez — önizleme yalnızca sayar."
 
+#: src/client/admin/parity/approvals.tsx
+msgid "Nothing is waiting on anybody"
+msgstr "Kimseyi bekleyen bir şey yok"
+
 #: src/client/admin/pages/logs.tsx
 msgid "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
 msgstr "Son {range} içinde hiçbir şey gelmedi. Aralığı genişletin veya isteklerin, öğe yazmalarının ve otomasyon çalıştırmalarının akmasını bekleyin."
@@ -10156,6 +10239,10 @@ msgstr "Oluşturulduğunda"
 #: src/client/admin/flow-builder.tsx
 msgid "On error"
 msgstr "Hata durumunda"
+
+#: src/client/admin/flow-builder.tsx
+msgid "On expiry the request rejects — nobody answering is not the same as approval."
+msgstr "Süre dolunca istek reddedilir — kimsenin yanıtlamaması onay anlamına gelmez."
 
 #: src/client/admin/pages/forms.tsx
 msgid "On submit"
@@ -10400,6 +10487,10 @@ msgstr "Veya yeni bir grup adı yazın…"
 msgid "or with email"
 msgstr "veya e-postayla"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Order"
+msgstr "Sıra"
+
 #: src/client/admin/pages/payments.tsx
 msgid "Order cancelled"
 msgstr "Sipariş iptal edildi"
@@ -10433,6 +10524,10 @@ msgstr "Diğer"
 #: src/client/admin/parity/translations.tsx
 msgid "Other locales stay empty until filled in the matrix."
 msgstr "Diğer yerel ayarlar matriste doldurulana kadar boş kalır."
+
+#: src/client/admin/parity/approvals.tsx
+msgid "Outcome reason"
+msgstr "Sonuç gerekçesi"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Outgoing HTTP on collection events. Failed deliveries retry with exponential backoff."
@@ -10736,6 +10831,7 @@ msgstr "beklemede"
 
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/parity/approvals.tsx
 msgid "Pending"
 msgstr "Bekliyor"
 
@@ -11205,6 +11301,10 @@ msgstr "Lütfen \"{0}\" için bir dosya ekleyin"
 #: src/client/pages/public-form.tsx
 msgid "Please fill in \"{0}\""
 msgstr "Lütfen \\\"{0}\\\" alanını doldurun"
+
+#: src/client/pages/approve-request.tsx
+msgid "Please say why you are rejecting this."
+msgstr "Lütfen neden reddettiğinizi yazın."
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
@@ -11812,6 +11912,10 @@ msgstr "Gerçek zamanlı"
 msgid "Reason"
 msgstr "Gerekçe"
 
+#: src/client/pages/approve-request.tsx
+msgid "Reason — required to reject, optional to approve"
+msgstr "Gerekçe — ret için zorunlu, onay için isteğe bağlı"
+
 #: src/client/pages/sign-document.tsx
 msgid "Reason for declining"
 msgstr "Reddetme nedeni"
@@ -12023,6 +12127,7 @@ msgid "Reinstall / upgrade"
 msgstr "Yeniden kur / yükselt"
 
 #: src/client/admin/pages/ask-ai/index.tsx
+#: src/client/pages/approve-request.tsx
 msgid "Reject"
 msgstr "Reddet"
 
@@ -12038,11 +12143,20 @@ msgstr "Onayı IdP tarafından imzalanmamış yanıtları reddet."
 msgid "Reject unauthorized certs (recommended)"
 msgstr "Yetkisiz sertifikaları reddet (önerilen)"
 
+#: src/client/admin/parity/approvals.tsx
+#: src/client/pages/approve-request.tsx
+msgid "Rejected"
+msgstr "Reddedildi"
+
 #. placeholder {0}: result.res.ms
 #. placeholder {1}: result.res.verdict?.reason ?? "—"
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Rejected in {0}ms: {1}"
 msgstr "{0}ms içinde reddedildi: {1}"
+
+#: src/client/pages/approve-request.tsx
+msgid "Rejecting…"
+msgstr "Reddediliyor…"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "relation"
@@ -12282,6 +12396,10 @@ msgstr "İstek"
 #: src/client/pages/reset-password.tsx
 msgid "Request a new link"
 msgstr "Yeni bir bağlantı iste"
+
+#: src/client/admin/parity/approvals.tsx
+msgid "Request withdrawn"
+msgstr "İstek geri çekildi"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/payments.tsx
@@ -13878,6 +13996,10 @@ msgstr "Ayarlar → MCP → Yeni MCP sunucusu ekle → JSON'u yapıştır."
 msgid "Settings → MCP → Add. Same JSON shape Claude Desktop uses. (Or skip the key and connect over OAuth above.)"
 msgstr "Settings → MCP → Add. Claude Desktop ile aynı JSON şekli. (Veya anahtarı atlayıp yukarıdan OAuth ile bağlanın.)"
 
+#: src/client/admin/parity/approvals.tsx
+msgid "settled"
+msgstr "sonuçlandı"
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "Severity"
 msgstr "Önem düzeyi"
@@ -15118,6 +15240,10 @@ msgstr "Kullanıcının kayıtlı tüm aktif numaralarına SMS gider. Numara yok
 msgid "Thank you"
 msgstr "Teşekkürler"
 
+#: src/client/pages/approve-request.tsx
+msgid "Thank you — your answer is recorded"
+msgstr "Teşekkürler — yanıtınız kaydedildi"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Thanks — we got it!"
 msgstr "Teşekkürler — aldık!"
@@ -15495,6 +15621,10 @@ msgstr "Bu bağlantı artık kullanılamıyor"
 msgid "This link is not available"
 msgstr "Bu bağlantı geçerli değil"
 
+#: src/client/pages/approve-request.tsx
+msgid "This link is not valid"
+msgstr "Bu bağlantı geçerli değil"
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "This link is shown once — rotating the token later replaces it and kills the old one."
 #~ msgstr "Bu bağlantı yalnızca bir kez gösterilir — daha sonra yenilerseniz eskisi geçersiz olur."
@@ -15534,6 +15664,10 @@ msgstr "Bu, paneli <0>saved_panels</0> tablosundan ve ona başvuran tüm panolar
 #: src/client/admin/item-editor.tsx
 msgid "This removes the row from <0>c_{slug}</0>. Revisions remain available."
 msgstr "Bu, satırı <0>c_{slug}</0> tablosundan kaldırır. Revizyonlar kullanılabilir kalır."
+
+#: src/client/pages/approve-request.tsx
+msgid "This request is decided in order — the next person is asked once you answer."
+msgstr "Bu istek sırayla karara bağlanır — siz yanıtladığınızda sıradaki kişiye sorulur."
 
 #. placeholder {0}: confirmRev.v
 #. placeholder {1}: fmtRevTs(confirmRev.createdAt)
@@ -16464,6 +16598,14 @@ msgstr "{f} değeri"
 msgid "value or $user.id"
 msgstr "değer veya $user.id"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Value when approved"
+msgstr "Onaylandığındaki değer"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Value when rejected"
+msgstr "Reddedildiğindeki değer"
+
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "VAPID keypair generated — review and Save to store it."
 msgstr "VAPID anahtar çifti üretildi — gözden geçirip Kaydet'e basın."
@@ -16685,13 +16827,25 @@ msgstr "Tekrar hoş geldin. Kaldığın yerden devam et — içerik, veri ve API
 msgid "What are you looking for?"
 msgstr "Ne arıyorsunuz?"
 
+#: src/client/admin/parity/approvals.tsx
+msgid "What is waiting on a person — and what they decided."
+msgstr "Kimi beklediği ve ne karar verildiği."
+
 #: src/client/admin/pages/agents.tsx
 msgid "What it has learned"
 msgstr "Öğrendikleri"
 
+#: src/client/admin/flow-builder.tsx
+msgid "What settles it"
+msgstr "Neyin sonuçlandıracağı"
+
 #: src/client/admin/pages/agents.tsx
 msgid "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
 msgstr "Ekip arkadaşlarının bir odada bu agent'a seslenmek için @ sonrasına yazdığı ad. Boş bırakılırsa addan türetilir."
+
+#: src/client/admin/flow-builder.tsx
+msgid "What the approver is told they are deciding."
+msgstr "Onaylayana neye karar verdiğinin söylendiği metin."
 
 #: src/client/admin/flow-builder.tsx
 msgid "What the customer sees on the checkout line item."
@@ -16800,6 +16954,10 @@ msgstr "Kullanıcının e-posta adresini hangi ID-token claim’inin taşıdığ
 msgid "Whichever agent fits best"
 msgstr "En uygun agent"
 
+#: src/client/admin/parity/approvals.tsx
+msgid "Who was asked, who answered, and why."
+msgstr "Kime soruldu, kim yanıtladı ve neden."
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "Whole numbers only (no decimals)"
 msgstr "Yalnızca tam sayılar (ondalık yok)"
@@ -16851,6 +17009,10 @@ msgstr "Bu API anahtarını bir Model Context Protocol istemcisine bağla (Claud
 #: src/client/admin/pages/analytics.tsx
 msgid "with a session id"
 msgstr "oturum kimliği olan"
+
+#: src/client/admin/parity/approvals.tsx
+msgid "Withdraw"
+msgstr "Geri çek"
 
 #: src/client/admin/items.tsx
 msgid "Words"
@@ -16953,6 +17115,10 @@ msgstr "Anahtarı şuraya yaz"
 msgid "Write the link onto"
 msgstr "Bağlantıyı şuraya yaz"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Write the outcome to"
+msgstr "Sonucu şuraya yaz"
+
 #: src/client/admin/pages/overview.tsx
 msgid "Writes (1h)"
 msgstr "Yazma işlemleri (1s)"
@@ -16993,6 +17159,12 @@ msgstr "Evet"
 msgid "You are a helpful assistant for our workspace…"
 msgstr "Çalışma alanımız için yardımcı bir asistansınız…"
 
+#. placeholder {0}: view.you.position
+#. placeholder {1}: view.you.of
+#: src/client/pages/approve-request.tsx
+msgid "You are approver {0} of {1}."
+msgstr "{1} onaylayandan {0}. sırasındakisiniz."
+
 #: src/client/pages/book.tsx
 msgid "You are booked in."
 msgstr "Rezervasyonunuz alındı."
@@ -17000,6 +17172,10 @@ msgstr "Rezervasyonunuz alındı."
 #: src/client/pages/sign-document.tsx
 msgid "You declined to sign this document. The sender has been notified."
 msgstr "Bu belgeyi imzalamayı reddettiniz. Gönderen bilgilendirildi."
+
+#: src/client/pages/approve-request.tsx
+msgid "You have been asked to approve this."
+msgstr "Bunu onaylamanız istendi."
 
 #: src/client/admin/item-editor.tsx
 msgid "You have edits that haven't been saved. Leaving will lose them."
@@ -17056,6 +17232,10 @@ msgstr "kendi API anahtarın"
 #: src/client/admin/flow-builder.tsx
 msgid "your app's thank-you page"
 msgstr "uygulamanızın teşekkür sayfası"
+
+#: src/client/pages/approve-request.tsx
+msgid "Your decision has been recorded. You can close this page."
+msgstr "Kararınız kaydedildi. Bu sayfayı kapatabilirsiniz."
 
 #: src/client/admin/account-page.tsx
 msgid "Your display name"

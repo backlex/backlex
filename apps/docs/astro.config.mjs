@@ -126,6 +126,7 @@ export default defineConfig({
             { slug: "agents" },
             { slug: "feature-flags" },
             { slug: "embedded-dashboards" },
+            { slug: "reports" },
             { slug: "forms" },
             { slug: "backup-restore" },
             { slug: "advisor" },

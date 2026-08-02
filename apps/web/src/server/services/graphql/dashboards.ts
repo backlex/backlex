@@ -1,3 +1,4 @@
+import { AppError } from "@backlex/core";
 import { JSONScalar, type GqlCtx } from "./core";
 import { requireFlowAdmin } from "./flows";
 import {
@@ -5,6 +6,7 @@ import {
   GraphQLError,
   GraphQLID,
   GraphQLInputObjectType,
+  GraphQLInt,
   GraphQLList,
   GraphQLNonNull,
   GraphQLObjectType,
@@ -21,6 +23,7 @@ import {
   shareDashboard,
   updateDashboard,
 } from "../dashboards";
+import { deliverReport } from "../reports";
 
 // ── Embedded BI dashboards ───────────────────────────────────────────────────
 // Static, admin-scoped surface mirroring REST `/api/admin/dashboards` + MCP
@@ -63,6 +66,48 @@ const DashboardPanelResultType = new GraphQLObjectType({
   },
 });
 
+const DashboardReportPageOptionsInput = new GraphQLInputObjectType({
+  name: "DashboardReportPageOptionsInput",
+  fields: {
+    format: { type: GraphQLString },
+    landscape: { type: GraphQLBoolean },
+    printBackground: { type: GraphQLBoolean },
+  },
+});
+
+const DashboardReportEmailInput = new GraphQLInputObjectType({
+  name: "DashboardReportEmailInput",
+  fields: {
+    /** One address or a comma-separated list — validated in the service. */
+    to: { type: new GraphQLNonNull(GraphQLString) },
+    subject: { type: GraphQLString },
+    templateKey: { type: GraphQLString },
+  },
+});
+
+const DashboardReportInputType = new GraphQLInputObjectType({
+  name: "DashboardReportInput",
+  fields: {
+    filename: { type: GraphQLString },
+    pageOptions: { type: DashboardReportPageOptionsInput },
+    email: { type: DashboardReportEmailInput },
+  },
+});
+
+const DashboardReportType = new GraphQLObjectType({
+  name: "DashboardReport",
+  fields: {
+    key: { type: new GraphQLNonNull(GraphQLString) },
+    filename: { type: new GraphQLNonNull(GraphQLString) },
+    size: { type: new GraphQLNonNull(GraphQLInt) },
+    renderer: { type: new GraphQLNonNull(GraphQLString) },
+    panels: { type: new GraphQLNonNull(GraphQLInt) },
+    failedPanels: { type: new GraphQLNonNull(GraphQLInt) },
+    sentTo: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
+    attachmentsDropped: { type: GraphQLBoolean },
+  },
+});
+
 const DashboardShareResultType = new GraphQLObjectType({
   name: "DashboardShareResult",
   fields: {
@@ -73,6 +118,18 @@ const DashboardShareResultType = new GraphQLObjectType({
 
 /** Dashboards are admin-only on every other surface — reuse the flow gate. */
 const requireDashboardAdmin = requireFlowAdmin;
+
+/** yoga masks non-GraphQLError throws — surface AppErrors with their code. */
+const surfacing = async <T>(work: () => Promise<T> | T): Promise<T> => {
+  try {
+    return await work();
+  } catch (e) {
+    if (e instanceof AppError) {
+      throw new GraphQLError(e.message, { extensions: { code: e.code } });
+    }
+    throw e;
+  }
+};
 
 /** Coerce sqlite 0/1 → boolean and drop the token hash for the API shape. */
 const normalizeDashboardRow = (r: any) => ({
@@ -174,6 +231,34 @@ export const dashboardMutationFields: Record<string, GraphQLFieldConfig<unknown,
       const tenantId = requireDashboardAdmin(gqlCtx);
       const a = args as { id: string; roleId?: string | null };
       return shareDashboard(gqlCtx.ctx, tenantId, a.id, { roleId: a.roleId ?? null });
+    },
+  },
+  deliverDashboardReport: {
+    type: new GraphQLNonNull(DashboardReportType),
+    description:
+      "Print a dashboard to a PDF and store it; with `email` it is mailed too (admin-only). " +
+      "Errors when no PDF renderer is configured.",
+    args: {
+      id: { type: new GraphQLNonNull(GraphQLID) },
+      input: { type: DashboardReportInputType },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireDashboardAdmin(gqlCtx);
+      const a = args as { id: string; input?: Record<string, any> | null };
+      const input = a.input ?? {};
+      // The service owns every guard — recipient parsing, the missing-renderer
+      // refusal, the storage prefix. Re-checking any of them here is how two
+      // surfaces end up disagreeing about what is allowed. What DOES belong
+      // here is translating the refusal: yoga masks a non-GraphQLError throw as
+      // "Unexpected error.", so without this the caller is told nothing.
+      return surfacing(() =>
+        deliverReport(gqlCtx.ctx, gqlCtx.auth, tenantId, {
+          dashboardId: a.id,
+          ...(input.filename ? { filename: String(input.filename) } : {}),
+          ...(input.pageOptions ? { pageOptions: input.pageOptions } : {}),
+          ...(input.email ? { email: input.email } : {}),
+        }),
+      );
     },
   },
   revokeDashboardEmbed: {

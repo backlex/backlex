@@ -224,6 +224,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Playground / demo mode (public demo instance) | `docs/demo-mode.md` |
 | Public form builder (embeddable forms) | `docs/forms.md` |
 | Embedded BI dashboards (panels + public embed) | `docs/embedded-dashboards.md` |
+| Scheduled reports (dashboard → PDF → email) | `docs/reports.md` |
 | Advisor rules | `docs/advisor.md` |
 | Auth planes (admin vs workspace end-users) | `docs/auth-planes.md` |
 | Organizations / teams (app-plane B2B grouping) | `docs/app-organizations.md` |

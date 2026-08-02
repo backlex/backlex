@@ -8,3 +8,5 @@ export * from "./email";
 export * from "./ics";
 export * from "./booking";
 export * from "./embedding-models";
+export * from "./panels";
+export * from "./report";

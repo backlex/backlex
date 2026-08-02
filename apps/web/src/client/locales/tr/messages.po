@@ -191,6 +191,10 @@ msgstr "(bağlı yok — Ödemeler'den bir tane bağlayın)"
 msgid "(none yet — author one on Document templates)"
 msgstr "(henüz yok — Belge şablonları sayfasından oluşturun)"
 
+#: src/client/admin/flow-builder.tsx
+msgid "(none yet — build one on Insights)"
+msgstr "(henüz yok — Insights sayfasında bir tane oluşturun)"
+
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/scim-card.tsx
 msgid "(none)"
@@ -1131,6 +1135,14 @@ msgstr "Webhook olan biteni haber alır. Sync hook ise yazmadan önce çalışı
 #: src/client/admin/rule-builder.tsx
 msgid "a, b, c"
 msgstr "a, b, c"
+
+#: src/client/admin/parity/insights.tsx
+msgid "A4"
+msgstr "A4"
+
+#: src/client/admin/flow-builder.tsx
+msgid "A4 (default)"
+msgstr "A4 (varsayılan)"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "About"
@@ -3311,6 +3323,14 @@ msgstr "Virgülle ayrılmış tam araç kimlikleri. Bir ad alanının tamamı fa
 msgid "Comma-separated; prefix with <0>-</0> for descending. Leave blank to fall back to <1>-created_at</1>."
 msgstr "Virgülle ayrılmış; azalan sıra için <0>-</0> öneki ekleyin. <1>-created_at</1> varsayılanına dönmek için boş bırakın."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Comma-separated. Leave blank to only store it — the next step can attach the key."
+msgstr "Virgülle ayırın. Yalnızca saklamak için boş bırakın — sonraki adım anahtarı ekleyebilir."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Comma-separated. Only needed to send it — downloading works without one."
+msgstr "Virgülle ayırın. Yalnızca göndermek için gerekli — indirmek için gerekmez."
+
 #: src/client/admin/extras.tsx
 msgid "Command palette"
 msgstr "Komut paleti"
@@ -3895,6 +3915,10 @@ msgstr "Ziyaretçiyi şunu gerçekleştirdiğinde aktif say"
 msgid "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
 msgstr "Sayaç, 1. satırın ilk sayısal sütununu alır; kıvılcım grafik / çubuklar tüm satırlarda gösterir; halka / tablo ilk iki sütunu eşleştirir."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Covering message"
+msgstr "Üst yazı"
+
 #: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -4238,6 +4262,10 @@ msgstr "Tehlike bölgesi"
 msgid "Dark"
 msgstr "Koyu"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Dashboard"
+msgstr "Pano"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Dashboard \"{name}\" created."
 msgstr "\"{name}\" panosu oluşturuldu."
@@ -4385,6 +4413,14 @@ msgstr "Oluşturma sırasında uygulanan varsayılan değerler. Kullanıcı bunl
 #: src/client/admin/condition-editor.tsx
 msgid "defaults"
 msgstr "varsayılanlar"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Defaults to the dashboard's name and today's date."
+msgstr "Varsayılan olarak panonun adı ve bugünün tarihi kullanılır."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Defaults to the dashboard's name."
+msgstr "Varsayılan olarak panonun adı kullanılır."
 
 #: src/client/admin/parity/signatures.tsx
 msgid "Defaults to the template's name"
@@ -4904,6 +4940,7 @@ msgstr "İndir"
 msgid "Download JSON"
 msgstr "JSON indir"
 
+#: src/client/admin/parity/insights.tsx
 #: src/client/pages/sign-document.tsx
 msgid "Download PDF"
 msgstr "PDF indir"
@@ -5304,6 +5341,10 @@ msgstr "E-posta tek zorunlu alandır. Roller kayıt sonrası atanır — ilk kul
 msgid "email magic link"
 msgstr "e-posta sihirli bağlantısı"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Email report"
+msgstr "Raporu e-postala"
+
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Email settings saved."
 msgstr "E-posta ayarları kaydedildi."
@@ -5312,6 +5353,11 @@ msgstr "E-posta ayarları kaydedildi."
 #: src/client/admin/ui.tsx
 msgid "Email templates"
 msgstr "E-posta şablonları"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/insights.tsx
+msgid "Email to"
+msgstr "E-posta alıcıları"
 
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Email transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>EMAIL_PROVIDER</1> / env keys. Secret values are encrypted at rest and never shown again."
@@ -5768,6 +5814,10 @@ msgstr "İzinlere bağlı olarak her MCP aracı çağrılabilir. Bu anahtarı bi
 #: src/client/admin/pages/analytics.tsx
 msgid "Every occurrence of this bug, with the latest stack trace and how many visitors it reached."
 msgstr "Bu hatanın tüm görülmeleri; en son yığın izi ve kaç ziyaretçiye ulaştığı ile birlikte."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Every panel runs with this flow's identity, then prints to a PDF."
+msgstr "Her panel bu akışın kimliğiyle çalışır, sonra PDF'e basılır."
 
 #: src/client/admin/parity/booking.tsx
 msgid "Every status"
@@ -7674,7 +7724,9 @@ msgstr "Öğe formunda gösterilen etiket. Ayarlanmazsa sütun adına döner."
 msgid "Lands in {pending}"
 msgstr "{pending} içine düşer"
 
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/documents.tsx
+#: src/client/admin/parity/insights.tsx
 msgid "Landscape"
 msgstr "Yatay"
 
@@ -8254,6 +8306,10 @@ msgstr "Sihirli bağlantı"
 #: src/client/pages/magic-link.tsx
 msgid "Magic-link plugin not enabled on the server"
 msgstr "Sunucuda sihirli bağlantı eklentisi etkin değil"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Mail sent, but this deployment's email transport cannot carry attachments — the report was not included."
+msgstr "E-posta gönderildi, ancak bu kurulumun e-posta taşıyıcısı ek taşıyamıyor — rapor eklenmedi."
 
 #: src/client/admin/collection-settings.tsx
 #~ msgid "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). After enabling on an existing collection, run a re-index to backfill."
@@ -10461,6 +10517,11 @@ msgstr "Sahibin tam erişimi (kısıtlama yok)"
 msgid "p95 latency"
 msgstr "p95 gecikme"
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/insights.tsx
+msgid "Page"
+msgstr "Sayfa"
+
 #: src/client/admin/app.tsx
 #~ msgid "page {page} / {totalPages}"
 #~ msgstr "sayfa {page} / {totalPages}"
@@ -10823,6 +10884,10 @@ msgstr "Koleksiyon seçin…"
 msgid "pick a column for the aliased system field"
 msgstr "takma adlı sistem alanı için sütun seçin"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Pick a dashboard"
+msgstr "Bir pano seçin"
+
 #: src/client/components/date-picker.tsx
 msgid "Pick a date…"
 msgstr "Tarih seçin…"
@@ -11079,6 +11144,10 @@ msgstr "sade"
 #: src/client/admin/field-format-editor.tsx
 msgid "Plain"
 msgstr "Düz"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Plain — a one-line note naming the dashboard"
+msgstr "Sade — panonun adını içeren tek satırlık not"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Plan"
@@ -12171,6 +12240,7 @@ msgid "rendering only — never affects storage or sorting"
 msgstr "yalnızca gösterim — depolama veya sıralamayı etkilemez"
 
 #: src/client/admin/parity/documents.tsx
+#: src/client/admin/parity/insights.tsx
 msgid "Rendering…"
 msgstr "Oluşturuluyor…"
 
@@ -12182,6 +12252,20 @@ msgstr "Yeniden aç"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Replace"
 msgstr "Değiştir"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Report"
+msgstr "Rapor"
+
+#. placeholder {0}: dashboard.name
+#: src/client/admin/parity/insights.tsx
+msgid "Report \"{0}\""
+msgstr "\"{0}\" raporu"
+
+#. placeholder {0}: res.sentTo.length
+#: src/client/admin/parity/insights.tsx
+msgid "Report sent to {0} recipient(s)."
+msgstr "Rapor {0} alıcıya gönderildi."
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Repository"
@@ -12864,6 +12948,10 @@ msgstr "Çalışmalar"
 #: src/client/admin/flow-builder.tsx
 msgid "runs daily at 09:00 UTC"
 msgstr "her gün 09:00 UTC'de çalışır"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Runs every panel and prints the dashboard to a PDF. To send it on a schedule instead, add a \"Deliver report\" step to a cron flow."
+msgstr "Her paneli çalıştırır ve panoyu PDF olarak basar. Zamanlanmış göndermek için bir cron akışına \"Rapor teslim et\" adımı ekleyin."
 
 #: src/client/admin/pages/integration-syncs-card.tsx
 msgid "runs only when you ask"
@@ -13572,6 +13660,7 @@ msgstr "Sıfırlama bağlantısı gönderiliyor"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/signatures.tsx
 #: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx
@@ -14639,6 +14728,7 @@ msgstr "abone"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/email-templates.tsx
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "Subject"
 msgstr "Konu"
@@ -15067,6 +15157,10 @@ msgstr "İstemci gizli anahtarı bekleme sırasında şifrelenir. Her iki alanı
 #: src/client/admin/pages/forms.tsx
 msgid "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
 msgstr "Mevcut bağlantı anında devre dışı kalır ve yenisi oluşturulur. Eski bağlantının gömülü olduğu her yerin güncellenmesi gerekir."
+
+#: src/client/admin/parity/insights.tsx
+msgid "the default"
+msgstr "varsayılan"
 
 #: src/client/admin/parity/signatures.tsx
 msgid "The document is rendered and frozen now. A later edit to the template will not change it."

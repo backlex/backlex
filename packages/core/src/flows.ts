@@ -161,6 +161,46 @@ export type Operation =
       onSuccess?: Operation[];
       onError?: Operation[];
     }
+  /**
+   * Print a dashboard and, optionally, mail it.
+   *
+   * The op every schema template wanted and none of them had. Panels, a PDF
+   * renderer and mail with attachments all existed separately, so the numbers
+   * were always one login away from whoever needed them; on a `cron` trigger
+   * this is what walks them the rest of the way. "First of the month, 08:00,
+   * the revenue dashboard to the accountant" is a flow with one op.
+   *
+   * `to` is optional on purpose. Omitted, the op renders and stores, and
+   * `{{ $last.key }}` is attachable by a following `email` op — for the flow
+   * that wants to say something of its own around the file. Given, the op mails
+   * it itself, one message per recipient.
+   *
+   * The dashboard runs with the FLOW's identity, so a panel reading a
+   * collection the flow's user cannot read comes back as an error printed on
+   * the page rather than data. `{{ $last }}` carries
+   * `{ key, filename, size, renderer, panels, failedPanels, sentTo }`.
+   */
+  | {
+      type: "report.deliver";
+      /** The dashboard to print. Templated, for a flow that picks one per row. */
+      dashboardId: string;
+      /** Overrides `<dashboard-name>-<date>.pdf`. Templated. */
+      filename?: string;
+      /** One address or a comma-separated list. Templated. Omit to render only. */
+      to?: string;
+      /** Templated. Defaults to the dashboard's name. */
+      subject?: string;
+      /** An `email_templates` key for the covering message. */
+      templateKey?: string;
+      /** Page setup for the PDF — format, orientation, margins. */
+      pageOptions?: {
+        format?: "A4" | "Letter" | "Legal" | "A3" | "A5";
+        landscape?: boolean;
+        printBackground?: boolean;
+      };
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
   | {
       type: "transform";
       value?: unknown;
@@ -376,6 +416,7 @@ export const OPERATION_TYPES: OperationType[] = [
   "sms",
   "document.render",
   "document.sign",
+  "report.deliver",
   "payment.checkout",
   "payment.refund",
   "function",
@@ -524,6 +565,25 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       .refine((op) => (op.templateKey == null) !== (op.html == null), {
         message: "document.sign needs exactly one of `templateKey` or `html`",
       }),
+    z.object({
+      type: z.literal("report.deliver"),
+      dashboardId: z.string().min(1).max(200),
+      filename: z.string().min(1).max(200).optional(),
+      // Not email-validated here: `to` is almost always a template at save
+      // time. The check lives in `parseRecipients`, where the value is real.
+      to: z.string().min(1).max(2000).optional(),
+      subject: z.string().min(1).max(300).optional(),
+      templateKey: z.string().min(1).max(200).optional(),
+      pageOptions: z
+        .object({
+          format: z.enum(["A4", "Letter", "Legal", "A3", "A5"]).optional(),
+          landscape: z.boolean().optional(),
+          printBackground: z.boolean().optional(),
+        })
+        .optional(),
+      onSuccess: z.array(OperationSchema).optional(),
+      onError: z.array(OperationSchema).optional(),
+    }),
     z.object({
       type: z.literal("transform"),
       value: z.unknown(),

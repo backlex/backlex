@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { I } from "../icons";
-import { Badge, Button, EmptyState, IconButton, PageHeader } from "../ui";
+import { Badge, Button, EmptyState, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
 import { ConfirmDialog } from "../sheet";
 import { ApiError } from "@/lib/api";
@@ -299,6 +299,7 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
   const [selected, setSelected] = useState<string>("");
   const [newDashOpen, setNewDashOpen] = useState(false);
   const [shareFor, setShareFor] = useState<ApiDashboard | null>(null);
+  const [reportFor, setReportFor] = useState<ApiDashboard | null>(null);
   const [confirmDeleteDash, setConfirmDeleteDash] = useState<ApiDashboard | null>(null);
   const isMobile = useIsMobile();
   // The drag/resize layout editor needs a pointer and a wide grid — neither
@@ -393,13 +394,18 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
         actions={
           <div className="flex flex-wrap justify-end gap-2">
             {selectedDash && (
-              <Button
-                variant={selectedDash.embedEnabled ? "primary" : "outline"}
-                icon={I.Link}
-                onClick={() => setShareFor(selectedDash)}
-              >
-                {selectedDash.embedEnabled ? <Trans>Embed live</Trans> : <Trans>Share</Trans>}
-              </Button>
+              <>
+                <Button icon={I.Download} variant="outline" onClick={() => setReportFor(selectedDash)}>
+                  <Trans>Report</Trans>
+                </Button>
+                <Button
+                  variant={selectedDash.embedEnabled ? "primary" : "outline"}
+                  icon={I.Link}
+                  onClick={() => setShareFor(selectedDash)}
+                >
+                  {selectedDash.embedEnabled ? <Trans>Embed live</Trans> : <Trans>Share</Trans>}
+                </Button>
+              </>
             )}
             {!isMobile && (
               <Button
@@ -493,6 +499,14 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
             setSelected(id);
             pushToast?.(t`Dashboard "${name}" created.`);
           }}
+        />
+      )}
+
+      {reportFor && (
+        <ReportDashboardDialog
+          dashboard={reportFor}
+          onClose={() => setReportFor(null)}
+          pushToast={pushToast}
         />
       )}
 
@@ -1401,6 +1415,154 @@ function NewDashboardDialog({
           <Button variant="ghost" onClick={onClose} disabled={busy}><Trans>Cancel</Trans></Button>
           <Button variant="primary" icon={I.Plus} onClick={submit} disabled={!valid || busy}>
             {busy ? <Trans>Creating…</Trans> : <Trans>Create dashboard</Trans>}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Report dialog — print this dashboard, or mail it.
+ *
+ * Two buttons rather than a mode toggle: downloading and mailing are different
+ * intents, and the server refuses a request that asks for both. Recipients are
+ * only required by the second, so the field does not gate the first.
+ *
+ * There is no optimistic path here on purpose. Nothing in the page's state
+ * changes — the work IS the round trip, and a PDF that appeared instantly and
+ * then failed to render would be a lie. The buttons carry busy labels instead.
+ */
+function ReportDashboardDialog({
+  dashboard,
+  onClose,
+  pushToast,
+}: {
+  dashboard: ApiDashboard;
+  onClose: () => void;
+  pushToast?: (m: string) => void;
+}) {
+  const { t } = useLingui();
+  const [to, setTo] = useState("");
+  const [subject, setSubject] = useState("");
+  const [format, setFormat] = useState("");
+  const [landscape, setLandscape] = useState(false);
+  const [busy, setBusy] = useState<"download" | "email" | null>(null);
+
+  const pageOptions =
+    format || landscape
+      ? { ...(format ? { format } : {}), ...(landscape ? { landscape: true } : {}) }
+      : undefined;
+
+  const download = async () => {
+    setBusy("download");
+    try {
+      const blob = await dashboardsApi.reportPdf(dashboard.id, {
+        ...(pageOptions ? { pageOptions } : {}),
+      });
+      // Straight to the browser's own download path — the bytes never round
+      // trip through storage a second time.
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${dashboard.name}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      onClose();
+    } catch (e) {
+      pushToast?.((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const send = async () => {
+    setBusy("email");
+    try {
+      const res = await dashboardsApi.report(dashboard.id, {
+        ...(pageOptions ? { pageOptions } : {}),
+        email: { to, ...(subject.trim() ? { subject: subject.trim() } : {}) },
+      });
+      onClose();
+      if (res.attachmentsDropped) {
+        // Said plainly rather than reported as a success: the recipient got a
+        // mail with nothing attached, which looks like a bug from their end.
+        pushToast?.(t`Mail sent, but this deployment's email transport cannot carry attachments — the report was not included.`);
+      } else {
+        pushToast?.(t`Report sent to ${res.sentTo.length} recipient(s).`);
+      }
+    } catch (e) {
+      pushToast?.((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o && !busy) onClose(); }}>
+      <DialogContent className="flex max-h-[86vh] flex-col overflow-hidden sm:max-w-[520px] [&>*]:min-w-0">
+        <DialogHeader className="shrink-0">
+          <DialogTitle className="flex items-center gap-2">
+            <I.Download size={15} className="text-muted-foreground" />
+            <Trans>Report "{dashboard.name}"</Trans>
+          </DialogTitle>
+          <DialogDescription>
+            <Trans>Runs every panel and prints the dashboard to a PDF. To send it on a schedule instead, add a "Deliver report" step to a cron flow.</Trans>
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea viewportClassName="max-h-[calc(86vh-10rem)] max-[640px]:max-h-[calc(86vh-15rem)]" className="w-full">
+          <div className="flex flex-col gap-3.5 py-1">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12.5px] font-medium"><Trans>Email to</Trans></label>
+              <Input
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                placeholder="ops@example.com, finance@example.com"
+                className="min-w-0"
+              />
+              <span className="text-[11.5px] text-muted-foreground">
+                <Trans>Comma-separated. Only needed to send it — downloading works without one.</Trans>
+              </span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12.5px] font-medium"><Trans>Subject</Trans></label>
+              <Input
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder={dashboard.name}
+                className="min-w-0"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12.5px] font-medium"><Trans>Page</Trans></label>
+              <Select
+                value={format}
+                onChange={(v) => setFormat(v)}
+                className="min-w-0"
+                options={[
+                  { value: "", label: t`A4`, hint: t`the default` },
+                  { value: "Letter", label: "Letter" },
+                  { value: "Legal", label: "Legal" },
+                  { value: "A3", label: "A3" },
+                  { value: "A5", label: "A5" },
+                ]}
+              />
+            </div>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium">
+              <Switch checked={landscape} onChange={setLandscape} />
+              <Trans>Landscape</Trans>
+            </label>
+          </div>
+        </ScrollArea>
+
+        <DialogFooter className="shrink-0">
+          <Button variant="ghost" onClick={onClose} disabled={Boolean(busy)}><Trans>Close</Trans></Button>
+          <Button variant="outline" icon={I.Download} onClick={download} disabled={Boolean(busy)}>
+            {busy === "download" ? <Trans>Rendering…</Trans> : <Trans>Download PDF</Trans>}
+          </Button>
+          <Button variant="primary" icon={I.Mail} onClick={send} disabled={Boolean(busy) || !to.trim()}>
+            {busy === "email" ? <Trans>Sending…</Trans> : <Trans>Email report</Trans>}
           </Button>
         </DialogFooter>
       </DialogContent>

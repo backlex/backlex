@@ -2,6 +2,7 @@
  * `backlex dashboards` — embedded BI dashboards over `/api/admin/dashboards`.
  * `run` renders every panel; `share`/`revoke` toggle the public embed token.
  */
+import { writeFileSync } from "node:fs";
 import { BacklexError } from "backlex";
 import {
   has,
@@ -21,11 +22,15 @@ interface DashboardRow {
   embedEnabled?: boolean;
 }
 
-const HELP = `backlex dashboards <list|get|run|create|delete|share|revoke>
+const HELP = `backlex dashboards <list|get|run|report|create|delete|share|revoke>
 
   list                          all dashboards
   get <id>                      one dashboard (full JSON)
   run <id>                      render every panel and print results
+  report <id> [--to <emails>]   print the dashboard to a PDF; --to mails it
+              [--subject <s>] [--template <key>] [--filename <name>]
+              [--format A4|Letter|Legal|A3|A5] [--landscape]
+              [--out <file.pdf>]  also write the PDF to disk
   create --data <json|@file|->  create a dashboard ({ name, description?, layout? })
   delete <id>
   share <id> [--role <roleId>]  enable the public embed (prints one-time token)
@@ -87,6 +92,73 @@ export const runDashboards = async (args: string[]): Promise<void> => {
         }
         const res = await client.request<unknown>("POST", `${BASE}/${encodeURIComponent(id)}/run`);
         printJson(res);
+        return;
+      }
+      case "report": {
+        const id = rest[0];
+        if (!id) {
+          process.stderr.write("dashboards report <id> [--to <emails>] [--out <file.pdf>]\n");
+          process.exit(1);
+        }
+        const to = flag(rest, "--to");
+        const out = flag(rest, "--out");
+        const format = flag(rest, "--format");
+        const pageOptions =
+          format || has(rest, "--landscape")
+            ? {
+                ...(format ? { format: format as "A4" } : {}),
+                ...(has(rest, "--landscape") ? { landscape: true } : {}),
+              }
+            : undefined;
+        const base = {
+          ...(flag(rest, "--filename") ? { filename: flag(rest, "--filename")! } : {}),
+          ...(pageOptions ? { pageOptions } : {}),
+        };
+
+        // `--out` alone takes the bytes path; with `--to` the server refuses to
+        // do both in one call, so the mail is sent first and the file is then
+        // fetched by a second render. Two renders, but an honest one each.
+        if (to) {
+          const res = await client.dashboards.report(id, {
+            ...base,
+            email: {
+              to,
+              ...(flag(rest, "--subject") ? { subject: flag(rest, "--subject")! } : {}),
+              ...(flag(rest, "--template") ? { templateKey: flag(rest, "--template")! } : {}),
+            },
+          });
+          if (json) printJson(res);
+          else
+            printKeyValues({
+              file: res.filename,
+              bytes: String(res.size),
+              panels: `${res.panels}${res.failedPanels ? ` (${res.failedPanels} failed)` : ""}`,
+              sent: res.sentTo.join(", ") || "—",
+              ...(res.attachmentsDropped
+                ? { warning: "transport dropped the attachment — the mail went without it" }
+                : {}),
+            });
+          if (!out) return;
+        }
+
+        if (out) {
+          const bytes = await client.dashboards.reportPdf(id, base);
+          writeFileSync(out, bytes);
+          if (json) printJson({ ok: true, path: out, bytes: bytes.byteLength });
+          else process.stdout.write(`wrote ${out} (${bytes.byteLength} bytes)\n`);
+          return;
+        }
+
+        const res = await client.dashboards.report(id, base);
+        if (json) printJson(res);
+        else
+          printKeyValues({
+            key: res.key,
+            file: res.filename,
+            bytes: String(res.size),
+            renderer: res.renderer,
+            panels: `${res.panels}${res.failedPanels ? ` (${res.failedPanels} failed)` : ""}`,
+          });
         return;
       }
       case "create": {

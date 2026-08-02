@@ -15,6 +15,7 @@ import {
   shareDashboard,
   updateDashboard,
 } from "../services/dashboards";
+import { deliverReport } from "../services/reports";
 
 const DashboardInput = z
   .object({
@@ -51,6 +52,43 @@ const RunResult = z.object({
   data: z.array(z.record(z.string(), z.unknown())),
   ms: z.number().int().nonnegative(),
 });
+
+const ReportInput = z
+  .object({
+    filename: z.string().max(200).optional(),
+    pageOptions: z
+      .object({
+        format: z.enum(["A4", "Letter", "Legal", "A3", "A5"]).optional(),
+        landscape: z.boolean().optional(),
+        printBackground: z.boolean().optional(),
+      })
+      .optional(),
+    email: z
+      .object({
+        /** One address or a comma-separated list. Validated in the service. */
+        to: z.string().min(1).max(2000),
+        subject: z.string().min(1).max(300).optional(),
+        templateKey: z.string().min(1).max(200).optional(),
+      })
+      .optional(),
+    /** Stream the PDF back instead of the metadata — the admin's own button. */
+    download: z.boolean().optional(),
+  })
+  .openapi("DashboardReportInput");
+
+const ReportResult = z
+  .object({
+    key: z.string(),
+    filename: z.string(),
+    size: z.number().int().nonnegative(),
+    renderer: z.string(),
+    dashboard: z.object({ id: z.string(), name: z.string() }),
+    panels: z.number().int().nonnegative(),
+    failedPanels: z.number().int().nonnegative(),
+    sentTo: z.array(z.string()),
+    attachmentsDropped: z.boolean().optional(),
+  })
+  .openapi("DashboardReport");
 
 const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
@@ -295,5 +333,66 @@ export const dashboardsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const t0 = Date.now();
       const data = await runDashboard(ctx, auth, tenantId, id);
       return c.json({ data, ms: Date.now() - t0 });
+    },
+  )
+  /**
+   * Print the dashboard, and optionally mail it.
+   *
+   * Two response shapes off one service call. `download` streams the PDF back
+   * for the admin's own button; the default returns the stored key + what
+   * happened, which is what a script or a scheduled caller needs. Mailing is
+   * refused on the download shape rather than silently ignored — a request that
+   * asked for both has one of the two intents wrong.
+   */
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{id}/report",
+      tags: TAGS,
+      summary: "Render a dashboard as a PDF report",
+      description:
+        "Runs every panel, prints the dashboard to a PDF and stores it. With `email` the PDF is also " +
+        "mailed, one message per recipient. With `download` the bytes come back instead of the metadata. " +
+        "Refuses with 422 when no PDF renderer is configured.",
+      security: SECURITY,
+      middleware: ADMIN_GATE,
+      request: {
+        params: z.object({ id: z.string() }),
+        body: { content: { "application/json": { schema: ReportInput } } },
+      },
+      responses: {
+        200: {
+          description: "The stored report, or the PDF bytes when `download` is set",
+          content: {
+            "application/json": { schema: ReportResult },
+            "application/pdf": { schema: z.string().openapi({ format: "binary" }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+      if (body.download && body.email) {
+        throw new AppError("VALIDATION", "A report is either downloaded or mailed, not both");
+      }
+      const out = await deliverReport(ctx, auth, tenantId, {
+        dashboardId: id,
+        ...(body.filename ? { filename: body.filename } : {}),
+        ...(body.pageOptions ? { pageOptions: body.pageOptions } : {}),
+        ...(body.email ? { email: body.email } : {}),
+      });
+      if (!body.download) return c.json(out);
+      const object = await ctx.storage.get(out.key);
+      if (!object) throw new AppError("INTERNAL", "The report was rendered but is not in storage");
+      return c.body(object.body as unknown as ReadableStream, 200, {
+        "content-type": "application/pdf",
+        "content-disposition": `inline; filename="${out.filename}"`,
+        "x-backlex-renderer": out.renderer,
+      });
     },
   );

@@ -9,6 +9,7 @@ import { runFunction } from "./sandbox";
 import { sendTemplatedEmail } from "./email";
 import { renderDocument } from "./documents";
 import { createSignatureRequest } from "./signatures";
+import { deliverReport } from "./reports";
 import { sendPushToUsers } from "./push";
 import { sendSmsToNumbers, sendSmsToUsers } from "./sms";
 import { deliverIntegrationByKind } from "./integrations";
@@ -526,6 +527,49 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
       sent: created.sent,
       signers: created.request.signers.map((s) => ({ id: s.id, email: s.email, status: s.status })),
     };
+  }
+
+  if (op.type === "report.deliver") {
+    const tenantId = ctx.authSubject.tenantId ?? null;
+    if (!tenantId) {
+      // The dashboard, its panels and the mail transport are all workspace-
+      // scoped; without one the op would have to guess whose numbers to print.
+      throw new FlowOpError("report.deliver requires a workspace-bound run");
+    }
+    const str = (v: string | undefined): string | undefined => {
+      if (v === undefined) return undefined;
+      const out = String(interpolate(v, ctx) ?? "").trim();
+      return out || undefined;
+    };
+    const dashboardId = str(op.dashboardId);
+    if (!dashboardId) throw new FlowOpError(`report.deliver dashboardId "${op.dashboardId}" rendered empty`);
+    const to = str(op.to);
+    // `to` present in the op but rendering empty means the template pointed at
+    // something the row does not carry. Silently downgrading to render-only
+    // would produce a scheduled report that stops arriving and never says so.
+    if (op.to !== undefined && !to) {
+      throw new FlowOpError(`report.deliver to "${op.to}" rendered empty`);
+    }
+
+    try {
+      const out = await deliverReport(ctx.ctx, ctx.authSubject, tenantId, {
+        dashboardId,
+        ...(str(op.filename) ? { filename: str(op.filename)! } : {}),
+        ...(op.pageOptions ? { pageOptions: op.pageOptions } : {}),
+        ...(to
+          ? {
+              email: {
+                to,
+                ...(str(op.subject) ? { subject: str(op.subject)! } : {}),
+                ...(op.templateKey ? { templateKey: op.templateKey } : {}),
+              },
+            }
+          : {}),
+      });
+      return out;
+    } catch (e) {
+      throw new FlowOpError(`report.deliver failed: ${(e as Error).message}`);
+    }
   }
 
   if (op.type === "transform") {

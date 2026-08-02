@@ -403,6 +403,25 @@ export interface ApiDashboard {
   embedRoleId: string | null;
 }
 
+export interface ApiDashboardReportInput {
+  filename?: string;
+  pageOptions?: { format?: string; landscape?: boolean; printBackground?: boolean };
+  /** Omit to render + store only. */
+  email?: { to: string; subject?: string; templateKey?: string };
+}
+
+export interface ApiDashboardReport {
+  key: string;
+  filename: string;
+  size: number;
+  renderer: string;
+  dashboard: { id: string; name: string };
+  panels: number;
+  failedPanels: number;
+  sentTo: string[];
+  attachmentsDropped?: boolean;
+}
+
 /** A single panel's rendered result from a dashboard run / public embed. */
 export interface ApiDashboardPanelResult {
   panelId: string;
@@ -1787,6 +1806,27 @@ export const dashboardsApi = {
     }),
   revoke: (id: string) =>
     api<{ ok: true }>(`/api/admin/dashboards/${id}/share`, { method: "DELETE" }),
+  report: (id: string, body: ApiDashboardReportInput = {}) =>
+    api<ApiDashboardReport>(`/api/admin/dashboards/${id}/report`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  /** The download shape — bytes, not JSON, so it bypasses the envelope helper
+   *  and comes back as a Blob the browser can save. Mirrors `documentsApi.render`. */
+  reportPdf: async (id: string, body: ApiDashboardReportInput = {}): Promise<Blob> => {
+    const res = await fetch(`${API_BASE}/api/admin/dashboards/${id}/report`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "content-type": "application/json", ...sessionHeaders() },
+      body: JSON.stringify({ ...body, download: true }),
+    });
+    captureBookmark(res);
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+      throw new Error(err.error?.message ?? `Report failed (${res.status})`);
+    }
+    return res.blob();
+  },
 };
 
 export const dashboardsPublicApi = {

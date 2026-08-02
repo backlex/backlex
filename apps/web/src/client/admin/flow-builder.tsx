@@ -7,7 +7,7 @@ import { Badge, Button, IconButton, Switch } from "./ui";
 import { Select } from "./select";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
-import { documentsApi, emailTemplatesApi, functionsApi, collectionsApi, integrationsApi, type ApiDocumentTemplate, type ApiEmailTemplate, type ApiFunction, type ApiCollection, type ApiIntegration } from "./api";
+import { dashboardsApi, documentsApi, emailTemplatesApi, functionsApi, collectionsApi, integrationsApi, type ApiDashboard, type ApiDocumentTemplate, type ApiEmailTemplate, type ApiFunction, type ApiCollection, type ApiIntegration } from "./api";
 import { api } from "@/lib/api";
 
 /** Just what the payment-link step needs off `/api/admin/payments/providers`. */
@@ -40,6 +40,7 @@ const ACTIONS = [
   { id: "payment.refund", label: "Refund payment", desc: "Give back some or all of a payment", icon: "CreditCard" },
   { id: "document.render", label: "Render document", desc: "Row + HTML template → a stored PDF", icon: "ScrollText" },
   { id: "document.sign", label: "Send for signature", desc: "Freeze the document and email a link per signer", icon: "Signature" },
+  { id: "report.deliver", label: "Deliver report", desc: "Print a dashboard to PDF and mail it", icon: "BarChart" },
   { id: "transform", label: "Transform", desc: "Compute a value and pipe it into $last", icon: "Function" },
   { id: "run-script", label: "Run script", desc: "Sandboxed JS — full ctx, `data`, `last`", icon: "Code" },
   { id: "fn", label: "Run function", desc: "Invoke a saved backlex function", icon: "Function" },
@@ -98,6 +99,9 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   // Document templates, so the two document steps offer the keys this
   // workspace actually has rather than a free-text key that 404s at run time.
   const [docTemplates, setDocTemplates] = useState<ApiDocumentTemplate[]>([]);
+  // Dashboards, so the report step names one from a list. A free-text id here
+  // would only be found wrong when the first scheduled run failed.
+  const [dashboards, setDashboards] = useState<ApiDashboard[]>([]);
   const [integrations, setIntegrations] = useState<ApiIntegration[]>([]);
   // Connected payment providers, so the payment-link step offers the ones this
   // workspace actually has rather than a free-text provider name.
@@ -106,7 +110,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
     let cancelled = false;
     void (async () => {
       try {
-        const [tpls, funcs, cols, docs, ints, pays] = await Promise.all([
+        const [tpls, funcs, cols, docs, ints, pays, dashes] = await Promise.all([
           emailTemplatesApi.list().catch(() => ({ data: [] as ApiEmailTemplate[] })),
           functionsApi.list().catch(() => ({ data: [] as ApiFunction[] })),
           collectionsApi.list().catch(() => ({ data: [] as ApiCollection[] })),
@@ -115,6 +119,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
           api<{ data: PaymentProviderOption[] }>("/api/admin/payments/providers").catch(() => ({
             data: [] as PaymentProviderOption[],
           })),
+          dashboardsApi.list().catch(() => ({ data: [] as ApiDashboard[] })),
         ]);
         if (cancelled) return;
         if (Array.isArray(tpls.data)) setEmailTemplates(tpls.data);
@@ -122,6 +127,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
         if (Array.isArray(cols.data)) setCollections(cols.data);
         if (Array.isArray(docs.data)) setDocTemplates(docs.data);
         if (Array.isArray(ints.data)) setIntegrations(ints.data);
+        if (Array.isArray(dashes.data)) setDashboards(dashes.data);
         if (Array.isArray(pays.data)) {
           setPaymentProviders(pays.data.filter((p) => p.status === "connected"));
         }
@@ -436,6 +442,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
             integrations={integrations}
             paymentProviders={paymentProviders}
             docTemplates={docTemplates}
+            dashboards={dashboards}
           />
         </div>
       </div>
@@ -505,6 +512,11 @@ function defaultConfigFor(kind: string, type: string) {
       writeBackItemId: "{{ data.id }}",
       writeBackField: "",
     };
+  // Seeded for the cadence this op exists for: a scheduled report goes to a
+  // person, so `to` starts as a prompt rather than blank, and the page setup
+  // starts at the workspace default rather than being asked about.
+  if (kind === "action" && type === "report.deliver")
+    return { dashboardId: "", to: "", subject: "", filename: "", templateKey: "", format: "", landscape: false };
   if (kind === "action" && type === "transform") return { value: "" };
   if (kind === "action" && type === "run-script") return { code: "// data, last, ctx, auth available\nreturn data;", timeoutMs: 5000 };
   if (kind === "action" && type === "fn") return { fn: "", async: true, retries: 3 };
@@ -515,7 +527,7 @@ function defaultConfigFor(kind: string, type: string) {
   return {};
 }
 
-function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [], integrations = [], paymentProviders = [], docTemplates = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[]; paymentProviders?: PaymentProviderOption[]; docTemplates?: ApiDocumentTemplate[] }) {
+function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [], integrations = [], paymentProviders = [], docTemplates = [], dashboards = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[]; integrations?: ApiIntegration[]; paymentProviders?: PaymentProviderOption[]; docTemplates?: ApiDocumentTemplate[]; dashboards?: ApiDashboard[] }) {
   const { t } = useLingui();
   if (!node) return (
     <div className="fb-inspector">
@@ -953,6 +965,74 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
                 <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Field</Trans></label><Input value={node.config.writeBackField || ""} onChange={(e) => onChange({ config: { writeBackField: e.target.value } })} placeholder="signed_doc" /></div>
               </>
             ) : null}
+          </>
+        )}
+        {node.kind === "action" && node.type === "report.deliver" && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Dashboard</Trans></label>
+              <Select
+                value={node.config.dashboardId || ""}
+                onChange={(v) => onChange({ config: { dashboardId: v } })}
+                className="min-w-0"
+                options={[
+                  {
+                    value: "",
+                    label: dashboards.length === 0 ? t`(none yet — build one on Insights)` : t`Pick a dashboard`,
+                  },
+                  ...dashboards.map((d) => ({ value: d.id, label: d.name })),
+                ]}
+              />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>Every panel runs with this flow's identity, then prints to a PDF.</Trans></span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Email to</Trans></label>
+              <Input value={node.config.to || ""} onChange={(e) => onChange({ config: { to: e.target.value } })} placeholder="ops@example.com, finance@example.com" />
+              {/* The placeholder is deliberately OUTSIDE the Trans: a literal
+                  pair of braces inside one is parsed as ICU and takes the whole
+                  admin SPA down with a blank page. */}
+              <span className="text-[11.5px] text-muted-foreground">
+                <Trans>Comma-separated. Leave blank to only store it — the next step can attach the key.</Trans>{" "}
+                <span className="font-mono">{"{{ $last.key }}"}</span>
+              </span>
+            </div>
+            {node.config.to ? (
+              <>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Subject</Trans></label><Input value={node.config.subject || ""} onChange={(e) => onChange({ config: { subject: e.target.value } })} placeholder="Monthly revenue" /><span className="text-[11.5px] text-muted-foreground"><Trans>Defaults to the dashboard's name.</Trans></span></div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Covering message</Trans></label>
+                  <Select
+                    value={node.config.templateKey || ""}
+                    onChange={(v) => onChange({ config: { templateKey: v } })}
+                    className="min-w-0"
+                    options={[
+                      { value: "", label: t`Plain — a one-line note naming the dashboard` },
+                      ...emailTemplates.map((e) => ({ value: e.key, label: `${e.name} · ${e.key}` })),
+                    ]}
+                  />
+                </div>
+              </>
+            ) : null}
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Filename (optional)</Trans></label><Input value={node.config.filename || ""} onChange={(e) => onChange({ config: { filename: e.target.value } })} placeholder="revenue-{{ data.month }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>Defaults to the dashboard's name and today's date.</Trans></span></div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Page</Trans></label>
+              <Select
+                value={node.config.format || ""}
+                onChange={(v) => onChange({ config: { format: v } })}
+                className="min-w-0"
+                options={[
+                  { value: "", label: t`A4 (default)` },
+                  { value: "Letter", label: "Letter" },
+                  { value: "Legal", label: "Legal" },
+                  { value: "A3", label: "A3" },
+                  { value: "A5", label: "A5" },
+                ]}
+              />
+            </div>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+              <Switch checked={Boolean(node.config.landscape)} onChange={(v: boolean) => onChange({ config: { landscape: v } })} />
+              <Trans>Landscape</Trans>
+            </label>
           </>
         )}
         {node.kind === "action" && node.type === "transform" && (

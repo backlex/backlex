@@ -209,6 +209,18 @@ export interface RenderDocumentInput {
   pageOptions?: PdfPageOptions;
   /** Overrides the template's suggested filename. Templated. */
   filename?: string;
+  /**
+   * Run `{{ … }}` interpolation over the body. On by default — a template is
+   * written to be filled in.
+   *
+   * A caller that BUILT the html itself passes `false`, and the report renderer
+   * does. Its pages carry row data verbatim, and this codebase stores templates
+   * in collections: a cell reading `{{ total }}` is ordinary content, but left
+   * to interpolation it resolves against a vars object that has no `total` and
+   * is replaced with the empty string. The cell would not error — it would just
+   * quietly not be in the report.
+   */
+  interpolate?: boolean;
 }
 
 export interface RenderedDocument {
@@ -275,14 +287,15 @@ export async function renderDocument(
     throw new AppError("VALIDATION", "renderDocument needs a templateKey or html");
   }
 
+  const fill = (s: string): string => (input.interpolate === false ? s : renderTemplate(s, vars));
   const opts: PdfPageOptions = {
     ...pageOptions,
     ...input.pageOptions,
-    ...(headerHtml ? { headerHtml: renderTemplate(headerHtml, vars) } : {}),
-    ...(footerHtml ? { footerHtml: renderTemplate(footerHtml, vars) } : {}),
+    ...(headerHtml ? { headerHtml: fill(headerHtml) } : {}),
+    ...(footerHtml ? { footerHtml: fill(footerHtml) } : {}),
   };
 
-  const bytes = await ctx.pdf.render(renderTemplate(bodyHtml, vars), opts);
+  const bytes = await ctx.pdf.render(fill(bodyHtml), opts);
   if (bytes.byteLength > MAX_PDF_BYTES) {
     throw new AppError(
       "VALIDATION",
@@ -292,7 +305,7 @@ export async function renderDocument(
 
   return {
     bytes,
-    filename: safeFilename(renderTemplate(filename ?? "document.pdf", vars)),
+    filename: safeFilename(fill(filename ?? "document.pdf")),
     contentType: "application/pdf",
     renderer: ctx.pdf.name,
   };

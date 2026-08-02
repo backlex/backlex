@@ -1813,6 +1813,47 @@ export interface DashboardsClient {
   share(id: string, opts?: { roleId?: string | null }): Promise<DashboardShareResult>;
   /** Disable the public embed and forget the token. */
   revoke(id: string): Promise<{ ok: boolean }>;
+  /**
+   * Print the dashboard to a PDF and store it; with `email`, mail it too.
+   *
+   * The stored key comes back either way, so a caller that wants to send the
+   * file itself can. Rejects when no PDF renderer is configured — there is no
+   * fallback renderer, by design.
+   */
+  report(id: string, input?: DashboardReportInput): Promise<DashboardReport>;
+  /** The same render, returning the PDF bytes instead of the metadata. Cannot
+   *  be combined with `email` — a request that asked for both has one of the
+   *  two intents wrong, and the server says so. */
+  reportPdf(id: string, input?: Omit<DashboardReportInput, "email">): Promise<Uint8Array>;
+}
+
+export interface DashboardReportInput {
+  /** Defaults to `<dashboard-name>-<date>.pdf`. */
+  filename?: string;
+  pageOptions?: {
+    format?: "A4" | "Letter" | "Legal" | "A3" | "A5";
+    landscape?: boolean;
+    printBackground?: boolean;
+  };
+  /** Omit to render + store only. */
+  email?: { to: string; subject?: string; templateKey?: string };
+}
+
+export interface DashboardReport {
+  /** Storage key of the stored PDF. */
+  key: string;
+  filename: string;
+  size: number;
+  /** Which renderer produced it, for diagnostics. */
+  renderer: string;
+  dashboard: { id: string; name: string };
+  panels: number;
+  /** Panels that failed. The PDF prints their error rather than dropping them. */
+  failedPanels: number;
+  sentTo: string[];
+  /** The covering mail went, WITHOUT the report — the configured transport
+   *  cannot carry attachments. */
+  attachmentsDropped?: boolean;
 }
 
 /* ── Product analytics + crash reporting (#22) ─────────────────────────── */
@@ -3900,6 +3941,18 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     share: (id: string, opts?: { roleId?: string | null }) =>
       request<DashboardShareResult>("POST", `${dash(id)}/share`, opts ?? {}),
     revoke: (id: string) => request<{ ok: boolean }>("DELETE", `${dash(id)}/share`),
+    report: (id: string, input?: DashboardReportInput) =>
+      request<DashboardReport>("POST", `${dash(id)}/report`, input ?? {}),
+    // Bytes, not JSON — same raw path the document render uses.
+    reportPdf: async (id: string, input?: Omit<DashboardReportInput, "email">) => {
+      const res = await requestRaw(
+        "POST",
+        `${dash(id)}/report`,
+        JSON.stringify({ ...(input ?? {}), download: true }),
+        "application/json",
+      );
+      return new Uint8Array(await res.arrayBuffer());
+    },
   };
 
   // Product analytics + crash reporting. `track*` post to the public ingest

@@ -79,8 +79,68 @@ export const runDashboard: McpTool = {
   },
 };
 
+export const deliverDashboardReport: McpTool = {
+  name: "dashboards.report",
+  description:
+    "Print a dashboard to a PDF and store it. Pass `email.to` (one address or a comma-separated " +
+    "list) to mail it as an attachment, one message per recipient. Returns the storage key, size " +
+    "and how many panels ran — including how many FAILED, which the PDF prints rather than hides. " +
+    "Errors when the deployment has no PDF renderer configured.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      id: { type: "string", description: "Dashboard id" },
+      filename: { type: "string", description: "Defaults to <dashboard>-<date>.pdf" },
+      email: {
+        type: "object",
+        properties: {
+          to: { type: "string" },
+          subject: { type: "string" },
+          templateKey: { type: "string" },
+        },
+        required: ["to"],
+        additionalProperties: false,
+      },
+      pageOptions: {
+        type: "object",
+        properties: {
+          format: { type: "string", enum: ["A4", "Letter", "Legal", "A3", "A5"] },
+          landscape: { type: "boolean" },
+          printBackground: { type: "boolean" },
+        },
+        additionalProperties: false,
+      },
+    },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.id ?? "");
+    if (!id) throw new Error("VALIDATION: id is required");
+    const { id: _id, ...body } = args as Record<string, unknown>;
+    const res = await ctx.fetchInternal(
+      `/api/admin/dashboards/${encodeURIComponent(id)}/report`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    const parsed = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!parsed) {
+      throw new Error(`dashboards.report: upstream returned non-JSON (status ${res.status})`);
+    }
+    return {
+      content: [{ type: "text", text: JSON.stringify(parsed, null, 2) }],
+      structuredContent: parsed,
+      isError: !res.ok,
+    };
+  },
+};
+
 export const dashboardsTools: McpTool[] = [
   listDashboards,
   getDashboard,
   runDashboard,
+  deliverDashboardReport,
 ];

@@ -191,6 +191,10 @@ msgstr "(none connected — connect one on Payments)"
 msgid "(none yet — author one on Document templates)"
 msgstr "(none yet — author one on Document templates)"
 
+#: src/client/admin/flow-builder.tsx
+msgid "(none yet — build one on Insights)"
+msgstr "(none yet — build one on Insights)"
+
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/scim-card.tsx
 msgid "(none)"
@@ -1131,6 +1135,14 @@ msgstr "A webhook is told what happened. A sync hook runs before the write and d
 #: src/client/admin/rule-builder.tsx
 msgid "a, b, c"
 msgstr "a, b, c"
+
+#: src/client/admin/parity/insights.tsx
+msgid "A4"
+msgstr "A4"
+
+#: src/client/admin/flow-builder.tsx
+msgid "A4 (default)"
+msgstr "A4 (default)"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "About"
@@ -3311,6 +3323,14 @@ msgstr "Comma-separated exact tool ids. Use these when a whole namespace is too 
 msgid "Comma-separated; prefix with <0>-</0> for descending. Leave blank to fall back to <1>-created_at</1>."
 msgstr "Comma-separated; prefix with <0>-</0> for descending. Leave blank to fall back to <1>-created_at</1>."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Comma-separated. Leave blank to only store it — the next step can attach the key."
+msgstr "Comma-separated. Leave blank to only store it — the next step can attach the key."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Comma-separated. Only needed to send it — downloading works without one."
+msgstr "Comma-separated. Only needed to send it — downloading works without one."
+
 #: src/client/admin/extras.tsx
 msgid "Command palette"
 msgstr "Command palette"
@@ -3895,6 +3915,10 @@ msgstr "Count a visitor as active when they fire"
 msgid "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
 msgstr "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Covering message"
+msgstr "Covering message"
+
 #: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -4238,6 +4262,10 @@ msgstr "Danger zone"
 msgid "Dark"
 msgstr "Dark"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Dashboard"
+msgstr "Dashboard"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Dashboard \"{name}\" created."
 msgstr "Dashboard \"{name}\" created."
@@ -4385,6 +4413,14 @@ msgstr "Default values applied on create. The user cannot override these — the
 #: src/client/admin/condition-editor.tsx
 msgid "defaults"
 msgstr "defaults"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Defaults to the dashboard's name and today's date."
+msgstr "Defaults to the dashboard's name and today's date."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Defaults to the dashboard's name."
+msgstr "Defaults to the dashboard's name."
 
 #: src/client/admin/parity/signatures.tsx
 msgid "Defaults to the template's name"
@@ -4904,6 +4940,7 @@ msgstr "Download"
 msgid "Download JSON"
 msgstr "Download JSON"
 
+#: src/client/admin/parity/insights.tsx
 #: src/client/pages/sign-document.tsx
 msgid "Download PDF"
 msgstr "Download PDF"
@@ -5304,6 +5341,10 @@ msgstr "Email is the only required field. Roles assigned post-signup — first u
 msgid "email magic link"
 msgstr "email magic link"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Email report"
+msgstr "Email report"
+
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Email settings saved."
 msgstr "Email settings saved."
@@ -5312,6 +5353,11 @@ msgstr "Email settings saved."
 #: src/client/admin/ui.tsx
 msgid "Email templates"
 msgstr "Email templates"
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/insights.tsx
+msgid "Email to"
+msgstr "Email to"
 
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Email transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>EMAIL_PROVIDER</1> / env keys. Secret values are encrypted at rest and never shown again."
@@ -5768,6 +5814,10 @@ msgstr "Every MCP tool is callable, subject to permissions. Tick a tool below to
 #: src/client/admin/pages/analytics.tsx
 msgid "Every occurrence of this bug, with the latest stack trace and how many visitors it reached."
 msgstr "Every occurrence of this bug, with the latest stack trace and how many visitors it reached."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Every panel runs with this flow's identity, then prints to a PDF."
+msgstr "Every panel runs with this flow's identity, then prints to a PDF."
 
 #: src/client/admin/parity/booking.tsx
 msgid "Every status"
@@ -7674,7 +7724,9 @@ msgstr "Label shown in the item form. Falls back to the column name."
 msgid "Lands in {pending}"
 msgstr "Lands in {pending}"
 
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/documents.tsx
+#: src/client/admin/parity/insights.tsx
 msgid "Landscape"
 msgstr "Landscape"
 
@@ -8254,6 +8306,10 @@ msgstr "Magic link"
 #: src/client/pages/magic-link.tsx
 msgid "Magic-link plugin not enabled on the server"
 msgstr "Magic-link plugin not enabled on the server"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Mail sent, but this deployment's email transport cannot carry attachments — the report was not included."
+msgstr "Mail sent, but this deployment's email transport cannot carry attachments — the report was not included."
 
 #: src/client/admin/collection-settings.tsx
 #~ msgid "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). After enabling on an existing collection, run a re-index to backfill."
@@ -10461,6 +10517,11 @@ msgstr "Owner’s full access (no restriction)"
 msgid "p95 latency"
 msgstr "p95 latency"
 
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/insights.tsx
+msgid "Page"
+msgstr "Page"
+
 #: src/client/admin/app.tsx
 #~ msgid "page {page} / {totalPages}"
 #~ msgstr "page {page} / {totalPages}"
@@ -10823,6 +10884,10 @@ msgstr "Pick a collection…"
 msgid "pick a column for the aliased system field"
 msgstr "pick a column for the aliased system field"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Pick a dashboard"
+msgstr "Pick a dashboard"
+
 #: src/client/components/date-picker.tsx
 msgid "Pick a date…"
 msgstr "Pick a date…"
@@ -11079,6 +11144,10 @@ msgstr "plain"
 #: src/client/admin/field-format-editor.tsx
 msgid "Plain"
 msgstr "Plain"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Plain — a one-line note naming the dashboard"
+msgstr "Plain — a one-line note naming the dashboard"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Plan"
@@ -12171,6 +12240,7 @@ msgid "rendering only — never affects storage or sorting"
 msgstr "rendering only — never affects storage or sorting"
 
 #: src/client/admin/parity/documents.tsx
+#: src/client/admin/parity/insights.tsx
 msgid "Rendering…"
 msgstr "Rendering…"
 
@@ -12182,6 +12252,20 @@ msgstr "Reopen"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Replace"
 msgstr "Replace"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Report"
+msgstr "Report"
+
+#. placeholder {0}: dashboard.name
+#: src/client/admin/parity/insights.tsx
+msgid "Report \"{0}\""
+msgstr "Report \"{0}\""
+
+#. placeholder {0}: res.sentTo.length
+#: src/client/admin/parity/insights.tsx
+msgid "Report sent to {0} recipient(s)."
+msgstr "Report sent to {0} recipient(s)."
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Repository"
@@ -12864,6 +12948,10 @@ msgstr "Runs"
 #: src/client/admin/flow-builder.tsx
 msgid "runs daily at 09:00 UTC"
 msgstr "runs daily at 09:00 UTC"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Runs every panel and prints the dashboard to a PDF. To send it on a schedule instead, add a \"Deliver report\" step to a cron flow."
+msgstr "Runs every panel and prints the dashboard to a PDF. To send it on a schedule instead, add a \"Deliver report\" step to a cron flow."
 
 #: src/client/admin/pages/integration-syncs-card.tsx
 msgid "runs only when you ask"
@@ -13572,6 +13660,7 @@ msgstr "Sending reset link"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/settings/messaging-cards.tsx
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/signatures.tsx
 #: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx
@@ -14639,6 +14728,7 @@ msgstr "sub"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/email-templates.tsx
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "Subject"
 msgstr "Subject"
@@ -15067,6 +15157,10 @@ msgstr "The client secret is encrypted at rest. If you leave both fields blank, 
 #: src/client/admin/pages/forms.tsx
 msgid "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
 msgstr "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
+
+#: src/client/admin/parity/insights.tsx
+msgid "the default"
+msgstr "the default"
 
 #: src/client/admin/parity/signatures.tsx
 msgid "The document is rendered and frozen now. A later edit to the template will not change it."

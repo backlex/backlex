@@ -45,6 +45,7 @@ const SUPPORTED_ACTIONS = new Set([
   "payment.refund",
   "document.render",
   "document.sign",
+  "report.deliver",
   "transform",
   "run-script",
   // Wired in later phases — listed so the compiler emits a clearer warning
@@ -505,6 +506,29 @@ const compileAction = (node: GraphNode): Operation => {
         ...(writeBack ? { writeBack } : {}),
       };
     }
+    case "report.deliver": {
+      const dashboardId = String(c.dashboardId ?? "").trim();
+      if (!dashboardId) throw new FlowCompileError("Report step needs a dashboard");
+      const to = String(c.to ?? "").trim();
+      const format = String(c.format ?? "").trim();
+      const landscape = Boolean(c.landscape);
+      // `pageOptions` is only emitted when it says something. An op carrying
+      // `{ landscape: false }` reads, in a saved flow, as a deliberate choice
+      // rather than the default nobody touched.
+      const pageOptions =
+        format || landscape
+          ? { ...(format ? { format: format as "A4" } : {}), ...(landscape ? { landscape: true } : {}) }
+          : undefined;
+      return {
+        type: "report.deliver",
+        dashboardId,
+        ...(String(c.filename ?? "").trim() ? { filename: String(c.filename).trim() } : {}),
+        ...(to ? { to } : {}),
+        ...(String(c.subject ?? "").trim() ? { subject: String(c.subject).trim() } : {}),
+        ...(String(c.templateKey ?? "").trim() ? { templateKey: String(c.templateKey).trim() } : {}),
+        ...(pageOptions ? { pageOptions } : {}),
+      };
+    }
     case "transform": {
       return {
         type: "transform",
@@ -851,6 +875,16 @@ const opToConfig = (op: Operation): Record<string, any> => {
         writeBackCollection: op.writeBack?.collection ?? "",
         writeBackItemId: op.writeBack?.id ?? "",
         writeBackField: op.writeBack?.field ?? "",
+      };
+    case "report.deliver":
+      return {
+        dashboardId: op.dashboardId ?? "",
+        filename: op.filename ?? "",
+        to: op.to ?? "",
+        subject: op.subject ?? "",
+        templateKey: op.templateKey ?? "",
+        format: op.pageOptions?.format ?? "",
+        landscape: Boolean(op.pageOptions?.landscape),
       };
     case "transform":
       return {

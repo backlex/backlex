@@ -31,11 +31,64 @@ A flow row is `{ id, name, trigger, operations, layout, active }`:
 |---|---|
 | `event:<channel>:<event>` | A matching realtime event publishes. Item events use the channel `items:<slug>`, so `event:items:posts:created` fires on a new `posts` row. `*` is a wildcard segment: `event:items:posts:*` catches create/update/delete, `event:items:*` catches every collection. |
 | `cron:<pattern>` | The cron pattern is due. Standard 5-field crontab (`cron:*/5 * * * *` = every 5 min). Dispatched by the same cross-runtime [scheduler tick](/sandbox/) that runs cron functions — no extra infrastructure. |
+| `schedule:<spec>` | A row's date field comes due — "three days before `due_date`". Fires **once per matching row**, with that row as `data`. See below. |
 | `manual:` | Only on an explicit run (REST `…/run`, SDK `flows.run`, GraphQL `runFlow`, MCP `flows.invoke`, CLI `flows run`). |
 | `webhook` | An inbound `POST /api/webhook/<flowId>` arrives. The request body becomes the flow's `data` payload. Public endpoint — guard it with a check op or a shared secret in the path. |
 
 The matched row that changed (for event triggers) or the run payload (for
 manual / webhook) lands in `data`, available to every op via templating.
+
+### Counting from a date
+
+A `cron` flow arrives with no row. That makes "remind me three days before an
+invoice is due" inexpressible with it: the tick knows the time, not who it is
+about. A `schedule` trigger is the other shape — it scans a collection and runs
+the flow **once per row whose date has come due**, with the row as `data`.
+
+The trigger string is `schedule:` followed by the spec as JSON; the admin's
+trigger inspector writes it for you.
+
+```json
+{
+  "collection": "invoices",
+  "field": "due_date",
+  "offset": { "value": 3, "unit": "days", "direction": "before" },
+  "at": 540,
+  "timeZone": "Europe/Istanbul",
+  "where": { "status": { "_neq": "paid" } }
+}
+```
+
+`field` must be a `timestamp` column — a schedule counting from a text field is
+refused when you save it, because it would not misfire, it would never fire at
+all.
+
+**`at` changes what the offset means.** Left `null`, the flow fires at the same
+time of day the date field itself carries, and the offset is plain elapsed time
+(`minutes`, `hours`, `days`, `weeks` all allowed). Set to a minute-of-day, the
+offset becomes *calendar* days and the flow fires at that wall clock in
+`timeZone` — so a reminder stays at 09:00 local across a daylight-saving change
+instead of drifting to 08:00 for half the year. That pairing is why `at` needs a
+`days` or `weeks` offset: "two hours before, at 09:00" names two different
+instants, and it is refused rather than silently resolved. A wall clock that
+does not exist (the spring-forward gap) fires nothing rather than being rounded
+into the next hour.
+
+**Each row fires exactly once per instant.** The scan looks back over a
+**two-day catch-up window** rather than only since the last tick, because that
+window's left edge is per-process state and a serverless tick may start with no
+memory of one — a restart or a deploy would otherwise drop every reminder in the
+gap, silently. A `flow_schedule_fires` ledger with a unique index on
+(flow, row, instant) is what keeps that from re-sending: the dispatch claims its
+row *before* running, so two instances ticking together cannot both win.
+
+Two consequences worth knowing:
+
+- **Moving a date fires again.** The instant is part of the key, so a corrected
+  due date is a new claim. A row nobody touched never re-fires.
+- **Turning a schedule on does not mail the backlog.** The scan never reaches
+  back past the flow's own creation, so rows that were already overdue when you
+  saved it stay quiet.
 
 ### The `booking` channel
 
@@ -97,12 +150,57 @@ are nested operation arrays run after the op succeeds / throws.
 | `item.create` | Inserts a row into a collection (permissions bypassed) | `collection`, `data` (object or a template string parsed at run time) |
 | `item.update` | Patches a row by id (permissions bypassed) | `collection`, `id`, `data` |
 | `condition` | Branches: runs `then` / `else` based on a [permissions-DSL condition](/permissions/) over `data` | `filter`, `then?`, `else?` |
+| `foreach` | Runs `do` once per row of a collection, with the row as `{{ $item.* }}`. See below | `collection`, `do`, `filter?`, `sort?`, `limit?` (≤500) |
 | `transform` | Evaluates `value` (templated) and exposes it as `{{ $last }}` | `value` |
 | `delay` | Pauses. ≤30s sleeps inline; longer is persisted to `scheduled_tasks` and resumed by the scheduler (cap 30 days) | `durationMs` |
 
 A run stops at the first op that throws without an `onError` branch and returns
 `{ ok: false, error }`. A flow that checkpointed on a long `delay` still returns
 `{ ok: true }` — the remainder is queued, not failed.
+
+### Looping over rows
+
+Where a `schedule` trigger answers "each row, when its date comes", `foreach`
+answers "each row, right now" — a weekly digest to every active subscriber, a
+nightly pass over everything still unassigned.
+
+```json
+{
+  "type": "foreach",
+  "collection": "subscribers",
+  "filter": { "active": { "_eq": true } },
+  "sort": "-created_at",
+  "do": [
+    { "type": "email", "to": "{{ $item.email }}", "templateKey": "weekly-digest" }
+  ]
+}
+```
+
+The loop row is `{{ $item.* }}`, **not** `data`. `data` still holds the flow's
+own trigger payload, and rebinding it per iteration would quietly change what
+every `{{ data.x }}` in the body meant. (A `schedule` trigger is the opposite
+case — there the row *is* the payload, so it arrives as `data` and a flow
+rewritten from `event:` to `schedule:` keeps every template it already had.)
+
+The body runs inline, which is what these rules follow from — all of them
+refused when you save, not discovered at run time:
+
+- **No `approval.request` and no `delay` over 30s inside a loop.** Both suspend
+  the flow, and the continuation machinery parks "everything after this op at
+  the top level" — which is not "the rest of this iteration, then the remaining
+  rows". Parked, the loop would silently run once and report success.
+- **No `foreach` inside a `foreach`.** The inner loop would shadow `{{ $item }}`
+  with no way to reach the outer row.
+- **A loop needs a body.** An empty one is a body attached to the wrong port.
+
+`limit` caps the walk at 500 rows, which is also the default. The cap is the
+default on purpose: a loop that quietly stopped at 50 would report success
+having skipped the rest. When a loop does hit the cap, the server logs it —
+"every overdue invoice" covering only some of them is worth saying out loud.
+
+One more thing that bites: a filter operator the DSL does not recognise
+compiles to **true**, so `$ne` where you meant `_neq` matches every row instead
+of none. Flow filters are checked for that when you save.
 
 ### Putting the booking in their calendar
 

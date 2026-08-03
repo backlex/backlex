@@ -1051,6 +1051,10 @@ msgstr "A key with this name already exists."
 msgid "A local stand-in that settles payments without charging anything. Demo and development instances only."
 msgstr "A local stand-in that settles payments without charging anything. Demo and development instances only."
 
+#: src/client/admin/flow-builder.tsx
+msgid "A loop runs inline, so its body cannot wait for an approval or a long delay."
+msgstr "A loop runs inline, so its body cannot wait for an approval or a long delay."
+
 #: src/client/admin/parity/insights.tsx
 msgid "A panel with that name already exists."
 msgstr "A panel with that name already exists."
@@ -1402,6 +1406,10 @@ msgstr "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
 msgid "Add a remote MCP connector"
 msgstr "Add a remote MCP connector"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Add a step after the loop"
+msgstr "Add a step after the loop"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "Add a tag and press Enter…"
 msgstr "Add a tag and press Enter…"
@@ -1565,6 +1573,10 @@ msgid "Add to false branch"
 msgstr "Add to false branch"
 
 #: src/client/admin/flow-builder.tsx
+msgid "Add to the loop body"
+msgstr "Add to the loop body"
+
+#: src/client/admin/flow-builder.tsx
 msgid "Add to true branch"
 msgstr "Add to true branch"
 
@@ -1669,6 +1681,7 @@ msgstr "advisory — returned as a warning, not blocking"
 msgid "affected"
 msgstr "affected"
 
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/revisions.tsx
 msgid "after"
 msgstr "after"
@@ -2224,6 +2237,10 @@ msgstr "asking {model}…"
 msgid "Aspect-cropping active. Focal point picks which area is kept."
 msgstr "Aspect-cropping active. Focal point picks which area is kept."
 
+#: src/client/admin/flow-builder.tsx
+msgid "At (optional)"
+msgstr "At (optional)"
+
 #: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "At least 8 characters"
@@ -2530,6 +2547,7 @@ msgstr "BCP-47 short codes — e.g. <0>tr</0>, <1>en-GB</1>, <2>pt-BR</2>."
 msgid "Bearer token"
 msgstr "Bearer token"
 
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/revisions.tsx
 msgid "before"
 msgstr "before"
@@ -3255,6 +3273,10 @@ msgstr "Collection c_{slug} dropped."
 #: src/client/admin/app.tsx
 msgid "Collection c_{slug} restored."
 msgstr "Collection c_{slug} restored."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Collection default"
+msgstr "Collection default"
 
 #: src/client/admin/app.tsx
 msgid "Collection enabled."
@@ -4356,6 +4378,10 @@ msgstr "Database import"
 msgid "Date & time"
 msgstr "Date & time"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Date field"
+msgstr "Date field"
+
 #: src/client/admin/field-format-editor.tsx
 msgid "Date only"
 msgstr "Date only"
@@ -4363,6 +4389,10 @@ msgstr "Date only"
 #: src/client/admin/field-format-editor.tsx
 msgid "Date style"
 msgstr "Date style"
+
+#: src/client/admin/flow-builder.tsx
+msgid "days"
+msgstr "days"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "DB type"
@@ -4801,6 +4831,10 @@ msgstr "Direct access to the underlying engine. Adapter: <0>{0}</0>. SQL editor 
 msgid "Direct Streamable HTTP — useful for CI agents and smoke tests."
 msgstr "Direct Streamable HTTP — useful for CI agents and smoke tests."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Direction"
+msgstr "Direction"
+
 #: src/client/admin/pages/extensions.tsx
 msgid "Disable"
 msgstr "Disable"
@@ -5184,9 +5218,17 @@ msgstr "Each collection is a physical table created at runtime. Drag fields, set
 msgid "Each link opens only once the one above it has signed."
 msgstr "Each link opens only once the one above it has signed."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Each matching row runs the flow once, with the row as <0>{dataInterpolationExample}</0>."
+msgstr "Each matching row runs the flow once, with the row as <0>{dataInterpolationExample}</0>."
+
 #: src/client/admin/collection-settings.tsx
 msgid "Each row gets an <0>owner_id</0>; the<1> authenticated</1> role can only read/update its own rows. Toggling on auto-seeds owner-scoped permissions; toggling off does not remove existing rows or rules."
 msgstr "Each row gets an <0>owner_id</0>; the<1> authenticated</1> role can only read/update its own rows. Toggling on auto-seeds owner-scoped permissions; toggling off does not remove existing rows or rules."
+
+#: src/client/admin/flow-builder.tsx
+msgid "each row of"
+msgstr "each row of"
 
 #: src/client/admin/parity/booking.tsx
 msgid "Each rule must start before it ends. A span crossing midnight is two rules."
@@ -6367,6 +6409,14 @@ msgstr "Fire a lifecycle action when a card enters a column — e.g. a <0>done</
 msgid "Fire a repository_dispatch on data events."
 msgstr "Fire a repository_dispatch on data events."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Fires at that wall clock, so it stays at the same local hour across a daylight-saving change."
+msgstr "Fires at that wall clock, so it stays at the same local hour across a daylight-saving change."
+
+#: src/client/admin/flow-builder.tsx
+msgid "Fires at the same time of day the date field itself carries."
+msgstr "Fires at the same time of day the date field itself carries."
+
 #: src/client/admin/pages/functions.tsx
 msgid "fires on matching pub-sub channel events"
 msgstr "fires on matching pub-sub channel events"
@@ -7020,9 +7070,17 @@ msgstr "Horizon"
 msgid "Hourly"
 msgstr "Hourly"
 
+#: src/client/admin/flow-builder.tsx
+msgid "hours"
+msgstr "hours"
+
 #: src/client/admin/pages/agents.tsx
 msgid "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
 msgstr "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
+
+#: src/client/admin/flow-builder.tsx
+msgid "How long"
+msgstr "How long"
 
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "How long a write may block on this hook. Max 10000."
@@ -8485,6 +8543,7 @@ msgstr "Max length"
 msgid "Max requests / month"
 msgstr "Max requests / month"
 
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/usage.tsx
 msgid "Max rows"
 msgstr "Max rows"
@@ -8682,6 +8741,10 @@ msgstr "Minting a new key immediately invalidates the old one."
 #: src/client/admin/pages/forms.tsx
 msgid "Mints a new token; the current link stops working"
 msgstr "Mints a new token; the current link stops working"
+
+#: src/client/admin/flow-builder.tsx
+msgid "minutes"
+msgstr "minutes"
 
 #: src/client/admin/parity/booking.tsx
 msgid "Minutes an unconfirmed hold survives."
@@ -9385,6 +9448,10 @@ msgstr "No data yet — run the panel."
 #: src/client/pages/embed-dashboard.tsx
 msgid "No data."
 msgstr "No data."
+
+#: src/client/admin/flow-builder.tsx
+msgid "No date fields on this collection"
+msgstr "No date fields on this collection"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "No DDL on the table."
@@ -10310,6 +10377,10 @@ msgstr "One-time link, no <0>password</0>."
 msgid "Only needed for self-signed LDAPS; the system trust store handles publicly-signed certs."
 msgstr "Only needed for self-signed LDAPS; the system trust store handles publicly-signed certs."
 
+#: src/client/admin/flow-builder.tsx
+msgid "Only rows matching (optional)"
+msgstr "Only rows matching (optional)"
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Only scalar fields can be exposed. Submissions run the collection's validation and land as drafts on versioned collections."
 #~ msgstr "Only scalar fields can be exposed. Submissions run the collection's validation and land as drafts on versioned collections."
@@ -10943,6 +11014,7 @@ msgstr "Photographer, designer, source…"
 msgid "physical c_<slug> tables"
 msgstr "physical c_<slug> tables"
 
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/search-playground.tsx
 #: src/client/admin/permission-tester.tsx
@@ -10983,6 +11055,10 @@ msgstr "pick a column for the aliased system field"
 #: src/client/admin/flow-builder.tsx
 msgid "Pick a dashboard"
 msgstr "Pick a dashboard"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Pick a date field"
+msgstr "Pick a date field"
 
 #: src/client/components/date-picker.tsx
 msgid "Pick a date…"
@@ -14534,6 +14610,10 @@ msgstr "Soft"
 msgid "Soft delete"
 msgstr "Soft delete"
 
+#: src/client/admin/flow-builder.tsx
+msgid "Sort"
+msgstr "Sort"
+
 #: src/client/admin/pages/advisor.tsx
 msgid "Sorted by"
 msgstr "Sorted by"
@@ -15353,6 +15433,14 @@ msgstr "The link is returned into $last either way — writing it back is what p
 #~ msgid "The link was shown once when it was minted. Rotate the token to get a new one."
 #~ msgstr "The link was shown once when it was minted. Rotate the token to get a new one."
 
+#: src/client/admin/flow-builder.tsx
+#~ msgid "The loop body runs once per row, with the row available as <0>{{ $item.* }}</0>."
+#~ msgstr "The loop body runs once per row, with the row available as <0>{{ $item.* }}</0>."
+
+#: src/client/admin/flow-builder.tsx
+msgid "The loop body runs once per row, with the row available as <0>{itemInterpolationExample}</0>."
+msgstr "The loop body runs once per row, with the row available as <0>{itemInterpolationExample}</0>."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "The oldest recorded span is newer than the start of this window — span retention, not traffic, is what bounds it."
 msgstr "The oldest recorded span is newer than the start of this window — span retention, not traffic, is what bounds it."
@@ -15721,6 +15809,7 @@ msgid "Time only"
 msgstr "Time only"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/booking.tsx
 msgid "Time zone"
 msgstr "Time zone"
@@ -16192,6 +16281,10 @@ msgstr "UNIQUE constraint at the column level."
 #: src/client/admin/pages/analytics.tsx
 msgid "unique, by anonymous id"
 msgstr "unique, by anonymous id"
+
+#: src/client/admin/flow-builder.tsx
+msgid "Unit"
+msgstr "Unit"
 
 #: src/client/admin/parity/database.tsx
 msgid "unknown — manifest out of sync, run <0>bun run --cwd packages/db manifest</0>"
@@ -16814,6 +16907,10 @@ msgstr "Weekly"
 #: src/client/admin/pages/chat.tsx
 msgid "Weekly numbers"
 msgstr "Weekly numbers"
+
+#: src/client/admin/flow-builder.tsx
+msgid "weeks"
+msgstr "weeks"
 
 #: src/client/pages/sign-in.tsx
 msgid "Welcome back"

@@ -134,7 +134,11 @@ export const canDecide = (
  */
 export const findNestedApproval = (operations: unknown, path = "operations"): string | null => {
   if (!Array.isArray(operations)) return null;
-  const BRANCHES = ["onSuccess", "onError", "then", "else", "onRejected"] as const;
+  // `do` is a `foreach` body. It is listed here for the same reason as the
+  // rest: the runner would park the top-level remainder, and everything the
+  // author wrote inside the loop — including the iterations not yet run —
+  // would be dropped on the floor.
+  const BRANCHES = ["onSuccess", "onError", "then", "else", "onRejected", "do"] as const;
   for (let i = 0; i < operations.length; i++) {
     const op = operations[i] as Record<string, unknown> | null;
     if (!op || typeof op !== "object") continue;

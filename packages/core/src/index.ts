@@ -8,6 +8,7 @@ export * from "./email";
 export * from "./ics";
 export * from "./approvals";
 export * from "./booking";
+export * from "./schedule";
 export * from "./embedding-models";
 export * from "./panels";
 export * from "./report";

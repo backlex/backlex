@@ -1,10 +1,19 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { matchesCondition } from "@backlex/db";
-import { E164_PATTERN, buildIcs, icsContentType } from "@backlex/core";
+import { compileCondition, matchesCondition } from "@backlex/db";
+import {
+  E164_PATTERN,
+  FOREACH_MAX_ROWS,
+  INLINE_DELAY_MS,
+  buildIcs,
+  icsContentType,
+} from "@backlex/core";
 import type { AuthSubject, Condition, EmailAttachment, Operation } from "@backlex/core";
 import type { Ctx } from "../context";
+import { loadCollection, type CollectionRow } from "./items/collection-loader";
+import { deserializeRow } from "./items/serialize";
+import { deletedFilter, queryAll, whereOf } from "./items/sql-helpers";
 import { runFunction } from "./sandbox";
 import { sendTemplatedEmail } from "./email";
 import { renderDocument } from "./documents";
@@ -21,9 +30,43 @@ import { recordActivity } from "./activity";
 import { fetchOutbound } from "./storage/hosts";
 
 /** Inline-sleep cap. Anything longer is enqueued so the worker isn't
- *  blocked for minutes/hours at a time. */
-const MAX_INLINE_DELAY_MS = 30_000;
+ *  blocked for minutes/hours at a time. Shared with the save-time `foreach`
+ *  check, which has to refuse exactly the delays that suspend. */
+const MAX_INLINE_DELAY_MS = INLINE_DELAY_MS;
 const sleep = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
+
+/**
+ * `ORDER BY` for a `foreach`, or empty when neither the op nor the collection
+ * names one.
+ *
+ * Only real columns are accepted. The sort string reaches here from a saved
+ * flow, and an unvalidated name would be interpolated straight into SQL as an
+ * identifier — so an unknown one is dropped rather than passed through, and an
+ * op that names nothing usable simply runs unordered.
+ */
+const foreachOrderBy = (collection: CollectionRow, sort: string | undefined) => {
+  const raw = sort ?? collection.defaultSort ?? "";
+  const parts: ReturnType<typeof sql>[] = [];
+  for (const token of raw.split(",")) {
+    const trimmed = token.trim();
+    if (!trimmed) continue;
+    const desc = trimmed.startsWith("-");
+    const name = desc ? trimmed.slice(1) : trimmed;
+    const known =
+      name === collection.pkColumn ||
+      collection.fields.some((f) => f.name === name) ||
+      (name === "created_at" && collection.hasCreatedAt) ||
+      (name === "updated_at" && collection.hasUpdatedAt);
+    if (!known) continue;
+    parts.push(
+      desc
+        ? sql`${sql.identifier(name)} DESC`
+        : sql`${sql.identifier(name)} ASC`,
+    );
+  }
+  if (parts.length === 0) return sql``;
+  return sql` ORDER BY ${sql.join(parts, sql`, `)}`;
+};
 
 export type { Operation };
 
@@ -78,6 +121,16 @@ interface RunCtx {
    *  "approve the row that fired this" — needs no restating. Absent on cron,
    *  manual and non-item channels. */
   subject?: { collection: string; id: string } | null;
+  /** The row the enclosing `foreach` is currently on, readable as
+   *  `{{ $item.* }}`.
+   *
+   *  Deliberately NOT `data`: the loop runs inside a flow that already has a
+   *  trigger payload, and rebinding `data` per iteration would quietly change
+   *  what every `{{ data.x }}` in the body meant. A date-relative trigger is
+   *  the opposite case — there the row IS the payload, so it arrives as `data`
+   *  and an author moving a flow from `event:` to `schedule:` rewrites
+   *  nothing. */
+  item?: Record<string, unknown> | null;
 }
 
 /**
@@ -98,6 +151,7 @@ const resolveWhole = (value: unknown, ctx: RunCtx): unknown => {
     data: ctx.data,
     $user: { id: ctx.authSubject.userId, email: ctx.authSubject.email, roles: ctx.authSubject.roles },
     $last: ctx.last,
+    $item: ctx.item ?? null,
   };
   let cur: unknown = root;
   for (const part of only[1].split(".")) {
@@ -120,6 +174,7 @@ const interpolate = (value: unknown, ctx: RunCtx): unknown => {
           roles: ctx.authSubject.roles,
         },
         $last: ctx.last,
+        $item: ctx.item ?? null,
       };
       let cur: unknown = root;
       for (const p of parts) {
@@ -749,6 +804,75 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
     return { matched: passes };
   }
 
+  if (op.type === "foreach") {
+    const tenantId = ctx.authSubject.tenantId ?? null;
+    if (!tenantId) {
+      // Same fail-closed rule every collection-touching op here follows: a run
+      // we cannot attribute to a workspace must not read anybody's rows.
+      throw new FlowOpError("foreach requires a workspace-scoped run");
+    }
+    const slug = String(interpolate(op.collection, ctx) ?? "").trim();
+    if (!slug) throw new FlowOpError("foreach: collection is required");
+    const collection = await loadCollection(ctx.ctx, tenantId, slug);
+    const limit = Math.min(op.limit ?? FOREACH_MAX_ROWS, FOREACH_MAX_ROWS);
+
+    const filters = [
+      collection.tenantScoped
+        ? sql`${sql.identifier("tenant_id")} = ${tenantId}`
+        : null,
+      deletedFilter(collection),
+      collection.versioned ? sql`${sql.identifier("_status")} = 'published'` : null,
+      op.filter
+        ? compileCondition(op.filter as Condition, ctx.authSubject, undefined, undefined, {
+            dialect: ctx.ctx.dialect,
+          })
+        : null,
+    ];
+    const order = foreachOrderBy(collection, op.sort);
+    const rows = await queryAll<Record<string, unknown>>(
+      ctx.ctx,
+      sql`SELECT * FROM ${sql.identifier(collection.physicalTable)} ${whereOf(...filters)}${order} LIMIT ${limit}`,
+    );
+    if (rows.length === limit) {
+      // A loop that stops at the cap has covered less than "every row that
+      // matches", and saying so is the only way an operator finds out before
+      // the omission does something visible.
+      console.warn(
+        `[flow] foreach over ${slug} hit its ${limit}-row limit — later matching rows were not visited`,
+      );
+    }
+
+    let visited = 0;
+    for (const raw of rows) {
+      const item = deserializeRow(
+        raw,
+        collection.fields,
+        ctx.ctx.dialect,
+        collection.ownerScoped,
+        null,
+        collection,
+      );
+      const rowId = raw[collection.pkColumn];
+      // A per-iteration view over the same run: `last` still threads forward so
+      // an op can read the previous one's result, but `item` and `subject` are
+      // restored afterwards so nothing downstream inherits the final row.
+      const iter: RunCtx = {
+        ...ctx,
+        item,
+        subject:
+          rowId === null || rowId === undefined || rowId === ""
+            ? ctx.subject
+            : { collection: collection.slug, id: String(rowId) },
+      };
+      for (const sub of op.do) {
+        iter.last = await runOperation(sub, iter);
+      }
+      ctx.last = iter.last;
+      visited++;
+    }
+    return { collection: slug, visited };
+  }
+
   if (op.type === "notification") {
     const title = interpolate(op.title, ctx) as string;
     const body = op.body ? (interpolate(op.body, ctx) as string) : null;
@@ -1373,6 +1497,10 @@ export const runFlowById = async (
   flowId: string,
   data: Record<string, unknown>,
   authSubject: AuthSubject = { userId: null, email: null, roles: [] },
+  /** A date-relative (`schedule:`) run is ABOUT a row, the way an event run is,
+   *  so the caller can name it here. A manual or cron invoke passes nothing and
+   *  keeps the old behaviour of having no subject at all. */
+  opts: { subject?: { collection: string; id: string } | null } = {},
 ): Promise<FlowRunResult> => {
   const t = tableFor(ctx.dialect);
   const rows = (await (ctx.db as any)
@@ -1393,6 +1521,7 @@ export const runFlowById = async (
     },
     ctx,
     last: undefined,
+    subject: opts.subject ?? null,
   };
   const startedAt = Date.now();
   const result = await runFlowOps(flow, runCtx);

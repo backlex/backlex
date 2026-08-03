@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { FOREACH_MAX_ROWS } from "@backlex/core";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Select } from "./select";
@@ -9,11 +10,16 @@ import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { dashboardsApi, documentsApi, emailTemplatesApi, functionsApi, collectionsApi, integrationsApi, type ApiDashboard, type ApiDocumentTemplate, type ApiEmailTemplate, type ApiFunction, type ApiCollection, type ApiIntegration } from "./api";
 import { api } from "@/lib/api";
+import { timezoneOptions } from "./preferences";
 
 /** Just what the payment-link step needs off `/api/admin/payments/providers`. */
 type PaymentProviderOption = { id: string; provider: string; status: string };
 
 const dataInterpolationExample = "{{ data.* }}";
+// Held as a const for the same reason as the one above: a literal `{{ }}` left
+// inside a <Trans> is parsed as ICU and takes the whole admin SPA down with a
+// blank page, so the braces have to reach the message as a placeholder VALUE.
+const itemInterpolationExample = "{{ $item.* }}";
 const smsBodyExample = "Reminder: your appointment is at {{ data.starts_at }}.";
 
 // `pending` marks steps the runtime doesn't execute yet. The compiler will
@@ -25,6 +31,7 @@ const TRIGGERS: TriggerDef[] = [
   { id: "item.updated", label: "Item updated", desc: "Fires when a row is updated", icon: "Pencil", tag: "event" },
   { id: "item.deleted", label: "Item deleted", desc: "Fires when a row is deleted", icon: "Trash", tag: "event" },
   { id: "cron", label: "Schedule (cron)", desc: "Run on a recurring schedule", icon: "Clock", tag: "cron" },
+  { id: "schedule", label: "Before/after a date", desc: "Fires per row, relative to a date field", icon: "CalendarClock", tag: "date" },
   { id: "webhook", label: "Incoming webhook", desc: "POST /api/webhook/:flowId fires this flow", icon: "Webhook", tag: "http" },
   { id: "auth.signup", label: "User signed up", desc: "Fires after sign-up succeeds", icon: "Users", tag: "auth" },
 ];
@@ -52,7 +59,7 @@ const ACTIONS = [
 ];
 const CONTROLS = [
   { id: "if", label: "If / else", desc: "Branch on a filter DSL", icon: "Filter" },
-  { id: "foreach", label: "For each", desc: "Iterate over an array", icon: "Braces", pending: "future" },
+  { id: "foreach", label: "For each row", desc: "Run the loop body once per row of a collection", icon: "Braces" },
   { id: "try", label: "Try / catch", desc: "Recover from failures", icon: "Shield", pending: "future" },
 ];
 
@@ -199,7 +206,11 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
       kind: cat.kind,
       type: cat.id,
       x: (fromNode?.x ?? 200) + 260,
-      y: (fromNode?.y ?? 200) + (paletteFor.branch === "false" ? 80 : 0),
+      // Branch arms drop below the parent so they don't land on top of the
+      // straight-through edge. A loop body goes ABOVE, matching where the
+      // decompiler lays it out, so a hand-drawn loop and a rehydrated one
+      // look the same.
+      y: (fromNode?.y ?? 200) + (paletteFor.branch === "false" ? 80 : paletteFor.branch === "loop" ? -80 : 0),
       config: defaultConfigFor(cat.kind, cat.id),
     };
     setNodes((arr) => [...arr, newNode]);
@@ -217,7 +228,25 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   };
 
   const updateNode = (id: string, patch: any) => {
-    setNodes((arr) => arr.map((n) => n.id === id ? { ...n, ...patch, config: { ...n.config, ...(patch.config || {}) } } : n));
+    // Config patches MERGE, because every inspector field sends only its own
+    // key. `replaceConfig` is the exception a trigger-kind change needs: the
+    // new kind's fields are a different set, and merging would leave the old
+    // kind's values sitting underneath where nothing shows them and the
+    // compiler still reads them.
+    const { replaceConfig, ...rest } = patch;
+    setNodes((arr) =>
+      arr.map((n) =>
+        n.id === id
+          ? {
+              ...n,
+              ...rest,
+              config: replaceConfig
+                ? (patch.config ?? {})
+                : { ...n.config, ...(patch.config || {}) },
+            }
+          : n,
+      ),
+    );
   };
 
   useEffect(() => {
@@ -389,7 +418,17 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
                         <span style={{ fontSize: 12.5, fontWeight: 500, marginLeft: "auto" }}>{m?.label}</span>
                       </div>
                       <div className="fb-node-body">
-                        {n.kind === "trigger" && (
+                        {n.kind === "trigger" && n.type === "schedule" && (
+                          <>
+                            <span className="font-mono">{n.config.offsetValue ?? 0} {n.config.offsetUnit || "days"} {n.config.offsetDirection || "before"}</span>
+                            {/* Truncated rather than wrapped: this line is
+                                identifiers and a clock, and the body's
+                                break-all splits both mid-character in a node
+                                this narrow ("· 0" above "9:00"). */}
+                            <div className="fb-mono-dim fb-mono-dim-1" title={`${n.config.collection || "—"}.${n.config.field || "—"}${n.config.at ? ` · ${n.config.at}` : ""}`}>{n.config.collection || "—"}.{n.config.field || "—"}{n.config.at ? ` · ${n.config.at}` : ""}</div>
+                          </>
+                        )}
+                        {n.kind === "trigger" && n.type !== "schedule" && (
                           <>
                             <span className="text-muted-foreground"><Trans>on</Trans></span> <span className="font-mono">{n.config.collection || "posts"}</span>
                             {n.config.when && <div className="fb-mono-dim">{n.config.when}</div>}
@@ -397,6 +436,12 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
                         )}
                         {n.kind === "control" && n.type === "if" && (
                           <span className="font-mono">{n.config.test}</span>
+                        )}
+                        {n.kind === "control" && n.type === "foreach" && (
+                          <>
+                            <span className="text-muted-foreground"><Trans>each row of</Trans></span> <span className="font-mono">{n.config.collection || "—"}</span>
+                            {n.config.filter && <div className="fb-mono-dim">{n.config.filter}</div>}
+                          </>
                         )}
                         {n.kind === "action" && n.type === "fn" && (
                           <><span className="text-muted-foreground">fn:</span> <span className="font-mono">{n.config.fn}</span>{n.config.async && <span className="text-muted-foreground"> · async</span>}</>
@@ -418,6 +463,14 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
                         <>
                           <button className="fb-port fb-port-true" title={t`Add to true branch`} onClick={(e) => { e.stopPropagation(); setPaletteFor({ from: n.id, branch: "true" }); setPaletteOpen(true); }}>+</button>
                           <button className="fb-port fb-port-false" title={t`Add to false branch`} onClick={(e) => { e.stopPropagation(); setPaletteFor({ from: n.id, branch: "false" }); setPaletteOpen(true); }}>+</button>
+                        </>
+                      ) : n.kind === "control" && n.type === "foreach" ? (
+                        <>
+                          {/* Two ports, because a loop has two continuations and
+                              conflating them is the mistake: the body runs per
+                              row, the next step runs once after the loop. */}
+                          <button className="fb-port fb-port-loop" title={t`Add to the loop body`} onClick={(e) => { e.stopPropagation(); setPaletteFor({ from: n.id, branch: "loop" }); setPaletteOpen(true); }}>+</button>
+                          <button className="fb-port fb-port-after" title={t`Add a step after the loop`} onClick={(e) => { e.stopPropagation(); setPaletteFor({ from: n.id, branch: null }); setPaletteOpen(true); }}>+</button>
                         </>
                       ) : (
                         <button className="fb-port fb-port-out" title={t`Add next step`} onClick={(e) => { e.stopPropagation(); setPaletteFor({ from: n.id, branch: null }); setPaletteOpen(true); }}>+</button>
@@ -455,9 +508,157 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   );
 }
 
+/** Sort choices for a `foreach`, drawn from the chosen collection's real
+ *  columns. Free text here would be silently dropped by the compiler, which
+ *  validates the name against the schema before it reaches SQL. */
+function foreachSortOptions(collections: ApiCollection[], slug: string | undefined) {
+  const fields = collections.find((c) => c.slug === slug)?.fields ?? [];
+  const names = [...fields.map((f) => f.name), "created_at", "updated_at"];
+  return names.flatMap((n) => [
+    { value: n, label: `${n} ↑` },
+    { value: `-${n}`, label: `${n} ↓` },
+  ]);
+}
+
+/**
+ * The date-relative trigger's inspector.
+ *
+ * Every field with a finite set of answers is a dropdown — the collection, the
+ * date field, the unit, the direction, the zone. The one that matters most is
+ * the field picker: it lists only `timestamp` columns, because a schedule
+ * counting from a text column does not misfire, it never fires at all, and
+ * nothing about the saved flow looks wrong afterwards.
+ */
+function ScheduleTriggerFields({
+  node,
+  onChange,
+  collections,
+}: {
+  node: any;
+  onChange: (patch: any) => void;
+  collections: ApiCollection[];
+}) {
+  const { t } = useLingui();
+  const c = node.config ?? {};
+  const dateFields = (collections.find((x) => x.slug === c.collection)?.fields ?? [])
+    .filter((f) => f.type === "timestamp")
+    .map((f) => ({ value: f.name, label: f.name }));
+  // A wall clock only means something against whole days; pairing it with an
+  // hour offset names two different instants, so the server refuses it. The
+  // control disappears rather than sitting there rejected on save.
+  const wholeDays = (c.offsetUnit ?? "days") === "days" || c.offsetUnit === "weeks";
+
+  return (
+    <>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Collection</Trans></label>
+        <Select
+          value={c.collection || ""}
+          onChange={(v) => onChange({ config: { collection: v, field: "" } })}
+          options={collections.map((x) => ({ value: x.slug, label: x.slug }))}
+          placeholder={t`Pick a collection`}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Date field</Trans></label>
+        <Select
+          value={c.field || ""}
+          onChange={(v) => onChange({ config: { field: v } })}
+          options={dateFields}
+          placeholder={dateFields.length === 0 ? t`No date fields on this collection` : t`Pick a date field`}
+        />
+      </div>
+      <div className="grid grid-cols-3 gap-2.5 [&>*]:min-w-0">
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>How long</Trans></label>
+          <Input
+            type="number"
+            min={0}
+            value={c.offsetValue ?? 0}
+            onChange={(e) => onChange({ config: { offsetValue: e.target.value } })}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Unit</Trans></label>
+          <Select
+            value={c.offsetUnit || "days"}
+            onChange={(v) => onChange({ config: { offsetUnit: v } })}
+            options={[
+              { value: "minutes", label: t`minutes` },
+              { value: "hours", label: t`hours` },
+              { value: "days", label: t`days` },
+              { value: "weeks", label: t`weeks` },
+            ]}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Direction</Trans></label>
+          <Select
+            value={c.offsetDirection || "before"}
+            onChange={(v) => onChange({ config: { offsetDirection: v } })}
+            options={[
+              { value: "before", label: t`before` },
+              { value: "after", label: t`after` },
+            ]}
+          />
+        </div>
+      </div>
+      {wholeDays && (
+        <div className="grid grid-cols-2 gap-2.5 [&>*]:min-w-0">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>At (optional)</Trans></label>
+            <Input type="time" value={c.at || ""} onChange={(e) => onChange({ config: { at: e.target.value } })} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Time zone</Trans></label>
+            <Select
+              value={c.timeZone || ""}
+              onChange={(v) => onChange({ config: { timeZone: v } })}
+              options={timezoneOptions()}
+              placeholder="UTC"
+              disabled={!c.at}
+            />
+          </div>
+        </div>
+      )}
+      <span className="text-[11.5px] text-muted-foreground">
+        {c.at && wholeDays ? (
+          <Trans>Fires at that wall clock, so it stays at the same local hour across a daylight-saving change.</Trans>
+        ) : (
+          <Trans>Fires at the same time of day the date field itself carries.</Trans>
+        )}
+      </span>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Only rows matching (optional)</Trans></label>
+        <Textarea rows={3} value={c.where || ""} onChange={(e) => onChange({ config: { where: e.target.value } })} placeholder='{ "status": { "_neq": "paid" } }' />
+        <span className="text-[11.5px] text-muted-foreground">
+          <Trans>Each matching row runs the flow once, with the row as <span className="font-mono">{dataInterpolationExample}</span>.</Trans>
+        </span>
+      </div>
+    </>
+  );
+}
+
 function defaultConfigFor(kind: string, type: string) {
+  if (kind === "trigger" && type === "schedule") {
+    // The overwhelmingly common shape, pre-filled: "three days before, at
+    // 09:00". The collection and field are left blank on purpose — they are
+    // the two the author must actually choose, and a plausible-looking guess
+    // would save a schedule that counts from the wrong column.
+    return {
+      collection: "",
+      field: "",
+      offsetValue: 3,
+      offsetUnit: "days",
+      offsetDirection: "before",
+      at: "09:00",
+      timeZone: "",
+      where: "",
+    };
+  }
   if (kind === "trigger") return { collection: "posts", when: "" };
   if (kind === "control" && type === "if") return { test: 'status _eq "published"' };
+  if (kind === "control" && type === "foreach") return { collection: "", filter: "", sort: "", limit: "" };
   if (kind === "action" && type === "email") return { to: "{{ data.author.email }}", templateKey: "", subject: "", text: "" };
   if (kind === "action" && type === "webhook") return { url: "https://api.example.com/hook", method: "POST", body: "" };
   if (kind === "action" && type === "request") return { url: "https://api.example.com/data", method: "GET", body: "" };
@@ -589,7 +790,23 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
           <>
             <div className="flex flex-col gap-1.5">
               <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Event</Trans></label>
-              <Select value={node.type} onChange={(v) => onChange({ type: v })} options={TRIGGERS.map((t) => ({ value: t.id, label: t.pending ? `${t.label} (${t.pending})` : t.label }))} />
+              {/* Changing the KIND of trigger re-seeds its config. The three
+                  item events share one shape, so switching between them keeps
+                  the collection and filter the author already chose; every
+                  other switch is to a different set of fields entirely, and
+                  carrying the old ones over left the new trigger holding a
+                  stale collection and none of its own defaults. */}
+              <Select
+                value={node.type}
+                onChange={(v) =>
+                  onChange(
+                    node.type.startsWith("item.") && v.startsWith("item.")
+                      ? { type: v }
+                      : { type: v, config: defaultConfigFor("trigger", v), replaceConfig: true },
+                  )
+                }
+                options={TRIGGERS.map((t) => ({ value: t.id, label: t.pending ? `${t.label} (${t.pending})` : t.label }))}
+              />
             </div>
             {node.type.startsWith("item.") && (
               <div className="flex flex-col gap-1.5">
@@ -604,6 +821,9 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
                 <span className="font-mono text-[11.5px] text-muted-foreground"><Trans>runs daily at 09:00 UTC</Trans></span>
               </div>
             )}
+            {node.type === "schedule" && (
+              <ScheduleTriggerFields node={node} onChange={onChange} collections={collections} />
+            )}
             {node.type.startsWith("item.") && (
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>When (filter DSL)</Trans></label>
@@ -611,6 +831,51 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
                 <span className="text-[11.5px] text-muted-foreground"><Trans>Trigger only fires when the row matches this filter (after the change).</Trans></span>
               </div>
             )}
+          </>
+        )}
+        {node.kind === "control" && node.type === "foreach" && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Collection</Trans></label>
+              <Select
+                value={node.config.collection || ""}
+                onChange={(v) => onChange({ config: { collection: v } })}
+                options={collections.map((c) => ({ value: c.slug, label: c.slug }))}
+                placeholder={t`Pick a collection`}
+              />
+              <span className="text-[11.5px] text-muted-foreground">
+                <Trans>The loop body runs once per row, with the row available as <span className="font-mono">{itemInterpolationExample}</span>.</Trans>
+              </span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Only rows matching (optional)</Trans></label>
+              <Textarea rows={3} value={node.config.filter || ""} onChange={(e) => onChange({ config: { filter: e.target.value } })} placeholder='{ "active": { "_eq": true } }' />
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 [&>*]:min-w-0">
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Sort</Trans></label>
+                <Select
+                  value={node.config.sort || ""}
+                  onChange={(v) => onChange({ config: { sort: v } })}
+                  options={foreachSortOptions(collections, node.config.collection)}
+                  placeholder={t`Collection default`}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Max rows</Trans></label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={FOREACH_MAX_ROWS}
+                  value={node.config.limit ?? ""}
+                  onChange={(e) => onChange({ config: { limit: e.target.value } })}
+                  placeholder={String(FOREACH_MAX_ROWS)}
+                />
+              </div>
+            </div>
+            <span className="text-[11.5px] text-muted-foreground">
+              <Trans>A loop runs inline, so its body cannot wait for an approval or a long delay.</Trans>
+            </span>
           </>
         )}
         {node.kind === "control" && node.type === "if" && (

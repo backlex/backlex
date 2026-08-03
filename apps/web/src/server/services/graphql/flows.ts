@@ -14,9 +14,25 @@ import { and, eq, } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import {
+  AppError,
   SYSTEM_ROLES,
 } from "@backlex/core";
 import { runFlowById } from "../flows";
+import { assertFlowShape } from "../flow-validation";
+
+/** yoga masks non-GraphQLError throws — surface AppErrors with their code.
+ *  Without this every refusal from `assertFlowShape` would reach the caller as
+ *  "Unexpected error.", which is indistinguishable from a crash. */
+const surfacing = async <T>(work: () => Promise<T> | T): Promise<T> => {
+  try {
+    return await work();
+  } catch (e) {
+    if (e instanceof AppError) {
+      throw new GraphQLError(e.message, { extensions: { code: e.code } });
+    }
+    throw e;
+  }
+};
 
 // ── Flows (visual workflows) ────────────────────────────────────────────────
 // Static, admin-scoped query/mutation fields. Unlike collections these don't
@@ -115,6 +131,9 @@ const createFlowResolver = async (
       extensions: { code: "VALIDATION" },
     });
   }
+  // The same guards the REST route runs, from the same service — a flow the
+  // API refuses must not be creatable through here.
+  await surfacing(() => assertFlowShape(gqlCtx.ctx, tenantId, data));
   const t = flowsTable(gqlCtx.ctx.dialect);
   const id = crypto.randomUUID();
   await (gqlCtx.ctx.db as any).insert(t).values({
@@ -136,6 +155,7 @@ const updateFlowResolver = async (
 ) => {
   const tenantId = requireFlowAdmin(gqlCtx);
   const { ctx } = gqlCtx;
+  await surfacing(() => assertFlowShape(ctx, tenantId, data));
   const t = flowsTable(ctx.dialect);
   await (ctx.db as any)
     .update(t)

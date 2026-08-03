@@ -2,30 +2,8 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import { and, eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
-import {
-  AppError,
-  ConditionSchema,
-  OperationSchema,
-  SYSTEM_ROLES,
-  findNestedApproval,
-} from "@backlex/core";
-
-/**
- * An `approval.request` may only sit at the top level — its continuation is
- * "the rest of the flow", and a nested one would park the top-level remainder
- * while silently dropping the branch the author actually wrote. Refused here,
- * at save time, rather than at run time when the only symptom is a request
- * nothing ever resumes.
- */
-const assertApprovalPlacement = (operations: unknown): void => {
-  const at = findNestedApproval(operations);
-  if (at) {
-    throw new AppError(
-      "VALIDATION",
-      `An approval step cannot sit inside another step's branch (${at}). Put it at the top level — every step after it runs once it is approved.`,
-    );
-  }
-};
+import { AppError, ConditionSchema, OperationSchema, SYSTEM_ROLES } from "@backlex/core";
+import { assertFlowShape } from "../services/flow-validation";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
@@ -216,7 +194,7 @@ export const flowsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const tenantId = requireTenant(c);
       const body = c.req.valid("json");
-      assertApprovalPlacement(body.operations);
+      await assertFlowShape(ctx, tenantId, body);
       const t = tableFor(ctx.dialect);
       const id = crypto.randomUUID();
       await (ctx.db as any).insert(t).values({
@@ -268,7 +246,7 @@ export const flowsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const tenantId = requireTenant(c);
       const body = c.req.valid("json");
       const { id } = c.req.valid("param");
-      if (body.operations !== undefined) assertApprovalPlacement(body.operations);
+      await assertFlowShape(ctx, tenantId, body);
       const t = tableFor(ctx.dialect);
       await (ctx.db as any)
         .update(t)

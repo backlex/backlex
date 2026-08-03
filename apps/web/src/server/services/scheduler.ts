@@ -21,6 +21,7 @@ const parseExpression = (
     ) => { next(): CronDate; prev(): CronDate };
   }
 ).parseExpression;
+import { pruneScheduleFires, runDueScheduleFlows } from "./flow-schedules";
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 import { expireDueRequests, expireRequest } from "./approvals";
 import { enqueueJob, processJobs } from "./jobs";
@@ -266,6 +267,18 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     }),
   );
 
+  // Date-relative flows: scan each schedule's collection and dispatch the rows
+  // whose instant has arrived. Unlike the cron path above, this does NOT rely
+  // on the prev/now window — `lastTickAt` is per-process and null on every cold
+  // serverless tick, so a reminder would vanish into any gap. The scan reaches
+  // back over its own catch-up window and leans on the fire ledger's unique
+  // index for exactly-once instead.
+  try {
+    await runDueScheduleFlows(ctx, now);
+  } catch (e) {
+    console.error("[schedule-flow] tick failed", e);
+  }
+
   // Resume any flow continuations whose run_at has passed. claimDueTasks
   // marks rows as claimed atomically (PG via RETURNING, SQLite via the
   // single-process serial tick) so we never run a task twice within one
@@ -487,6 +500,16 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
       mcpDays,
       "mcp.",
     );
+    // Schedule-flow fire ledger. Rides the daily clock rather than carrying a
+    // retention setting: the safe cutoff is not a preference but a consequence
+    // of the catch-up window, since an entry older than that can never be
+    // consulted by a scan again.
+    try {
+      await pruneScheduleFires(ctx, now);
+    } catch (e) {
+      console.error("[schedule-flow] ledger prune failed", e);
+    }
+
     // Trace spans are high-volume (one per sampled request) with a short useful
     // life — prune on the same daily clock as activity, default 7 days.
     const spanRaw = env.TRACES_RETENTION_DAYS;

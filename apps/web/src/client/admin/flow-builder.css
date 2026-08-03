@@ -148,6 +148,12 @@
   word-break: break-all;
 }
 .fb-mono-dim { color: var(--muted-foreground); margin-top: 3px; font-size: 10.5px; }
+/* One-line variant, for a value made of identifiers rather than free text.
+   The body's `word-break: break-all` is right for a URL or a template, but on
+   `collection.field · 09:00` it snaps a column name or a clock mid-character —
+   which reads as a rendering fault. Truncating says "there is more" instead;
+   the full value rides on the element's `title`. */
+.fb-mono-dim-1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Kind chips */
 .fb-kind {
@@ -180,6 +186,10 @@
 .fb-port-out:hover { transform: translateY(-50%) scale(1.15); }
 .fb-port-true { right: -11px; top: 30%; background: oklch(0.65 0.18 145); }
 .fb-port-false { right: -11px; bottom: 18%; background: oklch(0.7 0.18 22); }
+/* A loop's two ports are both ordinary continuations — neither is a failure —
+   so they deliberately avoid the green/red pair an If uses. */
+.fb-port-loop { right: -11px; top: 30%; background: oklch(0.68 0.16 265); }
+.fb-port-after { right: -11px; bottom: 18%; background: oklch(0.62 0.03 265); }
 
 .fb-node-actions {
   position: absolute;

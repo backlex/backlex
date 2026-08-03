@@ -14,7 +14,24 @@ export const serialize = (
     }
     if (type === "boolean") return value ? 1 : 0;
     if (type === "timestamp") {
-      return value instanceof Date ? value.getTime() : Number(value);
+      // Accepts every shape the pg branch below does, which it did not used to.
+      // `Number("2026-08-20T00:00:00Z")` is NaN, so an ISO string — the exact
+      // form the READ path hands back — landed in the column as null and the
+      // write still answered 201. The same request against Postgres stored it
+      // correctly, so a timestamp round-trip silently lost data on SQLite/D1
+      // alone.
+      if (value instanceof Date) {
+        const ms = value.getTime();
+        return Number.isNaN(ms) ? null : ms;
+      }
+      // A bare number, or a numeric string, is already epoch ms — `new Date`
+      // would reject the string form.
+      if (typeof value === "number") return Number.isNaN(value) ? null : value;
+      if (typeof value === "string" && /^-?\d+$/.test(value.trim())) {
+        return Number(value);
+      }
+      const ms = new Date(value as string).getTime();
+      return Number.isNaN(ms) ? null : ms;
     }
   } else {
     if (type === "timestamp") {

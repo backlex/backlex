@@ -3034,3 +3034,29 @@ export const erasureRequests = sqliteTable(
     index("erasure_requests_subject_idx").on(t.tenantId, t.subjectHash),
   ],
 );
+
+/**
+ * One row per (schedule flow, subject row, fire instant) that has been
+ * dispatched. The ledger IS the exactly-once guarantee — see the pg twin for
+ * the reasoning in full.
+ */
+export const flowScheduleFires = sqliteTable(
+  "flow_schedule_fires",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    flowId: text("flow_id").notNull(),
+    /** Primary key of the row the run was about, as text — a collection's PK
+     *  may be uuid, text or integer, and the ledger only ever compares it. */
+    rowId: text("row_id").notNull(),
+    /** The computed instant, not the instant we noticed it. Putting the
+     *  COMPUTED time in the key is what lets an edited due date fire again
+     *  while an untouched one never does. */
+    fireAt: integer("fire_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    uniqueIndex("flow_schedule_fires_once_idx").on(t.flowId, t.rowId, t.fireAt),
+    index("flow_schedule_fires_prune_idx").on(t.fireAt),
+  ],
+);

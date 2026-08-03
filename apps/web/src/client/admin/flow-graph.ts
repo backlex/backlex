@@ -1,4 +1,10 @@
-import type { Operation } from "@backlex/core";
+import type { Condition, Operation, ScheduleSpec } from "@backlex/core";
+import {
+  FOREACH_MAX_ROWS,
+  formatScheduleTrigger,
+  parseScheduleTrigger,
+  validateScheduleSpec,
+} from "@backlex/core";
 import { parseFilter, FilterParseError } from "./filter-dsl";
 
 /**
@@ -23,7 +29,9 @@ export interface GraphNode {
 export interface GraphEdge {
   from: string;
   to: string;
-  branch: "true" | "false" | null;
+  /** `"true"`/`"false"` are an If's two arms; `"loop"` is a For-each's body.
+   *  `null` is the ordinary "next step" edge. */
+  branch: "true" | "false" | "loop" | null;
 }
 export interface Graph {
   nodes: GraphNode[];
@@ -154,6 +162,45 @@ export const compileGraph = (graph: Graph): CompileResult => {
   };
 };
 
+/**
+ * `"09:00"` → minutes past midnight, or null for "keep the row's own time".
+ *
+ * Empty is a real answer here, not a missing one: without a time of day the
+ * schedule counts in plain milliseconds from whatever hour the field carries,
+ * which is what an "N hours before" reminder wants.
+ */
+const toMinuteOfDay = (raw: unknown): number | null => {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s);
+  if (!m) throw new FlowCompileError(`Cannot read "${s}" as a time of day (use 09:00)`);
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) throw new FlowCompileError(`"${s}" is not a valid time of day`);
+  return h * 60 + min;
+};
+
+/** Minutes past midnight → the `HH:MM` the inspector shows. Inverse of
+ *  {@link toMinuteOfDay}, so a saved schedule round-trips through the editor
+ *  unchanged. */
+const minuteOfDayToTime = (minute: number): string =>
+  `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
+
+/** An optional inspector filter box → a condition, or null when left empty. */
+const parseOptionalFilter = (raw: unknown, where: string): Condition | null => {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  try {
+    return parseFilter(s) as Condition;
+  } catch (e) {
+    throw new FlowCompileError(
+      e instanceof FilterParseError
+        ? `Filter on the ${where} is invalid: ${e.message}`
+        : (e as Error).message,
+    );
+  }
+};
+
 const compileTrigger = (node: GraphNode): string => {
   switch (node.type) {
     case "item.created":
@@ -170,6 +217,35 @@ const compileTrigger = (node: GraphNode): string => {
           "Cron trigger needs a pattern (e.g. 0 9 * * *)",
         );
       return `cron:${pattern}`;
+    }
+    case "schedule": {
+      const c = node.config;
+      const collection = String(c.collection ?? "").trim();
+      const field = String(c.field ?? "").trim();
+      if (!collection || !field) {
+        throw new FlowCompileError(
+          "A date schedule needs a collection and a date field to count from",
+        );
+      }
+      const unit = String(c.offsetUnit ?? "days") as ScheduleSpec["offset"]["unit"];
+      // A time of day only means something against whole days, so the two
+      // controls move together rather than letting the pair contradict.
+      const at = unit === "days" || unit === "weeks" ? toMinuteOfDay(c.at) : null;
+      const spec: ScheduleSpec = {
+        collection,
+        field,
+        offset: {
+          value: Math.max(0, Math.trunc(Number(c.offsetValue ?? 0)) || 0),
+          unit,
+          direction: c.offsetDirection === "after" ? "after" : "before",
+        },
+        at,
+        timeZone: at === null ? null : String(c.timeZone ?? "").trim() || null,
+        where: parseOptionalFilter(c.where, "schedule"),
+      };
+      const problem = validateScheduleSpec(spec);
+      if (problem) throw new FlowCompileError(problem);
+      return formatScheduleTrigger(spec);
     }
     case "auth.signup":
       return "event:auth:signup";
@@ -210,7 +286,7 @@ const walk = (
 const nextLinear = (
   graph: Graph,
   fromId: string,
-  branch: "true" | "false" | null,
+  branch: GraphEdge["branch"],
 ): string | null => {
   const edge = graph.edges.find((e) => e.from === fromId && e.branch === branch);
   return edge?.to ?? null;
@@ -239,6 +315,36 @@ const compileNode = (
       filter,
       then: walk(graph, thenStart, warnings),
       else: walk(graph, elseStart, warnings),
+    };
+  }
+
+  if (node.kind === "control" && node.type === "foreach") {
+    const collection = String(node.config.collection ?? "").trim();
+    if (!collection) {
+      throw new FlowCompileError("A For-each step needs a collection to loop over");
+    }
+    const body = walk(graph, nextLinear(graph, node.id, "loop"), warnings);
+    if (body.length === 0) {
+      // An empty loop is not a no-op the author meant — it is a body they
+      // attached to the wrong port, and it would run silently forever.
+      throw new FlowCompileError(
+        "A For-each step has no body — attach at least one step to its loop port",
+      );
+    }
+    const filter = parseOptionalFilter(node.config.filter, "For-each step");
+    const sort = String(node.config.sort ?? "").trim();
+    const limitRaw = Number(node.config.limit);
+    const limit =
+      Number.isFinite(limitRaw) && limitRaw > 0
+        ? Math.min(Math.trunc(limitRaw), FOREACH_MAX_ROWS)
+        : undefined;
+    return {
+      type: "foreach",
+      collection,
+      ...(filter ? { filter } : {}),
+      ...(sort ? { sort } : {}),
+      ...(limit ? { limit } : {}),
+      do: body,
     };
   }
 
@@ -757,10 +863,13 @@ const synthesize = (trigger: string, operations: Operation[]): Graph => {
     y: 160 + lane * 100,
   });
 
+  const isControl = (op: Operation) => op.type === "condition" || op.type === "foreach";
+  const controlType = (op: Operation) => (op.type === "condition" ? "if" : "foreach");
+
   const layout = (
     ops: Operation[],
     parentId: string,
-    parentBranch: "true" | "false" | null,
+    parentBranch: GraphEdge["branch"],
     depth: number,
     lane: number,
   ): void => {
@@ -771,8 +880,8 @@ const synthesize = (trigger: string, operations: Operation[]): Graph => {
       const pos = place(depth + i, lane);
       const node: GraphNode = {
         id,
-        kind: op.type === "condition" ? "control" : "action",
-        type: op.type === "condition" ? "if" : op.type,
+        kind: isControl(op) ? "control" : "action",
+        type: isControl(op) ? controlType(op) : op.type,
         ...pos,
         config: opToConfig(op),
       };
@@ -784,6 +893,9 @@ const synthesize = (trigger: string, operations: Operation[]): Graph => {
       if (op.type === "condition") {
         if (op.then?.length) layout(op.then, id, "true", depth + i + 1, lane - 1);
         if (op.else?.length) layout(op.else, id, "false", depth + i + 1, lane + 1);
+      }
+      if (op.type === "foreach" && op.do?.length) {
+        layout(op.do, id, "loop", depth + i + 1, lane - 1);
       }
     });
   };
@@ -810,6 +922,29 @@ const parseTrigger = (s: string): GraphNode => {
       ...DEFAULT_TRIGGER,
       type: "cron",
       config: { cron: pattern },
+    };
+  }
+  if (s.startsWith("schedule:")) {
+    const spec = parseScheduleTrigger(s);
+    // A spec that no longer parses still opens, as the schedule node with its
+    // defaults, rather than silently reverting to "item updated" — which would
+    // look like the flow was always an event flow and quietly change it on the
+    // next save.
+    return {
+      ...DEFAULT_TRIGGER,
+      type: "schedule",
+      config: spec
+        ? {
+            collection: spec.collection,
+            field: spec.field,
+            offsetValue: spec.offset.value,
+            offsetUnit: spec.offset.unit,
+            offsetDirection: spec.offset.direction,
+            at: spec.at === null ? "" : minuteOfDayToTime(spec.at),
+            timeZone: spec.timeZone ?? "",
+            where: spec.where ? JSON.stringify(spec.where, null, 2) : "",
+          }
+        : { collection: "", field: "", offsetValue: 3, offsetUnit: "days", offsetDirection: "before", at: "09:00", timeZone: "", where: "" },
     };
   }
   if (t === "auth:signup")
@@ -856,6 +991,13 @@ const opToConfig = (op: Operation): Record<string, any> => {
       // Filter is shown as JSON in the textarea — round-trip lossless.
       return { test: JSON.stringify(op.filter, null, 2) };
     }
+    case "foreach":
+      return {
+        collection: op.collection,
+        filter: op.filter ? JSON.stringify(op.filter, null, 2) : "",
+        sort: op.sort ?? "",
+        limit: op.limit ?? "",
+      };
     case "log":
       return { message: op.message };
     case "notification":

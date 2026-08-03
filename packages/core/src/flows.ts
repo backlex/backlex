@@ -459,6 +459,29 @@ export type Operation =
       durationMs: number;
       onSuccess?: Operation[];
       onError?: Operation[];
+    }
+  /**
+   * Run `do` once per row of a collection, with the row bound to `{{ $item.* }}`
+   * and standing in as the run's subject.
+   *
+   * The loop is bounded by `limit` and runs the body inline, which is why the
+   * body may not contain anything that suspends: a `foreach` is the one place
+   * where "park the rest of the flow and come back" has no answer, since the
+   * rest of the flow includes the remaining iterations. Those are refused at
+   * save time (`findForeachViolation`) rather than discovered as a loop that
+   * silently ran once.
+   */
+  | {
+      type: "foreach";
+      collection: string;
+      filter?: Condition;
+      /** Comma-separated, `-` prefix for DESC — same grammar as a collection's
+       *  default sort. */
+      sort?: string;
+      limit?: number;
+      do: Operation[];
+      onSuccess?: Operation[];
+      onError?: Operation[];
     };
 
 export type OperationType = Operation["type"];
@@ -485,7 +508,20 @@ export const OPERATION_TYPES: OperationType[] = [
   "item.create",
   "item.update",
   "delay",
+  "foreach",
 ];
+
+/**
+ * Ceiling on how many rows one `foreach` may walk, and the default when the op
+ * names no `limit`.
+ *
+ * The default is the ceiling on purpose. A loop that quietly stopped at 50
+ * would report success having skipped the rest, which is the failure mode that
+ * matters here — the operator asked for "every overdue invoice" and got some of
+ * them. The runner logs when a loop actually hits the cap, so a collection that
+ * outgrew it is visible rather than silently truncated.
+ */
+export const FOREACH_MAX_ROWS = 500;
 
 export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
   z.union([
@@ -863,10 +899,84 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       onSuccess: z.array(OperationSchema).optional(),
       onError: z.array(OperationSchema).optional(),
     }),
+    z.object({
+      type: z.literal("foreach"),
+      collection: z.string().min(1).max(120),
+      filter: ConditionSchema.optional(),
+      sort: z.string().max(200).optional(),
+      // Hard-capped rather than unbounded: the body runs inline inside one
+      // tick/request, so a loop over an unbounded collection is a timeout with
+      // an arbitrary amount of the work already done and no record of where it
+      // stopped. An operator who needs more reaches for a narrower filter.
+      limit: z.number().int().positive().max(FOREACH_MAX_ROWS).optional(),
+      do: z.array(OperationSchema).min(1),
+      onSuccess: z.array(OperationSchema).optional(),
+      onError: z.array(OperationSchema).optional(),
+    }),
   ]),
 );
 
 export const OperationsSchema = z.array(OperationSchema).min(1);
 
-export const FlowTriggerKinds = ["event", "manual", "cron"] as const;
+/** Threshold below which a `delay` sleeps inline instead of checkpointing to
+ *  `scheduled_tasks`. Shared so the save-time `foreach` check and the runner
+ *  agree on which delays actually suspend. */
+export const INLINE_DELAY_MS = 30_000;
+
+/**
+ * Why a `foreach` body cannot be saved, or null if the tree is fine.
+ *
+ * A `foreach` runs its body inline, so anything that suspends the flow has
+ * nowhere to come back to: the continuation machinery parks "every operation
+ * after this one at the top level", which is not the same thing as "the rest of
+ * this iteration, then the remaining rows". Parking it would silently drop the
+ * loop, and the symptom — a flow that ran once and reported success — looks
+ * nothing like the cause.
+ *
+ * A nested `foreach` is refused for the neighbouring reason: the row bound to
+ * `{{ $item }}` would be shadowed with no way to reach the outer one, so the
+ * inner loop reads as working while quietly addressing the wrong rows.
+ *
+ * `approval.request` is NOT checked here — `findNestedApproval` already covers
+ * it across every branch, `do` included, and one message per offence is enough.
+ *
+ * Takes `unknown` because callers hand it freshly-parsed JSON.
+ */
+export const findForeachViolation = (
+  operations: unknown,
+  path = "operations",
+  insideForeach = false,
+): string | null => {
+  if (!Array.isArray(operations)) return null;
+  const BRANCHES = ["onSuccess", "onError", "then", "else", "onRejected", "do"] as const;
+  for (let i = 0; i < operations.length; i++) {
+    const op = operations[i] as Record<string, unknown> | null;
+    if (!op || typeof op !== "object") continue;
+    const here = `${path}[${i}]`;
+    if (insideForeach) {
+      if (op.type === "foreach") {
+        return `${here}: a foreach cannot contain another foreach — the inner loop would shadow {{ $item }} with no way to reach the outer row.`;
+      }
+      if (
+        op.type === "delay" &&
+        typeof op.durationMs === "number" &&
+        op.durationMs > INLINE_DELAY_MS
+      ) {
+        return `${here}: a delay longer than ${INLINE_DELAY_MS / 1000}s cannot run inside a foreach — it would suspend the flow and abandon the remaining rows.`;
+      }
+    }
+    for (const branch of BRANCHES) {
+      const nested = op[branch];
+      if (!Array.isArray(nested)) continue;
+      // Everything below a `foreach`'s own `do` is inside the loop; every other
+      // branch just inherits whatever context this op is already in.
+      const nowInside = insideForeach || (op.type === "foreach" && branch === "do");
+      const deeper = findForeachViolation(nested, `${here}.${branch}`, nowInside);
+      if (deeper) return deeper;
+    }
+  }
+  return null;
+};
+
+export const FlowTriggerKinds = ["event", "manual", "cron", "schedule"] as const;
 export type FlowTriggerKind = (typeof FlowTriggerKinds)[number];

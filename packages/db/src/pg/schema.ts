@@ -3336,3 +3336,44 @@ export const erasureRequests = pgTable(
     index("erasure_requests_subject_idx").on(t.tenantId, t.subjectHash),
   ],
 );
+
+/**
+ * One row per (schedule flow, subject row, fire instant) that has been
+ * dispatched.
+ *
+ * This table IS the exactly-once guarantee for date-relative triggers, and it
+ * exists because a time window alone cannot be one. The scan deliberately looks
+ * back over a two-day catch-up window so a restart or a cold serverless gap
+ * cannot silently drop a reminder; that same catch-up means every tick re-sees
+ * rows it has already fired. Something has to remember, durably and across
+ * processes, and a unique index is the only thing here that can — the same
+ * reasoning as the booking seat index, one table over.
+ *
+ * The claim is INSERT-then-run: whoever wins the insert owns the dispatch, and
+ * a loser does nothing. That ordering matters. Running first and recording
+ * afterwards would send twice whenever two instances tick together, and the
+ * operations behind a flow are arbitrary — a second email, a second charge.
+ *
+ * `fire_at` is in the key rather than just (flow, row) so that moving a due
+ * date is honoured: the new instant is a new claim, while a row nobody touched
+ * keeps colliding with the one already there. Rows age out of the prune sweep
+ * once they fall behind the catch-up window, where they can never be selected
+ * again.
+ */
+export const flowScheduleFires = pgTable(
+  "flow_schedule_fires",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    flowId: text("flow_id").notNull(),
+    /** Primary key of the row the run was about, as text — a collection's PK
+     *  may be uuid, text or integer, and the ledger only ever compares it. */
+    rowId: text("row_id").notNull(),
+    fireAt: timestamp("fire_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("flow_schedule_fires_once_idx").on(t.flowId, t.rowId, t.fireAt),
+    index("flow_schedule_fires_prune_idx").on(t.fireAt),
+  ],
+);

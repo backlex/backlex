@@ -24,6 +24,11 @@ import {
 } from "../../services/items/write";
 import { verifyHashField } from "../../services/items/verify";
 import { refreshCollectionRollups } from "../../services/items/rollup";
+import {
+  peekSequenceValues,
+  sequenceFieldsOf,
+  syncSequenceCounters,
+} from "../../services/items/sequence";
 import { defaultHook } from "../../lib/openapi-router";
 import {
   execute,
@@ -474,6 +479,111 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         },
       );
       return c.json({ ok: true, refreshed });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{slug}/sequences/sync",
+      tags: TAGS,
+      summary: "Catch a collection's sequence counters up to its rows",
+      description:
+        "Reads every value already stored in this collection's sequence columns and moves each counter forward to the highest number it finds, per reset period. The repair path for a series that predates its counter: a table adopted with numbers already in it, a restore from a dump taken before the counter existed, or rows seeded around the write path. Counters are only ever moved FORWARD — lowering one would reissue numbers that are already on documents. Values that this field's pattern could not have produced are reported as `unreadable` rather than guessed at. Idempotent. Requires `update` on the collection.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "update")],
+      request: {
+        params: z.object({ slug: z.string() }),
+      },
+      responses: {
+        200: {
+          description: "Synced",
+          content: {
+            "application/json": {
+              schema: z.object({
+                ok: z.boolean(),
+                synced: z.array(
+                  z.object({
+                    field: z.string(),
+                    advanced: z.array(z.object({ scope: z.string(), to: z.number() })),
+                    unreadable: z.number(),
+                  }),
+                ),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      if (!auth.tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const synced = await syncSequenceCounters(
+        ctx,
+        auth.tenantId,
+        collection,
+        sequenceFieldsOf(collection.fields),
+      );
+      await recordActivity(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          userId: auth.userId,
+          tenantId: auth.tenantId,
+          action: "update",
+          collection: collection.slug,
+          itemId: "__sequences__",
+          ...requestMeta(c.req.raw),
+          payload: { synced },
+          response: { ok: true },
+          durationMs: elapsedMs(c),
+        },
+      );
+      return c.json({ ok: true, synced });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{slug}/sequences/next",
+      tags: TAGS,
+      summary: "Peek at the next number each sequence field would issue",
+      // Three segments, not `/{slug}/sequences` — that shape is indistinguishable
+      // from `GET /{slug}/{id}` with an id of "sequences", and the item route
+      // wins, answering 404.
+      description:
+        "Returns the value each sequence column on this collection would render next, without consuming it. A preview by nature — another create can take that number before this one is acted on — so it is for showing an operator what to expect, never for writing. Requires `read` on the collection.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "read")],
+      request: {
+        params: z.object({ slug: z.string() }),
+      },
+      responses: {
+        200: {
+          description: "Next values, keyed by field name",
+          content: {
+            "application/json": {
+              schema: z.object({ data: z.record(z.string(), z.string()) }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      if (!auth.tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const data = await peekSequenceValues(
+        ctx,
+        auth.tenantId,
+        collection.slug,
+        sequenceFieldsOf(collection.fields),
+        new Date(),
+      );
+      return c.json({ data });
     },
   )
   .openapi(

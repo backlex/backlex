@@ -38,6 +38,11 @@ const SYSTEM_TABLES_PG: Record<string, unknown> = {
   saved_panels: pg.schema.savedPanels,
   auth_config: pg.schema.authConfig,
   email_config: pg.schema.emailConfig,
+  // Sequence counters. Restoring the invoices WITHOUT the counter that numbered
+  // them would reset the series to its start, so the very next create reissues
+  // a number already on a document — a UNIQUE violation at best and a duplicate
+  // at worst. The counter is part of the data, not derived from it.
+  sequences: pg.schema.sequences,
 };
 
 const SYSTEM_TABLES_SQLITE: Record<string, unknown> = {
@@ -64,6 +69,7 @@ const SYSTEM_TABLES_SQLITE: Record<string, unknown> = {
   saved_panels: sqlite.schema.savedPanels,
   auth_config: sqlite.schema.authConfig,
   email_config: sqlite.schema.emailConfig,
+  sequences: sqlite.schema.sequences,
 };
 
 /** Single-quote a value for inlining into a `sql.raw` predicate. */
@@ -97,6 +103,10 @@ const TENANT_WHERE: Record<string, (tid: string) => string> = {
     `role_id IN (SELECT id FROM roles WHERE tenant_id = ${lit(tid)} OR tenant_id IS NULL)`,
   permissions: (tid) =>
     `role_id IN (SELECT id FROM roles WHERE tenant_id = ${lit(tid)} OR tenant_id IS NULL)`,
+  // `sequences.tenant_id` is NOT NULL with `''` for "no tenant" (a nullable key
+  // column would break the allocator's ON CONFLICT), so the default
+  // `OR tenant_id IS NULL` arm would match nothing on a tenant-less install.
+  sequences: (tid) => `tenant_id = ${lit(tid)} OR tenant_id = ''`,
 };
 
 /** Default scoping for tables that own a `tenant_id` column. */
@@ -358,6 +368,7 @@ const RESTORE_ORDER = [
   "saved_panels",
   "auth_config",
   "email_config",
+  "sequences",
 ];
 
 const asBool = (v: unknown): boolean =>

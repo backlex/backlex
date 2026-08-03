@@ -58,7 +58,25 @@ import {
   rollupStorageType,
   type RollupDraft,
 } from "./field-rollup-editor";
+import {
+  cleanSequence,
+  emptySequenceDraft,
+  FieldSequenceEditor,
+  type SequenceDraft,
+} from "./field-sequence-editor";
 import { canLocalize } from "./item-form";
+
+/** Seed a new sequence with the operator's own calendar rather than UTC. The
+ *  zone is stored ON the field, so this is only the starting point — but it is
+ *  the one that makes "this year" mean what the person creating the field
+ *  means by it. */
+const browserTimeZone = (): string => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+};
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -122,6 +140,9 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [conds, setConds] = useState<CondDraft[]>([]);
   const [valDraft, setValDraft] = useState<ValDraft>(emptyValDraft());
   const [rollupDraft, setRollupDraft] = useState<RollupDraft>(emptyRollupDraft());
+  const [seqDraft, setSeqDraft] = useState<SequenceDraft>(() =>
+    emptySequenceDraft(browserTimeZone()),
+  );
 
   useEffect(() => {
     if (open) {
@@ -134,6 +155,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setChoices(DEFAULT_CHOICES);
       setRelationTarget("");
       setRollupDraft(emptyRollupDraft());
+      setSeqDraft(emptySequenceDraft(browserTimeZone()));
       setStep(1);
       setTab("schema");
       setIndexed(false);
@@ -199,7 +221,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   // A rollup column takes no client write, so the write-side controls (DEFAULT,
   // NOT NULL, UNIQUE) are not just inert — offering them implies the column is
   // something you fill in. The neutral default comes from the aggregate.
-  const defaultable = DEFAULTABLE_TYPES.has(def.type) && !def.hasRollup;
+  const defaultable = DEFAULTABLE_TYPES.has(def.type) && !def.hasRollup && !def.hasSequence;
   // Presentational blocks (divider/notice) own no column, so the storage
   // controls (constraints, defaults, DDL) don't apply — the schema tab shows a
   // hint instead, and the block's text is set via the Field tab (label / note).
@@ -248,8 +270,11 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const missingRelation = !!def.hasRelation && !relationTarget;
   const cleanedRollup = def.hasRollup ? cleanRollup(rollupDraft) : undefined;
   const missingRollup = !!def.hasRollup && !cleanedRollup;
+  const cleanedSequence = def.hasSequence ? cleanSequence(seqDraft) : undefined;
+  const missingSequence = !!def.hasSequence && !cleanedSequence;
   const nameInvalid = !safeName || nameTaken || safeName.length < 2;
-  const valid = !nameInvalid && !missingChoices && !missingRelation && !missingRollup;
+  const valid =
+    !nameInvalid && !missingChoices && !missingRelation && !missingRollup && !missingSequence;
 
   const groups = useMemo(() => {
     const filtered = [...FIELD_INTERFACES, ...extDefs].filter((i) => matchesInterfaceQuery(i, query));
@@ -323,6 +348,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(def.hasRelation ? { to: relationTarget } : {}),
       ...(def.hasRelation && onDelete !== "no_action" ? { onDelete } : {}),
       ...(cleanedRollup ? { rollup: cleanedRollup } : {}),
+      ...(cleanedSequence ? { sequence: cleanedSequence } : {}),
       ...(conditions.length ? { conditions } : {}),
       ...(validation ? { validation } : {}),
       ...(cleanFormat(formatDraft, def.type) ? { format: cleanFormat(formatDraft, def.type) } : {}),
@@ -337,6 +363,9 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       : []),
     ...(def.hasRollup
       ? [{ key: "rollup", label: t`Rollup`, icon: "BarChart", invalid: missingRollup } as FieldTabItem]
+      : []),
+    ...(def.hasSequence
+      ? [{ key: "sequence", label: t`Numbering`, icon: "Hash", invalid: missingSequence } as FieldTabItem]
       : []),
     { key: "field", label: t`Field`, icon: "Pencil" },
     { key: "interface", label: t`Interface`, icon: "Eye", invalid: missingChoices },
@@ -458,6 +487,12 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   </div>
                 )}
 
+                {def.hasSequence && (
+                  <div className="rounded-control bg-muted p-3 text-[12.5px] text-muted-foreground">
+                    <Trans>backlex issues this value on create — set the shape in the <span className="font-medium text-foreground">Numbering</span> tab. Leave <span className="font-medium text-foreground">Unique</span> on: it is what turns a numbering mistake into a refused write instead of two documents sharing a number.</Trans>
+                  </div>
+                )}
+
                 {!presentational && !def.hasRollup && (
                 <div className="flex flex-col gap-2.5">
                   <div className="flex items-center justify-between gap-3">
@@ -515,7 +550,12 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                       <Switch checked={searchable} onChange={setSearchable} />
                     </div>
                   )}
-                  {(def.type === "text" || def.type === "longtext") && (
+                  {/* Embedding a serial number matches everything and nothing, so
+                      the server refuses `vectorize` on a sequence — don't offer
+                      a switch whose only outcome is a 422 on save. `Searchable`
+                      stays: finding an order by its number is the commonest
+                      reason to search a collection at all. */}
+                  {(def.type === "text" || def.type === "longtext") && !def.hasSequence && (
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Vectorize</Trans></div>
@@ -590,6 +630,10 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                 value={rollupDraft}
                 onChange={setRollupDraft}
               />
+            )}
+
+            {activeTab === "sequence" && def.hasSequence && (
+              <FieldSequenceEditor value={seqDraft} onChange={setSeqDraft} />
             )}
 
             {activeTab === "field" && (

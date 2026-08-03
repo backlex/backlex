@@ -99,6 +99,7 @@ import m92 from "../../drizzle/sqlite/20260802100000_signature_requests/migratio
 import m93 from "../../drizzle/sqlite/20260802160000_bookings/migration.sql" with { type: "text" };
 import m94 from "../../drizzle/sqlite/20260803100000_approval_requests/migration.sql" with { type: "text" };
 import m95 from "../../drizzle/sqlite/20260803140000_flow_schedule_fires/migration.sql" with { type: "text" };
+import m96 from "../../drizzle/sqlite/20260803160000_sequences/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -202,4 +203,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260802160000_bookings", sql: m93 },
   { name: "20260803100000_approval_requests", sql: m94 },
   { name: "20260803140000_flow_schedule_fires", sql: m95 },
+  { name: "20260803160000_sequences", sql: m96 },
 ];

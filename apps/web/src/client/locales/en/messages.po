@@ -1060,6 +1060,10 @@ msgstr "A local stand-in that settles payments without charging anything. Demo a
 msgid "A loop runs inline, so its body cannot wait for an approval or a long delay."
 msgstr "A loop runs inline, so its body cannot wait for an approval or a long delay."
 
+#: src/client/admin/field-sequence-editor.tsx
+msgid "A number that outgrows this simply gets wider — nothing is cut off."
+msgstr "A number that outgrows this simply gets wider — nothing is cut off."
+
 #: src/client/admin/parity/insights.tsx
 msgid "A panel with that name already exists."
 msgstr "A panel with that name already exists."
@@ -1965,6 +1969,10 @@ msgstr "Analytics ingest key"
 msgid "Analytics refreshed."
 msgstr "Analytics refreshed."
 
+#: src/client/admin/field-sequence-editor.tsx
+msgid "and a run of"
+msgstr "and a run of"
+
 #: src/client/admin/pages/erasure-card.tsx
 msgid "Anonymize"
 msgstr "Anonymize"
@@ -2491,9 +2499,25 @@ msgstr "Back to forms"
 msgid "Back to sign in"
 msgstr "Back to sign in"
 
+#: src/client/admin/field-sequence-editor.tsx
+msgid "back to the starting number"
+msgstr "back to the starting number"
+
 #: src/client/admin/parity/database.tsx
 msgid "Back up now"
 msgstr "Back up now"
+
+#: src/client/admin/add-field.tsx
+msgid "backlex issues this value on create — set the shape in the <0>Numbering</0> tab. Leave <1>Unique</1> on: it is what turns a numbering mistake into a refused write instead of two documents sharing a number."
+msgstr "backlex issues this value on create — set the shape in the <0>Numbering</0> tab. Leave <1>Unique</1> on: it is what turns a numbering mistake into a refused write instead of two documents sharing a number."
+
+#: src/client/admin/edit-field.tsx
+msgid "backlex issues this value on create — the shape lives in the <0>Numbering</0> tab. Changing it affects the NEXT number issued; rows already numbered keep what they were given."
+msgstr "backlex issues this value on create — the shape lives in the <0>Numbering</0> tab. Changing it affects the NEXT number issued; rows already numbered keep what they were given."
+
+#: src/client/admin/field-sequence-editor.tsx
+msgid "backlex issues this value when the row is created — it is read-only through the API and never changes afterwards. Numbers are unique and always go up; if a create fails, the number it took is skipped rather than reused."
+msgstr "backlex issues this value when the row is created — it is read-only through the API and never changes afterwards. Numbers are unique and always go up; if a create fails, the number it took is skipped rather than reused."
 
 #. placeholder {0}: schema.slug
 #: src/client/admin/collection-settings.tsx
@@ -2774,6 +2798,10 @@ msgstr "Calendar"
 #: src/client/admin/flow-builder.tsx
 msgid "Calendar invite (.ics)"
 msgstr "Calendar invite (.ics)"
+
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Calendar time zone"
+msgstr "Calendar time zone"
 
 #: src/client/admin/pages/analytics.tsx
 msgid "Call client.analytics.captureErrors() in your app to forward uncaught errors and unhandled rejections automatically."
@@ -4306,6 +4334,10 @@ msgstr "Custom message (optional)"
 msgid "Custom OpenID Connect provider."
 msgstr "Custom OpenID Connect provider."
 
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Custom pattern…"
+msgstr "Custom pattern…"
+
 #: src/client/admin/role-mcp-guards.tsx
 msgid "Custom patterns"
 msgstr "Custom patterns"
@@ -4835,6 +4867,10 @@ msgstr "Device"
 #: src/client/admin/pages/logs.tsx
 msgid "Diff"
 msgstr "Diff"
+
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Digits"
+msgstr "Digits"
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Dim"
@@ -5924,6 +5960,10 @@ msgstr "Every 30 minutes"
 msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 msgstr "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Every month"
+msgstr "Every month"
+
 #: src/client/admin/pages/analytics.tsx
 msgid "Every occurrence of this bug, with the latest stack trace and how many visitors it reached."
 msgstr "Every occurrence of this bug, with the latest stack trace and how many visitors it reached."
@@ -5947,6 +5987,10 @@ msgstr "Every tool"
 #: src/client/admin/parity/revisions.tsx
 msgid "Every write is versioned. Inspect, diff, or revert any prior state."
 msgstr "Every write is versioned. Inspect, diff, or revert any prior state."
+
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Every year"
+msgstr "Every year"
 
 #: src/client/admin/role-editor.tsx
 msgid "everyone"
@@ -6567,6 +6611,10 @@ msgstr "Folders"
 msgid "font"
 msgstr "font"
 
+#: src/client/admin/field-sequence-editor.tsx
+msgid "for the counter, padded to its width — e.g."
+msgstr "for the counter, padded to its width — e.g."
+
 #: src/client/admin/pages/users.tsx
 msgid "Forces re-login on every device immediately."
 msgstr "Forces re-login on every device immediately."
@@ -6616,6 +6664,7 @@ msgstr "Form title"
 msgid "Form-wide — every section becomes a tab across the top instead of a stacked heading. Best for large records."
 msgstr "Form-wide — every section becomes a tab across the top instead of a stacked heading. Best for large records."
 
+#: src/client/admin/field-sequence-editor.tsx
 #: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "Format"
@@ -7770,6 +7819,10 @@ msgstr "kanban"
 #: src/client/admin/item-views.tsx
 msgid "Kanban"
 msgstr "Kanban"
+
+#: src/client/admin/field-sequence-editor.tsx
+msgid "keep counting up forever"
+msgstr "keep counting up forever"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Keep HubSpot contacts in step with a collection. Receives record contents."
@@ -9060,6 +9113,10 @@ msgstr "needs TURNSTILE_SITE_KEY on the server"
 msgid "network error"
 msgstr "network error"
 
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Never"
+msgstr "Never"
+
 #: src/client/pages/api-keys.tsx
 msgid "Never (no expiry)"
 msgstr "Never (no expiry)"
@@ -10242,6 +10299,11 @@ msgstr "npm package"
 msgid "npm registry"
 msgstr "npm registry"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Numbering"
+msgstr "Numbering"
+
 #: src/client/admin/parity/insights.tsx
 msgid "numeric column average"
 msgstr "numeric column average"
@@ -10879,6 +10941,10 @@ msgstr "Paste the endpoint above"
 #: src/client/pages/openapi-export.tsx
 msgid "Paths"
 msgstr "Paths"
+
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Pattern"
+msgstr "Pattern"
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Pattern (regex)"
@@ -11530,8 +11596,21 @@ msgid "Preferences saved."
 msgstr "Preferences saved."
 
 #: src/client/admin/field-format-editor.tsx
+#: src/client/admin/field-sequence-editor.tsx
 msgid "Prefix"
 msgstr "Prefix"
+
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Prefix + number"
+msgstr "Prefix + number"
+
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Prefix + year + number"
+msgstr "Prefix + year + number"
+
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Prefix + year, month + number"
+msgstr "Prefix + year, month + number"
 
 #: src/client/admin/condition-editor.tsx
 msgid "Presets"
@@ -12728,6 +12807,10 @@ msgstr "Response"
 #: src/client/pages/rest-explorer.tsx
 msgid "REST Explorer"
 msgstr "REST Explorer"
+
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Restart the count"
+msgstr "Restart the count"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/parity/database.tsx
@@ -14814,6 +14897,10 @@ msgstr "Staging"
 msgid "Star rating (1–5)"
 msgstr "Star rating (1–5)"
 
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Start at"
+msgstr "Start at"
+
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Start blank"
 msgstr "Start blank"
@@ -15486,6 +15573,14 @@ msgstr "the field stays in the collection"
 msgid "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
 msgstr "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
 
+#: src/client/admin/field-sequence-editor.tsx
+msgid "The first number this series issues. Existing rows are not renumbered."
+msgstr "The first number this series issues. Existing rows are not renumbered."
+
+#: src/client/admin/field-sequence-editor.tsx
+msgid "The first numbers this field will issue"
+msgstr "The first numbers this field will issue"
+
 #: src/client/pages/public-form.tsx
 msgid "The form may have been deactivated, or its link replaced."
 msgstr "The form may have been deactivated, or its link replaced."
@@ -16015,6 +16110,10 @@ msgstr "tokens"
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Tokens without the <0>mcp:write</0> scope run read-only."
 msgstr "Tokens without the <0>mcp:write</0> scope run read-only."
+
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Tokens:"
+msgstr "Tokens:"
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Tool"
@@ -17134,6 +17233,10 @@ msgstr "Where “Send test SMS” delivers. Leave blank to use your account's re
 msgid "Where the confirmation and the cancel link go."
 msgstr "Where the confirmation and the cancel link go."
 
+#: src/client/admin/field-sequence-editor.tsx
+msgid "Which clock decides the year and the restart. Stored with the field, so changing your display time zone later never renumbers anything."
+msgstr "Which clock decides the year and the restart. Stored with the field, so changing your display time zone later never renumbers anything."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "Which columns real list requests filter and sort on — the input behind the missing-index findings."
 msgstr "Which columns real list requests filter and sort on — the input behind the missing-index findings."
@@ -17314,6 +17417,10 @@ msgstr "Write the link onto"
 #: src/client/admin/flow-builder.tsx
 msgid "Write the outcome to"
 msgstr "Write the outcome to"
+
+#: src/client/admin/field-sequence-editor.tsx
+msgid "write the tokens yourself"
+msgstr "write the tokens yourself"
 
 #: src/client/admin/pages/overview.tsx
 msgid "Writes (1h)"

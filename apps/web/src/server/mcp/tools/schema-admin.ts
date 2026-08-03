@@ -231,6 +231,36 @@ export const rollupsRefresh: McpTool = {
   },
 };
 
+export const sequencesSync: McpTool = {
+  name: "schema.sequences_sync",
+  description:
+    "Move a collection's sequence (document-number) counters forward to the " +
+    "highest number already stored in each column, per reset period. Use " +
+    "after a table arrives with numbers already in it — an adopted table, a " +
+    "restore, a bulk seed — because otherwise the counter starts at zero and " +
+    "the next create reissues a number that is already on a document. " +
+    "Counters are only ever moved FORWARD. Idempotent. Returns " +
+    "`{ ok, synced }` naming each column, the periods it advanced, and how " +
+    "many stored values did not match the field's pattern.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      slug: { type: "string" },
+    },
+    required: ["slug"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const slug = requireSlug(args);
+    const res = await ctx.fetchInternal(
+      `/api/items/${encodeURIComponent(slug)}/sequences/sync`,
+      { method: "POST" },
+    );
+    const body = await readJson<unknown>(res);
+    return withLinks(textResult(body), collectionLink(slug));
+  },
+};
+
 export const vectorizeBackfill: McpTool = {
   name: "schema.vectorize_backfill",
   description:
@@ -266,5 +296,6 @@ export const schemaAdminTools: McpTool[] = [
   dropCollection,
   ftsReindex,
   rollupsRefresh,
+  sequencesSync,
   vectorizeBackfill,
 ];

@@ -91,7 +91,9 @@ const FALLBACK_TIMEZONES = [
   "Europe/Madrid", "Europe/Moscow", "Europe/Paris", "Pacific/Auckland",
 ];
 
-const supportedTimeZones = (): string[] => {
+/** Every IANA zone the runtime knows, or the curated fallback. Exported so the
+ *  sequence-field editor picks from the same list rather than a second copy. */
+export const supportedTimeZones = (): string[] => {
   try {
     const fn = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] })
       .supportedValuesOf;
@@ -106,7 +108,7 @@ const supportedTimeZones = (): string[] => {
 };
 
 /** Current UTC offset for `tz`, e.g. "GMT+3". Empty when unavailable. */
-const offsetLabel = (tz: string): string => {
+export const offsetLabel = (tz: string): string => {
   try {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone: tz,

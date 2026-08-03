@@ -11,6 +11,7 @@ import {
   type WriteEnv,
   type WriteResult,
 } from "./write";
+import { allocateSequenceValues, sequenceFieldsOf } from "./sequence";
 
 /** Max operations per batch — bounds the work a single call can queue. */
 export const BATCH_MAX = 100;
@@ -74,6 +75,20 @@ export const runBatch = async (params: RunBatchParams): Promise<BatchRunResult> 
     return { whereSql: p.whereSql, fields: p.fields };
   };
 
+  // One allocation statement per sequence field for the whole batch instead of
+  // one per create. Sized to the number of creates; anything left over is a
+  // spent range (the series is not gap-free by design), and anything short is
+  // topped up per-row by `nextSequenceValues`.
+  const createCount = ops.filter((o) => o.op === "create").length;
+  const sequencePool = await allocateSequenceValues(
+    ctx,
+    auth.tenantId,
+    collection.slug,
+    sequenceFieldsOf(collection.fields),
+    createCount,
+    new Date(),
+  );
+
   const baseEnv = (collect?: SQL[]): WriteEnv => ({
     ctx,
     collection,
@@ -85,6 +100,7 @@ export const runBatch = async (params: RunBatchParams): Promise<BatchRunResult> 
     durationMs: params.durationMs,
     locale: params.locale,
     collect,
+    sequencePool,
   });
 
   const runOne = async (env: WriteEnv, op: BatchOp): Promise<WriteResult> => {

@@ -32,6 +32,9 @@ export const isBulkEditable = (f: SchemaField): boolean => {
   // Same reason as computed: the server maintains a rollup from another
   // collection's rows and rejects a write to it.
   if ((f as { rollup?: unknown }).rollup) return false;
+  // A sequence is issued per row on insert — there is no such thing as setting
+  // one document number across a selection.
+  if ((f as { sequence?: unknown }).sequence) return false;
   if (f.type && BULK_BLOCKED_TYPES.has(f.type)) return false;
   if (f.interface && BULK_BLOCKED_IFACES.has(f.interface)) return false;
   return true;

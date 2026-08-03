@@ -32,7 +32,7 @@ interface Collection {
   adopted?: boolean | number;
 }
 
-const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop-field|fts-reindex|vectorize|refresh-rollups>
+const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop-field|fts-reindex|vectorize|refresh-rollups|sync-sequences>
 
   list                              every collection the key can read
   get <slug>                        one collection's fields
@@ -47,6 +47,10 @@ const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop
   refresh-rollups <slug>            restate the collection's rollup columns from
                                     the rows they aggregate (repair path — writes
                                     keep them in step on their own)
+  sync-sequences <slug>             move the collection's numbering counters up to
+                                    the highest number already in each column
+                                    (run after adopting a table that arrived with
+                                    numbers, or restoring one)
 `;
 
 const fetchCollections = (args: string[]): Promise<Collection[]> => {
@@ -221,6 +225,44 @@ export const runCollections = async (args: string[]): Promise<void> => {
       );
     } catch (e) {
       die(e, "collections refresh-rollups");
+    }
+    return;
+  }
+
+  // Catch the numbering counters up to the rows. Counts BUCKETS moved, not
+  // rows: a yearly series with three years of history advances three counters.
+  if (sub === "sync-sequences") {
+    const slug = args[1];
+    if (!slug) {
+      process.stderr.write("collections sync-sequences <slug>\n");
+      process.exit(1);
+    }
+    try {
+      const ctx = resolveContext(args.slice(2));
+      const res = await makeClient(ctx).request<{
+        ok: true;
+        synced: { field: string; advanced: { scope: string; to: number }[]; unreadable: number }[];
+      }>("POST", `/api/items/${encodeURIComponent(slug)}/sequences/sync`);
+      if (json) {
+        printJson(res);
+        return;
+      }
+      if (res.synced.length === 0) {
+        process.stderr.write(`✓ ${slug}: no sequence fields\n`);
+        return;
+      }
+      for (const f of res.synced) {
+        const moved = f.advanced
+          .map((a) => `${a.scope || "all"}→${a.to}`)
+          .join(", ");
+        process.stderr.write(
+          `✓ ${slug}.${f.field}: ${moved || "already up to date"}` +
+            (f.unreadable ? ` (${f.unreadable} value(s) did not match the pattern)` : "") +
+            "\n",
+        );
+      }
+    } catch (e) {
+      die(e, "collections sync-sequences");
     }
     return;
   }

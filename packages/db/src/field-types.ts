@@ -1,4 +1,5 @@
 import type { Condition, DurationParts, RelativeNow } from "@backlex/core";
+import { type SequenceSpec, validateSequenceSpec } from "./sequence";
 
 type Dialect = "pg" | "sqlite";
 
@@ -463,6 +464,16 @@ export interface FieldDef {
    */
   rollup?: RollupSpec;
   /**
+   * Issue this column's value from a server-side counter on INSERT — a document
+   * number like `INV-2026-0001`. See {@link SequenceSpec}.
+   *
+   * Read-only to clients on create AND update: the server owns the value, and a
+   * document number that can be edited afterwards is not one. Unlike
+   * {@link onCreate}, which resolves a fixed token, a sequence carries the
+   * pattern, the padding and the reset period the series is numbered by.
+   */
+  sequence?: SequenceSpec;
+  /**
    * When true (and the collection has `vectorize: true`), this field's
    * value is concatenated into the embed text on item write. Only
    * meaningful for `text` / `longtext` types — ignored otherwise.
@@ -852,6 +863,7 @@ export const validateFields = (fields: FieldDef[]): void => {
         ["default", f.default !== undefined],
         ["computed", !!f.computed],
         ["rollup", !!f.rollup],
+        ["sequence", !!f.sequence],
         ["to", !!f.to],
         ["onCreate", !!f.onCreate],
         ["onUpdate", !!f.onUpdate],
@@ -948,6 +960,41 @@ export const validateFields = (fields: FieldDef[]): void => {
         }
       }
       validateRollupSpec(f.name, f);
+    }
+    if (f.sequence) {
+      // A sequence column is issued by the server on INSERT, so anything that
+      // implies a second writer — or a value the server cannot supply — is out:
+      //  - computed/rollup: both already own the column's value, by a different
+      //    rule; two owners means whichever ran last wins, silently.
+      //  - localized: a document number is one string for the row. Per-locale
+      //    invoice numbers would be different documents.
+      //  - default: the server always writes a value, so a DDL default could
+      //    only ever be dead weight — or worse, the value a failed allocation
+      //    quietly falls back to.
+      //  - onCreate/onUpdate: `onCreate` is the mechanism this replaces, and
+      //    `onUpdate` would rewrite the number after it had been issued.
+      //  - vectorize: embedding a serial number matches everything and nothing.
+      for (const [flag, on] of [
+        ["computed", !!f.computed],
+        ["rollup", !!f.rollup],
+        ["localized", !!f.localized],
+        ["default", f.default !== undefined],
+        ["onCreate", !!f.onCreate],
+        ["onUpdate", !!f.onUpdate],
+        ["vectorize", !!f.vectorize],
+      ] as const) {
+        if (on) {
+          throw new Error(`Field "${f.name}": "${flag}" is not allowed on a sequence field`);
+        }
+      }
+      // `required` and `unique` are deliberately ALLOWED, and both are worth
+      // having: the server fills the column on every insert, so NOT NULL can
+      // never reject a write, and UNIQUE is the backstop that turns a mistake
+      // in the pattern (a reset with no date token, a hand-restored counter
+      // row) into a failed insert instead of two documents with one number.
+      // `searchable` is allowed too — finding an order by its number is the
+      // single most common reason to search a collection at all.
+      validateSequenceSpec(f.name, f);
     }
     // Auto-fill tokens (onCreate/onUpdate) must suit the column's storage type,
     // and can't sit on a generated column (a computed column takes no writes).

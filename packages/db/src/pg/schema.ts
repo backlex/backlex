@@ -3377,3 +3377,47 @@ export const flowScheduleFires = pgTable(
     index("flow_schedule_fires_prune_idx").on(t.fireAt),
   ],
 );
+
+/**
+ * Sequence counters — one row per (tenant, collection, field, period), holding
+ * the last number that field's series issued.
+ *
+ * The counter is bumped by a single `INSERT … ON CONFLICT DO UPDATE SET
+ * last_value = last_value + n RETURNING last_value`. One statement, evaluated
+ * by the database, so two concurrent inserts cannot read the same "before"
+ * value and both claim it — the same reasoning the rollup refresh is built on,
+ * and the same reasoning behind every check-then-insert bug this repo has
+ * already paid for once.
+ *
+ * `tenant_id` and `scope` are NOT NULL with `''` meaning "none". Every
+ * neighbouring table leaves `tenant_id` nullable, so the difference is worth
+ * stating: a unique index treats NULLs as DISTINCT in both dialects, so a
+ * nullable key column would let a second counter row be created beside the
+ * first. `ON CONFLICT` would then never match, every insert would allocate a
+ * fresh row at `start`, and every document would carry the same number — a
+ * failure that only shows up on an install with no tenant, which is exactly
+ * where nobody is looking.
+ *
+ * There is no scheduled reset. A yearly sequence does not notice January; it
+ * asks for the bucket named `2027`, finds nothing there, and starts at `start`.
+ * Nothing has to run at midnight, so nothing can fail to.
+ */
+export const sequences = pgTable(
+  "sequences",
+  {
+    id: text("id").primaryKey(),
+    /** `''` when the install is not tenant-scoped — never NULL. */
+    tenantId: text("tenant_id").notNull().default(""),
+    collection: text("collection").notNull(),
+    field: text("field").notNull(),
+    /** `''` for `reset: never`, else the calendar period (`2026`, `2026-08`). */
+    scope: text("scope").notNull().default(""),
+    /** The last counter handed out. The next allocation returns this + n. */
+    lastValue: bigint("last_value", { mode: "number" }).notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("sequences_key_idx").on(t.tenantId, t.collection, t.field, t.scope),
+  ],
+);

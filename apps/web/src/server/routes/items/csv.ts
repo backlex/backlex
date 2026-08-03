@@ -22,6 +22,10 @@ import {
   performUpdate,
   type WriteEnv,
 } from "../../services/items/write";
+import {
+  allocateSequenceValues,
+  sequenceFieldsOf,
+} from "../../services/items/sequence";
 import { toCsv, parseCsv } from "../../services/items/csv";
 import {
   deletedFilter,
@@ -305,6 +309,20 @@ export const itemsCsvRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         meta: requestMeta(c.req.raw),
         durationMs: () => elapsedMs(c),
         locale: null,
+        // One allocation statement per sequence field for the whole file
+        // instead of one per row. Over-sized whenever some rows turn out to be
+        // updates or to fail validation; those numbers are simply spent, which
+        // is the gap the series already permits. `at` is fixed for the file, so
+        // an import running across midnight numbers under one bucket rather
+        // than splitting mid-file.
+        sequencePool: await allocateSequenceValues(
+          ctx,
+          auth.tenantId,
+          collection.slug,
+          sequenceFieldsOf(collection.fields),
+          records.length,
+          new Date(),
+        ),
       };
 
       // Rows carrying an existing id are updated (round-trip restore) rather

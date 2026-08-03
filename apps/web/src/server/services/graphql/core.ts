@@ -57,6 +57,7 @@ import {
   rollupRefreshAllStatements,
   rollupRefreshStatements,
 } from "../items/rollup";
+import { nextSequenceValues, sequenceFieldsOf } from "../items/sequence";
 import { verifyHashField } from "../items/verify";
 import type { Hono } from "hono";
 import type { Ctx } from "../../context";
@@ -320,7 +321,7 @@ const validateInput = (
   for (const f of collection.fields) {
     // Auto-filled columns are system-managed — never required from the caller.
     // `localized` fields aren't required per-locale (parity with the REST path).
-    if (f.onCreate || f.onUpdate || isLocalized(f)) continue;
+    if (f.onCreate || f.onUpdate || f.sequence || isLocalized(f)) continue;
     if (
       f.required &&
       !partial &&
@@ -342,6 +343,12 @@ const validateInput = (
     if (f.rollup) {
       throw new GraphQLError(
         `Field "${f.name}" is a rollup of "${f.rollup.from}" (read-only) — change the ${f.rollup.from} rows instead`,
+        { extensions: { code: "VALIDATION" } },
+      );
+    }
+    if (f.sequence) {
+      throw new GraphQLError(
+        `Field "${f.name}" is a sequence (server-issued, read-only) — drop it from your input`,
         { extensions: { code: "VALIDATION" } },
       );
     }
@@ -857,7 +864,7 @@ export const createResolver = async (
     vals.push(auth.tenantId);
   }
   for (const f of collection.fields) {
-    if (f.onCreate) continue; // system-managed, injected below
+    if (f.onCreate || f.sequence) continue; // system-managed, injected below
     const v = args.data[camel(f.name)];
     if (v === undefined) continue;
     cols.push(f.name);
@@ -873,6 +880,25 @@ export const createResolver = async (
     cols.push(f.name);
     vals.push(stored);
     args.data[camel(f.name)] = deserialize(stored, f.type, ctx.dialect);
+  }
+  // Sequence columns. Repeated here for the same reason the rollup refresh is:
+  // this resolver hand-builds its INSERT instead of calling `performCreate`, so
+  // anything the REST write core does on the way in has to be done twice or it
+  // only ships on one surface. `sequence-surfaces.test.ts` is the gate.
+  const seqFields = sequenceFieldsOf(collection.fields);
+  if (seqFields.length > 0) {
+    const issued = await nextSequenceValues(
+      ctx,
+      auth.tenantId,
+      collection.slug,
+      seqFields,
+      new Date(),
+    );
+    for (const [name, value] of Object.entries(issued)) {
+      cols.push(name);
+      vals.push(value);
+      args.data[camel(name)] = value;
+    }
   }
   const colSql = sql.join(cols.map((n) => sql.identifier(n)), sql`, `);
   const valSql = sql.join(vals.map((v) => sql`${v}`), sql`, `);

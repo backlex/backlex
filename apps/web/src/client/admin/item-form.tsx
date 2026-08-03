@@ -117,12 +117,15 @@ export const fieldEffects = (
   values: Record<string, unknown>,
 ): { hidden: boolean; readonly: boolean; required: boolean } => {
   // A rollup column is maintained by the server from another collection's rows,
-  // so the form must not offer it as an input — the write path answers 422 and
-  // an editable-looking box is just a trap. Unconditional, not a rule the
-  // author can switch off.
+  // and a sequence column is issued by the server on insert, so the form must
+  // not offer either as an input — the write path answers 422 and an
+  // editable-looking box is just a trap. Unconditional, not a rule the author
+  // can switch off.
   const eff = {
     hidden: false,
-    readonly: Boolean((f as { rollup?: unknown }).rollup),
+    readonly: Boolean(
+      (f as { rollup?: unknown }).rollup || (f as { sequence?: unknown }).sequence,
+    ),
     required: false,
   };
   for (const c of f.conditions ?? []) {
@@ -339,6 +342,11 @@ export function useItemForm({
     const e: Record<string, string> = {};
     for (const f of fields) {
       if (!(f.required || f.nullable === false)) continue;
+      // A sequence column is `required` in the DDL and filled by the SERVER on
+      // insert, so the draft is empty by design. Without this the form would
+      // refuse to save every row of a collection that numbers its documents —
+      // the one field the user is not allowed to type into.
+      if ((f as { sequence?: unknown }).sequence) continue;
       // A hash field on EDIT reads back blank (the digest is never returned);
       // a blank means "keep the current secret", so don't flag it as missing.
       // On create (`initial` null) it's still enforced.
@@ -372,11 +380,12 @@ export function useItemForm({
   const buildPayload = (): Partial<Post> => {
     const payload: Record<string, unknown> = {};
     for (const f of fields) {
-      // Rollup columns are shown (read-only) but never sent: the draft is
-      // seeded from the loaded row, so the current total is sitting right
-      // there, and including it would make the write path reject every save of
-      // a collection that has one.
+      // Rollup and sequence columns are shown (read-only) but never sent: the
+      // draft is seeded from the loaded row, so the current total / issued
+      // number is sitting right there, and including it would make the write
+      // path reject every save of a collection that has one.
       if ((f as { rollup?: unknown }).rollup) continue;
+      if ((f as { sequence?: unknown }).sequence) continue;
       const raw = draft[f.name];
       if (raw === undefined) continue;
       if (f.localized) {
@@ -603,8 +612,9 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
       </div>
     ) : null;
     const typeLabel = (iface ?? f.type ?? "text") + (f.unique ? " · unique" : "");
+    const serverFilled = !!(f as { sequence?: unknown }).sequence;
     const reqMark =
-      f.required || f.nullable === false || forceRequired ? (
+      !serverFilled && (f.required || f.nullable === false || forceRequired) ? (
         <span style={{ color: "var(--destructive)" }}>*</span>
       ) : null;
     const previewable = !!iface && PREVIEWABLE.has(iface) && !f.localized;
@@ -1643,6 +1653,36 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
             </Trans>
           </div>
           {errBlock}
+        </div>
+      );
+    }
+
+    // Sequence — a document number the server issues on save. The field is
+    // already wrapped non-interactive by `renderFieldWrapped`; what this branch
+    // adds is saying WHY the box is empty. Without it the form shows a blank,
+    // greyed, unexplained input on the one field that matters most on an
+    // invoice. The hint is static rather than the peeked next number: a peek is
+    // advisory (another create can take it first), and a number shown in a box
+    // reads as a number that was assigned.
+    if ((f as { sequence?: unknown }).sequence) {
+      return (
+        <div key={f.name} className="flex flex-col gap-1.5">
+          {label}
+          <Input
+            className="font-mono"
+            value={String(val ?? "")}
+            placeholder={val ? undefined : t`Assigned on save`}
+            readOnly
+            tabIndex={-1}
+            autoComplete="off"
+          />
+          <div className="text-[11.5px] text-muted-foreground">
+            {val ? (
+              <Trans>Issued by backlex when this row was created — it never changes.</Trans>
+            ) : (
+              <Trans>backlex fills this in when you save. It cannot be edited afterwards.</Trans>
+            )}
+          </div>
         </div>
       );
     }

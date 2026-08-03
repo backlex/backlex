@@ -53,6 +53,10 @@ export interface FieldInterfaceDef {
    *  by this entry (`count` is whole, everything else decimal), so `type` here
    *  is only the starting point. */
   hasRollup?: boolean;
+  /** Show the numbering editor in step 2 and require a usable `sequence` spec.
+   *  The column is always `text` — the value is a rendered string, not a bare
+   *  counter — so unlike `hasRollup` this never moves the storage type. */
+  hasSequence?: boolean;
   /** Extra search keywords beyond label + id. */
   keywords?: string[];
 }
@@ -70,6 +74,7 @@ export const FIELD_INTERFACES: FieldInterfaceDef[] = [
   { id: "input", label: "Input", sub: "Single-line text", group: "Text & Numbers", icon: "Type", type: "text" },
   { id: "autocomplete", label: "Autocomplete", sub: "Text with suggestions", group: "Text & Numbers", icon: "Search", type: "text", keywords: ["suggest", "typeahead"] },
   { id: "slug", label: "Slug", sub: "URL-safe key, kebab-case", group: "Text & Numbers", icon: "Hash", type: "text", keywords: ["permalink", "url"] },
+  { id: "sequence", label: "Sequence", sub: "A document number backlex issues for you — INV-2026-0001", group: "Text & Numbers", icon: "Hash", type: "text", hasSequence: true, keywords: ["number", "invoice", "order", "counter", "serial", "autonumber", "auto number", "increment", "document number", "reference"] },
   { id: "textarea", label: "Textarea", sub: "Multi-line plain text", group: "Text & Numbers", icon: "Pencil", type: "longtext", keywords: ["multiline", "notes"] },
   { id: "markdown", label: "Markdown", sub: "Formatted text, stored as Markdown", group: "Text & Numbers", icon: "Braces", type: "longtext", keywords: ["md", "richtext"] },
   { id: "richtext", label: "Rich Text (WYSIWYG)", sub: "Formatted text, stored as HTML", group: "Text & Numbers", icon: "Eye", type: "longtext", keywords: ["wysiwyg", "html", "editor"] },

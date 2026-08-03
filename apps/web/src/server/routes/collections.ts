@@ -7,6 +7,7 @@ import {
 import {
   FIELD_TYPES,
   ROLLUP_FNS,
+  SEQUENCE_RESETS,
   applyCollection,
   assertIdent,
   derivePhysicalTable,
@@ -42,6 +43,11 @@ import {
   rollupSignature,
   validateRollupTargets,
 } from "../services/items/rollup";
+import {
+  dropSequenceCounters,
+  sequenceFieldsOf,
+  syncSequenceCounters,
+} from "../services/items/sequence";
 import { ifNoneMatch, weakETag } from "../lib/etag";
 import { seedOwnerScopedPermissions } from "../services/seed";
 import { cloneCollection } from "../services/collections";
@@ -240,6 +246,25 @@ const FieldSchema = z
             "filter must be a condition object",
           )
           .optional(),
+      })
+      .optional(),
+    /**
+     * Issue this column from a server-side counter — `{ pattern, start?,
+     * reset?, timezone? }`, e.g. `INV-{YYYY}-{####}`.
+     *
+     * Safe to accept over the API for the same reason `rollup` is and
+     * `computed` is not: nothing here reaches the DDL. The pattern is parsed by
+     * a closed grammar (literals, four date tokens, one counter token) and only
+     * ever rendered into a value, so the worst a malformed one can do is fail
+     * `validateSequenceSpec` at save time. The bound on `pattern` is what stops
+     * a caller storing a megabyte of literal text in every row.
+     */
+    sequence: z
+      .object({
+        pattern: z.string().min(1).max(120),
+        start: z.number().int().min(0).optional(),
+        reset: z.enum(SEQUENCE_RESETS).optional(),
+        timezone: z.string().max(64).optional(),
       })
       .optional(),
   })
@@ -1246,12 +1271,28 @@ export const collectionsRoutes = new Hono<AppBindings>()
       const fresh = await loadCollection(c.get("ctx"), tenantId, nextSlug);
       rollupBackfill = await refreshCollectionRollups(c.get("ctx"), tenantId, fresh);
     }
+    // Catch the counters up for sequence fields that were just ADDED. Without
+    // this, adding a numbering field to a collection whose rows already carry
+    // numbers — which is the ordinary way an adopted table arrives — leaves the
+    // counter at zero, and the very next create reissues a number that is
+    // already on a document. Only new fields are considered: re-syncing an
+    // existing one on every unrelated PATCH would scan the whole table for
+    // nothing.
+    const addedSequences = sequenceFieldsOf(merged.fields as FieldDef[]).filter(
+      (f) => !(before.fields as FieldDef[]).some((b) => b.name === f.name && b.sequence),
+    );
+    let sequenceSync: Awaited<ReturnType<typeof syncSequenceCounters>> | null = null;
+    if (addedSequences.length > 0) {
+      const fresh = await loadCollection(c.get("ctx"), tenantId, nextSlug);
+      sequenceSync = await syncSequenceCounters(c.get("ctx"), tenantId, fresh, addedSequences);
+    }
     const updateResponse = {
       ok: true,
       slug: nextSlug,
       renamed: renameCounts,
       ftsBackfill,
       ...(rollupBackfill ? { rollupBackfill } : {}),
+      ...(sequenceSync ? { sequenceSync } : {}),
     };
     await logActivity(c, {
       action: "update",
@@ -1304,6 +1345,11 @@ export const collectionsRoutes = new Hono<AppBindings>()
       .set({ fields: nextFields, updatedAt: new Date() })
       .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
     await dropField(db, dialect, physicalTable, fieldName);
+    // A dropped sequence field's counter is meaningless — and would silently
+    // resume if a field of the same name were added back.
+    if (target.sequence) {
+      await dropSequenceCounters(c.get("ctx"), tenantId, slug, fieldName);
+    }
     invalidateTenantCollections(tenantId);
     const dropResponse = { ok: true, slug, field: fieldName };
     await logActivity(c, {
@@ -1345,6 +1391,9 @@ export const collectionsRoutes = new Hono<AppBindings>()
       // Managed collections — physical `c_<slug>` table goes too; the
       // metadata row is hard-deleted. There's nothing to restore.
       await dropCollection(db, dialect, physicalTable, { adopted });
+      // Recreating this slug is a NEW series: a fresh table with no rows in it
+      // must not resume numbering where the dropped one left off.
+      await dropSequenceCounters(c.get("ctx"), tenantId, slug);
       await (db as any)
         .delete(t)
         .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));

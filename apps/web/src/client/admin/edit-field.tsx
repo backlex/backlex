@@ -56,6 +56,13 @@ import {
   rollupToDraft,
   type RollupDraft,
 } from "./field-rollup-editor";
+import {
+  cleanSequence,
+  emptySequenceDraft,
+  FieldSequenceEditor,
+  sequenceToDraft,
+  type SequenceDraft,
+} from "./field-sequence-editor";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -108,6 +115,8 @@ interface FieldDraft {
   onDelete?: "set_null" | "cascade" | "no_action";
   /** Aggregate over another collection's rows — see the rollup editor. */
   rollup?: Record<string, unknown>;
+  /** Server-issued document number — see the sequence editor. */
+  sequence?: Record<string, unknown>;
   /** Display formatting hint. */
   format?: Record<string, unknown>;
   /** Per-locale label overrides. */
@@ -146,6 +155,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   const [formatDraft, setFormatDraft] = useState<FieldFormatDraft>({});
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [rollupDraft, setRollupDraft] = useState<RollupDraft>(emptyRollupDraft());
+  const [seqDraft, setSeqDraft] = useState<SequenceDraft>(() => emptySequenceDraft("UTC"));
   const [tab, setTab] = useState("schema");
 
   // Re-seed every time the dialog opens with a new target field.
@@ -181,6 +191,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     setFormatDraft(formatToDraft((field as { format?: unknown }).format));
     setTranslations(((field as { translations?: Record<string, string> }).translations) ?? {});
     setRollupDraft(rollupToDraft((field as { rollup?: unknown }).rollup));
+    setSeqDraft(sequenceToDraft((field as { sequence?: unknown }).sequence));
   }, [open, field]);
 
   const addCond = () =>
@@ -225,6 +236,12 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   // first child write. Add a new rollup field instead.
   const isRollup = !!draft?.rollup;
   const cleanedRollup = isRollup ? cleanRollup(rollupDraft) : undefined;
+  // Same rule as rollup: a field is a sequence because it already carries one.
+  // Converting a plain column would leave every existing row's value untouched
+  // while the counter started from scratch — two numbering schemes in one
+  // column. Add a new sequence field instead.
+  const isSequence = !!draft?.sequence;
+  const cleanedSequence = isSequence ? cleanSequence(seqDraft) : undefined;
 
   // Server-side auto-fill options valid for this column's storage type.
   const autoFillOpts = (type: string, withUuid: boolean) => {
@@ -302,6 +319,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
       ...(isRollup
         ? { rollup: cleanedRollup as never, type: rollupStorageType(rollupDraft.fn) }
         : {}),
+      ...(isSequence ? { sequence: cleanedSequence as never } : {}),
     };
     onSave(cleaned);
   };
@@ -310,6 +328,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     { key: "schema", label: t`Schema`, icon: "Database" },
     ...(isRelation ? [{ key: "relationship", label: t`Relationship`, icon: "Share" } as FieldTabItem] : []),
     ...(isRollup ? [{ key: "rollup", label: t`Rollup`, icon: "BarChart", invalid: !cleanedRollup } as FieldTabItem] : []),
+    ...(isSequence ? [{ key: "sequence", label: t`Numbering`, icon: "Hash", invalid: !cleanedSequence } as FieldTabItem] : []),
     { key: "field", label: t`Field`, icon: "Pencil" },
     { key: "interface", label: t`Interface`, icon: "Eye" },
     { key: "validation", label: t`Validation`, icon: "Check" },
@@ -341,7 +360,13 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
             </div>
           )}
 
-          {activeTab === "schema" && !isRollup && (
+          {activeTab === "schema" && isSequence && (
+            <div className="rounded-control bg-muted p-3 text-[12.5px] text-muted-foreground">
+              <Trans>backlex issues this value on create — the shape lives in the <span className="font-medium text-foreground">Numbering</span> tab. Changing it affects the NEXT number issued; rows already numbered keep what they were given.</Trans>
+            </div>
+          )}
+
+          {activeTab === "schema" && !isRollup && !isSequence && (
             <div className="flex flex-col gap-3.5">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -394,7 +419,8 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
                 </div>
               )}
 
-              {(draft.type === "text" || draft.type === "longtext") && (
+              {/* Not offered on a sequence — the server refuses it. */}
+              {(draft.type === "text" || draft.type === "longtext") && !isSequence && (
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Vectorize</Trans></div>
@@ -465,6 +491,10 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
               value={rollupDraft}
               onChange={setRollupDraft}
             />
+          )}
+
+          {activeTab === "sequence" && isSequence && (
+            <FieldSequenceEditor value={seqDraft} onChange={setSeqDraft} />
           )}
 
           {activeTab === "field" && (

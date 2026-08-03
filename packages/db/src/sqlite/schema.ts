@@ -3060,3 +3060,34 @@ export const flowScheduleFires = sqliteTable(
     index("flow_schedule_fires_prune_idx").on(t.fireAt),
   ],
 );
+
+/**
+ * Sequence counters — one row per (tenant, collection, field, period), holding
+ * the last number that field's series issued.
+ *
+ * SQLite/D1 twin of the pg table, where the reasoning is written out in full.
+ * Two things differ from the tables around this one and both are deliberate:
+ * `tenant_id` and `scope` are NOT NULL with `''` standing in for "none",
+ * because SQL treats NULLs in a unique index as distinct — a nullable column
+ * here would let a second counter row exist alongside the first, and the upsert
+ * that allocates would stop matching and hand every row the same number.
+ */
+export const sequences = sqliteTable(
+  "sequences",
+  {
+    id: text("id").primaryKey(),
+    /** `''` when the install is not tenant-scoped — never NULL. */
+    tenantId: text("tenant_id").notNull().default(""),
+    collection: text("collection").notNull(),
+    field: text("field").notNull(),
+    /** `''` for `reset: never`, else the calendar period (`2026`, `2026-08`). */
+    scope: text("scope").notNull().default(""),
+    /** The last counter handed out. The next allocation returns this + n. */
+    lastValue: integer("last_value").notNull().default(0),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("sequences_key_idx").on(t.tenantId, t.collection, t.field, t.scope),
+  ],
+);

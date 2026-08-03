@@ -27,6 +27,7 @@ import {
   rollupRefreshStatements,
   type RollupChange,
 } from "./rollup";
+import { nextSequenceValues, sequenceFieldsOf, type SequencePool } from "./sequence";
 import {
   echoLocalized,
   sidecarClear,
@@ -105,6 +106,14 @@ export interface WriteEnv {
    *  so the whole batch commits or rolls back together. Reads (existence /
    *  before-snapshot) still run against ctx.db during the prepare phase. */
   collect?: SQL[];
+  /**
+   * Pre-allocated sequence values, shared across the creates of one bulk run
+   * (batch, CSV import) so an n-row import costs one allocation statement per
+   * sequence field instead of n. Optional: a create that finds the pool empty
+   * allocates its own, so getting the size wrong is a slowdown, never a
+   * duplicate. See `services/items/sequence.ts`.
+   */
+  sequencePool?: SequencePool;
 }
 
 /** Execute a write statement, or queue it when collecting for an atomic batch. */
@@ -277,8 +286,37 @@ export const performCreate = async (
     // timestamp) so it matches what a subsequent GET returns.
     data[f.name] = deserialize(stored, f.type, ctx.dialect);
   }
+  // Sequence columns — the document number this row gets. Allocated LAST in the
+  // validation phase, once the row is known to be insertable, so a payload that
+  // was going to be rejected anyway doesn't burn a number off the series. It
+  // still can't be gap-free (the insert itself may fail on a constraint the
+  // validator doesn't model), but the common case of a bad request no longer
+  // leaves a hole. Deliberately NOT routed through `emit`: the value has to
+  // exist before the INSERT is built, so the counter is bumped against ctx.db,
+  // outside any atomic batch's transaction — see `./sequence`.
+  const seqFields = sequenceFieldsOf(collection.fields);
+  if (seqFields.length > 0) {
+    const issued = await nextSequenceValues(
+      ctx,
+      env.tenantId,
+      collection.slug,
+      seqFields,
+      new Date(),
+      env.sequencePool,
+    );
+    for (const [name, value] of Object.entries(issued)) {
+      cols.push(name);
+      vals.push(value);
+      // Feed the response / event / index the issued value, so a client that
+      // just created an invoice can show its number without re-reading.
+      data[name] = value;
+    }
+  }
   for (const f of collection.fields) {
-    if (data[f.name] === undefined || f.onCreate) continue;
+    // `sequence` is skipped for the same reason `onCreate` is: the column was
+    // already pushed above, and pushing it twice makes the INSERT name one
+    // column twice — a syntax error on both dialects.
+    if (data[f.name] === undefined || f.onCreate || f.sequence) continue;
     cols.push(f.name);
     vals.push(serialize(data[f.name], f.type, ctx.dialect));
   }

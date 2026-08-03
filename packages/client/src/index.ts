@@ -328,6 +328,24 @@ export interface CollectionClient<T extends Record<string, unknown>> {
    *  path for rows written around the API (a restore, a bulk seed, direct SQL).
    *  Idempotent; returns the columns it refreshed. Requires `update`. */
   refreshRollups(): Promise<{ ok: boolean; refreshed: string[] }>;
+  /** Move this collection's `sequence` counters forward to the highest number
+   *  already stored in each column. The repair path for a series that predates
+   *  its counter — an adopted table, a restore, a bulk seed. Counters only ever
+   *  move forward. Idempotent. Requires `update`. */
+  syncSequences(): Promise<{ ok: boolean; synced: SequenceSyncReport[] }>;
+  /** The value each sequence column would render next, without consuming it.
+   *  A preview: another create can take that number first, so never write it. */
+  nextSequences(): Promise<Record<string, string>>;
+}
+
+/** What {@link CollectionClient.syncSequences} did to one sequence column. */
+export interface SequenceSyncReport {
+  field: string;
+  /** Reset periods whose counter was moved forward, and to what. */
+  advanced: { scope: string; to: number }[];
+  /** Stored values this field's pattern could not have produced, so they were
+   *  left out of the maximum rather than guessed at. */
+  unreadable: number;
 }
 
 /** Auth surface for a workspace's end-users (and the admin pool). See `createClient`. */
@@ -3279,6 +3297,18 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
           "POST",
           `/api/items/${slug}/rollups/refresh`,
         ),
+      /** Catch this collection's sequence counters up to the rows already in it. */
+      syncSequences: (): Promise<{ ok: boolean; synced: SequenceSyncReport[] }> =>
+        request<{ ok: boolean; synced: SequenceSyncReport[] }>(
+          "POST",
+          `/api/items/${slug}/sequences/sync`,
+        ),
+      /** Peek at the next number each sequence column would issue. */
+      nextSequences: (): Promise<Record<string, string>> =>
+        request<{ data: Record<string, string> }>(
+          "GET",
+          `/api/items/${slug}/sequences/next`,
+        ).then((r) => r.data),
     };
   };
 

@@ -117,7 +117,9 @@ export const validateBody = (
     // nor writable by, the caller. `localized` fields are pulled out into the
     // sidecar split before this runs (and are validated per-locale there); v1
     // does not enforce `required` per-locale, so skip them here too.
-    if (f.computed || f.rollup || f.onCreate || f.onUpdate || isLocalized(f)) continue;
+    if (f.computed || f.rollup || f.sequence || f.onCreate || f.onUpdate || isLocalized(f)) {
+      continue;
+    }
     if (f.required && !partial && (data[f.name] === undefined || data[f.name] === null)) {
       throw new AppError("VALIDATION", `Field "${f.name}" is required`);
     }
@@ -137,6 +139,16 @@ export const validateBody = (
       throw new AppError(
         "VALIDATION",
         `Field "${k}" is a rollup of "${def.rollup.from}" (read-only) — change the ${def.rollup.from} rows instead`,
+      );
+    }
+    if (def.sequence) {
+      // Rejected on update as well as create, and that is the point: a document
+      // number the holder can edit after the fact is not a document number.
+      // Refusing the write is also what keeps the counter honest — an edited
+      // value would collide with one the counter is still going to issue.
+      throw new AppError(
+        "VALIDATION",
+        `Field "${k}" is a sequence (server-issued, read-only) — drop it from your payload`,
       );
     }
     if (def.onCreate || def.onUpdate) {

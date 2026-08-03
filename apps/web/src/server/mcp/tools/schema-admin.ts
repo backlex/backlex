@@ -203,6 +203,34 @@ export const ftsReindex: McpTool = {
   },
 };
 
+export const rollupsRefresh: McpTool = {
+  name: "schema.rollups_refresh",
+  description:
+    "Restate every rollup column on a collection from the rows it aggregates. " +
+    "Rarely needed — ordinary item writes keep rollups in step, and " +
+    "`schema.update_collection` auto-backfills when a rollup definition " +
+    "changes; use this as a manual recovery after rows were written around " +
+    "the write path (a restore, a template seed, a direct SQL edit). " +
+    "Idempotent. Returns `{ ok, refreshed }` naming the columns restated.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      slug: { type: "string" },
+    },
+    required: ["slug"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const slug = requireSlug(args);
+    const res = await ctx.fetchInternal(
+      `/api/items/${encodeURIComponent(slug)}/rollups/refresh`,
+      { method: "POST" },
+    );
+    const body = await readJson<unknown>(res);
+    return withLinks(textResult(body), collectionLink(slug));
+  },
+};
+
 export const vectorizeBackfill: McpTool = {
   name: "schema.vectorize_backfill",
   description:
@@ -237,5 +265,6 @@ export const schemaAdminTools: McpTool[] = [
   dropField,
   dropCollection,
   ftsReindex,
+  rollupsRefresh,
   vectorizeBackfill,
 ];

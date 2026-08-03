@@ -7,6 +7,7 @@ export const detectDialect = (env: { DATABASE_URL?: string; D1?: unknown }): Dia
 };
 
 export * from "./field-types";
+export * from "./rollup";
 export * from "./schema-applier";
 export * from "./schema-diff";
 export * from "./permission";

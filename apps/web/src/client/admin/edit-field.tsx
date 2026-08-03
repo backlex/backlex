@@ -48,6 +48,14 @@ import {
 } from "./field-format-editor";
 import { cleanTranslations, FieldTranslationsEditor } from "./field-translations-editor";
 import { canLocalize } from "./item-form";
+import {
+  cleanRollup,
+  emptyRollupDraft,
+  FieldRollupEditor,
+  rollupStorageType,
+  rollupToDraft,
+  type RollupDraft,
+} from "./field-rollup-editor";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -98,6 +106,8 @@ interface FieldDraft {
   onUpdate?: "now" | "user" | "tenant";
   /** App-layer ON DELETE action for a relation FK. */
   onDelete?: "set_null" | "cascade" | "no_action";
+  /** Aggregate over another collection's rows — see the rollup editor. */
+  rollup?: Record<string, unknown>;
   /** Display formatting hint. */
   format?: Record<string, unknown>;
   /** Per-locale label overrides. */
@@ -115,6 +125,11 @@ interface FieldDraft {
 export interface EditFieldDialogProps {
   open: boolean;
   field: FieldDraft | null;
+  /** Slug of the collection being edited — the rollup's parent. */
+  ownerSlug?: string;
+  /** Every collection with its field definitions, for the rollup editor's
+   *  source / relation / value pickers. */
+  collections?: Array<{ slug: string; fieldDefs?: Array<{ name: string; type: string; to?: string; rollup?: unknown }> }>;
   /** Sibling field names, for the condition rule builder's field picker. */
   availableFields?: string[];
   /** Existing section names on this collection — offered as suggestions. */
@@ -123,13 +138,14 @@ export interface EditFieldDialogProps {
   onSave: (next: FieldDraft) => void;
 }
 
-export function EditFieldDialog({ open, field, availableFields = [], groups = [], onClose, onSave }: EditFieldDialogProps) {
+export function EditFieldDialog({ open, field, ownerSlug = "", collections = [], availableFields = [], groups = [], onClose, onSave }: EditFieldDialogProps) {
   const { t } = useLingui();
   const [draft, setDraft] = useState<FieldDraft | null>(field);
   const [conds, setConds] = useState<CondDraft[]>([]);
   const [valDraft, setValDraft] = useState<ValDraft>(emptyValDraft());
   const [formatDraft, setFormatDraft] = useState<FieldFormatDraft>({});
   const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [rollupDraft, setRollupDraft] = useState<RollupDraft>(emptyRollupDraft());
   const [tab, setTab] = useState("schema");
 
   // Re-seed every time the dialog opens with a new target field.
@@ -164,6 +180,7 @@ export function EditFieldDialog({ open, field, availableFields = [], groups = []
     setValDraft(validationToDraft((field as { validation?: unknown }).validation));
     setFormatDraft(formatToDraft((field as { format?: unknown }).format));
     setTranslations(((field as { translations?: Record<string, string> }).translations) ?? {});
+    setRollupDraft(rollupToDraft((field as { rollup?: unknown }).rollup));
   }, [open, field]);
 
   const addCond = () =>
@@ -202,6 +219,12 @@ export function EditFieldDialog({ open, field, availableFields = [], groups = []
   }, [draft?.type, draft?.interface, extensionsQuery.data]);
 
   const isRelation = draft?.type === "relation" || draft?.type === "relation_many";
+  // A field is a rollup because it already CARRIES one — the aggregate is not
+  // something an existing plain column can be converted into here: the applier
+  // is additive and would leave the old values sitting in the column until the
+  // first child write. Add a new rollup field instead.
+  const isRollup = !!draft?.rollup;
+  const cleanedRollup = isRollup ? cleanRollup(rollupDraft) : undefined;
 
   // Server-side auto-fill options valid for this column's storage type.
   const autoFillOpts = (type: string, withUuid: boolean) => {
@@ -276,6 +299,9 @@ export function EditFieldDialog({ open, field, availableFields = [], groups = []
       validation: (validation ?? undefined) as never,
       format: (cleanFormat(formatDraft, draft.type) ?? undefined) as never,
       translations: (cleanTranslations(translations) ?? undefined) as never,
+      ...(isRollup
+        ? { rollup: cleanedRollup as never, type: rollupStorageType(rollupDraft.fn) }
+        : {}),
     };
     onSave(cleaned);
   };
@@ -283,6 +309,7 @@ export function EditFieldDialog({ open, field, availableFields = [], groups = []
   const tabs: FieldTabItem[] = [
     { key: "schema", label: t`Schema`, icon: "Database" },
     ...(isRelation ? [{ key: "relationship", label: t`Relationship`, icon: "Share" } as FieldTabItem] : []),
+    ...(isRollup ? [{ key: "rollup", label: t`Rollup`, icon: "BarChart", invalid: !cleanedRollup } as FieldTabItem] : []),
     { key: "field", label: t`Field`, icon: "Pencil" },
     { key: "interface", label: t`Interface`, icon: "Eye" },
     { key: "validation", label: t`Validation`, icon: "Check" },
@@ -308,7 +335,13 @@ export function EditFieldDialog({ open, field, availableFields = [], groups = []
         </DialogHeader>
 
         <FieldTabLayout tabs={tabs} active={activeTab} onSelect={setTab} viewportClassName={vp}>
-          {activeTab === "schema" && (
+          {activeTab === "schema" && isRollup && (
+            <div className="rounded-control bg-muted p-3 text-[12.5px] text-muted-foreground">
+              <Trans>Read-only column — backlex writes it from the rows picked in the <span className="font-medium text-foreground">Rollup</span> tab, so it takes no constraints.</Trans>
+            </div>
+          )}
+
+          {activeTab === "schema" && !isRollup && (
             <div className="flex flex-col gap-3.5">
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -423,6 +456,15 @@ export function EditFieldDialog({ open, field, availableFields = [], groups = []
                 </div>
               )}
             </div>
+          )}
+
+          {activeTab === "rollup" && isRollup && (
+            <FieldRollupEditor
+              ownerSlug={ownerSlug}
+              collections={collections}
+              value={rollupDraft}
+              onChange={setRollupDraft}
+            />
           )}
 
           {activeTab === "field" && (

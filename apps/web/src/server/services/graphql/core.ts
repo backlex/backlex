@@ -53,6 +53,10 @@ import { runBulkUpdate } from "../items/bulk";
 import { hashIncomingFields, scrubHashFields } from "../items/hash-fields";
 import { getStagedRow, stagedDeleteSql, stagedUpsertSql, stagedViewOf } from "../items/staged";
 import { enforceOnDeleteTriggers } from "../items/on-delete";
+import {
+  rollupRefreshAllStatements,
+  rollupRefreshStatements,
+} from "../items/rollup";
 import { verifyHashField } from "../items/verify";
 import type { Hono } from "hono";
 import type { Ctx } from "../../context";
@@ -334,6 +338,12 @@ const validateInput = (
       throw new GraphQLError(`Unknown field: ${k}`, {
         extensions: { code: "VALIDATION" },
       });
+    }
+    if (f.rollup) {
+      throw new GraphQLError(
+        `Field "${f.name}" is a rollup of "${f.rollup.from}" (read-only) — change the ${f.rollup.from} rows instead`,
+        { extensions: { code: "VALIDATION" } },
+      );
     }
     if (f.onCreate || f.onUpdate) {
       throw new GraphQLError(`Field "${f.name}" is auto-filled (read-only)`, {
@@ -733,6 +743,41 @@ export const getResolver = async (
   return out;
 };
 
+/**
+ * Restate any rollup column that summarises this collection, for the parents
+ * this write touched.
+ *
+ * These resolvers hand-build their own SQL rather than going through
+ * `performCreate`/`performUpdate`, so the refresh the REST write core emits has
+ * to be repeated here — the one thing a second write path always forgets. The
+ * gate that catches it is `rollup-surfaces.test.ts`; it caught exactly this.
+ *
+ * The row keys are translated back to snake_case first: everything on the
+ * GraphQL side is camelCase, and the rollup spec names real columns.
+ */
+const gqlRollupRefresh = async (
+  ctx: Ctx,
+  collection: CollectionRow,
+  tenantId: string | null | undefined,
+  change: { before?: Record<string, unknown>; after?: Record<string, unknown>; always?: boolean },
+): Promise<void> => {
+  const snake = (row: Record<string, unknown> | undefined) => {
+    if (!row) return undefined;
+    const out: Record<string, unknown> = {};
+    for (const f of collection.fields) {
+      const v = row[camel(f.name)] ?? row[f.name];
+      if (v !== undefined) out[f.name] = v;
+    }
+    return out;
+  };
+  const stmts = await rollupRefreshStatements(ctx, collection, tenantId, {
+    ...(change.before ? { before: snake(change.before)! } : {}),
+    ...(change.after ? { after: snake(change.after)! } : {}),
+    ...(change.always ? { always: true } : {}),
+  });
+  for (const stmt of stmts) await execute(ctx, stmt);
+};
+
 export const createResolver = async (
   gqlCtx: GqlCtx,
   collection: CollectionRow,
@@ -843,6 +888,7 @@ export const createResolver = async (
       await execute(ctx, sidecarInsert(table, id, loc, fieldMap, byName, ctx.dialect));
     }
   }
+  await gqlRollupRefresh(ctx, collection, auth.tenantId, { after: args.data, always: true });
   // Digest persisted — scrub it from the input before it feeds the hand-built
   // response `out` and the realtime event.
   scrubHashFields(args.data, collection.fields, (f) => camel(f.name));
@@ -1016,6 +1062,11 @@ export const updateResolver = async (
     }
   }
 
+  await gqlRollupRefresh(ctx, collection, auth.tenantId, {
+    before: existing[0]!,
+    after: args.data,
+  });
+
   const refreshed = await queryAll<Record<string, unknown>>(
     ctx,
     sql`SELECT * FROM ${sql.identifier(table)} WHERE ${sql.identifier("id")} = ${args.id} LIMIT 1`,
@@ -1117,10 +1168,18 @@ export const deleteResolver = async (
   if (collection.versioned) {
     await execute(ctx, stagedDeleteSql(collection.id, args.id));
   }
+  await gqlRollupRefresh(ctx, collection, auth.tenantId, { before: existing[0]!, always: true });
   // App-layer ON DELETE relational triggers — mirrors the REST delete path.
-  await enforceOnDeleteTriggers(ctx, auth.tenantId, collection.slug, args.id, (stmt) =>
+  const touched = await enforceOnDeleteTriggers(ctx, auth.tenantId, collection.slug, args.id, (stmt) =>
     execute(ctx, stmt).then(() => undefined),
   );
+  // Those triggers move rows set-wise and can't name the parents they hit, so
+  // anything rolling up over a collection they touched is restated wholesale.
+  for (const slug of touched) {
+    for (const stmt of await rollupRefreshAllStatements(ctx, auth.tenantId, slug)) {
+      await execute(ctx, stmt);
+    }
+  }
   await publishEvent(
     ctx.env,
     `items:${collection.slug}`,

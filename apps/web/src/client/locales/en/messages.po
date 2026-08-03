@@ -408,6 +408,11 @@ msgstr "{0} files selected from \"{1}\"."
 msgid "{0} files selected."
 msgstr "{0} files selected."
 
+#. placeholder {0}: value.from
+#: src/client/admin/field-rollup-editor.tsx
+msgid "{0} has no number column to aggregate."
+msgstr "{0} has no number column to aggregate."
+
 #. placeholder {0}: collabHandle(p)
 #: src/client/admin/items.tsx
 msgid "{0} is editing"
@@ -1548,6 +1553,10 @@ msgstr "Add step"
 msgid "Add sync"
 msgstr "Add sync"
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "add the values up"
+msgstr "add the values up"
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Add to <0>~/.codex/config.toml</0> (native Streamable HTTP). Or skip the key and connect over OAuth above with <1>codex mcp login</1>."
 msgstr "Add to <0>~/.codex/config.toml</0> (native Streamable HTTP). Or skip the key and connect over OAuth above with <1>codex mcp login</1>."
@@ -1711,6 +1720,10 @@ msgstr "Agents"
 #: src/client/admin/pages/chat.tsx
 msgid "Agents in the room"
 msgstr "Agents in the room"
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Aggregate"
+msgstr "Aggregate"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Aggregate function"
@@ -2440,6 +2453,10 @@ msgstr "Avatar"
 #: src/client/admin/account-page.tsx
 msgid "Avatar preview"
 msgstr "Avatar preview"
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Average"
+msgstr "Average"
 
 #: src/client/admin/pages/users.tsx
 msgid "awaiting accept"
@@ -3974,6 +3991,7 @@ msgstr "Couldn't save limits."
 msgid "Couldn't update the status."
 msgstr "Couldn't update the status."
 
+#: src/client/admin/field-rollup-editor.tsx
 #: src/client/admin/pages/analytics.tsx
 msgid "Count"
 msgstr "Count"
@@ -7094,6 +7112,10 @@ msgstr "How many days ahead the calendar is open."
 msgid "How many fit at once."
 msgstr "How many fit at once."
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "how many rows"
+msgstr "how many rows"
+
 #: src/client/admin/parity/booking.tsx
 msgid "How the API and CLI address it. Cannot be changed later."
 msgstr "How the API and CLI address it. Cannot be changed later."
@@ -7891,6 +7913,10 @@ msgstr "Languages this workspace is translated into — they become the columns 
 msgid "Large title in the sign-in brand panel."
 msgstr "Large title in the sign-in brand panel."
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "largest value"
+msgstr "largest value"
+
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/forms.tsx
 msgid "Last"
@@ -8560,6 +8586,10 @@ msgstr "Max steps"
 msgid "Max storage (bytes)"
 msgstr "Max storage (bytes)"
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Maximum"
+msgstr "Maximum"
+
 #: src/client/admin/item-views.tsx
 msgid "May"
 msgstr "May"
@@ -8606,6 +8636,10 @@ msgstr "MCP URL copied"
 #: src/client/pages/api-keys.tsx
 msgid "MCP: {0} tool(s)"
 msgstr "MCP: {0} tool(s)"
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "mean value"
+msgstr "mean value"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "measured"
@@ -8709,6 +8743,10 @@ msgstr "Min length"
 #: src/client/admin/field-validation-editor.tsx
 msgid "Min selected"
 msgstr "Min selected"
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Minimum"
+msgstr "Minimum"
 
 #: src/client/admin/parity/booking.tsx
 msgid "Minimum minutes of warning."
@@ -9375,6 +9413,10 @@ msgstr "No choices yet. Click \"Add choice\" — value is what the column stores
 #: src/client/admin/parity/auth-settings.tsx
 msgid "No client secret stored — login will fail."
 msgstr "No client secret stored — login will fail."
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "No collection points at this one yet. Add a relation field on the collection you want to summarise (for example an \"invoice\" field on invoice lines), then come back."
+msgstr "No collection points at this one yet. Add a relation field on the collection you want to summarise (for example an \"invoice\" field on invoice lines), then come back."
 
 #: src/client/admin/parity/insights.tsx
 msgid "No collections"
@@ -10256,6 +10298,10 @@ msgstr "October"
 msgid "of {0}"
 msgstr "of {0}"
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Of collection"
+msgstr "Of collection"
+
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/database.tsx
@@ -10372,6 +10418,10 @@ msgstr "One URL per line — saved when you click away."
 #: src/client/pages/magic-link.tsx
 msgid "One-time link, no <0>password</0>."
 msgstr "One-time link, no <0>password</0>."
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Only count rows matching"
+msgstr "Only count rows matching"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Only needed for self-signed LDAPS; the system trust store handles publicly-signed certs."
@@ -10540,6 +10590,11 @@ msgstr "Optional — the key stops working after this time."
 #: src/client/admin/parity/booking.tsx
 msgid "Optional. Each booking is also written as a row there, so permissions, flows and exports apply to it as usual."
 msgstr "Optional. Each booking is also written as a row there, so permissions, flows and exports apply to it as usual."
+
+#. placeholder {0}: value.from
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Optional. Filters which {0} rows are included. Deleted rows are always excluded. The rule can only read that collection's own columns — a total is one stored number shared by every reader, so it cannot depend on who is looking."
+msgstr "Optional. Filters which {0} rows are included. Deleted rows are always excluded. The rule can only read that collection's own columns — a total is one stored number shared by every reader, so it cannot depend on who is looking."
 
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Optional. Signs each call so your service can verify it came from backlex."
@@ -11043,6 +11098,7 @@ msgid "Pick a collection."
 msgstr "Pick a collection."
 
 #: src/client/admin/add-field.tsx
+#: src/client/admin/field-rollup-editor.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Pick a collection…"
@@ -11091,6 +11147,10 @@ msgstr "Pick a language…"
 #: src/client/admin/parity/database.tsx
 msgid "Pick a migration to inspect its details."
 msgstr "Pick a migration to inspect its details."
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Pick a number column…"
+msgstr "Pick a number column…"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Pick a numeric field…"
@@ -11256,6 +11316,10 @@ msgstr "Pick the field whose values become the Kanban columns.<0> Auto</0> uses 
 #: src/client/admin/collection-settings.tsx
 #~ msgid "Pick the field whose values become the Kanban columns.<0> Auto</0> uses a field named<1> status</1>, else the first dropdown.{0}"
 #~ msgstr "Pick the field whose values become the Kanban columns.<0> Auto</0> uses a field named<1> status</1>, else the first dropdown.{0}"
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Pick the relation…"
+msgstr "Pick the relation…"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Pick the source tables to copy. Every table becomes a collection."
@@ -11937,6 +12001,14 @@ msgstr "read-only"
 msgid "Read-only"
 msgstr "Read-only"
 
+#: src/client/admin/edit-field.tsx
+msgid "Read-only column — backlex writes it from the rows picked in the <0>Rollup</0> tab, so it takes no constraints."
+msgstr "Read-only column — backlex writes it from the rows picked in the <0>Rollup</0> tab, so it takes no constraints."
+
+#: src/client/admin/add-field.tsx
+msgid "Read-only column — backlex writes it from the rows you pick in the <0>Rollup</0> tab, so it takes no default and no constraints."
+msgstr "Read-only column — backlex writes it from the rows you pick in the <0>Rollup</0> tab, so it takes no default and no constraints."
+
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Read-only mode"
@@ -12233,6 +12305,10 @@ msgstr "Rejected in {0}ms: {1}"
 #: src/client/pages/approve-request.tsx
 msgid "Rejecting…"
 msgstr "Rejecting…"
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Related through"
+msgstr "Related through"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "relation"
@@ -12932,6 +13008,11 @@ msgstr "Rollout % (0–100, optional)"
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Rollout must be 0–100."
 msgstr "Rollout must be 0–100."
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Rollup"
+msgstr "Rollup"
 
 #: src/client/admin/pages/chat.tsx
 msgid "Room deleted."
@@ -14545,6 +14626,10 @@ msgstr "slug is required"
 msgid "Slug: <0>{slugClean}</0>"
 msgstr "Slug: <0>{slugClean}</0>"
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "smallest value"
+msgstr "smallest value"
+
 #: src/client/admin/pages/settings/index.tsx
 msgid "SMS"
 msgstr "SMS"
@@ -15005,6 +15090,10 @@ msgstr "suggested fix"
 msgid "suggested: {suggestedAlias}"
 msgstr "suggested: {suggestedAlias}"
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Sum"
+msgstr "Sum"
+
 #: src/client/admin/pages/logs.tsx
 msgid "summary"
 msgstr "summary"
@@ -15384,6 +15473,11 @@ msgstr "The document is rendered and frozen now. A later edit to the template wi
 msgid "The embed link may have been revoked, or the dashboard was removed."
 msgstr "The embed link may have been revoked, or the dashboard was removed."
 
+#. placeholder {0}: value.from
+#: src/client/admin/field-rollup-editor.tsx
+msgid "The field on {0} that points back at this row."
+msgstr "The field on {0} that points back at this row."
+
 #: src/client/admin/pages/forms.tsx
 msgid "the field stays in the collection"
 msgstr "the field stays in the collection"
@@ -15617,6 +15711,10 @@ msgstr "This collection has no form-eligible fields (only scalar, non-private fi
 #: src/client/admin/app.tsx
 msgid "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
 msgstr "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "This column is kept up to date by backlex from another collection's rows — it is read-only through the API, and every write to those rows restates it."
+msgstr "This column is kept up to date by backlex from another collection's rows — it is read-only through the API, and every write to those rows restates it."
 
 #: src/client/pages/oauth-consent.tsx
 msgid "This consent link is missing its code or has expired."
@@ -16660,6 +16758,7 @@ msgstr "Validation"
 msgid "value"
 msgstr "value"
 
+#: src/client/admin/field-rollup-editor.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/parity/ldap-config-card.tsx

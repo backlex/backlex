@@ -29,6 +29,9 @@ const BULK_BLOCKED_IFACES = new Set(["richtext", "markdown"]);
 
 export const isBulkEditable = (f: SchemaField): boolean => {
   if ((f as { computed?: unknown }).computed) return false;
+  // Same reason as computed: the server maintains a rollup from another
+  // collection's rows and rejects a write to it.
+  if ((f as { rollup?: unknown }).rollup) return false;
   if (f.type && BULK_BLOCKED_TYPES.has(f.type)) return false;
   if (f.interface && BULK_BLOCKED_IFACES.has(f.interface)) return false;
   return true;

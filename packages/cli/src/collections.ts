@@ -32,7 +32,7 @@ interface Collection {
   adopted?: boolean | number;
 }
 
-const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop-field|fts-reindex|vectorize>
+const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop-field|fts-reindex|vectorize|refresh-rollups>
 
   list                              every collection the key can read
   get <slug>                        one collection's fields
@@ -44,6 +44,9 @@ const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop
                                     (rarely needed — enabling fts auto-backfills)
   vectorize <slug>                  embed every existing row into the vector store
                                     (manual by design: each row costs a provider call)
+  refresh-rollups <slug>            restate the collection's rollup columns from
+                                    the rows they aggregate (repair path — writes
+                                    keep them in step on their own)
 `;
 
 const fetchCollections = (args: string[]): Promise<Collection[]> => {
@@ -188,6 +191,36 @@ export const runCollections = async (args: string[]): Promise<void> => {
       process.stderr.write(`✓ dropped ${field} from ${res.slug}\n`);
     } catch (e) {
       die(e, "collections drop-field");
+    }
+    return;
+  }
+
+  // Restate every rollup column on the collection. Reported separately from
+  // the two backfills below because it counts COLUMNS, not rows — one
+  // statement per rollup field, however many parents it touches.
+  if (sub === "refresh-rollups") {
+    const slug = args[1];
+    if (!slug) {
+      process.stderr.write("collections refresh-rollups <slug>\n");
+      process.exit(1);
+    }
+    try {
+      const ctx = resolveContext(args.slice(2));
+      const res = await makeClient(ctx).request<{ ok: true; refreshed: string[] }>(
+        "POST",
+        `/api/items/${encodeURIComponent(slug)}/rollups/refresh`,
+      );
+      if (json) {
+        printJson(res);
+        return;
+      }
+      process.stderr.write(
+        res.refreshed.length
+          ? `✓ ${slug}: refreshed ${res.refreshed.join(", ")}\n`
+          : `✓ ${slug}: no rollup fields to refresh\n`,
+      );
+    } catch (e) {
+      die(e, "collections refresh-rollups");
     }
     return;
   }

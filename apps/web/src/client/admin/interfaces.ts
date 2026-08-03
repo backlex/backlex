@@ -48,6 +48,11 @@ export interface FieldInterfaceDef {
   hasChoices?: boolean;
   /** Show the relation-target picker in step 2 and require `to`. */
   hasRelation?: boolean;
+  /** Show the rollup editor in step 2 and require a complete `rollup` spec.
+   *  The column's storage type is decided by the chosen aggregate rather than
+   *  by this entry (`count` is whole, everything else decimal), so `type` here
+   *  is only the starting point. */
+  hasRollup?: boolean;
   /** Extra search keywords beyond label + id. */
   keywords?: string[];
 }
@@ -90,6 +95,7 @@ export const FIELD_INTERFACES: FieldInterfaceDef[] = [
   { id: "relation", label: "Many to One", sub: "Reference a row in another collection", group: "Relational", icon: "Database", type: "relation", hasRelation: true, keywords: ["m2o", "foreign", "reference", "link"] },
   { id: "user", label: "User", sub: "Reference a workspace end-user (app_users)", group: "Relational", icon: "Users", type: "text", keywords: ["app user", "end-user", "account", "login", "member", "customer"] },
   { id: "relation_many", label: "Many to Many", sub: "Reference multiple rows in another collection (stored as a JSON array of ids)", group: "Relational", icon: "Database", type: "relation_many", hasRelation: true, keywords: ["m2m", "many to many", "multi-reference"] },
+  { id: "rollup", label: "Rollup", sub: "A total, count or average of related rows — kept up to date for you", group: "Relational", icon: "BarChart", type: "number", hasRollup: true, keywords: ["sum", "total", "count", "aggregate", "subtotal", "average", "roll up", "summary"] },
   { id: "file", label: "File", sub: "Reference an uploaded file", group: "Relational", icon: "Folder", type: "text", keywords: ["upload", "attachment", "asset"] },
   { id: "image", label: "Image", sub: "Reference an uploaded image", group: "Relational", icon: "Upload", type: "text", keywords: ["photo", "picture", "asset"] },
   { id: "files", label: "Files (multiple)", sub: "List of uploaded file ids", group: "Relational", icon: "Folder", type: "json", keywords: ["gallery", "attachments"] },

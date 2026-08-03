@@ -23,6 +23,11 @@ import { hashIncomingFields, scrubHashFields, scrubPrivateFields } from "./hash-
 import { assertRowsWithinLimit } from "../usage";
 import { enforceOnDeleteTriggers } from "./on-delete";
 import {
+  rollupRefreshAllStatements,
+  rollupRefreshStatements,
+  type RollupChange,
+} from "./rollup";
+import {
   echoLocalized,
   sidecarClear,
   sidecarDeleteRow,
@@ -110,6 +115,28 @@ const emit = async (env: WriteEnv, stmt: SQL): Promise<void> => {
   }
   // Unique/FK violations are mapped to clean 4xx inside execute().
   await execute(env.ctx, stmt, env.db);
+};
+
+/**
+ * Restate any rollup column that summarises this collection, for the parents
+ * this write touched.
+ *
+ * Pushed through `emit` like any other write statement — NOT deferred to a side
+ * effect — so it lands inside an atomic batch's transaction and rolls back with
+ * the row that provoked it. A total that survived a rolled-back line would be
+ * wrong with nothing left to explain it.
+ *
+ * Order matters and is the caller's job: call this AFTER the row write has been
+ * emitted, so the aggregate the statement computes already sees it.
+ */
+const emitRollupRefresh = async (env: WriteEnv, change: RollupChange): Promise<void> => {
+  const stmts = await rollupRefreshStatements(
+    env.ctx,
+    env.collection,
+    env.tenantId,
+    change,
+  );
+  for (const stmt of stmts) await emit(env, stmt);
 };
 
 export type SideEffect = () => Promise<void>;
@@ -275,6 +302,9 @@ export const performCreate = async (
           VALUES (${collection.id}, ${id}, ${env.userId}, ${now})`,
     );
   }
+  // A new row always joins (or fails to join) some parent's aggregate — there
+  // is no "touched no watched field" shortcut on a create.
+  await emitRollupRefresh(env, { after: data, always: true });
 
   // Digest is persisted — scrub it from the payload before it feeds the
   // response, event, audit and embed/FTS side-effects.
@@ -520,6 +550,10 @@ export const performUpdate = async (
       await emit(env, sidecarClear(table, id, name));
     }
   }
+  // Re-parenting counts as two changes: the row leaves one parent's total and
+  // joins another's, so `before` and `after` are both refreshed. A patch that
+  // touches no field the aggregate reads emits nothing.
+  await emitRollupRefresh(env, { before: beforeRow, after: patch });
 
   // Digest is persisted — scrub it from the patch so the merge below, the
   // response, event and audit payload never carry it.
@@ -654,12 +688,24 @@ export const performDelete = async (
     await emit(env, stagedDeleteSql(collection.id, id));
   }
 
+  // The row has left every aggregate that counted it — soft-deletes included,
+  // since the refresh subquery filters `deleted_at IS NULL`.
+  await emitRollupRefresh(env, { before: oldRow, always: true });
+
   // App-layer ON DELETE relational triggers: null-out or cascade rows in other
   // collections that reference this one (no DB-level FKs in v1). Runs on both
   // hard and soft delete so a soft-deleted target still detaches its children.
-  await enforceOnDeleteTriggers(ctx, env.tenantId, collection.slug, id, (stmt) =>
+  const touched = await enforceOnDeleteTriggers(ctx, env.tenantId, collection.slug, id, (stmt) =>
     emit(env, stmt),
   );
+  // Those triggers move rows with set-based SQL and can't name the parents they
+  // affected, so anything rolling up over a collection they touched is restated
+  // wholesale. Nothing is emitted when no trigger fired, which is the norm.
+  for (const slug of touched) {
+    for (const stmt of await rollupRefreshAllStatements(ctx, env.tenantId, slug)) {
+      await emit(env, stmt);
+    }
+  }
 
   const sideEffects: SideEffect[] = [
     () => deleteVector(ctx, collection, env.tenantId ?? null, id),

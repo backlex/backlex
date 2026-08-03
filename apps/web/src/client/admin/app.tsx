@@ -398,6 +398,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           status: c.status ?? "active",
           archivedAt: c.archivedAt ?? null,
           fields: Array.isArray(c.fields) ? c.fields.length : 0,
+          fieldDefs: Array.isArray(c.fields) ? c.fields : [],
           icon: (c.icon ?? "Database") as CollectionListItem["icon"],
           color: c.color ?? null,
           hidden: !!c.hidden,
@@ -1716,6 +1717,8 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       <EditFieldDialog
         open={editFieldName !== null}
         field={schemaState.fields.find((f) => (f as { name?: string }).name === editFieldName) ?? null}
+        ownerSlug={schemaState.slug}
+        collections={collections}
         availableFields={schemaState.fields
           .map((f) => (f as { name?: string }).name)
           .filter((n): n is string => !!n && n !== editFieldName)}

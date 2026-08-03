@@ -230,6 +230,155 @@ export interface FieldVisibility {
   value?: unknown;
 }
 
+/** Aggregate functions a {@link RollupSpec} can apply. Mirrors the item
+ *  aggregate engine's `ITEMS_AGG_FUNCS` — same five, same semantics. */
+export const ROLLUP_FNS = ["count", "sum", "avg", "min", "max"] as const;
+export type RollupFn = (typeof ROLLUP_FNS)[number];
+
+/**
+ * A number on THIS row that is an aggregate over rows in another collection —
+ * an invoice's `subtotal` over its lines, a campaign's `raised_amount` over its
+ * donations, a budget's `amount_spent` over its expenses.
+ *
+ * Unlike {@link FieldDef.computed} (a SQL generated column, and therefore
+ * strictly same-row) a rollup reads OTHER rows, which no generated column in
+ * either dialect can do. It is a plain stored column the server refreshes with
+ * one self-contained `UPDATE … SET col = (SELECT <fn> …)` statement whenever a
+ * child row is created / updated / deleted. Stored rather than computed-on-read
+ * for a concrete reason: templates already put generated columns *on top of*
+ * these numbers (`balance_due = total - amount_paid`), and a generated column
+ * can only reference a real column.
+ *
+ * Client writes to a rollup column are rejected the same way `computed` ones
+ * are — the value is the server's to maintain.
+ */
+export interface RollupSpec {
+  /** Slug of the collection holding the rows being aggregated (the children). */
+  from: string;
+  /** Name of the `relation` field ON that collection which points back here. */
+  via: string;
+  /** Aggregate to apply. */
+  fn: RollupFn;
+  /** Child field to aggregate. Required for every fn except `count`, which
+   *  counts rows and takes no field. */
+  field?: string;
+  /**
+   * Optional filter narrowing which child rows count, in the same condition
+   * DSL as permissions (`{"status":{"_eq":"paid"}}`). Field references resolve
+   * against the CHILD row. Soft-deleted children are always excluded; anything
+   * else — draft status, a per-row flag — belongs here.
+   */
+  filter?: Condition;
+}
+
+/** True when a field's value is maintained by a rollup rather than written. */
+export const isRollup = (field: { rollup?: RollupSpec }): boolean =>
+  Boolean(field.rollup);
+
+/**
+ * The value a rollup column should read when the parent has no matching
+ * children. `count` / `sum` over an empty set is 0 — a total of "nothing" is
+ * zero, not unknown — while `avg` / `min` / `max` are genuinely undefined and
+ * stay NULL. Used both as the column DEFAULT (so a parent created before any
+ * child already reads right, with no recompute) and by the refresh statement.
+ */
+export const rollupNeutralValue = (fn: RollupFn): number | null =>
+  fn === "count" || fn === "sum" ? 0 : null;
+
+/**
+ * Shape validation for a {@link RollupSpec} — everything checkable without
+ * reading another collection's metadata. The cross-collection half (does
+ * `from` exist, does `via` point back here, is `field` numeric) needs the DB
+ * and lives in the server's rollup-validation service, which every collection
+ * save funnels through.
+ */
+export const validateRollupSpec = (name: string, field: FieldDef): void => {
+  const spec = field.rollup as RollupSpec | undefined;
+  if (!spec) return;
+  if (typeof spec !== "object" || Array.isArray(spec)) {
+    throw new Error(`Field "${name}": rollup must be an object`);
+  }
+  if (typeof spec.from !== "string" || !spec.from) {
+    throw new Error(`Field "${name}": rollup.from (source collection slug) is required`);
+  }
+  assertIdent(spec.from);
+  if (typeof spec.via !== "string" || !spec.via) {
+    throw new Error(
+      `Field "${name}": rollup.via (the relation field on "${spec.from}" pointing back) is required`,
+    );
+  }
+  assertIdent(spec.via);
+  if (!(ROLLUP_FNS as readonly string[]).includes(spec.fn)) {
+    throw new Error(
+      `Field "${name}": rollup.fn must be one of ${ROLLUP_FNS.join(", ")}`,
+    );
+  }
+  if (spec.fn === "count") {
+    if (spec.field !== undefined) {
+      throw new Error(`Field "${name}": rollup.fn "count" counts rows — drop rollup.field`);
+    }
+  } else {
+    if (typeof spec.field !== "string" || !spec.field) {
+      throw new Error(`Field "${name}": rollup.fn "${spec.fn}" requires rollup.field`);
+    }
+    assertIdent(spec.field);
+  }
+  // The column has to be able to hold the result. `count` is whole by
+  // definition; `avg` is not, and an integer column would silently truncate
+  // "3.5 sessions per member" to 3.
+  if (field.type !== "integer" && field.type !== "number") {
+    throw new Error(
+      `Field "${name}": a rollup field must be type integer or number (got "${field.type}")`,
+    );
+  }
+  if (spec.fn === "avg" && field.type !== "number") {
+    throw new Error(
+      `Field "${name}": rollup.fn "avg" needs a number field — an integer column would truncate the average`,
+    );
+  }
+  if (spec.filter !== undefined) {
+    if (typeof spec.filter !== "object" || spec.filter === null || Array.isArray(spec.filter)) {
+      throw new Error(`Field "${name}": rollup.filter must be a condition object`);
+    }
+    // A rollup is one number stored on the row, shared by every reader — so it
+    // must not depend on WHO caused the refresh. `$user.*` / `$org.*` would
+    // make the stored total whatever the last writer could see, and the next
+    // writer would silently overwrite it with a different one. `$now` is out
+    // for the same reason in slower motion: the column would be correct only
+    // until the clock moved past the boundary, with no write to trigger a
+    // refresh. Filter on the child's own columns.
+    const subject = firstSubjectVar(spec.filter);
+    if (subject) {
+      throw new Error(
+        `Field "${name}": rollup.filter cannot reference "${subject}" — a rollup is one stored number for every reader, so it must depend only on the child rows' own values`,
+      );
+    }
+  }
+};
+
+/** First `$user.` / `$tenant.` / `$org.` / `$now` reference anywhere in a
+ *  condition (as a value or as a key), or null. */
+const firstSubjectVar = (node: unknown): string | null => {
+  if (typeof node === "string") {
+    return /^\$(user|tenant|org|now)\b/.test(node) ? node : null;
+  }
+  if (Array.isArray(node)) {
+    for (const x of node) {
+      const hit = firstSubjectVar(x);
+      if (hit) return hit;
+    }
+    return null;
+  }
+  if (node && typeof node === "object") {
+    for (const [k, v] of Object.entries(node)) {
+      if (/^\$(user|tenant|org|now)\b/.test(k)) return k;
+      const hit = firstSubjectVar(v);
+      if (hit) return hit;
+    }
+  }
+  return null;
+};
+
 /**
  * Per-field condition. When `rule` (a filter over the whole row,
  * same DSL as permission conditions) matches, the effects below apply to the
@@ -307,6 +456,12 @@ export interface FieldDef {
    * routes reject writes to this field. Read-only end-to-end.
    */
   computed?: { formula: string };
+  /**
+   * Maintain this column as an aggregate over rows in ANOTHER collection —
+   * see {@link RollupSpec}. Mutually exclusive with `computed` (which is
+   * same-row by construction) and read-only to clients, like `computed`.
+   */
+  rollup?: RollupSpec;
   /**
    * When true (and the collection has `vectorize: true`), this field's
    * value is concatenated into the embed text on item write. Only
@@ -627,7 +782,7 @@ const validateComputedFormula = (name: string, raw: unknown): void => {
 /** Walk a Condition and collect the field keys it references (relation
  *  dot-paths contribute their head segment). Used to validate that a field
  *  condition's rule only names real columns. */
-const collectConditionFields = (cond: unknown, out: Set<string>): void => {
+export const collectConditionFields = (cond: unknown, out: Set<string>): void => {
   if (!cond || typeof cond !== "object") return;
   const c = cond as Record<string, unknown>;
   if (Array.isArray(c.$and)) {
@@ -696,6 +851,7 @@ export const validateFields = (fields: FieldDef[]): void => {
         ["vectorize", f.vectorize],
         ["default", f.default !== undefined],
         ["computed", !!f.computed],
+        ["rollup", !!f.rollup],
         ["to", !!f.to],
         ["onCreate", !!f.onCreate],
         ["onUpdate", !!f.onUpdate],
@@ -764,6 +920,34 @@ export const validateFields = (fields: FieldDef[]): void => {
     }
     if (f.computed) {
       validateComputedFormula(f.name, (f.computed as { formula?: unknown }).formula);
+    }
+    if (f.rollup) {
+      // A rollup column is the server's to write, so every flag that either
+      // implies a client write or a second writer of the same column is out:
+      //  - computed: a generated column takes no UPDATE at all, and the two
+      //    mean opposite things (same-row expression vs other-row aggregate).
+      //  - localized: the aggregate is one number for the row, not per-locale.
+      //  - required/unique: NOT NULL would reject the parent INSERT that
+      //    precedes its first child, and two parents may well share a total.
+      //  - default: the neutral value is derived from `fn`, not chosen.
+      //  - onCreate/onUpdate/searchable/vectorize: auto-fill and text indexing
+      //    have no meaning on a number nobody types.
+      for (const [flag, on] of [
+        ["computed", !!f.computed],
+        ["localized", !!f.localized],
+        ["required", !!f.required],
+        ["unique", !!f.unique],
+        ["default", f.default !== undefined],
+        ["onCreate", !!f.onCreate],
+        ["onUpdate", !!f.onUpdate],
+        ["searchable", !!f.searchable],
+        ["vectorize", !!f.vectorize],
+      ] as const) {
+        if (on) {
+          throw new Error(`Field "${f.name}": "${flag}" is not allowed on a rollup field`);
+        }
+      }
+      validateRollupSpec(f.name, f);
     }
     // Auto-fill tokens (onCreate/onUpdate) must suit the column's storage type,
     // and can't sit on a generated column (a computed column takes no writes).
@@ -1068,6 +1252,16 @@ export const columnDefSql = (field: FieldDef, dialect: Dialect): string => {
     // Both PG and SQLite (3.31+) accept this exact syntax. The expression
     // is opaque to the validator — admins should test it before saving.
     parts.push(`GENERATED ALWAYS AS (${field.computed.formula}) STORED`);
+    return parts.join(" ");
+  }
+  if (field.rollup) {
+    // A plain column the refresh statement writes — NOT generated (no dialect
+    // lets a generated expression read another table). The DEFAULT is derived
+    // from the aggregate, not from `field.default` (rejected on rollups), so a
+    // parent with no children yet already reads 0 for count/sum without any
+    // refresh having run. avg/min/max stay NULL, which is what "no rows" means.
+    const neutral = rollupNeutralValue(field.rollup.fn);
+    if (neutral !== null) parts.push(`DEFAULT ${neutral}`);
     return parts.join(" ");
   }
   if (

@@ -6,6 +6,7 @@ import {
 } from "@backlex/core";
 import {
   FIELD_TYPES,
+  ROLLUP_FNS,
   applyCollection,
   assertIdent,
   derivePhysicalTable,
@@ -35,6 +36,12 @@ import {
   setCachedGroupOrder,
 } from "../services/collections-cache";
 import { invalidateTenantPermissions } from "../services/permissions-cache";
+import { loadCollection } from "../services/items/collection-loader";
+import {
+  refreshCollectionRollups,
+  rollupSignature,
+  validateRollupTargets,
+} from "../services/items/rollup";
 import { ifNoneMatch, weakETag } from "../lib/etag";
 import { seedOwnerScopedPermissions } from "../services/seed";
 import { cloneCollection } from "../services/collections";
@@ -210,6 +217,31 @@ const FieldSchema = z
       .optional(),
     /** Per-locale display label overrides (locale → label). UI-only. */
     translations: z.record(z.string(), z.string().max(200)).optional(),
+    /**
+     * Maintain this column as an aggregate over another collection's rows —
+     * `{ from, via, fn, field?, filter? }`. Unlike `computed` (deliberately
+     * absent from this schema: a raw SQL formula reaching the DDL from a
+     * request body is a break-out surface) a rollup is structured — the
+     * identifiers go through `assertIdent` and the filter compiles through the
+     * same condition DSL as permissions — so it is safe to accept over the API,
+     * which is the point: an operator has to be able to add one from the admin.
+     * `validateFields` checks the shape; `validateRollupTargets` checks it
+     * against the collection it names.
+     */
+    rollup: z
+      .object({
+        from: z.string().regex(/^[a-z][a-z0-9_]*$/, "snake_case"),
+        via: z.string().regex(/^[a-z][a-z0-9_]*$/, "snake_case"),
+        fn: z.enum(ROLLUP_FNS),
+        field: z.string().regex(/^[a-z][a-z0-9_]*$/, "snake_case").optional(),
+        filter: z
+          .custom<Condition>(
+            (v) => typeof v === "object" && v !== null && !Array.isArray(v),
+            "filter must be a condition object",
+          )
+          .optional(),
+      })
+      .optional(),
   })
   .refine((f) => (f.type !== "relation" && f.type !== "relation_many") || !!f.to, {
     message: "relation / relation_many field must specify `to` (target collection slug)",
@@ -874,6 +906,12 @@ export const collectionsRoutes = new Hono<AppBindings>()
     const softDelete = body.adopted ? false : body.softDelete;
     const singleton = body.singleton;
 
+    // Rollups name another collection, so they can only be checked once that
+    // collection is resolvable — after the shape pass, before anything is
+    // stored. (Chicken-and-egg is real but one-directional: create the child
+    // first, then the parent that rolls it up, or PATCH the rollup on after.)
+    await validateRollupTargets(c.get("ctx"), tenantId, { slug: body.slug, pkType }, body.fields);
+
     const id = crypto.randomUUID();
     await (db as any).insert(t).values({
       id,
@@ -1124,6 +1162,17 @@ export const collectionsRoutes = new Hono<AppBindings>()
         : {}),
       updatedAt: new Date(),
     };
+    if (body.fields) {
+      await validateRollupTargets(
+        c.get("ctx"),
+        tenantId,
+        {
+          slug: nextSlug,
+          pkType: (merged.pkType ?? merged.pk_type) as string | undefined,
+        },
+        merged.fields as FieldDef[],
+      );
+    }
     await (db as any)
       .update(t)
       .set(merged)
@@ -1184,7 +1233,26 @@ export const collectionsRoutes = new Hono<AppBindings>()
     // cascadeSlugRename) so a same-isolate read can't repopulate the cache
     // mid-rename.
     invalidateTenantCollections(tenantId);
-    const updateResponse = { ok: true, slug: nextSlug, renamed: renameCounts, ftsBackfill };
+
+    // Auto-backfill rollup columns whose definition just changed. Same reason
+    // as the FTS backfill above, and the same failure without it: the applier
+    // adds the column with its neutral default, so every EXISTING parent would
+    // read 0 — a total that is confidently wrong, which is worse than one
+    // that's obviously missing. Runs after the cache invalidation so
+    // `loadCollection` re-reads the definition we just stored.
+    let rollupBackfill: string[] | null = null;
+    if (!merged.adopted && rollupSignature(merged.fields as FieldDef[]) !==
+        rollupSignature(before.fields as FieldDef[])) {
+      const fresh = await loadCollection(c.get("ctx"), tenantId, nextSlug);
+      rollupBackfill = await refreshCollectionRollups(c.get("ctx"), tenantId, fresh);
+    }
+    const updateResponse = {
+      ok: true,
+      slug: nextSlug,
+      renamed: renameCounts,
+      ftsBackfill,
+      ...(rollupBackfill ? { rollupBackfill } : {}),
+    };
     await logActivity(c, {
       action: "update",
       collection: "system_collections",

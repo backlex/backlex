@@ -117,7 +117,7 @@ export const validateBody = (
     // nor writable by, the caller. `localized` fields are pulled out into the
     // sidecar split before this runs (and are validated per-locale there); v1
     // does not enforce `required` per-locale, so skip them here too.
-    if (f.computed || f.onCreate || f.onUpdate || isLocalized(f)) continue;
+    if (f.computed || f.rollup || f.onCreate || f.onUpdate || isLocalized(f)) continue;
     if (f.required && !partial && (data[f.name] === undefined || data[f.name] === null)) {
       throw new AppError("VALIDATION", `Field "${f.name}" is required`);
     }
@@ -131,6 +131,12 @@ export const validateBody = (
       throw new AppError(
         "VALIDATION",
         `Field "${k}" is computed (read-only) — drop it from your payload`,
+      );
+    }
+    if (def.rollup) {
+      throw new AppError(
+        "VALIDATION",
+        `Field "${k}" is a rollup of "${def.rollup.from}" (read-only) — change the ${def.rollup.from} rows instead`,
       );
     }
     if (def.onCreate || def.onUpdate) {

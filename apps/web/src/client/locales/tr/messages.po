@@ -408,6 +408,11 @@ msgstr "\"{1}\" klasöründen {0} dosya seçildi."
 msgid "{0} files selected."
 msgstr "{0} dosya seçildi."
 
+#. placeholder {0}: value.from
+#: src/client/admin/field-rollup-editor.tsx
+msgid "{0} has no number column to aggregate."
+msgstr "{0} koleksiyonunda toplanacak sayı sütunu yok."
+
 #. placeholder {0}: collabHandle(p)
 #: src/client/admin/items.tsx
 msgid "{0} is editing"
@@ -1548,6 +1553,10 @@ msgstr "Adım ekle"
 msgid "Add sync"
 msgstr "Senkron ekle"
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "add the values up"
+msgstr "değerleri toplar"
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Add to <0>~/.codex/config.toml</0> (native Streamable HTTP). Or skip the key and connect over OAuth above with <1>codex mcp login</1>."
 msgstr "<0>~/.codex/config.toml</0> içine ekle (native Streamable HTTP). Veya anahtarı atlayıp yukarıdan <1>codex mcp login</1> ile OAuth bağlan."
@@ -1711,6 +1720,10 @@ msgstr "Ajanlar"
 #: src/client/admin/pages/chat.tsx
 msgid "Agents in the room"
 msgstr "Odadaki agentlar"
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Aggregate"
+msgstr "Toplama işlevi"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Aggregate function"
@@ -2440,6 +2453,10 @@ msgstr "Avatar"
 #: src/client/admin/account-page.tsx
 msgid "Avatar preview"
 msgstr "Avatar önizlemesi"
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Average"
+msgstr "Ortalama"
 
 #: src/client/admin/pages/users.tsx
 msgid "awaiting accept"
@@ -3974,6 +3991,7 @@ msgstr "Limitler kaydedilemedi."
 msgid "Couldn't update the status."
 msgstr "Durum güncellenemedi."
 
+#: src/client/admin/field-rollup-editor.tsx
 #: src/client/admin/pages/analytics.tsx
 msgid "Count"
 msgstr "Adet"
@@ -7094,6 +7112,10 @@ msgstr "Takvimin kaç gün ilerisi açık."
 msgid "How many fit at once."
 msgstr "Aynı anda kaç kişi sığar."
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "how many rows"
+msgstr "kaç satır olduğu"
+
 #: src/client/admin/parity/booking.tsx
 msgid "How the API and CLI address it. Cannot be changed later."
 msgstr "API ve CLI bunu böyle adresler. Sonradan değiştirilemez."
@@ -7891,6 +7913,10 @@ msgstr "Bu çalışma alanının çevrildiği diller — <0>Çeviriler</0> sayfa
 msgid "Large title in the sign-in brand panel."
 msgstr "Giriş marka panelindeki büyük başlık."
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "largest value"
+msgstr "en büyük değer"
+
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/forms.tsx
 msgid "Last"
@@ -8560,6 +8586,10 @@ msgstr "Maksimum adım"
 msgid "Max storage (bytes)"
 msgstr "Maksimum depolama (bayt)"
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Maximum"
+msgstr "En büyük"
+
 #: src/client/admin/item-views.tsx
 msgid "May"
 msgstr "Mayıs"
@@ -8606,6 +8636,10 @@ msgstr "MCP URL'si kopyalandı"
 #: src/client/pages/api-keys.tsx
 msgid "MCP: {0} tool(s)"
 msgstr "MCP: {0} araç"
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "mean value"
+msgstr "ortalama değer"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "measured"
@@ -8709,6 +8743,10 @@ msgstr "Min uzunluk"
 #: src/client/admin/field-validation-editor.tsx
 msgid "Min selected"
 msgstr "Min seçili"
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Minimum"
+msgstr "En küçük"
 
 #: src/client/admin/parity/booking.tsx
 msgid "Minimum minutes of warning."
@@ -9375,6 +9413,10 @@ msgstr "Henüz seçenek yok. \"Seçenek ekle\"ye tıklayın — değer, sütunun
 #: src/client/admin/parity/auth-settings.tsx
 msgid "No client secret stored — login will fail."
 msgstr "Kayıtlı istemci gizli anahtarı yok — giriş başarısız olacak."
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "No collection points at this one yet. Add a relation field on the collection you want to summarise (for example an \"invoice\" field on invoice lines), then come back."
+msgstr "Henüz bu koleksiyona işaret eden bir koleksiyon yok. Özetlemek istediğiniz koleksiyona bir ilişki alanı ekleyin (örneğin fatura satırlarına bir \"fatura\" alanı), sonra buraya dönün."
 
 #: src/client/admin/parity/insights.tsx
 msgid "No collections"
@@ -10256,6 +10298,10 @@ msgstr "Ekim"
 msgid "of {0}"
 msgstr "/ {0}"
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Of collection"
+msgstr "Şu koleksiyondan"
+
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/database.tsx
@@ -10372,6 +10418,10 @@ msgstr "Satır başına bir URL — tıklayıp uzaklaştığınızda kaydedilir.
 #: src/client/pages/magic-link.tsx
 msgid "One-time link, no <0>password</0>."
 msgstr "Tek kullanımlık bağlantı, <0>parola</0> gerektirmez."
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Only count rows matching"
+msgstr "Yalnızca şu koşula uyan satırlar"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Only needed for self-signed LDAPS; the system trust store handles publicly-signed certs."
@@ -10540,6 +10590,11 @@ msgstr "İsteğe bağlı — anahtar bu sürenin ardından çalışmayı durduru
 #: src/client/admin/parity/booking.tsx
 msgid "Optional. Each booking is also written as a row there, so permissions, flows and exports apply to it as usual."
 msgstr "İsteğe bağlı. Her rezervasyon oraya bir satır olarak da yazılır; böylece izinler, akışlar ve dışa aktarmalar her zamanki gibi işler."
+
+#. placeholder {0}: value.from
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Optional. Filters which {0} rows are included. Deleted rows are always excluded. The rule can only read that collection's own columns — a total is one stored number shared by every reader, so it cannot depend on who is looking."
+msgstr "İsteğe bağlı. Hangi {0} satırlarının dahil edileceğini süzer. Silinmiş satırlar her zaman hariç tutulur. Kural yalnızca o koleksiyonun kendi sütunlarını okuyabilir — toplam, her okuyucunun paylaştığı tek bir saklı sayıdır, dolayısıyla kimin baktığına bağlı olamaz."
 
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Optional. Signs each call so your service can verify it came from backlex."
@@ -11043,6 +11098,7 @@ msgid "Pick a collection."
 msgstr "Bir koleksiyon seçin."
 
 #: src/client/admin/add-field.tsx
+#: src/client/admin/field-rollup-editor.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Pick a collection…"
@@ -11091,6 +11147,10 @@ msgstr "Dil seçin…"
 #: src/client/admin/parity/database.tsx
 msgid "Pick a migration to inspect its details."
 msgstr "Ayrıntılarını incelemek için bir migrasyon seçin."
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Pick a number column…"
+msgstr "Bir sayı sütunu seçin…"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Pick a numeric field…"
@@ -11256,6 +11316,10 @@ msgstr "Değerleri Kanban kolonlarını oluşturacak alanı seçin.<0> Auto</0> 
 #: src/client/admin/collection-settings.tsx
 #~ msgid "Pick the field whose values become the Kanban columns.<0> Auto</0> uses a field named<1> status</1>, else the first dropdown.{0}"
 #~ msgstr ""
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Pick the relation…"
+msgstr "İlişkiyi seçin…"
 
 #: src/client/admin/pages/database-import.tsx
 msgid "Pick the source tables to copy. Every table becomes a collection."
@@ -11937,6 +12001,14 @@ msgstr "salt okunur"
 msgid "Read-only"
 msgstr "Salt okunur"
 
+#: src/client/admin/edit-field.tsx
+msgid "Read-only column — backlex writes it from the rows picked in the <0>Rollup</0> tab, so it takes no constraints."
+msgstr "Salt okunur sütun — backlex bunu <0>Toplama</0> sekmesinde seçilen satırlardan yazar, bu yüzden kısıt almaz."
+
+#: src/client/admin/add-field.tsx
+msgid "Read-only column — backlex writes it from the rows you pick in the <0>Rollup</0> tab, so it takes no default and no constraints."
+msgstr "Salt okunur sütun — backlex bunu <0>Toplama</0> sekmesinde seçtiğiniz satırlardan yazar, bu yüzden varsayılan değer ve kısıt almaz."
+
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Read-only mode"
@@ -12233,6 +12305,10 @@ msgstr "{0}ms içinde reddedildi: {1}"
 #: src/client/pages/approve-request.tsx
 msgid "Rejecting…"
 msgstr "Reddediliyor…"
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Related through"
+msgstr "Şu ilişki üzerinden"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "relation"
@@ -12932,6 +13008,11 @@ msgstr "Dağıtım % (0–100, opsiyonel)"
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Rollout must be 0–100."
 msgstr "Dağıtım 0–100 olmalı."
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Rollup"
+msgstr "Toplama"
 
 #: src/client/admin/pages/chat.tsx
 msgid "Room deleted."
@@ -14545,6 +14626,10 @@ msgstr "slug zorunludur"
 msgid "Slug: <0>{slugClean}</0>"
 msgstr "Slug: <0>{slugClean}</0>"
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "smallest value"
+msgstr "en küçük değer"
+
 #: src/client/admin/pages/settings/index.tsx
 msgid "SMS"
 msgstr "SMS"
@@ -15005,6 +15090,10 @@ msgstr "önerilen düzeltme"
 msgid "suggested: {suggestedAlias}"
 msgstr "önerilen: {suggestedAlias}"
 
+#: src/client/admin/field-rollup-editor.tsx
+msgid "Sum"
+msgstr "Toplam"
+
 #: src/client/admin/pages/logs.tsx
 msgid "summary"
 msgstr "özet"
@@ -15384,6 +15473,11 @@ msgstr "Belge şimdi oluşturulup dondurulur. Şablonda sonradan yapılan düzen
 msgid "The embed link may have been revoked, or the dashboard was removed."
 msgstr "Gömme bağlantısı iptal edilmiş ya da pano kaldırılmış olabilir."
 
+#. placeholder {0}: value.from
+#: src/client/admin/field-rollup-editor.tsx
+msgid "The field on {0} that points back at this row."
+msgstr "{0} üzerinde bu satıra geri işaret eden alan."
+
 #: src/client/admin/pages/forms.tsx
 msgid "the field stays in the collection"
 msgstr "alan koleksiyonda kalır"
@@ -15617,6 +15711,10 @@ msgstr "Bu koleksiyonda forma uygun alan yok (yalnızca skaler, gizli olmayan al
 #: src/client/admin/app.tsx
 msgid "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
 msgstr "Bu koleksiyon devre dışı — içerik API'si 404 döndürür; kayıtlar listelenemez veya düzenlenemez. Şema ve ayarlar düzenlenebilir kalır."
+
+#: src/client/admin/field-rollup-editor.tsx
+msgid "This column is kept up to date by backlex from another collection's rows — it is read-only through the API, and every write to those rows restates it."
+msgstr "Bu sütun, başka bir koleksiyonun satırlarından backlex tarafından güncel tutulur — API üzerinden salt okunurdur ve o satırlara yapılan her yazma onu yeniden hesaplar."
 
 #: src/client/pages/oauth-consent.tsx
 msgid "This consent link is missing its code or has expired."
@@ -16660,6 +16758,7 @@ msgstr "Doğrulama"
 msgid "value"
 msgstr "değer"
 
+#: src/client/admin/field-rollup-editor.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/extensions.tsx
 #: src/client/admin/parity/ldap-config-card.tsx

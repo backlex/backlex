@@ -2,8 +2,8 @@
 // Add Field dialog — schema editor for a new column.
 // Step 1 picks a UI *interface* from a categorized catalog (interfaces.ts);
 // each interface maps to one of the physical storage types the backend
-// supports. Step 2 is a Directus-style tabbed editor (Schema · Relationship ·
-// Field · Interface · Validation · Conditions) capturing the column name,
+// supports. Step 2 is a tabbed editor (Schema · Relationship / Rollup · Field ·
+// Interface · Validation · Conditions) capturing the column name,
 // interface-specific options, constraints, help text, validation + conditions.
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -51,6 +51,13 @@ import {
   type FieldFormatDraft,
 } from "./field-format-editor";
 import { cleanTranslations, FieldTranslationsEditor } from "./field-translations-editor";
+import {
+  cleanRollup,
+  emptyRollupDraft,
+  FieldRollupEditor,
+  rollupStorageType,
+  type RollupDraft,
+} from "./field-rollup-editor";
 import { canLocalize } from "./item-form";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
@@ -114,6 +121,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [tab, setTab] = useState("schema");
   const [conds, setConds] = useState<CondDraft[]>([]);
   const [valDraft, setValDraft] = useState<ValDraft>(emptyValDraft());
+  const [rollupDraft, setRollupDraft] = useState<RollupDraft>(emptyRollupDraft());
 
   useEffect(() => {
     if (open) {
@@ -125,6 +133,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setDefaultValue("");
       setChoices(DEFAULT_CHOICES);
       setRelationTarget("");
+      setRollupDraft(emptyRollupDraft());
       setStep(1);
       setTab("schema");
       setIndexed(false);
@@ -187,7 +196,10 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const def =
     getInterface(interfaceId) ?? extDefs.find((d) => d.id === interfaceId) ?? FIELD_INTERFACES[0];
   const Icon = (I as Record<string, IconComponent>)[def.icon as IconKey] || I.Code;
-  const defaultable = DEFAULTABLE_TYPES.has(def.type);
+  // A rollup column takes no client write, so the write-side controls (DEFAULT,
+  // NOT NULL, UNIQUE) are not just inert — offering them implies the column is
+  // something you fill in. The neutral default comes from the aggregate.
+  const defaultable = DEFAULTABLE_TYPES.has(def.type) && !def.hasRollup;
   // Presentational blocks (divider/notice) own no column, so the storage
   // controls (constraints, defaults, DDL) don't apply — the schema tab shows a
   // hint instead, and the block's text is set via the Field tab (label / note).
@@ -234,8 +246,10 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   // one choice; relation needs a target collection.
   const missingChoices = def.id === "dropdown" && cleanChoices.length === 0;
   const missingRelation = !!def.hasRelation && !relationTarget;
+  const cleanedRollup = def.hasRollup ? cleanRollup(rollupDraft) : undefined;
+  const missingRollup = !!def.hasRollup && !cleanedRollup;
   const nameInvalid = !safeName || nameTaken || safeName.length < 2;
-  const valid = !nameInvalid && !missingChoices && !missingRelation;
+  const valid = !nameInvalid && !missingChoices && !missingRelation && !missingRollup;
 
   const groups = useMemo(() => {
     const filtered = [...FIELD_INTERFACES, ...extDefs].filter((i) => matchesInterfaceQuery(i, query));
@@ -284,11 +298,14 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
     const defVal = defaultable ? coerceDefault() : undefined;
     onCreate({
       name: safeName,
-      type: def.type,
+      // A rollup's storage type follows its aggregate — `count` is a whole
+      // number, everything else needs decimals (the server refuses `avg` on an
+      // integer column, which would silently truncate the average).
+      type: def.hasRollup ? rollupStorageType(rollupDraft.fn) : def.type,
       interface: def.id,
       // Presentational blocks carry no column-level flags.
       ...(presentational ? {} : { required: !nullable, unique, indexed }),
-      ...(defVal !== undefined && !presentational ? { default: defVal } : {}),
+      ...(defVal !== undefined && !presentational && !def.hasRollup ? { default: defVal } : {}),
       ...(label.trim() ? { label: label.trim() } : {}),
       ...(description.trim() ? { description: description.trim() } : {}),
       ...(group.trim() ? { group: group.trim() } : {}),
@@ -305,6 +322,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(def.hasChoices && cleanChoices.length ? { options: { choices: cleanChoices } } : {}),
       ...(def.hasRelation ? { to: relationTarget } : {}),
       ...(def.hasRelation && onDelete !== "no_action" ? { onDelete } : {}),
+      ...(cleanedRollup ? { rollup: cleanedRollup } : {}),
       ...(conditions.length ? { conditions } : {}),
       ...(validation ? { validation } : {}),
       ...(cleanFormat(formatDraft, def.type) ? { format: cleanFormat(formatDraft, def.type) } : {}),
@@ -316,6 +334,9 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
     { key: "schema", label: t`Schema`, icon: "Database", invalid: nameInvalid },
     ...(def.hasRelation
       ? [{ key: "relationship", label: t`Relationship`, icon: "Share", invalid: missingRelation } as FieldTabItem]
+      : []),
+    ...(def.hasRollup
+      ? [{ key: "rollup", label: t`Rollup`, icon: "BarChart", invalid: missingRollup } as FieldTabItem]
       : []),
     { key: "field", label: t`Field`, icon: "Pencil" },
     { key: "interface", label: t`Interface`, icon: "Eye", invalid: missingChoices },
@@ -431,7 +452,13 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   </div>
                 )}
 
-                {!presentational && (
+                {def.hasRollup && (
+                  <div className="rounded-control bg-muted p-3 text-[12.5px] text-muted-foreground">
+                    <Trans>Read-only column — backlex writes it from the rows you pick in the <span className="font-medium text-foreground">Rollup</span> tab, so it takes no default and no constraints.</Trans>
+                  </div>
+                )}
+
+                {!presentational && !def.hasRollup && (
                 <div className="flex flex-col gap-2.5">
                   <div className="flex items-center justify-between gap-3">
                     <div>
@@ -554,6 +581,15 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   </div>
                 )}
               </div>
+            )}
+
+            {activeTab === "rollup" && def.hasRollup && (
+              <FieldRollupEditor
+                ownerSlug={schema.slug}
+                collections={collections ?? []}
+                value={rollupDraft}
+                onChange={setRollupDraft}
+              />
             )}
 
             {activeTab === "field" && (

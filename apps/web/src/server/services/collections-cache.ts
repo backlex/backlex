@@ -22,6 +22,7 @@
  * @module
  */
 import type { CollectionRow } from "./items/collection-loader";
+import type { RollupDependent } from "./items/rollup";
 
 /*
  * A second cache below holds the per-`(tenant, slug)` *single* collection row
@@ -167,10 +168,64 @@ export const setCachedGroupOrder = (tenantId: string, groups: string[]): void =>
   }
 };
 
+// --- Rollup reverse-index cache --------------------------------------------
+//
+// "Which collections roll up FROM this one?", keyed by `(tenant, childSlug)`.
+// A rollup is declared on the parent but refreshed by writes to the CHILD, so
+// the items write path needs this reverse lookup on every single write — and
+// for almost every collection the honest answer is an empty array, which is the
+// case worth serving from memory.
+//
+// It lives HERE rather than beside the rollup service for one reason: it must
+// be dropped by exactly the same invalidation the schema caches are, and there
+// are eight call sites. Sharing `invalidateTenantCollections` means a new
+// schema-mutating route can't forget this one specifically. (Type-only import
+// above — erased at compile time, so no runtime cycle with the rollup service.)
+
+interface RollupDepEntry {
+  value: RollupDependent[];
+  expiresAt: number;
+  tenantId: string;
+}
+
+const rollupDepCache = new Map<string, RollupDepEntry>();
+
+/** Cached rollup dependents for `(tenant, childSlug)`, or `undefined` on
+ *  miss/expiry. Shared reference — treat as read-only. */
+export const getCachedRollupDeps = (
+  tenantId: string,
+  childSlug: string,
+): RollupDependent[] | undefined => {
+  const sk = `${tenantId}|${childSlug}`;
+  const entry = rollupDepCache.get(sk);
+  if (!entry) return undefined;
+  if (entry.expiresAt < Date.now()) {
+    rollupDepCache.delete(sk);
+    return undefined;
+  }
+  rollupDepCache.delete(sk);
+  rollupDepCache.set(sk, entry);
+  return entry.value;
+};
+
+export const setCachedRollupDeps = (
+  tenantId: string,
+  childSlug: string,
+  deps: RollupDependent[],
+): void => {
+  const sk = `${tenantId}|${childSlug}`;
+  if (rollupDepCache.has(sk)) rollupDepCache.delete(sk);
+  rollupDepCache.set(sk, { value: deps, expiresAt: Date.now() + TTL_MS, tenantId });
+  if (rollupDepCache.size > MAX_ENTRIES) {
+    const oldest = rollupDepCache.keys().next().value;
+    if (oldest !== undefined) rollupDepCache.delete(oldest);
+  }
+};
+
 /** Drop both list variants (archived + active), every single-collection
- *  entry, and the group-header order for a tenant. Call from every route
- *  that mutates the `collections` table: create, rename, archive, restore,
- *  delete, add/drop field, layout. */
+ *  entry, the rollup reverse index, and the group-header order for a tenant.
+ *  Call from every route that mutates the `collections` table: create, rename,
+ *  archive, restore, delete, add/drop field, layout. */
 export const invalidateTenantCollections = (tenantId: string): void => {
   for (const [sk, entry] of cache) {
     if (entry.tenantId === tenantId) cache.delete(sk);
@@ -178,9 +233,12 @@ export const invalidateTenantCollections = (tenantId: string): void => {
   for (const [sk, entry] of singleCache) {
     if (entry.tenantId === tenantId) singleCache.delete(sk);
   }
+  for (const [sk, entry] of rollupDepCache) {
+    if (entry.tenantId === tenantId) rollupDepCache.delete(sk);
+  }
   groupOrderCache.delete(tenantId);
 };
 
-/** Test-only — current entry count (list + single + group-order). */
+/** Test-only — current entry count (list + single + rollup deps + group-order). */
 export const __collectionsCacheSize = (): number =>
-  cache.size + singleCache.size + groupOrderCache.size;
+  cache.size + singleCache.size + rollupDepCache.size + groupOrderCache.size;

@@ -116,7 +116,15 @@ export const fieldEffects = (
   f: SchemaField,
   values: Record<string, unknown>,
 ): { hidden: boolean; readonly: boolean; required: boolean } => {
-  const eff = { hidden: false, readonly: false, required: false };
+  // A rollup column is maintained by the server from another collection's rows,
+  // so the form must not offer it as an input — the write path answers 422 and
+  // an editable-looking box is just a trap. Unconditional, not a rule the
+  // author can switch off.
+  const eff = {
+    hidden: false,
+    readonly: Boolean((f as { rollup?: unknown }).rollup),
+    required: false,
+  };
   for (const c of f.conditions ?? []) {
     if (evalRule(c.rule, values)) {
       if (c.hidden) eff.hidden = true;
@@ -364,6 +372,11 @@ export function useItemForm({
   const buildPayload = (): Partial<Post> => {
     const payload: Record<string, unknown> = {};
     for (const f of fields) {
+      // Rollup columns are shown (read-only) but never sent: the draft is
+      // seeded from the loaded row, so the current total is sitting right
+      // there, and including it would make the write path reject every save of
+      // a collection that has one.
+      if ((f as { rollup?: unknown }).rollup) continue;
       const raw = draft[f.name];
       if (raw === undefined) continue;
       if (f.localized) {

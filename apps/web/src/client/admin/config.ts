@@ -89,6 +89,14 @@ export interface CollectionListItem {
   group: string | null;
   /** Manual position within the group. Null sorts after ordered rows. */
   sortOrder?: number | null;
+  /**
+   * The collection's actual field definitions, as returned by the list
+   * endpoint. `fields` above is only their COUNT; the rollup editor needs the
+   * definitions themselves to offer valid sources / relations / value columns,
+   * and the list response already carries them, so this saves a request per
+   * candidate collection rather than adding one.
+   */
+  fieldDefs?: Array<{ name: string; type: string; to?: string; rollup?: unknown }>;
 }
 
 // Nav display labels are NOT stored here: `config.ts` has no JSX, so the

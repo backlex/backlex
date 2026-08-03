@@ -93,6 +93,7 @@ export default defineConfig({
             { slug: "hashed-fields" },
             { slug: "field-conditions" },
             { slug: "field-validation" },
+            { slug: "rollups" },
             { slug: "adopting-tables" },
             { slug: "migrating-in" },
             { slug: "schema-versions" },

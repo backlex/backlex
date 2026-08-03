@@ -96,11 +96,15 @@ export const enforceOnDeleteTriggers = async (
   deletedId: string,
   run: (stmt: SQL) => Promise<void>,
   visited: Set<string> = new Set(),
-): Promise<void> => {
-  if (!tenantId) return;
+  /** Slugs whose rows these triggers changed, accumulated across the cascade
+   *  chain. The caller uses it to restate any rollup that summarises one of
+   *  them — see the note on `rollupRefreshAllStatements`. */
+  touched: Set<string> = new Set(),
+): Promise<Set<string>> => {
+  if (!tenantId) return touched;
   // Cycle / re-entry guard for cascade chaining.
   const key = `${targetSlug}:${deletedId}`;
-  if (visited.has(key)) return;
+  if (visited.has(key)) return touched;
   visited.add(key);
 
   const refs = await findReferencingRelations(ctx, tenantId, targetSlug);
@@ -116,6 +120,7 @@ export const enforceOnDeleteTriggers = async (
     if (ref.field.type === "relation") {
       if (!cascade) {
         await run(sql`UPDATE ${table} SET ${fk} = NULL WHERE ${fk} = ${deletedId}${scope}`);
+        touched.add(ref.slug);
         continue;
       }
       const victims = (
@@ -125,7 +130,8 @@ export const enforceOnDeleteTriggers = async (
         )
       ).map((v) => String(v.pk));
       await run(sql`DELETE FROM ${table} WHERE ${fk} = ${deletedId}${scope}`);
-      await afterCascade(ctx, tenantId, ref, victims, run, visited);
+      touched.add(ref.slug);
+      await afterCascade(ctx, tenantId, ref, victims, run, visited, touched);
       continue;
     }
 
@@ -149,14 +155,17 @@ export const enforceOnDeleteTriggers = async (
           sql`UPDATE ${table} SET ${fk} = ${jsonArrayLiteral(next, ctx.dialect)} WHERE ${pk} = ${String(row.pk)}${scope}`,
         );
       }
+      touched.add(ref.slug);
       continue;
     }
     const victims = matched.map((row) => String(row.pk));
     for (const vid of victims) {
       await run(sql`DELETE FROM ${table} WHERE ${pk} = ${vid}${scope}`);
     }
-    await afterCascade(ctx, tenantId, ref, victims, run, visited);
+    touched.add(ref.slug);
+    await afterCascade(ctx, tenantId, ref, victims, run, visited, touched);
   }
+  return touched;
 };
 
 /** Post-cascade housekeeping: clean the deleted rows' vector/FTS index entries
@@ -168,6 +177,7 @@ const afterCascade = async (
   victimIds: string[],
   run: (stmt: SQL) => Promise<void>,
   visited: Set<string>,
+  touched: Set<string>,
 ): Promise<void> => {
   if (victimIds.length === 0) return;
   const cRow = await loadCollection(ctx, tenantId, ref.slug).catch(() => null);
@@ -177,6 +187,6 @@ const afterCascade = async (
       await deleteFts(ctx, cRow, vid).catch(() => {});
     }
     // Chain: the cascaded row may itself be referenced by other collections.
-    await enforceOnDeleteTriggers(ctx, tenantId, ref.slug, vid, run, visited);
+    await enforceOnDeleteTriggers(ctx, tenantId, ref.slug, vid, run, visited, touched);
   }
 };

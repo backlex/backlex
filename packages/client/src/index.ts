@@ -323,6 +323,11 @@ export interface CollectionClient<T extends Record<string, unknown>> {
    *  The digest never leaves the server; this returns only `{ valid }`.
    *  Requires read permission on the item; the server throttles attempts. */
   verify(id: string, field: string, value: string): Promise<{ valid: boolean }>;
+  /** Restate this collection's `rollup` columns from the rows they aggregate.
+   *  Ordinary writes keep rollups in step on their own — this is the repair
+   *  path for rows written around the API (a restore, a bulk seed, direct SQL).
+   *  Idempotent; returns the columns it refreshed. Requires `update`. */
+  refreshRollups(): Promise<{ ok: boolean; refreshed: string[] }>;
 }
 
 /** Auth surface for a workspace's end-users (and the admin pool). See `createClient`. */
@@ -3268,6 +3273,12 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       /** Verify a plaintext against a `hash` field's stored digest. */
       verify: (id: string, field: string, value: string): Promise<{ valid: boolean }> =>
         request<{ valid: boolean }>("POST", `/api/items/${slug}/${id}/verify`, { field, value }),
+      /** Restate this collection's rollup columns from the rows they aggregate. */
+      refreshRollups: (): Promise<{ ok: boolean; refreshed: string[] }> =>
+        request<{ ok: boolean; refreshed: string[] }>(
+          "POST",
+          `/api/items/${slug}/rollups/refresh`,
+        ),
     };
   };
 

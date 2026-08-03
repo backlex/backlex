@@ -981,7 +981,12 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
       gridCols.push({
         name: f.name,
         type: f.type,
-        editable: !f.dot && (!!choices || INLINE_TYPES.has(f.type ?? "")),
+        // Rollups (like computed columns) take no write — an editable cell
+        // would collect a value the API answers 422 to.
+        editable:
+          !f.dot &&
+          !(f as { rollup?: unknown }).rollup &&
+          (!!choices || INLINE_TYPES.has(f.type ?? "")),
         choices,
         raw: (r) =>
           f.dot

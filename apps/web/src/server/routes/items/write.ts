@@ -23,6 +23,7 @@ import {
   type WriteEnv,
 } from "../../services/items/write";
 import { verifyHashField } from "../../services/items/verify";
+import { refreshCollectionRollups } from "../../services/items/rollup";
 import { defaultHook } from "../../lib/openapi-router";
 import {
   execute,
@@ -425,6 +426,54 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         },
       );
       return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{slug}/rollups/refresh",
+      tags: TAGS,
+      summary: "Recompute a collection's rollup columns",
+      description:
+        "Restates every rollup field on this collection from the rows it aggregates, for every row in the workspace — one statement per rollup column. Ordinary writes keep these in step on their own; this is the repair path for the cases that bypass the per-write refresh: a restore or a template seed that wrote rows wholesale, a direct SQL edit, or a rollup added while another isolate still held a stale schema cache. Idempotent and safe to run at any time. Requires `update` on the collection.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "update")],
+      request: {
+        params: z.object({ slug: z.string() }),
+      },
+      responses: {
+        200: {
+          description: "Refreshed",
+          content: {
+            "application/json": {
+              schema: z.object({ ok: z.boolean(), refreshed: z.array(z.string()) }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      if (!auth.tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const refreshed = await refreshCollectionRollups(ctx, auth.tenantId, collection);
+      await recordActivity(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          userId: auth.userId,
+          tenantId: auth.tenantId,
+          action: "update",
+          collection: collection.slug,
+          itemId: "__rollups__",
+          ...requestMeta(c.req.raw),
+          payload: { refreshed },
+          response: { ok: true },
+          durationMs: elapsedMs(c),
+        },
+      );
+      return c.json({ ok: true, refreshed });
     },
   )
   .openapi(

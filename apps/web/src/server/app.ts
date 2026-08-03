@@ -48,6 +48,7 @@ import { dbAdminRoutes } from "./routes/db-admin";
 import { emailConfigRoutes } from "./routes/email-config";
 import { emailTemplatesRoutes } from "./routes/email-templates";
 import { documentsRoutes } from "./routes/documents";
+import { geoRoutes } from "./routes/geo";
 import { flowsRoutes } from "./routes/flows";
 import { foldersRoutes } from "./routes/folders";
 import { functionsRoutes } from "./routes/functions";
@@ -843,6 +844,7 @@ export const createApp = (env: Env) => {
   app.route("/api/tenants", tenantsRoutes);
   app.route("/api/admin/email-templates", emailTemplatesRoutes);
   app.route("/api/admin/documents", documentsRoutes);
+  app.route("/api/geo", geoRoutes);
   app.route("/api/admin/approvals", approvalsRoutes);
   app.route("/api/admin/signatures", signaturesRoutes);
   app.route("/api/admin/booking", bookingRoutes);

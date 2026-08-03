@@ -95,6 +95,7 @@ export default defineConfig({
             { slug: "field-validation" },
             { slug: "rollups" },
             { slug: "sequences" },
+            { slug: "geo" },
             { slug: "adopting-tables" },
             { slug: "migrating-in" },
             { slug: "schema-versions" },

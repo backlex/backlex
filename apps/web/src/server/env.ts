@@ -320,6 +320,26 @@ export interface Env {
   PDF_GOTENBERG_URL?: string;
   PDF_GOTENBERG_USER?: string;
   PDF_GOTENBERG_PASS?: string;
+  // ── Geocoding (address ⇄ point, for `geo` fields) ──────────────────────
+  // `GEOCODE_PROVIDER` pins one (`google`, `mapbox`, `nominatim`, `console`);
+  // otherwise the first with credentials wins (google → mapbox), then a
+  // self-hosted Nominatim if `GEOCODE_URL` is set, else `console` (resolves
+  // nothing). The public Nominatim is never the automatic default: its usage
+  // policy forbids the bulk traffic a `geocodeFrom` backfill produces, so
+  // reaching it takes an explicit `GEOCODE_PROVIDER=nominatim`.
+  GEOCODE_PROVIDER?: string;
+  GEOCODE_GOOGLE_API_KEY?: string;
+  GEOCODE_MAPBOX_TOKEN?: string;
+  // Nominatim instance root (e.g. http://nominatim:8080). Setting it opts into
+  // Nominatim without pinning the provider.
+  GEOCODE_URL?: string;
+  // Identifying User-Agent — required by the public Nominatim. Defaults to
+  // `backlex (<APP_URL>)`.
+  GEOCODE_USER_AGENT?: string;
+  // Optional result-language and country bias, passed to whichever provider is
+  // active (all three accept an equivalent).
+  GEOCODE_LANGUAGE?: string;
+  GEOCODE_COUNTRY?: string;
   // Twilio Programmable Messaging — `TWILIO_FROM` is an E.164 number or approved
   // alphanumeric sender id; alternatively set `TWILIO_MESSAGING_SERVICE_SID`
   // (MGxxxx) to use a Messaging Service sender pool.
@@ -631,6 +651,13 @@ export const STRING_ENV_KEYS = [
   "PDF_GOTENBERG_URL",
   "PDF_GOTENBERG_USER",
   "PDF_GOTENBERG_PASS",
+  "GEOCODE_PROVIDER",
+  "GEOCODE_GOOGLE_API_KEY",
+  "GEOCODE_MAPBOX_TOKEN",
+  "GEOCODE_URL",
+  "GEOCODE_USER_AGENT",
+  "GEOCODE_LANGUAGE",
+  "GEOCODE_COUNTRY",
   "SMS_PROVIDER",
   "TWILIO_ACCOUNT_SID",
   "TWILIO_AUTH_TOKEN",

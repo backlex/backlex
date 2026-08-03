@@ -211,6 +211,25 @@ const rating = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ nam
 const slugField = (name = "slug", extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "text", interface: "slug", unique: true, validation: { regex: SLUG_RE }, ...extra });
 const computedNum = (name: string, formula: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "number", computed: { formula }, ...extra });
 const computedText = (name: string, formula: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "text", computed: { formula }, ...extra });
+/**
+ * A point on the earth, derived from the address columns beside it.
+ *
+ * `from` names the text columns whose values are joined and geocoded when a row
+ * is saved without a point — which is what lets a template's own sample rows,
+ * and every row an operator types afterwards, become answerable by `_near`
+ * without anyone entering a coordinate. Order is the address format.
+ *
+ * Deployments with no geocoder configured simply leave the column null; the
+ * field still works as a pair of coordinates someone enters by hand, and
+ * `POST /api/geo/backfill/{slug}` fills the rest in later. See docs/geo.md.
+ */
+const geo = (name: string, from: string[], extra: Partial<FieldDef> = {}): FieldDef => ({
+  name,
+  type: "geo",
+  interface: "map",
+  geo: { geocodeFrom: from },
+  ...extra,
+});
 /** Single image (file storage, image picker). */
 const image = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "file", interface: "image", ...extra });
 /** Free-form label list (JSON array). Never seeded with sample values — a JSON
@@ -771,6 +790,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ...half(text("name", { required: true }), text("code", { label: "Code" })),
           text("address"),
           ...half(text("city"), text("country")),
+          geo("coordinates", ["address", "city", "country"], { label: "Map pin" }),
           bool("active", { default: true, label: "Active" }),
         ],
         samples: [
@@ -2308,6 +2328,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             select("type", [ch("office", C.blue), ch("remote", C.teal), ch("hybrid", C.purple), ch("field", C.amber)], { default: "office" }),
           ),
           ...half(text("city"), text("country")),
+          geo("coordinates", ["city", "country"], { label: "Map pin" }),
           ...half(text("timezone", { label: "Timezone (IANA)" }), bool("is_headquarters", { default: false, label: "Headquarters" })),
         ],
         samples: [{ name: "HQ", type: "office", city: "Austin", country: "US", timezone: "America/Chicago", is_headquarters: true }],
@@ -3165,6 +3186,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ...half(text("name", { required: true }), int("capacity", { validation: { min: 0 } })),
           text("address"),
           ...half(text("city"), text("country")),
+          geo("coordinates", ["address", "city", "country"], { label: "Map pin" }),
         ],
         samples: [{ name: "Main Hall", address: "1 Conference Way", city: "Austin", country: "US", capacity: 500 }],
       },
@@ -3433,6 +3455,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ...half(text("name", { required: true }), text("code")),
           text("address"),
           ...half(text("city"), text("country")),
+          geo("coordinates", ["address", "city", "country"], { label: "Map pin" }),
           bool("active", { default: true, label: "Active" }),
         ],
         samples: [{ name: "Central DC", code: "DC-1", city: "Newark", country: "US", active: true }, { name: "West DC", code: "DC-2", city: "Reno", country: "US", active: true }],
@@ -3788,7 +3811,9 @@ export const TEMPLATES: SchemaTemplate[] = [
             ...half(text("city", { indexed: true }), text("state", { label: "State / Province" })),
             ...half(text("postal_code", { label: "Postal code" }), text("country")),
             divider("geo", "Map pin"),
-            ...half(num("latitude"), num("longitude")),
+            geo("coordinates", ["address", "city", "state", "postal_code", "country"], {
+              label: "Map pin",
+            }),
           ]),
           sec("Representation", [
             ...half(rel("agent", "agents"), rel("owner", "owners")),
@@ -5932,6 +5957,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ...half(text("name", { required: true }), text("phone")),
           text("address"),
           ...half(text("city"), text("timezone", { default: "UTC", label: "Timezone (IANA)" })),
+          geo("coordinates", ["address", "city"], { label: "Map pin" }),
           bool("active", { default: true, label: "Active" }),
         ],
         samples: [
@@ -6260,6 +6286,10 @@ export const TEMPLATES: SchemaTemplate[] = [
           sec("Service address", [
             text("address"),
             ...half(text("city"), text("postal_code", { label: "Postal code" })),
+            geo("coordinates", ["address", "city", "postal_code"], {
+              label: "Map pin",
+              description: "Filter jobs by distance from a technician — see docs/geo.md.",
+            }),
             notes("access_notes", { label: "Access notes", description: "Gate codes, parking, who to ask for — what a tech needs to get in." }),
           ]),
         ),

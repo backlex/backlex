@@ -1,4 +1,5 @@
 import { sql, type SQL } from "drizzle-orm";
+import { AppError } from "@backlex/core";
 import type {
   AuthSubject,
   ComparisonObj,
@@ -6,6 +7,18 @@ import type {
   DurationParts,
   RelativeNow,
 } from "@backlex/core";
+import { type GeoNearPlan, isNear, planNear, tryParseGeoPoint } from "./geo";
+
+/** {@link planNear}, but a bad operand leaves as the caller's 422 rather than
+ *  an unhandled 500. Names the field so the message points at the right key in
+ *  a filter with several. */
+export const planNearOrThrow = (field: string, raw: unknown): GeoNearPlan => {
+  try {
+    return planNear(raw);
+  } catch (e) {
+    throw new AppError("VALIDATION", `${field}: ${(e as Error).message}`);
+  }
+};
 
 const FALSE: SQL = sql`(1=0)`;
 const TRUE: SQL = sql`(1=1)`;
@@ -140,6 +153,74 @@ export type LeafCompiler = (
 const defaultColRef: ColRefResolver = (field) => sql`${sql.identifier(field)}`;
 
 /**
+ * Read one number out of a `geo` column, dialect-correctly.
+ *
+ * A point is stored the way `json` is — `jsonb` on Postgres, a TEXT string of
+ * JSON on SQLite — so getting at `lat` differs by dialect and the result has to
+ * be forced to a float either way (`->>` yields text; `json_extract` yields
+ * whatever the JSON had, which for an adopted column might be a string).
+ *
+ * The SQLite branch guards with `json_valid`. `json_extract` RAISES on
+ * malformed input rather than returning NULL, so one junk row in an adopted
+ * TEXT column would turn a filter into a 500 for the whole collection instead
+ * of quietly not matching. Managed writes can't produce junk — `validateValue`
+ * parses every point before it lands — but an adopted table arrives with
+ * whatever it already had.
+ */
+const geoMember = (col: SQL, member: "lat" | "lng", dialect: Dialect | undefined): SQL =>
+  dialect === "pg"
+    ? sql`(${col} ->> ${member})::double precision`
+    : sql`CAST(json_extract(CASE WHEN json_valid(${col}) THEN ${col} END, ${`$.${member}`}) AS REAL)`;
+
+/**
+ * Compile `_near` into a single arithmetic predicate.
+ *
+ * The emitted shape, with every capitalised name a bound constant computed in
+ * JS from the query origin (see `geo.ts` for why it can be):
+ *
+ *     (LAT_OF(col) - LAT0) * (LAT_OF(col) - LAT0)
+ *   + (WRAPPED_LNG_DELTA * SCALE) * (WRAPPED_LNG_DELTA * SCALE)
+ *   <= MAX_DIST_SQ
+ *
+ * Three properties are load-bearing:
+ *
+ *  - **No `sqrt`, no trig.** Both sides are squared, and squaring is monotonic
+ *    over non-negative reals, so the answer is identical to comparing real
+ *    distances. SQLite only has `sqrt`/`cos` when its build enabled the math
+ *    extension, which is a property of the deploy target, not of the query.
+ *  - **The longitude difference is wrapped.** Plain subtraction says 179°E and
+ *    179°W are 358° apart. The `CASE` folds it to the short way round, matching
+ *    `lngDelta` in the JS twin exactly, so realtime and SQL agree in Fiji.
+ *  - **A NULL column stays NULL** all the way to the comparison, which is
+ *    UNKNOWN, which excludes the row. A place with no location is not near
+ *    anything — including, correctly, not near the origin.
+ */
+const compileNear = (col: SQL, plan: GeoNearPlan, dialect: Dialect | undefined): SQL =>
+  sql`(${geoDistanceSql(col, plan, dialect)} <= ${plan.maxDistSq})`;
+
+/**
+ * The ORDER BY expression for "nearest first" — the left-hand side of
+ * {@link compileNear}, without the comparison.
+ *
+ * Squared distance sorts identically to distance, so the sort never needs the
+ * square root either. Exported because the list handler resolves a sort on a
+ * `geo` field into this, using the origin the request's own `_near` filter
+ * supplied; there is no other origin it could mean.
+ */
+export const geoDistanceSql = (
+  col: SQL,
+  plan: GeoNearPlan,
+  dialect: Dialect | undefined,
+): SQL => {
+  const lat = geoMember(col, "lat", dialect);
+  const lng = geoMember(col, "lng", dialect);
+  const dLat = sql`(${lat} - ${plan.lat})`;
+  const rawDLng = sql`(${lng} - ${plan.lng})`;
+  const dLng = sql`(CASE WHEN ${rawDLng} > 180 THEN ${rawDLng} - 360 WHEN ${rawDLng} < -180 THEN ${rawDLng} + 360 ELSE ${rawDLng} END * ${plan.lngScale})`;
+  return sql`(${dLat} * ${dLat} + ${dLng} * ${dLng})`;
+};
+
+/**
  * Normalize the right-hand side of `_in` / `_nin` to a concrete array.
  *
  * Two accepted shapes:
@@ -230,6 +311,14 @@ const compileComparison = (
   }
   if (cmp._iends_with !== undefined) {
     parts.push(sql`LOWER(${id}) LIKE ${`%${String(r(cmp._iends_with)).toLowerCase()}`}`);
+  }
+  if (cmp._near !== undefined) {
+    // A malformed origin or radius is the CALLER's mistake, so it has to leave
+    // as a 422. `planNear` throws a plain Error, which the global handler maps
+    // to 500 — `AppError` is what makes the difference between "you sent
+    // `radius: "soon"`" and an opaque server failure. Silently degrading to
+    // "matches everything" would be worse than either.
+    parts.push(compileNear(id, planNearOrThrow(field, r(cmp._near)), dialect));
   }
   if (parts.length === 0) return TRUE;
   return sql`(${sql.join(parts, sql` AND `)})`;
@@ -406,6 +495,24 @@ const matchesInner = (
       !String(left ?? "").toLowerCase().endsWith(String(r(cmp._iends_with)).toLowerCase())
     ) {
       return false;
+    }
+    if (cmp._near !== undefined) {
+      // Same projection, same origin-derived scale factor as the SQL — so a
+      // realtime subscriber and the list query that seeded it agree about which
+      // rows are in the radius. Nothing here throws: this predicate runs in a
+      // realtime fan-out and in the permission simulator, where one bad row (or
+      // one bad stored rule) must not take down the whole delivery. Both
+      // failures fail CLOSED — an unreadable point is not near anything, and an
+      // unusable rule matches nothing.
+      const point = tryParseGeoPoint(left);
+      if (!point) return false;
+      let plan: GeoNearPlan;
+      try {
+        plan = planNear(r(cmp._near));
+      } catch {
+        return false;
+      }
+      if (!isNear(point, plan)) return false;
     }
   }
   return true;

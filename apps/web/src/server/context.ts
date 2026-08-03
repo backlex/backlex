@@ -12,6 +12,7 @@ import type {
   EdgeImageAdapter,
   EmailAdapter,
   EmbeddingAdapter,
+  GeocodeAdapter,
   ImageAdapter,
   PdfAdapter,
   PushAdapter,
@@ -38,6 +39,10 @@ import { bunImage } from "./adapters/image.bun";
 import { cfEdgeImage } from "./adapters/image.cf";
 import { netlifyEdgeImage } from "./adapters/image.netlify";
 import { passthroughImage } from "./adapters/image.passthrough";
+import { consoleGeocode } from "./adapters/geocode.console";
+import { googleGeocode } from "./adapters/geocode.google";
+import { mapboxGeocode } from "./adapters/geocode.mapbox";
+import { nominatimGeocode } from "./adapters/geocode.nominatim";
 import { cfBrowserPdf } from "./adapters/pdf.cf-browser";
 import { gotenbergPdf } from "./adapters/pdf.gotenberg";
 import { sharpImage } from "./adapters/image.sharp";
@@ -154,6 +159,17 @@ export interface Ctx {
    * vars. See `packages/core/src/adapters/pdf.ts`.
    */
   pdf?: PdfAdapter;
+  /**
+   * Address ⇄ point resolution, backing `geo` fields with `geocodeFrom` set and
+   * the `/api/geo/*` endpoints.
+   *
+   * Always present, unlike {@link Ctx.pdf}: an unconfigured deployment gets the
+   * `console` adapter, which resolves nothing. "This address could not be
+   * placed" is already a normal outcome — a missing geocoder produces it for
+   * every address instead of some, which is a degradation rather than a broken
+   * feature. Check `.provider === "console"` to tell the two apart.
+   */
+  geocode: GeocodeAdapter;
   /** URL-based edge transform backend (CF Image Resizing / Netlify Image
    *  CDN); undefined on runtimes without one. The serve path prefers it over
    *  `image` when the file is publicly reachable — no bytes through the
@@ -188,6 +204,61 @@ export const selectPdfAdapter = (env: Env): PdfAdapter | undefined => {
   if (pinned === "cf-browser" || pinned === "cloudflare") return cf;
   if (pinned === "gotenberg") return goten;
   return cf ?? goten;
+};
+
+/**
+ * Pick the geocoder from env.
+ *
+ * Same shape as {@link selectPdfAdapter} — one provider per deployment, pinned
+ * by `GEOCODE_PROVIDER` or else the first with usable credentials — with one
+ * difference: this one always returns an adapter. PDF returns `undefined` when
+ * nothing is configured because there is no acceptable way to render a document
+ * without a renderer; geocoding degrades honestly instead, because "we could
+ * not place this address" is an outcome the write path already handles for
+ * addresses that genuinely cannot be placed.
+ *
+ * Nominatim needs no credentials, so it is only reachable by asking for it
+ * (`GEOCODE_PROVIDER=nominatim`) or by setting `GEOCODE_URL` to a self-hosted
+ * instance. Defaulting to the public one would silently point every deployment
+ * at a volunteer-run service whose usage policy forbids exactly the bulk traffic
+ * a `geocodeFrom` import produces.
+ */
+export const selectGeocodeAdapter = (env: Env): GeocodeAdapter => {
+  const google = env.GEOCODE_GOOGLE_API_KEY?.trim()
+    ? googleGeocode({
+        apiKey: env.GEOCODE_GOOGLE_API_KEY.trim(),
+        language: env.GEOCODE_LANGUAGE?.trim() || undefined,
+        region: env.GEOCODE_COUNTRY?.trim() || undefined,
+      })
+    : undefined;
+  const mapbox = env.GEOCODE_MAPBOX_TOKEN?.trim()
+    ? mapboxGeocode({
+        accessToken: env.GEOCODE_MAPBOX_TOKEN.trim(),
+        language: env.GEOCODE_LANGUAGE?.trim() || undefined,
+        country: env.GEOCODE_COUNTRY?.trim() || undefined,
+      })
+    : undefined;
+  const nominatim = (): GeocodeAdapter =>
+    nominatimGeocode({
+      url: env.GEOCODE_URL?.trim() || undefined,
+      // The public instance bans clients that don't identify themselves; name
+      // the software and the deployment so a rate-limit complaint has somewhere
+      // to land.
+      userAgent: env.GEOCODE_USER_AGENT?.trim() || `backlex (${env.APP_URL ?? "self-hosted"})`,
+      language: env.GEOCODE_LANGUAGE?.trim() || undefined,
+    });
+
+  const pinned = env.GEOCODE_PROVIDER?.trim().toLowerCase();
+  if (pinned === "google") return google ?? consoleGeocode();
+  if (pinned === "mapbox") return mapbox ?? consoleGeocode();
+  if (pinned === "nominatim") return nominatim();
+  if (pinned === "console") return consoleGeocode();
+  if (google) return google;
+  if (mapbox) return mapbox;
+  // A self-hosted Nominatim is a deliberate act of configuration, so treat
+  // `GEOCODE_URL` as opting in.
+  if (env.GEOCODE_URL?.trim()) return nominatim();
+  return consoleGeocode();
 };
 
 // Memoize the assembled Ctx by Env reference. Workers reuse the same `env`
@@ -863,6 +934,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   // undefined when neither is configured — there is deliberately no fallback
   // renderer (see the adapter contract for why).
   const pdf = selectPdfAdapter(env);
+  const geocode = selectGeocodeAdapter(env);
 
   const ctx: Ctx = {
     env,
@@ -883,6 +955,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     vectorCaps,
     image,
     pdf,
+    geocode,
     edgeImage,
   };
   // Late-bind so the `onUserCreated` closure can publish events through the

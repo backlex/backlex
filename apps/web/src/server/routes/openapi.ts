@@ -55,6 +55,7 @@ import { accountRoutes } from "./account";
 import { formsRoutes } from "./forms";
 import { formsPublicRoutes } from "./forms-public";
 import { documentsRoutes } from "./documents";
+import { geoRoutes } from "./geo";
 import { signaturesRoutes } from "./signatures";
 import { bookingRoutes } from "./booking";
 import { bookingPublicRoutes } from "./booking-public";
@@ -107,6 +108,7 @@ export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/admin/forms", formsRoutes as unknown as OpenAPIHono<any>],
   ["/api/public/forms", formsPublicRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/documents", documentsRoutes as unknown as OpenAPIHono<any>],
+  ["/api/geo", geoRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/signatures", signaturesRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/booking", bookingRoutes as unknown as OpenAPIHono<any>],
   ["/api/public/book", bookingPublicRoutes as unknown as OpenAPIHono<any>],

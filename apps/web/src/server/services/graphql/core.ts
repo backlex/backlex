@@ -58,6 +58,9 @@ import {
   rollupRefreshStatements,
 } from "../items/rollup";
 import { nextSequenceValues, sequenceFieldsOf } from "../items/sequence";
+import { validateAndNormalizeGeo } from "../items/geo-fields";
+import { deserialize as sharedDeserialize, serialize as sharedSerialize } from "../items/serialize";
+import { applyAutoGeocode, patchTouchesSources } from "../items/geocode";
 import { verifyHashField } from "../items/verify";
 import type { Hono } from "hono";
 import type { Ctx } from "../../context";
@@ -160,6 +163,12 @@ const fieldScalar = (
     case "relation_many":
       // Array of foreign ids — exposed as a JSON list for now (avoids
       // tight typing complications with mutations until DataLoader lands).
+      return JSONScalar;
+    case "geo":
+      // `{ lat, lng }`. JSON rather than a hand-written object type because the
+      // INPUT side accepts four shapes (see `parseGeoPoint`) and a GraphQL
+      // input object would accept exactly one of them — making the GraphQL
+      // surface stricter than REST for no reason a caller could discover.
       return JSONScalar;
     case "hash":
       // Write-only secret: accepted as a String on input, always resolves to
@@ -284,24 +293,34 @@ export const buildInputType = (collection: CollectionRow): GraphQLInputObjectTyp
   });
 };
 
+/**
+ * Storage encoding for a GraphQL write — the SHARED one, with a single
+ * documented exception.
+ *
+ * This used to be a full second copy of `items/serialize`, and it went stale
+ * the moment a field type was added: `geo` landed on the REST path, and here a
+ * point reached the driver as a live object, which SQLite refuses to bind
+ * ("Binding expected string, TypedArray, boolean, number, bigint or null") —
+ * so every GraphQL create against a collection with a location 500'd. It is
+ * delegated now so the next type cannot repeat that. `geo-surfaces.test.ts` is
+ * the gate that caught it.
+ *
+ * The one deliberate difference is the Postgres timestamp. The REST encoder
+ * emits an ISO string; this path has always handed the driver a `Date`, and the
+ * GraphQL mutations are not covered by a Postgres-backed test, so quietly
+ * changing what they bind is not a change this feature gets to make. Kept
+ * explicit and narrow rather than by re-forking the whole function.
+ */
 const serialize = (
   value: unknown,
   type: FieldType,
   dialect: "pg" | "sqlite",
 ): unknown => {
   if (value === undefined || value === null) return null;
-  if (dialect === "sqlite") {
-    if (type === "json") return JSON.stringify(value);
-    if (type === "boolean") return value ? 1 : 0;
-    if (type === "timestamp") {
-      return value instanceof Date ? value.getTime() : Number(value);
-    }
-  } else {
-    if (type === "timestamp" && !(value instanceof Date)) {
-      return new Date(value as string | number);
-    }
+  if (dialect === "pg" && type === "timestamp") {
+    return value instanceof Date ? value : new Date(value as string | number);
   }
-  return value;
+  return sharedSerialize(value, type, dialect);
 };
 
 const execute = async (ctx: Ctx, query: SQL): Promise<unknown> => {
@@ -311,6 +330,47 @@ const execute = async (ctx: Ctx, query: SQL): Promise<unknown> => {
 
 const fieldByCamel = (collection: CollectionRow, camelName: string): FieldDef | undefined =>
   collection.fields.find((f) => camel(f.name) === camelName);
+
+
+/**
+ * Run the shared auto-geocode over a GraphQL payload.
+ *
+ * The service speaks snake_case field names (it is the same one the REST write
+ * path uses, and the field definitions are the source of both); GraphQL args
+ * are camelCase. Rather than threading a key mapper through the geocode
+ * service, build a snake-keyed view, let the service fill it, and copy back
+ * only the points it derived — which also makes it obvious that nothing else
+ * about the payload is being rewritten here.
+ *
+ * `stored` is the row as it exists now, for an update: a patch changing only
+ * `city` still has to resolve against the `address` it did not mention.
+ */
+const gqlAutoGeocode = async (
+  ctx: Ctx,
+  collection: CollectionRow,
+  data: Record<string, unknown>,
+  stored?: Record<string, unknown>,
+): Promise<void> => {
+  if (!collection.fields.some((f) => f.type === "geo" && f.geo?.geocodeFrom?.length)) return;
+  const patch: Record<string, unknown> = {};
+  for (const f of collection.fields) {
+    const v = data[camel(f.name)];
+    if (v !== undefined) patch[f.name] = v;
+  }
+  const context = stored ? { ...stored, ...patch } : patch;
+  await applyAutoGeocode(ctx, collection.fields, patch, context, {
+    // On a create there is no "touched" question — every source column the
+    // payload carries is new. On an update, only re-resolve when the patch
+    // actually moved the address.
+    ...(stored ? { touched: (f: FieldDef) => patchTouchesSources(f, patch) } : {}),
+  });
+  for (const f of collection.fields) {
+    if (f.type !== "geo") continue;
+    if (data[camel(f.name)] === undefined && patch[f.name] !== undefined) {
+      data[camel(f.name)] = patch[f.name];
+    }
+  }
+};
 
 const validateInput = (
   inputData: Record<string, unknown>,
@@ -363,6 +423,16 @@ const validateInput = (
       });
     }
   }
+  // Shape-check + canonicalize every point. This resolver never calls
+  // `validateValue`, so without it a latitude of 91 would be stored verbatim
+  // and read back by `_near` as nothing at all. Normalizing here (rather than
+  // only in `serialize`) also means the hand-built response object and the
+  // realtime event carry the same `{ lat, lng }` a re-read returns.
+  try {
+    validateAndNormalizeGeo(inputData, collection.fields, (f) => camel(f.name));
+  } catch (e) {
+    throw new GraphQLError((e as Error).message, { extensions: { code: "VALIDATION" } });
+  }
 };
 
 const queryAll = async <T>(ctx: Ctx, query: SQL): Promise<T[]> => {
@@ -375,24 +445,17 @@ const queryAll = async <T>(ctx: Ctx, query: SQL): Promise<T[]> => {
   return (await (ctx.db as any).all(query)) as T[];
 };
 
+/**
+ * Read decoding for a GraphQL row — the shared one, for the same reason
+ * {@link serialize} is: a second copy is a second thing to remember. Hashed
+ * secrets read back as null and points parse out of their stored JSON because
+ * `items/deserialize` does both, not because this file repeats them.
+ */
 const deserialize = (
   value: unknown,
   type: FieldType,
   dialect: "pg" | "sqlite",
-): unknown => {
-  // Hashed secrets never leave the DB — the digest reads back as null (mirrors
-  // the REST deserialize).
-  if (type === "hash") return null;
-  if (value == null) return value;
-  if (dialect === "sqlite") {
-    if (type === "json") {
-      return typeof value === "string" ? JSON.parse(value) : value;
-    }
-    if (type === "boolean") return Boolean(value);
-    if (type === "timestamp") return new Date(value as number).toISOString();
-  }
-  return value;
-};
+): unknown => sharedDeserialize(value, type, dialect);
 
 const renderRow = (
   row: Record<string, unknown>,
@@ -863,6 +926,11 @@ export const createResolver = async (
     cols.push("tenant_id");
     vals.push(auth.tenantId);
   }
+  // Derive a point from the address columns before the INSERT is built —
+  // another thing the REST write core does that this hand-built resolver has to
+  // repeat or the feature only ships on one surface. `geo-surfaces.test.ts` is
+  // the gate.
+  await gqlAutoGeocode(ctx, collection, args.data);
   for (const f of collection.fields) {
     if (f.onCreate || f.sequence) continue; // system-managed, injected below
     const v = args.data[camel(f.name)];
@@ -1059,6 +1127,9 @@ export const updateResolver = async (
   const sets: SQL[] = collection.hasUpdatedAt
     ? [sql`${sql.identifier("updated_at")} = ${now}`]
     : [];
+  // Same as create, with the stored row supplying the address columns the
+  // patch did not mention.
+  await gqlAutoGeocode(ctx, collection, args.data, existing[0] as Record<string, unknown>);
   for (const f of collection.fields) {
     if (f.onUpdate) continue; // system-managed, injected below
     const v = args.data[camel(f.name)];

@@ -6,7 +6,10 @@ import {
   combineConditions,
   type FieldDef,
   type ColRefResolver,
+  type GeoNearPlan,
+  geoDistanceSql,
   type LeafCompiler,
+  planNearOrThrow,
   sidecarFields,
 } from "@backlex/db";
 import type { AppBindings } from "../../app";
@@ -153,6 +156,9 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const localeSingle = Boolean(locale) && locale !== "*";
       const localizedDefs = sidecarFields(collection.fields);
       const localizedNameSet = new Set(localizedDefs.map((f) => f.name));
+      const geoFieldNames = new Set(
+        collection.fields.filter((f: FieldDef) => f.type === "geo").map((f: FieldDef) => f.name),
+      );
       const defaultLocale =
         locale && locale !== "*" && hasLocalizedField(collection.fields)
           ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
@@ -766,6 +772,19 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ? sql`${baseSelectCols}, ${sql.join(extraSelects, sql`, `)}`
         : baseSelectCols;
 
+      // A sort on a `geo` field orders by distance from the origin the request's
+      // own `_near` filter named — parseQuery already refused the sort when
+      // there wasn't one, so `planNear` here is reached only with an origin it
+      // has already validated once.
+      const geoSortPlans = new Map<string, GeoNearPlan>();
+      for (const s of q.sort) {
+        if (s.field.includes(".")) continue;
+        if (geoFieldNames.has(s.field)) {
+          const origin = q.nearOrigins.get(s.field);
+          if (origin !== undefined) geoSortPlans.set(s.field, planNearOrThrow(s.field, origin));
+        }
+      }
+
       // Resolve the SQL column reference for one sort clause. Shared by the
       // ORDER BY and the keyset boundary so they reference the EXACT same
       // expression — a cursor minted against one sort axis must seek on that
@@ -787,9 +806,16 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           return localizedColRef(s.field);
         }
         const physical = rewriteSortField(s.field, collection);
-        return hasJoins
+        const col = hasJoins
           ? sql`${baseTblId}.${sql.identifier(physical)}`
           : sql`${sql.identifier(physical)}`;
+        // Squared distance — monotonic in distance, so `ASC` really is nearest
+        // first, and no square root is needed on either dialect. In cursor mode
+        // this same expression is selected as `__ks_i`, so the boundary the
+        // next page seeks past is the same number the ORDER BY produced.
+        const plan = geoSortPlans.get(s.field);
+        if (plan) return geoDistanceSql(col, plan, ctx.dialect);
+        return col;
       };
 
       // Keyset (cursor) pagination is opt-in via `?cursor` (q.cursor !== null).

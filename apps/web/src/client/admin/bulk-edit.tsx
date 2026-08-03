@@ -24,7 +24,11 @@ import {
 // rows" is ambiguous or destructive — mirrors the server-side bulk guard. Plus
 // long-form authored interfaces (richtext/markdown), which are an anti-pattern
 // to fan out as a uniform blob. Single-record edit still handles all of these.
-const BULK_BLOCKED_TYPES = new Set(["json", "file", "relation_many"]);
+// `geo` joins the list for the same reason `json` is on it: setting one point
+// on a whole selection means asserting that every one of those rows is at the
+// same place, which is either a mistake or a thing better done by giving them
+// the same address and running a backfill.
+const BULK_BLOCKED_TYPES = new Set(["json", "file", "relation_many", "geo"]);
 const BULK_BLOCKED_IFACES = new Set(["richtext", "markdown"]);
 
 export const isBulkEditable = (f: SchemaField): boolean => {

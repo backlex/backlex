@@ -49,9 +49,47 @@ const ok = async (method: string, path: string, body?: unknown) => {
   return (await res.json()) as any;
 };
 
-/** 2026-08-03 is a Monday; the resource opens 09:00–12:00 UTC on Mondays. */
-const MONDAY_0900 = "2026-08-03T09:00:00.000Z";
-const SUNDAY = "2026-08-02T00:00:00.000Z";
+/**
+ * The resource under test opens 09:00–12:00 UTC on Mondays, so every fixture
+ * below is anchored to a Monday.
+ *
+ * That Monday is DERIVED, not written down. It used to be the literal
+ * 2026-08-03, and the public slot grid — correctly — hides slots that have
+ * already started. The suite therefore passed until the wall clock reached that
+ * Monday, and then lost one slot every half hour through the morning: `expected
+ * 6, received 2` at 10:15 UTC, green again the next day. A hard-coded date in a
+ * test whose subject is "what is still bookable" is a fuse, not a fixture.
+ *
+ * `MONDAY` is the first Monday at least a week out, so the whole window is
+ * always comfortably in the future no matter when the suite runs.
+ */
+const nextMonday = (): Date => {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() + 7);
+  // 1 = Monday. Walk forward to the next one (0 days if it already is).
+  d.setUTCDate(d.getUTCDate() + ((1 - d.getUTCDay() + 7) % 7));
+  return d;
+};
+const MONDAY = nextMonday();
+/** That Monday at `hh:mm` UTC, as the ISO string the API speaks. */
+const mondayAt = (hh: number, mm = 0): string => {
+  const d = new Date(MONDAY);
+  d.setUTCHours(hh, mm, 0, 0);
+  return d.toISOString();
+};
+/** Midnight UTC `offset` days from that Monday (negative = before). */
+const dayFromMonday = (offset: number): string => {
+  const d = new Date(MONDAY);
+  d.setUTCDate(d.getUTCDate() + offset);
+  return d.toISOString();
+};
+const MONDAY_0900 = mondayAt(9);
+const SUNDAY = dayFromMonday(-1);
+const TUESDAY = dayFromMonday(1);
+/** A fixed "now" for the unit-level slot calls — two days before the window,
+ *  so it is in the past relative to the fixtures and stable across runs. */
+const BEFORE = Date.parse(dayFromMonday(-2));
 
 const makeResource = async (over: Record<string, unknown> = {}) => {
   const body = {
@@ -215,7 +253,7 @@ describe("the public grid", () => {
     const created = await makeResource();
     const out = await ok(
       "GET",
-      `${PUBLIC}/${created.token}/slots?from=${SUNDAY}&to=2026-08-04T00:00:00.000Z`,
+      `${PUBLIC}/${created.token}/slots?from=${SUNDAY}&to=${TUESDAY}`,
     );
     expect(out.data.slots).toHaveLength(6); // 09:00–12:00 in half hours
     expect(out.data.slots[0].start).toBe(MONDAY_0900);
@@ -229,7 +267,7 @@ describe("the public grid", () => {
     await ok("POST", `${PUBLIC}/${created.token}`, { start: MONDAY_0900, email: "a@example.com" });
     const out = await ok(
       "GET",
-      `${PUBLIC}/${created.token}/slots?from=${SUNDAY}&to=2026-08-04T00:00:00.000Z`,
+      `${PUBLIC}/${created.token}/slots?from=${SUNDAY}&to=${TUESDAY}`,
     );
     expect(out.data.slots.map((s: any) => s.start)).not.toContain(MONDAY_0900);
     expect(out.data.slots).toHaveLength(5);
@@ -261,13 +299,13 @@ describe("taking a slot", () => {
     const created = await makeResource();
     const offGrid = await h.fetch(
       `${PUBLIC}/${created.token}`,
-      json("POST", { start: "2026-08-03T09:07:00.000Z", email: "a@example.com" }),
+      json("POST", { start: mondayAt(9, 7), email: "a@example.com" }),
     );
     expect(offGrid.status).toBe(422);
 
     const closed = await h.fetch(
       `${PUBLIC}/${created.token}`,
-      json("POST", { start: "2026-08-03T15:00:00.000Z", email: "a@example.com" }),
+      json("POST", { start: mondayAt(15), email: "a@example.com" }),
     );
     expect(closed.status).toBe(422);
   });
@@ -277,8 +315,8 @@ describe("taking a slot", () => {
     await makeResource();
     const out = await ok("POST", `${BASE}/bookings`, {
       resource: "clinic",
-      start: "2026-08-03T15:07:00.000Z",
-      end: "2026-08-03T15:37:00.000Z",
+      start: mondayAt(15, 7),
+      end: mondayAt(15, 37),
       name: "Walk-in",
     });
     expect(out.data.booking.status).toBe("confirmed");
@@ -326,7 +364,7 @@ describe("the overlap guard", () => {
     const { ctx, resource } = await resourceRow("clinic");
     const tid = tenantId();
     const start = Date.parse(MONDAY_0900);
-    const now = Date.parse("2026-08-01T00:00:00.000Z");
+    const now = BEFORE;
 
     // Straight at the service, both in flight at once — the HTTP layer would
     // serialise them and prove nothing.
@@ -351,7 +389,7 @@ describe("the overlap guard", () => {
     const { ctx, resource } = await resourceRow("class");
     const tid = tenantId();
     const start = Date.parse(MONDAY_0900);
-    const now = Date.parse("2026-08-01T00:00:00.000Z");
+    const now = BEFORE;
 
     const results = await Promise.allSettled(
       ["a", "b", "c", "d"].map((who) =>
@@ -380,12 +418,12 @@ describe("the overlap guard", () => {
     // 09:30 is on the grid but inside the buffers around 09:00–09:30.
     const adjacent = await h.fetch(
       `${PUBLIC}/${created.token}`,
-      json("POST", { start: "2026-08-03T09:30:00.000Z", email: "b@example.com" }),
+      json("POST", { start: mondayAt(9, 30), email: "b@example.com" }),
     );
     expect(adjacent.status).toBe(409);
 
     const out = await ok("GET", `${PUBLIC}/${created.token}/slots?from=${SUNDAY}`);
-    expect(out.data.slots.map((s: any) => s.start)).not.toContain("2026-08-03T09:30:00.000Z");
+    expect(out.data.slots.map((s: any) => s.start)).not.toContain(mondayAt(9, 30));
   });
 });
 
@@ -394,7 +432,7 @@ describe("holds", () => {
     await makeResource({ key: "held", holdMinutes: 10 });
     const { ctx, resource } = await resourceRow("held");
     const start = Date.parse(MONDAY_0900);
-    const now = Date.parse("2026-08-01T00:00:00.000Z");
+    const now = BEFORE;
 
     const held = await createBooking(
       ctx,
@@ -425,7 +463,7 @@ describe("holds", () => {
     const { ctx, resource } = await resourceRow("held");
     const tid = tenantId();
     const start = Date.parse(MONDAY_0900);
-    const now = Date.parse("2026-08-01T00:00:00.000Z");
+    const now = BEFORE;
 
     const held = await createBooking(
       ctx,
@@ -460,7 +498,7 @@ describe("holds", () => {
     await makeResource({ key: "held", holdMinutes: 1 });
     const { ctx, resource } = await resourceRow("held");
     const tid = tenantId();
-    const now = Date.parse("2026-08-01T00:00:00.000Z");
+    const now = BEFORE;
     const held = await createBooking(
       ctx,
       tid,
@@ -556,9 +594,9 @@ describe("the manage link", () => {
   test("rescheduling spends the old link and keeps the trail", async () => {
     const { token } = await book();
     const moved = await ok("POST", `${PUBLIC}/manage/${token}/reschedule`, {
-      start: "2026-08-03T10:00:00.000Z",
+      start: mondayAt(10),
     });
-    expect(moved.data.booking.start).toBe("2026-08-03T10:00:00.000Z");
+    expect(moved.data.booking.start).toBe(mondayAt(10));
 
     // The old link is spent — it now resolves to the cancelled original.
     const old = await ok("GET", `${PUBLIC}/manage/${token}`);
@@ -575,13 +613,13 @@ describe("the manage link", () => {
     const { created, token } = await book();
     // Somebody else takes 10:00 first.
     await ok("POST", `${PUBLIC}/${created.token}`, {
-      start: "2026-08-03T10:00:00.000Z",
+      start: mondayAt(10),
       email: "b@example.com",
     });
 
     const clash = await h.fetch(
       `${PUBLIC}/manage/${token}/reschedule`,
-      json("POST", { start: "2026-08-03T10:00:00.000Z" }),
+      json("POST", { start: mondayAt(10) }),
     );
     expect(clash.status).toBe(409);
 
@@ -697,7 +735,7 @@ describe("what a stranger may not reach", () => {
       start: MONDAY_0900,
       email: "ada@example.com",
       hold: true,
-      end: "2026-08-03T17:00:00.000Z",
+      end: mondayAt(17),
     });
     expect(out.data.booking.status).toBe("confirmed");
     expect(Date.parse(out.data.booking.end) - Date.parse(out.data.booking.start)).toBe(30 * 60_000);

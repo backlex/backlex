@@ -267,6 +267,28 @@ const FieldSchema = z
         timezone: z.string().max(64).optional(),
       })
       .optional(),
+    /**
+     * `geo` field configuration — which text columns a missing point may be
+     * geocoded from, and where the admin's map opens.
+     *
+     * `geocodeFrom` is a list of field NAMES, not values, and `validateFields`
+     * checks each one against the collection's own fields; the geocode call
+     * itself joins those columns' values and hands the string to the configured
+     * provider. The `max(8)` is what stops a caller building a request body out
+     * of a hundred columns on every write.
+     */
+    geo: z
+      .object({
+        geocodeFrom: z
+          .array(z.string().regex(/^[a-z][a-z0-9_]*$/, "snake_case"))
+          .min(1)
+          .max(8)
+          .optional(),
+        defaultCenter: z
+          .object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) })
+          .optional(),
+      })
+      .optional(),
   })
   .refine((f) => (f.type !== "relation" && f.type !== "relation_many") || !!f.to, {
     message: "relation / relation_many field must specify `to` (target collection slug)",

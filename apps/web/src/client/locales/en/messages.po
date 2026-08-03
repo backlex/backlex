@@ -2258,6 +2258,10 @@ msgstr "asking {model}…"
 msgid "Aspect-cropping active. Focal point picks which area is kept."
 msgstr "Aspect-cropping active. Focal point picks which area is kept."
 
+#: src/client/admin/item-form.tsx
+msgid "Assigned on save"
+msgstr "Assigned on save"
+
 #: src/client/admin/flow-builder.tsx
 msgid "At (optional)"
 msgstr "At (optional)"
@@ -2506,6 +2510,10 @@ msgstr "back to the starting number"
 #: src/client/admin/parity/database.tsx
 msgid "Back up now"
 msgstr "Back up now"
+
+#: src/client/admin/item-form.tsx
+msgid "backlex fills this in when you save. It cannot be edited afterwards."
+msgstr "backlex fills this in when you save. It cannot be edited afterwards."
 
 #: src/client/admin/add-field.tsx
 msgid "backlex issues this value on create — set the shape in the <0>Numbering</0> tab. Leave <1>Unique</1> on: it is what turns a numbering mistake into a refused write instead of two documents sharing a number."
@@ -3131,6 +3139,7 @@ msgstr "claude.ai → Settings → Connectors → Add custom connector; Cursor �
 msgid "clear"
 msgstr "clear"
 
+#: src/client/admin/field-geo-input.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
@@ -4501,6 +4510,10 @@ msgstr "Default language"
 msgid "Default locale"
 msgstr "Default locale"
 
+#: src/client/admin/field-geo-editor.tsx
+msgid "Default map centre"
+msgstr "Default map centre"
+
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "Default model"
 msgstr "Default model"
@@ -5732,6 +5745,10 @@ msgstr "enrolled"
 msgid "Enter — edit"
 msgstr "Enter — edit"
 
+#: src/client/admin/field-geo-editor.tsx
+msgid "Enter a coordinate pair, or leave this blank."
+msgstr "Enter a coordinate pair, or leave this blank."
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Enter a name to continue."
@@ -6387,6 +6404,10 @@ msgstr "fill down"
 msgid "Fill in a start to attach one. Reaches every calendar app — nothing to connect."
 msgstr "Fill in a start to attach one. Reaches every calendar app — nothing to connect."
 
+#: src/client/admin/field-geo-input.tsx
+msgid "Fill in the address fields to look this up automatically."
+msgstr "Fill in the address fields to look this up automatically."
+
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Fill the required fields."
@@ -6453,6 +6474,10 @@ msgstr "Filter tools…"
 #: src/client/admin/pages/advisor.tsx
 msgid "Filtered by"
 msgstr "Filtered by"
+
+#: src/client/admin/field-geo-input.tsx
+msgid "Find from address"
+msgstr "Find from address"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/payments.tsx
@@ -7071,6 +7096,10 @@ msgstr "Hide headers ({0})"
 msgid "Hide hidden collections"
 msgstr "Hide hidden collections"
 
+#: src/client/admin/field-geo-input.tsx
+msgid "Hide map"
+msgstr "Hide map"
+
 #: src/client/pages/sign-in.tsx
 msgid "Hide password"
 msgstr "Hide password"
@@ -7646,6 +7675,10 @@ msgstr "is null"
 msgid "ISO or $now"
 msgstr "ISO or $now"
 
+#: src/client/admin/item-form.tsx
+msgid "Issued by backlex when this row was created — it never changes."
+msgstr "Issued by backlex when this row was created — it never changes."
+
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Issuer origin works too — the well-known path is appended."
 msgstr "Issuer origin works too — the well-known path is appended."
@@ -8100,6 +8133,10 @@ msgstr "Latest"
 msgid "Latest stack trace"
 msgstr "Latest stack trace"
 
+#: src/client/admin/field-geo-input.tsx
+msgid "Latitude"
+msgstr "Latitude"
+
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/forms.tsx
 msgid "layout"
@@ -8420,6 +8457,12 @@ msgstr "Localized"
 msgid "Localized values filled across every language"
 msgstr "Localized values filled across every language"
 
+#: src/client/admin/field-geo-input.tsx
+msgid "Locating…"
+msgstr "Locating…"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/storage/widgets.tsx
@@ -8468,6 +8511,22 @@ msgstr "Long-lived bearer tokens (`pak_…`) for CI, scripts, third-party integr
 #: src/client/pages/api-keys.tsx
 msgid "Long-lived keys widen blast radius. Prefer the shortest expiry that works — you can always rotate."
 msgstr "Long-lived keys widen blast radius. Prefer the shortest expiry that works — you can always rotate."
+
+#: src/client/admin/field-geo-input.tsx
+msgid "Longitude"
+msgstr "Longitude"
+
+#: src/client/admin/field-geo-editor.tsx
+msgid "Look the point up from"
+msgstr "Look the point up from"
+
+#: src/client/admin/field-geo-editor.tsx
+msgid "Looked up as:"
+msgstr "Looked up as:"
+
+#: src/client/admin/field-geo-input.tsx
+msgid "Looking up…"
+msgstr "Looking up…"
 
 #: src/client/admin/account-page.tsx
 msgid "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
@@ -8568,6 +8627,14 @@ msgstr "Many (relation_many)"
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Map →"
 msgstr "Map →"
+
+#: src/client/admin/field-geo-editor.tsx
+msgid "Map opens at <0>(optional)</0>"
+msgstr "Map opens at <0>(optional)</0>"
+
+#: src/client/admin/field-geo-input.tsx
+msgid "Map preview"
+msgstr "Map preview"
 
 #: src/client/admin/item-views.tsx
 msgid "March"
@@ -9808,6 +9875,10 @@ msgstr "No log entries match"
 #: src/client/admin/pages/functions.tsx
 msgid "No logs yet — click Run."
 msgstr "No logs yet — click Run."
+
+#: src/client/admin/field-geo-input.tsx
+msgid "No match for that address."
+msgstr "No match for that address."
 
 #: src/client/admin/pages/search-playground.tsx
 msgid "No matches"
@@ -11369,6 +11440,10 @@ msgstr "Pick row"
 #: src/client/admin/add-field.tsx
 msgid "Pick the collection this relation points to."
 msgstr "Pick the collection this relation points to."
+
+#: src/client/admin/field-geo-editor.tsx
+msgid "Pick the columns that spell out the address. When a row is saved without a point, these are joined together and looked up. Tick them in the order they should be read."
+msgstr "Pick the columns that spell out the address. When a row is saved without a point, these are joined together and looked up. Tick them in the order they should be read."
 
 #: src/client/admin/parity/signatures.tsx
 msgid "Pick the document to send."
@@ -14345,6 +14420,10 @@ msgstr "Show hidden ({hiddenCount})"
 msgid "Show hidden collections"
 msgstr "Show hidden collections"
 
+#: src/client/admin/field-geo-input.tsx
+msgid "Show map"
+msgstr "Show map"
+
 #: src/client/pages/sign-in.tsx
 msgid "Show password"
 msgstr "Show password"
@@ -15791,6 +15870,10 @@ msgstr "This booking link is not valid"
 msgid "This booking was cancelled."
 msgstr "This booking was cancelled."
 
+#: src/client/admin/field-geo-input.tsx
+msgid "This browser cannot report a location."
+msgstr "This browser cannot report a location."
+
 #: src/client/admin/extras.tsx
 msgid "this collection"
 msgstr "this collection"
@@ -15802,6 +15885,10 @@ msgstr "This collection has no fields that support bulk editing. Structured (jso
 #: src/client/admin/pages/forms.tsx
 msgid "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
 msgstr "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
+
+#: src/client/admin/field-geo-editor.tsx
+msgid "This collection has no text columns to build an address from."
+msgstr "This collection has no text columns to build an address from."
 
 #: src/client/admin/app.tsx
 msgid "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
@@ -16780,6 +16867,10 @@ msgstr "Use custom rule"
 msgid "Use letters, digits, dots, dashes, or underscores. Must start with a letter or digit."
 msgstr "Use letters, digits, dots, dashes, or underscores. Must start with a letter or digit."
 
+#: src/client/admin/field-geo-input.tsx
+msgid "Use my location"
+msgstr "Use my location"
+
 #: src/client/admin/parity/translations.tsx
 msgid "Used as fallback when the requested locale has no string for a key."
 msgstr "Used as fallback when the requested locale has no string for a key."
@@ -17232,6 +17323,10 @@ msgstr "Where “Send test SMS” delivers. Leave blank to use your account's re
 #: src/client/pages/book.tsx
 msgid "Where the confirmation and the cancel link go."
 msgstr "Where the confirmation and the cancel link go."
+
+#: src/client/admin/field-geo-editor.tsx
+msgid "Where the preview starts for a row that has no point yet."
+msgstr "Where the preview starts for a row that has no point yet."
 
 #: src/client/admin/field-sequence-editor.tsx
 msgid "Which clock decides the year and the restart. Stored with the field, so changing your display time zone later never renumbers anything."

@@ -1,4 +1,4 @@
-import { type FieldDef, type FieldType, isLocalized } from "@backlex/db";
+import { type FieldDef, type FieldType, isLocalized, parseGeoPoint } from "@backlex/db";
 
 export const serialize = (
   value: unknown,
@@ -6,6 +6,22 @@ export const serialize = (
   dialect: "pg" | "sqlite",
 ): unknown => {
   if (value === undefined || value === null) return null;
+  // A point is normalized to canonical `{ lat, lng }` on the way IN, on both
+  // dialects, so the four accepted input shapes (GeoJSON pair, `latitude`/
+  // `longitude`, a pasted "lat,lng" string) all land as one shape. Everything
+  // downstream — the `_near` compiler's `$.lat`, the admin's map pin, the CSV
+  // export — reads that one shape and nothing else. `validateValue` has already
+  // rejected an unparseable value by the time a write reaches here; a read-path
+  // caller (backup restore) that hands us junk keeps it rather than throwing.
+  if (type === "geo") {
+    let point: unknown = value;
+    try {
+      point = parseGeoPoint(value);
+    } catch {
+      return dialect === "sqlite" ? JSON.stringify(value) : value;
+    }
+    return dialect === "sqlite" ? JSON.stringify(point) : point;
+  }
   if (dialect === "sqlite") {
     if (type === "json" || type === "relation_many") {
       // relation_many is an array of foreign ids — store as JSON text on
@@ -65,6 +81,19 @@ export const deserialize = (
   // still round-trips the digest.
   if (type === "hash") return null;
   if (value === null || value === undefined) return value;
+  // Stored as TEXT on SQLite, `jsonb` on PG — same as `json`. Parsed leniently
+  // because an ADOPTED column can hold anything: a row the platform never wrote
+  // reads back as whatever it is rather than taking the whole page down with a
+  // JSON.parse throw. `_near` already excludes such a row from proximity
+  // results (see the `json_valid` guard in the compiler).
+  if (type === "geo") {
+    if (typeof value !== "string") return value;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
   if (dialect === "sqlite") {
     if (type === "json" || type === "relation_many") {
       return typeof value === "string" ? JSON.parse(value) : value;

@@ -48,6 +48,13 @@ export interface ParsedQuery {
    * or no `?q=` was given.
    */
   search: string | null;
+  /**
+   * `_near` origin per `geo` field, harvested from {@link filter}. The list
+   * handler turns a sort on one of these fields into a distance ORDER BY using
+   * the matching origin — see {@link collectNearOrigins} for why the origin has
+   * to come from the filter.
+   */
+  nearOrigins: Map<string, unknown>;
 }
 
 const SYSTEM_COLUMNS = new Set(["id", "created_at", "updated_at"]);
@@ -145,7 +152,77 @@ const validateFilterFields = (
     if (fieldsByName.get(k)?.type === "hash") {
       throw new AppError("VALIDATION", `Cannot filter on hashed field: ${k}`);
     }
+    const cmp = c[k];
+    const isGeo = fieldsByName.get(k)?.type === "geo";
+    if (cmp && typeof cmp === "object" && !Array.isArray(cmp)) {
+      const ops = Object.keys(cmp as Record<string, unknown>);
+      // `_near` is the only operator that reads its column as a coordinate, so
+      // it is the only one a non-geo column can't answer. Compiling it anyway
+      // would extract `$.lat` from, say, a `text` city name and quietly match
+      // nothing — a filter that returns an empty page and no reason why.
+      if (ops.includes("_near") && !isGeo) {
+        throw new AppError(
+          "VALIDATION",
+          `\`_near\` only works on a geo field — "${k}" is ${fieldsByName.get(k)?.type ?? "a system column"}`,
+        );
+      }
+      // The converse: the scalar operators compare a JSON blob as text, which
+      // orders and matches by the digits of its serialization. `_null` /
+      // `_nempty` are genuinely meaningful ("has this row been located?"), so
+      // they stay.
+      if (isGeo) {
+        const bad = ops.filter((op) => !GEO_FILTER_OPS.has(op));
+        if (bad.length > 0) {
+          throw new AppError(
+            "VALIDATION",
+            `Cannot use ${bad.join(", ")} on geo field "${k}" — use \`_near\` (or \`_null\`)`,
+          );
+        }
+      }
+    }
   }
+};
+
+/** The operators a `geo` column can answer. Everything else compares the stored
+ *  JSON as text, which is never what the caller meant. */
+const GEO_FILTER_OPS = new Set(["_near", "_null", "_empty", "_nempty"]);
+
+/**
+ * Origins of every `_near` in a filter tree, keyed by field.
+ *
+ * Sorting by a `geo` field means "nearest first", and nearest to WHAT is not in
+ * the sort clause — it is in the filter the same request already carries. This
+ * walk is what lets `?filter={"coords":{"_near":…}}&sort=coords` mean the
+ * obvious thing, and what lets `sort=coords` alone be rejected with a reason
+ * instead of ordering rows by the text of their JSON.
+ */
+export const collectNearOrigins = (
+  cond: Condition,
+  into: Map<string, unknown> = new Map(),
+): Map<string, unknown> => {
+  const c = cond as Record<string, unknown>;
+  if (Array.isArray(c.$and)) {
+    for (const sub of c.$and) collectNearOrigins(sub as Condition, into);
+    return into;
+  }
+  if (Array.isArray(c.$or)) {
+    for (const sub of c.$or) collectNearOrigins(sub as Condition, into);
+    return into;
+  }
+  if (c.$not !== undefined) {
+    collectNearOrigins(c.$not as Condition, into);
+    return into;
+  }
+  for (const [k, v] of Object.entries(c)) {
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      const near = (v as Record<string, unknown>)._near;
+      // First one wins. Two `_near`s on the same column is a legitimate filter
+      // (an intersection of two radii) but an ambiguous sort key, and picking
+      // the first is at least stable across a re-parse of the same request.
+      if (near !== undefined && !into.has(k)) into.set(k, near);
+    }
+  }
+  return into;
 };
 
 export const parseQuery = (
@@ -233,6 +310,10 @@ export const parseQuery = (
     }
   }
 
+  // Harvested before the sort is parsed — a sort on a geo field is only legal
+  // when the filter named an origin for it.
+  const nearOrigins = filter ? collectNearOrigins(filter) : new Map<string, unknown>();
+
   const fallbackSort = defaultSort?.trim() || "-created_at";
   const sortRaw = params.get("sort")?.trim() || fallbackSort;
   const sortFieldsByName = new Map(fields.map((f) => [f.name, f] as const));
@@ -298,6 +379,17 @@ export const parseQuery = (
       // a probing surface — reject it like filtering.
       if (sortFieldsByName.get(field)?.type === "hash") {
         throw new AppError("VALIDATION", `Cannot sort on hashed field: ${field}`);
+      }
+      // Sorting by a geo field means "by distance", and a distance needs the
+      // point to measure from. The request supplies exactly one: the `_near`
+      // origin in its own filter. Without it there is nothing to sort by —
+      // ordering rows by the text of their stored JSON would run, return
+      // something, and mean nothing, so say why instead.
+      if (sortFieldsByName.get(field)?.type === "geo" && !nearOrigins.has(field)) {
+        throw new AppError(
+          "VALIDATION",
+          `Sorting by geo field "${field}" orders by distance — add a \`_near\` filter on "${field}" to say distance from where`,
+        );
       }
       return { field, dir };
     });
@@ -432,7 +524,19 @@ export const parseQuery = (
     totalCount: metaParts.has("total_count") || metaParts.has("*"),
   };
 
-  return { filter, sort, fields: fieldsList, expand, expandSubs, limit, offset, cursor, meta, search };
+  return {
+    filter,
+    sort,
+    fields: fieldsList,
+    expand,
+    expandSubs,
+    limit,
+    offset,
+    cursor,
+    meta,
+    search,
+    nearOrigins,
+  };
 };
 
 /** Which columns of the *local* table one parsed list query touches — the

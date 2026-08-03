@@ -2258,6 +2258,10 @@ msgstr "{model} düşünüyor…"
 msgid "Aspect-cropping active. Focal point picks which area is kept."
 msgstr "En-boy kırpma etkin. Odak noktası hangi alanın korunacağını belirler."
 
+#: src/client/admin/item-form.tsx
+msgid "Assigned on save"
+msgstr "Kaydederken atanır"
+
 #: src/client/admin/flow-builder.tsx
 msgid "At (optional)"
 msgstr "Saat (isteğe bağlı)"
@@ -2506,6 +2510,10 @@ msgstr "başlangıç numarasına döner"
 #: src/client/admin/parity/database.tsx
 msgid "Back up now"
 msgstr "Şimdi yedekle"
+
+#: src/client/admin/item-form.tsx
+msgid "backlex fills this in when you save. It cannot be edited afterwards."
+msgstr "backlex bunu siz kaydederken doldurur. Sonradan düzenlenemez."
 
 #: src/client/admin/add-field.tsx
 msgid "backlex issues this value on create — set the shape in the <0>Numbering</0> tab. Leave <1>Unique</1> on: it is what turns a numbering mistake into a refused write instead of two documents sharing a number."
@@ -3131,6 +3139,7 @@ msgstr "claude.ai → Ayarlar → Bağlayıcılar → Özel bağlayıcı ekle; C
 msgid "clear"
 msgstr "temizle"
 
+#: src/client/admin/field-geo-input.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
@@ -4501,6 +4510,10 @@ msgstr "Varsayılan dil"
 msgid "Default locale"
 msgstr "Varsayılan yerel ayar"
 
+#: src/client/admin/field-geo-editor.tsx
+msgid "Default map centre"
+msgstr "Varsayılan harita merkezi"
+
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "Default model"
 msgstr "Varsayılan model"
@@ -5732,6 +5745,10 @@ msgstr "kayıtlı"
 msgid "Enter — edit"
 msgstr "Enter — düzenle"
 
+#: src/client/admin/field-geo-editor.tsx
+msgid "Enter a coordinate pair, or leave this blank."
+msgstr "Bir koordinat çifti girin veya boş bırakın."
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Enter a name to continue."
@@ -6387,6 +6404,10 @@ msgstr "aşağı doldur"
 msgid "Fill in a start to attach one. Reaches every calendar app — nothing to connect."
 msgstr "Eklemek için bir başlangıç girin. Bağlanacak bir şey olmadan her takvim uygulamasına ulaşır."
 
+#: src/client/admin/field-geo-input.tsx
+msgid "Fill in the address fields to look this up automatically."
+msgstr "Otomatik aramak için adres alanlarını doldurun."
+
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Fill the required fields."
@@ -6453,6 +6474,10 @@ msgstr "Araçları filtrele…"
 #: src/client/admin/pages/advisor.tsx
 msgid "Filtered by"
 msgstr "Filtrelenen"
+
+#: src/client/admin/field-geo-input.tsx
+msgid "Find from address"
+msgstr "Adresten bul"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/payments.tsx
@@ -7071,6 +7096,10 @@ msgstr "Başlıkları gizle ({0})"
 msgid "Hide hidden collections"
 msgstr "Gizli koleksiyonları gizle"
 
+#: src/client/admin/field-geo-input.tsx
+msgid "Hide map"
+msgstr "Haritayı gizle"
+
 #: src/client/pages/sign-in.tsx
 msgid "Hide password"
 msgstr "Parolayı gizle"
@@ -7646,6 +7675,10 @@ msgstr "null"
 msgid "ISO or $now"
 msgstr "ISO veya $now"
 
+#: src/client/admin/item-form.tsx
+msgid "Issued by backlex when this row was created — it never changes."
+msgstr "Bu satır oluşturulurken backlex tarafından verildi — hiç değişmez."
+
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Issuer origin works too — the well-known path is appended."
 msgstr "Yalnızca issuer adresi de olur — well-known yolu otomatik eklenir."
@@ -8100,6 +8133,10 @@ msgstr "En geç"
 msgid "Latest stack trace"
 msgstr "En son yığın izi"
 
+#: src/client/admin/field-geo-input.tsx
+msgid "Latitude"
+msgstr "Enlem"
+
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/forms.tsx
 msgid "layout"
@@ -8420,6 +8457,12 @@ msgstr "Yerelleştirilmiş"
 msgid "Localized values filled across every language"
 msgstr "Tüm dillerde doldurulan yerelleştirilmiş değerler"
 
+#: src/client/admin/field-geo-input.tsx
+msgid "Locating…"
+msgstr "Konum bulunuyor…"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/storage/widgets.tsx
@@ -8468,6 +8511,22 @@ msgstr "CI, betikler ve üçüncü taraf entegrasyonlar için uzun ömürlü bea
 #: src/client/pages/api-keys.tsx
 msgid "Long-lived keys widen blast radius. Prefer the shortest expiry that works — you can always rotate."
 msgstr "Uzun ömürlü anahtarlar hasar alanını genişletir. İşe yarayan en kısa son kullanma süresini tercih edin — her zaman döndürebilirsiniz."
+
+#: src/client/admin/field-geo-input.tsx
+msgid "Longitude"
+msgstr "Boylam"
+
+#: src/client/admin/field-geo-editor.tsx
+msgid "Look the point up from"
+msgstr "Konumu şuradan ara"
+
+#: src/client/admin/field-geo-editor.tsx
+msgid "Looked up as:"
+msgstr "Şu şekilde aranır:"
+
+#: src/client/admin/field-geo-input.tsx
+msgid "Looking up…"
+msgstr "Aranıyor…"
 
 #: src/client/admin/account-page.tsx
 msgid "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
@@ -8568,6 +8627,14 @@ msgstr "Çoklu (relation_many)"
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Map →"
 msgstr "Eşle →"
+
+#: src/client/admin/field-geo-editor.tsx
+msgid "Map opens at <0>(optional)</0>"
+msgstr "Harita şurada açılır <0>(isteğe bağlı)</0>"
+
+#: src/client/admin/field-geo-input.tsx
+msgid "Map preview"
+msgstr "Harita önizlemesi"
 
 #: src/client/admin/item-views.tsx
 msgid "March"
@@ -9808,6 +9875,10 @@ msgstr "Eşleşen günlük girdisi yok"
 #: src/client/admin/pages/functions.tsx
 msgid "No logs yet — click Run."
 msgstr "Henüz günlük yok — Çalıştır'a tıklayın."
+
+#: src/client/admin/field-geo-input.tsx
+msgid "No match for that address."
+msgstr "Bu adres için eşleşme bulunamadı."
 
 #: src/client/admin/pages/search-playground.tsx
 msgid "No matches"
@@ -11369,6 +11440,10 @@ msgstr "Satır seç"
 #: src/client/admin/add-field.tsx
 msgid "Pick the collection this relation points to."
 msgstr "Bu ilişkinin işaret ettiği koleksiyonu seçin."
+
+#: src/client/admin/field-geo-editor.tsx
+msgid "Pick the columns that spell out the address. When a row is saved without a point, these are joined together and looked up. Tick them in the order they should be read."
+msgstr "Adresi oluşturan sütunları seçin. Bir satır konumsuz kaydedildiğinde bunlar birleştirilip aranır. Okunmaları gereken sırayla işaretleyin."
 
 #: src/client/admin/parity/signatures.tsx
 msgid "Pick the document to send."
@@ -14345,6 +14420,10 @@ msgstr "Gizlileri göster ({hiddenCount})"
 msgid "Show hidden collections"
 msgstr "Gizli koleksiyonları göster"
 
+#: src/client/admin/field-geo-input.tsx
+msgid "Show map"
+msgstr "Haritayı göster"
+
 #: src/client/pages/sign-in.tsx
 msgid "Show password"
 msgstr "Parolayı göster"
@@ -15791,6 +15870,10 @@ msgstr "Bu rezervasyon bağlantısı geçerli değil"
 msgid "This booking was cancelled."
 msgstr "Bu rezervasyon iptal edildi."
 
+#: src/client/admin/field-geo-input.tsx
+msgid "This browser cannot report a location."
+msgstr "Bu tarayıcı konum bildiremiyor."
+
 #: src/client/admin/extras.tsx
 msgid "this collection"
 msgstr "bu koleksiyon"
@@ -15802,6 +15885,10 @@ msgstr "Bu koleksiyonda toplu düzenlemeyi destekleyen alan yok. Yapısal (json 
 #: src/client/admin/pages/forms.tsx
 msgid "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
 msgstr "Bu koleksiyonda forma uygun alan yok (yalnızca skaler, gizli olmayan alanlar gösterilebilir)."
+
+#: src/client/admin/field-geo-editor.tsx
+msgid "This collection has no text columns to build an address from."
+msgstr "Bu koleksiyonda adres oluşturulabilecek metin sütunu yok."
 
 #: src/client/admin/app.tsx
 msgid "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
@@ -16780,6 +16867,10 @@ msgstr "Özel kural kullan"
 msgid "Use letters, digits, dots, dashes, or underscores. Must start with a letter or digit."
 msgstr "Harf, rakam, nokta, tire veya alt çizgi kullanın. Harf veya rakamla başlamalıdır."
 
+#: src/client/admin/field-geo-input.tsx
+msgid "Use my location"
+msgstr "Konumumu kullan"
+
 #: src/client/admin/parity/translations.tsx
 msgid "Used as fallback when the requested locale has no string for a key."
 msgstr "İstenen yerel ayarın bir anahtar için dizesi olmadığında yedek olarak kullanılır."
@@ -17232,6 +17323,10 @@ msgstr "“Test SMS gönder” işleminin nereye iletileceği. Hesabınızın ka
 #: src/client/pages/book.tsx
 msgid "Where the confirmation and the cancel link go."
 msgstr "Onay ve iptal bağlantısının gideceği yer."
+
+#: src/client/admin/field-geo-editor.tsx
+msgid "Where the preview starts for a row that has no point yet."
+msgstr "Henüz konumu olmayan bir satırda önizlemenin başlayacağı yer."
 
 #: src/client/admin/field-sequence-editor.tsx
 msgid "Which clock decides the year and the restart. Stored with the field, so changing your display time zone later never renumbers anything."

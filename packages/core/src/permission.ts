@@ -22,6 +22,19 @@ export interface ComparisonObj {
   /** `_empty: true` ⇒ NULL or empty string; `_nempty: true` ⇒ neither. */
   _empty?: boolean;
   _nempty?: boolean;
+  /**
+   * Proximity, on a `geo` field: `{ lat, lng, radius }`, where `radius` is a
+   * number of kilometres or a string with a unit (`"5km"`, `"800m"`, `"3mi"`,
+   * `"2nmi"`). Matches rows whose point lies within that radius of the origin.
+   *
+   * The one operator whose operand is an object rather than a scalar — a
+   * proximity test needs three numbers and there is no scalar that carries
+   * them. Rows with no point never match.
+   *
+   * Usable in permission conditions as well as list filters, which is what
+   * makes "this role reads only the sites in its region" expressible.
+   */
+  _near?: unknown;
 }
 
 /**

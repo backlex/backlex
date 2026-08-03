@@ -16,6 +16,7 @@ import { Textarea } from "@backlex/ui/components/textarea";
 import { Select } from "./select";
 import { DatePicker } from "@/components/date-picker";
 import { RelationPicker, AppUserPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
+import { GeoInput } from "./field-geo-input";
 import { useEnabledExtensions, useSettings } from "./queries";
 import { ExtensionFrame } from "./extension-frame";
 import { getInterface } from "./interfaces";
@@ -425,6 +426,11 @@ export function useItemForm({
         payload[f.name] = raw || null;
       } else if (f.type === "boolean") {
         payload[f.name] = !!raw;
+      } else if (f.type === "geo") {
+        // Already `{ lat, lng }` or null — GeoInput only commits a complete
+        // pair, so there is no half-typed shape to guard against here. Sent
+        // even when null, because clearing a location is a real edit.
+        payload[f.name] = raw ?? null;
       } else if (f.type === "hash") {
         // Only send a hash field when the user typed something — a blank value
         // must not be sent (it would clobber the stored digest to null on the
@@ -1377,6 +1383,27 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
               style={{ flex: 1 }}
             />
           </div>
+          {errBlock}
+        </div>
+      );
+    }
+
+    if (f.type === "geo") {
+      const geo = (f as { geo?: { geocodeFrom?: string[]; defaultCenter?: { lat: number; lng: number } } }).geo;
+      return (
+        <div key={f.name} className="flex min-w-0 flex-col gap-1.5">
+          {label}
+          <GeoInput
+            value={val}
+            onChange={setField}
+            geocodeFrom={geo?.geocodeFrom}
+            // The lookup composes the address from what is on the form RIGHT
+            // NOW, not from the saved row — so an operator who just typed a new
+            // street gets that street looked up, not the one still in the DB.
+            siblings={draft}
+            defaultCenter={geo?.defaultCenter}
+            invalid={!!err}
+          />
           {errBlock}
         </div>
       );

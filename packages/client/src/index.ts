@@ -336,6 +336,24 @@ export interface CollectionClient<T extends Record<string, unknown>> {
   /** The value each sequence column would render next, without consuming it.
    *  A preview: another create can take that number first, so never write it. */
   nextSequences(): Promise<Record<string, string>>;
+  /** Geocode the rows that have an address (`geo.geocodeFrom`) and no point.
+   *  Bounded per call — loop while `remaining > 0`. Only ever FILLS a missing
+   *  point, never revises one, so re-running is safe and a hand-corrected pin
+   *  survives it. Requires `update`. */
+  backfillGeo(field: string, limit?: number): Promise<GeoBackfillReport>;
+}
+
+/** What {@link CollectionClient.backfillGeo} did in one bounded pass. */
+export interface GeoBackfillReport {
+  /** Rows given a point by this call. */
+  located: number;
+  /** Rows the provider could not place. Reported, not retried — an address it
+   *  does not know will not become known by asking again. */
+  unresolved: number;
+  /** Rows whose address columns were all blank, so nothing was asked. */
+  skipped: number;
+  /** Rows still without a point. Loop until this is 0. */
+  remaining: number;
 }
 
 /** What {@link CollectionClient.syncSequences} did to one sequence column. */
@@ -3308,6 +3326,19 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         request<{ data: Record<string, string> }>(
           "GET",
           `/api/items/${slug}/sequences/next`,
+        ).then((r) => r.data),
+      /**
+       * Geocode the rows of this collection that have an address and no point.
+       *
+       * Bounded per call — loop while `remaining > 0`. Never revises a point
+       * that is already set, so it is safe to re-run and safe to run after
+       * someone has hand-corrected one.
+       */
+      backfillGeo: (field: string, limit?: number): Promise<GeoBackfillReport> =>
+        request<{ data: GeoBackfillReport }>(
+          "POST",
+          `/api/geo/backfill/${slug}`,
+          limit === undefined ? { field } : { field, limit },
         ).then((r) => r.data),
     };
   };

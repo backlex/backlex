@@ -20,6 +20,7 @@ export type StorageType =
   | "uuid"
   | "relation"
   | "relation_many"
+  | "geo"
   | "hash"
   // Presentational-only — render in the form but own no column / value.
   | "divider"
@@ -57,6 +58,10 @@ export interface FieldInterfaceDef {
    *  The column is always `text` — the value is a rendered string, not a bare
    *  counter — so unlike `hasRollup` this never moves the storage type. */
   hasSequence?: boolean;
+  /** Show the location editor in step 2 — which address columns a missing point
+   *  is geocoded from, and where the map opens. Every part of it is optional:
+   *  a bare `geo` field is a coordinate pair someone types or picks. */
+  hasGeo?: boolean;
   /** Extra search keywords beyond label + id. */
   keywords?: string[];
 }
@@ -107,7 +112,13 @@ export const FIELD_INTERFACES: FieldInterfaceDef[] = [
 
   // ── Presentation & Other ─────────────────────────────────────────
   { id: "json", label: "JSON", sub: "Raw JSON object or array", group: "Presentation & Other", icon: "Braces", type: "json", keywords: ["object", "array", "raw"] },
-  { id: "map", label: "Map", sub: "Geo point / GeoJSON", group: "Presentation & Other", icon: "Globe", type: "json", keywords: ["location", "geo", "coordinates"] },
+  // `type` moved from `json` to `geo` when geo fields shipped. Collections
+  // created before then still hold `type: "json"` in their stored metadata and
+  // keep behaving exactly as they did — this catalog only decides what the Add
+  // Field dialog creates NEXT. Converting an old one is a deliberate act (drop
+  // and re-add), not something a catalog edit should do behind an operator's
+  // back to a column that already has data in it.
+  { id: "map", label: "Location", sub: "A point on the earth — searchable by distance", group: "Presentation & Other", icon: "Globe", type: "geo", hasGeo: true, keywords: ["location", "geo", "coordinates", "map", "address", "place", "latitude", "longitude", "near", "distance", "nearby", "gps", "pin"] },
   { id: "url", label: "URL", sub: "Link to a web address", group: "Presentation & Other", icon: "ExternalLink", type: "text", keywords: ["link", "href", "website"] },
   { id: "email", label: "Email", sub: "Email address", group: "Presentation & Other", icon: "Mail", type: "text", keywords: ["mail", "contact"] },
   { id: "uuid", label: "UUID", sub: "Universally-unique identifier", group: "Presentation & Other", icon: "Shield", type: "uuid", keywords: ["id", "guid"] },
@@ -152,7 +163,7 @@ export interface ExtensionInterfaceSource {
 
 const STORAGE_TYPE_SET: ReadonlySet<string> = new Set([
   "text", "longtext", "integer", "number", "boolean", "json", "timestamp",
-  "uuid", "relation", "relation_many", "hash",
+  "uuid", "relation", "relation_many", "geo", "hash",
 ]);
 
 /**

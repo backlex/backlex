@@ -309,6 +309,12 @@ export const itemsCsvRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         meta: requestMeta(c.req.raw),
         durationMs: () => elapsedMs(c),
         locale: null,
+        // An import is the one write path here with no bound on how many rows
+        // it processes, and a geocoder is metered and rate-limited — one call
+        // per row would make a large file a request that cannot finish. The
+        // rows land without points and `POST /api/geo/backfill/{slug}` fills
+        // them in on a budget the caller sets. See WriteEnv.skipGeocode.
+        skipGeocode: true,
         // One allocation statement per sequence field for the whole file
         // instead of one per row. Over-sized whenever some rows turn out to be
         // updates or to fail validation; those numbers are simply spent, which

@@ -63,6 +63,13 @@ import {
   sequenceToDraft,
   type SequenceDraft,
 } from "./field-sequence-editor";
+import {
+  cleanGeo,
+  emptyGeoDraft,
+  FieldGeoEditor,
+  geoDraftFrom,
+  type GeoDraft,
+} from "./field-geo-editor";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -117,6 +124,8 @@ interface FieldDraft {
   rollup?: Record<string, unknown>;
   /** Server-issued document number — see the sequence editor. */
   sequence?: Record<string, unknown>;
+  /** Location configuration — see the geo editor. */
+  geo?: Record<string, unknown>;
   /** Display formatting hint. */
   format?: Record<string, unknown>;
   /** Per-locale label overrides. */
@@ -156,6 +165,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [rollupDraft, setRollupDraft] = useState<RollupDraft>(emptyRollupDraft());
   const [seqDraft, setSeqDraft] = useState<SequenceDraft>(() => emptySequenceDraft("UTC"));
+  const [geoDraft, setGeoDraft] = useState<GeoDraft>(emptyGeoDraft);
   const [tab, setTab] = useState("schema");
 
   // Re-seed every time the dialog opens with a new target field.
@@ -192,6 +202,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     setTranslations(((field as { translations?: Record<string, string> }).translations) ?? {});
     setRollupDraft(rollupToDraft((field as { rollup?: unknown }).rollup));
     setSeqDraft(sequenceToDraft((field as { sequence?: unknown }).sequence));
+    setGeoDraft(geoDraftFrom((field as { geo?: unknown }).geo));
   }, [open, field]);
 
   const addCond = () =>
@@ -242,6 +253,11 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   // column. Add a new sequence field instead.
   const isSequence = !!draft?.sequence;
   const cleanedSequence = isSequence ? cleanSequence(seqDraft) : undefined;
+  // Unlike rollup and sequence, this one keys off the column TYPE rather than
+  // off the spec already being there: every part of a geo spec is optional, so
+  // a location field that has never been configured still has a Location tab
+  // to configure — which is the only way to add `geocodeFrom` to one.
+  const isGeo = draft?.type === "geo";
 
   // Server-side auto-fill options valid for this column's storage type.
   const autoFillOpts = (type: string, withUuid: boolean) => {
@@ -320,6 +336,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
         ? { rollup: cleanedRollup as never, type: rollupStorageType(rollupDraft.fn) }
         : {}),
       ...(isSequence ? { sequence: cleanedSequence as never } : {}),
+      ...(isGeo ? { geo: cleanGeo(geoDraft) as never } : {}),
     };
     onSave(cleaned);
   };
@@ -329,6 +346,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     ...(isRelation ? [{ key: "relationship", label: t`Relationship`, icon: "Share" } as FieldTabItem] : []),
     ...(isRollup ? [{ key: "rollup", label: t`Rollup`, icon: "BarChart", invalid: !cleanedRollup } as FieldTabItem] : []),
     ...(isSequence ? [{ key: "sequence", label: t`Numbering`, icon: "Hash", invalid: !cleanedSequence } as FieldTabItem] : []),
+    ...(isGeo ? [{ key: "geo", label: t`Location`, icon: "Globe" } as FieldTabItem] : []),
     { key: "field", label: t`Field`, icon: "Pencil" },
     { key: "interface", label: t`Interface`, icon: "Eye" },
     { key: "validation", label: t`Validation`, icon: "Check" },
@@ -495,6 +513,19 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
 
           {activeTab === "sequence" && isSequence && (
             <FieldSequenceEditor value={seqDraft} onChange={setSeqDraft} />
+          )}
+
+          {activeTab === "geo" && isGeo && (
+            <FieldGeoEditor
+              value={geoDraft}
+              onChange={setGeoDraft}
+              // Typed defs, not the bare `availableFields` name list — only
+              // text columns can spell an address, and the names alone cannot
+              // say which ones those are.
+              candidates={(
+                collections.find((c) => c.slug === ownerSlug)?.fieldDefs ?? []
+              ).filter((f) => f.name !== draft?.name)}
+            />
           )}
 
           {activeTab === "field" && (

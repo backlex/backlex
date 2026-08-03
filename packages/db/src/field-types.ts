@@ -1,4 +1,5 @@
 import type { Condition, DurationParts, RelativeNow } from "@backlex/core";
+import { type GeoSpec, parseGeoPoint, validateGeoSpec } from "./geo";
 import { type SequenceSpec, validateSequenceSpec } from "./sequence";
 
 type Dialect = "pg" | "sqlite";
@@ -17,6 +18,13 @@ export type FieldType =
   | "file"
   /** Many-to-many — JSON array of foreign ids. Stored as TEXT/JSONB. */
   | "relation_many"
+  /**
+   * A point on the earth — `{ lat, lng }`, stored as TEXT/JSONB like `json`.
+   * The `_near` filter operator asks which rows are within a radius of an
+   * origin, and sorting by the field orders by distance from that same origin.
+   * See {@link GeoSpec} and `packages/db/src/geo.ts`.
+   */
+  | "geo"
   /**
    * One-way hashed secret (password / PIN / API secret). The API hashes the
    * incoming plaintext (scrypt) on write and stores only the digest; reads
@@ -59,6 +67,9 @@ export const FIELD_TYPES = [
   // Single foreign storage key (relation to system_files), stored as TEXT.
   "file",
   "relation_many",
+  // A `{ lat, lng }` point, stored like `json`. Filterable with `_near`,
+  // sortable by distance from that same origin.
+  "geo",
   // One-way hashed secret — the write path scrypt-hashes the plaintext and
   // stores only the digest; reads return null; verification goes through
   // `POST /:slug/:id/verify`.
@@ -474,6 +485,14 @@ export interface FieldDef {
    */
   sequence?: SequenceSpec;
   /**
+   * Configuration for a `geo` field — which text columns a missing point can be
+   * geocoded from, and where the admin's map opens. See {@link GeoSpec}.
+   *
+   * Optional even on a `geo` field: a bare one is a pair of coordinates the
+   * operator supplies, and that is the common case.
+   */
+  geo?: GeoSpec;
+  /**
    * When true (and the collection has `vectorize: true`), this field's
    * value is concatenated into the embed text on item write. Only
    * meaningful for `text` / `longtext` types — ignored otherwise.
@@ -631,6 +650,7 @@ const PG_TYPES: Record<FieldType, string> = {
   relation: "text",
   file: "text",
   relation_many: "jsonb",
+  geo: "jsonb",
   hash: "text",
   // Presentational — never reach the DDL (the applier filters them out); these
   // placeholders only satisfy the exhaustive Record<FieldType> mapping.
@@ -650,6 +670,7 @@ const SQLITE_TYPES: Record<FieldType, string> = {
   relation: "TEXT",
   file: "TEXT",
   relation_many: "TEXT",
+  geo: "TEXT",
   hash: "TEXT",
   // Presentational — see PG_TYPES note; never emitted as DDL.
   divider: "TEXT",
@@ -864,6 +885,7 @@ export const validateFields = (fields: FieldDef[]): void => {
         ["computed", !!f.computed],
         ["rollup", !!f.rollup],
         ["sequence", !!f.sequence],
+        ["geo", !!f.geo],
         ["to", !!f.to],
         ["onCreate", !!f.onCreate],
         ["onUpdate", !!f.onUpdate],
@@ -995,6 +1017,49 @@ export const validateFields = (fields: FieldDef[]): void => {
       // `searchable` is allowed too — finding an order by its number is the
       // single most common reason to search a collection at all.
       validateSequenceSpec(f.name, f);
+    }
+    if (f.geo && f.type !== "geo") {
+      throw new Error(`Field "${f.name}": "geo" configuration requires a geo field`);
+    }
+    if (f.type === "geo") {
+      // A point is a two-number object, so the flags that assume a scalar
+      // column are meaningless on it:
+      //  - unique/indexed: a plain B-tree over a JSON blob orders by its text,
+      //    which answers no question anyone asks of a coordinate. `_near` is a
+      //    scan by design (docs/geo.md says so); an index that helps would have
+      //    to be an expression index, which is not portable to SQLite.
+      //  - searchable/vectorize: folding "41.0082,28.9784" into a keyword or
+      //    embedding index matches on digits, which is noise.
+      //  - default: a literal DDL default would put every row at one place.
+      //  - computed/rollup/sequence: all three write scalars.
+      //  - localized: a clinic is not somewhere else in French.
+      for (const [flag, on] of [
+        ["unique", !!f.unique],
+        ["indexed", !!f.indexed],
+        ["searchable", !!f.searchable],
+        ["vectorize", !!f.vectorize],
+        ["localized", !!f.localized],
+        ["default", f.default !== undefined],
+        ["computed", !!f.computed],
+        ["rollup", !!f.rollup],
+        ["sequence", !!f.sequence],
+      ] as const) {
+        if (on) {
+          throw new Error(`Field "${f.name}": "${flag}" is not allowed on a geo field`);
+        }
+      }
+      if (f.geo) {
+        // `geocodeFrom` is checked against the collection's OTHER field names,
+        // so a typo fails at schema-save time rather than presenting as a
+        // geocode that silently never fires.
+        validateGeoSpec(
+          f.geo,
+          fields.filter((o) => o.name !== f.name).map((o) => o.name),
+        );
+        if (f.geo.geocodeFrom?.includes(f.name)) {
+          throw new Error(`Field "${f.name}": "geocodeFrom" cannot include the geo field itself`);
+        }
+      }
     }
     // Auto-fill tokens (onCreate/onUpdate) must suit the column's storage type,
     // and can't sit on a generated column (a computed column takes no writes).
@@ -1211,6 +1276,19 @@ export const validateValue = (
   const fail = (msg: string): never => {
     throw new Error(v?.message ?? msg);
   };
+
+  // Shape, not policy — a `geo` value that isn't a coordinate pair is rejected
+  // whether or not the field carries a `validation` block, because the column
+  // it lands in is read back by the `_near` compiler as one. A latitude of 91
+  // that reaches storage makes every subsequent distance query wrong, and
+  // nothing downstream would flag it.
+  if (field.type === "geo") {
+    try {
+      parseGeoPoint(value);
+    } catch (e) {
+      fail(`${field.name}: ${(e as Error).message}`);
+    }
+  }
 
   // Dropdown choice membership is enforced for any field with the interface
   // set, even when no `validation` block is configured.

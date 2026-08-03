@@ -19,6 +19,8 @@ import {
   validateBody,
   validateRelations,
 } from "./validate";
+import { normalizeGeoFields } from "./geo-fields";
+import { applyAutoGeocode, patchTouchesSources } from "./geocode";
 import { hashIncomingFields, scrubHashFields, scrubPrivateFields } from "./hash-fields";
 import { assertRowsWithinLimit } from "../usage";
 import { enforceOnDeleteTriggers } from "./on-delete";
@@ -98,6 +100,23 @@ export interface WriteEnv {
    * blocking HTTP call per row is both pointless and ruinous.
    */
   skipSyncHooks?: boolean;
+  /**
+   * Skip the address→point geocode a `geo` field with `geocodeFrom` would
+   * otherwise trigger.
+   *
+   * Set by the CSV import, which is the one path through here that writes an
+   * unbounded number of rows in one request. Geocoders are metered and slow —
+   * the public Nominatim asks for no more than one request a second — so a
+   * thousand-row file would become a twenty-minute request that times out
+   * partway, having spent the quota and located an arbitrary prefix of the
+   * file. `POST /api/geo/backfill/{slug}` fills those rows in afterwards, in
+   * batches the caller sizes and can watch.
+   *
+   * Deliberately NOT tied to `skipSyncHooks`: that flag means "this write is
+   * machine-driven", which is a different question from "this write is one of
+   * very many". A `batch` of twenty rows an operator submitted should geocode.
+   */
+  skipGeocode?: boolean;
   /** Physical-write DB handle. Defaults to ctx.db; an atomic batch passes its
    *  transaction handle so the writes commit/roll back together. */
   db?: unknown;
@@ -206,6 +225,15 @@ export const performCreate = async (
   const localeSplit = splitLocalized(data, collection.fields, env.locale);
   validateLocalePatches(localeSplit, collection.fields);
   validateBody(data, collection.fields, false, perm.fields);
+  // Canonicalize every accepted point shape into `{ lat, lng }` on the payload
+  // itself, so the INSERT, the 201 body, the realtime event and the audit entry
+  // all carry what the column will hold — see ./geo-fields.
+  normalizeGeoFields(data, collection.fields);
+  // Derive a point from the address columns when the caller supplied none.
+  // See ./geocode for when this fires, and `skipGeocode` for when it must not.
+  if (!env.skipGeocode) {
+    await applyAutoGeocode(ctx, collection.fields, data, data);
+  }
   await validateRelations(data, collection.fields, ctx, env.tenantId);
   await validateAppUserLinks(data, collection.fields, ctx, env.tenantId);
   // Enforce conditional `required` effects against the proposed row (runs before
@@ -406,6 +434,7 @@ export const performUpdate = async (
   const localeSplit = splitLocalized(patch, collection.fields, env.locale);
   validateLocalePatches(localeSplit, collection.fields);
   validateBody(patch, collection.fields, true, perm.fields);
+  normalizeGeoFields(patch, collection.fields);
   await validateRelations(patch, collection.fields, ctx, env.tenantId);
   await validateAppUserLinks(patch, collection.fields, ctx, env.tenantId);
   // Hash `hash`-typed fields; an empty/omitted value is dropped so the existing
@@ -438,6 +467,17 @@ export const performUpdate = async (
   );
   if (!existing[0]) throw new AppError("NOT_FOUND", "Item not found");
   const beforeRow = deserializeRow(existing[0], collection.fields, ctx.dialect, collection.ownerScoped);
+
+  // Re-derive a point when the patch moved the address it was derived from — a
+  // patch that changes only `city` still has to resolve against the `address`
+  // it did not mention, hence the merged row. A patch that touches no source
+  // column re-resolves nothing, so an unrelated save never spends a provider
+  // call. This is the one geo step that must run AFTER `existing` is loaded.
+  if (!env.skipGeocode) {
+    await applyAutoGeocode(ctx, collection.fields, patch, { ...beforeRow, ...patch }, {
+      touched: (f) => patchTouchesSources(f, patch),
+    });
+  }
 
   // Optimistic-concurrency guard: refuse the write when the row moved after
   // the caller loaded it. Compared as epoch ms so ISO-format differences

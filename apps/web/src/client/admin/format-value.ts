@@ -8,6 +8,12 @@
 // bundle → `.sql` imports), which would drag the whole server graph into the
 // client typecheck program (which has no `*.sql` ambient). Keep in sync with
 // FieldDef.format in packages/db/src/field-types.ts.
+// `@backlex/db/geo` IS safe to import here, unlike the package root: it is a
+// dependency-free subpath export that exists for exactly this reason, so the
+// coordinates a table cell prints are formatted by the same function the server
+// and the field editor use.
+import { formatGeoPoint, tryParseGeoPoint } from "@backlex/db/geo";
+
 type FieldFormat = {
   style?: "plain" | "decimal" | "currency" | "percent";
   precision?: number;
@@ -140,6 +146,13 @@ export const formatFieldValue = (
     if (field.localized) {
       return pickI18n(value as Record<string, unknown>, defaultLocale);
     }
+  }
+  // A point renders as coordinates, not as `[object Object]` — which is what
+  // `String(value)` at the bottom of this function would produce for the only
+  // field type whose value is an object the user is meant to read.
+  if (field.type === "geo") {
+    const p = tryParseGeoPoint(value);
+    return p ? formatGeoPoint(p) : "";
   }
   const f = field.format;
   if (f) {

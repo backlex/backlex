@@ -6,6 +6,7 @@ export * from "./sms";
 export * from "./image";
 export * from "./pdf";
 export * from "./embedding";
+export * from "./geocode";
 export * from "./saml";
 export * from "./ldap";
 export * from "./realtime";

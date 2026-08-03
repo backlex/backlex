@@ -64,6 +64,12 @@ import {
   FieldSequenceEditor,
   type SequenceDraft,
 } from "./field-sequence-editor";
+import {
+  cleanGeo,
+  emptyGeoDraft,
+  FieldGeoEditor,
+  type GeoDraft,
+} from "./field-geo-editor";
 import { canLocalize } from "./item-form";
 
 /** Seed a new sequence with the operator's own calendar rather than UTC. The
@@ -140,6 +146,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [conds, setConds] = useState<CondDraft[]>([]);
   const [valDraft, setValDraft] = useState<ValDraft>(emptyValDraft());
   const [rollupDraft, setRollupDraft] = useState<RollupDraft>(emptyRollupDraft());
+  const [geoDraft, setGeoDraft] = useState<GeoDraft>(emptyGeoDraft);
   const [seqDraft, setSeqDraft] = useState<SequenceDraft>(() =>
     emptySequenceDraft(browserTimeZone()),
   );
@@ -272,6 +279,10 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const missingRollup = !!def.hasRollup && !cleanedRollup;
   const cleanedSequence = def.hasSequence ? cleanSequence(seqDraft) : undefined;
   const missingSequence = !!def.hasSequence && !cleanedSequence;
+  // Every part of a geo spec is optional, so there is no "missing" state and
+  // nothing to block the Save button on — unlike a rollup, a location field is
+  // complete the moment it exists.
+  const cleanedGeo = def.hasGeo ? cleanGeo(geoDraft) : undefined;
   const nameInvalid = !safeName || nameTaken || safeName.length < 2;
   const valid =
     !nameInvalid && !missingChoices && !missingRelation && !missingRollup && !missingSequence;
@@ -349,6 +360,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(def.hasRelation && onDelete !== "no_action" ? { onDelete } : {}),
       ...(cleanedRollup ? { rollup: cleanedRollup } : {}),
       ...(cleanedSequence ? { sequence: cleanedSequence } : {}),
+      ...(cleanedGeo ? { geo: cleanedGeo } : {}),
       ...(conditions.length ? { conditions } : {}),
       ...(validation ? { validation } : {}),
       ...(cleanFormat(formatDraft, def.type) ? { format: cleanFormat(formatDraft, def.type) } : {}),
@@ -367,6 +379,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
     ...(def.hasSequence
       ? [{ key: "sequence", label: t`Numbering`, icon: "Hash", invalid: missingSequence } as FieldTabItem]
       : []),
+    ...(def.hasGeo ? [{ key: "geo", label: t`Location`, icon: "Globe" } as FieldTabItem] : []),
     { key: "field", label: t`Field`, icon: "Pencil" },
     { key: "interface", label: t`Interface`, icon: "Eye", invalid: missingChoices },
     { key: "validation", label: t`Validation`, icon: "Check" },
@@ -634,6 +647,14 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
 
             {activeTab === "sequence" && def.hasSequence && (
               <FieldSequenceEditor value={seqDraft} onChange={setSeqDraft} />
+            )}
+
+            {activeTab === "geo" && def.hasGeo && (
+              <FieldGeoEditor
+                value={geoDraft}
+                onChange={setGeoDraft}
+                candidates={schema.fields ?? []}
+              />
             )}
 
             {activeTab === "field" && (

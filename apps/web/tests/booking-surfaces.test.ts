@@ -43,10 +43,41 @@ const mcp = (name: string) => {
 };
 const mcpCtx = () => ({ fetchInternal: (p: string, init?: RequestInit) => h.fetch(p, init) }) as any;
 
-/** 2026-08-03 is a Monday; every resource here opens 09:00–12:00 UTC on one. */
-const MONDAY_0900 = "2026-08-03T09:00:00.000Z";
-const SUNDAY = "2026-08-02T00:00:00.000Z";
-const MONDAY_END = "2026-08-04T00:00:00.000Z";
+/**
+ * Every resource here opens 09:00–12:00 UTC on a Monday, and that Monday is
+ * DERIVED rather than written down — a literal date turns "which slots are
+ * still bookable" into a test that decays through the morning it names and
+ * recovers the next day. See the same note in `booking.test.ts`.
+ */
+const nextMonday = (): Date => {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() + 7);
+  d.setUTCDate(d.getUTCDate() + ((1 - d.getUTCDay() + 7) % 7));
+  return d;
+};
+const MONDAY = nextMonday();
+const mondayAt = (hh: number, mm = 0): string => {
+  const d = new Date(MONDAY);
+  d.setUTCHours(hh, mm, 0, 0);
+  return d.toISOString();
+};
+const dayFromMonday = (offset: number): string => {
+  const d = new Date(MONDAY);
+  d.setUTCDate(d.getUTCDate() + offset);
+  return d.toISOString();
+};
+const MONDAY_0900 = mondayAt(9);
+const SUNDAY = dayFromMonday(-1);
+const MONDAY_END = dayFromMonday(1);
+/** An off-grid time an operator may take but the public page may not offer.
+ *  Three distinct days so the three surfaces don't collide on one slot. */
+const offGrid = (dayOffset: number, hh: number, mm: number): string => {
+  const d = new Date(MONDAY);
+  d.setUTCDate(d.getUTCDate() + dayOffset);
+  d.setUTCHours(hh, mm, 0, 0);
+  return d.toISOString();
+};
 
 const RESOURCE = {
   name: "Dr Yilmaz",
@@ -227,20 +258,20 @@ describe("one implementation, not five", () => {
 
     // Operator surfaces may book off-grid — that is what a phone call is.
     const viaSdk = await c.booking.book("grid", {
-      start: "2026-08-03T15:07:00.000Z",
-      end: "2026-08-03T15:37:00.000Z",
+      start: offGrid(0, 15, 7),
+      end: offGrid(0, 15, 37),
     });
     expect(viaSdk.data.booking.status).toBe("confirmed");
 
     const viaGql = await gql(
-      `mutation { createBooking(resource:"grid", start:"2026-08-04T15:07:00.000Z", end:"2026-08-04T15:37:00.000Z") { booking { id } } }`,
+      `mutation { createBooking(resource:"grid", start:"${offGrid(1, 15, 7)}", end:"${offGrid(1, 15, 37)}") { booking { id } } }`,
     );
     expect(viaGql.errors).toBeUndefined();
 
     // The booker's own page may not.
     const viaPublic = await h.fetch(
       `/api/public/book/${created.data.token}`,
-      json("POST", { start: "2026-08-05T15:07:00.000Z", email: "a@example.com" }),
+      json("POST", { start: offGrid(2, 15, 7), email: "a@example.com" }),
     );
     expect(viaPublic.status).toBe(422);
   });

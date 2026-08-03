@@ -98,6 +98,7 @@ export default defineConfig({
             { slug: "geo" },
             { slug: "money" },
             { slug: "phone" },
+            { slug: "date-ranges" },
             { slug: "status-transitions" },
             { slug: "adopting-tables" },
             { slug: "migrating-in" },

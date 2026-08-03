@@ -2,7 +2,7 @@ import { sql, and, eq } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { AppError } from "@backlex/core";
-import { validateValue, type FieldDef } from "@backlex/db";
+import { rangeOrderError, validateValue, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
 import { serializeField } from "./items/serialize";
 import { canonicalizeMoneyFields } from "./items/money-fields";
@@ -108,6 +108,33 @@ export const validateRow = (
   }
 };
 
+/**
+ * Refuse a server-authored row whose declared period ends before it begins.
+ *
+ * Data integrity, not permission — so it applies to a flow, a booking and a
+ * payment sync exactly as it does to a request from a person, which is the same
+ * split #42 drew between a lifecycle's GRAPH and its ROLES.
+ *
+ * On a PATCH this can only judge what the patch itself carries: unlike
+ * `performUpdate`, this path never loads the row it is patching (see
+ * `assertFlowTransitions` for the one case that pays for a SELECT). So a patch
+ * moving only ONE endpoint is not checked here — the REST path, which does have
+ * the merged row, is where that is caught. Buying a SELECT for it would cost one
+ * on every flow write to every collection with a period, to catch a case a flow
+ * has to construct deliberately.
+ */
+export const assertRangesOrdered = (
+  data: Record<string, unknown>,
+  fields: FieldDef[],
+): void => {
+  for (const f of fields) {
+    if (!f.range) continue;
+    if (data[f.name] === undefined && data[f.range.end] === undefined) continue;
+    const problem = rangeOrderError(f.name, f.range, data);
+    if (problem) throw new AppError("VALIDATION", problem);
+  }
+};
+
 export const nowFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? new Date() : Date.now();
 
@@ -152,6 +179,11 @@ export const createItem = async (
   // been typed by anyone, and the row it produces is the one an `sms` op will
   // later be pointed at.
   canonicalizePhoneFields(input.data, collection.fields);
+  // A period that ends before it begins is wrong data, not a permission
+  // question, so a flow-authored row is held to it exactly like a REST one —
+  // the same split #42 drew between the transition GRAPH and the transition
+  // ROLES.
+  assertRangesOrdered(input.data, collection.fields);
   // A lifecycle's `initial` list is a property of the data, not of the caller,
   // so it holds for a flow-authored row too — see ./items/transitions.
   assertInitialStates(collection.fields, input.data);
@@ -253,6 +285,8 @@ export const updateItem = async (
   // form — which is what a flow or an integration payload carries — never
   // consults a region at all.
   canonicalizePhoneFields(input.data, collection.fields);
+  // Only judges what the patch carries — see the note on the helper.
+  assertRangesOrdered(input.data, collection.fields);
   await assertFlowTransitions(ctx, collection, input);
 
   const now = nowFor(ctx.dialect);

@@ -88,6 +88,12 @@ import {
   FieldPhoneEditor,
   type PhoneDraft,
 } from "./field-phone-editor";
+import {
+  cleanRange,
+  emptyRangeDraft,
+  FieldRangeEditor,
+  type RangeDraft,
+} from "./field-range-editor";
 import { canLocalize } from "./item-form";
 
 /** Seed a new sequence with the operator's own calendar rather than UTC. The
@@ -176,6 +182,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
     emptyMoneyDraft(defaultCurrency),
   );
   const [phoneDraft, setPhoneDraft] = useState<PhoneDraft>(emptyPhoneDraft);
+  const [rangeDraft, setRangeDraft] = useState<RangeDraft>(emptyRangeDraft);
   const [seqDraft, setSeqDraft] = useState<SequenceDraft>(() =>
     emptySequenceDraft(browserTimeZone()),
   );
@@ -192,6 +199,11 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setChoices(DEFAULT_CHOICES);
       setRelationTarget("");
       setRollupDraft(emptyRollupDraft());
+      // Reset alongside the others: the dialog instance is reused, so a phone
+      // region or a period end column picked for the LAST field would silently
+      // carry into the next one.
+      setPhoneDraft(emptyPhoneDraft());
+      setRangeDraft(emptyRangeDraft());
       setSeqDraft(emptySequenceDraft(browserTimeZone()));
       setStep(1);
       setTab("schema");
@@ -324,6 +336,9 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   // region still works, it just insists on international-form numbers. So this
   // never blocks Save.
   const cleanedPhone = def.hasPhone ? cleanPhone(phoneDraft) : undefined;
+  // Optional like phone's and geo's: a date field that declares no period is
+  // just a date field, which is the common case. Never blocks Save.
+  const cleanedRange = def.hasRange ? cleanRange(rangeDraft) : undefined;
   const nameInvalid = !safeName || nameTaken || safeName.length < 2;
   const valid =
     !nameInvalid &&
@@ -410,6 +425,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(cleanedGeo ? { geo: cleanedGeo } : {}),
       ...(cleanedMoney ? { money: cleanedMoney } : {}),
       ...(cleanedPhone ? { phone: cleanedPhone } : {}),
+      ...(cleanedRange ? { range: cleanedRange } : {}),
       ...(conditions.length ? { conditions } : {}),
       ...(validation ? { validation } : {}),
       ...(cleanFormat(formatDraft, def.type) ? { format: cleanFormat(formatDraft, def.type) } : {}),
@@ -433,6 +449,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ? [{ key: "money", label: t`Currency`, icon: "BarChart", invalid: missingMoney } as FieldTabItem]
       : []),
     ...(def.hasPhone ? [{ key: "phone", label: t`Phone`, icon: "Phone" } as FieldTabItem] : []),
+    ...(def.hasRange ? [{ key: "range", label: t`Period`, icon: "Calendar" } as FieldTabItem] : []),
     ...(def.hasTransitions
       ? [{ key: "transitions", label: t`Lifecycle`, icon: "Share" } as FieldTabItem]
       : []),
@@ -737,6 +754,15 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                 value={phoneDraft}
                 onChange={setPhoneDraft}
                 candidates={(schema.fields ?? []).filter((f) => f.name !== name.trim())}
+              />
+            )}
+
+            {activeTab === "range" && def.hasRange && (
+              <FieldRangeEditor
+                value={rangeDraft}
+                onChange={setRangeDraft}
+                candidates={(schema.fields ?? []).filter((f) => f.name !== name.trim())}
+                interfaceId={def.id}
               />
             )}
 

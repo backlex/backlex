@@ -73,6 +73,8 @@ import {
 } from "../items/serialize";
 import { assertCurrencyChangeIsSafe, canonicalizeMoneyFields } from "../items/money-fields";
 import { canonicalizePhoneFields } from "../items/phone-fields";
+import { expandRangeOperators, rangeFieldsOf } from "@backlex/db/range";
+import { normalizeTemporalOperands } from "../items/temporal-fields";
 import { applyAutoGeocode, patchTouchesSources } from "../items/geocode";
 import { verifyHashField } from "../items/verify";
 import type { Hono } from "hono";
@@ -762,7 +764,26 @@ export const listResolver = async (
   );
   const userWhere = args.filter
     ? compileCondition(
-        normalizeCondition(args.filter, { relationFields }),
+        // `_overlaps` / `_covers` are expanded into the comparisons they stand
+        // for BEFORE compiling, exactly as the REST list does. Without it this
+        // surface would compile `_overlaps` as an unknown operator on the start
+        // column — silently matching everything, since a comparison object with
+        // no recognised operator returns TRUE.
+        // …and then the timestamp operands into the form the column holds —
+        // LAST, so the comparisons the expansion just emitted are coerced too.
+        // Without this the expansion is correct and the comparison still is
+        // not: an ISO string reaches SQLite as TEXT against an INTEGER column,
+        // where every number sorts before every string, so the filter answers
+        // backwards. Caught by the parity gate, which is the fifth feature
+        // running where this resolver needed the fix REST already had.
+        normalizeTemporalOperands(
+          expandRangeOperators(
+            normalizeCondition(args.filter, { relationFields }),
+            rangeFieldsOf(collection.fields),
+          ),
+          collection.fields,
+          ctx.dialect,
+        ),
         auth,
         undefined,
         undefined,

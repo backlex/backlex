@@ -1111,7 +1111,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ),
           ]),
           sec("Schedule", [
-            ...half(ts("starts_at", { indexed: true, label: "Starts at" }), ts("ends_at", { label: "Ends at" })),
+            ...half(ts("starts_at", { range: { end: "ends_at" }, indexed: true, label: "Starts at" }), ts("ends_at", { label: "Ends at" })),
           ]),
         ),
         samples: [{ code: "WELCOME10", value_type: "percentage", value: 10, target_selection: "all", status: "active", starts_at: ms("2026-01-01"), ends_at: ms("2026-12-31") }],
@@ -1551,7 +1551,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ),
           ]),
           sec("Billing period", [
-            ...half(ts("current_period_start", { label: "Period start" }), ts("current_period_end", { indexed: true, label: "Period end" })),
+            ...half(ts("current_period_start", { range: { end: "current_period_end" }, label: "Period start" }), ts("current_period_end", { indexed: true, label: "Period end" })),
             ...half(ts("trial_end", { label: "Trial ends" }), bool("cancel_at_period_end", { default: false, label: "Cancel at period end" })),
           ]),
           sec("Churn", [
@@ -1590,7 +1590,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
           sec("Period", [
             ...half(ts("issued_at", { indexed: true, label: "Issued at" }), date("due_date", { label: "Due date" })),
-            ...half(ts("period_start", { label: "Period start" }), ts("period_end", { label: "Period end" })),
+            ...half(ts("period_start", { range: { end: "period_end" }, label: "Period start" }), ts("period_end", { label: "Period end" })),
           ]),
         ),
         samples: [{ account: { ref: "accounts:0" }, subscription: { ref: "subscriptions:0" }, number: "INV-1001", status: "paid", amount_due: 49, amount_paid: 49, currency: "USD", billing_reason: "subscription_cycle", issued_at: ms("2026-06-01") }],
@@ -1603,7 +1603,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           text("description"),
           ...half(num("quantity", { default: 1, validation: { min: 0 } }), money("unit_amount", { label: "Unit amount" })),
           ...half(computedNum("amount", "quantity * unit_amount"), rel("tax_rate", "tax_rates", { label: "Tax rate" })),
-          ...half(ts("period_start", { label: "Period start" }), ts("period_end", { label: "Period end" })),
+          ...half(ts("period_start", { range: { end: "period_end" }, label: "Period start" }), ts("period_end", { label: "Period end" })),
         ],
         samples: [{ invoice: { ref: "invoices:0" }, price: { ref: "prices:0" }, description: "Pro Plan — monthly", quantity: 1, unit_amount: 49, period_start: ms("2026-06-01"), period_end: ms("2026-07-01") }],
       },
@@ -1988,7 +1988,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ),
           ]),
           sec("Term", [
-            ...half(date("start_date", { label: "Start date" }), date("end_date", { indexed: true, label: "End date" })),
+            ...half(date("start_date", { range: { end: "end_date", bounds: "[]" }, label: "Start date" }), date("end_date", { indexed: true, label: "End date" })),
             ...half(bool("auto_renew", { default: false, label: "Auto-renew" }), int("notice_days", { label: "Notice period (days)" })),
             file("document", { label: "Signed document" }),
           ]),
@@ -2009,7 +2009,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           sec("Budget & results", [
             ...half(money("budget"), money("actual_cost", { label: "Actual cost" })),
             ...half(int("expected_leads", { label: "Expected leads" }), money("pipeline_generated", { label: "Pipeline generated" })),
-            ...half(date("start_date", { indexed: true, label: "Start date" }), date("end_date", { label: "End date" })),
+            ...half(date("start_date", { range: { end: "end_date", bounds: "[]" }, indexed: true, label: "Start date" }), date("end_date", { label: "End date" })),
           ]),
         ),
         samples: [
@@ -2594,7 +2594,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
           sec("Dates", [
             ...half(
-              date("start_date", { indexed: true, label: "Start date" }),
+              date("start_date", { range: { end: "end_date", bounds: "[]" }, indexed: true, label: "Start date" }),
               date("end_date", { label: "End date", validation: { rule: { end_date: { _gte: "$field.start_date" } }, message: "End date must be on or after the start date." } }),
             ),
             ...half(num("days", { validation: { min: 0 } }), bool("half_day", { default: false, label: "Half day" })),
@@ -2622,7 +2622,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "attendance_records", group: "Operations", singular: "Attendance record", plural: "Attendance", defaultSort: "-date",
         fields: [
           ...half(rel("employee", "employees", { required: true }), date("date", { indexed: true, required: true })),
-          ...half(ts("check_in", { label: "Check in" }), ts("check_out", { label: "Check out" })),
+          ...half(ts("check_in", { range: { end: "check_out" }, label: "Check in" }), ts("check_out", { label: "Check out" })),
           ...half(
             int("worked_minutes", { validation: { min: 0 }, label: "Worked (min)" }),
             select("status", [ch("present", C.green), ch("remote", C.teal), ch("absent", C.red), ch("late", C.amber)], { default: "present" }),
@@ -2647,7 +2647,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ),
           ]),
           sec("Term & pay", [
-            ...half(date("start_date", { indexed: true, label: "Start date" }), date("end_date", { label: "End date" })),
+            ...half(date("start_date", { range: { end: "end_date", bounds: "[]" }, indexed: true, label: "Start date" }), date("end_date", { label: "End date" })),
             ...half(moneyIn("salary"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
           ]),
         ),
@@ -2776,7 +2776,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Run", [
             ...half(text("name", { required: true }), select("status", [ch("draft", C.gray), ch("processing", C.blue), ch("approved", C.teal), ch("paid", C.green), ch("cancelled", C.red)], { default: "draft" })),
-            ...half(date("period_start", { label: "Period start" }), date("period_end", { label: "Period end" })),
+            ...half(date("period_start", { range: { end: "period_end", bounds: "[]" }, label: "Period start" }), date("period_end", { label: "Period end" })),
             ...half(date("pay_date", { indexed: true, label: "Pay date" }), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
           ]),
           sec("Totals", [
@@ -2846,7 +2846,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ...half(text("provider"), bool("mandatory", { default: false, label: "Mandatory" })),
           ]),
           sec("Schedule", [
-            ...half(ts("starts_at", { indexed: true, label: "Starts at" }), ts("ends_at", { label: "Ends at" })),
+            ...half(ts("starts_at", { range: { end: "ends_at" }, indexed: true, label: "Starts at" }), ts("ends_at", { label: "Ends at" })),
             ...half(text("location"), money("cost_per_seat", { label: "Cost per seat" })),
           ]),
         ),
@@ -3096,7 +3096,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ...half(rel("project", "projects"), text("name")),
           notes("goal"),
           ...half(int("number", { label: "Cycle #" }), select("state", [ch("future", C.gray), ch("active", C.green), ch("closed", C.slate)], { default: "future" })),
-          ...half(date("start_date", { indexed: true, label: "Start date" }), date("end_date", { label: "End date" })),
+          ...half(date("start_date", { range: { end: "end_date", bounds: "[]" }, indexed: true, label: "Start date" }), date("end_date", { label: "End date" })),
         ],
         samples: [{ project: { ref: "projects:0" }, name: "Sprint 1", goal: "Ship the new home page.", number: 1, start_date: ms("2026-07-01"), end_date: ms("2026-07-14"), state: "active" }],
       },
@@ -3363,7 +3363,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ),
           ]),
           sec("Schedule", [
-            ...half(ts("start_at", { indexed: true, label: "Starts at" }), ts("end_at", { label: "Ends at" })),
+            ...half(ts("start_at", { range: { end: "end_at" }, indexed: true, label: "Starts at" }), ts("end_at", { label: "Ends at" })),
             ...half(text("timezone", { label: "Timezone" }), bool("online", { default: false, label: "Online event" })),
           ]),
           sec("Media", [image("cover")]),
@@ -3379,7 +3379,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ...half(rel("speaker", "speakers"), text("track")),
           ]),
           sec("Slot", [
-            ...half(ts("start_at", { indexed: true, label: "Starts at" }), ts("end_at", { label: "Ends at" })),
+            ...half(ts("start_at", { range: { end: "end_at" }, indexed: true, label: "Starts at" }), ts("end_at", { label: "Ends at" })),
             ...half(text("room"), int("capacity", { validation: { min: 0 } })),
           ]),
         ),
@@ -3436,7 +3436,7 @@ export const TEMPLATES: SchemaTemplate[] = [
               int("sold", { default: 0, validation: { min: 0 }, label: "Sold" }),
             ),
             ...half(int("min_per_order", { default: 1, label: "Min per order" }), int("max_per_order", { default: 10, label: "Max per order" })),
-            ...half(ts("sales_start", { label: "Sales start" }), ts("sales_end", { label: "Sales end" })),
+            ...half(ts("sales_start", { range: { end: "sales_end" }, label: "Sales start" }), ts("sales_end", { label: "Sales end" })),
           ]),
         ),
         samples: [{ event: { ref: "events:0" }, name: "General Admission", price: 99, currency: "USD", quantity: 400, sold: 120 }, { event: { ref: "events:0" }, name: "VIP", price: 249, currency: "USD", quantity: 50, sold: 12 }],
@@ -4015,7 +4015,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "open_houses", group: "Deals", singular: "Open house", plural: "Open houses", defaultSort: "-starts_at",
         fields: [
           ...half(rel("property", "properties"), rel("host", "agents", { label: "Host agent" })),
-          ...half(ts("starts_at", { indexed: true, label: "Starts at" }), ts("ends_at", { label: "Ends at" })),
+          ...half(ts("starts_at", { range: { end: "ends_at" }, indexed: true, label: "Starts at" }), ts("ends_at", { label: "Ends at" })),
           ...half(int("visitors", { default: 0, validation: { min: 0 }, label: "Visitor count" }), notes("notes")),
         ],
         samples: [{ property: { ref: "properties:1" }, host: { ref: "agents:0" }, starts_at: ms("2026-07-18T17:00:00Z"), ends_at: ms("2026-07-18T19:00:00Z"), visitors: 14 }],
@@ -4050,7 +4050,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           sec("Terms", [
             ...half(money("rent", { label: "Monthly rent" }), money("deposit")),
             ...half(
-              date("starts_at", { indexed: true, label: "Starts" }),
+              date("starts_at", { range: { end: "ends_at", bounds: "[]" }, indexed: true, label: "Starts" }),
               date("ends_at", { indexed: true, label: "Ends", validation: { rule: { ends_at: { _gte: "$field.starts_at" } }, message: "The lease must end on or after it starts." } }),
             ),
             select("status", [ch("active", C.green), ch("expiring", C.amber), ch("ended", C.gray)], { default: "active" }),
@@ -5063,7 +5063,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             text("code", { unique: true }),
           ]),
           sec("Window", [
-            ...half(ts("starts_at", { indexed: true, label: "Starts at" }), ts("ends_at", { indexed: true, label: "Ends at" })),
+            ...half(ts("starts_at", { range: { end: "ends_at" }, indexed: true, label: "Starts at" }), ts("ends_at", { indexed: true, label: "Ends at" })),
             select("status", [ch("scheduled", C.gray), ch("active", C.green), ch("expired", C.slate), ch("disabled", C.red)], { default: "scheduled" }),
           ]),
         ),
@@ -5152,7 +5152,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
             select("status", [ch("pending", C.amber), ch("paid", C.green), ch("failed", C.red)], { default: "pending" }),
           ),
-          ...half(date("period_start", { label: "Period start" }), date("period_end", { indexed: true, label: "Period end" })),
+          ...half(date("period_start", { range: { end: "period_end", bounds: "[]" }, label: "Period start" }), date("period_end", { indexed: true, label: "Period end" })),
         ],
         samples: [{ vendor: { ref: "vendors:0" }, amount: 39.6, currency: "USD", status: "pending", period_start: ms("2026-06-01"), period_end: ms("2026-06-30") }],
       },
@@ -5321,7 +5321,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ...half(money("goal_amount", { label: "Goal" }), money("raised_amount", { default: 0, label: "Raised" })),
             ...half(
               select("status", [ch("planned", C.gray), ch("active", C.green), ch("paused", C.amber), ch("completed", C.blue)], { default: "planned" }),
-              date("starts_at", { indexed: true, label: "Starts at" }),
+              date("starts_at", { range: { end: "ends_at", bounds: "[]" }, indexed: true, label: "Starts at" }),
             ),
             date("ends_at", { label: "Ends at" }),
           ]),
@@ -6190,7 +6190,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             select("reason", [ch("time_off", C.amber, "Time off"), ch("break", C.teal), ch("training", C.purple)], { default: "time_off" }),
           ),
           ...half(
-            ts("starts_at", { required: true, indexed: true, label: "Starts at" }),
+            ts("starts_at", { range: { end: "ends_at" }, required: true, indexed: true, label: "Starts at" }),
             ts("ends_at", { label: "Ends at", validation: { rule: { ends_at: { _gte: "$field.starts_at" } }, message: "The block must end after it starts." } }),
           ),
           notes("note"),
@@ -6218,7 +6218,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ...half(rel("staff", "staff"), rel("resource", "resources")),
             rel("location", "locations"),
             ...half(
-              ts("starts_at", { required: true, indexed: true, label: "Starts at" }),
+              ts("starts_at", { range: { end: "ends_at" }, required: true, indexed: true, label: "Starts at" }),
               ts("ends_at", { label: "Ends at", validation: { rule: { ends_at: { _gte: "$field.starts_at" } }, message: "A booking must end after it starts." } }),
             ),
           ]),
@@ -6519,7 +6519,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "visits", group: "Work orders", singular: "Visit", plural: "Visits", defaultSort: "-started_at",
         fields: [
           ...half(rel("work_order", "work_orders"), rel("technician", "technicians")),
-          ...half(ts("started_at", { indexed: true, label: "Started at" }), ts("ended_at", { label: "Ended at" })),
+          ...half(ts("started_at", { range: { end: "ended_at" }, indexed: true, label: "Started at" }), ts("ended_at", { label: "Ended at" })),
           int("minutes_on_site", { default: 0, validation: { min: 0 }, label: "Minutes on site" }),
           notes("summary"),
         ],
@@ -6842,7 +6842,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             rel("unit", "units"),
             select("reason", [ch("maintenance", C.red), ch("reserved", C.blue), ch("transit", C.amber)], { default: "maintenance" }),
           ),
-          ...half(ts("starts_at", { required: true, indexed: true, label: "Starts at" }), ts("ends_at", { label: "Ends at" })),
+          ...half(ts("starts_at", { range: { end: "ends_at" }, required: true, indexed: true, label: "Starts at" }), ts("ends_at", { label: "Ends at" })),
           notes("note"),
         ],
         samples: [
@@ -6977,7 +6977,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ...half(text("provider"), text("reference")),
           ]),
           sec("Term & cost", [
-            ...half(date("starts_at", { label: "Starts" }), date("ends_at", { indexed: true, label: "Ends" })),
+            ...half(date("starts_at", { range: { end: "ends_at", bounds: "[]" }, label: "Starts" }), date("ends_at", { indexed: true, label: "Ends" })),
             ...half(
               money("monthly_cost", { label: "Monthly cost" }),
               select("status", [ch("active", C.green), ch("expiring", C.amber), ch("expired", C.red), ch("cancelled", C.slate)], { default: "active" }),
@@ -7494,7 +7494,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ),
           ]),
           sec("Schedule", [
-            ...half(ts("planned_start", { indexed: true, label: "Planned start" }), ts("planned_end", { label: "Planned end" })),
+            ...half(ts("planned_start", { range: { end: "planned_end" }, indexed: true, label: "Planned start" }), ts("planned_end", { label: "Planned end" })),
             ...half(ts("completed_at", { label: "Completed at" }), int("qty_produced", { default: 0, validation: { min: 0 }, label: "Qty produced" })),
           ]),
         ),
@@ -7571,7 +7571,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             rel("work_center", "work_centers"),
             select("reason", [ch("breakdown", C.red), ch("changeover", C.blue), ch("material_shortage", C.amber, "Material shortage"), ch("planned", C.gray)], { default: "breakdown" }),
           ),
-          ...half(ts("started_at", { indexed: true, label: "Started at" }), ts("ended_at", { label: "Ended at" })),
+          ...half(ts("started_at", { range: { end: "ended_at" }, indexed: true, label: "Started at" }), ts("ended_at", { label: "Ended at" })),
           ...half(int("minutes", { default: 0, validation: { min: 0 } }), notes("note")),
         ],
         samples: [
@@ -7812,7 +7812,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: [
           rel("member", "members"),
           ...half(
-            date("starts_on", { required: true, indexed: true, label: "Starts" }),
+            date("starts_on", { range: { end: "ends_on", bounds: "[]" }, required: true, indexed: true, label: "Starts" }),
             date("ends_on", { label: "Ends", validation: { rule: { ends_on: { _gte: "$field.starts_on" } }, message: "A freeze must end on or after it starts." } }),
           ),
           ...half(

@@ -6747,6 +6747,14 @@ msgstr "yazı tipi"
 msgid "for the counter, padded to its width — e.g."
 msgstr "karakteri, genişliği kadar sıfırla doldurulur — örn."
 
+#: src/client/admin/field-range-editor.tsx
+msgid "For times, pick the first: a room booked 09:00–10:00 and one booked 10:00–11:00 must both be allowed."
+msgstr "Saatler için ilkini seçin: 09:00–10:00 rezerve edilmiş bir oda ile 10:00–11:00 rezerve edilmiş bir oda birlikte mümkün olmalı."
+
+#: src/client/admin/field-range-editor.tsx
+msgid "For whole days, pick the second: leave \"through Friday\" includes Friday, so another request starting Friday really does clash."
+msgstr "Tam günler için ikincisini seçin: \"Cuma dahil\" izin Cuma'yı da kapsar, dolayısıyla Cuma başlayan başka bir talep gerçekten çakışır."
+
 #: src/client/admin/pages/users.tsx
 msgid "Forces re-login on every device immediately."
 msgstr "Tüm cihazlarda anında yeniden giriş yapmaya zorlar."
@@ -8367,6 +8375,10 @@ msgstr "IdP'nizin doğruladığı her operatöre hesap açmak için boş bırak�
 #: src/client/admin/pages/jobs.tsx
 msgid "Leave empty to run on the next tick."
 msgstr "Bir sonraki tıklamada çalışması için boş bırakın."
+
+#: src/client/admin/field-range-editor.tsx
+msgid "Leave this on unless the two dates are genuinely independent. An empty end is always allowed — it means the period has not finished, and searches treat it as still running."
+msgstr "İki tarih gerçekten bağımsız olmadıkça açık bırakın. Boş bir bitiş her zaman kabul edilir — dönemin bitmediği anlamına gelir ve aramalar onu hâlâ sürüyor sayar."
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Leave to user"
@@ -10347,6 +10359,10 @@ msgstr "yok (herkese açık)"
 msgid "none selected = all"
 msgstr "hiçbiri seçili değil = tümü"
 
+#: src/client/admin/field-range-editor.tsx
+msgid "Not a period"
+msgstr "Dönem değil"
+
 #: src/client/admin/item-form.tsx
 msgid "not allowed"
 msgstr "izin verilmiyor"
@@ -11307,6 +11323,11 @@ msgstr "Yüzde"
 msgid "Performance"
 msgstr "Performans"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Period"
+msgstr "Dönem"
+
 #: src/client/admin/pages/users.tsx
 msgid "Permanent. Owned items remain; ownership is reassigned to admin."
 msgstr "Kalıcı. Sahip olunan öğeler kalır; sahiplik yöneticiye devredilir."
@@ -11623,6 +11644,10 @@ msgstr "Satır seç"
 #: src/client/admin/add-field.tsx
 msgid "Pick the collection this relation points to."
 msgstr "Bu ilişkinin işaret ettiği koleksiyonu seçin."
+
+#: src/client/admin/field-range-editor.tsx
+msgid "Pick the column holding the end. Both columns stay exactly as they are — declaring the pair is what makes overlap searches possible."
+msgstr "Bitişi tutan sütunu seçin. Her iki sütun da olduğu gibi kalır — çifti bildirmek, çakışma aramalarını mümkün kılan şeydir."
 
 #: src/client/admin/field-geo-editor.tsx
 msgid "Pick the columns that spell out the address. When a row is saved without a point, these are joined together and looked up. Tick them in the order they should be read."
@@ -12582,6 +12607,10 @@ msgstr "{0} {1} iade edildi{2}"
 #: src/client/admin/pages/payments.tsx
 msgid "Refunding…"
 msgstr "İade ediliyor…"
+
+#: src/client/admin/field-range-editor.tsx
+msgid "Refuse a row whose end is before its start"
+msgstr "Bitişi başlangıcından önce olan satırı reddet"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Refused if it matches more than one payment — a row can be billed more than once."
@@ -16065,6 +16094,14 @@ msgstr "Ulusal biçim bilinçli olarak yok: onu yazdırmak her ülkenin numarala
 msgid "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."
 msgstr "Bu satırlar c_posts tablosundan kaldırılacak. Bu temel kayıtları siler — sürümler kullanılabilir kalmaya devam eder."
 
+#: src/client/admin/field-range-editor.tsx
+msgid "They clash — the end day is inside the period"
+msgstr "Çakışırlar — bitiş günü döneme dahildir"
+
+#: src/client/admin/field-range-editor.tsx
+msgid "They do not clash — the end is not inside the period"
+msgstr "Çakışmazlar — bitiş döneme dahil değildir"
+
 #: src/client/admin/pages/agents.tsx
 #~ msgid "Thinking…"
 #~ msgstr "Düşünüyor…"
@@ -16104,6 +16141,10 @@ msgstr "Bu koleksiyonda toplu düzenlemeyi destekleyen alan yok. Yapısal (json 
 #: src/client/admin/pages/forms.tsx
 msgid "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
 msgstr "Bu koleksiyonda forma uygun alan yok (yalnızca skaler, gizli olmayan alanlar gösterilebilir)."
+
+#: src/client/admin/field-range-editor.tsx
+msgid "This collection has no other date column to end a period at."
+msgstr "Bu koleksiyonda bir dönemi bitirecek başka tarih sütunu yok."
 
 #: src/client/admin/field-money-editor.tsx
 msgid "This collection has no text column to read a currency code from. Add one first, or give this field a single fixed currency."
@@ -16243,6 +16284,10 @@ msgstr "Bu numara ülke kodunu zaten belirtiyor."
 #: src/client/pages/reset-password.tsx
 msgid "This password reset link is missing its token or has expired. Request a new one and try again."
 msgstr "Bu parola sıfırlama bağlantısının token'ı eksik veya süresi dolmuş. Yeni bir tane isteyin ve tekrar deneyin."
+
+#: src/client/admin/field-range-editor.tsx
+msgid "This period ends at"
+msgstr "Bu dönem şurada biter"
 
 #: src/client/admin/pages/functions.tsx
 msgid "This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone."
@@ -17536,6 +17581,10 @@ msgstr "Kimse etiketlenmediğinde"
 #: src/client/admin/parity/translations.tsx
 msgid "When off, existing translations in the target locale are overwritten."
 msgstr "Kapalıyken, hedef yerel ayardaki mevcut çeviriler üzerine yazılır."
+
+#: src/client/admin/field-range-editor.tsx
+msgid "When one period ends exactly as another begins"
+msgstr "Bir dönem tam olarak diğerinin başladığı anda bittiğinde"
 
 #: src/client/admin/pages/functions.tsx
 msgid "When paused, triggers stop firing and HTTP invokes are rejected."

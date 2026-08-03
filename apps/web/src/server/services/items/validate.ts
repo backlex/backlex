@@ -1,6 +1,12 @@
 import { sql } from "drizzle-orm";
 import { AppError, type AuthSubject } from "@backlex/core";
-import { isLocalized, matchesCondition, validateValue, type FieldDef } from "@backlex/db";
+import {
+  isLocalized,
+  matchesCondition,
+  rangeOrderError,
+  validateValue,
+  type FieldDef,
+} from "@backlex/db";
 import type { Ctx } from "../../context";
 import { loadCollection, type CollectionRow } from "./collection-loader";
 import { queryAll } from "./sql-helpers";
@@ -50,6 +56,18 @@ export const enforceValidationRules = (
   fields: FieldDef[],
   subject: AuthSubject,
 ): void => {
+  // A declared period must be ordered. Enforced here rather than as a
+  // `validation.rule` the admin hand-writes, because it is the same rule every
+  // time and most of the twenty-eight template pairs never carried one — the
+  // point of declaring a range is not having to restate what a period is.
+  //
+  // Runs against the same fully-merged proposed row the cross-field rules do,
+  // which is what makes it correct on a patch that sets only one endpoint.
+  for (const f of fields) {
+    if (!f.range) continue;
+    const problem = rangeOrderError(f.name, f.range, row);
+    if (problem) throw new AppError("VALIDATION", problem);
+  }
   for (const f of fields) {
     const rule = f.validation?.rule;
     if (!rule) continue;

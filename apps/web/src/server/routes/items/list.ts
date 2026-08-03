@@ -125,6 +125,7 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         collection.defaultSort,
         isSearchable(collection),
         collection.versioned,
+        ctx.dialect,
       );
 
       // Telemetry only: hand the span writer the columns this list actually

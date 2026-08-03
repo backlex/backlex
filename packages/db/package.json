@@ -10,6 +10,7 @@
     "./geo": "./src/geo.ts",
     "./money": "./src/money.ts",
     "./phone": "./src/phone.ts",
+    "./range": "./src/range.ts",
     "./sequence": "./src/sequence.ts",
     "./transitions": "./src/transitions.ts",
     "./pg": "./src/pg/index.ts",

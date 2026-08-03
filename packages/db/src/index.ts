@@ -10,6 +10,7 @@ export * from "./field-types";
 export * from "./geo";
 export * from "./money";
 export * from "./phone";
+export * from "./range";
 export * from "./rollup";
 export * from "./sequence";
 export * from "./transitions";

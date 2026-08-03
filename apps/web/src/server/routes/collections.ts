@@ -310,6 +310,23 @@ const FieldSchema = z
       })
       .optional(),
     /**
+     * Declare this timestamp column as the START of a period, naming the column
+     * that holds its end.
+     *
+     * Safe over the API for the same reason `rollup` and `transitions` are:
+     * nothing here reaches the DDL or any SQL. `validateRangeSpec` checks the
+     * named column exists on this collection and is itself a timestamp, so a
+     * malformed spec fails at save time rather than presenting as an overlap
+     * filter that compares against a column of something else.
+     */
+    range: z
+      .object({
+        end: z.string().regex(/^[a-z][a-z0-9_]*$/, "snake_case"),
+        bounds: z.enum(["[)", "[]"]).optional(),
+        ordered: z.boolean().optional(),
+      })
+      .optional(),
+    /**
      * Phone configuration — which country a national-form number is read as,
      * and which countries are allowed at all.
      *

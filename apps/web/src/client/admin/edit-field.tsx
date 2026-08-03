@@ -91,6 +91,13 @@ import {
   phoneDraftFrom,
   type PhoneDraft,
 } from "./field-phone-editor";
+import {
+  cleanRange,
+  emptyRangeDraft,
+  FieldRangeEditor,
+  rangeDraftFrom,
+  type RangeDraft,
+} from "./field-range-editor";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -192,6 +199,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   const [geoDraft, setGeoDraft] = useState<GeoDraft>(emptyGeoDraft);
   const [moneyDraft, setMoneyDraft] = useState<MoneyDraft>(emptyMoneyDraft);
   const [phoneDraft, setPhoneDraft] = useState<PhoneDraft>(emptyPhoneDraft);
+  const [rangeDraft, setRangeDraft] = useState<RangeDraft>(emptyRangeDraft);
   const [tab, setTab] = useState("schema");
 
   // Re-seed every time the dialog opens with a new target field.
@@ -231,6 +239,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     setGeoDraft(geoDraftFrom((field as { geo?: unknown }).geo));
     setMoneyDraft(moneyDraftFrom((field as { money?: unknown }).money));
     setPhoneDraft(phoneDraftFrom((field as { phone?: unknown }).phone));
+    setRangeDraft(rangeDraftFrom((field as { range?: unknown }).range));
     setTransDraft(
       transitionsToDraft(
         (field as { transitions?: unknown }).transitions,
@@ -302,6 +311,8 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   const isPhone = draft?.type === "phone";
   // Optional, unlike money's — see the note in add-field. It never blocks Save.
   const cleanedPhone = isPhone ? cleanPhone(phoneDraft) : undefined;
+  const isRange = draft?.type === "timestamp";
+  const cleanedRange = isRange ? cleanRange(rangeDraft) : undefined;
   // Keyed off the INTERFACE, like geo is off the type: a lifecycle is optional
   // on every single-select dropdown, so a field that has never had one still
   // has the tab — turning it on is the whole point of opening this dialog.
@@ -390,6 +401,9 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
       // the stored spec — omitting the key would leave the old region in place
       // and the dialog would keep re-showing a setting the operator just cleared.
       ...(isPhone ? { phone: cleanedPhone as never } : {}),
+      // Sent even when undefined so clearing the end column REMOVES the stored
+      // period rather than leaving the old one in place.
+      ...(isRange ? { range: cleanedRange as never } : {}),
       // Explicitly `undefined` when the lifecycle is switched off, so saving
       // removes the stored spec rather than leaving the old graph in force.
       transitions: (hasLifecycle ? cleanTransitions(transDraft) : undefined) as never,
@@ -405,6 +419,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     ...(isGeo ? [{ key: "geo", label: t`Location`, icon: "Globe" } as FieldTabItem] : []),
     ...(isMoney ? [{ key: "money", label: t`Currency`, icon: "BarChart", invalid: !cleanedMoney } as FieldTabItem] : []),
     ...(isPhone ? [{ key: "phone", label: t`Phone`, icon: "Phone" } as FieldTabItem] : []),
+    ...(isRange ? [{ key: "range", label: t`Period`, icon: "Calendar" } as FieldTabItem] : []),
     ...(hasLifecycle ? [{ key: "transitions", label: t`Lifecycle`, icon: "Share" } as FieldTabItem] : []),
     { key: "field", label: t`Field`, icon: "Pencil" },
     { key: "interface", label: t`Interface`, icon: "Eye" },
@@ -582,6 +597,17 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
               candidates={availableFields
                 .filter((n) => n !== draft.name)
                 .map((n) => ({ name: n }))}
+            />
+          )}
+
+          {activeTab === "range" && isRange && (
+            <FieldRangeEditor
+              value={rangeDraft}
+              onChange={setRangeDraft}
+              candidates={(
+                collections.find((c) => c.slug === ownerSlug)?.fieldDefs ?? []
+              ).filter((f) => f.name !== draft?.name)}
+              interfaceId={draft?.interface}
             />
           )}
 

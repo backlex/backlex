@@ -3,6 +3,8 @@ import type { Condition } from "@backlex/core";
 import type { FieldDef } from "@backlex/db";
 import { normalizeMoneyOperands } from "../services/items/money-fields";
 import { normalizePhoneOperands } from "../services/items/phone-fields";
+import { expandRangeOperators, rangeFieldsOf } from "@backlex/db/range";
+import { normalizeTemporalOperands } from "../services/items/temporal-fields";
 
 export interface SortClause {
   field: string;
@@ -181,6 +183,27 @@ const validateFilterFields = (
           );
         }
       }
+      // A range operator is the one thing in this DSL that pulls a SECOND
+      // column into the filter — `_overlaps` on `starts_at` expands into
+      // comparisons against `ends_at`. That expansion happens after this
+      // function has run, so the end column would otherwise never be checked
+      // against the caller's read allow-list at all: a role granted `starts_at`
+      // but not `ends_at` could bisect the end date by repeating the query with
+      // a moving window. Holding read on one half of a period is not holding it
+      // on the other.
+      const rangeSpec = fieldsByName.get(k)?.range;
+      const usesRange = ops.includes("_overlaps") || ops.includes("_covers");
+      if (usesRange) {
+        if (!rangeSpec) {
+          throw new AppError(
+            "VALIDATION",
+            `\`_overlaps\` / \`_covers\` need a field that declares a period — "${k}" does not`,
+          );
+        }
+        if (!allowedForUser.has(rangeSpec.end)) {
+          throw new AppError("FORBIDDEN", `No permission to read field: ${rangeSpec.end}`);
+        }
+      }
     }
   }
 };
@@ -241,6 +264,10 @@ export const parseQuery = (
    *  (`_status` / `_published_at` / `_publish_at`) — they become sortable and
    *  filterable. */
   versioned: boolean = false,
+  /** Storage dialect — a timestamp operand has to reach SQL in the form the
+   *  column holds, and on SQLite that is epoch-ms rather than an ISO string.
+   *  See services/items/temporal-fields. */
+  dialect: "pg" | "sqlite" = "sqlite",
 ): ParsedQuery => {
   const valid = buildValidColumns(fields, ownerScoped);
   // Permission allow-list narrows what user fields can be filtered/sorted/projected.
@@ -294,6 +321,16 @@ export const parseQuery = (
       // carrying the number as an operator typed it matches nothing — which is
       // indistinguishable from "no such customer".
       filter = normalizePhoneOperands(filter, fields);
+      // `_overlaps` / `_covers` become ordinary comparisons over the period's
+      // two real columns. Done here rather than in the DSL compiler for the same
+      // reason money's scaling is: the compiler sees field NAMES, and which
+      // column holds the end of the period is a property of the field
+      // DEFINITION. Doing it as a rewrite also means the in-memory predicate and
+      // the permission simulator answer identically — see @backlex/db/range.
+      filter = expandRangeOperators(filter, rangeFieldsOf(fields));
+      // LAST, so it also coerces the comparisons the range rewrite just emitted
+      // rather than needing a second copy of this inside it.
+      filter = normalizeTemporalOperands(filter, fields, dialect);
     } catch (e) {
       throw new AppError("VALIDATION", (e as Error).message);
     }

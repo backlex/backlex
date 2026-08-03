@@ -240,6 +240,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Geo fields (where a row is, and what is near it) | `docs/geo.md` |
 | Money fields (an amount and the currency it is in) | `docs/money.md` |
 | Phone fields (a number stored as canonical E.164) | `docs/phone.md` |
+| Date ranges (a period, and what overlaps it) | `docs/date-ranges.md` |
 | Status transitions (which value a status may move to) | `docs/status-transitions.md` |
 | Migrating an external DB in (`backlex import-db`) | `docs/migrating-in.md` |
 | Schema versions (migration diffing / branching) | `docs/schema-versions.md` |

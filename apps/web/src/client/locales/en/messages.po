@@ -6747,6 +6747,14 @@ msgstr "font"
 msgid "for the counter, padded to its width — e.g."
 msgstr "for the counter, padded to its width — e.g."
 
+#: src/client/admin/field-range-editor.tsx
+msgid "For times, pick the first: a room booked 09:00–10:00 and one booked 10:00–11:00 must both be allowed."
+msgstr "For times, pick the first: a room booked 09:00–10:00 and one booked 10:00–11:00 must both be allowed."
+
+#: src/client/admin/field-range-editor.tsx
+msgid "For whole days, pick the second: leave \"through Friday\" includes Friday, so another request starting Friday really does clash."
+msgstr "For whole days, pick the second: leave \"through Friday\" includes Friday, so another request starting Friday really does clash."
+
 #: src/client/admin/pages/users.tsx
 msgid "Forces re-login on every device immediately."
 msgstr "Forces re-login on every device immediately."
@@ -8367,6 +8375,10 @@ msgstr "Leave empty to provision any operator your IdP authenticates. Set domain
 #: src/client/admin/pages/jobs.tsx
 msgid "Leave empty to run on the next tick."
 msgstr "Leave empty to run on the next tick."
+
+#: src/client/admin/field-range-editor.tsx
+msgid "Leave this on unless the two dates are genuinely independent. An empty end is always allowed — it means the period has not finished, and searches treat it as still running."
+msgstr "Leave this on unless the two dates are genuinely independent. An empty end is always allowed — it means the period has not finished, and searches treat it as still running."
 
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Leave to user"
@@ -10347,6 +10359,10 @@ msgstr "none (public)"
 msgid "none selected = all"
 msgstr "none selected = all"
 
+#: src/client/admin/field-range-editor.tsx
+msgid "Not a period"
+msgstr "Not a period"
+
 #: src/client/admin/item-form.tsx
 msgid "not allowed"
 msgstr "not allowed"
@@ -11307,6 +11323,11 @@ msgstr "Percent"
 msgid "Performance"
 msgstr "Performance"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Period"
+msgstr "Period"
+
 #: src/client/admin/pages/users.tsx
 msgid "Permanent. Owned items remain; ownership is reassigned to admin."
 msgstr "Permanent. Owned items remain; ownership is reassigned to admin."
@@ -11623,6 +11644,10 @@ msgstr "Pick row"
 #: src/client/admin/add-field.tsx
 msgid "Pick the collection this relation points to."
 msgstr "Pick the collection this relation points to."
+
+#: src/client/admin/field-range-editor.tsx
+msgid "Pick the column holding the end. Both columns stay exactly as they are — declaring the pair is what makes overlap searches possible."
+msgstr "Pick the column holding the end. Both columns stay exactly as they are — declaring the pair is what makes overlap searches possible."
 
 #: src/client/admin/field-geo-editor.tsx
 msgid "Pick the columns that spell out the address. When a row is saved without a point, these are joined together and looked up. Tick them in the order they should be read."
@@ -12582,6 +12607,10 @@ msgstr "Refunded {0} {1}{2}"
 #: src/client/admin/pages/payments.tsx
 msgid "Refunding…"
 msgstr "Refunding…"
+
+#: src/client/admin/field-range-editor.tsx
+msgid "Refuse a row whose end is before its start"
+msgstr "Refuse a row whose end is before its start"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Refused if it matches more than one payment — a row can be billed more than once."
@@ -16065,6 +16094,14 @@ msgstr "There is no national format on purpose: printing one needs each country'
 msgid "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."
 msgstr "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."
 
+#: src/client/admin/field-range-editor.tsx
+msgid "They clash — the end day is inside the period"
+msgstr "They clash — the end day is inside the period"
+
+#: src/client/admin/field-range-editor.tsx
+msgid "They do not clash — the end is not inside the period"
+msgstr "They do not clash — the end is not inside the period"
+
 #: src/client/admin/pages/agents.tsx
 #~ msgid "Thinking…"
 #~ msgstr "Thinking…"
@@ -16104,6 +16141,10 @@ msgstr "This collection has no fields that support bulk editing. Structured (jso
 #: src/client/admin/pages/forms.tsx
 msgid "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
 msgstr "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
+
+#: src/client/admin/field-range-editor.tsx
+msgid "This collection has no other date column to end a period at."
+msgstr "This collection has no other date column to end a period at."
 
 #: src/client/admin/field-money-editor.tsx
 msgid "This collection has no text column to read a currency code from. Add one first, or give this field a single fixed currency."
@@ -16243,6 +16284,10 @@ msgstr "This number already states its country code."
 #: src/client/pages/reset-password.tsx
 msgid "This password reset link is missing its token or has expired. Request a new one and try again."
 msgstr "This password reset link is missing its token or has expired. Request a new one and try again."
+
+#: src/client/admin/field-range-editor.tsx
+msgid "This period ends at"
+msgstr "This period ends at"
 
 #: src/client/admin/pages/functions.tsx
 msgid "This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone."
@@ -17536,6 +17581,10 @@ msgstr "When nobody is mentioned"
 #: src/client/admin/parity/translations.tsx
 msgid "When off, existing translations in the target locale are overwritten."
 msgstr "When off, existing translations in the target locale are overwritten."
+
+#: src/client/admin/field-range-editor.tsx
+msgid "When one period ends exactly as another begins"
+msgstr "When one period ends exactly as another begins"
 
 #: src/client/admin/pages/functions.tsx
 msgid "When paused, triggers stop firing and HTTP invokes are rejected."

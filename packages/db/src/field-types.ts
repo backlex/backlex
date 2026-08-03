@@ -8,6 +8,7 @@ import {
   toMinorUnits,
   validateMoneySpec,
 } from "./money";
+import { type RangeSpec, validateRangeSpec } from "./range";
 import {
   assertPhoneShaped,
   type PhoneSpec,
@@ -561,6 +562,16 @@ export interface FieldDef {
    * assumed USD would silently misprice every non-dollar workspace).
    */
   money?: MoneySpec;
+  /**
+   * Declare that this `timestamp` field is the START of a period, and name the
+   * column holding its end. See {@link RangeSpec}.
+   *
+   * Nothing about the storage changes — both columns stay ordinary timestamps,
+   * sortable and filterable as themselves. What the declaration buys is the
+   * `_overlaps` / `_covers` filter operators, correct treatment of a NULL
+   * endpoint as an OPEN one, and a write-time check that the period is ordered.
+   */
+  range?: RangeSpec;
   /**
    * Configuration for a `phone` field — which country a national-form number is
    * read as, and which countries are allowed at all. See {@link PhoneSpec}.
@@ -1224,6 +1235,38 @@ export const validateFields = (fields: FieldDef[]): void => {
         // Surface a malformed default here rather than as broken DDL.
         toMinorUnits(f.default, currencyExponent(f.money.currency, f.money));
       }
+    }
+    if (f.range) {
+      // A period is two ordinary timestamp columns with a declared relationship,
+      // so the flags that make sense on a timestamp still do — `indexed` in
+      // particular, since an overlap filter compares the start column and wants
+      // it indexed. What is out:
+      for (const [flag, on] of [
+        // The value is a moment someone sets; none of these write moments, and
+        // all three would own the column the period depends on.
+        ["computed", !!f.computed],
+        ["rollup", !!f.rollup],
+        ["sequence", !!f.sequence],
+        // A localized value lives in the sidecar, one row per locale — but the
+        // overlap rewrite compares two BASE-table columns, so a per-locale
+        // period would be invisible to every query that asks about it.
+        ["localized", !!f.localized],
+        // Two rows may legitimately cover the same period; that is what an
+        // overlap query exists to FIND, not something to forbid at the column.
+        ["unique", !!f.unique],
+      ] as const) {
+        if (on) {
+          throw new Error(`Field "${f.name}": "${flag}" is not allowed on a range field`);
+        }
+      }
+      if (f.type !== "timestamp") {
+        throw new Error(
+          `Field "${f.name}": a range starts at a timestamp field (got "${f.type}")`,
+        );
+      }
+      const fieldTypes: Record<string, string> = {};
+      for (const o of fields) if (o.name !== f.name) fieldTypes[o.name] = o.type;
+      validateRangeSpec(f.range, { fieldName: f.name, fieldTypes });
     }
     if (f.phone && f.type !== "phone") {
       throw new Error(`Field "${f.name}": "phone" configuration requires a phone field`);

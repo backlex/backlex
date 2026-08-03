@@ -72,6 +72,11 @@ export interface FieldInterfaceDef {
    *  read as, and which countries are allowed at all. Optional like `hasGeo`:
    *  a bare phone field takes numbers written in international form. */
   hasPhone?: boolean;
+  /** Show the period editor in step 2 — which sibling column ends the period,
+   *  and whether a shared endpoint counts as a clash. Declared over columns that
+   *  already exist, so unlike every other capability flag this one adds no value
+   *  editor: both fields keep rendering as the date inputs they already are. */
+  hasRange?: boolean;
   /** Show the lifecycle editor in step 2 — which value may follow which, who
    *  may make each move, and what the row must carry for it. Only meaningful on
    *  an interface that stores ONE of a fixed set of values: the graph is drawn
@@ -114,8 +119,8 @@ export const FIELD_INTERFACES: FieldInterfaceDef[] = [
   { id: "radio", label: "Radio Buttons", sub: "One choice, all options visible", group: "Selection", icon: "Check", type: "text", hasChoices: true, hasTransitions: true, keywords: ["select", "lifecycle", "workflow", "state"] },
   { id: "checkboxes", label: "Checkboxes", sub: "Multiple choices, all visible", group: "Selection", icon: "Check", type: "json", hasChoices: true, keywords: ["multiselect"] },
   { id: "tags", label: "Tags", sub: "Free-form list of labels", group: "Selection", icon: "Hash", type: "json", keywords: ["chips", "keywords"] },
-  { id: "datetime", label: "Datetime", sub: "Date and time", group: "Selection", icon: "Calendar", type: "timestamp", keywords: ["date", "time", "timestamp"] },
-  { id: "date", label: "Date", sub: "Calendar date only", group: "Selection", icon: "Calendar", type: "timestamp", keywords: ["day"] },
+  { id: "datetime", label: "Datetime", sub: "Date and time", group: "Selection", icon: "Calendar", type: "timestamp", keywords: ["date", "time", "timestamp"] , hasRange: true },
+  { id: "date", label: "Date", sub: "Calendar date only", group: "Selection", icon: "Calendar", type: "timestamp", keywords: ["day"] , hasRange: true },
   { id: "color", label: "Color", sub: "Hex color picker", group: "Selection", icon: "Palette", type: "text", keywords: ["swatch", "hex", "theme"] },
   { id: "icon", label: "Icon", sub: "Pick a lucide icon name", group: "Selection", icon: "Bolt", type: "text", keywords: ["glyph", "symbol"] },
 

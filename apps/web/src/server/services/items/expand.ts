@@ -4,7 +4,7 @@ import type { AuthSubject } from "@backlex/core";
 import type { Ctx } from "../../context";
 import { resolvePermission } from "../permissions";
 import { loadCollection, type CollectionRow } from "./collection-loader";
-import { deserialize } from "./serialize";
+import { deserialize, deserializeField } from "./serialize";
 import { queryAll } from "./sql-helpers";
 
 /**
@@ -254,7 +254,7 @@ export const applyExpandToRow = (
       if (!(f.name in obj)) continue;
       // Permission `fields` allow-list was already enforced at SELECT
       // emission time, so anything present here is allowed.
-      expanded[f.name] = deserialize(obj[f.name], f.type, dialect);
+      expanded[f.name] = deserializeField(obj[f.name], f, dialect, obj, plan.target.fields);
     }
     out[plan.head] = expanded;
   }

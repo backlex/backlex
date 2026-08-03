@@ -1,6 +1,7 @@
 import { AppError, normalizeCondition } from "@backlex/core";
 import type { Condition } from "@backlex/core";
 import type { FieldDef } from "@backlex/db";
+import { normalizeMoneyOperands } from "../services/items/money-fields";
 
 export interface SortClause {
   field: string;
@@ -280,6 +281,16 @@ export const parseQuery = (
     filter = normalizeCondition(parsed, { relationFields });
     const fieldsByName = new Map(fields.map((f) => [f.name, f] as const));
     validateFilterFields(filter, allowedForUser, fieldsByName, allowedForUser);
+    // Money operands are written in major units and may name their currency;
+    // the column holds minor units and, when the currency is per row, needs the
+    // comparison confined to one. Rewritten here rather than in the DSL
+    // compiler because the compiler sees field NAMES, and the scaling is a
+    // property of the field DEFINITION.
+    try {
+      filter = normalizeMoneyOperands(filter, fields);
+    } catch (e) {
+      throw new AppError("VALIDATION", (e as Error).message);
+    }
   }
 
   // `q=...` is a free-text search. When the collection has full-text search
@@ -321,7 +332,7 @@ export const parseQuery = (
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean)
-    .map((s) => {
+    .flatMap<SortClause>((s) => {
       const dir: "asc" | "desc" = s.startsWith("-") ? "desc" : "asc";
       const field = s.replace(/^[-+]/, "");
       // Nested sort: `<relation_field>.<sub>[.<sub2>…]` — same gate as
@@ -370,7 +381,7 @@ export const parseQuery = (
             throw new AppError("VALIDATION", `Invalid nested sort subfield: ${seg}`);
           }
         }
-        return { field, dir };
+        return [{ field, dir }];
       }
       if (!allowedForUser.has(field)) {
         throw new AppError("VALIDATION", `Cannot sort on field: ${field}`);
@@ -391,7 +402,17 @@ export const parseQuery = (
           `Sorting by geo field "${field}" orders by distance — add a \`_near\` filter on "${field}" to say distance from where`,
         );
       }
-      return { field, dir };
+      // Sorting a money column whose currency varies per row orders by the
+      // currency FIRST, then by the amount inside it. Ordering by the raw
+      // integer alone would interleave denominations — `100` yen ahead of
+      // `1.50` euro — and present that as "cheapest first". Grouping is the
+      // only ordering of mixed money that is true, and it is still a total
+      // order, so keyset pagination is unaffected.
+      const moneyDef = sortFieldsByName.get(field);
+      if (moneyDef?.type === "money" && moneyDef.money?.currencyField) {
+        return [{ field: moneyDef.money.currencyField, dir }, { field, dir }];
+      }
+      return [{ field, dir }];
     });
   if (sort.length === 0) sort.push({ field: "created_at", dir: "desc" });
 
@@ -620,9 +641,35 @@ export const resolveProjection = (
     return [...set];
   }
   if (!permissionFields) return null;
-  const cols = [...sys];
+  const cols = new Set(sys);
   for (const f of fields) {
-    if (permissionFields.has(f.name)) cols.push(f.name);
+    if (permissionFields.has(f.name)) cols.add(f.name);
   }
-  return cols;
+  return [...cols];
+};
+
+/**
+ * Widen a SQL projection with the sibling currency column of every selected
+ * money field.
+ *
+ * A money value is `{ amount, currency }`, and for a per-row-currency field the
+ * currency is that other column — so `?fields=total` would otherwise read the
+ * amount out of a row that no longer carries the thing needed to scale it, and
+ * come back null.
+ *
+ * Applied to the SELECT list ONLY, never to the response projection: the caller
+ * asked for two fields and must get two. The currency still reaches them —
+ * inside the money value, where it is inseparable from the amount they were
+ * already allowed to read.
+ */
+export const withMoneyCurrencyColumns = (
+  cols: string[],
+  fields: FieldDef[],
+): string[] => {
+  const out = new Set(cols);
+  for (const f of fields) {
+    if (f.type !== "money" || !f.money?.currencyField) continue;
+    if (out.has(f.name)) out.add(f.money.currencyField);
+  }
+  return out.size === cols.length ? cols : [...out];
 };

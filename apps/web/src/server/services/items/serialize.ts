@@ -1,4 +1,5 @@
 import { type FieldDef, type FieldType, isLocalized, parseGeoPoint } from "@backlex/db";
+import { moneyValueOf, toStoredMoney } from "./money-fields";
 
 export const serialize = (
   value: unknown,
@@ -70,6 +71,37 @@ export const serialize = (
   return value;
 };
 
+/**
+ * Read one column back into the value the API hands out.
+ *
+ * `money` is deliberately NOT handled here and must not be: its value is
+ * `{ amount, currency }`, and the currency may live in a sibling column, so the
+ * conversion is a function of the ROW rather than of this cell. Every read path
+ * therefore goes through {@link deserializeField}, which has the row — see
+ * `moneyValueOf`. A money column reaching this function alone comes back as the
+ * raw integer it is stored as, which is the honest answer to a question asked
+ * without enough information.
+ */
+/**
+ * Write one value into the form its column holds, with the field available for
+ * the types the type token alone does not describe.
+ *
+ * `money` is the only such type today: its canonical value is
+ * `{ amount, currency }` and the column is an integer count of minor units, so
+ * the conversion needs the currency the value carries and the exponent the
+ * field pins. Every write surface goes through this rather than
+ * {@link serialize} — including GraphQL, which builds its own INSERT and would
+ * otherwise hand the driver a live object to bind.
+ */
+export const serializeField = (
+  value: unknown,
+  field: FieldDef,
+  dialect: "pg" | "sqlite",
+): unknown =>
+  field.type === "money"
+    ? toStoredMoney(value, field)
+    : serialize(value, field.type, dialect);
+
 export const deserialize = (
   value: unknown,
   type: FieldType,
@@ -103,6 +135,28 @@ export const deserialize = (
   }
   return value;
 };
+
+/**
+ * Read one column back, with the row available for the field types whose value
+ * is not a function of the cell alone.
+ *
+ * Today that is `money` and only `money` — its currency may be in a sibling
+ * column, and reading it without one produces an amount that does not say what
+ * it is. Every read surface (REST rows, GraphQL rows, `expand`ed relations, the
+ * sandbox bridge) calls this rather than {@link deserialize} so a new such type
+ * lands on all of them at once, which is the failure this repo keeps paying for
+ * on the write side.
+ */
+export const deserializeField = (
+  value: unknown,
+  field: FieldDef,
+  dialect: "pg" | "sqlite",
+  row: Record<string, unknown>,
+  fields: FieldDef[],
+): unknown =>
+  field.type === "money"
+    ? moneyValueOf(value, field, fields, row)
+    : deserialize(value, field.type, dialect);
 
 export const projectFields = (
   out: Record<string, unknown>,
@@ -163,7 +217,7 @@ export const deserializeRow = (
     // per-locale aggregate as a single value.
     if (isLocalized(f)) continue;
     if (includeAll || sel.has(f.name)) {
-      out[f.name] = deserialize(row[f.name], f.type, dialect);
+      out[f.name] = deserializeField(row[f.name], f, dialect, row, fields);
     }
   }
   return out;

@@ -1,5 +1,13 @@
 import type { Condition, DurationParts, RelativeNow } from "@backlex/core";
 import { type GeoSpec, parseGeoPoint, validateGeoSpec } from "./geo";
+import {
+  currencyExponent,
+  isDecimalStorage,
+  type MoneySpec,
+  parseMoneyInput,
+  toMinorUnits,
+  validateMoneySpec,
+} from "./money";
 import { type SequenceSpec, validateSequenceSpec } from "./sequence";
 
 type Dialect = "pg" | "sqlite";
@@ -25,6 +33,17 @@ export type FieldType =
    * See {@link GeoSpec} and `packages/db/src/geo.ts`.
    */
   | "geo"
+  /**
+   * An amount of money — an integer count of the currency's minor units in a
+   * `bigint`/`INTEGER` column, read and written as major units paired with the
+   * currency they are denominated in (`{ amount: 19.99, currency: "USD" }`).
+   *
+   * The currency is fixed on the field or read from a sibling text column; the
+   * exponent follows ISO-4217, so `1000 JPY` stores `1000` and `1.234 KWD`
+   * stores `1234`. Aggregating amounts in different currencies is refused
+   * rather than answered. See {@link MoneySpec} and `packages/db/src/money.ts`.
+   */
+  | "money"
   /**
    * One-way hashed secret (password / PIN / API secret). The API hashes the
    * incoming plaintext (scrypt) on write and stores only the digest; reads
@@ -70,6 +89,9 @@ export const FIELD_TYPES = [
   // A `{ lat, lng }` point, stored like `json`. Filterable with `_near`,
   // sortable by distance from that same origin.
   "geo",
+  // An amount in minor units, read and written as major units plus the
+  // currency they are denominated in.
+  "money",
   // One-way hashed secret — the write path scrypt-hashes the plaintext and
   // stores only the digest; reads return null; verification goes through
   // `POST /:slug/:id/verify`.
@@ -338,9 +360,24 @@ export const validateRollupSpec = (name: string, field: FieldDef): void => {
   // The column has to be able to hold the result. `count` is whole by
   // definition; `avg` is not, and an integer column would silently truncate
   // "3.5 sessions per member" to 3.
-  if (field.type !== "integer" && field.type !== "number") {
+  if (field.type !== "integer" && field.type !== "number" && field.type !== "money") {
     throw new Error(
-      `Field "${name}": a rollup field must be type integer or number (got "${field.type}")`,
+      `Field "${name}": a rollup field must be type integer, number or money (got "${field.type}")`,
+    );
+  }
+  if (spec.fn === "count" && field.type === "money") {
+    // A count of rows is not an amount of money, and storing it in a money
+    // column would print it with a currency symbol.
+    throw new Error(
+      `Field "${name}": rollup.fn "count" counts rows — use an integer field, not money`,
+    );
+  }
+  if (spec.fn === "avg" && field.type === "money") {
+    // An average lands between two minor units far more often than not, and a
+    // money column is an integer count of them — storing the average would
+    // truncate a fraction of a cent per parent, silently and forever.
+    throw new Error(
+      `Field "${name}": rollup.fn "avg" cannot write a money field — an average falls between minor units. Use a number field, or roll up the sum and the count.`,
     );
   }
   if (spec.fn === "avg" && field.type !== "number") {
@@ -492,6 +529,15 @@ export interface FieldDef {
    * operator supplies, and that is the common case.
    */
   geo?: GeoSpec;
+  /**
+   * Configuration for a `money` field — where its currency comes from, and how
+   * the amount sits in the column. See {@link MoneySpec}.
+   *
+   * REQUIRED on a money field, unlike `geo`: an integer with no currency is the
+   * situation this type exists to end, and there is no sensible default (an
+   * assumed USD would silently misprice every non-dollar workspace).
+   */
+  money?: MoneySpec;
   /**
    * When true (and the collection has `vectorize: true`), this field's
    * value is concatenated into the embed text on item write. Only
@@ -651,6 +697,10 @@ const PG_TYPES: Record<FieldType, string> = {
   file: "text",
   relation_many: "jsonb",
   geo: "jsonb",
+  // Minor units. `bigint` because an amount is a count, and because the whole
+  // point of the type is that it does not go through a float. A `decimal`
+  // storage money field overrides this — see `sqlTypeForField`.
+  money: "bigint",
   hash: "text",
   // Presentational — never reach the DDL (the applier filters them out); these
   // placeholders only satisfy the exhaustive Record<FieldType> mapping.
@@ -671,6 +721,8 @@ const SQLITE_TYPES: Record<FieldType, string> = {
   file: "TEXT",
   relation_many: "TEXT",
   geo: "TEXT",
+  // SQLite's INTEGER is 64-bit, so minor units are exact here too.
+  money: "INTEGER",
   hash: "TEXT",
   // Presentational — see PG_TYPES note; never emitted as DDL.
   divider: "TEXT",
@@ -679,6 +731,18 @@ const SQLITE_TYPES: Record<FieldType, string> = {
 
 export const sqlTypeFor = (type: FieldType, dialect: Dialect): string =>
   dialect === "pg" ? PG_TYPES[type] : SQLITE_TYPES[type];
+
+/**
+ * Storage type for a field, honouring the one case where the type token alone
+ * does not decide it: a `money` field in `decimal` storage keeps MAJOR units in
+ * an ordinary numeric column, because that mode exists to sit on top of a
+ * column an adopted table already had. Every other type answers exactly as
+ * {@link sqlTypeFor}.
+ */
+export const sqlTypeForField = (field: FieldDef, dialect: Dialect): string =>
+  field.type === "money" && isDecimalStorage(field.money)
+    ? sqlTypeFor("number", dialect)
+    : sqlTypeFor(field.type, dialect);
 
 // Identifiers must be lowercase snake_case. A leading underscore is allowed
 // for the system columns we emit internally (`_status`, `_published_at`);
@@ -886,6 +950,7 @@ export const validateFields = (fields: FieldDef[]): void => {
         ["rollup", !!f.rollup],
         ["sequence", !!f.sequence],
         ["geo", !!f.geo],
+        ["money", !!f.money],
         ["to", !!f.to],
         ["onCreate", !!f.onCreate],
         ["onUpdate", !!f.onUpdate],
@@ -1059,6 +1124,54 @@ export const validateFields = (fields: FieldDef[]): void => {
         if (f.geo.geocodeFrom?.includes(f.name)) {
           throw new Error(`Field "${f.name}": "geocodeFrom" cannot include the geo field itself`);
         }
+      }
+    }
+    if (f.money && f.type !== "money") {
+      throw new Error(`Field "${f.name}": "money" configuration requires a money field`);
+    }
+    if (f.type === "money") {
+      // An amount is a scalar, so most flags behave — `indexed` and `unique`
+      // work on the integer column exactly as they would on `integer`, and
+      // sorting/filtering are ordinary comparisons. The ones that are out:
+      //  - searchable/vectorize: folding "1999" into a keyword or embedding
+      //    index matches on digits, which is noise.
+      //  - localized: a price is not a different amount in French. A per-locale
+      //    price list is a per-locale ROW, or a second column.
+      //  - sequence: a document number is a string the server issues, and a
+      //    money column would have to be both.
+      for (const [flag, on] of [
+        ["searchable", !!f.searchable],
+        ["vectorize", !!f.vectorize],
+        ["localized", !!f.localized],
+        ["sequence", !!f.sequence],
+      ] as const) {
+        if (on) {
+          throw new Error(`Field "${f.name}": "${flag}" is not allowed on a money field`);
+        }
+      }
+      if (!f.money) {
+        throw new Error(
+          `Field "${f.name}": a money field needs a "money" configuration saying which currency it is in`,
+        );
+      }
+      const fieldTypes: Record<string, string> = {};
+      for (const o of fields) fieldTypes[o.name] = o.type;
+      validateMoneySpec(f.money, { fieldTypes, fieldName: f.name });
+      if (f.default !== undefined && f.default !== null) {
+        if (typeof f.default !== "number") {
+          throw new Error(
+            `Field "${f.name}": a money default must be a number in major units (e.g. 0 or 9.99)`,
+          );
+        }
+        if (f.money.currencyField && f.default !== 0) {
+          // Zero is zero in every currency; anything else needs an exponent,
+          // and this field's exponent is whatever each row's own code says.
+          throw new Error(
+            `Field "${f.name}": only a default of 0 is possible when the currency comes from "${f.money.currencyField}" — each row's currency decides how many decimals the default would have`,
+          );
+        }
+        // Surface a malformed default here rather than as broken DDL.
+        toMinorUnits(f.default, currencyExponent(f.money.currency, f.money));
       }
     }
     // Auto-fill tokens (onCreate/onUpdate) must suit the column's storage type,
@@ -1290,6 +1403,25 @@ export const validateValue = (
     }
   }
 
+  // Shape, not policy — like `geo` above, and for the same reason. A money
+  // column is an integer count of minor units, and every reader of it (the sum
+  // a rollup stores, the comparison a filter makes, the string the admin
+  // prints) assumes that. A value that is not an amount must never reach it,
+  // whether or not the field carries a `validation` block.
+  //
+  // The currency is NOT resolved here: `validateValue` sees one field, and a
+  // per-row currency lives in a sibling column. What this proves is that the
+  // value has an amount at all and that its precision fits — the write path's
+  // `canonicalizeMoneyFields` does the resolution and re-parses against the
+  // row's actual currency.
+  if (field.type === "money") {
+    try {
+      parseMoneyInput(value, (code) => currencyExponent(code ?? field.money?.currency, field.money));
+    } catch (e) {
+      fail(`${field.name}: ${(e as Error).message}`);
+    }
+  }
+
   // Dropdown choice membership is enforced for any field with the interface
   // set, even when no `validation` block is configured.
   if (field.interface === "dropdown") {
@@ -1348,6 +1480,35 @@ export const validateValue = (
     }
   }
 
+  // `min`/`max` on a money field are written in MAJOR units — the same units
+  // the bound reads in, so "at least 10.00" is `min: 10` whatever the exponent.
+  // Comparing in minor units keeps the check exact.
+  if (field.type === "money" && (v.min !== undefined || v.max !== undefined)) {
+    const exponentFor = (code: string | null) =>
+      currencyExponent(code ?? field.money?.currency, field.money);
+    let bounds: { minor: number; min?: number; max?: number };
+    try {
+      const parsed = parseMoneyInput(value, exponentFor);
+      const exponent = exponentFor(parsed.currency);
+      bounds = {
+        minor: parsed.minor,
+        min: v.min === undefined ? undefined : toMinorUnits(v.min, exponent),
+        max: v.max === undefined ? undefined : toMinorUnits(v.max, exponent),
+      };
+    } catch {
+      // An unparseable VALUE already failed the shape check above, so anything
+      // thrown here is a malformed BOUND — an admin-config error, which like
+      // the invalid-regex case is never masked by `validation.message`.
+      throw new Error(`${field.name}: invalid money bound in validation`);
+    }
+    if (bounds.min !== undefined && bounds.minor < bounds.min) {
+      fail(`${field.name}: must be ≥ ${v.min}`);
+    }
+    if (bounds.max !== undefined && bounds.minor > bounds.max) {
+      fail(`${field.name}: must be ≤ ${v.max}`);
+    }
+  }
+
   if (field.type === "timestamp" && (v.minDate !== undefined || v.maxDate !== undefined)) {
     const t = toEpochMs(value, now);
     if (t === null) {
@@ -1371,7 +1532,7 @@ export const validateValue = (
 };
 
 export const columnDefSql = (field: FieldDef, dialect: Dialect): string => {
-  const type = sqlTypeFor(field.type, dialect);
+  const type = sqlTypeForField(field, dialect);
   const parts = [quote(field.name), type];
   if (field.computed) {
     // Both PG and SQLite (3.31+) accept this exact syntax. The expression
@@ -1389,7 +1550,19 @@ export const columnDefSql = (field: FieldDef, dialect: Dialect): string => {
     if (neutral !== null) parts.push(`DEFAULT ${neutral}`);
     return parts.join(" ");
   }
-  if (
+  if (field.type === "money") {
+    // A money default is written in MAJOR units like every other money value
+    // the caller states, so it is scaled here rather than being taken as the
+    // raw column contents — `DEFAULT 0` and `DEFAULT 9.99` would otherwise mean
+    // zero and nine cents. `validateFields` has already refused a non-zero
+    // default on a per-row-currency field, where no exponent is knowable.
+    if (typeof field.default === "number" && !isDecimalStorage(field.money)) {
+      const exponent = currencyExponent(field.money?.currency, field.money);
+      parts.push(`DEFAULT ${toMinorUnits(field.default, exponent)}`);
+    } else if (typeof field.default === "number") {
+      parts.push(`DEFAULT ${defaultLiteral(field.default, dialect)}`);
+    }
+  } else if (
     field.default !== undefined &&
     field.default !== null &&
     DEFAULTABLE.has(field.type)
@@ -1411,4 +1584,4 @@ export const columnDefSql = (field: FieldDef, dialect: Dialect): string => {
  * (pg `bigint`/`timestamptz`/`jsonb`, sqlite `INTEGER`/`REAL`/`TEXT`).
  */
 export const sidecarColumnDefSql = (field: FieldDef, dialect: Dialect): string =>
-  `${quote(field.name)} ${sqlTypeFor(field.type, dialect)}`;
+  `${quote(field.name)} ${sqlTypeForField(field, dialect)}`;

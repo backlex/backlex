@@ -455,12 +455,30 @@ export function AlterPreview({
   table = "c_collection",
 }: { pendingField?: Partial<SchemaField> | null; table?: string }) {
   if (!pendingField) return null;
-  const sqlType =
-    pendingField.type === "integer" ? "INTEGER" :
-    pendingField.type === "longtext" ? "TEXT" :
-    pendingField.type === "boolean" ? "INTEGER" :
-    pendingField.type === "json" ? "TEXT" :
-    pendingField.type === "timestamp" ? "INTEGER" : "TEXT";
+  // Mirrors SQLITE_TYPES in packages/db/src/field-types.ts. A map rather than a
+  // ternary chain because the chain fell behind twice over: `number` previewed
+  // as TEXT when the column is REAL, and every type added since (`geo`, `money`)
+  // landed on the same fallback. Kept local because the type table lives in the
+  // package ROOT, whose index drags the migration bundles' `*.sql` imports into
+  // the client build.
+  const SQLITE_PREVIEW: Record<string, string> = {
+    text: "TEXT",
+    longtext: "TEXT",
+    integer: "INTEGER",
+    number: "REAL",
+    boolean: "INTEGER",
+    json: "TEXT",
+    timestamp: "INTEGER",
+    uuid: "TEXT",
+    relation: "TEXT",
+    file: "TEXT",
+    relation_many: "TEXT",
+    geo: "TEXT",
+    // Minor units — the whole reason a money column is exact.
+    money: "INTEGER",
+    hash: "TEXT",
+  };
+  const sqlType = SQLITE_PREVIEW[pendingField.type ?? "text"] ?? "TEXT";
   const kw = "text-[oklch(0.78_0.18_95)]";
   const ident = "text-[oklch(0.85_0.13_200)]";
   const comment = "italic text-[oklch(from_var(--primary)_0.6_0.02_h)]";

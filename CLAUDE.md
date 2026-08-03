@@ -238,6 +238,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Rollup fields (a parent total kept from its child rows) | `docs/rollups.md` |
 | Sequence fields (a document number the server issues) | `docs/sequences.md` |
 | Geo fields (where a row is, and what is near it) | `docs/geo.md` |
+| Money fields (an amount and the currency it is in) | `docs/money.md` |
 | Migrating an external DB in (`backlex import-db`) | `docs/migrating-in.md` |
 | Schema versions (migration diffing / branching) | `docs/schema-versions.md` |
 | Locale + timezone | `docs/locale-timezone.md` |

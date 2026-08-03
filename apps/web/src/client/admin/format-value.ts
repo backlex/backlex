@@ -13,6 +13,10 @@
 // coordinates a table cell prints are formatted by the same function the server
 // and the field editor use.
 import { formatGeoPoint, tryParseGeoPoint } from "@backlex/db/geo";
+// Same reasoning as `@backlex/db/geo` above: a dependency-free subpath export,
+// so the amount a table cell prints is formatted by the exact function the
+// server and the item form use.
+import { formatMoney, type MoneyValue } from "@backlex/db/money";
 
 type FieldFormat = {
   style?: "plain" | "decimal" | "currency" | "percent";
@@ -153,6 +157,17 @@ export const formatFieldValue = (
   if (field.type === "geo") {
     const p = tryParseGeoPoint(value);
     return p ? formatGeoPoint(p) : "";
+  }
+  // `{ amount, currency }` renders as an amount in that currency — with its own
+  // number of decimals, so a yen total is not printed with two of them. A money
+  // field ignores `format.style`: the currency is on the value, which is
+  // strictly better information than a display hint someone typed.
+  if (field.type === "money") {
+    const m = value as Partial<MoneyValue>;
+    if (typeof m?.amount === "number" && typeof m?.currency === "string") {
+      return formatMoney({ amount: m.amount, currency: m.currency }, locale);
+    }
+    return typeof value === "number" || typeof value === "string" ? String(value) : "";
   }
   const f = field.format;
   if (f) {

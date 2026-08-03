@@ -397,10 +397,41 @@ const snakeToCamel = (s: string): string =>
   s.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
 
 const lookup = (row: Record<string, unknown>, field: string): unknown => {
-  if (field in row) return row[field];
+  if (field in row) return unwrapMoney(row[field]);
   const camel = snakeToCamel(field);
-  if (camel !== field && camel in row) return row[camel];
+  if (camel !== field && camel in row) return unwrapMoney(row[camel]);
   return undefined;
+};
+
+/**
+ * A money field's value is `{ amount, currency }`; comparisons are against the
+ * amount.
+ *
+ * This matcher runs on ROWS — a realtime event, the permission simulator, a
+ * cross-field validation rule — and those rows carry money in its canonical API
+ * shape. Without this, `{ price: { _gt: 100 } }` would compare an object to a
+ * number: `>` coerces the object to `NaN` and the clause silently never
+ * matches, so a realtime subscriber filtering on price would receive nothing
+ * and see no error.
+ *
+ * Comparing the amount alone is right because the SQL side does the same thing
+ * — `normalizeMoneyOperands` pins the currency as a separate clause rather than
+ * folding it into the comparison — so the two evaluators agree on the same
+ * filter. Both are in the field's own major units.
+ *
+ * The shape test is EXACT — those two keys and nothing else — because this
+ * function sees every field, not just money ones, and this evaluator decides
+ * what a realtime subscriber is allowed to receive. A `json` column that merely
+ * happens to carry an `amount` alongside other keys must keep comparing as the
+ * object it is; widening a permission predicate is not a thing to do by
+ * coincidence of shape.
+ */
+const unwrapMoney = (value: unknown): unknown => {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
+  const keys = Object.keys(value as object);
+  if (keys.length !== 2) return value;
+  const v = value as { amount?: unknown; currency?: unknown };
+  return typeof v.amount === "number" && typeof v.currency === "string" ? v.amount : value;
 };
 
 const matchesInner = (

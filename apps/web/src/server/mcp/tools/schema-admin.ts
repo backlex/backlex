@@ -34,7 +34,12 @@ export const createCollection: McpTool = {
         description:
           "Array of `{ name, type, required?, unique?, to?, localized? }`. " +
           "Supported types: text, longtext, integer, number, boolean, json, " +
-          "timestamp, uuid, relation, relation_many. relation/_many requires `to`. " +
+          "timestamp, uuid, relation, relation_many, file, geo, money, hash. " +
+          "relation/_many requires `to`. `money` requires a `money` config with " +
+          "exactly one of `currency` (a fixed ISO-4217 code, e.g. " +
+          "`{ currency: \"TRY\" }`) or `currencyField` (the name of a sibling " +
+          "text column holding the code per row); amounts are read and written " +
+          "in major units — `19.99`, not `1999`. " +
           "`localized: true` stores the value per-locale in the collection's " +
           "translations sidecar (any type except computed/hash); read/write one " +
           "locale with `?locale=xx`, the full map with `?locale=*`.",

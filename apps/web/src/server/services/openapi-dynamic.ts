@@ -26,6 +26,20 @@ const fieldToSchema = (type: FieldType): Schema => {
       return {};
     case "relation_many":
       return { type: "array", items: { type: "string" } };
+    case "money":
+      // Reads are always this object. Writes accept more (a bare number, a
+      // decimal string, `"19.99 USD"`, `{ minor, currency }`) — described in
+      // the field's own text rather than widened here, because a schema that
+      // says `oneOf` five ways is less useful to a generator than the one shape
+      // it will actually receive.
+      return {
+        type: "object",
+        properties: {
+          amount: { type: "number", description: "Major units — 19.99, not 1999." },
+          currency: { type: "string", description: "ISO-4217 code." },
+        },
+        required: ["amount", "currency"],
+      };
     default:
       return {};
   }

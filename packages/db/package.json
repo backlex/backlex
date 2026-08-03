@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./geo": "./src/geo.ts",
+    "./money": "./src/money.ts",
     "./sequence": "./src/sequence.ts",
     "./pg": "./src/pg/index.ts",
     "./pg/schema": "./src/pg/schema.ts",

@@ -96,6 +96,7 @@ export default defineConfig({
             { slug: "rollups" },
             { slug: "sequences" },
             { slug: "geo" },
+            { slug: "money" },
             { slug: "adopting-tables" },
             { slug: "migrating-in" },
             { slug: "schema-versions" },

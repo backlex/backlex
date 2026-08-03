@@ -14,7 +14,7 @@ import {
 } from "@backlex/db";
 import type { AppBindings } from "../../app";
 import { requirePermission } from "../../middleware/permission";
-import { parseQuery, queryShapeOf, resolveProjection } from "../../lib/query";
+import { parseQuery, queryShapeOf, resolveProjection, withMoneyCurrencyColumns } from "../../lib/query";
 import { resolvePermission } from "../../services/permissions";
 import { ftsMembershipWhere, isSearchable } from "../../services/fts";
 import { loadAppSettings } from "../../services/settings";
@@ -741,7 +741,10 @@ export const itemsListRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ? (() => {
             const filtered = projection.filter((c) => !localizedNameSet.has(c));
             if (!filtered.includes(collection.pkColumn)) filtered.push(collection.pkColumn);
-            return filtered;
+            // A money field's currency may live in a column the caller did not
+            // ask for. Selected here, and here only — the response projection
+            // above stays exactly what was requested.
+            return withMoneyCurrencyColumns(filtered, collection.fields);
           })()
         : null;
       const projectedLocalizedDefs = projection

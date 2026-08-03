@@ -12,7 +12,10 @@ type FieldType =
   | "uuid"
   | "relation"
   | "file"
-  | "relation_many";
+  | "relation_many"
+  | "geo"
+  | "money"
+  | "hash";
 
 interface FieldChoice {
   value: string;
@@ -65,6 +68,14 @@ const SCALAR_TYPES: Record<FieldType, string> = {
   file: "string",
   // Array of foreign ids.
   relation_many: "string[]",
+  // A point on the earth.
+  geo: "{ lat: number; lng: number }",
+  // An amount in MAJOR units plus the currency it is denominated in. Written
+  // structurally rather than as a named import so the generated file stays
+  // standalone — it is a `.d.ts` a consumer drops into their own project.
+  money: "{ amount: number; currency: string }",
+  // A one-way digest: writable as a string, always reads back null.
+  hash: "null",
   // Localized map; collapses to a string when read with `?locale=xx`.
 };
 

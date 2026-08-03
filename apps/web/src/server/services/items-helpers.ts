@@ -2,8 +2,10 @@ import { sql, and, eq } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { AppError } from "@backlex/core";
-import { validateValue, type FieldDef, type FieldType } from "@backlex/db";
+import { validateValue, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
+import { serializeField } from "./items/serialize";
+import { canonicalizeMoneyFields } from "./items/money-fields";
 
 /**
  * Slim shared helpers for dynamic-collection rows. The HTTP routes in
@@ -56,26 +58,18 @@ export const loadCollection = async (
   };
 };
 
-export const serialize = (
-  value: unknown,
-  type: FieldType,
-  dialect: "pg" | "sqlite",
-): unknown => {
-  if (value === undefined || value === null) return null;
-  if (dialect === "sqlite") {
-    if (type === "json" || type === "relation_many") return JSON.stringify(value);
-    if (type === "boolean") return value ? 1 : 0;
-    if (type === "timestamp")
-      return value instanceof Date ? value.getTime() : Number(value);
-  } else {
-    if (type === "timestamp" && !(value instanceof Date))
-      return new Date(value as string | number);
-    if (type === "relation_many" && typeof value === "string") {
-      try { return JSON.parse(value); } catch { return value; }
-    }
-  }
-  return value;
-};
+/**
+ * Re-exported from the items write path rather than reimplemented.
+ *
+ * This module used to carry its own copy, and it had drifted: `timestamp`
+ * became `Number(value)` on SQLite (so the ISO string a read hands back stored
+ * as null) and a `Date` on Postgres (which postgres-js cannot bind for a
+ * dynamic table), and `geo` was never normalized at all. Every collection write
+ * that goes through a flow, a booking, a payment sync or an approval came
+ * through here, so those were not edge cases. One implementation, one set of
+ * fixes.
+ */
+export { serialize } from "./items/serialize";
 
 export const validateRow = (
   data: Record<string, unknown>,
@@ -141,6 +135,12 @@ export const createItem = async (
 ): Promise<{ id: string; row: Record<string, unknown> }> => {
   const collection = await loadCollection(ctx, input.tenantId, input.slug);
   validateRow(input.data, collection.fields, false);
+  // Flows, bookings, payment syncs and approvals all write collections through
+  // here without ever touching `performCreate`, so the money canonicalization
+  // has to happen on this path too — otherwise a flow that sets `total: 19.99`
+  // stores nineteen minor units. Same class of miss as GraphQL hand-building
+  // its own INSERT.
+  canonicalizeMoneyFields(input.data, collection.fields);
 
   const id = crypto.randomUUID();
   const now = nowFor(ctx.dialect);
@@ -158,7 +158,7 @@ export const createItem = async (
   for (const f of collection.fields) {
     if (input.data[f.name] === undefined) continue;
     cols.push(f.name);
-    vals.push(serialize(input.data[f.name], f.type, ctx.dialect));
+    vals.push(serializeField(input.data[f.name], f, ctx.dialect));
   }
 
   const colSql = sql.join(cols.map((n) => sql.identifier(n)), sql`, `);
@@ -177,13 +177,14 @@ export const updateItem = async (
 ): Promise<void> => {
   const collection = await loadCollection(ctx, input.tenantId, input.slug);
   validateRow(input.data, collection.fields, true);
+  canonicalizeMoneyFields(input.data, collection.fields);
 
   const now = nowFor(ctx.dialect);
   const sets = [sql`${sql.identifier("updated_at")} = ${now}`];
   for (const f of collection.fields) {
     if (input.data[f.name] === undefined) continue;
     sets.push(
-      sql`${sql.identifier(f.name)} = ${serialize(input.data[f.name], f.type, ctx.dialect)}`,
+      sql`${sql.identifier(f.name)} = ${serializeField(input.data[f.name], f, ctx.dialect)}`,
     );
   }
   if (sets.length === 1) return; // nothing to update beyond the timestamp

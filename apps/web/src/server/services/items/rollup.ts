@@ -2,6 +2,8 @@ import { eq, sql, type SQL } from "drizzle-orm";
 import {
   collectConditionFields,
   compileCondition,
+  currencyExponent,
+  normalizeCurrency,
   rollupRefreshSql,
   type FieldDef,
   type RollupSpec,
@@ -376,6 +378,88 @@ export const refreshCollectionRollups = async (
  * paid for once: a guard that ships on one surface is a guard the other surface
  * doesn't have. Every path that stores a collection's fields calls this.
  */
+/**
+ * Refuse a rollup whose two ends are not denominated the same way.
+ *
+ * `rollupRefreshSql` moves integers: `SET total = (SELECT SUM(amount) FROM …)`.
+ * Nothing in that statement knows what a minor unit is, so the parent column
+ * ends up holding whatever the children's integers add up to. That is exactly
+ * right when both sides are the same currency with the same exponent, and
+ * silently wrong in every other case:
+ *
+ *  - **A money child into a plain number parent** — the parent stores `199900`
+ *    and prints it as a number, so an invoice for `1999.00` shows as nearly two
+ *    hundred thousand.
+ *  - **Different currencies** — summing a column of dollars into a lira total
+ *    is the mixed-currency addition this type exists to prevent, just spread
+ *    across two collections so no single row looks wrong.
+ *  - **Different exponents** — `JPY` into a `USD` column is out by a hundred
+ *    even though both are "money".
+ *  - **A per-row-currency child** — the SUM adds every denomination in the
+ *    table together before the parent ever sees it.
+ *
+ * All four are rejected at save time, where an admin can still change their
+ * mind, rather than at refresh time where the only evidence is a wrong total.
+ */
+const assertRollupCurrenciesAgree = (
+  where: string,
+  parentField: FieldDef,
+  childField: FieldDef,
+  childSlug: string,
+  childName: string,
+): void => {
+  const ref = `"${childSlug}.${childName}"`;
+  if (parentField.type !== "money") {
+    throw new AppError(
+      "VALIDATION",
+      `${where}: ${ref} is money, so the field that totals it must be money too — a plain number column would store minor units and print them as an amount`,
+    );
+  }
+  if (childField.type !== "money") {
+    throw new AppError(
+      "VALIDATION",
+      `${where}: this field is money but ${ref} is ${childField.type} — a total in a currency cannot be built from values that are not in one`,
+    );
+  }
+  const childPer = childField.money?.currencyField;
+  if (childPer) {
+    throw new AppError(
+      "VALIDATION",
+      `${where}: ${ref} holds a different currency per row ("${childPer}"), so summing it would add denominations together. Split the children per currency, or fix ${ref} to one.`,
+    );
+  }
+  const parentPer = parentField.money?.currencyField;
+  if (parentPer) {
+    throw new AppError(
+      "VALIDATION",
+      `${where}: a rollup total cannot take its currency from another column ("${parentPer}") — the total is written by the server, and nothing would keep that column in step with it`,
+    );
+  }
+  const childCurrency = normalizeCurrency(childField.money?.currency);
+  const parentCurrency = normalizeCurrency(parentField.money?.currency);
+  if (childCurrency !== parentCurrency) {
+    throw new AppError(
+      "VALIDATION",
+      `${where}: this field is in ${parentCurrency} but ${ref} is in ${childCurrency} — there is no exchange rate in a SUM`,
+    );
+  }
+  if (
+    currencyExponent(parentCurrency, parentField.money) !==
+    currencyExponent(childCurrency, childField.money)
+  ) {
+    throw new AppError(
+      "VALIDATION",
+      `${where}: this field and ${ref} are both ${parentCurrency} but count minor units differently`,
+    );
+  }
+  if (Boolean(parentField.money?.storage === "decimal") !== Boolean(childField.money?.storage === "decimal")) {
+    throw new AppError(
+      "VALIDATION",
+      `${where}: this field and ${ref} store amounts differently (one in minor units, one as a decimal) — the sum would be out by a factor of ${10 ** currencyExponent(parentCurrency, parentField.money)}`,
+    );
+  }
+};
+
 export const validateRollupTargets = async (
   ctx: Ctx,
   tenantId: string,
@@ -438,11 +522,18 @@ export const validateRollupTargets = async (
           `${where}: "${spec.from}" has no field "${spec.field}" to ${spec.fn}`,
         );
       }
-      if (target.type !== "integer" && target.type !== "number") {
+      if (target.type !== "integer" && target.type !== "number" && target.type !== "money") {
         throw new AppError(
           "VALIDATION",
           `${where}: "${spec.from}.${spec.field}" is a ${target.type} field — ${spec.fn} needs a number`,
         );
+      }
+      // Money must agree at both ends, and the check is the whole reason the
+      // type exists. The refresh is `SET total = (SELECT SUM(amount) …)`: raw
+      // integers moving from one column to another, with no scaling and no
+      // interpretation. So the two columns have to mean the same thing.
+      if (target.type === "money" || f.type === "money") {
+        assertRollupCurrenciesAgree(where, f, target, spec.from, spec.field);
       }
     }
     // A rollup over a rollup would need the inner one to have settled before

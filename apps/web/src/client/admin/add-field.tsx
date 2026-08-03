@@ -31,7 +31,7 @@ import {
   getInterface,
   matchesInterfaceQuery,
 } from "./interfaces";
-import { useEnabledExtensions } from "./queries";
+import { useEnabledExtensions, useSettings } from "./queries";
 import {
   type GroupNode,
   newGroup,
@@ -70,6 +70,12 @@ import {
   FieldGeoEditor,
   type GeoDraft,
 } from "./field-geo-editor";
+import {
+  cleanMoney,
+  emptyMoneyDraft,
+  FieldMoneyEditor,
+  type MoneyDraft,
+} from "./field-money-editor";
 import { canLocalize } from "./item-form";
 
 /** Seed a new sequence with the operator's own calendar rather than UTC. The
@@ -115,7 +121,14 @@ export interface AddFieldDialogProps {
 }
 
 export function AddFieldDialog({ open, schema, collections, onClose, onCreate }: AddFieldDialogProps) {
-  const { t } = useLingui();
+  const { t, i18n } = useLingui();
+  // The workspace's preferred currency, used only to pre-select the dropdown on
+  // a new money field. Never read at runtime — see the note on the setting.
+  const settings = useSettings();
+  const defaultCurrency =
+    ((settings.data?.data as Record<string, unknown> | undefined)?.defaultCurrency as
+      | string
+      | undefined) || "USD";
   const [name, setName] = useState("");
   const [interfaceId, setInterfaceId] = useState("input");
   const [query, setQuery] = useState("");
@@ -147,6 +160,9 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [valDraft, setValDraft] = useState<ValDraft>(emptyValDraft());
   const [rollupDraft, setRollupDraft] = useState<RollupDraft>(emptyRollupDraft());
   const [geoDraft, setGeoDraft] = useState<GeoDraft>(emptyGeoDraft);
+  const [moneyDraft, setMoneyDraft] = useState<MoneyDraft>(() =>
+    emptyMoneyDraft(defaultCurrency),
+  );
   const [seqDraft, setSeqDraft] = useState<SequenceDraft>(() =>
     emptySequenceDraft(browserTimeZone()),
   );
@@ -283,9 +299,19 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   // nothing to block the Save button on — unlike a rollup, a location field is
   // complete the moment it exists.
   const cleanedGeo = def.hasGeo ? cleanGeo(geoDraft) : undefined;
+  // A money spec, unlike a geo one, is NOT optional: the column is an integer
+  // count of minor units and the currency is what says how many make one. So
+  // this blocks Save the way a rollup's does.
+  const cleanedMoney = def.hasMoney ? cleanMoney(moneyDraft) : undefined;
+  const missingMoney = !!def.hasMoney && !cleanedMoney;
   const nameInvalid = !safeName || nameTaken || safeName.length < 2;
   const valid =
-    !nameInvalid && !missingChoices && !missingRelation && !missingRollup && !missingSequence;
+    !nameInvalid &&
+    !missingChoices &&
+    !missingRelation &&
+    !missingRollup &&
+    !missingSequence &&
+    !missingMoney;
 
   const groups = useMemo(() => {
     const filtered = [...FIELD_INTERFACES, ...extDefs].filter((i) => matchesInterfaceQuery(i, query));
@@ -361,6 +387,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(cleanedRollup ? { rollup: cleanedRollup } : {}),
       ...(cleanedSequence ? { sequence: cleanedSequence } : {}),
       ...(cleanedGeo ? { geo: cleanedGeo } : {}),
+      ...(cleanedMoney ? { money: cleanedMoney } : {}),
       ...(conditions.length ? { conditions } : {}),
       ...(validation ? { validation } : {}),
       ...(cleanFormat(formatDraft, def.type) ? { format: cleanFormat(formatDraft, def.type) } : {}),
@@ -380,6 +407,9 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ? [{ key: "sequence", label: t`Numbering`, icon: "Hash", invalid: missingSequence } as FieldTabItem]
       : []),
     ...(def.hasGeo ? [{ key: "geo", label: t`Location`, icon: "Globe" } as FieldTabItem] : []),
+    ...(def.hasMoney
+      ? [{ key: "money", label: t`Currency`, icon: "BarChart", invalid: missingMoney } as FieldTabItem]
+      : []),
     { key: "field", label: t`Field`, icon: "Pencil" },
     { key: "interface", label: t`Interface`, icon: "Eye", invalid: missingChoices },
     { key: "validation", label: t`Validation`, icon: "Check" },
@@ -654,6 +684,16 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                 value={geoDraft}
                 onChange={setGeoDraft}
                 candidates={schema.fields ?? []}
+              />
+            )}
+
+            {activeTab === "money" && def.hasMoney && (
+              <FieldMoneyEditor
+                value={moneyDraft}
+                onChange={setMoneyDraft}
+                candidates={schema.fields ?? []}
+                adopted={Boolean((schema as { adopted?: unknown }).adopted)}
+                locale={i18n.locale}
               />
             )}
 

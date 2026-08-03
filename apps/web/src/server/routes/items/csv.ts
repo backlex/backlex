@@ -85,6 +85,29 @@ const stripSystemColumns = (
  * fields are parsed; numbers/booleans are converted; unknown columns pass
  * through as strings (validation rejects anything the collection doesn't want).
  */
+/**
+ * Replace every `{ amount, currency }` cell with its bare amount, so the export
+ * is a column of numbers a spreadsheet can total and the import round-trips
+ * through `coerceCsvRow` unchanged.
+ */
+const flattenMoneyForCsv = (
+  rows: Record<string, unknown>[],
+  fields: FieldDef[],
+): Record<string, unknown>[] => {
+  const money = fields.filter((f) => f.type === "money");
+  if (money.length === 0) return rows;
+  return rows.map((row) => {
+    const out = { ...row };
+    for (const f of money) {
+      const v = out[f.name];
+      if (v && typeof v === "object" && "amount" in (v as object)) {
+        out[f.name] = (v as { amount: number }).amount;
+      }
+    }
+    return out;
+  });
+};
+
 const coerceCsvRow = (
   row: Record<string, string>,
   fields: FieldDef[],
@@ -116,6 +139,15 @@ const coerceCsvRow = (
         } catch {
           out[key] = value;
         }
+        break;
+      case "money":
+        // A money cell is a bare amount in major units — that is what the
+        // export writes, and it is the only form a spreadsheet will treat as a
+        // number. `canonicalizeMoneyFields` pairs it with the row's currency
+        // (from the sibling column in the same CSV row, or fixed on the field),
+        // and `"19.99 USD"` still parses for a file that carries the code
+        // inline.
+        out[key] = value;
         break;
       default:
         out[key] = value;
@@ -197,7 +229,13 @@ export const itemsCsvRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             }
           }
         }
-        return new Response(toCsv(data, cols), {
+        // A money value is `{ amount, currency }`, and `toCsv` renders an object
+        // cell as JSON — which a spreadsheet reads as text, cannot sum, and
+        // would re-import as a blob. Flatten to the bare amount: the currency
+        // is either fixed on the field (so it is in the schema, not the data)
+        // or already its own column in the same row.
+        const flattened = flattenMoneyForCsv(data, collection.fields);
+        return new Response(toCsv(flattened, cols), {
           headers: {
             "content-type": "text/csv; charset=utf-8",
             "content-disposition": `attachment; filename="${collection.slug}.csv"`,

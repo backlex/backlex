@@ -59,7 +59,13 @@ import {
 } from "../items/rollup";
 import { nextSequenceValues, sequenceFieldsOf } from "../items/sequence";
 import { validateAndNormalizeGeo } from "../items/geo-fields";
-import { deserialize as sharedDeserialize, serialize as sharedSerialize } from "../items/serialize";
+import {
+  deserialize as sharedDeserialize,
+  deserializeField,
+  serialize as sharedSerialize,
+  serializeField,
+} from "../items/serialize";
+import { assertCurrencyChangeIsSafe, canonicalizeMoneyFields } from "../items/money-fields";
 import { applyAutoGeocode, patchTouchesSources } from "../items/geocode";
 import { verifyHashField } from "../items/verify";
 import type { Hono } from "hono";
@@ -130,6 +136,55 @@ export const JSONScalar = new GraphQLScalarType({
   },
 });
 
+/**
+ * A money value — `{ amount, currency }` on the way out, and on the way in
+ * anything `parseMoneyInput` accepts.
+ *
+ * A scalar of its own rather than {@link JSONScalar}, which is what `geo` and
+ * `relation_many` use, for one reason: JSON refuses inline literals outright, so
+ * every GraphQL mutation touching a price would have to route it through a
+ * variable. `price: 19.99` is the form a caller writes first and the form the
+ * REST surface takes, and a schema that rejects it is stricter than the product
+ * for no reason the caller can discover.
+ *
+ * Nothing is validated here. Parsing an amount needs the field's currency —
+ * which a scalar does not have — so this only carries the literal through to
+ * `canonicalizeMoneyForGql`, which does have the collection and the row.
+ */
+export const MoneyScalar = new GraphQLScalarType({
+  name: "Money",
+  description:
+    'An amount and its currency: `{ amount: 19.99, currency: "USD" }` on read. ' +
+    'On write, also a bare number (19.99), a decimal string, "19.99 USD", or ' +
+    "`{ minor: 1999, currency }`. Amounts are in MAJOR units.",
+  serialize: (v) => v,
+  parseValue: (v) => v,
+  parseLiteral: (ast) => {
+    const read = (node: any): unknown => {
+      switch (node.kind) {
+        case "IntValue":
+          return Number.parseInt(node.value, 10);
+        case "FloatValue":
+          return Number.parseFloat(node.value);
+        case "StringValue":
+          return node.value;
+        case "NullValue":
+          return null;
+        case "ObjectValue": {
+          const out: Record<string, unknown> = {};
+          for (const f of node.fields) out[f.name.value] = read(f.value);
+          return out;
+        }
+        default:
+          throw new GraphQLError(
+            `Money literal must be a number, a string, or an object — got ${node.kind}.`,
+          );
+      }
+    };
+    return read(ast);
+  },
+});
+
 export const collectionsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
 
@@ -170,6 +225,10 @@ const fieldScalar = (
       // input object would accept exactly one of them — making the GraphQL
       // surface stricter than REST for no reason a caller could discover.
       return JSONScalar;
+    case "money":
+      // Its own scalar rather than JSON — see MoneyScalar for why an inline
+      // `price: 19.99` has to keep working.
+      return MoneyScalar;
     case "hash":
       // Write-only secret: accepted as a String on input, always resolves to
       // null on output (the digest never leaves the DB).
@@ -435,6 +494,36 @@ const validateInput = (
   }
 };
 
+/**
+ * Resolve + canonicalize this mutation's money values, for the same reason
+ * `validateAndNormalizeGeo` is called above and with a worse consequence if it
+ * is not: these resolvers hand-build their own INSERT/UPDATE, so an amount that
+ * was never paired with its currency reaches the driver either as a live object
+ * — which SQLite refuses to bind, 500-ing every mutation on a collection with a
+ * price — or as a number nothing scaled.
+ *
+ * Separate from {@link validateInput} because the update path can only do this
+ * once it has loaded the row: a patch that sets `total` and not `currency` on a
+ * multi-currency collection takes the currency from the row it is patching.
+ */
+const canonicalizeMoneyForGql = (
+  inputData: Record<string, unknown>,
+  collection: CollectionRow,
+  existing: Record<string, unknown> | null,
+): void => {
+  try {
+    if (existing) {
+      assertCurrencyChangeIsSafe(inputData, collection.fields, existing, (f) => camel(f.name));
+    }
+    canonicalizeMoneyFields(inputData, collection.fields, {
+      existing,
+      keyOf: (f) => camel(f.name),
+    });
+  } catch (e) {
+    throw new GraphQLError((e as Error).message, { extensions: { code: "VALIDATION" } });
+  }
+};
+
 const queryAll = async <T>(ctx: Ctx, query: SQL): Promise<T[]> => {
   if (ctx.dialect === "pg") {
     const r = (await (ctx.db as any).execute(query)) as unknown;
@@ -481,7 +570,10 @@ const renderRow = (
     // Localized fields live in the sidecar, not on this base row — attached
     // separately by `attachLocalizedMaps` after the row set is fetched.
     if (isLocalized(f)) continue;
-    out[camel(f.name)] = deserialize(row[f.name], f.type, dialect);
+    // `deserializeField`, not `deserialize` — a money column's value is a
+    // function of the ROW (its currency may be in a sibling column), and this
+    // surface builds its own rows rather than going through `deserializeRow`.
+    out[camel(f.name)] = deserializeField(row[f.name], f, dialect, row, fields);
   }
   return out;
 };
@@ -862,6 +954,7 @@ export const createResolver = async (
     );
   }
   validateInput(args.data, collection, perm, false);
+  canonicalizeMoneyForGql(args.data, collection, null);
   // Hash `hash`-typed fields (keyed by the camelCase GraphQL input name) before
   // they hit the INSERT — same shared transform the REST write path uses.
   await hashIncomingFields(args.data, collection.fields, (f) => camel(f.name));
@@ -936,7 +1029,7 @@ export const createResolver = async (
     const v = args.data[camel(f.name)];
     if (v === undefined) continue;
     cols.push(f.name);
-    vals.push(serialize(v, f.type, ctx.dialect));
+    vals.push(serializeField(v, f, ctx.dialect));
   }
   // Auto-filled columns are computed + written server-side (client input was
   // rejected by validateInput) — mirrors the REST write path.
@@ -1130,11 +1223,13 @@ export const updateResolver = async (
   // Same as create, with the stored row supplying the address columns the
   // patch did not mention.
   await gqlAutoGeocode(ctx, collection, args.data, existing[0] as Record<string, unknown>);
+  // Deferred until here for the row's currency — see canonicalizeMoneyForGql.
+  canonicalizeMoneyForGql(args.data, collection, existing[0] as Record<string, unknown>);
   for (const f of collection.fields) {
     if (f.onUpdate) continue; // system-managed, injected below
     const v = args.data[camel(f.name)];
     if (v === undefined) continue;
-    sets.push(sql`${sql.identifier(f.name)} = ${serialize(v, f.type, ctx.dialect)}`);
+    sets.push(sql`${sql.identifier(f.name)} = ${serializeField(v, f, ctx.dialect)}`);
   }
   // Auto-filled-on-update columns — computed + written server-side. The re-
   // SELECT below reflects them in the response, so no args.data mutation.
@@ -1142,7 +1237,7 @@ export const updateResolver = async (
     if (!f.onUpdate) continue;
     const v = resolveAutoFill(f.onUpdate, { now, userId: auth.userId, tenantId: auth.tenantId });
     if (v === undefined) continue;
-    sets.push(sql`${sql.identifier(f.name)} = ${serialize(v, f.type, ctx.dialect)}`);
+    sets.push(sql`${sql.identifier(f.name)} = ${serializeField(v, f, ctx.dialect)}`);
   }
   if (sets.length > 0) {
     await execute(

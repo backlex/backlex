@@ -4,7 +4,6 @@ import * as sqlite from "@backlex/db/sqlite";
 import {
   compileCondition,
   type FieldDef,
-  type FieldType,
 } from "@backlex/db";
 import type { Condition } from "@backlex/core";
 import { resolvePermission } from "../permissions";
@@ -12,6 +11,7 @@ import { sendPushToUsers } from "../push";
 import { fetchOutbound } from "../storage/hosts";
 import type { Ctx } from "../../context";
 import type { RpcOp, SandboxBindings } from "./types";
+import { deserialize, deserializeField } from "../items/serialize";
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
@@ -59,21 +59,11 @@ const queryAll = async <T>(ctx: Ctx, q: SQL): Promise<T[]> => {
 const camel = (s: string): string =>
   s.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
 
-const deserialize = (
-  value: unknown,
-  type: FieldType,
-  dialect: "pg" | "sqlite",
-): unknown => {
-  if (value == null) return value;
-  if (dialect === "sqlite") {
-    if (type === "json") {
-      return typeof value === "string" ? JSON.parse(value) : value;
-    }
-    if (type === "boolean") return Boolean(value);
-    if (type === "timestamp") return new Date(value as number).toISOString();
-  }
-  return value;
-};
+// Row shaping delegates to the items read path rather than repeating it. The
+// copy that used to live here had already fallen behind: it knew nothing of
+// `geo`, `relation_many` or `hash`, so a sandboxed function reading a
+// collection with any of those got a different value than the REST API would
+// hand back for the same row.
 
 const renderRow = (
   row: Record<string, unknown>,
@@ -88,7 +78,7 @@ const renderRow = (
   };
   if (ownerScoped) out.ownerId = row.owner_id ?? null;
   for (const f of fields) {
-    out[camel(f.name)] = deserialize(row[f.name], f.type, dialect);
+    out[camel(f.name)] = deserializeField(row[f.name], f, dialect, row, fields);
   }
   return out;
 };

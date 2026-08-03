@@ -289,6 +289,25 @@ const FieldSchema = z
           .optional(),
       })
       .optional(),
+    /**
+     * Money configuration — where this column's currency comes from, and how
+     * the amount sits in it. Exactly one of `currency` / `currencyField` is
+     * required (enforced by `validateMoneySpec`, which also checks that the
+     * named sibling exists and is text). `exponent` overrides the ISO-4217
+     * minor-unit count; `storage: "decimal"` is for adopted tables whose
+     * numeric column already holds major units.
+     */
+    money: z
+      .object({
+        currency: z.string().length(3).optional(),
+        currencyField: z
+          .string()
+          .regex(/^[a-z][a-z0-9_]*$/, "snake_case")
+          .optional(),
+        exponent: z.number().int().min(0).max(6).optional(),
+        storage: z.enum(["minor", "decimal"]).optional(),
+      })
+      .optional(),
   })
   .refine((f) => (f.type !== "relation" && f.type !== "relation_many") || !!f.to, {
     message: "relation / relation_many field must specify `to` (target collection slug)",

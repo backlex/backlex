@@ -70,6 +70,13 @@ import {
   geoDraftFrom,
   type GeoDraft,
 } from "./field-geo-editor";
+import {
+  cleanMoney,
+  emptyMoneyDraft,
+  FieldMoneyEditor,
+  moneyDraftFrom,
+  type MoneyDraft,
+} from "./field-money-editor";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -126,6 +133,8 @@ interface FieldDraft {
   sequence?: Record<string, unknown>;
   /** Location configuration — see the geo editor. */
   geo?: Record<string, unknown>;
+  /** Currency configuration — see the money editor. */
+  money?: Record<string, unknown>;
   /** Display formatting hint. */
   format?: Record<string, unknown>;
   /** Per-locale label overrides. */
@@ -157,7 +166,7 @@ export interface EditFieldDialogProps {
 }
 
 export function EditFieldDialog({ open, field, ownerSlug = "", collections = [], availableFields = [], groups = [], onClose, onSave }: EditFieldDialogProps) {
-  const { t } = useLingui();
+  const { t, i18n } = useLingui();
   const [draft, setDraft] = useState<FieldDraft | null>(field);
   const [conds, setConds] = useState<CondDraft[]>([]);
   const [valDraft, setValDraft] = useState<ValDraft>(emptyValDraft());
@@ -166,6 +175,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   const [rollupDraft, setRollupDraft] = useState<RollupDraft>(emptyRollupDraft());
   const [seqDraft, setSeqDraft] = useState<SequenceDraft>(() => emptySequenceDraft("UTC"));
   const [geoDraft, setGeoDraft] = useState<GeoDraft>(emptyGeoDraft);
+  const [moneyDraft, setMoneyDraft] = useState<MoneyDraft>(emptyMoneyDraft);
   const [tab, setTab] = useState("schema");
 
   // Re-seed every time the dialog opens with a new target field.
@@ -203,6 +213,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     setRollupDraft(rollupToDraft((field as { rollup?: unknown }).rollup));
     setSeqDraft(sequenceToDraft((field as { sequence?: unknown }).sequence));
     setGeoDraft(geoDraftFrom((field as { geo?: unknown }).geo));
+    setMoneyDraft(moneyDraftFrom((field as { money?: unknown }).money));
   }, [open, field]);
 
   const addCond = () =>
@@ -258,6 +269,11 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   // a location field that has never been configured still has a Location tab
   // to configure — which is the only way to add `geocodeFrom` to one.
   const isGeo = draft?.type === "geo";
+  // Same keyed-off-the-type rule as geo, but the spec is mandatory rather than
+  // optional — so an incomplete draft marks the tab invalid and blocks Save,
+  // exactly as a half-built rollup does.
+  const isMoney = draft?.type === "money";
+  const cleanedMoney = isMoney ? cleanMoney(moneyDraft) : undefined;
 
   // Server-side auto-fill options valid for this column's storage type.
   const autoFillOpts = (type: string, withUuid: boolean) => {
@@ -337,6 +353,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
         : {}),
       ...(isSequence ? { sequence: cleanedSequence as never } : {}),
       ...(isGeo ? { geo: cleanGeo(geoDraft) as never } : {}),
+      ...(isMoney ? { money: cleanedMoney as never } : {}),
     };
     onSave(cleaned);
   };
@@ -347,6 +364,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     ...(isRollup ? [{ key: "rollup", label: t`Rollup`, icon: "BarChart", invalid: !cleanedRollup } as FieldTabItem] : []),
     ...(isSequence ? [{ key: "sequence", label: t`Numbering`, icon: "Hash", invalid: !cleanedSequence } as FieldTabItem] : []),
     ...(isGeo ? [{ key: "geo", label: t`Location`, icon: "Globe" } as FieldTabItem] : []),
+    ...(isMoney ? [{ key: "money", label: t`Currency`, icon: "BarChart", invalid: !cleanedMoney } as FieldTabItem] : []),
     { key: "field", label: t`Field`, icon: "Pencil" },
     { key: "interface", label: t`Interface`, icon: "Eye" },
     { key: "validation", label: t`Validation`, icon: "Check" },
@@ -513,6 +531,18 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
 
           {activeTab === "sequence" && isSequence && (
             <FieldSequenceEditor value={seqDraft} onChange={setSeqDraft} />
+          )}
+
+          {activeTab === "money" && isMoney && (
+            <FieldMoneyEditor
+              value={moneyDraft}
+              onChange={setMoneyDraft}
+              candidates={(
+                collections.find((c) => c.slug === ownerSlug)?.fieldDefs ?? []
+              ).filter((f) => f.name !== draft?.name)}
+              adopted={Boolean(collections.find((c) => c.slug === ownerSlug)?.adopted)}
+              locale={i18n.locale}
+            />
           )}
 
           {activeTab === "geo" && isGeo && (
@@ -751,7 +781,17 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
 
         <DialogFooter className="shrink-0 border-t border-border px-[18px] py-3">
           <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
-          <Button variant="primary" size="sm" onClick={submit}><Trans>Save field</Trans></Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={submit}
+            // A money field with no resolvable currency is an integer column
+            // nobody can interpret — the server refuses it, so say so here
+            // rather than after the round trip.
+            disabled={isMoney && !cleanedMoney}
+          >
+            <Trans>Save field</Trans>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

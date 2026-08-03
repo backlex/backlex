@@ -726,6 +726,10 @@ msgstr "{0}ms"
 msgid "{0}ms · try {1}"
 msgstr "{0}ms · deneme {1}"
 
+#: src/client/admin/field-money-input.tsx
+msgid "{active} amounts have {exponent} decimal places."
+msgstr "{active} tutarları {exponent} ondalık basamak taşır."
+
 #. placeholder {0}: a.title
 #: src/client/admin/permissions-matrix.tsx
 msgid "{activeRole} · {0} · {c}: {state}"
@@ -1075,6 +1079,10 @@ msgstr "Satırdaki bir telefon numarası"
 #: src/client/admin/pages/database-import.tsx
 msgid "A Postgres connection the server can reach. The URL is encrypted at rest and only ever shown masked."
 msgstr "Sunucunun erişebildiği bir Postgres bağlantısı. URL bekleme durumunda şifrelenir ve yalnızca maskelenmiş gösterilir."
+
+#: src/client/admin/field-money-editor.tsx
+msgid "A price list, a payroll table — one currency for the whole column"
+msgstr "Fiyat listesi, bordro tablosu — sütunun tamamı için tek para birimi"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "A provider with id \"{id}\" already exists."
@@ -1910,6 +1918,7 @@ msgstr "Zaten doğrulandı mı?"
 msgid "always on"
 msgstr "her zaman açık"
 
+#: src/client/admin/field-money-input.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/payments.tsx
 msgid "Amount"
@@ -1918,6 +1927,11 @@ msgstr "Tutar"
 #: src/client/admin/flow-builder.tsx
 msgid "Amount (optional)"
 msgstr "Tutar (isteğe bağlı)"
+
+#. placeholder {0}: formatMoney({ amount: 1234.5678, currency: code }, locale)
+#: src/client/admin/field-money-editor.tsx
+msgid "Amounts are stored to {exponent} decimal places — e.g. <0>{0}</0>."
+msgstr "Tutarlar {exponent} ondalık basamakla saklanır — örn. <0>{0}</0>."
 
 #: src/client/admin/parity/booking.tsx
 msgid "An \"open\" rule adds bookable time and a \"block\" takes it away. A span crossing midnight is two rules."
@@ -1996,6 +2010,10 @@ msgstr "Yanıtlayan"
 #: src/client/admin/pages/analytics.tsx
 msgid "any event"
 msgstr "herhangi bir olay"
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Any ISO-4217 code"
+msgstr "Herhangi bir ISO-4217 kodu"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Any OAuth-capable client connects with no key — the browser handles discovery, consent, and token exchange. Tools then run with <0>your own roles and permission rules</0>."
@@ -3422,6 +3440,10 @@ msgstr "<0>{0}</0> sütunu <1>{1}</1> için takma ad olarak tanımlanmış VE no
 msgid "Column <0>{0}</0> is mapped to <1>{1}</1> in the field list but also toggled \"Adopt as relation\". The FK panel will override the field type."
 msgstr "<0>{0}</0> sütunu alan listesinde <1>{1}</1> olarak eşlenmiş ancak aynı zamanda \"İlişki olarak benimse\" seçili. FK paneli alan türünü geçersiz kılacak."
 
+#: src/client/admin/field-money-editor.tsx
+msgid "Column holding the code"
+msgstr "Kodu tutan sütun"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Column:"
 msgstr "Sütun:"
@@ -4263,11 +4285,18 @@ msgstr "curl"
 msgid "curl example"
 msgstr "curl örneği"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/field-format-editor.tsx
+#: src/client/admin/field-money-editor.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/payments.tsx
 msgid "Currency"
 msgstr "Para birimi"
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Currency code"
+msgstr "Para birimi kodu"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -4359,6 +4388,7 @@ msgstr "Özel roller, authenticated rolünün üzerine eklenerek katmanlanır."
 msgid "custom rule"
 msgstr "özel kural"
 
+#: src/client/admin/field-money-editor.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/parity/booking.tsx
@@ -5762,6 +5792,10 @@ msgstr "Önce bir slug girin"
 msgid "Enter a slug to continue."
 msgstr "Devam etmek için bir slug girin."
 
+#: src/client/admin/field-money-editor.tsx
+msgid "Enter a three-letter ISO-4217 code, like USD or TRY."
+msgstr "USD ya da TRY gibi üç harfli bir ISO-4217 kodu girin."
+
 #: src/client/admin/members-panel.tsx
 msgid "Enter a valid email."
 msgstr "Geçerli bir e-posta girin."
@@ -5988,6 +6022,10 @@ msgstr "Bu hatanın tüm görülmeleri; en son yığın izi ve kaç ziyaretçiye
 #: src/client/admin/flow-builder.tsx
 msgid "Every panel runs with this flow's identity, then prints to a PDF."
 msgstr "Her panel bu akışın kimliğiyle çalışır, sonra PDF'e basılır."
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Every row needs a code in this column before an amount can be saved, and totals over this field have to be grouped by it — adding amounts in different currencies together is refused rather than answered."
+msgstr "Bir tutar kaydedilmeden önce her satırın bu sütunda bir koda ihtiyacı var ve bu alan üzerindeki toplamlar ona göre gruplanmak zorunda — farklı para birimlerindeki tutarları toplamak yanıtlanmaz, reddedilir."
 
 #: src/client/admin/parity/booking.tsx
 msgid "Every status"
@@ -7640,6 +7678,10 @@ msgstr "Fatura"
 #: src/client/admin/pages/payments.tsx
 msgid "Invoice INV-42"
 msgstr "Fatura INV-42"
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Invoices billed in whatever each customer pays in"
+msgstr "Her müşterinin ödediği para biriminde kesilen faturalar"
 
 #: src/client/admin/pages/extensions.tsx
 msgid "Invoke one of this extension's server-side hooks with a JSON payload and inspect the sandbox result."
@@ -11241,6 +11283,10 @@ msgstr "Bir koleksiyon seçin."
 msgid "Pick a collection…"
 msgstr "Koleksiyon seçin…"
 
+#: src/client/admin/field-money-editor.tsx
+msgid "Pick a column"
+msgstr "Bir sütun seçin"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "pick a column for the aliased system field"
 msgstr "takma adlı sistem alanı için sütun seçin"
@@ -12123,6 +12169,10 @@ msgstr "Oku"
 #: src/client/pages/api-keys.tsx
 msgid "Read & write"
 msgstr "Okuma ve yazma"
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Read from another column"
+msgstr "Başka bir sütundan okunsun"
 
 #: src/client/admin/parity/booking.tsx
 msgid "Read on your own clock, then stored as an instant."
@@ -14211,6 +14261,10 @@ msgstr "ayarlandı"
 #~ msgid "Set"
 #~ msgstr "Uygula"
 
+#: src/client/admin/field-money-input.tsx
+msgid "Set {currencyField} first — an amount has to say what it is in."
+msgstr "Önce {currencyField} alanını doldurun — bir tutar hangi para biriminde olduğunu söylemek zorunda."
+
 #: src/client/pages/sign-up.tsx
 msgid "Set <0>openSignup</0> to <1>true</1> in admin → Auth Settings to re-open."
 msgstr "Yeniden açmak için yönetici → Auth Ayarları'nda <0>openSignup</0> değerini <1>true</1> olarak ayarlayın."
@@ -15777,6 +15831,10 @@ msgstr "Bu eşleşmedikçe satır reddedilir. Başka bir alanın değerine <0>$f
 msgid "The row is removed from the collection. This can't be undone."
 msgstr "Satır koleksiyondan kaldırılır. Bu işlem geri alınamaz."
 
+#: src/client/admin/field-money-editor.tsx
+msgid "The same for every row"
+msgstr "Her satır için aynı"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "The section opens folded — useful for advanced or rarely-touched fields."
@@ -15886,6 +15944,10 @@ msgstr "Bu koleksiyonda toplu düzenlemeyi destekleyen alan yok. Yapısal (json 
 msgid "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
 msgstr "Bu koleksiyonda forma uygun alan yok (yalnızca skaler, gizli olmayan alanlar gösterilebilir)."
 
+#: src/client/admin/field-money-editor.tsx
+msgid "This collection has no text column to read a currency code from. Add one first, or give this field a single fixed currency."
+msgstr "Bu koleksiyonda para birimi kodu okunabilecek bir metin sütunu yok. Önce bir tane ekleyin ya da bu alana tek bir sabit para birimi verin."
+
 #: src/client/admin/field-geo-editor.tsx
 msgid "This collection has no text columns to build an address from."
 msgstr "Bu koleksiyonda adres oluşturulabilecek metin sütunu yok."
@@ -15893,6 +15955,10 @@ msgstr "Bu koleksiyonda adres oluşturulabilecek metin sütunu yok."
 #: src/client/admin/app.tsx
 msgid "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
 msgstr "Bu koleksiyon devre dışı — içerik API'si 404 döndürür; kayıtlar listelenemez veya düzenlenemez. Şema ve ayarlar düzenlenebilir kalır."
+
+#: src/client/admin/field-money-editor.tsx
+msgid "This column already holds decimal amounts"
+msgstr "Bu sütun zaten ondalıklı tutarlar tutuyor"
 
 #: src/client/admin/field-rollup-editor.tsx
 msgid "This column is kept up to date by backlex from another collection's rows — it is read-only through the API, and every write to those rows restates it."
@@ -16076,6 +16142,10 @@ msgstr "Bu çalışma alanında henüz özel rol yok — <0>Roller ve izinler</0
 #: src/client/admin/item-views.tsx
 msgid "Thu"
 msgstr "Per"
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Tick this when the existing column stores 19.99 rather than 1999. backlex reads and writes it as it is, so other systems writing to the same table keep working — at the cost of the exactness whole numbers give."
+msgstr "Mevcut sütun 1999 yerine 19.99 saklıyorsa bunu işaretleyin. backlex sütunu olduğu gibi okur ve yazar; böylece aynı tabloya yazan diğer sistemler çalışmaya devam eder — tam sayıların verdiği kesinlik pahasına."
 
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/traces.tsx
@@ -17335,6 +17405,10 @@ msgstr "Yılı ve sıfırlamayı hangi saatin belirleyeceği. Alanla birlikte sa
 #: src/client/admin/pages/advisor.tsx
 msgid "Which columns real list requests filter and sort on — the input behind the missing-index findings."
 msgstr "Gerçek liste isteklerinin hangi kolonlarda filtreleyip sıraladığı — eksik index bulgularının dayandığı veri."
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Which currency"
+msgstr "Hangi para birimi"
 
 #: src/client/admin/collection-settings.tsx
 msgid "which field the board groups cards by"

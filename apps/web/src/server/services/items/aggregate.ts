@@ -2,9 +2,17 @@ import { and, eq, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import { AppError, normalizeCondition } from "@backlex/core";
 import type { AuthSubject } from "@backlex/core";
-import { compileCondition, type FieldDef } from "@backlex/db";
+import {
+  compileCondition,
+  currencyExponent,
+  type FieldDef,
+  fromMinorUnits,
+  isDecimalStorage,
+  normalizeCurrency,
+} from "@backlex/db";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
+import { normalizeMoneyOperands } from "./money-fields";
 import { queryAll } from "./sql-helpers";
 
 /**
@@ -23,8 +31,15 @@ import { queryAll } from "./sql-helpers";
 export const ITEMS_AGG_FUNCS = ["count", "sum", "avg", "min", "max"] as const;
 export type ItemsAggFunc = (typeof ITEMS_AGG_FUNCS)[number];
 
-/** Numeric column types accepted as the agg target for sum/avg/min/max. */
-export const NUMERIC_FIELD_TYPES = new Set<string>(["integer", "number"]);
+/**
+ * Numeric column types accepted as the agg target for sum/avg/min/max.
+ *
+ * `money` is aggregatable — that is most of the point of the type — but only
+ * under the rule enforced below: a column whose currency varies per row may be
+ * summed exactly when the query groups by that currency, because a total of
+ * mixed denominations is not a smaller number, it is not a number.
+ */
+export const NUMERIC_FIELD_TYPES = new Set<string>(["integer", "number", "money"]);
 
 export const ItemsAggregateConfig = z.object({
   collection: z.string().min(1),
@@ -147,6 +162,19 @@ export const runItemsAggregate = async (
       );
     }
     gateField(cfg.field);
+    if (f.type === "money") {
+      const per = f.money?.currencyField;
+      if (per && cfg.groupBy !== per) {
+        // Adding ₺ to $ produces a number with no unit, and a dashboard tile
+        // would print it as if it had one. Grouping by the currency column
+        // turns the same query into one total per denomination, which is the
+        // answer the caller can actually use.
+        throw new AppError(
+          "VALIDATION",
+          `"${cfg.field}" holds a different currency per row, so \`${cfg.agg}\` over it needs groupBy: "${per}" — one total per currency`,
+        );
+      }
+    }
   } else if (cfg.field && cfg.field !== "*" && !isKnownColumn(cfg.field)) {
     throw new AppError(
       "VALIDATION",
@@ -176,8 +204,17 @@ export const runItemsAggregate = async (
     // Schema-blind: aggregate has no relation joins, so nested-object relation
     // filters aren't flattened here — a dotted relation filter would error at
     // SQL, which is the correct signal that aggregate is single-table.
+    // Money operands in the filter are major units and may name a currency —
+    // rewritten to the column's own units exactly as the list endpoint does, so
+    // `price_gte: 100` means the same thing on both.
+    let cond = normalizeCondition(cfg.filter);
+    try {
+      cond = normalizeMoneyOperands(cond, fields);
+    } catch (e) {
+      throw new AppError("VALIDATION", (e as Error).message);
+    }
     wheres.push(
-      compileCondition(normalizeCondition(cfg.filter), auth, undefined, undefined, {
+      compileCondition(cond, auth, undefined, undefined, {
         dialect: ctx.dialect,
       }),
     );
@@ -202,12 +239,63 @@ export const runItemsAggregate = async (
     q = sql`SELECT ${valueExpr} AS value FROM ${sql.identifier(physical)}${whereClause}`;
   }
 
+  let rows: Record<string, unknown>[];
   try {
-    return await queryAll<Record<string, unknown>>(
+    rows = await queryAll<Record<string, unknown>>(
       { db: ctx.db, dialect: ctx.dialect } as Parameters<typeof queryAll>[0],
       q,
     );
   } catch (e) {
     throw new AppError("VALIDATION", `Aggregate query failed: ${(e as Error).message}`);
+  }
+  return scaleMoneyResults(rows, cfg, fieldByName.get(cfg.field ?? ""));
+};
+
+/**
+ * Rescale a money aggregate from the column's minor units back to the major
+ * units every other surface reads in, and say which currency the number is in.
+ *
+ * `SUM` over a column of cents is a number of cents; handing that back as
+ * `199900` next to a REST read of `1999.00` would make the two disagree about
+ * the same rows. `count` is left alone — it counts rows, not money.
+ *
+ * When the query grouped by the currency column, each row's own `label` IS the
+ * currency, so each is scaled by its own exponent: a JPY bucket is not divided
+ * by a hundred and a KWD one is divided by a thousand.
+ */
+const scaleMoneyResults = (
+  rows: Record<string, unknown>[],
+  cfg: z.output<typeof ItemsAggregateConfig>,
+  field: FieldDef | undefined,
+): Record<string, unknown>[] => {
+  if (cfg.agg === "count" || field?.type !== "money") return rows;
+  const fixed = field.money?.currency ? normalizeCurrency(field.money.currency) : null;
+  return rows.map((row) => {
+    const raw = row.value;
+    if (raw === null || raw === undefined) return row;
+    const n = typeof raw === "number" ? raw : Number(raw);
+    if (!Number.isFinite(n)) return row;
+    const currency =
+      fixed ?? (typeof row.label === "string" ? safeCurrency(row.label) : null);
+    if (!currency) return row;
+    const exponent = currencyExponent(currency, field.money);
+    // `avg` lands between minor units, so it is divided rather than digit-
+    // shifted — the result is a report, not a stored amount.
+    const value = isDecimalStorage(field.money)
+      ? n
+      : cfg.agg === "avg"
+        ? n / 10 ** exponent
+        : fromMinorUnits(n, exponent);
+    return { ...row, value, currency };
+  });
+};
+
+/** A group label that is supposed to be a currency code, or null if the column
+ *  holds something else — an adopted table can carry anything. */
+const safeCurrency = (label: string): string | null => {
+  try {
+    return normalizeCurrency(label);
+  } catch {
+    return null;
   }
 };

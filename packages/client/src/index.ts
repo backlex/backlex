@@ -343,6 +343,44 @@ export interface CollectionClient<T extends Record<string, unknown>> {
   backfillGeo(field: string, limit?: number): Promise<GeoBackfillReport>;
 }
 
+/**
+ * The value of a `money` field — an amount in MAJOR units and the currency it
+ * is denominated in. `19.99 USD` reads back as `{ amount: 19.99, currency:
+ * "USD" }`, never as a bare number, because an amount without its currency is
+ * what the field type exists to abolish.
+ *
+ * Writes accept more shapes than reads produce: a bare number (`19.99`), a
+ * decimal string, `"19.99 USD"`, `{ amount, currency }`, or
+ * `{ minor: 1999, currency }`. Amounts carrying more decimal places than the
+ * currency has are refused rather than rounded.
+ */
+export interface MoneyValue {
+  /** Major units — `19.99`, not `1999`. */
+  amount: number;
+  /** ISO-4217 alphabetic code, uppercase. */
+  currency: string;
+}
+
+/**
+ * Render a money value for a human, in the given locale.
+ *
+ * Deliberately the only money helper this SDK ships. Anything that ADDS money
+ * belongs on the server: totals over rows are what `rollup` fields and
+ * `aggregate` are for, and both refuse to mix currencies — a client-side sum
+ * would be a second implementation of that rule, in floating point, with no way
+ * to enforce it.
+ */
+export const formatMoney = (value: MoneyValue, locale = "en"): string => {
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: value.currency,
+    }).format(value.amount);
+  } catch {
+    return `${value.amount} ${value.currency}`;
+  }
+};
+
 /** What {@link CollectionClient.backfillGeo} did in one bounded pass. */
 export interface GeoBackfillReport {
   /** Rows given a point by this call. */

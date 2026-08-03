@@ -726,6 +726,10 @@ msgstr "{0}ms"
 msgid "{0}ms · try {1}"
 msgstr "{0}ms · try {1}"
 
+#: src/client/admin/field-money-input.tsx
+msgid "{active} amounts have {exponent} decimal places."
+msgstr "{active} amounts have {exponent} decimal places."
+
 #. placeholder {0}: a.title
 #: src/client/admin/permissions-matrix.tsx
 msgid "{activeRole} · {0} · {c}: {state}"
@@ -1075,6 +1079,10 @@ msgstr "A phone number on the row"
 #: src/client/admin/pages/database-import.tsx
 msgid "A Postgres connection the server can reach. The URL is encrypted at rest and only ever shown masked."
 msgstr "A Postgres connection the server can reach. The URL is encrypted at rest and only ever shown masked."
+
+#: src/client/admin/field-money-editor.tsx
+msgid "A price list, a payroll table — one currency for the whole column"
+msgstr "A price list, a payroll table — one currency for the whole column"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "A provider with id \"{id}\" already exists."
@@ -1910,6 +1918,7 @@ msgstr "Already verified?"
 msgid "always on"
 msgstr "always on"
 
+#: src/client/admin/field-money-input.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/payments.tsx
 msgid "Amount"
@@ -1918,6 +1927,11 @@ msgstr "Amount"
 #: src/client/admin/flow-builder.tsx
 msgid "Amount (optional)"
 msgstr "Amount (optional)"
+
+#. placeholder {0}: formatMoney({ amount: 1234.5678, currency: code }, locale)
+#: src/client/admin/field-money-editor.tsx
+msgid "Amounts are stored to {exponent} decimal places — e.g. <0>{0}</0>."
+msgstr "Amounts are stored to {exponent} decimal places — e.g. <0>{0}</0>."
 
 #: src/client/admin/parity/booking.tsx
 msgid "An \"open\" rule adds bookable time and a \"block\" takes it away. A span crossing midnight is two rules."
@@ -1996,6 +2010,10 @@ msgstr "Answered"
 #: src/client/admin/pages/analytics.tsx
 msgid "any event"
 msgstr "any event"
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Any ISO-4217 code"
+msgstr "Any ISO-4217 code"
 
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Any OAuth-capable client connects with no key — the browser handles discovery, consent, and token exchange. Tools then run with <0>your own roles and permission rules</0>."
@@ -3422,6 +3440,10 @@ msgstr "Column <0>{0}</0> is aliased to  <1>{1}</1> AND included as a regular fi
 msgid "Column <0>{0}</0> is mapped to <1>{1}</1> in the field list but also toggled \"Adopt as relation\". The FK panel will override the field type."
 msgstr "Column <0>{0}</0> is mapped to <1>{1}</1> in the field list but also toggled \"Adopt as relation\". The FK panel will override the field type."
 
+#: src/client/admin/field-money-editor.tsx
+msgid "Column holding the code"
+msgstr "Column holding the code"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Column:"
 msgstr "Column:"
@@ -4263,11 +4285,18 @@ msgstr "curl"
 msgid "curl example"
 msgstr "curl example"
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/field-format-editor.tsx
+#: src/client/admin/field-money-editor.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/payments.tsx
 msgid "Currency"
 msgstr "Currency"
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Currency code"
+msgstr "Currency code"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -4359,6 +4388,7 @@ msgstr "Custom roles layer additively on top of authenticated."
 msgid "custom rule"
 msgstr "custom rule"
 
+#: src/client/admin/field-money-editor.tsx
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/parity/booking.tsx
@@ -5762,6 +5792,10 @@ msgstr "Enter a slug first"
 msgid "Enter a slug to continue."
 msgstr "Enter a slug to continue."
 
+#: src/client/admin/field-money-editor.tsx
+msgid "Enter a three-letter ISO-4217 code, like USD or TRY."
+msgstr "Enter a three-letter ISO-4217 code, like USD or TRY."
+
 #: src/client/admin/members-panel.tsx
 msgid "Enter a valid email."
 msgstr "Enter a valid email."
@@ -5988,6 +6022,10 @@ msgstr "Every occurrence of this bug, with the latest stack trace and how many v
 #: src/client/admin/flow-builder.tsx
 msgid "Every panel runs with this flow's identity, then prints to a PDF."
 msgstr "Every panel runs with this flow's identity, then prints to a PDF."
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Every row needs a code in this column before an amount can be saved, and totals over this field have to be grouped by it — adding amounts in different currencies together is refused rather than answered."
+msgstr "Every row needs a code in this column before an amount can be saved, and totals over this field have to be grouped by it — adding amounts in different currencies together is refused rather than answered."
 
 #: src/client/admin/parity/booking.tsx
 msgid "Every status"
@@ -7640,6 +7678,10 @@ msgstr "Invoice"
 #: src/client/admin/pages/payments.tsx
 msgid "Invoice INV-42"
 msgstr "Invoice INV-42"
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Invoices billed in whatever each customer pays in"
+msgstr "Invoices billed in whatever each customer pays in"
 
 #: src/client/admin/pages/extensions.tsx
 msgid "Invoke one of this extension's server-side hooks with a JSON payload and inspect the sandbox result."
@@ -11241,6 +11283,10 @@ msgstr "Pick a collection."
 msgid "Pick a collection…"
 msgstr "Pick a collection…"
 
+#: src/client/admin/field-money-editor.tsx
+msgid "Pick a column"
+msgstr "Pick a column"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "pick a column for the aliased system field"
 msgstr "pick a column for the aliased system field"
@@ -12123,6 +12169,10 @@ msgstr "Read"
 #: src/client/pages/api-keys.tsx
 msgid "Read & write"
 msgstr "Read & write"
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Read from another column"
+msgstr "Read from another column"
 
 #: src/client/admin/parity/booking.tsx
 msgid "Read on your own clock, then stored as an instant."
@@ -14211,6 +14261,10 @@ msgstr "set"
 #~ msgid "Set"
 #~ msgstr "Set"
 
+#: src/client/admin/field-money-input.tsx
+msgid "Set {currencyField} first — an amount has to say what it is in."
+msgstr "Set {currencyField} first — an amount has to say what it is in."
+
 #: src/client/pages/sign-up.tsx
 msgid "Set <0>openSignup</0> to <1>true</1> in admin → Auth Settings to re-open."
 msgstr "Set <0>openSignup</0> to <1>true</1> in admin → Auth Settings to re-open."
@@ -15777,6 +15831,10 @@ msgstr "The row is rejected unless this matches. Reference another field's value
 msgid "The row is removed from the collection. This can't be undone."
 msgstr "The row is removed from the collection. This can't be undone."
 
+#: src/client/admin/field-money-editor.tsx
+msgid "The same for every row"
+msgstr "The same for every row"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "The section opens folded — useful for advanced or rarely-touched fields."
@@ -15886,6 +15944,10 @@ msgstr "This collection has no fields that support bulk editing. Structured (jso
 msgid "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
 msgstr "This collection has no form-eligible fields (only scalar, non-private fields can be exposed)."
 
+#: src/client/admin/field-money-editor.tsx
+msgid "This collection has no text column to read a currency code from. Add one first, or give this field a single fixed currency."
+msgstr "This collection has no text column to read a currency code from. Add one first, or give this field a single fixed currency."
+
 #: src/client/admin/field-geo-editor.tsx
 msgid "This collection has no text columns to build an address from."
 msgstr "This collection has no text columns to build an address from."
@@ -15893,6 +15955,10 @@ msgstr "This collection has no text columns to build an address from."
 #: src/client/admin/app.tsx
 msgid "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
 msgstr "This collection is disabled — its content API returns 404, so items can't be listed or edited. Schema and settings stay editable."
+
+#: src/client/admin/field-money-editor.tsx
+msgid "This column already holds decimal amounts"
+msgstr "This column already holds decimal amounts"
 
 #: src/client/admin/field-rollup-editor.tsx
 msgid "This column is kept up to date by backlex from another collection's rows — it is read-only through the API, and every write to those rows restates it."
@@ -16076,6 +16142,10 @@ msgstr "This workspace has no custom roles yet — create one under <0>Roles & p
 #: src/client/admin/item-views.tsx
 msgid "Thu"
 msgstr "Thu"
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Tick this when the existing column stores 19.99 rather than 1999. backlex reads and writes it as it is, so other systems writing to the same table keep working — at the cost of the exactness whole numbers give."
+msgstr "Tick this when the existing column stores 19.99 rather than 1999. backlex reads and writes it as it is, so other systems writing to the same table keep working — at the cost of the exactness whole numbers give."
 
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/traces.tsx
@@ -17335,6 +17405,10 @@ msgstr "Which clock decides the year and the restart. Stored with the field, so 
 #: src/client/admin/pages/advisor.tsx
 msgid "Which columns real list requests filter and sort on — the input behind the missing-index findings."
 msgstr "Which columns real list requests filter and sort on — the input behind the missing-index findings."
+
+#: src/client/admin/field-money-editor.tsx
+msgid "Which currency"
+msgstr "Which currency"
 
 #: src/client/admin/collection-settings.tsx
 msgid "which field the board groups cards by"

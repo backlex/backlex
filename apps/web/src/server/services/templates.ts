@@ -31,7 +31,9 @@ import {
   isVectorizable,
   type VectorizeMeta,
 } from "./vectorize";
-import { serialize, nowFor } from "./items-helpers";
+import { nowFor } from "./items-helpers";
+import { serializeField } from "./items/serialize";
+import { canonicalizeMoneyFields } from "./items/money-fields";
 import { ensureSystemRoles, type DbCtx } from "./seed";
 import { mergePortalLink } from "./portal-links";
 
@@ -246,6 +248,22 @@ async function seedSamples(
     }
 
     const raw: Record<string, unknown> = {};
+    // Money samples are written in major units, like every money value on every
+    // other surface — `19.99`, not `1999`. Resolve each one against its field's
+    // currency (fixed, or the sibling column in this same sample row) before
+    // anything is serialized, so a seeded price is the price the template meant
+    // rather than nineteen kuruş. Sample values are already resolved by
+    // `resolveSample` below, so this pass runs on a shallow copy of the row
+    // whose money keys are literals — which catalog samples always are.
+    const moneySample: Record<string, unknown> = { ...(sample as Record<string, unknown>) };
+    try {
+      canonicalizeMoneyFields(moneySample, col.fields as FieldDef[]);
+    } catch (e) {
+      throw new AppError(
+        "VALIDATION",
+        `Template "${col.slug}" sample: ${(e as Error).message}`,
+      );
+    }
     for (const [key, value] of Object.entries(sample)) {
       const def = fieldByName.get(key);
       // Skipped: unknown/computed fields, `hash` — a sample would land as
@@ -253,9 +271,10 @@ async function seedSamples(
       // layout blocks, which own no column at all (custom templates can send
       // anything; catalog templates never sample either).
       if (!def || def.computed || def.type === "hash" || isPresentational(def)) continue;
-      const resolved = resolveSample(value, seeded);
+      const resolved =
+        def.type === "money" ? moneySample[key] : resolveSample(value, seeded);
       raw[def.name] = resolved;
-      let serialized = serialize(resolved, def.type, ctx.dialect);
+      let serialized = serializeField(resolved, def, ctx.dialect);
       // JSON-ish columns on Postgres: bind a JSON string, never a raw JS
       // array/object — the pg driver turns arrays into pg arrays, which a
       // jsonb column rejects (the documented catalog constraint; custom

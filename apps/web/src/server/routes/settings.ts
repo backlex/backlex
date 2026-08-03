@@ -48,6 +48,17 @@ const SettingsInput = z
     /** Workspace default IANA time zone — applied to users with no personal
      *  `users.timezone` set. */
     timezone: timeZoneCode.optional(),
+    /**
+     * Workspace default currency — the code the admin pre-selects when a money
+     * field is created. Display/authoring convenience only: it is copied onto
+     * the field at creation time and never read at runtime, because a stored
+     * amount whose currency could change with a settings toggle would silently
+     * restate every price in the workspace.
+     */
+    defaultCurrency: z
+      .string()
+      .regex(/^[A-Za-z]{3}$/, "Expected a three-letter ISO-4217 code")
+      .optional(),
     /** Instance-global copy for the public sign-in screen — persisted on the
      *  `tenant_id IS NULL` row, not per-workspace. Blank = built-in default. */
     signInHeadline: z.string().max(120).optional(),

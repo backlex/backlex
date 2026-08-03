@@ -206,10 +206,42 @@ const rel = (name: string, to: string, extra: Partial<FieldDef> = {}): FieldDef 
 const relMany = (name: string, to: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "relation_many", to, ...extra });
 const email = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "text", interface: "email", validation: { regex: EMAIL_RE }, ...extra });
 const url = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "text", interface: "url", validation: { regex: URL_RE }, ...extra });
+/**
+ * An amount in a collection that has no currency column of its own — still a
+ * plain `number`.
+ *
+ * Kept for the collections `moneyIn` cannot serve: line-item tables whose
+ * currency belongs to the parent row, and the many collections that carry a
+ * price without ever stating a denomination. Converting those is a modelling
+ * decision per template (give the table its own `currency`, or pin one), not a
+ * rename — see docs/money.md.
+ */
 const money = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "number", interface: "decimal", validation: { min: 0 }, ...extra });
+/**
+ * An amount denominated by the row's OWN `currency` column — a real `money`
+ * field.
+ *
+ * Used in every collection that already ships a `currency` text column beside
+ * its amounts, which is what these templates were doing by hand: the two
+ * columns existed, and nothing tied them together. Now the amount is stored in
+ * minor units, read back as `{ amount, currency }`, formatted with that
+ * currency's own decimals, and refused from any total that would mix
+ * denominations.
+ */
+const moneyIn = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "money", money: { currencyField: "currency" }, interface: "money", validation: { min: 0 }, ...extra });
 const rating = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "integer", interface: "rating", validation: { min: 1, max: 5 }, ...extra });
 const slugField = (name = "slug", extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "text", interface: "slug", unique: true, validation: { regex: SLUG_RE }, ...extra });
 const computedNum = (name: string, formula: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "number", computed: { formula }, ...extra });
+/**
+ * A generated column that is MONEY, denominated by the row's own `currency`.
+ *
+ * The formula works in the units the columns hold — minor units — so
+ * `total - amount_paid` is an integer subtraction of two integers, and the
+ * result is read back as an amount like any other. Declaring it `computedNum`
+ * instead would produce the exact silent wrongness the money type exists to
+ * end: a balance of `250000` printed as a number beside a total of `€2,500.00`.
+ */
+const computedMoneyIn = (name: string, formula: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "money", money: { currencyField: "currency" }, interface: "money", computed: { formula }, ...extra });
 const computedText = (name: string, formula: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "text", computed: { formula }, ...extra });
 /**
  * A point on the earth, derived from the address columns beside it.
@@ -817,7 +849,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ),
           ]),
           sec("Pricing", [
-            ...half(money("price", { required: true, label: "Base price" }), money("compare_at_price", { label: "Compare-at price" })),
+            ...half(moneyIn("price", { required: true, label: "Base price" }), moneyIn("compare_at_price", { label: "Compare-at price" })),
             ...half(
               select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
               bool("taxable", { default: true, label: "Taxable" }),
@@ -1036,7 +1068,7 @@ export const TEMPLATES: SchemaTemplate[] = [
               select("status", [ch("active", C.blue), ch("completed", C.green), ch("abandoned", C.amber)], { default: "active" }),
               int("item_count", { default: 0, validation: { min: 0 }, label: "Items" }),
             ),
-            ...half(money("subtotal"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+            ...half(moneyIn("subtotal"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
           ]),
           sec("Recovery", [
             ...half(
@@ -1069,9 +1101,9 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
           sec("Totals", [
             hint("orders_totals", "Totals are a snapshot taken at checkout — edit them only to correct a mistake, never to discount an order after the fact."),
-            ...half(money("subtotal"), money("total_tax", { label: "Tax" })),
-            ...half(money("total_shipping", { label: "Shipping" }), money("total_discounts", { label: "Discounts" })),
-            ...half(money("total", { label: "Total" }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+            ...half(moneyIn("subtotal"), moneyIn("total_tax", { label: "Tax" })),
+            ...half(moneyIn("total_shipping", { label: "Shipping" }), moneyIn("total_discounts", { label: "Discounts" })),
+            ...half(moneyIn("total", { label: "Total" }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
           ]),
           sec("Meta", [
             tags("tags"),
@@ -1111,7 +1143,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             select("kind", [ch("authorization", C.blue), ch("capture", C.teal), ch("sale", C.green), ch("void", C.gray), ch("refund", C.red)], { default: "sale" }),
             select("status", [ch("pending", C.amber), ch("success", C.green), ch("failure", C.red), ch("error", C.red)], { default: "success" }),
           ),
-          ...half(money("amount"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+          ...half(moneyIn("amount"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
           ...half(text("gateway", { label: "Gateway" }), ts("processed_at", { indexed: true, label: "Processed at" })),
         ],
         samples: [{ order: { ref: "orders:0" }, kind: "sale", status: "success", amount: 43, currency: "USD", gateway: "stripe", processed_at: ms("2026-01-12") }],
@@ -1123,7 +1155,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Refund", [
             ...half(rel("order", "orders"), rel("transaction", "transactions", { label: "Against transaction" })),
-            ...half(money("amount", { required: true }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+            ...half(moneyIn("amount", { required: true }), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
             ...half(
               select("status", [ch("pending", C.amber), ch("success", C.green), ch("failure", C.red)], { default: "pending" }),
               ts("processed_at", { indexed: true, label: "Processed at" }),
@@ -1204,7 +1236,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "gift_cards", group: "Marketing", singular: "Gift card", plural: "Gift cards", defaultSort: "-created_at",
         fields: [
           ...half(text("code", { unique: true, required: true, label: "Code" }), rel("customer", "customers")),
-          ...half(money("initial_value", { label: "Initial value" }), money("balance", { label: "Balance" })),
+          ...half(moneyIn("initial_value", { label: "Initial value" }), moneyIn("balance", { label: "Balance" })),
           ...half(
             select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
             select("status", [ch("enabled", C.green), ch("disabled", C.gray)], { default: "enabled" }),
@@ -1354,6 +1386,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Price", [
             ...half(rel("product", "products"), text("nickname")),
+            // NOT `moneyIn`, deliberately. A metered price is a RATE, and the
+            // catalog's own sample is $0.002 per API call — three decimals a
+            // dollar cannot express. Stripe splits the same way (`unit_amount`
+            // vs `unit_amount_decimal`); a money column would have to round
+            // sub-cent pricing away, so this stays a plain number and the
+            // `currency` beside it says what the rate is quoted in.
             ...half(money("unit_amount", { required: true, label: "Unit amount" }), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
           ]),
           sec("Recurrence", [
@@ -1473,7 +1511,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             select("billing_reason", [ch("subscription_create", C.blue, "Subscription created"), ch("subscription_cycle", C.teal, "Renewal"), ch("manual", C.gray)], { default: "subscription_cycle", label: "Billing reason" }),
           ]),
           sec("Amounts", [
-            ...half(money("amount_due", { label: "Amount due" }), money("amount_paid", { label: "Amount paid" })),
+            ...half(moneyIn("amount_due", { label: "Amount due" }), moneyIn("amount_paid", { label: "Amount paid" })),
             select("currency", ["USD", "EUR", "GBP"], { default: "USD" }),
           ]),
           sec("Period", [
@@ -1502,7 +1540,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Credit note", [
             ...half(text("number", { unique: true }), rel("invoice", "invoices")),
-            ...half(money("amount", { required: true }), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
+            ...half(moneyIn("amount", { required: true }), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
           ]),
           sec("Reason", [
             ...half(
@@ -1518,7 +1556,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "payments", group: "Billing", singular: "Payment", plural: "Payments", defaultSort: "-created_at",
         fields: [
           ...half(rel("account", "accounts"), rel("invoice", "invoices")),
-          ...half(money("amount"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
+          ...half(moneyIn("amount"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
           ...half(
             select("status", [ch("succeeded", C.green), ch("pending", C.amber), ch("failed", C.red)], { default: "succeeded" }),
             select("payment_method", [ch("card", C.blue), ch("bank_transfer", C.teal, "Bank transfer"), ch("ach_debit", C.slate, "ACH debit")], { default: "card", label: "Payment method" }),
@@ -1787,7 +1825,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Deal", [
             text("name", { required: true }),
-            ...half(money("amount"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
+            ...half(moneyIn("amount"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
             ...half(
               select("deal_type", [ch("new_business", C.green, "New business"), ch("existing_business", C.blue, "Existing business")], { default: "new_business", label: "Deal type" }),
               date("expected_close_date", { indexed: true, label: "Expected close" }),
@@ -1839,7 +1877,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("accepted", C.green), ch("declined", C.red), ch("expired", C.slate)], { default: "draft" }),
             date("valid_until", { indexed: true, label: "Valid until" }),
           ),
-          ...half(money("total"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
+          ...half(moneyIn("total"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
         ],
         samples: [{ number: "Q-2026-042", deal: { ref: "deals:0" }, status: "sent", currency: "USD", total: 24000, valid_until: ms("2026-07-31") }],
       },
@@ -2512,7 +2550,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
           sec("Term & pay", [
             ...half(date("start_date", { indexed: true, label: "Start date" }), date("end_date", { label: "End date" })),
-            ...half(money("salary"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
+            ...half(moneyIn("salary"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
           ]),
         ),
         samples: [
@@ -2627,7 +2665,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "compensation_history", group: "People", singular: "Compensation change", plural: "Compensation history", defaultSort: "-effective_date",
         fields: [
           ...half(rel("employee", "employees"), date("effective_date", { indexed: true, label: "Effective date" })),
-          ...half(money("amount"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
+          ...half(moneyIn("amount"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
           ...half(
             select("pay_type", [ch("salary", C.blue), ch("hourly", C.teal)], { default: "salary", label: "Pay type" }),
             select("change_reason", [ch("hire", C.green), ch("merit", C.blue), ch("promotion", C.purple), ch("market_adjustment", C.amber, "Market adjustment"), ch("role_change", C.teal, "Role change")], { default: "merit", label: "Reason" }),
@@ -2645,8 +2683,8 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
           sec("Totals", [
             hint("payroll_totals", "Totals summarise the payslips in this run — regenerate them after adding or editing a payslip."),
-            ...half(money("total_gross", { label: "Total gross" }), money("total_deductions", { label: "Total deductions" })),
-            ...half(money("total_net", { label: "Total net" }), int("employee_count", { label: "Employees paid" })),
+            ...half(moneyIn("total_gross", { label: "Total gross" }), moneyIn("total_deductions", { label: "Total deductions" })),
+            ...half(moneyIn("total_net", { label: "Total net" }), int("employee_count", { label: "Employees paid" })),
           ]),
         ),
         samples: [{ name: "July 2026 — monthly", status: "paid", period_start: ms("2026-07-01"), period_end: ms("2026-07-31"), pay_date: ms("2026-07-31"), currency: "USD", total_gross: 21250, total_deductions: 5950, total_net: 15300, employee_count: 2 }],
@@ -2685,7 +2723,7 @@ export const TEMPLATES: SchemaTemplate[] = [
               select("category", [ch("travel", C.blue), ch("meals", C.amber), ch("equipment", C.purple), ch("training", C.teal), ch("other", C.slate)], { default: "travel" }),
               text("merchant"),
             ),
-            ...half(money("amount", { required: true }), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
+            ...half(moneyIn("amount", { required: true }), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
             notes("description"),
           ]),
           sec("Approval", [
@@ -3292,7 +3330,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Ticket type", [
             ...half(rel("event", "events"), text("name")),
-            ...half(money("price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+            ...half(moneyIn("price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
           ]),
           sec("Inventory & limits", [
             ...half(
@@ -3332,7 +3370,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ...half(rel("event", "events"), rel("buyer", "attendees")),
           ...half(
             select("status", [ch("pending", C.amber), ch("paid", C.green), ch("refunded", C.gray), ch("cancelled", C.red)], { default: "pending" }),
-            money("total"),
+            moneyIn("total"),
           ),
           select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
         ],
@@ -3558,7 +3596,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
           sec("Dates & total", [
             ...half(date("order_date", { indexed: true, label: "Order date" }), date("expected_date", { label: "Expected date" })),
-            ...half(money("total"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+            ...half(moneyIn("total"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
           ]),
         ),
         samples: [{ number: "PO-2001", supplier: { ref: "suppliers:0" }, warehouse: { ref: "warehouses:0" }, status: "ordered", total: 2250, currency: "USD", order_date: ms("2026-06-01"), expected_date: ms("2026-06-12") }],
@@ -4338,7 +4376,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ),
             ...half(
               select("pricing_type", [ch("free", C.green), ch("one_time", C.blue, "One-time"), ch("subscription", C.purple), ch("payment_plan", C.amber, "Payment plan")], { default: "free", label: "Pricing" }),
-              money("price", { default: 0 }),
+              moneyIn("price", { default: 0 }),
             ),
             ...half(select("currency", ["USD", "EUR", "GBP"], { default: "USD" }), text("language", { default: "en" })),
           ]),
@@ -4748,7 +4786,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             rel("job", "jobs"),
           ]),
           sec("Terms", [
-            ...half(money("salary"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
+            ...half(moneyIn("salary"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
             ...half(
               date("start_date", { label: "Start date" }),
               select("status", [ch("draft", C.gray), ch("approved", C.blue), ch("sent", C.amber), ch("accepted", C.green), ch("declined", C.red), ch("rescinded", C.slate)], { default: "draft" }),
@@ -4943,7 +4981,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ...half(text("sku", { label: "SKU" }), tags("tags")),
           ]),
           sec("Pricing", [
-            ...half(money("price", { required: true }), money("compare_at_price", { label: "Compare-at price" })),
+            ...half(moneyIn("price", { required: true }), moneyIn("compare_at_price", { label: "Compare-at price" })),
             ...half(
               select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
               select("condition", [ch("new", C.green), ch("used", C.amber), ch("refurbished", C.blue)], { default: "new" }),
@@ -4975,7 +5013,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             select("status", [ch("pending", C.amber), ch("paid", C.green), ch("shipped", C.blue), ch("delivered", C.teal), ch("refunded", C.red)], { default: "pending" }),
             ts("placed_at", { indexed: true, label: "Placed at" }),
           ),
-          ...half(money("subtotal"), money("total")),
+          ...half(moneyIn("subtotal"), moneyIn("total")),
           select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
         ],
         samples: [{ number: "M-1001", buyer: { ref: "buyers:0" }, status: "paid", subtotal: 45, total: 45, currency: "USD", placed_at: ms("2026-06-18") }],
@@ -5011,7 +5049,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       {
         slug: "payouts", group: "Vendors", singular: "Payout", plural: "Payouts", defaultSort: "-period_end",
         fields: [
-          ...half(rel("vendor", "vendors"), money("amount")),
+          ...half(rel("vendor", "vendors"), moneyIn("amount")),
           ...half(
             select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
             select("status", [ch("pending", C.amber), ch("paid", C.green), ch("failed", C.red)], { default: "pending" }),
@@ -5197,7 +5235,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Gift", [
             ...half(rel("donor", "donors"), rel("campaign", "campaigns")),
-            ...half(rel("fund", "funds"), money("amount", { required: true })),
+            ...half(rel("fund", "funds"), moneyIn("amount", { required: true })),
             ...half(
               select("currency", ["USD", "EUR", "GBP"], { default: "USD" }),
               select("type", [ch("one_time", C.blue, "One-time"), ch("recurring", C.purple)], { default: "one_time", label: "Gift type" }),
@@ -5635,8 +5673,8 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
           sec("Amounts", [
             hint("quote_totals", "Totals summarise the quote lines below — regenerate them after editing a line."),
-            ...half(money("subtotal"), money("tax_total", { label: "Tax" })),
-            money("total"),
+            ...half(moneyIn("subtotal"), moneyIn("tax_total", { label: "Tax" })),
+            moneyIn("total"),
             notes("notes"),
           ]),
         ),
@@ -5673,9 +5711,9 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
           sec("Amounts", [
             hint("invoice_balance", "Balance due is generated as total − amount paid; record money in as a Payment rather than editing it here."),
-            ...half(money("subtotal"), money("tax_total", { label: "Tax" })),
-            ...half(money("total"), money("amount_paid", { label: "Amount paid" })),
-            computedNum("balance_due", "total - amount_paid", { label: "Balance due" }),
+            ...half(moneyIn("subtotal"), moneyIn("tax_total", { label: "Tax" })),
+            ...half(moneyIn("total"), moneyIn("amount_paid", { label: "Amount paid" })),
+            computedMoneyIn("balance_due", "total - amount_paid", { label: "Balance due" }),
             notes("notes"),
           ]),
         ),
@@ -5707,7 +5745,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ),
           ]),
           sec("Next run", [
-            ...half(date("next_issue_date", { indexed: true, label: "Next issue date" }), money("amount")),
+            ...half(date("next_issue_date", { indexed: true, label: "Next issue date" }), moneyIn("amount")),
             select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
             notes("notes"),
           ]),
@@ -5796,7 +5834,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ...half(date("issue_date", { indexed: true, label: "Issue date" }), date("expected_date", { label: "Expected date" })),
           ]),
           sec("Amount", [
-            ...half(money("total"), notes("notes")),
+            ...half(moneyIn("total"), notes("notes")),
           ]),
         ),
         samples: [{ number: "PO-2026-007", vendor: { ref: "vendors:1" }, status: "accepted", issue_date: ms("2026-06-18"), expected_date: ms("2026-06-25"), currency: "USD", total: 227.85 }],
@@ -5813,9 +5851,9 @@ export const TEMPLATES: SchemaTemplate[] = [
             ...half(date("issue_date", { indexed: true, label: "Issue date" }), date("due_date", { indexed: true, label: "Due date" })),
           ]),
           sec("Amounts", [
-            ...half(select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }), money("subtotal")),
-            ...half(money("tax_total", { label: "Tax" }), money("total")),
-            ...half(money("amount_paid", { label: "Amount paid" }), computedNum("balance_due", "total - amount_paid", { label: "Balance due" })),
+            ...half(select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }), moneyIn("subtotal")),
+            ...half(moneyIn("tax_total", { label: "Tax" }), moneyIn("total")),
+            ...half(moneyIn("amount_paid", { label: "Amount paid" }), computedMoneyIn("balance_due", "total - amount_paid", { label: "Balance due" })),
             notes("notes"),
           ]),
         ),
@@ -5856,7 +5894,7 @@ export const TEMPLATES: SchemaTemplate[] = [
               select("category", [ch("travel", C.blue), ch("meals", C.amber), ch("office", C.teal), ch("software", C.purple), ch("other", C.gray)], { default: "other", label: "Category (quick)" }),
               date("spent_at", { indexed: true, label: "Spent at" }),
             ),
-            ...half(money("amount"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+            ...half(moneyIn("amount"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
           ]),
           sec("Approval", [
             ...half(
@@ -6004,7 +6042,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             select("location_type", [ch("in_person", C.blue, "In person"), ch("video", C.purple), ch("phone", C.teal)], { default: "in_person", label: "Location" }),
           ]),
           sec("Pricing & staff", [
-            ...half(money("price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
+            ...half(moneyIn("price"), select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" })),
             relMany("providers", "staff", { label: "Bookable staff" }),
             bool("active", { default: true, label: "Active" }),
           ]),

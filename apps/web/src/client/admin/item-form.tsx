@@ -17,6 +17,7 @@ import { Select } from "./select";
 import { DatePicker } from "@/components/date-picker";
 import { RelationPicker, AppUserPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
 import { GeoInput } from "./field-geo-input";
+import { MoneyInput } from "./field-money-input";
 import { useEnabledExtensions, useSettings } from "./queries";
 import { ExtensionFrame } from "./extension-frame";
 import { getInterface } from "./interfaces";
@@ -430,6 +431,11 @@ export function useItemForm({
         // Already `{ lat, lng }` or null — GeoInput only commits a complete
         // pair, so there is no half-typed shape to guard against here. Sent
         // even when null, because clearing a location is a real edit.
+        payload[f.name] = raw ?? null;
+      } else if (f.type === "money") {
+        // Already `{ amount, currency }` or null — MoneyInput commits nothing
+        // in between (a half-typed `19.` and an amount with no currency both
+        // read as null). Sent even when null: clearing a price is a real edit.
         payload[f.name] = raw ?? null;
       } else if (f.type === "hash") {
         // Only send a hash field when the user typed something — a blank value
@@ -1383,6 +1389,27 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
               style={{ flex: 1 }}
             />
           </div>
+          {errBlock}
+        </div>
+      );
+    }
+
+    if (f.type === "money") {
+      const money = (f as { money?: { currency?: string; currencyField?: string } }).money;
+      return (
+        <div key={f.name} className="flex min-w-0 flex-col gap-1.5">
+          {label}
+          <MoneyInput
+            value={val}
+            onChange={setField}
+            currency={money?.currency}
+            currencyField={money?.currencyField}
+            // The currency shown follows the sibling column as it is on the
+            // form right now, so switching a row to EUR relabels the amount
+            // box before the save rather than after the re-read.
+            siblings={draft}
+            invalid={!!err}
+          />
           {errBlock}
         </div>
       );

@@ -9,7 +9,7 @@ import { recordRevision } from "../revisions";
 import { embedAndUpsert, deleteVector } from "../vectorize";
 import { indexFts, deleteFts } from "../fts";
 import type { CollectionRow } from "./collection-loader";
-import { serialize, deserialize, deserializeRow, projectFields } from "./serialize";
+import { serialize, serializeField, deserialize, deserializeRow, projectFields } from "./serialize";
 import {
   collectFieldWarnings,
   enforceFieldConditions,
@@ -20,6 +20,7 @@ import {
   validateRelations,
 } from "./validate";
 import { normalizeGeoFields } from "./geo-fields";
+import { assertCurrencyChangeIsSafe, canonicalizeMoneyFields } from "./money-fields";
 import { applyAutoGeocode, patchTouchesSources } from "./geocode";
 import { hashIncomingFields, scrubHashFields, scrubPrivateFields } from "./hash-fields";
 import { assertRowsWithinLimit } from "../usage";
@@ -229,6 +230,16 @@ export const performCreate = async (
   // itself, so the INSERT, the 201 body, the realtime event and the audit entry
   // all carry what the column will hold — see ./geo-fields.
   normalizeGeoFields(data, collection.fields);
+  // Resolve every money value's currency and quantize it to that currency's
+  // exponent, on the payload, for the same reason the line above exists: the
+  // 201 body, the realtime event, the activity entry and the FTS text are all
+  // built from `data`, so it has to hold what a read of this row will return.
+  // The conversion to the stored integer happens later, in `serializeField`.
+  try {
+    canonicalizeMoneyFields(data, collection.fields);
+  } catch (e) {
+    throw new AppError("VALIDATION", (e as Error).message);
+  }
   // Derive a point from the address columns when the caller supplied none.
   // See ./geocode for when this fires, and `skipGeocode` for when it must not.
   if (!env.skipGeocode) {
@@ -346,7 +357,7 @@ export const performCreate = async (
     // column twice — a syntax error on both dialects.
     if (data[f.name] === undefined || f.onCreate || f.sequence) continue;
     cols.push(f.name);
-    vals.push(serialize(data[f.name], f.type, ctx.dialect));
+    vals.push(serializeField(data[f.name], f, ctx.dialect));
   }
 
   const colSql = sql.join(cols.map((n) => sql.identifier(n)), sql`, `);
@@ -467,6 +478,23 @@ export const performUpdate = async (
   );
   if (!existing[0]) throw new AppError("NOT_FOUND", "Item not found");
   const beforeRow = deserializeRow(existing[0], collection.fields, ctx.dialect, collection.ownerScoped);
+
+  // Money, like the geocode below, has to wait for `existing`: a patch that
+  // sets only `total` on a per-row-currency collection takes its currency from
+  // the row it is being applied to, and there is nowhere else to read it. The
+  // guard runs first — a patch that moves the row to a currency with a
+  // different number of decimals reinterprets the integer already in the
+  // column, so it is refused unless the amount is restated in the same write.
+  //
+  // The consequence of the ordering is that a `beforeUpdate` sync hook observes
+  // money exactly as the caller sent it, where on create it sees the canonical
+  // form. Both are validated; only the shape differs.
+  try {
+    assertCurrencyChangeIsSafe(patch, collection.fields, existing[0]);
+    canonicalizeMoneyFields(patch, collection.fields, { existing: existing[0] });
+  } catch (e) {
+    throw new AppError("VALIDATION", (e as Error).message);
+  }
 
   // Re-derive a point when the patch moved the address it was derived from — a
   // patch that changes only `city` still has to resolve against the `address`
@@ -596,7 +624,7 @@ export const performUpdate = async (
   }
   for (const f of collection.fields) {
     if (patch[f.name] === undefined) continue;
-    sets.push(sql`${sql.identifier(f.name)} = ${serialize(patch[f.name], f.type, ctx.dialect)}`);
+    sets.push(sql`${sql.identifier(f.name)} = ${serializeField(patch[f.name], f, ctx.dialect)}`);
   }
   // Auto-filled-on-update columns are computed + written server-side (client
   // input was rejected by validateBody). Fold the value into `patch` so the

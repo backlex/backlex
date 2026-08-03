@@ -21,6 +21,7 @@ export type StorageType =
   | "relation"
   | "relation_many"
   | "geo"
+  | "money"
   | "hash"
   // Presentational-only — render in the form but own no column / value.
   | "divider"
@@ -62,6 +63,10 @@ export interface FieldInterfaceDef {
    *  is geocoded from, and where the map opens. Every part of it is optional:
    *  a bare `geo` field is a coordinate pair someone types or picks. */
   hasGeo?: boolean;
+  /** Show the currency editor in step 2 and require a usable `money` spec —
+   *  a money field with no currency is an integer nobody can interpret, so
+   *  unlike `hasGeo` this config is mandatory rather than optional. */
+  hasMoney?: boolean;
   /** Extra search keywords beyond label + id. */
   keywords?: string[];
 }
@@ -85,7 +90,8 @@ export const FIELD_INTERFACES: FieldInterfaceDef[] = [
   { id: "richtext", label: "Rich Text (WYSIWYG)", sub: "Formatted text, stored as HTML", group: "Text & Numbers", icon: "Eye", type: "longtext", keywords: ["wysiwyg", "html", "editor"] },
   { id: "code", label: "Code", sub: "Syntax-highlighted source / JSON string", group: "Text & Numbers", icon: "Code", type: "longtext", keywords: ["snippet", "monaco"] },
   { id: "integer", label: "Integer", sub: "Whole number", group: "Text & Numbers", icon: "Hash", type: "integer", keywords: ["int", "count"] },
-  { id: "decimal", label: "Decimal", sub: "Floating-point number", group: "Text & Numbers", icon: "Hash", type: "number", keywords: ["float", "money", "price"] },
+  { id: "decimal", label: "Decimal", sub: "Floating-point number", group: "Text & Numbers", icon: "Hash", type: "number", keywords: ["float"] },
+  { id: "money", label: "Money", sub: "An amount and the currency it is in — exact, and never added across currencies", group: "Text & Numbers", icon: "BarChart", type: "money", hasMoney: true, keywords: ["money", "price", "amount", "currency", "cost", "total", "salary", "fee", "budget", "payment", "balance", "revenue", "cash", "usd", "eur", "try", "lira", "dollar", "euro"] },
   { id: "slider", label: "Slider", sub: "Number picked on a track", group: "Text & Numbers", icon: "Sliders", type: "number", keywords: ["range"] },
   { id: "rating", label: "Rating", sub: "Star rating, 0–5", group: "Text & Numbers", icon: "BarChart", type: "integer", keywords: ["stars", "score"] },
 
@@ -163,7 +169,7 @@ export interface ExtensionInterfaceSource {
 
 const STORAGE_TYPE_SET: ReadonlySet<string> = new Set([
   "text", "longtext", "integer", "number", "boolean", "json", "timestamp",
-  "uuid", "relation", "relation_many", "geo", "hash",
+  "uuid", "relation", "relation_many", "geo", "money", "hash",
 ]);
 
 /**

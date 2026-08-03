@@ -290,7 +290,7 @@ describe("rollup field validation", () => {
   test("rejects a rollup on a non-numeric column", async () => {
     const r = await mkCollection(rollupField({ from: child, via: "owner", fn: "count" }, "text"));
     expect(r.status).toBe(422);
-    expect(r.message).toContain("integer or number");
+    expect(r.message).toContain("integer, number or money");
   });
 
   test("rejects a filter that depends on who triggered the refresh", async () => {

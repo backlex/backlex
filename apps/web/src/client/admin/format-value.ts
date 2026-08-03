@@ -17,6 +17,7 @@ import { formatGeoPoint, tryParseGeoPoint } from "@backlex/db/geo";
 // so the amount a table cell prints is formatted by the exact function the
 // server and the item form use.
 import { formatMoney, type MoneyValue } from "@backlex/db/money";
+import { formatPhone, type PhoneDisplay } from "@backlex/db/phone";
 
 type FieldFormat = {
   style?: "plain" | "decimal" | "currency" | "percent";
@@ -34,6 +35,10 @@ export interface FormattableField {
   format?: FieldFormat;
   /** Value is a per-locale `{locale: value}` map — collapse before formatting. */
   localized?: boolean;
+  /** A phone field renders through its own `display` rather than `format` —
+   *  the stored value is canonical E.164, and the only alternative rendering is
+   *  a space after the calling code. */
+  phone?: { display?: PhoneDisplay };
 }
 
 /** Field shape the label resolver needs. */
@@ -168,6 +173,14 @@ export const formatFieldValue = (
       return formatMoney({ amount: m.amount, currency: m.currency }, locale);
     }
     return typeof value === "number" || typeof value === "string" ? String(value) : "";
+  }
+  // A stored number is canonical E.164, and that is what it renders as unless
+  // the field asked for the one alternative the bundled calling-code table can
+  // actually justify (a space after the country code). There is deliberately no
+  // national format — see `packages/db/src/phone.ts` on why a numbering plan is
+  // not a dataset this ships.
+  if (field.type === "phone") {
+    return formatPhone(value, field.phone?.display);
   }
   const f = field.format;
   if (f) {

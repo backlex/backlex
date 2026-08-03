@@ -310,6 +310,29 @@ const FieldSchema = z
       })
       .optional(),
     /**
+     * Phone configuration — which country a national-form number is read as,
+     * and which countries are allowed at all.
+     *
+     * Every member is checked by `validatePhoneSpec` against the bundled
+     * calling-code table (and `regionField` against the collection's own
+     * fields), so an unknown country code fails at save time rather than
+     * presenting later as a number that will not parse. The `max(64)` on
+     * `allowedRegions` is what stops a caller storing a country list in the
+     * collection metadata; there are only ~250 to choose from, and a workspace
+     * naming more than 64 of them means "no restriction".
+     */
+    phone: z
+      .object({
+        region: z.string().length(2).optional(),
+        regionField: z
+          .string()
+          .regex(/^[a-z][a-z0-9_]*$/, "snake_case")
+          .optional(),
+        allowedRegions: z.array(z.string().length(2)).min(1).max(64).optional(),
+        display: z.enum(["e164", "spaced"]).optional(),
+      })
+      .optional(),
+    /**
      * The lifecycle this dropdown may move through — `{ allow: [{from, to,
      * roles?, requires?, label?}], initial? }`.
      *

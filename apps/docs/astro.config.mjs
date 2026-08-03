@@ -97,6 +97,7 @@ export default defineConfig({
             { slug: "sequences" },
             { slug: "geo" },
             { slug: "money" },
+            { slug: "phone" },
             { slug: "status-transitions" },
             { slug: "adopting-tables" },
             { slug: "migrating-in" },

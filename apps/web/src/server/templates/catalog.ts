@@ -229,6 +229,26 @@ const money = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name
  * denominations.
  */
 const moneyIn = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "money", money: { currencyField: "currency" }, interface: "money", validation: { min: 0 }, ...extra });
+/**
+ * A phone number, stored as canonical E.164.
+ *
+ * Deliberately carries **no `region`**. These templates are country-neutral, and
+ * a region is not a cosmetic default: it decides which country a bare
+ * `0532 111 22 33` dials. Picking one here would mean every workspace that
+ * seeded the template inherited someone else's country, and the failure would be
+ * silent — a stored number that parses, looks right, and rings in the wrong
+ * place. Without one, only international-form numbers are accepted, which is the
+ * refusal-over-a-guess rule the whole type is built on.
+ *
+ * Setting a region afterwards is a one-field change in the schema editor, and
+ * the item form's own country picker means an operator can type nationally
+ * without one anyway (the choice is a parsing hint, never stored).
+ *
+ * The column stays TEXT, so this is metadata-only against a table that already
+ * exists — which is what made converting all thirty-six of these possible at
+ * once, where money could only convert fifty-one of a hundred and eighty-two.
+ */
+const phone = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "phone", interface: "phone", ...extra });
 const rating = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "integer", interface: "rating", validation: { min: 1, max: 5 }, ...extra });
 const slugField = (name = "slug", extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "text", interface: "slug", unique: true, validation: { regex: SLUG_RE }, ...extra });
 const computedNum = (name: string, formula: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "number", computed: { formula }, ...extra });
@@ -1024,7 +1044,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: tabbed(
           sec("Profile", [
             ...half(text("first_name", { label: "First name" }), text("last_name", { label: "Last name" })),
-            ...half(email("email", { required: true, unique: true }), text("phone")),
+            ...half(email("email", { required: true, unique: true }), phone("phone")),
             ...half(
               select("state", [ch("enabled", C.green), ch("disabled", C.gray), ch("invited", C.blue), ch("declined", C.red)], { default: "enabled", label: "Account state" }),
               rel("customer_group", "customer_groups", { label: "Group" }),
@@ -1045,8 +1065,8 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
         ),
         samples: [
-          { email: "jordan@example.com", first_name: "Jordan", last_name: "Reed", phone: "+1 555 0100", state: "enabled", customer_group: { ref: "customer_groups:0" }, total_spent: 43, orders_count: 1 },
-          { email: "sam@example.com", first_name: "Sam", last_name: "Taylor", phone: "+1 555 0142", state: "enabled", customer_group: { ref: "customer_groups:1" }, total_spent: 18, orders_count: 1 },
+          { email: "jordan@example.com", first_name: "Jordan", last_name: "Reed", phone: "+15555550100", state: "enabled", customer_group: { ref: "customer_groups:0" }, total_spent: 43, orders_count: 1 },
+          { email: "sam@example.com", first_name: "Sam", last_name: "Taylor", phone: "+15555550142", state: "enabled", customer_group: { ref: "customer_groups:1" }, total_spent: 18, orders_count: 1 },
         ],
       },
       {
@@ -1055,7 +1075,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           sec("Recipient", [
             rel("customer", "customers"),
             ...half(text("first_name", { label: "First name" }), text("last_name", { label: "Last name" })),
-            ...half(text("company"), text("phone")),
+            ...half(text("company"), phone("phone")),
           ]),
           sec("Address", [
             text("line1", { label: "Address line 1" }),
@@ -1767,7 +1787,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
           sec("Firmographics", [
             ...half(int("employees", { validation: { min: 0 } }), money("annual_revenue", { label: "Annual revenue" })),
-            ...half(text("phone"), text("city")),
+            ...half(phone("phone"), text("city")),
             text("country"),
           ]),
         ),
@@ -1785,7 +1805,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
           sec("Contact", [
             ...half(email("email", { unique: true, searchable: true }), rel("company", "companies")),
-            ...half(text("phone"), text("mobile_phone", { label: "Mobile" })),
+            ...half(phone("phone"), phone("mobile_phone", { label: "Mobile" })),
           ]),
           sec("Status", [
             ...half(
@@ -1854,7 +1874,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Lead", [
             ...half(text("first_name", { label: "First name" }), text("last_name", { label: "Last name" })),
-            ...half(email("email"), text("phone")),
+            ...half(email("email"), phone("phone")),
             ...half(text("company", { label: "Company (text)" }), text("title", { label: "Job title" })),
           ]),
           sec("Qualification", [
@@ -2136,7 +2156,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "customers", group: "People", singular: "Customer", plural: "Customers", defaultSort: "name",
         fields: [
           ...half(text("name"), email("email", { required: true, unique: true })),
-          ...half(text("phone"), rel("organization", "organizations")),
+          ...half(phone("phone"), rel("organization", "organizations")),
           userLink(),
         ],
         samples: [{ email: "jordan@example.com", name: "Jordan Reed", organization: { ref: "organizations:0" } }, { email: "sam@example.com", name: "Sam Taylor", organization: { ref: "organizations:0" } }],
@@ -2508,7 +2528,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
           sec("Contact", [
             ...half(email("work_email", { unique: true, label: "Work email" }), email("personal_email", { label: "Personal email" })),
-            ...half(text("phone"), date("date_of_birth", { label: "Date of birth" })),
+            ...half(phone("phone"), date("date_of_birth", { label: "Date of birth" })),
             userLink(),
           ]),
           sec("Role", [
@@ -2538,10 +2558,10 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "emergency_contacts", group: "People", singular: "Emergency contact", plural: "Emergency contacts",
         fields: [
           ...half(rel("employee", "employees", { required: true }), text("name", { required: true })),
-          ...half(text("relationship"), text("phone", { required: true })),
+          ...half(text("relationship"), phone("phone", { required: true })),
           ...half(email("email"), bool("is_primary", { default: false, label: "Primary contact" })),
         ],
-        samples: [{ employee: { ref: "employees:0" }, name: "Byron Lovelace", relationship: "Spouse", phone: "+1 555 0177", is_primary: true }],
+        samples: [{ employee: { ref: "employees:0" }, name: "Byron Lovelace", relationship: "Spouse", phone: "+15555550177", is_primary: true }],
       },
       {
         slug: "leave_allocations", group: "Operations", singular: "Leave allocation", plural: "Leave allocations", defaultSort: "-year",
@@ -3016,7 +3036,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "clients", group: "Organize", singular: "Client", plural: "Clients", defaultSort: "name",
         fields: [
           ...half(text("name", { required: true }), text("contact_name", { label: "Contact name" })),
-          ...half(email("email"), text("phone")),
+          ...half(email("email"), phone("phone")),
           url("website"),
           notes("notes"),
         ],
@@ -3436,7 +3456,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         portalLink: { emailField: "email", role: "Attendee (portal)" },
         fields: [
           ...half(text("name"), email("email", { required: true })),
-          ...half(text("phone"), text("company")),
+          ...half(phone("phone"), text("company")),
           userLink(),
         ],
         samples: [{ name: "Jordan Reed", email: "jordan@example.com", company: "Acme" }],
@@ -3593,7 +3613,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Supplier", [
             ...half(text("name", { required: true }), text("contact_name", { label: "Contact name" })),
-            ...half(email("email"), text("phone")),
+            ...half(email("email"), phone("phone")),
             text("address"),
           ]),
           sec("Terms", [
@@ -3604,7 +3624,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             bool("active", { default: true, label: "Active" }),
           ]),
         ),
-        samples: [{ name: "Globex Supplies", contact_name: "Pat Lee", email: "sales@globex.example", phone: "+1 555 0190", payment_terms: "net_30", lead_time_days: 11, active: true }],
+        samples: [{ name: "Globex Supplies", contact_name: "Pat Lee", email: "sales@globex.example", phone: "+15555550190", payment_terms: "net_30", lead_time_days: 11, active: true }],
       },
       {
         slug: "item_categories", group: "Catalog", singular: "Category", plural: "Categories", defaultSort: "name",
@@ -3880,21 +3900,21 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "agents", group: "People", singular: "Agent", plural: "Agents", defaultSort: "name",
         fields: [
           ...half(text("name", { required: true }), email("email", { unique: true })),
-          ...half(text("phone"), text("license_number", { label: "License #" })),
+          ...half(phone("phone"), text("license_number", { label: "License #" })),
           ...half(text("agency"), image("photo")),
         ],
-        samples: [{ name: "Casey Morgan", email: "casey@realty.example", phone: "+1 555 0170", license_number: "RE-558210", agency: "Skyline Realty" }],
+        samples: [{ name: "Casey Morgan", email: "casey@realty.example", phone: "+15555550170", license_number: "RE-558210", agency: "Skyline Realty" }],
       },
       {
         slug: "owners", group: "People", singular: "Owner", plural: "Owners", defaultSort: "name",
         fields: [
           ...half(text("name", { required: true }), select("type", [ch("seller", C.blue), ch("landlord", C.teal), ch("investor", C.purple)], { default: "seller" })),
-          ...half(email("email"), text("phone")),
+          ...half(email("email"), phone("phone")),
           notes("note"),
         ],
         samples: [
-          { name: "Priya Natarajan", email: "priya@example.com", phone: "+1 555 0182", type: "seller" },
-          { name: "Harbor Holdings LLC", email: "assets@harborholdings.example", phone: "+1 555 0146", type: "landlord" },
+          { name: "Priya Natarajan", email: "priya@example.com", phone: "+15555550182", type: "seller" },
+          { name: "Harbor Holdings LLC", email: "assets@harborholdings.example", phone: "+15555550146", type: "landlord" },
         ],
       },
       {
@@ -4025,7 +4045,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           sec("Tenant", [
             rel("property", "properties"),
             ...half(text("tenant_name", { required: true, label: "Tenant name" }), email("tenant_email", { label: "Tenant email" })),
-            text("tenant_phone", { label: "Tenant phone" }),
+            phone("tenant_phone", { label: "Tenant phone" }),
           ]),
           sec("Terms", [
             ...half(money("rent", { label: "Monthly rent" }), money("deposit")),
@@ -4036,7 +4056,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             select("status", [ch("active", C.green), ch("expiring", C.amber), ch("ended", C.gray)], { default: "active" }),
           ]),
         ),
-        samples: [{ property: { ref: "properties:2" }, tenant_name: "Sam Taylor", tenant_email: "sam@example.com", tenant_phone: "+1 555 0138", rent: 1850, deposit: 3700, starts_at: ms("2026-02-01"), ends_at: ms("2027-01-31"), status: "active" }],
+        samples: [{ property: { ref: "properties:2" }, tenant_name: "Sam Taylor", tenant_email: "sam@example.com", tenant_phone: "+15555550138", rent: 1850, deposit: 3700, starts_at: ms("2026-02-01"), ends_at: ms("2027-01-31"), status: "active" }],
       },
       {
         slug: "rent_payments", group: "Management", singular: "Rent payment", plural: "Rent payments", defaultSort: "-created_at",
@@ -4191,12 +4211,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "suppliers", group: "Kitchen", singular: "Supplier", plural: "Suppliers", defaultSort: "name",
         fields: [
           ...half(text("name", { required: true }), text("contact_name", { label: "Contact name" })),
-          ...half(text("phone"), email("email")),
+          ...half(phone("phone"), email("email")),
           bool("active", { default: true, label: "Active" }),
         ],
         samples: [
-          { name: "Verde Produce Co.", contact_name: "Lena Ortiz", phone: "+1 555 0163", email: "orders@verdeproduce.example", active: true },
-          { name: "Bella Dairy", contact_name: "Sam Aker", phone: "+1 555 0128", email: "sales@belladairy.example", active: true },
+          { name: "Verde Produce Co.", contact_name: "Lena Ortiz", phone: "+15555550163", email: "orders@verdeproduce.example", active: true },
+          { name: "Bella Dairy", contact_name: "Sam Aker", phone: "+15555550128", email: "sales@belladairy.example", active: true },
         ],
       },
       {
@@ -4243,7 +4263,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Guest", [
             ...half(text("name", { required: true }), int("party_size", { default: 2, validation: { min: 1 }, label: "Party size" })),
-            ...half(email("email"), text("phone")),
+            ...half(email("email"), phone("phone")),
           ]),
           sec("Booking", [
             ...half(ts("reserved_at", { indexed: true, label: "Reserved at" }), rel("table", "tables")),
@@ -4260,12 +4280,12 @@ export const TEMPLATES: SchemaTemplate[] = [
             text("name", { required: true }),
             select("role", [ch("chef", C.amber), ch("server", C.blue), ch("host", C.teal), ch("manager", C.purple)], { default: "server" }),
           ),
-          ...half(text("phone"), bool("active", { default: true, label: "Active" })),
+          ...half(phone("phone"), bool("active", { default: true, label: "Active" })),
         ],
         samples: [
-          { name: "Elena Rossi", role: "chef", phone: "+1 555 0151", active: true },
-          { name: "Marcus Webb", role: "server", phone: "+1 555 0134", active: true },
-          { name: "Priya Nair", role: "manager", phone: "+1 555 0119", active: true },
+          { name: "Elena Rossi", role: "chef", phone: "+15555550151", active: true },
+          { name: "Marcus Webb", role: "server", phone: "+15555550134", active: true },
+          { name: "Priya Nair", role: "manager", phone: "+15555550119", active: true },
         ],
       },
       {
@@ -4765,7 +4785,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Candidate", [
             ...half(text("first_name", { label: "First name", searchable: true }), text("last_name", { label: "Last name", searchable: true })),
-            ...half(email("email", { unique: true }), text("phone")),
+            ...half(email("email", { unique: true }), phone("phone")),
             text("location"),
           ]),
           sec("Background", [
@@ -4779,7 +4799,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ),
           ]),
         ),
-        samples: [{ first_name: "Jordan", last_name: "Reed", email: "jordan@example.com", phone: "+1 555 0123", current_company: "Initech", current_title: "Backend Engineer", source: "referral", source_channel: { ref: "candidate_sources:0" } }],
+        samples: [{ first_name: "Jordan", last_name: "Reed", email: "jordan@example.com", phone: "+15555550123", current_company: "Initech", current_title: "Backend Engineer", source: "referral", source_channel: { ref: "candidate_sources:0" } }],
       },
       {
         slug: "talent_pools", group: "Candidates", singular: "Talent pool", plural: "Talent pools", defaultSort: "name",
@@ -5080,7 +5100,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       {
         slug: "buyers", group: "Customers", singular: "Buyer", plural: "Buyers", defaultSort: "name",
         portalLink: { emailField: "email", role: "Buyer (portal)" },
-        fields: [...half(text("name", { required: true }), email("email", { unique: true })), ...half(text("phone"), userLink())],
+        fields: [...half(text("name", { required: true }), email("email", { unique: true })), ...half(phone("phone"), userLink())],
         samples: [{ name: "Sam Taylor", email: "sam@example.com" }],
       },
       {
@@ -5255,7 +5275,7 @@ export const TEMPLATES: SchemaTemplate[] = [
               text("name", { required: true }),
               select("type", [ch("individual", C.blue), ch("organization", C.purple), ch("foundation", C.teal)], { default: "individual" }),
             ),
-            ...half(email("email", { unique: true }), text("phone")),
+            ...half(email("email", { unique: true }), phone("phone")),
             userLink(),
           ]),
           sec("Address", [
@@ -5437,7 +5457,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         portalLink: { emailField: "email", role: "Volunteer (portal)" },
         fields: [
           ...half(text("name", { required: true }), email("email")),
-          ...half(text("phone"), select("status", [ch("active", C.green), ch("inactive", C.gray)], { default: "active" })),
+          ...half(phone("phone"), select("status", [ch("active", C.green), ch("inactive", C.gray)], { default: "active" })),
           notes("skills"),
           userLink(),
         ],
@@ -5718,7 +5738,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: tabbed(
           sec("Customer", [
             ...half(text("name", { required: true, searchable: true }), text("tax_number", { label: "Tax number" })),
-            ...half(email("email"), text("phone")),
+            ...half(email("email"), phone("phone")),
           ]),
           sec("Address", [
             text("address"),
@@ -5899,7 +5919,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Vendor", [
             ...half(text("name", { required: true }), text("tax_number", { label: "Tax number" })),
-            ...half(email("email"), text("phone")),
+            ...half(email("email"), phone("phone")),
           ]),
           sec("Billing", [
             ...half(
@@ -6087,14 +6107,14 @@ export const TEMPLATES: SchemaTemplate[] = [
       {
         slug: "locations", group: "Catalog", singular: "Location", plural: "Locations", defaultSort: "name",
         fields: [
-          ...half(text("name", { required: true }), text("phone")),
+          ...half(text("name", { required: true }), phone("phone")),
           text("address"),
           ...half(text("city"), text("timezone", { default: "UTC", label: "Timezone (IANA)" })),
           geo("coordinates", ["address", "city"], { label: "Map pin" }),
           bool("active", { default: true, label: "Active" }),
         ],
         samples: [
-          { name: "Downtown studio", address: "12 Main St", city: "Portland", timezone: "America/Los_Angeles", phone: "+1 555 0130", active: true },
+          { name: "Downtown studio", address: "12 Main St", city: "Portland", timezone: "America/Los_Angeles", phone: "+15555550130", active: true },
           { name: "Eastside annex", address: "450 Burnside Ave", city: "Portland", timezone: "America/Los_Angeles", active: true },
         ],
       },
@@ -6103,7 +6123,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Staff member", [
             ...half(text("name", { required: true }), text("title")),
-            ...half(email("email"), text("phone")),
+            ...half(email("email"), phone("phone")),
             ...half(image("avatar"), bool("active", { default: true, label: "Active" })),
           ]),
           sec("Profile", [notes("bio")], { folded: true }),
@@ -6185,10 +6205,10 @@ export const TEMPLATES: SchemaTemplate[] = [
         portalLink: { emailField: "email", role: "Customer (portal)" },
         fields: [
           ...half(text("name", { required: true, searchable: true }), email("email")),
-          ...half(text("phone"), userLink()),
+          ...half(phone("phone"), userLink()),
           notes("notes"),
         ],
-        samples: [{ name: "Jordan Ellis", email: "jordan@example.com", phone: "+1 555 0142" }],
+        samples: [{ name: "Jordan Ellis", email: "jordan@example.com", phone: "+15555550142" }],
       },
       {
         slug: "bookings", group: "Scheduling", singular: "Booking", plural: "Bookings", defaultSort: "-starts_at",
@@ -6397,15 +6417,15 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "technicians", group: "People", singular: "Technician", plural: "Technicians", defaultSort: "name",
         fields: [
           ...half(text("name", { required: true }), email("email")),
-          ...half(text("phone"), text("skills_summary", { label: "Skills" })),
+          ...half(phone("phone"), text("skills_summary", { label: "Skills" })),
           ...half(
             select("home_region", ["north", "south", "east", "west", "central"], { default: "central", label: "Home region" }),
             bool("active", { default: true, label: "Active" }),
           ),
         ],
         samples: [
-          { name: "Dana Whitfield", email: "dana@example.com", phone: "+1 555 0170", skills_summary: "HVAC, electrical", home_region: "north", active: true },
-          { name: "Marco Ruiz", email: "marco@example.com", phone: "+1 555 0171", skills_summary: "Plumbing", home_region: "central", active: true },
+          { name: "Dana Whitfield", email: "dana@example.com", phone: "+15555550170", skills_summary: "HVAC, electrical", home_region: "north", active: true },
+          { name: "Marco Ruiz", email: "marco@example.com", phone: "+15555550171", skills_summary: "Plumbing", home_region: "central", active: true },
         ],
       },
       {
@@ -6414,7 +6434,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Customer", [
             ...half(text("name", { required: true, searchable: true }), email("email")),
-            ...half(text("phone"), userLink()),
+            ...half(phone("phone"), userLink()),
           ]),
           sec("Service address", [
             text("address"),
@@ -6426,7 +6446,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             notes("access_notes", { label: "Access notes", description: "Gate codes, parking, who to ask for — what a tech needs to get in." }),
           ]),
         ),
-        samples: [{ name: "Riverside Apartments", email: "manager@riverside.example", phone: "+1 555 0180", address: "88 River Rd", city: "Portland", access_notes: "Gate code 4415; parking in the rear lot." }],
+        samples: [{ name: "Riverside Apartments", email: "manager@riverside.example", phone: "+15555550180", address: "88 River Rd", city: "Portland", access_notes: "Gate code 4415; parking in the rear lot." }],
       },
       {
         slug: "parts", group: "Catalog", singular: "Part", plural: "Parts", defaultSort: "name",
@@ -6709,10 +6729,10 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "customers", group: "People", singular: "Customer", plural: "Customers", fts: true, defaultSort: "name",
         fields: [
           ...half(text("name", { required: true, searchable: true }), email("email")),
-          ...half(text("phone"), text("id_document", { label: "ID document no." })),
+          ...half(phone("phone"), text("id_document", { label: "ID document no." })),
           notes("notes"),
         ],
-        samples: [{ name: "Hartley Construction", email: "ops@hartley.example", phone: "+1 555 0166", id_document: "BL-778812" }],
+        samples: [{ name: "Hartley Construction", email: "ops@hartley.example", phone: "+15555550166", id_document: "BL-778812" }],
       },
       {
         slug: "rental_orders", group: "Rentals", singular: "Rental order", plural: "Rental orders", defaultSort: "-starts_at",
@@ -6908,7 +6928,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "drivers", group: "Fleet", singular: "Driver", plural: "Drivers", defaultSort: "name",
         fields: [
           ...half(text("name", { required: true }), email("email")),
-          ...half(text("phone"), text("license_no", { label: "License no." })),
+          ...half(phone("phone"), text("license_no", { label: "License no." })),
           ...half(date("license_expires", { label: "License expires" }), bool("active", { default: true, label: "Active" })),
         ],
         samples: [{ name: "Priya Nair", email: "priya@example.com", license_no: "D-4471820", license_expires: ms("2028-03-01"), active: true }, { name: "Tom Becker", email: "tom@example.com", license_no: "D-9982710", license_expires: ms("2027-09-15"), active: true }],
@@ -7152,12 +7172,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "vendors", group: "Parts & Vendors", singular: "Vendor", plural: "Vendors", defaultSort: "name",
         fields: [
           ...half(text("name", { required: true }), text("contact_name", { label: "Contact name" })),
-          ...half(email("email"), text("phone")),
+          ...half(email("email"), phone("phone")),
           ...half(text("specialties", { label: "Specialties" }), bool("active", { default: true, label: "Active" })),
         ],
         samples: [
-          { name: "CoolAir HVAC Services", contact_name: "Dana Frost", email: "dispatch@coolair.example", phone: "+1 555 0142", specialties: "HVAC, refrigeration, air handling", active: true },
-          { name: "Precision Spindle Co.", contact_name: "Omar Reyes", email: "service@precisionspindle.example", phone: "+1 555 0177", specialties: "CNC spindles, machine tool rebuilds", active: true },
+          { name: "CoolAir HVAC Services", contact_name: "Dana Frost", email: "dispatch@coolair.example", phone: "+15555550142", specialties: "HVAC, refrigeration, air handling", active: true },
+          { name: "Precision Spindle Co.", contact_name: "Omar Reyes", email: "service@precisionspindle.example", phone: "+15555550177", specialties: "CNC spindles, machine tool rebuilds", active: true },
         ],
       },
       {
@@ -7634,7 +7654,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "trainers", group: "Classes", singular: "Trainer", plural: "Trainers", defaultSort: "name",
         fields: [
           ...half(text("name", { required: true }), email("email")),
-          ...half(text("phone"), text("specialties", { label: "Specialties" })),
+          ...half(phone("phone"), text("specialties", { label: "Specialties" })),
           bool("active", { default: true, label: "Active" }),
         ],
         samples: [{ name: "Alex Morgan", email: "alex@example.com", specialties: "Strength, HIIT", active: true }, { name: "Sofia Reyes", email: "sofia@example.com", specialties: "Yoga, Pilates", active: true }],
@@ -7663,7 +7683,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: tabbed(
           sec("Member", [
             ...half(text("name", { required: true, searchable: true }), email("email")),
-            ...half(text("phone"), text("emergency_contact", { label: "Emergency contact" })),
+            ...half(phone("phone"), text("emergency_contact", { label: "Emergency contact" })),
             userLink(),
           ]),
           sec("Membership", [
@@ -7930,12 +7950,12 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Client", [
             ...half(text("name", { required: true, searchable: true }), text("company")),
-            ...half(email("email"), text("phone")),
+            ...half(email("email"), phone("phone")),
             text("address"),
           ]),
           sec("Internal", [notes("notes"), userLink()], { folded: true }),
         ),
-        samples: [{ name: "Meridian Holdings LLC", email: "legal@meridian.example", company: "Meridian Holdings", phone: "+1 555 0122" }],
+        samples: [{ name: "Meridian Holdings LLC", email: "legal@meridian.example", company: "Meridian Holdings", phone: "+15555550122" }],
       },
       {
         slug: "matters", group: "Matters", singular: "Matter", plural: "Matters", fts: true, defaultSort: "-opened_at",
@@ -8194,7 +8214,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           sec("Patient", [
             hint("patients_phi", "These records are patient health information. Reads are audited; share only what a colleague needs to treat this person."),
             ...half(text("name", { required: true, searchable: true }), date("birth_date", { label: "Date of birth" })),
-            ...half(email("email"), text("phone")),
+            ...half(email("email"), phone("phone")),
             ...half(text("emergency_contact", { label: "Emergency contact" }), userLink()),
           ]),
           sec("Coverage", [
@@ -8205,7 +8225,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             notes("notes"),
           ]),
         ),
-        samples: [{ name: "Rae Lindqvist", email: "rae@example.com", phone: "+1 555 0107", birth_date: ms("1991-04-18"), insurance_provider: "BlueShield", insurance_number: "BS-2210475", allergies: "Penicillin" }],
+        samples: [{ name: "Rae Lindqvist", email: "rae@example.com", phone: "+15555550107", birth_date: ms("1991-04-18"), insurance_provider: "BlueShield", insurance_number: "BS-2210475", allergies: "Penicillin" }],
       },
       {
         slug: "services", group: "Scheduling", singular: "Service", plural: "Services", defaultSort: "name",

@@ -6,6 +6,7 @@ import { validateValue, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
 import { serializeField } from "./items/serialize";
 import { canonicalizeMoneyFields } from "./items/money-fields";
+import { canonicalizePhoneFields } from "./items/phone-fields";
 import {
   assertInitialStates,
   assertTransitions,
@@ -146,6 +147,11 @@ export const createItem = async (
   // stores nineteen minor units. Same class of miss as GraphQL hand-building
   // its own INSERT.
   canonicalizeMoneyFields(input.data, collection.fields);
+  // Same reasoning for phone, and it matters most exactly here: a flow that
+  // creates a contact from a webhook payload is the write least likely to have
+  // been typed by anyone, and the row it produces is the one an `sms` op will
+  // later be pointed at.
+  canonicalizePhoneFields(input.data, collection.fields);
   // A lifecycle's `initial` list is a property of the data, not of the caller,
   // so it holds for a flow-authored row too — see ./items/transitions.
   assertInitialStates(collection.fields, input.data);
@@ -240,6 +246,13 @@ export const updateItem = async (
   const collection = await loadCollection(ctx, input.tenantId, input.slug);
   validateRow(input.data, collection.fields, true);
   canonicalizeMoneyFields(input.data, collection.fields);
+  // No `existing` row is passed, and unlike the lifecycle check below this path
+  // does not need one: `resolveRowRegion` falls back to the field's own `region`
+  // when the sibling column cannot be read, so a per-row-region field degrades
+  // to its default here instead of failing. A number written in international
+  // form — which is what a flow or an integration payload carries — never
+  // consults a region at all.
+  canonicalizePhoneFields(input.data, collection.fields);
   await assertFlowTransitions(ctx, collection, input);
 
   const now = nowFor(ctx.dialect);

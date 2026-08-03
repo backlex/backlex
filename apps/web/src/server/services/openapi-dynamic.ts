@@ -26,6 +26,12 @@ const fieldToSchema = (type: FieldType): Schema => {
       return {};
     case "relation_many":
       return { type: "array", items: { type: "string" } };
+    case "phone":
+      // Reads are always canonical E.164. Writes accept anything a human types
+      // and are canonicalized server-side, which the `example` says better than
+      // a pattern would — a `pattern` here would describe the READ shape and
+      // make every generator reject a perfectly acceptable write.
+      return { type: "string", example: "+14155552671" };
     case "money":
       // Reads are always this object. Writes accept more (a bare number, a
       // decimal string, `"19.99 USD"`, `{ minor, currency }`) — described in

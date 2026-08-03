@@ -2,6 +2,7 @@ import { AppError, normalizeCondition } from "@backlex/core";
 import type { Condition } from "@backlex/core";
 import type { FieldDef } from "@backlex/db";
 import { normalizeMoneyOperands } from "../services/items/money-fields";
+import { normalizePhoneOperands } from "../services/items/phone-fields";
 
 export interface SortClause {
   field: string;
@@ -288,6 +289,11 @@ export const parseQuery = (
     // property of the field DEFINITION.
     try {
       filter = normalizeMoneyOperands(filter, fields);
+      // Phone operands are canonicalized for the same structural reason and to
+      // fix a plainer symptom: values go into the column as E.164, so a filter
+      // carrying the number as an operator typed it matches nothing — which is
+      // indistinguishable from "no such customer".
+      filter = normalizePhoneOperands(filter, fields);
     } catch (e) {
       throw new AppError("VALIDATION", (e as Error).message);
     }

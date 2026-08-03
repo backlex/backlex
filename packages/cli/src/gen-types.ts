@@ -15,6 +15,7 @@ type FieldType =
   | "relation_many"
   | "geo"
   | "money"
+  | "phone"
   | "hash";
 
 interface FieldChoice {
@@ -70,6 +71,12 @@ const SCALAR_TYPES: Record<FieldType, string> = {
   relation_many: "string[]",
   // A point on the earth.
   geo: "{ lat: number; lng: number }",
+  // Canonical E.164 on read. A write may send any form a human writes — the
+  // server canonicalizes it — so this is deliberately not a template-literal
+  // type: `\`+${number}\`` would describe what comes back and reject what goes
+  // in, and a generated `.d.ts` that refuses valid writes is worse than a plain
+  // string.
+  phone: "string",
   // An amount in MAJOR units plus the currency it is denominated in. Written
   // structurally rather than as a named import so the generated file stays
   // standalone — it is a `.d.ts` a consumer drops into their own project.

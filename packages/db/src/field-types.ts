@@ -8,6 +8,12 @@ import {
   toMinorUnits,
   validateMoneySpec,
 } from "./money";
+import {
+  assertPhoneShaped,
+  type PhoneSpec,
+  parsePhoneForField,
+  validatePhoneSpec,
+} from "./phone";
 import { type SequenceSpec, validateSequenceSpec } from "./sequence";
 import { type TransitionSpec, validateTransitionSpec } from "./transitions";
 
@@ -45,6 +51,19 @@ export type FieldType =
    * rather than answered. See {@link MoneySpec} and `packages/db/src/money.ts`.
    */
   | "money"
+  /**
+   * A phone number, stored as canonical E.164 (`+905321112233`) in the same
+   * `TEXT`/`varchar` column a plain `text` field uses — so an existing phone
+   * column becomes one of these without a migration.
+   *
+   * Whatever an operator types (`0532 111 22 33`, `(532) 111-2233`,
+   * `+90 532 111 2233`) is parsed against the field's region and canonicalized
+   * on the way in, which is what makes `unique` mean something, makes a lookup
+   * by the number a caller reads out loud actually match, and makes the value
+   * safe to hand an SMS provider. See {@link PhoneSpec} and
+   * `packages/db/src/phone.ts`.
+   */
+  | "phone"
   /**
    * One-way hashed secret (password / PIN / API secret). The API hashes the
    * incoming plaintext (scrypt) on write and stores only the digest; reads
@@ -93,6 +112,9 @@ export const FIELD_TYPES = [
   // An amount in minor units, read and written as major units plus the
   // currency they are denominated in.
   "money",
+  // Canonical E.164 in an ordinary text column — parsed from whatever the
+  // operator typed, against the field's region.
+  "phone",
   // One-way hashed secret — the write path scrypt-hashes the plaintext and
   // stores only the digest; reads return null; verification goes through
   // `POST /:slug/:id/verify`.
@@ -540,6 +562,16 @@ export interface FieldDef {
    */
   money?: MoneySpec;
   /**
+   * Configuration for a `phone` field — which country a national-form number is
+   * read as, and which countries are allowed at all. See {@link PhoneSpec}.
+   *
+   * Optional, like `geo` and unlike `money`: a bare phone field accepts numbers
+   * written in international form (`+90…`, `0090…`) and refuses national ones,
+   * which is the only safe default. There is no region to assume, and assuming
+   * one would silently route a number to another country.
+   */
+  phone?: PhoneSpec;
+  /**
    * The lifecycle this dropdown field may move through — which value is allowed
    * to follow which, who may make the move, and what the row must carry for it.
    * See {@link TransitionSpec}.
@@ -712,6 +744,11 @@ const PG_TYPES: Record<FieldType, string> = {
   // point of the type is that it does not go through a float. A `decimal`
   // storage money field overrides this — see `sqlTypeForField`.
   money: "bigint",
+  // Deliberately IDENTICAL to `text`. A phone value is at most 16 characters,
+  // but narrowing the column would turn "make this existing text column a phone
+  // field" into an ALTER — and `applyCollection` is additive by design. Same
+  // type means the conversion is metadata only.
+  phone: "varchar(255)",
   hash: "text",
   // Presentational — never reach the DDL (the applier filters them out); these
   // placeholders only satisfy the exhaustive Record<FieldType> mapping.
@@ -734,6 +771,8 @@ const SQLITE_TYPES: Record<FieldType, string> = {
   geo: "TEXT",
   // SQLite's INTEGER is 64-bit, so minor units are exact here too.
   money: "INTEGER",
+  // See the PG note — same storage as `text` so a conversion needs no DDL.
+  phone: "TEXT",
   hash: "TEXT",
   // Presentational — see PG_TYPES note; never emitted as DDL.
   divider: "TEXT",
@@ -1186,6 +1225,51 @@ export const validateFields = (fields: FieldDef[]): void => {
         toMinorUnits(f.default, currencyExponent(f.money.currency, f.money));
       }
     }
+    if (f.phone && f.type !== "phone") {
+      throw new Error(`Field "${f.name}": "phone" configuration requires a phone field`);
+    }
+    if (f.type === "phone") {
+      // A canonical number is an ordinary string in an ordinary text column, so
+      // most flags behave exactly as they do on `text`. Two are worth calling
+      // out as deliberately ALLOWED, because they are the point of the type:
+      //  - unique: it finally means something. On a `text` phone column the
+      //    same person written two ways collided with nothing; on a canonical
+      //    one, one number is one row.
+      //  - indexed / searchable: a lookup by number is the most common reason
+      //    anyone opens a customer collection at all. Note that FTS folds in the
+      //    CANONICAL token, so a search matches "+905321112233" and not a
+      //    fragment of it — `phone: {_eq: "0532 111 22 33"}` is the query that
+      //    works, and it works because the filter value is canonicalized too.
+      // The ones that are out:
+      for (const [flag, on] of [
+        // A semantic embedding of a phone number matches on digits, which is noise.
+        ["vectorize", !!f.vectorize],
+        // A person's number is not a different number in French. A per-locale
+        // phone is a second column, or a second row.
+        ["localized", !!f.localized],
+        // All three own the column's value by another rule, and none of them
+        // produces something that goes through the E.164 parser.
+        ["computed", !!f.computed],
+        ["rollup", !!f.rollup],
+        ["sequence", !!f.sequence],
+        // A DDL default would give every row that has not been filled in the
+        // same real, dialable phone number — which is worse than empty.
+        ["default", f.default !== undefined],
+      ] as const) {
+        if (on) {
+          throw new Error(`Field "${f.name}": "${flag}" is not allowed on a phone field`);
+        }
+      }
+      if (f.phone) {
+        validatePhoneSpec(
+          f.phone,
+          fields.filter((o) => o.name !== f.name).map((o) => o.name),
+        );
+        if (f.phone.regionField === f.name) {
+          throw new Error(`Field "${f.name}": "regionField" cannot be the phone field itself`);
+        }
+      }
+    }
     if (f.transitions) {
       // A lifecycle is a rule about what a CALLER may write, so every flag that
       // takes the column away from the caller makes it meaningless:
@@ -1460,6 +1544,29 @@ export const validateValue = (
   if (field.type === "money") {
     try {
       parseMoneyInput(value, (code) => currencyExponent(code ?? field.money?.currency, field.money));
+    } catch (e) {
+      fail(`${field.name}: ${(e as Error).message}`);
+    }
+  }
+
+  // Shape, not policy — like `geo` and `money` above. A phone column is read
+  // back by the SMS surfaces as a dialable number, and by `unique` as an
+  // identity; a value that is not one must never reach it.
+  //
+  // The per-row region is NOT resolved here, for the same reason money's
+  // currency is not: `validateValue` sees one field, and `phone.regionField`
+  // names a sibling column. So when the field defers to the row, this proves
+  // only that the value is phone-SHAPED and leaves the region-dependent half to
+  // the write path's `canonicalizePhoneFields`, which has the row. Parsing
+  // strictly here would 422 a perfectly good national number purely because the
+  // region it needs is one column over.
+  if (field.type === "phone") {
+    try {
+      if (field.phone?.regionField && !field.phone.region) {
+        assertPhoneShaped(value);
+      } else {
+        parsePhoneForField(value, field.phone);
+      }
     } catch (e) {
       fail(`${field.name}: ${(e as Error).message}`);
     }

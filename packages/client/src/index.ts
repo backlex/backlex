@@ -347,6 +347,17 @@ export interface CollectionClient<T extends Record<string, unknown>> {
    *  point, never revises one, so re-running is safe and a hand-corrected pin
    *  survives it. Requires `update`. */
   backfillGeo(field: string, limit?: number): Promise<GeoBackfillReport>;
+  /** Rewrite this collection's existing values of a `phone` field into
+   *  canonical E.164 — the repair path for rows that predate the field being a
+   *  phone field at all (an adopted table, a restore, a column that used to be
+   *  plain text). Walks in primary-key order: loop while `cursor` is non-null,
+   *  passing it back as `opts.after`. Values already canonical are skipped and
+   *  unreadable ones are reported rather than guessed at, so re-running is safe.
+   *  Requires `update`. */
+  normalizePhones(
+    field: string,
+    opts?: { limit?: number; after?: string; dryRun?: boolean },
+  ): Promise<PhoneNormalizeReport>;
 }
 
 /**
@@ -398,6 +409,26 @@ export interface GeoBackfillReport {
   skipped: number;
   /** Rows still without a point. Loop until this is 0. */
   remaining: number;
+}
+
+/** What {@link CollectionClient.normalizePhones} did in one bounded page. */
+export interface PhoneNormalizeReport {
+  /** Rows examined by this call. */
+  scanned: number;
+  /** Rows rewritten into E.164 — or, on a dry run, that would be. */
+  normalized: number;
+  /** Rows whose value was already exactly canonical. */
+  alreadyCanonical: number;
+  /** Rows whose value could not be read as a phone number. Left untouched:
+   *  overwriting an unparseable value destroys the only copy of it, and the
+   *  operator who typed it is the one who can say what it meant. */
+  unreadable: number;
+  /** Ids of those rows, so they can be looked at. Capped at 200 per page. The
+   *  VALUES are deliberately not returned — this report is a plausible thing to
+   *  log, and each one is a real person's phone number. */
+  unreadableIds: string[];
+  /** Pass back as `after` for the next page. `null` means the walk is done. */
+  cursor: string | null;
 }
 
 /** What {@link CollectionClient.syncSequences} did to one sequence column. */
@@ -3412,6 +3443,24 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
           `/api/geo/backfill/${slug}`,
           limit === undefined ? { field } : { field, limit },
         ).then((r) => r.data),
+      /**
+       * Rewrite this collection's existing phone values into E.164.
+       *
+       * Paged by cursor rather than by "how many are left", because an
+       * already-canonical row never leaves the candidate set — a `remaining`
+       * count would never reach zero and the loop would re-scan page one
+       * forever.
+       */
+      normalizePhones: (
+        field: string,
+        opts: { limit?: number; after?: string; dryRun?: boolean } = {},
+      ): Promise<PhoneNormalizeReport> =>
+        request<{ data: PhoneNormalizeReport }>("POST", `/api/phone/normalize/${slug}`, {
+          field,
+          ...(opts.limit === undefined ? {} : { limit: opts.limit }),
+          ...(opts.after === undefined ? {} : { after: opts.after }),
+          ...(opts.dryRun === undefined ? {} : { dryRun: opts.dryRun }),
+        }).then((r) => r.data),
     };
   };
 

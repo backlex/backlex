@@ -36,6 +36,19 @@ never wipe a workspace's phone book.
 Both Turkish providers want the bare msisdn (`905321234567`); the adapters strip
 the leading `+` from the stored E.164 number for you.
 
+### Getting E.164 out of a collection
+
+Every provider here requires E.164, and so does the `sms` flow op — a recipient
+that does not match is refused before anything is sent. A `text` column of
+numbers people typed will therefore fail row by row, at run time, long after the
+write that caused it.
+
+The fix is to make that column a **[phone field](./phone.md)**: every write is
+canonicalized, and `backlex collections normalize-phones <slug> <field>` rewrites
+the rows already there. Nothing is canonicalized inside the `sms` op on purpose —
+a national number needs a region, and a flow has none to read, so guessing one
+would text another country.
+
 ## Configuration
 
 Two layers, resolved in order (same as email/push): the workspace's own

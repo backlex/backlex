@@ -34,7 +34,11 @@ export const createCollection: McpTool = {
         description:
           "Array of `{ name, type, required?, unique?, to?, localized? }`. " +
           "Supported types: text, longtext, integer, number, boolean, json, " +
-          "timestamp, uuid, relation, relation_many, file, geo, money, hash. " +
+          "timestamp, uuid, relation, relation_many, file, geo, money, phone, hash. " +
+          "`phone` stores canonical E.164 and accepts any form a human writes; " +
+          "give it a `phone` config with `region` (ISO 3166-1 alpha-2, e.g. " +
+          "`{ region: \"TR\" }`) so national-form numbers like `0532…` can be " +
+          "resolved — without one, only `+…` values are accepted. " +
           "relation/_many requires `to`. `money` requires a `money` config with " +
           "exactly one of `currency` (a fixed ISO-4217 code, e.g. " +
           "`{ currency: \"TRY\" }`) or `currencyField` (the name of a sibling " +

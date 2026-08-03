@@ -73,6 +73,10 @@ msgstr " Zorunlu."
 msgid " Set the target collection in the field settings."
 msgstr " Hedef koleksiyonu alan ayarlarından belirleyin."
 
+#: src/client/admin/field-phone-input.tsx
+msgid "—"
+msgstr "—"
+
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "— default (email) —"
 msgstr "— varsayılan (email) —"
@@ -99,6 +103,10 @@ msgstr "… ve {0} tane daha"
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "…or a custom code (e.g. zh-Hant)"
 msgstr "…ya da özel bir kod (örn. zh-Hant)"
+
+#: src/client/admin/field-phone-editor.tsx
+msgid "…or read the country from <0>(optional)</0>"
+msgstr "…ya da ülkeyi şuradan oku <0>(isteğe bağlı)</0>"
 
 #: src/client/admin/parity/documents.tsx
 msgid "· approximate — use Render PDF for the real thing"
@@ -894,6 +902,10 @@ msgstr "+ grup"
 msgid "+ preset"
 msgstr "+ ön ayar"
 
+#: src/client/admin/field-phone-input.tsx
+msgid "+90 532 111 22 33"
+msgstr "+90 532 111 22 33"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "<0>{{username}}</0> is replaced with the submitted username (RFC-4515 escaped). Common: AD = <1>(sAMAccountName={{username}})</1>, OpenLDAP = <2>(uid={{username}})</2>."
 msgstr "<0>{{username}}</0> gönderilen kullanıcı adıyla değiştirilir (RFC-4515 ile kaçışlanmış). Yaygın kullanım: AD = <1>(sAMAccountName={{username}})</1>, OpenLDAP = <2>(uid={{username}})</2>."
@@ -927,6 +939,10 @@ msgstr "✗ reddedildi"
 #: src/client/admin/pages/agents.tsx
 msgid "🔒 Needs your own API key — without one this falls back to {0} on managed cloud. Add a key in Settings · AI."
 msgstr "🔒 Kendi API anahtarını gerektirir — anahtar yoksa managed cloud'da {0} modeline düşer. Settings · AI'dan anahtar ekle."
+
+#: src/client/admin/field-phone-input.tsx
+msgid "0532 111 22 33"
+msgstr "0532 111 22 33"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "1 file"
@@ -1072,6 +1088,10 @@ msgstr "Yeni bir kayıt şu değerle başlayabilir"
 msgid "A number that outgrows this simply gets wider — nothing is cut off."
 msgstr "Bu genişliği aşan bir numara yalnızca uzar — hiçbir şey kırpılmaz."
 
+#: src/client/admin/field-phone-editor.tsx
+msgid "A number typed without a country code is in"
+msgstr "Ülke kodu olmadan yazılan numara şu ülkededir"
+
 #: src/client/admin/parity/insights.tsx
 msgid "A panel with that name already exists."
 msgstr "Bu isimde bir panel zaten mevcut."
@@ -1147,6 +1167,10 @@ msgstr "Bir şablonun anahtarı olmalı."
 #: src/client/admin/parity/email-templates.tsx
 msgid "A template with key \"{trimmedKey}\" already exists."
 msgstr "\"{trimmedKey}\" anahtarlı bir şablon zaten mevcut."
+
+#: src/client/admin/field-phone-editor.tsx
+msgid "A text column holding this row's two-letter country code, for a list of contacts spread across countries. Falls back to the default above when the column is empty."
+msgstr "Bu satırın iki harfli ülke kodunu tutan metin sütunu — kişileri farklı ülkelere yayılmış bir liste için. Sütun boşken yukarıdaki varsayılana düşer."
 
 #: src/client/admin/pages/agents.tsx
 #~ msgid "A turn is still running on this thread — wait for it to finish."
@@ -1393,6 +1417,10 @@ msgstr "Önce aşağıya bir Client ID ve gizli anahtar ekleyin."
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Add a Client ID and secret first"
 msgstr "Önce bir Client ID ve gizli anahtar ekleyin"
+
+#: src/client/admin/field-phone-editor.tsx
+msgid "Add a country…"
+msgstr "Ülke ekle…"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Add a description…"
@@ -4090,6 +4118,14 @@ msgstr "Ziyaretçiyi şunu gerçekleştirdiğinde aktif say"
 #: src/client/admin/parity/insights.tsx
 msgid "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
 msgstr "Sayaç, 1. satırın ilk sayısal sütununu alır; kıvılcım grafik / çubuklar tüm satırlarda gösterir; halka / tablo ilk iki sütunu eşleştirir."
+
+#: src/client/admin/field-phone-input.tsx
+msgid "Country a national number is read as"
+msgstr "Ulusal numaranın hangi ülkeye ait okunacağı"
+
+#: src/client/admin/field-phone-input.tsx
+msgid "Country the typed number is read as"
+msgstr "Yazılan numaranın hangi ülkeye ait okunacağı"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Covering message"
@@ -8316,6 +8352,10 @@ msgstr "Kaydı düzenleyebilen herkes için boş bırakın. Akışlar ve diğer 
 msgid "Leave empty for the latest published version."
 msgstr "Son yayınlanan sürüm için boş bırakın."
 
+#: src/client/admin/field-phone-editor.tsx
+msgid "Leave empty to accept any country. Restricting is how a mistyped country code gets caught at the write rather than showing up as an SMS sent abroad."
+msgstr "Her ülkeyi kabul etmek için boş bırakın. Kısıtlamak, yanlış yazılmış bir ülke kodunun yurt dışına gönderilmiş bir SMS olarak ortaya çıkmak yerine yazma anında yakalanmasını sağlar."
+
 #: src/client/admin/flow-builder.tsx
 msgid "leave empty to pass the trigger payload"
 msgstr "tetikleyici yükünü iletmek için boş bırakın"
@@ -9720,6 +9760,10 @@ msgstr "Bu koleksiyonda tarih alanı yok"
 msgid "No DDL on the table."
 msgstr "Tabloda DDL yok."
 
+#: src/client/admin/field-phone-editor.tsx
+msgid "No default — require +country code"
+msgstr "Varsayılan yok — +ülke kodu zorunlu"
+
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "No default on purpose: \"allow\" drops the guarantee this hook provides, \"deny\" turns your app's outage into your customers'."
 msgstr "Bilerek varsayılan yok: \"allow\" bu hook'un sağladığı garantiyi düşürür, \"deny\" uygulamanızın kesintisini müşterinizinkine çevirir."
@@ -10337,6 +10381,10 @@ msgstr "Sayım için gerekli değil"
 msgid "NOT NULL — adding to a table that already has rows needs a default."
 msgstr "NOT NULL — satırları olan bir tabloya eklemek varsayılan değer gerektirir."
 
+#: src/client/admin/field-phone-input.tsx
+msgid "Not one of the countries this field allows."
+msgstr "Bu alanın izin verdiği ülkelerden biri değil."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Not owner-scoped"
 msgstr "Sahip kapsamlı değil"
@@ -10668,6 +10716,10 @@ msgstr "Satır başına bir URL — tıklayıp uzaklaştığınızda kaydedilir.
 #: src/client/pages/magic-link.tsx
 msgid "One-time link, no <0>password</0>."
 msgstr "Tek kullanımlık bağlantı, <0>parola</0> gerektirmez."
+
+#: src/client/admin/field-phone-editor.tsx
+msgid "Only accept numbers from <0>(optional)</0>"
+msgstr "Yalnızca şu ülkelerden numara kabul et <0>(isteğe bağlı)</0>"
 
 #: src/client/admin/field-rollup-editor.tsx
 msgid "Only count rows matching"
@@ -11318,6 +11370,8 @@ msgstr "{activeRole} için izinler"
 msgid "Permissions: {0}."
 msgstr "İzinler: {0}."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/pages/book.tsx
 msgid "Phone"
@@ -12130,6 +12184,10 @@ msgstr "Push"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 msgid "Push settings saved."
 msgstr "Push ayarları kaydedildi."
+
+#: src/client/admin/field-phone-editor.tsx
+msgid "Put a space after the country code — <0>+90 5321112233</0>"
+msgstr "Ülke kodundan sonra bir boşluk koy — <0>+90 5321112233</0>"
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Quality"
@@ -13736,6 +13794,10 @@ msgstr "kaydedildi"
 msgid "Saved {0} redirect URL{1}."
 msgstr "{0} yönlendirme URL'si kaydedildi."
 
+#: src/client/admin/field-phone-input.tsx
+msgid "Saved as"
+msgstr "Şöyle kaydedilecek"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Saved as a row in <0>saved_panels</0>. Collection panels aggregate one collection (count / sum / average …); SQL panels run a read-only SELECT against the workspace database."
 msgstr "<0>saved_panels</0> tablosunda satır olarak kaydedildi. Koleksiyon panelleri bir koleksiyonu toplar (sayım / toplam / ortalama …); SQL paneller çalışma alanı veritabanına salt okunur SELECT çalıştırır."
@@ -14636,6 +14698,10 @@ msgstr "Panoda panel başlığı olarak gösterilir."
 #: src/client/admin/account-page.tsx
 msgid "Shown in author bylines and the header dropdown."
 msgstr "Yazar satırlarında ve üst bilgi açılır menüsünde gösterilir."
+
+#: src/client/admin/field-phone-editor.tsx
+msgid "Shown in lists as"
+msgstr "Listelerde şöyle gösterilir"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Shown in the sidebar and on the Collections page."
@@ -15991,6 +16057,10 @@ msgstr "Değiştirme veya iptal bağlantısı"
 msgid "theme"
 msgstr "tema"
 
+#: src/client/admin/field-phone-editor.tsx
+msgid "There is no national format on purpose: printing one needs each country's numbering plan, and guessing at it produces numbers that look right and are not. The stored value is always E.164."
+msgstr "Ulusal biçim bilinçli olarak yok: onu yazdırmak her ülkenin numaralandırma planını gerektirir ve tahmin etmek, doğru görünen ama olmayan numaralar üretir. Saklanan değer her zaman E.164'tür."
+
 #: src/client/admin/app.tsx
 msgid "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."
 msgstr "Bu satırlar c_posts tablosundan kaldırılacak. Bu temel kayıtları siler — sürümler kullanılabilir kalmaya devam eder."
@@ -16165,6 +16235,10 @@ msgstr "Bu bağlantı bir kez gösterilir. Eskisini geçersiz kılmak için yeni
 #: src/client/admin/app.tsx
 msgid "This list updates in real time"
 msgstr "Bu liste gerçek zamanlı güncellenir"
+
+#: src/client/admin/field-phone-input.tsx
+msgid "This number already states its country code."
+msgstr "Bu numara ülke kodunu zaten belirtiyor."
 
 #: src/client/pages/reset-password.tsx
 msgid "This password reset link is missing its token or has expired. Request a new one and try again."
@@ -17040,6 +17114,10 @@ msgstr "Harf, rakam, nokta, tire veya alt çizgi kullanın. Harf veya rakamla ba
 msgid "Use my location"
 msgstr "Konumumu kullan"
 
+#: src/client/admin/field-phone-editor.tsx
+msgid "Use the default above"
+msgstr "Yukarıdaki varsayılanı kullan"
+
 #: src/client/admin/parity/translations.tsx
 msgid "Used as fallback when the requested locale has no string for a key."
 msgstr "İstenen yerel ayarın bir anahtar için dizesi olmadığında yedek olarak kullanılır."
@@ -17585,9 +17663,17 @@ msgstr "Bu API anahtarını bir Model Context Protocol istemcisine bağla (Claud
 msgid "with a session id"
 msgstr "oturum kimliği olan"
 
+#: src/client/admin/field-phone-editor.tsx
+msgid "With this set, <0>0532 111 22 33</0> is stored as <1>{example}</1>."
+msgstr "Bu ayarla <0>0532 111 22 33</0> şöyle saklanır: <1>{example}</1>."
+
 #: src/client/admin/parity/approvals.tsx
 msgid "Withdraw"
 msgstr "Geri çek"
+
+#: src/client/admin/field-phone-editor.tsx
+msgid "Without a default, only numbers written in full international form are accepted — which is the safe answer, since the same national number exists in dozens of countries."
+msgstr "Varsayılan olmadan yalnızca tam uluslararası biçimde yazılmış numaralar kabul edilir — aynı ulusal numara onlarca ülkede bulunduğu için güvenli olan cevap budur."
 
 #: src/client/admin/items.tsx
 msgid "Words"
@@ -17689,6 +17775,10 @@ msgstr "Anahtarı şuraya yaz"
 #: src/client/admin/flow-builder.tsx
 msgid "Write the link onto"
 msgstr "Bağlantıyı şuraya yaz"
+
+#: src/client/admin/field-phone-input.tsx
+msgid "Write the number in full international form, starting with +."
+msgstr "Numarayı + ile başlayan tam uluslararası biçimde yazın."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Write the outcome to"

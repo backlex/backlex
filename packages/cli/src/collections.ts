@@ -32,7 +32,7 @@ interface Collection {
   adopted?: boolean | number;
 }
 
-const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop-field|fts-reindex|vectorize|refresh-rollups|sync-sequences|backfill-geo>
+const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop-field|fts-reindex|vectorize|refresh-rollups|sync-sequences|backfill-geo|normalize-phones>
 
   list                              every collection the key can read
   get <slug>                        one collection's fields
@@ -58,6 +58,17 @@ const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop
                                     coordinates. Never revises a point already set.
                                       --batch <n>  rows per request (default 50,
                                                    max 500)
+  normalize-phones <slug> <field>   rewrite the collection's existing values of a
+                                    phone field into canonical E.164 — the repair
+                                    path for rows written before the column was a
+                                    phone field. Walks the whole table. Values
+                                    already canonical are skipped; ones that
+                                    cannot be read are reported by row id and
+                                    left exactly as they are.
+                                      --batch <n>  rows per request (default 500,
+                                                   max 2000)
+                                      --dry-run    report what would change
+                                                   without writing anything
 `;
 
 const fetchCollections = (args: string[]): Promise<Collection[]> => {
@@ -330,6 +341,94 @@ export const runCollections = async (args: string[]): Promise<void> => {
       );
     } catch (e) {
       die(e, "collections backfill-geo");
+    }
+    return;
+  }
+
+  // Rewrite the numbers a collection already holds into E.164. Loops on the
+  // CURSOR rather than on a remaining count: an already-canonical row never
+  // leaves the candidate set, so "how many are left" would never reach zero and
+  // this loop would re-read page one until an operator killed it.
+  if (sub === "normalize-phones") {
+    const slug = args[1];
+    const field = args[2];
+    if (!slug || !field) {
+      process.stderr.write(
+        "collections normalize-phones <slug> <field> [--batch <n>] [--dry-run]\n",
+      );
+      process.exit(1);
+    }
+    const rest = args.slice(3);
+    const batchIdx = rest.indexOf("--batch");
+    const batch = batchIdx >= 0 ? Number(rest[batchIdx + 1]) : undefined;
+    if (batchIdx >= 0 && (!Number.isFinite(batch) || (batch as number) < 1)) {
+      process.stderr.write("--batch takes a positive number of rows\n");
+      process.exit(1);
+    }
+    const dryRun = rest.includes("--dry-run");
+    try {
+      const ctx = resolveContext(rest);
+      const client = makeClient(ctx);
+      const totals = {
+        scanned: 0,
+        normalized: 0,
+        alreadyCanonical: 0,
+        unreadable: 0,
+        unreadableIds: [] as string[],
+      };
+      let after: string | undefined;
+      for (;;) {
+        const res = await client.request<{
+          data: {
+            scanned: number;
+            normalized: number;
+            alreadyCanonical: number;
+            unreadable: number;
+            unreadableIds: string[];
+            cursor: string | null;
+          };
+        }>("POST", `/api/phone/normalize/${encodeURIComponent(slug)}`, {
+          field,
+          ...(batch === undefined ? {} : { limit: batch }),
+          ...(after === undefined ? {} : { after }),
+          ...(dryRun ? { dryRun: true } : {}),
+        });
+        const d = res.data;
+        totals.scanned += d.scanned;
+        totals.normalized += d.normalized;
+        totals.alreadyCanonical += d.alreadyCanonical;
+        totals.unreadable += d.unreadable;
+        // Kept for the operator to go and look at, but bounded — a collection
+        // that is entirely unreadable should not fill a terminal with ids.
+        for (const id of d.unreadableIds) {
+          if (totals.unreadableIds.length < 200) totals.unreadableIds.push(id);
+        }
+        if (!json && d.cursor) {
+          process.stderr.write(`  … ${totals.scanned} scanned, ${totals.normalized} rewritten\n`);
+        }
+        if (!d.cursor) break;
+        after = d.cursor;
+      }
+      if (json) {
+        printJson({ data: totals });
+        return;
+      }
+      process.stderr.write(
+        `${dryRun ? "· dry run" : "✓"} ${slug}.${field}: ` +
+          `${totals.normalized} ${dryRun ? "would be rewritten" : "rewritten"}` +
+          `, ${totals.alreadyCanonical} already canonical` +
+          (totals.unreadable ? `, ${totals.unreadable} unreadable (left as-is)` : "") +
+          "\n",
+      );
+      if (totals.unreadableIds.length && !dryRun) {
+        process.stderr.write(
+          `  unreadable rows: ${totals.unreadableIds.slice(0, 20).join(", ")}` +
+            (totals.unreadableIds.length > 20 ? ", …" : "") +
+            "\n",
+        );
+      }
+    } catch (e) {
+      die(e, "collections normalize-phones");
     }
     return;
   }

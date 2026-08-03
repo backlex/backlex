@@ -18,6 +18,7 @@ import { DatePicker } from "@/components/date-picker";
 import { RelationPicker, AppUserPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
 import { GeoInput } from "./field-geo-input";
 import { MoneyInput } from "./field-money-input";
+import { PhoneInput } from "./field-phone-input";
 import { useEnabledExtensions, useMe, useSettings } from "./queries";
 import { allowedMoves } from "@backlex/db/transitions";
 import { ExtensionFrame } from "./extension-frame";
@@ -1500,6 +1501,53 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
             // form right now, so switching a row to EUR relabels the amount
             // box before the save rather than after the re-read.
             siblings={draft}
+            invalid={!!err}
+          />
+          {errBlock}
+        </div>
+      );
+    }
+
+    if (f.type === "phone") {
+      const phone = (
+        f as {
+          phone?: {
+            region?: string;
+            regionField?: string;
+            allowedRegions?: string[];
+            display?: "e164" | "spaced";
+          };
+        }
+      ).phone;
+      const regionField = phone?.regionField;
+      return (
+        <div key={f.name} className="flex min-w-0 flex-col gap-1.5">
+          {label}
+          <PhoneInput
+            value={val}
+            onChange={setField}
+            region={phone?.region}
+            // The row's region as the form has it RIGHT NOW, so switching the
+            // country column re-reads the number in the box before the save
+            // rather than after the re-read — the same live-sibling rule the
+            // money and geo inputs follow.
+            rowRegion={
+              regionField && typeof draft[regionField] === "string"
+                ? (draft[regionField] as string)
+                : undefined
+            }
+            allowedRegions={phone?.allowedRegions}
+            display={phone?.display}
+            // Only writes back when the field actually keeps a region column.
+            // Without one the picker is a parsing hint and nothing more.
+            onRegionChange={
+              regionField
+                ? (region) => {
+                    form.updateField(regionField, region);
+                    form.setFieldTouched(regionField);
+                  }
+                : undefined
+            }
             invalid={!!err}
           />
           {errBlock}

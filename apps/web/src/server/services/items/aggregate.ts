@@ -13,6 +13,7 @@ import {
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { normalizeMoneyOperands } from "./money-fields";
+import { normalizePhoneOperands } from "./phone-fields";
 import { queryAll } from "./sql-helpers";
 
 /**
@@ -210,6 +211,10 @@ export const runItemsAggregate = async (
     let cond = normalizeCondition(cfg.filter);
     try {
       cond = normalizeMoneyOperands(cond, fields);
+      // …and phone operands to the canonical form the column holds, so a
+      // "how many orders from this number" aggregate agrees with the list
+      // endpoint instead of counting zero.
+      cond = normalizePhoneOperands(cond, fields);
     } catch (e) {
       throw new AppError("VALIDATION", (e as Error).message);
     }

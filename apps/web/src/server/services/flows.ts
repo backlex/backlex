@@ -966,8 +966,19 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
           // message is persisted on the `flow.run` activity row, and the
           // value here is a customer's phone number. The template alone
           // says which column to go fix.
+          //
+          // The remedy is named because it now exists and because this is the
+          // failure the phone field type was built for: a column of numbers
+          // people typed will fail here row by row, at run time, long after the
+          // write that caused it. Making the column a `phone` field
+          // canonicalizes every future write and `collections normalize-phones`
+          // fixes the rows already there. Nothing is canonicalized HERE on
+          // purpose — a national number needs a region, and a flow has none to
+          // read, so guessing one would text another country.
           throw new FlowOpError(
-            `sms recipient "${op.to}" did not render to E.164 (e.g. +14155552671)`,
+            `sms recipient "${op.to}" did not render to E.164 (e.g. +14155552671) — ` +
+              "make that column a phone field so every write is canonicalized, " +
+              "then run `backlex collections normalize-phones` over the existing rows",
           );
         }
         const result = await sendSmsToNumbers(ctx.ctx, tenantId, {

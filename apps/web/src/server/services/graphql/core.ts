@@ -72,6 +72,7 @@ import {
   serializeField,
 } from "../items/serialize";
 import { assertCurrencyChangeIsSafe, canonicalizeMoneyFields } from "../items/money-fields";
+import { canonicalizePhoneFields } from "../items/phone-fields";
 import { applyAutoGeocode, patchTouchesSources } from "../items/geocode";
 import { verifyHashField } from "../items/verify";
 import type { Hono } from "hono";
@@ -235,6 +236,12 @@ const fieldScalar = (
       // Its own scalar rather than JSON — see MoneyScalar for why an inline
       // `price: 19.99` has to keep working.
       return MoneyScalar;
+    case "phone":
+      // A plain String on both sides — the stored value IS a string, and the
+      // input side accepts every form a human writes, which no stricter scalar
+      // could express without making GraphQL pickier than REST for a value it
+      // canonicalizes anyway.
+      return GraphQLString;
     case "hash":
       // Write-only secret: accepted as a String on input, always resolves to
       // null on output (the digest never leaves the DB).
@@ -522,6 +529,17 @@ const canonicalizeMoneyForGql = (
       assertCurrencyChangeIsSafe(inputData, collection.fields, existing, (f) => camel(f.name));
     }
     canonicalizeMoneyFields(inputData, collection.fields, {
+      existing,
+      keyOf: (f) => camel(f.name),
+    });
+    // Phone rides along for exactly the same reason and on exactly the same
+    // schedule: this resolver never calls `validateValue`, so an un-canonical
+    // number would be stored verbatim — leaving GraphQL the one surface that can
+    // still put `0532 111 22 33` into a column every other surface guarantees is
+    // E.164, and quietly breaking `unique`, lookup-by-number and SMS delivery
+    // for rows written through it. Fourth field feature in a row where this
+    // resolver needed the same fix (see #38–#41).
+    canonicalizePhoneFields(inputData, collection.fields, {
       existing,
       keyOf: (f) => camel(f.name),
     });

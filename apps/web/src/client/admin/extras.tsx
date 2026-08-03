@@ -476,6 +476,9 @@ export function AlterPreview({
     geo: "TEXT",
     // Minor units — the whole reason a money column is exact.
     money: "INTEGER",
+    // Same storage as `text`, deliberately: that is what lets an existing text
+    // phone column become a phone field with no ALTER at all.
+    phone: "TEXT",
     hash: "TEXT",
   };
   const sqlType = SQLITE_PREVIEW[pendingField.type ?? "text"] ?? "TEXT";

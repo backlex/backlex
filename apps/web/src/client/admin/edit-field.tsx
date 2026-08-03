@@ -84,6 +84,13 @@ import {
   moneyDraftFrom,
   type MoneyDraft,
 } from "./field-money-editor";
+import {
+  cleanPhone,
+  emptyPhoneDraft,
+  FieldPhoneEditor,
+  phoneDraftFrom,
+  type PhoneDraft,
+} from "./field-phone-editor";
 
 /** One editable condition row: a rule tree + the effects it toggles. */
 interface CondDraft {
@@ -184,6 +191,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   const [transDraft, setTransDraft] = useState<TransitionsDraft>(emptyTransitionsDraft);
   const [geoDraft, setGeoDraft] = useState<GeoDraft>(emptyGeoDraft);
   const [moneyDraft, setMoneyDraft] = useState<MoneyDraft>(emptyMoneyDraft);
+  const [phoneDraft, setPhoneDraft] = useState<PhoneDraft>(emptyPhoneDraft);
   const [tab, setTab] = useState("schema");
 
   // Re-seed every time the dialog opens with a new target field.
@@ -222,6 +230,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     setSeqDraft(sequenceToDraft((field as { sequence?: unknown }).sequence));
     setGeoDraft(geoDraftFrom((field as { geo?: unknown }).geo));
     setMoneyDraft(moneyDraftFrom((field as { money?: unknown }).money));
+    setPhoneDraft(phoneDraftFrom((field as { phone?: unknown }).phone));
     setTransDraft(
       transitionsToDraft(
         (field as { transitions?: unknown }).transitions,
@@ -290,6 +299,9 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   // exactly as a half-built rollup does.
   const isMoney = draft?.type === "money";
   const cleanedMoney = isMoney ? cleanMoney(moneyDraft) : undefined;
+  const isPhone = draft?.type === "phone";
+  // Optional, unlike money's — see the note in add-field. It never blocks Save.
+  const cleanedPhone = isPhone ? cleanPhone(phoneDraft) : undefined;
   // Keyed off the INTERFACE, like geo is off the type: a lifecycle is optional
   // on every single-select dropdown, so a field that has never had one still
   // has the tab — turning it on is the whole point of opening this dialog.
@@ -374,6 +386,10 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
       ...(isSequence ? { sequence: cleanedSequence as never } : {}),
       ...(isGeo ? { geo: cleanGeo(geoDraft) as never } : {}),
       ...(isMoney ? { money: cleanedMoney as never } : {}),
+      // Sent even when undefined so that clearing every option actually REMOVES
+      // the stored spec — omitting the key would leave the old region in place
+      // and the dialog would keep re-showing a setting the operator just cleared.
+      ...(isPhone ? { phone: cleanedPhone as never } : {}),
       // Explicitly `undefined` when the lifecycle is switched off, so saving
       // removes the stored spec rather than leaving the old graph in force.
       transitions: (hasLifecycle ? cleanTransitions(transDraft) : undefined) as never,
@@ -388,6 +404,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     ...(isSequence ? [{ key: "sequence", label: t`Numbering`, icon: "Hash", invalid: !cleanedSequence } as FieldTabItem] : []),
     ...(isGeo ? [{ key: "geo", label: t`Location`, icon: "Globe" } as FieldTabItem] : []),
     ...(isMoney ? [{ key: "money", label: t`Currency`, icon: "BarChart", invalid: !cleanedMoney } as FieldTabItem] : []),
+    ...(isPhone ? [{ key: "phone", label: t`Phone`, icon: "Phone" } as FieldTabItem] : []),
     ...(hasLifecycle ? [{ key: "transitions", label: t`Lifecycle`, icon: "Share" } as FieldTabItem] : []),
     { key: "field", label: t`Field`, icon: "Pencil" },
     { key: "interface", label: t`Interface`, icon: "Eye" },
@@ -565,6 +582,16 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
               candidates={availableFields
                 .filter((n) => n !== draft.name)
                 .map((n) => ({ name: n }))}
+            />
+          )}
+
+          {activeTab === "phone" && isPhone && (
+            <FieldPhoneEditor
+              value={phoneDraft}
+              onChange={setPhoneDraft}
+              candidates={(
+                collections.find((c) => c.slug === ownerSlug)?.fieldDefs ?? []
+              ).filter((f) => f.name !== draft?.name)}
             />
           )}
 

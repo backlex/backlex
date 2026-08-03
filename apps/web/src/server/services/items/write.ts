@@ -21,6 +21,7 @@ import {
 } from "./validate";
 import { normalizeGeoFields } from "./geo-fields";
 import { assertCurrencyChangeIsSafe, canonicalizeMoneyFields } from "./money-fields";
+import { canonicalizePhoneFields } from "./phone-fields";
 import { applyAutoGeocode, patchTouchesSources } from "./geocode";
 import { hashIncomingFields, scrubHashFields, scrubPrivateFields } from "./hash-fields";
 import { assertRowsWithinLimit } from "../usage";
@@ -238,6 +239,12 @@ export const performCreate = async (
   // The conversion to the stored integer happens later, in `serializeField`.
   try {
     canonicalizeMoneyFields(data, collection.fields);
+    // …and every phone value into E.164, on the payload, for the same reason
+    // again. A create that echoed back the `0532 111 22 33` the caller sent
+    // would put a number no SMS provider accepts into the 201 body, the realtime
+    // event and — through the changefeed — the client's offline store, while the
+    // column held something else entirely.
+    canonicalizePhoneFields(data, collection.fields);
   } catch (e) {
     throw new AppError("VALIDATION", (e as Error).message);
   }
@@ -496,6 +503,10 @@ export const performUpdate = async (
   try {
     assertCurrencyChangeIsSafe(patch, collection.fields, existing[0]);
     canonicalizeMoneyFields(patch, collection.fields, { existing: existing[0] });
+    // Phone waits for `existing` for the same reason money does, in the milder
+    // form: a patch that sets only `phone` on a collection whose region lives in
+    // a sibling column reads that column off the row it is patching.
+    canonicalizePhoneFields(patch, collection.fields, { existing: existing[0] });
   } catch (e) {
     throw new AppError("VALIDATION", (e as Error).message);
   }

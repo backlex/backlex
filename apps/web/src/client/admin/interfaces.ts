@@ -22,6 +22,7 @@ export type StorageType =
   | "relation_many"
   | "geo"
   | "money"
+  | "phone"
   | "hash"
   // Presentational-only — render in the form but own no column / value.
   | "divider"
@@ -67,6 +68,10 @@ export interface FieldInterfaceDef {
    *  a money field with no currency is an integer nobody can interpret, so
    *  unlike `hasGeo` this config is mandatory rather than optional. */
   hasMoney?: boolean;
+  /** Show the phone editor in step 2 — which country a national-form number is
+   *  read as, and which countries are allowed at all. Optional like `hasGeo`:
+   *  a bare phone field takes numbers written in international form. */
+  hasPhone?: boolean;
   /** Show the lifecycle editor in step 2 — which value may follow which, who
    *  may make each move, and what the row must carry for it. Only meaningful on
    *  an interface that stores ONE of a fixed set of values: the graph is drawn
@@ -98,6 +103,7 @@ export const FIELD_INTERFACES: FieldInterfaceDef[] = [
   { id: "integer", label: "Integer", sub: "Whole number", group: "Text & Numbers", icon: "Hash", type: "integer", keywords: ["int", "count"] },
   { id: "decimal", label: "Decimal", sub: "Floating-point number", group: "Text & Numbers", icon: "Hash", type: "number", keywords: ["float"] },
   { id: "money", label: "Money", sub: "An amount and the currency it is in — exact, and never added across currencies", group: "Text & Numbers", icon: "BarChart", type: "money", hasMoney: true, keywords: ["money", "price", "amount", "currency", "cost", "total", "salary", "fee", "budget", "payment", "balance", "revenue", "cash", "usd", "eur", "try", "lira", "dollar", "euro"] },
+  { id: "phone", label: "Phone", sub: "A number stored the one way every machine can dial — typed any way, saved as +90…", group: "Text & Numbers", icon: "Phone", type: "phone", hasPhone: true, keywords: ["phone", "telephone", "mobile", "cell", "gsm", "msisdn", "whatsapp", "sms", "contact", "number", "e164", "telefon", "cep", "call", "dial"] },
   { id: "slider", label: "Slider", sub: "Number picked on a track", group: "Text & Numbers", icon: "Sliders", type: "number", keywords: ["range"] },
   { id: "rating", label: "Rating", sub: "Star rating, 0–5", group: "Text & Numbers", icon: "BarChart", type: "integer", keywords: ["stars", "score"] },
 
@@ -175,7 +181,7 @@ export interface ExtensionInterfaceSource {
 
 const STORAGE_TYPE_SET: ReadonlySet<string> = new Set([
   "text", "longtext", "integer", "number", "boolean", "json", "timestamp",
-  "uuid", "relation", "relation_many", "geo", "money", "hash",
+  "uuid", "relation", "relation_many", "geo", "money", "phone", "hash",
 ]);
 
 /**

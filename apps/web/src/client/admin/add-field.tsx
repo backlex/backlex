@@ -82,6 +82,12 @@ import {
   FieldMoneyEditor,
   type MoneyDraft,
 } from "./field-money-editor";
+import {
+  cleanPhone,
+  emptyPhoneDraft,
+  FieldPhoneEditor,
+  type PhoneDraft,
+} from "./field-phone-editor";
 import { canLocalize } from "./item-form";
 
 /** Seed a new sequence with the operator's own calendar rather than UTC. The
@@ -169,6 +175,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [moneyDraft, setMoneyDraft] = useState<MoneyDraft>(() =>
     emptyMoneyDraft(defaultCurrency),
   );
+  const [phoneDraft, setPhoneDraft] = useState<PhoneDraft>(emptyPhoneDraft);
   const [seqDraft, setSeqDraft] = useState<SequenceDraft>(() =>
     emptySequenceDraft(browserTimeZone()),
   );
@@ -313,6 +320,10 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   // this blocks Save the way a rollup's does.
   const cleanedMoney = def.hasMoney ? cleanMoney(moneyDraft) : undefined;
   const missingMoney = !!def.hasMoney && !cleanedMoney;
+  // A phone spec IS optional, like geo's and unlike money's: a field with no
+  // region still works, it just insists on international-form numbers. So this
+  // never blocks Save.
+  const cleanedPhone = def.hasPhone ? cleanPhone(phoneDraft) : undefined;
   const nameInvalid = !safeName || nameTaken || safeName.length < 2;
   const valid =
     !nameInvalid &&
@@ -398,6 +409,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(cleanedTransitions ? { transitions: cleanedTransitions } : {}),
       ...(cleanedGeo ? { geo: cleanedGeo } : {}),
       ...(cleanedMoney ? { money: cleanedMoney } : {}),
+      ...(cleanedPhone ? { phone: cleanedPhone } : {}),
       ...(conditions.length ? { conditions } : {}),
       ...(validation ? { validation } : {}),
       ...(cleanFormat(formatDraft, def.type) ? { format: cleanFormat(formatDraft, def.type) } : {}),
@@ -420,6 +432,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
     ...(def.hasMoney
       ? [{ key: "money", label: t`Currency`, icon: "BarChart", invalid: missingMoney } as FieldTabItem]
       : []),
+    ...(def.hasPhone ? [{ key: "phone", label: t`Phone`, icon: "Phone" } as FieldTabItem] : []),
     ...(def.hasTransitions
       ? [{ key: "transitions", label: t`Lifecycle`, icon: "Share" } as FieldTabItem]
       : []),
@@ -716,6 +729,14 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                 candidates={schema.fields ?? []}
                 adopted={Boolean((schema as { adopted?: unknown }).adopted)}
                 locale={i18n.locale}
+              />
+            )}
+
+            {activeTab === "phone" && def.hasPhone && (
+              <FieldPhoneEditor
+                value={phoneDraft}
+                onChange={setPhoneDraft}
+                candidates={(schema.fields ?? []).filter((f) => f.name !== name.trim())}
               />
             )}
 

@@ -11,6 +11,7 @@ export * from "./geo";
 export * from "./money";
 export * from "./rollup";
 export * from "./sequence";
+export * from "./transitions";
 export * from "./schema-applier";
 export * from "./schema-diff";
 export * from "./permission";

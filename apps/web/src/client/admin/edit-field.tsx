@@ -64,6 +64,13 @@ import {
   type SequenceDraft,
 } from "./field-sequence-editor";
 import {
+  FieldTransitionsEditor,
+  cleanTransitions,
+  emptyTransitionsDraft,
+  transitionsToDraft,
+  type TransitionsDraft,
+} from "./field-transitions-editor";
+import {
   cleanGeo,
   emptyGeoDraft,
   FieldGeoEditor,
@@ -174,6 +181,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [rollupDraft, setRollupDraft] = useState<RollupDraft>(emptyRollupDraft());
   const [seqDraft, setSeqDraft] = useState<SequenceDraft>(() => emptySequenceDraft("UTC"));
+  const [transDraft, setTransDraft] = useState<TransitionsDraft>(emptyTransitionsDraft);
   const [geoDraft, setGeoDraft] = useState<GeoDraft>(emptyGeoDraft);
   const [moneyDraft, setMoneyDraft] = useState<MoneyDraft>(emptyMoneyDraft);
   const [tab, setTab] = useState("schema");
@@ -214,6 +222,14 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     setSeqDraft(sequenceToDraft((field as { sequence?: unknown }).sequence));
     setGeoDraft(geoDraftFrom((field as { geo?: unknown }).geo));
     setMoneyDraft(moneyDraftFrom((field as { money?: unknown }).money));
+    setTransDraft(
+      transitionsToDraft(
+        (field as { transitions?: unknown }).transitions,
+        ((field as { options?: { choices?: { value: string }[] } }).options?.choices ?? []).map(
+          (c) => c.value,
+        ),
+      ),
+    );
   }, [open, field]);
 
   const addCond = () =>
@@ -274,6 +290,10 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   // exactly as a half-built rollup does.
   const isMoney = draft?.type === "money";
   const cleanedMoney = isMoney ? cleanMoney(moneyDraft) : undefined;
+  // Keyed off the INTERFACE, like geo is off the type: a lifecycle is optional
+  // on every single-select dropdown, so a field that has never had one still
+  // has the tab — turning it on is the whole point of opening this dialog.
+  const hasLifecycle = !!getInterface(draft?.interface)?.hasTransitions;
 
   // Server-side auto-fill options valid for this column's storage type.
   const autoFillOpts = (type: string, withUuid: boolean) => {
@@ -354,6 +374,9 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
       ...(isSequence ? { sequence: cleanedSequence as never } : {}),
       ...(isGeo ? { geo: cleanGeo(geoDraft) as never } : {}),
       ...(isMoney ? { money: cleanedMoney as never } : {}),
+      // Explicitly `undefined` when the lifecycle is switched off, so saving
+      // removes the stored spec rather than leaving the old graph in force.
+      transitions: (hasLifecycle ? cleanTransitions(transDraft) : undefined) as never,
     };
     onSave(cleaned);
   };
@@ -365,6 +388,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     ...(isSequence ? [{ key: "sequence", label: t`Numbering`, icon: "Hash", invalid: !cleanedSequence } as FieldTabItem] : []),
     ...(isGeo ? [{ key: "geo", label: t`Location`, icon: "Globe" } as FieldTabItem] : []),
     ...(isMoney ? [{ key: "money", label: t`Currency`, icon: "BarChart", invalid: !cleanedMoney } as FieldTabItem] : []),
+    ...(hasLifecycle ? [{ key: "transitions", label: t`Lifecycle`, icon: "Share" } as FieldTabItem] : []),
     { key: "field", label: t`Field`, icon: "Pencil" },
     { key: "interface", label: t`Interface`, icon: "Eye" },
     { key: "validation", label: t`Validation`, icon: "Check" },
@@ -531,6 +555,17 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
 
           {activeTab === "sequence" && isSequence && (
             <FieldSequenceEditor value={seqDraft} onChange={setSeqDraft} />
+          )}
+
+          {activeTab === "transitions" && hasLifecycle && (
+            <FieldTransitionsEditor
+              value={transDraft}
+              onChange={setTransDraft}
+              choices={choices}
+              candidates={availableFields
+                .filter((n) => n !== draft.name)
+                .map((n) => ({ name: n }))}
+            />
           )}
 
           {activeTab === "money" && isMoney && (

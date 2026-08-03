@@ -43,6 +43,7 @@ import {
   ItemRow,
   TAGS,
 } from "../../services/items/schemas";
+import { describeTransitions } from "../../services/items/transitions";
 import { auditRead, canSeeDraftsFor } from "./shared";
 import { getStagedRow, stagedViewOf } from "../../services/items/staged";
 import { defaultHook } from "../../lib/openapi-router";
@@ -75,6 +76,71 @@ export const itemsReadRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         auth.tenantId ?? null,
       );
       return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{slug}/{id}/transitions",
+      tags: TAGS,
+      summary: "List an item's allowed status transitions",
+      description:
+        "For every field on the collection that carries a lifecycle (`transitions`), the value the row holds now and every move it could make from there — including the refused ones and why, so a UI can disable a button and say what is missing. Judged for the CALLING identity: a move gated on a role the caller does not hold comes back `allowed: false`. Requires read permission on the item.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "read")],
+      request: { params: z.object({ slug: z.string(), id: z.string() }) },
+      responses: {
+        200: {
+          description: "Allowed transitions, one entry per lifecycle field",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.array(
+                  z.object({
+                    field: z.string(),
+                    current: z.string().nullable(),
+                    terminal: z.boolean(),
+                    moves: z.array(
+                      z.object({
+                        to: z.string(),
+                        label: z.string().optional(),
+                        allowed: z.boolean(),
+                        reason: z.string().optional(),
+                        refusal: z.string().optional(),
+                        missing: z.array(z.string()).optional(),
+                      }),
+                    ),
+                  }),
+                ),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      // The full row, scoped exactly as a GET of it would be — permission
+      // condition, tenant, soft delete. A caller who cannot read the row must
+      // not learn its status from the endpoint that explains its next moves.
+      const rows = await queryAll<Record<string, unknown>>(
+        ctx,
+        sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(
+          pkEq(collection.pkColumn, c.req.param("id")),
+          perm.whereSql,
+          tenantFilter(collection, auth),
+          deletedFilter(collection),
+        )} LIMIT 1`,
+      );
+      if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
+      const row = deserializeRow(rows[0], collection.fields, ctx.dialect, collection.ownerScoped);
+      return c.json({
+        data: describeTransitions(collection.fields, row, auth.roles, perm.fields),
+      });
     },
   )
   .openapi(

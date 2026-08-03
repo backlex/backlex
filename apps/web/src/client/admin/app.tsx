@@ -74,8 +74,10 @@ import {
   useItemsBulkPublish,
   useItemsBulkUpdate,
   useLiveCollection,
+  useMe,
   useMetricsOverview,
 } from "./queries";
+import { evaluateTransition } from "@backlex/db/transitions";
 import { ExtensionFrame } from "./extension-frame";
 import { api } from "@/lib/api";
 import { useUrlState, useUrlStateJson } from "@/lib/use-url-state";
@@ -501,6 +503,10 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
 
   // Optimistic mutation hooks — each owns its own snapshot / patch / rollback /
   // reconcile against the shared `["items", collection]` cache prefix.
+  // Identity as the API reports it — the header's own `me` state (below) keeps
+  // only what the avatar menu needs and drops `roles`, which is what a
+  // role-gated transition has to be judged against.
+  const identity = useMe();
   const itemPatch = useItemPatch(activeCollection);
   const itemCreate = useItemCreate(activeCollection);
   const itemPublish = useItemPublish(activeCollection);
@@ -815,9 +821,29 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   // optimistic move + rollback; we just toast on error.
   const changeItemStatus = (it: Post, status: string) => {
     if (!activeCollection || !kanbanStatusField) return;
+    const myRoles = ((identity.data as { roles?: string[] } | undefined)?.roles ?? null) as
+      | string[]
+      | null;
     const field = kanbanStatusField.name;
     const prev = (it as unknown as Record<string, unknown>)[field];
     if (prev === status) return;
+    // Refuse an illegal drop BEFORE mutating. The server would refuse it too
+    // and the optimistic move would roll back — but a card that visibly jumps
+    // to a column and then springs back reads as a bug, where a card that
+    // simply does not move plus a toast reads as a rule.
+    const spec = (kanbanStatusField as { transitions?: unknown }).transitions;
+    if (spec) {
+      const verdict = evaluateTransition(spec as never, {
+        from: prev,
+        to: status,
+        roles: myRoles,
+        row: it as unknown as Record<string, unknown>,
+      });
+      if (!verdict.ok) {
+        pushToast(verdict.message, "error");
+        return;
+      }
+    }
     // The lifecycle board (`_status`) is not a plain field — moving a card
     // fires the real publish/unpublish/archive action (permission-gated, stamps
     // `_published_at`, emits a realtime event) instead of a column write.

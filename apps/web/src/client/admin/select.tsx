@@ -20,6 +20,10 @@ export interface SelectOption {
   value: string;
   label: string;
   hint?: string;
+  /** Render the option but refuse selection — used where an option is real but
+   *  not available yet (a status move whose required field is still empty).
+   *  Pair it with `hint` so the row says why. */
+  disabled?: boolean;
   badge?: ReactNode;
   icon?: IconComponent | ReactNode;
 }
@@ -108,7 +112,7 @@ export function Select({
           const radixValue = o.value === "" ? EMPTY : o.value;
           const icon = renderIcon(o.icon);
           return (
-            <SelectItem key={o.value} value={radixValue}>
+            <SelectItem key={o.value} value={radixValue} disabled={o.disabled}>
               {/* Radix clones the selected item's children into the trigger, so
                   this row has to be able to shrink: without min-w-0 + truncate a
                   long label+hint (e.g. the agent Model picker's) pushes the

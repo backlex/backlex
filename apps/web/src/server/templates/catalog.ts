@@ -296,6 +296,44 @@ const select = (
 
 const ch = (value: string, color: string, label?: string): FieldChoice => ({ value, color, label });
 
+/**
+ * A status lifecycle for a `select` field — which value may follow which.
+ *
+ * Written as an adjacency list because that is what it is, and because the
+ * admin's editor draws exactly this as a matrix. A value that appears as no
+ * key is FINAL: nothing leads out of it. Pass the result into `select`'s
+ * `extra`.
+ *
+ * `requires` names the sibling fields a particular target demands and `labels`
+ * gives it a verb. Both are keyed by TARGET value, since in practice the
+ * demand belongs to where the row is going rather than to any one edge into it.
+ *
+ * Deliberately NOT applied to every status field in the catalog. A lifecycle
+ * that is merely plausible is worse than none: it blocks work an operator was
+ * entitled to do, in a workspace they did not author. Only the flows whose
+ * shape is genuinely standard in their domain carry one.
+ */
+const flow = (
+  edges: Record<string, string[]>,
+  opts: {
+    initial?: string[];
+    requires?: Record<string, string[]>;
+    labels?: Record<string, string>;
+  } = {},
+): Partial<FieldDef> => ({
+  transitions: {
+    ...(opts.initial ? { initial: opts.initial } : {}),
+    allow: Object.entries(edges).flatMap(([from, tos]) =>
+      tos.map((to) => ({
+        from,
+        to,
+        ...(opts.requires?.[to] ? { requires: opts.requires[to] } : {}),
+        ...(opts.labels?.[to] ? { label: opts.labels[to] } : {}),
+      })),
+    ),
+  },
+});
+
 /* ──────────────────────────── form-layout helpers ───────────────────────────
  * These wrap the field-organization primitives (`group`, `width`,
  * `sectionCollapsible` / `sectionCollapsed`, `sectionsAsTabs`, and the
@@ -1179,7 +1217,17 @@ export const TEMPLATES: SchemaTemplate[] = [
           sec("Return", [
             ...half(text("number", { unique: true, label: "RMA number" }), rel("order", "orders")),
             ...half(
-              select("status", [ch("requested", C.amber), ch("approved", C.blue), ch("received", C.teal), ch("completed", C.green), ch("cancelled", C.gray)], { default: "requested" }),
+              select("status", [ch("requested", C.amber), ch("approved", C.blue), ch("received", C.teal), ch("completed", C.green), ch("cancelled", C.gray)], {
+                default: "requested",
+                ...flow(
+                  {
+                    requested: ["approved", "cancelled"],
+                    approved: ["received", "cancelled"],
+                    received: ["completed"],
+                  },
+                  { initial: ["requested"], labels: { approved: "Approve", received: "Mark received", completed: "Complete" } },
+                ),
+              }),
               rel("refund", "refunds", { label: "Linked refund" }),
             ),
           ]),
@@ -1506,7 +1554,13 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "invoices", group: "Billing", singular: "Invoice", plural: "Invoices", defaultSort: "-issued_at",
         fields: stacked(
           sec("Invoice", [
-            ...half(text("number", { unique: true }), select("status", [ch("draft", C.gray), ch("open", C.blue), ch("paid", C.green), ch("void", C.slate), ch("uncollectible", C.red)], { default: "draft" })),
+            ...half(text("number", { unique: true }), select("status", [ch("draft", C.gray), ch("open", C.blue), ch("paid", C.green), ch("void", C.slate), ch("uncollectible", C.red)], {
+              default: "draft",
+              ...flow(
+                { draft: ["open", "void"], open: ["paid", "void", "uncollectible"] },
+                { initial: ["draft"], labels: { open: "Finalize", paid: "Mark paid", void: "Void", uncollectible: "Write off" } },
+              ),
+            })),
             ...half(rel("account", "accounts"), rel("subscription", "subscriptions")),
             select("billing_reason", [ch("subscription_create", C.blue, "Subscription created"), ch("subscription_cycle", C.teal, "Renewal"), ch("manual", C.gray)], { default: "subscription_cycle", label: "Billing reason" }),
           ]),
@@ -1874,7 +1928,13 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: [
           ...half(text("number", { required: true, unique: true }), rel("deal", "deals")),
           ...half(
-            select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("accepted", C.green), ch("declined", C.red), ch("expired", C.slate)], { default: "draft" }),
+            select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("accepted", C.green), ch("declined", C.red), ch("expired", C.slate)], {
+                default: "draft",
+                ...flow(
+                  { draft: ["sent"], sent: ["accepted", "declined", "expired"] },
+                  { initial: ["draft"], labels: { sent: "Send", accepted: "Mark accepted", declined: "Mark declined" } },
+                ),
+              }),
             date("valid_until", { indexed: true, label: "Valid until" }),
           ),
           ...half(moneyIn("total"), select("currency", ["USD", "EUR", "GBP"], { default: "USD" })),
@@ -2214,7 +2274,19 @@ export const TEMPLATES: SchemaTemplate[] = [
             text("subject", { required: true, searchable: true }),
             { name: "description", type: "longtext", interface: "textarea", searchable: true },
             ...half(
-              select("status", [ch("new", C.purple), ch("open", C.blue), ch("pending", C.amber), ch("hold", C.slate), ch("solved", C.green), ch("closed", C.gray)], { default: "new" }),
+              select("status", [ch("new", C.purple), ch("open", C.blue), ch("pending", C.amber), ch("hold", C.slate), ch("solved", C.green), ch("closed", C.gray)], {
+                default: "new",
+                ...flow(
+                  {
+                    new: ["open", "solved"],
+                    open: ["pending", "hold", "solved"],
+                    pending: ["open", "hold", "solved"],
+                    hold: ["open", "pending", "solved"],
+                    solved: ["open", "closed"],
+                  },
+                  { initial: ["new"], labels: { solved: "Solve", closed: "Close", open: "Reopen" } },
+                ),
+              }),
               select("priority", [ch("low", C.gray), ch("normal", C.blue), ch("high", C.amber), ch("urgent", C.red)], { default: "normal" }),
             ),
             ...half(
@@ -2509,7 +2581,13 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
           sec("Approval", [
             ...half(
-              select("status", [ch("pending", C.amber), ch("approved", C.green), ch("denied", C.red), ch("cancelled", C.gray)], { default: "pending" }),
+              select("status", [ch("pending", C.amber), ch("approved", C.green), ch("denied", C.red), ch("cancelled", C.gray)], {
+                default: "pending",
+                ...flow(
+                  { pending: ["approved", "denied", "cancelled"], approved: ["cancelled"] },
+                  { initial: ["pending"], labels: { approved: "Approve", denied: "Deny", cancelled: "Cancel" } },
+                ),
+              }),
               rel("approver", "employees"),
             ),
             ts("approved_at", { label: "Approved at" }),
@@ -5666,7 +5744,13 @@ export const TEMPLATES: SchemaTemplate[] = [
           sec("Quote", [
             ...half(text("number", { required: true, unique: true }), rel("customer", "customers")),
             ...half(
-              select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("accepted", C.green), ch("declined", C.red), ch("expired", C.slate)], { default: "draft" }),
+              select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("accepted", C.green), ch("declined", C.red), ch("expired", C.slate)], {
+                default: "draft",
+                ...flow(
+                  { draft: ["sent"], sent: ["accepted", "declined", "expired"] },
+                  { initial: ["draft"], labels: { sent: "Send", accepted: "Mark accepted", declined: "Mark declined" } },
+                ),
+              }),
               select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
             ),
             ...half(date("issue_date", { indexed: true, label: "Issue date" }), date("valid_until", { indexed: true, label: "Valid until" })),
@@ -5701,7 +5785,18 @@ export const TEMPLATES: SchemaTemplate[] = [
           sec("Invoice", [
             ...half(text("number", { required: true, unique: true }), rel("customer", "customers")),
             ...half(
-              select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("partial", C.amber, "Partially paid"), ch("paid", C.green), ch("overdue", C.red), ch("void", C.slate)], { default: "draft" }),
+              select("status", [ch("draft", C.gray), ch("sent", C.blue), ch("partial", C.amber, "Partially paid"), ch("paid", C.green), ch("overdue", C.red), ch("void", C.slate)], {
+                default: "draft",
+                ...flow(
+                  {
+                    draft: ["sent", "void"],
+                    sent: ["partial", "paid", "overdue", "void"],
+                    partial: ["paid", "overdue", "void"],
+                    overdue: ["partial", "paid", "void"],
+                  },
+                  { initial: ["draft"], labels: { sent: "Send", paid: "Mark paid", void: "Void" } },
+                ),
+              }),
               select("currency", ["USD", "EUR", "GBP", "TRY"], { default: "USD" }),
             ),
             ...half(

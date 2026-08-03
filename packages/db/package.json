@@ -10,6 +10,7 @@
     "./geo": "./src/geo.ts",
     "./money": "./src/money.ts",
     "./sequence": "./src/sequence.ts",
+    "./transitions": "./src/transitions.ts",
     "./pg": "./src/pg/index.ts",
     "./pg/schema": "./src/pg/schema.ts",
     "./pg/migrations-bundle": "./src/pg/migrations-bundle.ts",

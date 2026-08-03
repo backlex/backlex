@@ -15,6 +15,7 @@ import {
   listResolver,
   pascal,
   searchResolver,
+  transitionsResolver,
   updateResolver,
   verifyResolver,
   JSONScalar,
@@ -61,6 +62,7 @@ import {
 import { eq, } from "drizzle-orm";
 import {
   type FieldDef,
+  hasTransitions,
   isKnownFieldType,
 } from "@backlex/db";
 import { log } from "../../lib/log";
@@ -341,6 +343,25 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
       resolve: async (_src, rawArgs, gqlCtx) =>
         bulkUpdateResolver(gqlCtx, c, rawArgs as { keys: unknown; data: unknown }),
     };
+
+    // `<collection>Transitions` — only emitted when the collection actually has
+    // a lifecycle field, the same way `verify<Collection>` is gated on a `hash`
+    // one. Mirrors REST `GET /:slug/:id/transitions` and shares its service, so
+    // the moves a GraphQL client is offered are the moves the write path will
+    // accept from it.
+    if (c.fields.some((f) => hasTransitions(f))) {
+      queryFields[`${lowerName}Transitions`] = {
+        type: new GraphQLNonNull(JSONScalar),
+        description:
+          `The status moves an item of "${c.slug}" can make right now, per ` +
+          "lifecycle field: the value it holds, whether that value is final, " +
+          "and every reachable value with `allowed` plus the reason when it is " +
+          "not. Judged for the calling identity.",
+        args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+        resolve: async (_src, rawArgs, gqlCtx) =>
+          transitionsResolver(gqlCtx, c, (rawArgs as { id: string }).id),
+      };
+    }
 
     // `verify<Collection>` — only emitted when the collection has a `hash`
     // field. Checks a plaintext against the stored digest without returning it.

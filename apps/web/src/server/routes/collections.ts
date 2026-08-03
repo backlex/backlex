@@ -48,6 +48,7 @@ import {
   sequenceFieldsOf,
   syncSequenceCounters,
 } from "../services/items/sequence";
+import { validateTransitionRoles } from "../services/items/transitions";
 import { ifNoneMatch, weakETag } from "../lib/etag";
 import { seedOwnerScopedPermissions } from "../services/seed";
 import { cloneCollection } from "../services/collections";
@@ -306,6 +307,37 @@ const FieldSchema = z
           .optional(),
         exponent: z.number().int().min(0).max(6).optional(),
         storage: z.enum(["minor", "decimal"]).optional(),
+      })
+      .optional(),
+    /**
+     * The lifecycle this dropdown may move through — `{ allow: [{from, to,
+     * roles?, requires?, label?}], initial? }`.
+     *
+     * Safe over the API for the same reason `rollup` and `sequence` are:
+     * nothing here reaches the DDL or any SQL. Every value is checked against
+     * the field's own `options.choices` and every `requires` name against the
+     * collection's own fields by `validateTransitionSpec`, so the worst a
+     * malformed spec can do is fail at save time. The bounds are what stop a
+     * caller storing an unbounded graph in the collection metadata.
+     */
+    transitions: z
+      .object({
+        allow: z
+          .array(
+            z.object({
+              from: z.union([z.string().max(120), z.array(z.string().max(120)).max(64)]),
+              to: z.union([z.string().max(120), z.array(z.string().max(120)).max(64)]),
+              roles: z.array(z.string().max(120)).max(32).optional(),
+              requires: z
+                .array(z.string().regex(/^[a-z][a-z0-9_]*$/, "snake_case"))
+                .max(16)
+                .optional(),
+              label: z.string().max(80).optional(),
+            }),
+          )
+          .min(1)
+          .max(128),
+        initial: z.array(z.string().max(120)).min(1).max(64).optional(),
       })
       .optional(),
   })
@@ -977,6 +1009,9 @@ export const collectionsRoutes = new Hono<AppBindings>()
     // stored. (Chicken-and-egg is real but one-directional: create the child
     // first, then the parent that rolls it up, or PATCH the rollup on after.)
     await validateRollupTargets(c.get("ctx"), tenantId, { slug: body.slug, pkType }, body.fields);
+    // Same reason, one table over: a transition rule gated on a role name that
+    // does not exist is a move nobody can ever make.
+    await validateTransitionRoles(c.get("ctx"), tenantId, body.fields);
 
     const id = crypto.randomUUID();
     await (db as any).insert(t).values({
@@ -1238,6 +1273,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
         },
         merged.fields as FieldDef[],
       );
+      await validateTransitionRoles(c.get("ctx"), tenantId, merged.fields as FieldDef[]);
     }
     await (db as any)
       .update(t)

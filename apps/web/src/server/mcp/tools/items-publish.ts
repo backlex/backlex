@@ -222,6 +222,33 @@ export const verifyItemTool: McpTool = {
   },
 };
 
+export const itemTransitionsTool: McpTool = {
+  name: "items.transitions",
+  description:
+    "List the status moves an item can make right now. For every field on the " +
+    "collection that carries a lifecycle (`transitions`), returns the value the " +
+    "row holds, whether it is a final state, and each reachable value with " +
+    "`allowed` plus — when it is not — the reason and any fields that have to be " +
+    "filled first. Judged for the calling identity, so a move gated on a role " +
+    "the caller does not hold comes back refused. Requires `read`.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      collection: { type: "string", description: "Collection slug." },
+      id: { type: "string", description: "Item id." },
+    },
+    required: ["collection", "id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const { collection, id } = reqIds(args);
+    const res = await ctx.fetchInternal(
+      `/api/items/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/transitions`,
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const itemsPublishTools: McpTool[] = [
   publishItemTool,
   unpublishItemTool,
@@ -230,4 +257,5 @@ export const itemsPublishTools: McpTool[] = [
   scheduleUnpublishItemTool,
   discardStagedItemTool,
   verifyItemTool,
+  itemTransitionsTool,
 ];

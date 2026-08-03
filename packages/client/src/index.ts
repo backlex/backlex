@@ -323,6 +323,12 @@ export interface CollectionClient<T extends Record<string, unknown>> {
    *  The digest never leaves the server; this returns only `{ valid }`.
    *  Requires read permission on the item; the server throttles attempts. */
   verify(id: string, field: string, value: string): Promise<{ valid: boolean }>;
+  /** Every status move this row could make right now, per lifecycle field —
+   *  including the refused ones and why, so a UI can disable a button and say
+   *  what is missing rather than simply omitting it. Judged for the CALLING
+   *  identity: a move gated on a role you don't hold comes back
+   *  `allowed: false`. Requires read permission on the item. */
+  transitions(id: string): Promise<{ data: FieldTransitions[] }>;
   /** Restate this collection's `rollup` columns from the rows they aggregate.
    *  Ordinary writes keep rollups in step on their own — this is the repair
    *  path for rows written around the API (a restore, a bulk seed, direct SQL).
@@ -402,6 +408,31 @@ export interface SequenceSyncReport {
   /** Stored values this field's pattern could not have produced, so they were
    *  left out of the maximum rather than guessed at. */
   unreadable: number;
+}
+
+/** One move offered by {@link CollectionClient.transitions}. */
+export interface TransitionMove {
+  /** The value the row would move to. */
+  to: string;
+  /** The rule's verb, when it has one — "Mark paid". */
+  label?: string;
+  allowed: boolean;
+  /** Why not, in the same words the write would have been refused with. */
+  reason?: string;
+  /** `not_allowed` | `forbidden_role` | `missing_fields` | `not_initial`. */
+  refusal?: string;
+  /** For `missing_fields`: the fields that have to be filled first. */
+  missing?: string[];
+}
+
+/** The lifecycle state of one field on one row. */
+export interface FieldTransitions {
+  field: string;
+  /** The value the row holds now, or null when it has none yet. */
+  current: string | null;
+  /** True when no rule leads out of the current value. */
+  terminal: boolean;
+  moves: TransitionMove[];
 }
 
 /** Auth surface for a workspace's end-users (and the admin pool). See `createClient`. */
@@ -3347,6 +3378,9 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       /** Verify a plaintext against a `hash` field's stored digest. */
       verify: (id: string, field: string, value: string): Promise<{ valid: boolean }> =>
         request<{ valid: boolean }>("POST", `/api/items/${slug}/${id}/verify`, { field, value }),
+      /** The status moves this row could make right now, refused ones included. */
+      transitions: (id: string): Promise<{ data: FieldTransitions[] }> =>
+        request<{ data: FieldTransitions[] }>("GET", `/api/items/${slug}/${id}/transitions`),
       /** Restate this collection's rollup columns from the rows they aggregate. */
       refreshRollups: (): Promise<{ ok: boolean; refreshed: string[] }> =>
         request<{ ok: boolean; refreshed: string[] }>(

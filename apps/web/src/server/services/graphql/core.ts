@@ -43,7 +43,7 @@ import {
   resolvePermission,
   type PermResolveCache,
 } from "../permissions";
-import { publishEvent } from "../events";
+import { dispatchEventHandlers, publishEvent } from "../events";
 import { loadCollection } from "../items/collection-loader";
 import { ITEMS_AGG_FUNCS, runItemsAggregate } from "../items/aggregate";
 import { searchCollectionItems } from "../items/search";
@@ -59,6 +59,12 @@ import {
 } from "../items/rollup";
 import { nextSequenceValues, sequenceFieldsOf } from "../items/sequence";
 import { validateAndNormalizeGeo } from "../items/geo-fields";
+import {
+  assertInitialStates,
+  assertTransitions,
+  describeTransitions,
+  transitionEventName,
+} from "../items/transitions";
 import {
   deserialize as sharedDeserialize,
   deserializeField,
@@ -521,6 +527,22 @@ const canonicalizeMoneyForGql = (
     });
   } catch (e) {
     throw new GraphQLError((e as Error).message, { extensions: { code: "VALIDATION" } });
+  }
+};
+
+/**
+ * Run a check that speaks `AppError` inside a resolver that speaks
+ * `GraphQLError`, preserving the code so the two surfaces refuse with the same
+ * words and the same classification.
+ */
+const asGqlError = <T>(fn: () => T): T => {
+  try {
+    return fn();
+  } catch (e) {
+    if (e instanceof AppError) {
+      throw new GraphQLError(e.message, { extensions: { code: e.code } });
+    }
+    throw e;
   }
 };
 
@@ -990,6 +1012,11 @@ export const createResolver = async (
     }
   }
 
+  // A lifecycle field's `initial` list — the one question a create can ask of
+  // it. Repeated here because this resolver hand-builds its INSERT rather than
+  // calling `performCreate`; `transition-surfaces.test.ts` is the gate.
+  asGqlError(() => assertInitialStates(collection.fields, args.data, (f) => camel(f.name)));
+
   const id = crypto.randomUUID();
   const now = ctx.dialect === "pg" ? new Date() : Date.now();
 
@@ -1142,6 +1169,26 @@ export const updateResolver = async (
     throw new GraphQLError("Item not found", { extensions: { code: "NOT_FOUND" } });
   }
 
+  // Lifecycle check, before the staged branch for the same reason the REST path
+  // puts it there: a staged move must be refused when it is queued, not when
+  // someone else publishes it. The merged row is built with SNAKE keys because
+  // `requires` names fields, and the stored row is what it is being read from.
+  const mergedForTransitions: Record<string, unknown> = { ...(existing[0] as Record<string, unknown>) };
+  for (const f of collection.fields) {
+    const v = args.data[camel(f.name)];
+    if (v !== undefined) mergedForTransitions[f.name] = v;
+  }
+  const transitions = asGqlError(() =>
+    assertTransitions({
+      fields: collection.fields,
+      before: existing[0] as Record<string, unknown>,
+      patch: args.data,
+      merged: mergedForTransitions,
+      roles: auth.roles,
+      keyOf: (f) => camel(f.name),
+    }),
+  );
+
   // Staged-edits interception — REST-parity (see performUpdate). On a
   // `stagedEdits` collection, updating a *published* row folds the (validated,
   // hashed) patch into the item's staged JSON patch instead of the live row;
@@ -1280,6 +1327,20 @@ export const updateResolver = async (
     { event: "updated", data: refreshedRow },
     { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
   );
+  // Lifecycle moves reach the automation plane only — see the same loop in
+  // `performUpdate` for why this is not a second trip round the realtime bus.
+  for (const t of transitions) {
+    dispatchEventHandlers(
+      ctx.env,
+      `items:${collection.slug}`,
+      {
+        event: transitionEventName(t),
+        data: refreshedRow,
+        before: existing[0] as Record<string, unknown>,
+      },
+      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
+    );
+  }
   // The value returned to the mutating caller must respect their READ field
   // allow-list (the `update` grant may permit writing fields they can't read).
   // Mirrors REST, which renders mutation responses through the read projection.
@@ -1379,6 +1440,44 @@ export const deleteResolver = async (
     { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
   );
   return true;
+};
+
+/**
+ * `<collection>Transitions(id)` — the read half of the lifecycle feature.
+ *
+ * Scoped exactly like the REST twin: the row is fetched through the caller's
+ * own read permission (condition, tenant, soft delete), so someone who cannot
+ * read a row does not learn its status from the endpoint that explains its next
+ * moves. The offer itself comes from the shared `describeTransitions`, not from
+ * a second copy of the rules — the whole point of putting the decision in
+ * `@backlex/db/transitions` is that every surface answers identically.
+ */
+export const transitionsResolver = async (
+  gqlCtx: GqlCtx,
+  collection: CollectionRow,
+  id: string,
+): Promise<unknown> => {
+  const { ctx, auth, permCache } = gqlCtx;
+  const perm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
+  if (!perm.allowed) {
+    throw new GraphQLError(
+      auth.userId ? `No read permission for ${collection.slug}` : "Sign in required",
+      { extensions: { code: auth.userId ? "FORBIDDEN" : "UNAUTHORIZED" } },
+    );
+  }
+  const wheres: SQL[] = [sql`${sql.identifier("id")} = ${id}`];
+  const tenantWhere = gqlTenantWhere(collection, auth);
+  if (tenantWhere) wheres.push(tenantWhere);
+  if (perm.whereSql) wheres.push(perm.whereSql);
+  if (collection.softDelete) wheres.push(sql`${sql.identifier("deleted_at")} IS NULL`);
+  const rows = await queryAll<Record<string, unknown>>(
+    ctx,
+    sql`SELECT * FROM ${sql.identifier(collection.physicalTable)} WHERE ${sql.join(wheres, sql` AND `)} LIMIT 1`,
+  );
+  if (!rows[0]) {
+    throw new GraphQLError("Item not found", { extensions: { code: "NOT_FOUND" } });
+  }
+  return describeTransitions(collection.fields, rows[0], auth.roles, perm.fields);
 };
 
 export const verifyResolver = async (

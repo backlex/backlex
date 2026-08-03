@@ -1064,6 +1064,10 @@ msgstr "Hiçbir ücret çekmeden ödemeleri sonuçlandıran yerel bir taklit. Ya
 msgid "A loop runs inline, so its body cannot wait for an approval or a long delay."
 msgstr "Döngü satır içinde çalışır; gövdesi bir onayı ya da uzun bir beklemeyi bekleyemez."
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "A new record may start as"
+msgstr "Yeni bir kayıt şu değerle başlayabilir"
+
 #: src/client/admin/field-sequence-editor.tsx
 msgid "A number that outgrows this simply gets wider — nothing is cut off."
 msgstr "Bu genişliği aşan bir numara yalnızca uzar — hiçbir şey kırpılmaz."
@@ -1107,6 +1111,10 @@ msgstr "Bir odanın konuşacağı en az bir agent gerekir. Önce Agents sayfası
 #: src/client/admin/flow-builder.tsx
 msgid "A row in the payment_transactions collection."
 msgstr "payment_transactions koleksiyonundaki bir satır."
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "A row with nothing ticked is a final state — nothing can move out of it."
+msgstr "Hiçbir kutusu işaretli olmayan satır son durumdur — oradan hiçbir yere geçilemez."
 
 #: src/client/admin/parity/booking.tsx
 msgid "A rule with no weekday needs a date range."
@@ -1565,6 +1573,10 @@ msgstr "Adım ekle"
 msgid "Add sync"
 msgstr "Senkron ekle"
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Add the choices on the Interface tab first — a lifecycle is drawn between this field's values, so there is nothing to connect yet."
+msgstr "Önce Arayüz sekmesinden seçenekleri ekleyin — yaşam döngüsü bu alanın değerleri arasında çizilir, şu an bağlanacak bir şey yok."
+
 #: src/client/admin/field-rollup-editor.tsx
 msgid "add the values up"
 msgstr "değerleri toplar"
@@ -1884,6 +1896,10 @@ msgstr "İzin verilen e-posta alan adları (isteğe bağlı)"
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Allowed in {0}ms"
 msgstr "{0}ms içinde izin verildi"
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Allowed moves"
+msgstr "İzin verilen geçişler"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Allowed redirect URLs"
@@ -2792,6 +2808,10 @@ msgstr "\"{0}\" rolünü paket olarak içerir"
 msgid "Bundles the \"{0}\" role and the \"{1}\" dashboard"
 msgstr "\"{0}\" rolünü ve \"{1}\" panosunu paket olarak içerir"
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Button label"
+msgstr "Düğme etiketi"
+
 #: src/client/admin/extras.tsx
 msgid "by"
 msgstr "tarafından"
@@ -3196,6 +3216,10 @@ msgstr "İlkini oluşturmak için <0>+ Yeni akış</0>'a tıklayın."
 #: src/client/admin/pages/functions.tsx
 msgid "Click <0>+ New function</0> to create one."
 msgstr "Bir tane oluşturmak için <0>+ Yeni fonksiyon</0>'a tıklayın."
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Click an empty box to allow that move; click an allowed one to give it a rule below. Double-click to remove it."
+msgstr "Boş bir kutuya tıklayarak geçişe izin verin; izinli bir kutuya tıklayarak aşağıdan kural tanımlayın. Kaldırmak için çift tıklayın."
 
 #: src/client/admin/permissions-matrix.tsx
 msgid "Click any cell to set state. Custom opens the rule builder in a dialog."
@@ -5097,6 +5121,7 @@ msgid "Don't write it back"
 msgstr "Geri yazma"
 
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/field-transitions-editor.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/users.tsx
@@ -5730,6 +5755,10 @@ msgstr "Uç noktalar alındı."
 #: src/client/admin/flow-builder.tsx
 msgid "Ends"
 msgstr "Bitiş"
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Enforce a lifecycle"
+msgstr "Yaşam döngüsünü zorunlu kıl"
 
 #: src/client/admin/pages/usage.tsx
 msgid "Enforced even where the global API limiter is off."
@@ -6513,6 +6542,10 @@ msgstr "Araçları filtrele…"
 msgid "Filtered by"
 msgstr "Filtrelenen"
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "final"
+msgstr "son"
+
 #: src/client/admin/field-geo-input.tsx
 msgid "Find from address"
 msgstr "Adresten bul"
@@ -6763,6 +6796,10 @@ msgstr "kaynak"
 #: src/client/admin/parity/translations.tsx
 msgid "From"
 msgstr "Kimden"
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "from ↓ / to →"
+msgstr "şuradan ↓ / şuraya →"
 
 #: src/client/admin/collections-index.tsx
 msgid "From a schema template"
@@ -8271,6 +8308,10 @@ msgstr "URL'nin son yol segmentini kullanmak için boş bırakın. Eğik çizgil
 msgid "leave empty for admins"
 msgstr "yöneticiler için boş bırakın"
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Leave empty for anyone who can edit the record. Flows and other server-side writes are not judged by this — only by the moves themselves."
+msgstr "Kaydı düzenleyebilen herkes için boş bırakın. Akışlar ve diğer sunucu tarafı yazmalar buna göre değerlendirilmez — yalnızca geçişlerin kendisine tabidir."
+
 #: src/client/admin/pages/extensions.tsx
 msgid "Leave empty for the latest published version."
 msgstr "Son yayınlanan sürüm için boş bırakın."
@@ -8321,6 +8362,11 @@ msgstr "Lisans"
 #: src/client/admin/collection-settings.tsx
 msgid "lifecycle"
 msgstr "yaşam döngüsü"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Lifecycle"
+msgstr "Yaşam döngüsü"
 
 #: src/client/admin/pages/analytics.tsx
 msgid "lifetime"
@@ -8685,6 +8731,10 @@ msgstr "Mart"
 #: src/client/admin/ui.tsx
 msgid "Mark all read"
 msgstr "Tümünü okundu işaretle"
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Mark paid"
+msgstr "Ödendi işaretle"
 
 #: src/client/admin/parity/booking.tsx
 msgid "Marked as a no-show."
@@ -9209,6 +9259,11 @@ msgstr "<0>Bu çalışma alanı</0> için yerel push aktarımı. Çözümleme s�
 #: src/client/admin/extras.tsx
 msgid "navigate"
 msgstr "gezin"
+
+#. placeholder {0}: m.missing.join(", ")
+#: src/client/admin/item-form.tsx
+msgid "needs {0}"
+msgstr "{0} gerekir"
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Needs TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY on the server."
@@ -9978,6 +10033,10 @@ msgstr "Yapılandırılmış OIDC sağlayıcısı yok. Bu çalışma alanının 
 msgid "No organizations yet — create one here, or let end-users start their own from your app."
 msgstr "Henüz organizasyon yok — buradan oluşturun ya da son kullanıcılar uygulamanızdan kendileri açsın."
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "No other fields on this collection yet."
+msgstr "Bu koleksiyonda henüz başka alan yok."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "No outstanding findings. Re-run after a schema or permission change."
 msgstr "Bekleyen bulgu yok. Şema veya izin değişikliğinin ardından yeniden çalıştırın."
@@ -10034,6 +10093,10 @@ msgstr "Bu öğe için henüz revizyon yok."
 #: src/client/admin/permission-tester.tsx
 msgid "No roles found."
 msgstr "Rol bulunamadı."
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "No roles in this workspace yet."
+msgstr "Bu çalışma alanında henüz rol yok."
 
 #: src/client/admin/permission-tester.tsx
 msgid "No roles selected = anonymous (the public role)."
@@ -10240,6 +10303,10 @@ msgstr "yok (herkese açık)"
 msgid "none selected = all"
 msgstr "hiçbiri seçili değil = tümü"
 
+#: src/client/admin/item-form.tsx
+msgid "not allowed"
+msgstr "izin verilmiyor"
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Not authorized"
 msgstr "Yetkilendirilmedi"
@@ -10296,6 +10363,10 @@ msgstr "Belirtilmedi"
 msgid "Not used"
 msgstr "Kullanılmıyor"
 
+#: src/client/admin/item-form.tsx
+msgid "not your role"
+msgstr "rolünüz uygun değil"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Note"
 msgstr "Not"
@@ -10313,6 +10384,10 @@ msgstr "Davet e-postasındaki not"
 #: src/client/admin/parity/booking.tsx
 msgid "Notes"
 msgstr "Notlar"
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "nothing (final)"
+msgstr "hiçbir yere (son)"
 
 #: src/client/admin/pages/erasure-card.tsx
 msgid "nothing found"
@@ -10622,9 +10697,17 @@ msgstr "Yalnızca değiştirdiğiniz alanlar <0>c_{slug}</0> içindeki seçili {
 msgid "Only the most recent spans in the window were aggregated."
 msgstr "Penceredeki yalnızca en yeni span'ler toplandı."
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Only the moves you allow are accepted — on the API, in flows, everywhere. Leave it off and any value may follow any other."
+msgstr "Yalnızca izin verdiğiniz geçişler kabul edilir — API'de, akışlarda, her yerde. Kapalı bırakırsanız her değer her değeri izleyebilir."
+
 #: src/client/admin/pages/forms.tsx
 msgid "Only the selected types are accepted — enforced server-side."
 msgstr "Yalnızca seçili türler kabul edilir — sunucu tarafında uygulanır."
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Only these roles may make this move"
+msgstr "Bu geçişi yalnızca şu roller yapabilir"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Only translate missing keys"
@@ -12783,6 +12866,10 @@ msgstr "Günlük istekler"
 #: src/client/admin/pages/usage.tsx
 msgid "Requests per minute"
 msgstr "Dakika başına istek"
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Require these fields first"
+msgstr "Önce şu alanlar dolu olsun"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/forms.tsx
@@ -15763,6 +15850,10 @@ msgstr "Bağlantı her hâlükârda $last içine döner — faturaya yazılması
 msgid "The loop body runs once per row, with the row available as <0>{itemInterpolationExample}</0>."
 msgstr "Döngü gövdesi her satır için bir kez çalışır; satıra <0>{itemInterpolationExample}</0> ile erişilir."
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "The move is refused until they hold a value — filling one in the same save counts."
+msgstr "Bu alanlar dolana kadar geçiş reddedilir — aynı kayıtta doldurmak da sayılır."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "The oldest recorded span is newer than the start of this window — span retention, not traffic, is what bounds it."
 msgstr "En eski kayıtlı span bu pencerenin başlangıcından daha yeni — pencereyi sınırlayan trafik değil, span saklama süresi."
@@ -16034,6 +16125,10 @@ msgstr "Bu davet bağlantısı geçersiz veya zaten kullanılmış."
 #: src/client/pages/invite.tsx
 msgid "This invite to {0} has expired."
 msgstr "{0} çalışma alanına yapılan bu davetin süresi dolmuş."
+
+#: src/client/admin/item-form.tsx
+msgid "This is a final state — the record cannot move on from here."
+msgstr "Bu bir son durum — kayıt buradan ileri gidemez."
 
 #: src/client/admin/parity/documents.tsx
 msgid "This is a shared default. Saving creates a copy for this workspace and leaves the shared one untouched."
@@ -16743,6 +16838,10 @@ msgstr "desteklenmeyen pk türü: {0}"
 msgid "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
 msgstr "E-postanızı onaylayana kadar giriş çalışmaz. Almadınız mı? Spam'i kontrol edin veya bir dakika bekleyip giriş yapmayı deneyin — talep üzerine yeniden göndeririz."
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Untouched means any value. Existing records are never re-judged by this."
+msgstr "Hiçbirine dokunmazsanız her değer geçerlidir. Mevcut kayıtlar buna göre yeniden değerlendirilmez."
+
 #: src/client/admin/parity/app-users.tsx
 msgid "unverified"
 msgstr "doğrulanmamış"
@@ -17279,6 +17378,10 @@ msgstr "Tekrar hoş geldiniz"
 msgid "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
 msgstr "Tekrar hoş geldin. Kaldığın yerden devam et — içerik, veri ve API'lar tek yerde."
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "What an editor will see"
+msgstr "Düzenleyen kişinin göreceği"
+
 #: src/client/admin/pages/search-playground.tsx
 msgid "What are you looking for?"
 msgstr "Ne arıyorsunuz?"
@@ -17298,6 +17401,10 @@ msgstr "Neyin sonuçlandıracağı"
 #: src/client/admin/pages/agents.tsx
 msgid "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
 msgstr "Ekip arkadaşlarının bir odada bu agent'a seslenmek için @ sonrasına yazdığı ad. Boş bırakılırsa addan türetilir."
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "What the action is called where this move is offered."
+msgstr "Bu geçişin sunulduğu yerde eylemin adı."
 
 #: src/client/admin/flow-builder.tsx
 msgid "What the approver is told they are deciding."

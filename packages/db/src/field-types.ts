@@ -9,6 +9,7 @@ import {
   validateMoneySpec,
 } from "./money";
 import { type SequenceSpec, validateSequenceSpec } from "./sequence";
+import { type TransitionSpec, validateTransitionSpec } from "./transitions";
 
 type Dialect = "pg" | "sqlite";
 
@@ -539,6 +540,16 @@ export interface FieldDef {
    */
   money?: MoneySpec;
   /**
+   * The lifecycle this dropdown field may move through — which value is allowed
+   * to follow which, who may make the move, and what the row must carry for it.
+   * See {@link TransitionSpec}.
+   *
+   * Unlike every other rule in this file, a transition judges the value the
+   * field is changing FROM. Nothing else can: `validation.rule` and
+   * {@link FieldCondition} both see only the row the write would produce.
+   */
+  transitions?: TransitionSpec;
+  /**
    * When true (and the collection has `vectorize: true`), this field's
    * value is concatenated into the embed text on item write. Only
    * meaningful for `text` / `longtext` types — ignored otherwise.
@@ -951,6 +962,7 @@ export const validateFields = (fields: FieldDef[]): void => {
         ["sequence", !!f.sequence],
         ["geo", !!f.geo],
         ["money", !!f.money],
+        ["transitions", !!f.transitions],
         ["to", !!f.to],
         ["onCreate", !!f.onCreate],
         ["onUpdate", !!f.onUpdate],
@@ -1173,6 +1185,37 @@ export const validateFields = (fields: FieldDef[]): void => {
         // Surface a malformed default here rather than as broken DDL.
         toMinorUnits(f.default, currencyExponent(f.money.currency, f.money));
       }
+    }
+    if (f.transitions) {
+      // A lifecycle is a rule about what a CALLER may write, so every flag that
+      // takes the column away from the caller makes it meaningless:
+      //  - computed/rollup/sequence: the server already owns the value, and it
+      //    does not move along a graph the admin drew.
+      //  - localized: a row is not in a different state in French. A per-locale
+      //    status would give the same row two lifecycles at once.
+      // The type has to be `text` because that is where a dropdown lives — the
+      // spec's `from` and `to` are choice values, and no other type has any.
+      for (const [flag, on] of [
+        ["computed", !!f.computed],
+        ["rollup", !!f.rollup],
+        ["sequence", !!f.sequence],
+        ["localized", !!f.localized],
+      ] as const) {
+        if (on) {
+          throw new Error(
+            `Field "${f.name}": "${flag}" is not allowed on a field with transitions`,
+          );
+        }
+      }
+      if (f.type !== "text") {
+        throw new Error(
+          `Field "${f.name}": transitions apply to a text dropdown (got "${f.type}")`,
+        );
+      }
+      validateTransitionSpec(f.name, f.transitions, {
+        choices: getChoiceValues(f),
+        siblingFields: fields.filter((o) => o.name !== f.name).map((o) => o.name),
+      });
     }
     // Auto-fill tokens (onCreate/onUpdate) must suit the column's storage type,
     // and can't sit on a generated column (a computed column takes no writes).

@@ -28,6 +28,7 @@ const ITEMS_HELP = `backlex items <cmd> <slug> [args]
   update <slug> <id> --data <json|@file|-> [--locale xx]
   delete <slug> <id>
   verify <slug> <id> --field <name> --value <plaintext>
+  transitions <slug> <id>
   export <slug>   [--format json|csv] [--out <file>]
   import <slug>   <file|@file|->  [--format json|csv]
   search <slug>   -q <text> [--mode fts|vector|hybrid] [--limit N] [--locale xx]
@@ -151,6 +152,29 @@ export const runItems = async (args: string[]): Promise<void> => {
         const res = await client.from(slug).verify(id, field, value);
         if (json) printJson(res);
         else process.stdout.write(res.valid ? "valid\n" : "invalid\n");
+        return;
+      }
+      case "transitions": {
+        const slug = requireSlug(rest, "items transitions <slug> <id>");
+        const id = rest[1];
+        if (!id || id.startsWith("-")) {
+          process.stderr.write("items transitions <slug> <id>\n");
+          process.exit(1);
+        }
+        const res = await client.from(slug).transitions(id);
+        if (json) printJson(res);
+        else if (res.data.length === 0) {
+          process.stdout.write("no lifecycle fields on this collection\n");
+        } else {
+          for (const f of res.data) {
+            const state = f.terminal ? " (final)" : "";
+            process.stdout.write(`${f.field}: ${f.current ?? "—"}${state}\n`);
+            for (const m of f.moves) {
+              const why = m.allowed ? "" : `  — ${m.reason ?? "refused"}`;
+              process.stdout.write(`  ${m.allowed ? "→" : "✗"} ${m.to}${why}\n`);
+            }
+          }
+        }
         return;
       }
       case "export": {

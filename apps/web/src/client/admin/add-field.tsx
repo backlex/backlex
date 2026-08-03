@@ -65,6 +65,12 @@ import {
   type SequenceDraft,
 } from "./field-sequence-editor";
 import {
+  FieldTransitionsEditor,
+  cleanTransitions,
+  emptyTransitionsDraft,
+  type TransitionsDraft,
+} from "./field-transitions-editor";
+import {
   cleanGeo,
   emptyGeoDraft,
   FieldGeoEditor,
@@ -166,6 +172,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [seqDraft, setSeqDraft] = useState<SequenceDraft>(() =>
     emptySequenceDraft(browserTimeZone()),
   );
+  const [transDraft, setTransDraft] = useState<TransitionsDraft>(emptyTransitionsDraft);
 
   useEffect(() => {
     if (open) {
@@ -191,6 +198,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setSectionCollapsible(false);
       setSectionCollapsed(false);
       setSectionsAsTabs(false);
+      setTransDraft(emptyTransitionsDraft());
       setIsPrivate(false);
       setAutoCreate("");
       setAutoUpdate("");
@@ -294,6 +302,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const cleanedRollup = def.hasRollup ? cleanRollup(rollupDraft) : undefined;
   const missingRollup = !!def.hasRollup && !cleanedRollup;
   const cleanedSequence = def.hasSequence ? cleanSequence(seqDraft) : undefined;
+  const cleanedTransitions = def.hasTransitions ? cleanTransitions(transDraft) : undefined;
   const missingSequence = !!def.hasSequence && !cleanedSequence;
   // Every part of a geo spec is optional, so there is no "missing" state and
   // nothing to block the Save button on — unlike a rollup, a location field is
@@ -386,6 +395,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(def.hasRelation && onDelete !== "no_action" ? { onDelete } : {}),
       ...(cleanedRollup ? { rollup: cleanedRollup } : {}),
       ...(cleanedSequence ? { sequence: cleanedSequence } : {}),
+      ...(cleanedTransitions ? { transitions: cleanedTransitions } : {}),
       ...(cleanedGeo ? { geo: cleanedGeo } : {}),
       ...(cleanedMoney ? { money: cleanedMoney } : {}),
       ...(conditions.length ? { conditions } : {}),
@@ -409,6 +419,9 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
     ...(def.hasGeo ? [{ key: "geo", label: t`Location`, icon: "Globe" } as FieldTabItem] : []),
     ...(def.hasMoney
       ? [{ key: "money", label: t`Currency`, icon: "BarChart", invalid: missingMoney } as FieldTabItem]
+      : []),
+    ...(def.hasTransitions
+      ? [{ key: "transitions", label: t`Lifecycle`, icon: "Share" } as FieldTabItem]
       : []),
     { key: "field", label: t`Field`, icon: "Pencil" },
     { key: "interface", label: t`Interface`, icon: "Eye", invalid: missingChoices },
@@ -677,6 +690,15 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
 
             {activeTab === "sequence" && def.hasSequence && (
               <FieldSequenceEditor value={seqDraft} onChange={setSeqDraft} />
+            )}
+
+            {activeTab === "transitions" && def.hasTransitions && (
+              <FieldTransitionsEditor
+                value={transDraft}
+                onChange={setTransDraft}
+                choices={cleanChoices}
+                candidates={(schema.fields ?? []).filter((f) => f.name !== name.trim())}
+              />
             )}
 
             {activeTab === "geo" && def.hasGeo && (

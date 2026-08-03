@@ -2,7 +2,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { type FieldDef, resolveAutoFill, sidecarFields } from "@backlex/db";
 import { AppError, type AuthSubject } from "@backlex/core";
 import type { Ctx } from "../../context";
-import { publishEvent } from "../events";
+import { dispatchEventHandlers, publishEvent } from "../events";
 import { recordActivity } from "../activity";
 import { runSyncHooks } from "../sync-hooks";
 import { recordRevision } from "../revisions";
@@ -31,6 +31,7 @@ import {
   type RollupChange,
 } from "./rollup";
 import { nextSequenceValues, sequenceFieldsOf, type SequencePool } from "./sequence";
+import { assertInitialStates, assertTransitions, transitionEventName } from "./transitions";
 import {
   echoLocalized,
   sidecarClear,
@@ -252,6 +253,9 @@ export const performCreate = async (
   enforceFieldConditions(data, collection.fields, authSubjectOf(env));
   // Cross-field validation rules run on the same plaintext proposed row.
   enforceValidationRules(data, collection.fields, authSubjectOf(env));
+  // A lifecycle field can only ask one thing of a create — whether the row is
+  // allowed to START here. There is no `from` to judge against.
+  assertInitialStates(collection.fields, data);
   const warnings = collectFieldWarnings(data, collection.fields, authSubjectOf(env));
   // Replace any `hash` field's plaintext with its scrypt digest before the row
   // is built. Empty values are dropped (see hashIncomingFields).
@@ -536,6 +540,21 @@ export const performUpdate = async (
   enforceValidationRules(mergedForConditions, collection.fields, authSubjectOf(env));
   const warnings = collectFieldWarnings(mergedForConditions, collection.fields, authSubjectOf(env));
 
+  // Lifecycle check. Sits here — before the staged-edits interception below —
+  // for the same reason the validation above does: a staged save has to surface
+  // the same 4xx a live one would, or an operator queues a move that will only
+  // fail when someone else publishes it. `requires` is judged against the merged
+  // row, so the write that cancels an order may supply its reason at the same
+  // time. The moves are announced further down, after the row has actually
+  // moved (a staged patch returns before that point and announces nothing).
+  const transitions = assertTransitions({
+    fields: collection.fields,
+    before: beforeRow,
+    patch,
+    merged: mergedForConditions,
+    roles: env.roles,
+  });
+
   // Staged-edits interception: on a `stagedEdits` collection, an ordinary
   // PATCH against a *published* row never touches the live row — the (already
   // validated + hashed) patch is folded into the item's staged JSON patch
@@ -720,6 +739,31 @@ export const performUpdate = async (
         },
       ),
   ];
+  // Announce each lifecycle move to the automation plane — flows, webhooks,
+  // integrations, event functions — and to nothing else.
+  //
+  // `dispatchEventHandlers` rather than `publishEvent`, deliberately. The row
+  // has already gone out on the realtime bus as `updated`, permission-filtered
+  // per subscriber; putting it out a second time under an event name the bus
+  // does not model would both duplicate the traffic and, because an
+  // unrecognised channel is ungated, hand the row to anyone who asked for it.
+  // The three verbs a row can undergo stay the three verbs the bus carries.
+  for (const t of transitions) {
+    sideEffects.push(async () => {
+      dispatchEventHandlers(
+        ctx.env,
+        `items:${collection.slug}`,
+        { event: transitionEventName(t), data: refreshedRow, before: beforeRow },
+        {
+          db: ctx.db,
+          dialect: ctx.dialect,
+          email: ctx.email,
+          fullCtx: ctx,
+          tenantId: env.tenantId ?? null,
+        },
+      );
+    });
+  }
   return { id, data: projected, warnings: warnings.length ? warnings : undefined, sideEffects };
 };
 

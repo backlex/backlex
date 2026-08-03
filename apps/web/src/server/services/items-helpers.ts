@@ -6,6 +6,11 @@ import { validateValue, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
 import { serializeField } from "./items/serialize";
 import { canonicalizeMoneyFields } from "./items/money-fields";
+import {
+  assertInitialStates,
+  assertTransitions,
+  transitionFieldsOf,
+} from "./items/transitions";
 
 /**
  * Slim shared helpers for dynamic-collection rows. The HTTP routes in
@@ -141,6 +146,9 @@ export const createItem = async (
   // stores nineteen minor units. Same class of miss as GraphQL hand-building
   // its own INSERT.
   canonicalizeMoneyFields(input.data, collection.fields);
+  // A lifecycle's `initial` list is a property of the data, not of the caller,
+  // so it holds for a flow-authored row too — see ./items/transitions.
+  assertInitialStates(collection.fields, input.data);
 
   const id = crypto.randomUUID();
   const now = nowFor(ctx.dialect);
@@ -170,6 +178,60 @@ export const createItem = async (
   return { id, row: { id, ...input.data } };
 };
 
+/**
+ * Enforce the lifecycle graph on a server-authored patch (flow, booking,
+ * payment sync, approval resolution).
+ *
+ * The graph is data integrity, so it applies here exactly as it does to a
+ * request from a person; the ROLE gate does not, because there is no person —
+ * hence `roles: null`. See `./items/transitions` for that split.
+ *
+ * Costs one SELECT, and only when the collection actually has a lifecycle field
+ * the patch is touching: a transition needs the value being moved out of, and
+ * unlike `performUpdate` this path never loads the row it is patching.
+ */
+const assertFlowTransitions = async (
+  ctx: Ctx,
+  collection: CollectionRow,
+  input: UpdateItemInput,
+): Promise<void> => {
+  const touched = transitionFieldsOf(collection.fields).filter(
+    (f) => input.data[f.name] !== undefined,
+  );
+  if (touched.length === 0) return;
+  const cols = sql.join(
+    [...new Set(touched.map((f) => f.name))].map((n) => sql.identifier(n)),
+    sql`, `,
+  );
+  const wheres = [sql`${sql.identifier("id")} = ${input.id}`];
+  if (collection.tenantScoped) {
+    wheres.push(sql`${sql.identifier("tenant_id")} = ${input.tenantId}`);
+  }
+  const query = sql`SELECT ${cols} FROM ${sql.identifier(collection.physicalTable)} WHERE ${sql.join(wheres, sql` AND `)} LIMIT 1`;
+  const rows =
+    ctx.dialect === "pg"
+      ? await (async () => {
+          const r = (await (ctx.db as any).execute(query)) as unknown;
+          if (Array.isArray(r)) return r as Record<string, unknown>[];
+          if (r && typeof r === "object" && "rows" in r) {
+            return (r as { rows: Record<string, unknown>[] }).rows;
+          }
+          return [] as Record<string, unknown>[];
+        })()
+      : ((await (ctx.db as any).all(query)) as Record<string, unknown>[]);
+  const before = rows[0];
+  // No row: the UPDATE below will match nothing either. Leave the "not found"
+  // shape as it was rather than inventing a new error from a pre-check.
+  if (!before) return;
+  assertTransitions({
+    fields: collection.fields,
+    before,
+    patch: input.data,
+    merged: { ...before, ...input.data },
+    roles: null,
+  });
+};
+
 /** Patch an existing row by id. Validates partial fields. Tenant-scoped. */
 export const updateItem = async (
   ctx: Ctx,
@@ -178,6 +240,7 @@ export const updateItem = async (
   const collection = await loadCollection(ctx, input.tenantId, input.slug);
   validateRow(input.data, collection.fields, true);
   canonicalizeMoneyFields(input.data, collection.fields);
+  await assertFlowTransitions(ctx, collection, input);
 
   const now = nowFor(ctx.dialect);
   const sets = [sql`${sql.identifier("updated_at")} = ${now}`];

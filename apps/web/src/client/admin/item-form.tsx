@@ -18,7 +18,8 @@ import { DatePicker } from "@/components/date-picker";
 import { RelationPicker, AppUserPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
 import { GeoInput } from "./field-geo-input";
 import { MoneyInput } from "./field-money-input";
-import { useEnabledExtensions, useSettings } from "./queries";
+import { useEnabledExtensions, useMe, useSettings } from "./queries";
+import { allowedMoves } from "@backlex/db/transitions";
 import { ExtensionFrame } from "./extension-frame";
 import { getInterface } from "./interfaces";
 import type { ApiExtension } from "./api";
@@ -49,6 +50,17 @@ export type SchemaField = {
   sectionCollapsed?: boolean;
   /** Render the grouped form as tabs (form-wide, aggregated across fields). */
   sectionsAsTabs?: boolean;
+  /** Lifecycle spec — which value may follow which. See @backlex/db/transitions. */
+  transitions?: {
+    allow: Array<{
+      from: string | string[];
+      to: string | string[];
+      roles?: string[];
+      requires?: string[];
+      label?: string;
+    }>;
+    initial?: string[];
+  };
   options?: {
     choices?: Array<{ value: string; label?: string; color?: string }>;
     values?: string[];
@@ -244,6 +256,16 @@ export interface ItemForm {
   /** Serialize the draft into the API payload shape (numbers coerced, JSON
    *  parsed, empty JSON omitted). */
   buildPayload: () => Partial<Post>;
+  /**
+   * The row as the server last returned it.
+   *
+   * Exposed for one specific reason: a field with `transitions` is judged
+   * against the value it is moving FROM, and that is the SAVED value, not
+   * whatever is in the draft. Filtering the dropdown against the draft would
+   * mean picking a value re-anchored the graph on it, so a user who chose
+   * wrongly could not choose again without reloading.
+   */
+  initial: Post | null;
 }
 
 /**
@@ -460,6 +482,7 @@ export function useItemForm({
     setFieldTouched,
     validate,
     buildPayload,
+    initial,
   };
 }
 
@@ -489,7 +512,37 @@ const peerHandle = (p: { name: string | null; id: string }): string => {
 export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFieldsCollab }) {
   const { t } = useLingui();
   const { fields, draft, errors, touched } = form;
+  // Roles of the signed-in operator, so a move gated on a role they do not hold
+  // is shown disabled here rather than accepted and then 403'd on save.
+  const me = useMe();
+  const myRoles = ((me.data as { roles?: string[] } | undefined)?.roles ?? null) as
+    | string[]
+    | null;
   const [previews, setPreviews] = useState<Record<string, boolean>>({});
+
+  /**
+   * The moves a lifecycle field may make from where the ROW actually is.
+   *
+   * Anchored on `form.initial` — the saved value — not on the draft. Anchoring
+   * on the draft would re-compute the graph from whatever was just picked, so
+   * choosing `open` would immediately hide `new` and leave no way back without
+   * reloading the page. The draft still supplies the ROW for `requires`, so
+   * filling a reason in the same edit unlocks the move it gates.
+   */
+  const lifecycleFor = (f: SchemaField) => {
+    if (!f.transitions?.allow?.length) return null;
+    const saved = (form.initial as Record<string, unknown> | null)?.[f.name];
+    const choices = readChoices(f).map((c) => c.value);
+    return {
+      saved: saved == null ? "" : String(saved),
+      moves: allowedMoves(f.transitions as never, {
+        from: saved,
+        roles: myRoles,
+        row: draft,
+        choices,
+      }),
+    };
+  };
   // Sections (groups) currently folded. Seeded from any field whose
   // `sectionCollapsed` marks its group as starting collapsed; the section
   // header toggles it. Keyed by group label.
@@ -928,13 +981,47 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
     if (iface === "dropdown") {
       const rawChoices = readChoices(f);
       const current = String(val ?? "");
+      const life = lifecycleFor(f);
+      // A lifecycle narrows the list to where the row can actually go — plus
+      // the value it is already in, which is always a legal thing to leave
+      // alone. Refused moves stay VISIBLE but disabled: an option that simply
+      // vanished would leave an operator wondering whether they misremembered
+      // the workflow, where a greyed one with "requires close_note" tells them
+      // what to do next.
+      const lifeAllowed = life
+        ? new Set([life.saved, ...life.moves.filter((m) => m.allowed).map((m) => m.to)])
+        : null;
+      const lifeReason = new Map((life?.moves ?? []).map((m) => [m.to, m.reason]));
+      // A compact hint rather than the full refusal sentence: the option row
+      // truncates, and "needs close_note" survives a 390px viewport where
+      // "Moving to \"closed\" requires \"close_note\"" does not.
+      const lifeHint = new Map(
+        (life?.moves ?? [])
+          .filter((m) => !m.allowed)
+          .map((m) => [
+            m.to,
+            m.refusal === "missing_fields" && m.missing?.length
+              ? t`needs ${m.missing.join(", ")}`
+              : m.refusal === "forbidden_role"
+                ? t`not your role`
+                : t`not allowed`,
+          ]),
+      );
+      const narrowed = life
+        ? rawChoices.filter(
+            (c) => lifeAllowed!.has(c.value) || lifeReason.has(c.value),
+          )
+        : rawChoices;
       const choices =
-        current && !rawChoices.some((c) => c.value === current)
-          ? [...rawChoices, { value: current }]
-          : rawChoices;
+        current && !narrowed.some((c) => c.value === current)
+          ? [...narrowed, { value: current }]
+          : narrowed;
       const options = choices.map((c) => ({
         value: c.value,
         label: c.label ?? c.value,
+        ...(life && !lifeAllowed!.has(c.value)
+          ? { disabled: true, hint: lifeHint.get(c.value) }
+          : {}),
         icon: c.color ? (
           <span
             style={{
@@ -956,6 +1043,11 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
             options={options}
             placeholder={f.name === "status" ? t`Pick a status…` : t`Pick…`}
           />
+          {life && life.saved && life.moves.length === 0 && (
+            <span className="text-[11.5px] text-muted-foreground">
+              <Trans>This is a final state — the record cannot move on from here.</Trans>
+            </span>
+          )}
           {errBlock}
         </div>
       );

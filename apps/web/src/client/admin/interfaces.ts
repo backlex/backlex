@@ -67,6 +67,12 @@ export interface FieldInterfaceDef {
    *  a money field with no currency is an integer nobody can interpret, so
    *  unlike `hasGeo` this config is mandatory rather than optional. */
   hasMoney?: boolean;
+  /** Show the lifecycle editor in step 2 — which value may follow which, who
+   *  may make each move, and what the row must carry for it. Only meaningful on
+   *  an interface that stores ONE of a fixed set of values: the graph is drawn
+   *  between `options.choices`, and a multi-select column holds a list, which
+   *  has no "the value it is changing from". Entirely optional, like `hasGeo`. */
+  hasTransitions?: boolean;
   /** Extra search keywords beyond label + id. */
   keywords?: string[];
 }
@@ -97,9 +103,9 @@ export const FIELD_INTERFACES: FieldInterfaceDef[] = [
 
   // ── Selection ────────────────────────────────────────────────────
   { id: "toggle", label: "Toggle", sub: "On / off boolean", group: "Selection", icon: "ToggleLeft", type: "boolean", keywords: ["switch", "checkbox", "bool"] },
-  { id: "dropdown", label: "Dropdown", sub: "One choice from a fixed list", group: "Selection", icon: "Filter", type: "text", hasChoices: true, keywords: ["select", "enum", "status"] },
+  { id: "dropdown", label: "Dropdown", sub: "One choice from a fixed list", group: "Selection", icon: "Filter", type: "text", hasChoices: true, hasTransitions: true, keywords: ["select", "enum", "status", "lifecycle", "workflow", "state", "stage", "transition"] },
   { id: "dropdown_multiple", label: "Dropdown (multiple)", sub: "Several choices from a list", group: "Selection", icon: "Filter", type: "json", hasChoices: true, keywords: ["multiselect", "tags"] },
-  { id: "radio", label: "Radio Buttons", sub: "One choice, all options visible", group: "Selection", icon: "Check", type: "text", hasChoices: true, keywords: ["select"] },
+  { id: "radio", label: "Radio Buttons", sub: "One choice, all options visible", group: "Selection", icon: "Check", type: "text", hasChoices: true, hasTransitions: true, keywords: ["select", "lifecycle", "workflow", "state"] },
   { id: "checkboxes", label: "Checkboxes", sub: "Multiple choices, all visible", group: "Selection", icon: "Check", type: "json", hasChoices: true, keywords: ["multiselect"] },
   { id: "tags", label: "Tags", sub: "Free-form list of labels", group: "Selection", icon: "Hash", type: "json", keywords: ["chips", "keywords"] },
   { id: "datetime", label: "Datetime", sub: "Date and time", group: "Selection", icon: "Calendar", type: "timestamp", keywords: ["date", "time", "timestamp"] },

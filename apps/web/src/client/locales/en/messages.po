@@ -1064,6 +1064,10 @@ msgstr "A local stand-in that settles payments without charging anything. Demo a
 msgid "A loop runs inline, so its body cannot wait for an approval or a long delay."
 msgstr "A loop runs inline, so its body cannot wait for an approval or a long delay."
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "A new record may start as"
+msgstr "A new record may start as"
+
 #: src/client/admin/field-sequence-editor.tsx
 msgid "A number that outgrows this simply gets wider — nothing is cut off."
 msgstr "A number that outgrows this simply gets wider — nothing is cut off."
@@ -1107,6 +1111,10 @@ msgstr "A room needs at least one agent to talk to. Create one on the Agents pag
 #: src/client/admin/flow-builder.tsx
 msgid "A row in the payment_transactions collection."
 msgstr "A row in the payment_transactions collection."
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "A row with nothing ticked is a final state — nothing can move out of it."
+msgstr "A row with nothing ticked is a final state — nothing can move out of it."
 
 #: src/client/admin/parity/booking.tsx
 msgid "A rule with no weekday needs a date range."
@@ -1565,6 +1573,10 @@ msgstr "Add step"
 msgid "Add sync"
 msgstr "Add sync"
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Add the choices on the Interface tab first — a lifecycle is drawn between this field's values, so there is nothing to connect yet."
+msgstr "Add the choices on the Interface tab first — a lifecycle is drawn between this field's values, so there is nothing to connect yet."
+
 #: src/client/admin/field-rollup-editor.tsx
 msgid "add the values up"
 msgstr "add the values up"
@@ -1884,6 +1896,10 @@ msgstr "Allowed email domains (optional)"
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Allowed in {0}ms"
 msgstr "Allowed in {0}ms"
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Allowed moves"
+msgstr "Allowed moves"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Allowed redirect URLs"
@@ -2792,6 +2808,10 @@ msgstr "Bundles the \"{0}\" role"
 msgid "Bundles the \"{0}\" role and the \"{1}\" dashboard"
 msgstr "Bundles the \"{0}\" role and the \"{1}\" dashboard"
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Button label"
+msgstr "Button label"
+
 #: src/client/admin/extras.tsx
 msgid "by"
 msgstr "by"
@@ -3196,6 +3216,10 @@ msgstr "Click <0>+ New flow</0> to create your first one."
 #: src/client/admin/pages/functions.tsx
 msgid "Click <0>+ New function</0> to create one."
 msgstr "Click <0>+ New function</0> to create one."
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Click an empty box to allow that move; click an allowed one to give it a rule below. Double-click to remove it."
+msgstr "Click an empty box to allow that move; click an allowed one to give it a rule below. Double-click to remove it."
 
 #: src/client/admin/permissions-matrix.tsx
 msgid "Click any cell to set state. Custom opens the rule builder in a dialog."
@@ -5097,6 +5121,7 @@ msgid "Don't write it back"
 msgstr "Don't write it back"
 
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/field-transitions-editor.tsx
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/users.tsx
@@ -5730,6 +5755,10 @@ msgstr "Endpoints fetched."
 #: src/client/admin/flow-builder.tsx
 msgid "Ends"
 msgstr "Ends"
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Enforce a lifecycle"
+msgstr "Enforce a lifecycle"
 
 #: src/client/admin/pages/usage.tsx
 msgid "Enforced even where the global API limiter is off."
@@ -6513,6 +6542,10 @@ msgstr "Filter tools…"
 msgid "Filtered by"
 msgstr "Filtered by"
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "final"
+msgstr "final"
+
 #: src/client/admin/field-geo-input.tsx
 msgid "Find from address"
 msgstr "Find from address"
@@ -6763,6 +6796,10 @@ msgstr "from"
 #: src/client/admin/parity/translations.tsx
 msgid "From"
 msgstr "From"
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "from ↓ / to →"
+msgstr "from ↓ / to →"
 
 #: src/client/admin/collections-index.tsx
 msgid "From a schema template"
@@ -8271,6 +8308,10 @@ msgstr "Leave blank to use the URL's last path segment. Slashes auto-create fold
 msgid "leave empty for admins"
 msgstr "leave empty for admins"
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Leave empty for anyone who can edit the record. Flows and other server-side writes are not judged by this — only by the moves themselves."
+msgstr "Leave empty for anyone who can edit the record. Flows and other server-side writes are not judged by this — only by the moves themselves."
+
 #: src/client/admin/pages/extensions.tsx
 msgid "Leave empty for the latest published version."
 msgstr "Leave empty for the latest published version."
@@ -8321,6 +8362,11 @@ msgstr "License"
 #: src/client/admin/collection-settings.tsx
 msgid "lifecycle"
 msgstr "lifecycle"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Lifecycle"
+msgstr "Lifecycle"
 
 #: src/client/admin/pages/analytics.tsx
 msgid "lifetime"
@@ -8685,6 +8731,10 @@ msgstr "March"
 #: src/client/admin/ui.tsx
 msgid "Mark all read"
 msgstr "Mark all read"
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Mark paid"
+msgstr "Mark paid"
 
 #: src/client/admin/parity/booking.tsx
 msgid "Marked as a no-show."
@@ -9209,6 +9259,11 @@ msgstr "Native push transport for <0>this workspace</0>. Resolution order: this 
 #: src/client/admin/extras.tsx
 msgid "navigate"
 msgstr "navigate"
+
+#. placeholder {0}: m.missing.join(", ")
+#: src/client/admin/item-form.tsx
+msgid "needs {0}"
+msgstr "needs {0}"
 
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Needs TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY on the server."
@@ -9978,6 +10033,10 @@ msgstr "No OIDC providers configured. Add one to let this workspace's end-users 
 msgid "No organizations yet — create one here, or let end-users start their own from your app."
 msgstr "No organizations yet — create one here, or let end-users start their own from your app."
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "No other fields on this collection yet."
+msgstr "No other fields on this collection yet."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "No outstanding findings. Re-run after a schema or permission change."
 msgstr "No outstanding findings. Re-run after a schema or permission change."
@@ -10034,6 +10093,10 @@ msgstr "No revisions yet for this item."
 #: src/client/admin/permission-tester.tsx
 msgid "No roles found."
 msgstr "No roles found."
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "No roles in this workspace yet."
+msgstr "No roles in this workspace yet."
 
 #: src/client/admin/permission-tester.tsx
 msgid "No roles selected = anonymous (the public role)."
@@ -10240,6 +10303,10 @@ msgstr "none (public)"
 msgid "none selected = all"
 msgstr "none selected = all"
 
+#: src/client/admin/item-form.tsx
+msgid "not allowed"
+msgstr "not allowed"
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Not authorized"
 msgstr "Not authorized"
@@ -10296,6 +10363,10 @@ msgstr "Not stated"
 msgid "Not used"
 msgstr "Not used"
 
+#: src/client/admin/item-form.tsx
+msgid "not your role"
+msgstr "not your role"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Note"
 msgstr "Note"
@@ -10313,6 +10384,10 @@ msgstr "Note in the invitation"
 #: src/client/admin/parity/booking.tsx
 msgid "Notes"
 msgstr "Notes"
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "nothing (final)"
+msgstr "nothing (final)"
 
 #: src/client/admin/pages/erasure-card.tsx
 msgid "nothing found"
@@ -10622,9 +10697,17 @@ msgstr "Only the fields you change are written to all {count} selected rows in <
 msgid "Only the most recent spans in the window were aggregated."
 msgstr "Only the most recent spans in the window were aggregated."
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Only the moves you allow are accepted — on the API, in flows, everywhere. Leave it off and any value may follow any other."
+msgstr "Only the moves you allow are accepted — on the API, in flows, everywhere. Leave it off and any value may follow any other."
+
 #: src/client/admin/pages/forms.tsx
 msgid "Only the selected types are accepted — enforced server-side."
 msgstr "Only the selected types are accepted — enforced server-side."
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Only these roles may make this move"
+msgstr "Only these roles may make this move"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Only translate missing keys"
@@ -12783,6 +12866,10 @@ msgstr "Requests per day"
 #: src/client/admin/pages/usage.tsx
 msgid "Requests per minute"
 msgstr "Requests per minute"
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Require these fields first"
+msgstr "Require these fields first"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/forms.tsx
@@ -15763,6 +15850,10 @@ msgstr "The link is returned into $last either way — writing it back is what p
 msgid "The loop body runs once per row, with the row available as <0>{itemInterpolationExample}</0>."
 msgstr "The loop body runs once per row, with the row available as <0>{itemInterpolationExample}</0>."
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "The move is refused until they hold a value — filling one in the same save counts."
+msgstr "The move is refused until they hold a value — filling one in the same save counts."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "The oldest recorded span is newer than the start of this window — span retention, not traffic, is what bounds it."
 msgstr "The oldest recorded span is newer than the start of this window — span retention, not traffic, is what bounds it."
@@ -16034,6 +16125,10 @@ msgstr "This invite link is invalid or has already been used."
 #: src/client/pages/invite.tsx
 msgid "This invite to {0} has expired."
 msgstr "This invite to {0} has expired."
+
+#: src/client/admin/item-form.tsx
+msgid "This is a final state — the record cannot move on from here."
+msgstr "This is a final state — the record cannot move on from here."
 
 #: src/client/admin/parity/documents.tsx
 msgid "This is a shared default. Saving creates a copy for this workspace and leaves the shared one untouched."
@@ -16743,6 +16838,10 @@ msgstr "unsupported pk type: {0}"
 msgid "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
 msgstr "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "Untouched means any value. Existing records are never re-judged by this."
+msgstr "Untouched means any value. Existing records are never re-judged by this."
+
 #: src/client/admin/parity/app-users.tsx
 msgid "unverified"
 msgstr "unverified"
@@ -17279,6 +17378,10 @@ msgstr "Welcome back"
 msgid "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
 msgstr "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
 
+#: src/client/admin/field-transitions-editor.tsx
+msgid "What an editor will see"
+msgstr "What an editor will see"
+
 #: src/client/admin/pages/search-playground.tsx
 msgid "What are you looking for?"
 msgstr "What are you looking for?"
@@ -17298,6 +17401,10 @@ msgstr "What settles it"
 #: src/client/admin/pages/agents.tsx
 msgid "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
 msgstr "What teammates type after @ to address this agent in a room. Derived from the name when left blank."
+
+#: src/client/admin/field-transitions-editor.tsx
+msgid "What the action is called where this move is offered."
+msgstr "What the action is called where this move is offered."
 
 #: src/client/admin/flow-builder.tsx
 msgid "What the approver is told they are deciding."

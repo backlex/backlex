@@ -665,8 +665,25 @@ export interface FieldDef {
    * `dateStyle` to `timestamp`; `prefix` / `suffix` to any.
    */
   format?: {
-    /** integer/number: plain (raw), decimal (grouped), currency, percent. */
-    style?: "plain" | "decimal" | "currency" | "percent";
+    /**
+     * integer/number: plain (raw), decimal (grouped), currency, or one of the
+     * two percent renderings.
+     *
+     * The two exist because "percent" is ambiguous about what the COLUMN holds,
+     * and picking wrong is off by a factor of a hundred:
+     *
+     *  - `percent` follows `Intl.NumberFormat`'s own convention — the value is a
+     *    FRACTION, so `0.2` prints as `20%`.
+     *  - `percent100` is for a column that already holds the percentage, so
+     *    `20` prints as `20%`. This is what every schema template means: all
+     *    fifteen of the genuinely-percentage columns validate `{min: 0, max:
+     *    100}`, which says the stored number is 20 and not 0.2.
+     *
+     * `percent` is the older token and keeps its `Intl` meaning so no existing
+     * workspace's rendering moves; `percent100` was added because the templates'
+     * own convention had no way to be expressed and rendered `20` as `2,000%`.
+     */
+    style?: "plain" | "decimal" | "currency" | "percent" | "percent100";
     /** Fixed number of fraction digits. */
     precision?: number;
     /** ISO 4217 code (e.g. "USD", "TRY") — only for style: "currency". */

@@ -213,7 +213,7 @@ const FieldSchema = z
      *  storage, the API, sorting or filtering. */
     format: z
       .object({
-        style: z.enum(["plain", "decimal", "currency", "percent"]).optional(),
+        style: z.enum(["plain", "decimal", "currency", "percent", "percent100"]).optional(),
         precision: z.number().int().min(0).max(10).optional(),
         currency: z.string().max(8).optional(),
         thousandSeparator: z.boolean().optional(),

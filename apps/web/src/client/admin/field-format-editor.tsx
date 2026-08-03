@@ -91,7 +91,13 @@ export function FieldFormatEditor({
                 { value: "plain", label: t`Plain` },
                 { value: "decimal", label: t`Decimal (1,234.5)` },
                 { value: "currency", label: t`Currency` },
-                { value: "percent", label: t`Percent` },
+                // Both percent renderings are offered, labelled by what the
+                // COLUMN holds rather than by a name — "Percent" alone is the
+                // ambiguity, and choosing wrong is off by a factor of a hundred.
+                // The 0–100 variant is listed first because it is what every
+                // template's `{min: 0, max: 100}` validation means.
+                { value: "percent100", label: t`Percent — column holds 20 for 20%` },
+                { value: "percent", label: t`Percent — column holds 0.2 for 20%` },
               ]}
               size="sm"
             />

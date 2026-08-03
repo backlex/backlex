@@ -99,6 +99,7 @@ export default defineConfig({
             { slug: "money" },
             { slug: "phone" },
             { slug: "date-ranges" },
+            { slug: "number-formatting" },
             { slug: "status-transitions" },
             { slug: "adopting-tables" },
             { slug: "migrating-in" },

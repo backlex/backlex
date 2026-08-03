@@ -20,7 +20,7 @@ import { formatMoney, type MoneyValue } from "@backlex/db/money";
 import { formatPhone, type PhoneDisplay } from "@backlex/db/phone";
 
 type FieldFormat = {
-  style?: "plain" | "decimal" | "currency" | "percent";
+  style?: "plain" | "decimal" | "currency" | "percent" | "percent100";
   precision?: number;
   currency?: string;
   thousandSeparator?: boolean;
@@ -98,7 +98,14 @@ const formatNumber = (raw: unknown, f: FieldFormat, locale: string): string => {
           ...fd,
         }).format(n);
       case "percent":
+        // `Intl`'s own convention: the value is a FRACTION, so 0.2 → "20%".
         return new Intl.NumberFormat(locale, { style: "percent", ...fd }).format(n);
+      case "percent100":
+        // The column already holds the percentage, so 20 → "20%". Dividing here
+        // rather than asking `Intl` for a plain number with a "%" suffix keeps
+        // the locale's own percent sign, spacing and digit shaping — in Turkish
+        // that is "%20", not "20%".
+        return new Intl.NumberFormat(locale, { style: "percent", ...fd }).format(n / 100);
       case "decimal":
         return new Intl.NumberFormat(locale, {
           useGrouping: f.thousandSeparator ?? true,

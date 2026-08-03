@@ -298,7 +298,19 @@ const userLink = (extra: Partial<FieldDef> = {}): FieldDef => text("app_user_id"
 /** Integer position/sort key — indexed so ordered lists stay cheap. */
 const position = (name = "position", extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "integer", default: 0, indexed: true, ...extra });
 /** Percent 0–100 integer. */
-const pct = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "integer", interface: "slider", validation: { min: 0, max: 100 }, ...extra });
+/**
+ * A percentage, stored as the number people say — `20` means twenty percent.
+ *
+ * The `{min: 0, max: 100}` was always here and is what settles the convention:
+ * the column holds 20, not 0.2. What was missing is the RENDERING, so every one
+ * of these printed as a bare `20` next to labels that had to say "(%)" by hand.
+ *
+ * `percent100` rather than `percent` for exactly that reason —
+ * `Intl.NumberFormat`'s percent style expects a fraction, so it printed `20` as
+ * `2,000%`. Two of these templates carried that combination and were wrong by a
+ * factor of a hundred on screen. See `FieldDef.format.style`.
+ */
+const pct = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "integer", interface: "slider", validation: { min: 0, max: 100 }, format: { style: "percent100" }, ...extra });
 
 /** Colored dropdown. `values` may be plain strings or `{ value, color, label }`. */
 const select = (
@@ -844,7 +856,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: [
           ...half(text("name", { required: true }), rel("zone", "shipping_zones")),
           ...half(
-            num("rate", { validation: { min: 0, max: 100 }, label: "Rate (%)", format: { style: "percent", precision: 2 } }),
+            num("rate", { validation: { min: 0, max: 100 }, label: "Rate (%)", format: { style: "percent100", precision: 2 } }),
             bool("inclusive", { default: false, label: "Prices include tax" }),
           ),
           bool("active", { default: true }),
@@ -1405,7 +1417,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: [
           ...half(text("display_name", { required: true, label: "Display name" }), text("jurisdiction")),
           ...half(
-            num("percentage", { validation: { min: 0, max: 100 }, label: "Rate (%)", format: { style: "percent", precision: 2 } }),
+            num("percentage", { validation: { min: 0, max: 100 }, label: "Rate (%)", format: { style: "percent100", precision: 2 } }),
             text("country", { label: "Country code" }),
           ),
           ...half(bool("inclusive", { default: false, label: "Prices include tax" }), bool("active", { default: true })),
@@ -5023,7 +5035,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           sec("Commercials", [
             ...half(
               select("status", [ch("pending", C.amber), ch("active", C.green), ch("suspended", C.red)], { default: "pending" }),
-              num("commission_pct", { default: 10, validation: { min: 0, max: 100 }, label: "Commission (%)" }),
+              num("commission_pct", { format: { style: "percent100" }, default: 10, validation: { min: 0, max: 100 }, label: "Commission (%)" }),
             ),
             ...half(num("rating", { validation: { min: 0, max: 5 }, label: "Rating" }), text("payout_account", { label: "Payout account" })),
           ]),

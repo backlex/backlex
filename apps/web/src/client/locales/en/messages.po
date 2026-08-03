@@ -11316,8 +11316,16 @@ msgid "Per-field read / write toggles. Hidden fields are stripped from API respo
 msgstr "Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role."
 
 #: src/client/admin/field-format-editor.tsx
-msgid "Percent"
-msgstr "Percent"
+#~ msgid "Percent"
+#~ msgstr "Percent"
+
+#: src/client/admin/field-format-editor.tsx
+msgid "Percent — column holds 0.2 for 20%"
+msgstr "Percent — column holds 0.2 for 20%"
+
+#: src/client/admin/field-format-editor.tsx
+msgid "Percent — column holds 20 for 20%"
+msgstr "Percent — column holds 20 for 20%"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Performance"

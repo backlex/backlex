@@ -55,6 +55,7 @@ import { hashToken } from "./shared-links";
 import { createItem, updateItem } from "./items-helpers";
 import { sendTemplatedEmail } from "./email";
 import { dispatchEventHandlers } from "./events";
+import { isUniqueViolation } from "./items/sql-helpers";
 
 type AnyDb = any;
 
@@ -525,33 +526,15 @@ export const listSlots = async (
 /**
  * Does this error mean a unique index refused the row?
  *
- * The CAUSE CHAIN is the whole point. Drizzle wraps a driver error in its own,
- * whose message is `Failed query: insert into "bookings" …` — the engine's
- * actual words live on `cause`. On bun:sqlite the top-level message happens to
- * carry them too, so a check that reads only `err.message` passes every test in
- * this repo and then fails in production: on D1 the loser of a race got a 500
- * instead of "that time was taken", because the violation was never recognised.
- * That is exactly how this shipped the first time.
- *
- * No engine here exposes a portable code through its driver, so the string is
- * what there is. A miss still fails in the safe direction — a lost race becomes
- * a 500 rather than an overbooking — but it is a miss, so the chain is walked.
+ * The implementation moved to `services/items/sql-helpers.ts` and is re-exported
+ * here so the booking capacity guard and the collection write path cannot drift
+ * — which they had. This file grew a chain-walking version after a lost race
+ * answered 500 on D1 instead of "that time was taken"; its twin over on the item
+ * write path kept reading only the top link, so every unique violation on a
+ * collection write went on answering 500 until 2026-08-04. Two hand-written
+ * copies of one guard is the bug, not the specific miss.
  */
-export const isUniqueViolation = (err: unknown): boolean => {
-  for (let e: unknown = err, depth = 0; e != null && depth < 5; depth++) {
-    const message = String((e as { message?: unknown })?.message ?? e);
-    if (
-      message.includes("UNIQUE constraint failed") ||
-      message.includes("SQLITE_CONSTRAINT_UNIQUE") ||
-      message.includes("duplicate key value") ||
-      (e as { code?: string })?.code === "23505"
-    ) {
-      return true;
-    }
-    e = (e as { cause?: unknown }).cause;
-  }
-  return false;
-};
+export { isUniqueViolation };
 
 /**
  * Give back the seats held by bookings that are only still holding them

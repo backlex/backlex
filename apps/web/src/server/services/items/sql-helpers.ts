@@ -77,6 +77,35 @@ export const nowFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? new Date().toISOString() : Date.now();
 
 /**
+ * Every link of an error's `cause` chain, as the (code, message) pair a
+ * constraint check needs.
+ *
+ * **This exists because reading only the top link is a bug that passes every
+ * test in this repo and then fails in production.** Drizzle wraps a driver
+ * error in one of its own, and the wrapper ALWAYS has a message of its own
+ * ("Failed query: insert into …"). So `err.message ?? err.cause?.message` —
+ * which is what both detectors here used to do — never reaches the cause at
+ * all: the `??` is satisfied by the wrapper. On bun:sqlite the driver's text
+ * happens to survive onto the top-level message, so the tests were green; on D1
+ * the words live on `cause`, so **every unique violation on a live collection
+ * write answered 500 instead of 409**, and every FK violation 500 instead of
+ * 422. `booking.ts` learned this the hard way and grew its own chain walk; this
+ * is that walk, moved down here so there is one copy and the twin can go.
+ *
+ * Depth-capped because a cause chain can be cyclic, and stringified per link
+ * because some drivers throw a bare string.
+ */
+function* constraintSignals(err: unknown): Generator<{ code: string; message: string }> {
+  for (let e: unknown = err, depth = 0; e != null && depth < 5; depth++) {
+    yield {
+      code: String((e as { code?: unknown })?.code ?? ""),
+      message: String((e as { message?: unknown })?.message ?? e),
+    };
+    e = (e as { cause?: unknown }).cause;
+  }
+}
+
+/**
  * Translate DB-level FK violations into a backlex-shaped error. Adopted
  * tables can carry real FK constraints (D1 enforces them unconditionally;
  * Postgres does the same when the constraint exists). Without this map,
@@ -84,30 +113,39 @@ export const nowFor = (dialect: "pg" | "sqlite") =>
  * gets a 500 — instead we surface it as a 422 the API consumer can act on.
  *
  * The signatures we look for:
- *   - Postgres: `code: "23503"` on the wrapped error, message includes
- *     "foreign key constraint".
+ *   - Postgres: `code: "23503"`, message includes "foreign key constraint".
  *   - SQLite (D1 + Bun): error code "SQLITE_CONSTRAINT_FOREIGNKEY" or
- *     message starting with "FOREIGN KEY constraint failed".
+ *     message "FOREIGN KEY constraint failed" — on ANY link of the chain.
  */
 export const isFkViolation = (err: unknown): boolean => {
-  const e = err as { code?: string; message?: string; cause?: { code?: string; message?: string } } | null;
-  if (!e) return false;
-  const code = e.code ?? e.cause?.code ?? "";
-  const msg = (e.message ?? e.cause?.message ?? "").toString();
-  if (code === "23503") return true;
-  if (code === "SQLITE_CONSTRAINT_FOREIGNKEY") return true;
-  if (/foreign key/i.test(msg) && /constraint/i.test(msg)) return true;
+  for (const { code, message } of constraintSignals(err)) {
+    if (code === "23503") return true; // pg foreign_key_violation
+    if (code === "SQLITE_CONSTRAINT_FOREIGNKEY") return true;
+    // The extended-result-code name is checked against the MESSAGE as well as
+    // the code: some drivers put it in the text rather than on a `code` field,
+    // and it does not contain the words "foreign key" for the regex to find.
+    if (message.includes("SQLITE_CONSTRAINT_FOREIGNKEY")) return true;
+    if (/foreign key/i.test(message) && /constraint/i.test(message)) return true;
+  }
   return false;
 };
 
 export const isUniqueViolation = (err: unknown): boolean => {
-  const e = err as { code?: string; message?: string; cause?: { code?: string; message?: string } } | null;
-  if (!e) return false;
-  const code = e.code ?? e.cause?.code ?? "";
-  const msg = (e.message ?? e.cause?.message ?? "").toString();
-  if (code === "23505") return true; // pg unique_violation
-  if (code === "SQLITE_CONSTRAINT_UNIQUE" || code === "SQLITE_CONSTRAINT_PRIMARYKEY") return true;
-  if (/unique constraint/i.test(msg) || /duplicate key value/i.test(msg)) return true;
+  for (const { code, message } of constraintSignals(err)) {
+    if (code === "23505") return true; // pg unique_violation
+    if (code === "SQLITE_CONSTRAINT_UNIQUE" || code === "SQLITE_CONSTRAINT_PRIMARYKEY") return true;
+    // Same reason as above — and note `/unique constraint/i` does NOT match
+    // "SQLITE_CONSTRAINT_UNIQUE" (wrong word order), so dropping these two
+    // lines silently narrows the guard. The booking twin checked the message
+    // for exactly this and would have lost it in the merge.
+    if (message.includes("SQLITE_CONSTRAINT_UNIQUE")) return true;
+    if (message.includes("SQLITE_CONSTRAINT_PRIMARYKEY")) return true;
+    if (/unique constraint/i.test(message) || /duplicate key value/i.test(message)) return true;
+    // The SQLite wording, which `/unique constraint/i` already covers — kept
+    // explicit because it is the string the D1 cause actually carries and the
+    // one a future edit to that regex must not drop.
+    if (message.includes("UNIQUE constraint failed")) return true;
+  }
   return false;
 };
 

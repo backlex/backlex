@@ -342,6 +342,32 @@ export interface CollectionClient<T extends Record<string, unknown>> {
   /** The value each sequence column would render next, without consuming it.
    *  A preview: another create can take that number first, so never write it. */
   nextSequences(): Promise<Record<string, string>>;
+  /**
+   * Move a row so it sits immediately before or after another in the same
+   * hand-arranged list — the drag-and-drop primitive.
+   *
+   * State the INTENT, not the number: only the rows between the old place and
+   * the new one are renumbered, and nothing else in the list moves. Both rows
+   * must be in the same list; moving a row to a different one is a change to
+   * the scope column, so use `update()`, which re-appends it to the end of the
+   * list it joined.
+   *
+   * A list still holding duplicate positions — any collection whose `position`
+   * column defaulted to 0 — is renumbered into the order it currently reads in
+   * before the move, and that count comes back as `repaired`.
+   *
+   * Requires `update` on the collection.
+   */
+  reorder(
+    field: string,
+    id: string,
+    to: { before: string } | { after: string },
+  ): Promise<ReorderReport>;
+  /** Renumber this collection's order fields into dense 1…N within each list,
+   *  keeping the order the rows currently read in. The repair path for a column
+   *  that predates being declared an order field. Idempotent; omit `field` to do
+   *  all of them. Requires `update`. */
+  normalizeOrder(field?: string): Promise<NormalizeOrderReport>;
   /** Geocode the rows that have an address (`geo.geocodeFrom`) and no point.
    *  Bounded per call — loop while `remaining > 0`. Only ever FILLS a missing
    *  point, never revises one, so re-running is safe and a hand-corrected pin
@@ -477,6 +503,28 @@ export interface SequenceSyncReport {
   /** Stored values this field's pattern could not have produced, so they were
    *  left out of the maximum rather than guessed at. */
   unreadable: number;
+}
+
+/** What {@link CollectionClient.reorder} did. */
+export interface ReorderReport {
+  /** The position the row ended up on. */
+  position: number;
+  /** How many rows stepped aside to make room. Zero when the row was dropped
+   *  next to where it already was, or one place away. */
+  shifted: number;
+  /** How many rows the tie repair renumbered before the move. Non-zero the
+   *  first time a list that was never really ordered gets dragged. */
+  repaired: number;
+}
+
+/** What {@link CollectionClient.normalizeOrder} did. */
+export interface NormalizeOrderReport {
+  /** Distinct lists examined, across every field touched. */
+  scopes: number;
+  /** Rows whose position changed. Zero on a second run. */
+  renumbered: number;
+  /** The order fields that were normalized. */
+  fields: string[];
 }
 
 /** One move offered by {@link CollectionClient.transitions}. */
@@ -3467,6 +3515,24 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         request<{ data: Record<string, string> }>(
           "GET",
           `/api/items/${slug}/sequences/next`,
+        ).then((r) => r.data),
+      /** Move a row before or after another in the same hand-arranged list. */
+      reorder: (
+        field: string,
+        id: string,
+        to: { before: string } | { after: string },
+      ): Promise<ReorderReport> =>
+        request<{ data: ReorderReport }>("POST", `/api/items/${slug}/reorder`, {
+          field,
+          id,
+          ...to,
+        }).then((r) => r.data),
+      /** Renumber this collection's order fields into dense 1…N per list. */
+      normalizeOrder: (field?: string): Promise<NormalizeOrderReport> =>
+        request<{ data: NormalizeOrderReport }>(
+          "POST",
+          `/api/items/${slug}/order/normalize`,
+          field === undefined ? {} : { field },
         ).then((r) => r.data),
       /**
        * Geocode the rows of this collection that have an address and no point.

@@ -1665,6 +1665,10 @@ msgstr "Added {0} collections with {seeded} sample rows"
 msgid "Added provider \"{id}\"."
 msgstr "Added provider \"{id}\"."
 
+#: src/client/admin/item-form.tsx
+msgid "Added to the end"
+msgstr "Added to the end"
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "additive"
 msgstr "additive"
@@ -3055,6 +3059,10 @@ msgstr "Change or cancel"
 #: src/client/admin/account-page.tsx
 msgid "Change password"
 msgstr "Change password"
+
+#: src/client/admin/item-form.tsx
+msgid "Change the order by dragging rows in the list view."
+msgstr "Change the order by dragging rows in the list view."
 
 #: src/client/admin/extras.tsx
 msgid "changed"
@@ -5236,6 +5244,10 @@ msgstr "drafts"
 #: src/client/admin/collections-index.tsx
 msgid "Drag collections here"
 msgstr "Drag collections here"
+
+#: src/client/admin/items.tsx
+msgid "Drag the row to reorder"
+msgstr "Drag the row to reorder"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Drag to another collection to create a relation"
@@ -9531,6 +9543,10 @@ msgstr "New room"
 #: src/client/admin/extras.tsx
 msgid "New row"
 msgstr "New row"
+
+#: src/client/admin/item-form.tsx
+msgid "New rows go to the end of the list. Drag them in the list view to move."
+msgstr "New rows go to the end of the list. Drag them in the list view to move."
 
 #: src/client/admin/collections-index.tsx
 msgid "New slug"

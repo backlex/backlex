@@ -40,6 +40,7 @@ import { approvalQueryFields, approvalMutationFields } from "./approvals";
 import { signatureQueryFields, signatureMutationFields } from "./signatures";
 import { bookingQueryFields, bookingMutationFields } from "./booking";
 import { i18nQueryFields, i18nMutationFields } from "./i18n";
+import { orderMutationFields } from "./order";
 import { storageQueryFields, storageMutationFields } from "./storage";
 import { schemaVersionQueryFields, schemaVersionMutationFields } from "./schema-versions";
 import { migrateQueryFields, migrateMutationFields } from "./migrate";
@@ -137,6 +138,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
           ...appUserMutationFields,
           ...appOrgMutationFields,
           ...messagingMutationFields,
+          ...orderMutationFields,
         },
       }),
     });
@@ -194,6 +196,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
     ...appUserMutationFields,
     ...appOrgMutationFields,
     ...messagingMutationFields,
+    ...orderMutationFields,
   };
 
   // Pre-build the type registry so relation fields can reference target

@@ -9,6 +9,7 @@ import {
   toMinorUnits,
   validateMoneySpec,
 } from "./money";
+import { type OrderSpec, validateOrderSpec } from "./order";
 import { type RangeSpec, validateRangeSpec } from "./range";
 import {
   assertPhoneShaped,
@@ -582,6 +583,18 @@ export interface FieldDef {
    */
   money?: MoneySpec;
   /**
+   * Declare that this `integer` field is the manual order of a list — the
+   * position an operator arranged rows into. See {@link OrderSpec}.
+   *
+   * Nothing about the storage changes; the column stays an ordinary sortable
+   * integer. What the declaration buys is that the server maintains it: a create
+   * that omits the field APPENDS to the end of its list rather than landing on
+   * the same 0 as everything else, a row whose scope changes re-appends to the
+   * list it moved into, and `POST /:slug/reorder` moves one row without the
+   * caller having to renumber the rows around it.
+   */
+  order?: OrderSpec;
+  /**
    * Declare that this `timestamp` field is the START of a period, and name the
    * column holding its end. See {@link RangeSpec}.
    *
@@ -1062,6 +1075,7 @@ export const validateFields = (fields: FieldDef[]): void => {
         ["sequence", !!f.sequence],
         ["geo", !!f.geo],
         ["money", !!f.money],
+        ["order", !!f.order],
         ["transitions", !!f.transitions],
         ["to", !!f.to],
         ["onCreate", !!f.onCreate],
@@ -1285,6 +1299,45 @@ export const validateFields = (fields: FieldDef[]): void => {
         // Surface a malformed default here rather than as broken DDL.
         toMinorUnits(f.default, currencyExponent(f.money.currency, f.money));
       }
+    }
+    if (f.order) {
+      // A position is an ordinary integer and stays one, so `indexed` and
+      // `default` still behave — and `indexed` in particular is worth having,
+      // since every read of an ordered list sorts by this column. What is out:
+      for (const [flag, on] of [
+        // All three already own the column's value by another rule. A position
+        // is the operator's to arrange and the server's to renumber; a second
+        // owner means whichever ran last wins, silently.
+        ["computed", !!f.computed],
+        ["rollup", !!f.rollup],
+        ["sequence", !!f.sequence],
+        // A localized value lives in the sidecar, one row per locale — but the
+        // append and the shift both compare BASE-table columns, so a per-locale
+        // position would be invisible to every statement that maintains it. A
+        // list is also not in a different order in French.
+        ["localized", !!f.localized],
+        // Positions ARE unique within a scope, but a column-level UNIQUE is
+        // across the whole table — it would make two modules unable to both
+        // have a first lesson. The uniqueness that matters is per-scope and is
+        // maintained by the write path, not by a constraint.
+        ["unique", !!f.unique],
+        // Folding "3" into a keyword or embedding index matches every row that
+        // holds a three, which is noise.
+        ["searchable", !!f.searchable],
+        ["vectorize", !!f.vectorize],
+      ] as const) {
+        if (on) {
+          throw new Error(`Field "${f.name}": "${flag}" is not allowed on an order field`);
+        }
+      }
+      if (f.type !== "integer") {
+        throw new Error(
+          `Field "${f.name}": an order field is an integer position (got "${f.type}")`,
+        );
+      }
+      const fieldTypes: Record<string, string> = {};
+      for (const o of fields) if (o.name !== f.name) fieldTypes[o.name] = o.type;
+      validateOrderSpec(f.order, { fieldName: f.name, fieldTypes });
     }
     if (f.range) {
       // A period is two ordinary timestamp columns with a declared relationship,

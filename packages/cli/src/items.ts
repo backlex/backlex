@@ -29,6 +29,8 @@ const ITEMS_HELP = `backlex items <cmd> <slug> [args]
   delete <slug> <id>
   verify <slug> <id> --field <name> --value <plaintext>
   transitions <slug> <id>
+  reorder <slug> <id> --field <name> (--before <id> | --after <id>)
+  normalize-order <slug> [--field <name>]
   export <slug>   [--format json|csv] [--out <file>]
   import <slug>   <file|@file|->  [--format json|csv]
   search <slug>   -q <text> [--mode fts|vector|hybrid] [--limit N] [--locale xx]
@@ -174,6 +176,48 @@ export const runItems = async (args: string[]): Promise<void> => {
               process.stdout.write(`  ${m.allowed ? "→" : "✗"} ${m.to}${why}\n`);
             }
           }
+        }
+        return;
+      }
+      case "reorder": {
+        const usage =
+          "items reorder <slug> <id> --field <name> (--before <id> | --after <id>)";
+        const slug = requireSlug(rest, usage);
+        const id = rest[1];
+        if (!id || id.startsWith("-")) {
+          process.stderr.write(`${usage}\n`);
+          process.exit(1);
+        }
+        const field = flag(rest, "--field");
+        const before = flag(rest, "--before");
+        const after = flag(rest, "--after");
+        // Exactly one anchor — accepting both would mean picking one silently.
+        if (!field || (before == null) === (after == null)) {
+          process.stderr.write(`${usage}\n`);
+          process.exit(1);
+        }
+        const res = await client
+          .from(slug)
+          .reorder(field, id, before != null ? { before } : { after: after! });
+        if (json) printJson(res);
+        else {
+          const repaired = res.repaired > 0 ? `, repaired ${res.repaired}` : "";
+          process.stdout.write(
+            `moved to position ${res.position} (shifted ${res.shifted}${repaired})\n`,
+          );
+        }
+        return;
+      }
+      case "normalize-order": {
+        const slug = requireSlug(rest, "items normalize-order <slug> [--field <name>]");
+        const res = await client.from(slug).normalizeOrder(flag(rest, "--field") ?? undefined);
+        if (json) printJson(res);
+        else {
+          process.stdout.write(
+            `renumbered ${res.renumbered} row(s) across ${res.scopes} list(s): ${
+              res.fields.join(", ") || "no order fields"
+            }\n`,
+          );
         }
         return;
       }

@@ -327,6 +327,24 @@ const FieldSchema = z
       })
       .optional(),
     /**
+     * Declare this integer column as the manual order of a list, optionally
+     * naming the column that partitions it into separate lists.
+     *
+     * Safe over the API for the same reason `range` and `rollup` are: nothing
+     * here reaches the DDL. `validateOrderSpec` checks the named scope exists on
+     * this collection and is a type equality can partition by, so a typo fails
+     * at save time rather than presenting as an append that silently numbers
+     * every module's lessons as one list.
+     */
+    order: z
+      .object({
+        scope: z
+          .string()
+          .regex(/^[a-z][a-z0-9_]*$/, "snake_case")
+          .optional(),
+      })
+      .optional(),
+    /**
      * Phone configuration — which country a national-form number is read as,
      * and which countries are allowed at all.
      *

@@ -730,6 +730,19 @@ export const itemsApi = {
         body: JSON.stringify({ keys, data }),
       },
     ),
+  /** Move a row before or after another in the same hand-arranged list. The
+   *  server renumbers only what sits between the two — the caller states the
+   *  intent, never a position. */
+  reorder: (
+    slug: string,
+    field: string,
+    id: string,
+    to: { before: string } | { after: string },
+  ) =>
+    api<Envelope<{ position: number; shifted: number; repaired: number }>>(
+      `/api/items/${slug}/reorder`,
+      { method: "POST", body: JSON.stringify({ field, id, ...to }) },
+    ),
   /** Discard a staged-edits item's pending staged patch without applying it. */
   discardStaged: (slug: string, id: string) =>
     api<{ ok: true }>(`/api/items/${slug}/${id}/staged`, { method: "DELETE" }),

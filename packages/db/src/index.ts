@@ -10,6 +10,7 @@ export * from "./email";
 export * from "./field-types";
 export * from "./geo";
 export * from "./money";
+export * from "./order";
 export * from "./phone";
 export * from "./range";
 export * from "./rollup";

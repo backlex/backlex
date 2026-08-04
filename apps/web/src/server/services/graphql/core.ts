@@ -57,6 +57,13 @@ import {
   rollupRefreshAllStatements,
   rollupRefreshStatements,
 } from "../items/rollup";
+import {
+  appendPositionSql,
+  type OrderField,
+  orderFieldsOf,
+  readBackPositions,
+  sameScope,
+} from "../items/order";
 import { nextSequenceValues, sequenceFieldsOf } from "../items/sequence";
 import { validateAndNormalizeGeo } from "../items/geo-fields";
 import {
@@ -1108,8 +1115,30 @@ export const createResolver = async (
   // repeat or the feature only ships on one surface. `geo-surfaces.test.ts` is
   // the gate.
   await gqlAutoGeocode(ctx, collection, args.data);
+  // Order columns — where this row lands in its hand-arranged list. Repeated
+  // here for the same reason the sequence and rollup blocks below are: this
+  // resolver hand-builds its INSERT instead of calling `performCreate`, so a
+  // GraphQL-created row would otherwise land on the column default (0, tied
+  // with everything else) while the identical REST create appended correctly.
+  // `order-surfaces.test.ts` is the gate.
+  const appendedOrder: OrderField[] = [];
+  for (const f of orderFieldsOf(collection.fields)) {
+    const stated = args.data[camel(f.name)];
+    if (stated !== undefined && stated !== null && stated !== "") continue;
+    const scopeDef = f.spec.scope
+      ? collection.fields.find((x) => x.name === f.spec.scope)
+      : undefined;
+    const scopeValue = scopeDef
+      ? serializeField(args.data[camel(scopeDef.name)], scopeDef, ctx.dialect)
+      : null;
+    cols.push(f.name);
+    vals.push(appendPositionSql(collection, auth.tenantId, f, scopeValue));
+    appendedOrder.push(f);
+    delete args.data[camel(f.name)];
+  }
   for (const f of collection.fields) {
     if (f.onCreate || f.sequence) continue; // system-managed, injected below
+    if (appendedOrder.some((o) => o.name === f.name)) continue;
     const v = args.data[camel(f.name)];
     if (v === undefined) continue;
     cols.push(f.name);
@@ -1158,6 +1187,14 @@ export const createResolver = async (
     for (const [loc, fieldMap] of createSplit.localePatches) {
       await execute(ctx, sidecarInsert(table, id, loc, fieldMap, byName, ctx.dialect));
     }
+  }
+  // The appended position is the database's answer, so it has to be read back
+  // before the response and the realtime event are built out of `args.data` —
+  // otherwise a GraphQL create returns `position: null` for a column that holds
+  // a number. Same read-back the REST path does, for the same reason.
+  if (appendedOrder.length > 0) {
+    const placed = await readBackPositions(ctx, collection, id, appendedOrder);
+    for (const [name, value] of Object.entries(placed)) args.data[camel(name)] = value;
   }
   await gqlRollupRefresh(ctx, collection, auth.tenantId, { after: args.data, always: true });
   // Digest persisted — scrub it from the input before it feeds the hand-built
@@ -1334,6 +1371,20 @@ export const updateResolver = async (
     const v = args.data[camel(f.name)];
     if (v === undefined) continue;
     sets.push(sql`${sql.identifier(f.name)} = ${serializeField(v, f, ctx.dialect)}`);
+  }
+  // Re-parenting appends to the end of the list the row just joined — same rule
+  // as the REST update path, repeated because this resolver hand-builds its SET.
+  // No `args.data` write-back is needed here: the re-SELECT below reflects it.
+  for (const f of orderFieldsOf(collection.fields)) {
+    if (!f.spec.scope) continue;
+    if (args.data[camel(f.name)] !== undefined) continue;
+    const scopeDef = collection.fields.find((x) => x.name === f.spec.scope);
+    if (!scopeDef || args.data[camel(scopeDef.name)] === undefined) continue;
+    const nextScope = serializeField(args.data[camel(scopeDef.name)], scopeDef, ctx.dialect);
+    if (sameScope(nextScope, (existing[0] as Record<string, unknown>)[scopeDef.name])) continue;
+    sets.push(
+      sql`${sql.identifier(f.name)} = ${appendPositionSql(collection, auth.tenantId, f, nextScope)}`,
+    );
   }
   // Auto-filled-on-update columns — computed + written server-side. The re-
   // SELECT below reflects them in the response, so no args.data mutation.

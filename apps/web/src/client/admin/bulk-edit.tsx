@@ -39,6 +39,10 @@ export const isBulkEditable = (f: SchemaField): boolean => {
   // A sequence is issued per row on insert — there is no such thing as setting
   // one document number across a selection.
   if ((f as { sequence?: unknown }).sequence) return false;
+  // An order column is a row's place in a list, so a value shared across a
+  // selection is a contradiction: setting fifty rows to position 3 puts them
+  // all in one slot and leaves the list less ordered than it started.
+  if ((f as { order?: unknown }).order) return false;
   if (f.type && BULK_BLOCKED_TYPES.has(f.type)) return false;
   if (f.interface && BULK_BLOCKED_IFACES.has(f.interface)) return false;
   return true;

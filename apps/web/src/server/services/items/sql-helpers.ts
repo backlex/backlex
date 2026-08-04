@@ -9,7 +9,11 @@ import type { CollectionRow } from "./collection-loader";
  * so callers can compose with `whereOf` cleanly.
  */
 export const tenantFilter = (
-  collection: CollectionRow,
+  // Structural rather than `CollectionRow`: the GraphQL layer carries its own
+  // narrower row shape, and this reads exactly one field of it. Widening the
+  // parameter is what lets both call the same filter instead of hand-writing a
+  // second `tenant_id = ?` that can drift from this one.
+  collection: { tenantScoped: boolean },
   auth: { tenantId?: string | null; roles: string[] },
 ): SQL | null => {
   if (!collection.tenantScoped) return null;
@@ -28,7 +32,8 @@ export const tenantFilter = (
  * re-qualified there.
  */
 export const deletedFilter = (
-  collection: CollectionRow,
+  // Structural for the same reason as `tenantFilter` above.
+  collection: { softDelete: boolean },
   qualifier?: string,
 ): SQL | null => {
   if (!collection.softDelete) return null;

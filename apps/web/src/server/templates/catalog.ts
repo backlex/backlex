@@ -303,8 +303,32 @@ const parent = (to: string, extra: Partial<FieldDef> = {}): FieldDef => rel("par
  *  rows via `$user.id` permission conditions. The "user" interface renders an
  *  end-user picker in the admin and enforces that the id exists on write. */
 const userLink = (extra: Partial<FieldDef> = {}): FieldDef => text("app_user_id", { indexed: true, label: "Login user", interface: "user", ...extra });
-/** Integer position/sort key — indexed so ordered lists stay cheap. */
-const position = (name = "position", extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "integer", default: 0, indexed: true, ...extra });
+/**
+ * The place a row holds in a list somebody arranged by hand.
+ *
+ * `order` is what turns the column from a number an operator had to type into
+ * one the server maintains: a create that says nothing about it is APPENDED to
+ * the end of its list instead of landing on the same `default: 0` as every
+ * other row, and `POST /:slug/reorder` moves one row without renumbering the
+ * rest. The default stays for rows written around the API (a restore, direct
+ * SQL) — `POST /:slug/order/normalize` repairs those.
+ *
+ * `scope` names the column that splits the collection into separate lists: each
+ * module's lessons are numbered 1, 2, 3 independently. Leaving it off is the
+ * right answer for a top-level arrangement (pipelines, SLA policies, folders)
+ * and the wrong one for anything nested, where a single numbering would make
+ * two parents' children interleave.
+ *
+ * Indexed so ordered lists stay cheap — every read of one sorts by this column.
+ */
+const position = (scope?: string, extra: Partial<FieldDef> = {}): FieldDef => ({
+  name: "position",
+  type: "integer",
+  default: 0,
+  indexed: true,
+  order: scope ? { scope } : {},
+  ...extra,
+});
 /** Percent 0–100 integer. */
 /**
  * A percentage, stored as the number people say — `20` means twenty percent.
@@ -728,7 +752,7 @@ export const TEMPLATES: SchemaTemplate[] = [
     collections: [
       {
         slug: "media", group: "Catalog", singular: "Media", plural: "Media",
-        fields: [image("file"), ...half(text("alt", { label: "Alt text" }), int("position", { default: 0 }))],
+        fields: [image("file"), ...half(text("alt", { label: "Alt text" }), position())],
       },
       {
         slug: "brands", group: "Catalog", singular: "Brand", plural: "Brands", defaultSort: "name",
@@ -742,7 +766,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ...half(text("name", { required: true }), slugField()),
           notes("description"),
           ...half(parent("categories"), image("image")),
-          ...half(position(), bool("visible", { default: true, label: "Visible" })),
+          ...half(position("parent"), bool("visible", { default: true, label: "Visible" })),
         ],
         samples: [
           { name: "Apparel", slug: "apparel", position: 1 },
@@ -803,7 +827,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: stacked(
           sec("Item", [
             ...half(rel("menu", "menus", { required: true }), text("title", { required: true })),
-            ...half(rel("parent", "menu_items", { label: "Nested under" }), position()),
+            ...half(rel("parent", "menu_items", { label: "Nested under" }), position("menu")),
           ]),
           sec("Target", [
             hint("menu_items_target", "Point at one of the links below — whichever is set wins, in the order shown."),
@@ -957,7 +981,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       {
         // Option axes (e.g. Size, Color). Shopify caps at 3 per product.
         slug: "product_options", group: "Catalog", singular: "Option", plural: "Options", defaultSort: "position",
-        fields: [rel("product", "products"), ...half(text("name", { required: true }), position())],
+        fields: [rel("product", "products"), ...half(text("name", { required: true }), position("product"))],
         samples: [
           { product: { ref: "products:0" }, name: "Size", position: 1 },
           { product: { ref: "products:0" }, name: "Color", position: 2 },
@@ -968,7 +992,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: [
           rel("option", "product_options"),
           ...half(text("value", { required: true }), text("swatch", { interface: "color", label: "Swatch color" })),
-          position(),
+          position("option"),
         ],
         samples: [
           { option: { ref: "product_options:0" }, value: "S", position: 1 },
@@ -984,7 +1008,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: tabbed(
           sec("Variant", [
             rel("product", "products"),
-            ...half(text("title", { label: "Title" }), position("position")),
+            ...half(text("title", { label: "Title" }), position("product")),
             ...half(text("sku", { unique: true, label: "SKU" }), text("barcode", { label: "Barcode / GTIN" })),
           ]),
           sec("Pricing", [
@@ -1875,7 +1899,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "pipeline_stages", group: "Sales", singular: "Stage", plural: "Stages", defaultSort: "position",
         fields: [
           ...half(rel("pipeline", "pipelines"), text("name", { required: true })),
-          ...half(position(), pct("probability", { default: 50, label: "Win probability (%)" })),
+          ...half(position("pipeline"), pct("probability", { default: 50, label: "Win probability (%)" })),
           ...half(
             bool("is_won", { default: false, label: "Won stage" }),
             bool("is_lost", { default: false, label: "Lost stage" }),
@@ -2240,7 +2264,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "kb_sections", group: "Knowledge base", singular: "Section", plural: "Sections", defaultSort: "position",
         fields: [
           ...half(rel("category", "categories", { required: true }), text("name", { required: true })),
-          ...half(position(), bool("visible", { default: true })),
+          ...half(position("category"), bool("visible", { default: true })),
           notes("description"),
         ],
         samples: [
@@ -3105,7 +3129,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: [
           ...half(rel("project", "projects"), text("name")),
           notes("description"),
-          ...half(date("target_date", { indexed: true, label: "Target date" }), position()),
+          ...half(date("target_date", { indexed: true, label: "Target date" }), position("project")),
           select("status", [ch("upcoming", C.gray), ch("in_progress", C.blue, "In progress"), ch("completed", C.green)], { default: "upcoming" }),
         ],
         samples: [{ project: { ref: "projects:0" }, name: "Design complete", target_date: ms("2026-07-15"), status: "in_progress", position: 1 }],
@@ -4193,7 +4217,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ...half(text("name", { required: true, searchable: true }), rel("category", "menu_categories")),
             notes("description", { searchable: true }),
             ...half(money("price", { required: true }), money("cost", { label: "Food cost" })),
-            ...half(position("position"), bool("available", { default: true, label: "Available" })),
+            ...half(position("category"), bool("available", { default: true, label: "Available" })),
             image("image"),
           ]),
           sec("Kitchen", [
@@ -4513,7 +4537,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: [
           ...half(rel("course", "courses"), text("title", { required: true })),
           notes("description"),
-          ...half(position(), bool("published", { default: true, label: "Published" })),
+          ...half(position("course"), bool("published", { default: true, label: "Published" })),
         ],
         samples: [{ course: { ref: "courses:0" }, title: "Getting started", position: 1 }, { course: { ref: "courses:0" }, title: "Variables & types", position: 2 }],
       },
@@ -4532,7 +4556,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             ...half(url("video_url", { label: "Video URL" }), int("duration_minutes", { default: 0, label: "Duration (min)", validation: { min: 0 } })),
           ]),
           sec("Publishing", [
-            ...half(position(), bool("published", { default: true, label: "Published" })),
+            ...half(position("module"), bool("published", { default: true, label: "Published" })),
             bool("free_preview", { default: false, label: "Free preview", description: "Visible to anyone, even before they enroll." }),
           ]),
         ),
@@ -4605,7 +4629,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             select("type", [ch("multiple_choice", C.blue, "Multiple choice"), ch("true_false", C.teal, "True / false"), ch("multiple_answers", C.purple, "Multiple answers"), ch("short_answer", C.amber, "Short answer"), ch("essay", C.gray)], { default: "multiple_choice" }),
             num("points", { default: 1, validation: { min: 0 } }),
           ),
-          ...half(position(), { name: "options", type: "json", interface: "json", label: "Choices" }),
+          ...half(position("quiz"), { name: "options", type: "json", interface: "json", label: "Choices" }),
           notes("explanation"),
         ],
         samples: [{ quiz: { ref: "quizzes:0" }, prompt: "What is a variable?", type: "multiple_choice", points: 1, position: 1 }],
@@ -4777,7 +4801,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ...half(rel("job", "jobs"), text("name", { required: true })),
           ...half(
             select("type", [ch("application_review", C.gray, "Application review"), ch("assessment", C.teal), ch("phone_interview", C.blue, "Phone interview"), ch("onsite_interview", C.amber, "Onsite interview"), ch("offer", C.purple), ch("hired", C.green)], { default: "application_review", label: "Stage type" }),
-            position(),
+            position("job"),
           ),
         ],
         samples: [
@@ -5630,7 +5654,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           ...half(text("label", { required: true }), text("help_text", { label: "Help text" })),
           ...half(
             select("type", [ch("short_text", C.blue, "Short text"), ch("long_text", C.teal, "Long text"), ch("email", C.purple), ch("number", C.gray), ch("single_select", C.amber, "Single choice"), ch("multi_select", C.amber, "Multiple choice"), ch("rating", C.green), ch("date", C.slate), ch("file", C.gray), ch("yes_no", C.blue, "Yes / no")], { default: "short_text" }),
-            position(),
+            position("form"),
           ),
           ...half(bool("required", { default: false }), { name: "options", type: "json", interface: "json", label: "Choices" }),
         ],
@@ -6279,7 +6303,7 @@ export const TEMPLATES: SchemaTemplate[] = [
             select("type", [ch("short_text", C.blue, "Short text"), ch("choice", C.purple), ch("yes_no", C.teal, "Yes / No")], { default: "short_text" }),
             text("choices", { label: "Choices (comma-separated)" }),
           ),
-          ...half(bool("required", { default: false, label: "Required" }), position()),
+          ...half(bool("required", { default: false, label: "Required" }), position("service")),
         ],
         samples: [
           { service: { ref: "services:0" }, label: "What would you like to focus on?", type: "short_text", required: true, position: 1 },
@@ -6484,7 +6508,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "checklist_items", group: "Catalog", singular: "Checklist item", plural: "Checklist items", defaultSort: "position",
-        fields: [rel("checklist", "checklists"), ...half(text("label", { required: true }), position())],
+        fields: [rel("checklist", "checklists"), ...half(text("label", { required: true }), position("checklist"))],
         samples: [
           { checklist: { ref: "checklists:0" }, label: "Check pressure relief valve", position: 1 },
           { checklist: { ref: "checklists:0" }, label: "Inspect burner and flame pattern", position: 2 },
@@ -7475,7 +7499,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: [
           ...half(rel("bom", "boms"), text("name", { required: true })),
           ...half(rel("work_center", "work_centers"), int("minutes", { default: 30, validation: { min: 0 }, label: "Duration (min)" })),
-          position(),
+          position("bom"),
         ],
         samples: [
           { bom: { ref: "boms:0" }, name: "Frame prep", work_center: { ref: "work_centers:1" }, minutes: 25, position: 1 },

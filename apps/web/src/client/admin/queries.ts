@@ -58,6 +58,7 @@ import {
   tracesApi,
   usageApi,
 } from "./api";
+import { reorderVisible } from "@backlex/db/order";
 import type { Post } from "./config";
 import { type ItemsQueryParams, reconcileBulkUpdate } from "./items-query-params";
 import { itemsTransport, openSignalPipe } from "./signal";
@@ -877,6 +878,56 @@ export function useItemCreate(collection: string | null) {
     onSettled: () => invalidateItems(qc, slug),
   });
 }
+
+/**
+ * Drag-to-reorder. The row lands where it was dropped IMMEDIATELY — a reorder
+ * that waited on a round trip would show the operator's drag snapping back
+ * before it took, which reads as a failure every time.
+ *
+ * `reorderVisible` does the optimistic half against the page's own positions
+ * (nothing invented), and the invalidate afterwards picks up the real numbers —
+ * including any renumbering the server's tie repair did on the way.
+ */
+export function useItemReorder(collection: string | null) {
+  const qc = useQueryClient();
+  const slug = collection || "posts";
+  return useMutation({
+    mutationFn: (vars: {
+      field: string;
+      id: string;
+      anchorId: string;
+      place: "before" | "after";
+    }) =>
+      itemsApi.reorder(
+        slug,
+        vars.field,
+        vars.id,
+        vars.place === "before" ? { before: vars.anchorId } : { after: vars.anchorId },
+      ),
+    onMutate: (vars) => {
+      const snap = snapshotItems(qc, slug);
+      patchItemRows(qc, slug, (rows) => {
+        const view = rows.map((r) => ({
+          id: r.id,
+          position: numberOrNull((r as unknown as Record<string, unknown>)[vars.field]),
+        }));
+        const next = reorderVisible(view, vars.id, vars.anchorId, vars.place);
+        if (!next) return rows;
+        const byId = new Map(rows.map((r) => [r.id, r]));
+        return next.map(
+          (v) => ({ ...(byId.get(v.id) as Post), [vars.field]: v.position }) as Post,
+        );
+      });
+      return { snap };
+    },
+    onError: (_e, _v, ctx) => ctx && restoreItems(qc, ctx.snap),
+    onSettled: () => invalidateItems(qc, slug),
+  });
+}
+
+/** A position as it comes off a row — a driver may hand it back as a string. */
+const numberOrNull = (v: unknown): number | null =>
+  v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v);
 
 /** Single delete (editor, or any future row action). Removes the row
  *  immediately; restores on error. */

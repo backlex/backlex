@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Filter DSL builder + Items DataTable for the backlex admin design.
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { useItemPatch, useItemsGridWrite } from "./queries";
+import { useItemPatch, useItemReorder, useItemsGridWrite } from "./queries";
 import { useGridEdit, type GridColumn } from "./grid-edit";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { renderTemplate } from "@backlex/core";
@@ -911,6 +911,68 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   const patchItem = useItemPatch(schema?.slug ?? null);
   const isEditing = (rowId: string, name: string) => editCell?.id === rowId && editCell.field === name;
 
+  // --- drag-to-reorder ---------------------------------------------------
+  // Offered only when the list is actually IN the order being dragged: the
+  // column exists, the table is sorted by it ascending, and we are not in grid
+  // mode (there a drag selects a cell range). Dragging a list sorted by
+  // `updated_at` would be a gesture with no meaning — the row would appear to
+  // move and then jump back on the next render, which reads as a broken save.
+  const orderField = (schema?.fields ?? []).find(
+    (f) => !!(f as { order?: unknown }).order,
+  ) as { name: string } | undefined;
+  // An EMPTY `sort` does not mean unsorted — it means "let the server apply the
+  // collection's `defaultSort`", which for twenty-five of the templates that
+  // carry a position column is that very column. Comparing only the explicit
+  // sort would leave dragging switched off in exactly the collections built to
+  // be dragged, and the operator would have to first sort by a column the list
+  // does not even show. Only the FIRST clause counts, and only ascending: a
+  // `-position` list is upside down and dropping into it would move the row the
+  // other way.
+  const effectiveSort = sort || (schema?.defaultSort ?? "").split(",")[0]?.trim() || "";
+  const canReorder = !!orderField && !gridMode && effectiveSort === orderField.name;
+  const reorderItem = useItemReorder(schema?.slug ?? null);
+  const [dragRow, setDragRow] = useState<string | null>(null);
+  const [overRow, setOverRow] = useState<string | null>(null);
+  // A SCOPED order field numbers each parent's rows separately, but this list
+  // shows every parent's rows together — so dropping a lesson from one module
+  // between two lessons of another is not just possible, it is the easy
+  // mistake. The server refuses it (a move between lists is a change to the
+  // scope column, not a reorder), and without this guard the only thing the
+  // operator would see is their drag snapping back. Refused here instead: no
+  // drop indicator, no "not-allowed" ambiguity, and no request.
+  const orderScope = (schema?.fields ?? []).find(
+    (f) => (f as { name?: string }).name === orderField?.name,
+  ) as { order?: { scope?: string } } | undefined;
+  const scopeCol = orderScope?.order?.scope;
+  const scopeOf = (id: string): string => {
+    if (!scopeCol) return "";
+    const row = rows.find((r) => r.id === id) as Record<string, unknown> | undefined;
+    const v = row?.[scopeCol];
+    // `null` and `""` are the same list — the same two spellings of "no parent"
+    // the server's scope filter has to reconcile.
+    return v === null || v === undefined || v === "" ? "" : String(v);
+  };
+  const sameList = (a: string, b: string) => !scopeCol || scopeOf(a) === scopeOf(b);
+  const clearRowDrag = () => {
+    setDragRow(null);
+    setOverRow(null);
+  };
+  const dropOnRow = (targetId: string) => {
+    if (!canReorder || !orderField || !dragRow || dragRow === targetId) return clearRowDrag();
+    if (!sameList(dragRow, targetId)) return clearRowDrag();
+    const from = rows.findIndex((r) => r.id === dragRow);
+    const to = rows.findIndex((r) => r.id === targetId);
+    clearRowDrag();
+    if (from < 0 || to < 0) return;
+    // Dropping ONTO a row means taking its place: coming from above you land
+    // after it, coming from below you land before it. Anything else moves the
+    // row one slot short of where the operator aimed.
+    reorderItem.mutate(
+      { field: orderField.name, id: dragRow, anchorId: targetId, place: from < to ? "after" : "before" },
+      { onError: (e) => onCellError?.(e) },
+    );
+  };
+
   // Sticky columns: checkbox + Title pin left (desktop only — on a phone the
   // title column would swallow most of the viewport), actions stay pinned
   // right. Sticky cells need an opaque background plus row-state variants,
@@ -982,11 +1044,16 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
         name: f.name,
         type: f.type,
         // Rollups and sequences (like computed columns) take no write — an
-        // editable cell would collect a value the API answers 422 to.
+        // editable cell would collect a value the API answers 422 to. An order
+        // column does take a write, and that is exactly why it must not be one
+        // here: typing 3 into a cell puts the row on a position another row
+        // already holds, which is the tie the whole feature exists to prevent.
+        // The drag handle is how this column changes.
         editable:
           !f.dot &&
           !(f as { rollup?: unknown }).rollup &&
           !(f as { sequence?: unknown }).sequence &&
+          !(f as { order?: unknown }).order &&
           (!!choices || INLINE_TYPES.has(f.type ?? "")),
         choices,
         raw: (r) =>
@@ -1110,7 +1177,12 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
           )}
           <SortHead id="updated_at" label={t`Updated`} sort={sort} setSort={setSort} />
           {collabActive && <TableHead className="w-[110px] text-right"><Trans>Live</Trans></TableHead>}
-          <TableHead className="sticky right-0 w-[60px] bg-card text-right" />
+          {/* Room for the drag grip next to the edit button when the list is
+              rearrangeable. Pinned right, so the width never disturbs the
+              left-hand sticky offsets — and only from `sm:`, since the grip
+              itself is desktop-only (see below) and reserving width for an
+              affordance that never appears just narrows a phone's title column. */}
+          <TableHead className={`sticky right-0 w-[60px] bg-card text-right ${canReorder ? "sm:w-[84px]" : ""}`} />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -1133,7 +1205,63 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
           const displayStatus = rawStatus != null ? String(rawStatus) : null;
           const choice = displayStatus ? choiceByValue.get(displayStatus) : null;
           return (
-            <TableRow key={r.id} data-selected={selected.has(r.id)} onClick={gridMode ? undefined : () => onEdit(r)} className={`group/row data-[selected=true]:bg-selected-surface ${gridMode ? "" : "cursor-pointer"}`}>
+            <TableRow
+              key={r.id}
+              data-selected={selected.has(r.id)}
+              onClick={gridMode ? undefined : () => onEdit(r)}
+              className={`group/row data-[selected=true]:bg-selected-surface ${gridMode ? "" : "cursor-pointer"}`}
+              draggable={canReorder || undefined}
+              // A border would grow the row and shove the rest of the table
+              // down mid-drag; an inset shadow marks the edge without moving
+              // anything. Same trick the column headers use.
+              style={
+                canReorder
+                  ? {
+                      opacity: dragRow === r.id ? 0.4 : 1,
+                      boxShadow:
+                        overRow === r.id && dragRow && dragRow !== r.id
+                          ? `inset 0 ${
+                              rows.findIndex((x) => x.id === dragRow) < ri ? "-2px" : "2px"
+                            } 0 var(--primary)`
+                          : undefined,
+                      transition: "opacity 80ms",
+                    }
+                  : undefined
+              }
+              onDragStart={
+                canReorder
+                  ? (e) => {
+                      setDragRow(r.id);
+                      e.dataTransfer.effectAllowed = "move";
+                      // Firefox refuses to start a drag without payload.
+                      e.dataTransfer.setData("text/plain", r.id);
+                    }
+                  : undefined
+              }
+              onDragOver={
+                canReorder
+                  ? (e) => {
+                      // Not calling preventDefault is what makes this row an
+                      // invalid drop target — the cursor says so, and the drop
+                      // never fires.
+                      if (!dragRow || dragRow === r.id || !sameList(dragRow, r.id)) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (overRow !== r.id) setOverRow(r.id);
+                    }
+                  : undefined
+              }
+              onDragLeave={canReorder ? () => setOverRow((o) => (o === r.id ? null : o)) : undefined}
+              onDrop={
+                canReorder
+                  ? (e) => {
+                      e.preventDefault();
+                      dropOnRow(r.id);
+                    }
+                  : undefined
+              }
+              onDragEnd={canReorder ? clearRowDrag : undefined}
+            >
               <TableCell onClick={(e) => e.stopPropagation()} className={`min-w-[38px] sm:left-0 ${STICKY_BOX}`}>
                 <Checkbox checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
               </TableCell>
@@ -1300,7 +1428,25 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                 </TableCell>
               )}
               <TableCell className={`sticky right-0 text-right ${STICKY_BG}`} onClick={(e) => e.stopPropagation()}>
-                <IconButton icon={I.Pencil} onClick={() => onEdit(r)} title={t`Edit`} />
+                <div className="flex items-center justify-end gap-0.5">
+                  {/* Affordance only — the whole ROW is the drag source, so the
+                      grip needs no handlers of its own. It lives here rather
+                      than beside the checkbox because that cell is pinned at a
+                      fixed 38px and the identity column pins against it; one
+                      extra icon there opens a seam between the two sticky
+                      cells. This column is pinned to the RIGHT, so widening it
+                      moves nothing. */}
+                  {canReorder && (
+                    <span
+                      className="hidden cursor-grab text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 active:cursor-grabbing sm:inline"
+                      title={t`Drag the row to reorder`}
+                      aria-hidden
+                    >
+                      <I.Grip size={13} />
+                    </span>
+                  )}
+                  <IconButton icon={I.Pencil} onClick={() => onEdit(r)} title={t`Edit`} />
+                </div>
               </TableCell>
             </TableRow>
           );

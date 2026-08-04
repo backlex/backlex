@@ -133,14 +133,18 @@ export const fieldEffects = (
   values: Record<string, unknown>,
 ): { hidden: boolean; readonly: boolean; required: boolean } => {
   // A rollup column is maintained by the server from another collection's rows,
-  // and a sequence column is issued by the server on insert, so the form must
-  // not offer either as an input — the write path answers 422 and an
-  // editable-looking box is just a trap. Unconditional, not a rule the author
-  // can switch off.
+  // a sequence column is issued by the server on insert, and an order column is
+  // the place a row holds in a list you rearrange by DRAGGING it — so the form
+  // must not offer any of the three as an input. For the first two the write
+  // path answers 422 and an editable-looking box is just a trap; for the third
+  // the box would quietly work and be the wrong way to do it, which is worse.
+  // Unconditional, not a rule the author can switch off.
   const eff = {
     hidden: false,
     readonly: Boolean(
-      (f as { rollup?: unknown }).rollup || (f as { sequence?: unknown }).sequence,
+      (f as { rollup?: unknown }).rollup ||
+        (f as { sequence?: unknown }).sequence ||
+        (f as { order?: unknown }).order,
     ),
     required: false,
   };
@@ -373,6 +377,10 @@ export function useItemForm({
       // refuse to save every row of a collection that numbers its documents —
       // the one field the user is not allowed to type into.
       if ((f as { sequence?: unknown }).sequence) continue;
+      // An order column is filled by the server on insert for the same reason —
+      // a create that states no position is APPENDED — so a `required` one must
+      // not block a save on the one field the form does not let you type into.
+      if ((f as { order?: unknown }).order) continue;
       // A hash field on EDIT reads back blank (the digest is never returned);
       // a blank means "keep the current secret", so don't flag it as missing.
       // On create (`initial` null) it's still enforced.
@@ -412,6 +420,12 @@ export function useItemForm({
       // path reject every save of a collection that has one.
       if ((f as { rollup?: unknown }).rollup) continue;
       if ((f as { sequence?: unknown }).sequence) continue;
+      // An order column is never sent either, and on CREATE that is the whole
+      // point: a stated position is honoured verbatim by the write path, so a
+      // form that sent the draft's empty-or-zero box would land every new row on
+      // 0 — tied with everything else, which is exactly the state this feature
+      // exists to end. Moves go through `reorder`.
+      if ((f as { order?: unknown }).order) continue;
       const raw = draft[f.name];
       if (raw === undefined) continue;
       if (f.localized) {
@@ -679,7 +693,8 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
       </div>
     ) : null;
     const typeLabel = (iface ?? f.type ?? "text") + (f.unique ? " · unique" : "");
-    const serverFilled = !!(f as { sequence?: unknown }).sequence;
+    const serverFilled =
+      !!(f as { sequence?: unknown }).sequence || !!(f as { order?: unknown }).order;
     const reqMark =
       !serverFilled && (f.required || f.nullable === false || forceRequired) ? (
         <span style={{ color: "var(--destructive)" }}>*</span>
@@ -980,6 +995,40 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
     }
 
     // ── Selection: choice-bound interfaces ────────────────────────────────
+    // Order — where the row sits in a list somebody arranged.
+    //
+    // FIRST in the chain, before any type/interface branch, and that placement
+    // is the whole point: an order column is an `integer`, so the generic
+    // numeric branch further down claims it and renders a plain number box. The
+    // `sequence` branch gets away with sitting at the bottom only because a
+    // document number is `text`, which nothing else claims.
+    //
+    // The wrapper has already made the box non-interactive (see
+    // `renderFieldWrapped`); what this adds is saying WHY, and where the change
+    // is actually made. A greyed number with no explanation reads as one you
+    // were supposed to type and are somehow not allowed to.
+    if ((f as { order?: unknown }).order) {
+      return (
+        <div key={f.name} className="flex flex-col gap-1.5">
+          {label}
+          <Input
+            className="font-mono"
+            value={String(val ?? "")}
+            placeholder={val ? undefined : t`Added to the end`}
+            readOnly
+            tabIndex={-1}
+            autoComplete="off"
+          />
+          <div className="text-[11.5px] text-muted-foreground">
+            {val ? (
+              <Trans>Change the order by dragging rows in the list view.</Trans>
+            ) : (
+              <Trans>New rows go to the end of the list. Drag them in the list view to move.</Trans>
+            )}
+          </div>
+        </div>
+      );
+    }
     if (iface === "dropdown") {
       const rawChoices = readChoices(f);
       const current = String(val ?? "");

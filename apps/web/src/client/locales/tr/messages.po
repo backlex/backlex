@@ -1665,6 +1665,10 @@ msgstr "{0} koleksiyon {seeded} örnek satırla eklendi"
 msgid "Added provider \"{id}\"."
 msgstr "\"{id}\" sağlayıcısı eklendi."
 
+#: src/client/admin/item-form.tsx
+msgid "Added to the end"
+msgstr "Listenin sonuna eklenir"
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "additive"
 msgstr "ekleyici"
@@ -3055,6 +3059,10 @@ msgstr "Değiştir veya iptal et"
 #: src/client/admin/account-page.tsx
 msgid "Change password"
 msgstr "Parolayı değiştir"
+
+#: src/client/admin/item-form.tsx
+msgid "Change the order by dragging rows in the list view."
+msgstr "Sırayı değiştirmek için liste görünümünde satırları sürükleyin."
 
 #: src/client/admin/extras.tsx
 msgid "changed"
@@ -5236,6 +5244,10 @@ msgstr "taslaklar"
 #: src/client/admin/collections-index.tsx
 msgid "Drag collections here"
 msgstr "Koleksiyonları buraya sürükleyin"
+
+#: src/client/admin/items.tsx
+msgid "Drag the row to reorder"
+msgstr "Sıralamak için satırı sürükleyin"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "Drag to another collection to create a relation"
@@ -9531,6 +9543,10 @@ msgstr "Yeni oda"
 #: src/client/admin/extras.tsx
 msgid "New row"
 msgstr "Yeni satır"
+
+#: src/client/admin/item-form.tsx
+msgid "New rows go to the end of the list. Drag them in the list view to move."
+msgstr "Yeni satırlar listenin sonuna eklenir. Taşımak için liste görünümünde sürükleyin."
 
 #: src/client/admin/collections-index.tsx
 msgid "New slug"

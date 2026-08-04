@@ -10,6 +10,7 @@
     "./email": "./src/email.ts",
     "./geo": "./src/geo.ts",
     "./money": "./src/money.ts",
+    "./order": "./src/order.ts",
     "./phone": "./src/phone.ts",
     "./range": "./src/range.ts",
     "./sequence": "./src/sequence.ts",

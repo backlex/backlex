@@ -95,6 +95,7 @@ export default defineConfig({
             { slug: "field-validation" },
             { slug: "rollups" },
             { slug: "sequences" },
+            { slug: "ordering" },
             { slug: "geo" },
             { slug: "money" },
             { slug: "phone" },

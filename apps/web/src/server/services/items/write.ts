@@ -32,6 +32,13 @@ import {
   rollupRefreshStatements,
   type RollupChange,
 } from "./rollup";
+import {
+  appendPositionSql,
+  type OrderField,
+  orderFieldsOf,
+  readBackPositions,
+  sameScope,
+} from "./order";
 import { nextSequenceValues, sequenceFieldsOf, type SequencePool } from "./sequence";
 import { assertInitialStates, assertTransitions, transitionEventName } from "./transitions";
 import {
@@ -367,6 +374,34 @@ export const performCreate = async (
       data[name] = value;
     }
   }
+  // Order columns — where this row lands in the list it belongs to. A caller
+  // that STATES a position keeps it (a CSV import, a restore and a template's
+  // sample rows all carry their own arrangement, and overruling them would
+  // scramble exactly the data that was already in order). One that says nothing
+  // gets appended to the end.
+  //
+  // The value pushed is a SUBQUERY, not a number this process read: the database
+  // evaluates it at insert time, so the second row of a batch sees the first and
+  // two concurrent creates cannot both take the same position. Same move as the
+  // rollup refresh, and the reason a fifty-row import numbers 1…50 rather than
+  // giving every row the same 1.
+  const orderFields = orderFieldsOf(collection.fields);
+  const appendedOrder: OrderField[] = [];
+  for (const f of orderFields) {
+    const stated = data[f.name];
+    if (stated !== undefined && stated !== null && stated !== "") continue;
+    const scopeDef = f.spec.scope
+      ? collection.fields.find((x) => x.name === f.spec.scope)
+      : undefined;
+    const scopeValue = scopeDef
+      ? serializeField(data[scopeDef.name], scopeDef, ctx.dialect)
+      : null;
+    cols.push(f.name);
+    vals.push(appendPositionSql(collection, env.tenantId, f, scopeValue));
+    appendedOrder.push(f);
+    // Drop an explicit null so the loop below doesn't name the column twice.
+    delete data[f.name];
+  }
   for (const f of collection.fields) {
     // `sequence` is skipped for the same reason `onCreate` is: the column was
     // already pushed above, and pushing it twice makes the INSERT name one
@@ -394,6 +429,15 @@ export const performCreate = async (
       sql`INSERT INTO ${sql.identifier("item_ownership")} (${sql.identifier("collection_id")}, ${sql.identifier("item_id")}, ${sql.identifier("owner_id")}, ${sql.identifier("created_at")})
           VALUES (${collection.id}, ${id}, ${env.userId}, ${now})`,
     );
+  }
+  // The position the database chose is only knowable once the INSERT has run —
+  // which is the price of it being a subquery, and worth paying. Read it onto
+  // the payload so the 201 body, the realtime event, the activity row and the
+  // client's offline store all say where the row actually is. Skipped while
+  // COLLECTING an atomic batch: nothing has executed yet, so there is nothing to
+  // read (see readBackPositions).
+  if (appendedOrder.length > 0 && !env.collect) {
+    Object.assign(data, await readBackPositions(ctx, collection, id, appendedOrder, env.db));
   }
   // A new row always joins (or fails to join) some parent's aggregate — there
   // is no "touched no watched field" shortcut on a create.
@@ -664,6 +708,25 @@ export const performUpdate = async (
     if (patch[f.name] === undefined) continue;
     sets.push(sql`${sql.identifier(f.name)} = ${serializeField(patch[f.name], f, ctx.dialect)}`);
   }
+  // Re-parenting moves the row into a DIFFERENT list, where its old position
+  // means nothing and very likely collides with a row already holding it — the
+  // one state a move cannot survive. So a patch that changes the scope column
+  // and says nothing about the position re-appends to the end of the list the
+  // row just joined, which is where a person who drags a lesson into another
+  // module expects to find it. A patch that states both is left alone.
+  const reappendedOrder: OrderField[] = [];
+  for (const f of orderFieldsOf(collection.fields)) {
+    if (!f.spec.scope) continue;
+    if (patch[f.name] !== undefined) continue;
+    const scopeDef = collection.fields.find((x) => x.name === f.spec.scope);
+    if (!scopeDef || patch[scopeDef.name] === undefined) continue;
+    const nextScope = serializeField(patch[scopeDef.name], scopeDef, ctx.dialect);
+    if (sameScope(nextScope, existing[0]?.[scopeDef.name])) continue;
+    sets.push(
+      sql`${sql.identifier(f.name)} = ${appendPositionSql(collection, env.tenantId, f, nextScope)}`,
+    );
+    reappendedOrder.push(f);
+  }
   // Auto-filled-on-update columns are computed + written server-side (client
   // input was rejected by validateBody). Fold the value into `patch` so the
   // SET below emits it and the refreshed-row merge reflects it.
@@ -693,6 +756,12 @@ export const performUpdate = async (
     for (const name of localeSplit.clearAll) {
       await emit(env, sidecarClear(table, id, name));
     }
+  }
+  // Same read-back as create, and for the same reason: the appended position is
+  // the database's answer, so the response and the realtime event have to ask
+  // for it rather than echo the value the row used to have in its old list.
+  if (reappendedOrder.length > 0 && !env.collect) {
+    Object.assign(patch, await readBackPositions(ctx, collection, id, reappendedOrder, env.db));
   }
   // Re-parenting counts as two changes: the row leaves one parent's total and
   // joins another's, so `before` and `after` are both refreshed. A patch that

@@ -25,6 +25,13 @@ import {
 import { verifyHashField } from "../../services/items/verify";
 import { refreshCollectionRollups } from "../../services/items/rollup";
 import {
+  assertCanRearrange,
+  normalizeOrderField,
+  orderFieldsOf,
+  reorderItem,
+  requireOrderField,
+} from "../../services/items/order";
+import {
   peekSequenceValues,
   sequenceFieldsOf,
   syncSequenceCounters,
@@ -479,6 +486,191 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         },
       );
       return c.json({ ok: true, refreshed });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{slug}/reorder",
+      tags: TAGS,
+      summary: "Move a row to a new place in its hand-arranged list",
+      description:
+        "Moves one row so it sits immediately `before` or `after` another in the same list, renumbering only the rows between the two. Exactly one of `before` / `after` is required, and both rows must be in the same list — moving a row between lists is a change to the scope column and belongs in a PATCH. If the list still holds duplicate positions (every collection whose `position` column defaulted to 0 does), it is renumbered into the order it currently reads BEFORE the move, and the count is reported as `repaired`. Requires `update` on the collection — and specifically an UNCONDITIONED one that includes this field: a move renumbers rows the caller never named, so a role whose `update` is limited to some rows, or to a field list that excludes this column, is refused (403) rather than allowed to rewrite other people's ordering or to renumber a subset that then collides with the rows it skipped.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "update")],
+      request: {
+        params: z.object({ slug: z.string() }),
+        body: {
+          content: {
+            "application/json": {
+              schema: z.object({
+                /** The order field being rearranged. Named rather than inferred:
+                 *  a collection may carry more than one arrangement. */
+                field: z.string().min(1),
+                /** The row to move. */
+                id: z.string().min(1),
+                /** Put it immediately before this row. */
+                before: z.string().min(1).optional(),
+                /** Put it immediately after this row. */
+                after: z.string().min(1).optional(),
+              }),
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: "Moved",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.object({
+                  /** Where the row ended up. */
+                  position: z.number().int(),
+                  /** Rows that stepped aside to make room. */
+                  shifted: z.number().int(),
+                  /** Rows renumbered by the tie repair that ran first. */
+                  repaired: z.number().int(),
+                }),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const { field, id, before, after } = c.req.valid("json");
+      // Exactly one anchor. Accepting both would mean picking one silently, and
+      // accepting neither would mean inventing a destination.
+      if ((before === undefined) === (after === undefined)) {
+        throw new AppError("VALIDATION", 'Send exactly one of "before" or "after"');
+      }
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const orderField = requireOrderField(collection, field);
+      // A move renumbers rows the caller never named, so plain `update` on the
+      // collection is not enough — see `assertCanRearrange`.
+      assertCanRearrange(collection, orderField, c.get("permission"));
+      const data = await reorderItem(
+        ctx,
+        collection,
+        auth.tenantId,
+        orderField,
+        {
+          id,
+          anchorId: (before ?? after)!,
+          place: before !== undefined ? "before" : "after",
+        },
+        c.get("permission").whereSql,
+      );
+      await recordActivity(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          userId: auth.userId,
+          tenantId: auth.tenantId ?? null,
+          action: "update",
+          collection: collection.slug,
+          itemId: id,
+          ...requestMeta(c.req.raw),
+          payload: { field, before, after },
+          response: { data },
+          durationMs: elapsedMs(c),
+        },
+      );
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{slug}/order/normalize",
+      tags: TAGS,
+      summary: "Renumber a hand-arranged list into 1…N",
+      description:
+        "Rewrites an order field's positions to 1, 2, 3 … within each list, preserving the order the rows currently read in (position, then primary key). The repair path for a column that predates the field being declared one: every schema template's `position` defaults to 0, so all its rows are tied and the sort over them is whatever the planner returned. Unlike the email and phone normalizers this cannot be paged within a list — breaking a tie means rewriting the whole list — so a single list larger than 10,000 rows is refused rather than silently rewritten. Idempotent. Requires an UNCONDITIONED `update` on the collection that covers the order column — this rewrites every list in it, so a role limited to some rows or some fields is refused (403).",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "update")],
+      request: {
+        params: z.object({ slug: z.string() }),
+        body: {
+          // Every member is optional, so a bodyless POST is a legitimate call
+          // ("normalize everything"). Marking it required would 400 the simplest
+          // form of the request — and a bodyless POST does not even send a
+          // content-type for the validator to match on.
+          required: false,
+          content: {
+            "application/json": {
+              schema: z.object({
+                /** Which order field to renumber. Omit to do all of them. */
+                field: z.string().min(1).optional(),
+              }),
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: "Normalized",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.object({
+                  /** Distinct lists examined across every field touched. */
+                  scopes: z.number().int(),
+                  /** Rows whose position changed. */
+                  renumbered: z.number().int(),
+                  fields: z.array(z.string()),
+                }),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      // Read leniently rather than through `c.req.valid`: with every member
+      // optional a bodyless POST is a legitimate call, and one of those carries
+      // no content-type for the validator to match on. Same shape as the
+      // publish route above. `field` is only ever matched against this
+      // collection's own field list before it reaches any statement.
+      const body = (await c.req.json().catch(() => ({}))) as { field?: unknown };
+      const field = typeof body.field === "string" && body.field ? body.field : undefined;
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const targets = field
+        ? [requireOrderField(collection, field)]
+        : orderFieldsOf(collection.fields);
+      // Same gate as `reorder`, and it matters more here: normalize rewrites
+      // EVERY list in the collection. Checked per field so a caller whose
+      // allow-list covers one order column but not another is told which.
+      for (const f of targets) assertCanRearrange(collection, f, c.get("permission"));
+      let scopes = 0;
+      let renumbered = 0;
+      for (const f of targets) {
+        const r = await normalizeOrderField(ctx, collection, auth.tenantId, f);
+        scopes += r.scopes;
+        renumbered += r.renumbered;
+      }
+      const data = { scopes, renumbered, fields: targets.map((f) => f.name) };
+      await recordActivity(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          userId: auth.userId,
+          tenantId: auth.tenantId ?? null,
+          action: "update",
+          collection: collection.slug,
+          itemId: "__order__",
+          ...requestMeta(c.req.raw),
+          payload: { field: field ?? null },
+          response: { data },
+          durationMs: elapsedMs(c),
+        },
+      );
+      return c.json({ data });
     },
   )
   .openapi(

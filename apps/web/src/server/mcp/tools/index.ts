@@ -14,6 +14,7 @@ import { documentsTools } from "./documents";
 import { geoTools } from "./geo";
 import { emailTools } from "./email";
 import { orderTools } from "./order";
+import { slugTools } from "./slug";
 import { phoneTools } from "./phone";
 import { approvalsTools } from "./approvals";
 import { signaturesTools } from "./signatures";
@@ -76,6 +77,7 @@ export const allTools: McpTool[] = [
   ...documentsTools,
   ...geoTools,
   ...orderTools,
+  ...slugTools,
   ...phoneTools,
   ...emailTools,
   ...approvalsTools,

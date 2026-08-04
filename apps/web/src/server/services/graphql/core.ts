@@ -65,6 +65,7 @@ import {
   sameScope,
 } from "../items/order";
 import { nextSequenceValues, sequenceFieldsOf } from "../items/sequence";
+import { resolveSlugsForWrite, slugFieldsOf } from "../items/slug";
 import { validateAndNormalizeGeo } from "../items/geo-fields";
 import {
   assertInitialStates,
@@ -1137,7 +1138,7 @@ export const createResolver = async (
     delete args.data[camel(f.name)];
   }
   for (const f of collection.fields) {
-    if (f.onCreate || f.sequence) continue; // system-managed, injected below
+    if (f.onCreate || f.sequence || f.slug) continue; // system-managed, injected below
     if (appendedOrder.some((o) => o.name === f.name)) continue;
     const v = args.data[camel(f.name)];
     if (v === undefined) continue;
@@ -1172,6 +1173,32 @@ export const createResolver = async (
       cols.push(name);
       vals.push(value);
       args.data[camel(name)] = value;
+    }
+  }
+  // Slug columns. Repeated here for the same reason the sequence block above is
+  // — this resolver hand-builds its INSERT instead of calling `performCreate` —
+  // and placed AFTER sequence for the same reason REST places it there: a slug
+  // is allowed to fold from a freshly-issued document number.
+  // `slug-surfaces.test.ts` is the gate.
+  //
+  // The resolver keys `args.data` by camelCase while a FieldDef (and therefore
+  // every `slug.from` entry) is snake_case, so the shared resolver is handed a
+  // snake-keyed VIEW of the input and its answer is written back under both
+  // spellings. Passing `args.data` straight in would find `undefined` at every
+  // source column and silently generate nothing — the exact snake-vs-camel
+  // class this file has produced before.
+  const slugFields = slugFieldsOf(collection.fields);
+  if (slugFields.length > 0) {
+    const snakeView: Record<string, unknown> = {};
+    for (const f of collection.fields) snakeView[f.name] = args.data[camel(f.name)];
+    const outcomes = await resolveSlugsForWrite(ctx, collection, snakeView);
+    for (const o of outcomes) {
+      if (o.value === null) continue;
+      cols.push(o.field);
+      vals.push(o.value);
+      // Feed the mutation's own response the value that was stored, so a client
+      // that just created a post can link to it without re-reading.
+      args.data[camel(o.field)] = o.value;
     }
   }
   const colSql = sql.join(cols.map((n) => sql.identifier(n)), sql`, `);
@@ -1366,6 +1393,25 @@ export const updateResolver = async (
   await gqlAutoGeocode(ctx, collection, args.data, existing[0] as Record<string, unknown>);
   // Deferred until here for the row's currency — see canonicalizeMoneyForGql.
   canonicalizeMoneyForGql(args.data, collection, existing[0] as Record<string, unknown>);
+  // Slug columns — same rule as the REST update path, repeated because this
+  // resolver hand-builds its SET: only the slug fields this mutation NAMES are
+  // resolved, so a mutation that edits the title alone never moves a published
+  // URL. Sources come off the stored row merged with the patch, and the answer
+  // is written back into `args.data` so the loop below picks it up like any
+  // other value. Snake-keyed view for the same camelCase reason as create.
+  const updSlugFields = slugFieldsOf(collection.fields);
+  if (updSlugFields.length > 0 && updSlugFields.some((f) => args.data[camel(f.name)] !== undefined)) {
+    const merged: Record<string, unknown> = { ...(existing[0] as Record<string, unknown>) };
+    for (const f of collection.fields) {
+      const v = args.data[camel(f.name)];
+      if (v !== undefined) merged[f.name] = v;
+    }
+    const outcomes = await resolveSlugsForWrite(ctx, collection, merged, { excludeId: args.id });
+    for (const o of outcomes) {
+      if (args.data[camel(o.field)] === undefined) continue;
+      args.data[camel(o.field)] = o.value;
+    }
+  }
   for (const f of collection.fields) {
     if (f.onUpdate) continue; // system-managed, injected below
     const v = args.data[camel(f.name)];

@@ -14,6 +14,7 @@
     "./phone": "./src/phone.ts",
     "./range": "./src/range.ts",
     "./sequence": "./src/sequence.ts",
+    "./slug": "./src/slug.ts",
     "./transitions": "./src/transitions.ts",
     "./pg": "./src/pg/index.ts",
     "./pg/schema": "./src/pg/schema.ts",

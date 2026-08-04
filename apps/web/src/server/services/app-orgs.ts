@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
+import { slugify } from "@backlex/db/slug";
 import {
   AppError,
   isOrgRole,
@@ -126,19 +127,15 @@ export interface OrgInviteRow {
 // Slugs
 // ---------------------------------------------------------------------------
 
-/** Lowercase, ASCII-ish, dash-separated. Unicode letters are stripped rather
- *  than transliterated — the slug is a URL handle, and the display `name`
- *  keeps the original text. An empty result falls back to "org". */
-export const slugifyOrgName = (name: string): string => {
-  const base = name
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48);
-  return base || "org";
-};
+/** Lowercase, dash-separated URL handle, capped at 48 characters.
+ *
+ *  The fold is `@backlex/db/slug` — the same one user-collection slug fields
+ *  use, so an organization and a post named the same thing get the same handle.
+ *  Latin letters fold to ASCII (`Ürün`→`urun`); scripts with no single
+ *  romanization are refused rather than guessed, and the display `name` keeps
+ *  the original text either way. An unfoldable name falls back to "org", which
+ *  `uniqueOrgSlug` then suffixes. */
+export const slugifyOrgName = (name: string): string => slugify(name, 48) || "org";
 
 /** First free slug in this workspace: `base`, then `base-2`, `base-3`, …
  *  Bounded so a pathological collision run can't spin. */

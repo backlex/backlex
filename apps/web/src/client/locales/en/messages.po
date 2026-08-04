@@ -2468,8 +2468,8 @@ msgid "auto-creates c_<slug> table"
 msgstr "auto-creates c_<slug> table"
 
 #: src/client/admin/item-form.tsx
-msgid "Auto-derived from title until edited."
-msgstr "Auto-derived from title until edited."
+#~ msgid "Auto-derived from title until edited."
+#~ msgstr "Auto-derived from title until edited."
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Auto-detected from <0>env</0> bindings."
@@ -8419,6 +8419,10 @@ msgstr "Leave this on unless the two dates are genuinely independent. An empty e
 msgid "Leave to user"
 msgstr "Leave to user"
 
+#: src/client/admin/field-slug-input.tsx
+msgid "Left empty, this is built from"
+msgstr "Left empty, this is built from"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "legacy production"
 msgstr "legacy production"
@@ -9282,6 +9286,10 @@ msgstr "Mutations"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "My theme"
 msgstr "My theme"
+
+#: src/client/admin/field-slug-input.tsx
+msgid "my-post-slug"
+msgstr "my-post-slug"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/add-field.tsx
@@ -13892,6 +13900,7 @@ msgstr "Saved {0} redirect URL{1}."
 
 #: src/client/admin/field-email-input.tsx
 #: src/client/admin/field-phone-input.tsx
+#: src/client/admin/field-slug-input.tsx
 msgid "Saved as"
 msgstr "Saved as"
 
@@ -16412,6 +16421,10 @@ msgstr "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The co
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "This runs on the write path — a slow or failing hook affects live writes."
 msgstr "This runs on the write path — a slow or failing hook affects live writes."
+
+#: src/client/admin/field-slug-input.tsx
+msgid "This text has no Latin letters to build a URL from — type a slug in the Latin alphabet."
+msgstr "This text has no Latin letters to build a URL from — type a slug in the Latin alphabet."
 
 #: src/client/components/boot-screen.tsx
 msgid "This usually clears on its own in a moment. We'll keep trying automatically."

@@ -868,8 +868,16 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
     return null;
   }, [schema]);
   // The `/slug` sub-line only when the collection really has a slug field —
-  // falling back to the id just repeated the UUID twice.
-  const hasSlugField = (schema?.fields ?? []).some((f) => (f as { name?: string }).name === "slug");
+  // falling back to the id just repeated the UUID twice. The row is read as
+  // `r.slug`, so this stays keyed on the column NAME; what it additionally
+  // requires now is that the column actually be a slug, since a `text` field
+  // somebody happened to call "slug" is not a URL.
+  const hasSlugField = (schema?.fields ?? []).some(
+    (f) =>
+      (f as { name?: string }).name === "slug" &&
+      ((f as { slug?: unknown }).slug !== undefined ||
+        (f as { interface?: string }).interface === "slug"),
+  );
 
   // Configurable columns: when the user (or the workspace default) has saved a
   // column list for this collection, render those user fields (formatted per

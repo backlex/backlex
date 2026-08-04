@@ -2468,8 +2468,8 @@ msgid "auto-creates c_<slug> table"
 msgstr "c_<slug> tablosunu otomatik oluşturur"
 
 #: src/client/admin/item-form.tsx
-msgid "Auto-derived from title until edited."
-msgstr "Düzenlenene kadar başlıktan otomatik türetilir."
+#~ msgid "Auto-derived from title until edited."
+#~ msgstr "Düzenlenene kadar başlıktan otomatik türetilir."
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "Auto-detected from <0>env</0> bindings."
@@ -8419,6 +8419,10 @@ msgstr "İki tarih gerçekten bağımsız olmadıkça açık bırakın. Boş bir
 msgid "Leave to user"
 msgstr "Kullanıcıya bırak"
 
+#: src/client/admin/field-slug-input.tsx
+msgid "Left empty, this is built from"
+msgstr "Boş bırakılırsa şuradan üretilir:"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "legacy production"
 msgstr "eski üretim"
@@ -9282,6 +9286,10 @@ msgstr "Mutasyonlar"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "My theme"
 msgstr "Temam"
+
+#: src/client/admin/field-slug-input.tsx
+msgid "my-post-slug"
+msgstr "yazi-adresim"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/add-field.tsx
@@ -13892,6 +13900,7 @@ msgstr "{0} yönlendirme URL'si kaydedildi."
 
 #: src/client/admin/field-email-input.tsx
 #: src/client/admin/field-phone-input.tsx
+#: src/client/admin/field-slug-input.tsx
 msgid "Saved as"
 msgstr "Şöyle kaydedilecek"
 
@@ -16412,6 +16421,10 @@ msgstr "<1>c_{1}</1> üzerinde <0>ALTER TABLE … DROP COLUMN {0}</0> çalışt�
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "This runs on the write path — a slow or failing hook affects live writes."
 msgstr "Bu yazma yolunda çalışır — yavaş veya hatalı bir hook canlı yazmaları etkiler."
+
+#: src/client/admin/field-slug-input.tsx
+msgid "This text has no Latin letters to build a URL from — type a slug in the Latin alphabet."
+msgstr "Bu metinde URL üretilecek Latin harfi yok — Latin alfabesiyle bir adres yazın."
 
 #: src/client/components/boot-screen.tsx
 msgid "This usually clears on its own in a moment. We'll keep trying automatically."

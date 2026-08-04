@@ -20,7 +20,9 @@ import { GeoInput } from "./field-geo-input";
 import { MoneyInput } from "./field-money-input";
 import { EmailInput } from "./field-email-input";
 import { PhoneInput } from "./field-phone-input";
+import { SlugInput } from "./field-slug-input";
 import { useEnabledExtensions, useMe, useSettings } from "./queries";
+import { slugify } from "@backlex/db/slug";
 import { allowedMoves } from "@backlex/db/transitions";
 import { ExtensionFrame } from "./extension-frame";
 import { getInterface } from "./interfaces";
@@ -348,18 +350,37 @@ export function useItemForm({
   const updateField = (name: string, value: unknown) => {
     setDraft((d) => {
       const next = { ...d, [name]: value };
-      // Auto-derive slug from title until the user touches the slug field.
-      if (
-        name === "title" &&
-        !touched.slug &&
-        fields.some((f) => f.name === "slug" && f.type === "text") &&
-        typeof value === "string"
-      ) {
-        next.slug = value
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "")
-          .slice(0, 60);
+      // Auto-derive every slug the SCHEMA says is folded from the field just
+      // edited, until the operator touches that slug themselves.
+      //
+      // Driven by `slug.from` rather than by guessing at names, which is what
+      // this used to do: it fired only for a field literally called `slug`
+      // beside a sibling literally called `title`, and thirteen of the
+      // twenty-four slug collections in the template catalog name that sibling
+      // `name` instead — so for every category, brand, tag, vendor, author and
+      // account the auto-fill silently never ran and somebody hand-typed a URL.
+      //
+      // `slugify` is the same function the server stores with, so the preview
+      // and the saved value cannot disagree. This is a convenience only: a slug
+      // left empty is folded server-side on the way in regardless of what any
+      // client did or did not do.
+      for (const f of fields) {
+        const spec = (f as { slug?: { from?: string[]; maxLength?: number } }).slug;
+        if (!spec?.from?.includes(name)) continue;
+        if (touched[f.name]) continue;
+        // Only ever fill a slug the row does not already HAVE.
+        //
+        // Anchored on `initial` — the SAVED value — not on the draft, the same
+        // anchor a status dropdown uses. Without this, retitling an existing
+        // post rewrote the slug box in front of the operator while the server
+        // (correctly) kept the published URL, so the box promised a move that
+        // was never going to happen. A slug that exists is a decision already
+        // made; re-deriving it is what `redirects` collections exist to undo.
+        const saved = initial
+          ? (initial as unknown as Record<string, unknown>)[f.name]
+          : undefined;
+        if (typeof saved === "string" && saved !== "") continue;
+        next[f.name] = slugify(value, spec.maxLength);
       }
       return next;
     });
@@ -426,6 +447,21 @@ export function useItemForm({
       // 0 — tied with everything else, which is exactly the state this feature
       // exists to end. Moves go through `reorder`.
       if ((f as { order?: unknown }).order) continue;
+      // An auto-derived slug the operator never touched is a PREVIEW, not a
+      // decision, and must not be sent as one.
+      //
+      // The server distinguishes a slug the caller STATED (kept verbatim; a
+      // collision is a 409 naming their own choice) from one it DERIVED (a
+      // blank being filled, so a collision takes the next free suffix). The box
+      // above shows what the server is going to produce — but submitting that
+      // preview turns it into a statement, and then the second category called
+      // "Kadın Giyim" is refused with a 409 about a value nobody typed. Which
+      // is precisely the case the suffix exists for.
+      //
+      // So an untouched slug is omitted and the server derives it. Found on the
+      // real screen, not by the tests: every other client (SDK, GraphQL, CSV)
+      // sends nothing here, so only the admin could produce this.
+      if ((f as { slug?: unknown }).slug && !touched[f.name]) continue;
       const raw = draft[f.name];
       if (raw === undefined) continue;
       if (f.localized) {
@@ -527,7 +563,7 @@ const peerHandle = (p: { name: string | null; id: string }): string => {
  */
 export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFieldsCollab }) {
   const { t } = useLingui();
-  const { fields, draft, errors, touched } = form;
+  const { fields, draft, errors } = form;
   // Roles of the signed-in operator, so a move gated on a role they do not hold
   // is shown disabled here rather than accepted and then 403'd on save.
   const me = useMe();
@@ -1723,19 +1759,22 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
       );
     }
 
-    if (iface === "slug") {
+    // A slug field claims its branch on the SPEC as well as on the interface —
+    // a `text` field otherwise falls through to the free-text fallback, and the
+    // fallback is where the old name-based auto-derive used to live.
+    const slugSpec = (f as { slug?: { from?: string[]; maxLength?: number } }).slug;
+    if (iface === "slug" || slugSpec) {
+      const sourceName = slugSpec?.from?.find((s) => fields.some((x) => x.name === s));
+      const sourceDef = sourceName ? fields.find((x) => x.name === sourceName) : undefined;
       return (
         <div key={f.name} className="flex flex-col gap-1.5">
           {label}
-          <Input
-            className="font-mono"
-            value={String(val ?? "")}
-            placeholder="my-post-slug"
-            aria-invalid={!!err || undefined}
-            onChange={(e) => {
-              const v = e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
-              setField(v);
-            }}
+          <SlugInput
+            value={val}
+            onChange={(v) => setField(v)}
+            maxLength={slugSpec?.maxLength}
+            fromLabel={sourceDef ? (sourceDef.label ?? sourceDef.name) : null}
+            invalid={!!err}
           />
           {errBlock}
         </div>
@@ -1958,30 +1997,23 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
     }
 
     // text / autocomplete / input (free text fallback)
-    const autoSlug = f.name === "slug" && !touched.slug && fields.some((x) => x.name === "title");
+    //
+    // A slug no longer reaches here: it is claimed by its own branch above, on
+    // the `slug` spec rather than on the field being NAMED "slug". The
+    // name-sniffing auto-derive that used to live on this line went with it —
+    // it fired only next to a sibling called `title`, which thirteen of the
+    // twenty-four slug collections in the catalog do not have.
     return (
       <div key={f.name} className="flex flex-col gap-1.5">
         {label}
         <Input
-          className={f.name === "slug" ? "font-mono" : undefined}
           value={String(val ?? "")}
           autoFocus={f.name === "title"}
           aria-invalid={!!err || undefined}
           onChange={(e) => setField(e.target.value)}
           autoComplete="off"
         />
-        {err ? (
-          <div className="flex items-center gap-1 text-[11.5px] text-destructive">
-            <I.AlertTriangle size={11} />
-            {err}
-          </div>
-        ) : (
-          autoSlug && (
-            <div className="text-[11.5px] text-muted-foreground">
-              <Trans>Auto-derived from title until edited.</Trans>
-            </div>
-          )
-        )}
+        {errBlock}
       </div>
     );
   };

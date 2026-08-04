@@ -31,6 +31,7 @@ const ITEMS_HELP = `backlex items <cmd> <slug> [args]
   transitions <slug> <id>
   reorder <slug> <id> --field <name> (--before <id> | --after <id>)
   normalize-order <slug> [--field <name>]
+  backfill-slugs <slug> [--field <name>] [--apply]
   export <slug>   [--format json|csv] [--out <file>]
   import <slug>   <file|@file|->  [--format json|csv]
   search <slug>   -q <text> [--mode fts|vector|hybrid] [--limit N] [--locale xx]
@@ -218,6 +219,29 @@ export const runItems = async (args: string[]): Promise<void> => {
               res.fields.join(", ") || "no order fields"
             }\n`,
           );
+        }
+        return;
+      }
+      case "backfill-slugs": {
+        const slug = requireSlug(rest, "items backfill-slugs <slug> [--field <name>] [--apply]");
+        // Dry run unless --apply is passed: this writes a public URL onto rows
+        // the caller did not name, so the report comes first.
+        const apply = rest.includes("--apply");
+        const field = flag(rest, "--field") ?? undefined;
+        const res = await client
+          .from(slug)
+          .backfillSlugs({ ...(field ? { field } : {}), ...(apply ? { apply: true } : {}) });
+        if (json) printJson(res);
+        else {
+          for (const f of res.fields) {
+            const unfoldable = f.unfoldable ? `, ${f.unfoldable} unfoldable` : "";
+            process.stdout.write(
+              `${f.field}: ${res.dryRun ? "would fill" : "filled"} ${f.filled} of ${f.examined} empty${unfoldable}\n`,
+            );
+            for (const e of f.entries) process.stdout.write(`  ${e.id} → ${e.slug}\n`);
+          }
+          if (res.fields.length === 0) process.stdout.write("no slug fields\n");
+          else if (res.dryRun) process.stdout.write("dry run — re-run with --apply to write\n");
         }
         return;
       }

@@ -131,7 +131,14 @@ export const getAgent = async (
 /** Turn a display name into a mention handle: lowercased, whitespace as
  *  dashes. Unicode letters survive on purpose — a Turkish-named agent gets a
  *  Turkish handle, and mentions are resolved against the room's known handles
- *  rather than a strict charset. Mirrors the migration's backfill. */
+ *  rather than a strict charset. Mirrors the migration's backfill.
+ *
+ *  **Deliberately NOT `@backlex/db/slug`**, which the four other slugifiers in
+ *  this repo were folded into. A mention handle is typed by a person after `@`
+ *  in a chat box, not put in a URL, so the ASCII fold that makes a slug
+ *  addressable would make this one unrecognisable to the people using it. The
+ *  divergence is the point; a test pins both so it stays intentional rather
+ *  than becoming drift. */
 export const slugifyHandle = (name: string): string =>
   name.trim().toLowerCase().replace(/\s+/g, "-").replace(/^-+|-+$/g, "");
 

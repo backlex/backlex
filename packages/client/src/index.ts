@@ -368,6 +368,13 @@ export interface CollectionClient<T extends Record<string, unknown>> {
    *  that predates being declared an order field. Idempotent; omit `field` to do
    *  all of them. Requires `update`. */
   normalizeOrder(field?: string): Promise<NormalizeOrderReport>;
+  /** Fold a URL slug out of each row's source column for the rows whose slug
+   *  field is empty — the repair path for a column that predates the field
+   *  being declared a slug, which is every slug in the template catalog. A DRY
+   *  RUN unless `apply` is true. Only ever FILLS an empty slug, never revises
+   *  one, because the one already there may be a published URL — so re-running
+   *  is safe. Requires `update` covering the slug column. */
+  backfillSlugs(opts?: { field?: string; apply?: boolean }): Promise<SlugBackfillReport>;
   /** Geocode the rows that have an address (`geo.geocodeFrom`) and no point.
    *  Bounded per call — loop while `remaining > 0`. Only ever FILLS a missing
    *  point, never revises one, so re-running is safe and a hand-corrected pin
@@ -525,6 +532,27 @@ export interface NormalizeOrderReport {
   renumbered: number;
   /** The order fields that were normalized. */
   fields: string[];
+}
+
+/** What {@link CollectionClient.backfillSlugs} did to one slug field. */
+export interface SlugBackfillField {
+  field: string;
+  /** Rows found with an empty slug, within the caller's scope. */
+  examined: number;
+  /** Rows given one. */
+  filled: number;
+  /** Rows whose source text had no Latin letters to fold — reported, never
+   *  given an invented token. */
+  unfoldable: number;
+  /** Sample of what was (or would be) written, capped at fifty. */
+  entries: Array<{ id: string; slug: string }>;
+}
+
+/** What {@link CollectionClient.backfillSlugs} did. */
+export interface SlugBackfillReport {
+  /** True when nothing was written — the default. */
+  dryRun: boolean;
+  fields: SlugBackfillField[];
 }
 
 /** One move offered by {@link CollectionClient.transitions}. */
@@ -3533,6 +3561,23 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
           "POST",
           `/api/items/${slug}/order/normalize`,
           field === undefined ? {} : { field },
+        ).then((r) => r.data),
+      /**
+       * Fill in slugs for the rows of this collection that have none.
+       *
+       * A **dry run by default** — pass `apply: true` to write. Never revises a
+       * slug that is already set, because that one may be a published URL, so
+       * it is safe to re-run and safe to run after someone has hand-corrected
+       * one. Bounded per call at a thousand rows per field; re-run while
+       * `filled` is non-zero.
+       */
+      backfillSlugs: (
+        opts: { field?: string; apply?: boolean } = {},
+      ): Promise<SlugBackfillReport> =>
+        request<{ data: SlugBackfillReport }>(
+          "POST",
+          `/api/items/${slug}/slugs/backfill`,
+          opts,
         ).then((r) => r.data),
       /**
        * Geocode the rows of this collection that have an address and no point.

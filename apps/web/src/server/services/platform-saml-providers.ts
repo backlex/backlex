@@ -15,6 +15,7 @@ import type { PgDb } from "@backlex/db/pg";
 import * as pg from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import * as sqlite from "@backlex/db/sqlite";
+import { slugify as slugifySlug } from "@backlex/db/slug";
 import { eq } from "drizzle-orm";
 import type { Env } from "../env";
 import { buildSamlAdapter } from "../lib/auth-select";
@@ -73,14 +74,10 @@ export interface PlatformSamlProviderInput {
 
 export type PlatformSamlProviderPatch = Partial<PlatformSamlProviderInput>;
 
-const slugify = (s: string): string =>
-  s
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
+/** Provider handle, capped at 60 characters. The fold is `@backlex/db/slug` —
+ *  the one shared implementation, so this no longer drifts from the four other
+ *  copies that used to exist. */
+const slugify = (s: string): string => slugifySlug(s, 60);
 
 const generateSlug = (name: string): string => {
   const s = slugify(name);

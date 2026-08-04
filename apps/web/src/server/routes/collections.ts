@@ -345,6 +345,26 @@ const FieldSchema = z
       })
       .optional(),
     /**
+     * Slug configuration — which column an empty slug is folded from, and how
+     * long the result may be.
+     *
+     * `from` entries are checked by `validateSlugSpec` against the collection's
+     * own fields (and against being text at all), so naming a column that does
+     * not exist fails at save time rather than presenting later as a slug that
+     * is simply never generated — which looks exactly like one an operator
+     * forgot to type. The `max(8)` is a sanity bound: `from` is a fallback
+     * chain for a genuinely optional readable column, not a list to combine.
+     */
+    slug: z
+      .object({
+        from: z
+          .array(z.string().regex(/^[a-z][a-z0-9_]*$/, "snake_case"))
+          .max(8)
+          .optional(),
+        maxLength: z.number().int().optional(),
+      })
+      .optional(),
+    /**
      * Phone configuration — which country a national-form number is read as,
      * and which countries are allowed at all.
      *

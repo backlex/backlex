@@ -10,6 +10,7 @@ import {
   validateMoneySpec,
 } from "./money";
 import { type OrderSpec, validateOrderSpec } from "./order";
+import { type SlugSpec, validateSlugSpec } from "./slug";
 import { type RangeSpec, validateRangeSpec } from "./range";
 import {
   assertPhoneShaped,
@@ -594,6 +595,20 @@ export interface FieldDef {
    * caller having to renumber the rows around it.
    */
   order?: OrderSpec;
+  /**
+   * Declare that this `text` field is a URL slug — the handle a row is
+   * addressed by. See {@link SlugSpec}.
+   *
+   * Nothing about the storage changes; the column stays ordinary text. What the
+   * declaration buys is that the server maintains it: a write that omits the
+   * field folds one out of the row's own title, a value that IS supplied is
+   * folded to the one canonical form rather than refused by a regex, and a
+   * collision takes the next free suffix instead of failing at the database.
+   *
+   * Unlike {@link sequence}, the value stays writable: a slug is a decision an
+   * operator is entitled to make, and the server only fills in the blank.
+   */
+  slug?: SlugSpec;
   /**
    * Declare that this `timestamp` field is the START of a period, and name the
    * column holding its end. See {@link RangeSpec}.
@@ -1338,6 +1353,39 @@ export const validateFields = (fields: FieldDef[]): void => {
       const fieldTypes: Record<string, string> = {};
       for (const o of fields) if (o.name !== f.name) fieldTypes[o.name] = o.type;
       validateOrderSpec(f.order, { fieldName: f.name, fieldTypes });
+    }
+    if (f.slug) {
+      // A slug is an ordinary text column with a maintained value, so most text
+      // flags still apply — `unique` above all, which every one of the
+      // twenty-four template slugs carries and which is the constraint that
+      // actually arbitrates a collision. What is out:
+      for (const [flag, on] of [
+        // All three would own the column the slug resolver writes.
+        ["computed", !!f.computed],
+        ["rollup", !!f.rollup],
+        ["sequence", !!f.sequence],
+        // A per-locale slug is a real thing to want, and this deliberately is
+        // not it. A localized value lives in the sidecar, one row per locale,
+        // while `unique` constrains the BASE column — so per-locale slugs would
+        // be deduplicated against the wrong table and constrained by nothing.
+        // Refused rather than half-supported; see docs/slugs.md.
+        ["localized", !!f.localized],
+      ] as const) {
+        if (on) {
+          throw new Error(`Field "${f.name}": "${flag}" is not allowed on a slug field`);
+        }
+      }
+      if (f.type !== "text") {
+        throw new Error(`Field "${f.name}": a slug is a text field (got "${f.type}")`);
+      }
+      const fieldTypes: Record<string, string> = {};
+      const privateFields = new Set<string>();
+      for (const o of fields) {
+        if (o.name === f.name) continue;
+        fieldTypes[o.name] = o.type;
+        if (o.private) privateFields.add(o.name);
+      }
+      validateSlugSpec(f.slug, { fieldName: f.name, fieldTypes, privateFields });
     }
     if (f.range) {
       // A period is two ordinary timestamp columns with a declared relationship,

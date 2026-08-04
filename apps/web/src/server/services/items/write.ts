@@ -40,6 +40,7 @@ import {
   sameScope,
 } from "./order";
 import { nextSequenceValues, sequenceFieldsOf, type SequencePool } from "./sequence";
+import { applySlugs, resolveSlugsForWrite, slugFieldsOf } from "./slug";
 import { assertInitialStates, assertTransitions, transitionEventName } from "./transitions";
 import {
   echoLocalized,
@@ -374,6 +375,19 @@ export const performCreate = async (
       data[name] = value;
     }
   }
+  // Slug columns — the URL this row is addressed by. Resolved HERE, after the
+  // sync hooks have had their say and after the sequence above, for two
+  // reasons: a hook that fills in the title must be able to feed the fold, and
+  // a slug is allowed to fold from a freshly-issued document number.
+  //
+  // Written onto `data` rather than pushed straight at the INSERT so the 201
+  // body, the realtime event, the activity row and the FTS/embed text all say
+  // what the column will hold — the same rule geo, money, phone and email each
+  // had to learn. The generic column loop below then picks it up like any other
+  // value, so nothing here has to know how a text column is serialized.
+  if (slugFieldsOf(collection.fields).length > 0) {
+    applySlugs(data, await resolveSlugsForWrite(ctx, collection, data, { db: env.db }));
+  }
   // Order columns — where this row lands in the list it belongs to. A caller
   // that STATES a position keeps it (a CSV import, a restore and a template's
   // sample rows all carry their own arrangement, and overruling them would
@@ -697,6 +711,33 @@ export const performUpdate = async (
       warnings: warnings.length ? warnings : undefined,
       sideEffects: sideFx,
     };
+  }
+
+  // Slug columns — resolved only for the fields this patch actually NAMES.
+  //
+  // That condition is the whole update-side design. A slug is a published URL,
+  // and re-folding it because somebody fixed a typo in the headline would break
+  // every link to the row silently — which is precisely the damage the
+  // `redirects` collections in the blog and ecommerce templates exist to repair
+  // by hand. So a patch that does not mention the slug leaves it exactly as it
+  // was, and one that CLEARS it re-derives from what the title now says, which
+  // is how "regenerate this slug" stays a discoverable action with no new API.
+  //
+  // Sources are read off the merged row, not the patch: clearing the slug
+  // without restating the title still has to fold from the title the row holds.
+  // `excludeId` keeps the row from seeing its own current slug as taken and
+  // suffixing itself a little further on every save.
+  //
+  // Placed after the staged-edits branch above returns, so a staged save keeps
+  // the operator's raw intent and does not claim a slug for a row that may
+  // never be published — the value resolves on the live write that applies it.
+  const slugFields = slugFieldsOf(collection.fields);
+  if (slugFields.length > 0 && slugFields.some((f) => patch[f.name] !== undefined)) {
+    const merged: Record<string, unknown> = { ...beforeRow, ...patch };
+    const outcomes = (
+      await resolveSlugsForWrite(ctx, collection, merged, { excludeId: id, db: env.db })
+    ).filter((o) => patch[o.field] !== undefined);
+    applySlugs(patch, outcomes);
   }
 
   const now = nowFor(ctx.dialect);

@@ -175,7 +175,6 @@ export type SampleRow = Record<string, SampleValue>;
 /* ───────────────────────────── field helpers ───────────────────────────── */
 
 const URL_RE = "^https?://.+";
-const SLUG_RE = "^[a-z0-9]+(?:-[a-z0-9]+)*$";
 
 /** Semantic badge colors for status/priority dropdowns. */
 const C = {
@@ -258,7 +257,16 @@ const moneyIn = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ na
  */
 const phone = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "phone", interface: "phone", ...extra });
 const rating = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "integer", interface: "rating", validation: { min: 1, max: 5 }, ...extra });
-const slugField = (name = "slug", extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "text", interface: "slug", unique: true, validation: { regex: SLUG_RE }, ...extra });
+/**
+ * A URL slug folded from `from` — the collection's own title or name column.
+ *
+ * There is deliberately NO `validation.regex` here any more. Body validation
+ * runs BEFORE the slug resolver, so a regex on this column would reject
+ * `My First Post!` on the way in and the fold that turns it into `my-first-post`
+ * would never get to run — which is the whole feature. The `slug` spec is the
+ * shape's single source of truth now; see `@backlex/db/slug`.
+ */
+const slugField = (from: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name: "slug", type: "text", interface: "slug", unique: true, slug: { from: [from] }, ...extra });
 const computedNum = (name: string, formula: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "number", computed: { formula }, ...extra });
 /**
  * A generated column that is MONEY, denominated by the row's own `currency`.
@@ -501,7 +509,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "authors", group: "People", singular: "Author", plural: "Authors", defaultSort: "name",
         fields: stacked(
           sec("Profile", [
-            ...half(text("name", { required: true }), slugField()),
+            ...half(text("name", { required: true }), slugField("name")),
             notes("bio"),
             image("avatar"),
           ]),
@@ -518,7 +526,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       {
         slug: "categories", group: "Taxonomy", singular: "Category", plural: "Categories", defaultSort: "name",
         fields: [
-          ...half(text("name", { required: true }), slugField()),
+          ...half(text("name", { required: true }), slugField("name")),
           notes("description"),
           ...half(parent("categories"), text("color", { interface: "color" })),
         ],
@@ -530,7 +538,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       {
         slug: "tags", group: "Taxonomy", singular: "Tag", plural: "Tags", defaultSort: "name",
         fields: [
-          ...half(text("name", { required: true }), slugField()),
+          ...half(text("name", { required: true }), slugField("name")),
           notes("description"),
           ...half(
             text("color", { interface: "color", label: "Accent color" }),
@@ -547,7 +555,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         note: "Email lists a post can be sent to.",
         fields: stacked(
           sec("Newsletter", [
-            ...half(text("name", { required: true }), slugField()),
+            ...half(text("name", { required: true }), slugField("name")),
             notes("description"),
             ...half(
               select("status", [ch("active", C.green), ch("archived", C.gray)], { default: "active" }),
@@ -594,7 +602,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         fields: tabbed(
           sec("Content", [
             text("title", { required: true, vectorize: true, searchable: true }),
-            slugField(),
+            slugField("title"),
             { name: "excerpt", type: "longtext", interface: "textarea", vectorize: true, searchable: true, description: "Shown on index pages and in the newsletter preview." },
             { name: "body", type: "longtext", interface: "richtext", vectorize: true, searchable: true },
             divider("cover", "Featured image"),
@@ -648,7 +656,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "pages", group: "Content", singular: "Page", plural: "Pages", versioned: true, fts: true, defaultSort: "title",
         fields: stacked(
           sec("Content", [
-            ...half(text("title", { required: true, searchable: true }), slugField()),
+            ...half(text("title", { required: true, searchable: true }), slugField("title")),
             { name: "body", type: "longtext", interface: "richtext", searchable: true },
           ]),
           sec("SEO", [
@@ -756,14 +764,14 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "brands", group: "Catalog", singular: "Brand", plural: "Brands", defaultSort: "name",
-        fields: [...half(text("name", { required: true }), slugField()), ...half(image("logo"), url("website"))],
+        fields: [...half(text("name", { required: true }), slugField("name")), ...half(image("logo"), url("website"))],
         samples: [{ name: "Northwind", slug: "northwind" }, { name: "Acme", slug: "acme" }],
       },
       {
         // Hierarchical navigation tree (Saleor / BigCommerce category model).
         slug: "categories", group: "Catalog", singular: "Category", plural: "Categories", defaultSort: "position",
         fields: [
-          ...half(text("name", { required: true }), slugField()),
+          ...half(text("name", { required: true }), slugField("name")),
           notes("description"),
           ...half(parent("categories"), image("image")),
           ...half(position("parent"), bool("visible", { default: true, label: "Visible" })),
@@ -778,7 +786,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "collections", group: "Catalog", singular: "Collection", plural: "Collections", defaultSort: "position",
         fields: stacked(
           sec("Collection", [
-            ...half(text("title", { required: true }), slugField()),
+            ...half(text("title", { required: true }), slugField("title")),
             notes("description"),
             image("image"),
           ]),
@@ -798,7 +806,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "pages", group: "Storefront", singular: "Page", plural: "Pages", versioned: true, fts: true, defaultSort: "title",
         fields: stacked(
           sec("Content", [
-            ...half(text("title", { required: true, searchable: true }), slugField()),
+            ...half(text("title", { required: true, searchable: true }), slugField("title")),
             { name: "body", type: "longtext", interface: "richtext", searchable: true },
           ]),
           sec("SEO", [
@@ -936,7 +944,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "products", group: "Catalog", singular: "Product", plural: "Products", versioned: true, vectorize: true, fts: true, defaultSort: "name",
         fields: tabbed(
           sec("Basics", [
-            ...half(text("name", { required: true, vectorize: true, searchable: true }), slugField()),
+            ...half(text("name", { required: true, vectorize: true, searchable: true }), slugField("name")),
             { name: "description", type: "longtext", interface: "richtext", vectorize: true, searchable: true },
             ...half(
               select("status", [ch("draft", C.gray), ch("active", C.green), ch("archived", C.slate)], { default: "active" }),
@@ -1420,7 +1428,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       {
         slug: "accounts", group: "Accounts", singular: "Account", plural: "Accounts", defaultSort: "name",
         fields: [
-          ...half(text("name", { required: true }), slugField()),
+          ...half(text("name", { required: true }), slugField("name")),
           ...half(
             email("billing_email", { label: "Billing email" }),
             select("status", [ch("active", C.green), ch("trialing", C.amber), ch("suspended", C.red)], { default: "trialing" }),
@@ -2411,7 +2419,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "kb_articles", group: "Knowledge base", singular: "Article", plural: "Articles", versioned: true, vectorize: true, fts: true, defaultSort: "title",
         fields: stacked(
           sec("Article", [
-            ...half(text("title", { required: true, vectorize: true, searchable: true }), slugField()),
+            ...half(text("title", { required: true, vectorize: true, searchable: true }), slugField("title")),
             { name: "body", type: "longtext", interface: "richtext", vectorize: true, searchable: true },
           ]),
           sec("Placement", [
@@ -3398,7 +3406,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "events", group: "Events", singular: "Event", plural: "Events", versioned: true, vectorize: true, fts: true, defaultSort: "-start_at",
         fields: tabbed(
           sec("Event", [
-            ...half(text("title", { required: true, vectorize: true, searchable: true }), slugField()),
+            ...half(text("title", { required: true, vectorize: true, searchable: true }), slugField("title")),
             { name: "description", type: "longtext", interface: "richtext", vectorize: true, searchable: true },
             ...half(rel("organizer", "organizers"), rel("venue", "venues")),
             ...half(
@@ -3965,7 +3973,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "properties", group: "Listings", singular: "Property", plural: "Properties", versioned: true, vectorize: true, fts: true, defaultSort: "-created_at",
         fields: tabbed(
           sec("Listing", [
-            ...half(text("title", { required: true, vectorize: true, searchable: true }), slugField()),
+            ...half(text("title", { required: true, vectorize: true, searchable: true }), slugField("title")),
             text("mls_number", { unique: true, label: "MLS #" }),
             { name: "description", type: "longtext", interface: "richtext", vectorize: true, searchable: true },
             ...half(
@@ -4494,7 +4502,7 @@ export const TEMPLATES: SchemaTemplate[] = [
     collections: [
       {
         slug: "categories", group: "Curriculum", singular: "Category", plural: "Categories", defaultSort: "name",
-        fields: [...half(text("name", { required: true }), slugField()), parent("categories")],
+        fields: [...half(text("name", { required: true }), slugField("name")), parent("categories")],
         samples: [{ name: "Programming", slug: "programming" }, { name: "Design", slug: "design" }],
       },
       {
@@ -4506,7 +4514,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "courses", group: "Curriculum", singular: "Course", plural: "Courses", versioned: true, vectorize: true, fts: true, defaultSort: "title",
         fields: tabbed(
           sec("Course", [
-            ...half(text("title", { required: true, vectorize: true, searchable: true }), slugField()),
+            ...half(text("title", { required: true, vectorize: true, searchable: true }), slugField("title")),
             text("subtitle"),
             { name: "description", type: "longtext", interface: "richtext", vectorize: true, searchable: true },
             ...half(rel("instructor", "instructors"), rel("category", "categories")),
@@ -4770,7 +4778,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "jobs", group: "Jobs", singular: "Job", plural: "Jobs", versioned: true, fts: true, defaultSort: "-created_at",
         fields: tabbed(
           sec("Job", [
-            ...half(text("title", { required: true, searchable: true }), slugField()),
+            ...half(text("title", { required: true, searchable: true }), slugField("title")),
             ...half(text("requisition_id", { label: "Requisition ID" }), rel("department", "departments")),
             { name: "description", type: "longtext", interface: "richtext", searchable: true },
           ]),
@@ -5060,7 +5068,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         portalLink: { emailField: "email", role: "Vendor (portal)" },
         fields: tabbed(
           sec("Vendor", [
-            ...half(text("name", { required: true }), slugField()),
+            ...half(text("name", { required: true }), slugField("name")),
             ...half(email("email", { unique: true }), image("logo")),
             notes("description"),
           ]),
@@ -5092,7 +5100,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       },
       {
         slug: "categories", group: "Catalog", singular: "Category", plural: "Categories", defaultSort: "name",
-        fields: [...half(text("name", { required: true }), slugField()), parent("categories")],
+        fields: [...half(text("name", { required: true }), slugField("name")), parent("categories")],
         samples: [{ name: "Home", slug: "home" }, { name: "Outdoors", slug: "outdoors" }],
       },
       {
@@ -5117,7 +5125,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "listings", group: "Catalog", singular: "Listing", plural: "Listings", versioned: true, vectorize: true, fts: true, defaultSort: "-created_at",
         fields: tabbed(
           sec("Listing", [
-            ...half(text("title", { required: true, vectorize: true, searchable: true }), slugField()),
+            ...half(text("title", { required: true, vectorize: true, searchable: true }), slugField("title")),
             { name: "description", type: "longtext", interface: "richtext", vectorize: true, searchable: true },
             ...half(rel("vendor", "vendors"), rel("category", "categories")),
             ...half(text("sku", { label: "SKU" }), tags("tags")),
@@ -5354,7 +5362,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "campaigns", group: "Fundraising", singular: "Campaign", plural: "Campaigns", defaultSort: "-created_at",
         fields: stacked(
           sec("Campaign", [
-            ...half(text("name", { required: true }), slugField()),
+            ...half(text("name", { required: true }), slugField("name")),
             { name: "description", type: "longtext", interface: "richtext" },
             ...half(
               select("type", [ch("annual_fund", C.blue, "Annual fund"), ch("capital", C.purple), ch("event", C.amber), ch("emergency", C.red)], { default: "annual_fund" }),
@@ -5510,7 +5518,7 @@ export const TEMPLATES: SchemaTemplate[] = [
       {
         slug: "events", group: "Volunteering", singular: "Event", plural: "Events", defaultSort: "-starts_at",
         fields: [
-          ...half(text("title", { required: true }), slugField()),
+          ...half(text("title", { required: true }), slugField("title")),
           { name: "description", type: "longtext", interface: "richtext" },
           ...half(ts("starts_at", { indexed: true, label: "Starts at" }), text("location")),
           int("capacity", { validation: { min: 0 } }),
@@ -5629,7 +5637,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "forms", group: "Forms", singular: "Form", plural: "Forms", defaultSort: "-created_at",
         fields: stacked(
           sec("Form", [
-            ...half(text("name", { required: true }), slugField()),
+            ...half(text("name", { required: true }), slugField("name")),
             notes("description"),
             ...half(
               rel("folder", "form_folders"),

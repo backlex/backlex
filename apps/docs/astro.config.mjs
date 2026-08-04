@@ -96,6 +96,7 @@ export default defineConfig({
             { slug: "rollups" },
             { slug: "sequences" },
             { slug: "ordering" },
+            { slug: "slugs" },
             { slug: "geo" },
             { slug: "money" },
             { slug: "phone" },

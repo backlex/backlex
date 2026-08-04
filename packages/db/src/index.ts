@@ -15,6 +15,7 @@ export * from "./phone";
 export * from "./range";
 export * from "./rollup";
 export * from "./sequence";
+export * from "./slug";
 export * from "./transitions";
 export * from "./schema-applier";
 export * from "./schema-diff";

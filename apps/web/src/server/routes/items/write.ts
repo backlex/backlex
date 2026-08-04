@@ -36,8 +36,10 @@ import {
   sequenceFieldsOf,
   syncSequenceCounters,
 } from "../../services/items/sequence";
+import { backfillSlugs, slugFieldsOf } from "../../services/items/slug";
 import { defaultHook } from "../../lib/openapi-router";
 import {
+  deletedFilter,
   execute,
   fromOf,
   nowFor,
@@ -666,6 +668,128 @@ export const itemsWriteRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           itemId: "__order__",
           ...requestMeta(c.req.raw),
           payload: { field: field ?? null },
+          response: { data },
+          durationMs: elapsedMs(c),
+        },
+      );
+      return c.json({ data });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{slug}/slugs/backfill",
+      tags: TAGS,
+      summary: "Fill in slugs for rows that have none",
+      description:
+        "Folds a URL slug out of each row's source column for every row whose slug field is empty, and takes the next free suffix when the obvious answer is taken. The repair path for a column that predates the field being declared one: every slug in the schema-template catalog is optional and nothing server-side ever generated one, so a workspace can hold years of rows with no handle at all. Rows that ALREADY have a slug are never touched — that slug may be a published URL. Text with no Latin letters to fold is reported as `unfoldable` rather than given an invented token. Runs as a DRY RUN unless `apply` is true, so the result can be read before anything is written. Idempotent. Requires `update` on the collection covering the slug column; the caller's row condition is applied rather than refused, since each row's slug is independent of the rest.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "update")],
+      request: {
+        params: z.object({ slug: z.string() }),
+        body: {
+          // Every member optional ⇒ a bodyless POST is a legitimate call (dry
+          // run, every field). Marking it required would 400 the simplest form
+          // of the request, which does not even send a content-type.
+          required: false,
+          content: {
+            "application/json": {
+              schema: z.object({
+                /** Which slug field to fill. Omit to do all of them. */
+                field: z.string().min(1).optional(),
+                /** Write the values. Omitted or false ⇒ report only. */
+                apply: z.boolean().optional(),
+              }),
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: "Backfilled",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.object({
+                  dryRun: z.boolean(),
+                  fields: z.array(
+                    z.object({
+                      field: z.string(),
+                      examined: z.number().int(),
+                      filled: z.number().int(),
+                      unfoldable: z.number().int(),
+                      entries: z.array(z.object({ id: z.string(), slug: z.string() })),
+                    }),
+                  ),
+                }),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
+      // Read leniently — a bodyless POST is the dry run, and it carries no
+      // content-type for the validator to match on. Same shape as
+      // `order/normalize` above. `field` is matched against this collection's
+      // own field list before it reaches any statement.
+      const body = (await c.req.json().catch(() => ({}))) as {
+        field?: unknown;
+        apply?: unknown;
+      };
+      const wanted = typeof body.field === "string" && body.field ? body.field : undefined;
+      const dryRun = body.apply !== true;
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const all = slugFieldsOf(collection.fields);
+      let targets = all;
+      if (wanted) {
+        const hit = all.find((f) => f.name === wanted);
+        if (!hit) {
+          throw new AppError("VALIDATION", `"${wanted}" is not a slug field on this collection`);
+        }
+        targets = [hit];
+      }
+      // The field allow-list is a refusal, exactly as it is for `reorder`: a
+      // role granted `update` with `fields: ["title"]` is correctly refused a
+      // PATCH of the slug column, and must not be able to write it through a
+      // maintenance route instead. Checked per field so a caller whose
+      // allow-list covers one slug column but not another is told which.
+      for (const f of targets) {
+        if (perm.fields && !perm.fields.has(f.name)) {
+          throw new AppError("FORBIDDEN", `No permission to write field "${f.name}"`);
+        }
+      }
+      // The FULL row scope — permission condition, tenant, soft-delete —
+      // restated for the service to put on both its SELECT and its UPDATEs.
+      // Holding `update` on a collection is not holding it on every row.
+      const scope = sql`${sql.join(
+        [
+          perm.whereSql,
+          tenantFilter(collection, auth),
+          deletedFilter(collection),
+          sql`1=1`,
+        ].filter((f): f is SQL => f != null),
+        sql` AND `,
+      )}`;
+      const fields = [];
+      for (const f of targets) {
+        fields.push(await backfillSlugs(ctx, collection, f, { scope, dryRun, db: undefined }));
+      }
+      const data = { dryRun, fields };
+      await recordActivity(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          userId: auth.userId,
+          tenantId: auth.tenantId ?? null,
+          action: "update",
+          collection: collection.slug,
+          itemId: "__slugs__",
+          ...requestMeta(c.req.raw),
+          payload: { field: wanted ?? null, apply: !dryRun },
           response: { data },
           durationMs: elapsedMs(c),
         },

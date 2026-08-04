@@ -1,6 +1,7 @@
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
+import { slugify as slugifySlug } from "@backlex/db/slug";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { and, desc, eq } from "drizzle-orm";
 import type { Context } from "hono";
@@ -54,12 +55,14 @@ const assertWorkspaceAccess = async (
   throw new AppError("FORBIDDEN", opts.message);
 };
 
-const slugify = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 24);
+/** Workspace handle, capped at 24 characters.
+ *
+ *  The fold itself is `@backlex/db/slug` — the same one user-collection slug
+ *  fields use. It used to be a local copy with no Unicode normalization, which
+ *  stripped accented and Turkish letters instead of folding them: `Ürün` became
+ *  `r-n` here while a slugifier ten files away made it `urun`. The cap stays
+ *  local because it is this table's policy, not a property of slugs. */
+const slugify = (s: string) => slugifySlug(s, 24);
 
 const PALETTE = [
   "var(--primary)",

@@ -72,6 +72,7 @@ import {
   serializeField,
 } from "../items/serialize";
 import { assertCurrencyChangeIsSafe, canonicalizeMoneyFields } from "../items/money-fields";
+import { canonicalizeEmailFields } from "../items/email-fields";
 import { canonicalizePhoneFields } from "../items/phone-fields";
 import { expandRangeOperators, rangeFieldsOf } from "@backlex/db/range";
 import { normalizeTemporalOperands } from "../items/temporal-fields";
@@ -243,6 +244,16 @@ const fieldScalar = (
       // input side accepts every form a human writes, which no stricter scalar
       // could express without making GraphQL pickier than REST for a value it
       // canonicalizes anyway.
+      return GraphQLString;
+    case "email":
+      // A plain String on both sides, for the same reasons as `phone` — and it
+      // MUST be here rather than falling off the end of the switch. A field type
+      // with no mapping resolves to `undefined`, and GraphQL refuses to build a
+      // schema containing one: not "that field is missing" but "the type of
+      // ParEmail.email must be Output Type", which takes down every query and
+      // mutation for the whole collection. The parity gate caught exactly that
+      // on this branch's first run — the same class as the dropped field type
+      // that once dark'd the endpoint outright.
       return GraphQLString;
     case "hash":
       // Write-only secret: accepted as a String on input, always resolves to
@@ -543,6 +554,13 @@ const canonicalizeMoneyForGql = (
     // resolver needed the same fix (see #38–#41).
     canonicalizePhoneFields(inputData, collection.fields, {
       existing,
+      keyOf: (f) => camel(f.name),
+    });
+    // Fifth in a row. Same resolver, same reason: without this, GraphQL is the
+    // one surface that can put `Ada@Example.com` into a column every other
+    // surface guarantees is folded — and `unique`, portal auto-link and
+    // lookup-by-address all quietly stop working for rows written through it.
+    canonicalizeEmailFields(inputData, collection.fields, {
       keyOf: (f) => camel(f.name),
     });
   } catch (e) {

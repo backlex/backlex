@@ -6,6 +6,7 @@ export const detectDialect = (env: { DATABASE_URL?: string; D1?: unknown }): Dia
   return "pg";
 };
 
+export * from "./email";
 export * from "./field-types";
 export * from "./geo";
 export * from "./money";

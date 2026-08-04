@@ -83,6 +83,12 @@ import {
   type MoneyDraft,
 } from "./field-money-editor";
 import {
+  cleanEmail,
+  emptyEmailDraft,
+  FieldEmailEditor,
+  type EmailDraft,
+} from "./field-email-editor";
+import {
   cleanPhone,
   emptyPhoneDraft,
   FieldPhoneEditor,
@@ -182,6 +188,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
     emptyMoneyDraft(defaultCurrency),
   );
   const [phoneDraft, setPhoneDraft] = useState<PhoneDraft>(emptyPhoneDraft);
+  const [emailDraft, setEmailDraft] = useState<EmailDraft>(emptyEmailDraft);
   const [rangeDraft, setRangeDraft] = useState<RangeDraft>(emptyRangeDraft);
   const [seqDraft, setSeqDraft] = useState<SequenceDraft>(() =>
     emptySequenceDraft(browserTimeZone()),
@@ -203,6 +210,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       // region or a period end column picked for the LAST field would silently
       // carry into the next one.
       setPhoneDraft(emptyPhoneDraft());
+      setEmailDraft(emptyEmailDraft());
       setRangeDraft(emptyRangeDraft());
       setSeqDraft(emptySequenceDraft(browserTimeZone()));
       setStep(1);
@@ -336,6 +344,9 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   // region still works, it just insists on international-form numbers. So this
   // never blocks Save.
   const cleanedPhone = def.hasPhone ? cleanPhone(phoneDraft) : undefined;
+  // Optional too, and more so than phone's: a bare email field already folds
+  // every address, which is the whole point of the type. The tab only narrows.
+  const cleanedEmail = def.hasEmail ? cleanEmail(emailDraft) : undefined;
   // Optional like phone's and geo's: a date field that declares no period is
   // just a date field, which is the common case. Never blocks Save.
   const cleanedRange = def.hasRange ? cleanRange(rangeDraft) : undefined;
@@ -425,6 +436,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(cleanedGeo ? { geo: cleanedGeo } : {}),
       ...(cleanedMoney ? { money: cleanedMoney } : {}),
       ...(cleanedPhone ? { phone: cleanedPhone } : {}),
+      ...(cleanedEmail ? { email: cleanedEmail } : {}),
       ...(cleanedRange ? { range: cleanedRange } : {}),
       ...(conditions.length ? { conditions } : {}),
       ...(validation ? { validation } : {}),
@@ -449,6 +461,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ? [{ key: "money", label: t`Currency`, icon: "BarChart", invalid: missingMoney } as FieldTabItem]
       : []),
     ...(def.hasPhone ? [{ key: "phone", label: t`Phone`, icon: "Phone" } as FieldTabItem] : []),
+    ...(def.hasEmail ? [{ key: "email", label: t`Email`, icon: "Mail" } as FieldTabItem] : []),
     ...(def.hasRange ? [{ key: "range", label: t`Period`, icon: "Calendar" } as FieldTabItem] : []),
     ...(def.hasTransitions
       ? [{ key: "transitions", label: t`Lifecycle`, icon: "Share" } as FieldTabItem]
@@ -755,6 +768,10 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                 onChange={setPhoneDraft}
                 candidates={(schema.fields ?? []).filter((f) => f.name !== name.trim())}
               />
+            )}
+
+            {activeTab === "email" && def.hasEmail && (
+              <FieldEmailEditor value={emailDraft} onChange={setEmailDraft} />
             )}
 
             {activeTab === "range" && def.hasRange && (

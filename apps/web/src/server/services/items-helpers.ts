@@ -6,6 +6,7 @@ import { rangeOrderError, validateValue, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
 import { serializeField } from "./items/serialize";
 import { canonicalizeMoneyFields } from "./items/money-fields";
+import { canonicalizeEmailFields } from "./items/email-fields";
 import { canonicalizePhoneFields } from "./items/phone-fields";
 import {
   assertInitialStates,
@@ -179,6 +180,11 @@ export const createItem = async (
   // been typed by anyone, and the row it produces is the one an `sms` op will
   // later be pointed at.
   canonicalizePhoneFields(input.data, collection.fields);
+  // And email, which matters here for a second reason on top of that one: the
+  // row a flow creates from a webhook payload is exactly the row a later
+  // `portal.link` or marketing-list sync has to find by address, and an
+  // unfolded one is the row that is never found.
+  canonicalizeEmailFields(input.data, collection.fields);
   // A period that ends before it begins is wrong data, not a permission
   // question, so a flow-authored row is held to it exactly like a REST one —
   // the same split #42 drew between the transition GRAPH and the transition
@@ -285,6 +291,9 @@ export const updateItem = async (
   // form — which is what a flow or an integration payload carries — never
   // consults a region at all.
   canonicalizePhoneFields(input.data, collection.fields);
+  // Email needs no row at all — an address is self-describing, so a patch is
+  // folded with exactly the same call the create path makes.
+  canonicalizeEmailFields(input.data, collection.fields);
   // Only judges what the patch carries — see the note on the helper.
   assertRangesOrdered(input.data, collection.fields);
   await assertFlowTransitions(ctx, collection, input);

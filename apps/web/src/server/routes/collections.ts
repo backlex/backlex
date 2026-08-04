@@ -350,6 +350,24 @@ const FieldSchema = z
       })
       .optional(),
     /**
+     * Email configuration — whether the local part keeps its case, and which
+     * domains are acceptable at all.
+     *
+     * `allowedDomains` entries are parsed by `validateEmailSpec` with the same
+     * parser the values are, so a rule that could never match anything fails at
+     * save time rather than presenting later as a column that refuses every
+     * write. The `max(64)` is what stops a caller storing a domain corpus in the
+     * collection metadata — an allow-list longer than that is not a rule, and
+     * the answer to "we accept everything" is to omit it.
+     */
+    email: z
+      .object({
+        caseSensitiveLocal: z.boolean().optional(),
+        allowedDomains: z.array(z.string().min(1).max(254)).min(1).max(64).optional(),
+        display: z.enum(["ascii", "unicode"]).optional(),
+      })
+      .optional(),
+    /**
      * The lifecycle this dropdown may move through — `{ allow: [{from, to,
      * roles?, requires?, label?}], initial? }`.
      *

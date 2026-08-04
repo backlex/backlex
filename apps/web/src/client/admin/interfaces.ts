@@ -23,6 +23,7 @@ export type StorageType =
   | "geo"
   | "money"
   | "phone"
+  | "email"
   | "hash"
   // Presentational-only — render in the form but own no column / value.
   | "divider"
@@ -72,6 +73,10 @@ export interface FieldInterfaceDef {
    *  read as, and which countries are allowed at all. Optional like `hasGeo`:
    *  a bare phone field takes numbers written in international form. */
   hasPhone?: boolean;
+  /** Show the email editor in step 2 — whether the local part keeps its case,
+   *  and which domains are acceptable at all. Optional like `hasGeo`, and more
+   *  so: a bare email field already does the thing the type exists for. */
+  hasEmail?: boolean;
   /** Show the period editor in step 2 — which sibling column ends the period,
    *  and whether a shared endpoint counts as a clash. Declared over columns that
    *  already exist, so unlike every other capability flag this one adds no value
@@ -109,6 +114,11 @@ export const FIELD_INTERFACES: FieldInterfaceDef[] = [
   { id: "decimal", label: "Decimal", sub: "Floating-point number", group: "Text & Numbers", icon: "Hash", type: "number", keywords: ["float"] },
   { id: "money", label: "Money", sub: "An amount and the currency it is in — exact, and never added across currencies", group: "Text & Numbers", icon: "BarChart", type: "money", hasMoney: true, keywords: ["money", "price", "amount", "currency", "cost", "total", "salary", "fee", "budget", "payment", "balance", "revenue", "cash", "usd", "eur", "try", "lira", "dollar", "euro"] },
   { id: "phone", label: "Phone", sub: "A number stored the one way every machine can dial — typed any way, saved as +90…", group: "Text & Numbers", icon: "Phone", type: "phone", hasPhone: true, keywords: ["phone", "telephone", "mobile", "cell", "gsm", "msisdn", "whatsapp", "sms", "contact", "number", "e164", "telefon", "cep", "call", "dial"] },
+  // Moved out of "Presentation & Other" and off `type: "text"`. It used to be a
+  // rendering hint on a text column; it is a storage type now, and it belongs
+  // next to phone because they are the same kind of thing — a value people type
+  // a dozen ways that has exactly one form a machine accepts.
+  { id: "email", label: "Email", sub: "An address stored the one way every mail server accepts — typed any way, saved folded", group: "Text & Numbers", icon: "Mail", type: "email", hasEmail: true, keywords: ["mail", "email", "e-mail", "contact", "address", "eposta", "e-posta", "inbox", "smtp", "recipient"] },
   { id: "slider", label: "Slider", sub: "Number picked on a track", group: "Text & Numbers", icon: "Sliders", type: "number", keywords: ["range"] },
   { id: "rating", label: "Rating", sub: "Star rating, 0–5", group: "Text & Numbers", icon: "BarChart", type: "integer", keywords: ["stars", "score"] },
 
@@ -143,7 +153,6 @@ export const FIELD_INTERFACES: FieldInterfaceDef[] = [
   // back to a column that already has data in it.
   { id: "map", label: "Location", sub: "A point on the earth — searchable by distance", group: "Presentation & Other", icon: "Globe", type: "geo", hasGeo: true, keywords: ["location", "geo", "coordinates", "map", "address", "place", "latitude", "longitude", "near", "distance", "nearby", "gps", "pin"] },
   { id: "url", label: "URL", sub: "Link to a web address", group: "Presentation & Other", icon: "ExternalLink", type: "text", keywords: ["link", "href", "website"] },
-  { id: "email", label: "Email", sub: "Email address", group: "Presentation & Other", icon: "Mail", type: "text", keywords: ["mail", "contact"] },
   { id: "uuid", label: "UUID", sub: "Universally-unique identifier", group: "Presentation & Other", icon: "Shield", type: "uuid", keywords: ["id", "guid"] },
   { id: "hash", label: "Hash", sub: "One-way hashed secret — stored as a digest, never shown again", group: "Presentation & Other", icon: "Shield", type: "hash", keywords: ["password", "secret", "pin", "credential", "scrypt", "token"] },
   { id: "divider", label: "Divider", sub: "A labeled section rule — layout only, stores no data", group: "Presentation & Other", icon: "Minus", type: "divider", keywords: ["separator", "rule", "hr", "section", "break", "layout", "heading"] },
@@ -186,7 +195,7 @@ export interface ExtensionInterfaceSource {
 
 const STORAGE_TYPE_SET: ReadonlySet<string> = new Set([
   "text", "longtext", "integer", "number", "boolean", "json", "timestamp",
-  "uuid", "relation", "relation_many", "geo", "money", "phone", "hash",
+  "uuid", "relation", "relation_many", "geo", "money", "phone", "email", "hash",
 ]);
 
 /**

@@ -34,6 +34,8 @@
 import { and, asc, desc, eq, gt, inArray, isNull, lt } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
+// The pure subpath, not the package root — see `packages/db/src/email.ts`.
+import { tryParseEmail } from "@backlex/db/email";
 import {
   AppError,
   MAX_RANGE_DAYS,
@@ -201,14 +203,20 @@ const randomHex = (bytes: number): string => {
   return Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
 };
 
-/** Deliberately permissive but structural — the address has to survive being
- *  put in a `To:` header, and anything cleverer rejects real addresses. */
-const EMAIL_RE = /^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>"]+$/;
-
+/**
+ * The address a booking is confirmed to, canonical.
+ *
+ * Was one of three identical hand-written regexes that disagreed with the
+ * field-level validator — see the note on `services/signatures.ts`. Folding here
+ * also means a customer who books twice, once as `Ada@` and once as `ada@`, is
+ * one customer to every query that looks them up afterwards.
+ */
 export const normalizeEmail = (raw: unknown, what = "customer"): string => {
-  const email = String(raw ?? "").trim();
-  if (!EMAIL_RE.test(email)) throw new AppError("VALIDATION", `"${email}" is not a valid ${what} email`);
-  return email;
+  const parsed = tryParseEmail(String(raw ?? "").trim());
+  if (!parsed) {
+    throw new AppError("VALIDATION", `"${String(raw ?? "").trim()}" is not a valid ${what} email`);
+  }
+  return parsed.email;
 };
 
 const clamp = (n: number, lo: number, hi: number): number => Math.min(Math.max(n, lo), hi);

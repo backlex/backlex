@@ -358,6 +358,18 @@ export interface CollectionClient<T extends Record<string, unknown>> {
     field: string,
     opts?: { limit?: number; after?: string; dryRun?: boolean },
   ): Promise<PhoneNormalizeReport>;
+  /** Rewrite this collection's existing values of an `email` field into
+   *  canonical form (trimmed, folded, international domains encoded) — the
+   *  repair path for rows that predate the field being an email field at all.
+   *  Walks in primary-key order: loop while `cursor` is non-null, passing it
+   *  back as `opts.after`. Values already canonical are skipped, unreadable ones
+   *  are reported rather than guessed at, and on a `unique` column a value that
+   *  would collide with another row is reported and left alone — so re-running
+   *  is safe. Requires `update`. */
+  normalizeEmails(
+    field: string,
+    opts?: { limit?: number; after?: string; dryRun?: boolean },
+  ): Promise<EmailNormalizeReport>;
 }
 
 /**
@@ -427,6 +439,32 @@ export interface PhoneNormalizeReport {
    *  VALUES are deliberately not returned — this report is a plausible thing to
    *  log, and each one is a real person's phone number. */
   unreadableIds: string[];
+  /** Pass back as `after` for the next page. `null` means the walk is done. */
+  cursor: string | null;
+}
+
+/** What {@link CollectionClient.normalizeEmails} did to one email column. */
+export interface EmailNormalizeReport {
+  /** Rows examined by this call. */
+  scanned: number;
+  /** Rows rewritten into canonical form — or, on a dry run, that would be. */
+  normalized: number;
+  /** Rows whose value was already exactly canonical. */
+  alreadyCanonical: number;
+  /** Rows whose value could not be read as an address. Left untouched:
+   *  overwriting an unparseable value destroys the only copy of it, and the
+   *  operator who typed it is the one who can say what it meant. */
+  unreadable: number;
+  /** Rows on a `unique` column whose folded value is already held by a DIFFERENT
+   *  row — the duplicate the column was supposed to prevent and, while it was
+   *  plain text, could not. Left untouched: which of the two is the real
+   *  customer is a question about the business, and merging is irreversible. */
+  collided: number;
+  /** Ids of those rows, so they can be looked at. Capped at 200 per page each.
+   *  The VALUES are deliberately not returned — this report is a plausible thing
+   *  to log, and each one is a real person's address. */
+  unreadableIds: string[];
+  collidedIds: string[];
   /** Pass back as `after` for the next page. `null` means the walk is done. */
   cursor: string | null;
 }
@@ -3456,6 +3494,24 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         opts: { limit?: number; after?: string; dryRun?: boolean } = {},
       ): Promise<PhoneNormalizeReport> =>
         request<{ data: PhoneNormalizeReport }>("POST", `/api/phone/normalize/${slug}`, {
+          field,
+          ...(opts.limit === undefined ? {} : { limit: opts.limit }),
+          ...(opts.after === undefined ? {} : { after: opts.after }),
+          ...(opts.dryRun === undefined ? {} : { dryRun: opts.dryRun }),
+        }).then((r) => r.data),
+      /**
+       * Rewrite this collection's existing email values into canonical form.
+       *
+       * Same cursor loop as `normalizePhones`, and for the same reason. The one
+       * extra counter is `collided`: folding can make two rows equal, and the
+       * columns most worth normalizing are exactly the `unique` ones that were
+       * letting the duplicate in.
+       */
+      normalizeEmails: (
+        field: string,
+        opts: { limit?: number; after?: string; dryRun?: boolean } = {},
+      ): Promise<EmailNormalizeReport> =>
+        request<{ data: EmailNormalizeReport }>("POST", `/api/email/normalize/${slug}`, {
           field,
           ...(opts.limit === undefined ? {} : { limit: opts.limit }),
           ...(opts.after === undefined ? {} : { after: opts.after }),

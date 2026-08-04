@@ -21,6 +21,7 @@ import {
 } from "./validate";
 import { normalizeGeoFields } from "./geo-fields";
 import { assertCurrencyChangeIsSafe, canonicalizeMoneyFields } from "./money-fields";
+import { canonicalizeEmailFields } from "./email-fields";
 import { canonicalizePhoneFields } from "./phone-fields";
 import { applyAutoGeocode, patchTouchesSources } from "./geocode";
 import { hashIncomingFields, scrubHashFields, scrubPrivateFields } from "./hash-fields";
@@ -245,6 +246,10 @@ export const performCreate = async (
     // event and — through the changefeed — the client's offline store, while the
     // column held something else entirely.
     canonicalizePhoneFields(data, collection.fields);
+    // …and every address into its canonical form, on the payload, for the same
+    // reason a third time. A create that echoed back `  Ada@Example.COM ` would
+    // hand the caller a string that does not equal the row it just made.
+    canonicalizeEmailFields(data, collection.fields);
   } catch (e) {
     throw new AppError("VALIDATION", (e as Error).message);
   }
@@ -507,6 +512,9 @@ export const performUpdate = async (
     // form: a patch that sets only `phone` on a collection whose region lives in
     // a sibling column reads that column off the row it is patching.
     canonicalizePhoneFields(patch, collection.fields, { existing: existing[0] });
+    // Email needs no `existing` — an address carries everything required to
+    // fold it, which is the same asymmetry that spared it a read edge.
+    canonicalizeEmailFields(patch, collection.fields);
   } catch (e) {
     throw new AppError("VALIDATION", (e as Error).message);
   }

@@ -1370,6 +1370,10 @@ msgstr "AD defaults: <0>mail · givenName · sn · memberOf</0>. OpenLDAP common
 msgid "Ad-hoc roles"
 msgstr "Ad-hoc roles"
 
+#: src/client/admin/field-email-input.tsx
+msgid "ada@example.com"
+msgstr "ada@example.com"
+
 #: src/client/admin/pages/overview.tsx
 msgid "Adapter auto-selected from bindings/env."
 msgstr "Adapter auto-selected from bindings/env."
@@ -1383,6 +1387,7 @@ msgid "add"
 msgstr "add"
 
 #: src/client/admin/add-field.tsx
+#: src/client/admin/field-email-editor.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -1949,6 +1954,10 @@ msgstr "Already have an account?"
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Already in sync — no changes."
 msgstr "Already in sync — no changes."
+
+#: src/client/admin/field-email-editor.tsx
+msgid "Already on the list."
+msgstr "Already on the list."
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "already set"
@@ -5546,6 +5555,8 @@ msgid "Effort"
 msgstr "Effort"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/settings/index.tsx
@@ -5686,6 +5697,10 @@ msgstr "Empty collection"
 #: src/client/admin/pages/agents.tsx
 #~ msgid "Empty conversation"
 #~ msgstr "Empty conversation"
+
+#: src/client/admin/field-email-editor.tsx
+msgid "Empty means any domain, which is the right default for customers and contacts. A subdomain of a listed domain matches, so example.com admits ada@mail.example.com. Use it for a staff or member column that has to stay inside the company."
+msgstr "Empty means any domain, which is the right default for customers and contacts. A subdomain of a listed domain matches, so example.com admits ada@mail.example.com. Use it for a staff or member column that has to stay inside the company."
 
 #: src/client/admin/collections-index.tsx
 #~ msgid "Empty or template"
@@ -6127,6 +6142,10 @@ msgstr "Everyone has signed. A copy has been emailed to you."
 #: src/client/admin/pages/extensions.tsx
 msgid "Exact package name as published on npm."
 msgstr "Exact package name as published on npm."
+
+#: src/client/admin/field-email-editor.tsx
+msgid "example.com"
+msgstr "example.com"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 #~ msgid "Examples"
@@ -7988,6 +8007,10 @@ msgstr "Keep HubSpot contacts in step with a collection. Receives record content
 msgid "Keep reviewing"
 msgstr "Keep reviewing"
 
+#: src/client/admin/field-email-editor.tsx
+msgid "Keep the case of the part before the @"
+msgstr "Keep the case of the part before the @"
+
 #: src/client/pages/book.tsx
 msgid "Keep this link — it is how you change or cancel this booking."
 msgstr "Keep this link — it is how you change or cancel this booking."
@@ -9194,6 +9217,10 @@ msgstr "must be accepted to submit"
 msgid "Must be an absolute URL (https://…)"
 msgstr "Must be an absolute URL (https://…)"
 
+#: src/client/admin/field-email-input.tsx
+msgid "Must be an address at"
+msgstr "Must be an address at"
+
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Must be an https URL."
 msgstr "Must be an https URL."
@@ -10359,6 +10386,10 @@ msgstr "none (public)"
 msgid "none selected = all"
 msgstr "none selected = all"
 
+#: src/client/admin/field-email-editor.tsx
+msgid "Not a domain."
+msgstr "Not a domain."
+
 #: src/client/admin/field-range-editor.tsx
 msgid "Not a period"
 msgstr "Not a period"
@@ -10629,6 +10660,10 @@ msgstr "off"
 msgid "Off"
 msgstr "Off"
 
+#: src/client/admin/field-email-editor.tsx
+msgid "Off by default, and almost always the right answer: folding is what makes one mailbox one row, so `unique`, portal auto-link and marketing-list dedup all work. Turn it on only for a mail server that genuinely treats Ada@ and ada@ as two people — and note that `unique` then stops catching the pair."
+msgstr "Off by default, and almost always the right answer: folding is what makes one mailbox one row, so `unique`, portal auto-link and marketing-list dedup all work. Turn it on only for a mail server that genuinely treats Ada@ and ada@ as two people — and note that `unique` then stops catching the pair."
+
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Off for a hook that only validates — otherwise returning `data` would let it rewrite rows. A patch is re-validated against the schema."
 msgstr "Off for a hook that only validates — otherwise returning `data` would let it rewrite rows. A patch is re-validated against the schema."
@@ -10732,6 +10767,10 @@ msgstr "One URL per line — saved when you click away."
 #: src/client/pages/magic-link.tsx
 msgid "One-time link, no <0>password</0>."
 msgstr "One-time link, no <0>password</0>."
+
+#: src/client/admin/field-email-editor.tsx
+msgid "Only accept addresses at these domains"
+msgstr "Only accept addresses at these domains"
 
 #: src/client/admin/field-phone-editor.tsx
 msgid "Only accept numbers from <0>(optional)</0>"
@@ -12756,6 +12795,10 @@ msgstr "Remove"
 msgid "Remove {0}"
 msgstr "Remove {0}"
 
+#: src/client/admin/field-email-editor.tsx
+msgid "Remove {d}"
+msgstr "Remove {d}"
+
 #: src/client/admin/relational-pickers.tsx
 msgid "Remove {k}"
 msgstr "Remove {k}"
@@ -13831,6 +13874,7 @@ msgstr "saved"
 msgid "Saved {0} redirect URL{1}."
 msgstr "Saved {0} redirect URL{1}."
 
+#: src/client/admin/field-email-input.tsx
 #: src/client/admin/field-phone-input.tsx
 msgid "Saved as"
 msgstr "Saved as"
@@ -14659,6 +14703,10 @@ msgstr "Show hidden ({hiddenCount})"
 #: src/client/admin/collections-index.tsx
 msgid "Show hidden collections"
 msgstr "Show hidden collections"
+
+#: src/client/admin/field-email-editor.tsx
+msgid "Show international domains in their own alphabet"
+msgstr "Show international domains in their own alphabet"
 
 #: src/client/admin/field-geo-input.tsx
 msgid "Show map"
@@ -15867,6 +15915,10 @@ msgstr "The client below wants to call this workspace's MCP tools as you. Your r
 msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 msgstr "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 
+#: src/client/admin/field-email-editor.tsx
+msgid "The column always stores the encoded form a mail server resolves. This only changes how it is DISPLAYED — ada@örnek.com instead of ada@xn--rnek-4qa.com. Off unless the workspace actually has addresses like that."
+msgstr "The column always stores the encoded form a mail server resolves. This only changes how it is DISPLAYED — ada@örnek.com instead of ada@xn--rnek-4qa.com. Off unless the workspace actually has addresses like that."
+
 #: src/client/admin/pages/forms.tsx
 msgid "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
 msgstr "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
@@ -16729,6 +16781,10 @@ msgstr "Turn off 2FA"
 #: src/client/admin/account-page.tsx
 msgid "Turn off two-factor authentication."
 msgstr "Turn off two-factor authentication."
+
+#: src/client/admin/field-email-editor.tsx
+msgid "Turning an existing text column into an email field changes no storage, so nothing has to be migrated — but the rows already in it are still written however they were typed. Run backlex collections normalize-emails to fold them, with --dry-run first if the column is unique."
+msgstr "Turning an existing text column into an email field changes no storage, so nothing has to be migrated — but the rows already in it are still written however they were typed. Run backlex collections normalize-emails to fold them, with --dry-run first if the column is unique."
 
 #: src/client/admin/account-page.tsx
 msgid "Turning off…"

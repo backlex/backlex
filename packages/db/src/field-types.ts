@@ -1,4 +1,5 @@
 import type { Condition, DurationParts, RelativeNow } from "@backlex/core";
+import { type EmailSpec, parseEmailForField, validateEmailSpec } from "./email";
 import { type GeoSpec, parseGeoPoint, validateGeoSpec } from "./geo";
 import {
   currencyExponent,
@@ -66,6 +67,21 @@ export type FieldType =
    */
   | "phone"
   /**
+   * An email address, stored canonical (trimmed, folded, and with an
+   * internationalized domain in its A-label form) in the same `TEXT`/`varchar`
+   * column a plain `text` field uses — so an existing email column becomes one
+   * of these without a migration.
+   *
+   * Whatever an operator types or pastes (`  Ada@Example.COM `,
+   * `<ada@example.com>`, `ada@örnek.com`) is folded on the way in, which is what
+   * makes `unique` mean one mailbox, makes a lookup by the address a customer
+   * types actually match, and makes the value safe to hand a mail server. It is
+   * also the one validator the send paths share, so an address that passes here
+   * cannot be refused later by the thing that was supposed to mail it. See
+   * {@link EmailSpec} and `packages/db/src/email.ts`.
+   */
+  | "email"
+  /**
    * One-way hashed secret (password / PIN / API secret). The API hashes the
    * incoming plaintext (scrypt) on write and stores only the digest; reads
    * always return `null` (the digest never leaves the DB except in a raw
@@ -116,6 +132,9 @@ export const FIELD_TYPES = [
   // Canonical E.164 in an ordinary text column — parsed from whatever the
   // operator typed, against the field's region.
   "phone",
+  // A canonical address in an ordinary text column — trimmed, folded, and with
+  // an internationalized domain encoded to the A-labels a mail server resolves.
+  "email",
   // One-way hashed secret — the write path scrypt-hashes the plaintext and
   // stores only the digest; reads return null; verification goes through
   // `POST /:slug/:id/verify`.
@@ -583,6 +602,15 @@ export interface FieldDef {
    */
   phone?: PhoneSpec;
   /**
+   * Configuration for an `email` field — whether the local part keeps its case,
+   * and which domains are acceptable at all. See {@link EmailSpec}.
+   *
+   * Optional, like `phone` and unlike `money`: a bare email field accepts any
+   * well-formed address and folds it, which is the right default — an address
+   * book has no business refusing a domain it has not heard of.
+   */
+  email?: EmailSpec;
+  /**
    * The lifecycle this dropdown field may move through — which value is allowed
    * to follow which, who may make the move, and what the row must carry for it.
    * See {@link TransitionSpec}.
@@ -777,6 +805,9 @@ const PG_TYPES: Record<FieldType, string> = {
   // field" into an ALTER — and `applyCollection` is additive by design. Same
   // type means the conversion is metadata only.
   phone: "varchar(255)",
+  // Same reasoning as `phone`, and it is what let all fifty-eight template email
+  // columns convert at once: identical storage means the conversion is metadata.
+  email: "varchar(255)",
   hash: "text",
   // Presentational — never reach the DDL (the applier filters them out); these
   // placeholders only satisfy the exhaustive Record<FieldType> mapping.
@@ -801,6 +832,8 @@ const SQLITE_TYPES: Record<FieldType, string> = {
   money: "INTEGER",
   // See the PG note — same storage as `text` so a conversion needs no DDL.
   phone: "TEXT",
+  // See the PG note — same storage as `text` so a conversion needs no DDL.
+  email: "TEXT",
   hash: "TEXT",
   // Presentational — see PG_TYPES note; never emitted as DDL.
   divider: "TEXT",
@@ -1330,6 +1363,42 @@ export const validateFields = (fields: FieldDef[]): void => {
         }
       }
     }
+    if (f.email && f.type !== "email") {
+      throw new Error(`Field "${f.name}": "email" configuration requires an email field`);
+    }
+    if (f.type === "email") {
+      // A canonical address is an ordinary string in an ordinary text column, so
+      // most flags behave exactly as they do on `text`. The ones that are the
+      // POINT of the type, and therefore deliberately allowed:
+      //  - unique: it finally means one mailbox. On a `text` email column
+      //    `Ada@Example.com` and `ada@example.com` were two rows and one person,
+      //    which is why `portal-links` had to wrap the column in `lower()` to
+      //    find anything.
+      //  - indexed / searchable: looking a person up by their address is the
+      //    most common reason anyone opens a customer collection, and the index
+      //    is usable now precisely because nothing has to fold the column first.
+      // The ones that are out:
+      for (const [flag, on] of [
+        // An embedding of an address matches on domain and spelling, which is
+        // noise — and it puts a real person's mailbox into a vector store.
+        ["vectorize", !!f.vectorize],
+        // A person's address is not a different address in French.
+        ["localized", !!f.localized],
+        // All three own the column's value by another rule, and none of them
+        // produces something that goes through the address parser.
+        ["computed", !!f.computed],
+        ["rollup", !!f.rollup],
+        ["sequence", !!f.sequence],
+        // A DDL default would give every row nobody has filled in the same real
+        // person's mailbox — and then mail it.
+        ["default", f.default !== undefined],
+      ] as const) {
+        if (on) {
+          throw new Error(`Field "${f.name}": "${flag}" is not allowed on an email field`);
+        }
+      }
+      if (f.email) validateEmailSpec(f.email);
+    }
     if (f.transitions) {
       // A lifecycle is a rule about what a CALLER may write, so every flag that
       // takes the column away from the caller makes it meaningless:
@@ -1632,6 +1701,18 @@ export const validateValue = (
     }
   }
 
+  // Shape AND policy, unlike `phone` above — and the difference is that nothing
+  // an email field needs lives in a sibling column. There is no per-row region
+  // to defer, so the domain allow-list can be enforced right here, and a value
+  // that reaches the column has already been judged completely.
+  if (field.type === "email") {
+    try {
+      parseEmailForField(value, field.email);
+    } catch (e) {
+      fail(`${field.name}: ${(e as Error).message}`);
+    }
+  }
+
   // Dropdown choice membership is enforced for any field with the interface
   // set, even when no `validation` block is configured.
   if (field.interface === "dropdown") {
@@ -1650,7 +1731,13 @@ export const validateValue = (
     // `hash` validates the *plaintext* here — this runs in `validateBody`
     // before the API replaces the value with its digest, so length/pattern
     // rules (password policy) apply to what the user actually typed.
-    (field.type === "text" || field.type === "longtext" || field.type === "hash") &&
+    // `email` is here so an admin can still narrow the type with their own
+    // `regex` or a length bound. `format: "email"` is redundant on one — the
+    // type already enforces a stricter envelope than that check ever did.
+    (field.type === "text" ||
+      field.type === "longtext" ||
+      field.type === "hash" ||
+      field.type === "email") &&
     typeof value === "string"
   ) {
     if (v.minLength !== undefined && value.length < v.minLength) {

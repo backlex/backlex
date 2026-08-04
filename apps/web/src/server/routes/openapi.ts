@@ -55,7 +55,9 @@ import { accountRoutes } from "./account";
 import { formsRoutes } from "./forms";
 import { formsPublicRoutes } from "./forms-public";
 import { documentsRoutes } from "./documents";
+import { emailFieldRoutes } from "./email-fields";
 import { geoRoutes } from "./geo";
+import { phoneRoutes } from "./phone";
 import { signaturesRoutes } from "./signatures";
 import { bookingRoutes } from "./booking";
 import { bookingPublicRoutes } from "./booking-public";
@@ -109,6 +111,11 @@ export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/public/forms", formsPublicRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/documents", documentsRoutes as unknown as OpenAPIHono<any>],
   ["/api/geo", geoRoutes as unknown as OpenAPIHono<any>],
+  // `phone` was registered nowhere until now, so `/api/phone/normalize/{slug}`
+  // was absent from the published spec even though the route has shipped since
+  // #43 — the same one-line omission this entry would have been. Both here.
+  ["/api/phone", phoneRoutes as unknown as OpenAPIHono<any>],
+  ["/api/email", emailFieldRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/signatures", signaturesRoutes as unknown as OpenAPIHono<any>],
   ["/api/admin/booking", bookingRoutes as unknown as OpenAPIHono<any>],
   ["/api/public/book", bookingPublicRoutes as unknown as OpenAPIHono<any>],

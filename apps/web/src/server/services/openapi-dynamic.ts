@@ -32,6 +32,13 @@ const fieldToSchema = (type: FieldType): Schema => {
       // a pattern would — a `pattern` here would describe the READ shape and
       // make every generator reject a perfectly acceptable write.
       return { type: "string", example: "+14155552671" };
+    case "email":
+      // Same split as `phone`: reads are always canonical, writes accept
+      // anything a person types or pastes. `format: "email"` is the standard
+      // annotation and is worth emitting; a `pattern` is not, for the same
+      // reason — it would describe the READ shape and make a generator reject a
+      // write the server would happily fold.
+      return { type: "string", format: "email", example: "ada@example.com" };
     case "money":
       // Reads are always this object. Writes accept more (a bare number, a
       // decimal string, `"19.99 USD"`, `{ minor, currency }`) — described in

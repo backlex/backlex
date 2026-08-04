@@ -174,7 +174,6 @@ export type SampleRow = Record<string, SampleValue>;
 
 /* ───────────────────────────── field helpers ───────────────────────────── */
 
-const EMAIL_RE = "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$";
 const URL_RE = "^https?://.+";
 const SLUG_RE = "^[a-z0-9]+(?:-[a-z0-9]+)*$";
 
@@ -204,7 +203,16 @@ const file = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name,
 /** Relations are indexed by default — they're the hot join/filter path. */
 const rel = (name: string, to: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "relation", to, interface: "relation", indexed: true, ...extra });
 const relMany = (name: string, to: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "relation_many", to, ...extra });
-const email = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "text", interface: "email", validation: { regex: EMAIL_RE }, ...extra });
+/**
+ * All fifty-eight of these are a real `email` field now, not `text` + a regex.
+ *
+ * The regex is gone rather than kept alongside: the type enforces a strictly
+ * narrower envelope than it did, and leaving it would mean two rules to keep in
+ * step. Every column converted at once because an email field's storage is
+ * identical to `text` — the conversion is metadata, exactly as it was for phone
+ * and unlike money, which could convert only 51 of 182.
+ */
+const email = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "email", interface: "email", ...extra });
 const url = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "text", interface: "url", validation: { regex: URL_RE }, ...extra });
 /**
  * An amount in a collection that has no currency column of its own — still a

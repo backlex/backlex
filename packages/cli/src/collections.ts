@@ -32,7 +32,7 @@ interface Collection {
   adopted?: boolean | number;
 }
 
-const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop-field|fts-reindex|vectorize|refresh-rollups|sync-sequences|backfill-geo|normalize-phones>
+const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop-field|fts-reindex|vectorize|refresh-rollups|sync-sequences|backfill-geo|normalize-phones|normalize-emails>
 
   list                              every collection the key can read
   get <slug>                        one collection's fields
@@ -69,6 +69,23 @@ const COLLECTIONS_HELP = `backlex collections <list|get|clone|export-schema|drop
                                                    max 2000)
                                       --dry-run    report what would change
                                                    without writing anything
+  normalize-emails <slug> <field>   rewrite the collection's existing values of an
+                                    email field into canonical form — the repair
+                                    path for rows written before the column was an
+                                    email field. Walks the whole table. Values
+                                    already canonical are skipped; ones that
+                                    cannot be read are reported by row id and left
+                                    exactly as they are; and on a unique column,
+                                    rows whose folded value would collide with
+                                    another row are reported and left alone —
+                                    which of two rows is the real customer is not
+                                    a question this pass may answer.
+                                      --batch <n>  rows per request (default 500,
+                                                   max 2000)
+                                      --dry-run    report what would change
+                                                   without writing anything (on a
+                                                   unique column, the only way to
+                                                   see the duplicates first)
 `;
 
 const fetchCollections = (args: string[]): Promise<Collection[]> => {
@@ -429,6 +446,114 @@ export const runCollections = async (args: string[]): Promise<void> => {
       }
     } catch (e) {
       die(e, "collections normalize-phones");
+    }
+    return;
+  }
+
+  // The same cursor loop as normalize-phones, plus one counter: folding an
+  // address can make two rows EQUAL, and the columns most worth normalizing are
+  // exactly the `unique` ones that were letting the duplicate in. Those rows are
+  // reported, never merged.
+  if (sub === "normalize-emails") {
+    const slug = args[1];
+    const field = args[2];
+    if (!slug || !field) {
+      process.stderr.write(
+        "collections normalize-emails <slug> <field> [--batch <n>] [--dry-run]\n",
+      );
+      process.exit(1);
+    }
+    const rest = args.slice(3);
+    const batchIdx = rest.indexOf("--batch");
+    const batch = batchIdx >= 0 ? Number(rest[batchIdx + 1]) : undefined;
+    if (batchIdx >= 0 && (!Number.isFinite(batch) || (batch as number) < 1)) {
+      process.stderr.write("--batch takes a positive number of rows\n");
+      process.exit(1);
+    }
+    const dryRun = rest.includes("--dry-run");
+    try {
+      const ctx = resolveContext(rest);
+      const client = makeClient(ctx);
+      const totals = {
+        scanned: 0,
+        normalized: 0,
+        alreadyCanonical: 0,
+        unreadable: 0,
+        collided: 0,
+        unreadableIds: [] as string[],
+        collidedIds: [] as string[],
+      };
+      let after: string | undefined;
+      for (;;) {
+        const res = await client.request<{
+          data: {
+            scanned: number;
+            normalized: number;
+            alreadyCanonical: number;
+            unreadable: number;
+            collided: number;
+            unreadableIds: string[];
+            collidedIds: string[];
+            cursor: string | null;
+          };
+        }>("POST", `/api/email/normalize/${encodeURIComponent(slug)}`, {
+          field,
+          ...(batch === undefined ? {} : { limit: batch }),
+          ...(after === undefined ? {} : { after }),
+          ...(dryRun ? { dryRun: true } : {}),
+        });
+        const d = res.data;
+        totals.scanned += d.scanned;
+        totals.normalized += d.normalized;
+        totals.alreadyCanonical += d.alreadyCanonical;
+        totals.unreadable += d.unreadable;
+        totals.collided += d.collided;
+        // Kept for the operator to go and look at, but bounded — a collection
+        // that is entirely unreadable should not fill a terminal with ids.
+        for (const id of d.unreadableIds) {
+          if (totals.unreadableIds.length < 200) totals.unreadableIds.push(id);
+        }
+        for (const id of d.collidedIds) {
+          if (totals.collidedIds.length < 200) totals.collidedIds.push(id);
+        }
+        if (!json && d.cursor) {
+          process.stderr.write(`  … ${totals.scanned} scanned, ${totals.normalized} rewritten\n`);
+        }
+        if (!d.cursor) break;
+        after = d.cursor;
+      }
+      if (json) {
+        printJson({ data: totals });
+        return;
+      }
+      process.stderr.write(
+        `${dryRun ? "· dry run" : "✓"} ${slug}.${field}: ` +
+          `${totals.normalized} ${dryRun ? "would be rewritten" : "rewritten"}` +
+          `, ${totals.alreadyCanonical} already canonical` +
+          (totals.unreadable ? `, ${totals.unreadable} unreadable (left as-is)` : "") +
+          (totals.collided ? `, ${totals.collided} duplicate (left as-is)` : "") +
+          "\n",
+      );
+      if (totals.unreadableIds.length && !dryRun) {
+        process.stderr.write(
+          `  unreadable rows: ${totals.unreadableIds.slice(0, 20).join(", ")}` +
+            (totals.unreadableIds.length > 20 ? ", …" : "") +
+            "\n",
+        );
+      }
+      // Always shown, dry run included — on a unique column this list IS the
+      // point of the dry run: it names the rows an operator has to decide about
+      // before the pass can finish.
+      if (totals.collidedIds.length) {
+        process.stderr.write(
+          `  duplicate rows (another row already holds the folded address): ` +
+            `${totals.collidedIds.slice(0, 20).join(", ")}` +
+            (totals.collidedIds.length > 20 ? ", …" : "") +
+            "\n",
+        );
+      }
+    } catch (e) {
+      die(e, "collections normalize-emails");
     }
     return;
   }

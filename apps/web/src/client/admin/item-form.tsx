@@ -18,6 +18,7 @@ import { DatePicker } from "@/components/date-picker";
 import { RelationPicker, AppUserPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
 import { GeoInput } from "./field-geo-input";
 import { MoneyInput } from "./field-money-input";
+import { EmailInput } from "./field-email-input";
 import { PhoneInput } from "./field-phone-input";
 import { useEnabledExtensions, useMe, useSettings } from "./queries";
 import { allowedMoves } from "@backlex/db/transitions";
@@ -1501,6 +1502,32 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
             // form right now, so switching a row to EUR relabels the amount
             // box before the save rather than after the re-read.
             siblings={draft}
+            invalid={!!err}
+          />
+          {errBlock}
+        </div>
+      );
+    }
+
+    if (f.type === "email") {
+      const email = (
+        f as {
+          email?: {
+            caseSensitiveLocal?: boolean;
+            allowedDomains?: string[];
+            display?: "ascii" | "unicode";
+          };
+        }
+      ).email;
+      return (
+        <div key={f.name} className="flex min-w-0 flex-col gap-1.5">
+          {label}
+          <EmailInput
+            value={val}
+            onChange={setField}
+            allowedDomains={email?.allowedDomains}
+            caseSensitiveLocal={email?.caseSensitiveLocal}
+            display={email?.display}
             invalid={!!err}
           />
           {errBlock}

@@ -18,6 +18,7 @@ import { formatGeoPoint, tryParseGeoPoint } from "@backlex/db/geo";
 // server and the item form use.
 import { formatMoney, type MoneyValue } from "@backlex/db/money";
 import { formatPhone, type PhoneDisplay } from "@backlex/db/phone";
+import { formatEmail, type EmailDisplay } from "@backlex/db/email";
 
 type FieldFormat = {
   style?: "plain" | "decimal" | "currency" | "percent" | "percent100";
@@ -39,6 +40,10 @@ export interface FormattableField {
    *  the stored value is canonical E.164, and the only alternative rendering is
    *  a space after the calling code. */
   phone?: { display?: PhoneDisplay };
+  /** An email field renders through its own `display` rather than `format` —
+   *  the stored value is canonical, and the only alternative rendering is the
+   *  international domain decoded back into its own alphabet. */
+  email?: { display?: EmailDisplay };
 }
 
 /** Field shape the label resolver needs. */
@@ -188,6 +193,13 @@ export const formatFieldValue = (
   // not a dataset this ships.
   if (field.type === "phone") {
     return formatPhone(value, field.phone?.display);
+  }
+  // A stored address is canonical, and that is what it renders as unless the
+  // field asked for the one alternative worth offering: the A-label decoded
+  // back, so `ada@xn--rnek-4qa.com` reads as `ada@örnek.com`. Never what a
+  // caller receives from the API — the column holds the deliverable form.
+  if (field.type === "email") {
+    return formatEmail(value, field.email?.display);
   }
   const f = field.format;
   if (f) {

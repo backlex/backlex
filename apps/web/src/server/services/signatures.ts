@@ -29,6 +29,8 @@
 import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
+// The pure subpath, not the package root — see `packages/db/src/email.ts`.
+import { tryParseEmail } from "@backlex/db/email";
 import { AppError, renderTemplate, type PdfPageOptions } from "@backlex/core";
 import type { Ctx } from "../context";
 import { MAX_PDF_BYTES, resolveTemplate, safeFilename } from "./documents";
@@ -206,14 +208,26 @@ export const escapeHtml = (s: string): string =>
     ch === "&" ? "&amp;" : ch === "<" ? "&lt;" : ch === ">" ? "&gt;" : ch === '"' ? "&quot;" : "&#39;",
   );
 
-/** Deliberately permissive but structural — the address has to survive being
- *  put in a `To:` header, and anything cleverer rejects real addresses. */
-const EMAIL_RE = /^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>"]+$/;
-
+/**
+ * The address a signing request is sent to, canonical.
+ *
+ * This used to be a hand-written regex — one of eight in the repo, and one of
+ * three identical copies. They were not merely duplicated, they DISAGREED with
+ * the field-level validator, which admitted the `,`, `;`, `<`, `>` and `"` these
+ * rejected. So an address could be stored months earlier, pass validation, and
+ * then be refused right here by the thing that was supposed to mail it — with
+ * the failure landing on whoever was waiting for the document.
+ *
+ * `parseEmail` is now the only answer to "is this an address", and it folds as
+ * well as judges, so a signer written `Ada@Example.com` matches the row it came
+ * from. See `packages/db/src/email.ts`.
+ */
 export const normalizeEmail = (raw: unknown, what = "signer"): string => {
-  const email = String(raw ?? "").trim();
-  if (!EMAIL_RE.test(email)) throw new AppError("VALIDATION", `"${email}" is not a valid ${what} email`);
-  return email;
+  const parsed = tryParseEmail(String(raw ?? "").trim());
+  if (!parsed) {
+    throw new AppError("VALIDATION", `"${String(raw ?? "").trim()}" is not a valid ${what} email`);
+  }
+  return parsed.email;
 };
 
 /**

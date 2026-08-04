@@ -479,6 +479,11 @@ export function AlterPreview({
     // Same storage as `text`, deliberately: that is what lets an existing text
     // phone column become a phone field with no ALTER at all.
     phone: "TEXT",
+    // Same storage as `text` again — an existing text email column becomes an
+    // email field with no ALTER. Getting this preview wrong is not theoretical:
+    // the ternary chain it replaced had been lying since `number` (previewed
+    // TEXT for a REAL column) and only the real-screen pass caught it.
+    email: "TEXT",
     hash: "TEXT",
   };
   const sqlType = SQLITE_PREVIEW[pendingField.type ?? "text"] ?? "TEXT";

@@ -16,6 +16,7 @@ type FieldType =
   | "geo"
   | "money"
   | "phone"
+  | "email"
   | "hash";
 
 interface FieldChoice {
@@ -77,6 +78,11 @@ const SCALAR_TYPES: Record<FieldType, string> = {
   // in, and a generated `.d.ts` that refuses valid writes is worse than a plain
   // string.
   phone: "string",
+  // Canonical on read, anything a person types on write — so a plain string for
+  // the same reason `phone` is one. A `\`${string}@${string}\`` template type
+  // would look precise and buy nothing: it accepts `"@"` and rejects nothing an
+  // operator would actually mistype.
+  email: "string",
   // An amount in MAJOR units plus the currency it is denominated in. Written
   // structurally rather than as a named import so the generated file stays
   // standalone — it is a `.d.ts` a consumer drops into their own project.

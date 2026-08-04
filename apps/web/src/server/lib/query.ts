@@ -2,6 +2,7 @@ import { AppError, normalizeCondition } from "@backlex/core";
 import type { Condition } from "@backlex/core";
 import type { FieldDef } from "@backlex/db";
 import { normalizeMoneyOperands } from "../services/items/money-fields";
+import { normalizeEmailOperands } from "../services/items/email-fields";
 import { normalizePhoneOperands } from "../services/items/phone-fields";
 import { expandRangeOperators, rangeFieldsOf } from "@backlex/db/range";
 import { normalizeTemporalOperands } from "../services/items/temporal-fields";
@@ -321,6 +322,10 @@ export const parseQuery = (
       // carrying the number as an operator typed it matches nothing — which is
       // indistinguishable from "no such customer".
       filter = normalizePhoneOperands(filter, fields);
+      // And email for the same reason again — with one extra operator class:
+      // `_ends_with: "@Example.com"` is the query anyone actually writes against
+      // an address column, and it has to be folded to match a folded column.
+      filter = normalizeEmailOperands(filter, fields);
       // `_overlaps` / `_covers` become ordinary comparisons over the period's
       // two real columns. Done here rather than in the DSL compiler for the same
       // reason money's scaling is: the compiler sees field NAMES, and which

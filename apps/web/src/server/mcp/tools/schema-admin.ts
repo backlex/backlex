@@ -34,7 +34,11 @@ export const createCollection: McpTool = {
         description:
           "Array of `{ name, type, required?, unique?, to?, localized? }`. " +
           "Supported types: text, longtext, integer, number, boolean, json, " +
-          "timestamp, uuid, relation, relation_many, file, geo, money, phone, hash. " +
+          "timestamp, uuid, relation, relation_many, file, geo, money, phone, email, hash. " +
+          "`email` stores a canonical address (trimmed, folded, international " +
+          "domains encoded) and accepts anything a person types or pastes; give " +
+          "it an `email` config with `allowedDomains` to keep a staff collection " +
+          "inside the company. " +
           "`phone` stores canonical E.164 and accepts any form a human writes; " +
           "give it a `phone` config with `region` (ISO 3166-1 alpha-2, e.g. " +
           "`{ region: \"TR\" }`) so national-form numbers like `0532…` can be " +

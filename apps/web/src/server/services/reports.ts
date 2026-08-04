@@ -29,15 +29,14 @@ import {
   type PdfPageOptions,
   type ReportPanel,
 } from "@backlex/core";
+// The pure subpath, not the package root — see `packages/db/src/email.ts`.
+import { tryParseEmail } from "@backlex/db/email";
 import type { Ctx } from "../context";
 import { getDashboard, runDashboard, type PanelResult } from "./dashboards";
 import { renderDocument, safeFilename } from "./documents";
 import { sendTemplatedEmail } from "./email";
 import { loadAppSettings } from "./settings";
 
-/** Deliberately permissive but structural — matches `services/signatures.ts`,
- *  because the address has to survive being put in a `To:` header. */
-const EMAIL_RE = /^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>"]+$/;
 
 /** One report may not be mailed to an arbitrary list. A flow that resolved its
  *  recipients from a row could otherwise turn a scheduled report into a bulk
@@ -93,10 +92,16 @@ export const parseRecipients = (raw: string): string[] => {
       `A report goes to at most ${MAX_REPORT_RECIPIENTS} recipients (got ${list.length})`,
     );
   }
-  for (const email of list) {
-    if (!EMAIL_RE.test(email)) throw new AppError("VALIDATION", `"${email}" is not a valid recipient`);
-  }
-  return list;
+  // Folded, not just judged — the third copy of a hand-written regex that
+  // disagreed with the field-level validator (see `services/signatures.ts`).
+  // Canonicalizing also collapses a list that names the same mailbox twice in
+  // two cases, which would otherwise spend two of the recipient budget on one
+  // person.
+  return list.map((email) => {
+    const parsed = tryParseEmail(email);
+    if (!parsed) throw new AppError("VALIDATION", `"${email}" is not a valid recipient`);
+    return parsed.email;
+  });
 };
 
 /** `2026-08-02` in the workspace's zone — a report named for the day it covers

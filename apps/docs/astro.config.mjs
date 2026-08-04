@@ -98,6 +98,7 @@ export default defineConfig({
             { slug: "geo" },
             { slug: "money" },
             { slug: "phone" },
+            { slug: "email" },
             { slug: "date-ranges" },
             { slug: "number-formatting" },
             { slug: "status-transitions" },

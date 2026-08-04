@@ -801,7 +801,17 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   // lifecycle board (new items are always drafts).
   const openCreate = (status?: string) => {
     const field = kanbanStatusField?.name;
-    const preset = status && field && field !== "_status" ? { field, value: status } : null;
+    // `typeof status === "string"`, not a truthy check. Two call sites wire this
+    // straight to `onClick`, which hands it the CLICK EVENT — a truthy object
+    // that interpolated to the literal string "[object Object]", preset the
+    // grouped field to it, and made every "New post" on a collection with a
+    // Kanban status field open a form that 422'd on save naming a field the
+    // operator never touched. The guard belongs here rather than at each
+    // `onClick`: this is the one place that decides what a preset is.
+    const preset =
+      typeof status === "string" && status && field && field !== "_status"
+        ? { field, value: status }
+        : null;
     if (activeCollection) {
       const sp = new URLSearchParams(location.search);
       if (preset) sp.set("new", `${preset.field}:${preset.value}`);

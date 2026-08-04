@@ -1370,6 +1370,10 @@ msgstr "AD varsayılanları: <0>mail · givenName · sn · memberOf</0>. OpenLDA
 msgid "Ad-hoc roles"
 msgstr "Geçici roller"
 
+#: src/client/admin/field-email-input.tsx
+msgid "ada@example.com"
+msgstr "ada@ornek.com"
+
 #: src/client/admin/pages/overview.tsx
 msgid "Adapter auto-selected from bindings/env."
 msgstr "Bağlamalar/env'den adaptör otomatik seçildi."
@@ -1383,6 +1387,7 @@ msgid "add"
 msgstr "ekle"
 
 #: src/client/admin/add-field.tsx
+#: src/client/admin/field-email-editor.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -1949,6 +1954,10 @@ msgstr "Zaten bir hesabınız var mı?"
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Already in sync — no changes."
 msgstr "Zaten eşitlenmiş — değişiklik yok."
+
+#: src/client/admin/field-email-editor.tsx
+msgid "Already on the list."
+msgstr "Zaten listede."
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "already set"
@@ -5546,6 +5555,8 @@ msgid "Effort"
 msgstr "Eforu"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/settings/index.tsx
@@ -5686,6 +5697,10 @@ msgstr "Boş koleksiyon"
 #: src/client/admin/pages/agents.tsx
 #~ msgid "Empty conversation"
 #~ msgstr "Boş konuşma"
+
+#: src/client/admin/field-email-editor.tsx
+msgid "Empty means any domain, which is the right default for customers and contacts. A subdomain of a listed domain matches, so example.com admits ada@mail.example.com. Use it for a staff or member column that has to stay inside the company."
+msgstr "Boş bırakmak her alan adına izin verir; müşteri ve kişi kayıtları için doğru olan da budur. Listelenen bir alan adının alt alan adı da eşleşir, yani ornek.com, ada@mail.ornek.com adresini kabul eder. Bunu şirket içinde kalması gereken personel veya üye sütunları için kullanın."
 
 #: src/client/admin/collections-index.tsx
 #~ msgid "Empty or template"
@@ -6127,6 +6142,10 @@ msgstr "Herkes imzaladı. Bir kopya e-posta ile size gönderildi."
 #: src/client/admin/pages/extensions.tsx
 msgid "Exact package name as published on npm."
 msgstr "npm'de yayınlandığı haliyle tam paket adı."
+
+#: src/client/admin/field-email-editor.tsx
+msgid "example.com"
+msgstr "ornek.com"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 #~ msgid "Examples"
@@ -7988,6 +8007,10 @@ msgstr "HubSpot kişilerini bir koleksiyonla eşzamanlı tutar. Kayıt içeriği
 msgid "Keep reviewing"
 msgstr "İncelemeye devam et"
 
+#: src/client/admin/field-email-editor.tsx
+msgid "Keep the case of the part before the @"
+msgstr "@ işaretinden önceki kısmın büyük/küçük harfini koru"
+
 #: src/client/pages/book.tsx
 msgid "Keep this link — it is how you change or cancel this booking."
 msgstr "Bu bağlantıyı saklayın — rezervasyonu değiştirmenin veya iptal etmenin yolu bu."
@@ -9194,6 +9217,10 @@ msgstr "göndermek için kabul edilmeli"
 msgid "Must be an absolute URL (https://…)"
 msgstr "Mutlak bir URL olmalı (https://…)"
 
+#: src/client/admin/field-email-input.tsx
+msgid "Must be an address at"
+msgstr "Şu alan adında bir adres olmalı:"
+
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Must be an https URL."
 msgstr "https bir URL olmalı."
@@ -10359,6 +10386,10 @@ msgstr "yok (herkese açık)"
 msgid "none selected = all"
 msgstr "hiçbiri seçili değil = tümü"
 
+#: src/client/admin/field-email-editor.tsx
+msgid "Not a domain."
+msgstr "Alan adı değil."
+
 #: src/client/admin/field-range-editor.tsx
 msgid "Not a period"
 msgstr "Dönem değil"
@@ -10629,6 +10660,10 @@ msgstr "kapalı"
 msgid "Off"
 msgstr "Kapalı"
 
+#: src/client/admin/field-email-editor.tsx
+msgid "Off by default, and almost always the right answer: folding is what makes one mailbox one row, so `unique`, portal auto-link and marketing-list dedup all work. Turn it on only for a mail server that genuinely treats Ada@ and ada@ as two people — and note that `unique` then stops catching the pair."
+msgstr "Varsayılan olarak kapalı ve neredeyse her zaman doğru seçim: bir posta kutusunun tek satır olmasını sağlayan şey bu katlama; `unique`, portal otomatik eşleme ve pazarlama listesi yinelenen kaydı ayıklama bu sayede çalışır. Yalnızca Ada@ ile ada@ adreslerini gerçekten iki ayrı kişi sayan bir posta sunucusu için açın — bu durumda `unique` ikilinin farkına varamaz."
+
 #: src/client/admin/pages/sync-hooks-card.tsx
 msgid "Off for a hook that only validates — otherwise returning `data` would let it rewrite rows. A patch is re-validated against the schema."
 msgstr "Yalnızca doğrulama yapan bir hook için kapalı olmalı — aksi halde `data` döndürerek satırları yeniden yazabilir. Yama şemaya karşı yeniden doğrulanır."
@@ -10732,6 +10767,10 @@ msgstr "Satır başına bir URL — tıklayıp uzaklaştığınızda kaydedilir.
 #: src/client/pages/magic-link.tsx
 msgid "One-time link, no <0>password</0>."
 msgstr "Tek kullanımlık bağlantı, <0>parola</0> gerektirmez."
+
+#: src/client/admin/field-email-editor.tsx
+msgid "Only accept addresses at these domains"
+msgstr "Yalnızca bu alan adlarındaki adresleri kabul et"
 
 #: src/client/admin/field-phone-editor.tsx
 msgid "Only accept numbers from <0>(optional)</0>"
@@ -12756,6 +12795,10 @@ msgstr "Kaldır"
 msgid "Remove {0}"
 msgstr "{0} kaldır"
 
+#: src/client/admin/field-email-editor.tsx
+msgid "Remove {d}"
+msgstr "{d} adresini kaldır"
+
 #: src/client/admin/relational-pickers.tsx
 msgid "Remove {k}"
 msgstr "{k} öğesini kaldır"
@@ -13831,6 +13874,7 @@ msgstr "kaydedildi"
 msgid "Saved {0} redirect URL{1}."
 msgstr "{0} yönlendirme URL'si kaydedildi."
 
+#: src/client/admin/field-email-input.tsx
 #: src/client/admin/field-phone-input.tsx
 msgid "Saved as"
 msgstr "Şöyle kaydedilecek"
@@ -14659,6 +14703,10 @@ msgstr "Gizlileri göster ({hiddenCount})"
 #: src/client/admin/collections-index.tsx
 msgid "Show hidden collections"
 msgstr "Gizli koleksiyonları göster"
+
+#: src/client/admin/field-email-editor.tsx
+msgid "Show international domains in their own alphabet"
+msgstr "Uluslararası alan adlarını kendi alfabesinde göster"
 
 #: src/client/admin/field-geo-input.tsx
 msgid "Show map"
@@ -15867,6 +15915,10 @@ msgstr "Aşağıdaki istemci bu çalışma alanının MCP araçlarını sizin ad
 msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 msgstr "İstemci gizli anahtarı bekleme sırasında şifrelenir. Her iki alanı da boş bırakırsanız giriş, <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> ortam değişkenlerine döner. Sağlayıcıda yönlendirme URI'si olarak <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> adresini kaydedin."
 
+#: src/client/admin/field-email-editor.tsx
+msgid "The column always stores the encoded form a mail server resolves. This only changes how it is DISPLAYED — ada@örnek.com instead of ada@xn--rnek-4qa.com. Off unless the workspace actually has addresses like that."
+msgstr "Sütun her zaman posta sunucusunun çözümlediği kodlanmış biçimi saklar. Bu ayar yalnızca GÖSTERİMİ değiştirir — ada@xn--rnek-4qa.com yerine ada@örnek.com. Çalışma alanında gerçekten böyle adresler yoksa kapalı bırakın."
+
 #: src/client/admin/pages/forms.tsx
 msgid "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
 msgstr "Mevcut bağlantı anında devre dışı kalır ve yenisi oluşturulur. Eski bağlantının gömülü olduğu her yerin güncellenmesi gerekir."
@@ -16729,6 +16781,10 @@ msgstr "2FA'yı kapat"
 #: src/client/admin/account-page.tsx
 msgid "Turn off two-factor authentication."
 msgstr "İki adımlı doğrulamayı kapat."
+
+#: src/client/admin/field-email-editor.tsx
+msgid "Turning an existing text column into an email field changes no storage, so nothing has to be migrated — but the rows already in it are still written however they were typed. Run backlex collections normalize-emails to fold them, with --dry-run first if the column is unique."
+msgstr "Mevcut bir metin sütununu e-posta alanına çevirmek depolamayı değiştirmez, dolayısıyla taşınacak bir şey yoktur — ama içindeki satırlar hâlâ yazıldıkları hâlde durur. Bunları katlamak için backlex collections normalize-emails komutunu çalıştırın; sütun unique ise önce --dry-run ile deneyin."
 
 #: src/client/admin/account-page.tsx
 msgid "Turning off…"

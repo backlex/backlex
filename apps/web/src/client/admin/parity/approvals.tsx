@@ -14,7 +14,7 @@ import {
 } from "@backlex/ui/components/dialog";
 import { I } from "../icons";
 import { Select } from "../select";
-import { Button, PageHeader } from "../ui";
+import { Button, EmptyState, PageHeader } from "../ui";
 import { approvalsApi, type ApiApprovalRequest } from "../api";
 import { ApprovalsSkeleton } from "../page-skeletons";
 
@@ -129,6 +129,7 @@ export function ApprovalsPage({ pushToast }: { pushToast: (m: string) => void })
         description={t`What is waiting on a person — and what they decided.`}
         actions={
           <Select
+            size="sm"
             value={status}
             onChange={(v) => {
               setStatus(v);
@@ -147,20 +148,18 @@ export function ApprovalsPage({ pushToast }: { pushToast: (m: string) => void })
         }
       />
 
-      <Card className="w-full">
-        {rows.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
-            <I.ShieldCheck className="size-6 text-muted-foreground" />
-            <p className="text-sm font-medium">
-              <Trans>Nothing is waiting on anybody</Trans>
-            </p>
-            <p className="max-w-md text-[13px] text-muted-foreground">
-              <Trans>
-                Add a "Wait for approval" step to a flow, and the requests it raises show up here.
-              </Trans>
-            </p>
-          </div>
-        ) : (
+      {rows.length === 0 ? (
+        <EmptyState
+          icon={I.ShieldCheck}
+          title={<Trans>Nothing is waiting on anybody</Trans>}
+          description={
+            <Trans>
+              Add a "Wait for approval" step to a flow, and the requests it raises show up here.
+            </Trans>
+          }
+        />
+      ) : (
+        <Card className="w-full">
           <ScrollArea className="w-full" viewportClassName="max-h-[70vh]">
             <div className="flex flex-col divide-y divide-border">
               {rows.map((row) => (
@@ -199,8 +198,8 @@ export function ApprovalsPage({ pushToast }: { pushToast: (m: string) => void })
               ))}
             </div>
           </ScrollArea>
-        )}
-      </Card>
+        </Card>
+      )}
 
       <Dialog open={detail != null} onOpenChange={(v) => !v && setOpen(null)}>
         <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-2xl">

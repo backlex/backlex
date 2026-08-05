@@ -5,7 +5,7 @@ import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { I } from "../icons";
-import { Button, PageHeader } from "../ui";
+import { Button, EmptyState, PageHeader } from "../ui";
 import { emailTemplatesApi, type ApiEmailTemplate } from "../api";
 import { EmailTemplatesSkeleton } from "../page-skeletons";
 
@@ -143,11 +143,11 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
 
   return (
     <div className="flex flex-col gap-4.5">
-      <PageHeader title={t`Email templates`} description={<><Trans>Variables use Liquid-style <span className="font-mono">{userEmailExample}</span>. Template renders run through the Functions sandbox.</Trans></>} actions={<Button size="sm" variant="outline" icon={I.Plus} onClick={onNew}><Trans>New template</Trans></Button>} />
+      <PageHeader title={t`Email templates`} description={<><Trans>Variables use Liquid-style <span className="font-mono">{userEmailExample}</span>. Template renders run through the Functions sandbox.</Trans></>} actions={<Button size="sm" variant="primary" icon={I.Plus} onClick={onNew}><Trans>New template</Trans></Button>} />
       <div className="grid grid-cols-[240px_minmax(0,1fr)_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
         <Card className="py-0 gap-0">
           {templates.length === 0 && !active?.isNew && (
-            <div className="px-3.5 py-3 text-xs text-muted-foreground"><Trans>No templates yet — use "New template" to add one.</Trans></div>
+            <EmptyState size="sm" icon={I.Mail} title={<Trans>No templates yet — use "New template" to add one.</Trans>} />
           )}
           {active?.isNew && !templates.some((t) => t.id === active.id) && (
             <div className="border-t border-border bg-accent px-3 py-2.5">

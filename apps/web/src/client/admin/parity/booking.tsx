@@ -18,7 +18,7 @@ import {
 } from "@backlex/ui/components/dialog";
 import { I } from "../icons";
 import { Select } from "../select";
-import { Button, PageHeader } from "../ui";
+import { Button, EmptyState, PageHeader } from "../ui";
 import { bookingApi, type ApiBooking, type ApiBookingResource, type ApiBookingRule } from "../api";
 import { BookingSkeleton } from "../page-skeletons";
 
@@ -392,7 +392,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
         title={t`Booking`}
         description={t`Publish a calendar people can pick a time from, and see who did.`}
         actions={
-          <Button onClick={openNew} className="ml-auto">
+          <Button variant="primary" onClick={openNew} className="ml-auto">
             <I.Plus className="size-4" />
             <span className="max-sm:sr-only">
               <Trans>New resource</Trans>
@@ -402,13 +402,21 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
       />
 
       {resources.length === 0 ? (
-        <Card className="p-6 text-sm text-muted-foreground">
-          <Trans>
-            Nothing is bookable yet. A resource is the thing people book — a person, a room, a
-            table — and it carries the opening hours, how long one booking lasts and how many fit
-            at once.
-          </Trans>
-        </Card>
+        <EmptyState
+          icon={I.CalendarDays}
+          title={<Trans>Nothing is bookable yet</Trans>}
+          description={
+            <Trans>
+              A resource is the thing people book — a person, a room, a table — and it carries the
+              opening hours, how long one booking lasts and how many fit at once.
+            </Trans>
+          }
+          action={
+            <Button variant="primary" icon={I.Plus} onClick={openNew}>
+              <Trans>New resource</Trans>
+            </Button>
+          }
+        />
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-[320px_1fr]">
           {/* `self-start` (via the grid's `items-start`) keeps the resource

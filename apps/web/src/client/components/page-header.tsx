@@ -1,66 +1,81 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { ChevronRightIcon } from "lucide-react";
-import { cn } from "@backlex/ui/lib/utils";
 import { useLingui } from "@lingui/react/macro";
+import { cn } from "@backlex/ui/lib/utils";
+import { I } from "@/admin/icons";
 
 export interface BreadcrumbItem {
   label: string;
   to?: string;
 }
 
-interface PageHeaderProps {
-  title: ReactNode;
+export interface PageHeaderProps {
+  title?: ReactNode;
+  slug?: string;
   description?: ReactNode;
-  breadcrumbs?: BreadcrumbItem[];
+  /** Extra classes on the description wrapper — e.g. `hidden sm:block` to drop
+   *  a long description on mobile where vertical space is scarce. */
+  descriptionClassName?: string;
   actions?: ReactNode;
-  /** Override default tag/styling for the title (e.g. font-mono for slugs). */
+  badges?: ReactNode;
+  breadcrumbs?: BreadcrumbItem[];
+  /** Override the title typography — e.g. `font-mono` for a slug. */
   titleClassName?: string;
 }
 
 /**
- * Consistent page header — every primary admin page should render this at
- * the top. Standardizes title typography, breadcrumb pattern, and the
- * top-right actions area.
+ * The one page header in the admin. `admin/ui.tsx` re-exports it.
+ *
+ * There used to be a second implementation whose actions were bottom-aligned
+ * (`sm:items-end`), so the same button sat at a different height depending on
+ * which module a page happened to import — and the drift only became visible
+ * once a description wrapped to two lines. Actions are top-aligned here so the
+ * primary button lines up with the title however long the description runs.
  */
-export const PageHeader = ({
+export function PageHeader({
   title,
+  slug,
   description,
-  breadcrumbs,
+  descriptionClassName,
   actions,
+  badges,
+  breadcrumbs,
   titleClassName,
-}: PageHeaderProps) => {
+}: PageHeaderProps) {
   const { t } = useLingui();
   return (
-  <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-    <div className="min-w-0 space-y-1">
-      {breadcrumbs && breadcrumbs.length > 0 && (
-        <nav
-          aria-label={t`Breadcrumb`}
-          className="flex items-center gap-1 text-xs text-muted-foreground"
+    <div className="flex flex-wrap items-start justify-between gap-[18px]">
+      <div className="flex min-w-0 flex-col gap-1">
+        {breadcrumbs && breadcrumbs.length > 0 && (
+          <nav aria-label={t`Breadcrumb`} className="flex items-center gap-1 text-xs text-muted-foreground">
+            {breadcrumbs.map((item, i) => (
+              <span key={`${item.label}-${i}`} className="flex items-center gap-1">
+                {i > 0 && <I.ChevronRight className="size-3" />}
+                {item.to ? (
+                  <Link to={item.to} className="hover:text-foreground hover:underline">
+                    {item.label}
+                  </Link>
+                ) : (
+                  <span>{item.label}</span>
+                )}
+              </span>
+            ))}
+          </nav>
+        )}
+        <h1
+          className={cn(
+            "m-0 flex flex-wrap items-center gap-2.5 text-2xl font-semibold tracking-tight",
+            titleClassName,
+          )}
         >
-          {breadcrumbs.map((item, i) => (
-            <span key={i} className="flex items-center gap-1">
-              {i > 0 && <ChevronRightIcon className="size-3" />}
-              {item.to ? (
-                <Link to={item.to} className="hover:text-foreground hover:underline">
-                  {item.label}
-                </Link>
-              ) : (
-                <span>{item.label}</span>
-              )}
-            </span>
-          ))}
-        </nav>
-      )}
-      <h1 className={cn("text-2xl font-semibold leading-tight", titleClassName)}>
-        {title}
-      </h1>
-      {description && (
-        <p className="max-w-2xl text-sm text-muted-foreground">{description}</p>
-      )}
+          {slug ? <span className="font-mono text-[22px] font-medium">{slug}</span> : title}
+          {badges}
+        </h1>
+        {description && (
+          <div className={cn("max-w-[720px] text-sm text-muted-foreground", descriptionClassName)}>{description}</div>
+        )}
+      </div>
+      {actions && <div className="ml-auto flex flex-wrap items-center justify-end gap-2">{actions}</div>}
     </div>
-    {actions && <div className="flex shrink-0 gap-2 self-end sm:self-auto">{actions}</div>}
-  </div>
   );
-};
+}

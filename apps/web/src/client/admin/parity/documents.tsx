@@ -6,7 +6,7 @@ import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { I } from "../icons";
 import { Select } from "../select";
-import { Button, PageHeader } from "../ui";
+import { Button, EmptyState, PageHeader } from "../ui";
 import { documentsApi, type ApiDocumentTemplate } from "../api";
 import { DocumentsSkeleton } from "../page-skeletons";
 
@@ -227,7 +227,7 @@ export function DocumentsPage({ pushToast }: { pushToast: (m: string) => void })
           </Trans>
         }
         actions={
-          <Button size="sm" variant="outline" icon={I.Plus} onClick={onNew}>
+          <Button size="sm" variant="primary" icon={I.Plus} onClick={onNew}>
             <Trans>New template</Trans>
           </Button>
         }
@@ -235,9 +235,11 @@ export function DocumentsPage({ pushToast }: { pushToast: (m: string) => void })
       <div className="grid grid-cols-[240px_minmax(0,1fr)_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
         <Card className="gap-0 py-0">
           {templates.length === 0 && !active?.isNew && (
-            <div className="px-3.5 py-3 text-xs text-muted-foreground">
-              <Trans>No templates yet — use "New template" to add one.</Trans>
-            </div>
+            <EmptyState
+              size="sm"
+              icon={I.ScrollText}
+              title={<Trans>No templates yet — use "New template" to add one.</Trans>}
+            />
           )}
           {active?.isNew && (
             <div className="border-t border-border bg-accent px-3 py-2.5">

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
-import { Badge, Button, PageHeader } from "../ui";
+import { Badge, Button, EmptyState, PageHeader } from "../ui";
 import { Card } from "@backlex/ui/components/card";
 import { RealtimeTail, type RealtimeEvent } from "../extras";
 import { RealtimeSkeleton } from "../page-skeletons";
@@ -97,7 +97,7 @@ export function RealtimePage({ events, active, onActiveChange, pushToast }: { ev
       <div className="grid grid-cols-[300px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
         <Card className="py-0 gap-0">
           {channelsToRender.length === 0 && (
-            <div className="px-3 py-4 text-xs text-muted-foreground"><Trans>No channels — create a collection to get one.</Trans></div>
+            <EmptyState size="sm" icon={I.Zap} title={<Trans>No channels — create a collection to get one.</Trans>} />
           )}
           {channelsToRender.map((c) => (
             <div

@@ -81,7 +81,7 @@ export function ErasureCard({ pushToast }: { pushToast: (m: string) => void }) {
             </Trans>
           </p>
         </div>
-        <Button className="ml-auto shrink-0" onClick={() => setOpen(true)}>
+        <Button variant="primary" className="ml-auto shrink-0" onClick={() => setOpen(true)}>
           <Trans>New request</Trans>
         </Button>
       </div>
@@ -97,7 +97,7 @@ export function ErasureCard({ pushToast }: { pushToast: (m: string) => void }) {
           icon={I.ShieldAlert}
           title={t`No erasure requests`}
           description={t`When someone asks to be removed, start here — the preview shows everything that would go.`}
-          size="sm"
+          size="md"
         />
       ) : (
         <div className="flex flex-col gap-2">

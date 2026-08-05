@@ -17,7 +17,7 @@ import {
 } from "@backlex/ui/components/dialog";
 import { I } from "../icons";
 import { Select } from "../select";
-import { Button, PageHeader } from "../ui";
+import { Button, EmptyState, PageHeader } from "../ui";
 import { documentsApi, signaturesApi, type ApiSignatureRequest } from "../api";
 import { SignaturesSkeleton } from "../page-skeletons";
 
@@ -250,7 +250,11 @@ export function SignaturesPage({ pushToast }: { pushToast: (m: string) => void }
         }
         actions={
           <div className="flex items-center gap-2">
+            {/* `size="sm"` matches the h-8 the admin `Button` defaults to — a
+                default-size Select is h-9 and sits a pixel proud of every
+                button beside it. */}
             <Select
+              size="sm"
               value={status}
               onChange={onFilter}
               options={[
@@ -263,19 +267,31 @@ export function SignaturesPage({ pushToast }: { pushToast: (m: string) => void }
               ]}
               className="min-w-0 max-sm:w-[150px]"
             />
-            <Button size="sm" icon={I.Plus} onClick={() => setSendOpen(true)}>
+            <Button variant="primary" size="sm" icon={I.Plus} onClick={() => setSendOpen(true)}>
               <Trans>Send for signature</Trans>
             </Button>
           </div>
         }
       />
 
+      {rows.length === 0 ? (
+        <EmptyState
+          icon={I.Signature}
+          title={<Trans>Nothing out for signature</Trans>}
+          description={
+            <Trans>
+              Send a document template to one or more signers. The copy is frozen the moment it
+              goes out, and each signer gets their own single-use link.
+            </Trans>
+          }
+          action={
+            <Button variant="primary" icon={I.Plus} onClick={() => setSendOpen(true)}>
+              <Trans>Send for signature</Trans>
+            </Button>
+          }
+        />
+      ) : (
       <Card className="gap-0 py-0">
-        {rows.length === 0 && (
-          <div className="px-3.5 py-6 text-center text-xs text-muted-foreground">
-            <Trans>Nothing out for signature.</Trans>
-          </div>
-        )}
         {rows.map((row) => {
           const signed = row.signers.filter((s) => s.status === "signed").length;
           const allSigned = row.signers.length > 0 && signed === row.signers.length;
@@ -371,6 +387,7 @@ export function SignaturesPage({ pushToast }: { pushToast: (m: string) => void }
           );
         })}
       </Card>
+      )}
 
       <Dialog open={sendOpen} onOpenChange={(v) => (v ? setSendOpen(true) : closeSend())}>
         <DialogContent className="flex max-h-[min(88vh,760px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[560px]">

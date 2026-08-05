@@ -1124,6 +1124,10 @@ msgstr "A quorum — N of them"
 msgid "A read-only view of one record from <0>{collection}</0>."
 msgstr "A read-only view of one record from <0>{collection}</0>."
 
+#: src/client/admin/parity/booking.tsx
+msgid "A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
+msgstr "A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
+
 #: src/client/admin/pages/chat.tsx
 msgid "A room needs at least one agent to talk to. Create one on the Agents page first."
 msgstr "A room needs at least one agent to talk to. Create one on the Agents page first."
@@ -10549,8 +10553,12 @@ msgid "nothing found"
 msgstr "nothing found"
 
 #: src/client/admin/parity/booking.tsx
-msgid "Nothing is bookable yet. A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
-msgstr "Nothing is bookable yet. A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
+msgid "Nothing is bookable yet"
+msgstr "Nothing is bookable yet"
+
+#: src/client/admin/parity/booking.tsx
+#~ msgid "Nothing is bookable yet. A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
+#~ msgstr "Nothing is bookable yet. A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
 
 #: src/client/pages/book.tsx
 msgid "Nothing is free in the next two weeks."
@@ -10574,8 +10582,12 @@ msgid "Nothing new — all {0} collections already exist"
 msgstr "Nothing new — all {0} collections already exist"
 
 #: src/client/admin/parity/signatures.tsx
-msgid "Nothing out for signature."
-msgstr "Nothing out for signature."
+msgid "Nothing out for signature"
+msgstr "Nothing out for signature"
+
+#: src/client/admin/parity/signatures.tsx
+#~ msgid "Nothing out for signature."
+#~ msgstr "Nothing out for signature."
 
 #: src/client/admin/parity/app-orgs.tsx
 msgid "Nothing outstanding."
@@ -14373,6 +14385,10 @@ msgstr "Send"
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Send a code challenge on the authorize request. Leave on unless the IdP rejects it."
 msgstr "Send a code challenge on the authorize request. Leave on unless the IdP rejects it."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Send a document template to one or more signers. The copy is frozen the moment it goes out, and each signer gets their own single-use link."
+msgstr "Send a document template to one or more signers. The copy is frozen the moment it goes out, and each signer gets their own single-use link."
 
 #: src/client/pages/sign-in.tsx
 msgid "Send a magic link instead"

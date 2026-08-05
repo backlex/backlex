@@ -448,6 +448,21 @@ export const ApiKeys = () => {
         </DialogContent>
       </Dialog>
 
+      {/* The empty state replaces the Card rather than sitting inside it —
+          EmptyState brings its own card chrome, and nesting the two stacked
+          CardContent's padding on top of EmptyState's own. */}
+      {!loading && items.length === 0 ? (
+        <EmptyState
+          icon={KeyIcon}
+          title={t`No API keys yet`}
+          description={t`Create a key to authenticate programmatic access (CI, scripts, third-party apps).`}
+          action={
+            <Button size="sm" onClick={() => setShowForm(true)}>
+              <PlusIcon /> <Trans>New key</Trans>
+            </Button>
+          }
+        />
+      ) : (
       <Card>
         <CardContent>
           {loading ? (
@@ -462,17 +477,6 @@ export const ApiKeys = () => {
                 </li>
               ))}
             </ul>
-          ) : items.length === 0 ? (
-            <EmptyState
-              icon={KeyIcon}
-              title={t`No API keys yet`}
-              description={t`Create a key to authenticate programmatic access (CI, scripts, third-party apps).`}
-              action={
-                <Button size="sm" onClick={() => setShowForm(true)}>
-                  <PlusIcon /> <Trans>New key</Trans>
-                </Button>
-              }
-            />
           ) : (
             <ul className="divide-y">
               {items.map((k) => {
@@ -558,6 +562,7 @@ export const ApiKeys = () => {
           )}
         </CardContent>
       </Card>
+      )}
 
       {mcpKey && (
         <McpKeyModal

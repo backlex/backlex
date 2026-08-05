@@ -1124,6 +1124,10 @@ msgstr "Yeter sayı — içlerinden N kişi"
 msgid "A read-only view of one record from <0>{collection}</0>."
 msgstr "<0>{collection}</0> koleksiyonundan bir kaydın salt okunur görünümü."
 
+#: src/client/admin/parity/booking.tsx
+msgid "A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
+msgstr "Kaynak, insanların rezerve ettiği şeydir — bir kişi, bir oda, bir masa — ve çalışma saatlerini, bir rezervasyonun ne kadar sürdüğünü ve aynı anda kaç kişi sığdığını taşır."
+
 #: src/client/admin/pages/chat.tsx
 msgid "A room needs at least one agent to talk to. Create one on the Agents page first."
 msgstr "Bir odanın konuşacağı en az bir agent gerekir. Önce Agents sayfasından bir tane oluşturun."
@@ -10549,8 +10553,12 @@ msgid "nothing found"
 msgstr "bir şey bulunamadı"
 
 #: src/client/admin/parity/booking.tsx
-msgid "Nothing is bookable yet. A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
-msgstr "Henüz rezerve edilebilir bir şey yok. Kaynak, insanların rezerve ettiği şeydir — bir kişi, bir oda, bir masa — ve çalışma saatlerini, bir rezervasyonun süresini ve aynı anda kaç kişi sığdığını taşır."
+msgid "Nothing is bookable yet"
+msgstr "Henüz rezerve edilebilir bir şey yok"
+
+#: src/client/admin/parity/booking.tsx
+#~ msgid "Nothing is bookable yet. A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
+#~ msgstr "Henüz rezerve edilebilir bir şey yok. Kaynak, insanların rezerve ettiği şeydir — bir kişi, bir oda, bir masa — ve çalışma saatlerini, bir rezervasyonun süresini ve aynı anda kaç kişi sığdığını taşır."
 
 #: src/client/pages/book.tsx
 msgid "Nothing is free in the next two weeks."
@@ -10574,8 +10582,12 @@ msgid "Nothing new — all {0} collections already exist"
 msgstr "Yeni bir şey yok — {0} koleksiyonun tümü zaten var"
 
 #: src/client/admin/parity/signatures.tsx
-msgid "Nothing out for signature."
-msgstr "İmzaya gönderilmiş bir şey yok."
+msgid "Nothing out for signature"
+msgstr "İmzaya gönderilmiş bir şey yok"
+
+#: src/client/admin/parity/signatures.tsx
+#~ msgid "Nothing out for signature."
+#~ msgstr "İmzaya gönderilmiş bir şey yok."
 
 #: src/client/admin/parity/app-orgs.tsx
 msgid "Nothing outstanding."
@@ -14373,6 +14385,10 @@ msgstr "Gönder"
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Send a code challenge on the authorize request. Leave on unless the IdP rejects it."
 msgstr "Yetkilendirme isteğinde code challenge gönderir. IdP reddetmediği sürece açık bırakın."
+
+#: src/client/admin/parity/signatures.tsx
+msgid "Send a document template to one or more signers. The copy is frozen the moment it goes out, and each signer gets their own single-use link."
+msgstr "Bir belge şablonunu bir veya daha fazla imzacıya gönderin. Kopya gönderildiği anda dondurulur ve her imzacı kendine özel tek kullanımlık bir bağlantı alır."
 
 #: src/client/pages/sign-in.tsx
 msgid "Send a magic link instead"

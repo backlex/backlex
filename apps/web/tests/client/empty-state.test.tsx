@@ -21,9 +21,19 @@ describe("<EmptyState>", () => {
   });
 
   test("omits the description node when not provided", () => {
-    const { container } = render(<EmptyState title="Bare" />);
-    // Only the title paragraph renders; no second <p> for a description.
-    expect(container.querySelectorAll("p").length).toBe(1);
+    render(<EmptyState title="Bare" />);
+    expect(screen.getByText("Bare")).toBeTruthy();
+    expect(screen.queryByText("Create your first record")).toBeNull();
+  });
+
+  // The page-level sizes bring their own card chrome; `sm` deliberately does
+  // not, which is why a page-level empty state must never use it.
+  test("draws card chrome at the page-level sizes but not at sm", () => {
+    const { container: lg } = render(<EmptyState title="Framed" />);
+    expect(lg.querySelector('[data-slot="card"]')).toBeTruthy();
+    cleanup();
+    const { container: sm } = render(<EmptyState title="Inline" size="sm" />);
+    expect(sm.querySelector('[data-slot="card"]')).toBeNull();
   });
 
   test("renders an action node", () => {

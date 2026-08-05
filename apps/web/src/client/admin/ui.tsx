@@ -25,7 +25,6 @@ import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } fr
 import { orderCollections, useCollections, useNotifications, useNotificationsUnread, queryKeys } from "./queries";
 import { useWorkspaceBranding } from "@/lib/branding";
 import { Button as ShadcnButton } from "@backlex/ui/components/button";
-import { Card } from "@backlex/ui/components/card";
 import { Badge as ShadcnBadge } from "@backlex/ui/components/badge";
 import { Switch as ShadcnSwitch } from "@backlex/ui/components/switch";
 import { Checkbox as ShadcnCheckbox } from "@backlex/ui/components/checkbox";
@@ -1209,104 +1208,17 @@ export function Topbar({ crumbs, onOpenPalette, onSignOut, user, onAccountSettin
   );
 }
 
-export interface PageHeaderProps {
-  title?: ReactNode;
-  slug?: string;
-  description?: ReactNode;
-  /** Extra classes on the description wrapper — e.g. `hidden sm:block` to drop
-   *  a long description on mobile where vertical space is scarce. */
-  descriptionClassName?: string;
-  actions?: ReactNode;
-  badges?: ReactNode;
-}
-
-export function PageHeader({ title, slug, description, descriptionClassName, actions, badges }: PageHeaderProps) {
-  return (
-    <div className="flex flex-wrap items-start justify-between gap-[18px]">
-      <div className="flex min-w-0 flex-col gap-1">
-        <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-2xl font-semibold tracking-tight">
-          {slug ? <span className="font-mono text-[22px] font-medium">{slug}</span> : title}
-          {badges}
-        </h1>
-        {description && (
-          <div className={cn("max-w-[720px] text-sm text-muted-foreground", descriptionClassName)}>{description}</div>
-        )}
-      </div>
-      {actions && <div className="ml-auto flex flex-wrap items-center justify-end gap-2">{actions}</div>}
-    </div>
-  );
-}
-
-export interface EmptyStateProps {
-  /** Optional leading glyph, e.g. `I.BarChart`. */
-  icon?: IconComponent;
-  title: ReactNode;
-  description?: ReactNode;
-  /** Optional CTA rendered under the copy, e.g. a `<Button>`. */
-  action?: ReactNode;
-  /**
-   * `lg` — full page area (the Insights look). `md` — side panels.
-   * `sm` — compact inline/sidebar placeholders (no card, no icon by default).
-   */
-  size?: "lg" | "md" | "sm";
-  /** Drop the card border/bg — for use inside a table cell or already-bordered parent. */
-  bare?: boolean;
-  className?: string;
-}
-
-/**
- * Canonical empty / no-data state for the admin. Standardizes the icon size,
- * heading weight, description size, and card chrome so every "nothing here yet"
- * surface reads the same — modeled on the Insights "No insight panels yet" panel.
- */
-export function EmptyState({
-  icon: Icon,
-  title,
-  description,
-  action,
-  size = "lg",
-  bare = false,
-  className,
-}: EmptyStateProps) {
-  if (size === "sm") {
-    return (
-      <div className={cn("px-3 py-4 text-center text-[12.5px] text-muted-foreground", className)}>
-        {Icon && <Icon size={20} className="mx-auto mb-1.5 text-muted-foreground" />}
-        <div>{title}</div>
-        {description && <div className="mt-0.5">{description}</div>}
-        {action && <div className="mt-2">{action}</div>}
-      </div>
-    );
-  }
-  const content = (
-    <>
-      {Icon && <Icon size={size === "lg" ? 28 : 22} className="text-muted-foreground" />}
-      <div className="text-sm font-medium text-foreground">{title}</div>
-      {description && <div className="max-w-[460px] text-[12.5px] leading-[1.5]">{description}</div>}
-      {action && <div className="mt-1">{action}</div>}
-    </>
-  );
-  if (bare) {
-    return (
-      // px matters: `bare` has no card chrome of its own, so without it the copy
-      // runs edge-to-edge against the parent card's border on narrow screens.
-      <div className={cn("flex flex-col items-center gap-3 px-6 py-8 text-center text-muted-foreground", className)}>
-        {content}
-      </div>
-    );
-  }
-  return (
-    <Card
-      className={cn(
-        "items-center gap-3 text-center text-muted-foreground",
-        size === "lg" ? "p-12" : "p-9",
-        className,
-      )}
-    >
-      {content}
-    </Card>
-  );
-}
+// PageHeader and EmptyState live in `@/components/*` — one implementation each,
+// re-exported here so the many `import { PageHeader } from "../ui"` callsites
+// keep working. They are deliberately NOT defined in this module: it drags in
+// the sidebar, the query client and the API layer, which a provider-free render
+// test of a presentational component should not have to boot.
+export {
+  PageHeader,
+  type PageHeaderProps,
+  type BreadcrumbItem,
+} from "@/components/page-header";
+export { EmptyState, type EmptyStateProps } from "@/components/empty-state";
 
 interface Toast {
   id: string;

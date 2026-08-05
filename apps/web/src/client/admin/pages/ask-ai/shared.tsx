@@ -84,7 +84,7 @@ export const DEFAULT_PROMPT = "";
 // Mirrors the planner's whitelist on the server. Auto-run only fires when
 // the proposed tool is one of these read-leaning surfaces.
 export const AUTO_RUN_PATTERN =
-  /^(collections\.list|collections\.read|collections\.aggregate|storage\.list|vector\.search|schema\.|permissions\.simulate)/;
+  /^(collections\.list|collections\.read|collections\.aggregate|kpis\.run|storage\.list|vector\.search|schema\.|permissions\.simulate)/;
 export const DESTRUCTIVE_PATTERN = /\b(delete|drop|revoke|suspend)\b/;
 export const WRITE_PATTERN =
   /\b(insert|update|delete|drop|create|upload|grant|revoke|invoke|suspend|activate|assign|unassign|send|test)\b/;

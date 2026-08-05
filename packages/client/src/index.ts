@@ -2161,6 +2161,94 @@ export interface FlowsClient {
   run(id: string, input?: Record<string, unknown>): Promise<FlowRunResult>;
 }
 
+/** A named KPI definition — the workspace's agreed formula for one figure.
+ *  Mirrors `/api/admin/kpis`. */
+export interface Kpi {
+  id: string;
+  tenantId: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  collection: string;
+  agg: "count" | "sum" | "avg" | "min" | "max";
+  field: string | null;
+  filter: Record<string, unknown> | null;
+  /** Timestamp column the period window applies to. Null = no comparison. */
+  dateField: string | null;
+  groupBy: string | null;
+  topN: number | null;
+  format: "number" | "money" | "percent" | "duration";
+  unit: string | null;
+  decimals: number | null;
+  /** Which way is good news — `up` for revenue, `down` for refunds. */
+  direction: "up" | "down" | "neutral";
+  createdBy: string | null;
+}
+
+export type KpiInput = Omit<Kpi, "id" | "tenantId" | "createdBy">;
+
+export interface KpiPoint {
+  /** Present only on a grouped KPI's rows. */
+  label?: string;
+  /** Null for an avg/min/max over an empty window — which is not a zero. */
+  value: number | null;
+  previousValue: number | null;
+  delta: number | null;
+  /** Fractional change (0.12 = +12%). **Null when the previous period was
+   *  zero**: there is no proportion to report, so render the absolute `delta`
+   *  rather than printing "+100%". */
+  deltaPct: number | null;
+  currency?: string | null;
+}
+
+export interface KpiResult {
+  slug: string;
+  name: string;
+  description: string | null;
+  collection: string;
+  format: Kpi["format"];
+  unit: string | null;
+  decimals: number | null;
+  direction: Kpi["direction"];
+  groupBy: string | null;
+  /** Null when the KPI has no `dateField` — a running total, no comparison. */
+  window: { from: number; to: number } | null;
+  previousWindow: { from: number; to: number } | null;
+  /** The ungrouped figure. Null for a grouped KPI — read `rows`. */
+  point: KpiPoint | null;
+  /** The ranking, best-first. Null when the KPI is ungrouped. */
+  rows: KpiPoint[] | null;
+  computedAt: number;
+}
+
+/**
+ * Named KPIs — the shared definition layer.
+ *
+ * Reach for `run` instead of composing your own aggregate whenever a KPI
+ * already describes the figure: the definition carries which rows count,
+ * which date column bounds the period and how the number should be printed,
+ * so its answer matches what the admin's dashboard shows. Authoring a
+ * definition is admin-only; running one is clamped to the caller's own read
+ * permission on the KPI's collection.
+ */
+export interface KpisClient {
+  /** Every KPI definition in the active workspace. */
+  list(): Promise<{ data: Kpi[] }>;
+  /** Fetch one definition by slug (or id) without evaluating it. */
+  get(ref: string): Promise<{ data: Kpi }>;
+  /** Define a KPI (admin-only). */
+  create(input: KpiInput): Promise<{ data: Kpi }>;
+  /** Partial update by id (admin-only). */
+  update(id: string, patch: Partial<KpiInput>): Promise<{ data: Kpi }>;
+  /** Delete by id (admin-only). */
+  delete(id: string): Promise<{ ok: boolean }>;
+  /** Evaluate over a window and the window immediately before it. */
+  run(
+    ref: string,
+    opts?: { rangeDays?: number; from?: number; to?: number },
+  ): Promise<{ data: KpiResult }>;
+}
+
 /** Embedded BI dashboards (admin-scoped). Mirrors `/api/admin/dashboards`. */
 export interface DashboardsClient {
   /** List every dashboard in the active workspace. */
@@ -3246,6 +3334,8 @@ export interface BacklexClient {
   /** Blocking hooks that participate in a write. */
   syncHooks: SyncHooksClient;
   extensions: ExtensionsClient;
+  /** Named KPIs — the shared definition layer every surface reads a figure from. */
+  kpis: KpisClient;
   /** Embedded BI dashboards. */
   dashboards: DashboardsClient;
   /** Product analytics + crash reporting. */
@@ -4423,6 +4513,26 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<PaymentCollectionsResult>("POST", "/api/admin/payments/collections", {}),
   };
 
+  // Named KPIs. Authoring is admin-scoped; `run` only needs a session and is
+  // clamped server-side to the caller's read permission on the collection.
+  const kpiPath = (ref: string) => `/api/admin/kpis/${encodeURIComponent(ref)}`;
+  const kpis: KpisClient = {
+    list: () => request<{ data: Kpi[] }>("GET", "/api/admin/kpis"),
+    get: (ref: string) => request<{ data: Kpi }>("GET", kpiPath(ref)),
+    create: (input: KpiInput) => request<{ data: Kpi }>("POST", "/api/admin/kpis", input),
+    update: (id: string, patch: Partial<KpiInput>) =>
+      request<{ data: Kpi }>("PATCH", kpiPath(id), patch),
+    delete: (id: string) => request<{ ok: boolean }>("DELETE", kpiPath(id)),
+    run: (ref: string, opts?: { rangeDays?: number; from?: number; to?: number }) => {
+      const qs = new URLSearchParams();
+      for (const [k, v] of Object.entries(opts ?? {})) {
+        if (v !== undefined && v !== null) qs.set(k, String(v));
+      }
+      const suffix = qs.toString() ? `?${qs}` : "";
+      return request<{ data: KpiResult }>("GET", `${kpiPath(ref)}/run${suffix}`);
+    },
+  };
+
   // Embedded BI dashboards. Admin-scoped CRUD over `/api/admin/dashboards`;
   // `run` executes every panel, `share`/`revoke` toggle the public embed token.
   const dash = (id: string) => `/api/admin/dashboards/${encodeURIComponent(id)}`;
@@ -5137,6 +5247,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     integrations,
     syncHooks,
     extensions,
+    kpis,
     dashboards,
     analytics,
     forms,

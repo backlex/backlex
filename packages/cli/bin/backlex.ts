@@ -13,6 +13,7 @@ import { runFunctions } from "../src/functions";
 import { runExtensions } from "../src/extensions";
 import { runFlows } from "../src/flows";
 import { runDashboards } from "../src/dashboards";
+import { runKpis } from "../src/kpis";
 import { runAnalytics } from "../src/analytics";
 import { runForms } from "../src/forms";
 import { runUsage } from "../src/usage";
@@ -107,6 +108,10 @@ Usage:
 
   backlex dashboards <list|get|run|create|delete|share|revoke>
       Embedded BI dashboards. \`share <id>\` mints a public embed token.
+
+  backlex kpis <list|get|run|create|update|delete>
+      Named KPI definitions — the shared formula behind a figure. \`run\`
+      evaluates one over a period and the period before it.
 
   backlex analytics <overview|funnel|retention|errors|track|ingest-key|...>
       Product analytics + crash reporting. \`ingest-key mint\` prints the
@@ -293,6 +298,10 @@ const run = async () => {
     case "dashboards":
     case "dashboard":
       await runDashboards(rest);
+      return;
+    case "kpis":
+    case "kpi":
+      await runKpis(rest);
       return;
     case "analytics":
       await runAnalytics(rest);

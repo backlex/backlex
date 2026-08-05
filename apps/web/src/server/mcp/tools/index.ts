@@ -32,6 +32,7 @@ import { webhooksTools } from "./webhooks";
 import { flowsTools } from "./flows";
 import { paymentsTools } from "./payments";
 import { dashboardsTools } from "./dashboards";
+import { kpisTools } from "./kpis";
 import { analyticsTools } from "./analytics";
 import { formsTools } from "./forms";
 import { usageTools } from "./usage";
@@ -96,6 +97,7 @@ export const allTools: McpTool[] = [
   ...flowsTools,
   ...paymentsTools,
   ...dashboardsTools,
+  ...kpisTools,
   ...analyticsTools,
   ...formsTools,
   ...usageTools,

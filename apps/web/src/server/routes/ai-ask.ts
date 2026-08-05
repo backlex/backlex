@@ -50,6 +50,7 @@ const PLAN_TOOL_WHITELIST = [
   "collections.list",
   "collections.read",
   "collections.aggregate",
+  "kpis.run",
   "storage.list",
   "vector.search",
   "schema.list_collections",
@@ -73,6 +74,16 @@ const PLAN_TOOL_DESCRIPTIONS: Record<(typeof PLAN_TOOL_WHITELIST)[number], strin
       "field's own name as shown (e.g. `customer`), do NOT append `_id`. Group " +
       "by the relation FK column to bucket by the related record. Grouped " +
       "results come back ordered by value desc; single-table only.",
+    "kpis.run":
+      "{ref: string, rangeDays?: number, from?: number, to?: number} — evaluate a " +
+      "NAMED KPI the workspace has already defined, over a window and the window " +
+      "before it. `ref` is the KPI's slug from the list below. PREFER THIS over " +
+      "collections.aggregate whenever a listed KPI already answers the question: " +
+      "the KPI carries the agreed formula (which rows count, which date column, " +
+      "how it is printed), so its number matches the dashboard's, while an " +
+      "aggregate you compose yourself is a guess at that formula and will quietly " +
+      "disagree. Returns `{point: {value, previousValue, delta, deltaPct}}` or, " +
+      "for a grouped KPI, `{rows: [...]}`.",
     "storage.list":
       "{prefix?: string, folder?: string, search?: string, limit?: number} — list files in object storage.",
     "vector.search":
@@ -153,7 +164,53 @@ export const buildSchemaDigest = (collections: CollectionMeta[]): string => {
   );
 };
 
-const buildPlanSystem = (schemaDigest: string, todayIso: string): string => {
+/** The slice of a KPI row the planner's digest needs. */
+interface KpiMeta {
+  slug: string;
+  name: string;
+  description?: string | null;
+  collection: string;
+  agg: string;
+  field?: string | null;
+  groupBy?: string | null;
+  dateField?: string | null;
+  unit?: string | null;
+}
+
+/**
+ * Render the workspace's KPI definitions for the prompt.
+ *
+ * Without this the whitelist entry is inert: the model cannot choose
+ * `kpis.run` when it has no idea which slugs exist, so it falls back to
+ * composing an aggregate — which is the exact behaviour the definition layer
+ * is meant to replace. Each line says enough for the model to tell whether a
+ * KPI actually answers the question, rather than picking one by name alone.
+ */
+const buildKpiDigest = (rows: KpiMeta[]): string => {
+  if (rows.length === 0) return "";
+  const lines = rows.map((k) => {
+    const target = k.agg === "count" ? "rows" : (k.field ?? "?");
+    const parts = [`${k.agg}(${target}) over ${k.collection}`];
+    if (k.groupBy) parts.push(`grouped by ${k.groupBy}`);
+    parts.push(k.dateField ? `windowed on ${k.dateField}` : "NO date column (running total)");
+    const note = k.description ? ` — ${k.description}` : "";
+    return `  - ${k.slug} ("${k.name}"): ${parts.join(", ")}${note}`;
+  });
+  return (
+    "\n\nDEFINED KPIs — these are the workspace's agreed formulas. If one of " +
+    "them answers the question, call `kpis.run` with its slug INSTEAD of " +
+    "composing a collections.aggregate; that is what makes your answer match " +
+    "the dashboard. A KPI marked \"NO date column\" has no period comparison, " +
+    "so do not promise one for it:\n" +
+    lines.join("\n")
+  );
+};
+
+const buildPlanSystem = (
+  schemaDigest: string,
+  kpiDigest: string,
+  todayIso: string,
+): string => {
   const catalog = PLAN_TOOL_WHITELIST.map(
     (name) => `  - ${name}: ${PLAN_TOOL_DESCRIPTIONS[name]}`,
   ).join("\n");
@@ -206,7 +263,8 @@ const buildPlanSystem = (schemaDigest: string, todayIso: string): string => {
     "`customer` + numeric `total`) → collections.aggregate { agg: 'sum', field: " +
     "'total', groupBy: 'customer', filter: { placed_at: { _gte: { $now: { sub: " +
     "{ months: 1 } } } } }, limit: 10 }." +
-    schemaDigest
+    schemaDigest +
+    kpiDigest
   );
 };
 
@@ -221,6 +279,19 @@ const loadSchemaDigest = async (fetchInternal: FetchInternal): Promise<string> =
     const res = await fetchInternal("/api/collections");
     const body = await readJson<{ data: CollectionMeta[] }>(res);
     return buildSchemaDigest(Array.isArray(body.data) ? body.data : []);
+  } catch {
+    return "";
+  }
+};
+
+/** Same posture as the schema digest: a workspace that has defined no KPIs —
+ *  or an instance predating the table — yields an empty section rather than a
+ *  failed plan. */
+const loadKpiDigest = async (fetchInternal: FetchInternal): Promise<string> => {
+  try {
+    const res = await fetchInternal("/api/admin/kpis");
+    const body = await readJson<{ data: KpiMeta[] }>(res);
+    return buildKpiDigest(Array.isArray(body.data) ? body.data : []);
   } catch {
     return "";
   }
@@ -249,8 +320,8 @@ const modelFixableError = async (res: Response): Promise<string | null> => {
  * parser/validator/permission gate the `/run` path uses decides if it is
  * well-formed — including relation hops a re-implemented validator couldn't
  * reach. `collections.list` runs with limit=1; `collections.aggregate` POSTs
- * its config. Returns the upstream error string on a model-fixable 4xx, else
- * null. Other tools aren't dry-run (return null).
+ * its config; `kpis.run` resolves its `ref`. Returns the upstream error string
+ * on a model-fixable 4xx, else null. Other tools aren't dry-run (return null).
  *
  * Exported for tests — it's the core of the planner self-correction loop.
  */
@@ -259,6 +330,21 @@ export const dryRunPlan = async (
   tool: string,
   args: Record<string, unknown>,
 ): Promise<string | null> => {
+  // `kpis.run` is keyed by `ref`, not `collection`, and it is the one tool
+  // whose argument the model cannot derive from the schema — it has to pick a
+  // slug out of the KPI digest. Resolving the definition here turns a
+  // hallucinated slug into a NOT_FOUND the planner can correct, instead of an
+  // error the operator only sees after pressing Run.
+  if (tool === "kpis.run") {
+    const ref = typeof args.ref === "string" ? args.ref : "";
+    if (!ref) return "VALIDATION: kpis.run requires `ref` (a KPI slug)";
+    try {
+      const res = await fetchInternal(`/api/admin/kpis/${encodeURIComponent(ref)}`);
+      return await modelFixableError(res);
+    } catch {
+      return null;
+    }
+  }
   const slug = typeof args.collection === "string" ? args.collection : "";
   if (!slug) return null;
   try {
@@ -350,9 +436,12 @@ const planHandler = async (
     throw new AppError("VALIDATION", "prompt is required");
   }
   const fetchInternal = makeInternalFetch(app as unknown as Hono, c.req.raw, env);
-  const schemaDigest = await loadSchemaDigest(fetchInternal);
+  const [schemaDigest, kpiDigest] = await Promise.all([
+    loadSchemaDigest(fetchInternal),
+    loadKpiDigest(fetchInternal),
+  ]);
   const todayIso = new Date().toISOString().slice(0, 10);
-  const system = buildPlanSystem(schemaDigest, todayIso);
+  const system = buildPlanSystem(schemaDigest, kpiDigest, todayIso);
 
   // Shared config path: the workspace's bring-your-own key AND its default
   // model, resolved workspace row → global row → deployment default. (On
@@ -414,7 +503,9 @@ const planHandler = async (
         "that exist in the schema; relation paths use dotted keys in " +
         "filter/sort; `fields` takes plain column names; for " +
         "totals/counts/top-N use collections.aggregate (agg + groupBy), not " +
-        "$group/$sum in a filter.",
+        "$group/$sum in a filter. If you called `kpis.run`, `ref` MUST be a " +
+        "slug from the DEFINED KPIs list — do not invent one; if none of them " +
+        "fits, fall back to collections.aggregate.",
       model,
       maxTokens: 1024,
     });

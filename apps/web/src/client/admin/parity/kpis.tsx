@@ -193,7 +193,9 @@ export function KpisPage({ pushToast }: { pushToast: (m: string) => void }) {
       const entries = await Promise.all(
         kpis.map(async (k) => {
           try {
-            const res = await kpisApi.run(k.slug, { rangeDays: days });
+            // The shape is worth the extra query on this page: it is the one
+            // surface whose whole job is reading the figures.
+            const res = await kpisApi.run(k.slug, { rangeDays: days, series: true });
             return [k.id, res.data] as const;
           } catch (e) {
             return [k.id, { error: (e as Error).message }] as const;
@@ -600,9 +602,75 @@ function KpiTile({
             {formatValue(data.point?.value ?? null, kpi, data.point?.currency, locale)}
           </span>
           <DeltaLine point={data.point} kpi={kpi} locale={locale} hasWindow={Boolean(data.window)} />
+          {data.series && <Sparkline series={data.series} direction={kpi.direction} />}
         </div>
       )}
     </Card>
+  );
+}
+
+/**
+ * The shape behind the number.
+ *
+ * Deliberately unlabelled and un-axised: at this size a scale would be
+ * illegible and inviting the reader to estimate values off it would be worse
+ * than not offering it. What it honestly conveys is direction and volatility —
+ * the headline number is the value.
+ *
+ * A slice whose value is null (an avg over an empty bucket) BREAKS the line
+ * rather than being drawn at zero: joining across it would assert the average
+ * fell to nothing, which is the opposite of "we don't know".
+ */
+function Sparkline({
+  series,
+  direction,
+}: {
+  series: { t: number; value: number | null }[];
+  direction: string;
+}) {
+  const W = 120;
+  const H = 22;
+  const known = series.filter((p) => p.value !== null) as { t: number; value: number }[];
+  if (known.length < 2) return null;
+  const values = known.map((p) => p.value);
+  const min = Math.min(...values, 0);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const x = (i: number) => (i / Math.max(1, series.length - 1)) * W;
+  const y = (v: number) => H - ((v - min) / span) * H;
+
+  // One `M` per run of known points; a null starts a new run, so the gap is
+  // visible as a gap.
+  let d = "";
+  let penDown = false;
+  series.forEach((p, i) => {
+    if (p.value === null) {
+      penDown = false;
+      return;
+    }
+    d += `${penDown ? "L" : "M"}${x(i).toFixed(1)},${y(p.value).toFixed(1)} `;
+    penDown = true;
+  });
+
+  const first = known[0]!.value;
+  const last = known[known.length - 1]!.value;
+  const rising = last > first;
+  const stroke =
+    direction === "neutral" || last === first
+      ? "currentColor"
+      : (direction === "up") === rising
+        ? "var(--color-emerald-500, #10b981)"
+        : "var(--color-red-500, #ef4444)";
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="mt-1 h-[22px] w-full text-muted-foreground/60"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <path d={d.trim()} fill="none" stroke={stroke} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+    </svg>
   );
 }
 

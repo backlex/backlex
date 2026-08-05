@@ -91,6 +91,46 @@ const assertKnownFilterColumns = (
   }
 };
 
+/** A window sliced into equal buckets, for a series over time. */
+export interface AggregateBucket {
+  /** Timestamp column the slices are cut on. */
+  field: string;
+  /** Window start, epoch ms — bucket 0 begins here. */
+  from: number;
+  /** Slice width in ms. */
+  widthMs: number;
+  /** How many slices; also the row cap. */
+  count: number;
+}
+
+/**
+ * SQL for "which bucket does this row's timestamp fall in".
+ *
+ * The dialects store the column differently and neither conversion is
+ * optional: SQLite keeps epoch **milliseconds** in an INTEGER, Postgres keeps
+ * a `timestamptz` whose epoch comes back in **seconds** as a float. Getting
+ * this wrong does not error — it produces a series bucketed a thousand times
+ * too coarse or too fine, which looks like data.
+ */
+const bucketIndexSql = (b: AggregateBucket, dialect: "pg" | "sqlite"): SQL => {
+  const col = sql.identifier(b.field);
+  // Inlined rather than bound. Postgres cannot infer a type for a bare `$n`
+  // sitting in `numeric - $1`, and the query fails with "could not determine
+  // data type of parameter". These two are server-computed integers — the
+  // window bound and the slice width, both derived from validated input and
+  // re-floored here — so there is no untrusted text to inline, and the guard
+  // below is what keeps that true.
+  const from = Math.trunc(b.from);
+  const width = Math.trunc(b.widthMs);
+  if (!Number.isSafeInteger(from) || !Number.isSafeInteger(width) || width < 1) {
+    throw new AppError("VALIDATION", "Series window is not a usable range");
+  }
+  if (dialect === "pg") {
+    return sql`FLOOR(((EXTRACT(EPOCH FROM ${col}) * 1000) - ${sql.raw(String(from))}) / ${sql.raw(String(width))})`;
+  }
+  return sql`CAST((${col} - ${sql.raw(String(from))}) / ${sql.raw(String(width))} AS INTEGER)`;
+};
+
 export const ITEMS_AGG_FUNCS = ["count", "sum", "avg", "min", "max"] as const;
 export type ItemsAggFunc = (typeof ITEMS_AGG_FUNCS)[number];
 
@@ -134,6 +174,10 @@ export interface AggregateOpts {
    *  who can't see drafts (no publish/update grant), mirroring the list/get/
    *  search draft filter. No-op for non-versioned collections. */
   excludeDrafts?: boolean;
+  /** Return one row per slice of a time window instead of a single value.
+   *  Takes precedence over `groupBy` — a query has one grouping dimension, and
+   *  a ranking-over-time is two questions wearing one hat. */
+  bucket?: AggregateBucket;
 }
 
 /**
@@ -324,7 +368,25 @@ export const runItemsAggregate = async (
   const whereClause: SQL = wheres.length === 0 ? sql`` : sql` WHERE ${sql.join(wheres, sql` AND `)}`;
 
   let q: SQL;
-  if (cfg.groupBy) {
+  if (opts.bucket) {
+    // Time buckets — one row per slice of the window, ordered oldest-first.
+    //
+    // A grouping EXPRESSION rather than a column, which is why it cannot go
+    // through `cfg.groupBy`: the bucket index is `(when - from) / width`, so
+    // the shape of the series is decided here and not by a value in the data.
+    // Ordered ASC because a series is a shape over time; the grouped path's
+    // `ORDER BY value DESC` is for rankings and would scramble it.
+    const b = opts.bucket;
+    gateField(b.field);
+    if (!isKnownColumn(b.field)) {
+      throw new AppError(
+        "VALIDATION",
+        `Series column "${b.field}" is not in collection "${cfg.collection}". Valid columns: ${columnHint()}`,
+      );
+    }
+    const bucketExpr = bucketIndexSql(b, ctx.dialect);
+    q = sql`SELECT ${bucketExpr} AS label, ${valueExpr} AS value FROM ${sql.identifier(physical)}${whereClause} GROUP BY ${bucketExpr} ORDER BY label ASC LIMIT ${sql.raw(String(b.count))}`;
+  } else if (cfg.groupBy) {
     const limit = cfg.limit ?? 50;
     q = sql`SELECT ${sql.identifier(cfg.groupBy)} AS label, ${valueExpr} AS value FROM ${sql.identifier(physical)}${whereClause} GROUP BY ${sql.identifier(cfg.groupBy)} ORDER BY value DESC LIMIT ${sql.raw(String(limit))}`;
   } else {

@@ -308,3 +308,93 @@ describe("kpis: definition integrity", () => {
     expect(res.status).toBe(403);
   });
 });
+
+/**
+ * The bucketed series behind a KPI — the shape a sparkline draws.
+ *
+ * Two things here are easy to get wrong in a way that still looks like data:
+ * the epoch units (SQLite stores ms in an INTEGER, Postgres a timestamptz
+ * whose epoch comes back in seconds), and empty buckets. A slice with no rows
+ * is a real gap; dropping it lets the chart join its neighbours and draw a
+ * line claiming the quiet period never happened.
+ */
+describe("kpis: the series behind the number", () => {
+  let h: TestHarness;
+  const slug = `series_${Date.now()}`;
+  const anchor = Date.now();
+
+  const post = (path: string, body: unknown) =>
+    h.fetch(path, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    await post("/api/collections", {
+      slug,
+      fields: [
+        { name: "total", type: "integer" },
+        { name: "at", type: "timestamp" },
+      ],
+    });
+    // Two rows in the oldest day, one in the newest, nothing in between.
+    await post(`/api/items/${slug}`, { total: 5, at: new Date(anchor - 3.5 * DAY).toISOString() });
+    await post(`/api/items/${slug}`, { total: 5, at: new Date(anchor - 3.2 * DAY).toISOString() });
+    await post(`/api/items/${slug}`, { total: 7, at: new Date(anchor - 0.5 * DAY).toISOString() });
+    await post("/api/admin/kpis", {
+      slug: "daily-total",
+      name: "Daily total",
+      collection: slug,
+      agg: "sum",
+      field: "total",
+      dateField: "at",
+    });
+    await post("/api/admin/kpis", {
+      slug: "no-date",
+      name: "No date",
+      collection: slug,
+      agg: "count",
+    });
+  });
+  afterAll(() => h.cleanup());
+
+  const run = async (q: string) =>
+    (await (await h.fetch(`/api/admin/kpis/daily-total/run${q}`)).json()) as {
+      data: { series: Array<{ t: number; value: number | null }> | null; point: { value: number } };
+    };
+
+  test("series is null unless asked for", async () => {
+    const d = await run(`?to=${anchor}&rangeDays=4`);
+    expect(d.data.series).toBeNull();
+  });
+
+  test("buckets cover the window, oldest first, in the right units", async () => {
+    const d = await run(`?to=${anchor}&rangeDays=4&series=1&buckets=4`);
+    const series = d.data.series!;
+    expect(series.length).toBe(4);
+    // Ascending, one day apart — a thousand-fold unit slip would show here.
+    expect(series[1]!.t - series[0]!.t).toBe(DAY);
+    expect(series[0]!.t).toBe(anchor - 4 * DAY);
+    // The two oldest rows land in bucket 0, the newest in bucket 3.
+    expect(series[0]!.value).toBe(10);
+    expect(series[3]!.value).toBe(7);
+    // …and the buckets sum to the headline figure.
+    expect(series.reduce((a, s) => a + (s.value ?? 0), 0)).toBe(d.data.point.value);
+  });
+
+  test("an empty bucket is emitted as a real gap, not dropped", async () => {
+    const d = await run(`?to=${anchor}&rangeDays=4&series=1&buckets=4`);
+    const series = d.data.series!;
+    // Nothing happened on days 2 and 3 of the window. For a `sum` that is a
+    // genuine zero — and it must be PRESENT, or the line joins day 1 to day 4
+    // and claims the gap never happened.
+    expect(series[1]!.value).toBe(0);
+    expect(series[2]!.value).toBe(0);
+  });
+
+  test("a KPI with no date column has no series to give", async () => {
+    const res = await h.fetch(`/api/admin/kpis/no-date/run?series=1&buckets=4`);
+    const body = (await res.json()) as { data: { series: unknown; window: unknown } };
+    expect(body.data.window).toBeNull();
+    expect(body.data.series).toBeNull();
+  });
+});

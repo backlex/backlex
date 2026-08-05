@@ -2201,6 +2201,15 @@ export interface KpiPoint {
   currency?: string | null;
 }
 
+/** One slice of a KPI's window. `t` is the bucket's START, epoch ms. */
+export interface KpiSeriesPoint {
+  t: number;
+  /** Null for an avg/min/max slice with no rows — which is not a zero. An
+   *  empty `count`/`sum` slice IS 0, and every slice in the range is present,
+   *  so a chart never joins across a gap and claims it did not happen. */
+  value: number | null;
+}
+
 export interface KpiResult {
   slug: string;
   name: string;
@@ -2218,6 +2227,10 @@ export interface KpiResult {
   point: KpiPoint | null;
   /** The ranking, best-first. Null when the KPI is ungrouped. */
   rows: KpiPoint[] | null;
+  /** The window in buckets, oldest first — the shape behind the number. Null
+   *  unless `series` was requested, and null regardless for a KPI with no
+   *  date column or a grouped one. */
+  series: KpiSeriesPoint[] | null;
   computedAt: number;
 }
 
@@ -2245,7 +2258,14 @@ export interface KpisClient {
   /** Evaluate over a window and the window immediately before it. */
   run(
     ref: string,
-    opts?: { rangeDays?: number; from?: number; to?: number },
+    opts?: {
+      rangeDays?: number;
+      from?: number;
+      to?: number;
+      /** Also return the bucketed series. One extra query per KPI. */
+      series?: boolean;
+      buckets?: number;
+    },
   ): Promise<{ data: KpiResult }>;
 }
 
@@ -4523,7 +4543,16 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     update: (id: string, patch: Partial<KpiInput>) =>
       request<{ data: Kpi }>("PATCH", kpiPath(id), patch),
     delete: (id: string) => request<{ ok: boolean }>("DELETE", kpiPath(id)),
-    run: (ref: string, opts?: { rangeDays?: number; from?: number; to?: number }) => {
+    run: (
+      ref: string,
+      opts?: {
+        rangeDays?: number;
+        from?: number;
+        to?: number;
+        series?: boolean;
+        buckets?: number;
+      },
+    ) => {
       const qs = new URLSearchParams();
       for (const [k, v] of Object.entries(opts ?? {})) {
         if (v !== undefined && v !== null) qs.set(k, String(v));

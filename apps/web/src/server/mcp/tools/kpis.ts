@@ -76,6 +76,14 @@ export const runKpiTool: McpTool = {
       },
       from: { type: "number", description: "Window start, epoch ms. Overrides rangeDays." },
       to: { type: "number", description: "Window end, epoch ms. Defaults to now." },
+      series: {
+        type: "boolean",
+        description:
+          "Also return the window sliced into buckets (`series`), oldest first — the " +
+          "shape behind the number. Costs one extra query, so ask only when the shape " +
+          "is part of the answer. Null for a KPI with no date column or a grouped one.",
+      },
+      buckets: { type: "number", description: "How many slices (2-200, default 24)." },
     },
     required: ["ref"],
     additionalProperties: false,
@@ -84,7 +92,7 @@ export const runKpiTool: McpTool = {
     const ref = String(args.ref ?? "");
     if (!ref) throw new Error("VALIDATION: ref is required");
     const qs = new URLSearchParams();
-    for (const key of ["rangeDays", "from", "to"] as const) {
+    for (const key of ["rangeDays", "from", "to", "series", "buckets"] as const) {
       const v = args[key];
       if (v !== undefined && v !== null) qs.set(key, String(v));
     }

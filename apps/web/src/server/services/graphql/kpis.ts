@@ -2,6 +2,7 @@ import { AppError } from "@backlex/core";
 import { JSONScalar, type GqlCtx } from "./core";
 import { requireFlowAdmin } from "./flows";
 import {
+  GraphQLBoolean,
   GraphQLError,
   GraphQLFloat,
   GraphQLID,
@@ -95,6 +96,18 @@ const KpiPointType = new GraphQLObjectType({
   },
 });
 
+const KpiSeriesPointType = new GraphQLObjectType({
+  name: "KpiSeriesPoint",
+  fields: {
+    /** Bucket START, epoch ms. */
+    t: { type: new GraphQLNonNull(GraphQLFloat) },
+    /** Nullable on purpose: an avg/min/max slice with no rows is unknown, not
+     *  zero. Empty count/sum slices ARE 0 and are still present, so a chart
+     *  never joins across a gap. */
+    value: { type: GraphQLFloat },
+  },
+});
+
 const KpiResultType = new GraphQLObjectType({
   name: "KpiResult",
   fields: {
@@ -112,6 +125,7 @@ const KpiResultType = new GraphQLObjectType({
     previousWindow: { type: KpiWindowType },
     point: { type: KpiPointType },
     rows: { type: new GraphQLList(new GraphQLNonNull(KpiPointType)) },
+    series: { type: new GraphQLList(new GraphQLNonNull(KpiSeriesPointType)) },
     computedAt: { type: new GraphQLNonNull(GraphQLFloat) },
   },
 });
@@ -195,16 +209,27 @@ export const kpiQueryFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>>
       rangeDays: { type: GraphQLInt },
       from: { type: GraphQLFloat },
       to: { type: GraphQLFloat },
+      series: { type: GraphQLBoolean },
+      buckets: { type: GraphQLInt },
     },
     resolve: async (_src, args, gqlCtx) =>
       surfacing(async () => {
         const tenantId = requireTenant(gqlCtx);
-        const a = args as { ref: string; rangeDays?: number; from?: number; to?: number };
+        const a = args as {
+          ref: string;
+          rangeDays?: number;
+          from?: number;
+          to?: number;
+          series?: boolean;
+          buckets?: number;
+        };
         const kpi = await requireKpi(gqlCtx.ctx, tenantId, a.ref);
         return runKpiForCaller(gqlCtx.ctx, gqlCtx.auth, tenantId, kpi, {
           rangeDays: a.rangeDays,
           from: a.from,
           to: a.to,
+          series: a.series,
+          buckets: a.buckets,
         });
       }),
   },

@@ -438,6 +438,12 @@ export interface ApiKpiPoint {
   currency?: string | null;
 }
 
+export interface ApiKpiSeriesPoint {
+  /** Bucket START, epoch ms. */
+  t: number;
+  value: number | null;
+}
+
 export interface ApiKpiResult {
   slug: string;
   name: string;
@@ -454,6 +460,8 @@ export interface ApiKpiResult {
   previousWindow: { from: number; to: number } | null;
   point: ApiKpiPoint | null;
   rows: ApiKpiPoint[] | null;
+  /** The window in buckets, oldest first. Null unless requested. */
+  series: ApiKpiSeriesPoint[] | null;
   computedAt: number;
 }
 
@@ -1949,7 +1957,16 @@ export const kpisApi = {
   /** Evaluate one KPI. `rangeDays` is the friendly form; `from`/`to` are epoch
    *  ms for an explicit window. Scoped server-side to the caller's read
    *  permission on the KPI's collection. */
-  run: (ref: string, params: { rangeDays?: number; from?: number; to?: number } = {}) => {
+  run: (
+    ref: string,
+    params: {
+      rangeDays?: number;
+      from?: number;
+      to?: number;
+      series?: boolean;
+      buckets?: number;
+    } = {},
+  ) => {
     const qs = new URLSearchParams();
     for (const [k, v] of Object.entries(params)) {
       if (v !== undefined) qs.set(k, String(v));

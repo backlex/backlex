@@ -70,6 +70,34 @@ immediately before it**:
 Grouped KPIs return `rows` instead of `point`, each label paired with its own
 previous-period value.
 
+### The shape behind the number
+
+Add `series=1` (optionally `buckets=N`, 2–200, default 24) and the result also
+carries the window sliced into equal buckets, oldest first:
+
+```json
+"series": [{ "t": 1783327988139, "value": 3 }, { "t": 1783435988139, "value": 0 }, …]
+```
+
+It is **opt-in** because it costs one extra query per KPI; the KPIs page asks
+for it (reading figures is that page's whole job), the collection tab does not.
+There is no series for a KPI with no `dateField` (nothing to slice on) or a
+grouped one — a series and a ranking are two questions, and a query has one
+grouping dimension.
+
+Every bucket in the range is present, including empty ones. A missing slice
+would let a chart join its two neighbours and draw a line asserting the quiet
+period never happened. Empty `count`/`sum` buckets are `0`; empty `avg`/`min`/
+`max` buckets are `null`, and the admin's sparkline **breaks the line** there
+rather than drawing zero — "we don't know" is not "it fell to nothing".
+
+The bucket index is the one piece of this engine that branches on dialect, and
+the branch is a unit conversion: SQLite stores epoch **milliseconds** in an
+INTEGER, Postgres a `timestamptz` whose `EXTRACT(EPOCH …)` returns **seconds**.
+Getting it wrong does not error — it produces a series bucketed a thousand
+times too coarse, which looks like data — so `kpis-series-pg.test.ts` asserts
+the same fixture on both.
+
 ### Three nulls that are not zeros
 
 The result shape distinguishes "nothing" from "zero" in three places, and a
@@ -211,8 +239,8 @@ return the rows outside it and say nothing about it.
 |---|---|
 | REST | `/api/admin/kpis`, `/api/admin/kpis/{ref}/run` |
 | SDK | `client.kpis.list/get/create/update/delete/run` |
-| GraphQL | `kpis`, `kpi(ref:)`, `runKpi(ref:, rangeDays:)`, `createKpi`, `updateKpi`, `deleteKpi` |
-| MCP | `kpis.list`, `kpis.get`, `kpis.run` |
+| GraphQL | `kpis`, `kpi(ref:)`, `runKpi(ref:, rangeDays:, series:)`, `createKpi`, `updateKpi`, `deleteKpi` |
+| MCP | `kpis.list`, `kpis.get`, `kpis.run` (with `series`) |
 | CLI | `backlex kpis <list\|get\|run\|create\|update\|delete>` |
 | Admin | the **KPIs** page under Observability |
 

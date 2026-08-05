@@ -89,7 +89,21 @@ export interface KpiWindowInput {
   from?: number;
   to?: number;
   rangeDays?: number;
+  /** Also return a bucketed series across the window (for a sparkline). Costs
+   *  one extra query per KPI, so it is opt-in rather than always-on. */
+  series?: boolean;
+  /** How many buckets. Clamped; the default is a readable sparkline width. */
+  buckets?: number;
 }
+
+/** One slice of a KPI's window. `t` is the bucket's START, epoch ms. */
+export interface KpiSeriesPoint {
+  t: number;
+  value: number | null;
+}
+
+const DEFAULT_BUCKETS = 24;
+const MAX_BUCKETS = 200;
 
 export interface KpiPoint {
   /** Present only for a grouped metric. */
@@ -121,6 +135,13 @@ export interface KpiResult {
   point: KpiPoint | null;
   /** Grouped result, ordered by current value desc. Null when ungrouped. */
   rows: KpiPoint[] | null;
+  /**
+   * The window sliced into buckets, oldest first — the shape behind the
+   * number. Null unless asked for, and null regardless for a KPI with no
+   * `dateField` (nothing to slice on) or a grouped one (a series and a ranking
+   * are two questions, and a query has one grouping dimension).
+   */
+  series: KpiSeriesPoint[] | null;
   /** When the numbers were computed — drives the freshness indicator. */
   computedAt: number;
 }
@@ -256,6 +277,48 @@ export const runKpi = async (
       opts,
     );
 
+  /**
+   * The window sliced into buckets. Skipped for a grouped KPI (a query has one
+   * grouping dimension) and, obviously, for one with no date column.
+   *
+   * Every bucket in the range is emitted, not just the ones the query returned:
+   * a slice with no rows is a real gap in the shape, and letting the chart join
+   * the two neighbours across it draws a line that says the quiet period never
+   * happened. `count`/`sum` fill it with 0 — no rows is genuinely none — while
+   * `avg`/`min`/`max` stay null, because "no orders" is not "an average of
+   * zero".
+   */
+  const loadSeries = async (): Promise<KpiSeriesPoint[] | null> => {
+    if (!windowInput?.series || !window || !kpi.dateField || kpi.groupBy) return null;
+    const count = Math.min(
+      MAX_BUCKETS,
+      Math.max(2, Math.floor(windowInput.buckets ?? DEFAULT_BUCKETS)),
+    );
+    const widthMs = Math.max(1, Math.ceil((window.to - window.from) / count));
+    const rows = await runItemsAggregate(
+      ctx,
+      auth,
+      tenantId,
+      {
+        ...baseConfig,
+        // A series is a shape over time, so the ranking dimension is dropped.
+        groupBy: undefined,
+        limit: undefined,
+        filter: withWindow(kpi.filter, kpi.dateField, window, ctx.dialect),
+      },
+      {
+        ...opts,
+        bucket: { field: kpi.dateField, from: window.from, widthMs, count },
+      },
+    );
+    const byIndex = new Map<number, unknown>();
+    for (const r of rows) byIndex.set(Number(r.label), r.value);
+    return Array.from({ length: count }, (_, i) => ({
+      t: window.from + i * widthMs,
+      value: readValue(byIndex.get(i), kpi.agg),
+    }));
+  };
+
   const meta = {
     slug: kpi.slug,
     name: kpi.name,
@@ -274,6 +337,7 @@ export const runKpi = async (
   const currentRows = await run(window);
   // Only pay for the second query when there is a period to compare against.
   const previousRows = previous ? await run(previous) : null;
+  const series = await loadSeries();
 
   if (!kpi.groupBy) {
     const value = readValue(currentRows[0]?.value, kpi.agg);
@@ -285,6 +349,7 @@ export const runKpi = async (
       ...meta,
       point: pairPoint(value, previousValue, currency ? { currency } : {}),
       rows: null,
+      series,
     };
   }
 
@@ -306,7 +371,7 @@ export const runKpi = async (
       ...(currency ? { currency } : {}),
     });
   });
-  return { ...meta, point: null, rows };
+  return { ...meta, point: null, rows, series };
 };
 
 /**

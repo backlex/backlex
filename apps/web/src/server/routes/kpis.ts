@@ -93,6 +93,11 @@ const KpiRowSchema = z
   })
   .openapi("Kpi");
 
+const KpiSeriesPointSchema = z.object({
+  t: z.number(),
+  value: z.number().nullable(),
+});
+
 const KpiPointSchema = z.object({
   label: z.string().optional(),
   value: z.number().nullable(),
@@ -119,6 +124,7 @@ const KpiResultSchema = z
     previousWindow: WindowSchema.nullable(),
     point: KpiPointSchema.nullable(),
     rows: z.array(KpiPointSchema).nullable(),
+    series: z.array(KpiSeriesPointSchema).nullable(),
     computedAt: z.number(),
   })
   .openapi("KpiResult");
@@ -129,6 +135,10 @@ const RunQuery = z.object({
   from: z.coerce.number().int().optional(),
   to: z.coerce.number().int().optional(),
   rangeDays: z.coerce.number().int().positive().max(3650).optional(),
+  /** Opt-in: also slice the window into buckets for a sparkline. One extra
+   *  query per KPI, so a caller that only needs the number doesn't pay it. */
+  series: z.coerce.boolean().optional(),
+  buckets: z.coerce.number().int().min(2).max(200).optional(),
 });
 
 const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {
@@ -292,6 +302,7 @@ export const kpisRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       summary: "Evaluate a KPI",
       description:
         "Runs the definition over the requested window and the window immediately before it. " +
+        "Pass `series=1` to also get the window sliced into buckets for a sparkline. " +
         "Scoped to the caller's own read permission on the KPI's collection, so the figure " +
         "matches what that caller could list. A KPI with no `dateField` returns a running " +
         "total and a null `window`/`previousWindow` rather than a fabricated comparison.",

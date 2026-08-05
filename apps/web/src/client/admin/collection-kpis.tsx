@@ -186,11 +186,24 @@ export function CollectionKpisPanel({
   }
 
   return (
-    <Card className="gap-0 rounded-surface p-0">
-      <div className="flex items-center gap-2 px-3 py-2">
-        <span className="text-[12px] font-medium text-muted-foreground">
-          <Trans>Period</Trans>
-        </span>
+    <Card className={pinned ? "gap-0 py-0" : "gap-0 rounded-surface p-0"}>
+      <div
+        className={
+          pinned
+            ? "flex items-center gap-2 border-b border-border px-4 py-3 text-[12.5px] font-medium"
+            : "flex items-center gap-2 px-3 py-2"
+        }
+      >
+        {pinned ? (
+          <>
+            <I.Gauge size={13} />
+            <Trans>Insights</Trans>
+          </>
+        ) : (
+          <span className="text-[12px] font-medium text-muted-foreground">
+            <Trans>Period</Trans>
+          </span>
+        )}
         <div className="flex-1" />
         <Select
           value={rangeDays}
@@ -205,7 +218,13 @@ export function CollectionKpisPanel({
           className="w-[112px]"
         />
       </div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-x-4 gap-y-3 border-t border-border px-3.5 py-3.5">
+      <div
+        className={
+          pinned
+            ? "flex flex-col gap-3 p-3.5"
+            : "grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-x-4 gap-y-3 border-t border-border px-3.5 py-3.5"
+        }
+      >
         {kpis.map((kpi) => {
           const r = results[kpi.id];
           const failed = r && "error" in r ? r.error : null;

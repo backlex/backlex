@@ -7751,6 +7751,7 @@ msgstr "<0>c_{slug}</0>{0} tablosuna ekle."
 msgid "Insight panels chart a collection aggregate (count / sum / average …) or a saved SQL query as a counter, sparkline, bars, donut, or table. Click <0>+ New panel</0> to build your first one — pick a collection, no SQL required."
 msgstr "İçgörü panelleri bir koleksiyon toplamını (say / topla / ortalama …) veya kaydedilmiş bir SQL sorgusunu sayaç, kıvılcım çizgisi, çubuk, halka veya tablo olarak gösterir. İlkini oluşturmak için <0>+ Yeni panel</0>'e tıklayın — bir koleksiyon seçin, SQL gerekmez."
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/pages/advisor.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/ui.tsx

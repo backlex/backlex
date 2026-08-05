@@ -53,6 +53,8 @@ export interface ItemEditorPageProps {
   navigateToItem: (id: string) => void;
 }
 
+import { CollectionKpisPanel } from "./collection-kpis";
+
 const SECTION_TITLE_CLS =
   "flex items-center gap-2 border-b border-border px-4 py-3 text-[12.5px] font-medium";
 
@@ -646,6 +648,18 @@ export function ItemEditorPage({
                 />
               </div>
             </Card>
+          )}
+
+          {/* Figures pinned to THIS collection, narrowed to this record —
+              "how is this product doing". Sits in the rail beside the other
+              read-only cards rather than above the form, because it is context
+              for the record, not part of editing it. Renders nothing at all
+              (not even a skeleton) when nothing is pinned here, which is the
+              common case; and nothing in `create` mode, where there is no row
+              to scope to and a collection-wide total under a new record's
+              heading would be a lie. */}
+          {mode === "edit" && item && (
+            <CollectionKpisPanel collection={slug} pinnedRowId={item.id} />
           )}
 
           {/* System fields */}

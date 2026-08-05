@@ -254,7 +254,11 @@ A KPI can also declare where it belongs on a *record*:
 | `pinField` | The column on the KPI's **own** collection pointing back at that row (`order_items.product`). Without it the server would have to guess which relation the pin meant, and guessing wrong is a number confidently about the wrong thing. |
 
 Both or neither. `GET /{ref}/run?rowId=…` then narrows the whole evaluation —
-window, filter and all — to that row. The scope is ANDed onto the KPI's own
+window, filter and all — to that row, and the admin renders the result as an
+**Insights** card in the record page's right rail, beside System fields and
+History. It sits there rather than above the form because it is context for the
+record, not part of editing it — and it renders nothing at all (not even a
+skeleton) when nothing is pinned to that collection, which is the common case. The scope is ANDed onto the KPI's own
 filter rather than replacing it, so a definition that already constrains the
 same relation keeps its clause.
 

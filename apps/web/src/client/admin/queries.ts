@@ -47,6 +47,7 @@ import {
   type ApiErrorGroupDetail,
   type ApiErrorStatus,
   meApi,
+  kpisApi,
   metricsApi,
   notificationsApi,
   rolesApi,
@@ -102,6 +103,10 @@ export const queryKeys = {
   advisor: (days?: number) =>
     days === undefined ? (["advisor"] as const) : (["advisor", days] as const),
   advisorInsights: (days: number) => ["advisor", "insights", days] as const,
+  /** The workspace's KPI definitions. One list for the whole workspace — the
+   *  collection page derives its own count from it rather than asking per
+   *  collection, so browsing 116 collections is still one request. */
+  kpis: () => ["kpis"] as const,
   /** Item list for a collection. The shared `["items", collection]` prefix is
    *  the rollback/invalidate scope for every filter/sort/search variant —
    *  optimistic mutations patch every cached variant of a collection through
@@ -339,6 +344,16 @@ export function useMetricsOverview(range = "24h") {
   return useQuery({
     queryKey: queryKeys.metricsOverview(range),
     queryFn: () => metricsApi.overview(range),
+  });
+}
+
+/** Every KPI definition in the workspace. Cached generously: definitions are
+ *  schema-shaped and change far less often than the numbers they produce. */
+export function useKpis() {
+  return useQuery({
+    queryKey: queryKeys.kpis(),
+    queryFn: () => kpisApi.list(),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

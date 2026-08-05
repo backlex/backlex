@@ -66,6 +66,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   buildItemsParams,
   useCollections,
+  useKpis,
   useEnabledExtensions,
   useItemCreate,
   useItemPatch,
@@ -422,6 +423,20 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     [collectionsQuery.data],
   );
   const activeCollection = activeNav === "collections" && segs[1] ? segs[1] : null;
+  // One workspace-wide list, cached — so browsing 116 collections costs one
+  // request rather than one per collection.
+  const { data: kpisData } = useKpis();
+  const collectionKpiCount = activeCollection
+    ? (kpisData?.data ?? []).filter((k) => k.collection === activeCollection).length
+    : 0;
+  // The trigger disappears when the count drops to zero (navigating to a
+  // collection with no definitions, or deleting the last one), so a tab left
+  // selected would render an empty content area. Guarded on `kpisData` so the
+  // in-flight state — count 0 because nothing has loaded — doesn't bounce
+  // someone off the tab they just opened.
+  useEffect(() => {
+    if (kpisData && activeTab === "kpis" && collectionKpiCount === 0) setActiveTab("items");
+  }, [kpisData, activeTab, collectionKpiCount]);
   const setActiveCollection = useCallback(
     (slug: string | null) => { vNav(slug ? "/collections/" + slug : "/collections", slug ? "forward" : "back"); },
     [vNav],
@@ -1345,9 +1360,15 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                   <TabsTrigger value="items">
                     <I.Inbox size={13} /><Trans>Items</Trans> <span className={TAB_COUNT_CLS}>{posts.length}</span>
                   </TabsTrigger>
-                  <TabsTrigger value="kpis">
-                    <I.Gauge size={13} /><Trans>KPIs</Trans>
-                  </TabsTrigger>
+                  {/* Only where there is something to show. A tab that
+                      exists on all 116 collections and is empty on most of
+                      them advertises a dead end; the count carries the "there
+                      are numbers here" signal without a click. */}
+                  {collectionKpiCount > 0 && (
+                    <TabsTrigger value="kpis">
+                      <I.Gauge size={13} /><Trans>KPIs</Trans> <span className={TAB_COUNT_CLS}>{collectionKpiCount}</span>
+                    </TabsTrigger>
+                  )}
                   <TabsTrigger value="schema">
                     <I.Braces size={13} /><Trans>Schema</Trans> <span className={TAB_COUNT_CLS}>{schemaState.fields.length}</span>
                   </TabsTrigger>
@@ -1549,7 +1570,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                 </div>
               )}
 
-              {activeTab === "kpis" && activeCollection && (
+              {activeTab === "kpis" && activeCollection && collectionKpiCount > 0 && (
                 // Its own tab rather than a band above the items: nothing is
                 // fetched or evaluated until someone asks for the numbers.
                 <CollectionKpisPanel

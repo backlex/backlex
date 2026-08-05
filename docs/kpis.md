@@ -156,16 +156,20 @@ test now covers each one.)
 
 ## On a collection's page
 
-A collection gets a **KPIs tab** beside Items / Schema / Settings, listing
-every KPI whose `collection` matches, with its own period picker.
+A collection with KPIs gets a **KPIs tab** beside Items / Schema / Settings,
+carrying a count (`KPIs 4`) like the Items and Schema tabs do, and listing
+every KPI whose `collection` matches with its own period picker.
 
 A tab rather than a band above the items: the rows are what the page is for,
 and metrics wedged in above them cost space on every visit whether or not
-anyone wanted the numbers. The tab is the disclosure — nothing is fetched or
-evaluated until it is opened.
+anyone wanted the numbers. The tab is the disclosure — nothing is evaluated
+until it is opened.
 
-A collection with no KPIs gets an empty state pointing at the KPIs page, not a
-blank tab.
+The tab **only appears where there is something to show**. A tab present on
+every collection and empty on most of them advertises a dead end; the count on
+the trigger carries the "there are numbers here" signal without a click. The
+definitions come from one workspace-wide, cached list, so browsing collections
+costs one request rather than one per collection.
 
 Figures are scoped to the collection, not to a single row. Per-row insights
 ("how is *this* product doing?") would need a KPI to declare which collection

@@ -4754,6 +4754,10 @@ msgstr "Defaults to the URL's filename"
 msgid "Define a figure once — revenue, open tickets, refund rate — and every panel, report and AI answer will quote the same number instead of re-deriving it."
 msgstr "Define a figure once — revenue, open tickets, refund rate — and every panel, report and AI answer will quote the same number instead of re-deriving it."
 
+#: src/client/admin/collection-kpis.tsx
+msgid "Define a figure once — revenue, open tickets, refund rate — and this tab, your dashboards and Ask AI will all quote the same number."
+msgstr "Define a figure once — revenue, open tickets, refund rate — and this tab, your dashboards and Ask AI will all quote the same number."
+
 #: src/client/admin/parity/insights.tsx
 msgid "Define one on the KPIs page first."
 msgstr "Define one on the KPIs page first."
@@ -8218,7 +8222,7 @@ msgstr "Know who you are"
 msgid "KPI"
 msgstr "KPI"
 
-#: src/client/admin/collection-kpis.tsx
+#: src/client/admin/app.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/admin/ui.tsx
 msgid "KPIs"
@@ -9634,6 +9638,7 @@ msgstr "New insight panel"
 msgid "New key"
 msgstr "New key"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/kpis.tsx
 msgid "New KPI"
 msgstr "New KPI"
@@ -10216,6 +10221,10 @@ msgstr "no key needed"
 #: src/client/admin/parity/kpis.tsx
 msgid "No KPIs defined yet"
 msgstr "No KPIs defined yet"
+
+#: src/client/admin/collection-kpis.tsx
+msgid "No KPIs for this collection"
+msgstr "No KPIs for this collection"
 
 #: src/client/admin/pages/forms.tsx
 msgid "No language found."
@@ -11599,6 +11608,7 @@ msgid "Performance"
 msgstr "Performance"
 
 #: src/client/admin/add-field.tsx
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Period"
 msgstr "Period"

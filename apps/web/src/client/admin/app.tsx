@@ -52,7 +52,7 @@ import { ConfirmDialog, ItemSheet } from "./sheet";
 import { BulkEditDialog } from "./bulk-edit";
 import { ItemEditorPage } from "./item-editor";
 import { CalendarView, GalleryGrid, ItemsViewToggle, KanbanBoard, type ItemsViewMode } from "./item-views";
-import { CollectionKpiStrip } from "./collection-kpis";
+import { CollectionKpisPanel } from "./collection-kpis";
 import { ColumnPicker, useListColumns } from "./list-columns";
 import { needsDisplayTemplate } from "./row-label";
 import { EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
@@ -293,7 +293,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   }, [segs[0], navigate]);
 
   const navTo = useCallback((id: string) => { vNav("/" + id); }, [vNav]);
-  const [activeTab, setActiveTab] = useState<"items" | "schema" | "settings">("items");
+  const [activeTab, setActiveTab] = useState<"items" | "kpis" | "schema" | "settings">("items");
   // The item list is React Query state (`itemsQuery` below, derived from
   // `activeCollection` + `itemsParams`). `posts` is just its current rows —
   // mutations patch the cache through the `useItem*` hooks, never a setter.
@@ -1340,10 +1340,13 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                 </div>
               </div>
 
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "items" | "schema" | "settings")}>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "items" | "kpis" | "schema" | "settings")}>
                 <TabsList>
                   <TabsTrigger value="items">
                     <I.Inbox size={13} /><Trans>Items</Trans> <span className={TAB_COUNT_CLS}>{posts.length}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="kpis">
+                    <I.Gauge size={13} /><Trans>KPIs</Trans>
                   </TabsTrigger>
                   <TabsTrigger value="schema">
                     <I.Braces size={13} /><Trans>Schema</Trans> <span className={TAB_COUNT_CLS}>{schemaState.fields.length}</span>
@@ -1405,12 +1408,6 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         </Button>
                       </div>
                     )}
-                    {/* The workspace's agreed figures for these rows, above the
-                        rows themselves — so "how is it going?" is answered
-                        where the operator already is, from the same definition
-                        the dashboard and Ask AI read. Renders nothing when the
-                        collection has no KPIs. */}
-                    {activeCollection && <CollectionKpiStrip collection={activeCollection} />}
                     <Card className="gap-0 overflow-hidden rounded-surface py-0">
                       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
                         <ItemsViewToggle
@@ -1550,6 +1547,15 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                     <RealtimeTail events={events} channel={`items:${activeCollection ?? ""}`} connected />
                   )}
                 </div>
+              )}
+
+              {activeTab === "kpis" && activeCollection && (
+                // Its own tab rather than a band above the items: nothing is
+                // fetched or evaluated until someone asks for the numbers.
+                <CollectionKpisPanel
+                  collection={activeCollection}
+                  onOpenKpisPage={() => setActiveNav("kpis")}
+                />
               )}
 
               {activeTab === "schema" && (

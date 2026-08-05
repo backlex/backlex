@@ -3,22 +3,22 @@ import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
 import { Skeleton } from "@backlex/ui/components/skeleton";
+import { I } from "./icons";
 import { Select } from "./select";
+import { Button, EmptyState } from "./ui";
 import { kpisApi, type ApiKpi, type ApiKpiResult } from "./api";
 
 /**
- * The KPI strip above a collection's items — this workspace's agreed figures
- * for the rows on screen.
+ * The KPIs tab of a collection — this workspace's agreed figures for these
+ * rows, sitting beside Items / Schema / Settings.
  *
- * The point is proximity: an operator looking at `orders` should not have to
- * navigate to a dashboard to learn that revenue is down, and the number they
- * see here is the same definition the dashboard tile and Ask AI read, so the
- * two can never quietly disagree.
+ * A tab rather than a band above the items: the rows are what the page is for,
+ * and metrics pushed in above them are a cost paid on every visit whether or
+ * not anyone wanted the numbers. The tab is the disclosure, so nothing is
+ * fetched or evaluated until it is opened.
  *
- * Renders NOTHING when the collection has no KPIs — a strip of empty boxes
- * above every collection would be chrome that costs vertical space and says
- * nothing. There is no "no KPIs yet" placeholder for the same reason: this is
- * a secondary surface, and the KPIs page is where you go to define one.
+ * The figures come from the stored definitions, so this tab, the dashboard
+ * tile and Ask AI cannot quietly disagree about what "revenue" means.
  */
 
 /** Print a value the way its KPI says it should be read. Mirrors the KPIs
@@ -67,7 +67,13 @@ const toneClass = (delta: number | null, direction: string): string => {
   return good ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400";
 };
 
-export function CollectionKpiStrip({ collection }: { collection: string }) {
+export function CollectionKpisPanel({
+  collection,
+  onOpenKpisPage,
+}: {
+  collection: string;
+  onOpenKpisPage?: () => void;
+}) {
   const { t, i18n } = useLingui();
   const locale = i18n?.locale ?? "en";
   const [kpis, setKpis] = useState<ApiKpi[] | null>(null);
@@ -118,14 +124,51 @@ export function CollectionKpiStrip({ collection }: { collection: string }) {
     };
   }, [kpis, rangeDays]);
 
-  if (kpis === null) return null;
-  if (kpis.length === 0) return null;
+  // The list is one cheap read; until it lands, a skeleton rather than an
+  // empty state, so "no KPIs yet" is never shown to somebody who has them.
+  if (kpis === null) {
+    return (
+      <Card className="gap-0 rounded-surface p-0">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-x-4 gap-y-3 px-3.5 py-3.5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-1.5">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-6 w-20" />
+            </div>
+          ))}
+        </div>
+      </Card>
+    );
+  }
+
+  if (kpis.length === 0) {
+    return (
+      <EmptyState
+        icon={I.Gauge}
+        size="md"
+        title={<Trans>No KPIs for this collection</Trans>}
+        description={
+          <Trans>
+            Define a figure once — revenue, open tickets, refund rate — and this tab, your
+            dashboards and Ask AI will all quote the same number.
+          </Trans>
+        }
+        action={
+          onOpenKpisPage ? (
+            <Button variant="primary" icon={I.Plus} onClick={onOpenKpisPage}>
+              <Trans>New KPI</Trans>
+            </Button>
+          ) : undefined
+        }
+      />
+    );
+  }
 
   return (
     <Card className="gap-0 rounded-surface p-0">
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+      <div className="flex items-center gap-2 px-3 py-2">
         <span className="text-[12px] font-medium text-muted-foreground">
-          <Trans>KPIs</Trans>
+          <Trans>Period</Trans>
         </span>
         <div className="flex-1" />
         <Select
@@ -141,7 +184,7 @@ export function CollectionKpiStrip({ collection }: { collection: string }) {
           className="w-[112px]"
         />
       </div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-x-4 gap-y-3 px-3.5 py-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-x-4 gap-y-3 border-t border-border px-3.5 py-3.5">
         {kpis.map((kpi) => {
           const r = results[kpi.id];
           const failed = r && "error" in r ? r.error : null;

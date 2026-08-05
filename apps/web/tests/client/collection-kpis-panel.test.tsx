@@ -1,18 +1,18 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, screen, waitFor } from "@testing-library/react";
-import { CollectionKpiStrip } from "../../src/client/admin/collection-kpis";
+import { CollectionKpisPanel } from "../../src/client/admin/collection-kpis";
 import { renderWithProviders } from "./render";
 
 /**
- * The KPI strip above a collection's items.
+ * The KPIs tab of a collection.
  *
- * Three behaviours worth pinning, all of which look like "it works" on a
- * screenshot of the happy path:
+ * Behaviours worth pinning, all of which look like "it works" on a screenshot
+ * of the happy path:
  *
  *  - it shows only the KPIs of THIS collection (the list endpoint returns the
  *    whole workspace, and the filtering is client-side);
- *  - it renders NOTHING when there are none, rather than an empty card of
- *    chrome above every collection that has no definitions;
+ *  - "none yet" is an empty state, and it is never shown while the list is
+ *    still loading — a workspace WITH KPIs must not flash "you have none";
  *  - it does not print a fabricated comparison — a KPI with no date column
  *    says "Running total", and a zero baseline shows the absolute change
  *    rather than "+100%".
@@ -61,12 +61,37 @@ const mockRoutes = (
 afterEach(() => cleanup());
 
 describe("CollectionKpiStrip", () => {
-  test("renders nothing when the collection has no KPIs", async () => {
+  test("offers an empty state when the collection has no KPIs", async () => {
     mockRoutes([kpi({ slug: "elsewhere", name: "Elsewhere", collection: "invoices" })], {});
-    const { container } = renderWithProviders(<CollectionKpiStrip collection="orders" />);
-    await waitFor(() => {
-      expect(container.textContent).toBe("");
-    });
+    renderWithProviders(<CollectionKpisPanel collection="orders" />);
+    await waitFor(() =>
+      expect(screen.getByText("No KPIs for this collection")).toBeTruthy(),
+    );
+    // …and the other collection's definition is not smuggled in.
+    expect(screen.queryByText("Elsewhere")).toBeNull();
+  });
+
+  test("does not flash 'none yet' while the list is still loading", async () => {
+    // A workspace that HAS KPIs must never be told it has none, however
+    // briefly — that is a claim, and it is wrong.
+    let release: (v: Response) => void = () => {};
+    global.fetch = mock(async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes("/api/admin/kpis") && !/\/run/.test(url)) {
+        return new Promise<Response>((res) => {
+          release = res;
+        });
+      }
+      return json({ data: null });
+    }) as unknown as typeof fetch;
+
+    renderWithProviders(<CollectionKpisPanel collection="orders" />);
+    await waitFor(() => expect(document.querySelectorAll("[data-slot]").length).toBeGreaterThan(0));
+    expect(screen.queryByText("No KPIs for this collection")).toBeNull();
+
+    release(json({ data: [kpi({ slug: "mine", name: "Mine", collection: "orders" })] }));
+    await waitFor(() => expect(screen.getByText("Mine")).toBeTruthy());
   });
 
   test("shows only this collection's KPIs", async () => {
@@ -94,7 +119,7 @@ describe("CollectionKpiStrip", () => {
         },
       },
     );
-    renderWithProviders(<CollectionKpiStrip collection="orders" />);
+    renderWithProviders(<CollectionKpisPanel collection="orders" />);
     await waitFor(() => expect(screen.getByText("Mine")).toBeTruthy());
     expect(screen.queryByText("Theirs")).toBeNull();
     expect(screen.getByText("12")).toBeTruthy();
@@ -121,7 +146,7 @@ describe("CollectionKpiStrip", () => {
         computedAt: 3,
       },
     });
-    renderWithProviders(<CollectionKpiStrip collection="orders" />);
+    renderWithProviders(<CollectionKpisPanel collection="orders" />);
     await waitFor(() => expect(screen.getByText("7 units")).toBeTruthy());
     expect(screen.getByText("Running total")).toBeTruthy();
   });
@@ -146,7 +171,7 @@ describe("CollectionKpiStrip", () => {
         computedAt: 3,
       },
     });
-    renderWithProviders(<CollectionKpiStrip collection="orders" />);
+    renderWithProviders(<CollectionKpisPanel collection="orders" />);
     await waitFor(() => expect(screen.getByText("5")).toBeTruthy());
     expect(screen.getByText("+5")).toBeTruthy();
     expect(screen.queryByText("100%")).toBeNull();

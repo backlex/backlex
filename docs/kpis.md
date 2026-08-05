@@ -156,19 +156,20 @@ test now covers each one.)
 
 ## On a collection's page
 
-Every KPI whose `collection` matches shows up as a strip above that
-collection's items, with its own period picker. An operator looking at `orders`
-learns that revenue is down without navigating to a dashboard, and the figure
-is the same definition the dashboard tile and Ask AI read.
+A collection gets a **KPIs tab** beside Items / Schema / Settings, listing
+every KPI whose `collection` matches, with its own period picker.
 
-A collection with no KPIs renders **nothing** — not an empty card. Chrome above
-every collection that costs vertical space and says nothing is worse than the
-absence.
+A tab rather than a band above the items: the rows are what the page is for,
+and metrics wedged in above them cost space on every visit whether or not
+anyone wanted the numbers. The tab is the disclosure — nothing is fetched or
+evaluated until it is opened.
 
-Rows are scoped to the collection, not to a single row: this is the list-page
-strip. Per-row insights ("how is *this* product doing?") would need a KPI to
-declare which collection it is pinned to and which relation column links back —
-that is not built.
+A collection with no KPIs gets an empty state pointing at the KPIs page, not a
+blank tab.
+
+Figures are scoped to the collection, not to a single row. Per-row insights
+("how is *this* product doing?") would need a KPI to declare which collection
+it is pinned to and which relation column links back — that is not built.
 
 ## Ask AI
 

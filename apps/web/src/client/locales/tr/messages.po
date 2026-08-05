@@ -4754,6 +4754,10 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 msgid "Define a figure once — revenue, open tickets, refund rate — and every panel, report and AI answer will quote the same number instead of re-deriving it."
 msgstr "Bir göstergeyi bir kez tanımlayın — ciro, açık talepler, iade oranı — her panel, rapor ve AI yanıtı aynı sayıyı yeniden türetmek yerine ondan okusun."
 
+#: src/client/admin/collection-kpis.tsx
+msgid "Define a figure once — revenue, open tickets, refund rate — and this tab, your dashboards and Ask AI will all quote the same number."
+msgstr "Bir göstergeyi bir kez tanımlayın — ciro, açık talepler, iade oranı — bu sekme, panolarınız ve Ask AI aynı sayıyı söylesin."
+
 #: src/client/admin/parity/insights.tsx
 msgid "Define one on the KPIs page first."
 msgstr "Önce KPI'lar sayfasında bir tane tanımlayın."
@@ -8218,7 +8222,7 @@ msgstr "Kim olduğunuzu bilme"
 msgid "KPI"
 msgstr "KPI"
 
-#: src/client/admin/collection-kpis.tsx
+#: src/client/admin/app.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/admin/ui.tsx
 msgid "KPIs"
@@ -9634,6 +9638,7 @@ msgstr "Yeni içgörü paneli"
 msgid "New key"
 msgstr "Yeni anahtar"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/kpis.tsx
 msgid "New KPI"
 msgstr "Yeni KPI"
@@ -10216,6 +10221,10 @@ msgstr "anahtar gerekmez"
 #: src/client/admin/parity/kpis.tsx
 msgid "No KPIs defined yet"
 msgstr "Henüz KPI tanımlanmadı"
+
+#: src/client/admin/collection-kpis.tsx
+msgid "No KPIs for this collection"
+msgstr "Bu koleksiyon için KPI yok"
 
 #: src/client/admin/pages/forms.tsx
 msgid "No language found."
@@ -11599,6 +11608,7 @@ msgid "Performance"
 msgstr "Performans"
 
 #: src/client/admin/add-field.tsx
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Period"
 msgstr "Dönem"

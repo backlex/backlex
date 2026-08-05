@@ -21,6 +21,10 @@ more. A template is not just tables — it is a **bundle**:
 - **Optional insights dashboards** with pre-built panels (e.g. the store's
   *Store overview*). Panels stick to `items-aggregate`/`static` — never raw
   SQL — so seeding is safe on every runtime.
+- **Optional KPI definitions** — the vertical's named figures (`net-revenue`,
+  `open-backlog`, `average-csat`), so the workspace can answer "how is it
+  going?" the moment the template lands rather than only offering the tools to
+  work it out. See [KPIs](/docs/kpis/).
 
 Templates are **admin-authored DDL**: every surface below requires the `admin`
 role (the same gate as `POST /api/collections`).
@@ -65,13 +69,16 @@ Apply is **idempotent and additive**:
   `POST /api/collections/:slug/vectorize` later if needed.
 - Bundled roles/dashboards are skipped wholesale when one with the same name
   already exists.
+- Bundled KPIs are skipped **per slug**, so a re-apply keeps a definition an
+  admin has tuned while still installing ones added to the template since.
 
 The result reports what actually happened:
 
 ```json
 { "data": { "templateId": "ecommerce", "created": ["products", "…"],
             "skipped": [], "seeded": 24, "roles": ["Store staff"],
-            "dashboards": ["Store overview"] } }
+            "dashboards": ["Store overview"],
+            "kpis": ["net-revenue", "orders-placed", "…"] } }
 ```
 
 **Safety rails:** apply never drops or alters existing columns (the schema

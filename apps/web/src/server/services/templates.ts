@@ -18,6 +18,7 @@ import {
   type SchemaTemplate,
   type TemplateCollection,
   type TemplateDashboard,
+  type TemplateKpi,
   type TemplateRole,
 } from "../templates/catalog";
 import type { Ctx } from "../context";
@@ -71,6 +72,9 @@ export interface ApplyTemplateResult {
   roles: string[];
   /** Names of bundled dashboards created by this apply (existing names skipped). */
   dashboards: string[];
+  /** Slugs of bundled KPI definitions created by this apply (existing slugs
+   *  skipped, so a re-apply never overwrites one an admin has tuned). */
+  kpis: string[];
 }
 
 /** Map of `slug -> [insertedId, …]` for already-seeded collections, used to
@@ -410,6 +414,60 @@ async function seedDashboards(
 }
 
 /**
+ * Seed bundled KPI definitions.
+ *
+ * This is what lets a freshly-applied template answer "how is it going?"
+ * rather than only handing over the tools to work it out. The vertical's
+ * vocabulary — "net revenue", "refund rate" — arrives already defined, so the
+ * KPIs page, a dashboard tile and Ask AI agree on it from the first minute.
+ *
+ * Skipped per-slug rather than wholesale: a workspace that has re-applied a
+ * template, or hand-tuned one definition, keeps its own version while still
+ * picking up KPIs added to the template since.
+ */
+async function seedKpis(
+  ctx: DbCtx,
+  tenantId: string,
+  kpis: TemplateKpi[],
+): Promise<string[]> {
+  if (kpis.length === 0) return [];
+  const t = ctx.dialect === "pg" ? pg.schema.kpis : sqlite.schema.kpis;
+  const created: string[] = [];
+  for (const kpi of kpis) {
+    const existing = await (ctx.db as never as { select: Function })
+      .select({ id: t.id })
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, kpi.slug)))
+      .limit(1);
+    if (existing[0]) continue;
+    const now = nowFor(ctx.dialect);
+    await (ctx.db as never as { insert: Function }).insert(t).values({
+      id: crypto.randomUUID(),
+      tenantId,
+      slug: kpi.slug,
+      name: kpi.name,
+      description: kpi.description ?? null,
+      collection: kpi.collection,
+      agg: kpi.agg,
+      field: kpi.field ?? null,
+      filter: kpi.filter ?? null,
+      dateField: kpi.dateField ?? null,
+      groupBy: kpi.groupBy ?? null,
+      topN: kpi.topN ?? null,
+      format: kpi.format ?? "number",
+      unit: kpi.unit ?? null,
+      decimals: kpi.decimals ?? null,
+      direction: kpi.direction ?? "neutral",
+      createdBy: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    created.push(kpi.slug);
+  }
+  return created;
+}
+
+/**
  * Materialize a template definition into a workspace. Ensures system roles
  * exist, then creates each collection in dependency order (relation targets
  * first) with its admin group + position, merges the template's group headers
@@ -514,6 +572,7 @@ export async function applyTemplateDefinition(
 
   const roles = await seedRoles(ctx, tenantId, template.roles ?? []);
   const dashboards = await seedDashboards(ctx, tenantId, template.dashboards ?? []);
+  const kpis = await seedKpis(ctx, tenantId, template.kpis ?? []);
 
   // Portal auto-link rules bundled with person collections. Merge is
   // idempotent per collection (an existing — possibly admin-edited — rule is
@@ -540,7 +599,7 @@ export async function applyTemplateDefinition(
   // and the SEED_TEMPLATE auto-apply in context.ts which previously relied on
   // cold caches). Cross-isolate convergence stays on the cache TTL.
   invalidateTenantCollections(tenantId);
-  return { templateId: template.id, created, skipped, seeded, roles, dashboards };
+  return { templateId: template.id, created, skipped, seeded, roles, dashboards, kpis };
 }
 
 /** Seed a catalog template by id — thin wrapper over

@@ -99,6 +99,38 @@ The two halves are gated differently on purpose:
   exactly mirroring `POST /items/{slug}/aggregate`. A tile is never a way around
   a row-level condition.
 
+## What a template brings with it
+
+Applying a schema template seeds that vertical's KPIs alongside its
+collections, sample rows and dashboards — so a fresh workspace can answer "how
+is it going?" rather than only offering the tools to work it out. `ecommerce`
+arrives with net revenue, orders placed, AOV, refunds, cancellations and stock
+on hand; `support` with tickets opened/solved, the open backlog and average
+CSAT; and so on across every vertical. The definitions live in
+`apps/web/src/server/templates/kpis.ts`.
+
+Seeding is **per-slug idempotent**: a re-apply skips definitions that already
+exist, so a KPI an admin has tuned keeps their version while newly-added ones
+still land.
+
+Two things the template KPIs are careful about, both of which a hand-written
+definition gets wrong the first time:
+
+- **A money column denominated per row is only ever totalled per currency.**
+  Every `money` field in the catalog carries `money: { currencyField: "currency" }`,
+  and the aggregate engine refuses a `sum` over one without `groupBy: "currency"` —
+  a total of mixed denominations is not a smaller number, it is not a number.
+  So "Net revenue" is one figure per currency, not one figure.
+- **`direction` is set wherever rising is bad news** — refunds, cancellations,
+  downtime, scrap, backlogs. Without it the delta badge colours by sign alone
+  and a worsening figure renders green.
+
+`apps/web/tests/template-kpis.test.ts` walks every bundled definition against
+its template's real field list, then applies all 25 templates and evaluates
+every KPI each one seeded. A KPI naming a column that does not exist is not a
+type error — it is a tile that fails on somebody's dashboard — so it is caught
+there instead.
+
 ## On a dashboard
 
 A panel of `kind: "kpi"` stores only `config.kpi` (the slug) and an optional

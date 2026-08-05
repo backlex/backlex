@@ -1,4 +1,5 @@
 import type { FieldChoice, FieldDef } from "@backlex/db";
+import { TEMPLATE_KPIS } from "./kpis";
 
 /**
  * Schema template catalog — vertical "starter" collection sets seeded into a
@@ -143,6 +144,39 @@ export interface TemplatePanel {
   layout?: { x: number; y: number; w: number; h: number };
 }
 
+/**
+ * A named KPI seeded alongside the collections — the workspace's agreed
+ * formula for one figure. Skipped when a KPI with the same slug already
+ * exists, so a re-apply never overwrites a definition an admin has tuned.
+ *
+ * These are why a freshly-applied template can answer "how is it going?"
+ * instead of only offering the tools to find out. Every surface — the KPIs
+ * page, a dashboard tile, Ask AI, a report — reads the seeded definition, so
+ * the vertical's vocabulary ("net revenue", "refund rate") means one thing
+ * from the moment the template lands.
+ */
+export interface TemplateKpi {
+  slug: string;
+  name: string;
+  description?: string;
+  collection: string;
+  agg: "count" | "sum" | "avg" | "min" | "max";
+  field?: string;
+  /** Permission-DSL condition narrowing the rows (e.g. only paid orders). */
+  filter?: Record<string, unknown>;
+  /** Timestamp column the period window applies to. Omit for a running total
+   *  — and omit it deliberately: a KPI windowed on the wrong column reports a
+   *  change that describes when rows were imported. */
+  dateField?: string;
+  groupBy?: string;
+  topN?: number;
+  format?: "number" | "money" | "percent" | "duration";
+  unit?: string;
+  decimals?: number;
+  /** Which way is good news. `down` for refunds and cancellations. */
+  direction?: "up" | "down" | "neutral";
+}
+
 export interface SchemaTemplate {
   id: string;
   label: string;
@@ -156,6 +190,8 @@ export interface SchemaTemplate {
   roles?: TemplateRole[];
   /** Optional bundled insights dashboards — see {@link TemplateDashboard}. */
   dashboards?: TemplateDashboard[];
+  /** Optional bundled KPI definitions — see {@link TemplateKpi}. */
+  kpis?: TemplateKpi[];
 }
 
 /**
@@ -514,7 +550,10 @@ const hint = (key: string, body: string): FieldDef => ({
   description: body,
 });
 
-export const TEMPLATES: SchemaTemplate[] = [
+/** The catalog as authored. `TEMPLATES` below is this with each vertical's
+ *  bundled KPI definitions attached — they live in their own file only because
+ *  this one is already very long. */
+const BASE_TEMPLATES: SchemaTemplate[] = [
   { id: "blank", label: "Blank", description: "No collections — start from scratch.", collections: [] },
 
   {
@@ -8535,6 +8574,19 @@ export const TEMPLATES: SchemaTemplate[] = [
     ],
   },
 ];
+
+/**
+ * The catalog, with each vertical's bundled KPI definitions attached.
+ *
+ * Attached here rather than inlined per template so `TEMPLATE_KPIS` can be
+ * read (and tested) as one table — a KPI naming a column that does not exist
+ * is not a type error, so the catalog test walks every definition against its
+ * template's own field list.
+ */
+export const TEMPLATES: SchemaTemplate[] = BASE_TEMPLATES.map((t) => {
+  const kpis = TEMPLATE_KPIS[t.id];
+  return kpis && kpis.length > 0 ? { ...t, kpis } : t;
+});
 
 export const TEMPLATE_IDS = TEMPLATES.map((t) => t.id);
 

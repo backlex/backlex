@@ -192,3 +192,98 @@ describe("items aggregate — versioned `_status`", () => {
     expect(byLabel.draft).toBe(2);
   });
 });
+
+/**
+ * A filter on a column the collection does not have.
+ *
+ * `field` and `groupBy` were always checked; filter keys were not — and on
+ * SQLite an unresolved double-quoted identifier degrades to a STRING LITERAL
+ * of its own name. So `{"missing_col": {"_gte": 1}}` compared the text
+ * 'missing_col' against a number (text sorts after every number), the clause
+ * was TRUE for every row, and the "filtered" count came back as the UNFILTERED
+ * total. The same query with `_eq` was FALSE for every row and answered zero.
+ * Neither errored, so a stale filter column on a dashboard tile reported a
+ * number nobody had reason to doubt.
+ */
+describe("items aggregate: a filter must name a real column", () => {
+  let h: TestHarness;
+  const slug = `aggfilter_${Date.now()}`;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const json = (path: string, body: unknown) =>
+      h.fetch(path, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    await json("/api/collections", {
+      slug,
+      fields: [
+        { name: "status", type: "text", required: true },
+        { name: "total", type: "integer" },
+      ],
+    });
+    await json(`/api/items/${slug}`, { status: "paid", total: 10 });
+    await json(`/api/items/${slug}`, { status: "paid", total: 20 });
+  });
+  afterAll(() => h.cleanup());
+
+  const agg = async (body: unknown) => {
+    const res = await h.fetch(`/api/items/${slug}/aggregate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return { status: res.status, text: await res.text() };
+  };
+
+  test("an unknown filter column is rejected, not silently ignored", async () => {
+    const { status, text } = await agg({
+      agg: "count",
+      filter: { placed_at: { _gte: 1 } },
+    });
+    expect(status).toBe(422);
+    expect(text).toContain("placed_at");
+    // The error names what IS available, so a near-miss is correctable.
+    expect(text).toContain("status");
+  });
+
+  test("the same unknown column under `_eq` is rejected too", async () => {
+    // Before the fix this answered 0 rather than the 2 the `_gte` form
+    // answered — same wrong filter, opposite wrong answer.
+    const { status } = await agg({ agg: "count", filter: { placed_at: { _eq: "x" } } });
+    expect(status).toBe(422);
+  });
+
+  test("an unknown column nested under a combinator is rejected", async () => {
+    const { status } = await agg({
+      agg: "count",
+      filter: { $and: [{ status: { _eq: "paid" } }, { nope: { _eq: 1 } }] },
+    });
+    expect(status).toBe(422);
+  });
+
+  test("a relation path says aggregate is single-table rather than failing at SQL", async () => {
+    const { status, text } = await agg({
+      agg: "count",
+      filter: { "customer.name": { _eq: "Ada" } },
+    });
+    expect(status).toBe(422);
+    expect(text).toContain("single-table");
+  });
+
+  test("real columns and system columns still filter normally", async () => {
+    const paid = await agg({ agg: "count", filter: { status: { _eq: "paid" } } });
+    expect(paid.status).toBe(200);
+    expect(JSON.parse(paid.text).data[0].value).toBe(2);
+
+    const none = await agg({ agg: "count", filter: { status: { _eq: "void" } } });
+    expect(JSON.parse(none.text).data[0].value).toBe(0);
+
+    const sys = await agg({ agg: "count", filter: { created_at: { _gte: 0 } } });
+    expect(sys.status).toBe(200);
+    expect(JSON.parse(sys.text).data[0].value).toBe(2);
+  });
+});

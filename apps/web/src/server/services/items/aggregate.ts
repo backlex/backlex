@@ -33,6 +33,51 @@ import { queryAll } from "./sql-helpers";
  * columns they can't read.
  */
 
+/**
+ * Walk a normalized condition and reject any leaf key that is not a real
+ * column of the collection.
+ *
+ * Combinators (`$and` / `$or` / `$not`) recurse; everything else is a field
+ * map whose keys must resolve. A dotted key is rejected outright rather than
+ * left to SQL: aggregate is single-table, so a relation path was never going
+ * to work, and saying so is more use than "no such column: customer.name".
+ */
+const assertKnownFilterColumns = (
+  cond: unknown,
+  isKnownColumn: (name: string) => boolean,
+  collection: string,
+  columnHint: () => string,
+): void => {
+  if (cond === null || typeof cond !== "object") return;
+  const node = cond as Record<string, unknown>;
+  if (Array.isArray(node.$and)) {
+    for (const c of node.$and) assertKnownFilterColumns(c, isKnownColumn, collection, columnHint);
+    return;
+  }
+  if (Array.isArray(node.$or)) {
+    for (const c of node.$or) assertKnownFilterColumns(c, isKnownColumn, collection, columnHint);
+    return;
+  }
+  if (node.$not !== undefined) {
+    assertKnownFilterColumns(node.$not, isKnownColumn, collection, columnHint);
+    return;
+  }
+  for (const key of Object.keys(node)) {
+    if (key.includes(".")) {
+      throw new AppError(
+        "VALIDATION",
+        `Filter on "${key}" traverses a relation, which aggregate cannot do (it is single-table). Filter on a column of "${collection}" instead.`,
+      );
+    }
+    if (!isKnownColumn(key)) {
+      throw new AppError(
+        "VALIDATION",
+        `Filter field "${key}" is not in collection "${collection}". Valid columns: ${columnHint()}`,
+      );
+    }
+  }
+};
+
 export const ITEMS_AGG_FUNCS = ["count", "sum", "avg", "min", "max"] as const;
 export type ItemsAggFunc = (typeof ITEMS_AGG_FUNCS)[number];
 
@@ -232,6 +277,21 @@ export const runItemsAggregate = async (
     } catch (e) {
       throw new AppError("VALIDATION", (e as Error).message);
     }
+    // Reject a filter on a column this collection does not have.
+    //
+    // `field` and `groupBy` were already checked; filter keys were not, and on
+    // SQLite that silence is worse than an error. An unresolved double-quoted
+    // identifier degrades to a STRING LITERAL of its own name, so
+    // `{"placed_at": {"_gte": <ts>}}` against a table with no `placed_at`
+    // compares the text 'placed_at' to a number — text sorts after every
+    // number, so the clause is TRUE for every row and the "filtered" count
+    // comes back as the UNFILTERED total. Swap the operator to `_eq` and it is
+    // FALSE for every row and the same query answers zero. Neither errors.
+    //
+    // That is the exact shape of a confidently wrong number: a stale filter
+    // column on a dashboard tile, or a KPI written against a schema that has
+    // since been renamed, reports a total nobody has reason to doubt.
+    assertKnownFilterColumns(cond, isKnownColumn, cfg.collection, columnHint);
     wheres.push(
       compileCondition(cond, auth, undefined, undefined, {
         dialect: ctx.dialect,

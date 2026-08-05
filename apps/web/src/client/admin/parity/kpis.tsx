@@ -92,6 +92,8 @@ const BLANK: ApiKpiInput = {
   direction: "neutral",
   alertOperator: null,
   alertValue: null,
+  pinTo: null,
+  pinField: null,
 };
 
 /** Print a value the way its KPI says it should be read. */
@@ -490,6 +492,42 @@ export function KpisPage({ pushToast }: { pushToast: (m: string) => void }) {
                         decimals: e.target.value === "" ? null : Number(e.target.value),
                       })
                     }
+                  />
+                </Field>
+                <Field
+                  label={t`Pin to`}
+                  hint={t`Show on that collection's record page`}
+                >
+                  <Select
+                    value={editing.pinTo ?? ""}
+                    onChange={(v) =>
+                      // The relation is a column of THIS KPI's collection, so a
+                      // pin without one has nothing to narrow on — cleared and
+                      // required together.
+                      setEditing({ ...editing, pinTo: v || null, pinField: v ? editing.pinField : null })
+                    }
+                    options={[
+                      { value: "", label: t`Not pinned`, hint: t`Collection-wide only` },
+                      ...collections.map((c) => ({ value: c.slug, label: c.slug })),
+                    ]}
+                    className="w-full min-w-0"
+                  />
+                </Field>
+                <Field
+                  label={t`Linked by`}
+                  hint={t`The relation on ${editing.collection || "this collection"} pointing back`}
+                >
+                  <Select
+                    value={editing.pinField ?? ""}
+                    onChange={(v) => setEditing({ ...editing, pinField: v || null })}
+                    // Relations AND plain text: an adopted or legacy schema
+                    // keeps its foreign key in a `text` column, and the server
+                    // is happy to filter on either. Restricting to `relation`
+                    // would make the feature unusable on exactly those tables.
+                    options={fieldOptions((f) => f.type === "relation" || f.type === "text")}
+                    placeholder={t`Pick the linking column`}
+                    disabled={!editing.pinTo}
+                    className="w-full min-w-0"
                   />
                 </Field>
                 <Field label={t`Alert`} hint={t`Notify the workspace on the way in`}>

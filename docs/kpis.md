@@ -244,9 +244,27 @@ the trigger carries the "there are numbers here" signal without a click. The
 definitions come from one workspace-wide, cached list, so browsing collections
 costs one request rather than one per collection.
 
-Figures are scoped to the collection, not to a single row. Per-row insights
-("how is *this* product doing?") would need a KPI to declare which collection
-it is pinned to and which relation column links back — that is not built.
+### Pinned to a row
+
+A KPI can also declare where it belongs on a *record*:
+
+| Field | Meaning |
+|---|---|
+| `pinTo` | The collection whose **item page** the tile appears on — not the collection the KPI aggregates. "Revenue per product" sums order lines and belongs on a product. |
+| `pinField` | The column on the KPI's **own** collection pointing back at that row (`order_items.product`). Without it the server would have to guess which relation the pin meant, and guessing wrong is a number confidently about the wrong thing. |
+
+Both or neither. `GET /{ref}/run?rowId=…` then narrows the whole evaluation —
+window, filter and all — to that row. The scope is ANDed onto the KPI's own
+filter rather than replacing it, so a definition that already constrains the
+same relation keeps its clause.
+
+`rowId` is **ignored** on a KPI that is not pinned. Returning the
+collection-wide figure under a record's heading would read as "this product
+made £40,000", which is exactly the confidently-wrong number this layer exists
+to prevent.
+
+`pinField` may be a `relation` **or** a plain `text` column: an adopted or
+legacy table keeps its foreign key in text, and the filter works on either.
 
 ## Ask AI
 

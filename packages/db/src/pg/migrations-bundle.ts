@@ -97,6 +97,7 @@ import m90 from "../../drizzle/pg/20260803140000_flow_schedule_fires/migration.s
 import m91 from "../../drizzle/pg/20260803160000_sequences/migration.sql" with { type: "text" };
 import m92 from "../../drizzle/pg/20260805100000_kpis/migration.sql" with { type: "text" };
 import m93 from "../../drizzle/pg/20260805170000_kpi_alerts/migration.sql" with { type: "text" };
+import m94 from "../../drizzle/pg/20260806100000_kpi_pins/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -198,4 +199,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260803160000_sequences", sql: m91 },
   { name: "20260805100000_kpis", sql: m92 },
   { name: "20260805170000_kpi_alerts", sql: m93 },
+  { name: "20260806100000_kpi_pins", sql: m94 },
 ];

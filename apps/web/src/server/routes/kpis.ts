@@ -59,6 +59,10 @@ const KpiBase = z.object({
   /** Watch: notify when the figure crosses `alertValue`. Both or neither. */
   alertOperator: z.enum(KPI_ALERT_OPERATORS).nullable().optional(),
   alertValue: z.number().nullable().optional(),
+  /** Pin: show this figure on `pinTo`'s item page, narrowed through
+   *  `pinField` (a relation on the KPI's own collection). Both or neither. */
+  pinTo: z.string().max(120).nullable().optional(),
+  pinField: z.string().max(120).nullable().optional(),
 });
 
 const KpiInput = KpiBase.extend({
@@ -94,6 +98,8 @@ const KpiRowSchema = z
     alertOperator: z.string().nullable(),
     alertValue: z.number().nullable(),
     alertFiring: z.boolean(),
+    pinTo: z.string().nullable(),
+    pinField: z.string().nullable(),
     createdBy: z.string().nullable(),
     createdAt: z.unknown().nullable(),
     updatedAt: z.unknown().nullable(),
@@ -146,6 +152,9 @@ const RunQuery = z.object({
    *  query per KPI, so a caller that only needs the number doesn't pay it. */
   series: z.coerce.boolean().optional(),
   buckets: z.coerce.number().int().min(2).max(200).optional(),
+  /** Narrow to one row of the KPI's `pinTo` collection. Ignored when the KPI
+   *  is not pinned — a collection-wide figure under a row's heading lies. */
+  rowId: z.string().max(200).optional(),
 });
 
 const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {

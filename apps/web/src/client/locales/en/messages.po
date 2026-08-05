@@ -3503,6 +3503,10 @@ msgstr "Collection settings saved. Search index rebuilt ({0} of {1} rows indexed
 msgid "Collection wizard opened."
 msgstr "Collection wizard opened."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Collection-wide only"
+msgstr "Collection-wide only"
+
 #: src/client/admin/app.tsx
 #: src/client/admin/collections-index.tsx
 msgid "collections"
@@ -8662,6 +8666,10 @@ msgstr "Linked — you can sign in with this provider."
 msgid "Linked {0}."
 msgstr "Linked {0}."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Linked by"
+msgstr "Linked by"
+
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Linked from the sign-up consent line. Leave blank to show plain text with no link."
 msgstr "Linked from the sign-up consent line. Leave blank to show plain text with no link."
@@ -10648,6 +10656,10 @@ msgstr "Not one of the countries this field allows."
 msgid "Not owner-scoped"
 msgstr "Not owner-scoped"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Not pinned"
+msgstr "Not pinned"
+
 #: src/client/admin/collection-settings.tsx
 msgid "not set"
 msgstr "not set"
@@ -11982,6 +11994,10 @@ msgstr "Pick the field whose values become the Kanban columns.<0> Auto</0> uses 
 #~ msgid "Pick the field whose values become the Kanban columns.<0> Auto</0> uses a field named<1> status</1>, else the first dropdown.{0}"
 #~ msgstr "Pick the field whose values become the Kanban columns.<0> Auto</0> uses a field named<1> status</1>, else the first dropdown.{0}"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Pick the linking column"
+msgstr "Pick the linking column"
+
 #: src/client/admin/field-rollup-editor.tsx
 msgid "Pick the relation…"
 msgstr "Pick the relation…"
@@ -12013,6 +12029,10 @@ msgstr "Pick…"
 #: src/client/admin/pages/chat.tsx
 msgid "Picked from each agent's description, so give them one. Costs an extra model call per unaddressed message."
 msgstr "Picked from each agent's description, so give them one. Costs an extra model call per unaddressed message."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Pin to"
+msgstr "Pin to"
 
 #: src/client/admin/ui.tsx
 msgid "Pin to top"
@@ -15021,6 +15041,10 @@ msgstr "Show international hosts in their own alphabet"
 msgid "Show map"
 msgstr "Show map"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Show on that collection's record page"
+msgstr "Show on that collection's record page"
+
 #: src/client/pages/sign-in.tsx
 msgid "Show password"
 msgstr "Show password"
@@ -16393,6 +16417,11 @@ msgstr "The query runs verbatim. The visualization hint above explains how its c
 #: src/client/admin/flow-builder.tsx
 msgid "The reference is what a payment link travelled out with, so it is usually the only handle the billed row carries."
 msgstr "The reference is what a payment link travelled out with, so it is usually the only handle the billed row carries."
+
+#. placeholder {0}: editing.collection || "this collection"
+#: src/client/admin/parity/kpis.tsx
+msgid "The relation on {0} pointing back"
+msgstr "The relation on {0} pointing back"
 
 #: src/client/admin/parity/signatures.tsx
 msgid "The render context — what the template's placeholders resolve against."

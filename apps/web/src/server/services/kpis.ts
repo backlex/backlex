@@ -62,6 +62,11 @@ export interface KpiRow {
    *  fire on the transition rather than on every scheduler tick. */
   alertFiring: boolean;
   alertLastFiredAt: Date | number | null;
+  /** The collection whose ITEM PAGE this tile belongs on — not the collection
+   *  the KPI aggregates. */
+  pinTo: string | null;
+  /** The relation column on the KPI's own collection pointing back at that row. */
+  pinField: string | null;
   createdBy: string | null;
   createdAt: Date | number | null;
   updatedAt: Date | number | null;
@@ -94,6 +99,8 @@ export interface KpiInput {
   direction?: string;
   alertOperator?: string | null;
   alertValue?: number | null;
+  pinTo?: string | null;
+  pinField?: string | null;
 }
 
 /** Half-open [from, to) in epoch ms. Half-open on purpose: a row landing
@@ -112,6 +119,14 @@ export interface KpiWindowInput {
   series?: boolean;
   /** How many buckets. Clamped; the default is a readable sparkline width. */
   buckets?: number;
+  /**
+   * Narrow the whole evaluation to one row of the KPI's `pinTo` collection.
+   *
+   * Only meaningful on a pinned KPI, and IGNORED on one that is not pinned —
+   * rather than silently returning the collection-wide figure under a row's
+   * heading, which would read as "this product made £40,000".
+   */
+  rowId?: string;
 }
 
 /** One slice of a KPI's window. `t` is the bucket's START, epoch ms. */
@@ -274,6 +289,25 @@ export const runKpi = async (
   opts: AggregateOpts = {},
 ): Promise<KpiResult> => {
   const { window, previous } = resolveWindows(kpi, windowInput);
+  /**
+   * The row scope, when this is a pinned KPI and a row was named.
+   *
+   * ANDed like the window rather than merged into `filter`, so a definition
+   * that already constrains the same relation keeps its own clause. Ignored
+   * when the KPI is not pinned — returning the collection-wide figure under a
+   * row's heading would read as "this product made £40,000", which is the kind
+   * of confidently wrong number this whole layer exists to prevent.
+   */
+  const rowScope =
+    windowInput?.rowId && kpi.pinTo && kpi.pinField
+      ? { [kpi.pinField]: { _eq: windowInput.rowId } }
+      : null;
+  /** The KPI's own filter with the row scope folded in, before any window. */
+  const scopedFilter = ((): Record<string, unknown> | null => {
+    if (!rowScope) return kpi.filter;
+    if (!kpi.filter || Object.keys(kpi.filter).length === 0) return rowScope;
+    return { $and: [kpi.filter, rowScope] };
+  })();
   const baseConfig = {
     collection: kpi.collection,
     agg: kpi.agg,
@@ -289,8 +323,8 @@ export const runKpi = async (
       {
         ...baseConfig,
         filter: w
-          ? withWindow(kpi.filter, kpi.dateField as string, w, ctx.dialect)
-          : (kpi.filter ?? undefined),
+          ? withWindow(scopedFilter, kpi.dateField as string, w, ctx.dialect)
+          : (scopedFilter ?? undefined),
       },
       opts,
     );
@@ -322,7 +356,7 @@ export const runKpi = async (
         // A series is a shape over time, so the ranking dimension is dropped.
         groupBy: undefined,
         limit: undefined,
-        filter: withWindow(kpi.filter, kpi.dateField, window, ctx.dialect),
+        filter: withWindow(scopedFilter, kpi.dateField, window, ctx.dialect),
       },
       {
         ...opts,
@@ -461,6 +495,8 @@ const rowToKpi = (row: Record<string, unknown>): KpiRow => ({
     | Date
     | number
     | null,
+  pinTo: (row.pinTo ?? row.pin_to ?? null) as string | null,
+  pinField: (row.pinField ?? row.pin_field ?? null) as string | null,
   createdBy: (row.createdBy ?? row.created_by ?? null) as string | null,
   createdAt: (row.createdAt ?? row.created_at ?? null) as Date | number | null,
   updatedAt: (row.updatedAt ?? row.updated_at ?? null) as Date | number | null,
@@ -576,6 +612,14 @@ const validateInput = (input: KpiInput): void => {
       "An alert needs both `alertOperator` and `alertValue`, or neither",
     );
   }
+  // A `pinTo` with no `pinField` is a tile with nothing to narrow on, and a
+  // `pinField` with no `pinTo` is a link to a page it will never appear on.
+  if (Boolean(input.pinTo) !== Boolean(input.pinField)) {
+    throw new AppError(
+      "VALIDATION",
+      "A pinned KPI needs both `pinTo` (the item page) and `pinField` (the relation back to that row), or neither",
+    );
+  }
 };
 
 /** Map a driver UNIQUE violation onto the constraint it actually is.
@@ -622,6 +666,8 @@ export const createKpi = async (
     alertValue: input.alertValue ?? null,
     alertFiring: false,
     alertLastFiredAt: null,
+    pinTo: input.pinTo ?? null,
+    pinField: input.pinField ?? null,
     createdBy: auth.userId,
     createdAt: now,
     updatedAt: now,
@@ -666,6 +712,8 @@ export const updateKpi = async (
     alertOperator:
       patch.alertOperator !== undefined ? patch.alertOperator : existing.alertOperator,
     alertValue: patch.alertValue !== undefined ? patch.alertValue : existing.alertValue,
+    pinTo: patch.pinTo !== undefined ? patch.pinTo : existing.pinTo,
+    pinField: patch.pinField !== undefined ? patch.pinField : existing.pinField,
   };
   validateInput(merged);
   const t = kpisTable(ctx.dialect);

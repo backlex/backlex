@@ -430,6 +430,11 @@ export interface ApiKpi {
   /** Currently outside the threshold. Server-owned — the flag is what makes an
    *  alert fire on the transition rather than on every scheduler tick. */
   alertFiring: boolean;
+  /** The collection whose ITEM PAGE this tile belongs on — not the one the KPI
+   *  aggregates. Null = not pinned. */
+  pinTo: string | null;
+  /** The relation column on the KPI's own collection pointing back at that row. */
+  pinField: string | null;
   createdBy: string | null;
 }
 
@@ -1972,6 +1977,8 @@ export const kpisApi = {
       to?: number;
       series?: boolean;
       buckets?: number;
+      /** Narrow to one row of the KPI's `pinTo` collection. */
+      rowId?: string;
     } = {},
   ) => {
     const qs = new URLSearchParams();

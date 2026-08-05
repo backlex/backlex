@@ -70,10 +70,17 @@ const toneClass = (delta: number | null, direction: string): string => {
 export function CollectionKpisPanel({
   collection,
   onOpenKpisPage,
+  /** Pinned mode: show the KPIs pinned TO this collection, narrowed to one
+   *  row. The definitions aggregate a different collection (order lines) and
+   *  belong on this one's page (a product), which is why the filter is on
+   *  `pinTo` rather than `collection`. */
+  pinnedRowId,
 }: {
   collection: string;
   onOpenKpisPage?: () => void;
+  pinnedRowId?: string;
 }) {
+  const pinned = Boolean(pinnedRowId);
   const { t, i18n } = useLingui();
   const locale = i18n?.locale ?? "en";
   const [kpis, setKpis] = useState<ApiKpi[] | null>(null);
@@ -88,7 +95,11 @@ export function CollectionKpisPanel({
       try {
         const r = await kpisApi.list();
         if (cancelled) return;
-        setKpis((r.data ?? []).filter((k) => k.collection === collection));
+        setKpis(
+          (r.data ?? []).filter((k) =>
+            pinned ? k.pinTo === collection : k.collection === collection,
+          ),
+        );
       } catch {
         // A workspace predating the table, or a caller without the list grant —
         // the strip simply doesn't appear rather than showing an error banner
@@ -99,7 +110,7 @@ export function CollectionKpisPanel({
     return () => {
       cancelled = true;
     };
-  }, [collection]);
+  }, [collection, pinned]);
 
   useEffect(() => {
     if (!kpis || kpis.length === 0) return;
@@ -109,7 +120,10 @@ export function CollectionKpisPanel({
       const entries = await Promise.all(
         kpis.map(async (k) => {
           try {
-            const res = await kpisApi.run(k.slug, { rangeDays: days });
+            const res = await kpisApi.run(k.slug, {
+              rangeDays: days,
+              ...(pinnedRowId ? { rowId: pinnedRowId } : {}),
+            });
             return [k.id, res.data] as const;
           } catch (e) {
             // Per-tile, so one broken definition leaves the rest readable.
@@ -122,7 +136,12 @@ export function CollectionKpisPanel({
     return () => {
       cancelled = true;
     };
-  }, [kpis, rangeDays]);
+  }, [kpis, rangeDays, pinnedRowId]);
+
+  // Pinned mode is supplementary and usually empty, so it stays silent while
+  // loading: a skeleton card that resolves to nothing would flash on every
+  // record page of every collection that has nothing pinned.
+  if (pinned && kpis === null) return null;
 
   // The list is one cheap read; until it lands, a skeleton rather than an
   // empty state, so "no KPIs yet" is never shown to somebody who has them.
@@ -140,6 +159,8 @@ export function CollectionKpisPanel({
       </Card>
     );
   }
+
+  if (kpis.length === 0 && pinned) return null;
 
   if (kpis.length === 0) {
     return (

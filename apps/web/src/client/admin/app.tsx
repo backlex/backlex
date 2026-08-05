@@ -1256,6 +1256,16 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                 (or /new) is selected. Waits only for the schema, not the list. */}
             {activeNav === "collections" && activeCollection && activeItem && (
               schemaReady ? (
+                <>
+                {/* Figures pinned to THIS collection, narrowed to this row —
+                    "how is this product doing". Renders nothing (not even a
+                    skeleton) when nothing is pinned here, which is the common
+                    case. Skipped while creating: there is no row to scope to
+                    yet, and a collection-wide total under a new record's
+                    heading would be a lie. */}
+                {activeItem !== "new" && (
+                  <CollectionKpisPanel collection={activeCollection} pinnedRowId={activeItem} />
+                )}
                 <ItemEditorPage
                   slug={activeCollection}
                   itemId={activeItem}
@@ -1276,6 +1286,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                   onBack={() => vNav(`/collections/${activeCollection}${location.search}`, "back")}
                   navigateToItem={(id) => vNav(`/collections/${activeCollection}/items/${id}${location.search}`, "forward")}
                 />
+                </>
               ) : (
                 <CollectionItemsSkeleton />
               )

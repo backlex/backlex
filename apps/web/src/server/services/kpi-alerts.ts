@@ -254,6 +254,8 @@ const rowToKpiRow = (row: Record<string, unknown>): KpiRow => ({
     | Date
     | number
     | null,
+  pinTo: (row.pinTo ?? row.pin_to ?? null) as string | null,
+  pinField: (row.pinField ?? row.pin_field ?? null) as string | null,
   createdBy: (row.createdBy ?? row.created_by ?? null) as string | null,
   createdAt: (row.createdAt ?? row.created_at ?? null) as Date | number | null,
   updatedAt: (row.updatedAt ?? row.updated_at ?? null) as Date | number | null,

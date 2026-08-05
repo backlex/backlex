@@ -2436,6 +2436,13 @@ export const kpis = pgTable(
     /** Whether the KPI is currently breaching — what makes the alert fire on
      *  the transition rather than on every scheduler tick. */
     alertFiring: boolean("alert_firing").notNull().default(false),
+    /** The collection whose ITEM PAGE this tile belongs on — not the one the
+     *  KPI aggregates. "Revenue per product" sums order lines and belongs on a
+     *  product. */
+    pinTo: text("pin_to"),
+    /** The relation column on the KPI's own collection pointing back at that
+     *  row, so the server never guesses which relation the pin meant. */
+    pinField: text("pin_field"),
     alertLastFiredAt: timestamp("alert_last_fired_at", { withTimezone: true }),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -2443,6 +2450,7 @@ export const kpis = pgTable(
   },
   (t) => [
     index("kpis_tenant_idx").on(t.tenantId),
+    index("kpis_pin_idx").on(t.tenantId, t.pinTo),
     uniqueIndex("kpis_tenant_slug_idx").on(t.tenantId, t.slug),
   ],
 );

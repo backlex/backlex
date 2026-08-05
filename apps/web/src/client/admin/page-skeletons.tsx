@@ -665,6 +665,20 @@ function InsightsSkeletonImpl() {
   );
 }
 
+/** KPIs — header with a range picker + create button, then a grid of value tiles. */
+function KpisSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-4.5">
+      <HeaderSkeleton actions={2} />
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-[116px] w-full rounded-surface" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Revisions — header, then a 3-column items / timeline / detail split. */
 function RevisionsSkeletonImpl() {
   return (
@@ -1098,6 +1112,7 @@ export const SchemaGraphSkeleton = withSkeletonDelay(SchemaGraphSkeletonImpl);
 export const SchemaVersionsSkeleton = withSkeletonDelay(SchemaVersionsSkeletonImpl);
 export const DatabaseImportSkeleton = withSkeletonDelay(DatabaseImportSkeletonImpl);
 export const InsightsSkeleton = withSkeletonDelay(InsightsSkeletonImpl);
+export const KpisSkeleton = withSkeletonDelay(KpisSkeletonImpl);
 export const RevisionsSkeleton = withSkeletonDelay(RevisionsSkeletonImpl);
 export const TranslationsSkeleton = withSkeletonDelay(TranslationsSkeletonImpl);
 export const EmailTemplatesSkeleton = withSkeletonDelay(EmailTemplatesSkeletonImpl);
@@ -1185,6 +1200,8 @@ export function PageSkeleton({ nav }: { nav: string }) {
       return <DatabaseImportSkeleton />;
     case "insights":
       return <InsightsSkeleton />;
+    case "kpis":
+      return <KpisSkeleton />;
     case "revisions":
       return <RevisionsSkeleton />;
     case "translations":

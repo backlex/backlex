@@ -174,6 +174,7 @@ export const NAV_OBSERVABILITY: NavItem[] = [
   { id: "usage", icon: "Gauge" },
   { id: "analytics", icon: "BarChart" },
   { id: "advisor", icon: "ShieldAlert" },
+  { id: "kpis", icon: "Gauge" },
   { id: "insights", icon: "BarChart" },
   { id: "revisions", icon: "History" },
   { id: "translations", icon: "Globe" },

@@ -998,6 +998,7 @@ msgstr "3:2 standard"
 msgid "3. Enter a code to confirm"
 msgstr "3. Enter a code to confirm"
 
+#: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "30 days"
 msgstr "30 days"
@@ -1023,10 +1024,12 @@ msgstr "5xx {0}"
 msgid "5xx responses"
 msgstr "5xx responses"
 
+#: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "7 days"
 msgstr "7 days"
 
+#: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "90 days"
 msgstr "90 days"
@@ -1072,6 +1075,10 @@ msgstr "A funnel measures how many visitors who did the first event went on to d
 msgid "A key with this name already exists."
 msgstr "A key with this name already exists."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "A KPI needs a handle, a name and a collection."
+msgstr "A KPI needs a handle, a name and a collection."
+
 #: src/client/admin/pages/payments.tsx
 msgid "A local stand-in that settles payments without charging anything. Demo and development instances only."
 msgstr "A local stand-in that settles payments without charging anything. Demo and development instances only."
@@ -1079,6 +1086,10 @@ msgstr "A local stand-in that settles payments without charging anything. Demo a
 #: src/client/admin/flow-builder.tsx
 msgid "A loop runs inline, so its body cannot wait for an approval or a long delay."
 msgstr "A loop runs inline, so its body cannot wait for an approval or a long delay."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "A named figure and the formula behind it. Panels, Ask AI and reports all read from these definitions, so one edit changes the number everywhere it appears."
+msgstr "A named figure and the formula behind it. Panels, Ask AI and reports all read from these definitions, so one edit changes the number everywhere it appears."
 
 #: src/client/admin/field-transitions-editor.tsx
 msgid "A new record may start as"
@@ -1151,6 +1162,10 @@ msgstr "A secret is stored and cannot be read back. Leave this blank to keep the
 #: src/client/pages/magic-link.tsx
 msgid "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
 msgstr "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "A single number"
+msgstr "A single number"
 
 #: src/client/admin/parity/insights.tsx
 msgid "A single value — counter fits best; sparkline / bars need multiple rows."
@@ -1804,6 +1819,7 @@ msgid "Agents in the room"
 msgstr "Agents in the room"
 
 #: src/client/admin/field-rollup-editor.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Aggregate"
 msgstr "Aggregate"
 
@@ -2724,6 +2740,10 @@ msgstr "Bindings refreshed."
 msgid "Blank"
 msgstr "Blank"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Blank = automatic"
+msgstr "Blank = automatic"
+
 #: src/client/admin/parity/booking.tsx
 msgid "Block"
 msgstr "Block"
@@ -2961,6 +2981,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
@@ -3416,6 +3437,7 @@ msgstr "colleague@example.com"
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/search-playground.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "Collection"
 msgstr "Collection"
@@ -3497,6 +3519,7 @@ msgid "Color"
 msgstr "Color"
 
 #: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Column"
 msgstr "Column"
 
@@ -4044,6 +4067,10 @@ msgstr "Could not create share link."
 msgid "Could not delete comment."
 msgstr "Could not delete comment."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Could not delete the KPI."
+msgstr "Could not delete the KPI."
+
 #: src/client/admin/pages/logs.tsx
 msgid "Could not export logs."
 msgstr "Could not export logs."
@@ -4059,6 +4086,10 @@ msgstr "Could not post comment."
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not revoke share link."
 msgstr "Could not revoke share link."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Could not save the KPI."
+msgstr "Could not save the KPI."
 
 #. placeholder {0}: res.data.email
 #: src/client/admin/parity/signatures.tsx
@@ -4566,6 +4597,10 @@ msgstr "Database import"
 msgid "Date & time"
 msgstr "Date & time"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Date column"
+msgstr "Date column"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Date field"
 msgstr "Date field"
@@ -4605,6 +4640,10 @@ msgstr "Decimal (1,234.5)"
 #: src/client/admin/field-format-editor.tsx
 msgid "Decimal places"
 msgstr "Decimal places"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Decimals"
+msgstr "Decimals"
 
 #: src/client/pages/sign-document.tsx
 msgid "Decline"
@@ -4705,6 +4744,10 @@ msgstr "Defaults to the template's name"
 msgid "Defaults to the URL's filename"
 msgstr "Defaults to the URL's filename"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Define a figure once — revenue, open tickets, refund rate — and every panel, report and AI answer will quote the same number instead of re-deriving it."
+msgstr "Define a figure once — revenue, open tickets, refund rate — and every panel, report and AI answer will quote the same number instead of re-deriving it."
+
 #: src/client/admin/app.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/item-editor.tsx
@@ -4726,6 +4769,7 @@ msgstr "Defaults to the URL's filename"
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/booking.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/storage/index.tsx
 #: src/client/admin/storage/widgets.tsx
@@ -4863,6 +4907,10 @@ msgstr "Delete this form?"
 msgid "Delete this item?"
 msgstr "Delete this item?"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Delete this KPI?"
+msgstr "Delete this KPI?"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Delete this row too (cascade)"
@@ -4962,6 +5010,7 @@ msgstr "Descending"
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/role-editor.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "Description"
@@ -5299,6 +5348,10 @@ msgstr "Draw your signature first"
 msgid "Drawn on every page by the renderer, not in the preview."
 msgstr "Drawn on every page by the renderer, not in the preview."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Drives the period comparison"
+msgstr "Drives the period comparison"
+
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/schema-graph.tsx
@@ -5456,6 +5509,7 @@ msgstr "edit"
 #: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/booking.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Edit"
 msgstr "Edit"
 
@@ -5516,6 +5570,10 @@ msgstr "Edit flow"
 #: src/client/admin/pages/usage.tsx
 msgid "Edit key limits"
 msgstr "Edit key limits"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Edit KPI"
+msgstr "Edit KPI"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/parity/insights.tsx
@@ -6864,6 +6922,7 @@ msgstr "Form-wide — every section becomes a tab across the top instead of a st
 
 #: src/client/admin/field-sequence-editor.tsx
 #: src/client/admin/field-validation-editor.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "Format"
 msgstr "Format"
@@ -7098,6 +7157,10 @@ msgstr "Go to Agents"
 msgid "Goes to that user's registered devices. No devices is a silent no-op."
 msgstr "Goes to that user's registered devices. No devices is a silent no-op."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Good direction"
+msgstr "Good direction"
+
 #: src/client/admin/extras.tsx
 msgid "goto"
 msgstr "goto"
@@ -7137,6 +7200,7 @@ msgid "Group and reorder collections"
 msgstr "Group and reorder collections"
 
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Group by"
 msgstr "Group by"
 
@@ -7180,6 +7244,10 @@ msgstr "Guests"
 #: src/client/admin/edit-field.tsx
 msgid "Half width"
 msgstr "Half width"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Handle"
+msgstr "Handle"
 
 #: src/client/admin/pages/usage.tsx
 msgid "Hard"
@@ -8128,6 +8196,11 @@ msgstr "Kind"
 msgid "Know who you are"
 msgstr "Know who you are"
 
+#: src/client/admin/parity/kpis.tsx
+#: src/client/admin/ui.tsx
+msgid "KPIs"
+msgstr "KPIs"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Label"
 msgstr "Label"
@@ -8766,6 +8839,10 @@ msgstr "Lowercase, alphanumeric, 2–24 chars."
 msgid "Lowercase, digits, <0>_</0> or <1>-</1>. You can rename it later."
 msgstr "Lowercase, digits, <0>_</0> or <1>-</1>. You can rename it later."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Lowercase, e.g. net-revenue"
+msgstr "Lowercase, e.g. net-revenue"
+
 #: src/client/admin/role-editor.tsx
 msgid "lowercase, snake_case"
 msgstr "lowercase, snake_case"
@@ -9348,6 +9425,7 @@ msgstr "my-post-slug"
 #: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/role-editor.tsx
 #: src/client/admin/storage/widgets.tsx
@@ -9410,6 +9488,10 @@ msgstr "needs {0}"
 #: src/client/admin/pages/forms.tsx
 msgid "needs TURNSTILE_SITE_KEY on the server"
 msgstr "needs TURNSTILE_SITE_KEY on the server"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Net revenue"
+msgstr "Net revenue"
 
 #: src/client/admin/storage/index.tsx
 msgid "network error"
@@ -9528,6 +9610,10 @@ msgstr "New insight panel"
 #: src/client/pages/api-keys.tsx
 msgid "New key"
 msgstr "New key"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "New KPI"
+msgstr "New KPI"
 
 #: src/client/admin/parity/booking.tsx
 msgid "New link"
@@ -10035,6 +10121,10 @@ msgstr "No functions yet — click + New function."
 msgid "No group"
 msgstr "No group"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "No grouping"
+msgstr "No grouping"
+
 #: src/client/admin/collection-settings.tsx
 msgid "No icon found."
 msgstr "No icon found."
@@ -10098,6 +10188,10 @@ msgstr "no key needed"
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "no key to paste"
 #~ msgstr "no key to paste"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "No KPIs defined yet"
+msgstr "No KPIs defined yet"
 
 #: src/client/admin/pages/forms.tsx
 msgid "No language found."
@@ -10202,6 +10296,14 @@ msgstr "No parameters or body."
 #: src/client/pages/openapi-export.tsx
 msgid "No paths in the current spec."
 msgstr "No paths in the current spec."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "No period comparison"
+msgstr "No period comparison"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "No prior period to compare"
+msgstr "No prior period to compare"
 
 #: src/client/pages/graphql.tsx
 msgid "No queries."
@@ -10485,6 +10587,7 @@ msgid "Not linked."
 msgstr "Not linked."
 
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Not needed for count"
 msgstr "Not needed for count"
 
@@ -10551,6 +10654,10 @@ msgstr "nothing (final)"
 #: src/client/admin/pages/erasure-card.tsx
 msgid "nothing found"
 msgstr "nothing found"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Nothing in this period"
+msgstr "Nothing in this period"
 
 #: src/client/admin/parity/booking.tsx
 msgid "Nothing is bookable yet"
@@ -10674,6 +10781,10 @@ msgstr "numeric column minimum"
 #: src/client/admin/parity/insights.tsx
 msgid "numeric column total"
 msgstr "numeric column total"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Numeric columns only"
+msgstr "Numeric columns only"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "OAuth 2.0 / OIDC sign-in provider."
@@ -11066,6 +11177,10 @@ msgstr "Order"
 msgid "Order cancelled"
 msgstr "Order cancelled"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "orders"
+msgstr "orders"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 #~ msgid "Orders by status"
 #~ msgstr "Orders by status"
@@ -11227,6 +11342,11 @@ msgstr "panel data limited to this role's read permission"
 #: src/client/admin/pages/extensions.tsx
 msgid "panels"
 msgstr "panels"
+
+#. placeholder {0}: confirmDelete?.slug ?? ""
+#: src/client/admin/parity/kpis.tsx
+msgid "Panels and saved answers that reference \"{0}\" will stop resolving."
+msgstr "Panels and saved answers that reference \"{0}\" will stop resolving."
 
 #: src/client/admin/parity/insights.tsx
 msgid "panels run with full read access — for fully public stats"
@@ -11536,6 +11656,7 @@ msgstr "physical c_<slug> tables"
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/search-playground.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "Pick a collection"
 msgstr "Pick a collection"
@@ -11569,6 +11690,7 @@ msgid "Pick a collection…"
 msgstr "Pick a collection…"
 
 #: src/client/admin/field-money-editor.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Pick a column"
 msgstr "Pick a column"
 
@@ -11775,6 +11897,11 @@ msgstr "Pick the collection this relation points to."
 #: src/client/admin/field-range-editor.tsx
 msgid "Pick the column holding the end. Both columns stay exactly as they are — declaring the pair is what makes overlap searches possible."
 msgstr "Pick the column holding the end. Both columns stay exactly as they are — declaring the pair is what makes overlap searches possible."
+
+#. placeholder {0}: editing.agg
+#: src/client/admin/parity/kpis.tsx
+msgid "Pick the column to {0}."
+msgstr "Pick the column to {0}."
 
 #: src/client/admin/field-geo-editor.tsx
 msgid "Pick the columns that spell out the address. When a row is saved without a point, these are joined together and looked up. Tick them in the order they should be read."
@@ -13046,6 +13173,10 @@ msgstr "Report \"{0}\""
 msgid "Report sent to {0} recipient(s)."
 msgstr "Report sent to {0} recipient(s)."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Reports a running total"
+msgstr "Reports a running total"
+
 #: src/client/admin/pages/settings/index.tsx
 msgid "Repository"
 msgstr "Repository"
@@ -13726,6 +13857,10 @@ msgstr "Running"
 msgid "Running on {modelSrc}"
 msgstr "Running on {modelSrc}"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Running total"
+msgstr "Running total"
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/extensions.tsx
@@ -13920,6 +14055,10 @@ msgstr "Save guards"
 msgid "Save kanban"
 msgstr "Save kanban"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Save KPI"
+msgstr "Save KPI"
+
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Save LDAP config"
 msgstr "Save LDAP config"
@@ -14008,6 +14147,7 @@ msgstr "saving…"
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/sheet.tsx
@@ -14910,6 +15050,10 @@ msgstr "Shown instead of the label when the admin UI is in that language."
 msgid "Shown on the public page."
 msgstr "Shown on the public page."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Shown on tiles and reports"
+msgstr "Shown on tiles and reports"
+
 #: src/client/admin/pages/forms.tsx
 msgid "shown once — copy it now, it won't appear again"
 msgstr "shown once — copy it now, it won't appear again"
@@ -15646,6 +15790,10 @@ msgstr "Success rate"
 msgid "Suffix"
 msgstr "Suffix"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Suffix for plain numbers"
+msgstr "Suffix for plain numbers"
+
 #: src/client/admin/pages/advisor.tsx
 msgid "suggested fix"
 msgstr "suggested fix"
@@ -16073,6 +16221,10 @@ msgstr "The form may have been deactivated, or its link replaced."
 #: src/client/pages/api-keys.tsx
 msgid "The full secret is shown once after creation — copy it somewhere safe."
 msgstr "The full secret is shown once after creation — copy it somewhere safe."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "The handle is what panels and AI tool calls reference — renaming the display name is safe, changing the handle is not."
+msgstr "The handle is what panels and AI tool calls reference — renaming the display name is safe, changing the handle is not."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "The insights endpoint returned an error. Re-run to try again."
@@ -16613,6 +16765,10 @@ msgstr "to execute"
 #~ msgid "to run"
 #~ msgstr "to run"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Today"
+msgstr "Today"
+
 #: src/client/admin/storage/index.tsx
 msgid "Toggle"
 msgstr "Toggle"
@@ -16908,6 +17064,10 @@ msgstr "Turning off…"
 msgid "Turning this off makes the content API return 404 for this collection (REST, GraphQL, SDK, realtime) while it stays editable here. Data is untouched."
 msgstr "Turning this off makes the content API return 404 for this collection (REST, GraphQL, SDK, realtime) while it stays editable here. Data is untouched."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Turns the KPI into a ranking"
+msgstr "Turns the KPI into a ranking"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Turnstile"
 msgstr "Turnstile"
@@ -17029,6 +17189,7 @@ msgid "unique, by anonymous id"
 msgstr "unique, by anonymous id"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Unit"
 msgstr "Unit"
 
@@ -17603,6 +17764,10 @@ msgstr "Visual"
 msgid "Visualization"
 msgstr "Visualization"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "vs previous period"
+msgstr "vs previous period"
+
 #: src/client/admin/account-page.tsx
 msgid "Waiting for browser…"
 msgstr "Waiting for browser…"
@@ -17729,6 +17894,10 @@ msgstr "What this agent is for"
 msgid "What this collection holds — shown on the Collections page."
 msgstr "What this collection holds — shown on the Collections page."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "What this figure means, for whoever reads it next"
+msgstr "What this figure means, for whoever reads it next"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "What this file is about…"
 msgstr "What this file is about…"
@@ -17791,6 +17960,14 @@ msgstr "When the hook cannot answer"
 msgid "When the referenced item is deleted"
 msgstr "When the referenced item is deleted"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "When the row last changed"
+msgstr "When the row last changed"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "When the row was created"
+msgstr "When the row was created"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "When the rule matches the row, apply the effects. <0>Required</0> is enforced on save (422); Readonly/Hidden affect the item form."
@@ -17831,6 +18008,10 @@ msgstr "which field the board groups cards by"
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Which ID-token claim carries the user's email address."
 msgstr "Which ID-token claim carries the user's email address."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Which way the delta is green"
+msgstr "Which way the delta is green"
 
 #: src/client/admin/pages/_agents-shared.tsx
 msgid "Whichever agent fits best"

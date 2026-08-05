@@ -403,6 +403,62 @@ export interface ApiDashboard {
   embedRoleId: string | null;
 }
 
+/** A named KPI definition — the shared formula every surface reads a figure
+ *  from. See `services/kpis.ts` for why the definition is stored rather than
+ *  re-spelled per panel. */
+export interface ApiKpi {
+  id: string;
+  tenantId: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  collection: string;
+  agg: "count" | "sum" | "avg" | "min" | "max";
+  field: string | null;
+  filter: Record<string, unknown> | null;
+  dateField: string | null;
+  groupBy: string | null;
+  topN: number | null;
+  format: "number" | "money" | "percent" | "duration";
+  unit: string | null;
+  decimals: number | null;
+  direction: "up" | "down" | "neutral";
+  createdBy: string | null;
+}
+
+export interface ApiKpiPoint {
+  /** Present only on a grouped KPI's rows. */
+  label?: string;
+  value: number | null;
+  previousValue: number | null;
+  delta: number | null;
+  /** Fractional change (0.12 = +12%); null when there is no baseline to
+   *  divide by, which the UI must render as "—" rather than 0%. */
+  deltaPct: number | null;
+  currency?: string | null;
+}
+
+export interface ApiKpiResult {
+  slug: string;
+  name: string;
+  description: string | null;
+  collection: string;
+  format: ApiKpi["format"];
+  unit: string | null;
+  decimals: number | null;
+  direction: ApiKpi["direction"];
+  groupBy: string | null;
+  /** Null when the KPI has no `dateField` — a running total with no period
+   *  comparison, which the UI must show WITHOUT a delta badge. */
+  window: { from: number; to: number } | null;
+  previousWindow: { from: number; to: number } | null;
+  point: ApiKpiPoint | null;
+  rows: ApiKpiPoint[] | null;
+  computedAt: number;
+}
+
+export type ApiKpiInput = Omit<ApiKpi, "id" | "tenantId" | "createdBy">;
+
 export interface ApiDashboardReportInput {
   filename?: string;
   pageOptions?: { format?: string; landscape?: boolean; printBackground?: boolean };
@@ -1873,6 +1929,32 @@ export const panelsApi = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+};
+
+export const kpisApi = {
+  list: () => api<Envelope<ApiKpi[]>>(`/api/admin/kpis`),
+  get: (ref: string) => api<Envelope<ApiKpi>>(`/api/admin/kpis/${encodeURIComponent(ref)}`),
+  create: (body: ApiKpiInput) =>
+    api<Envelope<ApiKpi>>(`/api/admin/kpis`, { method: "POST", body: JSON.stringify(body) }),
+  update: (id: string, body: Partial<ApiKpiInput>) =>
+    api<Envelope<ApiKpi>>(`/api/admin/kpis/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) => api<{ ok: true }>(`/api/admin/kpis/${id}`, { method: "DELETE" }),
+  /** Evaluate one KPI. `rangeDays` is the friendly form; `from`/`to` are epoch
+   *  ms for an explicit window. Scoped server-side to the caller's read
+   *  permission on the KPI's collection. */
+  run: (ref: string, params: { rangeDays?: number; from?: number; to?: number } = {}) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined) qs.set(k, String(v));
+    }
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return api<Envelope<ApiKpiResult>>(
+      `/api/admin/kpis/${encodeURIComponent(ref)}/run${suffix}`,
+    );
+  },
 };
 
 export const dashboardsApi = {

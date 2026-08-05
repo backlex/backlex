@@ -998,6 +998,7 @@ msgstr "3:2 standart"
 msgid "3. Enter a code to confirm"
 msgstr "3. Onaylamak için bir kod girin"
 
+#: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "30 days"
 msgstr "30 gün"
@@ -1023,10 +1024,12 @@ msgstr "5xx {0}"
 msgid "5xx responses"
 msgstr "5xx yanıtlar"
 
+#: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "7 days"
 msgstr "7 gün"
 
+#: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "90 days"
 msgstr "90 gün"
@@ -1072,6 +1075,10 @@ msgstr "Huni, ilk olayı gerçekleştiren ziyaretçilerden kaçının sonraki ol
 msgid "A key with this name already exists."
 msgstr "Bu isimde bir anahtar zaten mevcut."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "A KPI needs a handle, a name and a collection."
+msgstr "Bir KPI'ın tanıtıcısı, adı ve koleksiyonu olmalı."
+
 #: src/client/admin/pages/payments.tsx
 msgid "A local stand-in that settles payments without charging anything. Demo and development instances only."
 msgstr "Hiçbir ücret çekmeden ödemeleri sonuçlandıran yerel bir taklit. Yalnızca demo ve geliştirme kurulumları için."
@@ -1079,6 +1086,10 @@ msgstr "Hiçbir ücret çekmeden ödemeleri sonuçlandıran yerel bir taklit. Ya
 #: src/client/admin/flow-builder.tsx
 msgid "A loop runs inline, so its body cannot wait for an approval or a long delay."
 msgstr "Döngü satır içinde çalışır; gövdesi bir onayı ya da uzun bir beklemeyi bekleyemez."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "A named figure and the formula behind it. Panels, Ask AI and reports all read from these definitions, so one edit changes the number everywhere it appears."
+msgstr "Adlandırılmış bir gösterge ve arkasındaki formül. Paneller, Ask AI ve raporlar bu tanımlardan okur; tek bir düzenleme sayıyı göründüğü her yerde değiştirir."
 
 #: src/client/admin/field-transitions-editor.tsx
 msgid "A new record may start as"
@@ -1151,6 +1162,10 @@ msgstr "Kayıtlı bir gizli anahtar var ve geri okunamaz. Mevcut gizli anahtarı
 #: src/client/pages/magic-link.tsx
 msgid "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
 msgstr "İmzalı bir bağlantı gelen kutunuza gönderilecek. Tek kullanımlık, 15 dakika içinde sona erer."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "A single number"
+msgstr "Tek bir sayı"
 
 #: src/client/admin/parity/insights.tsx
 msgid "A single value — counter fits best; sparkline / bars need multiple rows."
@@ -1804,6 +1819,7 @@ msgid "Agents in the room"
 msgstr "Odadaki agentlar"
 
 #: src/client/admin/field-rollup-editor.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Aggregate"
 msgstr "Toplama işlevi"
 
@@ -2724,6 +2740,10 @@ msgstr "Bağlamalar yenilendi."
 msgid "Blank"
 msgstr "Boş"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Blank = automatic"
+msgstr "Boş = otomatik"
+
 #: src/client/admin/parity/booking.tsx
 msgid "Block"
 msgstr "Kapalı"
@@ -2961,6 +2981,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
@@ -3416,6 +3437,7 @@ msgstr "meslektas@ornek.com"
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/search-playground.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "Collection"
 msgstr "Koleksiyon"
@@ -3497,6 +3519,7 @@ msgid "Color"
 msgstr "Renk"
 
 #: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Column"
 msgstr "Sütun"
 
@@ -4044,6 +4067,10 @@ msgstr "Paylaşım bağlantısı oluşturulamadı."
 msgid "Could not delete comment."
 msgstr "Yorum silinemedi."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Could not delete the KPI."
+msgstr "KPI silinemedi."
+
 #: src/client/admin/pages/logs.tsx
 msgid "Could not export logs."
 msgstr "Günlükler dışa aktarılamadı."
@@ -4059,6 +4086,10 @@ msgstr "Yorum gönderilemedi."
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not revoke share link."
 msgstr "Paylaşım bağlantısı iptal edilemedi."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Could not save the KPI."
+msgstr "KPI kaydedilemedi."
 
 #. placeholder {0}: res.data.email
 #: src/client/admin/parity/signatures.tsx
@@ -4566,6 +4597,10 @@ msgstr "Veritabanı içe aktarma"
 msgid "Date & time"
 msgstr "Tarih ve saat"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Date column"
+msgstr "Tarih sütunu"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Date field"
 msgstr "Tarih alanı"
@@ -4604,6 +4639,10 @@ msgstr "Ondalık (1.234,5)"
 
 #: src/client/admin/field-format-editor.tsx
 msgid "Decimal places"
+msgstr "Ondalık basamak"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Decimals"
 msgstr "Ondalık basamak"
 
 #: src/client/pages/sign-document.tsx
@@ -4705,6 +4744,10 @@ msgstr "Boş bırakılırsa şablonun adı kullanılır"
 msgid "Defaults to the URL's filename"
 msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Define a figure once — revenue, open tickets, refund rate — and every panel, report and AI answer will quote the same number instead of re-deriving it."
+msgstr "Bir göstergeyi bir kez tanımlayın — ciro, açık talepler, iade oranı — her panel, rapor ve AI yanıtı aynı sayıyı yeniden türetmek yerine ondan okusun."
+
 #: src/client/admin/app.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/item-editor.tsx
@@ -4726,6 +4769,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/booking.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/storage/index.tsx
 #: src/client/admin/storage/widgets.tsx
@@ -4863,6 +4907,10 @@ msgstr "Bu form silinsin mi?"
 msgid "Delete this item?"
 msgstr "Bu öğe silinsin mi?"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Delete this KPI?"
+msgstr "Bu KPI silinsin mi?"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Delete this row too (cascade)"
@@ -4962,6 +5010,7 @@ msgstr "Azalan"
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/role-editor.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "Description"
@@ -5299,6 +5348,10 @@ msgstr "Önce imzanızı çizin"
 msgid "Drawn on every page by the renderer, not in the preview."
 msgstr "Her sayfaya renderer tarafından çizilir, önizlemede görünmez."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Drives the period comparison"
+msgstr "Dönem karşılaştırmasını belirler"
+
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/schema-graph.tsx
@@ -5456,6 +5509,7 @@ msgstr "düzenle"
 #: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/booking.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Edit"
 msgstr "Düzenle"
 
@@ -5516,6 +5570,10 @@ msgstr "Akışı düzenle"
 #: src/client/admin/pages/usage.tsx
 msgid "Edit key limits"
 msgstr "Anahtar limitlerini düzenle"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Edit KPI"
+msgstr "KPI'ı düzenle"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/parity/insights.tsx
@@ -6864,6 +6922,7 @@ msgstr "Form geneli — her bölüm, üst üste başlık yerine üstte bir sekme
 
 #: src/client/admin/field-sequence-editor.tsx
 #: src/client/admin/field-validation-editor.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/storage/widgets.tsx
 msgid "Format"
 msgstr "Biçim"
@@ -7098,6 +7157,10 @@ msgstr "Agents sayfasına git"
 msgid "Goes to that user's registered devices. No devices is a silent no-op."
 msgstr "O kullanıcının kayıtlı cihazlarına gider. Cihaz yoksa sessizce atlanır."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Good direction"
+msgstr "İyi yön"
+
 #: src/client/admin/extras.tsx
 msgid "goto"
 msgstr "git"
@@ -7137,6 +7200,7 @@ msgid "Group and reorder collections"
 msgstr "Koleksiyonları grupla ve yeniden sırala"
 
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Group by"
 msgstr "Grupla"
 
@@ -7180,6 +7244,10 @@ msgstr "Konuklar"
 #: src/client/admin/edit-field.tsx
 msgid "Half width"
 msgstr "Yarım genişlik"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Handle"
+msgstr "Tanıtıcı"
 
 #: src/client/admin/pages/usage.tsx
 msgid "Hard"
@@ -8128,6 +8196,11 @@ msgstr "Tür"
 msgid "Know who you are"
 msgstr "Kim olduğunuzu bilme"
 
+#: src/client/admin/parity/kpis.tsx
+#: src/client/admin/ui.tsx
+msgid "KPIs"
+msgstr "KPI'lar"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Label"
 msgstr "Etiket"
@@ -8766,6 +8839,10 @@ msgstr "Küçük harf, alfanümerik, 2–24 karakter."
 msgid "Lowercase, digits, <0>_</0> or <1>-</1>. You can rename it later."
 msgstr "Küçük harf, rakam, <0>_</0> veya <1>-</1>. Daha sonra yeniden adlandırabilirsiniz."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Lowercase, e.g. net-revenue"
+msgstr "Küçük harf, örn. net-ciro"
+
 #: src/client/admin/role-editor.tsx
 msgid "lowercase, snake_case"
 msgstr "küçük harf, snake_case"
@@ -9348,6 +9425,7 @@ msgstr "yazi-adresim"
 #: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/role-editor.tsx
 #: src/client/admin/storage/widgets.tsx
@@ -9410,6 +9488,10 @@ msgstr "{0} gerekir"
 #: src/client/admin/pages/forms.tsx
 msgid "needs TURNSTILE_SITE_KEY on the server"
 msgstr "sunucuda TURNSTILE_SITE_KEY gerektirir"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Net revenue"
+msgstr "Net ciro"
 
 #: src/client/admin/storage/index.tsx
 msgid "network error"
@@ -9528,6 +9610,10 @@ msgstr "Yeni içgörü paneli"
 #: src/client/pages/api-keys.tsx
 msgid "New key"
 msgstr "Yeni anahtar"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "New KPI"
+msgstr "Yeni KPI"
 
 #: src/client/admin/parity/booking.tsx
 msgid "New link"
@@ -10035,6 +10121,10 @@ msgstr "Henüz fonksiyon yok — + Yeni fonksiyon'a tıklayın."
 msgid "No group"
 msgstr "Grupsuz"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "No grouping"
+msgstr "Gruplama yok"
+
 #: src/client/admin/collection-settings.tsx
 msgid "No icon found."
 msgstr "İkon bulunamadı."
@@ -10098,6 +10188,10 @@ msgstr "anahtar gerekmez"
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "no key to paste"
 #~ msgstr "yapıştırılacak anahtar yok"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "No KPIs defined yet"
+msgstr "Henüz KPI tanımlanmadı"
 
 #: src/client/admin/pages/forms.tsx
 msgid "No language found."
@@ -10202,6 +10296,14 @@ msgstr "Parametre veya gövde yok."
 #: src/client/pages/openapi-export.tsx
 msgid "No paths in the current spec."
 msgstr "Mevcut spec'te yol yok."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "No period comparison"
+msgstr "Dönem karşılaştırması yok"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "No prior period to compare"
+msgstr "Karşılaştırılacak önceki dönem yok"
 
 #: src/client/pages/graphql.tsx
 msgid "No queries."
@@ -10485,6 +10587,7 @@ msgid "Not linked."
 msgstr "Bağlı değil."
 
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Not needed for count"
 msgstr "Sayım için gerekli değil"
 
@@ -10551,6 +10654,10 @@ msgstr "hiçbir yere (son)"
 #: src/client/admin/pages/erasure-card.tsx
 msgid "nothing found"
 msgstr "bir şey bulunamadı"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Nothing in this period"
+msgstr "Bu dönemde kayıt yok"
 
 #: src/client/admin/parity/booking.tsx
 msgid "Nothing is bookable yet"
@@ -10674,6 +10781,10 @@ msgstr "sayısal sütun minimumu"
 #: src/client/admin/parity/insights.tsx
 msgid "numeric column total"
 msgstr "sayısal sütun toplamı"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Numeric columns only"
+msgstr "Yalnızca sayısal sütunlar"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "OAuth 2.0 / OIDC sign-in provider."
@@ -11066,6 +11177,10 @@ msgstr "Sıra"
 msgid "Order cancelled"
 msgstr "Sipariş iptal edildi"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "orders"
+msgstr "sipariş"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 #~ msgid "Orders by status"
 #~ msgstr "Duruma göre siparişler"
@@ -11227,6 +11342,11 @@ msgstr "panel verisi bu rolün okuma iznine göre sınırlanır"
 #: src/client/admin/pages/extensions.tsx
 msgid "panels"
 msgstr "panel"
+
+#. placeholder {0}: confirmDelete?.slug ?? ""
+#: src/client/admin/parity/kpis.tsx
+msgid "Panels and saved answers that reference \"{0}\" will stop resolving."
+msgstr "\"{0}\" referans veren paneller ve kayıtlı yanıtlar artık çözümlenmeyecek."
 
 #: src/client/admin/parity/insights.tsx
 msgid "panels run with full read access — for fully public stats"
@@ -11536,6 +11656,7 @@ msgstr "fiziksel c_<slug> tabloları"
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/search-playground.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "Pick a collection"
 msgstr "Bir koleksiyon seçin"
@@ -11569,6 +11690,7 @@ msgid "Pick a collection…"
 msgstr "Koleksiyon seçin…"
 
 #: src/client/admin/field-money-editor.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Pick a column"
 msgstr "Bir sütun seçin"
 
@@ -11775,6 +11897,11 @@ msgstr "Bu ilişkinin işaret ettiği koleksiyonu seçin."
 #: src/client/admin/field-range-editor.tsx
 msgid "Pick the column holding the end. Both columns stay exactly as they are — declaring the pair is what makes overlap searches possible."
 msgstr "Bitişi tutan sütunu seçin. Her iki sütun da olduğu gibi kalır — çifti bildirmek, çakışma aramalarını mümkün kılan şeydir."
+
+#. placeholder {0}: editing.agg
+#: src/client/admin/parity/kpis.tsx
+msgid "Pick the column to {0}."
+msgstr "{0} uygulanacak sütunu seçin."
 
 #: src/client/admin/field-geo-editor.tsx
 msgid "Pick the columns that spell out the address. When a row is saved without a point, these are joined together and looked up. Tick them in the order they should be read."
@@ -13046,6 +13173,10 @@ msgstr "\"{0}\" raporu"
 msgid "Report sent to {0} recipient(s)."
 msgstr "Rapor {0} alıcıya gönderildi."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Reports a running total"
+msgstr "Yürüyen toplam gösterir"
+
 #: src/client/admin/pages/settings/index.tsx
 msgid "Repository"
 msgstr "Depo"
@@ -13726,6 +13857,10 @@ msgstr "Çalışıyor"
 msgid "Running on {modelSrc}"
 msgstr "{modelSrc} üzerinde çalışıyor"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Running total"
+msgstr "Yürüyen toplam"
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/extensions.tsx
@@ -13920,6 +14055,10 @@ msgstr "Korumaları kaydet"
 msgid "Save kanban"
 msgstr "Kanban'ı kaydet"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Save KPI"
+msgstr "KPI'ı kaydet"
+
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Save LDAP config"
 msgstr "LDAP yapılandırmasını kaydet"
@@ -14008,6 +14147,7 @@ msgstr "kaydediliyor…"
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/kpis.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/sheet.tsx
@@ -14910,6 +15050,10 @@ msgstr "Admin arayüzü o dildeyken etiket yerine gösterilir."
 msgid "Shown on the public page."
 msgstr "Herkese açık sayfada görünür."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Shown on tiles and reports"
+msgstr "Kartlarda ve raporlarda görünür"
+
 #: src/client/admin/pages/forms.tsx
 msgid "shown once — copy it now, it won't appear again"
 msgstr "bir kez gösterilir — şimdi kopyalayın, tekrar görünmeyecek"
@@ -15646,6 +15790,10 @@ msgstr "Başarı oranı"
 msgid "Suffix"
 msgstr "Sonek"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Suffix for plain numbers"
+msgstr "Düz sayılar için sonek"
+
 #: src/client/admin/pages/advisor.tsx
 msgid "suggested fix"
 msgstr "önerilen düzeltme"
@@ -16073,6 +16221,10 @@ msgstr "Form devre dışı bırakılmış ya da bağlantısı değiştirilmiş o
 #: src/client/pages/api-keys.tsx
 msgid "The full secret is shown once after creation — copy it somewhere safe."
 msgstr "Tam gizli anahtar oluşturulduktan sonra yalnızca bir kez gösterilir — güvenli bir yere kopyalayın."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "The handle is what panels and AI tool calls reference — renaming the display name is safe, changing the handle is not."
+msgstr "Paneller ve AI araç çağrıları tanıtıcıya referans verir — görünen adı değiştirmek güvenlidir, tanıtıcıyı değiştirmek değildir."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "The insights endpoint returned an error. Re-run to try again."
@@ -16613,6 +16765,10 @@ msgstr "çalıştırmak için"
 #~ msgid "to run"
 #~ msgstr "çalıştırmak için"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Today"
+msgstr "Bugün"
+
 #: src/client/admin/storage/index.tsx
 msgid "Toggle"
 msgstr "Aç/kapat"
@@ -16908,6 +17064,10 @@ msgstr "Kapatılıyor…"
 msgid "Turning this off makes the content API return 404 for this collection (REST, GraphQL, SDK, realtime) while it stays editable here. Data is untouched."
 msgstr "Bunu kapatmak bu koleksiyonun içerik API'sinin 404 döndürmesine neden olur (REST, GraphQL, SDK, realtime); burada düzenlenebilir kalır. Veriye dokunulmaz."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Turns the KPI into a ranking"
+msgstr "KPI'ı sıralamaya çevirir"
+
 #: src/client/admin/pages/forms.tsx
 msgid "Turnstile"
 msgstr "Turnstile"
@@ -17029,6 +17189,7 @@ msgid "unique, by anonymous id"
 msgstr "benzersiz, anonim kimliğe göre"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/kpis.tsx
 msgid "Unit"
 msgstr "Birim"
 
@@ -17603,6 +17764,10 @@ msgstr "Görsel"
 msgid "Visualization"
 msgstr "Görselleştirme"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "vs previous period"
+msgstr "önceki döneme göre"
+
 #: src/client/admin/account-page.tsx
 msgid "Waiting for browser…"
 msgstr "Tarayıcı bekleniyor…"
@@ -17729,6 +17894,10 @@ msgstr "Bu ajan ne için"
 msgid "What this collection holds — shown on the Collections page."
 msgstr "Bu koleksiyonun ne tuttuğu — Koleksiyonlar sayfasında gösterilir."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "What this figure means, for whoever reads it next"
+msgstr "Bu göstergenin ne anlama geldiği, sonraki okuyucu için"
+
 #: src/client/admin/storage/widgets.tsx
 msgid "What this file is about…"
 msgstr "Bu dosya hakkında…"
@@ -17791,6 +17960,14 @@ msgstr "Hook cevap veremediğinde"
 msgid "When the referenced item is deleted"
 msgstr "Referans verilen öğe silindiğinde"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "When the row last changed"
+msgstr "Kaydın en son değiştiği an"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "When the row was created"
+msgstr "Kaydın oluşturulduğu an"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "When the rule matches the row, apply the effects. <0>Required</0> is enforced on save (422); Readonly/Hidden affect the item form."
@@ -17831,6 +18008,10 @@ msgstr "panonun kartları hangi alana göre grupladığı"
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Which ID-token claim carries the user's email address."
 msgstr "Kullanıcının e-posta adresini hangi ID-token claim’inin taşıdığı."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Which way the delta is green"
+msgstr "Değişimin hangi yönde yeşil olduğu"
 
 #: src/client/admin/pages/_agents-shared.tsx
 msgid "Whichever agent fits best"

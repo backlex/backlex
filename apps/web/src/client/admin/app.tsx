@@ -98,6 +98,7 @@ import {
   SignaturesPage,
   BookingPage,
   InsightsPage,
+  KpisPage,
   RevisionsPage,
   TranslationsPage,
 } from "./parity-pages";
@@ -1131,6 +1132,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "schema-versions" && <SchemaVersionsPage pushToast={pushToast} />}
             {activeNav === "database-import" && <DatabaseImportPage pushToast={pushToast} />}
             {activeNav === "insights" && <InsightsPage pushToast={pushToast} />}
+            {activeNav === "kpis" && <KpisPage pushToast={pushToast} />}
             {activeNav === "revisions" && <RevisionsPage pushToast={pushToast} />}
             {activeNav === "translations" && <TranslationsPage pushToast={pushToast} />}
             {activeNav === "authentication" && <AuthSettingsPage pushToast={pushToast} />}

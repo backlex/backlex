@@ -80,6 +80,7 @@ import { panelsRoutes } from "./routes/panels";
 import { paymentsRoutes } from "./routes/payments";
 import { paymentsPublicRoutes } from "./routes/payments-public";
 import { dashboardsRoutes } from "./routes/dashboards";
+import { kpisRoutes } from "./routes/kpis";
 import { schemaVersionsRoutes } from "./routes/schema-versions";
 import { dashboardsPublicRoutes } from "./routes/dashboards-public";
 import { formsRoutes } from "./routes/forms";
@@ -874,6 +875,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/migrate", migrateRoutes);
   app.route("/api/admin/panels", panelsRoutes);
   app.route("/api/admin/dashboards", dashboardsRoutes);
+  app.route("/api/admin/kpis", kpisRoutes);
   app.route("/api/admin/schema", schemaVersionsRoutes);
   app.route("/api/admin/i18n", i18nRoutes);
   app.route("/api/i18n", i18nPublicRoutes);

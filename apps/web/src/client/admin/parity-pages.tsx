@@ -3,6 +3,7 @@ export { AuthSettingsPage } from "./parity/auth-settings";
 export { PlatformSsoSettingsPage } from "./parity/platform-auth-settings";
 export { RevisionsPage } from "./parity/revisions";
 export { InsightsPage } from "./parity/insights";
+export { KpisPage } from "./parity/kpis";
 export { EmailTemplatesPage } from "./parity/email-templates";
 export { DocumentsPage } from "./parity/documents";
 export { ApprovalsPage } from "./parity/approvals";

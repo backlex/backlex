@@ -2125,6 +2125,73 @@ export const dashboards = sqliteTable(
 );
 
 /**
+ * Named KPI definitions — the one place a KPI's formula is written down.
+ *
+ * Before this table every surface carried its own arithmetic: a panel held raw
+ * `sql`, the Ask AI planner improvised `collections.aggregate` args per
+ * question, and a report re-derived the same figure a third way. Nothing forced
+ * them to agree, so "revenue" could mean three different numbers in one
+ * workspace and no screen admitted it. A KPI row is the definition; panels,
+ * Ask AI, reports and the public embed all resolve through `runKpi()`, so
+ * they are wrong together or right together but never quietly different.
+ *
+ * The shape deliberately mirrors `ItemsAggregateConfig` (collection / agg /
+ * field / filter / groupBy) because the runner delegates to
+ * `runItemsAggregate` rather than reimplementing aggregation — money scaling,
+ * per-row-currency refusal, soft-delete and draft visibility are already
+ * settled there and must not fork.
+ */
+export const kpis = sqliteTable(
+  "kpis",
+  {
+    id: text("id").primaryKey(),
+    /** NOT NULL with '' for "no tenant", unlike the neighbouring tables: the
+     *  unique index below treats NULLs as DISTINCT, and a slug that two rows
+     *  can share is not a lookup key. See the migration for the full argument. */
+    tenantId: text("tenant_id").notNull().default(""),
+    /** Stable handle a panel or an AI tool call references. Renaming the
+     *  display `name` must not break a dashboard, so the slug is the key. */
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** Collection slug the metric aggregates over. */
+    collection: text("collection").notNull(),
+    /** count | sum | avg | min | max — mirrors ITEMS_AGG_FUNCS. */
+    agg: text("agg").notNull().default("count"),
+    /** Aggregate target. Null only for `count`. */
+    field: text("field"),
+    /** Permission-DSL condition narrowing the rows, e.g. only paid orders.
+     *  Same grammar the list endpoint takes, so a metric and a filtered list
+     *  view count the same rows. */
+    filter: text("filter", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    /** Timestamp column the period window applies to. Null = the metric has no
+     *  time dimension, so it reports a running total with no comparison rather
+     *  than pretending the previous period was zero. */
+    dateField: text("date_field"),
+    /** Optional ranking dimension — this is what makes "top products" and
+     *  "revenue by country" definitions rather than one-off queries. */
+    groupBy: text("group_by"),
+    /** Row cap for a grouped metric. Named `top_n` because `limit` is SQL. */
+    topN: integer("top_n"),
+    /** number | money | percent | duration — how a reader should print it. */
+    format: text("format").notNull().default("number"),
+    /** Free-text suffix for `number` metrics ("orders", "kg"). */
+    unit: text("unit"),
+    decimals: integer("decimals"),
+    /** Which way is good news. A rising cancellation rate is red and a rising
+     *  order count is green; without this the delta colour is a coin flip. */
+    direction: text("direction").notNull().default("neutral"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("kpis_tenant_idx").on(t.tenantId),
+    uniqueIndex("kpis_tenant_slug_idx").on(t.tenantId, t.slug),
+  ],
+);
+
+/**
  * Public form definitions — embeddable, unauthenticated forms whose
  * submissions are written into a collection through the items write core.
  * The plaintext token (`frm_<hex>`) is shown once on creation; only its

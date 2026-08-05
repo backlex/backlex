@@ -596,6 +596,7 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
   "schema-graph": msg`Schema graph`,
   "schema-versions": msg`Schema versions`,
   "database-import": msg`Database import`,
+  kpis: msg`KPIs`,
   insights: msg`Insights`,
   revisions: msg`Revisions`,
   translations: msg`Translations`,

@@ -20,6 +20,7 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { defaultHook } from "../lib/openapi-router";
 import {
+  KPI_ALERT_OPERATORS,
   KPI_DIRECTIONS,
   KPI_FORMATS,
   createKpi,
@@ -55,6 +56,9 @@ const KpiBase = z.object({
   unit: z.string().max(40).nullable().optional(),
   decimals: z.number().int().min(0).max(6).nullable().optional(),
   direction: z.enum(KPI_DIRECTIONS),
+  /** Watch: notify when the figure crosses `alertValue`. Both or neither. */
+  alertOperator: z.enum(KPI_ALERT_OPERATORS).nullable().optional(),
+  alertValue: z.number().nullable().optional(),
 });
 
 const KpiInput = KpiBase.extend({
@@ -87,6 +91,9 @@ const KpiRowSchema = z
     unit: z.string().nullable(),
     decimals: z.number().nullable(),
     direction: z.string(),
+    alertOperator: z.string().nullable(),
+    alertValue: z.number().nullable(),
+    alertFiring: z.boolean(),
     createdBy: z.string().nullable(),
     createdAt: z.unknown().nullable(),
     updatedAt: z.unknown().nullable(),

@@ -56,10 +56,26 @@ export interface KpiRow {
   unit: string | null;
   decimals: number | null;
   direction: string;
+  alertOperator: string | null;
+  alertValue: number | null;
+  /** Whether the KPI is CURRENTLY breaching — the flag that makes an alert
+   *  fire on the transition rather than on every scheduler tick. */
+  alertFiring: boolean;
+  alertLastFiredAt: Date | number | null;
   createdBy: string | null;
   createdAt: Date | number | null;
   updatedAt: Date | number | null;
 }
+
+/** How a KPI's threshold is breached. `change_*` compare `deltaPct`, so their
+ *  value is a FRACTION (0.2 = 20%) — the units the result reports in. */
+export const KPI_ALERT_OPERATORS = [
+  "above",
+  "below",
+  "change_above",
+  "change_below",
+] as const;
+export type KpiAlertOperator = (typeof KPI_ALERT_OPERATORS)[number];
 
 export interface KpiInput {
   slug: string;
@@ -76,6 +92,8 @@ export interface KpiInput {
   unit?: string | null;
   decimals?: number | null;
   direction?: string;
+  alertOperator?: string | null;
+  alertValue?: number | null;
 }
 
 /** Half-open [from, to) in epoch ms. Half-open on purpose: a row landing
@@ -436,6 +454,13 @@ const rowToKpi = (row: Record<string, unknown>): KpiRow => ({
   unit: (row.unit ?? null) as string | null,
   decimals: (row.decimals ?? null) as number | null,
   direction: (row.direction ?? "neutral") as string,
+  alertOperator: (row.alertOperator ?? row.alert_operator ?? null) as string | null,
+  alertValue: (row.alertValue ?? row.alert_value ?? null) as number | null,
+  alertFiring: Boolean(row.alertFiring ?? row.alert_firing ?? false),
+  alertLastFiredAt: (row.alertLastFiredAt ?? row.alert_last_fired_at ?? null) as
+    | Date
+    | number
+    | null,
   createdBy: (row.createdBy ?? row.created_by ?? null) as string | null,
   createdAt: (row.createdAt ?? row.created_at ?? null) as Date | number | null,
   updatedAt: (row.updatedAt ?? row.updated_at ?? null) as Date | number | null,
@@ -536,6 +561,21 @@ const validateInput = (input: KpiInput): void => {
   ) {
     throw new AppError("VALIDATION", `Unknown KPI direction: ${input.direction}`);
   }
+  if (
+    input.alertOperator &&
+    !(KPI_ALERT_OPERATORS as readonly string[]).includes(input.alertOperator)
+  ) {
+    throw new AppError("VALIDATION", `Unknown alert operator: ${input.alertOperator}`);
+  }
+  // An operator with no threshold is a watch that can never decide, and a
+  // threshold with no operator is a number nobody compares against. Either
+  // alone is a half-configured alert that would sit there looking like cover.
+  if (Boolean(input.alertOperator) !== (input.alertValue !== null && input.alertValue !== undefined)) {
+    throw new AppError(
+      "VALIDATION",
+      "An alert needs both `alertOperator` and `alertValue`, or neither",
+    );
+  }
 };
 
 /** Map a driver UNIQUE violation onto the constraint it actually is.
@@ -578,6 +618,10 @@ export const createKpi = async (
     unit: input.unit ?? null,
     decimals: input.decimals ?? null,
     direction: input.direction ?? "neutral",
+    alertOperator: input.alertOperator ?? null,
+    alertValue: input.alertValue ?? null,
+    alertFiring: false,
+    alertLastFiredAt: null,
     createdBy: auth.userId,
     createdAt: now,
     updatedAt: now,
@@ -619,14 +663,29 @@ export const updateKpi = async (
     unit: patch.unit !== undefined ? patch.unit : existing.unit,
     decimals: patch.decimals !== undefined ? patch.decimals : existing.decimals,
     direction: patch.direction ?? existing.direction,
+    alertOperator:
+      patch.alertOperator !== undefined ? patch.alertOperator : existing.alertOperator,
+    alertValue: patch.alertValue !== undefined ? patch.alertValue : existing.alertValue,
   };
   validateInput(merged);
   const t = kpisTable(ctx.dialect);
   const now = ctx.dialect === "pg" ? new Date() : Date.now();
+  // `alertFiring` is state about the OLD rule. Editing the threshold — or
+  // removing the watch entirely — makes it meaningless, and a stranded `true`
+  // is worse than meaningless: the scheduler only looks at watched KPIs, so
+  // nothing would ever clear it and the tile would wear a red Alert badge
+  // forever. Reset it whenever the rule itself moves; the next tick re-decides.
+  const alertRuleChanged =
+    merged.alertOperator !== existing.alertOperator ||
+    merged.alertValue !== existing.alertValue;
   try {
     await (ctx.db as any)
       .update(t)
-      .set({ ...merged, updatedAt: now })
+      .set({
+        ...merged,
+        ...(alertRuleChanged ? { alertFiring: false, alertLastFiredAt: null } : {}),
+        updatedAt: now,
+      })
       .where(and(eq(t.tenantId, tenantId), eq(t.id, id)));
   } catch (e) {
     if (isSlugConflict(e)) {
@@ -634,7 +693,12 @@ export const updateKpi = async (
     }
     throw e;
   }
-  return { ...existing, ...merged, updatedAt: now };
+  return {
+    ...existing,
+    ...merged,
+    ...(alertRuleChanged ? { alertFiring: false, alertLastFiredAt: null } : {}),
+    updatedAt: now,
+  };
 };
 
 export const deleteKpi = async (

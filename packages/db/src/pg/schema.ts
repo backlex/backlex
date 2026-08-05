@@ -6,6 +6,7 @@ import {
   boolean,
   jsonb,
   integer,
+  doublePrecision,
   bigint,
   index,
   uniqueIndex,
@@ -2425,6 +2426,17 @@ export const kpis = pgTable(
     /** Which way is good news. A rising cancellation rate is red and a rising
      *  order count is green; without this the delta colour is a coin flip. */
     direction: text("direction").notNull().default("neutral"),
+    /** Which way the threshold is breached: `above` | `below` |
+     *  `change_above` | `change_below` (the last two compare `deltaPct`).
+     *  Null = this KPI is not watched. */
+    alertOperator: text("alert_operator"),
+    /** The threshold. For a `change_*` operator this is a FRACTION (0.2 = 20%),
+     *  the same units `deltaPct` reports in. */
+    alertValue: doublePrecision("alert_value"),
+    /** Whether the KPI is currently breaching — what makes the alert fire on
+     *  the transition rather than on every scheduler tick. */
+    alertFiring: boolean("alert_firing").notNull().default(false),
+    alertLastFiredAt: timestamp("alert_last_fired_at", { withTimezone: true }),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

@@ -3,6 +3,7 @@ import {
   sqliteTable,
   text,
   integer,
+  real,
   index,
   uniqueIndex,
   customType,
@@ -2181,6 +2182,17 @@ export const kpis = sqliteTable(
     /** Which way is good news. A rising cancellation rate is red and a rising
      *  order count is green; without this the delta colour is a coin flip. */
     direction: text("direction").notNull().default("neutral"),
+    /** Which way the threshold is breached: `above` | `below` |
+     *  `change_above` | `change_below` (the last two compare `deltaPct`).
+     *  Null = this KPI is not watched. */
+    alertOperator: text("alert_operator"),
+    /** The threshold. For a `change_*` operator this is a FRACTION (0.2 = 20%),
+     *  the same units `deltaPct` reports in. */
+    alertValue: real("alert_value"),
+    /** Whether the KPI is currently breaching — what makes the alert fire on
+     *  the transition rather than on every scheduler tick. */
+    alertFiring: integer("alert_firing", { mode: "boolean" }).notNull().default(false),
+    alertLastFiredAt: integer("alert_last_fired_at"),
     createdBy: text("created_by"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),

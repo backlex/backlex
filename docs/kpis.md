@@ -115,6 +115,51 @@ client that flattens them will print a confident lie:
   ratio that does not exist. Show the absolute `delta` instead — the admin UI
   and the CLI both do.
 
+## Alerts — the figure comes and finds you
+
+A KPI answers a question when somebody opens a page, and the figures that
+matter most are the ones nobody thinks to open. Give a definition an
+`alertOperator` + `alertValue` and the scheduler watches it:
+
+| Operator | Compares | Threshold units |
+|---|---|---|
+| `above` / `below` | `point.value` | the value's own units |
+| `change_above` / `change_below` | `point.deltaPct` | a **fraction** — `0.2` is 20% |
+
+Both fields or neither: an operator with no threshold can never decide, and a
+threshold with no operator is a number nobody compares against. Either alone is
+a half-configured watch that sits there looking like cover, so the API refuses
+it.
+
+**It fires on the edge into a breach, not on every tick.** The scheduler runs
+every minute; a watch that notified whenever the condition held would send the
+same alert 1,440 times a day, which teaches people to mute the channel — and a
+muted alert is worse than none, because it looks like coverage. The breach is a
+state (`alertFiring`); crossing in notifies, coming back inside clears the flag
+so the next breach is heard. There is no "all clear" message: recovery is not
+itself news.
+
+Editing the rule — or removing the watch — resets `alertFiring`. It was state
+about the *old* threshold, and a stranded `true` would never clear (the
+scheduler only evaluates watched KPIs), leaving the tile wearing a red **Alert**
+badge for the rest of its life.
+
+Two things never fire:
+
+- **An unknown observation.** An `avg` over an empty window is not zero, and a
+  `change_*` rule has nothing to say with no previous period. Waking somebody
+  because a table was quiet is how a watch loses its credibility.
+- **A grouped KPI.** There is no single figure to compare; the threshold would
+  have to say which row it meant.
+
+The watch runs as the workspace, not as a reader — which is why the
+notification is addressed to the workspace's **admins** rather than broadcast.
+A broadcast row is shown to every authenticated member, and the figure in it
+was computed without resolving anyone's grants; "Average salary is 42,000,
+below the 50,000 threshold" sent to all staff is a leak dressed as an alert.
+If a workspace has no admins the alert is not recorded and the flag stays
+clear, so a later tick tries again rather than swallowing the breach.
+
 ## Permissions
 
 The two halves are gated differently on purpose:

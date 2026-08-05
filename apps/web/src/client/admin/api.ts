@@ -423,6 +423,13 @@ export interface ApiKpi {
   unit: string | null;
   decimals: number | null;
   direction: "up" | "down" | "neutral";
+  /** Watch: notify when the figure crosses `alertValue`. Null = unwatched.
+   *  `change_*` compare `deltaPct`, so their value is a FRACTION (0.2 = 20%). */
+  alertOperator: "above" | "below" | "change_above" | "change_below" | null;
+  alertValue: number | null;
+  /** Currently outside the threshold. Server-owned — the flag is what makes an
+   *  alert fire on the transition rather than on every scheduler tick. */
+  alertFiring: boolean;
   createdBy: string | null;
 }
 
@@ -465,7 +472,7 @@ export interface ApiKpiResult {
   computedAt: number;
 }
 
-export type ApiKpiInput = Omit<ApiKpi, "id" | "tenantId" | "createdBy">;
+export type ApiKpiInput = Omit<ApiKpi, "id" | "tenantId" | "createdBy" | "alertFiring">;
 
 export interface ApiDashboardReportInput {
   filename?: string;

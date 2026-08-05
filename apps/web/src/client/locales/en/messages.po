@@ -1113,6 +1113,10 @@ msgstr "A number typed without a country code is in"
 msgid "A panel with that name already exists."
 msgstr "A panel with that name already exists."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "A percentage, e.g. 20 for 20%"
+msgstr "A percentage, e.g. 20 for 20%"
+
 #: src/client/admin/flow-builder.tsx
 msgid "A phone number on the row"
 msgstr "A phone number on the row"
@@ -1861,6 +1865,10 @@ msgstr "AI provider key for <0>this workspace</0>. When set, it overrides the de
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "AI settings saved."
 msgstr "AI settings saved."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Alert"
+msgstr "Alert"
 
 #. placeholder {0}: aliasConflicts.map((c) => c.column).join(", ")
 #: src/client/admin/adopt-wizard.tsx
@@ -10786,6 +10794,10 @@ msgstr "Notice"
 msgid "Notifications"
 msgstr "Notifications"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Notify the workspace on the way in"
+msgstr "Notify the workspace on the way in"
+
 #: src/client/admin/item-views.tsx
 msgid "November"
 msgstr "November"
@@ -11263,6 +11275,10 @@ msgstr "Outgoing webhook deliveries will show up here once a collection event fi
 #: src/client/admin/parity/documents.tsx
 msgid "Output filename"
 msgstr "Output filename"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Outside its alert threshold"
+msgstr "Outside its alert threshold"
 
 #. placeholder {0}: over.join(", ")
 #: src/client/admin/pages/usage.tsx
@@ -16447,6 +16463,10 @@ msgstr "The usage endpoint returned an error. Refresh to try again."
 msgid "the user's id"
 msgstr "the user's id"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "The value to compare against"
+msgstr "The value to compare against"
+
 #: src/client/admin/relational-pickers.tsx
 msgid "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
 msgstr "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
@@ -16733,6 +16753,10 @@ msgstr "This workspace"
 #: src/client/admin/parity/app-users.tsx
 msgid "This workspace has no custom roles yet — create one under <0>Roles & permissions</0>."
 msgstr "This workspace has no custom roles yet — create one under <0>Roles & permissions</0>."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Threshold"
+msgstr "Threshold"
 
 #: src/client/admin/item-views.tsx
 msgid "Thu"

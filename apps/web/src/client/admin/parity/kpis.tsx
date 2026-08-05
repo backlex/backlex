@@ -58,6 +58,14 @@ const FORMAT_OPTIONS = [
   { value: "duration", label: "Duration", hint: "Milliseconds, printed as h/m/s" },
 ];
 
+const ALERT_OPTIONS = [
+  { value: "", label: "No alert", hint: "Nobody is notified about this figure" },
+  { value: "above", label: "Value above", hint: "Notify when the number goes over" },
+  { value: "below", label: "Value below", hint: "Notify when the number drops under" },
+  { value: "change_above", label: "Change above", hint: "On the % change vs the previous period" },
+  { value: "change_below", label: "Change below", hint: "On the % change vs the previous period" },
+];
+
 const DIRECTION_OPTIONS = [
   { value: "up", label: "Up is good", hint: "Rising is green — revenue, orders" },
   { value: "down", label: "Down is good", hint: "Rising is red — refunds, cancellations" },
@@ -82,6 +90,8 @@ const BLANK: ApiKpiInput = {
   unit: null,
   decimals: null,
   direction: "neutral",
+  alertOperator: null,
+  alertValue: null,
 };
 
 /** Print a value the way its KPI says it should be read. */
@@ -482,6 +492,56 @@ export function KpisPage({ pushToast }: { pushToast: (m: string) => void }) {
                     }
                   />
                 </Field>
+                <Field label={t`Alert`} hint={t`Notify the workspace on the way in`}>
+                  <Select
+                    value={editing.alertOperator ?? ""}
+                    onChange={(v) =>
+                      setEditing({
+                        ...editing,
+                        alertOperator: v || null,
+                        // An operator with no threshold can never decide, so the
+                        // two are cleared and required together.
+                        alertValue: v ? (editing.alertValue ?? 0) : null,
+                      })
+                    }
+                    options={ALERT_OPTIONS}
+                    className="w-full min-w-0"
+                  />
+                </Field>
+                <Field
+                  label={t`Threshold`}
+                  hint={
+                    editing.alertOperator?.startsWith("change_")
+                      ? t`A percentage, e.g. 20 for 20%`
+                      : t`The value to compare against`
+                  }
+                >
+                  <Input
+                    type="number"
+                    disabled={!editing.alertOperator}
+                    value={
+                      editing.alertValue === null || editing.alertValue === undefined
+                        ? ""
+                        : editing.alertOperator?.startsWith("change_")
+                          ? editing.alertValue * 100
+                          : editing.alertValue
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value === "" ? null : Number(e.target.value);
+                      setEditing({
+                        ...editing,
+                        // `change_*` thresholds are stored as fractions, the
+                        // units deltaPct reports in; the field shows percent.
+                        alertValue:
+                          raw === null
+                            ? null
+                            : editing.alertOperator?.startsWith("change_")
+                              ? raw / 100
+                              : raw,
+                      });
+                    }}
+                  />
+                </Field>
                 <Field
                   label={t`Description`}
                   className="col-span-2 max-[640px]:col-span-1"
@@ -569,6 +629,17 @@ function KpiTile({
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
+          {kpi.alertFiring && (
+            // Server-owned: this is the same flag the scheduler set when it
+            // notified, so the page and the alert cannot disagree about
+            // whether the figure is out of bounds.
+            <span
+              title={t`Outside its alert threshold`}
+              className="mr-1 rounded bg-red-500/15 px-1.5 py-0.5 text-[10.5px] font-medium text-red-600 dark:text-red-400"
+            >
+              <Trans>Alert</Trans>
+            </span>
+          )}
           <IconButton icon={I.Pencil} title={t`Edit`} onClick={onEdit} />
           <IconButton icon={I.Trash} title={t`Delete`} onClick={onDelete} />
         </div>

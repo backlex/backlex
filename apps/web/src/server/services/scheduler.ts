@@ -22,6 +22,7 @@ const parseExpression = (
   }
 ).parseExpression;
 import { pruneScheduleFires, runDueScheduleFlows } from "./flow-schedules";
+import { runKpiAlerts } from "./kpi-alerts";
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 import { expireDueRequests, expireRequest } from "./approvals";
 import { enqueueJob, processJobs } from "./jobs";
@@ -277,6 +278,15 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     await runDueScheduleFlows(ctx, now);
   } catch (e) {
     console.error("[schedule-flow] tick failed", e);
+  }
+
+  // Watched KPIs: notify on the edge INTO a breach. Cheap when nothing is
+  // watched (one indexed read returning no rows) and never throws, so a broken
+  // definition can't stop the rest of the tick.
+  try {
+    await runKpiAlerts(ctx, now);
+  } catch (e) {
+    console.error("[kpi-alert] tick failed", e);
   }
 
   // Resume any flow continuations whose run_at has passed. claimDueTasks

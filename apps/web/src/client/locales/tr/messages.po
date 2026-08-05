@@ -1113,6 +1113,10 @@ msgstr "Ülke kodu olmadan yazılan numara şu ülkededir"
 msgid "A panel with that name already exists."
 msgstr "Bu isimde bir panel zaten mevcut."
 
+#: src/client/admin/parity/kpis.tsx
+msgid "A percentage, e.g. 20 for 20%"
+msgstr "Yüzde, örn. %20 için 20"
+
 #: src/client/admin/flow-builder.tsx
 msgid "A phone number on the row"
 msgstr "Satırdaki bir telefon numarası"
@@ -1861,6 +1865,10 @@ msgstr "<0>Bu workspace</0> için AI sağlayıcı anahtarı. Ayarlandığında A
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "AI settings saved."
 msgstr "AI ayarları kaydedildi."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Alert"
+msgstr "Uyarı"
 
 #. placeholder {0}: aliasConflicts.map((c) => c.column).join(", ")
 #: src/client/admin/adopt-wizard.tsx
@@ -10786,6 +10794,10 @@ msgstr "Ön bildirim"
 msgid "Notifications"
 msgstr "Bildirimler"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "Notify the workspace on the way in"
+msgstr "Eşiğe girildiğinde çalışma alanını bilgilendir"
+
 #: src/client/admin/item-views.tsx
 msgid "November"
 msgstr "Kasım"
@@ -11263,6 +11275,10 @@ msgstr "Koleksiyon olayı tetiklendiğinde giden webhook teslimatları burada g�
 #: src/client/admin/parity/documents.tsx
 msgid "Output filename"
 msgstr "Çıktı dosya adı"
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Outside its alert threshold"
+msgstr "Uyarı eşiğinin dışında"
 
 #. placeholder {0}: over.join(", ")
 #: src/client/admin/pages/usage.tsx
@@ -16447,6 +16463,10 @@ msgstr "Kullanım uç noktası hata döndürdü. Tekrar denemek için yenileyin.
 msgid "the user's id"
 msgstr "kullanıcının kimliği"
 
+#: src/client/admin/parity/kpis.tsx
+msgid "The value to compare against"
+msgstr "Karşılaştırılacak değer"
+
 #: src/client/admin/relational-pickers.tsx
 msgid "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
 msgstr "Çalışma alanının son kullanıcı havuzu (<0>app_users</0>). E-posta veya ada göre arayın."
@@ -16733,6 +16753,10 @@ msgstr "Bu çalışma alanı"
 #: src/client/admin/parity/app-users.tsx
 msgid "This workspace has no custom roles yet — create one under <0>Roles & permissions</0>."
 msgstr "Bu çalışma alanında henüz özel rol yok — <0>Roller ve izinler</0> altında bir tane oluşturun."
+
+#: src/client/admin/parity/kpis.tsx
+msgid "Threshold"
+msgstr "Eşik"
 
 #: src/client/admin/item-views.tsx
 msgid "Thu"

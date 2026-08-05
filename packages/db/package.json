@@ -16,6 +16,7 @@
     "./sequence": "./src/sequence.ts",
     "./slug": "./src/slug.ts",
     "./transitions": "./src/transitions.ts",
+    "./url": "./src/url.ts",
     "./pg": "./src/pg/index.ts",
     "./pg/schema": "./src/pg/schema.ts",
     "./pg/migrations-bundle": "./src/pg/migrations-bundle.ts",

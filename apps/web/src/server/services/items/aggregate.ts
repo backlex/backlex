@@ -14,6 +14,7 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { normalizeMoneyOperands } from "./money-fields";
 import { normalizeEmailOperands } from "./email-fields";
+import { normalizeUrlOperands } from "./url-fields";
 import { normalizePhoneOperands } from "./phone-fields";
 import { expandRangeOperators, rangeFieldsOf } from "@backlex/db/range";
 import { normalizeTemporalOperands } from "./temporal-fields";
@@ -221,6 +222,9 @@ export const runItemsAggregate = async (
       // …and email operands, so "how many contacts at this domain" counts the
       // same rows the list endpoint would show.
       cond = normalizeEmailOperands(cond, fields);
+      // …and url operands, so "how many rows link to this site" counts the same
+      // rows the list endpoint would show.
+      cond = normalizeUrlOperands(cond, fields);
       // …and `_overlaps` into the comparisons it stands for, so "how many
       // bookings clash with this window" agrees with the list endpoint.
       cond = expandRangeOperators(cond, rangeFieldsOf(fields));

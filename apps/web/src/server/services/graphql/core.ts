@@ -80,8 +80,9 @@ import {
   serializeField,
 } from "../items/serialize";
 import { assertCurrencyChangeIsSafe, canonicalizeMoneyFields } from "../items/money-fields";
-import { canonicalizeEmailFields } from "../items/email-fields";
-import { canonicalizePhoneFields } from "../items/phone-fields";
+import { canonicalizeEmailFields, normalizeEmailOperands } from "../items/email-fields";
+import { canonicalizeUrlFields, normalizeUrlOperands } from "../items/url-fields";
+import { canonicalizePhoneFields, normalizePhoneOperands } from "../items/phone-fields";
 import { expandRangeOperators, rangeFieldsOf } from "@backlex/db/range";
 import { normalizeTemporalOperands } from "../items/temporal-fields";
 import { applyAutoGeocode, patchTouchesSources } from "../items/geocode";
@@ -262,6 +263,15 @@ const fieldScalar = (
       // mutation for the whole collection. The parity gate caught exactly that
       // on this branch's first run — the same class as the dropped field type
       // that once dark'd the endpoint outright.
+      return GraphQLString;
+    case "url":
+      // A plain String on both sides, for the same reasons as `phone` and
+      // `email` — the input side accepts a bare `acme.com` as readily as a whole
+      // address, and no stricter scalar could express that without making
+      // GraphQL pickier than REST for a value it canonicalizes anyway. Adding
+      // `url` to the union is what made this switch non-exhaustive, and the
+      // compiler said so; had it been a `default:` instead, the missing case
+      // would have shipped as `undefined` and taken the whole endpoint down.
       return GraphQLString;
     case "hash":
       // Write-only secret: accepted as a String on input, always resolves to
@@ -571,6 +581,15 @@ const canonicalizeMoneyForGql = (
     canonicalizeEmailFields(inputData, collection.fields, {
       keyOf: (f) => camel(f.name),
     });
+    // Sixth in a row, and the reason has not changed once: this resolver
+    // hand-builds its own INSERT and its own encoders, so every field feature
+    // that folds a value on the payload has to be repeated here or GraphQL
+    // becomes the one surface that can write an unfolded one. Without this,
+    // `unique` on a URL column and lookup-by-address both quietly stop working
+    // for rows written through it. `url-surfaces.test.ts` is the gate.
+    canonicalizeUrlFields(inputData, collection.fields, {
+      keyOf: (f) => camel(f.name),
+    });
   } catch (e) {
     throw new GraphQLError((e as Error).message, { extensions: { code: "VALIDATION" } });
   }
@@ -802,13 +821,33 @@ export const listResolver = async (
         // where every number sorts before every string, so the filter answers
         // backwards. Caught by the parity gate, which is the fifth feature
         // running where this resolver needed the fix REST already had.
-        normalizeTemporalOperands(
-          expandRangeOperators(
-            normalizeCondition(args.filter, { relationFields }),
-            rangeFieldsOf(collection.fields),
+        // …and the operands of every field type that folds its values, which
+        // REST has done since each of those types shipped and this resolver
+        // never did. `normalizeCondition` (from @backlex/core) normalizes the
+        // DSL's SHAPE — implicit equality, nested relation filters — and knows
+        // nothing about field types, so nothing here was folding anything.
+        //
+        // PRE-EXISTING, and not only for `url`: a GraphQL query filtering an
+        // email column by `_eq: "Ada@Example.com"` matched no row while the
+        // identical REST call matched it, because the column holds the folded
+        // address. Same for a phone column filtered by a national-form number.
+        // Found by writing the url twin of a check REST already had.
+        normalizeUrlOperands(
+          normalizeEmailOperands(
+            normalizePhoneOperands(
+              normalizeTemporalOperands(
+                expandRangeOperators(
+                  normalizeCondition(args.filter, { relationFields }),
+                  rangeFieldsOf(collection.fields),
+                ),
+                collection.fields,
+                ctx.dialect,
+              ),
+              collection.fields,
+            ),
+            collection.fields,
           ),
           collection.fields,
-          ctx.dialect,
         ),
         auth,
         undefined,

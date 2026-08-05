@@ -1176,6 +1176,10 @@ msgstr "A text column holding this row's two-letter country code, for a list of 
 #~ msgid "A turn is still running on this thread — wait for it to finish."
 #~ msgstr "A turn is still running on this thread — wait for it to finish."
 
+#: src/client/admin/field-url-editor.tsx
+msgid "A URL field replaces any regex you had on the column — validation runs before the value is folded, so a pattern demanding https:// would reject the bare acme.com this field exists to accept. The fold is the stricter check."
+msgstr "A URL field replaces any regex you had on the column — validation runs before the value is folded, so a pattern demanding https:// would reject the bare acme.com this field exists to accept. The fold is the stricter check."
+
 #: src/client/admin/flow-builder.tsx
 msgid "A user's registered numbers"
 msgstr "A user's registered numbers"
@@ -1274,6 +1278,14 @@ msgstr "Acme Okta"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Acme SSO"
 msgstr "Acme SSO"
+
+#: src/client/admin/field-url-input.tsx
+msgid "acme.com"
+msgstr "acme.com"
+
+#: src/client/admin/field-url-editor.tsx
+msgid "acme.com rather than https://acme.com/. For the column a CRM matches a company by — it is the right-hand side of an email address, so it folds the same way one does and can be compared with one. A scheme or a path is refused."
+msgstr "acme.com rather than https://acme.com/. For the column a CRM matches a company by — it is the right-hand side of an email address, so it folds the same way one does and can be compared with one. A scheme or a path is refused."
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "ACS URL"
@@ -1388,6 +1400,7 @@ msgstr "add"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/field-email-editor.tsx
+#: src/client/admin/field-url-editor.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -1672,6 +1685,10 @@ msgstr "Added to the end"
 #: src/client/admin/pages/schema-versions.tsx
 msgid "additive"
 msgstr "additive"
+
+#: src/client/admin/field-url-input.tsx
+msgid "address"
+msgstr "address"
 
 #: src/client/admin/collection-settings.tsx
 msgid "Adds <0>_status</0> + <1>_published_at</1>. Independent of the user-defined \"status\" field."
@@ -1960,6 +1977,7 @@ msgid "Already in sync — no changes."
 msgstr "Already in sync — no changes."
 
 #: src/client/admin/field-email-editor.tsx
+#: src/client/admin/field-url-editor.tsx
 msgid "Already on the list."
 msgstr "Already on the list."
 
@@ -5714,6 +5732,10 @@ msgstr "Empty collection"
 msgid "Empty means any domain, which is the right default for customers and contacts. A subdomain of a listed domain matches, so example.com admits ada@mail.example.com. Use it for a staff or member column that has to stay inside the company."
 msgstr "Empty means any domain, which is the right default for customers and contacts. A subdomain of a listed domain matches, so example.com admits ada@mail.example.com. Use it for a staff or member column that has to stay inside the company."
 
+#: src/client/admin/field-url-editor.tsx
+msgid "Empty means any host, which is the right default for a website column. A subdomain of a listed host matches, so example.com admits docs.example.com. This is a schema rule about what may be STORED — it is not what decides whether a URL may be fetched."
+msgstr "Empty means any host, which is the right default for a website column. A subdomain of a listed host matches, so example.com admits docs.example.com. This is a schema rule about what may be STORED — it is not what decides whether a URL may be fetched."
+
 #: src/client/admin/collections-index.tsx
 #~ msgid "Empty or template"
 #~ msgstr "Empty or template"
@@ -6156,6 +6178,7 @@ msgid "Exact package name as published on npm."
 msgstr "Exact package name as published on npm."
 
 #: src/client/admin/field-email-editor.tsx
+#: src/client/admin/field-url-editor.tsx
 msgid "example.com"
 msgstr "example.com"
 
@@ -7355,6 +7378,10 @@ msgstr "how this collection shows up in nav and lists"
 #: src/client/admin/pages/overview.tsx
 msgid "http · event · cron"
 msgstr "http · event · cron"
+
+#: src/client/admin/field-url-input.tsx
+msgid "https://acme.com"
+msgstr "https://acme.com"
 
 #: src/client/admin/pages/search-playground.tsx
 msgid "Hybrid"
@@ -9211,6 +9238,10 @@ msgstr "multiple ok"
 msgid "Must accept the chosen HTTP method and respond with 2xx within 10s."
 msgstr "Must accept the chosen HTTP method and respond with 2xx within 10s."
 
+#: src/client/admin/field-url-input.tsx
+msgid "Must be a"
+msgstr "Must be a"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Must be a full http(s) URL."
 msgstr "Must be a full http(s) URL."
@@ -9244,6 +9275,10 @@ msgstr "Must be an https URL."
 #: src/client/admin/parity/insights.tsx
 msgid "Must be an integer or number column."
 msgstr "Must be an integer or number column."
+
+#: src/client/admin/field-url-input.tsx
+msgid "Must be at"
+msgstr "Must be at"
 
 #: src/client/admin/pages/functions.tsx
 msgid "Must be between 50 and 60000."
@@ -10411,6 +10446,7 @@ msgid "none selected = all"
 msgstr "none selected = all"
 
 #: src/client/admin/field-email-editor.tsx
+#: src/client/admin/field-url-editor.tsx
 msgid "Not a domain."
 msgstr "Not a domain."
 
@@ -10796,6 +10832,10 @@ msgstr "One-time link, no <0>password</0>."
 msgid "Only accept addresses at these domains"
 msgstr "Only accept addresses at these domains"
 
+#: src/client/admin/field-url-editor.tsx
+msgid "Only accept addresses at these hosts"
+msgstr "Only accept addresses at these hosts"
+
 #: src/client/admin/field-phone-editor.tsx
 msgid "Only accept numbers from <0>(optional)</0>"
 msgstr "Only accept numbers from <0>(optional)</0>"
@@ -10890,6 +10930,10 @@ msgstr "Open form"
 #: src/client/admin/pages/forms.tsx
 msgid "Open in {0}"
 msgstr "Open in {0}"
+
+#: src/client/admin/field-url-input.tsx
+msgid "Open in a new tab"
+msgstr "Open in a new tab"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Open resource"
@@ -12691,6 +12735,10 @@ msgstr "Refused if it matches more than one payment — a row can be billed more
 msgid "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
 msgstr "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
 
+#: src/client/admin/field-url-editor.tsx
+msgid "Refuses http:// and supplies https:// when someone types a bare host. Off by default, because a self-hosted install points perfectly ordinary columns at http:// endpoints on its own network."
+msgstr "Refuses http:// and supplies https:// when someone types a bare host. Off by default, because a self-hosted install points perfectly ordinary columns at http:// endpoints on its own network."
+
 #: src/client/admin/account-page.tsx
 msgid "Regenerate backup codes"
 msgstr "Regenerate backup codes"
@@ -12822,6 +12870,10 @@ msgstr "Remove {0}"
 #: src/client/admin/field-email-editor.tsx
 msgid "Remove {d}"
 msgstr "Remove {d}"
+
+#: src/client/admin/field-url-editor.tsx
+msgid "Remove {hst}"
+msgstr "Remove {hst}"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "Remove {k}"
@@ -13028,6 +13080,10 @@ msgstr "Requests per day"
 #: src/client/admin/pages/usage.tsx
 msgid "Requests per minute"
 msgstr "Requests per minute"
+
+#: src/client/admin/field-url-editor.tsx
+msgid "Require https"
+msgstr "Require https"
 
 #: src/client/admin/field-transitions-editor.tsx
 msgid "Require these fields first"
@@ -13901,6 +13957,7 @@ msgstr "Saved {0} redirect URL{1}."
 #: src/client/admin/field-email-input.tsx
 #: src/client/admin/field-phone-input.tsx
 #: src/client/admin/field-slug-input.tsx
+#: src/client/admin/field-url-input.tsx
 msgid "Saved as"
 msgstr "Saved as"
 
@@ -14733,6 +14790,10 @@ msgstr "Show hidden collections"
 msgid "Show international domains in their own alphabet"
 msgstr "Show international domains in their own alphabet"
 
+#: src/client/admin/field-url-editor.tsx
+msgid "Show international hosts in their own alphabet"
+msgstr "Show international hosts in their own alphabet"
+
 #: src/client/admin/field-geo-input.tsx
 msgid "Show map"
 msgstr "Show map"
@@ -15407,6 +15468,10 @@ msgstr "Steps"
 msgid "Storage"
 msgstr "Storage"
 
+#: src/client/admin/field-url-editor.tsx
+msgid "Store a bare domain instead of a whole address"
+msgstr "Store a bare domain instead of a whole address"
+
 #: src/client/admin/add-field.tsx
 msgid "Store one value per language in the translations sidecar. Read/write a single locale with ?locale=xx."
 msgstr "Store one value per language in the translations sidecar. Read/write a single locale with ?locale=xx."
@@ -15943,6 +16008,10 @@ msgstr "The client secret is encrypted at rest. If you leave both fields blank, 
 #: src/client/admin/field-email-editor.tsx
 msgid "The column always stores the encoded form a mail server resolves. This only changes how it is DISPLAYED — ada@örnek.com instead of ada@xn--rnek-4qa.com. Off unless the workspace actually has addresses like that."
 msgstr "The column always stores the encoded form a mail server resolves. This only changes how it is DISPLAYED — ada@örnek.com instead of ada@xn--rnek-4qa.com. Off unless the workspace actually has addresses like that."
+
+#: src/client/admin/field-url-editor.tsx
+msgid "The column always stores the encoded form a resolver answers for. This only changes how it is DISPLAYED — https://örnek.com/ instead of https://xn--rnek-4qa.com/. Off unless the workspace actually has hosts like that."
+msgstr "The column always stores the encoded form a resolver answers for. This only changes how it is DISPLAYED — https://örnek.com/ instead of https://xn--rnek-4qa.com/. Off unless the workspace actually has hosts like that."
 
 #: src/client/admin/pages/forms.tsx
 msgid "The current link stops working immediately and a new one is generated. Anywhere the old link is embedded must be updated."
@@ -17144,6 +17213,8 @@ msgstr "Uploads"
 msgid "Uploads are rejected once stored bytes reach this. 1 GB = 1073741824."
 msgstr "Uploads are rejected once stored bytes reach this. 1 GB = 1073741824."
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
 #: src/client/admin/field-validation-editor.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/sync-hooks-card.tsx

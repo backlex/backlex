@@ -21,6 +21,7 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { isPlatformSsoEnabled } from "../lib/platform-sso";
 import { parseMetadataXml } from "./saml-admin";
+import { fetchOutbound } from "../services/storage/hosts";
 import { defaultHook } from "../lib/openapi-router";
 import {
   buildPlatformAcsAndMetadataUrls,
@@ -297,7 +298,11 @@ export const platformSamlAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHoo
       }
       let xml = body.metadataXml ?? "";
       if (!xml && body.metadataUrl) {
-        const res = await fetch(body.metadataUrl);
+        // See the note on the tenant twin in `saml-admin.ts` — same sink, same
+        // fix. This one is platform-plane, so the caller is a platform admin
+        // rather than a workspace admin, but the worker is the thing making the
+        // request either way.
+        const res = await fetchOutbound(ctx.env, body.metadataUrl);
         if (!res.ok) throw new AppError("VALIDATION", `Metadata fetch returned ${res.status}`);
         xml = await res.text();
       }

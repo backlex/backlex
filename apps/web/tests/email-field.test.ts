@@ -235,8 +235,25 @@ describe("the domain allow-list", () => {
     expect(parseEmailForField("ada@example.com", mixed).email).toBe("ada@example.com");
     expect(() => parseEmailForField("ada@elsewhere.com", mixed)).toThrow();
 
+    // A rule that is not even an ARRAY. This was a live fail-open until the
+    // `url` type copied this function and its reviewer noticed: the check used
+    // to test `!Array.isArray(...)` first, which collapsed "not declared" and
+    // "declared as a string" into the same `null` — so an `allowedDomains:
+    // "corp.example"` from a restore or a hand-edited dump read as "any domain"
+    // and the rule that gates who gets MAILED silently stopped running.
+    for (const bad of [
+      { allowedDomains: "corp.example" },
+      { allowedDomains: [] },
+      { allowedDomains: {} },
+      { allowedDomains: null },
+    ]) {
+      expect(allowedEmailDomains(bad as never)).toEqual([]);
+      expect(() => parseEmailForField("ada@example.com", bad as never)).toThrow(/allowedDomains/);
+    }
+
     // Non-vacuous: a spec with no `allowedDomains` at all still admits anything.
     expect(allowedEmailDomains({})).toBeNull();
+    expect(allowedEmailDomains(undefined)).toBeNull();
     expect(parseEmailForField("ada@anywhere.com", {}).email).toBe("ada@anywhere.com");
   });
 

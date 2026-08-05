@@ -406,6 +406,26 @@ const FieldSchema = z
       })
       .optional(),
     /**
+     * URL configuration — whether the column holds a whole address or a bare
+     * host, which schemes are acceptable, and which hosts are.
+     *
+     * `schemes` is an enum rather than a free string: the only reason to narrow
+     * it is to keep a scheme OUT, and a value this schema did not recognise
+     * would reach `urlSchemes`, be dropped there, and leave the field refusing
+     * every write. `allowedHosts` entries are parsed by `validateUrlSpec` with
+     * the same parser the values are, so a rule that could never match anything
+     * fails at save time. The `max(64)` is what stops a caller storing a host
+     * corpus in the collection metadata.
+     */
+    url: z
+      .object({
+        form: z.enum(["url", "host"]).optional(),
+        schemes: z.array(z.enum(["https", "http"])).min(1).max(2).optional(),
+        allowedHosts: z.array(z.string().min(1).max(253)).min(1).max(64).optional(),
+        display: z.enum(["ascii", "unicode"]).optional(),
+      })
+      .optional(),
+    /**
      * The lifecycle this dropdown may move through — `{ allow: [{from, to,
      * roles?, requires?, label?}], initial? }`.
      *

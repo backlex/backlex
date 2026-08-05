@@ -536,11 +536,24 @@ export const validateEmailSpec = (spec: EmailSpec): void => {
  * must refuse rather than admit everything.
  */
 export const allowedEmailDomains = (spec: EmailSpec | undefined): string[] | null => {
-  // `Array.isArray`, not a truthy `.length` — this reads STORED field metadata,
-  // and an exhaustive TS type is not a runtime guarantee. A string here would
-  // otherwise iterate as characters, parse none of them, and quietly return "no
-  // restriction" — the rule failing open instead of failing loudly.
-  if (!Array.isArray(spec?.allowedDomains) || spec.allowedDomains.length === 0) return null;
+  // THREE answers, not two — and getting this to two was a live fail-open until
+  // the `url` type copied this function and its reviewer noticed.
+  //
+  // `Array.isArray` alone reads STORED field metadata correctly enough to stop a
+  // string ITERATING as characters, which is what the original note here was
+  // about. What it does NOT do is distinguish "no restriction was declared" from
+  // "a restriction was declared and is unreadable": both landed on `null`, so an
+  // `allowedDomains: "corp.example"` — a plausible shape from a restore, an
+  // import or a hand-edited dump — meant "any domain", and a rule that gates who
+  // gets MAILED was silently not running. `validateEmailSpec` refuses that at
+  // save time, but `backup.ts` re-inserts dumped `collections` rows and calls
+  // `applyCollection` without it.
+  //
+  // Only ABSENT means unrestricted. Anything else that cannot be read is the
+  // empty array, which `parseEmailForField` turns into a refusal naming the
+  // field's configuration.
+  if (spec?.allowedDomains === undefined) return null;
+  if (!Array.isArray(spec.allowedDomains) || spec.allowedDomains.length === 0) return [];
   const out: string[] = [];
   for (const d of spec.allowedDomains) {
     // Same reason: a non-string entry must be skipped, not handed to `.trim()`,

@@ -7,6 +7,7 @@ import type { Ctx } from "../context";
 import { serializeField } from "./items/serialize";
 import { canonicalizeMoneyFields } from "./items/money-fields";
 import { canonicalizeEmailFields } from "./items/email-fields";
+import { canonicalizeUrlFields } from "./items/url-fields";
 import { canonicalizePhoneFields } from "./items/phone-fields";
 import {
   assertInitialStates,
@@ -185,6 +186,10 @@ export const createItem = async (
   // `portal.link` or marketing-list sync has to find by address, and an
   // unfolded one is the row that is never found.
   canonicalizeEmailFields(input.data, collection.fields);
+  // And url, for the reason that applies to every write that was not typed by a
+  // person: an integration payload carries whatever the other system stored, and
+  // an unfolded address is the one a later lookup never finds.
+  canonicalizeUrlFields(input.data, collection.fields);
   // A period that ends before it begins is wrong data, not a permission
   // question, so a flow-authored row is held to it exactly like a REST one —
   // the same split #42 drew between the transition GRAPH and the transition
@@ -294,6 +299,9 @@ export const updateItem = async (
   // Email needs no row at all — an address is self-describing, so a patch is
   // folded with exactly the same call the create path makes.
   canonicalizeEmailFields(input.data, collection.fields);
+  // URL needs no row either — folded with exactly the same call the create path
+  // makes.
+  canonicalizeUrlFields(input.data, collection.fields);
   // Only judges what the patch carries — see the note on the helper.
   assertRangesOrdered(input.data, collection.fields);
   await assertFlowTransitions(ctx, collection, input);

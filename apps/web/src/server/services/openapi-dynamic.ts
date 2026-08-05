@@ -39,6 +39,13 @@ const fieldToSchema = (type: FieldType): Schema => {
       // reason — it would describe the READ shape and make a generator reject a
       // write the server would happily fold.
       return { type: "string", format: "email", example: "ada@example.com" };
+    case "url":
+      // Same split again: reads are always the canonical serialization, writes
+      // accept a bare host (`acme.com`) which the server folds. `format: "uri"`
+      // is the standard annotation; a `pattern` would describe the READ shape
+      // and make a generator reject exactly the shorthand the type exists to
+      // accept.
+      return { type: "string", format: "uri", example: "https://acme.com/" };
     case "money":
       // Reads are always this object. Writes accept more (a bare number, a
       // decimal string, `"19.99 USD"`, `{ minor, currency }`) — described in

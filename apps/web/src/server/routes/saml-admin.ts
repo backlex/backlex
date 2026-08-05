@@ -33,6 +33,7 @@ import {
   buildAcsAndMetadataUrls,
 } from "../services/saml-providers";
 import { invalidateTenantAuth } from "../services/tenant-auth";
+import { fetchOutbound } from "../services/storage/hosts";
 import { defaultHook } from "../lib/openapi-router";
 
 const requireAdmin = (auth: { roles: string[] }) => {
@@ -509,7 +510,16 @@ export const samlAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       }
       let xml = body.metadataXml ?? "";
       if (!xml && body.metadataUrl) {
-        const res = await fetch(body.metadataUrl);
+        // `fetchOutbound`, not a bare `fetch`. This URL comes from a workspace
+        // admin and is fetched by the worker, which is the definition of a
+        // request-forgery sink: every other admin-supplied URL in this product
+        // (webhooks, sync-hooks, flow `request` ops, OIDC discovery, the
+        // integrations token exchange) already goes through it, and this
+        // endpoint and its platform twin were the two that did not. On managed
+        // cloud the guard is on, so a tenant admin could point this at an
+        // internal address and read the outcome back through the parse result
+        // and the status code in the error message.
+        const res = await fetchOutbound(ctx.env, body.metadataUrl);
         if (!res.ok) {
           throw new AppError(
             "VALIDATION",

@@ -17,6 +17,7 @@ type FieldType =
   | "money"
   | "phone"
   | "email"
+  | "url"
   | "hash";
 
 interface FieldChoice {
@@ -83,6 +84,18 @@ const SCALAR_TYPES: Record<FieldType, string> = {
   // would look precise and buy nothing: it accepts `"@"` and rejects nothing an
   // operator would actually mistype.
   email: "string",
+  // Canonical on read, anything a person types on write — a plain string for the
+  // third time, and the reason is sharpest here: a write may send the bare
+  // `acme.com` the server folds into `https://acme.com/`, so any template type
+  // describing the READ shape (`\`https://${string}\``) would reject exactly the
+  // shorthand the field type exists to accept.
+  //
+  // This map is a hand-maintained TWIN of the `FieldType` union in
+  // `@backlex/db` — a separate package, so the compiler cannot tell them apart
+  // and a missing entry is not a type error. It falls through to `unknown`,
+  // which is quiet: a generated `.d.ts` where every URL column is `unknown`
+  // still compiles and just forces a cast at every use.
+  url: "string",
   // An amount in MAJOR units plus the currency it is denominated in. Written
   // structurally rather than as a named import so the generated file stays
   // standalone — it is a `.d.ts` a consumer drops into their own project.

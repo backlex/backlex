@@ -20,6 +20,7 @@ import {
 } from "./phone";
 import { type SequenceSpec, validateSequenceSpec } from "./sequence";
 import { type TransitionSpec, validateTransitionSpec } from "./transitions";
+import { isUrlWithScheme, type UrlSpec, parseUrlForField, validateUrlSpec } from "./url";
 
 type Dialect = "pg" | "sqlite";
 
@@ -84,6 +85,23 @@ export type FieldType =
    */
   | "email"
   /**
+   * A web address, stored in a canonical serialization in the same
+   * `TEXT`/`varchar` column a plain `text` field uses — so an existing URL
+   * column becomes one of these without a migration.
+   *
+   * Whatever an operator types (`acme.com`, `HTTPS://Acme.COM`,
+   * `https://acme.com:443`) is folded on the way in: the scheme is supplied when
+   * it is missing and lowercased, the host is lowercased and encoded to its
+   * A-labels, a default port is dropped, and dot segments are resolved. That is
+   * what makes `unique` mean one endpoint, makes a lookup by the address someone
+   * reads off a page actually match, and makes the value safe to hand a fetch.
+   *
+   * With `form: "host"` the column holds a bare registrable host (`acme.com`)
+   * instead — for the columns a CRM matches a company by, which are a domain and
+   * not an address. See {@link UrlSpec} and `packages/db/src/url.ts`.
+   */
+  | "url"
+  /**
    * One-way hashed secret (password / PIN / API secret). The API hashes the
    * incoming plaintext (scrypt) on write and stores only the digest; reads
    * always return `null` (the digest never leaves the DB except in a raw
@@ -137,6 +155,9 @@ export const FIELD_TYPES = [
   // A canonical address in an ordinary text column — trimmed, folded, and with
   // an internationalized domain encoded to the A-labels a mail server resolves.
   "email",
+  // A canonical web address in an ordinary text column — scheme supplied and
+  // lowercased, host lowercased and encoded to A-labels, default port dropped.
+  "url",
   // One-way hashed secret — the write path scrypt-hashes the plaintext and
   // stores only the digest; reads return null; verification goes through
   // `POST /:slug/:id/verify`.
@@ -639,6 +660,16 @@ export interface FieldDef {
    */
   email?: EmailSpec;
   /**
+   * Configuration for a `url` field — whether the column holds a whole address
+   * or a bare host, which schemes are acceptable, and which hosts are. See
+   * {@link UrlSpec}.
+   *
+   * Optional, like `email`: a bare url field accepts any well-formed
+   * `https`/`http` address and folds it, which is the right default — a
+   * "Website" column has no business refusing a host it has not heard of.
+   */
+  url?: UrlSpec;
+  /**
    * The lifecycle this dropdown field may move through — which value is allowed
    * to follow which, who may make the move, and what the row must carry for it.
    * See {@link TransitionSpec}.
@@ -836,6 +867,19 @@ const PG_TYPES: Record<FieldType, string> = {
   // Same reasoning as `phone`, and it is what let all fifty-eight template email
   // columns convert at once: identical storage means the conversion is metadata.
   email: "varchar(255)",
+  // `text`, NOT `varchar(255)` like `phone` and `email` — the one place this
+  // type breaks their pattern, and deliberately. An address is capped at 254 by
+  // RFC 5321 and a phone number at 16 by E.164, so for those the narrow column
+  // and the validator agree. A URL has no such bound: a `canonical_url` or a
+  // `tracking_url` with campaign parameters goes past 255 routinely, and several
+  // of the template columns converting to this type are exactly those. Storing
+  // them in a `varchar(255)` would let a value pass {@link parseUrl} and then be
+  // refused by Postgres — the write-time/act-time disagreement this whole type
+  // exists to end. The cost is that converting an EXISTING pg column from `text`
+  // to `url` is a widening `ALTER` rather than pure metadata, and
+  // `applyCollection` is additive so it does not perform one; a fresh workspace
+  // gets `text` from the start. See `docs/urls.md`.
+  url: "text",
   hash: "text",
   // Presentational — never reach the DDL (the applier filters them out); these
   // placeholders only satisfy the exhaustive Record<FieldType> mapping.
@@ -862,6 +906,9 @@ const SQLITE_TYPES: Record<FieldType, string> = {
   phone: "TEXT",
   // See the PG note — same storage as `text` so a conversion needs no DDL.
   email: "TEXT",
+  // SQLite's TEXT is unbounded, so unlike Postgres there is nothing to trade —
+  // the conversion from a `text` column really is metadata only here.
+  url: "TEXT",
   hash: "TEXT",
   // Presentational — see PG_TYPES note; never emitted as DDL.
   divider: "TEXT",
@@ -1500,6 +1547,54 @@ export const validateFields = (fields: FieldDef[]): void => {
       }
       if (f.email) validateEmailSpec(f.email);
     }
+    if (f.url && f.type !== "url") {
+      throw new Error(`Field "${f.name}": "url" configuration requires a url field`);
+    }
+    if (f.type === "url") {
+      // A canonical URL is an ordinary string in an ordinary text column, so most
+      // flags behave exactly as they do on `text`. The ones that are the POINT of
+      // the type, and therefore deliberately allowed:
+      //  - unique: it finally means one endpoint. On a `text` column
+      //    `https://acme.com` and `https://acme.com/` were two rows and one site.
+      //  - indexed / searchable: the index is usable now precisely because
+      //    nothing has to fold the column first.
+      // The ones that are out:
+      for (const [flag, on] of [
+        // An embedding of a URL matches on host and path spelling, which is
+        // noise — the page's CONTENT is what anyone means to search, and this
+        // column does not hold it.
+        ["vectorize", !!f.vectorize],
+        // A web address is not a different address in French. A localized URL is
+        // a real thing, but it is a different VALUE per locale, which is what a
+        // per-locale column would have to store — and none of the folding above
+        // would then describe the column.
+        ["localized", !!f.localized],
+        // All three own the column's value by another rule, and none of them
+        // produces something that goes through the URL parser.
+        ["computed", !!f.computed],
+        ["rollup", !!f.rollup],
+        ["sequence", !!f.sequence],
+      ] as const) {
+        if (on) {
+          throw new Error(`Field "${f.name}": "${flag}" is not allowed on a url field`);
+        }
+      }
+      // A DDL default IS allowed, unlike on `email` — where it would give every
+      // unfilled row the same real person's mailbox and then mail it. A default
+      // website or a default docs link is an ordinary thing to want and reaches
+      // nobody. It still has to be a URL the field would accept.
+      if (f.default !== undefined) {
+        if (typeof f.default !== "string") {
+          throw new Error(`Field "${f.name}": a url field's default must be a string`);
+        }
+        try {
+          parseUrlForField(f.default, f.url);
+        } catch (e) {
+          throw new Error(`Field "${f.name}": default ${(e as Error).message}`);
+        }
+      }
+      if (f.url) validateUrlSpec(f.url);
+    }
     if (f.transitions) {
       // A lifecycle is a rule about what a CALLER may write, so every flag that
       // takes the column away from the caller makes it meaningless:
@@ -1686,9 +1781,11 @@ export const validateFields = (fields: FieldDef[]): void => {
   }
 };
 
-/** Canonical built-in format patterns for `validation.format`. */
+/** Canonical built-in format pattern for `validation.format: "email"`.
+ *
+ *  There is no `URL_RE` beside it any more — `format: "url"` calls {@link isUrl},
+ *  so the built-in URL check and the `url` field type cannot drift apart. */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const URL_RE = /^https?:\/\/[^\s/$.?#][^\s]*$/i;
 
 /** Shift `base` (epoch-ms) by a duration. Calendar-aware for years/months so
  *  `$now - 1 month` lands on the right day-of-month. */
@@ -1814,6 +1911,17 @@ export const validateValue = (
     }
   }
 
+  // Shape AND policy, like `email` and for the same reason: nothing a url field
+  // needs lives in a sibling column, so the scheme and host allow-lists are
+  // enforced here and a value that reaches the column has been judged completely.
+  if (field.type === "url") {
+    try {
+      parseUrlForField(value, field.url);
+    } catch (e) {
+      fail(`${field.name}: ${(e as Error).message}`);
+    }
+  }
+
   // Dropdown choice membership is enforced for any field with the interface
   // set, even when no `validation` block is configured.
   if (field.interface === "dropdown") {
@@ -1835,10 +1943,17 @@ export const validateValue = (
     // `email` is here so an admin can still narrow the type with their own
     // `regex` or a length bound. `format: "email"` is redundant on one — the
     // type already enforces a stricter envelope than that check ever did.
+    // `url` is here for the same reason as `email` — an admin may still want a
+    // length bound of their own. `format: "url"` is redundant on one, and a
+    // `regex` is worse than redundant: this runs on the RAW value, BEFORE the
+    // fold, so a pattern demanding `^https://` refuses the bare `acme.com` the
+    // type exists to accept. That is why the sixteen template columns converting
+    // to this type drop their regex rather than keep it.
     (field.type === "text" ||
       field.type === "longtext" ||
       field.type === "hash" ||
-      field.type === "email") &&
+      field.type === "email" ||
+      field.type === "url") &&
     typeof value === "string"
   ) {
     if (v.minLength !== undefined && value.length < v.minLength) {
@@ -1850,7 +1965,17 @@ export const validateValue = (
     if (v.format === "email" && !EMAIL_RE.test(value)) {
       fail(`${field.name}: must be a valid email address`);
     }
-    if (v.format === "url" && !URL_RE.test(value)) {
+    // One parser instead of a pattern of its own. This check and the `url` TYPE
+    // now judge everything after the scheme identically, which is the point: the
+    // five old answers disagreed about hosts, whitespace and credentials, so a
+    // value could pass here and be refused by the thing that was supposed to
+    // fetch it.
+    //
+    // `isUrlWithScheme`, though, NOT `isUrl` — this rule runs on a plain `text`
+    // column where nothing folds, so accepting the type's `acme.com` shorthand
+    // would let a value pass a check named "is this a URL" and then sit in the
+    // column as a string that is not one. See the note on that function.
+    if (v.format === "url" && !isUrlWithScheme(value)) {
       fail(`${field.name}: must be a valid URL`);
     }
     if (v.regex) {

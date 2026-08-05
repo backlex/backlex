@@ -243,6 +243,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Money fields (an amount and the currency it is in) | `docs/money.md` |
 | Phone fields (a number stored as canonical E.164) | `docs/phone.md` |
 | Email fields (an address stored the one way every mail server accepts) | `docs/email.md` |
+| URL fields (a web address stored the one way every client resolves it) | `docs/urls.md` |
 | Date ranges (a period, and what overlaps it) | `docs/date-ranges.md` |
 | Number/percent display formatting | `docs/number-formatting.md` |
 | Status transitions (which value a status may move to) | `docs/status-transitions.md` |

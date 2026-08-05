@@ -19,6 +19,7 @@ import { RelationPicker, AppUserPicker, FilePicker, MultiFilePicker } from "./re
 import { GeoInput } from "./field-geo-input";
 import { MoneyInput } from "./field-money-input";
 import { EmailInput } from "./field-email-input";
+import { UrlInput } from "./field-url-input";
 import { PhoneInput } from "./field-phone-input";
 import { SlugInput } from "./field-slug-input";
 import { useEnabledExtensions, useMe, useSettings } from "./queries";
@@ -1613,6 +1614,38 @@ export function ItemFields({ form, collab }: { form: ItemForm; collab?: ItemFiel
             allowedDomains={email?.allowedDomains}
             caseSensitiveLocal={email?.caseSensitiveLocal}
             display={email?.display}
+            invalid={!!err}
+          />
+          {errBlock}
+        </div>
+      );
+    }
+
+    // BEFORE the `iface === "url"` branch further down, and that ordering is
+    // load-bearing: a url field also carries `interface: "url"`, so the older
+    // plain-`<Input>` branch would claim it first and the type would appear to
+    // do nothing. Same trap `order` hit with `f.type === "integer"`.
+    if (f.type === "url") {
+      const url = (
+        f as {
+          url?: {
+            form?: "url" | "host";
+            schemes?: string[];
+            allowedHosts?: string[];
+            display?: "ascii" | "unicode";
+          };
+        }
+      ).url;
+      return (
+        <div key={f.name} className="flex min-w-0 flex-col gap-1.5">
+          {label}
+          <UrlInput
+            value={val}
+            onChange={setField}
+            form={url?.form}
+            schemes={url?.schemes}
+            allowedHosts={url?.allowedHosts}
+            display={url?.display}
             invalid={!!err}
           />
           {errBlock}

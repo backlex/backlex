@@ -92,6 +92,13 @@ import {
   type EmailDraft,
 } from "./field-email-editor";
 import {
+  cleanUrl,
+  emptyUrlDraft,
+  FieldUrlEditor,
+  urlDraftFrom,
+  type UrlDraft,
+} from "./field-url-editor";
+import {
   cleanPhone,
   emptyPhoneDraft,
   FieldPhoneEditor,
@@ -207,6 +214,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   const [moneyDraft, setMoneyDraft] = useState<MoneyDraft>(emptyMoneyDraft);
   const [phoneDraft, setPhoneDraft] = useState<PhoneDraft>(emptyPhoneDraft);
   const [emailDraft, setEmailDraft] = useState<EmailDraft>(emptyEmailDraft);
+  const [urlDraft, setUrlDraft] = useState<UrlDraft>(emptyUrlDraft);
   const [rangeDraft, setRangeDraft] = useState<RangeDraft>(emptyRangeDraft);
   const [tab, setTab] = useState("schema");
 
@@ -248,6 +256,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     setMoneyDraft(moneyDraftFrom((field as { money?: unknown }).money));
     setPhoneDraft(phoneDraftFrom((field as { phone?: unknown }).phone));
     setEmailDraft(emailDraftFrom((field as { email?: unknown }).email));
+    setUrlDraft(urlDraftFrom((field as { url?: unknown }).url));
     setRangeDraft(rangeDraftFrom((field as { range?: unknown }).range));
     setTransDraft(
       transitionsToDraft(
@@ -321,7 +330,9 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
   // Optional, unlike money's — see the note in add-field. It never blocks Save.
   const cleanedPhone = isPhone ? cleanPhone(phoneDraft) : undefined;
   const isEmail = (field?.type ?? "") === "email";
+  const isUrl = (field?.type ?? "") === "url";
   const cleanedEmail = isEmail ? cleanEmail(emailDraft) : undefined;
+  const cleanedUrl = isUrl ? cleanUrl(urlDraft) : undefined;
   const isRange = draft?.type === "timestamp";
   const cleanedRange = isRange ? cleanRange(rangeDraft) : undefined;
   // Keyed off the INTERFACE, like geo is off the type: a lifecycle is optional
@@ -413,6 +424,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
       // and the dialog would keep re-showing a setting the operator just cleared.
       ...(isPhone ? { phone: cleanedPhone as never } : {}),
       ...(isEmail ? { email: cleanedEmail as never } : {}),
+      ...(isUrl ? { url: cleanedUrl as never } : {}),
       // Sent even when undefined so clearing the end column REMOVES the stored
       // period rather than leaving the old one in place.
       ...(isRange ? { range: cleanedRange as never } : {}),
@@ -432,6 +444,7 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
     ...(isMoney ? [{ key: "money", label: t`Currency`, icon: "BarChart", invalid: !cleanedMoney } as FieldTabItem] : []),
     ...(isPhone ? [{ key: "phone", label: t`Phone`, icon: "Phone" } as FieldTabItem] : []),
     ...(isEmail ? [{ key: "email", label: t`Email`, icon: "Mail" } as FieldTabItem] : []),
+    ...(isUrl ? [{ key: "url", label: t`URL`, icon: "ExternalLink" } as FieldTabItem] : []),
     ...(isRange ? [{ key: "range", label: t`Period`, icon: "Calendar" } as FieldTabItem] : []),
     ...(hasLifecycle ? [{ key: "transitions", label: t`Lifecycle`, icon: "Share" } as FieldTabItem] : []),
     { key: "field", label: t`Field`, icon: "Pencil" },
@@ -636,6 +649,10 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
 
           {activeTab === "email" && isEmail && (
             <FieldEmailEditor value={emailDraft} onChange={setEmailDraft} />
+          )}
+
+          {activeTab === "url" && isUrl && (
+            <FieldUrlEditor value={urlDraft} onChange={setUrlDraft} />
           )}
 
           {activeTab === "money" && isMoney && (

@@ -19,6 +19,9 @@ import { formatGeoPoint, tryParseGeoPoint } from "@backlex/db/geo";
 import { formatMoney, type MoneyValue } from "@backlex/db/money";
 import { formatPhone, type PhoneDisplay } from "@backlex/db/phone";
 import { formatEmail, type EmailDisplay } from "@backlex/db/email";
+// The subpath export, not the package root — reaching `@backlex/db` from the
+// admin drags the migration bundles' `*.sql` imports into the browser build.
+import { formatUrl, type UrlDisplay, type UrlForm } from "@backlex/db/url";
 
 type FieldFormat = {
   style?: "plain" | "decimal" | "currency" | "percent" | "percent100";
@@ -44,6 +47,10 @@ export interface FormattableField {
    *  the stored value is canonical, and the only alternative rendering is the
    *  international domain decoded back into its own alphabet. */
   email?: { display?: EmailDisplay };
+  /** A url field renders through its own `display` — and needs `form` too,
+   *  because a bare host and a whole address are stored in the same column type
+   *  and render differently. */
+  url?: { display?: UrlDisplay; form?: UrlForm };
 }
 
 /** Field shape the label resolver needs. */
@@ -200,6 +207,13 @@ export const formatFieldValue = (
   // caller receives from the API — the column holds the deliverable form.
   if (field.type === "email") {
     return formatEmail(value, field.email?.display);
+  }
+  // Same again for a web address — and the FORM has to be passed too, not just
+  // the display. A stored bare host is a string the URL parser accepts once its
+  // scheme autofill has run, so rendering one without saying which form the
+  // column holds prints `https://acme.com/` in a cell whose value is `acme.com`.
+  if (field.type === "url") {
+    return formatUrl(value, field.url?.display, field.url?.form);
   }
   const f = field.format;
   if (f) {

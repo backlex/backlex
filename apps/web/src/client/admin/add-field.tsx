@@ -89,6 +89,12 @@ import {
   type EmailDraft,
 } from "./field-email-editor";
 import {
+  cleanUrl,
+  emptyUrlDraft,
+  FieldUrlEditor,
+  type UrlDraft,
+} from "./field-url-editor";
+import {
   cleanPhone,
   emptyPhoneDraft,
   FieldPhoneEditor,
@@ -189,6 +195,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   );
   const [phoneDraft, setPhoneDraft] = useState<PhoneDraft>(emptyPhoneDraft);
   const [emailDraft, setEmailDraft] = useState<EmailDraft>(emptyEmailDraft);
+  const [urlDraft, setUrlDraft] = useState<UrlDraft>(emptyUrlDraft);
   const [rangeDraft, setRangeDraft] = useState<RangeDraft>(emptyRangeDraft);
   const [seqDraft, setSeqDraft] = useState<SequenceDraft>(() =>
     emptySequenceDraft(browserTimeZone()),
@@ -211,6 +218,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       // carry into the next one.
       setPhoneDraft(emptyPhoneDraft());
       setEmailDraft(emptyEmailDraft());
+      setUrlDraft(emptyUrlDraft());
       setRangeDraft(emptyRangeDraft());
       setSeqDraft(emptySequenceDraft(browserTimeZone()));
       setStep(1);
@@ -347,6 +355,9 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   // Optional too, and more so than phone's: a bare email field already folds
   // every address, which is the whole point of the type. The tab only narrows.
   const cleanedEmail = def.hasEmail ? cleanEmail(emailDraft) : undefined;
+  // Optional for the same reason as email's: a bare url field already folds
+  // every address. The tab only narrows.
+  const cleanedUrl = def.hasUrl ? cleanUrl(urlDraft) : undefined;
   // Optional like phone's and geo's: a date field that declares no period is
   // just a date field, which is the common case. Never blocks Save.
   const cleanedRange = def.hasRange ? cleanRange(rangeDraft) : undefined;
@@ -437,6 +448,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       ...(cleanedMoney ? { money: cleanedMoney } : {}),
       ...(cleanedPhone ? { phone: cleanedPhone } : {}),
       ...(cleanedEmail ? { email: cleanedEmail } : {}),
+      ...(cleanedUrl ? { url: cleanedUrl } : {}),
       ...(cleanedRange ? { range: cleanedRange } : {}),
       ...(conditions.length ? { conditions } : {}),
       ...(validation ? { validation } : {}),
@@ -462,6 +474,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       : []),
     ...(def.hasPhone ? [{ key: "phone", label: t`Phone`, icon: "Phone" } as FieldTabItem] : []),
     ...(def.hasEmail ? [{ key: "email", label: t`Email`, icon: "Mail" } as FieldTabItem] : []),
+    ...(def.hasUrl ? [{ key: "url", label: t`URL`, icon: "ExternalLink" } as FieldTabItem] : []),
     ...(def.hasRange ? [{ key: "range", label: t`Period`, icon: "Calendar" } as FieldTabItem] : []),
     ...(def.hasTransitions
       ? [{ key: "transitions", label: t`Lifecycle`, icon: "Share" } as FieldTabItem]
@@ -772,6 +785,10 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
 
             {activeTab === "email" && def.hasEmail && (
               <FieldEmailEditor value={emailDraft} onChange={setEmailDraft} />
+            )}
+
+            {activeTab === "url" && def.hasUrl && (
+              <FieldUrlEditor value={urlDraft} onChange={setUrlDraft} />
             )}
 
             {activeTab === "range" && def.hasRange && (

@@ -101,6 +101,7 @@ export default defineConfig({
             { slug: "money" },
             { slug: "phone" },
             { slug: "email" },
+            { slug: "urls" },
             { slug: "date-ranges" },
             { slug: "number-formatting" },
             { slug: "status-transitions" },

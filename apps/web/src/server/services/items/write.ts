@@ -22,6 +22,7 @@ import {
 import { normalizeGeoFields } from "./geo-fields";
 import { assertCurrencyChangeIsSafe, canonicalizeMoneyFields } from "./money-fields";
 import { canonicalizeEmailFields } from "./email-fields";
+import { canonicalizeUrlFields } from "./url-fields";
 import { canonicalizePhoneFields } from "./phone-fields";
 import { applyAutoGeocode, patchTouchesSources } from "./geocode";
 import { hashIncomingFields, scrubHashFields, scrubPrivateFields } from "./hash-fields";
@@ -258,6 +259,10 @@ export const performCreate = async (
     // reason a third time. A create that echoed back `  Ada@Example.COM ` would
     // hand the caller a string that does not equal the row it just made.
     canonicalizeEmailFields(data, collection.fields);
+    // …and every web address, for the same reason a fourth time. A create that
+    // echoed back the `Acme.COM` the caller sent would hand them a string that
+    // does not equal the row it just made.
+    canonicalizeUrlFields(data, collection.fields);
   } catch (e) {
     throw new AppError("VALIDATION", (e as Error).message);
   }
@@ -573,6 +578,9 @@ export const performUpdate = async (
     // Email needs no `existing` — an address carries everything required to
     // fold it, which is the same asymmetry that spared it a read edge.
     canonicalizeEmailFields(patch, collection.fields);
+    // URL needs no `existing` either, and for the same reason as email: an
+    // address carries everything required to fold it.
+    canonicalizeUrlFields(patch, collection.fields);
   } catch (e) {
     throw new AppError("VALIDATION", (e as Error).message);
   }

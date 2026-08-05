@@ -174,8 +174,6 @@ export type SampleRow = Record<string, SampleValue>;
 
 /* ───────────────────────────── field helpers ───────────────────────────── */
 
-const URL_RE = "^https?://.+";
-
 /** Semantic badge colors for status/priority dropdowns. */
 const C = {
   green: "#16a34a",
@@ -212,7 +210,36 @@ const relMany = (name: string, to: string, extra: Partial<FieldDef> = {}): Field
  * and unlike money, which could convert only 51 of 182.
  */
 const email = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "email", interface: "email", ...extra });
-const url = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "text", interface: "url", validation: { regex: URL_RE }, ...extra });
+/**
+ * A web address — a `url` field, and NO `validation.regex`.
+ *
+ * Every one of these columns used to be `text` carrying the string
+ * `"^https?://.+"`. Dropping the regex is not a relaxation, it is what makes the
+ * type work: `validateValue` runs on the RAW value, BEFORE the write path folds
+ * it, so a pattern demanding a scheme rejects the bare `acme.com` an operator
+ * types into a box labelled "Website" — and the fold that would have turned it
+ * into `https://acme.com/` never gets to run. A canonicalizing field and a
+ * validating regex on the same column are mutually exclusive; the fold IS the
+ * validator, and it is a stricter one than the pattern ever was.
+ *
+ * All sixteen columns converted at once. On SQLite that is pure metadata (TEXT
+ * either way); on Postgres the column widens from `varchar(255)` to `text`,
+ * which several of these needed anyway — a `canonical_url` or a `tracking_url`
+ * with campaign parameters goes past 255 routinely.
+ */
+const url = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "url", interface: "url", ...extra });
+/**
+ * A bare registrable domain — `acme.com`, not `https://acme.com/`.
+ *
+ * The two columns this serves (`crm.companies.domain`,
+ * `support.organizations.domain`) are what a CRM matches a company by, which is
+ * the right-hand side of an email address and not an address of its own. Under
+ * the old shared regex they were forced to hold a scheme, which is why both
+ * templates' sample rows said `https://acme.example` in a column named `domain`
+ * and why typing `acme.com` into one returned a 422. The schema was distorted to
+ * satisfy a validator that was wrong for it.
+ */
+const host = (name: string, extra: Partial<FieldDef> = {}): FieldDef => ({ name, type: "url", interface: "url", url: { form: "host" }, ...extra });
 /**
  * An amount in a collection that has no currency column of its own — still a
  * plain `number`.
@@ -1830,7 +1857,7 @@ export const TEMPLATES: SchemaTemplate[] = [
         slug: "companies", group: "People", singular: "Company", plural: "Companies", defaultSort: "name",
         fields: stacked(
           sec("Company", [
-            ...half(text("name", { required: true }), url("domain")),
+            ...half(text("name", { required: true }), host("domain")),
             ...half(
               text("industry"),
               select("type", [ch("prospect", C.gray), ch("customer", C.green), ch("partner", C.blue), ch("reseller", C.teal), ch("vendor", C.purple), ch("other", C.slate)], { default: "prospect" }),
@@ -1844,8 +1871,8 @@ export const TEMPLATES: SchemaTemplate[] = [
           ]),
         ),
         samples: [
-          { name: "Acme Inc", domain: "https://acme.example", industry: "Manufacturing", type: "customer", lifecycle_stage: "customer", employees: 250, annual_revenue: 12000000, city: "Austin", country: "US" },
-          { name: "Globex", domain: "https://globex.example", industry: "Energy", type: "prospect", lifecycle_stage: "opportunity", employees: 1200, annual_revenue: 80000000, city: "Denver", country: "US" },
+          { name: "Acme Inc", domain: "acme.example", industry: "Manufacturing", type: "customer", lifecycle_stage: "customer", employees: 250, annual_revenue: 12000000, city: "Austin", country: "US" },
+          { name: "Globex", domain: "globex.example", industry: "Energy", type: "prospect", lifecycle_stage: "opportunity", employees: 1200, annual_revenue: 80000000, city: "Denver", country: "US" },
         ],
       },
       {
@@ -2201,8 +2228,8 @@ export const TEMPLATES: SchemaTemplate[] = [
     collections: [
       {
         slug: "organizations", group: "People", singular: "Organization", plural: "Organizations", defaultSort: "name",
-        fields: [...half(text("name", { required: true }), url("domain")), notes("notes")],
-        samples: [{ name: "Acme Inc", domain: "https://acme.example" }],
+        fields: [...half(text("name", { required: true }), host("domain")), notes("notes")],
+        samples: [{ name: "Acme Inc", domain: "acme.example" }],
       },
       {
         slug: "customers", group: "People", singular: "Customer", plural: "Customers", defaultSort: "name",
@@ -3092,7 +3119,7 @@ export const TEMPLATES: SchemaTemplate[] = [
           url("website"),
           notes("notes"),
         ],
-        samples: [{ name: "Acme Corp", contact_name: "Alex Chen", email: "alex@acme.example", website: "https://acme.example" }],
+        samples: [{ name: "Acme Corp", contact_name: "Alex Chen", email: "alex@acme.example", website: "https://acme.example/" }],
       },
       {
         slug: "projects", group: "Planning", singular: "Project", plural: "Projects", defaultSort: "name",

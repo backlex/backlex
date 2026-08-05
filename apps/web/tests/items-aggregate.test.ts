@@ -287,3 +287,90 @@ describe("items aggregate: a filter must name a real column", () => {
     expect(JSON.parse(sys.text).data[0].value).toBe(2);
   });
 });
+
+/**
+ * A filter key must be a column the caller may READ.
+ *
+ * The agg target and `groupBy` were gated by the read permission's field
+ * allow-list; filter keys were not. So a caller who could read `orders` but not
+ * its `salary` column could still narrow on it — `{salary: {_gte: N}}` at a few
+ * values of N binary-searches the value out of the row counts. The number never
+ * appears in the response, which is exactly why it went unnoticed.
+ */
+describe("items aggregate: a filter key is gated by the field allow-list", () => {
+  let h: TestHarness;
+  const ts = Date.now();
+  const slug = `agggate_${ts}`;
+  const json = (body: unknown) => ({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    await h.fetch(
+      "/api/collections",
+      json({
+        slug,
+        fields: [
+          { name: "name", type: "text" },
+          { name: "salary", type: "integer" },
+        ],
+      }),
+    );
+    for (const [name, salary] of [
+      ["ada", 100],
+      ["grace", 900],
+    ] as const) {
+      await h.fetch(`/api/items/${slug}`, json({ name, salary }));
+    }
+
+    const roles = (
+      (await (await h.fetch("/api/roles")).json()) as { data: { id: string; name: string }[] }
+    ).data;
+    const authRoleId = roles.find((r) => r.name === "authenticated")!.id;
+    // Read everything EXCEPT `salary`.
+    await h.fetch(
+      `/api/roles/${authRoleId}/permissions`,
+      json({ collection: slug, action: "read", condition: null, fields: ["name"] }),
+    );
+
+    await h.fetch("/api/auth/sign-out", { method: "POST" });
+    await h.fetch(
+      "/api/auth/sign-up/email",
+      json({
+        email: `member-${ts}@example.test`,
+        password: "correct-horse-battery",
+        name: "Member",
+      }),
+    );
+  });
+  afterAll(() => h.cleanup());
+
+  const agg = async (body: unknown) => {
+    const res = await h.fetch(`/api/items/${slug}/aggregate`, json(body));
+    return { status: res.status, text: await res.text() };
+  };
+
+  test("filtering on a field outside the allow-list is FORBIDDEN", async () => {
+    const { status, text } = await agg({ agg: "count", filter: { salary: { _gte: 500 } } });
+    expect(status).toBe(403);
+    expect(text).toContain("salary");
+  });
+
+  test("the same is true nested under a combinator", async () => {
+    const { status } = await agg({
+      agg: "count",
+      filter: { $and: [{ name: { _eq: "ada" } }, { salary: { _gte: 500 } }] },
+    });
+    expect(status).toBe(403);
+  });
+
+  test("a readable field still filters, so the gate is not blanket", async () => {
+    const { status, text } = await agg({ agg: "count", filter: { name: { _eq: "ada" } } });
+    expect(status).toBe(200);
+    expect(JSON.parse(text).data[0].value).toBe(1);
+  });
+});

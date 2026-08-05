@@ -29,8 +29,9 @@ import { queryAll } from "./sql-helpers";
  * Permission posture: panels call this admin-only with no `perm` opts (legacy
  * behavior — tenant scope only). The REST endpoint passes the caller's resolved
  * read permission (`whereSql` AND-ed into the query; `fields` allow-list gating
- * the agg target + groupBy), so a non-admin can never aggregate over rows or
- * columns they can't read.
+ * the agg target, groupBy AND every filter key), so a non-admin can never
+ * aggregate over rows or columns they can't read — including by narrowing on a
+ * hidden column and reading its value out of the row counts.
  */
 
 /**
@@ -47,19 +48,22 @@ const assertKnownFilterColumns = (
   isKnownColumn: (name: string) => boolean,
   collection: string,
   columnHint: () => string,
+  gateField: (name: string) => void,
 ): void => {
+  const recurse = (c: unknown) =>
+    assertKnownFilterColumns(c, isKnownColumn, collection, columnHint, gateField);
   if (cond === null || typeof cond !== "object") return;
   const node = cond as Record<string, unknown>;
   if (Array.isArray(node.$and)) {
-    for (const c of node.$and) assertKnownFilterColumns(c, isKnownColumn, collection, columnHint);
+    for (const c of node.$and) recurse(c);
     return;
   }
   if (Array.isArray(node.$or)) {
-    for (const c of node.$or) assertKnownFilterColumns(c, isKnownColumn, collection, columnHint);
+    for (const c of node.$or) recurse(c);
     return;
   }
   if (node.$not !== undefined) {
-    assertKnownFilterColumns(node.$not, isKnownColumn, collection, columnHint);
+    recurse(node.$not);
     return;
   }
   for (const key of Object.keys(node)) {
@@ -75,6 +79,15 @@ const assertKnownFilterColumns = (
         `Filter field "${key}" is not in collection "${collection}". Valid columns: ${columnHint()}`,
       );
     }
+    // …and it must be a column this caller may READ.
+    //
+    // The agg target and groupBy were already gated; a filter key was not, so a
+    // caller holding a field allow-list could narrow on a column outside it and
+    // read the excluded value out of the counts — ask for
+    // `{salary: {_gte: N}}` at a few values of N and the row count binary-
+    // searches it. The value never appears in the response, which is exactly
+    // why it went unnoticed.
+    gateField(key);
   }
 };
 
@@ -291,7 +304,7 @@ export const runItemsAggregate = async (
     // That is the exact shape of a confidently wrong number: a stale filter
     // column on a dashboard tile, or a KPI written against a schema that has
     // since been renamed, reports a total nobody has reason to doubt.
-    assertKnownFilterColumns(cond, isKnownColumn, cfg.collection, columnHint);
+    assertKnownFilterColumns(cond, isKnownColumn, cfg.collection, columnHint, gateField);
     wheres.push(
       compileCondition(cond, auth, undefined, undefined, {
         dialect: ctx.dialect,

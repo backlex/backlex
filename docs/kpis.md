@@ -99,6 +99,29 @@ The two halves are gated differently on purpose:
   exactly mirroring `POST /items/{slug}/aggregate`. A tile is never a way around
   a row-level condition.
 
+## On a dashboard
+
+A panel of `kind: "kpi"` stores only `config.kpi` (the slug) and an optional
+`config.rangeDays`. It carries no formula of its own — that is the point. A
+panel that stored its own arithmetic would be a second opinion about what the
+figure means, and the two drift the first time either is edited.
+
+```json
+{ "name": "Net revenue", "kind": "kpi", "viz": "counter",
+  "config": { "kpi": "net-revenue", "rangeDays": 30 } }
+```
+
+The tile flattens onto the `{label, value}` shape every panel visualisation
+already renders, keeping `previousValue` / `delta` / `deltaPct` alongside for
+the ones that show a comparison. A panel pointing at a deleted definition
+renders the `NOT_FOUND` as a panel error rather than an empty tile that looks
+like a legitimate zero.
+
+Three separate paths execute a panel — `/panels/preview`, `/panels/{id}/run`,
+and the dashboard runner — and all three handle the kind. (Wiring only two of
+them left every saved tile stuck on "No data yet", which is why the surfaces
+test now covers each one.)
+
 ## Ask AI
 
 The planner is given the workspace's KPI list in its prompt and told to prefer

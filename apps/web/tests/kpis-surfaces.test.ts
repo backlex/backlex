@@ -215,6 +215,117 @@ describe("kpis: MCP tools resolve through the same service as REST", () => {
   });
 });
 
+/**
+ * A `kpi` panel stores only a slug. The assertions that matter are that it
+ * resolves to the SAME figure the run endpoint gives (otherwise the tile is a
+ * second opinion, which is the thing being removed), and that a panel pointing
+ * at a deleted definition fails loudly instead of rendering a plausible zero.
+ */
+describe("kpis: dashboard panels read the definition", () => {
+  let h: TestHarness;
+  const slug = `kpipanel_${Date.now()}`;
+  let dashboardId = "";
+
+  const post = (path: string, body: unknown) =>
+    h.fetch(path, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    await post("/api/collections", {
+      slug,
+      fields: [{ name: "total", type: "integer" }],
+    });
+    for (const total of [5, 15]) await post(`/api/items/${slug}`, { total });
+    await post("/api/admin/kpis", {
+      slug: "panel-total",
+      name: "Panel total",
+      collection: slug,
+      agg: "sum",
+      field: "total",
+    });
+    const dash = await (await post("/api/admin/dashboards", { name: "KPI board" })).json();
+    dashboardId = (dash as { data: { id: string } }).data.id;
+  });
+  afterAll(() => h.cleanup());
+
+  test("preview of an unsaved kpi panel returns the definition's value", async () => {
+    const res = await post("/api/admin/panels/preview", {
+      kind: "kpi",
+      config: { kpi: "panel-total" },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: Array<{ value: number }> };
+    expect(body.data[0]!.value).toBe(20);
+  });
+
+  test("a saved kpi panel renders the same number the run endpoint gives", async () => {
+    const created = await post("/api/admin/panels", {
+      name: "Total tile",
+      kind: "kpi",
+      viz: "counter",
+      config: { kpi: "panel-total" },
+      dashboardId,
+    });
+    expect(created.status).toBe(201);
+
+    const run = await (
+      await h.fetch(`/api/admin/dashboards/${dashboardId}/run`, { method: "POST" })
+    ).json();
+    const panel = (run as { data: Array<{ name: string; data: Array<{ value: number }> }> }).data.find(
+      (p) => p.name === "Total tile",
+    );
+    expect(panel?.data[0]?.value).toBe(20);
+
+    const direct = (await (await h.fetch("/api/admin/kpis/panel-total/run")).json()) as {
+      data: { point: { value: number } };
+    };
+    expect(panel?.data[0]?.value).toBe(direct.data.point.value);
+  });
+
+  test("the saved-panel run endpoint resolves a kpi panel too", async () => {
+    // There are THREE paths that execute a panel — preview, the dashboard
+    // runner, and this per-panel endpoint the Insights grid calls. Adding the
+    // kind to only two of them left every saved tile stuck on "No data yet"
+    // with no error to explain it, which no dashboard-level test caught.
+    const created = (await (
+      await post("/api/admin/panels", {
+        name: "Solo tile",
+        kind: "kpi",
+        viz: "counter",
+        config: { kpi: "panel-total" },
+      })
+    ).json()) as { data: { id: string } };
+    const res = await h.fetch(`/api/admin/panels/${created.data.id}/run`, { method: "POST" });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: Array<{ value: number }> };
+    expect(body.data[0]!.value).toBe(20);
+  });
+
+  test("a panel pointing at a missing KPI reports the error rather than a zero", async () => {
+    await post("/api/admin/panels", {
+      name: "Broken tile",
+      kind: "kpi",
+      viz: "counter",
+      config: { kpi: "no-such-kpi" },
+      dashboardId,
+    });
+    const run = await (
+      await h.fetch(`/api/admin/dashboards/${dashboardId}/run`, { method: "POST" })
+    ).json();
+    const panel = (run as {
+      data: Array<{ name: string; data: unknown[]; error?: string }>;
+    }).data.find((p) => p.name === "Broken tile");
+    expect(panel?.data).toEqual([]);
+    expect(panel?.error).toContain("not found");
+  });
+
+  test("a kpi panel with no slug is refused rather than saved half-formed", async () => {
+    const res = await post("/api/admin/panels/preview", { kind: "kpi", config: {} });
+    expect(res.status).toBe(422);
+  });
+});
+
 describe("kpis: SDK + CLI reach the feature", () => {
   const ROOT = join(import.meta.dir, "../../..");
 

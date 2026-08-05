@@ -25,10 +25,12 @@ import {
   collectionsApi,
   dashboardsApi,
   dbAdminApi,
+  kpisApi,
   panelsApi,
   rolesApi,
   type ApiCollection,
   type ApiDashboard,
+  type ApiKpi,
   type ApiPanel,
   type ApiRole,
 } from "../api";
@@ -326,10 +328,11 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
       const nextLayouts: Record<string, Layout> = {};
       for (const p of list) if (p.layout) nextLayouts[p.id] = p.layout;
       setLayouts(nextLayouts);
-      // Run each SQL/items-aggregate panel in parallel; static panels render
-      // from their config without a server roundtrip.
+      // Run each server-backed panel in parallel; static panels render from
+      // their config without a roundtrip. `kpi` belongs here — omitting it
+      // would leave those tiles permanently blank with no error to explain it.
       const runs = await Promise.allSettled(
-        list.filter((p) => p.kind === "sql" || p.kind === "items-aggregate").map(async (p) => {
+        list.filter((p) => p.kind === "sql" || p.kind === "items-aggregate" || p.kind === "kpi").map(async (p) => {
           try {
             const out = await panelsApi.run(p.id);
             return { id: p.id, data: out.data, error: null as string | null };
@@ -582,7 +585,7 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
 
 const SAMPLE_PANEL_SQL = "SELECT COUNT(*) AS n FROM user;";
 
-type PanelKind = "sql" | "items-aggregate" | "static";
+type PanelKind = "sql" | "items-aggregate" | "kpi" | "static";
 type PanelViz =
   | "counter"
   | "sparkline"
@@ -687,6 +690,14 @@ function PanelEditorDialog({
   const [kind, setKind] = useState<PanelKind>((panel?.kind as PanelKind) ?? "items-aggregate");
   const [viz, setViz] = useState<PanelViz>((panel?.viz as PanelViz) ?? "counter");
   const [sqlText, setSqlText] = useState<string>(panel?.sql ?? SAMPLE_PANEL_SQL);
+  // `kpi` panels store only a slug + a window; the formula stays in the KPI.
+  const [kpiSlug, setKpiSlug] = useState<string>(
+    (panel?.config as { kpi?: string } | null)?.kpi ?? "",
+  );
+  const [kpiRangeDays, setKpiRangeDays] = useState<string>(
+    String((panel?.config as { rangeDays?: number } | null)?.rangeDays ?? 30),
+  );
+  const [kpiOptions, setKpiOptions] = useState<ApiKpi[]>([]);
   const [busy, setBusy] = useState(false);
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
   const [topError, setTopError] = useState<string | null>(null);
@@ -731,6 +742,19 @@ function PanelEditorDialog({
     })();
     return () => { cancelled = true; };
   }, [agg.collection]);
+
+  // The workspace's KPI definitions, for the `kpi` kind's picker. Loaded on
+  // mount alongside collections so switching kind doesn't stall on a fetch.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await kpisApi.list();
+        if (!cancelled) setKpiOptions(r.data ?? []);
+      } catch { /* leave empty; the field explains there are none */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Live preview state.
   type PreviewResult = { rows: Record<string, unknown>[]; ms: number };
@@ -799,7 +823,10 @@ function PanelEditorDialog({
     !nameError &&
     !descError &&
     (kind !== "sql" || !sqlError) &&
-    (kind !== "items-aggregate" || Object.keys(aggError).length === 0);
+    (kind !== "items-aggregate" || Object.keys(aggError).length === 0) &&
+    // A `kpi` panel with no slug would save as a tile that can only ever
+    // render an error, so the save is blocked instead.
+    (kind !== "kpi" || kpiSlug.length > 0);
 
   // One-line "what feeds the chart" hint shown under the Visualization picker.
   const vizHint =
@@ -857,6 +884,28 @@ function PanelEditorDialog({
       }
       return;
     }
+    if (kind === "kpi") {
+      if (!kpiSlug) {
+        setPreview(null);
+        setPreviewError(t`Pick a KPI first.`);
+        return;
+      }
+      setPreviewBusy(true);
+      setPreviewError(null);
+      try {
+        const r = await panelsApi.preview({
+          kind: "kpi",
+          config: { kpi: kpiSlug, rangeDays: Number(kpiRangeDays) || 30 },
+        });
+        setPreview({ rows: r.data ?? [], ms: r.ms ?? 0 });
+      } catch (e) {
+        setPreview(null);
+        setPreviewError((e as Error).message);
+      } finally {
+        setPreviewBusy(false);
+      }
+      return;
+    }
     if (kind === "items-aggregate") {
       if (Object.keys(aggError).length > 0) {
         setPreview(null);
@@ -893,7 +942,12 @@ function PanelEditorDialog({
         kind,
         sql: kind === "sql" ? sqlText : null,
         viz,
-        config: kind === "items-aggregate" ? composeAggregateConfig() : null,
+        config:
+          kind === "items-aggregate"
+            ? composeAggregateConfig()
+            : kind === "kpi"
+              ? { kpi: kpiSlug, rangeDays: Number(kpiRangeDays) || 30 }
+              : null,
         layout: null,
       };
       if (mode === "create") {
@@ -975,13 +1029,14 @@ function PanelEditorDialog({
                 onChange={(v) => { setKind(v as PanelKind); setPreview(null); setPreviewError(null); clearServerError("kind"); }}
                 options={[
                   { value: "items-aggregate", label: "collection", hint: t`count / sum / average over a collection — no SQL` },
+                  { value: "kpi", label: "kpi", hint: t`show a defined KPI — same number as Ask AI and reports` },
                   { value: "sql", label: "sql", hint: t`read-only SELECT against the workspace database` },
                   { value: "static", label: "static", hint: t`config-only panel rendered from props` },
                 ]}
               />
               {serverErrors.kind
                 ? <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{serverErrors.kind}</div>
-                : <span className="text-[11.5px] text-muted-foreground">{kind === "items-aggregate" ? <Trans>Pick a collection and an aggregate below — no query to write.</Trans> : kind === "sql" ? <Trans>Write a read-only SELECT below.</Trans> : <Trans>Set the config object via the API once the panel exists.</Trans>}</span>}
+                : <span className="text-[11.5px] text-muted-foreground">{kind === "items-aggregate" ? <Trans>Pick a collection and an aggregate below — no query to write.</Trans> : kind === "kpi" ? <Trans>The formula stays in the KPI, so this tile can never disagree with it.</Trans> : kind === "sql" ? <Trans>Write a read-only SELECT below.</Trans> : <Trans>Set the config object via the API once the panel exists.</Trans>}</span>}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Visualization</Trans></label>
@@ -999,6 +1054,62 @@ function PanelEditorDialog({
                 : <span className="text-[11.5px] text-muted-foreground">{vizHint}</span>}
             </div>
           </div>
+
+          {kind === "kpi" && (
+            <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>KPI</Trans></label>
+                <Select
+                  value={kpiSlug}
+                  onChange={(v) => { setKpiSlug(v); setPreview(null); setPreviewError(null); }}
+                  options={kpiOptions.map((k) => ({
+                    value: k.slug,
+                    label: k.name,
+                    hint: k.agg === "count" ? `count over ${k.collection}` : `${k.agg}(${k.field ?? "?"}) over ${k.collection}`,
+                  }))}
+                  placeholder={kpiOptions.length ? t`Pick a KPI` : t`No KPIs defined yet`}
+                  disabled={kpiOptions.length === 0}
+                  className="w-full min-w-0"
+                />
+                <span className="text-[11.5px] text-muted-foreground">
+                  {kpiOptions.length === 0
+                    ? <Trans>Define one on the KPIs page first.</Trans>
+                    : <Trans>Editing the KPI updates this tile and every other surface at once.</Trans>}
+                </span>
+              </div>
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Window</Trans></label>
+                <Select
+                  value={kpiRangeDays}
+                  onChange={(v) => { setKpiRangeDays(v); setPreview(null); setPreviewError(null); }}
+                  options={[
+                    { value: "1", label: t`Today` },
+                    { value: "7", label: t`7 days` },
+                    { value: "30", label: t`30 days` },
+                    { value: "90", label: t`90 days` },
+                  ]}
+                  className="w-full min-w-0"
+                />
+                <span className="text-[11.5px] text-muted-foreground">
+                  <Trans>Ignored by a KPI with no date column — it reports a running total.</Trans>
+                </span>
+              </div>
+              <div className="col-span-2 flex justify-end max-[640px]:col-span-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon={I.Play}
+                  onClick={runPreview}
+                  disabled={previewBusy || !kpiSlug}
+                >
+                  {previewBusy ? <Trans>Running…</Trans> : <Trans>Run preview</Trans>}
+                </Button>
+              </div>
+              <div className="col-span-2 max-[640px]:col-span-1">
+                <PreviewBlock viz={viz} preview={preview} previewError={previewError} />
+              </div>
+            </div>
+          )}
 
           {kind === "sql" && (
             <>

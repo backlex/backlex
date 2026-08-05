@@ -15,11 +15,16 @@ import {
 // Shared with the dashboard runner + the public embed, so an `analytics` panel
 // renders identically wherever it's drawn.
 import { runAnalyticsPanel } from "../services/dashboards";
+import { requireKpi, runKpiForCaller } from "../services/kpis";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.savedPanels : sqlite.schema.savedPanels;
 
-const PANEL_KINDS = ["sql", "items-aggregate", "analytics", "static"] as const;
+// `kpi` carries no formula of its own — only `config.kpi`, the slug of a
+// definition. That is the point: a panel that stores its own arithmetic is a
+// second opinion about what the figure means, and the two drift the first time
+// one of them is edited.
+const PANEL_KINDS = ["sql", "items-aggregate", "analytics", "kpi", "static"] as const;
 const PANEL_VIZES = [
   "sparkline",
   "line",
@@ -85,7 +90,7 @@ const PanelRow = z
 
 const PreviewInput = z
   .object({
-    kind: z.enum(["sql", "items-aggregate", "analytics"]),
+    kind: z.enum(["sql", "items-aggregate", "analytics", "kpi"]),
     sql: z.string().optional(),
     config: z.unknown().optional(),
   })
@@ -350,10 +355,24 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         const out = await runAnalyticsPanel(ctx, tenantId, body.config);
         return c.json({ data: out, ms: Date.now() - t0 });
       }
+      if (body.kind === "kpi") {
+        const t0 = Date.now();
+        const cfg = (body.config ?? {}) as { kpi?: unknown; rangeDays?: unknown };
+        const ref = typeof cfg.kpi === "string" ? cfg.kpi : "";
+        if (!ref) throw new AppError("VALIDATION", "KPI panel needs `config.kpi` (a slug)");
+        const kpi = await requireKpi(ctx, tenantId, ref);
+        const result = await runKpiForCaller(ctx, auth, tenantId, kpi, {
+          rangeDays: Number(cfg.rangeDays) || undefined,
+        });
+        const out = result.rows
+          ? result.rows.map((r) => ({ ...r }))
+          : [{ label: result.name, ...(result.point ?? {}) }];
+        return c.json({ data: out, ms: Date.now() - t0 });
+      }
       if (body.kind !== "sql" || !body.sql) {
         throw new AppError(
           "VALIDATION",
-          `Preview only supports kind "sql", "items-aggregate" or "analytics" (got "${body.kind ?? "unknown"}")`,
+          `Preview only supports kind "sql", "items-aggregate", "analytics" or "kpi" (got "${body.kind ?? "unknown"}")`,
         );
       }
       if (!isReadOnly(body.sql)) {
@@ -419,6 +438,22 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (panel.kind === "analytics") {
         const t0 = Date.now();
         const out = await runAnalyticsPanel(ctx, tenantId, panel.config);
+        return c.json({ data: out, ms: Date.now() - t0 });
+      }
+
+      if (panel.kind === "kpi") {
+        const t0 = Date.now();
+        const ref = (panel.config as { kpi?: unknown } | null)?.kpi;
+        if (typeof ref !== "string" || !ref) {
+          throw new AppError("VALIDATION", "KPI panel has no `config.kpi` slug");
+        }
+        const kpi = await requireKpi(ctx, tenantId, ref);
+        const result = await runKpiForCaller(ctx, auth, tenantId, kpi, {
+          rangeDays: Number((panel.config as { rangeDays?: unknown }).rangeDays) || undefined,
+        });
+        const out = result.rows
+          ? result.rows.map((r) => ({ ...r }))
+          : [{ label: result.name, ...(result.point ?? {}) }];
         return c.json({ data: out, ms: Date.now() - t0 });
       }
 

@@ -998,6 +998,7 @@ msgstr "3:2 standart"
 msgid "3. Enter a code to confirm"
 msgstr "3. Onaylamak için bir kod girin"
 
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "30 days"
@@ -1024,11 +1025,13 @@ msgstr "5xx {0}"
 msgid "5xx responses"
 msgstr "5xx yanıtlar"
 
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "7 days"
 msgstr "7 gün"
 
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "90 days"
@@ -4748,6 +4751,10 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 msgid "Define a figure once — revenue, open tickets, refund rate — and every panel, report and AI answer will quote the same number instead of re-deriving it."
 msgstr "Bir göstergeyi bir kez tanımlayın — ciro, açık talepler, iade oranı — her panel, rapor ve AI yanıtı aynı sayıyı yeniden türetmek yerine ondan okusun."
 
+#: src/client/admin/parity/insights.tsx
+msgid "Define one on the KPIs page first."
+msgstr "Önce KPI'lar sayfasında bir tane tanımlayın."
+
 #: src/client/admin/app.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/item-editor.tsx
@@ -5632,6 +5639,10 @@ msgstr "<0>{0}</0> düzenleniyor."
 #: src/client/admin/collection-settings.tsx
 msgid "Editing a <0>published</0> item stages the change instead of updating what's live — readers keep the current version until you publish again, which applies the staged changes. Drafts still edit directly."
 msgstr "<0>Yayında</0> olan bir kaydı düzenlemek, canlı içeriği değiştirmek yerine değişikliği beklemeye alır — siz yeniden yayınlayana kadar okuyucular mevcut sürümü görmeye devam eder; yayınlamak bekleyen değişiklikleri uygular. Taslaklar doğrudan düzenlenir."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Editing the KPI updates this tile and every other surface at once."
+msgstr "KPI'ı düzenlemek bu kartı ve diğer tüm yüzeyleri aynı anda günceller."
 
 #: src/client/admin/role-editor.tsx
 msgid "editor"
@@ -7545,6 +7556,10 @@ msgstr "Yoksay"
 msgid "Ignored"
 msgstr "Yoksayıldı"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Ignored by a KPI with no date column — it reports a running total."
+msgstr "Tarih sütunu olmayan KPI bunu yok sayar — yürüyen toplam gösterir."
+
 #: src/client/admin/pages/forms.tsx
 msgid "Images"
 msgstr "Görseller"
@@ -8195,6 +8210,10 @@ msgstr "Tür"
 #: src/client/pages/oauth-consent.tsx
 msgid "Know who you are"
 msgstr "Kim olduğunuzu bilme"
+
+#: src/client/admin/parity/insights.tsx
+msgid "KPI"
+msgstr "KPI"
 
 #: src/client/admin/parity/kpis.tsx
 #: src/client/admin/ui.tsx
@@ -10189,6 +10208,7 @@ msgstr "anahtar gerekmez"
 #~ msgid "no key to paste"
 #~ msgstr "yapıştırılacak anahtar yok"
 
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 msgid "No KPIs defined yet"
 msgstr "Henüz KPI tanımlanmadı"
@@ -11729,6 +11749,14 @@ msgstr "Bir anahtar seçin"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Pick a key to manage its allowlist."
 msgstr "İzin listesini yönetmek için bir anahtar seçin."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Pick a KPI"
+msgstr "Bir KPI seçin"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Pick a KPI first."
+msgstr "Önce bir KPI seçin."
 
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Pick a language…"
@@ -14908,6 +14936,10 @@ msgstr "Göster"
 msgid "Show {0} more…"
 msgstr "{0} tane daha göster…"
 
+#: src/client/admin/parity/insights.tsx
+msgid "show a defined KPI — same number as Ask AI and reports"
+msgstr "tanımlı bir KPI'ı gösterir — Ask AI ve raporlarla aynı sayı"
+
 #: src/client/admin/collections-index.tsx
 msgid "Show active collections"
 msgstr "Etkin koleksiyonları göster"
@@ -16218,6 +16250,10 @@ msgstr "Bu alanın vereceği ilk numaralar"
 msgid "The form may have been deactivated, or its link replaced."
 msgstr "Form devre dışı bırakılmış ya da bağlantısı değiştirilmiş olabilir."
 
+#: src/client/admin/parity/insights.tsx
+msgid "The formula stays in the KPI, so this tile can never disagree with it."
+msgstr "Formül KPI'da kalır, bu yüzden bu kart onunla asla çelişemez."
+
 #: src/client/pages/api-keys.tsx
 msgid "The full secret is shown once after creation — copy it somewhere safe."
 msgstr "Tam gizli anahtar oluşturulduktan sonra yalnızca bir kez gösterilir — güvenli bir yere kopyalayın."
@@ -16765,6 +16801,7 @@ msgstr "çalıştırmak için"
 #~ msgid "to run"
 #~ msgstr "çalıştırmak için"
 
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 msgid "Today"
 msgstr "Bugün"
@@ -18064,6 +18101,10 @@ msgstr "Kaydedildiğinde çalışacak."
 #: src/client/admin/parity/translations.tsx
 msgid "Will translate <0>{0}</0> key{1}{2}."
 msgstr "<0>{0}</0> anahtar{1}{2} çevrilecek."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Window"
+msgstr "Pencere"
 
 #: src/client/components/mcp-key-modal.tsx
 msgid "Wire this API key into a Model Context Protocol client (Claude Desktop, Cursor, or any MCP-aware tool). The snippet below is pre-filled with this workspace's MCP URL."

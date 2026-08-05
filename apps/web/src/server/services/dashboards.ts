@@ -25,6 +25,7 @@ import {
   analyticsRetention,
 } from "./analytics";
 import { runItemsAggregate } from "./items/aggregate";
+import { requireKpi, runKpiForCaller } from "./kpis";
 import { queryAll } from "./items/sql-helpers";
 import { resolvePermission } from "./permissions";
 import { hashToken } from "./shared-links";
@@ -418,6 +419,28 @@ const runPanel = async (
         }
       }
       const data = await runItemsAggregate(ctx, auth, tenantId, panel.config, opts);
+      return { ...base, data };
+    }
+    if (panel.kind === "kpi") {
+      // The panel stores only a slug, so the tile and every other surface read
+      // the SAME definition — that is the whole reason this kind exists.
+      const ref = (panel.config as any)?.kpi;
+      if (typeof ref !== "string" || !ref) {
+        return { ...base, data: [], error: "KPI panel has no `config.kpi` slug." };
+      }
+      const kpi = await requireKpi(ctx, tenantId, ref);
+      // Unlike `items-aggregate`, this clamps on the embed path even when the
+      // dashboard carries NO embed role: `auth` is then the synthetic `public`
+      // subject, and an unauthenticated viewer should get what the public role
+      // may read, not an unclamped total.
+      const result = await runKpiForCaller(ctx, auth, tenantId, kpi, {
+        rangeDays: Number((panel.config as any)?.rangeDays) || undefined,
+      });
+      // Flatten onto the {label, value} shape every panel viz already renders,
+      // keeping the comparison fields for tiles that show a delta.
+      const data = result.rows
+        ? result.rows.map((r) => ({ ...r }))
+        : [{ label: result.name, ...(result.point ?? {}) }];
       return { ...base, data };
     }
     if (panel.kind === "analytics") {

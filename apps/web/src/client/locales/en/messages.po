@@ -998,6 +998,7 @@ msgstr "3:2 standard"
 msgid "3. Enter a code to confirm"
 msgstr "3. Enter a code to confirm"
 
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "30 days"
@@ -1024,11 +1025,13 @@ msgstr "5xx {0}"
 msgid "5xx responses"
 msgstr "5xx responses"
 
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "7 days"
 msgstr "7 days"
 
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "90 days"
@@ -4748,6 +4751,10 @@ msgstr "Defaults to the URL's filename"
 msgid "Define a figure once — revenue, open tickets, refund rate — and every panel, report and AI answer will quote the same number instead of re-deriving it."
 msgstr "Define a figure once — revenue, open tickets, refund rate — and every panel, report and AI answer will quote the same number instead of re-deriving it."
 
+#: src/client/admin/parity/insights.tsx
+msgid "Define one on the KPIs page first."
+msgstr "Define one on the KPIs page first."
+
 #: src/client/admin/app.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/item-editor.tsx
@@ -5632,6 +5639,10 @@ msgstr "Editing <0>{0}</0>."
 #: src/client/admin/collection-settings.tsx
 msgid "Editing a <0>published</0> item stages the change instead of updating what's live — readers keep the current version until you publish again, which applies the staged changes. Drafts still edit directly."
 msgstr "Editing a <0>published</0> item stages the change instead of updating what's live — readers keep the current version until you publish again, which applies the staged changes. Drafts still edit directly."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Editing the KPI updates this tile and every other surface at once."
+msgstr "Editing the KPI updates this tile and every other surface at once."
 
 #: src/client/admin/role-editor.tsx
 msgid "editor"
@@ -7545,6 +7556,10 @@ msgstr "Ignore"
 msgid "Ignored"
 msgstr "Ignored"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Ignored by a KPI with no date column — it reports a running total."
+msgstr "Ignored by a KPI with no date column — it reports a running total."
+
 #: src/client/admin/pages/forms.tsx
 msgid "Images"
 msgstr "Images"
@@ -8195,6 +8210,10 @@ msgstr "Kind"
 #: src/client/pages/oauth-consent.tsx
 msgid "Know who you are"
 msgstr "Know who you are"
+
+#: src/client/admin/parity/insights.tsx
+msgid "KPI"
+msgstr "KPI"
 
 #: src/client/admin/parity/kpis.tsx
 #: src/client/admin/ui.tsx
@@ -10189,6 +10208,7 @@ msgstr "no key needed"
 #~ msgid "no key to paste"
 #~ msgstr "no key to paste"
 
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 msgid "No KPIs defined yet"
 msgstr "No KPIs defined yet"
@@ -11729,6 +11749,14 @@ msgstr "Pick a key"
 #: src/client/admin/pages/ask-ai/tools-tab.tsx
 msgid "Pick a key to manage its allowlist."
 msgstr "Pick a key to manage its allowlist."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Pick a KPI"
+msgstr "Pick a KPI"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Pick a KPI first."
+msgstr "Pick a KPI first."
 
 #: src/client/admin/pages/settings/locale-card.tsx
 msgid "Pick a language…"
@@ -14908,6 +14936,10 @@ msgstr "Show"
 msgid "Show {0} more…"
 msgstr "Show {0} more…"
 
+#: src/client/admin/parity/insights.tsx
+msgid "show a defined KPI — same number as Ask AI and reports"
+msgstr "show a defined KPI — same number as Ask AI and reports"
+
 #: src/client/admin/collections-index.tsx
 msgid "Show active collections"
 msgstr "Show active collections"
@@ -16218,6 +16250,10 @@ msgstr "The first numbers this field will issue"
 msgid "The form may have been deactivated, or its link replaced."
 msgstr "The form may have been deactivated, or its link replaced."
 
+#: src/client/admin/parity/insights.tsx
+msgid "The formula stays in the KPI, so this tile can never disagree with it."
+msgstr "The formula stays in the KPI, so this tile can never disagree with it."
+
 #: src/client/pages/api-keys.tsx
 msgid "The full secret is shown once after creation — copy it somewhere safe."
 msgstr "The full secret is shown once after creation — copy it somewhere safe."
@@ -16765,6 +16801,7 @@ msgstr "to execute"
 #~ msgid "to run"
 #~ msgstr "to run"
 
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 msgid "Today"
 msgstr "Today"
@@ -18064,6 +18101,10 @@ msgstr "Will run on save."
 #: src/client/admin/parity/translations.tsx
 msgid "Will translate <0>{0}</0> key{1}{2}."
 msgstr "Will translate <0>{0}</0> key{1}{2}."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Window"
+msgstr "Window"
 
 #: src/client/components/mcp-key-modal.tsx
 msgid "Wire this API key into a Model Context Protocol client (Claude Desktop, Cursor, or any MCP-aware tool). The snippet below is pre-filled with this workspace's MCP URL."

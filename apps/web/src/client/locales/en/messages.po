@@ -998,6 +998,7 @@ msgstr "3:2 standard"
 msgid "3. Enter a code to confirm"
 msgstr "3. Enter a code to confirm"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
@@ -1025,12 +1026,14 @@ msgstr "5xx {0}"
 msgid "5xx responses"
 msgstr "5xx responses"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "7 days"
 msgstr "7 days"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
@@ -8215,6 +8218,7 @@ msgstr "Know who you are"
 msgid "KPI"
 msgstr "KPI"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/admin/ui.tsx
 msgid "KPIs"
@@ -10320,6 +10324,10 @@ msgstr "No paths in the current spec."
 #: src/client/admin/parity/kpis.tsx
 msgid "No period comparison"
 msgstr "No period comparison"
+
+#: src/client/admin/collection-kpis.tsx
+msgid "No prior period"
+msgstr "No prior period"
 
 #: src/client/admin/parity/kpis.tsx
 msgid "No prior period to compare"
@@ -13885,6 +13893,7 @@ msgstr "Running"
 msgid "Running on {modelSrc}"
 msgstr "Running on {modelSrc}"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/kpis.tsx
 msgid "Running total"
 msgstr "Running total"
@@ -16801,6 +16810,7 @@ msgstr "to execute"
 #~ msgid "to run"
 #~ msgstr "to run"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 msgid "Today"

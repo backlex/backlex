@@ -154,6 +154,22 @@ and the dashboard runner — and all three handle the kind. (Wiring only two of
 them left every saved tile stuck on "No data yet", which is why the surfaces
 test now covers each one.)
 
+## On a collection's page
+
+Every KPI whose `collection` matches shows up as a strip above that
+collection's items, with its own period picker. An operator looking at `orders`
+learns that revenue is down without navigating to a dashboard, and the figure
+is the same definition the dashboard tile and Ask AI read.
+
+A collection with no KPIs renders **nothing** — not an empty card. Chrome above
+every collection that costs vertical space and says nothing is worse than the
+absence.
+
+Rows are scoped to the collection, not to a single row: this is the list-page
+strip. Per-row insights ("how is *this* product doing?") would need a KPI to
+declare which collection it is pinned to and which relation column links back —
+that is not built.
+
 ## Ask AI
 
 The planner is given the workspace's KPI list in its prompt and told to prefer

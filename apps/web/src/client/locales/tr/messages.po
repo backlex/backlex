@@ -998,6 +998,7 @@ msgstr "3:2 standart"
 msgid "3. Enter a code to confirm"
 msgstr "3. Onaylamak için bir kod girin"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
@@ -1025,12 +1026,14 @@ msgstr "5xx {0}"
 msgid "5xx responses"
 msgstr "5xx yanıtlar"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
 msgid "7 days"
 msgstr "7 gün"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/pages/api-keys.tsx
@@ -8215,6 +8218,7 @@ msgstr "Kim olduğunuzu bilme"
 msgid "KPI"
 msgstr "KPI"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/admin/ui.tsx
 msgid "KPIs"
@@ -10320,6 +10324,10 @@ msgstr "Mevcut spec'te yol yok."
 #: src/client/admin/parity/kpis.tsx
 msgid "No period comparison"
 msgstr "Dönem karşılaştırması yok"
+
+#: src/client/admin/collection-kpis.tsx
+msgid "No prior period"
+msgstr "Önceki dönem yok"
 
 #: src/client/admin/parity/kpis.tsx
 msgid "No prior period to compare"
@@ -13885,6 +13893,7 @@ msgstr "Çalışıyor"
 msgid "Running on {modelSrc}"
 msgstr "{modelSrc} üzerinde çalışıyor"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/kpis.tsx
 msgid "Running total"
 msgstr "Yürüyen toplam"
@@ -16801,6 +16810,7 @@ msgstr "çalıştırmak için"
 #~ msgid "to run"
 #~ msgstr "çalıştırmak için"
 
+#: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 msgid "Today"

@@ -52,6 +52,7 @@ import { ConfirmDialog, ItemSheet } from "./sheet";
 import { BulkEditDialog } from "./bulk-edit";
 import { ItemEditorPage } from "./item-editor";
 import { CalendarView, GalleryGrid, ItemsViewToggle, KanbanBoard, type ItemsViewMode } from "./item-views";
+import { CollectionKpiStrip } from "./collection-kpis";
 import { ColumnPicker, useListColumns } from "./list-columns";
 import { needsDisplayTemplate } from "./row-label";
 import { EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
@@ -1404,6 +1405,12 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         </Button>
                       </div>
                     )}
+                    {/* The workspace's agreed figures for these rows, above the
+                        rows themselves — so "how is it going?" is answered
+                        where the operator already is, from the same definition
+                        the dashboard and Ask AI read. Renders nothing when the
+                        collection has no KPIs. */}
+                    {activeCollection && <CollectionKpiStrip collection={activeCollection} />}
                     <Card className="gap-0 overflow-hidden rounded-surface py-0">
                       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
                         <ItemsViewToggle

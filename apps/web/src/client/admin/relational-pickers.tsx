@@ -26,9 +26,9 @@ import { I } from "./icons";
 import { Button, IconButton, Checkbox } from "./ui";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@backlex/ui/components/input-group";
 import { Skeleton } from "@backlex/ui/components/skeleton";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -409,7 +409,7 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent
-        className="flex max-h-[min(88vh,760px)] w-[min(880px,94vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none"
+        className="w-[min(880px,94vw)] gap-0 p-0 sm:max-w-none"
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
         onDrop={onDropFiles}
@@ -425,7 +425,7 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(88vh,760px)-10rem)] max-[640px]:max-h-[calc(min(88vh,760px)-15rem)]">
+        <DialogBody>
           <div className="flex flex-row">
           <FolderSidebar
             folders={folders}
@@ -526,7 +526,7 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
             </div>
           </div>
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <span className="text-xs text-muted-foreground">
@@ -852,7 +852,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels, 
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(88vh,720px)] w-[min(720px,92vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+      <DialogContent className="w-[min(720px,92vw)] gap-0 p-0 sm:max-w-none">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
             <Trans>Pick a row from <span className="font-mono">c_{target}</span></Trans>
@@ -862,7 +862,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels, 
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(88vh,720px)-10rem)] max-[640px]:max-h-[calc(min(88vh,720px)-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-3 p-4">
           <InputGroup>
             <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
@@ -928,7 +928,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels, 
             })}
           </div>
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <span className="text-xs text-muted-foreground">
@@ -1050,7 +1050,7 @@ function AppUserBrowserModal({ initial, onCommit, onClose, seedLabels }: {
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(88vh,720px)] w-[min(720px,92vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+      <DialogContent className="w-[min(720px,92vw)] gap-0 p-0 sm:max-w-none">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
             <Trans>Pick an end-user</Trans>
@@ -1060,7 +1060,7 @@ function AppUserBrowserModal({ initial, onCommit, onClose, seedLabels }: {
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(88vh,720px)-10rem)] max-[640px]:max-h-[calc(min(88vh,720px)-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-3 p-4">
           <InputGroup>
             <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
@@ -1130,7 +1130,7 @@ function AppUserBrowserModal({ initial, onCommit, onClose, seedLabels }: {
             })}
           </div>
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <span className="text-xs text-muted-foreground">

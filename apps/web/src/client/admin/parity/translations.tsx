@@ -3,10 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -267,12 +267,12 @@ function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreat
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[480px]">
+      <DialogContent className="gap-0 p-0 sm:max-w-[480px]">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>New translation key</Trans></DialogTitle>
           <DialogDescription className="text-[12.5px]"><Trans>Adds a row to <span className="font-mono">i18n_strings</span>. The key is shared across all locales; values are filled per locale.</Trans></DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground" htmlFor="i18n-new-key">
@@ -332,7 +332,7 @@ function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreat
             </div>
           </div>
         </div>
-        </ScrollArea>
+        </DialogBody>
         <DialogFooter className="border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={submitting}><Trans>Cancel</Trans></Button>
           <Button variant="primary" icon={I.Plus} onClick={submit} disabled={!valid || submitting}>
@@ -372,12 +372,12 @@ function AutoTranslateDialog({ locales, base, data, busy, onClose, onRun }: Auto
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o && !busy) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[460px]">
+      <DialogContent className="gap-0 p-0 sm:max-w-[460px]">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Auto-translate</Trans></DialogTitle>
           <DialogDescription className="text-[12.5px]"><Trans>Translate UI strings using Claude. Requires <span className="font-mono">ANTHROPIC_API_KEY</span> on the server.</Trans></DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>From</Trans></label>
@@ -399,7 +399,7 @@ function AutoTranslateDialog({ locales, base, data, busy, onClose, onRun }: Auto
             <span><Trans>Will translate <strong>{Math.min(targetCount, 50)}</strong> key{targetCount === 1 ? "" : "s"}{targetCount > 50 ? ` of ${targetCount} (capped at 50 per run)` : ""}.</Trans></span>
           </div>
         </div>
-        </ScrollArea>
+        </DialogBody>
         <DialogFooter className="border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={busy}><Trans>Cancel</Trans></Button>
           <Button
@@ -455,12 +455,12 @@ function ManageLocalesDialog({ locales, defaultLocale, onClose, onSave }: Manage
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[480px]">
+      <DialogContent className="gap-0 p-0 sm:max-w-[480px]">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Manage locales</Trans></DialogTitle>
           <DialogDescription className="text-[12.5px]"><Trans>Active languages for this workspace. The default is returned by the public API when a requested locale has no string.</Trans></DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
@@ -507,7 +507,7 @@ function ManageLocalesDialog({ locales, defaultLocale, onClose, onSave }: Manage
             <div className="text-[11.5px] text-muted-foreground"><Trans>Used as fallback when the requested locale has no string for a key.</Trans></div>
           </div>
         </div>
-        </ScrollArea>
+        </DialogBody>
         <DialogFooter className="border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={submitting}><Trans>Cancel</Trans></Button>
           <Button variant="primary" icon={I.Check} onClick={submit} disabled={submitting || list.length === 0}>

@@ -4,11 +4,11 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { Badge } from "@backlex/ui/components/badge";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Switch } from "@backlex/ui/components/switch";
 import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -390,7 +390,7 @@ export function SignaturesPage({ pushToast }: { pushToast: (m: string) => void }
       )}
 
       <Dialog open={sendOpen} onOpenChange={(v) => (v ? setSendOpen(true) : closeSend())}>
-        <DialogContent className="flex max-h-[min(88vh,760px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[560px]">
+        <DialogContent className="gap-0 p-0 sm:max-w-[560px]">
           <DialogHeader className="shrink-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
             <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
               {links ? <Trans>Sent</Trans> : <Trans>Send for signature</Trans>}
@@ -410,7 +410,7 @@ export function SignaturesPage({ pushToast }: { pushToast: (m: string) => void }
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea viewportClassName="max-h-[calc(min(88vh,760px)-10rem)] max-[640px]:max-h-[calc(min(88vh,760px)-15rem)]">
+          <DialogBody>
             <div className="flex flex-col gap-4 px-5 py-[18px]">
               {links ? (
                 links.map((l) => (
@@ -523,7 +523,7 @@ export function SignaturesPage({ pushToast }: { pushToast: (m: string) => void }
                 </>
               )}
             </div>
-          </ScrollArea>
+          </DialogBody>
 
           <DialogFooter className="shrink-0 border-t border-border px-5 py-3.5">
             {links ? (

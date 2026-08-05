@@ -10,6 +10,7 @@ import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -872,14 +873,14 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[480px]">
+      <DialogContent className="gap-0 p-0 sm:max-w-[480px]">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Configure {provider.name}</Trans></DialogTitle>
           <DialogDescription className="text-[12.5px]">
             {kind === "oauth" ? <Trans>OAuth 2.0 / OIDC sign-in provider.</Trans> : kind === "custom" ? <Trans>Custom OpenID Connect provider.</Trans> : <Trans>Built-in sign-in method.</Trans>}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           {(() => {
             const blocked = (kind === "oauth" || kind === "custom") && !(clientId.trim() && hasSecret);
@@ -936,7 +937,7 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
             </div>
           )}
         </div>
-        </ScrollArea>
+        </DialogBody>
         <DialogFooter className="border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
           <Button variant="primary" size="sm" icon={I.Check} disabled={!valid} onClick={submit}><Trans>Save</Trans></Button>
@@ -972,12 +973,12 @@ function AddProviderDialog({ existingIds, onClose, onAdd }: {
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[480px]">
+      <DialogContent className="gap-0 p-0 sm:max-w-[480px]">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Add OIDC provider</Trans></DialogTitle>
           <DialogDescription className="text-[12.5px]"><Trans>Register a custom OpenID Connect identity provider.</Trans></DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Display name</Trans></label>
@@ -1000,7 +1001,7 @@ function AddProviderDialog({ existingIds, onClose, onAdd }: {
             <Trans>The provider is added disabled. Set its client secret server-side, then enable it here.</Trans>
           </div>
         </div>
-        </ScrollArea>
+        </DialogBody>
         <DialogFooter className="items-center border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3 sm:justify-start">
           <span className="text-xs text-muted-foreground">{valid ? <Trans>Will be added disabled.</Trans> : idTaken ? <Trans>Pick a unique name.</Trans> : <Trans>Enter a name to continue.</Trans>}</span>
           <div className="flex-1" />

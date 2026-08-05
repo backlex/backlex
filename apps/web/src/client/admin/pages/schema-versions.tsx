@@ -13,6 +13,7 @@ import { Card } from "@backlex/ui/components/card";
 import { Checkbox } from "@backlex/ui/components/checkbox";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -20,7 +21,6 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { Input } from "@backlex/ui/components/input";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import {
   Table,
@@ -494,7 +494,7 @@ function CaptureDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-hidden">
+      <DialogContent >
         <DialogHeader className="shrink-0">
           <DialogTitle>
             <Trans>Capture snapshot</Trans>
@@ -573,7 +573,7 @@ function ImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader className="shrink-0">
           <DialogTitle>
             <Trans>Import schema</Trans>
@@ -586,7 +586,7 @@ function ImportDialog({
             </Trans>
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(85vh-13rem)] max-[640px]:max-h-[calc(85vh-16rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-3 px-0.5">
             <Input
               placeholder={t`Snapshot name`}
@@ -600,7 +600,7 @@ function ImportDialog({
               className="min-h-[220px] font-mono text-xs"
             />
           </div>
-        </ScrollArea>
+        </DialogBody>
         <DialogFooter className="shrink-0">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             <Trans>Cancel</Trans>
@@ -651,7 +651,7 @@ function NewBranchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-hidden">
+      <DialogContent >
         <DialogHeader className="shrink-0">
           <DialogTitle>
             <Trans>New branch</Trans>
@@ -734,7 +734,7 @@ function DiffApplyDialog({
 
   return (
     <Dialog open={Boolean(target)} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader className="shrink-0">
           <DialogTitle>
             <Trans>Review & apply — {target?.label ?? ""}</Trans>
@@ -744,7 +744,7 @@ function DiffApplyDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(85vh-13rem)] max-[640px]:max-h-[calc(85vh-16rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-2 px-0.5">
             {loading && (
               <div className="flex flex-col gap-2" aria-busy="true" aria-label={t`Computing diff`}>
@@ -803,7 +803,7 @@ function DiffApplyDialog({
               </label>
             )}
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="shrink-0">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>

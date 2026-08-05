@@ -14,6 +14,7 @@ import { Card } from "@backlex/ui/components/card";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -836,7 +837,7 @@ function ErrorDetailDialog({
 
   return (
     <Dialog open={!!id} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-[720px]">
+      <DialogContent className="sm:max-w-[720px]">
         <DialogHeader className="shrink-0">
           <DialogTitle className="min-w-0 truncate">
             {group ? `${group.type}: ${group.message}` : t`Error`}
@@ -849,7 +850,7 @@ function ErrorDetailDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(85vh-10rem)] max-[640px]:max-h-[calc(85vh-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-3 px-1">
             {group && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -929,7 +930,7 @@ function ErrorDetailDialog({
               </div>
             )}
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="shrink-0">
           <Button
@@ -1018,7 +1019,7 @@ function IngestKeyDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
-      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-[560px]">
+      <DialogContent className="sm:max-w-[560px]">
         <DialogHeader className="shrink-0">
           <DialogTitle>
             <Trans>Analytics ingest key</Trans>
@@ -1028,7 +1029,7 @@ function IngestKeyDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(85vh-10rem)] max-[640px]:max-h-[calc(85vh-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-3 px-1">
             <p className="m-0 text-[13px] text-muted-foreground">
               <Trans>
@@ -1076,7 +1077,7 @@ function IngestKeyDialog({
               </div>
             )}
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="shrink-0">
           {exists && (

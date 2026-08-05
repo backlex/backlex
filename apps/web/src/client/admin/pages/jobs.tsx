@@ -17,6 +17,7 @@ import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -203,7 +204,7 @@ function JobDetailDialog({ job, onClose }: { job: ApiJob; onClose: () => void })
   const pretty = (v: unknown) => JSON.stringify(v ?? null, null, 2);
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[90vh] w-[640px] max-w-[94vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+      <DialogContent className="w-[640px] max-w-[94vw] gap-0 p-0 sm:max-w-none">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
             <span className="font-mono">{job.type}</span>
@@ -212,7 +213,7 @@ function JobDetailDialog({ job, onClose }: { job: ApiJob; onClose: () => void })
             {t`Job`} <span className="font-mono">{job.id}</span> · {job.status} · {job.attempts}/{job.maxAttempts} {t`attempts`}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(90vh-8rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-4 px-5 py-[18px] text-[12.5px]">
             <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
               <Field label={t`Queue`} value={job.queue} mono />
@@ -237,7 +238,7 @@ function JobDetailDialog({ job, onClose }: { job: ApiJob; onClose: () => void })
               </div>
             )}
           </div>
-        </ScrollArea>
+        </DialogBody>
         <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
           <Button variant="ghost" onClick={onClose}><Trans>Close</Trans></Button>
         </DialogFooter>
@@ -325,14 +326,14 @@ function EnqueueJobDialog({
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[90vh] w-[560px] max-w-[94vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+      <DialogContent className="w-[560px] max-w-[94vw] gap-0 p-0 sm:max-w-none">
         <DialogHeader className="shrink-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Enqueue job</Trans></DialogTitle>
           <DialogDescription className="mt-0.5 text-[12.5px]">
             <Trans>Queue durable background work. Function jobs run a named function; jobs retry with backoff and dead-letter.</Trans>
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(90vh-10rem)] max-[640px]:max-h-[calc(90vh-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-4 overflow-x-clip px-5 py-[18px]">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-medium"><Trans>Type</Trans></label>
@@ -414,7 +415,7 @@ function EnqueueJobDialog({
               <span className="text-[11.5px] text-muted-foreground"><Trans>Leave empty to run on the next tick.</Trans></span>
             </div>
           </div>
-        </ScrollArea>
+        </DialogBody>
         <DialogFooter className="shrink-0 border-t border-border bg-card px-5 py-3 sm:justify-end">
           <div className="flex-1" />
           <Button variant="ghost" onClick={onClose} disabled={busy}><Trans>Cancel</Trans></Button>

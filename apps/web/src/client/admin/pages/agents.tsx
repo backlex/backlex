@@ -18,6 +18,7 @@ import { Checkbox } from "@backlex/ui/components/checkbox";
 import { Select } from "../select";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -272,7 +273,7 @@ export function AgentsPage({
               </DialogDescription>
             </DialogHeader>
 
-            <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(88vh-13rem)] max-[640px]:max-h-[calc(88vh-15rem)]">
+            <DialogBody className="min-h-0 flex-1">
               <div className="flex flex-col gap-4 px-0.5 py-1">
                 <div className="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
                   <div className="flex min-w-0 flex-col gap-1.5">
@@ -458,7 +459,7 @@ export function AgentsPage({
                   </div>
                 </div>
               </div>
-            </ScrollArea>
+            </DialogBody>
 
             <DialogFooter className="sm:justify-between">
               {draft.id ? (

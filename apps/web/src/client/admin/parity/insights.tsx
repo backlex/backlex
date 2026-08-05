@@ -9,6 +9,7 @@ import { Card } from "@backlex/ui/components/card";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -912,7 +913,7 @@ function PanelEditorDialog({
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[720px]">
+      <DialogContent className="gap-0 p-0 sm:max-w-[720px]">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">{mode === "create" ? <Trans>New insight panel</Trans> : <Trans>Edit panel</Trans>}</DialogTitle>
           <DialogDescription className="text-[12.5px]">
@@ -922,7 +923,7 @@ function PanelEditorDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(90vh-10rem)] max-[640px]:max-h-[calc(90vh-15rem)]">
+        <DialogBody>
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           {topError && (
             <div className="flex items-start gap-2 rounded-surface border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] p-2.5 text-[12.5px] text-destructive">
@@ -1165,7 +1166,7 @@ function PanelEditorDialog({
             </div>
           )}
         </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={busy}><Trans>Cancel</Trans></Button>
@@ -1511,7 +1512,7 @@ function ReportDashboardDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(86vh-10rem)] max-[640px]:max-h-[calc(86vh-15rem)]" className="w-full">
+        <DialogBody>
           <div className="flex flex-col gap-3.5 py-1">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-medium"><Trans>Email to</Trans></label>
@@ -1554,7 +1555,7 @@ function ReportDashboardDialog({
               <Trans>Landscape</Trans>
             </label>
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="shrink-0">
           <Button variant="ghost" onClick={onClose} disabled={Boolean(busy)}><Trans>Close</Trans></Button>

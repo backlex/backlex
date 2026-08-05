@@ -16,7 +16,6 @@
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { Card } from "@backlex/ui/components/card";
@@ -26,6 +25,7 @@ import { Select } from "../select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -407,11 +407,11 @@ function LdapTestDialog({
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[640px]">
+      <DialogContent className="gap-0 p-0 sm:max-w-[640px]">
         <DialogHeader className="border-b border-border px-5 py-3.5 pr-12 text-left">
           <DialogTitle className="text-[13px] font-medium"><Trans>Test LDAP connection</Trans></DialogTitle>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
         <div className="grid gap-3 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Username</Trans></label>
@@ -463,7 +463,7 @@ function LdapTestDialog({
             </Card>
           )}
         </div>
-        </ScrollArea>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );

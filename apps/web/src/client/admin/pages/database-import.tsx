@@ -20,13 +20,13 @@ import { ConfirmDialog } from "../sheet";
 import { Input } from "@backlex/ui/components/input";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@backlex/ui/components/dialog";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Card } from "@backlex/ui/components/card";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { Checkbox } from "@backlex/ui/components/checkbox";
@@ -418,7 +418,7 @@ export function DatabaseImportPage({ pushToast }: PageProps) {
 
       {/* Add source */}
       <Dialog open={addOpen} onOpenChange={(o) => !o && setAddOpen(false)}>
-        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-[480px]">
+        <DialogContent className="sm:max-w-[480px]">
           <DialogHeader className="shrink-0">
             <DialogTitle><Trans>Add source</Trans></DialogTitle>
             <DialogDescription>
@@ -471,7 +471,7 @@ export function DatabaseImportPage({ pushToast }: PageProps) {
 
       {/* New migration wizard */}
       <Dialog open={wizardOpen} onOpenChange={(o) => !o && setWizardOpen(false)}>
-        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-[640px]">
+        <DialogContent className="sm:max-w-[640px]">
           <DialogHeader className="shrink-0">
             <DialogTitle><Trans>New migration</Trans></DialogTitle>
             <DialogDescription>
@@ -482,9 +482,7 @@ export function DatabaseImportPage({ pushToast }: PageProps) {
               )}
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea
-            viewportClassName="max-h-[calc(85vh-12rem)] max-[640px]:max-h-[calc(85vh-16rem)]"
-            className="w-full"
+          <DialogBody
           >
             <div className="flex flex-col gap-3 pr-2">
               <Select
@@ -566,7 +564,7 @@ export function DatabaseImportPage({ pushToast }: PageProps) {
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </DialogBody>
           <DialogFooter className="shrink-0">
             {plan ? (
               <>

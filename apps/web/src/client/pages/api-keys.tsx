@@ -14,7 +14,6 @@ import { Input } from "@backlex/ui/components/input";
 import { Label } from "@backlex/ui/components/label";
 import { Badge } from "@backlex/ui/components/badge";
 import { Skeleton } from "@backlex/ui/components/skeleton";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Collapsible,
   CollapsibleContent,
@@ -29,6 +28,7 @@ import {
 } from "@backlex/ui/components/select";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -291,14 +291,14 @@ export const ApiKeys = () => {
           setShowForm(open);
         }}
       >
-        <DialogContent className="flex max-h-[88vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogContent className="gap-0 p-0 sm:max-w-lg">
           <DialogHeader className="px-6 pt-6">
             <DialogTitle><Trans>New API key</Trans></DialogTitle>
             <DialogDescription>
               <Trans>The full secret is shown once after creation — copy it somewhere safe.</Trans>
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(88vh-13rem)] max-[640px]:max-h-[calc(88vh-15rem)] px-6 py-4">
+          <DialogBody className="min-h-0 flex-1">
           <form id="new-api-key-form" className="space-y-4" onSubmit={submit}>
             <div className="space-y-1.5">
               <Label htmlFor="name"><Trans>Name</Trans></Label>
@@ -428,7 +428,7 @@ export const ApiKeys = () => {
               </CollapsibleContent>
             </Collapsible>
           </form>
-          </ScrollArea>
+          </DialogBody>
           <DialogFooter className="border-t px-6 py-4">
             <Button
               type="button"

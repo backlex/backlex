@@ -15,9 +15,9 @@ import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { Card } from "@backlex/ui/components/card";
 import { Skeleton } from "@backlex/ui/components/skeleton";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -296,7 +296,7 @@ function SyncHookDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[560px]">
+      <DialogContent className="w-full gap-0 p-0 sm:max-w-[560px]">
         <DialogHeader className="shrink-0 space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
           <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">
             {isEdit ? t`Edit sync hook` : t`New sync hook`}
@@ -306,7 +306,7 @@ function SyncHookDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-3.5 px-5 py-4">
             <Field label={t`Name`}>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="tax-calculator" />
@@ -387,7 +387,7 @@ function SyncHookDialog({
               />
             </Field>
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="shrink-0 border-t border-border px-5 py-3.5">
           <Button variant="ghost" onClick={onClose}>

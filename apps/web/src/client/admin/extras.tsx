@@ -10,6 +10,7 @@ import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -91,7 +92,7 @@ export function Palette({ open, onClose, onNavigate, items, collections, isAdmin
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent
         showCloseButton={false}
-        className="top-[18%] flex max-h-[60vh] w-[min(640px,92vw)] translate-y-0 flex-col gap-0 overflow-hidden bg-popover p-0 sm:max-w-none"
+        className="top-[18%] w-[min(640px,92vw)] translate-y-0 gap-0 bg-popover p-0 sm:max-w-none"
       >
         <DialogTitle className="sr-only"><Trans>Command palette</Trans></DialogTitle>
         <DialogDescription className="sr-only"><Trans>Type a command, collection, or item title to navigate.</Trans></DialogDescription>
@@ -116,7 +117,7 @@ export function Palette({ open, onClose, onNavigate, items, collections, isAdmin
           </button>
           <span className="hidden rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground sm:inline">esc</span>
         </div>
-        <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(60vh-57px)] sm:max-h-[calc(60vh-100px)]">
+        <DialogBody className="min-h-0 flex-1">
           <div className="p-1.5">
           {flat.length === 0 ? (
             <div className="p-7 text-center text-[13px] text-muted-foreground">
@@ -149,7 +150,7 @@ export function Palette({ open, onClose, onNavigate, items, collections, isAdmin
             ))
           )}
           </div>
-        </ScrollArea>
+        </DialogBody>
         {/* Keyboard-only legend — hidden on touch, where none of it applies. */}
         <div className="hidden shrink-0 items-center gap-3.5 border-t border-border px-5 py-3.5 font-mono text-[11px] text-muted-foreground sm:flex">
           <span><span className={kbd}>↵</span> <Trans>open</Trans></span>
@@ -195,7 +196,7 @@ function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; chan
   const { t } = useLingui();
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] w-[min(720px,92vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+      <DialogContent className="w-[min(720px,92vw)] gap-0 p-0 sm:max-w-none">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <div className="mb-1 flex items-center gap-2">
             <span className={`${EV_BASE} ${EV_COLOR[ev.event]}`}>{ev.event}</span>
@@ -206,7 +207,7 @@ function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; chan
           </DialogTitle>
           <DialogDescription className="sr-only">{t`${ev.event} event detail`}</DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="grid grid-cols-[120px_1fr] gap-x-3.5 gap-y-2 text-[12.5px]">
             <span className="text-muted-foreground"><Trans>Channel</Trans></span>
@@ -236,7 +237,7 @@ function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; chan
           </div>
           <JsonBlock label={t`Payload`} value={ev.raw ?? {}} />
           </div>
-        </ScrollArea>
+        </DialogBody>
         <DialogFooter className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}><Trans>Close</Trans></Button>

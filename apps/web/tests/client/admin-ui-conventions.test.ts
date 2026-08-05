@@ -40,13 +40,26 @@ const lineOf = (src: string, index: number): number => src.slice(0, index).split
 /**
  * The props region of a JSX element. Nested elements only ever appear inside a
  * `{…}` expression container (`action={<Button/>}`), so the element's own `>`
- * is the first one at brace depth zero.
+ * is the first one at brace depth zero — provided string literals are skipped
+ * first. Tailwind arbitrary variants put a literal `>` inside className
+ * (`[&>div]:block`, `[&>*]:min-w-0`); without the quote handling the scan cuts
+ * off mid-attribute and silently under-reports.
  */
 const propsOf = (src: string, start: number): string => {
   let depth = 0;
+  let quote: string | null = null;
   for (let i = start; i < src.length; i++) {
-    const ch = src[i];
-    if (ch === "{") depth++;
+    const ch = src[i]!;
+    if (quote) {
+      if (ch === quote && src[i - 1] !== "\\") quote = null;
+      continue;
+    }
+    // Quotes are only delimiters in the element's own attribute list. Inside a
+    // `{…}` they are ordinary text — `title={<Trans>Couldn't load logs</Trans>}`
+    // has an apostrophe that would otherwise open a string and swallow the rest
+    // of the file, which is exactly how this scan first under-reported.
+    if (depth === 0 && (ch === '"' || ch === "'")) quote = ch;
+    else if (ch === "{") depth++;
     else if (ch === "}") depth--;
     else if (ch === ">" && depth === 0) return src.slice(start, i + 1);
   }
@@ -135,6 +148,104 @@ describe("admin UI conventions", () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+
+  // A dialog body sized by a hand-written rem budget is a guess about the
+  // header + footer + padding around it, and a wrong guess is invisible until
+  // some description wraps to a second line and pushes the footer past the
+  // bottom edge, where overflow-hidden clips it. `<DialogBody>` lets the
+  // browser measure instead.
+  test("a dialog body is <DialogBody>, not a hand-capped ScrollArea", () => {
+    const offenders: string[] = [];
+    for (const { rel, src } of FILES) {
+      for (const m of src.matchAll(/<ScrollArea\b/g)) {
+        const props = propsOf(src, m.index!);
+        // Only viewport-relative caps: a `max-h-[240px]` list inside a card is
+        // a deliberate size, not a dialog-chrome budget.
+        if (!/viewportClassName="[^"]*calc\([^"]*vh/.test(props)) continue;
+        // …and only where the ScrollArea is the dialog's own body.
+        const before = src.slice(0, m.index);
+        const opens = (before.match(/<DialogContent\b/g) ?? []).length;
+        const closes = (before.match(/<\/DialogContent>/g) ?? []).length;
+        if (opens > closes) offenders.push(`${rel}:${lineOf(src, m.index!)}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  // The admin Select wraps Radix, whose handler is `onValueChange`; the wrapper
+  // takes `onChange`. It accepts both now — this guards the third spelling.
+  test("every admin Select is wired to a handler", () => {
+    const offenders: string[] = [];
+    for (const { rel, src } of FILES) {
+      if (!/import \{ Select[ ,}][^\n]*\} from "\.{1,2}\/(?:\.\.\/)?select"/.test(src)) continue;
+      if (/\bSelectTrigger\b/.test(src)) continue; // also pulls in the shadcn primitive
+      for (const m of src.matchAll(/<Select\b/g)) {
+        const props = propsOf(src, m.index!);
+        if (!/\bon(?:Change|ValueChange)=/.test(props)) {
+          offenders.push(`${rel}:${lineOf(src, m.index!)}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  // The size question is really "does something already draw a frame around
+  // this?", and answering it by eye is what put a bare unstyled paragraph on
+  // the erasure list and on Data syncs. So the check reads the JSX ancestry:
+  // an EmptyState with no Card above it must draw its own; one inside a Card
+  // must not, or you get a card inside a card.
+  test("an EmptyState draws card chrome exactly when nothing else does", () => {
+    const bare: string[] = [];
+    const nested: string[] = [];
+    for (const { rel, src } of FILES) {
+      if (!src.includes("<EmptyState")) continue;
+      const stack: Array<{ name: string; props: string }> = [];
+      const tag = /<(\/?)([A-Za-z][A-Za-z0-9.]*)\b/g;
+      let m: RegExpExecArray | null;
+      while ((m = tag.exec(src))) {
+        const closing = m[1] === "/";
+        const name = m[2]!;
+        // `useState<Foo>` is a generic, not a tag: real JSX never has an
+        // identifier character immediately before the `<`.
+        if (!closing && /[A-Za-z0-9_$)\]]/.test(src[m.index - 1] ?? " ")) continue;
+        if (closing) {
+          for (let i = stack.length - 1; i >= 0; i--) {
+            if (stack[i]!.name === name) { stack.length = i; break; }
+          }
+          continue;
+        }
+        const props = propsOf(src, m.index);
+        if (name === "EmptyState") {
+          // Attributes written outside any `{…}`, so a nested `<Button size="sm">`
+          // in `action={…}` is not read as this EmptyState's own size.
+          let own = "", d = 0;
+          for (const ch of props) {
+            if (ch === "{") d++;
+            else if (ch === "}") d--;
+            else if (d === 0) own += ch;
+          }
+          const size = /\bsize="(\w+)"/.exec(own)?.[1] ?? "lg";
+          const drawsCard = size !== "sm" && !/\bbare\b/.test(own);
+          const framed = stack.some(
+            (a) =>
+              /^(Card|CardContent)$/.test(a.name) ||
+              /className="[^"]*\bborder(?!-0)\b/.test(a.props) ||
+              // The legacy `.card` utility predates the Card component.
+              /className="[^"]*\bcard\b/.test(a.props),
+          );
+          const at = `${rel}:${lineOf(src, m.index)}`;
+          if (drawsCard && framed) nested.push(at);
+          // An EmptyState with no JSX ancestors at all is the whole body of a
+          // reusable component (EmptyItems), and its frame is the caller's to
+          // draw — nothing in this file can say whether one exists.
+          else if (!drawsCard && !framed && stack.length > 0) bare.push(at);
+        }
+        if (!props.endsWith("/>")) stack.push({ name, props });
+        tag.lastIndex = m.index + props.length - 1;
+      }
+    }
+    expect({ bare, nested }).toEqual({ bare: [], nested: [] });
   });
 
   // There were two of each for a while — `admin/ui.tsx` and `components/*` —

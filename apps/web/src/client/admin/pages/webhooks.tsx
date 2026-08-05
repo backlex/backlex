@@ -10,6 +10,7 @@ import { Textarea } from "@backlex/ui/components/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -23,7 +24,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@backlex/ui/components/dropdown-menu";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Card } from "@backlex/ui/components/card";
 import { fetchSafely } from "./_shared";
 import { WebhooksSkeleton } from "../page-skeletons";
@@ -340,7 +340,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] w-[640px] max-w-[92vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+      <DialogContent className="w-[640px] max-w-[92vw] gap-0 p-0 sm:max-w-none">
         <DialogHeader className="flex-row items-start gap-2.5 space-y-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <I.Webhook size={16} className="mt-0.5" />
           <div>
@@ -349,7 +349,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
           </div>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans> <span className="text-destructive">*</span></label>
@@ -409,7 +409,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
             <Switch checked={draft.active} onChange={(v) => update("active", v)} />
           </div>
         </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
           {mode === "edit" && <Button variant="ghost" icon={I.Bolt} onClick={async () => {

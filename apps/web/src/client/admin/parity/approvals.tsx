@@ -6,6 +6,7 @@ import { Card } from "@backlex/ui/components/card";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -202,16 +203,14 @@ export function ApprovalsPage({ pushToast }: { pushToast: (m: string) => void })
       )}
 
       <Dialog open={detail != null} onOpenChange={(v) => !v && setOpen(null)}>
-        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader className="shrink-0">
             <DialogTitle>{detail?.title}</DialogTitle>
             <DialogDescription>
               <Trans>Who was asked, who answered, and why.</Trans>
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea
-            className="w-full"
-            viewportClassName="max-h-[calc(85vh-10rem)] max-[640px]:max-h-[calc(85vh-15rem)]"
+          <DialogBody
           >
             <div className="flex flex-col gap-4 px-0.5 pb-1">
               {detail?.message ? <p className="text-[13px]">{detail.message}</p> : null}
@@ -256,7 +255,7 @@ export function ApprovalsPage({ pushToast }: { pushToast: (m: string) => void })
                 </p>
               ) : null}
             </div>
-          </ScrollArea>
+          </DialogBody>
           <DialogFooter className="shrink-0">
             <Button variant="ghost" onClick={() => setOpen(null)}>
               <Trans>Close</Trans>

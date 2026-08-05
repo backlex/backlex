@@ -28,6 +28,7 @@ import {
 } from "@backlex/ui/components/dropdown-menu";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -337,7 +338,7 @@ function NewRoomDialog({
             <Trans>Pick who's in the room. You can add or remove agents later.</Trans>
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="w-full" viewportClassName="max-h-[calc(88vh-13rem)] max-[640px]:max-h-[calc(88vh-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-4 px-0.5 py-1">
             <div className="flex flex-col gap-1.5">
               <Label><Trans>Name</Trans></Label>
@@ -422,7 +423,7 @@ function NewRoomDialog({
               )}
             </div>
           </div>
-        </ScrollArea>
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onCancel}><Trans>Cancel</Trans></Button>
           <Button

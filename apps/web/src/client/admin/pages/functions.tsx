@@ -10,6 +10,7 @@ import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -436,13 +437,13 @@ function NewFunctionDialog({
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[90vh] w-[640px] max-w-[94vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+      <DialogContent className="w-[640px] max-w-[94vw] gap-0 p-0 sm:max-w-none">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>New function</Trans></DialogTitle>
           <DialogDescription className="mt-0.5 text-[12.5px]"><Trans>Sandboxed JS. HTTP for manual invoke, event for pub-sub triggers, or cron for scheduled runs.</Trans></DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(90vh-10rem)] max-[640px]:max-h-[calc(90vh-15rem)]">
+        <DialogBody>
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans> <span className="text-destructive">*</span></label>
@@ -532,7 +533,7 @@ function NewFunctionDialog({
             <Switch checked={active} onChange={setActiveFlag} />
           </div>
         </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
           <div className="flex-1" />

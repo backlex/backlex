@@ -10,6 +10,7 @@ import { Switch } from "@backlex/ui/components/switch";
 import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -504,7 +505,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                 <div className="ml-auto w-44 max-sm:w-36">
                   <Select
                     value={statusFilter}
-                    onValueChange={(v) => void onFilterStatus(v)}
+                    onChange={(v) => void onFilterStatus(v)}
                     className="min-w-0"
                     options={[
                       { value: "", label: t`Every status` },
@@ -588,7 +589,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
 
       {/* ── resource editor ─────────────────────────────────────────────── */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-2xl [&>*]:min-w-0">
+        <DialogContent className="sm:max-w-2xl [&>*]:min-w-0">
           <DialogHeader className="shrink-0">
             <DialogTitle>
               {editingKey ? <Trans>Edit resource</Trans> : <Trans>New bookable resource</Trans>}
@@ -601,10 +602,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea
-            viewportClassName="max-h-[calc(85vh-10rem)] max-[640px]:max-h-[calc(85vh-15rem)]"
-            className="w-full"
-          >
+          <DialogBody>
             <div className="grid gap-4 p-1">
               {link && (
                 <Card className="border-primary/40 bg-primary/5 p-3">
@@ -667,7 +665,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                 ) : (
                   <Select
                     value={form.timeZone}
-                    onValueChange={(v) =>
+                    onChange={(v) =>
                       v === "__custom" ? setCustomZone(true) : setForm({ ...form, timeZone: v })
                     }
                     className="min-w-0"
@@ -734,7 +732,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                   <div key={i} className="grid gap-2 rounded-md border p-2 sm:grid-cols-[110px_140px_1fr_1fr_auto]">
                     <Select
                       value={r.kind}
-                      onValueChange={(v) =>
+                      onChange={(v) =>
                         setRules((arr) => arr.map((x, j) => (j === i ? { ...x, kind: v } : x)))
                       }
                       className="min-w-0"
@@ -745,7 +743,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                     />
                     <Select
                       value={r.weekday === null ? "" : String(r.weekday)}
-                      onValueChange={(v) =>
+                      onChange={(v) =>
                         setRules((arr) =>
                           arr.map((x, j) => (j === i ? { ...x, weekday: v === "" ? null : Number(v) } : x)),
                         )
@@ -848,7 +846,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                 </Label>
               </div>
             </div>
-          </ScrollArea>
+          </DialogBody>
 
           <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setEditOpen(false)}>
@@ -869,7 +867,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
           if (!v) setManageLink(null);
         }}
       >
-        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden [&>*]:min-w-0">
+        <DialogContent className="[&>*]:min-w-0">
           <DialogHeader className="shrink-0">
             <DialogTitle>
               <Trans>Add a booking</Trans>
@@ -882,10 +880,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea
-            viewportClassName="max-h-[calc(85vh-10rem)] max-[640px]:max-h-[calc(85vh-15rem)]"
-            className="w-full"
-          >
+          <DialogBody>
             <div className="grid gap-4 p-1">
               {manageLink && (
                 <Card className="border-primary/40 bg-primary/5 p-3">
@@ -943,7 +938,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                 </p>
               </div>
             </div>
-          </ScrollArea>
+          </DialogBody>
 
           <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setBookOpen(false)}>

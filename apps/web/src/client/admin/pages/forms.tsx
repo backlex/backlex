@@ -23,6 +23,7 @@ import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -2663,7 +2664,7 @@ function InsertPalette({
   const showStep = !ql || "step".includes(ql) || t`Step break`.toLowerCase().includes(ql);
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md flex flex-col overflow-hidden max-h-[70vh]">
+      <DialogContent className="max-w-md">
         <DialogHeader className="shrink-0">
           <DialogTitle><Trans>Add block</Trans></DialogTitle>
           <DialogDescription>
@@ -2676,7 +2677,7 @@ function InsertPalette({
           placeholder={t`Search blocks…`}
           onChange={(e) => setQ(e.target.value)}
         />
-        <ScrollArea viewportClassName="max-h-[calc(70vh-14rem)] [&>div]:!block">
+        <DialogBody>
           <div className="flex flex-col py-1">
             {fields.map((f) => {
               const Icon = blockIcon(f, { name: f.name });
@@ -2725,7 +2726,7 @@ function InsertPalette({
               </p>
             )}
           </div>
-        </ScrollArea>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );

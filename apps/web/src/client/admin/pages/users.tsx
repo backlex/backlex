@@ -9,6 +9,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -721,7 +722,7 @@ function InviteUserDialog({ roles, onClose, onCreated, pushToast }: { roles: str
   };
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] w-[460px] max-w-[92vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+      <DialogContent className="w-[460px] max-w-[92vw] gap-0 p-0 sm:max-w-none">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">{created ? <Trans>Invite created</Trans> : <Trans>Invite user</Trans>}</DialogTitle>
           <DialogDescription className="mt-0.5 text-[12.5px]">{created ? <Trans>The invite is valid for 7 days.</Trans> : <Trans>Send an email invite. The user finishes signup themselves.</Trans>}</DialogDescription>
@@ -741,7 +742,7 @@ function InviteUserDialog({ roles, onClose, onCreated, pushToast }: { roles: str
             </div>
           </div>
         ) : (
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Email</Trans></label>
@@ -754,7 +755,7 @@ function InviteUserDialog({ roles, onClose, onCreated, pushToast }: { roles: str
             <span className="text-[11.5px] text-muted-foreground"><Trans>Roles come from <strong>Roles &amp; permissions</strong>. The user also implicitly gets <span className="font-mono">authenticated</span>.</Trans></span>
           </div>
         </div>
-        </ScrollArea>
+        </DialogBody>
         )}
         <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
           {created ? (

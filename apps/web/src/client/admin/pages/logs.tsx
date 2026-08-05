@@ -21,6 +21,7 @@ import { Input } from "@backlex/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -34,7 +35,6 @@ import {
   TableHeader,
   TableRow,
 } from "@backlex/ui/components/table";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Card } from "@backlex/ui/components/card";
 import { useActivity } from "../queries";
 import { LogsSkeleton } from "../page-skeletons";
@@ -1135,7 +1135,7 @@ function ActivityEventDialog({
         if (!o) onClose();
       }}
     >
-      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[720px]">
+      <DialogContent className="gap-0 p-0 sm:max-w-[720px]">
         <DialogTitle className="sr-only">{`${row.action} activity detail`}</DialogTitle>
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <div className="mb-1 flex items-center gap-2">
@@ -1149,7 +1149,7 @@ function ActivityEventDialog({
           </div>
           <h3 className="m-0 text-sm font-medium">{row.user}</h3>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="grid grid-cols-[140px_1fr] gap-x-3.5 gap-y-2 text-[12.5px]">
             <span className="text-muted-foreground"><Trans>Time</Trans></span>
@@ -1192,7 +1192,7 @@ function ActivityEventDialog({
             <JsonBlock label="Response" value={row.response} />
           )}
         </div>
-        </ScrollArea>
+        </DialogBody>
         <DialogFooter className="border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <Button variant="ghost" size="sm" onClick={onClose}>
             <Trans>Close</Trans>

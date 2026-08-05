@@ -3,6 +3,7 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@backlex/ui/lib/utils"
 import { Button } from "@backlex/ui/components/button"
+import { ScrollArea } from "@backlex/ui/components/scroll-area"
 import { XIcon } from "lucide-react"
 
 function Dialog({
@@ -63,6 +64,18 @@ function DialogContent({
         data-slot="dialog-content"
         className={cn(
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-6 rounded-surface bg-popover p-6 text-sm text-popover-foreground shadow-xl ring-1 ring-foreground/5 duration-100 outline-none sm:max-w-md dark:ring-foreground/10 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // A dialog that contains a <DialogBody> becomes a three-track grid
+          // capped at 85vh: header and footer take what they need, the body
+          // track absorbs the rest and scrolls. `minmax(0,1fr)` is what lets
+          // the middle row shrink below its content — the default `auto` row
+          // refuses to, which is how a footer ends up drawn past the bottom
+          // edge and clipped by overflow-hidden.
+          //
+          // This is deliberately keyed off `:has()` rather than a prop: the
+          // layout is a consequence of having a scrolling body, and a prop is
+          // one more thing a caller can forget. Dialogs with no DialogBody are
+          // untouched and still size to their content.
+          "has-[>[data-slot=dialog-body]]:max-h-[85vh] has-[>[data-slot=dialog-body]]:grid-rows-[auto_minmax(0,1fr)_auto] has-[>[data-slot=dialog-body]]:overflow-hidden",
           className
         )}
         {...props}
@@ -91,6 +104,37 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="dialog-header"
       className={cn("flex flex-col gap-1.5", className)}
+      {...props}
+    />
+  )
+}
+
+/**
+ * The scrolling middle of a dialog.
+ *
+ * Use this instead of a hand-rolled `<ScrollArea viewportClassName="max-h-[calc(85vh-10rem)]">`.
+ * That pattern needs every dialog to guess its own header + footer + padding
+ * budget in rem, and a wrong guess is invisible until a description wraps to a
+ * second line — at which point the footer is drawn past the bottom edge and
+ * clipped. The budget was wrong by 6px on the booking dialog and nobody could
+ * have seen it in a diff.
+ *
+ * Here the browser measures instead: DialogContent switches to a three-track
+ * grid whose middle track is `minmax(0,1fr)`, so the body gets exactly the room
+ * left over. Nothing to keep in sync.
+ */
+function DialogBody({
+  className,
+  viewportClassName,
+  ...props
+}: React.ComponentProps<typeof ScrollArea>) {
+  return (
+    <ScrollArea
+      data-slot="dialog-body"
+      // `min-h-0` lets the grid track shrink below the content's height; without
+      // it the track floors at max-content and the clipping comes straight back.
+      className={cn("min-h-0 w-full", className)}
+      viewportClassName={viewportClassName}
       {...props}
     />
   )
@@ -157,6 +201,7 @@ function DialogDescription({
 
 export {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,

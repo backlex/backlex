@@ -13,9 +13,9 @@ import { Badge, Button, IconButton, Switch } from "./ui";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@backlex/ui/components/input-group";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -513,7 +513,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         </div>
 
         {step === 1 && (
-          <ScrollArea viewportClassName="h-[calc(92vh-13rem)] max-[640px]:h-[calc(92vh-14.75rem)]">
+          <DialogBody>
             <div className="px-5 py-[18px]">
             <InputGroup className="mb-3.5">
               <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
@@ -559,7 +559,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
               </div>
             ))}
             </div>
-          </ScrollArea>
+          </DialogBody>
         )}
 
         {step === 2 && (

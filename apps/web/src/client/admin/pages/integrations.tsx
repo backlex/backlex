@@ -12,9 +12,9 @@ import { api } from "@/lib/api";
 import { Input } from "@backlex/ui/components/input";
 import { Select } from "../select";
 import { Skeleton } from "@backlex/ui/components/skeleton";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -581,7 +581,7 @@ function DeliveryLogDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[560px]">
+      <DialogContent className="w-full gap-0 p-0 sm:max-w-[560px]">
         <DialogHeader className="shrink-0 space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
           <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">{t`${name} deliveries`}</DialogTitle>
           <DialogDescription className="text-[12.5px] text-muted-foreground">
@@ -589,7 +589,7 @@ function DeliveryLogDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-13rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-1.5 px-5 py-4">
             {rows === null ? (
               [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-11 w-full" />)
@@ -631,7 +631,7 @@ function DeliveryLogDialog({
               })
             )}
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="shrink-0 border-t border-border px-5 py-3.5">
           <Button variant="ghost" onClick={onClose}>
@@ -697,7 +697,7 @@ function ConnectDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]">
+      <DialogContent className="w-full gap-0 p-0 sm:max-w-[520px]">
         <DialogHeader className="space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
           <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">{t`Connect ${name}`}</DialogTitle>
           <DialogDescription className="text-[12.5px] text-muted-foreground">
@@ -712,7 +712,7 @@ function ConnectDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-3.5 px-5 py-4">
             {redirectUri ? (
               <div className="rounded-control border border-border bg-muted/40 px-3 py-2.5">
@@ -796,7 +796,7 @@ function ConnectDialog({
               )}
             </div>
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="border-t border-border px-5 py-3.5">
           <Button variant="ghost" onClick={onClose}>

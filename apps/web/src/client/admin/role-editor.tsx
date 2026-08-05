@@ -6,6 +6,7 @@ import { Button } from "./ui";
 import { Input } from "@backlex/ui/components/input";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -86,7 +87,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{isNew ? <Trans>New role</Trans> : <Trans>Edit {role?.name || "role"}</Trans>}</DialogTitle>
           <DialogDescription>
@@ -96,7 +97,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(85vh-13rem)] max-[640px]:max-h-[calc(85vh-15rem)]">
+        <DialogBody>
         <div className="flex min-w-0 flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
@@ -158,7 +159,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
             }}
           />
         </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}><Trans>Cancel</Trans></Button>

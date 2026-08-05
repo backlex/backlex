@@ -32,7 +32,16 @@ export type SelectOptions = (string | SelectOption)[];
 
 export interface SelectProps {
   value: string | undefined;
-  onChange: (v: string) => void;
+  onChange?: (v: string) => void;
+  /**
+   * Alias for `onChange`. This wraps a Radix Select, whose own handler is
+   * called `onValueChange`, so that is the name callers reach for — and four
+   * of them did. This file carries `@ts-nocheck`, so the prop was accepted,
+   * dropped, and the dropdown silently refused to select anything on the
+   * booking page for as long as it shipped. Accepting both names is cheaper
+   * than policing one.
+   */
+  onValueChange?: (v: string) => void;
   options: SelectOptions;
   placeholder?: string;
   className?: string;
@@ -58,6 +67,7 @@ function renderIcon(icon: SelectOption["icon"]) {
 export function Select({
   value,
   onChange,
+  onValueChange,
   options,
   placeholder,
   className = "",
@@ -67,6 +77,12 @@ export function Select({
   defaultValue,
 }: SelectProps) {
   const { t } = useLingui();
+  const emit = onChange ?? onValueChange;
+  if (!emit && process.env.NODE_ENV !== "production") {
+    // Loud in dev rather than a dropdown that opens, highlights, and does
+    // nothing — the failure mode that shipped.
+    console.error("[admin/Select] neither onChange nor onValueChange was passed; the control is inert");
+  }
   const resolvedPlaceholder = placeholder ?? t`Select…`;
   const norm: SelectOption[] = (options || []).map((o) =>
     typeof o === "object" ? (o as SelectOption) : { value: String(o), label: String(o) },
@@ -87,7 +103,7 @@ export function Select({
     <UiSelect
       value={toRadix(value)}
       defaultValue={toRadix(defaultValue)}
-      onValueChange={(v) => onChange(fromRadix(v))}
+      onValueChange={(v) => emit?.(fromRadix(v))}
       disabled={disabled}
     >
       <SelectTrigger

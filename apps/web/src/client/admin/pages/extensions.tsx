@@ -12,11 +12,11 @@ import { Select } from "../select";
 import { type ApiExtension, type ApiExtensionHookResult, extensionsApi } from "../api";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -354,7 +354,7 @@ function InstallExtensionDialog({
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[86vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]">
+      <DialogContent className="w-full gap-0 p-0 sm:max-w-[520px]">
         <DialogHeader className="shrink-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Install extension</Trans></DialogTitle>
           <DialogDescription className="mt-0.5 text-[12.5px]">
@@ -516,7 +516,7 @@ function RunHookDialog({ ext, onClose }: { ext: ApiExtension; onClose: () => voi
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[85vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[560px]">
+      <DialogContent className="w-full gap-0 p-0 sm:max-w-[560px]">
         <DialogHeader className="shrink-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
             <Trans>Run hook</Trans> <span className="font-mono text-[14px] font-medium">{ext.name}</span>
@@ -526,7 +526,7 @@ function RunHookDialog({ ext, onClose }: { ext: ApiExtension; onClose: () => voi
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(85vh-10rem)] max-[640px]:max-h-[calc(85vh-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-4 px-5 py-[18px]">
             <div className="flex flex-col gap-1.5">
               <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Hook</Trans></label>
@@ -598,7 +598,7 @@ function RunHookDialog({ ext, onClose }: { ext: ApiExtension; onClose: () => voi
               </div>
             )}
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="shrink-0 border-t border-border bg-card px-5 py-3 sm:justify-end">
           <Button variant="ghost" onClick={onClose} disabled={busy}><Trans>Close</Trans></Button>

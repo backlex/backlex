@@ -17,6 +17,7 @@ import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -200,7 +201,7 @@ export function FeatureFlagsPage({ pushToast }: { pushToast: (m: string) => void
       </Card>
 
       <Dialog open={!!edit} onOpenChange={(o) => !o && setEdit(null)}>
-        <DialogContent className="max-w-lg flex flex-col overflow-hidden">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{edit?.isNew ? <Trans>New flag</Trans> : <Trans>Edit flag</Trans>}</DialogTitle>
             <DialogDescription>
@@ -208,7 +209,7 @@ export function FeatureFlagsPage({ pushToast }: { pushToast: (m: string) => void
             </DialogDescription>
           </DialogHeader>
           {edit && (
-            <ScrollArea viewportClassName="max-h-[calc(85vh-13rem)] max-[640px]:max-h-[calc(85vh-15rem)] [&>div]:!block">
+            <DialogBody>
               <div className="flex flex-col gap-3.5 overflow-x-clip px-0.5 py-1">
                 <label className="flex flex-col gap-1 text-[12.5px] font-medium">
                   <Trans>Key</Trans>
@@ -275,7 +276,7 @@ export function FeatureFlagsPage({ pushToast }: { pushToast: (m: string) => void
                   />
                 </label>
               </div>
-            </ScrollArea>
+            </DialogBody>
           )}
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEdit(null)}><Trans>Cancel</Trans></Button>

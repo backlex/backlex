@@ -17,9 +17,9 @@ import {
   CommandList,
 } from "@backlex/ui/components/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@backlex/ui/components/popover";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -176,16 +176,16 @@ export function FileTile({ f, active, onSelect, onCopyUrl }: { f: StoredFile; ac
 export function FileDetailModal({ f, onClose, ...rest }: any) {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] w-[min(720px,92vw)] flex-col gap-0 overflow-hidden p-0 lg:w-[min(1000px,94vw)] lg:max-w-[1000px]">
+      <DialogContent className="w-[min(720px,92vw)] gap-0 p-0 lg:w-[min(1000px,94vw)] lg:max-w-[1000px]">
         <DialogHeader className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <div className="min-w-0 flex-1">
             <DialogTitle className="text-[14.5px] font-semibold tracking-[-0.01em]"><Trans>Edit file</Trans></DialogTitle>
             <DialogDescription className="mt-0.5 truncate font-mono text-xs">{f.key}</DialogDescription>
           </div>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-7rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
           <FileDetail f={f} {...rest} embedded />
-        </ScrollArea>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );

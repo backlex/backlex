@@ -14,9 +14,9 @@ import { Select } from "../select";
 import { Input } from "@backlex/ui/components/input";
 import { Card } from "@backlex/ui/components/card";
 import { Skeleton } from "@backlex/ui/components/skeleton";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -219,7 +219,7 @@ function ErasureDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[min(86vh,760px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[540px]">
+      <DialogContent className="w-full gap-0 p-0 sm:max-w-[540px]">
         <DialogHeader className="shrink-0 space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
           <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">
             {preview ? <Trans>Confirm erasure</Trans> : <Trans>New erasure request</Trans>}
@@ -233,7 +233,7 @@ function ErasureDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,760px)-10rem)] max-[640px]:max-h-[calc(min(86vh,760px)-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-3.5 px-5 py-4">
             {!preview ? (
               <>
@@ -342,7 +342,7 @@ function ErasureDialog({
 
             {error ? <p className="text-[12px] leading-snug text-destructive">{error}</p> : null}
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="shrink-0 border-t border-border px-5 py-3.5">
           <Button variant="ghost" onClick={onClose}>

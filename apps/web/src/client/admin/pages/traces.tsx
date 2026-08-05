@@ -12,6 +12,7 @@ import { Badge, Button, EmptyState, PageHeader } from "../ui";
 import { Input } from "@backlex/ui/components/input";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -24,7 +25,6 @@ import {
   TableHeader,
   TableRow,
 } from "@backlex/ui/components/table";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Card } from "@backlex/ui/components/card";
 import type { ApiSpan, ApiTraceSummary } from "../api";
 import { useTrace, useTraces } from "../queries";
@@ -225,7 +225,7 @@ function TraceDetail({
           {trace && <span className="font-mono tabular-nums text-foreground">{trace.durationMs}ms</span>}
           <span className="break-all font-mono">{trace?.traceId}</span>
         </div>
-        <ScrollArea className="min-h-0" viewportClassName="max-h-[calc(85vh-10rem)] max-[640px]:max-h-[calc(85vh-15rem)]">
+        <DialogBody className="min-h-0">
           <div className="flex flex-col gap-1.5 py-1">
             {spans.length === 0 ? (
               <p className="m-0 px-1 py-6 text-center text-[13px] text-muted-foreground">
@@ -249,7 +249,7 @@ function TraceDetail({
               </>
             )}
           </div>
-        </ScrollArea>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );

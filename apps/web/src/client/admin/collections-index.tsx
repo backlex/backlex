@@ -10,6 +10,7 @@ import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -984,7 +985,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs, gr
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="grid max-h-[90vh] w-full grid-rows-[auto_1fr_auto] gap-0 overflow-hidden p-0 sm:max-w-[640px]">
+      <DialogContent className="grid w-full grid-rows-[auto_1fr_auto] gap-0 p-0 sm:max-w-[640px]">
         <DialogHeader className="flex-row items-center gap-2.5 border-b border-border px-4 py-3.5 pr-12 text-left">
           <I.Database size={14} />
           <DialogTitle className="text-sm font-medium"><Trans>New collection</Trans></DialogTitle>
@@ -1140,12 +1141,12 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt, onPickTe
   if (!open) return null;
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[760px]">
+      <DialogContent className="w-full gap-0 p-0 sm:max-w-[760px]">
         <DialogHeader className="shrink-0 flex-row items-center gap-2.5 border-b border-border px-4 py-3.5 pr-12 text-left">
           <I.Plus size={14} />
           <DialogTitle className="text-sm font-medium"><Trans>New collection</Trans></DialogTitle>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(90vh-10rem)]">
+        <DialogBody>
           <div className="grid grid-cols-3 max-sm:grid-cols-1 gap-3 p-[22px]">
             <Card asChild interactive className="gap-2.5 py-0 p-[18px] text-left">
               <button
@@ -1190,7 +1191,7 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt, onPickTe
               </button>
             </Card>
           </div>
-        </ScrollArea>
+        </DialogBody>
         <div className="flex items-center gap-2 border-t border-border px-4 py-3.5">
           <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>

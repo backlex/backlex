@@ -29,6 +29,7 @@ import {
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -429,7 +430,10 @@ export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) 
             ))}
           </div>
         ) : events.length === 0 ? (
+          // `bare` because the section above already draws the border and the
+          // card background — without it this nests a second card in the first.
           <EmptyState
+            bare
             icon={I.Receipt}
             title={t`No deliveries yet`}
             description={t`Once a provider posts to the webhook URL above, every delivery shows up here with what it wrote.`}
@@ -579,7 +583,7 @@ function CheckoutDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]">
+      <DialogContent className="w-full gap-0 p-0 sm:max-w-[520px]">
         <DialogHeader className="space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
           <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">
             {t`${label} payment link`}
@@ -592,7 +596,7 @@ function CheckoutDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-3.5 px-5 py-4">
             {result ? (
               <>
@@ -664,7 +668,7 @@ function CheckoutDialog({
               </>
             )}
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border px-5 py-3.5 sm:flex-row sm:justify-end">
           <Button variant="ghost" onClick={onClose}>
@@ -763,7 +767,7 @@ function RefundDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]">
+      <DialogContent className="w-full gap-0 p-0 sm:max-w-[520px]">
         <DialogHeader className="space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
           <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">
             {t`${label} refund`}
@@ -776,7 +780,7 @@ function RefundDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-3.5 px-5 py-4">
             {result ? (
               <>
@@ -910,7 +914,7 @@ function RefundDialog({
               </>
             )}
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border px-5 py-3.5 sm:flex-row sm:justify-end">
           <Button variant="ghost" onClick={onClose}>
@@ -967,7 +971,7 @@ function ConnectDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]">
+      <DialogContent className="w-full gap-0 p-0 sm:max-w-[520px]">
         <DialogHeader className="space-y-1 border-b border-border px-5 pt-5 pb-3.5 text-left">
           <DialogTitle className="text-[15px] font-semibold -tracking-[0.01em]">
             {t`Connect ${label}`}
@@ -980,7 +984,7 @@ function ConnectDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
+        <DialogBody>
           <div className="flex flex-col gap-3.5 px-5 py-4">
             {fields.map((f) => (
               <label key={f.key} className="block">
@@ -1033,7 +1037,7 @@ function ConnectDialog({
               </Trans>
             </p>
           </div>
-        </ScrollArea>
+        </DialogBody>
 
         <DialogFooter className="border-t border-border px-5 py-3.5">
           <Button variant="ghost" onClick={onClose}>

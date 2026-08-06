@@ -90,6 +90,74 @@ existing per-isolate schema cache so even a cache hit can 304.
   are constructed lazily and memoized per isolate.
 - **FTS** — Postgres `tsvector` + GIN, SQLite FTS5 shadow tables.
 
+### Typecheck: incremental state, and where the eight minutes actually went
+
+The pre-push gate took ~8 minutes, and `typecheck` was the whole of it — the
+other three jobs run in parallel and finish inside a minute. The assumption was
+that `tsc` was reading too many files. `--extendedDiagnostics` says otherwise:
+
+| | |
+|---|---|
+| I/O read | 0.48s |
+| Parse | 0.90s |
+| Program construction | 1.83s |
+| **Check** | **126.58s** |
+
+7.3M types and 23.4M instantiations for 182k lines of TypeScript, in 6.3 GB of
+memory. It is a type-checking problem, not a file-reading one.
+
+Two things came out of that:
+
+**`incremental` per project.** The work was redone from scratch every run. With
+a state file the whole-repo typecheck goes **217s → 17s** when nothing changed,
+and `apps/web`'s server project alone **191s → 3s**. A real edit to one route
+still costs ~110s (see below for why). CI keeps the state in a cache keyed on
+the commit, so a run starts from the previous one.
+
+**TypeScript 6.0.** Free on top: cold whole-repo **217s → 145s**. The only
+migration cost was `baseUrl` in four tsconfigs, removed rather than silenced
+with `ignoreDeprecations` — the option stops working in 7.0 either way, and
+`paths` has not needed it since 4.1.
+
+#### The real bottleneck: long `.openapi()` chains
+
+Attributing check time per file, without double-counting nested spans:
+
+| File | Check time | Share |
+|---|---|---|
+| `routes/booking.ts` | 31.7s | 20.4% |
+| `routes/scim-admin.ts` | 10.4s | 6.7% |
+| `routes/roles/users.ts` | 10.4s | 6.7% |
+| `routes/payments.ts` | 7.8s | 5.1% |
+
+All of them are long `.openapi(createRoute({…}), handler)` chains. Every link
+widens the router's generic type, so cost grows super-linearly with chain
+length — which is also why touching one route invalidates so much of the
+incremental build. Splitting the longest chains into sub-routers is the fix
+that would help every compiler; not attempted yet.
+
+#### TypeScript 7 (the Go port) — measured, not adopted
+
+`typescript-7` is installed under an alias and wired to `bun run
+typecheck:native` so this stays reproducible. Both compilers report identical
+diagnostics on this tree. The speed is not uniform:
+
+| Project | tsc 6.0 | TS 7.0.2 native | |
+|---|---|---|---|
+| `packages/core` | 0.49s | 0.25s | 2× faster |
+| `apps/web` client | 9.15s | 1.61s | **5.7× faster** |
+| `apps/web` server | 152s | 268s | **1.8× slower** |
+
+The regression is the one project whose working set (6.3 GB) does not fit
+alongside everything else on an 8 GB machine — its `sys` time is 449s against
+125s, which is swap, not compilation. So the port is a large win everywhere
+except the project that most needs it, on this hardware. A 16 GB CI runner may
+well invert that; the script is there to find out.
+
+`apps/docs` and `apps/site` cannot move regardless: they typecheck through
+`astro check`, which imports the compiler API, and 7.0 shipped without one.
+That returns in 7.1.
+
 ## Deferred (scoped, with rationale)
 
 These were evaluated and intentionally left for a follow-up — each needs an

@@ -358,7 +358,7 @@ export function KpisPage({ pushToast }: { pushToast: (m: string) => void }) {
           }
         />
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-3">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
           {kpis.map((kpi) => (
             <KpiTile
               key={kpi.id}
@@ -742,6 +742,10 @@ function Sparkline({
   const known = series.filter((p) => p.value !== null) as { t: number; value: number }[];
   if (known.length < 2) return null;
   const values = known.map((p) => p.value);
+  // Nothing happened at all. A perfectly flat line spanning the card reads as
+  // a stray border rather than as data, and the headline figure already says
+  // zero — so draw nothing.
+  if (values.every((v) => v === 0)) return null;
   const min = Math.min(...values, 0);
   const max = Math.max(...values);
   const span = max - min || 1;
@@ -774,7 +778,7 @@ function Sparkline({
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="mt-1 h-[22px] w-full text-muted-foreground/60"
+      className="mt-1.5 h-[22px] w-full max-w-[180px] text-muted-foreground/60"
       preserveAspectRatio="none"
       aria-hidden="true"
     >

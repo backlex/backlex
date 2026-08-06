@@ -670,7 +670,7 @@ function KpisSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={2} />
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="h-[116px] w-full rounded-surface" />
         ))}

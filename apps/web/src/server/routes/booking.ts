@@ -431,6 +431,7 @@ export const bookingRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           to: z.string().optional(),
           limit: z.coerce.number().int().min(1).max(200).optional(),
           offset: z.coerce.number().int().min(0).optional(),
+          order: z.enum(["asc", "desc"]).optional(),
         }),
       },
       responses: {
@@ -454,6 +455,7 @@ export const bookingRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ...(q.to ? { to: Date.parse(q.to) } : {}),
         ...(q.limit ? { limit: q.limit } : {}),
         ...(q.offset ? { offset: q.offset } : {}),
+        ...(q.order ? { order: q.order } : {}),
       });
       return c.json(out);
     },

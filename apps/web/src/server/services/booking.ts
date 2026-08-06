@@ -1646,6 +1646,9 @@ export interface ListBookingsQuery {
   to?: number;
   limit?: number;
   offset?: number;
+  /** By start time. `desc` (the default) answers "what came in last"; `asc`
+   *  answers "who is coming next", which is what a day of work is read in. */
+  order?: "asc" | "desc";
 }
 
 export const listBookings = async (
@@ -1669,7 +1672,7 @@ export const listBookings = async (
     .select()
     .from(t)
     .where(and(...(conditions as any[])))
-    .orderBy(desc(t.startAt))) as BookingRow[];
+    .orderBy(query.order === "asc" ? asc(t.startAt) : desc(t.startAt))) as BookingRow[];
 
   // `completed` and `expired` exist only once the clock has been consulted, so
   // a status filter cannot be pushed into SQL without the derived ones going

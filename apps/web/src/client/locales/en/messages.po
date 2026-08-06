@@ -853,6 +853,10 @@ msgstr "{r} may update rows matching this rule."
 msgid "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
 msgstr "{sampleSeeds} template sample rows are still in this workspace. Your own data is never touched."
 
+#: src/client/admin/parity/booking.tsx
+msgid "{shownFrom}–{shownTo} of {total}"
+msgstr "{shownFrom}–{shownTo} of {total}"
+
 #. placeholder {0}: row.signers.length
 #: src/client/admin/parity/signatures.tsx
 msgid "{signed} of {0} signed"
@@ -1521,6 +1525,10 @@ msgstr "Add an agent to this room, or just talk to your team…"
 #: src/client/admin/parity/app-orgs.tsx
 msgid "Add an end-user…"
 msgstr "Add an end-user…"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Add another"
+msgstr "Add another"
 
 #: src/client/admin/add-field.tsx
 msgid "Add at least one dropdown choice."
@@ -2812,6 +2820,18 @@ msgid "Book"
 msgstr "Book"
 
 #: src/client/admin/parity/booking.tsx
+msgid "Booked"
+msgstr "Booked"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Booked via"
+msgstr "Booked via"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Booked."
+msgstr "Booked."
+
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/ui.tsx
 msgid "Booking"
 msgstr "Booking"
@@ -3019,9 +3039,17 @@ msgstr "Cancel clear"
 msgid "Cancel schedule"
 msgstr "Cancel schedule"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Cancel the booking"
+msgstr "Cancel the booking"
+
 #: src/client/pages/book.tsx
 msgid "Cancel this booking"
 msgstr "Cancel this booking"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Cancel this booking?"
+msgstr "Cancel this booking?"
 
 #: src/client/admin/storage/index.tsx
 msgid "Cancel upload"
@@ -3920,6 +3948,7 @@ msgstr "copied"
 
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Copied"
 msgstr "Copied"
@@ -3959,6 +3988,7 @@ msgstr "copy"
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
@@ -4100,6 +4130,10 @@ msgstr "Could not export runs."
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not post comment."
 msgstr "Could not post comment."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Could not reach the clipboard — select the link and copy it."
+msgstr "Could not reach the clipboard — select the link and copy it."
 
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not revoke share link."
@@ -4937,6 +4971,10 @@ msgstr "Delete this item?"
 msgid "Delete this KPI?"
 msgstr "Delete this KPI?"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Delete this resource?"
+msgstr "Delete this resource?"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Delete this row too (cascade)"
@@ -5275,6 +5313,7 @@ msgstr "Don't write it back"
 #: src/client/admin/pages/database-import.tsx
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/signatures.tsx
 msgid "Done"
@@ -6265,6 +6304,14 @@ msgstr "Everyone — one rejection ends it"
 msgid "Everyone has signed. A copy has been emailed to you."
 msgstr "Everyone has signed. A copy has been emailed to you."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Everything"
+msgstr "Everything"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Everything the booking carries, and the moves still open to it. Times are in the resource's zone."
+msgstr "Everything the booking carries, and the moves still open to it. Times are in the resource's zone."
+
 #: src/client/admin/pages/extensions.tsx
 msgid "Exact package name as published on npm."
 msgstr "Exact package name as published on npm."
@@ -7019,6 +7066,10 @@ msgstr "Frontend SDK"
 #: src/client/admin/permissions-matrix.tsx
 msgid "full"
 msgstr "full"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Full"
+msgstr "Full"
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/permissions-matrix.tsx
@@ -8048,6 +8099,10 @@ msgstr "Items refreshed."
 msgid "Its panels, field editors, and hooks stop working immediately. Fields using its editors fall back to the default editor for their type. This can't be undone — reinstall to bring it back."
 msgstr "Its panels, field editors, and hooks stop working immediately. Fields using its editors fall back to the default editor for their type. This can't be undone — reinstall to bring it back."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Its rules and its public link go with it. A resource with upcoming bookings is refused — cancel or move those first."
+msgstr "Its rules and its public link go with it. A resource with upcoming bookings is refused — cancel or move those first."
+
 #: src/client/admin/item-views.tsx
 msgid "January"
 msgstr "January"
@@ -8148,6 +8203,10 @@ msgstr "keep counting up forever"
 #: src/client/admin/pages/integrations.tsx
 msgid "Keep HubSpot contacts in step with a collection. Receives record contents."
 msgstr "Keep HubSpot contacts in step with a collection. Receives record contents."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Keep it"
+msgstr "Keep it"
 
 #: src/client/pages/sign-document.tsx
 msgid "Keep reviewing"
@@ -8646,6 +8705,7 @@ msgstr "Link"
 msgid "Link by verified email"
 msgstr "Link by verified email"
 
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Link copied."
 msgstr "Link copied."
@@ -9334,10 +9394,26 @@ msgstr "More save options"
 msgid "Move down"
 msgstr "Move down"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Move it"
+msgstr "Move it"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Move to this time"
+msgstr "Move to this time"
+
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/forms.tsx
 msgid "Move up"
 msgstr "Move up"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Moved"
+msgstr "Moved"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Moved — the old slot is free again."
+msgstr "Moved — the old slot is free again."
 
 #: src/client/admin/storage/widgets.tsx
 msgid "Moved to root."
@@ -9346,6 +9422,10 @@ msgstr "Moved to root."
 #: src/client/admin/storage/widgets.tsx
 msgid "Moved."
 msgstr "Moved."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Moving…"
+msgstr "Moving…"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Multi-locale content. Field-level translations attach to <0>c_*_translations</0> sibling tables; UI strings live here."
@@ -9772,13 +9852,22 @@ msgstr "Newest first. One row per attempt, including queue retries."
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/app.tsx
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Next"
 msgstr "Next"
+
+#: src/client/admin/parity/booking.tsx
+msgid "next {HORIZON_DAYS} days"
+msgstr "next {HORIZON_DAYS} days"
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/pages/public-form.tsx
 msgid "Next →"
 msgstr "Next →"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Next free"
+msgstr "Next free"
 
 #: src/client/admin/item-views.tsx
 msgid "Next month"
@@ -10725,6 +10814,10 @@ msgstr "Nothing is bookable yet"
 #~ msgid "Nothing is bookable yet. A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
 #~ msgstr "Nothing is bookable yet. A resource is the thing people book — a person, a room, a table — and it carries the opening hours, how long one booking lasts and how many fit at once."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Nothing is coming up in this view."
+msgstr "Nothing is coming up in this view."
+
 #: src/client/pages/book.tsx
 msgid "Nothing is free in the next two weeks."
 msgstr "Nothing is free in the next two weeks."
@@ -10745,6 +10838,10 @@ msgstr "Nothing landed in the last {range}. Widen the range, or wait for request
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Nothing new — all {0} collections already exist"
 msgstr "Nothing new — all {0} collections already exist"
+
+#: src/client/admin/parity/booking.tsx
+msgid "nothing open in the window"
+msgstr "nothing open in the window"
 
 #: src/client/admin/parity/signatures.tsx
 msgid "Nothing out for signature"
@@ -10891,6 +10988,10 @@ msgstr "of {0}"
 #: src/client/admin/field-rollup-editor.tsx
 msgid "Of collection"
 msgstr "Of collection"
+
+#: src/client/admin/parity/booking.tsx
+msgid "of what is open"
+msgstr "of what is open"
 
 #: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
@@ -11482,6 +11583,10 @@ msgstr "Password set."
 msgid "Passwords do not match"
 msgstr "Passwords do not match"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Past"
+msgstr "Past"
+
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 #~ msgid "Paste <0>{mcpUrl}</0>"
 #~ msgstr "Paste <0>{mcpUrl}</0>"
@@ -11999,6 +12104,10 @@ msgstr "Pick the field whose values become the Kanban columns.<0> Auto</0> uses 
 msgid "Pick the linking column"
 msgstr "Pick the linking column"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Pick the new time first."
+msgstr "Pick the new time first."
+
 #: src/client/admin/field-rollup-editor.tsx
 msgid "Pick the relation…"
 msgstr "Pick the relation…"
@@ -12058,6 +12167,10 @@ msgstr "PKCE"
 #: src/client/admin/pages/forms.tsx
 msgid "Placeholder"
 msgstr "Placeholder"
+
+#: src/client/admin/parity/booking.tsx
+msgid "places on the published grid"
+msgstr "places on the published grid"
 
 #: src/client/admin/pages/settings/index.tsx
 msgid "plain"
@@ -12278,6 +12391,10 @@ msgstr "Preview: "
 #: src/client/admin/pages/erasure-card.tsx
 msgid "Previewed"
 msgstr "Previewed"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Previous"
+msgstr "Previous"
 
 #: src/client/admin/item-views.tsx
 msgid "Previous month"
@@ -12764,6 +12881,7 @@ msgstr "Realtime"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/payments.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Reason"
 msgstr "Reason"
 
@@ -15673,6 +15791,7 @@ msgstr "static panels render their config object verbatim — set it from the AP
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Status"
 msgstr "Status"
 
@@ -15712,6 +15831,10 @@ msgstr "Step log"
 #: src/client/admin/flow-builder.tsx
 msgid "Steps"
 msgstr "Steps"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Still free"
+msgstr "Still free"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/usage.tsx
@@ -16367,6 +16490,10 @@ msgstr "The loop body runs once per row, with the row available as <0>{itemInter
 msgid "The move is refused until they hold a value — filling one in the same save counts."
 msgstr "The move is refused until they hold a value — filling one in the same save counts."
 
+#: src/client/admin/parity/booking.tsx
+msgid "The old slot goes back on sale, the customer is emailed, and a fresh link to change or cancel is minted."
+msgstr "The old slot goes back on sale, the customer is emailed, and a fresh link to change or cancel is minted."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "The oldest recorded span is newer than the start of this window — span retention, not traffic, is what bounds it."
 msgstr "The oldest recorded span is newer than the start of this window — span retention, not traffic, is what bounds it."
@@ -16473,6 +16600,14 @@ msgstr "The signed copy has been produced."
 msgid "The signing link has expired."
 msgstr "The signing link has expired."
 
+#: src/client/admin/parity/booking.tsx
+msgid "The slot goes back on sale and the customer is emailed."
+msgstr "The slot goes back on sale and the customer is emailed."
+
+#: src/client/admin/parity/booking.tsx
+msgid "The slot is taken. Their link to change or cancel is shown here once and nowhere else."
+msgstr "The slot is taken. Their link to change or cancel is shown here once and nowhere else."
+
 #: src/client/admin/pages/forms.tsx
 msgid "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
 msgstr "The token can't be shown again — generating a new link is the only way to get one. The old link stops working instantly; update any embeds."
@@ -16524,6 +16659,10 @@ msgstr "These rows will be removed from c_posts. This deletes the underlying rec
 #: src/client/admin/field-range-editor.tsx
 msgid "They clash — the end day is inside the period"
 msgstr "They clash — the end day is inside the period"
+
+#: src/client/admin/parity/booking.tsx
+msgid "They did not turn up."
+msgstr "They did not turn up."
 
 #: src/client/admin/field-range-editor.tsx
 msgid "They do not clash — the end is not inside the period"
@@ -17425,6 +17564,10 @@ msgstr "up to {0}"
 msgid "up to {0} MB"
 msgstr "up to {0} MB"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Upcoming"
+msgstr "Upcoming"
+
 #: src/client/admin/bulk-edit.tsx
 msgid "Update {count} rows"
 msgstr "Update {count} rows"
@@ -18027,6 +18170,7 @@ msgstr "whatever the collection has enabled"
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "When"
 msgstr "When"
 
@@ -18127,6 +18271,10 @@ msgstr "Which way the delta is green"
 #: src/client/admin/pages/_agents-shared.tsx
 msgid "Whichever agent fits best"
 msgstr "Whichever agent fits best"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Who"
+msgstr "Who"
 
 #: src/client/admin/parity/approvals.tsx
 msgid "Who was asked, who answered, and why."

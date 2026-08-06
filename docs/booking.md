@@ -149,6 +149,30 @@ The capacity guarantee still applies. `source` on the row records which path it
 came in through, so a self-service no-show reads differently from an operator's
 data entry.
 
+## Reading a day of work
+
+Two questions get asked of the same rows, and they are read in opposite
+directions: *who is coming next* and *what came in last*. `order=asc` on the
+listing answers the first, `desc` (the default) the second. It is a SQL-level
+sort rather than a re-sort of what came back, so the nearest booking survives
+the page limit:
+
+```bash
+backlex booking list --resource clinic --from 2026-08-06T00:00:00Z --order asc
+```
+
+The admin page reads the operator's question by default, and puts the week's
+shape above the list: how many places of the published grid are taken, how many
+are left, what share that is, and when the next free one starts. The free half
+comes from the slot grid and the taken half from the bookings themselves — a
+booking an operator made off-grid is occupancy too, and subtracting one number
+from the other would miss it.
+
+A no-show is only offered once the slot has passed. Before that nobody has
+failed to turn up yet, and `no-show` on a future booking is a cancellation
+wearing the wrong label — so the endpoint takes the *stored* status, which stays
+`confirmed` while the derived one already reads `completed`.
+
 ## Mirroring into your own collection
 
 The ledger is authoritative for the **slot**. Set `mirrorCollection` and each

@@ -58,6 +58,7 @@ const HELP = `backlex booking <resources|create|update|url|delete|slots|list|boo
   delete <key> [--force]
   slots <key> [--from <iso>] [--to <iso>]
   list [--resource <key>] [--status <s>] [--from <iso>] [--to <iso>]
+       [--order asc|desc]                     by start time; desc is the default
   book <key> --start <iso> [--end <iso>] [--name <n>] [--email <e>]
        [--phone <p>] [--notes <n>] [--hold]
   confirm <id>
@@ -328,6 +329,7 @@ export const runBooking = async (args: string[]): Promise<void> => {
           ["--status", "status"],
           ["--from", "from"],
           ["--to", "to"],
+          ["--order", "order"],
         ] as const) {
           const value = flag(rest, flagName);
           if (value) opts[key] = value;

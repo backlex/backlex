@@ -764,6 +764,16 @@ function BookingSkeletonImpl() {
         <ListCardSkeleton rows={4} />
         <div className="flex flex-col gap-4">
           <CardSkeleton lines={2} />
+          {/* The next-7-days strip: four tiles above the booking list. */}
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="gap-2 px-[15px] py-3.5">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-7 w-16" />
+                <Skeleton className="h-3 w-20" />
+              </Card>
+            ))}
+          </div>
           <ListCardSkeleton rows={5} />
         </div>
       </div>

@@ -550,6 +550,34 @@ describe("derived status", () => {
   });
 });
 
+describe("listing order", () => {
+  /** An operator's list is read "who is coming next"; an audit is read "what
+   *  came in last". Both are one page deep, so the order has to be decided in
+   *  SQL rather than after slicing. */
+  test("asc is nearest-first and desc stays the default", async () => {
+    await makeResource();
+    for (const start of ["2035-01-01T09:00:00.000Z", "2035-01-08T09:00:00.000Z"]) {
+      await ok("POST", `${BASE}/bookings`, { resource: "clinic", start, name: start });
+    }
+
+    const asc = await ok("GET", `${BASE}/bookings?order=asc`);
+    expect(asc.data.map((b: { start: string }) => b.start)).toEqual([
+      "2035-01-01T09:00:00.000Z",
+      "2035-01-08T09:00:00.000Z",
+    ]);
+
+    const fallback = await ok("GET", `${BASE}/bookings`);
+    expect(fallback.data[0].start).toBe("2035-01-08T09:00:00.000Z");
+
+    // One page deep: the nearest booking has to survive the limit, not just
+    // the sort.
+    const firstPage = await ok("GET", `${BASE}/bookings?order=asc&limit=1`);
+    expect(firstPage.total).toBe(2);
+    expect(firstPage.data).toHaveLength(1);
+    expect(firstPage.data[0].start).toBe("2035-01-01T09:00:00.000Z");
+  });
+});
+
 describe("the manage link", () => {
   const book = async () => {
     const created = await makeResource();

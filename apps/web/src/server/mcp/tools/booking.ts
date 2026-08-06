@@ -216,13 +216,14 @@ export const listBookingsTool: McpTool = {
       to: { type: "string" },
       limit: { type: "number" },
       offset: { type: "number" },
+      order: { type: "string", enum: ["asc", "desc"] },
     },
     additionalProperties: false,
   },
   handler: async (args, ctx) => {
     const a = args as Record<string, string | number | undefined>;
     const q = new URLSearchParams();
-    for (const key of ["resource", "status", "from", "to", "limit", "offset"]) {
+    for (const key of ["resource", "status", "from", "to", "limit", "offset", "order"]) {
       const value = a[key];
       if (value !== undefined) q.set(key, String(value));
     }

@@ -1232,7 +1232,10 @@ export function useToasts(): [ReactNode, (msg: string, type?: "success" | "error
   const push = useCallback((msg: string, type: "success" | "error" = "success") => {
     const id = Math.random().toString(36).slice(2);
     setToasts((t) => [...t, { id, msg, type }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200);
+    // Long enough to be read from the other side of a wide screen: the toast
+    // sits top-right while the thing that changed is usually elsewhere, and
+    // three seconds was regularly missed.
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
   }, []);
   const node = (
     <div className="fixed right-[18px] top-[18px] z-[80] flex flex-col gap-2">

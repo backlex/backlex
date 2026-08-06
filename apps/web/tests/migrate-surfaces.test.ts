@@ -8,7 +8,7 @@
 import { describe, expect, test, afterAll, beforeAll } from "bun:test";
 import { PGlite } from "@electric-sql/pglite";
 import { createClient, type BacklexClient } from "../../../packages/client/src/index";
-import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { makeHarness, seedAdmin, PGLITE_BOOT_TIMEOUT_MS, type TestHarness } from "./setup";
 import { createPgSource, type SourceQuery } from "../../../packages/migrate/src";
 import { __setMigrateConnectorFactory } from "../src/server/services/migrate";
 
@@ -69,7 +69,10 @@ describe("migrate surfaces (SDK / GraphQL / MCP parity)", () => {
     h = makeHarness();
     await seedAdmin(h);
     client = createClient({ url: "", fetch: h.fetch as unknown as typeof fetch });
-  });
+    // Booting a WASM Postgres does not fit bun's default 5s hook budget on a
+    // machine that is also typechecking and building — which is what the
+    // pre-push gate does.
+  }, PGLITE_BOOT_TIMEOUT_MS);
 
   afterAll(async () => {
     restoreFactory();

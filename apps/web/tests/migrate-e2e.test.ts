@@ -12,7 +12,7 @@ import { existsSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
-import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { makeHarness, seedAdmin, PGLITE_BOOT_TIMEOUT_MS, type TestHarness } from "./setup";
 import { createPgSource, type SourceQuery } from "../../../packages/migrate/src";
 import { runImportDb } from "../../../packages/cli/src/import-db";
 
@@ -81,7 +81,10 @@ describe("import-db end-to-end (pglite source → harness target)", () => {
     pak = ((await keyRes.json()) as { data: { secret: string } }).data.secret;
     server = Bun.serve({ port: 0, fetch: (req) => h.app.fetch(req) });
     url = `http://localhost:${server.port}`;
-  });
+    // Booting a WASM Postgres does not fit bun's default 5s hook budget on a
+    // machine that is also typechecking and building — which is what the
+    // pre-push gate does.
+  }, PGLITE_BOOT_TIMEOUT_MS);
 
   afterAll(async () => {
     server?.stop(true);

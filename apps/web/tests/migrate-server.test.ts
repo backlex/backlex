@@ -7,7 +7,7 @@
  */
 import { describe, expect, test, afterAll, beforeAll } from "bun:test";
 import { PGlite } from "@electric-sql/pglite";
-import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { makeHarness, seedAdmin, PGLITE_BOOT_TIMEOUT_MS, type TestHarness } from "./setup";
 import { buildContext } from "../src/server/context";
 import { createPgSource, type SourceQuery } from "../../../packages/migrate/src";
 import {
@@ -61,7 +61,11 @@ describe("migrate server-side (sources + runs)", () => {
     h = makeHarness();
     await seedAdmin(h);
     ctx = await buildContext(h.env);
-  });
+    // PGlite boots a WASM Postgres, which does not fit bun's default 5s hook
+    // budget on a machine that is also running typecheck and four platform
+    // builds — which is exactly what the pre-push hook does. The timeout was
+    // failing the gate on load rather than on anything this file asserts.
+  }, PGLITE_BOOT_TIMEOUT_MS);
 
   afterAll(async () => {
     restoreFactory();

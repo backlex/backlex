@@ -34,6 +34,17 @@ export interface TestHarness {
 
 const DEFAULT_APP_URL = "http://localhost:5173";
 
+/**
+ * Hook budget for a spec that boots PGlite.
+ *
+ * Starting a WASM Postgres is seconds of CPU, and bun's default hook timeout is
+ * five. The pre-push gate runs the suite alongside typecheck and four platform
+ * builds, so on a loaded machine the boot lost the race and the hook timed out
+ * — a red gate that said nothing about the code under test. The assertions
+ * themselves are unaffected; only the door they walk through is wider.
+ */
+export const PGLITE_BOOT_TIMEOUT_MS = 60_000;
+
 export const makeHarness = (overrides: Partial<Env> = {}): TestHarness => {
   // Per-isolate caches (roles/perms/membership/session/tenant-resolve) are
   // module-level, so they persist across harnesses in one bun-test process. In

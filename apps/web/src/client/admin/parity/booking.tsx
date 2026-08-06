@@ -147,12 +147,27 @@ const isOver = (b: ApiBooking, now: number): boolean => Date.parse(b.end) <= now
 /** How many rows one page of the booking list holds. */
 const PAGE_SIZE = 20;
 
-/** The window the list is read through. An operator's first question is "who is
- *  coming", not "what came in last", so upcoming-ascending is the default. */
+/**
+ * The window the list is read through. An operator's first question is "who is
+ * coming", not "what came in last", so upcoming-ascending is the default — and
+ * it asks for `live`, because someone who cancelled is not coming. Narrowing to
+ * a cancelled booking on purpose is what the status filter is for, and an
+ * explicit status wins over this.
+ */
 const WINDOWS = {
-  upcoming: { order: "asc" as const, from: () => new Date().toISOString(), to: () => undefined },
-  past: { order: "desc" as const, from: () => undefined, to: () => new Date().toISOString() },
-  all: { order: "desc" as const, from: () => undefined, to: () => undefined },
+  upcoming: {
+    order: "asc" as const,
+    live: true,
+    from: () => new Date().toISOString(),
+    to: () => undefined,
+  },
+  past: {
+    order: "desc" as const,
+    live: false,
+    from: () => undefined,
+    to: () => new Date().toISOString(),
+  },
+  all: { order: "desc" as const, live: false, from: () => undefined, to: () => undefined },
 };
 type WindowKey = keyof typeof WINDOWS;
 
@@ -326,6 +341,9 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
       ...(status ? { status } : {}),
       ...(lower ? { from: lower } : {}),
       ...(upper ? { to: upper } : {}),
+      // An explicit status is the operator asking for exactly that one, so it
+      // overrides the window's own idea of what is worth showing.
+      ...(w.live && !status ? { live: "true" } : {}),
       order: w.order,
       limit: String(PAGE_SIZE),
       offset: String(from),

@@ -1649,7 +1649,18 @@ export interface ListBookingsQuery {
   /** By start time. `desc` (the default) answers "what came in last"; `asc`
    *  answers "who is coming next", which is what a day of work is read in. */
   order?: "asc" | "desc";
+  /** Only bookings that still stand. "Who is coming on Thursday" is not
+   *  answered by a list that includes the two people who cancelled. */
+  live?: boolean;
 }
+
+/** A booking that still stands: not cancelled, not a no-show, and not a hold
+ *  the clock let go. `completed` belongs here — it happened. */
+const STANDING: ReadonlySet<BookingStatus> = new Set<BookingStatus>([
+  "held",
+  "confirmed",
+  "completed",
+]);
 
 export const listBookings = async (
   ctx: Ctx,
@@ -1676,10 +1687,17 @@ export const listBookings = async (
 
   // `completed` and `expired` exist only once the clock has been consulted, so
   // a status filter cannot be pushed into SQL without the derived ones going
-  // missing from every query that asks for them.
-  const filtered = query.status
-    ? rows.filter((r) => effectiveBookingStatus(r, now) === query.status)
-    : rows;
+  // missing from every query that asks for them. `live` is the same problem:
+  // an expired hold is a row that still says `held`.
+  const filtered =
+    query.status || query.live
+      ? rows.filter((r) => {
+          const status = effectiveBookingStatus(r, now);
+          if (query.status && status !== query.status) return false;
+          if (query.live && !STANDING.has(status)) return false;
+          return true;
+        })
+      : rows;
 
   const limit = clamp(query.limit ?? 50, 1, 200);
   const offset = Math.max(query.offset ?? 0, 0);

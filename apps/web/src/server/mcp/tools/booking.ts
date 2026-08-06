@@ -203,7 +203,8 @@ export const listBookingsTool: McpTool = {
   name: "booking.list",
   description:
     "List bookings. `completed` and `expired` are derived from the clock rather than stored, so " +
-    "filtering by them matches rows nothing has swept.",
+    "filtering by them matches rows nothing has swept. `live` drops the ones that no longer " +
+    "stand — cancelled, no-show, and holds the clock let go.",
   inputSchema: {
     type: "object",
     properties: {
@@ -217,13 +218,14 @@ export const listBookingsTool: McpTool = {
       limit: { type: "number" },
       offset: { type: "number" },
       order: { type: "string", enum: ["asc", "desc"] },
+      live: { type: "boolean" },
     },
     additionalProperties: false,
   },
   handler: async (args, ctx) => {
-    const a = args as Record<string, string | number | undefined>;
+    const a = args as Record<string, string | number | boolean | undefined>;
     const q = new URLSearchParams();
-    for (const key of ["resource", "status", "from", "to", "limit", "offset", "order"]) {
+    for (const key of ["resource", "status", "from", "to", "limit", "offset", "order", "live"]) {
       const value = a[key];
       if (value !== undefined) q.set(key, String(value));
     }

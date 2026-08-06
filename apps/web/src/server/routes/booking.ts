@@ -420,7 +420,7 @@ export const bookingRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags,
       summary: "List bookings",
       description:
-        "Admin-only. `completed` and `expired` are derived from the clock rather than stored, so filtering by them matches rows nothing has swept.",
+        "Admin-only. `completed` and `expired` are derived from the clock rather than stored, so filtering by them matches rows nothing has swept. `live=true` drops the ones that no longer stand — cancelled, no-show, and holds the clock let go.",
       security: SECURITY,
       middleware: adminGate,
       request: {
@@ -432,6 +432,10 @@ export const bookingRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           limit: z.coerce.number().int().min(1).max(200).optional(),
           offset: z.coerce.number().int().min(0).optional(),
           order: z.enum(["asc", "desc"]).optional(),
+          // A string rather than a coerced boolean: `z.coerce.boolean()` reads
+          // "false" as true, and this is the flag that decides whether a
+          // cancellation is in the list.
+          live: z.enum(["true", "false"]).optional(),
         }),
       },
       responses: {
@@ -456,6 +460,7 @@ export const bookingRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ...(q.limit ? { limit: q.limit } : {}),
         ...(q.offset ? { offset: q.offset } : {}),
         ...(q.order ? { order: q.order } : {}),
+        ...(q.live === "true" ? { live: true } : {}),
       });
       return c.json(out);
     },

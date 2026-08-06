@@ -2134,6 +2134,9 @@ export interface BookingClient {
     /** By start time. `desc` (the default) is what came in last; `asc` is who
      *  is coming next. */
     order?: "asc" | "desc";
+    /** Only bookings that still stand — drops cancelled, no-show and lapsed
+     *  holds. "Who is coming on Thursday" wants this. */
+    live?: boolean;
   }): Promise<{ data: Booking[]; total: number }>;
   getBooking(id: string): Promise<{ data: Booking }>;
   /** Book as an operator — off-grid times allowed. */
@@ -4423,6 +4426,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       if (opts?.limit != null) q.set("limit", String(opts.limit));
       if (opts?.offset != null) q.set("offset", String(opts.offset));
       if (opts?.order) q.set("order", opts.order);
+      if (opts?.live) q.set("live", "true");
       const qs = q.toString();
       return request<{ data: Booking[]; total: number }>(
         "GET",

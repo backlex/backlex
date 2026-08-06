@@ -58,7 +58,8 @@ const HELP = `backlex booking <resources|create|update|url|delete|slots|list|boo
   delete <key> [--force]
   slots <key> [--from <iso>] [--to <iso>]
   list [--resource <key>] [--status <s>] [--from <iso>] [--to <iso>]
-       [--order asc|desc]                     by start time; desc is the default
+       [--order asc|desc] [--live]            desc is the default; --live drops
+                                              cancelled, no-show and lapsed holds
   book <key> --start <iso> [--end <iso>] [--name <n>] [--email <e>]
        [--phone <p>] [--notes <n>] [--hold]
   confirm <id>
@@ -323,7 +324,7 @@ export const runBooking = async (args: string[]): Promise<void> => {
       }
 
       case "list": {
-        const opts: Record<string, string> = {};
+        const opts: Record<string, string | boolean> = {};
         for (const [flagName, key] of [
           ["--resource", "resource"],
           ["--status", "status"],
@@ -334,6 +335,7 @@ export const runBooking = async (args: string[]): Promise<void> => {
           const value = flag(rest, flagName);
           if (value) opts[key] = value;
         }
+        if (has(rest, "--live")) opts.live = true;
         const out = await client.booking.listBookings(opts as never);
         if (json) printJson(out.data);
         else

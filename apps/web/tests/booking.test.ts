@@ -578,6 +578,61 @@ describe("listing order", () => {
   });
 });
 
+describe("live listing", () => {
+  /** "Who is coming on Thursday" is not answered by a list that includes the
+   *  person who cancelled — and the count has to drop with the row, or the
+   *  pager claims a page that is not there. */
+  test("live drops what no longer stands, and the total drops with it", async () => {
+    await makeResource();
+    const kept = await ok("POST", `${BASE}/bookings`, {
+      resource: "clinic",
+      start: "2035-02-05T09:00:00.000Z",
+      name: "Coming",
+    });
+    const gone = await ok("POST", `${BASE}/bookings`, {
+      resource: "clinic",
+      start: "2035-02-12T09:00:00.000Z",
+      name: "Cancelled",
+    });
+    await ok("POST", `${BASE}/bookings/${gone.data.booking.id}/cancel`, {});
+
+    const everything = await ok("GET", `${BASE}/bookings`);
+    expect(everything.total).toBe(2);
+
+    const live = await ok("GET", `${BASE}/bookings?live=true`);
+    expect(live.total).toBe(1);
+    expect(live.data[0].id).toBe(kept.data.booking.id);
+
+    // `live=false` is the string "false", which a coerced boolean would read
+    // as true and quietly hide the cancellation.
+    const off = await ok("GET", `${BASE}/bookings?live=false`);
+    expect(off.total).toBe(2);
+
+    // An explicit status is still answerable alongside it.
+    const cancelled = await ok("GET", `${BASE}/bookings?status=cancelled`);
+    expect(cancelled.total).toBe(1);
+  });
+
+  test("a lapsed hold does not stand either", async () => {
+    const { listBookings } = await import("../src/server/services/booking");
+    await makeResource();
+    const held = await ok("POST", `${BASE}/bookings`, {
+      resource: "clinic",
+      start: "2035-03-05T09:00:00.000Z",
+      name: "Never paid",
+      hold: true,
+    });
+    expect(held.data.booking.status).toBe("held");
+
+    const ctx = await ctxOf();
+    const tid = tenantId();
+    const after = held.data.booking.holdExpiresAt + 1000;
+    expect((await listBookings(ctx, tid, { live: true }, after)).total).toBe(0);
+    // Only the clock decides — the row still says `held`.
+    expect((await listBookings(ctx, tid, { live: true }, after - 2000)).total).toBe(1);
+  });
+});
+
 describe("the manage link", () => {
   const book = async () => {
     const created = await makeResource();

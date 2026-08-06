@@ -158,10 +158,17 @@ sort rather than a re-sort of what came back, so the nearest booking survives
 the page limit:
 
 ```bash
-backlex booking list --resource clinic --from 2026-08-06T00:00:00Z --order asc
+backlex booking list --resource clinic --from 2026-08-06T00:00:00Z --order asc --live
 ```
 
-The admin page reads the operator's question by default, and puts the week's
+`--live` (`live=true`) drops what no longer stands — cancelled, no-show, and
+holds the clock let go. "Who is coming on Thursday" is not answered by a list
+that includes the two people who cancelled, and because the filter runs before
+the page is cut, the count drops with the rows rather than promising a page
+that is not there.
+
+The admin page reads the operator's question by default — upcoming, nearest
+first, live only — and puts the week's
 shape above the list: how many places of the published grid are taken, how many
 are left, what share that is, and when the next free one starts. The free half
 comes from the slot grid and the taken half from the bookings themselves — a

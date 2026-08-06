@@ -487,6 +487,11 @@ msgstr "{0} match · {1} loaded"
 #~ msgid "{0} minutes"
 #~ msgstr "{0} minutes"
 
+#. placeholder {0}: data.truncated
+#: src/client/admin/pages/forms.tsx
+msgid "{0} more questions are not summarised — this form has more than the panel computes."
+msgstr "{0} more questions are not summarised — this form has more than the panel computes."
+
 #. placeholder {0}: result.durationMs
 #: src/client/admin/pages/extensions.tsx
 msgid "{0} ms"
@@ -536,6 +541,13 @@ msgstr "{0} patterns"
 #: src/client/admin/app.tsx
 msgid "{0} posts deleted."
 msgstr "{0} posts deleted."
+
+#. placeholder {0}: b.nps.promoters
+#. placeholder {1}: b.nps.passives
+#. placeholder {2}: b.nps.detractors
+#: src/client/admin/pages/forms.tsx
+#~ msgid "{0} promoters · {1} passives · {2} detractors"
+#~ msgstr "{0} promoters · {1} passives · {2} detractors"
 
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
@@ -1272,6 +1284,10 @@ msgstr "Accent for the icon in nav and lists."
 #: src/client/pages/invite.tsx
 msgid "Accept invite"
 msgstr "Accept invite"
+
+#: src/client/admin/pages/forms.tsx
+msgid "accepted through this form"
+msgstr "accepted through this form"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Accepted types"
@@ -2147,6 +2163,14 @@ msgstr "Anonymize is usually the lawful option — an invoice generally cannot b
 msgid "Another signer declined it."
 msgstr "Another signer declined it."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Answer style"
+msgstr "Answer style"
+
+#: src/client/admin/pages/forms.tsx
+msgid "answered"
+msgstr "answered"
+
 #: src/client/admin/parity/approvals.tsx
 msgid "Answered"
 msgstr "Answered"
@@ -2635,6 +2659,11 @@ msgstr "Avatar preview"
 #: src/client/admin/field-rollup-editor.tsx
 msgid "Average"
 msgstr "Average"
+
+#. placeholder {0}: b.average
+#: src/client/admin/pages/forms.tsx
+msgid "avg {0}"
+msgstr "avg {0}"
 
 #: src/client/admin/pages/users.tsx
 msgid "awaiting accept"
@@ -4294,6 +4323,11 @@ msgstr "Country a national number is read as"
 #: src/client/admin/field-phone-input.tsx
 msgid "Country the typed number is read as"
 msgstr "Country the typed number is read as"
+
+#. placeholder {0}: data.collection
+#: src/client/admin/pages/forms.tsx
+msgid "Counts cover every row in {0}, including any written outside this form."
+msgstr "Counts cover every row in {0}, including any written outside this form."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Covering message"
@@ -6541,6 +6575,10 @@ msgstr "External column"
 msgid "External identity rows are kept as an audit trail."
 msgstr "External identity rows are kept as an audit trail."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Extremely"
+msgstr "Extremely"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Fail flow"
 msgstr "Fail flow"
@@ -7086,6 +7124,7 @@ msgstr "Fri"
 msgid "from"
 msgstr "from"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/translations.tsx
 msgid "From"
@@ -7497,6 +7536,10 @@ msgstr "Hide variables"
 #: src/client/admin/collections-index.tsx
 msgid "Hiding off"
 msgstr "Hiding off"
+
+#: src/client/admin/pages/forms.tsx
+msgid "High label"
+msgstr "High label"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "highest reasoning · slower · ~3x cost"
@@ -8988,6 +9031,10 @@ msgstr "Looking up…"
 msgid "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
 msgstr "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Low label"
+msgstr "Low label"
+
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Lowercase id used in the sign-in call and the redirect URI below."
 msgstr "Lowercase id used in the sign-in call and the redirect URI below."
@@ -9958,6 +10005,7 @@ msgstr "Next record"
 msgid "no"
 msgstr "no"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/pages/book.tsx
 msgid "No"
@@ -10026,6 +10074,10 @@ msgstr "no AI key configured"
 #: src/client/admin/parity/approvals.tsx
 msgid "no answer yet"
 msgstr "no answer yet"
+
+#: src/client/admin/pages/forms.tsx
+msgid "No answers yet"
+msgstr "No answers yet"
 
 #: src/client/pages/api-keys.tsx
 msgid "No API keys yet"
@@ -10801,6 +10853,10 @@ msgstr "not allowed"
 msgid "Not asked"
 msgstr "Not asked"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Not at all"
+msgstr "Not at all"
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Not authorized"
 msgstr "Not authorized"
@@ -11013,6 +11069,23 @@ msgstr "npm package"
 #: src/client/admin/pages/extensions.tsx
 msgid "npm registry"
 msgstr "npm registry"
+
+#: src/client/admin/pages/forms.tsx
+msgid "NPS — how likely to recommend (0–10)"
+msgstr "NPS — how likely to recommend (0–10)"
+
+#. placeholder {0}: b.nps.score
+#: src/client/admin/pages/forms.tsx
+msgid "NPS {0}"
+msgstr "NPS {0}"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Number input"
+msgstr "Number input"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Numbered scale"
+msgstr "Numbered scale"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -12569,6 +12642,13 @@ msgstr "Profile saved for {0}."
 msgid "Profile saved."
 msgstr "Profile saved."
 
+#. placeholder {0}: b.nps.promoters
+#. placeholder {1}: b.nps.passives
+#. placeholder {2}: b.nps.detractors
+#: src/client/admin/pages/forms.tsx
+msgid "promoters {0} · passives {1} · detractors {2}"
+msgstr "promoters {0} · passives {1} · detractors {2}"
+
 #: src/client/admin/parity/booking.tsx
 msgid "Protected minutes before each booking."
 msgstr "Protected minutes before each booking."
@@ -12802,6 +12882,10 @@ msgstr "Query returned no rows."
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Query your backend in natural language, browse the MCP tool catalog, and connect external clients over OAuth or an API key — every call scoped to your role and the per-key allowlist."
 msgstr "Query your backend in natural language, browse the MCP tool catalog, and connect external clients over OAuth or an API key — every call scoped to your role and the per-key allowlist."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Questions"
+msgstr "Questions"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Queue"
@@ -13749,6 +13833,18 @@ msgstr "Result"
 msgid "Result is piped into <0>$last</0> for the next step."
 msgstr "Result is piped into <0>$last</0> for the next step."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Results"
+msgstr "Results"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Results can't be read"
+msgstr "Results can't be read"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Results score this as promoters (9–10) minus detractors (0–6)."
+msgstr "Results score this as promoters (9–10) minus detractors (0–6)."
+
 #: src/client/admin/storage/index.tsx
 msgid "resumable"
 msgstr "resumable"
@@ -14048,6 +14144,7 @@ msgid "rows"
 msgstr "rows"
 
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/usage.tsx
@@ -15155,6 +15252,10 @@ msgstr "Settings → MCP → Add. Same JSON shape Claude Desktop uses. (Or skip 
 msgid "settled"
 msgstr "settled"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Several answers allowed, so the shares can add up to more than 100%."
+msgstr "Several answers allowed, so the shares can add up to more than 100%."
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "Severity"
 msgstr "Severity"
@@ -15180,6 +15281,10 @@ msgstr "Share link created."
 #: src/client/admin/item-collaboration.tsx
 msgid "Share link revoked."
 msgstr "Share link revoked."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Share the public link — every question gets a breakdown here as answers arrive."
+msgstr "Share the public link — every question gets a breakdown here as answers arrive."
 
 #: src/client/admin/pages/forms.tsx
 msgid "Share the public link — rows land here (and in the collection) as they arrive."
@@ -15841,8 +15946,12 @@ msgid "Staging"
 msgstr "Staging"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Star rating (1–5)"
-msgstr "Star rating (1–5)"
+msgid "Star rating"
+msgstr "Star rating"
+
+#: src/client/admin/pages/forms.tsx
+#~ msgid "Star rating (1–5)"
+#~ msgstr "Star rating (1–5)"
 
 #: src/client/admin/field-sequence-editor.tsx
 msgid "Start at"
@@ -16140,6 +16249,10 @@ msgstr "suggested: {suggestedAlias}"
 #: src/client/admin/field-rollup-editor.tsx
 msgid "Sum"
 msgstr "Sum"
+
+#: src/client/admin/pages/forms.tsx
+msgid "summarised"
+msgstr "summarised"
 
 #: src/client/admin/pages/logs.tsx
 msgid "summary"
@@ -16512,6 +16625,10 @@ msgstr "The client below wants to call this workspace's MCP tools as you. Your r
 #: src/client/admin/parity/auth-settings.tsx
 msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 msgstr "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
+
+#: src/client/admin/pages/forms.tsx
+msgid "The collection this form writes into may have been deleted or renamed."
+msgstr "The collection this form writes into may have been deleted or renamed."
 
 #: src/client/admin/field-email-editor.tsx
 msgid "The column always stores the encoded form a mail server resolves. This only changes how it is DISPLAYED — ada@örnek.com instead of ada@xn--rnek-4qa.com. Off unless the workspace actually has addresses like that."
@@ -17138,6 +17255,7 @@ msgid "to"
 msgstr "to"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/translations.tsx
 msgid "To"
 msgstr "To"
@@ -18636,6 +18754,10 @@ msgstr "Writes blocked. Toggle \"read-only\" off to run mutations."
 msgid "Writes to"
 msgstr "Writes to"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Written answers are not shown here — read them in the collection"
+msgstr "Written answers are not shown here — read them in the collection"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "xAI · optimized for code agents · cheap"
 msgstr "xAI · optimized for code agents · cheap"
@@ -18652,6 +18774,7 @@ msgstr "xxxxx-xxxxx"
 msgid "yes"
 msgstr "yes"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/pages/book.tsx
 #: src/client/pages/public-form.tsx

@@ -7,6 +7,7 @@ import {
   currencyExponent,
   type FieldDef,
   fromMinorUnits,
+  getChoices,
   isDecimalStorage,
   normalizeCurrency,
 } from "@backlex/db";
@@ -133,6 +134,66 @@ const bucketIndexSql = (b: AggregateBucket, dialect: "pg" | "sqlite"): SQL => {
 
 export const ITEMS_AGG_FUNCS = ["count", "sum", "avg", "min", "max"] as const;
 export type ItemsAggFunc = (typeof ITEMS_AGG_FUNCS)[number];
+
+/**
+ * True for the multi-select shape — a `json` column whose field defines the
+ * choices it may hold, so its value is an ARRAY of those choices.
+ *
+ * `relation_many` is the same storage but deliberately not included: its
+ * elements are foreign ids, and a chart labelled with ids is not more readable
+ * than one labelled with the raw array. Grouping those wants a join, which
+ * aggregate (single-table by design) does not do.
+ */
+const isMultiChoiceField = (f: FieldDef | undefined): boolean =>
+  f?.type === "json" && getChoices(f).length > 0;
+
+/**
+ * `GROUP BY` over the ELEMENTS of a JSON-array column.
+ *
+ * The rows are filtered in an inner select first, so the explode joins against
+ * exactly two projected columns. Doing it the other way — joining the physical
+ * table directly — puts the unpacker's own output columns (`value`, `key`,
+ * `type`, `path` on SQLite) in the same namespace as the collection's, and a
+ * collection with a column named `value` would turn every unqualified
+ * reference in the WHERE clause into an ambiguity error. The WHERE fragments
+ * are built deep inside `compileCondition` with bare identifiers, so keeping
+ * them alone with the base table is the only way to keep them unambiguous.
+ *
+ * Rows whose column is NULL, absent or not an array simply produce no
+ * elements, so they are counted in no bucket rather than in a null one.
+ */
+const multiChoiceGroupSql = (args: {
+  dialect: "pg" | "sqlite";
+  physical: string;
+  groupBy: string;
+  /** Numeric column the agg runs over, or null for `count`. */
+  aggField: string | null;
+  agg: ItemsAggFunc;
+  whereClause: SQL;
+  limit: number;
+}): SQL => {
+  const { dialect, physical, groupBy, aggField, agg, whereClause, limit } = args;
+  const src = sql.identifier("src");
+  const gCol = sql`${src}.${sql.identifier("__g")}`;
+  const projection = aggField
+    ? sql`${sql.identifier(groupBy)} AS ${sql.identifier("__g")}, ${sql.identifier(aggField)} AS ${sql.identifier("__v")}`
+    : sql`${sql.identifier(groupBy)} AS ${sql.identifier("__g")}`;
+  const inner = sql`SELECT ${projection} FROM ${sql.identifier(physical)}${whereClause}`;
+  const valueExpr =
+    agg === "count"
+      ? sql`COUNT(*)`
+      : sql`${sql.raw(agg.toUpperCase())}(${src}.${sql.identifier("__v")})`;
+  // Ordered by ordinal: `value` is both the output alias and, on SQLite, a
+  // column of the unpacker — naming it would be ambiguous.
+  if (dialect === "pg") {
+    const elem = sql`${sql.identifier("elem")}.${sql.identifier("choice")}`;
+    const asArray = sql`CASE WHEN jsonb_typeof(${gCol}::jsonb) = 'array' THEN ${gCol}::jsonb ELSE '[]'::jsonb END`;
+    return sql`SELECT ${elem} AS label, ${valueExpr} AS value FROM (${inner}) AS ${src} CROSS JOIN LATERAL jsonb_array_elements_text(${asArray}) AS ${sql.identifier("elem")}(${sql.identifier("choice")}) GROUP BY ${elem} ORDER BY 2 DESC LIMIT ${sql.raw(String(limit))}`;
+  }
+  const elem = sql`${sql.identifier("elem")}.${sql.identifier("value")}`;
+  const asArray = sql`CASE WHEN json_valid(${gCol}) AND json_type(${gCol}) = 'array' THEN ${gCol} ELSE '[]' END`;
+  return sql`SELECT ${elem} AS label, ${valueExpr} AS value FROM (${inner}) AS ${src}, json_each(${asArray}) AS ${sql.identifier("elem")} GROUP BY ${elem} ORDER BY 2 DESC LIMIT ${sql.raw(String(limit))}`;
+};
 
 /**
  * Numeric column types accepted as the agg target for sum/avg/min/max.
@@ -386,6 +447,26 @@ export const runItemsAggregate = async (
     }
     const bucketExpr = bucketIndexSql(b, ctx.dialect);
     q = sql`SELECT ${bucketExpr} AS label, ${valueExpr} AS value FROM ${sql.identifier(physical)}${whereClause} GROUP BY ${bucketExpr} ORDER BY label ASC LIMIT ${sql.raw(String(b.count))}`;
+  } else if (cfg.groupBy && isMultiChoiceField(fieldByName.get(cfg.groupBy))) {
+    // A multi-select answer is a JSON ARRAY of chosen values, so grouping by
+    // the column verbatim buckets by the whole array: `["a","b"]` and
+    // `["b","a"]` land in two different bars and neither says how many people
+    // chose "b". Explode the array first, one row per choice, and the counts
+    // become the answer the question was asking.
+    //
+    // A row appears once per value it holds, so the counts sum to more than
+    // the number of rows — which is what "how many people picked each" means
+    // for a question that takes several answers.
+    const limit = cfg.limit ?? 50;
+    q = multiChoiceGroupSql({
+      dialect: ctx.dialect,
+      physical,
+      groupBy: cfg.groupBy,
+      aggField: cfg.agg === "count" ? null : cfg.field!,
+      agg: cfg.agg,
+      whereClause,
+      limit,
+    });
   } else if (cfg.groupBy) {
     const limit = cfg.limit ?? 50;
     q = sql`SELECT ${sql.identifier(cfg.groupBy)} AS label, ${valueExpr} AS value FROM ${sql.identifier(physical)}${whereClause} GROUP BY ${sql.identifier(cfg.groupBy)} ORDER BY value DESC LIMIT ${sql.raw(String(limit))}`;

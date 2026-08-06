@@ -160,6 +160,14 @@ POST /api/items/<collection>/aggregate
   row, ordered by `value` desc and capped by `limit` (default 50, max 200).
   Without `groupBy` the result is a single `{ value }`.
 - `filter` — same grammar as the list endpoint, applied before aggregation.
+- **Multi-select columns group by their ELEMENTS** — a `json` field with
+  choices holds an array, so grouping by it counts each chosen value once
+  rather than bucketing whole arrays (`["a","b"]` and `["b","a"]` would
+  otherwise be two different bars, and neither would answer "how many chose
+  b"). A row appears once per value it holds, so the counts can sum to more
+  than the number of rows; rows whose column is null or not an array land in
+  no bucket. `relation_many` is deliberately left alone — its elements are
+  foreign ids, and labelling a chart with ids needs a join aggregate can't do.
 - **Permission + tenant gated** — the caller's read `whereSql` is AND-ed in and
   the `field`/`groupBy` columns must be readable; tenant scope is enforced.
 - **Single-table only** — no relation traversal (the agg target and `groupBy`

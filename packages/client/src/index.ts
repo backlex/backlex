@@ -829,8 +829,22 @@ export interface PublicFormBlockConfig {
   placeholder?: string;
   /** Help text override shown beneath the input. */
   help?: string;
-  /** Integer fields only: render as a 1–5 star rating. */
+  /** @deprecated Integer fields only: 1–5 star rating. Superseded by
+   *  {@link PublicFormBlockConfig.scale}; still read, so existing forms keep
+   *  rendering unchanged. */
   rating?: boolean;
+  /** Integer fields only: answer by picking a point on a row — a star rating,
+   *  a numbered row, or the 0–10 NPS row (which the results panel scores as
+   *  promoters − detractors). At most 11 points wide; the bound is enforced on
+   *  submit, so an answer off the row is refused rather than stored. */
+  scale?: {
+    min: number;
+    max: number;
+    style: "stars" | "number" | "nps";
+    /** Anchor captions under the two ends ("Not at all" … "Extremely"). */
+    minLabel?: string;
+    maxLabel?: string;
+  };
   /** Boolean fields only: consent checkbox — submits must carry `true`. */
   consent?: boolean;
   /** Optional "read the full text" URL shown next to a consent block. */
@@ -2550,8 +2564,56 @@ export interface FormsClient {
   update(id: string, patch: Partial<PublicFormInput>): Promise<{ data: PublicForm }>;
   /** Replace the public token — the old link dies immediately. */
   rotateToken(id: string): Promise<{ data: PublicFormToken }>;
+  /** One distribution per exposed question. Counts only — free-text answers
+   *  are never quoted here; read those through `items.list()`. */
+  results(id: string): Promise<{ data: PublicFormResults }>;
   /** Delete a form; its link stops working immediately. */
   delete(id: string): Promise<{ ok: boolean }>;
+}
+
+/** How a question's answers are summarised. */
+export type PublicFormResultKind =
+  | "choice"
+  | "multi_choice"
+  | "scale"
+  | "boolean"
+  | "number"
+  | "text"
+  | "timestamp"
+  | "file";
+
+/** One question's answers, summarised. */
+export interface PublicFormResultBlock {
+  name: string;
+  label: string;
+  /** Storage type of the underlying column. */
+  type: string;
+  kind: PublicFormResultKind;
+  /** Rows whose answer is not null. For `multi_choice` that is people, while
+   *  the bucket counts are choices — so the buckets can sum to more. */
+  answered: number;
+  /** Distribution in the schema's own choice order (a scale runs low to high),
+   *  or null for the kinds that have none. */
+  buckets: { value: string; label: string; count: number }[] | null;
+  /** Mean answer for scale/number questions. */
+  average: number | null;
+  /** `style: "nps"` scales only: promoters (9–10) minus detractors (0–6). */
+  nps: { promoters: number; passives: number; detractors: number; score: number } | null;
+}
+
+/** A form's answers, summarised. Mirrors `GET /api/admin/forms/:id/results`. */
+export interface PublicFormResults {
+  formId: string;
+  collection: string;
+  /** Rows in the target collection right now. Nothing stamps a row with the
+   *  form that wrote it, so anything else writing to the collection counts. */
+  rows: number;
+  submissionCount: number;
+  blockedCount: number;
+  lastSubmissionAt: unknown;
+  blocks: PublicFormResultBlock[];
+  /** Questions past the summary cap that were not computed. */
+  truncated: number;
 }
 
 /** Workspace usage-limit knobs. `null` = unlimited for that dimension. */
@@ -4802,6 +4864,8 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<{ data: PublicForm }>("PATCH", formPath(id), patch),
     rotateToken: (id: string) =>
       request<{ data: PublicFormToken }>("POST", `${formPath(id)}/rotate-token`),
+    results: (id: string) =>
+      request<{ data: PublicFormResults }>("GET", `${formPath(id)}/results`),
     delete: (id: string) => request<{ ok: boolean }>("DELETE", formPath(id)),
   };
 

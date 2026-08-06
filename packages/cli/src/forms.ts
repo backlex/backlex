@@ -23,7 +23,7 @@ interface FormRow {
   active?: boolean;
 }
 
-const HELP = `backlex forms <list|get|fields|create|update|rotate-token|delete>
+const HELP = `backlex forms <list|get|fields|create|update|rotate-token|results|delete>
 
   list                            all forms
   get <id>                        one form (full JSON)
@@ -32,6 +32,8 @@ const HELP = `backlex forms <list|get|fields|create|update|rotate-token|delete>
                                   prints the one-time public token + URLs
   update <id> --data <json|@file|->  partial update (fields, settings, active …)
   rotate-token <id>               replace the public link (old one dies)
+  results <id>                    answer counts per question (counts only —
+                                  free-text answers are not quoted)
   delete <id>
 `;
 
@@ -141,6 +143,50 @@ export const runForms = async (args: string[]): Promise<void> => {
         );
         if (json) printJson(res.data);
         else printKeyValues(res.data);
+        return;
+      }
+      case "results": {
+        const id = rest[0];
+        if (!id) {
+          process.stderr.write("forms results <id>\n");
+          process.exit(1);
+        }
+        const { data } = await client.request<{
+          data: {
+            rows: number;
+            submissionCount: number;
+            blocks: Array<{
+              label: string;
+              kind: string;
+              answered: number;
+              average: number | null;
+              nps: { score: number } | null;
+              buckets: Array<{ label: string; count: number }> | null;
+            }>;
+          };
+        }>("GET", `${BASE}/${encodeURIComponent(id)}/results`);
+        if (json) {
+          printJson(data);
+          return;
+        }
+        printKeyValues({ rows: data.rows, submissions: data.submissionCount });
+        // One line per question: the headline figure a summary is read for,
+        // then the distribution behind it.
+        printTable(
+          data.blocks.map((b) => ({
+            question: b.label,
+            kind: b.kind,
+            answered: String(b.answered),
+            summary:
+              b.nps !== null
+                ? `NPS ${b.nps.score}`
+                : b.average !== null
+                  ? `avg ${b.average}`
+                  : b.buckets
+                    ? b.buckets.map((k) => `${k.label} ${k.count}`).join(", ")
+                    : "—",
+          })),
+        );
         return;
       }
       case "delete": {

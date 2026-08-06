@@ -17,6 +17,7 @@ import {
   updateForm,
   type FormRow,
 } from "../services/forms";
+import { formResults } from "../services/forms-results";
 
 const TAGS = ["forms"];
 
@@ -35,7 +36,19 @@ const FormBlockSchema = z
     label: z.string().max(300).optional(),
     placeholder: z.string().max(300).optional(),
     help: z.string().max(500).optional(),
+    /** @deprecated Superseded by `scale` — still accepted and still renders. */
     rating: z.boolean().optional(),
+    /** Integer fields only: answer by picking a point on a row (stars / a
+     *  numbered row / the 0–10 NPS row). Bounds are re-checked at submit. */
+    scale: z
+      .object({
+        min: z.number().int().min(-1000).max(1000),
+        max: z.number().int().min(-1000).max(1000),
+        style: z.enum(["stars", "number", "nps"]),
+        minLabel: z.string().max(80).optional(),
+        maxLabel: z.string().max(80).optional(),
+      })
+      .optional(),
     consent: z.boolean().optional(),
     policyUrl: z.string().url().max(2000).optional(),
     /** File blocks: MIME allow-list (`image/*`, exact types) + byte cap. The
@@ -140,6 +153,50 @@ const EligibleField = z
     format: z.string().nullable(),
   })
   .openapi("FormEligibleField");
+
+const FormResultBlockSchema = z
+  .object({
+    name: z.string(),
+    label: z.string(),
+    type: z.string(),
+    kind: z.enum([
+      "choice",
+      "multi_choice",
+      "scale",
+      "boolean",
+      "number",
+      "text",
+      "timestamp",
+      "file",
+    ]),
+    answered: z.number(),
+    buckets: z
+      .array(z.object({ value: z.string(), label: z.string(), count: z.number() }))
+      .nullable(),
+    average: z.number().nullable(),
+    nps: z
+      .object({
+        promoters: z.number(),
+        passives: z.number(),
+        detractors: z.number(),
+        score: z.number(),
+      })
+      .nullable(),
+  })
+  .openapi("FormResultBlock");
+
+const FormResultsSchema = z
+  .object({
+    formId: z.string(),
+    collection: z.string(),
+    rows: z.number(),
+    submissionCount: z.number(),
+    blockedCount: z.number(),
+    lastSubmissionAt: z.unknown().nullable(),
+    blocks: z.array(FormResultBlockSchema),
+    truncated: z.number(),
+  })
+  .openapi("FormResults");
 
 const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
@@ -307,6 +364,39 @@ export const formsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const row = await getForm(ctx, auth.tenantId ?? null, c.req.valid("param").id);
       if (!row) throw new AppError("NOT_FOUND", "Form not found");
       return c.json({ data: serializeForm(row) });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{id}/results",
+      tags: TAGS,
+      summary: "Summarise a form's answers",
+      description:
+        "One distribution per exposed question — choice counts in the schema's own order, a scale's points with its mean, an NPS score, and how many rows answered at all. Free-text answers are counted, never quoted: read those through `/api/items/{collection}`, which applies the collection's own permissions. Counts cover the whole target collection, not only rows this form wrote.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdminMiddleware],
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: z.object({ data: FormResultsSchema }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const row = await getForm(ctx, auth.tenantId ?? null, c.req.valid("param").id);
+      if (!row) throw new AppError("NOT_FOUND", "Form not found");
+      // The aggregates are tenant-scoped SQL, so an active tenant is required
+      // even though the form row itself may be a platform-level one.
+      if (!auth.tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
+      const data = await formResults(ctx, auth, auth.tenantId, row);
+      return c.json({ data });
     },
   )
   .openapi(

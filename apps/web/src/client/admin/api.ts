@@ -2789,7 +2789,10 @@ export interface ApiFormBlock {
   label?: string;
   placeholder?: string;
   help?: string;
+  /** @deprecated Superseded by `scale` — still accepted and still renders. */
   rating?: boolean;
+  /** Integer fields only: answer by picking a point on a row. */
+  scale?: ApiFormBlockScale;
   consent?: boolean;
   policyUrl?: string;
   /** File blocks: MIME allow-list + per-upload byte cap. */
@@ -2797,6 +2800,16 @@ export interface ApiFormBlock {
   maxBytes?: number;
   cond?: { field: string; op: "is" | "is_not"; value: string };
   i18n?: Record<string, ApiFormBlockI18n>;
+}
+
+/** A question answered by picking one point on a row — stars, a numbered row,
+ *  or the 0–10 NPS row. Integer fields only; at most 11 points wide. */
+export interface ApiFormBlockScale {
+  min: number;
+  max: number;
+  style: "stars" | "number" | "nps";
+  minLabel?: string;
+  maxLabel?: string;
 }
 
 export interface ApiFormI18n {
@@ -2860,8 +2873,43 @@ export interface ApiFormEligibleField {
   format: string | null;
 }
 
+/** One question's answers, summarised (`GET /api/admin/forms/:id/results`). */
+export interface ApiFormResultBlock {
+  name: string;
+  label: string;
+  type: string;
+  kind:
+    | "choice"
+    | "multi_choice"
+    | "scale"
+    | "boolean"
+    | "number"
+    | "text"
+    | "timestamp"
+    | "file";
+  /** Rows whose answer is not null. For `multi_choice` the bucket counts are
+   *  choices, not people, so they can sum to more than this. */
+  answered: number;
+  buckets: { value: string; label: string; count: number }[] | null;
+  average: number | null;
+  nps: { promoters: number; passives: number; detractors: number; score: number } | null;
+}
+
+export interface ApiFormResults {
+  formId: string;
+  collection: string;
+  /** Rows in the target collection — not only ones this form wrote. */
+  rows: number;
+  submissionCount: number;
+  blockedCount: number;
+  lastSubmissionAt: unknown;
+  blocks: ApiFormResultBlock[];
+  truncated: number;
+}
+
 export const formsApi = {
   list: () => api<Envelope<ApiForm[]>>(`/api/admin/forms`),
+  results: (id: string) => api<Envelope<ApiFormResults>>(`/api/admin/forms/${id}/results`),
   eligibleFields: (collection: string) =>
     api<Envelope<ApiFormEligibleField[]>>(
       `/api/admin/forms/eligible-fields/${encodeURIComponent(collection)}`,
@@ -2894,7 +2942,9 @@ export interface ApiPublicFormBlock {
   placeholder: string | null;
   help: string | null;
   required: boolean;
+  /** @deprecated True only for the legacy 1–5 star row; read `scale`. */
   rating: boolean;
+  scale: ApiFormBlockScale | null;
   consent: boolean;
   policyUrl: string | null;
   choices: { value: string; label?: string }[] | null;

@@ -67,6 +67,22 @@ export const serialize = (
         return value;
       }
     }
+    if ((type === "json" || type === "relation_many") && Array.isArray(value)) {
+      // Hand `jsonb` its own text form rather than the JS array.
+      //
+      // Drizzle has no column type for our dynamic tables (`c_*` and adopted
+      // both miss from its type map), and for an unknown column it binds a JS
+      // array as a SQL ROW CONSTRUCTOR — `VALUES (…, ($6, $7))` — which
+      // Postgres rejects with "column is of type jsonb but expression is of
+      // type record". Every array-valued json column hit this: a multi-select
+      // answer, a `relation_many` edit, any tags list. SQLite never did (it
+      // stringifies just above), so the whole class of failure was invisible
+      // to a SQLite-only suite and broke on the dialect production runs.
+      //
+      // Objects are left alone: the driver serializes those correctly today,
+      // and re-encoding them here would change a path that works.
+      return JSON.stringify(value);
+    }
   }
   return value;
 };

@@ -188,6 +188,32 @@ export const deleteForm: McpTool = {
   },
 };
 
+export const formResults: McpTool = {
+  name: "forms.results",
+  description:
+    "Summarise a form's answers: one distribution per exposed question — choice " +
+    "counts in the schema's own order, a scale's points with its mean, an NPS " +
+    "score, and how many rows answered at all. Counts only: free-text answers " +
+    "are never quoted here, and the figures cover the whole target collection " +
+    "(nothing stamps a row with the form that wrote it). To read individual " +
+    "answers use `collections.read` on the form's collection.",
+  inputSchema: {
+    type: "object",
+    properties: { id: { type: "string" } },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.id ?? "");
+    if (!id) throw new Error("VALIDATION: id is required");
+    const res = await ctx.fetchInternal(
+      `/api/admin/forms/${encodeURIComponent(id)}/results`,
+    );
+    const body = await readJson<unknown>(res);
+    return textResult(body);
+  },
+};
+
 export const formsTools: McpTool[] = [
   listForms,
   getForm,
@@ -195,5 +221,6 @@ export const formsTools: McpTool[] = [
   createForm,
   updateForm,
   rotateFormToken,
+  formResults,
   deleteForm,
 ];

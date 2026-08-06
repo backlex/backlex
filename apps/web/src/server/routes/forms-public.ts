@@ -13,6 +13,7 @@ import {
 } from "../services/items/write";
 import {
   assertConsents,
+  assertScales,
   exposedBlocks,
   exposedFieldNames,
   publicFormDefinition,
@@ -54,6 +55,15 @@ const PublicFormBlockSchema = z
     help: z.string().nullable(),
     required: z.boolean(),
     rating: z.boolean(),
+    scale: z
+      .object({
+        min: z.number(),
+        max: z.number(),
+        style: z.enum(["stars", "number", "nps"]),
+        minLabel: z.string().optional(),
+        maxLabel: z.string().optional(),
+      })
+      .nullable(),
     consent: z.boolean(),
     policyUrl: z.string().nullable(),
     choices: z
@@ -403,6 +413,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       }
 
       assertConsents(form, collection, data);
+      assertScales(form, collection, data);
 
       // File blocks: the payload carries the signed ticket minted by the
       // upload endpoint — NEVER a raw storage key. Swap each ticket for its

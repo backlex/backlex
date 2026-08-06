@@ -487,6 +487,11 @@ msgstr "{0} eşleşme · {1} yüklendi"
 #~ msgid "{0} minutes"
 #~ msgstr "{0} dakika"
 
+#. placeholder {0}: data.truncated
+#: src/client/admin/pages/forms.tsx
+msgid "{0} more questions are not summarised — this form has more than the panel computes."
+msgstr "{0} soru daha özetlenmedi — bu formda panelin hesapladığından fazla soru var."
+
 #. placeholder {0}: result.durationMs
 #: src/client/admin/pages/extensions.tsx
 msgid "{0} ms"
@@ -536,6 +541,13 @@ msgstr "{0} desen"
 #: src/client/admin/app.tsx
 msgid "{0} posts deleted."
 msgstr "{0} gönderi silindi."
+
+#. placeholder {0}: b.nps.promoters
+#. placeholder {1}: b.nps.passives
+#. placeholder {2}: b.nps.detractors
+#: src/client/admin/pages/forms.tsx
+#~ msgid "{0} promoters · {1} passives · {2} detractors"
+#~ msgstr "{0} destekleyici · {1} nötr · {2} eleştiren"
 
 #. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
@@ -1272,6 +1284,10 @@ msgstr "Gezinti ve listelerdeki ikonun vurgu rengi."
 #: src/client/pages/invite.tsx
 msgid "Accept invite"
 msgstr "Daveti kabul et"
+
+#: src/client/admin/pages/forms.tsx
+msgid "accepted through this form"
+msgstr "bu formdan kabul edilen"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Accepted types"
@@ -2147,6 +2163,14 @@ msgstr "Genelde hukuka uygun seçenek anonimleştirmedir — bir fatura çoğunl
 msgid "Another signer declined it."
 msgstr "Başka bir imzalayan reddetti."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Answer style"
+msgstr "Yanıt biçimi"
+
+#: src/client/admin/pages/forms.tsx
+msgid "answered"
+msgstr "yanıtladı"
+
 #: src/client/admin/parity/approvals.tsx
 msgid "Answered"
 msgstr "Yanıtlayan"
@@ -2635,6 +2659,11 @@ msgstr "Avatar önizlemesi"
 #: src/client/admin/field-rollup-editor.tsx
 msgid "Average"
 msgstr "Ortalama"
+
+#. placeholder {0}: b.average
+#: src/client/admin/pages/forms.tsx
+msgid "avg {0}"
+msgstr "ort. {0}"
 
 #: src/client/admin/pages/users.tsx
 msgid "awaiting accept"
@@ -4294,6 +4323,11 @@ msgstr "Ulusal numaranın hangi ülkeye ait okunacağı"
 #: src/client/admin/field-phone-input.tsx
 msgid "Country the typed number is read as"
 msgstr "Yazılan numaranın hangi ülkeye ait okunacağı"
+
+#. placeholder {0}: data.collection
+#: src/client/admin/pages/forms.tsx
+msgid "Counts cover every row in {0}, including any written outside this form."
+msgstr "Sayılar {0} koleksiyonundaki tüm satırları kapsar — bu form dışında yazılanlar dahil."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Covering message"
@@ -6541,6 +6575,10 @@ msgstr "Dış sütun"
 msgid "External identity rows are kept as an audit trail."
 msgstr "Harici kimlik satırları denetim kaydı olarak tutulur."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Extremely"
+msgstr "Kesinlikle"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Fail flow"
 msgstr "Akışı hata ile sonlandır"
@@ -7086,6 +7124,7 @@ msgstr "Cum"
 msgid "from"
 msgstr "kaynak"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/translations.tsx
 msgid "From"
@@ -7497,6 +7536,10 @@ msgstr "Değişkenleri gizle"
 #: src/client/admin/collections-index.tsx
 msgid "Hiding off"
 msgstr "Gizleme kapalı"
+
+#: src/client/admin/pages/forms.tsx
+msgid "High label"
+msgstr "Üst uç etiketi"
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "highest reasoning · slower · ~3x cost"
@@ -8988,6 +9031,10 @@ msgstr "Aranıyor…"
 msgid "Lost your codes or running low? Generate a fresh set — the old codes stop working immediately."
 msgstr "Kodlarınızı kaybettiniz veya azaldı mı? Yeni bir set oluşturun — eski kodlar hemen çalışmayı durdurur."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Low label"
+msgstr "Alt uç etiketi"
+
 #: src/client/admin/parity/oidc-provider-dialog.tsx
 msgid "Lowercase id used in the sign-in call and the redirect URI below."
 msgstr "Giriş çağrısında ve aşağıdaki yönlendirme URI’sinde kullanılan küçük harfli kimlik."
@@ -9958,6 +10005,7 @@ msgstr "Sonraki kayıt"
 msgid "no"
 msgstr "hayır"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/pages/book.tsx
 msgid "No"
@@ -10026,6 +10074,10 @@ msgstr "AI anahtarı tanımlı değil"
 #: src/client/admin/parity/approvals.tsx
 msgid "no answer yet"
 msgstr "henüz yanıt yok"
+
+#: src/client/admin/pages/forms.tsx
+msgid "No answers yet"
+msgstr "Henüz yanıt yok"
 
 #: src/client/pages/api-keys.tsx
 msgid "No API keys yet"
@@ -10801,6 +10853,10 @@ msgstr "izin verilmiyor"
 msgid "Not asked"
 msgstr "Sorulmadı"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Not at all"
+msgstr "Hiç"
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Not authorized"
 msgstr "Yetkilendirilmedi"
@@ -11013,6 +11069,23 @@ msgstr "npm paketi"
 #: src/client/admin/pages/extensions.tsx
 msgid "npm registry"
 msgstr "npm kayıt deposu"
+
+#: src/client/admin/pages/forms.tsx
+msgid "NPS — how likely to recommend (0–10)"
+msgstr "NPS — tavsiye etme olasılığı (0–10)"
+
+#. placeholder {0}: b.nps.score
+#: src/client/admin/pages/forms.tsx
+msgid "NPS {0}"
+msgstr "NPS {0}"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Number input"
+msgstr "Sayı girişi"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Numbered scale"
+msgstr "Numaralı ölçek"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -12569,6 +12642,13 @@ msgstr "{0} için profil kaydedildi."
 msgid "Profile saved."
 msgstr "Profil kaydedildi."
 
+#. placeholder {0}: b.nps.promoters
+#. placeholder {1}: b.nps.passives
+#. placeholder {2}: b.nps.detractors
+#: src/client/admin/pages/forms.tsx
+msgid "promoters {0} · passives {1} · detractors {2}"
+msgstr "destekleyici {0} · nötr {1} · eleştiren {2}"
+
 #: src/client/admin/parity/booking.tsx
 msgid "Protected minutes before each booking."
 msgstr "Her rezervasyondan önce korunan dakika."
@@ -12802,6 +12882,10 @@ msgstr "Sorgu hiç satır döndürmedi."
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Query your backend in natural language, browse the MCP tool catalog, and connect external clients over OAuth or an API key — every call scoped to your role and the per-key allowlist."
 msgstr "Arka ucunuzu doğal dilde sorgulayın, MCP araç kataloğuna göz atın ve harici istemcileri OAuth veya API anahtarıyla bağlayın — her çağrı rolünüze ve anahtar bazlı izin listesine göre kapsanır."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Questions"
+msgstr "Soru"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Queue"
@@ -13749,6 +13833,18 @@ msgstr "Sonuç"
 msgid "Result is piped into <0>$last</0> for the next step."
 msgstr "Sonuç bir sonraki adım için <0>$last</0> değişkenine aktarılır."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Results"
+msgstr "Sonuçlar"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Results can't be read"
+msgstr "Sonuçlar okunamıyor"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Results score this as promoters (9–10) minus detractors (0–6)."
+msgstr "Sonuçlarda bu, destekleyiciler (9–10) eksi eleştirenler (0–6) olarak puanlanır."
+
 #: src/client/admin/storage/index.tsx
 msgid "resumable"
 msgstr "sürdürülebilir"
@@ -14048,6 +14144,7 @@ msgid "rows"
 msgstr "satır"
 
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/usage.tsx
@@ -15155,6 +15252,10 @@ msgstr "Settings → MCP → Add. Claude Desktop ile aynı JSON şekli. (Veya an
 msgid "settled"
 msgstr "sonuçlandı"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Several answers allowed, so the shares can add up to more than 100%."
+msgstr "Birden fazla yanıt seçilebildiği için oranların toplamı %100'ü aşabilir."
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "Severity"
 msgstr "Önem düzeyi"
@@ -15180,6 +15281,10 @@ msgstr "Paylaşım bağlantısı oluşturuldu."
 #: src/client/admin/item-collaboration.tsx
 msgid "Share link revoked."
 msgstr "Paylaşım bağlantısı iptal edildi."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Share the public link — every question gets a breakdown here as answers arrive."
+msgstr "Herkese açık bağlantıyı paylaşın — yanıtlar geldikçe her sorunun dağılımı burada görünür."
 
 #: src/client/admin/pages/forms.tsx
 msgid "Share the public link — rows land here (and in the collection) as they arrive."
@@ -15841,8 +15946,12 @@ msgid "Staging"
 msgstr "Hazırlık"
 
 #: src/client/admin/pages/forms.tsx
-msgid "Star rating (1–5)"
-msgstr "Yıldız puanı (1–5)"
+msgid "Star rating"
+msgstr "Yıldızlı puan"
+
+#: src/client/admin/pages/forms.tsx
+#~ msgid "Star rating (1–5)"
+#~ msgstr "Yıldız puanı (1–5)"
 
 #: src/client/admin/field-sequence-editor.tsx
 msgid "Start at"
@@ -16140,6 +16249,10 @@ msgstr "önerilen: {suggestedAlias}"
 #: src/client/admin/field-rollup-editor.tsx
 msgid "Sum"
 msgstr "Toplam"
+
+#: src/client/admin/pages/forms.tsx
+msgid "summarised"
+msgstr "özetlendi"
 
 #: src/client/admin/pages/logs.tsx
 msgid "summary"
@@ -16512,6 +16625,10 @@ msgstr "Aşağıdaki istemci bu çalışma alanının MCP araçlarını sizin ad
 #: src/client/admin/parity/auth-settings.tsx
 msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 msgstr "İstemci gizli anahtarı bekleme sırasında şifrelenir. Her iki alanı da boş bırakırsanız giriş, <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> ortam değişkenlerine döner. Sağlayıcıda yönlendirme URI'si olarak <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> adresini kaydedin."
+
+#: src/client/admin/pages/forms.tsx
+msgid "The collection this form writes into may have been deleted or renamed."
+msgstr "Bu formun yazdığı koleksiyon silinmiş ya da adı değişmiş olabilir."
 
 #: src/client/admin/field-email-editor.tsx
 msgid "The column always stores the encoded form a mail server resolves. This only changes how it is DISPLAYED — ada@örnek.com instead of ada@xn--rnek-4qa.com. Off unless the workspace actually has addresses like that."
@@ -17138,6 +17255,7 @@ msgid "to"
 msgstr "→"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/translations.tsx
 msgid "To"
 msgstr "Alıcı"
@@ -18636,6 +18754,10 @@ msgstr "Yazma işlemleri engellendi. Değişiklik yapmak için \"salt okunur\" s
 msgid "Writes to"
 msgstr "Yazma hedefi"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Written answers are not shown here — read them in the collection"
+msgstr "Yazılı yanıtlar burada gösterilmez — koleksiyonda okuyun"
+
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "xAI · optimized for code agents · cheap"
 msgstr "xAI · kod ajanları için optimize · ucuz"
@@ -18652,6 +18774,7 @@ msgstr "xxxxx-xxxxx"
 msgid "yes"
 msgstr "evet"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/pages/book.tsx
 #: src/client/pages/public-form.tsx

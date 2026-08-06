@@ -75,6 +75,30 @@ export interface FormBlockCond {
   value: string;
 }
 
+/**
+ * A question answered by picking one point on a row — a star rating, a 1–10
+ * satisfaction row, the 0–10 "how likely are you to recommend us" of NPS.
+ *
+ * It is a rendering + clamp instruction, not a storage one: the answer is an
+ * ordinary integer in an ordinary integer column, which is what keeps the
+ * results panel, dashboards and every export reading it as the number it is.
+ * `rating: true` is the older spelling of `{ min: 1, max: 5, style: "stars" }`
+ * and still parses.
+ */
+export interface FormBlockScale {
+  /** Lowest selectable value. */
+  min: number;
+  /** Highest selectable value. At most {@link SCALE_MAX_POINTS} points apart —
+   *  past that it stops being a row of buttons and wants a number input. */
+  max: number;
+  /** How the row is drawn. `nps` additionally scores the answers 0–10 in the
+   *  results panel (promoters − detractors). */
+  style: "stars" | "number" | "nps";
+  /** Anchor captions under the two ends ("Not at all" … "Extremely"). */
+  minLabel?: string;
+  maxLabel?: string;
+}
+
 export interface FormBlock {
   /** Stable client id for canvas selection/reorder. Optional; preserved. */
   id?: string;
@@ -86,8 +110,11 @@ export interface FormBlock {
   label?: string;
   placeholder?: string;
   help?: string;
-  /** Integer fields only: render as a 1–5 star rating on the public page. */
+  /** @deprecated Integer fields only: 1–5 star rating. Superseded by
+   *  {@link scale}; still read so existing forms render unchanged. */
   rating?: boolean;
+  /** Integer fields only: answer by picking a point on a row. */
+  scale?: FormBlockScale;
   /** Boolean fields only: consent checkbox (privacy policy / terms). The
    *  submit is rejected server-side unless the value is exactly `true`. */
   consent?: boolean;
@@ -175,6 +202,63 @@ export const isFormEligible = (f: FieldDef): boolean =>
 export const formEligibleFields = (collection: CollectionRow): FieldDef[] =>
   (collection.fields as FieldDef[]).filter(isFormEligible);
 
+/** Most points a scale row may offer (0–10 inclusive is the widest anyone
+ *  actually asks — NPS). Wider than this is a number input wearing buttons. */
+export const SCALE_MAX_POINTS = 11;
+
+/**
+ * The scale a block renders as, or null when it is an ordinary input.
+ *
+ * One reader for both spellings so nothing downstream has to remember that
+ * `rating: true` predates {@link FormBlockScale} — the public definition, the
+ * submit clamp and the results panel all ask this and get the same answer.
+ * Only integer fields can carry one; anything else falls back to null rather
+ * than rendering a row of buttons that writes a value the column refuses.
+ */
+export const resolveScale = (
+  block: FormBlock,
+  def: FieldDef | null | undefined,
+): FormBlockScale | null => {
+  if (!def || def.type !== "integer") return null;
+  if (block.scale) {
+    const { min, max, style } = block.scale;
+    if (!Number.isInteger(min) || !Number.isInteger(max) || max <= min) return null;
+    if (max - min + 1 > SCALE_MAX_POINTS) return null;
+    return {
+      min,
+      max,
+      style: style === "nps" ? "nps" : style === "number" ? "number" : "stars",
+      ...(block.scale.minLabel ? { minLabel: block.scale.minLabel } : {}),
+      ...(block.scale.maxLabel ? { maxLabel: block.scale.maxLabel } : {}),
+    };
+  }
+  if (block.rating) return { min: 1, max: 5, style: "stars" };
+  return null;
+};
+
+/** Reject a scale a block could not render — said at design time, where the
+ *  operator can fix it, rather than silently dropping it at submit time. */
+const assertScaleShape = (block: FormBlock, def: FieldDef): void => {
+  const s = block.scale;
+  if (!s) return;
+  const label = block.label || def.label || def.name;
+  if (def.type !== "integer") {
+    throw new AppError(
+      "VALIDATION",
+      `"${label}" is a ${def.type} field — a scale needs an integer column to write its answer into`,
+    );
+  }
+  if (!Number.isInteger(s.min) || !Number.isInteger(s.max) || s.max <= s.min) {
+    throw new AppError("VALIDATION", `"${label}": a scale needs whole min < max`);
+  }
+  if (s.max - s.min + 1 > SCALE_MAX_POINTS) {
+    throw new AppError(
+      "VALIDATION",
+      `"${label}": a scale offers at most ${SCALE_MAX_POINTS} points (got ${s.max - s.min + 1})`,
+    );
+  }
+};
+
 /** Throws VALIDATION unless every field block references an eligible field. */
 const assertFieldsEligible = (
   collection: CollectionRow,
@@ -184,14 +268,16 @@ const assertFieldsEligible = (
   if (fieldBlocks.length === 0)
     throw new AppError("VALIDATION", "A form needs at least one field");
   const eligibleFields = formEligibleFields(collection);
-  const eligible = new Set(eligibleFields.map((f) => f.name));
+  const eligible = new Map(eligibleFields.map((f) => [f.name, f]));
   for (const b of fieldBlocks) {
-    if (!b.name || !eligible.has(b.name)) {
+    const def = b.name ? eligible.get(b.name) : undefined;
+    if (!def) {
       throw new AppError(
         "VALIDATION",
         `Field "${b.name ?? "?"}" cannot be exposed on a public form (only scalar, non-private, non-computed fields are allowed)`,
       );
     }
+    assertScaleShape(b, def);
   }
   // Schema-required fields can't be left off: the write path would reject
   // every submission anyway, so fail loudly at design time instead.
@@ -414,7 +500,12 @@ export interface PublicFormBlock {
   placeholder: string | null;
   help: string | null;
   required: boolean;
+  /** @deprecated True when {@link scale} is the legacy 1–5 star row. Kept in
+   *  the payload so a page bundle cached across a deploy still renders stars
+   *  instead of a bare number input. */
   rating: boolean;
+  /** Non-null ⇒ answer by picking a point on a row. */
+  scale: FormBlockScale | null;
   consent: boolean;
   policyUrl: string | null;
   choices: Array<{ value: string; label?: string }> | null;
@@ -527,6 +618,7 @@ export const publicFormDefinition = (
           help: null,
           required: false,
           rating: false,
+          scale: null,
           consent: false,
           policyUrl: null,
           choices: null,
@@ -553,6 +645,7 @@ export const publicFormDefinition = (
       const choices = getChoices(def);
       const consent = Boolean(block.consent && def.type === "boolean");
       const isFile = def.type === "file";
+      const scale = resolveScale(block, def);
       return {
         kind: "field",
         name: def.name,
@@ -562,7 +655,8 @@ export const publicFormDefinition = (
         help: blockI18n.help || block.help || def.description || null,
         // A consent checkbox is inherently required — unchecked can't submit.
         required: Boolean(def.required) || consent,
-        rating: Boolean(block.rating && def.type === "integer"),
+        rating: scale?.style === "stars" && scale.min === 1 && scale.max === 5,
+        scale,
         consent,
         policyUrl: consent ? (block.policyUrl ?? null) : null,
         choices: choices.length > 0 ? choices : null,
@@ -613,6 +707,36 @@ export const assertConsents = (
       throw new AppError(
         "VALIDATION",
         `Consent required: "${block.label || def.label || def.name}" must be accepted`,
+      );
+    }
+  }
+};
+
+/**
+ * Hold a scale answer to the row it was offered on.
+ *
+ * The page can only send a point it drew, but the endpoint is public and a
+ * hand-written POST is not the page. Without this an NPS column quietly
+ * collects 47s and every average computed from it is wrong — the field's own
+ * `validation.min/max` is optional and, for a scale that only exists on the
+ * form, is not where an operator would think to write the bound.
+ */
+export const assertScales = (
+  form: FormRow,
+  collection: CollectionRow,
+  data: Record<string, unknown>,
+): void => {
+  for (const { block, def } of exposedBlocks(form, collection)) {
+    if (!def) continue;
+    const scale = resolveScale(block, def);
+    if (!scale) continue;
+    const raw = data[def.name];
+    if (raw === undefined || raw === null || raw === "") continue;
+    const n = typeof raw === "number" ? raw : Number(raw);
+    if (!Number.isInteger(n) || n < scale.min || n > scale.max) {
+      throw new AppError(
+        "VALIDATION",
+        `"${block.label || def.label || def.name}" must be a whole number between ${scale.min} and ${scale.max}`,
       );
     }
   }

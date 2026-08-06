@@ -23,6 +23,7 @@ import {
   type FormInput,
   type FormSettings,
 } from "../forms";
+import { formResults } from "../forms-results";
 
 // ── Public form builder ──────────────────────────────────────────────────────
 // Static, admin-scoped surface mirroring REST `/api/admin/forms` + MCP
@@ -131,6 +132,20 @@ export const formQueryFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>
       const tenantId = requireFormAdmin(gqlCtx);
       const row = await getForm(gqlCtx.ctx, tenantId, (args as { id: string }).id);
       return row ? normalizeFormRow(row) : null;
+    },
+  },
+  publicFormResults: {
+    type: JSONScalar,
+    description:
+      "Summarise a form's answers — one distribution per exposed question, counts only (admin-only). Free-text answers are never quoted here; read those through the items surface.",
+    args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireFormAdmin(gqlCtx);
+      const row = await getForm(gqlCtx.ctx, tenantId, (args as { id: string }).id);
+      if (!row) throw new GraphQLError("Form not found", { extensions: { code: "NOT_FOUND" } });
+      return await surfaceAppError(() =>
+        formResults(gqlCtx.ctx, gqlCtx.auth, tenantId, row),
+      );
     },
   },
 };

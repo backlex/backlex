@@ -15,7 +15,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { formsPublicApi, type ApiPublicForm, type ApiPublicFormBlock } from "@/admin/api";
+import {
+  formsPublicApi,
+  type ApiFormBlockScale,
+  type ApiPublicForm,
+  type ApiPublicFormBlock,
+} from "@/admin/api";
 import {
   accentInk,
   fontStack,
@@ -81,39 +86,121 @@ function TurnstileWidget({ siteKey, onToken }: { siteKey: string; onToken: (t: s
 
 /* ── inputs ────────────────────────────────────────────────────────── */
 
-function StarRating({
+/** The points a scale offers, low to high. */
+const scalePoints = (scale: ApiFormBlockScale): number[] =>
+  Array.from({ length: scale.max - scale.min + 1 }, (_, i) => scale.min + i);
+
+/**
+ * One point on a row.
+ *
+ * Stars fill cumulatively (picking 4 lights 1–4), because that is what a star
+ * row means everywhere else. A numbered row — and the 0–10 NPS row, which is a
+ * numbered row with fixed ends and a scored result — highlights only the point
+ * picked, because 7 out of 10 is a position and not a quantity.
+ *
+ * The row wraps rather than scrolls: eleven points at a phone's width would
+ * otherwise push the last one off-screen, and an answer you cannot see is one
+ * nobody gives.
+ */
+function ScaleInput({
+  scale,
   value,
   onChange,
   accent,
   p,
 }: {
+  scale: ApiFormBlockScale;
   value: number | null;
   onChange: (v: number) => void;
   accent: string;
   p: Palette;
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const points = scalePoints(scale);
+  const anchors =
+    scale.minLabel || scale.maxLabel ? (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          fontSize: 11,
+          color: p.faint,
+          marginTop: 6,
+        }}
+      >
+        <span>{scale.minLabel ?? ""}</span>
+        <span style={{ textAlign: "right" }}>{scale.maxLabel ?? ""}</span>
+      </div>
+    ) : null;
+
+  if (scale.style === "stars") {
+    return (
+      <div>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          {points.map((n) => {
+            const lit = (hover ?? value ?? scale.min - 1) >= n;
+            return (
+              <button
+                key={n}
+                type="button"
+                aria-label={String(n)}
+                aria-pressed={value === n}
+                onClick={() => onChange(n)}
+                onMouseEnter={() => setHover(n)}
+                onMouseLeave={() => setHover(null)}
+                style={{ background: "none", border: 0, cursor: "pointer", padding: 2, lineHeight: 0 }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill={lit ? accent : "none"} stroke={lit ? accent : p.faint} strokeWidth="1.6">
+                  <path d="M12 3l2.7 5.9 6.3.7-4.7 4.3 1.3 6.1L12 17l-5.6 3 1.3-6.1L3 9.6l6.3-.7z" />
+                </svg>
+              </button>
+            );
+          })}
+          <span style={{ fontSize: 11, color: p.faint, marginLeft: 4 }}>
+            {scale.min}–{scale.max}
+          </span>
+        </div>
+        {anchors}
+      </div>
+    );
+  }
+
   return (
-    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-      {[1, 2, 3, 4, 5].map((n) => {
-        const lit = (hover ?? value ?? 0) >= n;
-        return (
-          <button
-            key={n}
-            type="button"
-            aria-label={String(n)}
-            onClick={() => onChange(n)}
-            onMouseEnter={() => setHover(n)}
-            onMouseLeave={() => setHover(null)}
-            style={{ background: "none", border: 0, cursor: "pointer", padding: 2, lineHeight: 0 }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill={lit ? accent : "none"} stroke={lit ? accent : p.faint} strokeWidth="1.6">
-              <path d="M12 3l2.7 5.9 6.3.7-4.7 4.3 1.3 6.1L12 17l-5.6 3 1.3-6.1L3 9.6l6.3-.7z" />
-            </svg>
-          </button>
-        );
-      })}
-      <span style={{ fontSize: 11, color: p.faint, marginLeft: 4 }}>1–5</span>
+    <div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {points.map((n) => {
+          const on = value === n;
+          return (
+            <button
+              key={n}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onChange(n)}
+              style={{
+                // Fixed cells, not flexible ones: an eleven-point row wraps on
+                // a phone, and a growing basis would blow the three survivors
+                // up to a third of the width each — a scale whose last points
+                // are three times the size of its first ones.
+                flex: "0 0 auto",
+                width: 36,
+                height: 38,
+                borderRadius: 9,
+                border: `1px solid ${on ? accent : p.border}`,
+                background: on ? accent : p.inputBg,
+                color: on ? "#fff" : p.text,
+                fontSize: 13.5,
+                fontFamily: "inherit",
+                fontWeight: on ? 600 : 400,
+                cursor: "pointer",
+              }}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
+      {anchors}
     </div>
   );
 }
@@ -377,9 +464,14 @@ function BlockInput({
       />
     );
   }
-  if (block.rating) {
+  // `scale` supersedes `rating`; the fallback keeps a page bundle cached from
+  // before the deploy (which sees no `scale` key) drawing the same star row.
+  const scale: ApiFormBlockScale | null =
+    block.scale ?? (block.rating ? { min: 1, max: 5, style: "stars" } : null);
+  if (scale) {
     return (
-      <StarRating
+      <ScaleInput
+        scale={scale}
         value={typeof value === "number" ? value : null}
         onChange={(v) => onChange(v)}
         accent={accent}

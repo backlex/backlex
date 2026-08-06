@@ -58,7 +58,9 @@ import {
   itemsApi,
   type ApiForm,
   type ApiFormBlock,
+  type ApiFormBlockScale,
   type ApiFormEligibleField,
+  type ApiFormResults,
   type ApiFormSettings,
 } from "../api";
 
@@ -110,6 +112,23 @@ type CanvasPalette = typeof CANVAS_DARK;
 
 
 
+/** The scale a block renders as — the same `scale`-then-legacy-`rating`
+ *  fallback the public page applies, so the canvas preview and the live form
+ *  never disagree about what the question looks like. */
+const blockScale = (
+  block: ApiFormBlock,
+  ef: ApiFormEligibleField | null | undefined,
+): ApiFormBlockScale | null => {
+  if (!ef || ef.type !== "integer") return null;
+  if (block.scale) return block.scale;
+  if (block.rating) return { min: 1, max: 5, style: "stars" };
+  return null;
+};
+
+/** The points a scale offers, low to high. */
+const scalePoints = (scale: ApiFormBlockScale): number[] =>
+  Array.from({ length: Math.max(0, scale.max - scale.min + 1) }, (_, i) => scale.min + i);
+
 const blockIcon = (ef: ApiFormEligibleField | null | undefined, block: ApiFormBlock) => {
   if ((block.kind ?? "field") === "step") return I.Layers;
   if (!ef) return I.Type;
@@ -118,8 +137,11 @@ const blockIcon = (ef: ApiFormEligibleField | null | undefined, block: ApiFormBl
   if (ef.format === "email") return I.Mail;
   if (ef.format === "url") return I.Link;
   switch (ef.type) {
-    case "integer":
-      return block.rating ? I.Star : I.Hash;
+    case "integer": {
+      const scale = blockScale(block, ef);
+      if (!scale) return I.Hash;
+      return scale.style === "stars" ? I.Star : I.Gauge;
+    }
     case "number":
       return I.Hash;
     case "boolean":
@@ -431,13 +453,42 @@ function CanvasFieldPreview({
       </>
     );
   }
-  if (ef.type === "integer" && block.rating) {
+  const previewScale = blockScale(block, ef);
+  if (previewScale) {
+    const points = scalePoints(previewScale);
     return (
-      <div className="flex items-center gap-1" style={{ color: p.muted }}>
-        {[1, 2, 3, 4, 5].map((n) => (
-          <I.Star key={n} size={17} />
-        ))}
-        <span className="ml-1 text-[11px]">1–5</span>
+      <div className="flex flex-col gap-1.5">
+        {previewScale.style === "stars" ? (
+          <div className="flex flex-wrap items-center gap-1" style={{ color: p.muted }}>
+            {points.map((n) => (
+              <I.Star key={n} size={17} />
+            ))}
+            <span className="ml-1 text-[11px]">
+              {previewScale.min}–{previewScale.max}
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-1">
+            {points.map((n) => (
+              <span
+                key={n}
+                // Fixed cells, matching the public page: a growing basis makes
+                // the three points that wrap onto a second row three times the
+                // size of the eight above them.
+                className="flex h-8 w-9 shrink-0 items-center justify-center rounded-[9px] border text-[12.5px]"
+                style={{ borderColor: p.border, background: p.inputBg, color: p.muted }}
+              >
+                {n}
+              </span>
+            ))}
+          </div>
+        )}
+        {(previewScale.minLabel || previewScale.maxLabel) && (
+          <div className="flex justify-between gap-3 text-[11px]" style={{ color: p.muted }}>
+            <span>{previewScale.minLabel ?? ""}</span>
+            <span className="text-right">{previewScale.maxLabel ?? ""}</span>
+          </div>
+        )}
       </div>
     );
   }
@@ -493,7 +544,7 @@ function InsertDot({ onClick, bg }: { onClick: () => void; bg: string }) {
 
 /* ── builder ───────────────────────────────────────────────────────── */
 
-type BuilderTab = "edit" | "share" | "submissions";
+type BuilderTab = "edit" | "share" | "results" | "submissions";
 type Selection = { kind: "block"; id: string } | { kind: "ending" } | null;
 
 export function FormsPage({
@@ -892,7 +943,7 @@ export function FormsPage({
             strip never squeezes the title and never stretches full width. */}
         <div className="flex w-full justify-center sm:mx-auto sm:w-auto">
         <div className="flex items-center gap-0.5 rounded-[10px] border border-white/10 bg-white/5 p-[3px]">
-          {(["edit", "share", "submissions"] as BuilderTab[]).map((tb) => (
+          {(["edit", "share", "results", "submissions"] as BuilderTab[]).map((tb) => (
             <button
               key={tb}
               type="button"
@@ -903,7 +954,15 @@ export function FormsPage({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tb === "edit" ? <Trans>Edit</Trans> : tb === "share" ? <Trans>Share</Trans> : <Trans>Submissions</Trans>}
+              {tb === "edit" ? (
+                <Trans>Edit</Trans>
+              ) : tb === "share" ? (
+                <Trans>Share</Trans>
+              ) : tb === "results" ? (
+                <Trans>Results</Trans>
+              ) : (
+                <Trans>Submissions</Trans>
+              )}
               {tb === "submissions" && (
                 <span className={`font-mono text-[10px] tabular-nums ${tab === tb ? "text-primary" : ""}`}>
                   {form.submissionCount}
@@ -1333,6 +1392,13 @@ export function FormsPage({
         />
       )}
 
+      {tab === "results" && (
+        <ResultsTab
+          form={form}
+          onOpenCollection={() => setActiveNav?.("collections/" + form.collection)}
+        />
+      )}
+
       {tab === "submissions" && (
         <SubmissionsTab
           form={form}
@@ -1534,6 +1600,121 @@ function Segmented<T extends string>({
   );
 }
 
+/** Widest a hand-set scale may be — mirrors `SCALE_MAX_POINTS` on the server,
+ *  which refuses anything wider. */
+const SCALE_MAX_POINTS = 11;
+
+/**
+ * How an integer question is answered.
+ *
+ * The four styles are the whole finite set, so they are a dropdown rather than
+ * a switch per style: a plain number input, a star row, a numbered row, and
+ * NPS — which is a numbered row with its ends nailed to 0 and 10 because that
+ * is what makes the score comparable to anyone else's.
+ */
+function ScaleEditor({
+  block,
+  ef,
+  onPatch,
+}: {
+  block: ApiFormBlock;
+  ef: ApiFormEligibleField;
+  onPatch: (id: string, patch: Partial<ApiFormBlock>) => void;
+}) {
+  const { t } = useLingui();
+  const scale = blockScale(block, ef);
+  const style = scale?.style ?? "input";
+  const set = (next: ApiFormBlockScale | undefined) =>
+    // The legacy `rating` flag is cleared alongside: leaving it set would
+    // resurrect the 1–5 star row on any reader that still prefers it.
+    onPatch(block.id!, { scale: next, rating: undefined });
+
+  const bounds = (from: number, to: number) =>
+    Array.from({ length: to - from + 1 }, (_, i) => ({
+      value: String(from + i),
+      label: String(from + i),
+    }));
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-border pt-3">
+      <label className="flex flex-col gap-1 text-[12px] font-medium">
+        <span className="flex items-center gap-1.5">
+          <I.Gauge size={12} />
+          <Trans>Answer style</Trans>
+        </span>
+        <Select
+          value={style}
+          onChange={(v) => {
+            if (v === "input") return set(undefined);
+            if (v === "nps") return set({ min: 0, max: 10, style: "nps" });
+            if (v === "stars") return set({ min: 1, max: 5, style: "stars" });
+            return set({ min: scale?.min ?? 1, max: scale?.max ?? 5, style: "number" });
+          }}
+          options={[
+            { value: "input", label: t`Number input` },
+            { value: "stars", label: t`Star rating` },
+            { value: "number", label: t`Numbered scale` },
+            { value: "nps", label: t`NPS — how likely to recommend (0–10)` },
+          ]}
+        />
+      </label>
+
+      {scale && style !== "nps" && (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="flex min-w-0 flex-col gap-1 text-[12px] font-medium">
+            <Trans>From</Trans>
+            <Select
+              value={String(scale.min)}
+              onChange={(v) => {
+                const min = Number(v);
+                set({ ...scale, min, max: Math.min(Math.max(scale.max, min + 1), min + SCALE_MAX_POINTS - 1) });
+              }}
+              options={bounds(0, 1)}
+            />
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 text-[12px] font-medium">
+            <Trans>To</Trans>
+            <Select
+              value={String(scale.max)}
+              onChange={(v) => set({ ...scale, max: Number(v) })}
+              options={bounds(scale.min + 1, scale.min + SCALE_MAX_POINTS - 1)}
+            />
+          </label>
+        </div>
+      )}
+
+      {scale && (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="flex min-w-0 flex-col gap-1 text-[12px] font-medium">
+            <Trans>Low label</Trans>
+            <Input
+              value={scale.minLabel ?? ""}
+              placeholder={t`Not at all`}
+              onChange={(e) => set({ ...scale, minLabel: e.target.value || undefined })}
+            />
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 text-[12px] font-medium">
+            <Trans>High label</Trans>
+            <Input
+              value={scale.maxLabel ?? ""}
+              placeholder={t`Extremely`}
+              onChange={(e) => set({ ...scale, maxLabel: e.target.value || undefined })}
+            />
+          </label>
+        </div>
+      )}
+
+      {style === "nps" && (
+        <span className="text-[11px] text-muted-foreground">
+          <Trans>
+            Results score this as promoters (9–10) minus detractors (0–6).
+          </Trans>
+        </span>
+      )}
+    </div>
+  );
+}
+
 function DesignPanel({
   settings,
   languages,
@@ -1718,7 +1899,7 @@ function BlockPanel({
           onChange={(e) => onText(block.id!, "label", e.target.value)}
         />
       </label>
-      {!isStep && ef && !ef.choices && ef.type !== "boolean" && ef.type !== "file" && !(ef.type === "integer" && block.rating) && (
+      {!isStep && ef && !ef.choices && ef.type !== "boolean" && ef.type !== "file" && !blockScale(block, ef) && (
         <label className="flex flex-col gap-1 text-[12px] font-medium">
           <Trans>Placeholder</Trans>
           <Input
@@ -1766,10 +1947,7 @@ function BlockPanel({
       )}
 
       {!isStep && ef?.type === "integer" && (
-        <div className="flex items-center justify-between text-[12px] font-medium">
-          <span className="flex items-center gap-1.5"><I.Star size={12} /><Trans>Star rating (1–5)</Trans></span>
-          <Switch checked={Boolean(block.rating)} onChange={(v) => onPatch(block.id!, { rating: v })} />
-        </div>
+        <ScaleEditor block={block} ef={ef} onPatch={onPatch} />
       )}
 
       {!isStep && ef?.type === "file" && (
@@ -2444,6 +2622,234 @@ function SubmissionDrawer({
 }
 
 /* ── submissions tab ───────────────────────────────────────────────── */
+
+/** A labelled bar. Width is the count against the biggest bucket, so the
+ *  shape of the answers is readable even when every share is small; the number
+ *  next to it is the share of people who answered, which is the figure being
+ *  read out loud. */
+function ResultBar({
+  label,
+  count,
+  max,
+  share,
+}: {
+  label: string;
+  count: number;
+  max: number;
+  share: number | null;
+}) {
+  // A point nobody picked draws NO bar. The minimum width is there so a single
+  // answer among hundreds is still visible, but applying it at zero would show
+  // a sliver where the honest answer is nothing.
+  const width = count > 0 && max > 0 ? Math.max(2, Math.round((count / max) * 100)) : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-[34%] max-w-[220px] shrink-0 truncate text-[12.5px]" title={label}>
+        {label}
+      </span>
+      <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+        <span className="block h-full rounded-full bg-primary" style={{ width: `${width}%` }} />
+      </span>
+      <span className="w-[74px] shrink-0 text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
+        {count}
+        {share !== null && <span className="ml-1.5 opacity-70">{share}%</span>}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * What the answers add up to.
+ *
+ * One card per question, drawn from `/results` — which counts and never
+ * quotes. Free-text questions therefore show their answered count and send you
+ * to the collection, where the words are read under the collection's own
+ * permissions instead of a second time here.
+ */
+function ResultsTab({
+  form,
+  onOpenCollection,
+}: {
+  form: ApiForm;
+  onOpenCollection: () => void;
+}) {
+  const { t } = useLingui();
+  const [data, setData] = useState<ApiFormResults | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setData(null);
+    setFailed(false);
+    formsApi
+      .results(form.id)
+      .then((r) => {
+        if (!cancelled) setData(r.data);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.id]);
+
+  if (failed) {
+    return (
+      <EmptyState
+        icon={I.Gauge}
+        title={<Trans>Results can't be read</Trans>}
+        description={
+          <Trans>
+            The collection this form writes into may have been deleted or renamed.
+          </Trans>
+        }
+      />
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
+          {[0, 1, 2].map((i) => (
+            <Card key={i} className="gap-2 p-4">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-6 w-16" />
+            </Card>
+          ))}
+        </div>
+        {[0, 1, 2].map((i) => (
+          <Card key={i} className="gap-3 p-4">
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-2 w-full" />
+            <Skeleton className="h-2 w-full" />
+            <Skeleton className="h-2 w-2/3" />
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (data.rows === 0) {
+    return (
+      <EmptyState
+        icon={I.Gauge}
+        title={<Trans>No answers yet</Trans>}
+        description={
+          <Trans>Share the public link — every question gets a breakdown here as answers arrive.</Trans>
+        }
+      />
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
+        {[
+          { label: t`Rows`, value: String(data.rows), sub: data.collection },
+          {
+            label: t`Submissions`,
+            value: String(data.submissionCount),
+            sub: t`accepted through this form`,
+          },
+          { label: t`Questions`, value: String(data.blocks.length), sub: t`summarised` },
+        ].map((s, i) => (
+          <Card key={i} className="gap-1 p-4">
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground">
+              {s.label}
+            </span>
+            <span className="text-[22px] font-semibold tabular-nums">{s.value}</span>
+            <span className="truncate text-[11px] text-muted-foreground">{s.sub}</span>
+          </Card>
+        ))}
+      </div>
+
+      {/* The counts are the collection's, not the form's — nothing stamps a row
+          with the form that wrote it, so say so rather than implying otherwise. */}
+      <p className="text-[11.5px] text-muted-foreground">
+        <Trans>
+          Counts cover every row in {data.collection}, including any written outside this form.
+        </Trans>
+      </p>
+
+      {data.blocks.map((b) => {
+        const max = b.buckets?.reduce((m, k) => Math.max(m, k.count), 0) ?? 0;
+        return (
+          <Card key={b.name} className="gap-3 p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="min-w-0 truncate text-[13.5px] font-semibold">{b.label}</span>
+              <span className="flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
+                {b.nps && (
+                  <Badge mono variant={b.nps.score >= 0 ? "default" : "destructive"}>
+                    <Trans>NPS {b.nps.score}</Trans>
+                  </Badge>
+                )}
+                {b.nps === null && b.average !== null && (
+                  <Badge mono variant="secondary">
+                    <Trans>avg {b.average}</Trans>
+                  </Badge>
+                )}
+                <span>
+                  {b.answered} <Trans>answered</Trans>
+                </span>
+              </span>
+            </div>
+
+            {b.buckets ? (
+              <div className="flex flex-col gap-2">
+                {b.buckets.map((k) => (
+                  <ResultBar
+                    key={k.value}
+                    // `true`/`false` is how the column stores it, not how a
+                    // person reads it — and the API stays language-neutral, so
+                    // the wording belongs here.
+                    label={
+                      b.kind === "boolean" ? (k.value === "true" ? t`Yes` : t`No`) : k.label
+                    }
+                    count={k.count}
+                    max={max}
+                    share={b.answered > 0 ? Math.round((k.count / b.answered) * 100) : null}
+                  />
+                ))}
+                {b.kind === "multi_choice" && (
+                  <span className="text-[11px] text-muted-foreground">
+                    <Trans>Several answers allowed, so the shares can add up to more than 100%.</Trans>
+                  </span>
+                )}
+                {b.nps && (
+                  // Label first, count second — "1 passives" would need a
+                  // plural rule in every locale to say nothing extra.
+                  <span className="text-[11px] text-muted-foreground">
+                    <Trans>
+                      promoters {b.nps.promoters} · passives {b.nps.passives} · detractors{" "}
+                      {b.nps.detractors}
+                    </Trans>
+                  </span>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenCollection}
+                className="flex items-center gap-2 self-start text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <I.ExternalLink size={13} />
+                <Trans>Written answers are not shown here — read them in the collection</Trans>
+              </button>
+            )}
+          </Card>
+        );
+      })}
+
+      {data.truncated > 0 && (
+        <p className="text-[11.5px] text-muted-foreground">
+          <Trans>{data.truncated} more questions are not summarised — this form has more than the panel computes.</Trans>
+        </p>
+      )}
+    </div>
+  );
+}
 
 function SubmissionsTab({
   form,

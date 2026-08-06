@@ -30,11 +30,61 @@ the audit trail all apply unchanged.
 
 Scalar fields can be exposed — `text`, `longtext`, `integer`, `number`,
 `boolean`, `timestamp` (dropdowns are `text` + choices) — plus single `file`
-fields (see **File-upload blocks** below). Excluded: relation / hash / json
-(without choices) / uuid, `private`, `computed`, `localized`, and
-server-auto-filled (`onCreate`) fields. The fence is enforced at definition
-time AND re-derived on every public read/submit, so a field that later becomes
-ineligible silently disappears from the form instead of leaking.
+fields (see **File-upload blocks** below) and `json` fields that define choices,
+which render as a **multi-select** and store the chosen values as an array.
+Excluded: relation / hash / plain json / uuid, `private`, `computed`,
+`localized`, and server-auto-filled (`onCreate`) fields. The fence is enforced
+at definition time AND re-derived on every public read/submit, so a field that
+later becomes ineligible silently disappears from the form instead of leaking.
+
+## Scale questions
+
+An `integer` block can be answered by picking one point on a row instead of
+typing a number:
+
+```jsonc
+{ "name": "recommend", "label": "Would you recommend us?",
+  "scale": { "min": 0, "max": 10, "style": "nps",
+             "minLabel": "Not at all", "maxLabel": "Definitely" } }
+```
+
+- `style: "stars"` — a star row (the old `rating: true` is exactly
+  `{ min: 1, max: 5, style: "stars" }` and still parses).
+- `style: "number"` — numbered buttons.
+- `style: "nps"` — the 0–10 row, which the results panel scores as promoters
+  minus detractors.
+
+At most 11 points (`SCALE_MAX_POINTS`); a wider one is refused when the form is
+saved. The bound is re-checked **on submit**, so a hand-written POST cannot put
+a 47 in an NPS column — the page's own row is not the guard.
+
+The answer is an ordinary integer in an ordinary integer column, which is what
+lets the results panel, dashboards, KPIs and CSV exports all read it without
+knowing the question was drawn as stars.
+
+## Results
+
+`GET /api/admin/forms/:id/results` summarises the answers — one distribution
+per exposed question, built on the same aggregate engine dashboard panels use:
+
+- **choice / boolean** — a count per value, in the schema's own choice order, so
+  a bar chart keeps its bars in the same places between two reads.
+- **multi-select** — a count per *chosen value* (the JSON array is exploded), so
+  the shares can add up to past 100%. `answered` counts people, not picks.
+- **scale** — every point of the row (including the empty ones) plus the mean;
+  `style: "nps"` also returns `{ promoters, passives, detractors, score }`.
+- **number** — the mean.
+- **text / longtext / timestamp / file** — how many answered, and nothing else.
+
+Free-text answers are **counted, never quoted**. Reading them back through a
+second endpoint would be a weaker copy of the collection's own list endpoint —
+one without its permissions, field allow-list or audit trail. The Submissions
+tab reads them through `/api/items/:collection` instead.
+
+The counts cover the whole target collection, not only rows this form wrote:
+nothing stamps a row with the form that wrote it, because a form is a way in
+and not an owner. `rows` is that figure; `submissionCount` is the form's own
+counter.
 
 ## File-upload blocks
 
@@ -102,17 +152,21 @@ Everything goes through one service (`services/forms.ts`):
 
 | Surface | Entry |
 |---|---|
-| REST | `/api/admin/forms` (+ `/eligible-fields/:collection`, `/:id/rotate-token`), public `/api/public/forms/:token` |
+| REST | `/api/admin/forms` (+ `/eligible-fields/:collection`, `/:id/rotate-token`, `/:id/results`), public `/api/public/forms/:token` |
 | SDK | `client.forms.*` |
-| GraphQL | `publicForms` / `publicForm`, `createPublicForm` / `updatePublicForm` / `deletePublicForm` / `rotatePublicFormToken` |
-| MCP | `forms.*` (list, get, eligible_fields, create, update, rotate_token, delete) |
-| CLI | `backlex forms <list\|get\|fields\|create\|update\|rotate-token\|delete>` |
+| GraphQL | `publicForms` / `publicForm` / `publicFormResults`, `createPublicForm` / `updatePublicForm` / `deletePublicForm` / `rotatePublicFormToken` |
+| MCP | `forms.*` (list, get, eligible_fields, create, update, rotate_token, results, delete) |
+| CLI | `backlex forms <list\|get\|fields\|create\|update\|rotate-token\|results\|delete>` |
 
 Parity gate: `apps/web/tests/forms-surfaces.test.ts`; core behaviour:
-`apps/web/tests/forms.test.ts`.
+`apps/web/tests/forms.test.ts`; survey shapes + results arithmetic:
+`apps/web/tests/forms-results.test.ts` (and `forms-results-pg.test.ts` for the
+Postgres spelling of the array explode).
 
 ## Not yet
 
 - Relation fields.
 - Localized fields.
 - Multiple files per block (a `file` field stores one key).
+- Matrix / likert grids (ask each row as its own scale block for now).
+- A response cap, a closing date, or one-response-per-person.

@@ -164,6 +164,54 @@ describe("forms — SDK surface + public round-trip", () => {
     expect(removed.ok).toBe(true);
   });
 
+  test("results answer the same numbers on REST, SDK and GraphQL", async () => {
+    const client = createClient({ url: "", fetch: h.fetch as unknown as typeof fetch });
+    const created = await client.forms.create({
+      name: "results-parity",
+      collection: slug,
+      fields: [{ name: "title" }, { name: "note" }],
+    });
+    const id = created.data.form.id;
+
+    await h.app.fetch(
+      new Request(`${h.env.APP_URL}/api/public/forms/${created.data.token}/submit`, {
+        ...json({ data: { title: "one", note: "with a note" } }),
+      }),
+    );
+    await h.app.fetch(
+      new Request(`${h.env.APP_URL}/api/public/forms/${created.data.token}/submit`, {
+        ...json({ data: { title: "two" } }),
+      }),
+    );
+
+    const sdk = await client.forms.results(id);
+    const note = sdk.data.blocks.find((b) => b.name === "note")!;
+    expect(note.kind).toBe("text");
+    // Two notes: one from this form, one written by the earlier spec through a
+    // different form into the same collection. That is the documented reading —
+    // nothing stamps a row with the form that wrote it, so `results` counts the
+    // collection. `submissionCount` is the per-form figure.
+    expect(note.answered).toBe(2);
+    expect(sdk.data.submissionCount).toBe(2);
+    expect(note.buckets).toBeNull();
+
+    const rest = await h.fetch(`/api/admin/forms/${id}/results`);
+    expect(rest.status).toBe(200);
+    const restBody = ((await rest.json()) as { data: unknown }).data;
+    expect(restBody).toEqual(sdk.data as unknown as typeof restBody);
+
+    const gqlRes = (await (
+      await h.fetch("/api/graphql", json({
+        query: `query($id:ID!){ publicFormResults(id:$id) }`,
+        variables: { id },
+      }))
+    ).json()) as { data?: { publicFormResults: unknown }; errors?: unknown[] };
+    expect(gqlRes.errors).toBeUndefined();
+    expect(gqlRes.data?.publicFormResults).toEqual(sdk.data as never);
+
+    await client.forms.delete(id);
+  });
+
   test("non-admin sessions are rejected by the admin surface", async () => {
     // No session at all → 401 from requireUser.
     const anon = await h.app.fetch(new Request(`${h.env.APP_URL}/api/admin/forms`));

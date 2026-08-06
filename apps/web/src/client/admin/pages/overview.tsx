@@ -19,24 +19,8 @@ import {
 } from "../api";
 import { OverviewSkeleton } from "../page-skeletons";
 import { TemplateOnboarding } from "./template-onboarding";
-
-function Sparkline({ data, color = "var(--primary)", height = 36, fill = true }: { data: number[]; color?: string; height?: number; fill?: boolean }) {
-  const w = 100, h = height;
-  const max = Math.max(...data, 1);
-  const min = Math.min(...data, 0);
-  const span = max - min || 1;
-  const pts: [number, number][] = data.map((v, i) => [i / (data.length - 1) * w, h - ((v - min) / span) * (h - 4) - 2]);
-  const d = pts.map((p, i) => (i === 0 ? "M" : "L") + p[0].toFixed(2) + "," + p[1].toFixed(2)).join(" ");
-  const fillPath = d + ` L ${w},${h} L 0,${h} Z`;
-  const last = pts[pts.length - 1] ?? [0, 0];
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="block w-full" style={{ height }}>
-      {fill && <path d={fillPath} fill={color} opacity="0.12" />}
-      <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={last[0]} cy={last[1]} r="2" fill={color} />
-    </svg>
-  );
-}
+// The one sparkline — shared with the KPI tiles so the two draw the same shape.
+import { Sparkline } from "../sparkline";
 
 type Metric = { label: string; value: string; delta: string; up: boolean; series: number[]; color: string };
 

@@ -26,6 +26,7 @@ import {
   type ApiKpiResult,
 } from "../api";
 import { KpisSkeleton } from "../page-skeletons";
+import { Sparkline } from "../sparkline";
 
 /**
  * KPIs — the workspace's named figures, and the one place each one's formula
@@ -711,7 +712,13 @@ function KpiTile({
             {formatValue(data.point?.value ?? null, kpi, data.point?.currency, locale)}
           </span>
           <DeltaLine point={data.point} kpi={kpi} locale={locale} hasWindow={Boolean(data.window)} />
-          {data.series && <Sparkline series={data.series} direction={kpi.direction} />}
+          {data.series && (
+            <KpiSparkline
+              series={data.series}
+              delta={data.point?.delta ?? null}
+              direction={kpi.direction}
+            />
+          )}
         </div>
       )}
     </Card>
@@ -719,71 +726,43 @@ function KpiTile({
 }
 
 /**
- * The shape behind the number.
+ * The shape behind the number — the same sparkline the Overview cards draw.
  *
- * Deliberately unlabelled and un-axised: at this size a scale would be
- * illegible and inviting the reader to estimate values off it would be worse
- * than not offering it. What it honestly conveys is direction and volatility —
- * the headline number is the value.
- *
- * A slice whose value is null (an avg over an empty bucket) BREAKS the line
- * rather than being drawn at zero: joining across it would assert the average
- * fell to nothing, which is the opposite of "we don't know".
+ * Coloured from the SAME delta the badge above it uses, not from the first and
+ * last bucket. Those two often disagree: a window whose edges are both empty
+ * ends where it started while the period as a whole moved sharply, and a chart
+ * painting that grey under a green "+17" is the tile contradicting itself.
+ * `direction` decides which sign is good news — a rising cancellation rate and
+ * a rising order count are both "up", and only the definition knows.
  */
-function Sparkline({
+function KpiSparkline({
   series,
+  delta,
   direction,
 }: {
   series: { t: number; value: number | null }[];
+  delta: number | null;
   direction: string;
 }) {
-  const W = 120;
-  const H = 22;
-  const known = series.filter((p) => p.value !== null) as { t: number; value: number }[];
+  const values = series.map((p) => p.value);
+  const known = values.filter((v): v is number => v !== null);
   if (known.length < 2) return null;
-  const values = known.map((p) => p.value);
-  // Nothing happened at all. A perfectly flat line spanning the card reads as
-  // a stray border rather than as data, and the headline figure already says
-  // zero — so draw nothing.
-  if (values.every((v) => v === 0)) return null;
-  const min = Math.min(...values, 0);
-  const max = Math.max(...values);
-  const span = max - min || 1;
-  const x = (i: number) => (i / Math.max(1, series.length - 1)) * W;
-  const y = (v: number) => H - ((v - min) / span) * H;
+  // Nothing happened at all. A flat line is a divider, not information, and the
+  // headline figure already says zero.
+  if (known.every((v) => v === 0)) return null;
 
-  // One `M` per run of known points; a null starts a new run, so the gap is
-  // visible as a gap.
-  let d = "";
-  let penDown = false;
-  series.forEach((p, i) => {
-    if (p.value === null) {
-      penDown = false;
-      return;
-    }
-    d += `${penDown ? "L" : "M"}${x(i).toFixed(1)},${y(p.value).toFixed(1)} `;
-    penDown = true;
-  });
-
-  const first = known[0]!.value;
-  const last = known[known.length - 1]!.value;
-  const rising = last > first;
-  const stroke =
-    direction === "neutral" || last === first
-      ? "currentColor"
-      : (direction === "up") === rising
-        ? "var(--color-emerald-500, #10b981)"
-        : "var(--color-red-500, #ef4444)";
+  const tone = deltaTone(delta, direction);
+  const color =
+    tone === "good"
+      ? "var(--color-emerald-500, #10b981)"
+      : tone === "bad"
+        ? "var(--color-red-500, #ef4444)"
+        : "var(--muted-foreground)";
 
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      className="mt-1.5 h-[22px] w-full max-w-[180px] text-muted-foreground/60"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <path d={d.trim()} fill="none" stroke={stroke} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
-    </svg>
+    <div className="mt-2 max-w-[200px]">
+      <Sparkline data={values} color={color} height={30} />
+    </div>
   );
 }
 

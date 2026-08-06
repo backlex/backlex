@@ -11,6 +11,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -1237,12 +1238,14 @@ export function useToasts(): [ReactNode, (msg: string, type?: "success" | "error
     // three seconds was regularly missed.
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
   }, []);
-  const node = (
-    <div className="fixed right-[18px] top-[18px] z-[80] flex flex-col gap-2">
+  const stack = (
+    // `pointer-events-none` on the stack, restored per toast: it spans the top
+    // of the screen, and a dead strip over the header is worse than the toast.
+    <div className="pointer-events-none fixed right-[18px] top-[18px] z-[100] flex flex-col gap-2">
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="flex min-w-[240px] animate-in items-center gap-2.5 rounded-control border border-border bg-popover px-3.5 py-2.5 text-[13px] text-popover-foreground shadow-[0_10px_30px_-8px_oklch(0_0_0/0.2)] fade-in-0 slide-in-from-top-2 duration-200"
+          className="pointer-events-auto flex min-w-[240px] animate-in items-center gap-2.5 rounded-control border border-border bg-popover px-3.5 py-2.5 text-[13px] text-popover-foreground shadow-[0_10px_30px_-8px_oklch(0_0_0/0.2)] fade-in-0 slide-in-from-top-2 duration-200"
         >
           <span className={t.type === "error" ? "flex-none text-destructive" : "flex-none text-primary"}>
             {t.type === "error" ? <I.AlertTriangle size={14} /> : <I.Check size={14} stroke={2.5} />}
@@ -1252,5 +1255,12 @@ export function useToasts(): [ReactNode, (msg: string, type?: "success" | "error
       ))}
     </div>
   );
+
+  // Portalled to `body` rather than left where it is mounted. A `z-index` only
+  // ranks siblings inside the nearest stacking context, and this node sits deep
+  // in the app tree while a dialog portals to `body` — so the whole stack was
+  // ranked as one layer BELOW the backdrop, and every confirmation of an action
+  // taken in a dialog was posted behind it.
+  const node = typeof document === "undefined" ? stack : createPortal(stack, document.body);
   return [node, push];
 }

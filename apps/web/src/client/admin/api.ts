@@ -256,6 +256,16 @@ export interface ApiBookingRule {
   reason: string | null;
 }
 
+/** What the booker is asked beyond name, email and phone. The stored `type` is
+ *  advisory — a question carrying `options` is a choice whatever it says. */
+export interface ApiBookingQuestion {
+  name: string;
+  label?: string;
+  type?: "text" | "textarea" | "select" | "boolean";
+  required?: boolean;
+  options?: string[];
+}
+
 export interface ApiBookingResource {
   id: string;
   key: string;
@@ -271,7 +281,7 @@ export interface ApiBookingResource {
   leadMinutes: number;
   horizonDays: number;
   holdMinutes: number;
-  questions: Array<Record<string, unknown>>;
+  questions: ApiBookingQuestion[];
   mirrorCollection: string | null;
   mirrorFieldMap: Record<string, string> | null;
   active: boolean;
@@ -1641,7 +1651,7 @@ export interface ApiPublicSlots {
     timeZone: string;
     slotMinutes: number;
     capacity: number;
-    questions: Array<Record<string, unknown>>;
+    questions: ApiBookingQuestion[];
     confirmationMessage: string | null;
   };
   from: string;

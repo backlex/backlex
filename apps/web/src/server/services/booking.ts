@@ -1319,10 +1319,18 @@ const parseInstant = (value: string | number, what: string): number => {
  * column and, when a mirror map names them, in a collection column. Accepting
  * whatever a public form posts would let anybody grow that column without an
  * operator ever having asked a question.
+ *
+ * `required` binds the PUBLIC page only, for the same reason the published grid
+ * does: the intake questions are that page's contract with the person filling
+ * it in. An operator writing down a booking taken over the telephone may not
+ * have asked them yet, and refusing the booking loses the appointment rather
+ * than gaining the answer. What is supplied is still validated either way — a
+ * choice outside its options is a mistake on any path.
  */
 const normalizeAnswers = (
   resource: BookingResourceRow,
   raw: Record<string, unknown> | undefined,
+  enforceRequired: boolean,
 ): Record<string, unknown> => {
   const questions = resource.questions ?? [];
   const out: Record<string, unknown> = {};
@@ -1330,7 +1338,7 @@ const normalizeAnswers = (
     const name = String(q.name ?? "");
     if (!name) continue;
     const value = raw?.[name];
-    const required = q.required === true;
+    const required = q.required === true && enforceRequired;
     if (value === undefined || value === null || value === "") {
       if (required) throw new AppError("VALIDATION", `"${q.label ?? name}" is required`);
       continue;
@@ -1401,7 +1409,7 @@ export const createBooking = async (
   const email = input.email === undefined || input.email === null || input.email === ""
     ? null
     : normalizeEmail(input.email);
-  const answers = normalizeAnswers(resource, input.answers);
+  const answers = normalizeAnswers(resource, input.answers, meta.source === "public");
 
   const id = crypto.randomUUID();
   const manageToken = `${MANAGE_TOKEN_PREFIX}_${randomHex(TOKEN_BYTES)}`;

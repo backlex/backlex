@@ -356,6 +356,58 @@ describe("taking a slot", () => {
     // A public form must not be able to grow the stored shape on its own.
     expect(out.data.booking.answers).toEqual({ reason: "checkup" });
   });
+
+  /**
+   * `required` is the PUBLIC page's contract, not the resource's. An operator
+   * writing down a booking taken over the telephone may not have asked yet,
+   * and refusing it would lose the appointment rather than gain the answer —
+   * the same asymmetry that lets the operator book off the published grid.
+   */
+  test("a required question binds the public page, not the operator", async () => {
+    await makeResource({
+      key: "q2",
+      questions: [{ name: "reason", label: "Reason for visit", required: true }],
+    });
+
+    const out = await ok("POST", `${BASE}/bookings`, {
+      resource: "q2",
+      start: mondayAt(15, 7),
+      name: "Walk-in",
+    });
+    expect(out.data.booking.status).toBe("confirmed");
+    expect(out.data.booking.answers).toEqual({});
+
+    // What the operator DID hear still travels, and is still validated.
+    const answered = await ok("POST", `${BASE}/bookings`, {
+      resource: "q2",
+      start: mondayAt(15, 37),
+      answers: { reason: "checkup" },
+    });
+    expect(answered.data.booking.answers).toEqual({ reason: "checkup" });
+  });
+
+  test("a yes/no keeps its type, on both paths", async () => {
+    const created = await makeResource({
+      key: "q3",
+      questions: [{ name: "insured", label: "Insured", type: "boolean" }],
+    });
+
+    const pub = await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: MONDAY_0900,
+      email: "a@example.com",
+      answers: { insured: false },
+    });
+    // `false` is an answer, not an absence — storing it as the string "false"
+    // would make a mirrored boolean column refuse it.
+    expect(pub.data.booking.answers).toEqual({ insured: false });
+
+    const admin = await ok("POST", `${BASE}/bookings`, {
+      resource: "q3",
+      start: mondayAt(15, 7),
+      answers: { insured: true },
+    });
+    expect(admin.data.booking.answers).toEqual({ insured: true });
+  });
 });
 
 describe("the overlap guard", () => {

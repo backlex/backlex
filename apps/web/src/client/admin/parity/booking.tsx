@@ -21,7 +21,13 @@ import {
 import { I } from "../icons";
 import { Select } from "../select";
 import { Button, EmptyState, PageHeader } from "../ui";
-import { bookingApi, type ApiBooking, type ApiBookingResource, type ApiBookingRule } from "../api";
+import {
+  bookingApi,
+  type ApiBooking,
+  type ApiBookingQuestion,
+  type ApiBookingResource,
+  type ApiBookingRule,
+} from "../api";
 import { BookingSkeleton } from "../page-skeletons";
 import { DatePicker } from "@/components/date-picker";
 import { ConfirmAction } from "@/components/confirm-action";
@@ -257,6 +263,34 @@ const blankRule = (): ApiBookingRule => ({
   reason: null,
 });
 
+/** What the booker is asked beyond name and address. Mirrors the server's
+ *  `MAX_QUESTIONS`, so the button stops offering what the API would refuse. */
+const MAX_QUESTIONS = 20;
+
+const blankQuestion = (): ApiBookingQuestion => ({
+  name: "",
+  label: "",
+  type: "text",
+  required: false,
+  options: [],
+});
+
+/** What a question is rendered as. Options are decisive — a question carrying
+ *  them is a choice whatever its type says — and this has to agree with the
+ *  public page's own reading, or the operator's form and the booker's would
+ *  disagree about what a question is. */
+const questionKind = (q: ApiBookingQuestion): "text" | "textarea" | "select" | "boolean" => {
+  if (Array.isArray(q.options) && q.options.length > 0) return "select";
+  const raw = String(q.type ?? "text");
+  return raw === "textarea" || raw === "boolean" ? raw : "text";
+};
+
+/** The stored key an answer lands under — and, when the resource mirrors, the
+ *  column name a `--map` entry points at. Underscores rather than dashes for
+ *  exactly that reason: it has to be usable as a column. */
+const questionName = (s: string): string =>
+  s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 60);
+
 const DEFAULT_FORM = {
   key: "",
   name: "",
@@ -299,11 +333,19 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [form, setForm] = useState({ ...DEFAULT_FORM });
   const [rules, setRules] = useState<ApiBookingRule[]>([blankRule()]);
+  const [questions, setQuestions] = useState<ApiBookingQuestion[]>([]);
+  /** Names that already have answers stored against them. Retyping the label of
+   *  such a question must NOT move its name: the answers on every booking taken
+   *  so far are keyed by it, and a mirror map may point a column at it. */
+  const [storedNames, setStoredNames] = useState<Set<string>>(() => new Set());
   const [customZone, setCustomZone] = useState(false);
   const [link, setLink] = useState<string | null>(null);
 
   const [bookOpen, setBookOpen] = useState(false);
   const [bookForm, setBookForm] = useState({ start: "", name: "", email: "", phone: "", notes: "" });
+  /** The resource's own questions, as the operator heard them on the phone.
+   *  Held as strings; a yes/no becomes a real boolean on the way out. */
+  const [bookAnswers, setBookAnswers] = useState<Record<string, string>>({});
   /** Set once a booking lands: the dialog becomes a receipt rather than an
    *  empty form, because the manage link is shown exactly once. */
   const [booked, setBooked] = useState<{
@@ -464,6 +506,8 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
     setEditingKey(null);
     setForm({ ...DEFAULT_FORM });
     setRules([blankRule()]);
+    setQuestions([]);
+    setStoredNames(new Set());
     setCustomZone(!COMMON_ZONES.includes(DEFAULT_FORM.timeZone));
     setLink(null);
     setEditOpen(true);
@@ -488,6 +532,16 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
       active: r.active,
     });
     setRules(r.rules.length > 0 ? r.rules.map((x) => ({ ...x })) : [blankRule()]);
+    setQuestions(
+      (r.questions ?? []).map((q) => ({
+        name: String(q.name ?? ""),
+        label: String(q.label ?? ""),
+        type: (q.type as ApiBookingQuestion["type"]) ?? "text",
+        required: q.required === true,
+        options: Array.isArray(q.options) ? q.options.map(String) : [],
+      })),
+    );
+    setStoredNames(new Set((r.questions ?? []).map((q) => String(q.name ?? ""))));
     setCustomZone(!COMMON_ZONES.includes(r.timeZone));
     setLink(null);
     setEditOpen(true);
@@ -516,6 +570,15 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
       endsOn: r.endsOn,
       reason: r.reason,
     })),
+    // Options only travel with a choice: a question that was a dropdown and is
+    // now free text would otherwise keep clamping its own answers server-side.
+    questions: questions.map((q) => ({
+      name: q.name,
+      label: q.label?.trim() || q.name,
+      type: q.type ?? "text",
+      required: q.required === true,
+      ...(q.type === "select" ? { options: (q.options ?? []).filter((o) => o.trim() !== "") } : {}),
+    })),
   });
 
   const onSave = async () => {
@@ -534,6 +597,24 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
       }
       if (r.weekday === null && !r.startsOn) {
         pushToast(t`A rule with no weekday needs a date range.`);
+        return;
+      }
+    }
+    // The name is the key the answer is stored under, so two questions sharing
+    // one would silently overwrite each other on every booking.
+    const seen = new Set<string>();
+    for (const q of questions) {
+      if (!q.name) {
+        pushToast(t`Give every question a label.`);
+        return;
+      }
+      if (seen.has(q.name)) {
+        pushToast(t`Two questions share the stored name "${q.name}". Names have to be unique.`);
+        return;
+      }
+      seen.add(q.name);
+      if (q.type === "select" && (q.options ?? []).filter((o) => o.trim() !== "").length === 0) {
+        pushToast(t`"${q.label || q.name}" is a choice with nothing to choose from.`);
         return;
       }
     }
@@ -601,6 +682,16 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
       pushToast(t`Pick a start time.`);
       return;
     }
+    // Required questions bind the public page, not this one — an operator
+    // taking a call may not have asked yet, and losing the appointment over it
+    // would be the wrong trade. Whatever WAS answered still travels.
+    const answers: Record<string, unknown> = {};
+    for (const q of current.questions ?? []) {
+      const raw = bookAnswers[String(q.name)];
+      if (raw === undefined || raw === "") continue;
+      answers[String(q.name)] = questionKind(q) === "boolean" ? raw === "true" : raw;
+    }
+
     setBusy(true);
     try {
       const res = await bookingApi.book({
@@ -613,10 +704,12 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
         ...(bookForm.email.trim() ? { email: bookForm.email.trim() } : {}),
         ...(bookForm.phone.trim() ? { phone: bookForm.phone.trim() } : {}),
         ...(bookForm.notes.trim() ? { notes: bookForm.notes.trim() } : {}),
+        ...(Object.keys(answers).length > 0 ? { answers } : {}),
       });
       setBookings((arr) => [res.data.booking, ...arr]);
       setBooked({ url: res.data.manageUrl, booking: res.data.booking });
       setBookForm({ start: "", name: "", email: "", phone: "", notes: "" });
+      setBookAnswers({});
       pushToast(t`Booked.`);
       refreshAfterMutation();
     } catch (e) {
@@ -1203,6 +1296,115 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                 ))}
               </div>
 
+              <div className="grid gap-2">
+                <div className="flex items-center gap-2">
+                  <Label>
+                    <Trans>Intake questions</Trans>
+                  </Label>
+                  <Button
+                    variant="outline"
+                    className="ml-auto"
+                    disabled={questions.length >= MAX_QUESTIONS}
+                    onClick={() => setQuestions((arr) => [...arr, blankQuestion()])}
+                  >
+                    <I.Plus className="size-4" />
+                    <Trans>Add question</Trans>
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <Trans>
+                    What the booker is asked beyond name, email and phone. The answers ride along
+                    with the booking and can be mapped into the mirrored collection below.
+                  </Trans>
+                </p>
+                {questions.length === 0 ? (
+                  <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                    <Trans>No questions — the page asks only for name, email and phone.</Trans>
+                  </p>
+                ) : (
+                  questions.map((q, i) => {
+                    const locked = storedNames.has(q.name);
+                    const patch = (next: Partial<ApiBookingQuestion>) =>
+                      setQuestions((arr) => arr.map((x, j) => (j === i ? { ...x, ...next } : x)));
+                    return (
+                      <div key={i} className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1fr_170px_auto]">
+                        <div className="grid min-w-0 gap-1">
+                          <Input
+                            value={q.label ?? ""}
+                            onChange={(e) =>
+                              patch({
+                                label: e.target.value,
+                                // A question nobody has answered yet still has
+                                // its name follow the label; once answers exist
+                                // the name is frozen.
+                                ...(locked ? {} : { name: questionName(e.target.value) }),
+                              })
+                            }
+                            placeholder={t`Reason for visit`}
+                          />
+                          {q.name && (
+                            <p className="truncate font-mono text-[11px] text-muted-foreground">
+                              {q.name}
+                            </p>
+                          )}
+                        </div>
+                        <Select
+                          value={q.type ?? "text"}
+                          onChange={(v) => patch({ type: v })}
+                          className="min-w-0"
+                          options={[
+                            { value: "text", label: t`Short text` },
+                            { value: "textarea", label: t`Long text` },
+                            { value: "select", label: t`Choice` },
+                            { value: "boolean", label: t`Yes / no` },
+                          ]}
+                        />
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              id={`bk-q-req-${i}`}
+                              checked={q.required === true}
+                              onCheckedChange={(v) => patch({ required: v })}
+                            />
+                            <Label htmlFor={`bk-q-req-${i}`} className="text-xs">
+                              <Trans>Required</Trans>
+                            </Label>
+                          </div>
+                          <Button
+                            variant="outline"
+                            className="ml-auto"
+                            onClick={() => setQuestions((arr) => arr.filter((_, j) => j !== i))}
+                          >
+                            <I.Trash className="size-4" />
+                            <span className="sr-only">
+                              <Trans>Remove question</Trans>
+                            </span>
+                          </Button>
+                        </div>
+                        {q.type === "select" && (
+                          <div className="grid gap-1 sm:col-span-3">
+                            <Input
+                              value={(q.options ?? []).join(", ")}
+                              onChange={(e) =>
+                                // Empty entries survive the keystroke on
+                                // purpose — dropping them here would eat the
+                                // comma the operator just typed. `body()`
+                                // filters them on the way out instead.
+                                patch({ options: e.target.value.split(",").map((o) => o.trim()) })
+                              }
+                              placeholder={t`Check-up, Follow-up, Emergency`}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              <Trans>Comma-separated. The page offers exactly these.</Trans>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
               <div className="grid gap-1.5">
                 <Label htmlFor="bk-mirror">
                   <Trans>Mirror into a collection</Trans>
@@ -1295,11 +1497,24 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                   {detail.cancelReason && (
                     <Detail label={<Trans>Reason</Trans>}>{detail.cancelReason}</Detail>
                   )}
-                  {Object.entries(detail.answers ?? {}).map(([k, v]) => (
-                    <Detail key={k} label={k}>
-                      {typeof v === "string" || typeof v === "number" ? String(v) : JSON.stringify(v)}
-                    </Detail>
-                  ))}
+                  {/* Read back through the questions rather than raw: the stored
+                      key is a column name, and a yes/no is a boolean nobody
+                      wants to read as "true". A question deleted since the
+                      booking was taken still shows — its answer was given. */}
+                  {Object.entries(detail.answers ?? {}).map(([k, v]) => {
+                    const q = (current?.questions ?? []).find((x) => String(x.name) === k);
+                    return (
+                      <Detail key={k} label={String(q?.label || k)}>
+                        {typeof v === "boolean"
+                          ? v
+                            ? t`Yes`
+                            : t`No`
+                          : typeof v === "string" || typeof v === "number"
+                            ? String(v)
+                            : JSON.stringify(v)}
+                      </Detail>
+                    );
+                  })}
                 </div>
 
                 {(detail.status === "confirmed" || detail.status === "held") && (
@@ -1458,6 +1673,53 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                     <Trans>Yours only — the customer never sees these.</Trans>
                   </p>
                 </div>
+
+                {(current?.questions ?? []).map((q) => {
+                  const key = String(q.name ?? "");
+                  const options = Array.isArray(q.options) ? q.options.map(String) : [];
+                  const kind = questionKind(q);
+                  const set = (v: string) => setBookAnswers({ ...bookAnswers, [key]: v });
+                  return (
+                    <div key={key} className="grid gap-1.5">
+                      <Label htmlFor={`bk-c-q-${key}`}>{String(q.label || key)}</Label>
+                      {kind === "select" ? (
+                        <Select
+                          value={bookAnswers[key] ?? ""}
+                          onChange={set}
+                          className="min-w-0"
+                          options={[
+                            { value: "", label: t`Not asked` },
+                            ...options.map((o) => ({ value: o, label: o })),
+                          ]}
+                        />
+                      ) : kind === "boolean" ? (
+                        <Select
+                          value={bookAnswers[key] ?? ""}
+                          onChange={set}
+                          className="min-w-0"
+                          options={[
+                            { value: "", label: t`Not asked` },
+                            { value: "true", label: t`Yes` },
+                            { value: "false", label: t`No` },
+                          ]}
+                        />
+                      ) : kind === "textarea" ? (
+                        <Textarea
+                          id={`bk-c-q-${key}`}
+                          rows={2}
+                          value={bookAnswers[key] ?? ""}
+                          onChange={(e) => set(e.target.value)}
+                        />
+                      ) : (
+                        <Input
+                          id={`bk-c-q-${key}`}
+                          value={bookAnswers[key] ?? ""}
+                          onChange={(e) => set(e.target.value)}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </DialogBody>

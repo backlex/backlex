@@ -180,6 +180,45 @@ failed to turn up yet, and `no-show` on a future booking is a cancellation
 wearing the wrong label — so the endpoint takes the *stored* status, which stays
 `confirmed` while the derived one already reads `completed`.
 
+## Intake questions
+
+A name and an address are what every booking needs. What *this* booking needs —
+which treatment, which car, whether they have been before — is the resource's
+own **questions**, edited in the admin next to the opening hours or on the
+command line:
+
+```bash
+backlex booking update clinic \
+  --ask "reason!=Check-up|Follow-up|Emergency" \
+  --ask "notes:textarea" \
+  --ask "insured!:boolean"
+```
+
+`!` marks a question required and the types are `text`, `textarea`, `select`
+and `boolean`. Options are decisive: a question carrying them is a choice
+whatever its type says, which is why `--ask "reason=A|B"` needs no `:select`.
+Like `--open`, every `--ask` on the line replaces the whole set; `--no-ask`
+clears it.
+
+The **name** is the key the answer is stored under, and the same key a
+`--map` entry points a mirrored column at — so it is what the flag takes,
+rather than the label. In the admin the name follows the label while the
+question is new and freezes once it has been saved: the answers on every
+booking taken so far are keyed by it, and renaming would orphan them.
+
+Two rules hold on every path:
+
+- **Unknown answers are dropped, never rejected.** They land in a JSON column
+  and, when mapped, in a real one. A public page that could grow that shape on
+  its own would be a public page that can add columns.
+- **A choice outside its options is refused**, whoever sent it.
+
+`required`, though, binds the **public page only**. The questions are that
+page's contract with the person filling it in; an operator writing down a
+booking taken over the telephone may not have asked yet, and refusing the
+booking loses the appointment rather than gaining the answer. Same reasoning as
+the grid: what the public page may do is narrower than what an operator may.
+
 ## Mirroring into your own collection
 
 The ledger is authoritative for the **slot**. Set `mirrorCollection` and each
@@ -209,7 +248,7 @@ A booking announces itself on the `booking` channel, so a flow can trigger on
 | The appointment in your own Google Calendar | the [Calendar destination](/integrations/) |
 | A deposit before you confirm it | `hold: true` + [`payment.checkout`](/payments/), then `confirm` |
 | A waiver signed before they arrive | [`document.sign`](/e-signature/) |
-| Intake questions | the resource's own `questions` |
+| Intake questions | the resource's own [questions](#intake-questions) |
 
 The channel is `booking`, singular, and not `bookings` — item events publish on
 `items:<slug>`, and three of the schema templates own a collection called
@@ -255,7 +294,7 @@ statuses and the grid check cannot drift between them.
 | SDK | `client.booking.*` |
 | GraphQL | `bookingResources`, `bookingSlots`, `bookings`, `createBooking`, … |
 | MCP | `booking.list_resources`, `booking.slots`, `booking.book`, … |
-| CLI | `backlex booking <resources\|create\|url\|slots\|list\|book\|cancel\|move>` |
+| CLI | `backlex booking <resources\|create\|url\|slots\|list\|book\|cancel\|move>` (`--ask`, `--answer`) |
 
 The public pages are `/book/:token` (pick a time) and `/b/:token` (change or
 cancel one). Both sit under the framable CSP, because a booking widget belongs

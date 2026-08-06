@@ -15,6 +15,7 @@
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createClient } from "../../../packages/client/src/index";
+import { parseQuestion } from "../../../packages/cli/src/booking";
 import { bookingTools } from "../src/server/mcp/tools/booking";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
@@ -309,5 +310,55 @@ describe("one implementation, not five", () => {
     expect(viaGql.data.booking.storedStatus).toBe("confirmed");
     const viaMcp = await mcp("booking.list").handler({ resource: "past" }, mcpCtx());
     expect((viaMcp.structuredContent as any).data[0].status).toBe("completed");
+  });
+
+  /**
+   * The intake questions reach every surface. The CLI is the only one that has
+   * to invent a grammar for them, so the grammar is what is pinned here — the
+   * rest post the same object the admin does.
+   */
+  test("the CLI's --ask grammar produces what every other surface posts", () => {
+    expect(parseQuestion("reason")).toEqual({
+      name: "reason",
+      label: "Reason",
+      type: "text",
+      required: false,
+    });
+    expect(parseQuestion("notes:textarea")).toMatchObject({ type: "textarea", required: false });
+    expect(parseQuestion("insured!:boolean")).toMatchObject({ type: "boolean", required: true });
+    expect(parseQuestion("reason_for_visit!=Check-up|Follow-up")).toEqual({
+      name: "reason_for_visit",
+      // The label the booker reads, rather than the key the answer is stored
+      // under — typing it twice on a command line is a tax for the common case.
+      label: "Reason for visit",
+      type: "select",
+      required: true,
+      options: ["Check-up", "Follow-up"],
+    });
+    // Options are decisive on every surface, the public page included.
+    expect(parseQuestion("size=S|M|L").type).toBe("select");
+
+    expect(() => parseQuestion("Reason For Visit")).toThrow(/not a question name/);
+    expect(() => parseQuestion("reason:dropdown")).toThrow(/not a question type/);
+    expect(() => parseQuestion("reason:select")).toThrow(/nothing to choose from/);
+  });
+
+  test("a question set round-trips through the SDK", async () => {
+    const c = sdk();
+    const made = await c.booking.createResource({
+      key: "asks",
+      ...RESOURCE,
+      questions: [parseQuestion("reason!=Check-up|Follow-up"), parseQuestion("insured:boolean")],
+    } as never);
+    expect(made.data.resource.questions).toHaveLength(2);
+
+    // The public page is handed them too — it cannot ask what it was not told.
+    const res = await h.fetch(`/api/public/book/${made.data.token}/slots`);
+    const pub = (await res.json()) as any;
+    expect(pub.data.resource.questions[0]).toMatchObject({
+      name: "reason",
+      type: "select",
+      required: true,
+    });
   });
 });

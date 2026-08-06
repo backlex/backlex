@@ -22,7 +22,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { bookPublicApi, type ApiBookingSlot, type ApiPublicSlots } from "@/admin/api";
+import {
+  bookPublicApi,
+  type ApiBookingQuestion,
+  type ApiBookingSlot,
+  type ApiPublicSlots,
+} from "@/admin/api";
 
 const CSS = `
 .bxb { --bg:#f4f4f7; --card:#fff; --text:#16151f; --muted:#5f5c72; --line:#e2e0ea;
@@ -52,6 +57,7 @@ const CSS = `
 .bxb-field label{ font-size:13px; font-weight:550; }
 .bxb-input{ width:100%; box-sizing:border-box; border:1px solid var(--line); border-radius:9px;
   background:var(--pad); color:var(--text); font:inherit; padding:10px 12px; }
+textarea.bxb-input{ resize:vertical; min-height:78px; }
 .bxb-err{ color:var(--danger); font-size:13px; margin:0; }
 .bxb-note{ color:var(--muted); font-size:12px; margin:0; }
 .bxb-ok{ font-size:15px; font-weight:600; margin:0 0 6px; }
@@ -117,6 +123,21 @@ const groupByDay = (slots: ApiBookingSlot[], timeZone: string): Array<[string, A
     else map.set(key, [s]);
   }
   return [...map.entries()];
+};
+
+/**
+ * What a question is actually rendered as.
+ *
+ * The stored `type` is advisory and the options are decisive: a question
+ * carrying options is a choice whatever it calls itself, and a `select` with
+ * none would draw an empty dropdown nobody can answer, so it falls back to
+ * free text. Anything unrecognised is text too — a resource written by an
+ * older client, or by hand, must not lose the question entirely.
+ */
+const questionType = (q: ApiBookingQuestion): "text" | "textarea" | "select" | "boolean" => {
+  if (Array.isArray(q.options) && q.options.length > 0) return "select";
+  const raw = String(q.type ?? "text");
+  return raw === "textarea" || raw === "boolean" ? raw : "text";
 };
 
 function Skeleton() {
@@ -192,6 +213,18 @@ export function Book() {
         return;
       }
     }
+    // A yes/no leaves here as a real boolean rather than the string "true":
+    // the answer may be mirrored into a collection column, and a boolean
+    // column refuses text. Only the resource's own questions are sent — the
+    // server drops the rest anyway, and there is no reason to post them.
+    const payload: Record<string, unknown> = {};
+    for (const q of data?.resource.questions ?? []) {
+      const key = String(q.name ?? "");
+      const raw = answers[key];
+      if (!key || raw === undefined || raw === "") continue;
+      payload[key] = questionType(q) === "boolean" ? raw === "true" : raw;
+    }
+
     setBusy(true);
     setError(null);
     try {
@@ -200,7 +233,7 @@ export function Book() {
         ...(name.trim() ? { name: name.trim() } : {}),
         ...(email.trim() ? { email: email.trim() } : {}),
         ...(phone.trim() ? { phone: phone.trim() } : {}),
-        ...(Object.keys(answers).length > 0 ? { answers } : {}),
+        ...(Object.keys(payload).length > 0 ? { answers: payload } : {}),
       });
       setDone({
         start: res.data.booking.start,
@@ -362,19 +395,22 @@ export function Book() {
                 {(data.resource.questions ?? []).map((q) => {
                   const key = String(q.name ?? "");
                   const label = String(q.label ?? key);
-                  const options = Array.isArray(q.options) ? (q.options as unknown[]).map(String) : null;
+                  const kind = questionType(q);
+                  const options = Array.isArray(q.options) ? (q.options as unknown[]).map(String) : [];
+                  const value = answers[key] ?? "";
+                  const set = (v: string) => setAnswers({ ...answers, [key]: v });
                   return (
                     <div key={key} className="bxb-field">
                       <label htmlFor={`bxb-q-${key}`}>
                         {label}
                         {q.required === true ? " *" : ""}
                       </label>
-                      {options && options.length > 0 ? (
+                      {kind === "select" ? (
                         <select
                           id={`bxb-q-${key}`}
                           className="bxb-input"
-                          value={answers[key] ?? ""}
-                          onChange={(e) => setAnswers({ ...answers, [key]: e.target.value })}
+                          value={value}
+                          onChange={(e) => set(e.target.value)}
                         >
                           <option value="">{t`Choose…`}</option>
                           {options.map((o) => (
@@ -383,12 +419,35 @@ export function Book() {
                             </option>
                           ))}
                         </select>
+                      ) : kind === "boolean" ? (
+                        // A dropdown rather than a checkbox, so that "required"
+                        // keeps meaning "must be answered". An unticked box is
+                        // indistinguishable from an untouched one, which would
+                        // make a required yes/no impossible to enforce.
+                        <select
+                          id={`bxb-q-${key}`}
+                          className="bxb-input"
+                          value={value}
+                          onChange={(e) => set(e.target.value)}
+                        >
+                          <option value="">{t`Choose…`}</option>
+                          <option value="true">{t`Yes`}</option>
+                          <option value="false">{t`No`}</option>
+                        </select>
+                      ) : kind === "textarea" ? (
+                        <textarea
+                          id={`bxb-q-${key}`}
+                          className="bxb-input"
+                          rows={3}
+                          value={value}
+                          onChange={(e) => set(e.target.value)}
+                        />
                       ) : (
                         <input
                           id={`bxb-q-${key}`}
                           className="bxb-input"
-                          value={answers[key] ?? ""}
-                          onChange={(e) => setAnswers({ ...answers, [key]: e.target.value })}
+                          value={value}
+                          onChange={(e) => set(e.target.value)}
                         />
                       )}
                     </div>

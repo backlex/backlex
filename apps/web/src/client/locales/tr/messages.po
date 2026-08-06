@@ -125,6 +125,11 @@ msgstr "· isteğe bağlı"
 #~ msgid "· the field stays in the collection"
 #~ msgstr "· alan koleksiyonda kalır"
 
+#. placeholder {0}: q.label || q.name
+#: src/client/admin/parity/booking.tsx
+msgid "\"{0}\" is a choice with nothing to choose from."
+msgstr "\"{0}\" seçenekleri olmayan bir seçim."
+
 #. placeholder {0}: agg.groupBy
 #: src/client/admin/parity/insights.tsx
 msgid "\"{0}\" is not a column on this collection."
@@ -1620,6 +1625,10 @@ msgstr "Geçiş anahtarı ekle"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Add provider"
 msgstr "Sağlayıcı ekle"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Add question"
+msgstr "Soru ekle"
 
 #: src/client/admin/app.tsx
 msgid "Add role"
@@ -3195,6 +3204,10 @@ msgstr "Sohbet"
 msgid "Check your inbox"
 msgstr "Gelen kutunuzu kontrol edin"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Check-up, Follow-up, Emergency"
+msgstr "Kontrol, Kontrol sonrası, Acil"
+
 #: src/client/admin/pages/usage.tsx
 msgid "Checked against the half-hourly row gauge — approximate by design."
 msgstr "Yarım saatlik satır göstergesine göre denetlenir — tasarım gereği yaklaşıktır."
@@ -3215,6 +3228,10 @@ msgstr "Ödeme referansı"
 #: src/client/admin/pages/forms.tsx
 msgid "Checks"
 msgstr "Kontroller"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Choice"
+msgstr "Seçim"
 
 #: src/client/admin/edit-field.tsx
 msgid "Choice color"
@@ -3641,6 +3658,10 @@ msgstr "Virgülle ayırın. Yalnızca saklamak için boş bırakın — sonraki 
 #: src/client/admin/parity/insights.tsx
 msgid "Comma-separated. Only needed to send it — downloading works without one."
 msgstr "Virgülle ayırın. Yalnızca göndermek için gerekli — indirmek için gerekmez."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Comma-separated. The page offers exactly these."
+msgstr "Virgülle ayırın. Sayfa tam olarak bunları sunar."
 
 #: src/client/admin/extras.tsx
 msgid "Command palette"
@@ -7207,6 +7228,10 @@ msgid "GitHub"
 msgstr "GitHub"
 
 #: src/client/admin/parity/booking.tsx
+msgid "Give every question a label."
+msgstr "Her soruya bir etiket verin."
+
+#: src/client/admin/parity/booking.tsx
 msgid "Give the resource a name."
 msgstr "Kaynağa bir ad verin."
 
@@ -7832,6 +7857,10 @@ msgstr "Kurulabilir eklentiler — npm paketlerinden korumalı paneller, alan ed
 #: src/client/admin/pages/extensions.tsx
 msgid "Installing…"
 msgstr "Kuruluyor…"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Intake questions"
+msgstr "Ön bilgi soruları"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Integer between 1 and 200."
@@ -8891,6 +8920,10 @@ msgstr "stdout'a günlük yazar"
 msgid "long context · multimodal"
 msgstr "uzun bağlam · çok modlu"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Long text"
+msgstr "Uzun metin"
+
 #: src/client/pages/api-keys.tsx
 msgid "Long-lived bearer tokens (`pak_…`) for CI, scripts, third-party integrations. A key impersonates its owner — optionally narrowed to a single role and/or given an expiry date."
 msgstr "CI, betikler ve üçüncü taraf entegrasyonlar için uzun ömürlü bearer token'ları (`pak_…`). Bir anahtar sahibini taklit eder — isteğe bağlı olarak tek bir role daraltılabilir ve/veya son kullanma tarihi verilebilir."
@@ -9881,6 +9914,11 @@ msgstr "Sonraki kayıt"
 msgid "no"
 msgstr "hayır"
 
+#: src/client/admin/parity/booking.tsx
+#: src/client/pages/book.tsx
+msgid "No"
+msgstr "Hayır"
+
 #: src/client/admin/permissions-matrix.tsx
 #: src/client/admin/role-editor.tsx
 msgid "no access"
@@ -10452,6 +10490,10 @@ msgstr "Karşılaştırılacak önceki dönem yok"
 msgid "No queries."
 msgstr "Sorgu yok."
 
+#: src/client/admin/parity/booking.tsx
+msgid "No questions — the page asks only for name, email and phone."
+msgstr "Soru yok — sayfa yalnızca ad, e-posta ve telefon ister."
+
 #: src/client/admin/pages/analytics.tsx
 msgid "No referrers recorded."
 msgstr "Yönlendiren kaydedilmemiş."
@@ -10706,6 +10748,10 @@ msgstr "Dönem değil"
 #: src/client/admin/item-form.tsx
 msgid "not allowed"
 msgstr "izin verilmiyor"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Not asked"
+msgstr "Sorulmadı"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Not authorized"
@@ -12893,6 +12939,10 @@ msgstr "Gerekçe — ret için zorunlu, onay için isteğe bağlı"
 msgid "Reason for declining"
 msgstr "Reddetme nedeni"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Reason for visit"
+msgstr "Geliş nedeni"
+
 #: src/client/admin/pages/agents.tsx
 msgid "Reasoning effort"
 msgstr "Akıl yürütme eforu"
@@ -13272,6 +13322,10 @@ msgid "Remove one person from collections, revision history, activity, comments,
 msgstr "Bir kişiyi koleksiyonlardan, revizyon geçmişinden, etkinlik kaydından, yorumlardan, bildirimlerden, analitikten, hata raporlarından, cihazlardan ve dosyalardan kaldırır. Önce önizleyin — uygulama geri alınamaz."
 
 #: src/client/admin/parity/booking.tsx
+msgid "Remove question"
+msgstr "Soruyu kaldır"
+
+#: src/client/admin/parity/booking.tsx
 msgid "Remove rule"
 msgstr "Kuralı kaldır"
 
@@ -13444,6 +13498,7 @@ msgstr "zorunlu"
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/edit-field.tsx
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Required"
 msgstr "Zorunlu"
 
@@ -15100,6 +15155,10 @@ msgstr "Başlığın altında gösterilen kısa cümle."
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Short tagline for the workspace."
 msgstr "Çalışma alanı için kısa slogan."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Short text"
+msgstr "Kısa metin"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Show"
@@ -17339,6 +17398,11 @@ msgstr "turnstile + honeypot + hız limiti"
 msgid "Two consecutive half-width fields sit side by side on one row (stacked on mobile)."
 msgstr "Art arda gelen iki yarım genişlikli alan tek satırda yan yana durur (mobilde alt alta)."
 
+#. placeholder {0}: q.name
+#: src/client/admin/parity/booking.tsx
+msgid "Two questions share the stored name \"{0}\". Names have to be unique."
+msgstr "İki soru aynı \"{0}\" adını kullanıyor. Adlar benzersiz olmalı."
+
 #: src/client/admin/account-page.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Two-factor authentication"
@@ -18132,6 +18196,10 @@ msgstr "Bu geçişin sunulduğu yerde eylemin adı."
 msgid "What the approver is told they are deciding."
 msgstr "Onaylayana neye karar verdiğinin söylendiği metin."
 
+#: src/client/admin/parity/booking.tsx
+msgid "What the booker is asked beyond name, email and phone. The answers ride along with the booking and can be mapped into the mirrored collection below."
+msgstr "Rezervasyonu yapan kişiye ad, e-posta ve telefon dışında sorulanlar. Yanıtlar rezervasyonla birlikte taşınır ve aşağıdaki aynalanan koleksiyona eşlenebilir."
+
 #: src/client/admin/flow-builder.tsx
 msgid "What the customer sees on the checkout line item."
 msgstr "Müşterinin ödeme sayfasındaki kalemde gördüğü metin."
@@ -18493,9 +18561,15 @@ msgstr "xxxxx-xxxxx"
 msgid "yes"
 msgstr "evet"
 
+#: src/client/admin/parity/booking.tsx
+#: src/client/pages/book.tsx
 #: src/client/pages/public-form.tsx
 msgid "Yes"
 msgstr "Evet"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Yes / no"
+msgstr "Evet / hayır"
 
 #: src/client/admin/pages/agents.tsx
 msgid "You are a helpful assistant for our workspace…"

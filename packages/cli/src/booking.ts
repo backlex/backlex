@@ -32,6 +32,7 @@ interface ResourceRow {
   capacity: number;
   active: boolean;
   rules: RuleRow[];
+  questions: unknown[];
 }
 
 interface BookingRow {
@@ -52,6 +53,7 @@ const HELP = `backlex booking <resources|create|update|url|delete|slots|list|boo
          [--lead <min>] [--horizon <days>] [--hold <min>]
          [--open <rule>]                      (repeatable)
          [--block <rule>]                     (repeatable)
+         [--ask <question>]                   (repeatable) [--no-ask]
          [--mirror <collection>] [--map <from>=<column>]  (repeatable)
   update <key> [same flags as create]
   url <key>                                   rotate + print the page link
@@ -62,6 +64,7 @@ const HELP = `backlex booking <resources|create|update|url|delete|slots|list|boo
                                               cancelled, no-show and lapsed holds
   book <key> --start <iso> [--end <iso>] [--name <n>] [--email <e>]
        [--phone <p>] [--notes <n>] [--hold]
+       [--answer <question>=<value>]        (repeatable)
   confirm <id>
   cancel <id> [--reason <r>] [--no-notify]
   move <id> --start <iso>
@@ -78,6 +81,19 @@ const HELP = `backlex booking <resources|create|update|url|delete|slots|list|boo
 
   Every --open/--block on the line REPLACES the resource's whole pattern:
   opening hours are edited as one thing, not row by row.
+
+  A QUESTION is <name>[!][:<type>][=<option>|<option>…] — what the booker is
+  asked beyond name, email and phone. ! marks it required, and the types are
+  text textarea select boolean:
+    --ask reason                                  short text
+    --ask "notes:textarea"                        long text
+    --ask "insured!:boolean"                      required yes/no
+    --ask "reason!=Check-up|Follow-up|Emergency"  required choice
+
+  The name is the key the answer is stored under, and the same key --map
+  points a mirrored column at. --ask replaces the whole set, like --open;
+  --no-ask clears it. Required binds the PUBLIC page only: book here is the
+  operator's path and takes what it was given.
 
   --tz is the zone the RULES are written in, not a display preference. It is
   what decides which instant "Mondays 09:00" actually names, so it has to be
@@ -151,6 +167,67 @@ const parseRule = (raw: string, kind: "open" | "block"): Record<string, unknown>
   return { kind, weekday, startMinute: parseClock(from!), endMinute: parseClock(to!) };
 };
 
+const QUESTION_TYPES = ["text", "textarea", "select", "boolean"];
+
+/** `reason_for_visit` → `Reason for visit`. The label is what the booker reads,
+ *  and typing it twice on a command line is a tax nobody should pay for the
+ *  common case; the admin and the API can still set it to anything. */
+const humanize = (name: string): string =>
+  name.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+/**
+ * `<name>[!][:<type>][=<option>|<option>…]`
+ *
+ *   --ask reason                                    a short text answer
+ *   --ask "notes:textarea"                          a long one
+ *   --ask "insured!:boolean"                        required yes/no
+ *   --ask "reason!=Check-up|Follow-up|Emergency"    required choice
+ *
+ * The name is the key the answer is STORED under — the same key `--map` points
+ * a mirrored column at — so it is what the flag takes, rather than the label.
+ */
+export const parseQuestion = (raw: string): Record<string, unknown> => {
+  const trimmed = raw.trim();
+  const eq = trimmed.indexOf("=");
+  const head = eq === -1 ? trimmed : trimmed.slice(0, eq);
+  const options =
+    eq === -1
+      ? []
+      : trimmed
+          .slice(eq + 1)
+          .split("|")
+          .map((o) => o.trim())
+          .filter((o) => o !== "");
+
+  const [namePart = "", typePart] = head.split(":");
+  const required = namePart.endsWith("!");
+  const name = (required ? namePart.slice(0, -1) : namePart).trim();
+  if (!/^[a-z0-9_]{1,60}$/.test(name)) {
+    throw new Error(
+      `"${name}" is not a question name — lowercase letters, digits and underscores, up to 60`,
+    );
+  }
+
+  let type = typePart?.trim() || (options.length > 0 ? "select" : "text");
+  if (!QUESTION_TYPES.includes(type)) {
+    throw new Error(`"${type}" is not a question type (${QUESTION_TYPES.join(" ")})`);
+  }
+  // Options are decisive, exactly as the public page reads them: a question
+  // carrying them is a choice whatever the type says.
+  if (options.length > 0) type = "select";
+  if (type === "select" && options.length === 0) {
+    throw new Error(`"${name}" is a choice with nothing to choose from — add =one|two`);
+  }
+
+  return {
+    name,
+    label: humanize(name),
+    type,
+    required,
+    ...(type === "select" ? { options } : {}),
+  };
+};
+
 const collectRepeated = (args: string[], name: string): string[] => {
   const out: string[] = [];
   for (let i = 0; i < args.length; i++) {
@@ -198,6 +275,11 @@ const resourceInput = (rest: string[]): Record<string, unknown> => {
   put("mirrorCollection", flag(rest, "--mirror"));
   if (Object.keys(map).length > 0) patch.mirrorFieldMap = map;
   if (rules.length > 0) patch.rules = rules;
+  // Questions are edited as one set, like the opening pattern — and `--no-ask`
+  // is how you say "none", which no number of absent --ask flags can express.
+  const questions = collectRepeated(rest, "--ask").map(parseQuestion);
+  if (questions.length > 0) patch.questions = questions;
+  else if (has(rest, "--no-ask")) patch.questions = [];
   if (has(rest, "--inactive")) patch.active = false;
   if (has(rest, "--active")) patch.active = true;
   return patch;
@@ -235,6 +317,7 @@ export const runBooking = async (args: string[]): Promise<void> => {
               slot: `${r.slotMinutes}m`,
               seats: r.capacity,
               rules: r.rules.length,
+              asks: r.questions?.length ?? 0,
               active: r.active ? "yes" : "paused",
             })),
           );
@@ -367,6 +450,17 @@ export const runBooking = async (args: string[]): Promise<void> => {
           if (value) input[field] = value;
         }
         if (has(rest, "--hold")) input.hold = true;
+        const answers: Record<string, unknown> = {};
+        for (const pair of collectRepeated(rest, "--answer")) {
+          const eq = pair.indexOf("=");
+          if (eq === -1) throw new Error(`--answer needs <question>=<value>, got "${pair}"`);
+          const key = pair.slice(0, eq).trim();
+          const value = pair.slice(eq + 1);
+          // A yes/no is stored as a real boolean, so a mirrored boolean column
+          // takes it. Everything else stays the text it was typed as.
+          answers[key] = value === "true" ? true : value === "false" ? false : value;
+        }
+        if (Object.keys(answers).length > 0) input.answers = answers;
         const out = await client.booking.book(key, input as never);
         if (json) {
           printJson(out.data);

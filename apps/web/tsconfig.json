@@ -6,7 +6,6 @@
     { "path": "./tsconfig.server.json" }
   ],
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/client/*"]
     }

@@ -54,6 +54,7 @@ const HELP = `backlex booking <resources|create|update|url|delete|slots|list|boo
          [--open <rule>]                      (repeatable)
          [--block <rule>]                     (repeatable)
          [--ask <question>]                   (repeatable) [--no-ask]
+         [--theme dark|light] [--accent #rrggbb] [--font <face>] [--plain]
          [--mirror <collection>] [--map <from>=<column>]  (repeatable)
   update <key> [same flags as create]
   url <key>                                   rotate + print the page link
@@ -94,6 +95,11 @@ const HELP = `backlex booking <resources|create|update|url|delete|slots|list|boo
   points a mirrored column at. --ask replaces the whole set, like --open;
   --no-ask clears it. Required binds the PUBLIC page only: book here is the
   operator's path and takes what it was given.
+
+  The public page takes YOUR colours, because it belongs on your site rather
+  than ours: --theme dark|light (omit to follow each visitor's own setting),
+  --accent as a #rrggbb, and --font sans|lexend|mono|system. --plain clears
+  all three back to the defaults.
 
   --tz is the zone the RULES are written in, not a display preference. It is
   what decides which instant "Mondays 09:00" actually names, so it has to be
@@ -228,6 +234,37 @@ export const parseQuestion = (raw: string): Record<string, unknown> => {
   };
 };
 
+const THEMES = ["dark", "light"];
+const FONTS = ["sans", "lexend", "mono", "system"];
+
+/**
+ * `--theme`, `--accent`, `--font` → the appearance blob, or `undefined` when
+ * none of them were given so an update leaves the stored one alone.
+ *
+ * `--plain` is how "back to the defaults" is said: three absent flags mean
+ * "unchanged", so clearing needs a word of its own — same shape as `--no-ask`.
+ */
+const appearance = (rest: string[]): Record<string, unknown> | null | undefined => {
+  if (has(rest, "--plain")) return null;
+  const out: Record<string, unknown> = {};
+  const theme = flag(rest, "--theme");
+  if (theme !== undefined) {
+    if (!THEMES.includes(theme)) throw new Error(`--theme is ${THEMES.join(" or ")}`);
+    out.theme = theme;
+  }
+  const accent = flag(rest, "--accent");
+  if (accent !== undefined) {
+    if (!/^#[0-9a-fA-F]{6}$/.test(accent)) throw new Error("--accent is a #rrggbb colour");
+    out.accent = accent;
+  }
+  const font = flag(rest, "--font");
+  if (font !== undefined) {
+    if (!FONTS.includes(font)) throw new Error(`--font is one of ${FONTS.join(" ")}`);
+    out.font = font;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+};
+
 const collectRepeated = (args: string[], name: string): string[] => {
   const out: string[] = [];
   for (let i = 0; i < args.length; i++) {
@@ -280,6 +317,8 @@ const resourceInput = (rest: string[]): Record<string, unknown> => {
   const questions = collectRepeated(rest, "--ask").map(parseQuestion);
   if (questions.length > 0) patch.questions = questions;
   else if (has(rest, "--no-ask")) patch.questions = [];
+  const look = appearance(rest);
+  if (look !== undefined) patch.settings = look;
   if (has(rest, "--inactive")) patch.active = false;
   if (has(rest, "--active")) patch.active = true;
   return patch;

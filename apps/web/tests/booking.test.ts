@@ -410,6 +410,124 @@ describe("taking a slot", () => {
   });
 });
 
+/**
+ * The page belongs on the operator's site, so it takes their colours. What is
+ * pinned here is the boundary rather than the palette: an accent reaches a
+ * style declaration on a page nobody is authenticated on, so anything that is
+ * not a plain hex colour must not survive the write.
+ */
+describe("the public page's appearance", () => {
+  test("only the renderable keys are stored, and the page is handed them", async () => {
+    const created = await makeResource({
+      key: "look",
+      settings: { theme: "light", accent: "#34C79A", font: "lexend" },
+    });
+    expect(created.resource.settings).toEqual({
+      theme: "light",
+      accent: "#34C79A",
+      font: "lexend",
+    });
+
+    const res = await h.fetch(`${PUBLIC}/${created.token}/slots`);
+    const pub = (await res.json()) as any;
+    expect(pub.data.resource.settings).toEqual({
+      theme: "light",
+      accent: "#34C79A",
+      font: "lexend",
+    });
+  });
+
+  test("an accent that is not a colour is dropped rather than stored", async () => {
+    // The page pastes this into a style declaration. A value the reader would
+    // have to be trusted to reject is a value the writer should never keep.
+    const res = await h.fetch(
+      `${BASE}/resources`,
+      json("POST", {
+        key: "bad",
+        name: "Bad",
+        timeZone: "UTC",
+        settings: { accent: "red; background:url(javascript:alert(1))" },
+      }),
+    );
+    expect(res.status).toBe(422);
+
+    // A well-formed body with an unknown key keeps only what can be rendered.
+    const ok2 = await ok("POST", `${BASE}/resources`, {
+      key: "partial",
+      name: "Partial",
+      timeZone: "UTC",
+      settings: { theme: "light", logo: "https://evil.example/x.png" },
+    });
+    expect(ok2.data.resource.settings).toEqual({ theme: "light" });
+  });
+
+  test("no appearance means the visitor's own light/dark, and stays that way", async () => {
+    const created = await makeResource({ key: "plain" });
+    expect(created.resource.settings).toBeNull();
+
+    // A patch that says nothing about appearance leaves it alone; `null` is
+    // how "back to the defaults" is said.
+    const painted = await ok("PATCH", `${BASE}/resources/plain`, {
+      settings: { theme: "dark" },
+    });
+    expect(painted.data.settings).toEqual({ theme: "dark" });
+    const renamed = await ok("PATCH", `${BASE}/resources/plain`, { name: "Still dark" });
+    expect(renamed.data.settings).toEqual({ theme: "dark" });
+    const cleared = await ok("PATCH", `${BASE}/resources/plain`, { settings: null });
+    expect(cleared.data.settings).toBeNull();
+  });
+
+  /**
+   * The pages are meant to sit in an iframe on the operator's own site. On
+   * Cloudflare that is only reachable from the Worker's own header middleware —
+   * `_headers` can only ADD to a policy and the browser takes the stricter of
+   * two — so what is pinned here is that the framable policy is the one these
+   * paths actually get, X-Frame-Options included.
+   */
+  test("the booking pages are framable, and the admin's are not", async () => {
+    for (const path of ["/book/bkg_whatever", "/b/bkm_whatever", "/api/public/book/x/slots"]) {
+      const res = await h.fetch(path);
+      const csp = res.headers.get("content-security-policy") ?? "";
+      expect(csp).toContain("frame-ancestors *");
+      // XFO has no allow-all value, so its mere presence would block the frame.
+      expect(res.headers.get("x-frame-options")).toBeNull();
+    }
+
+    const admin = await h.fetch("/api/admin/booking/resources");
+    expect(admin.headers.get("content-security-policy")).toContain("frame-ancestors 'self'");
+  });
+
+  test("a filled honeypot writes nothing and says nothing about it", async () => {
+    const created = await makeResource({ key: "bots" });
+
+    const out = await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: MONDAY_0900,
+      email: "bot@example.com",
+      website: "https://spam.example",
+    });
+    // Indistinguishable from the real thing at a glance — a 201 carrying a
+    // booking-shaped receipt — so a script cannot tell which submissions land.
+    expect(out.data.booking.status).toBe("confirmed");
+
+    // But nothing was written, and the slot it aimed at is still on offer.
+    const listed = await ok("GET", `${BASE}/bookings?resource=bots`);
+    expect(listed.total).toBe(0);
+    const slots = await ok("GET", `${PUBLIC}/${created.token}/slots`);
+    expect(slots.data.slots.some((s: any) => s.start === MONDAY_0900)).toBe(true);
+  });
+
+  test("the manage page is painted like the calendar it was booked on", async () => {
+    const created = await makeResource({ key: "same", settings: { theme: "light" } });
+    const made = await ok("POST", `${PUBLIC}/${created.token}`, {
+      start: MONDAY_0900,
+      email: "a@example.com",
+    });
+    const manageToken = String(made.data.manageUrl).split("/b/")[1];
+    const view = await ok("GET", `${PUBLIC}/manage/${manageToken}`);
+    expect(view.data.resource.settings).toEqual({ theme: "light" });
+  });
+});
+
 describe("the overlap guard", () => {
   test("two racers for one slot produce one booking and one refusal", async () => {
     await makeResource();

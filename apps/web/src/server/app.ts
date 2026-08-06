@@ -434,6 +434,26 @@ export const createApp = (env: Env) => {
     c.res.headers.set("Server-Timing", parts.join(", "));
   });
 
+  /**
+   * The surfaces meant to be iframed from anywhere.
+   *
+   * ONE predicate, read by both the X-Frame-Options strip below and the CSP
+   * choice further down. They have to agree: a path with `frame-ancestors *`
+   * but a surviving `X-Frame-Options: SAMEORIGIN` is still blocked, and the
+   * two lists drifted apart the moment the booking pages joined only one.
+   *
+   * - `/embed/*` — the dashboard embed and the form's embed variant.
+   * - `/api/public/*` — the data those pages fetch once framed.
+   * - `/book/*`, `/b/*` — the booking pages. Unlike a form, whose standalone
+   *   page stays same-origin-only, BOTH of these belong on the operator's own
+   *   site, so there is no separate embed URL for them at all.
+   */
+  const isFramable = (path: string): boolean =>
+    path.startsWith("/embed/") ||
+    path.startsWith("/api/public/") ||
+    path.startsWith("/book/") ||
+    path.startsWith("/b/");
+
   // Registered BEFORE secureHeaders so its post-phase runs LAST (Hono runs
   // post-middleware in reverse registration order) — this is the only place we
   // can reliably strip the X-Frame-Options that secureHeaders() sets, for the
@@ -441,10 +461,7 @@ export const createApp = (env: Env) => {
   // makes modern browsers ignore XFO, but we drop it for older agents too.)
   app.use("*", async (c, next) => {
     await next();
-    const path = new URL(c.req.url).pathname;
-    if (path.startsWith("/embed/") || path.startsWith("/api/public/")) {
-      c.res.headers.delete("x-frame-options");
-    }
+    if (isFramable(new URL(c.req.url).pathname)) c.res.headers.delete("x-frame-options");
   });
 
   app.use("*", secureHeaders());
@@ -517,7 +534,11 @@ export const createApp = (env: Env) => {
     await next();
     const path = new URL(c.req.url).pathname;
     const isGraphiql = c.req.method === "GET" && path === "/api/graphql";
-    const isEmbed = path.startsWith("/embed/") || path.startsWith("/api/public/");
+    // Same predicate the X-Frame-Options strip uses — see `isFramable`. On
+    // Cloudflare this middleware is the only place a framable policy can come
+    // from: the static `_headers` file can only ever ADD to a policy, and a
+    // browser enforces the strictest of duplicate CSPs.
+    const isEmbed = isFramable(path);
     const isFormPage = path.startsWith("/f/") || path.startsWith("/embed/f/");
     // Extension iframe entries set their own inline-only CSP in the route
     // (default-src 'none'; script-src 'unsafe-inline') — don't overwrite it.
@@ -543,7 +564,13 @@ export const createApp = (env: Env) => {
     // hand those responses `script-src 'self'` back, and uploaded objects are
     // same-origin — precisely the stored-XSS path the sandbox closes.
     if (c.res.headers.get("content-security-policy")?.includes("sandbox")) return;
-    if (isDevServer && (path.startsWith("/embed/") || path.startsWith("/f/"))) {
+    if (
+      isDevServer &&
+      (path.startsWith("/embed/") ||
+        path.startsWith("/f/") ||
+        path.startsWith("/book/") ||
+        path.startsWith("/b/"))
+    ) {
       // Dev-only: the Worker-served SPA shell carries Vite's inline
       // React-refresh preamble, which `script-src 'self'` would block.
       c.res.headers.delete("content-security-policy");
@@ -980,6 +1007,32 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
     // above can set their special CSP (Turnstile allowances; framable for
     // embeds) instead of the static `_headers` policy.
     app.get("/f/*", async (c) => {
+      const res = await env.ASSETS!.fetch(new Request(c.req.url, { headers: c.req.raw.headers }));
+      if (isDevServer) return res;
+      return new Response(res.body, {
+        status: res.status,
+        headers: { "content-type": res.headers.get("content-type") ?? "text/html; charset=utf-8" },
+      });
+    });
+    // The two booking pages, for the same reason and by the same route: a
+    // booking widget belongs on the operator's site. Served here rather than
+    // by Static Assets so the framable CSP above is the one that lands —
+    // `_headers` would leave the strict `frame-ancestors 'self'` in place
+    // alongside it, and the browser takes the stricter of the two.
+    //
+    // No separate `/embed/b/` variant: unlike a form, whose standalone page
+    // stays same-origin-only, BOTH booking pages are meant to be embeddable,
+    // so the link an operator already has is the one they paste into an
+    // iframe. A second URL would only be a second thing to rotate.
+    app.get("/book/*", async (c) => {
+      const res = await env.ASSETS!.fetch(new Request(c.req.url, { headers: c.req.raw.headers }));
+      if (isDevServer) return res;
+      return new Response(res.body, {
+        status: res.status,
+        headers: { "content-type": res.headers.get("content-type") ?? "text/html; charset=utf-8" },
+      });
+    });
+    app.get("/b/*", async (c) => {
       const res = await env.ASSETS!.fetch(new Request(c.req.url, { headers: c.req.raw.headers }));
       if (isDevServer) return res;
       return new Response(res.body, {

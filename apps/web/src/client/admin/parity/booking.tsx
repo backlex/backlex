@@ -31,6 +31,8 @@ import {
 import { BookingSkeleton } from "../page-skeletons";
 import { DatePicker } from "@/components/date-picker";
 import { ConfirmAction } from "@/components/confirm-action";
+import { ColorSwatchPicker } from "@/components/color-swatch-picker";
+import { ACCENTS, type PublicAppearance } from "@/lib/public-theme";
 
 /**
  * Availability & booking — what is bookable, when it is open, and who is coming.
@@ -334,6 +336,10 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
   const [form, setForm] = useState({ ...DEFAULT_FORM });
   const [rules, setRules] = useState<ApiBookingRule[]>([blankRule()]);
   const [questions, setQuestions] = useState<ApiBookingQuestion[]>([]);
+  /** How the public page paints itself. Empty = ours: the visitor's own
+   *  light/dark preference and our accent, which is what every calendar
+   *  created before this panel existed still means. */
+  const [look, setLook] = useState<PublicAppearance>({});
   /** Names that already have answers stored against them. Retyping the label of
    *  such a question must NOT move its name: the answers on every booking taken
    *  so far are keyed by it, and a mirror map may point a column at it. */
@@ -508,6 +514,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
     setRules([blankRule()]);
     setQuestions([]);
     setStoredNames(new Set());
+    setLook({});
     setCustomZone(!COMMON_ZONES.includes(DEFAULT_FORM.timeZone));
     setLink(null);
     setEditOpen(true);
@@ -542,6 +549,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
       })),
     );
     setStoredNames(new Set((r.questions ?? []).map((q) => String(q.name ?? ""))));
+    setLook({ ...(r.settings ?? {}) });
     setCustomZone(!COMMON_ZONES.includes(r.timeZone));
     setLink(null);
     setEditOpen(true);
@@ -579,6 +587,10 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
       required: q.required === true,
       ...(q.type === "select" ? { options: (q.options ?? []).filter((o) => o.trim() !== "") } : {}),
     })),
+    // An empty panel is stored as null rather than `{}` — "the defaults" is a
+    // state the reader already has, and two spellings of it would eventually
+    // disagree.
+    settings: Object.keys(look).length > 0 ? look : null,
   });
 
   const onSave = async () => {
@@ -1108,6 +1120,19 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                     </Trans>
                   </p>
                   <CopyLink value={link} pushToast={pushToast} />
+                  <div className="mt-3 text-sm font-medium">
+                    <Trans>Or embed it</Trans>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    <Trans>
+                      The same link in an iframe. The page is framable on purpose — a booking
+                      widget belongs on your site — so there is no second URL to keep track of.
+                    </Trans>
+                  </p>
+                  <CopyLink
+                    value={`<iframe src="${link}" width="100%" height="720" frameborder="0" title="${form.name || t`Booking`}"></iframe>`}
+                    pushToast={pushToast}
+                  />
                 </Card>
               )}
 
@@ -1434,6 +1459,69 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                   onChange={(e) => setForm({ ...form, confirmationMessage: e.target.value })}
                   placeholder={t`Please arrive ten minutes early.`}
                 />
+              </div>
+
+              <div className="grid gap-2">
+                <Label>
+                  <Trans>Public page appearance</Trans>
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  <Trans>
+                    The booking page belongs on your site, so it takes your colours rather than
+                    ours. Left on "Visitor's choice" it follows each visitor's own light/dark
+                    setting.
+                  </Trans>
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="bk-theme" className="text-xs text-muted-foreground">
+                      <Trans>Theme</Trans>
+                    </Label>
+                    <Select
+                      value={look.theme ?? ""}
+                      onChange={(v) => setLook(({ theme, ...rest }) => (v ? { ...rest, theme: v } : rest))}
+                      className="min-w-0"
+                      options={[
+                        { value: "", label: t`Visitor's choice` },
+                        { value: "dark", label: t`Dark` },
+                        { value: "light", label: t`Light` },
+                      ]}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="bk-font" className="text-xs text-muted-foreground">
+                      <Trans>Font</Trans>
+                    </Label>
+                    <Select
+                      value={look.font ?? ""}
+                      onChange={(v) => setLook(({ font, ...rest }) => (v ? { ...rest, font: v } : rest))}
+                      className="min-w-0"
+                      options={[
+                        { value: "", label: t`Default` },
+                        { value: "sans", label: "Manrope" },
+                        { value: "lexend", label: "Lexend" },
+                        { value: "mono", label: t`Mono` },
+                        { value: "system", label: t`System` },
+                      ]}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="text-xs text-muted-foreground">
+                    <Trans>Accent</Trans>
+                  </Label>
+                  <ColorSwatchPicker
+                    options={[
+                      { value: "", swatch: "var(--muted-foreground)", label: t`Default` },
+                      ...ACCENTS.map((c) => ({ value: c, swatch: c })),
+                    ]}
+                    value={look.accent ?? ""}
+                    onChange={(accent) =>
+                      setLook(({ accent: _drop, ...rest }) => (accent ? { ...rest, accent } : rest))
+                    }
+                    showValue
+                  />
+                </div>
               </div>
 
               <div className="flex items-center gap-2">

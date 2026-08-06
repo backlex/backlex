@@ -2,6 +2,7 @@ import type { VectorStore } from "@backlex/core";
 // Lightweight typed client for the admin pages. Wraps the shared `api()`
 // helper so the rest of the admin module only sees domain-shaped payloads.
 import { api, API_BASE, captureBookmark, sessionHeaders } from "@/lib/api";
+import type { PublicAppearance } from "@/lib/public-theme";
 
 export interface ApiTenant {
   id: string;
@@ -282,6 +283,8 @@ export interface ApiBookingResource {
   horizonDays: number;
   holdMinutes: number;
   questions: ApiBookingQuestion[];
+  /** Public page appearance — `{ theme, accent, font }`, or null for ours. */
+  settings: PublicAppearance | null;
   mirrorCollection: string | null;
   mirrorFieldMap: Record<string, string> | null;
   active: boolean;
@@ -1632,7 +1635,7 @@ export const approvePublicApi = {
 
 export interface ApiBookerView {
   id: string;
-  resource: { key: string; name: string; timeZone: string };
+  resource: { key: string; name: string; timeZone: string; settings: PublicAppearance | null };
   start: string;
   end: string;
   status: string;
@@ -1653,6 +1656,8 @@ export interface ApiPublicSlots {
     capacity: number;
     questions: ApiBookingQuestion[];
     confirmationMessage: string | null;
+    /** How the page paints itself. Null is the system light/dark default. */
+    settings: PublicAppearance | null;
   };
   from: string;
   to: string;

@@ -16,6 +16,14 @@ import { useParams, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { formsPublicApi, type ApiPublicForm, type ApiPublicFormBlock } from "@/admin/api";
+import {
+  accentInk,
+  fontStack,
+  paletteFor,
+  safeAccent,
+  useFonts,
+  type Palette,
+} from "@/lib/public-theme";
 
 declare global {
   interface Window {
@@ -29,9 +37,6 @@ declare global {
 }
 
 const TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-const FONTS_HREF =
-  "https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap";
-
 /** Humanize a raw field name (snake/camel → Title Case) — used when neither
  *  the form config nor the collection field defines a display label. */
 const humanizeLabel = (name: string): string =>
@@ -39,71 +44,6 @@ const humanizeLabel = (name: string): string =>
     .replace(/[_-]+/g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/^\w/, (ch) => ch.toUpperCase());
-
-/* ── theming ───────────────────────────────────────────────────────── */
-
-interface Palette {
-  bg: string;
-  card: string;
-  text: string;
-  muted: string;
-  faint: string;
-  border: string;
-  inputBg: string;
-}
-
-const DARK: Palette = {
-  bg: "#08070F",
-  card: "#0E0C18",
-  text: "#ECEAF7",
-  muted: "#A6A1C2",
-  faint: "#635E80",
-  border: "rgba(255,255,255,0.09)",
-  inputBg: "rgba(255,255,255,0.03)",
-};
-
-const LIGHT: Palette = {
-  bg: "#F6F5FA",
-  card: "#FFFFFF",
-  text: "#17141F",
-  muted: "#5F5A73",
-  faint: "#8A85A0",
-  border: "rgba(20,15,45,0.12)",
-  inputBg: "rgba(20,15,45,0.03)",
-};
-
-
-/** Readable text color on the accent: relative luminance picks dark ink on
- *  light accents, white on dark ones — no manual contrast knob needed. */
-const accentInk = (hex: string): string => {
-  const n = hex.replace("#", "");
-  const ch = (i: number) => {
-    const c = parseInt(n.slice(i, i + 2), 16) / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  };
-  const L = 0.2126 * ch(0) + 0.7152 * ch(2) + 0.0722 * ch(4);
-  return L > 0.45 ? "#17141F" : "#FFFFFF";
-};
-
-const fontStack = (font: "sans" | "lexend" | "mono" | "system"): string =>
-  font === "lexend"
-    ? "'Lexend','Manrope',system-ui,sans-serif"
-    : font === "mono"
-      ? "'JetBrains Mono',ui-monospace,monospace"
-      : font === "system"
-        ? "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
-        : "'Manrope',system-ui,sans-serif";
-
-/** Load the shared Google Fonts stylesheet once (CSP already allows it). */
-const useFonts = () => {
-  useEffect(() => {
-    if (document.querySelector(`link[href="${FONTS_HREF}"]`)) return;
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = FONTS_HREF;
-    document.head.appendChild(link);
-  }, []);
-};
 
 /* ── turnstile ─────────────────────────────────────────────────────── */
 
@@ -615,8 +555,8 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
   const current = pages[pageIdx];
   const isLast = pageIdx === pages.length - 1;
 
-  const p = def?.theme === "light" ? LIGHT : DARK;
-  const accent = def?.accent ?? "#8B6CFF";
+  const p = paletteFor(def?.theme);
+  const accent = safeAccent(def?.accent);
   const family = fontStack(def?.font ?? "sans");
 
   const setValue = useCallback((name: string, v: unknown) => {

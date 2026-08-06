@@ -1871,6 +1871,10 @@ export const bookingResources = sqliteTable(
     /** `[{ name, label, type, required, options }]` — what the booker is asked
      *  beyond name and address. Same shape as `forms.fields`. */
     questions: text("questions", { mode: "json" }).$type<Array<Record<string, unknown>>>(),
+    /** Public page appearance: `{ theme, accent, font }`. Same vocabulary as
+     *  `forms.settings`, and read through the same client module, so the two
+     *  public pages cannot drift into different ideas of what a theme is. */
+    settings: text("settings", { mode: "json" }).$type<Record<string, unknown> | null>(),
     /** Optional collection each booking is MIRRORED into, so the workspace owns
      *  the row in its own shape and every collection surface (permissions,
      *  flows, realtime, exports) applies to it. The ledger here stays the

@@ -2014,6 +2014,8 @@ export interface BookingResource {
   horizonDays: number;
   holdMinutes: number;
   questions: Array<Record<string, unknown>>;
+  /** Public page appearance: `{ theme, accent, font }`. Null is the default. */
+  settings: Record<string, unknown> | null;
   mirrorCollection: string | null;
   mirrorFieldMap: Record<string, string> | null;
   active: boolean;
@@ -2037,6 +2039,8 @@ export interface BookingResourceInput {
   horizonDays?: number;
   holdMinutes?: number;
   questions?: Array<Record<string, unknown>>;
+  /** `{ theme, accent, font }`. Replaced wholesale; `null` clears it. */
+  settings?: Record<string, unknown> | null;
   mirrorCollection?: string | null;
   mirrorFieldMap?: Record<string, string> | null;
   active?: boolean;

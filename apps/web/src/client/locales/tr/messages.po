@@ -1251,6 +1251,10 @@ msgstr "Hakkında"
 msgid "accent"
 msgstr "vurgu rengi"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Accent"
+msgstr "Vurgu rengi"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Accent for the icon in nav and lists."
 msgstr "Gezinti ve listelerdeki ikonun vurgu rengi."
@@ -4626,6 +4630,7 @@ msgstr "Tehlike bölgesi"
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Dark"
 msgstr "Koyu"
 
@@ -4732,6 +4737,7 @@ msgid "default"
 msgstr "varsayılan"
 
 #: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Default"
 msgstr "Varsayılan"
 
@@ -6957,6 +6963,10 @@ msgstr "Klasörler"
 msgid "font"
 msgstr "yazı tipi"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Font"
+msgstr "Yazı tipi"
+
 #: src/client/admin/field-sequence-editor.tsx
 msgid "for the counter, padded to its width — e.g."
 msgstr "karakteri, genişliği kadar sıfırla doldurulur — örn."
@@ -8697,6 +8707,7 @@ msgstr "toplam"
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Light"
 msgstr "Açık"
 
@@ -9399,6 +9410,10 @@ msgstr "Model"
 #: src/client/admin/item-views.tsx
 msgid "Mon"
 msgstr "Pzt"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Mono"
+msgstr "Eşaralıklı"
 
 #: src/client/admin/pages/usage.tsx
 msgid "Monthly request quota"
@@ -11369,6 +11384,10 @@ msgstr "İsteğe bağlı. Her çağrıyı imzalar, böylece servisiniz backlex't
 msgid "or"
 msgstr "veya"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Or embed it"
+msgstr "Ya da gömün"
+
 #: src/client/admin/collections-index.tsx
 msgid "Or type a new group name…"
 msgstr "Veya yeni bir grup adı yazın…"
@@ -12605,6 +12624,10 @@ msgstr "Herkese açık bağlantı"
 #: src/client/admin/pages/settings/index.tsx
 msgid "Public origin of this Worker — set via <0>wrangler.toml [vars]</0> (or <1>.env</1> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here."
 msgstr "Bu Worker'ın genel origin'i — <0>wrangler.toml [vars]</0> (veya öz barındırmada <1>.env</1>) üzerinden ayarlanır. CORS, OAuth geri çağrıları ve mutlak bağlantılar için kullanılır. Burada salt okunur."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Public page appearance"
+msgstr "Herkese açık sayfanın görünümü"
 
 #: src/client/admin/collections-index.tsx
 msgid "public read"
@@ -16182,6 +16205,7 @@ msgstr "sistem"
 #: src/client/admin/display-template-editor.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "System"
 msgstr "Sistem"
 
@@ -16433,6 +16457,10 @@ msgstr "Analitik uç noktası hata döndürdü. Yenileyip tekrar deneyin."
 msgid "The authorization flow returned no redirect — start over from the client."
 msgstr "Yetkilendirme akışı yönlendirme döndürmedi — istemciden baştan başlayın."
 
+#: src/client/admin/parity/booking.tsx
+msgid "The booking page belongs on your site, so it takes your colours rather than ours. Left on \"Visitor's choice\" it follows each visitor's own light/dark setting."
+msgstr "Rezervasyon sayfası sizin sitenize ait, bu yüzden bizim renklerimizi değil sizinkileri alır. \"Ziyaretçinin tercihi\" bırakılırsa her ziyaretçinin kendi açık/koyu ayarını izler."
+
 #: src/client/pages/oauth-consent.tsx
 msgid "The client below wants to call this workspace's MCP tools as you. Your roles and permission rules still gate every call."
 msgstr "Aşağıdaki istemci bu çalışma alanının MCP araçlarını sizin adınıza çağırmak istiyor. Rolleriniz ve izin kurallarınız her çağrıda yine geçerli."
@@ -16630,6 +16658,10 @@ msgstr "Satır koleksiyondan kaldırılır. Bu işlem geri alınamaz."
 msgid "The same for every row"
 msgstr "Her satır için aynı"
 
+#: src/client/admin/parity/booking.tsx
+msgid "The same link in an iframe. The page is framable on purpose — a booking widget belongs on your site — so there is no second URL to keep track of."
+msgstr "Aynı bağlantı bir iframe içinde. Sayfa bilerek iframe’lenebilir — rezervasyon aracı sizin sitenize aittir — bu yüzden takip edilecek ikinci bir adres yok."
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "The section opens folded — useful for advanced or rarely-touched fields."
@@ -16706,6 +16738,10 @@ msgstr "Değiştirme veya iptal bağlantısı"
 #: src/client/admin/pages/forms.tsx
 msgid "theme"
 msgstr "tema"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Theme"
+msgstr "Tema"
 
 #: src/client/admin/field-phone-editor.tsx
 msgid "There is no national format on purpose: printing one needs each country's numbering plan, and guessing at it produces numbers that look right and are not. The stored value is always E.164."
@@ -18060,6 +18096,10 @@ msgstr "Görünümler"
 #: src/client/admin/pages/forms.tsx
 msgid "visitor's browser language"
 msgstr "ziyaretçinin tarayıcı dili"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Visitor's choice"
+msgstr "Ziyaretçinin tercihi"
 
 #: src/client/admin/pages/analytics.tsx
 msgid "Visitors"

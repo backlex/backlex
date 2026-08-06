@@ -1,0 +1,22 @@
+-- Appearance for the public booking page.
+--
+-- The page was self-styled with a fixed light/dark pair, on the reasoning that
+-- nobody booking a haircut should load the admin bundle's theme. That reasoning
+-- still holds — what it does not justify is the page looking like OURS. A
+-- booking widget belongs on the operator's own site (it already ships under the
+-- framable CSP for exactly that reason), and a widget that cannot take the host
+-- site's colour is a widget that always looks borrowed.
+--
+-- One JSON column rather than three typed ones, and deliberately the same shape
+-- `forms.settings` already stores — `{ theme, accent, font }`. The two public
+-- pages are read by the same client module, so this is not "booking's theme"
+-- and "the form's theme" but one vocabulary stored twice. A settings blob also
+-- absorbs the next knob (offered languages, a logo) without a migration, which
+-- for presentation — where the set of knobs is open-ended and none of them are
+-- ever queried — is the right trade. Nothing filters or joins on appearance,
+-- so there is nothing here an index would help.
+--
+-- Null means "the defaults", which is what every resource created before this
+-- migration means too. No backfill: an absent blob and `{}` resolve
+-- identically in the reader.
+ALTER TABLE "booking_resources" ADD COLUMN IF NOT EXISTS "settings" jsonb;

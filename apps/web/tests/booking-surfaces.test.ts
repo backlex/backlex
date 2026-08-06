@@ -343,6 +343,27 @@ describe("one implementation, not five", () => {
     expect(() => parseQuestion("reason:select")).toThrow(/nothing to choose from/);
   });
 
+  test("the page's appearance is the same object on every surface", async () => {
+    const c = sdk();
+    const made = await c.booking.createResource({
+      key: "look",
+      ...RESOURCE,
+      settings: { theme: "light", accent: "#34C79A", font: "lexend" },
+    } as never);
+    const look = { theme: "light", accent: "#34C79A", font: "lexend" };
+    expect(made.data.resource.settings).toEqual(look);
+
+    const viaGql = await gql(`query { bookingResource(key:"look") { settings } }`);
+    expect(viaGql.data.bookingResource.settings).toEqual(look);
+
+    const viaMcp = await mcp("booking.get_resource").handler({ key: "look" }, mcpCtx());
+    expect((viaMcp.structuredContent as any).data.settings).toEqual(look);
+
+    // And the page itself — it cannot paint what it was not handed.
+    const res = await h.fetch(`/api/public/book/${made.data.token}/slots`);
+    expect(((await res.json()) as any).data.resource.settings).toEqual(look);
+  });
+
   test("a question set round-trips through the SDK", async () => {
     const c = sdk();
     const made = await c.booking.createResource({

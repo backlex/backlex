@@ -98,6 +98,17 @@ const QuestionInput = z
   })
   .openapi("BookingQuestion");
 
+/** How the public page paints itself. The same three keys a form stores, and
+ *  the service drops anything it cannot render — the accent especially, which
+ *  the page pastes into a style declaration. */
+const SettingsInput = z
+  .object({
+    theme: z.enum(["dark", "light"]).optional(),
+    accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    font: z.enum(["sans", "lexend", "mono", "system"]).optional(),
+  })
+  .openapi("BookingAppearance");
+
 const ResourceView = z
   .object({
     id: z.string(),
@@ -114,6 +125,7 @@ const ResourceView = z
     horizonDays: z.number(),
     holdMinutes: z.number(),
     questions: z.array(z.record(z.string(), z.unknown())),
+    settings: z.record(z.string(), z.unknown()).nullable(),
     mirrorCollection: z.string().nullable(),
     mirrorFieldMap: z.record(z.string(), z.string()).nullable(),
     active: z.boolean(),
@@ -138,6 +150,7 @@ const ResourceBody = z.object({
   horizonDays: z.number().int().optional(),
   holdMinutes: z.number().int().optional(),
   questions: z.array(QuestionInput).max(MAX_QUESTIONS).optional(),
+  settings: SettingsInput.nullish(),
   mirrorCollection: z.string().max(100).nullish(),
   mirrorFieldMap: z.record(z.string(), z.string()).nullish(),
   active: z.boolean().optional(),
@@ -189,6 +202,7 @@ const SlotsView = z
       capacity: z.number(),
       questions: z.array(z.record(z.string(), z.unknown())),
       confirmationMessage: z.string().nullable(),
+      settings: z.record(z.string(), z.unknown()).nullable(),
     }),
     from: z.string(),
     to: z.string(),

@@ -105,6 +105,47 @@ export type BookingStatus =
 /** The statuses that actually occupy a slot, before the clock is consulted. */
 const OCCUPYING: string[] = ["held", "confirmed"];
 
+/**
+ * How the public page looks.
+ *
+ * Deliberately the same three keys `forms.settings` stores, because they are
+ * the same three decisions and the two pages are rendered by one client
+ * module. A booking widget sits on the operator's own site — that is why both
+ * public routes ship under the framable CSP — and a widget that cannot take
+ * the host site's colour always looks borrowed.
+ *
+ * Presentation only. Nothing here is ever filtered, joined or authorised on,
+ * which is why it is one JSON column rather than three typed ones.
+ */
+export interface BookingSettings {
+  theme?: "dark" | "light";
+  /** `#rrggbb`. Anything else is ignored by the page's own reader. */
+  accent?: string;
+  font?: "sans" | "lexend" | "mono" | "system";
+}
+
+const THEMES = new Set(["dark", "light"]);
+const FONTS = new Set(["sans", "lexend", "mono", "system"]);
+
+/**
+ * Keep only what the page can actually render.
+ *
+ * The accent is pasted into a style declaration by the client, so a value that
+ * is not a plain hex colour is dropped here rather than trusted to the reader —
+ * defence on both sides of the wire, since the same blob also reaches the SDK,
+ * GraphQL and anything else that reads a resource.
+ */
+export const normalizeBookingSettings = (
+  raw: Record<string, unknown> | null | undefined,
+): BookingSettings | null => {
+  if (!raw || typeof raw !== "object") return null;
+  const out: BookingSettings = {};
+  if (typeof raw.theme === "string" && THEMES.has(raw.theme)) out.theme = raw.theme as "dark" | "light";
+  if (typeof raw.accent === "string" && /^#[0-9a-fA-F]{6}$/.test(raw.accent)) out.accent = raw.accent;
+  if (typeof raw.font === "string" && FONTS.has(raw.font)) out.font = raw.font as BookingSettings["font"];
+  return Object.keys(out).length > 0 ? out : null;
+};
+
 /* ──────────────────────────────── row types ─────────────────────────────── */
 
 export interface BookingResourceRow {
@@ -123,6 +164,7 @@ export interface BookingResourceRow {
   horizonDays: number;
   holdMinutes: number;
   questions: Array<Record<string, unknown>> | null;
+  settings: BookingSettings | null;
   mirrorCollection: string | null;
   mirrorFieldMap: Record<string, string> | null;
   tokenHash: string;
@@ -311,6 +353,7 @@ export const toPublicResource = (row: BookingResourceRow, rules: BookingRuleRow[
   horizonDays: row.horizonDays,
   holdMinutes: row.holdMinutes,
   questions: row.questions ?? [],
+  settings: row.settings ?? null,
   mirrorCollection: row.mirrorCollection,
   mirrorFieldMap: row.mirrorFieldMap,
   active: row.active,
@@ -358,7 +401,15 @@ export type PublicResource = ReturnType<typeof toPublicResource>;
  */
 export const toBookerView = (row: BookingRow, resource: BookingResourceRow, now = Date.now()) => ({
   id: row.id,
-  resource: { key: resource.key, name: resource.name, timeZone: resource.timeZone },
+  // Appearance travels with the booking: the page a customer follows from
+  // their confirmation email to move or cancel is the same calendar they
+  // booked on, and it would be an odd calendar that changed colour on the way.
+  resource: {
+    key: resource.key,
+    name: resource.name,
+    timeZone: resource.timeZone,
+    settings: resource.settings ?? null,
+  },
   start: new Date(asMs(row.startAt)).toISOString(),
   end: new Date(asMs(row.endAt)).toISOString(),
   status: effectiveBookingStatus(row, now),
@@ -465,6 +516,8 @@ export interface SlotsResult {
     capacity: number;
     questions: Array<Record<string, unknown>>;
     confirmationMessage: string | null;
+    /** How the page paints itself. Null is "our defaults". */
+    settings: BookingSettings | null;
   };
   from: string;
   to: string;
@@ -510,6 +563,7 @@ export const listSlots = async (
       capacity: resource.capacity,
       questions: resource.questions ?? [],
       confirmationMessage: resource.confirmationMessage,
+      settings: resource.settings ?? null,
     },
     from: new Date(from).toISOString(),
     to: new Date(to).toISOString(),
@@ -876,6 +930,8 @@ export interface ResourceInput {
   horizonDays?: number;
   holdMinutes?: number;
   questions?: Array<Record<string, unknown>>;
+  /** `{ theme, accent, font }`. Replaced wholesale; `null` clears it. */
+  settings?: Record<string, unknown> | null;
   mirrorCollection?: string | null;
   mirrorFieldMap?: Record<string, string> | null;
   active?: boolean;
@@ -1051,6 +1107,7 @@ export const createResource = async (
     timeZone: validateTimeZone(input.timeZone?.trim() || "UTC"),
     ...normalizePolicy(input),
     questions: input.questions ?? [],
+    settings: normalizeBookingSettings(input.settings),
     mirrorCollection: trimmed(input.mirrorCollection, 100),
     mirrorFieldMap: input.mirrorFieldMap ?? null,
     tokenHash: await hashToken(token),
@@ -1095,6 +1152,10 @@ export const updateResource = async (
     }
     patch.questions = input.questions;
   }
+  // Appearance is replaced wholesale rather than merged: the admin sends the
+  // panel it just rendered, and a merge would make "back to the default accent"
+  // impossible to say. `null` clears it.
+  if (input.settings !== undefined) patch.settings = normalizeBookingSettings(input.settings);
   if (input.mirrorCollection !== undefined) {
     patch.mirrorCollection = trimmed(input.mirrorCollection, 100);
   }

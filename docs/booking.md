@@ -219,6 +219,75 @@ booking taken over the telephone may not have asked yet, and refusing the
 booking loses the appointment rather than gaining the answer. Same reasoning as
 the grid: what the public page may do is narrower than what an operator may.
 
+## The page takes your colours
+
+The page is not styled by the admin theme — nobody booking a haircut should
+load a CMS's stylesheet — but that is an argument for it being *light*, not for
+it looking like **ours**. A booking widget belongs on your site, which is why
+both public routes ship framable in the first place, and a widget that cannot
+take the host site's colour always looks borrowed.
+
+```bash
+backlex booking update clinic --theme light --accent "#34C79A" --font lexend
+```
+
+Three knobs, and deliberately the same three a [form](/forms/) has — `theme`,
+`accent`, `font` — because they are the same three decisions. Both public pages
+are painted by one module, so "light" means one thing across everything you
+publish.
+
+Each is optional and each is separately optional. **Omitting `theme` is a
+choice, not an oversight**: the page then follows the visitor's own light/dark
+setting, which is what every calendar published before this existed still does
+and what most operators want. Setting only an accent leaves that intact and
+changes only the buttons. `--plain` puts all three back.
+
+The accent is a `#rrggbb` and nothing else — it is pasted into a style
+declaration, so the server drops anything that is not one rather than trusting
+the page to. Text on the accent picks itself: relative luminance decides dark
+ink or white, so a pale brand colour does not produce an unreadable button.
+
+Webfonts are only fetched when a face was actually chosen. A calendar that
+never set one costs its visitors no extra request.
+
+The manage page (`/b/<token>`) is painted the same way. A customer who follows
+the link in their confirmation email to move an appointment should not arrive
+somewhere that looks like a different company.
+
+## Putting it on your own site
+
+Both public pages are framable, so the link you already have is the embed:
+
+```html
+<iframe src="https://your-app.example/book/bkg_…" width="100%" height="720"
+        frameborder="0" title="Booking"></iframe>
+```
+
+There is deliberately no second `/embed/…` URL. A form has one because its
+standalone page stays same-origin-only; here **both** pages are meant to sit on
+your site, so a separate address would only be another thing to rotate. The
+admin prints the snippet next to the link, at the one moment the link exists.
+
+On Cloudflare this only works because the two pages are served **by the Worker**
+rather than by Static Assets: `_headers` can only ever add to a policy, and a
+browser enforces the strictest of duplicate CSPs — so a framable override there
+would have left the strict `frame-ancestors 'self'` standing next to it. They
+are in `run_worker_first` for that reason alone.
+
+## What stops a script booking your whole calendar
+
+The same three layers a [public form](/forms/) gets, minus the one that needs
+configuring:
+
+- **Honeypot** — a field humans never see. Filled, and the response is exactly
+  the one a real booking gets, while nothing is written. An endpoint that
+  answered differently would be telling the script which of its submissions
+  landed. Nothing is claimed either, so the slot is not held for a moment.
+- **Rate limit** — per IP, on both taking a slot and reading the grid.
+- **The grid itself** — the strongest of the three, and it was already there. A
+  public booking has to land on a published slot, capacity is enforced by the
+  database, and a `lead` of even an hour puts the whole of today out of reach.
+
 ## Mirroring into your own collection
 
 The ledger is authoritative for the **slot**. Set `mirrorCollection` and each
@@ -294,7 +363,7 @@ statuses and the grid check cannot drift between them.
 | SDK | `client.booking.*` |
 | GraphQL | `bookingResources`, `bookingSlots`, `bookings`, `createBooking`, … |
 | MCP | `booking.list_resources`, `booking.slots`, `booking.book`, … |
-| CLI | `backlex booking <resources\|create\|url\|slots\|list\|book\|cancel\|move>` (`--ask`, `--answer`) |
+| CLI | `backlex booking <resources\|create\|url\|slots\|list\|book\|cancel\|move>` (`--ask`, `--answer`, `--theme`/`--accent`/`--font`) |
 
 The public pages are `/book/:token` (pick a time) and `/b/:token` (change or
 cancel one). Both sit under the framable CSP, because a booking widget belongs

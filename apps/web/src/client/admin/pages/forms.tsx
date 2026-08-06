@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ColorSwatchPicker } from "@/components/color-swatch-picker";
+import { ACCENTS, accentInk, fontStack, safeAccent, useFonts } from "@/lib/public-theme";
 import { I } from "../icons";
 import {
   Badge,
@@ -108,44 +109,6 @@ const CANVAS_LIGHT = {
 type CanvasPalette = typeof CANVAS_DARK;
 
 
-/** Readable text color on the accent: relative luminance picks dark ink on
- *  light accents, white on dark ones — no manual contrast knob needed. */
-const accentInk = (hex: string): string => {
-  const n = hex.replace("#", "");
-  const ch = (i: number) => {
-    const c = parseInt(n.slice(i, i + 2), 16) / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  };
-  const L = 0.2126 * ch(0) + 0.7152 * ch(2) + 0.0722 * ch(4);
-  return L > 0.45 ? "#17141F" : "#FFFFFF";
-};
-
-const canvasFont = (font: "sans" | "lexend" | "mono" | "system" | undefined): string =>
-  font === "lexend"
-    ? "'Lexend','Manrope',system-ui,sans-serif"
-    : font === "mono"
-      ? "'JetBrains Mono',ui-monospace,monospace"
-      : font === "system"
-        ? "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
-        : "'Manrope',system-ui,sans-serif";
-
-const CANVAS_FONTS_HREF =
-  "https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap";
-
-const ACCENTS = [
-  "#8B6CFF",
-  "#5C6CFF",
-  "#4FB7E8",
-  "#3AC9C4",
-  "#34C79A",
-  "#8FCC5C",
-  "#F2C14E",
-  "#FF8A5C",
-  "#E5484D",
-  "#E85CA8",
-  "#C77DFF",
-  "#8A94A6",
-];
 
 const blockIcon = (ef: ApiFormEligibleField | null | undefined, block: ApiFormBlock) => {
   if ((block.kind ?? "field") === "step") return I.Layers;
@@ -627,17 +590,12 @@ export function FormsPage({
   const languages = settings.languages?.length ? settings.languages : ["en"];
   const base = languages[0] ?? "en";
   const cp: CanvasPalette = settings.theme === "light" ? CANVAS_LIGHT : CANVAS_DARK;
-  const accent = settings.accent ?? ACCENTS[0]!;
-  const family = canvasFont(settings.font);
+  const accent = safeAccent(settings.accent);
+  const family = fontStack(settings.font);
 
-  // The canvas renders in the form's own fonts — load them once.
-  useEffect(() => {
-    if (document.querySelector(`link[href="${CANVAS_FONTS_HREF}"]`)) return;
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = CANVAS_FONTS_HREF;
-    document.head.appendChild(link);
-  }, []);
+  // The canvas renders in the form's own fonts — the same stylesheet the
+  // public page loads, so the preview and the real thing agree.
+  useFonts();
 
   // Collection meta for the open form (versioned drives the submissions
   // filter + the source-collection caption).
@@ -1594,7 +1552,7 @@ function DesignPanel({
   onPatch: (p: Partial<ApiFormSettings>) => void;
 }) {
   const { t } = useLingui();
-  const accent = settings.accent ?? ACCENTS[0]!;
+  const accent = safeAccent(settings.accent);
   return (
     <>
       <PanelCard icon={I.Palette} title={<Trans>Form design</Trans>}>

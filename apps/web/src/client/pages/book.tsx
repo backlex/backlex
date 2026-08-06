@@ -19,7 +19,7 @@
 //   design system, exactly like the public form and signing pages: nobody
 //   booking a haircut should be loading the admin bundle's theme, and a fixed
 //   light/dark pair here is stable regardless of what the workspace runs.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useParams } from "react-router";
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
@@ -28,6 +28,14 @@ import {
   type ApiBookingSlot,
   type ApiPublicSlots,
 } from "@/admin/api";
+import {
+  accentInk,
+  fontStack,
+  paletteFor,
+  safeAccent,
+  useFonts,
+  type PublicAppearance,
+} from "@/lib/public-theme";
 
 const CSS = `
 .bxb { --bg:#f4f4f7; --card:#fff; --text:#16151f; --muted:#5f5c72; --line:#e2e0ea;
@@ -126,6 +134,41 @@ const groupByDay = (slots: ApiBookingSlot[], timeZone: string): Array<[string, A
 };
 
 /**
+ * The resource's appearance, as CSS variables the page's own stylesheet
+ * already reads.
+ *
+ * Only what was actually chosen is written. A resource with no settings keeps
+ * the stylesheet's system light/dark pair — the page has always followed the
+ * visitor's own preference, and gaining an appearance panel must not silently
+ * pin every existing calendar to one theme. Choosing only an accent likewise
+ * leaves the light/dark following the visitor.
+ *
+ * The values come from the shared public-page palette, so this calendar and a
+ * form published by the same workspace agree about what "light" is.
+ */
+const appearanceVars = (s: PublicAppearance | null | undefined): Record<string, string> => {
+  if (!s) return {};
+  const vars: Record<string, string> = {};
+  if (s.theme) {
+    const p = paletteFor(s.theme);
+    vars["--bg"] = p.bg;
+    vars["--card"] = p.card;
+    vars["--text"] = p.text;
+    vars["--muted"] = p.muted;
+    vars["--line"] = p.border;
+    vars["--pad"] = p.inputBg;
+    vars["--danger"] = s.theme === "light" ? "#b3261e" : "#ff8a80";
+  }
+  if (s.accent) {
+    const accent = safeAccent(s.accent);
+    vars["--accent"] = accent;
+    vars["--accent-fg"] = accentInk(accent);
+  }
+  if (s.font) vars.fontFamily = fontStack(s.font);
+  return vars;
+};
+
+/**
  * What a question is actually rendered as.
  *
  * The stored `type` is advisory and the options are decisive: a question
@@ -170,6 +213,9 @@ export function Book() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  /** Humans never see the field this comes from; bots fill every input. A
+   *  filled value makes the server answer exactly as it would have. */
+  const [honeypot, setHoneypot] = useState("");
 
   const load = async () => {
     const from = new Date().toISOString();
@@ -199,6 +245,12 @@ export function Book() {
 
   const zone = data?.resource.timeZone ?? "UTC";
   const days = useMemo(() => groupByDay(data?.slots ?? [], zone), [data, zone]);
+
+  const look = data?.resource.settings ?? null;
+  const style = useMemo(() => appearanceVars(look), [look]);
+  // Only fetch the webfonts a chosen face actually needs. A calendar that
+  // never picked one should not cost its visitors a stylesheet request.
+  useFonts(Boolean(look?.font) && look?.font !== "system");
 
   /** Named only when it differs from the resource's, because that is the only
    *  time it can mislead. */
@@ -234,6 +286,7 @@ export function Book() {
         ...(email.trim() ? { email: email.trim() } : {}),
         ...(phone.trim() ? { phone: phone.trim() } : {}),
         ...(Object.keys(payload).length > 0 ? { answers: payload } : {}),
+        ...(honeypot ? { website: honeypot } : {}),
       });
       setDone({
         start: res.data.booking.start,
@@ -252,7 +305,7 @@ export function Book() {
   };
 
   return (
-    <div className="bxb">
+    <div className="bxb" style={style as CSSProperties}>
       <div className="bxb-wrap">
         {!loaded ? (
           <Skeleton />
@@ -454,6 +507,20 @@ export function Book() {
                   );
                 })}
 
+                {/* Honeypot — off-screen rather than `display:none`, which the
+                    better bots skip. Humans never reach it: no tab stop, no
+                    label, hidden from the accessibility tree. */}
+                <input
+                  type="text"
+                  name="website"
+                  value={honeypot}
+                  onChange={(e) => setHoneypot(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  style={{ position: "absolute", left: -9999, top: "auto", width: 1, height: 1, overflow: "hidden" }}
+                />
+
                 {error && <p className="bxb-err">{error}</p>}
 
                 <div className="bxb-row" style={{ marginTop: 6 }}>
@@ -526,8 +593,12 @@ export function ManageBooking() {
 
   const zone = view?.resource.timeZone ?? "UTC";
 
+  const look = view?.resource.settings ?? null;
+  const style = useMemo(() => appearanceVars(look), [look]);
+  useFonts(Boolean(look?.font) && look?.font !== "system");
+
   return (
-    <div className="bxb">
+    <div className="bxb" style={style as CSSProperties}>
       <div className="bxb-wrap">
         {!loaded ? (
           <Skeleton />

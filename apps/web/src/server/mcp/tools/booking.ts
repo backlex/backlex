@@ -67,6 +67,11 @@ const RESOURCE_PROPERTIES = {
     items: { type: "object" },
     description: "What the booker is asked beyond name and address.",
   },
+  settings: {
+    type: "object",
+    description:
+      "Public page appearance: { theme: dark|light, accent: #rrggbb, font: sans|lexend|mono|system }. Same vocabulary a form stores.",
+  },
   mirrorCollection: {
     type: "string",
     description: "Collection each booking is mirrored into, so the workspace owns the row.",

@@ -90,7 +90,13 @@ const SlotsView = z
 const BookerView = z
   .object({
     id: z.string(),
-    resource: z.object({ key: z.string(), name: z.string(), timeZone: z.string() }),
+    resource: z.object({
+      key: z.string(),
+      name: z.string(),
+      timeZone: z.string(),
+      /** How the page paints itself — the manage page matches the calendar. */
+      settings: z.record(z.string(), z.unknown()).nullable(),
+    }),
     start: z.string(),
     end: z.string(),
     status: z.string(),
@@ -119,6 +125,8 @@ const BookBody = z
     email: z.string().max(320).optional(),
     phone: z.string().max(50).optional(),
     answers: z.record(z.string(), z.unknown()).optional(),
+    /** Honeypot. Humans never see the field it comes from. */
+    website: z.string().optional(),
   })
   .openapi("PublicBookInput");
 
@@ -194,6 +202,46 @@ export const bookingPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const resource = await requireResource(ctx, c.req.valid("param").token);
       setMeterTenant(c, resource.tenantId);
+      // Honeypot, same as the public form: bots fill every input and humans
+      // never see this one. The refusal has to be INDISTINGUISHABLE from a
+      // booking, or the endpoint tells a script which of its submissions
+      // landed — so it answers with the success shape and writes nothing. The
+      // manage link is empty rather than fabricated: a working-looking link
+      // that resolves to nothing is worse than an obviously absent one, and no
+      // human ever reads this response.
+      const submitted = c.req.valid("json");
+      if (submitted.website) {
+        const at = new Date(
+          Number.isFinite(Number(submitted.start)) ? Number(submitted.start) : String(submitted.start),
+        ).toISOString();
+        return c.json(
+          {
+            data: {
+              booking: {
+                id: crypto.randomUUID(),
+                resource: {
+                  key: resource.key,
+                  name: resource.name,
+                  timeZone: resource.timeZone,
+                  settings: resource.settings ?? null,
+                },
+                start: at,
+                end: at,
+                status: "confirmed",
+                customerName: submitted.name ?? null,
+                customerEmail: submitted.email ?? null,
+                answers: {},
+                cancelReason: null,
+                canCancel: false,
+              },
+              manageUrl: "",
+              emailed: false,
+            },
+          },
+          201,
+        );
+      }
+
       const result = await createBooking(
         ctx,
         resource.tenantId,

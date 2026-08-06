@@ -2148,6 +2148,9 @@ export const bookingResources = pgTable(
     horizonDays: integer("horizon_days").notNull().default(60),
     holdMinutes: integer("hold_minutes").notNull().default(10),
     questions: jsonb("questions").$type<Array<Record<string, unknown>>>(),
+    /** Public page appearance: `{ theme, accent, font }` — the same vocabulary
+     *  `forms.settings` stores, so both pages are themed one way. */
+    settings: jsonb("settings").$type<Record<string, unknown> | null>(),
     mirrorCollection: text("mirror_collection"),
     mirrorFieldMap: jsonb("mirror_field_map").$type<Record<string, string> | null>(),
     /** SHA-256 of the public page token (`bkg_<hex>`), shown once on create. */

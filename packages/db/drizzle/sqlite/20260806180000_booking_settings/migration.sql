@@ -1,0 +1,13 @@
+-- Appearance for the public booking page. SQLite/D1 twin of the pg migration,
+-- where the reasoning is written out in full.
+--
+-- The short version: the page ships under the framable CSP because a booking
+-- widget belongs on the operator's site rather than ours, and a widget that
+-- cannot take the host site's colour always looks borrowed. `{ theme, accent,
+-- font }` in one JSON column — the same shape `forms.settings` stores, read by
+-- the same client module, so the two public pages cannot drift into different
+-- ideas of what a theme is.
+--
+-- Null means the defaults, which is also what every resource created before
+-- this migration means. No backfill needed.
+ALTER TABLE `booking_resources` ADD COLUMN `settings` text;

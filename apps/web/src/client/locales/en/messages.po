@@ -1251,6 +1251,10 @@ msgstr "About"
 msgid "accent"
 msgstr "accent"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Accent"
+msgstr "Accent"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Accent for the icon in nav and lists."
 msgstr "Accent for the icon in nav and lists."
@@ -4626,6 +4630,7 @@ msgstr "Danger zone"
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Dark"
 msgstr "Dark"
 
@@ -4732,6 +4737,7 @@ msgid "default"
 msgstr "default"
 
 #: src/client/admin/pages/settings/ai-card.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Default"
 msgstr "Default"
 
@@ -6957,6 +6963,10 @@ msgstr "Folders"
 msgid "font"
 msgstr "font"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Font"
+msgstr "Font"
+
 #: src/client/admin/field-sequence-editor.tsx
 msgid "for the counter, padded to its width — e.g."
 msgstr "for the counter, padded to its width — e.g."
@@ -8697,6 +8707,7 @@ msgstr "lifetime"
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Light"
 msgstr "Light"
 
@@ -9399,6 +9410,10 @@ msgstr "Model"
 #: src/client/admin/item-views.tsx
 msgid "Mon"
 msgstr "Mon"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Mono"
+msgstr "Mono"
 
 #: src/client/admin/pages/usage.tsx
 msgid "Monthly request quota"
@@ -11369,6 +11384,10 @@ msgstr "Optional. Signs each call so your service can verify it came from backle
 msgid "or"
 msgstr "or"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Or embed it"
+msgstr "Or embed it"
+
 #: src/client/admin/collections-index.tsx
 msgid "Or type a new group name…"
 msgstr "Or type a new group name…"
@@ -12605,6 +12624,10 @@ msgstr "Public link"
 #: src/client/admin/pages/settings/index.tsx
 msgid "Public origin of this Worker — set via <0>wrangler.toml [vars]</0> (or <1>.env</1> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here."
 msgstr "Public origin of this Worker — set via <0>wrangler.toml [vars]</0> (or <1>.env</1> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Public page appearance"
+msgstr "Public page appearance"
 
 #: src/client/admin/collections-index.tsx
 msgid "public read"
@@ -16182,6 +16205,7 @@ msgstr "system"
 #: src/client/admin/display-template-editor.tsx
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "System"
 msgstr "System"
 
@@ -16433,6 +16457,10 @@ msgstr "The analytics endpoint returned an error. Refresh to try again."
 msgid "The authorization flow returned no redirect — start over from the client."
 msgstr "The authorization flow returned no redirect — start over from the client."
 
+#: src/client/admin/parity/booking.tsx
+msgid "The booking page belongs on your site, so it takes your colours rather than ours. Left on \"Visitor's choice\" it follows each visitor's own light/dark setting."
+msgstr "The booking page belongs on your site, so it takes your colours rather than ours. Left on \"Visitor's choice\" it follows each visitor's own light/dark setting."
+
 #: src/client/pages/oauth-consent.tsx
 msgid "The client below wants to call this workspace's MCP tools as you. Your roles and permission rules still gate every call."
 msgstr "The client below wants to call this workspace's MCP tools as you. Your roles and permission rules still gate every call."
@@ -16630,6 +16658,10 @@ msgstr "The row is removed from the collection. This can't be undone."
 msgid "The same for every row"
 msgstr "The same for every row"
 
+#: src/client/admin/parity/booking.tsx
+msgid "The same link in an iframe. The page is framable on purpose — a booking widget belongs on your site — so there is no second URL to keep track of."
+msgstr "The same link in an iframe. The page is framable on purpose — a booking widget belongs on your site — so there is no second URL to keep track of."
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "The section opens folded — useful for advanced or rarely-touched fields."
@@ -16706,6 +16738,10 @@ msgstr "Their link to change or cancel"
 #: src/client/admin/pages/forms.tsx
 msgid "theme"
 msgstr "theme"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Theme"
+msgstr "Theme"
 
 #: src/client/admin/field-phone-editor.tsx
 msgid "There is no national format on purpose: printing one needs each country's numbering plan, and guessing at it produces numbers that look right and are not. The stored value is always E.164."
@@ -18060,6 +18096,10 @@ msgstr "Views"
 #: src/client/admin/pages/forms.tsx
 msgid "visitor's browser language"
 msgstr "visitor's browser language"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Visitor's choice"
+msgstr "Visitor's choice"
 
 #: src/client/admin/pages/analytics.tsx
 msgid "Visitors"

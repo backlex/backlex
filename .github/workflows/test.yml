@@ -58,6 +58,20 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      # `tsc --noEmit` is incremental, and its state file is the difference
+      # between re-checking 7 million types and re-checking the handful a
+      # commit actually touched. Keyed on the commit so every run restores the
+      # previous one's state and writes its own; the fallback prefix means a
+      # first-time branch still starts from main's.
+      - name: Cache typecheck state
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            apps/web/node_modules/.cache/tsc
+            packages/*/node_modules/.cache/tsc
+          key: ${{ runner.os }}-tsc-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-tsc-
+
       - name: Typecheck
         run: bun run typecheck
 

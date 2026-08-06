@@ -59,6 +59,7 @@ import { AddFieldDialog } from "./add-field";
 import { loadAuthors } from "./authors-cache";
 import { CollectionsIndex, NewCollectionDialog } from "./collections-index";
 import { EditFieldDialog } from "./edit-field";
+import { CollectionKpisPanel } from "./collection-kpis";
 import { CollectionSettings } from "./collection-settings";
 import { type ApiExtension, collectionsApi, itemsApi, settingsApi } from "./api";
 import { useQueryClient } from "@tanstack/react-query";

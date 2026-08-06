@@ -43,6 +43,7 @@
         "useNodejsImportProtocol": "off"
       },
       "correctness": {
+        "noUndeclaredVariables": "error",
         "noUnusedVariables": "error",
         "noUnusedImports": "error",
         "noUnusedFunctionParameters": "error",
@@ -84,7 +85,16 @@
   "javascript": {
     "formatter": {
       "enabled": false
-    }
+    },
+    "globals": [
+      "Bun",
+      "WebSocketPair",
+      "__APP_VERSION__",
+      "__BUILD_DATE__",
+      "__GIT_COMMIT__",
+      "__TEMPLATE_VERSION__",
+      "__WRANGLER_VERSION__"
+    ]
   },
   "json": {
     "formatter": {

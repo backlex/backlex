@@ -67,8 +67,14 @@ const CSS = `
 
 /* The day rail: only days that HAVE openings, so the first chip is always the
    soonest one. Numerals are the display type — this page is made of numbers. */
+/* scroll-padding-inline is load-bearing, not a nicety. A scroll snapport is
+   the PADDING box, so scroll-snap-align:start lines a chip up with the
+   container's BORDER edge — and mandatory snapping happens on load, not only
+   on scroll. Without it the rail silently scrolls itself by its own 20px of
+   padding, and the first chip sits flush against the card edge while every
+   other line on the card is indented. */
 .bxb-rail{ display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory;
-  margin:0 -20px; padding:2px 20px 6px; scrollbar-width:none; }
+  margin:0 -20px; padding:2px 20px 6px; scroll-padding-inline:20px; scrollbar-width:none; }
 .bxb-rail::-webkit-scrollbar{ display:none; }
 .bxb-chip{ scroll-snap-align:start; flex:0 0 auto; min-width:64px; appearance:none; cursor:pointer;
   border:1px solid var(--line); background:var(--pad); color:var(--text); border-radius:13px;

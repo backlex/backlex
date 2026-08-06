@@ -1468,8 +1468,9 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                 <p className="text-xs text-muted-foreground">
                   <Trans>
                     The booking page belongs on your site, so it takes your colours rather than
-                    ours. Left on "Visitor's choice" it follows each visitor's own light/dark
-                    setting.
+                    ours. "Visitor's choice" follows each visitor's own light/dark setting — fine
+                    for a link you send, but pick a theme when you embed it, or a dark widget can
+                    land on a light page.
                   </Trans>
                 </p>
                 <div className="grid gap-4 sm:grid-cols-2">

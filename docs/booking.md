@@ -38,6 +38,15 @@ Your visitor opens `/book/<token>`, picks a time and leaves their name. They get
 a confirmation email with a calendar invite attached and a link to change or
 cancel. You see the booking in the admin, or:
 
+The page asks the two questions separately — **which day**, then **which
+time** — because that is what a visitor is actually deciding, and because
+answering both at once is what a wall of sixty identical buttons looks like.
+The day rail carries only the days that have openings, so the first one is
+always the soonest and is the one selected on arrival; each carries its count,
+so "how busy is Thursday" is answerable without opening it. The chosen day's
+times are cut into morning, afternoon and evening, which is how people ask for
+an appointment long before they have a time in mind.
+
 ```bash
 backlex booking slots clinic         # what is still open
 backlex booking list --resource clinic --status confirmed
@@ -238,9 +247,14 @@ publish.
 
 Each is optional and each is separately optional. **Omitting `theme` is a
 choice, not an oversight**: the page then follows the visitor's own light/dark
-setting, which is what every calendar published before this existed still does
-and what most operators want. Setting only an accent leaves that intact and
-changes only the buttons. `--plain` puts all three back.
+setting, which is what every calendar published before this existed still does.
+Setting only an accent leaves that intact and changes only the buttons.
+`--plain` puts all three back.
+
+One case where you almost certainly want to set it: **embedding**. Inside an
+iframe the surrounding page decides what looks right, not the visitor's
+operating system, and a visitor whose phone is in dark mode will otherwise
+drop a black widget into the middle of your cream-coloured site.
 
 The accent is a `#rrggbb` and nothing else — it is pasted into a style
 declaration, so the server drops anything that is not one rather than trusting

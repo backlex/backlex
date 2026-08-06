@@ -421,6 +421,11 @@ msgstr "\"{1}\" klasöründen {0} dosya seçildi."
 msgid "{0} files selected."
 msgstr "{0} dosya seçildi."
 
+#. placeholder {0}: slots.length
+#: src/client/pages/book.tsx
+msgid "{0} free"
+msgstr "{0} boş"
+
 #. placeholder {0}: value.from
 #: src/client/admin/field-rollup-editor.tsx
 msgid "{0} has no number column to aggregate."
@@ -479,8 +484,8 @@ msgstr "{0} eşleşme · {1} yüklendi"
 
 #. placeholder {0}: data.resource.slotMinutes
 #: src/client/pages/book.tsx
-msgid "{0} minutes"
-msgstr "{0} dakika"
+#~ msgid "{0} minutes"
+#~ msgstr "{0} dakika"
 
 #. placeholder {0}: result.durationMs
 #: src/client/admin/pages/extensions.tsx
@@ -680,6 +685,11 @@ msgstr "{0} güncellendi."
 #: src/client/admin/app.tsx
 #~ msgid "{0}-{1} of {total}"
 #~ msgstr "{total} kaydın {0}-{1} arası"
+
+#. placeholder {0}: data.resource.slotMinutes
+#: src/client/pages/book.tsx
+msgid "{0}-minute appointments"
+msgstr "{0} dakikalık randevular"
 
 #. placeholder {0}: f.name
 #: src/client/admin/storage/index.tsx
@@ -1823,6 +1833,10 @@ msgstr "etkilenen"
 msgid "after"
 msgstr "sonra"
 
+#: src/client/pages/book.tsx
+msgid "Afternoon"
+msgstr "Öğleden sonra"
+
 #: src/client/admin/pages/agents.tsx
 msgid "Agent created."
 msgstr "Ajan oluşturuldu."
@@ -2606,6 +2620,10 @@ msgstr "Otomatik kaydet"
 msgid "Autosave drafts as you type"
 msgstr "Yazdıkça taslakları otomatik kaydet"
 
+#: src/client/pages/book.tsx
+msgid "Availability"
+msgstr "Uygunluk"
+
 #: src/client/admin/account-page.tsx
 msgid "Avatar"
 msgstr "Avatar"
@@ -3073,6 +3091,7 @@ msgstr "Yüklemeyi iptal et"
 #: src/client/admin/parity/approvals.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/signatures.tsx
+#: src/client/pages/book.tsx
 msgid "Cancelled"
 msgstr "İptal edildi"
 
@@ -3143,6 +3162,7 @@ msgstr "Uygulandı"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/relational-pickers.tsx
+#: src/client/pages/book.tsx
 msgid "Change"
 msgstr "Değiştir"
 
@@ -3825,6 +3845,7 @@ msgid "Confirmation message"
 msgstr "Onay mesajı"
 
 #: src/client/admin/parity/booking.tsx
+#: src/client/pages/book.tsx
 msgid "Confirmed"
 msgstr "Onaylandı"
 
@@ -6210,6 +6231,10 @@ msgstr "Yalnızca hatalar"
 #: src/client/admin/flow-builder.tsx
 msgid "Evaluates against current step context. Use <0>{{ var }}</0> for interpolation."
 msgstr "Mevcut adım bağlamına göre değerlendirir. Enterpolasyon için <0>{{ var }}</0> kullanın."
+
+#: src/client/pages/book.tsx
+msgid "Evening"
+msgstr "Akşam"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/flow-builder.tsx
@@ -9437,6 +9462,10 @@ msgstr "Bekleyen sayfalar var"
 msgid "More save options"
 msgstr "Daha fazla kaydetme seçeneği"
 
+#: src/client/pages/book.tsx
+msgid "Morning"
+msgstr "Sabah"
+
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/forms.tsx
 msgid "Move down"
@@ -10461,6 +10490,10 @@ msgstr "Sayısal sütun yok"
 msgid "No OIDC providers configured. Add one to let this workspace's end-users sign in with Okta, Auth0, Keycloak, Entra ID and friends."
 msgstr "Yapılandırılmış OIDC sağlayıcısı yok. Bu çalışma alanının son kullanıcıları Okta, Auth0, Keycloak, Entra ID ve benzerleriyle giriş yapabilsin diye bir tane ekleyin."
 
+#: src/client/pages/book.tsx
+msgid "No open times in the next two weeks."
+msgstr "Önümüzdeki iki hafta içinde açık saat yok."
+
 #: src/client/admin/parity/app-orgs.tsx
 msgid "No organizations yet — create one here, or let end-users start their own from your app."
 msgstr "Henüz organizasyon yok — buradan oluşturun ya da son kullanıcılar uygulamanızdan kendileri açsın."
@@ -10880,8 +10913,8 @@ msgid "Nothing is coming up in this view."
 msgstr "Bu görünümde yaklaşan bir şey yok."
 
 #: src/client/pages/book.tsx
-msgid "Nothing is free in the next two weeks."
-msgstr "Önümüzdeki iki hafta içinde boş yer yok."
+#~ msgid "Nothing is free in the next two weeks."
+#~ msgstr "Önümüzdeki iki hafta içinde boş yer yok."
 
 #: src/client/admin/pages/erasure-card.tsx
 msgid "Nothing is removed at this step — the preview only counts."
@@ -11649,6 +11682,7 @@ msgid "Passwords do not match"
 msgstr "Parolalar eşleşmiyor"
 
 #: src/client/admin/parity/booking.tsx
+#: src/client/pages/book.tsx
 msgid "Past"
 msgstr "Geçmiş"
 
@@ -11947,6 +11981,10 @@ msgstr "Bir tarih alanı seç"
 msgid "Pick a date…"
 msgstr "Tarih seçin…"
 
+#: src/client/pages/book.tsx
+msgid "Pick a day"
+msgstr "Bir gün seçin"
+
 #: src/client/admin/parity/signatures.tsx
 msgid "Pick a document template"
 msgstr "Bir belge şablonu seçin"
@@ -12092,8 +12130,8 @@ msgid "Pick an interface, name the column — additive ALTER TABLE, no existing 
 msgstr "Bir arayüz seçin, sütunu adlandırın — eklemeli ALTER TABLE, mevcut satırlar yeniden yazılmaz."
 
 #: src/client/pages/book.tsx
-msgid "Pick another time"
-msgstr "Başka bir saat seç"
+#~ msgid "Pick another time"
+#~ msgstr "Başka bir saat seç"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "pick at least one event"
@@ -16296,8 +16334,8 @@ msgid "Teams inside this workspace — the customer accounts your end-users belo
 msgstr "Bu çalışma alanı içindeki ekipler — son kullanıcılarınızın bağlı olduğu müşteri hesapları. Üyeler <0>Kullanıcılar</0> havuzundan gelir ve burada bağladığınız roller yalnızca o organizasyon içinde geçerlidir; izin kurallarında <1>$org.id</1> tam olarak bununla eşleşir."
 
 #: src/client/pages/book.tsx
-msgid "Tell them who is coming."
-msgstr "Kimin geleceğini yazın."
+#~ msgid "Tell them who is coming."
+#~ msgstr "Kimin geleceğini yazın."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Template"
@@ -16458,8 +16496,12 @@ msgid "The authorization flow returned no redirect — start over from the clien
 msgstr "Yetkilendirme akışı yönlendirme döndürmedi — istemciden baştan başlayın."
 
 #: src/client/admin/parity/booking.tsx
-msgid "The booking page belongs on your site, so it takes your colours rather than ours. Left on \"Visitor's choice\" it follows each visitor's own light/dark setting."
-msgstr "Rezervasyon sayfası sizin sitenize ait, bu yüzden bizim renklerimizi değil sizinkileri alır. \"Ziyaretçinin tercihi\" bırakılırsa her ziyaretçinin kendi açık/koyu ayarını izler."
+msgid "The booking page belongs on your site, so it takes your colours rather than ours. \"Visitor's choice\" follows each visitor's own light/dark setting — fine for a link you send, but pick a theme when you embed it, or a dark widget can land on a light page."
+msgstr "Rezervasyon sayfası sizin sitenize aittir, bu yüzden bizim renklerimizi değil sizinkileri alır. \"Ziyaretçinin tercihi\" her ziyaretçinin kendi açık/koyu ayarını izler — göndereceğiniz bir bağlantı için uygun, ama gömerken bir tema seçin; yoksa açık renkli bir sayfaya koyu bir widget oturabilir."
+
+#: src/client/admin/parity/booking.tsx
+#~ msgid "The booking page belongs on your site, so it takes your colours rather than ours. Left on \"Visitor's choice\" it follows each visitor's own light/dark setting."
+#~ msgstr "Rezervasyon sayfası sizin sitenize ait, bu yüzden bizim renklerimizi değil sizinkileri alır. \"Ziyaretçinin tercihi\" bırakılırsa her ziyaretçinin kendi açık/koyu ayarını izler."
 
 #: src/client/pages/oauth-consent.tsx
 msgid "The client below wants to call this workspace's MCP tools as you. Your roles and permission rules still gate every call."
@@ -17065,8 +17107,12 @@ msgid "Times are written in {0}. {1} at once, {2} minutes each."
 msgstr "Saatler {0} diliminde yazılır. Aynı anda {1}, her biri {2} dakika."
 
 #: src/client/pages/book.tsx
-msgid "Times shown in {zone}, not your {visitorZone}"
-msgstr "Saatler {zone} diliminde, sizin {visitorZone} diliminizde değil"
+msgid "times in {zone}, not your {visitorZone}"
+msgstr "saatler {zone} diliminde, sizin {visitorZone} diliminizde değil"
+
+#: src/client/pages/book.tsx
+#~ msgid "Times shown in {zone}, not your {visitorZone}"
+#~ msgstr "Saatler {zone} diliminde, sizin {visitorZone} diliminizde değil"
 
 #: src/client/admin/collections-index.tsx
 msgid "Timestamps"
@@ -17111,6 +17157,7 @@ msgstr "çalıştırmak için"
 #: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
+#: src/client/pages/book.tsx
 msgid "Today"
 msgstr "Bugün"
 
@@ -17160,6 +17207,10 @@ msgstr "<0>mcp:write</0> kapsamı olmayan token'lar salt okunur çalışır."
 #: src/client/admin/field-sequence-editor.tsx
 msgid "Tokens:"
 msgstr "Belirteçler:"
+
+#: src/client/pages/book.tsx
+msgid "Tomorrow"
+msgstr "Yarın"
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Tool"
@@ -18689,9 +18740,17 @@ msgstr "kendi API anahtarın"
 msgid "your app's thank-you page"
 msgstr "uygulamanızın teşekkür sayfası"
 
+#: src/client/pages/book.tsx
+msgid "Your appointment"
+msgstr "Randevunuz"
+
 #: src/client/pages/approve-request.tsx
 msgid "Your decision has been recorded. You can close this page."
 msgstr "Kararınız kaydedildi. Bu sayfayı kapatabilirsiniz."
+
+#: src/client/pages/book.tsx
+msgid "Your details"
+msgstr "Bilgileriniz"
 
 #: src/client/admin/account-page.tsx
 msgid "Your display name"

@@ -421,6 +421,11 @@ msgstr "{0} files selected from \"{1}\"."
 msgid "{0} files selected."
 msgstr "{0} files selected."
 
+#. placeholder {0}: slots.length
+#: src/client/pages/book.tsx
+msgid "{0} free"
+msgstr "{0} free"
+
 #. placeholder {0}: value.from
 #: src/client/admin/field-rollup-editor.tsx
 msgid "{0} has no number column to aggregate."
@@ -479,8 +484,8 @@ msgstr "{0} match · {1} loaded"
 
 #. placeholder {0}: data.resource.slotMinutes
 #: src/client/pages/book.tsx
-msgid "{0} minutes"
-msgstr "{0} minutes"
+#~ msgid "{0} minutes"
+#~ msgstr "{0} minutes"
 
 #. placeholder {0}: result.durationMs
 #: src/client/admin/pages/extensions.tsx
@@ -680,6 +685,11 @@ msgstr "{0} updated."
 #: src/client/admin/app.tsx
 #~ msgid "{0}-{1} of {total}"
 #~ msgstr "{0}-{1} of {total}"
+
+#. placeholder {0}: data.resource.slotMinutes
+#: src/client/pages/book.tsx
+msgid "{0}-minute appointments"
+msgstr "{0}-minute appointments"
 
 #. placeholder {0}: f.name
 #: src/client/admin/storage/index.tsx
@@ -1823,6 +1833,10 @@ msgstr "affected"
 msgid "after"
 msgstr "after"
 
+#: src/client/pages/book.tsx
+msgid "Afternoon"
+msgstr "Afternoon"
+
 #: src/client/admin/pages/agents.tsx
 msgid "Agent created."
 msgstr "Agent created."
@@ -2606,6 +2620,10 @@ msgstr "Autosave"
 msgid "Autosave drafts as you type"
 msgstr "Autosave drafts as you type"
 
+#: src/client/pages/book.tsx
+msgid "Availability"
+msgstr "Availability"
+
 #: src/client/admin/account-page.tsx
 msgid "Avatar"
 msgstr "Avatar"
@@ -3073,6 +3091,7 @@ msgstr "Cancel upload"
 #: src/client/admin/parity/approvals.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/signatures.tsx
+#: src/client/pages/book.tsx
 msgid "Cancelled"
 msgstr "Cancelled"
 
@@ -3143,6 +3162,7 @@ msgstr "Carried out"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/relational-pickers.tsx
+#: src/client/pages/book.tsx
 msgid "Change"
 msgstr "Change"
 
@@ -3825,6 +3845,7 @@ msgid "Confirmation message"
 msgstr "Confirmation message"
 
 #: src/client/admin/parity/booking.tsx
+#: src/client/pages/book.tsx
 msgid "Confirmed"
 msgstr "Confirmed"
 
@@ -6210,6 +6231,10 @@ msgstr "Errors only"
 #: src/client/admin/flow-builder.tsx
 msgid "Evaluates against current step context. Use <0>{{ var }}</0> for interpolation."
 msgstr "Evaluates against current step context. Use <0>{{ var }}</0> for interpolation."
+
+#: src/client/pages/book.tsx
+msgid "Evening"
+msgstr "Evening"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/flow-builder.tsx
@@ -9437,6 +9462,10 @@ msgstr "More pages pending"
 msgid "More save options"
 msgstr "More save options"
 
+#: src/client/pages/book.tsx
+msgid "Morning"
+msgstr "Morning"
+
 #: src/client/admin/collection-settings.tsx
 #: src/client/admin/pages/forms.tsx
 msgid "Move down"
@@ -10461,6 +10490,10 @@ msgstr "No numeric columns"
 msgid "No OIDC providers configured. Add one to let this workspace's end-users sign in with Okta, Auth0, Keycloak, Entra ID and friends."
 msgstr "No OIDC providers configured. Add one to let this workspace's end-users sign in with Okta, Auth0, Keycloak, Entra ID and friends."
 
+#: src/client/pages/book.tsx
+msgid "No open times in the next two weeks."
+msgstr "No open times in the next two weeks."
+
 #: src/client/admin/parity/app-orgs.tsx
 msgid "No organizations yet — create one here, or let end-users start their own from your app."
 msgstr "No organizations yet — create one here, or let end-users start their own from your app."
@@ -10880,8 +10913,8 @@ msgid "Nothing is coming up in this view."
 msgstr "Nothing is coming up in this view."
 
 #: src/client/pages/book.tsx
-msgid "Nothing is free in the next two weeks."
-msgstr "Nothing is free in the next two weeks."
+#~ msgid "Nothing is free in the next two weeks."
+#~ msgstr "Nothing is free in the next two weeks."
 
 #: src/client/admin/pages/erasure-card.tsx
 msgid "Nothing is removed at this step — the preview only counts."
@@ -11649,6 +11682,7 @@ msgid "Passwords do not match"
 msgstr "Passwords do not match"
 
 #: src/client/admin/parity/booking.tsx
+#: src/client/pages/book.tsx
 msgid "Past"
 msgstr "Past"
 
@@ -11947,6 +11981,10 @@ msgstr "Pick a date field"
 msgid "Pick a date…"
 msgstr "Pick a date…"
 
+#: src/client/pages/book.tsx
+msgid "Pick a day"
+msgstr "Pick a day"
+
 #: src/client/admin/parity/signatures.tsx
 msgid "Pick a document template"
 msgstr "Pick a document template"
@@ -12092,8 +12130,8 @@ msgid "Pick an interface, name the column — additive ALTER TABLE, no existing 
 msgstr "Pick an interface, name the column — additive ALTER TABLE, no existing rows are rewritten."
 
 #: src/client/pages/book.tsx
-msgid "Pick another time"
-msgstr "Pick another time"
+#~ msgid "Pick another time"
+#~ msgstr "Pick another time"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "pick at least one event"
@@ -16296,8 +16334,8 @@ msgid "Teams inside this workspace — the customer accounts your end-users belo
 msgstr "Teams inside this workspace — the customer accounts your end-users belong to. Members come from <0>Users</0> (the end-user pool), and the roles you bind here apply only within that organization, which is what <1>$org.id</1> matches in permission rules."
 
 #: src/client/pages/book.tsx
-msgid "Tell them who is coming."
-msgstr "Tell them who is coming."
+#~ msgid "Tell them who is coming."
+#~ msgstr "Tell them who is coming."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Template"
@@ -16458,8 +16496,12 @@ msgid "The authorization flow returned no redirect — start over from the clien
 msgstr "The authorization flow returned no redirect — start over from the client."
 
 #: src/client/admin/parity/booking.tsx
-msgid "The booking page belongs on your site, so it takes your colours rather than ours. Left on \"Visitor's choice\" it follows each visitor's own light/dark setting."
-msgstr "The booking page belongs on your site, so it takes your colours rather than ours. Left on \"Visitor's choice\" it follows each visitor's own light/dark setting."
+msgid "The booking page belongs on your site, so it takes your colours rather than ours. \"Visitor's choice\" follows each visitor's own light/dark setting — fine for a link you send, but pick a theme when you embed it, or a dark widget can land on a light page."
+msgstr "The booking page belongs on your site, so it takes your colours rather than ours. \"Visitor's choice\" follows each visitor's own light/dark setting — fine for a link you send, but pick a theme when you embed it, or a dark widget can land on a light page."
+
+#: src/client/admin/parity/booking.tsx
+#~ msgid "The booking page belongs on your site, so it takes your colours rather than ours. Left on \"Visitor's choice\" it follows each visitor's own light/dark setting."
+#~ msgstr "The booking page belongs on your site, so it takes your colours rather than ours. Left on \"Visitor's choice\" it follows each visitor's own light/dark setting."
 
 #: src/client/pages/oauth-consent.tsx
 msgid "The client below wants to call this workspace's MCP tools as you. Your roles and permission rules still gate every call."
@@ -17065,8 +17107,12 @@ msgid "Times are written in {0}. {1} at once, {2} minutes each."
 msgstr "Times are written in {0}. {1} at once, {2} minutes each."
 
 #: src/client/pages/book.tsx
-msgid "Times shown in {zone}, not your {visitorZone}"
-msgstr "Times shown in {zone}, not your {visitorZone}"
+msgid "times in {zone}, not your {visitorZone}"
+msgstr "times in {zone}, not your {visitorZone}"
+
+#: src/client/pages/book.tsx
+#~ msgid "Times shown in {zone}, not your {visitorZone}"
+#~ msgstr "Times shown in {zone}, not your {visitorZone}"
 
 #: src/client/admin/collections-index.tsx
 msgid "Timestamps"
@@ -17111,6 +17157,7 @@ msgstr "to execute"
 #: src/client/admin/collection-kpis.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
+#: src/client/pages/book.tsx
 msgid "Today"
 msgstr "Today"
 
@@ -17160,6 +17207,10 @@ msgstr "Tokens without the <0>mcp:write</0> scope run read-only."
 #: src/client/admin/field-sequence-editor.tsx
 msgid "Tokens:"
 msgstr "Tokens:"
+
+#: src/client/pages/book.tsx
+msgid "Tomorrow"
+msgstr "Tomorrow"
 
 #: src/client/admin/pages/ask-ai/runs-tab.tsx
 msgid "Tool"
@@ -18689,9 +18740,17 @@ msgstr "your API key"
 msgid "your app's thank-you page"
 msgstr "your app's thank-you page"
 
+#: src/client/pages/book.tsx
+msgid "Your appointment"
+msgstr "Your appointment"
+
 #: src/client/pages/approve-request.tsx
 msgid "Your decision has been recorded. You can close this page."
 msgstr "Your decision has been recorded. You can close this page."
+
+#: src/client/pages/book.tsx
+msgid "Your details"
+msgstr "Your details"
 
 #: src/client/admin/account-page.tsx
 msgid "Your display name"

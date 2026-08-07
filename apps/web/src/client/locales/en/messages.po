@@ -2729,6 +2729,7 @@ msgstr "B-tree index — speeds up filter/sort by this column."
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/database-import.tsx
+#: src/client/pages/book.tsx
 #: src/client/pages/public-form.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Back"
@@ -12646,6 +12647,7 @@ msgstr "Post saved."
 msgid "POST to any HTTPS endpoint when collection events fire."
 msgstr "POST to any HTTPS endpoint when collection events fire."
 
+#: src/client/pages/book.tsx
 #: src/client/pages/public-form.tsx
 msgid "Powered by backlex"
 msgstr "Powered by backlex"

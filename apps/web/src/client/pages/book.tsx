@@ -3,7 +3,7 @@
 // The booker has no account and never gets one. The token in the URL is the
 // whole grant, so this page talks only to `/api/public/book/:token`.
 //
-// Three things here are deliberate rather than stylistic:
+// Four things here are deliberate rather than stylistic:
 //
 // - **Slots are grouped by the RESOURCE's local day, not the visitor's.** The
 //   API returns instants; which day they fall on depends on whose clock you
@@ -15,11 +15,18 @@
 //   only ever posts one of the instants the server just handed it. The server
 //   re-checks anyway, but a UI that invites an unbookable time is a UI that
 //   spends its day showing errors.
-// - The page is self-styled with a `<style>` block rather than the admin
-//   design system, exactly like the public form and signing pages: nobody
-//   booking a haircut should be loading the admin bundle's theme, and a fixed
-//   light/dark pair here is stable regardless of what the workspace runs.
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+// - The page is self-styled rather than dressed in the admin design system,
+//   exactly like the public form and signing pages: nobody booking a haircut
+//   should be loading the admin bundle's theme.
+// - **It is the same page as the public form.** A workspace that publishes a
+//   form and a calendar publishes two pages a stranger reads back to back, so
+//   the frame, the palette, the type scale, the controls, the progress bar,
+//   the success mark and the footer are the form's — read from
+//   `@/lib/public-theme` rather than restated. What differs here is only what
+//   is genuinely different: a day rail and a grid of times. The stylesheet
+//   below exists for the things inline styles cannot express (a scroll
+//   snapport, `:hover`, `prefers-color-scheme`), not for a second look.
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useParams } from "react-router";
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
@@ -30,69 +37,95 @@ import {
 } from "@/admin/api";
 import {
   accentInk,
+  DARK,
+  DEFAULT_ACCENT,
   fontStack,
+  LIGHT,
   paletteFor,
   safeAccent,
   useFonts,
+  type Palette,
   type PublicAppearance,
 } from "@/lib/public-theme";
 
+/** The palette, as the custom properties the stylesheet below reads. Written
+ *  once here so the `prefers-color-scheme` defaults and a resource that picked
+ *  a theme cannot drift apart — and so this page and a form published by the
+ *  same workspace agree about what "light" is down to the border alpha. */
+const vars = (p: Palette): string => `--bg:${p.bg}; --card:${p.card}; --text:${p.text};
+  --muted:${p.muted}; --faint:${p.faint}; --line:${p.border}; --pad:${p.inputBg};`;
+
 const CSS = `
-.bxb { --bg:#f4f4f7; --card:#fff; --text:#16151f; --muted:#5f5c72; --line:#e2e0ea;
-  --accent:#4c39d4; --accent-fg:#fff; --danger:#b3261e; --pad:#fbfbfd;
-  --shadow:0 1px 2px rgba(16,15,35,.05), 0 10px 30px -16px rgba(16,15,35,.22);
-  min-height:100dvh; background:var(--bg); color:var(--text);
-  font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;
-  padding:20px 16px 28px; -webkit-font-smoothing:antialiased; }
-@media (prefers-color-scheme: dark){ .bxb{ --bg:#0b0a12; --card:#141222; --text:#eceaf7;
-  --muted:#a09bbd; --line:#282343; --accent:#8b7bff; --accent-fg:#100c22; --danger:#ff8a80; --pad:#1b1830;
-  --shadow:0 1px 2px rgba(0,0,0,.4); } }
-.bxb-wrap{ max-width:560px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
-.bxb-card{ position:relative; background:var(--card); border:1px solid var(--line);
-  border-radius:16px; padding:20px; box-shadow:var(--shadow); }
+.bxb { ${vars(DARK)}
+  --accent:${DEFAULT_ACCENT}; --accent-fg:${accentInk(DEFAULT_ACCENT)}; --danger:#e5484d;
+  /* One number the card's padding and everything that bleeds through it both
+     read, so a rail can reach the card edge at any width. */
+  --cardpad:clamp(20px, 5vw, 36px);
+  min-height:100svh; background:var(--bg); color:var(--text);
+  font-family:${fontStack("sans")}; font-size:14px; line-height:1.55;
+  display:flex; justify-content:center; align-items:flex-start;
+  padding:48px 16px; box-sizing:border-box; -webkit-font-smoothing:antialiased; }
+@media (prefers-color-scheme: light){ .bxb{ ${vars(LIGHT)} } }
+.bxb-wrap{ width:100%; max-width:620px; }
+.bxb-card{ background:var(--card); border:1px solid var(--line); border-radius:16px;
+  padding:var(--cardpad); box-sizing:border-box; }
+.bxb-foot{ text-align:center; font-size:11.5px; color:var(--faint); margin:16px 0 0; }
 
-/* The operator's colour is present before anything is touched — one quiet
-   3px seam along the top of the first card, and nowhere else. */
-.bxb-card-lead{ overflow:hidden; }
-.bxb-card-lead::before{ content:""; position:absolute; inset:0 0 auto; height:3px; background:var(--accent); }
+.bxb h1{ font-size:clamp(22px, 5vw, 28px); margin:0; font-weight:600; letter-spacing:-.02em;
+  line-height:1.2; }
+.bxb h2{ font-size:16.5px; font-weight:600; margin:0 0 12px; }
+.bxb-sub{ color:var(--muted); font-size:14px; margin:8px 0 0; }
+.bxb-meta{ color:var(--faint); font-size:11.5px; margin:8px 0 0; }
 
-.bxb h1{ font-size:23px; margin:0; font-weight:650; letter-spacing:-.022em; line-height:1.2; }
-.bxb-sub{ color:var(--muted); font-size:13px; margin:0; }
-.bxb-meta{ color:var(--muted); font-size:12.5px; margin:7px 0 0; }
+/* Which of the two questions is open — the form's step bar, for the same
+   reason: a page that puts one thing in front of you owes you the count. */
+.bxb-steps{ display:flex; align-items:center; gap:8px; margin-top:18px; }
+.bxb-steps span{ height:3px; flex:1; border-radius:2px; background:var(--line); }
+.bxb-steps span[data-on="1"]{ background:var(--accent); }
+.bxb-steps b{ font:400 10px 'JetBrains Mono',ui-monospace,monospace; color:var(--faint); }
 
-/* eyebrow — the one repeated structural device. Says what KIND of thing the
-   rows under it are; never used decoratively. */
-.bxb-eyebrow{ font-size:10.5px; font-weight:650; letter-spacing:.1em; text-transform:uppercase;
-  color:var(--muted); margin:0 0 9px; }
+/* eyebrow — the one device this page adds. Says what KIND of thing the rows
+   under it are; never used decoratively. */
+.bxb-eyebrow{ font-size:10.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--faint); margin:0 0 9px; }
 
 /* The day rail: only days that HAVE openings, so the first chip is always the
    soonest one. Numerals are the display type — this page is made of numbers. */
 /* scroll-padding-inline is load-bearing, not a nicety. A scroll snapport is
    the PADDING box, so scroll-snap-align:start lines a chip up with the
    container's BORDER edge — and mandatory snapping happens on load, not only
-   on scroll. Without it the rail silently scrolls itself by its own 20px of
-   padding, and the first chip sits flush against the card edge while every
-   other line on the card is indented. */
+   on scroll. Without it the rail silently scrolls itself by its own padding,
+   and the first chip sits flush against the card edge while every other line
+   on the card is indented. */
 .bxb-rail{ display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory;
-  margin:0 -20px; padding:2px 20px 6px; scroll-padding-inline:20px; scrollbar-width:none; }
+  margin-inline:calc(-1 * var(--cardpad)); padding:2px var(--cardpad) 6px;
+  scroll-padding-inline:var(--cardpad); scrollbar-width:none; }
+/* A chip sliced in half by the card edge reads as a rendering fault rather
+   than as "there is more this way", so the last 36px fade — but only while
+   there IS more. At a desktop width every day fits, and a fade with nothing
+   behind it reads as the last day being greyed out. The data-more attribute is
+   measured; see useRailFade. Only the right edge, the only one that cuts. */
+.bxb-rail[data-more="1"]{
+  -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 36px), transparent);
+  mask-image:linear-gradient(to right, #000 calc(100% - 36px), transparent); }
 .bxb-rail::-webkit-scrollbar{ display:none; }
 .bxb-chip{ scroll-snap-align:start; flex:0 0 auto; min-width:64px; appearance:none; cursor:pointer;
-  border:1px solid var(--line); background:var(--pad); color:var(--text); border-radius:13px;
+  border:1px solid var(--line); background:var(--pad); color:var(--text); border-radius:10px;
   padding:9px 11px 8px; font:inherit; text-align:center; white-space:nowrap;
   transition:background .12s, border-color .12s; }
 .bxb-chip[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:var(--accent-fg); }
-.bxb-chip-dow{ display:block; font-size:10px; font-weight:650; letter-spacing:.08em;
+.bxb-chip-dow{ display:block; font-size:10px; font-weight:600; letter-spacing:.08em;
   text-transform:uppercase; opacity:.72; }
-.bxb-chip-num{ display:block; font-size:21px; font-weight:620; line-height:1.25;
+.bxb-chip-num{ display:block; font-size:21px; font-weight:600; line-height:1.25;
   font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
-.bxb-chip-free{ display:block; font-size:10.5px; font-weight:500; opacity:.68;
+.bxb-chip-free{ display:block; font-size:10.5px; font-weight:400; opacity:.68;
   font-variant-numeric:tabular-nums; }
 
-.bxb-daytitle{ font-size:15px; font-weight:620; margin:16px 0 12px; letter-spacing:-.01em; }
+.bxb-daytitle{ font-size:14px; font-weight:600; margin:18px 0 14px; letter-spacing:-.01em; }
 .bxb-part + .bxb-part{ margin-top:16px; }
 .bxb-times{ display:grid; grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); gap:7px; }
 .bxb-time{ appearance:none; min-height:44px; border:1px solid var(--line); background:var(--pad);
-  color:var(--text); border-radius:11px; padding:9px 6px; font:inherit; font-weight:550;
+  color:var(--text); border-radius:10px; padding:9px 6px; font:inherit; font-weight:500;
   font-variant-numeric:tabular-nums; cursor:pointer; text-align:center;
   transition:background .12s, border-color .12s; }
 .bxb-time:hover{ border-color:var(--accent); }
@@ -100,32 +133,42 @@ const CSS = `
 
 /* The chosen time, once the grid has been put away. */
 .bxb-chosen{ display:flex; align-items:center; gap:12px; border-left:3px solid var(--accent);
-  padding-left:12px; margin:0 0 16px; }
-.bxb-chosen-when{ font-size:15px; font-weight:620; letter-spacing:-.01em; }
+  padding-left:12px; margin:0 0 20px; }
+.bxb-chosen-when{ font-size:15px; font-weight:600; letter-spacing:-.01em; }
 
-.bxb-btn{ appearance:none; min-height:44px; border:1px solid var(--line); background:transparent;
-  color:var(--text); border-radius:11px; padding:10px 16px; font:inherit; font-weight:550;
+/* The success / dead-end mark, and the same controls the form draws. */
+.bxb-mark{ width:40px; height:40px; border-radius:50%; display:grid; place-items:center;
+  margin-bottom:14px; background:color-mix(in srgb, var(--accent) 20%, transparent); }
+/* Element-qualified so it outranks the bare h1 rule above — a dead link and a
+   confirmation are a line of prose, not the name of a calendar. */
+.bxb h1.bxb-title-sm{ font-size:19px; margin:0 0 8px; font-weight:600; letter-spacing:-.01em; }
+
+.bxb-btn{ appearance:none; height:40px; border:1px solid var(--line); background:transparent;
+  color:var(--muted); border-radius:10px; padding:0 16px; font:inherit; font-size:13.5px;
   cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
-.bxb-btn:disabled{ opacity:.5; cursor:not-allowed; }
-.bxb-btn-primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-fg); }
-.bxb-btn-danger{ color:var(--danger); border-color:var(--danger); }
-.bxb-btn-quiet{ border:0; padding:4px 2px; min-height:0; margin-left:auto; color:var(--muted);
-  font-size:13px; text-decoration:underline; text-underline-offset:3px; }
-.bxb-row{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-.bxb-field{ display:flex; flex-direction:column; gap:5px; margin-bottom:13px; }
-.bxb-field label{ font-size:13px; font-weight:550; }
-.bxb-input{ width:100%; box-sizing:border-box; border:1px solid var(--line); border-radius:11px;
-  background:var(--pad); color:var(--text); font:inherit; padding:11px 12px; }
-.bxb-input:focus{ outline:none; border-color:var(--accent); }
-textarea.bxb-input{ resize:vertical; min-height:78px; }
-.bxb-err{ color:var(--danger); font-size:13px; margin:0 0 10px; }
-.bxb-note{ color:var(--muted); font-size:12px; margin:0; }
-.bxb-ok{ font-size:17px; font-weight:620; margin:0 0 6px; letter-spacing:-.015em; }
+.bxb-btn:disabled{ opacity:.55; cursor:not-allowed; }
+.bxb-btn-primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-fg);
+  padding:0 20px; font-weight:600; }
+.bxb-btn-danger{ color:var(--danger); border-color:color-mix(in srgb, var(--danger) 45%, transparent); }
+.bxb-btn-quiet{ border:0; padding:4px 2px; height:auto; margin-left:auto; color:var(--muted);
+  font-size:11.5px; text-decoration:underline; text-underline-offset:2px; }
+.bxb-row{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+.bxb-field{ display:flex; flex-direction:column; gap:6px; margin-bottom:18px; min-width:0; }
+.bxb-field label{ font-size:13.5px; font-weight:500; }
+.bxb-req{ color:var(--accent); }
+.bxb-input{ width:100%; box-sizing:border-box; height:40px; border:1px solid var(--line);
+  border-radius:10px; background:var(--pad); color:var(--text); font:inherit; font-size:14px;
+  padding:0 12px; outline:none; }
+.bxb-input:focus{ border-color:var(--accent); }
+select.bxb-input{ appearance:auto; }
+textarea.bxb-input{ height:auto; resize:vertical; min-height:78px; padding:10px 12px; }
+.bxb-err{ color:var(--danger); font-size:12.5px; margin:0 0 14px; }
+.bxb-note{ color:var(--faint); font-size:11.5px; margin:0; }
 .bxb-skel{ background:linear-gradient(90deg,var(--line) 25%,var(--pad) 37%,var(--line) 63%);
-  background-size:400% 100%; animation:bxb-sh 1.4s ease infinite; border-radius:11px; }
+  background-size:400% 100%; animation:bxb-sh 1.4s ease infinite; border-radius:10px; }
 @keyframes bxb-sh{ 0%{background-position:100% 50%} 100%{background-position:0 50%} }
 
-.bxb :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:11px; }
+.bxb :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:10px; }
 @media (prefers-reduced-motion: reduce){
   .bxb *,.bxb *::before{ animation-duration:.01ms !important; animation-iteration-count:1 !important;
     transition-duration:.01ms !important; }
@@ -145,6 +188,38 @@ const usePageStyles = () => {
     document.head.appendChild(style);
     return () => style.remove();
   }, []);
+};
+
+/**
+ * Whether the day rail still has days to the right of what is on screen.
+ *
+ * Overflow is not something CSS can ask about, and the fade that marks it is a
+ * claim — "there is more this way" — that has to be false when it is. So it is
+ * measured: on mount, on scroll, on resize, and whenever the number of days
+ * changes underneath (which it does every time a slot is taken and the grid
+ * reloads).
+ *
+ * Returns a ref callback rather than a ref object because the listeners have to
+ * attach the moment the element exists, and the rail is only rendered on one of
+ * the two steps.
+ */
+const useRailFade = (dayCount: number) => {
+  const [rail, setRail] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!rail) return;
+    const sync = () => {
+      rail.dataset.more = rail.scrollWidth - rail.clientWidth - rail.scrollLeft > 1 ? "1" : "0";
+    };
+    sync();
+    rail.addEventListener("scroll", sync, { passive: true });
+    const ro = new ResizeObserver(sync);
+    ro.observe(rail);
+    return () => {
+      rail.removeEventListener("scroll", sync);
+      ro.disconnect();
+    };
+  }, [rail, dayCount]);
+  return setRail;
 };
 
 /** A fortnight is what the server defaults to; asking for the same window
@@ -213,22 +288,19 @@ const appearanceVars = (s: PublicAppearance | null | undefined): Record<string, 
     vars["--card"] = p.card;
     vars["--text"] = p.text;
     vars["--muted"] = p.muted;
+    vars["--faint"] = p.faint;
     vars["--line"] = p.border;
     vars["--pad"] = p.inputBg;
-    vars["--danger"] = s.theme === "light" ? "#b3261e" : "#ff8a80";
-    // The stylesheet drops the card shadow under a dark colour scheme, where
-    // it only muddies the edge. A forced theme has to carry its own, or a
-    // light page on a dark-preferring visitor's screen loses its lift.
-    vars["--shadow"] =
-      s.theme === "light"
-        ? "0 1px 2px rgba(16,15,35,.05), 0 10px 30px -16px rgba(16,15,35,.22)"
-        : "0 1px 2px rgba(0,0,0,.4)";
   }
   if (s.accent) {
     const accent = safeAccent(s.accent);
     vars["--accent"] = accent;
     vars["--accent-fg"] = accentInk(accent);
   }
+  // The font is the form's default — Manrope — unless the resource named
+  // another. A calendar that never opened the appearance panel still has to
+  // look like the form next to it, so "unset" is a choice made here rather
+  // than a fall-through to whatever the browser draws body text in.
   if (s.font) vars.fontFamily = fontStack(s.font);
   return vars;
 };
@@ -278,28 +350,59 @@ const partOfDay = (hour: number): "morning" | "afternoon" | "evening" =>
 
 const PART_ORDER = ["morning", "afternoon", "evening"] as const;
 
+/** The accent disc the form ends on. Same size, same tint, same stroke — an
+ *  appointment confirmed and a form submitted are the same moment. */
+function Mark({ children }: { children: ReactNode }) {
+  return (
+    <div className="bxb-mark">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8">
+        {children}
+      </svg>
+    </div>
+  );
+}
+
+const CHECK = <path d="M20 6L9 17l-5-5" />;
+const CLOCK = (
+  <>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </>
+);
+
+/** Every state of both pages sits in this frame, so a dead link and a
+ *  confirmed appointment are recognisably the same page. */
+function Shell({ style, children }: { style: CSSProperties; children: ReactNode }) {
+  return (
+    <div className="bxb" style={style}>
+      <div className="bxb-wrap">
+        {children}
+        <p className="bxb-foot">
+          <Trans>Powered by backlex</Trans>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function Skeleton() {
   return (
-    <>
-      <div className="bxb-card bxb-card-lead">
-        <div className="bxb-skel" style={{ height: 23, width: "52%", marginBottom: 9 }} />
-        <div className="bxb-skel" style={{ height: 12, width: "38%" }} />
+    <div className="bxb-card">
+      <div className="bxb-skel" style={{ height: 26, width: "52%", marginBottom: 10 }} />
+      <div className="bxb-skel" style={{ height: 13, width: "38%", marginBottom: 26 }} />
+      <div className="bxb-skel" style={{ height: 10, width: 74, marginBottom: 11 }} />
+      <div style={{ display: "flex", gap: 8, marginBottom: 22 }}>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="bxb-skel" style={{ height: 66, width: 64, flex: "0 0 auto" }} />
+        ))}
       </div>
-      <div className="bxb-card">
-        <div className="bxb-skel" style={{ height: 10, width: 74, marginBottom: 11 }} />
-        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="bxb-skel" style={{ height: 66, width: 64, flex: "0 0 auto" }} />
-          ))}
-        </div>
-        <div className="bxb-skel" style={{ height: 15, width: "44%", marginBottom: 13 }} />
-        <div className="bxb-times">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bxb-skel" style={{ height: 44 }} />
-          ))}
-        </div>
+      <div className="bxb-skel" style={{ height: 14, width: "44%", marginBottom: 14 }} />
+      <div className="bxb-times">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="bxb-skel" style={{ height: 44 }} />
+        ))}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -351,6 +454,7 @@ export function Book() {
 
   const zone = data?.resource.timeZone ?? "UTC";
   const days = useMemo(() => groupByDay(data?.slots ?? [], zone), [data, zone]);
+  const railRef = useRailFade(days.length);
 
   /**
    * Which day is open, as a day KEY rather than an index.
@@ -381,9 +485,9 @@ export function Book() {
 
   const look = data?.resource.settings ?? null;
   const style = useMemo(() => appearanceVars(look), [look]);
-  // Only fetch the webfonts a chosen face actually needs. A calendar that
-  // never picked one should not cost its visitors a stylesheet request.
-  useFonts(Boolean(look?.font) && look?.font !== "system");
+  // The page draws in the same face the public form does, so the webfont is
+  // fetched unless the resource explicitly asked for the visitor's own.
+  useFonts(look?.font !== "system");
 
   /** Named only when it differs from the resource's, because that is the only
    *  time it can mislead. */
@@ -437,320 +541,340 @@ export function Book() {
     }
   };
 
+  if (!loaded) {
+    return (
+      <Shell style={style as CSSProperties}>
+        <Skeleton />
+      </Shell>
+    );
+  }
+
+  if (!data) {
+    return (
+      <Shell style={style as CSSProperties}>
+        <div className="bxb-card">
+          <Mark>{CLOCK}</Mark>
+          <h1 className="bxb-title-sm">
+            <Trans>This booking link is not valid</Trans>
+          </h1>
+          <p className="bxb-sub" style={{ margin: 0 }}>
+            <Trans>It may have been replaced, or the calendar may be closed.</Trans>
+          </p>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (done) {
+    return (
+      <Shell style={style as CSSProperties}>
+        <div className="bxb-card">
+          <Mark>{CHECK}</Mark>
+          <h1 className="bxb-title-sm">
+            <Trans>You are booked in.</Trans>
+          </h1>
+          <p className="bxb-sub" style={{ margin: 0 }}>
+            {fmt(done.start, zone, { dateStyle: "full", timeStyle: "short" })}
+            {zonesDiffer ? ` (${zone})` : ""}
+          </p>
+          {data.resource.confirmationMessage && (
+            <p className="bxb-sub">{data.resource.confirmationMessage}</p>
+          )}
+          <p className="bxb-note" style={{ marginTop: 16 }}>
+            {done.emailed ? (
+              <Trans>A confirmation is on its way, with a calendar invite attached.</Trans>
+            ) : (
+              <Trans>Keep this link — it is how you change or cancel this booking.</Trans>
+            )}
+          </p>
+          <p className="bxb-row" style={{ marginTop: 16 }}>
+            <a className="bxb-btn" href={done.manageUrl}>
+              <Trans>Change or cancel</Trans>
+            </a>
+          </p>
+        </div>
+      </Shell>
+    );
+  }
+
+  const bookable = days.length > 0 && activeDay !== null;
+  const step = picked ? 1 : 0;
+
   return (
-    <div className="bxb" style={style as CSSProperties}>
-      <div className="bxb-wrap">
-        {!loaded ? (
-          <Skeleton />
-        ) : !data ? (
-          <div className="bxb-card">
-            <h1>
-              <Trans>This booking link is not valid</Trans>
-            </h1>
-            <p className="bxb-sub">
-              <Trans>It may have been replaced, or the calendar may be closed.</Trans>
-            </p>
+    <Shell style={style as CSSProperties}>
+      <div className="bxb-card">
+        <h1>{data.resource.name}</h1>
+        {data.resource.description && <p className="bxb-sub">{data.resource.description}</p>}
+        <p className="bxb-meta">
+          <Trans>{data.resource.slotMinutes}-minute appointments</Trans>
+          {zonesDiffer ? (
+            <>
+              {" · "}
+              <Trans>times in {zone}, not your {visitorZone}</Trans>
+            </>
+          ) : null}
+        </p>
+
+        {/* Two questions, asked one at a time: which day, then which time.
+            Both at once is what a wall of identical buttons looks like — and
+            asking them one at a time is what earns the step bar. */}
+        {bookable && (
+          <div className="bxb-steps">
+            {[0, 1].map((i) => (
+              <span key={i} data-on={i <= step ? "1" : "0"} />
+            ))}
+            <b>{step + 1}/2</b>
           </div>
-        ) : done ? (
-          <div className="bxb-card bxb-card-lead">
-            <p className="bxb-eyebrow">
-              <Trans>Confirmed</Trans>
-            </p>
-            <p className="bxb-ok">
-              <Trans>You are booked in.</Trans>
-            </p>
-            <p className="bxb-sub">
-              {fmt(done.start, zone, { dateStyle: "full", timeStyle: "short" })}
-              {zonesDiffer ? ` (${zone})` : ""}
-            </p>
-            {data.resource.confirmationMessage && (
-              <p className="bxb-sub" style={{ marginTop: 12 }}>
-                {data.resource.confirmationMessage}
+        )}
+
+        <div style={{ marginTop: 22 }}>
+          {!bookable ? (
+            <>
+              <h2>
+                <Trans>Availability</Trans>
+              </h2>
+              <p className="bxb-sub" style={{ margin: 0 }}>
+                <Trans>No open times in the next two weeks.</Trans>
               </p>
-            )}
-            <p className="bxb-note" style={{ marginTop: 16 }}>
-              {done.emailed ? (
-                <Trans>A confirmation is on its way, with a calendar invite attached.</Trans>
-              ) : (
-                <Trans>Keep this link — it is how you change or cancel this booking.</Trans>
-              )}
-            </p>
-            <p className="bxb-row" style={{ marginTop: 12 }}>
-              <a className="bxb-btn" href={done.manageUrl}>
-                <Trans>Change or cancel</Trans>
-              </a>
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="bxb-card bxb-card-lead">
-              <h1>{data.resource.name}</h1>
-              {data.resource.description && (
-                <p className="bxb-sub" style={{ marginTop: 6 }}>
-                  {data.resource.description}
-                </p>
-              )}
-              <p className="bxb-meta">
-                <Trans>{data.resource.slotMinutes}-minute appointments</Trans>
-                {zonesDiffer ? (
-                  <>
-                    {" · "}
-                    <Trans>times in {zone}, not your {visitorZone}</Trans>
-                  </>
-                ) : null}
-              </p>
-            </div>
-
-            {/* Two questions, asked one at a time: which day, then which time.
-                Both at once is what a wall of identical buttons looks like. */}
-            {!picked && (
-              <div className="bxb-card">
-                {days.length === 0 || !activeDay ? (
-                  <>
-                    <p className="bxb-eyebrow">
-                      <Trans>Availability</Trans>
-                    </p>
-                    <p className="bxb-sub">
-                      <Trans>No open times in the next two weeks.</Trans>
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="bxb-eyebrow">
-                      <Trans>Pick a day</Trans>
-                    </p>
-                    <div className="bxb-rail" role="tablist">
-                      {days.map(([key, slots]) => {
-                        const first = slots[0]!.start;
-                        const on = key === activeDay[0];
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            role="tab"
-                            className="bxb-chip"
-                            aria-pressed={on}
-                            aria-selected={on}
-                            onClick={() => setOpenDay(key)}
-                          >
-                            <span className="bxb-chip-dow">
-                              {key === todayKey
-                                ? t`Today`
-                                : key === tomorrowKey
-                                  ? t`Tomorrow`
-                                  : fmt(first, zone, { weekday: "short" })}
-                            </span>
-                            <span className="bxb-chip-num">
-                              {fmt(first, zone, { day: "numeric" })}
-                            </span>
-                            <span className="bxb-chip-free">
-                              <Trans>{slots.length} free</Trans>
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <div className="bxb-daytitle">
-                      {fmt(activeDay[1][0]!.start, zone, {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long",
-                      })}
-                    </div>
-
-                    {parts.map(({ part, slots }) => (
-                      <div key={part} className="bxb-part">
-                        <p className="bxb-eyebrow">
-                          {part === "morning" ? (
-                            <Trans>Morning</Trans>
-                          ) : part === "afternoon" ? (
-                            <Trans>Afternoon</Trans>
-                          ) : (
-                            <Trans>Evening</Trans>
-                          )}
-                        </p>
-                        <div className="bxb-times">
-                          {slots.map((s) => (
-                            <button
-                              key={s.start}
-                              type="button"
-                              className="bxb-time"
-                              onClick={() => setPicked(s)}
-                            >
-                              {fmt(s.start, zone, { hour: "numeric", minute: "2-digit" })}
-                              {data.resource.capacity > 1 && (
-                                <small>
-                                  <Trans>{s.remaining} left</Trans>
-                                </small>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
-
-            {picked && (
-              <div className="bxb-card">
-                {/* The grid is put away once a time is chosen — the third step
-                    is filling this in, and a phone should not have to scroll
-                    past everything it has already answered. */}
-                <div className="bxb-chosen">
-                  <div>
-                    <p className="bxb-eyebrow" style={{ margin: "0 0 2px" }}>
-                      <Trans>Your appointment</Trans>
-                    </p>
-                    <div className="bxb-chosen-when">
-                      {fmt(picked.start, zone, { dateStyle: "long", timeStyle: "short" })}
-                    </div>
-                  </div>
-                  <button type="button" className="bxb-btn bxb-btn-quiet" onClick={() => setPicked(null)}>
-                    <Trans>Change</Trans>
-                  </button>
-                </div>
-
-                <p className="bxb-eyebrow">
-                  <Trans>Your details</Trans>
-                </p>
-
-                <div className="bxb-field">
-                  <label htmlFor="bxb-name">
-                    <Trans>Name</Trans>
-                  </label>
-                  <input
-                    id="bxb-name"
-                    className="bxb-input"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    autoComplete="name"
-                  />
-                </div>
-                <div className="bxb-field">
-                  <label htmlFor="bxb-email">
-                    <Trans>Email</Trans>
-                  </label>
-                  <input
-                    id="bxb-email"
-                    className="bxb-input"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
-                  />
-                  <p className="bxb-note">
-                    <Trans>Where the confirmation and the cancel link go.</Trans>
-                  </p>
-                </div>
-                <div className="bxb-field">
-                  <label htmlFor="bxb-phone">
-                    <Trans>Phone</Trans>
-                  </label>
-                  <input
-                    id="bxb-phone"
-                    className="bxb-input"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    autoComplete="tel"
-                  />
-                </div>
-
-                {(data.resource.questions ?? []).map((q) => {
-                  const key = String(q.name ?? "");
-                  const label = String(q.label ?? key);
-                  const kind = questionType(q);
-                  const options = Array.isArray(q.options) ? (q.options as unknown[]).map(String) : [];
-                  const value = answers[key] ?? "";
-                  const set = (v: string) => setAnswers({ ...answers, [key]: v });
+            </>
+          ) : !picked ? (
+            <>
+              <h2>
+                <Trans>Pick a day</Trans>
+              </h2>
+              <div className="bxb-rail" role="tablist" ref={railRef}>
+                {days.map(([key, slots]) => {
+                  const first = slots[0]!.start;
+                  const on = key === activeDay[0];
                   return (
-                    <div key={key} className="bxb-field">
-                      <label htmlFor={`bxb-q-${key}`}>
-                        {label}
-                        {q.required === true ? " *" : ""}
-                      </label>
-                      {kind === "select" ? (
-                        <select
-                          id={`bxb-q-${key}`}
-                          className="bxb-input"
-                          value={value}
-                          onChange={(e) => set(e.target.value)}
-                        >
-                          <option value="">{t`Choose…`}</option>
-                          {options.map((o) => (
-                            <option key={o} value={o}>
-                              {o}
-                            </option>
-                          ))}
-                        </select>
-                      ) : kind === "boolean" ? (
-                        // A dropdown rather than a checkbox, so that "required"
-                        // keeps meaning "must be answered". An unticked box is
-                        // indistinguishable from an untouched one, which would
-                        // make a required yes/no impossible to enforce.
-                        <select
-                          id={`bxb-q-${key}`}
-                          className="bxb-input"
-                          value={value}
-                          onChange={(e) => set(e.target.value)}
-                        >
-                          <option value="">{t`Choose…`}</option>
-                          <option value="true">{t`Yes`}</option>
-                          <option value="false">{t`No`}</option>
-                        </select>
-                      ) : kind === "textarea" ? (
-                        <textarea
-                          id={`bxb-q-${key}`}
-                          className="bxb-input"
-                          rows={3}
-                          value={value}
-                          onChange={(e) => set(e.target.value)}
-                        />
-                      ) : (
-                        <input
-                          id={`bxb-q-${key}`}
-                          className="bxb-input"
-                          value={value}
-                          onChange={(e) => set(e.target.value)}
-                        />
-                      )}
-                    </div>
+                    <button
+                      key={key}
+                      type="button"
+                      role="tab"
+                      className="bxb-chip"
+                      aria-pressed={on}
+                      aria-selected={on}
+                      onClick={() => setOpenDay(key)}
+                    >
+                      <span className="bxb-chip-dow">
+                        {key === todayKey
+                          ? t`Today`
+                          : key === tomorrowKey
+                            ? t`Tomorrow`
+                            : fmt(first, zone, { weekday: "short" })}
+                      </span>
+                      <span className="bxb-chip-num">{fmt(first, zone, { day: "numeric" })}</span>
+                      <span className="bxb-chip-free">
+                        <Trans>{slots.length} free</Trans>
+                      </span>
+                    </button>
                   );
                 })}
+              </div>
 
-                {/* Honeypot — off-screen rather than `display:none`, which the
-                    better bots skip. Humans never reach it: no tab stop, no
-                    label, hidden from the accessibility tree. */}
+              <div className="bxb-daytitle">
+                {fmt(activeDay[1][0]!.start, zone, {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+              </div>
+
+              {parts.map(({ part, slots }) => (
+                <div key={part} className="bxb-part">
+                  <p className="bxb-eyebrow">
+                    {part === "morning" ? (
+                      <Trans>Morning</Trans>
+                    ) : part === "afternoon" ? (
+                      <Trans>Afternoon</Trans>
+                    ) : (
+                      <Trans>Evening</Trans>
+                    )}
+                  </p>
+                  <div className="bxb-times">
+                    {slots.map((s) => (
+                      <button
+                        key={s.start}
+                        type="button"
+                        className="bxb-time"
+                        onClick={() => setPicked(s)}
+                      >
+                        {fmt(s.start, zone, { hour: "numeric", minute: "2-digit" })}
+                        {data.resource.capacity > 1 && (
+                          <small>
+                            <Trans>{s.remaining} left</Trans>
+                          </small>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </>
+          ) : (
+            <>
+              {/* The grid is put away once a time is chosen — the third step
+                  is filling this in, and a phone should not have to scroll
+                  past everything it has already answered. */}
+              <div className="bxb-chosen">
+                <div>
+                  <p className="bxb-eyebrow" style={{ margin: "0 0 2px" }}>
+                    <Trans>Your appointment</Trans>
+                  </p>
+                  <div className="bxb-chosen-when">
+                    {fmt(picked.start, zone, { dateStyle: "long", timeStyle: "short" })}
+                  </div>
+                </div>
+                <button type="button" className="bxb-btn bxb-btn-quiet" onClick={() => setPicked(null)}>
+                  <Trans>Change</Trans>
+                </button>
+              </div>
+
+              <h2>
+                <Trans>Your details</Trans>
+              </h2>
+
+              <div className="bxb-field">
+                <label htmlFor="bxb-name">
+                  <Trans>Name</Trans>
+                </label>
                 <input
-                  type="text"
-                  name="website"
-                  value={honeypot}
-                  onChange={(e) => setHoneypot(e.target.value)}
-                  tabIndex={-1}
-                  autoComplete="off"
-                  aria-hidden="true"
-                  style={{ position: "absolute", left: -9999, top: "auto", width: 1, height: 1, overflow: "hidden" }}
+                  id="bxb-name"
+                  className="bxb-input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoComplete="name"
                 />
+              </div>
+              <div className="bxb-field">
+                <label htmlFor="bxb-email">
+                  <Trans>Email</Trans>
+                </label>
+                <input
+                  id="bxb-email"
+                  className="bxb-input"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
+                <p className="bxb-note">
+                  <Trans>Where the confirmation and the cancel link go.</Trans>
+                </p>
+              </div>
+              <div className="bxb-field">
+                <label htmlFor="bxb-phone">
+                  <Trans>Phone</Trans>
+                </label>
+                <input
+                  id="bxb-phone"
+                  className="bxb-input"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  autoComplete="tel"
+                />
+              </div>
 
-                {error && <p className="bxb-err">{error}</p>}
+              {(data.resource.questions ?? []).map((q) => {
+                const key = String(q.name ?? "");
+                const label = String(q.label ?? key);
+                const kind = questionType(q);
+                const options = Array.isArray(q.options) ? (q.options as unknown[]).map(String) : [];
+                const value = answers[key] ?? "";
+                const set = (v: string) => setAnswers({ ...answers, [key]: v });
+                return (
+                  <div key={key} className="bxb-field">
+                    <label htmlFor={`bxb-q-${key}`}>
+                      {label}
+                      {q.required === true ? <span className="bxb-req"> *</span> : null}
+                    </label>
+                    {kind === "select" ? (
+                      <select
+                        id={`bxb-q-${key}`}
+                        className="bxb-input"
+                        value={value}
+                        onChange={(e) => set(e.target.value)}
+                      >
+                        <option value="">{t`Choose…`}</option>
+                        {options.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                    ) : kind === "boolean" ? (
+                      // A dropdown rather than a checkbox, so that "required"
+                      // keeps meaning "must be answered". An unticked box is
+                      // indistinguishable from an untouched one, which would
+                      // make a required yes/no impossible to enforce.
+                      <select
+                        id={`bxb-q-${key}`}
+                        className="bxb-input"
+                        value={value}
+                        onChange={(e) => set(e.target.value)}
+                      >
+                        <option value="">{t`Choose…`}</option>
+                        <option value="true">{t`Yes`}</option>
+                        <option value="false">{t`No`}</option>
+                      </select>
+                    ) : kind === "textarea" ? (
+                      <textarea
+                        id={`bxb-q-${key}`}
+                        className="bxb-input"
+                        rows={3}
+                        value={value}
+                        onChange={(e) => set(e.target.value)}
+                      />
+                    ) : (
+                      <input
+                        id={`bxb-q-${key}`}
+                        className="bxb-input"
+                        value={value}
+                        onChange={(e) => set(e.target.value)}
+                      />
+                    )}
+                  </div>
+                );
+              })}
 
+              {/* Honeypot — off-screen rather than `display:none`, which the
+                  better bots skip. Humans never reach it: no tab stop, no
+                  label, hidden from the accessibility tree. */}
+              <input
+                type="text"
+                name="website"
+                value={honeypot}
+                onChange={(e) => setHoneypot(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                style={{ position: "absolute", left: -9999, top: "auto", width: 1, height: 1, overflow: "hidden" }}
+              />
+
+              {error && (
+                <p role="alert" className="bxb-err">
+                  {error}
+                </p>
+              )}
+
+              <div className="bxb-row">
+                <button type="button" className="bxb-btn" onClick={() => setPicked(null)}>
+                  <Trans>Back</Trans>
+                </button>
                 <button
                   type="button"
                   className="bxb-btn bxb-btn-primary"
-                  style={{ width: "100%", marginTop: 4 }}
                   disabled={busy}
                   onClick={() => void onBook()}
                 >
                   {busy ? <Trans>Booking…</Trans> : <Trans>Confirm booking</Trans>}
                 </button>
               </div>
-            )}
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </Shell>
   );
 }
 
@@ -804,70 +928,86 @@ export function ManageBooking() {
 
   const look = view?.resource.settings ?? null;
   const style = useMemo(() => appearanceVars(look), [look]);
-  useFonts(Boolean(look?.font) && look?.font !== "system");
+  useFonts(look?.font !== "system");
+
+  if (!loaded) {
+    return (
+      <Shell style={style as CSSProperties}>
+        <Skeleton />
+      </Shell>
+    );
+  }
+
+  if (!view) {
+    return (
+      <Shell style={style as CSSProperties}>
+        <div className="bxb-card">
+          <Mark>{CLOCK}</Mark>
+          <h1 className="bxb-title-sm">
+            <Trans>This booking link is not valid</Trans>
+          </h1>
+          <p className="bxb-sub" style={{ margin: 0 }}>
+            <Trans>It may have been replaced by a newer one.</Trans>
+          </p>
+        </div>
+      </Shell>
+    );
+  }
+
+  const live = view.status !== "cancelled" && view.status !== "completed";
 
   return (
-    <div className="bxb" style={style as CSSProperties}>
-      <div className="bxb-wrap">
-        {!loaded ? (
-          <Skeleton />
-        ) : !view ? (
-          <div className="bxb-card">
-            <h1>
-              <Trans>This booking link is not valid</Trans>
-            </h1>
-            <p className="bxb-sub">
-              <Trans>It may have been replaced by a newer one.</Trans>
+    <Shell style={style as CSSProperties}>
+      <div className="bxb-card">
+        <Mark>{live ? CHECK : CLOCK}</Mark>
+        <p className="bxb-eyebrow">
+          {view.status === "cancelled" ? (
+            <Trans>Cancelled</Trans>
+          ) : view.status === "completed" ? (
+            <Trans>Past</Trans>
+          ) : (
+            <Trans>Confirmed</Trans>
+          )}
+        </p>
+        <h1>{view.resource.name}</h1>
+        <div className="bxb-chosen" style={{ margin: "20px 0" }}>
+          <div>
+            <p className="bxb-eyebrow" style={{ margin: "0 0 2px" }}>
+              <Trans>Your appointment</Trans>
             </p>
-          </div>
-        ) : (
-          <div className="bxb-card bxb-card-lead">
-            <p className="bxb-eyebrow">
-              {view.status === "cancelled" ? (
-                <Trans>Cancelled</Trans>
-              ) : view.status === "completed" ? (
-                <Trans>Past</Trans>
-              ) : (
-                <Trans>Confirmed</Trans>
-              )}
-            </p>
-            <h1>{view.resource.name}</h1>
-            <div className="bxb-chosen" style={{ margin: "16px 0" }}>
-              <div>
-                <p className="bxb-eyebrow" style={{ margin: "0 0 2px" }}>
-                  <Trans>Your appointment</Trans>
-                </p>
-                <div className="bxb-chosen-when">
-                  {fmt(view.start, zone, { dateStyle: "long", timeStyle: "short" })}
-                </div>
-                <p className="bxb-note" style={{ marginTop: 3 }}>{zone}</p>
-              </div>
+            <div className="bxb-chosen-when">
+              {fmt(view.start, zone, { dateStyle: "long", timeStyle: "short" })}
             </div>
-            <p className="bxb-sub">
-              {view.status === "cancelled" ? (
-                <Trans>This booking was cancelled.</Trans>
-              ) : view.status === "completed" ? (
-                <Trans>This appointment has already happened.</Trans>
-              ) : (
-                <Trans>You are booked in.</Trans>
-              )}
-            </p>
-            {error && <p className="bxb-err" style={{ marginTop: 12 }}>{error}</p>}
-            {view.canCancel && (
-              <div className="bxb-row" style={{ marginTop: 16 }}>
-                <button
-                  type="button"
-                  className="bxb-btn bxb-btn-danger"
-                  disabled={busy}
-                  onClick={() => void onCancel()}
-                >
-                  {busy ? <Trans>Cancelling…</Trans> : <Trans>Cancel this booking</Trans>}
-                </button>
-              </div>
-            )}
+            <p className="bxb-note" style={{ marginTop: 3 }}>{zone}</p>
+          </div>
+        </div>
+        <p className="bxb-sub" style={{ margin: 0 }}>
+          {view.status === "cancelled" ? (
+            <Trans>This booking was cancelled.</Trans>
+          ) : view.status === "completed" ? (
+            <Trans>This appointment has already happened.</Trans>
+          ) : (
+            <Trans>You are booked in.</Trans>
+          )}
+        </p>
+        {error && (
+          <p role="alert" className="bxb-err" style={{ margin: "12px 0 0" }}>
+            {error}
+          </p>
+        )}
+        {view.canCancel && (
+          <div className="bxb-row" style={{ marginTop: 20 }}>
+            <button
+              type="button"
+              className="bxb-btn bxb-btn-danger"
+              disabled={busy}
+              onClick={() => void onCancel()}
+            >
+              {busy ? <Trans>Cancelling…</Trans> : <Trans>Cancel this booking</Trans>}
+            </button>
           </div>
         )}
       </div>
-    </div>
+    </Shell>
   );
 }

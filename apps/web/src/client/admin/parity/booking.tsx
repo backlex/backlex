@@ -1494,11 +1494,14 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                       <Trans>Font</Trans>
                     </Label>
                     <Select
-                      value={look.font ?? ""}
+                      // No "default" entry, and unset shows as Manrope: that
+                      // is what the page now draws, and it is what the form's
+                      // own picker offers. A choice the panel does not name is
+                      // a choice an operator cannot see is being made.
+                      value={look.font ?? "sans"}
                       onChange={(v) => setLook(({ font, ...rest }) => (v ? { ...rest, font: v } : rest))}
                       className="min-w-0"
                       options={[
-                        { value: "", label: t`Default` },
                         { value: "sans", label: "Manrope" },
                         { value: "lexend", label: "Lexend" },
                         { value: "mono", label: t`Mono` },

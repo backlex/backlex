@@ -756,26 +756,38 @@ function DocumentsSkeletonImpl() {
  *  selected resource's summary card and its bookings. Mirrors the real
  *  two-pane layout so the placeholder does not jump when it resolves; the
  *  sidebar collapses under the content below `lg`, exactly as the page does. */
+/** Booking opens on the resource grid — the same card anatomy the forms list
+ *  uses: icon + name + live pill, a three-number strip, and the occupancy bar
+ *  under it. The page only becomes tabs once a resource is opened, which is
+ *  never the first paint. */
 function BookingSkeletonImpl() {
   return (
-    <div className="flex flex-col gap-4.5">
+    <div className="flex flex-col gap-4">
       <HeaderSkeleton actions={1} />
-      <div className="grid grid-cols-[320px_1fr] items-start gap-4 max-[1024px]:grid-cols-1">
-        <ListCardSkeleton rows={4} />
-        <div className="flex flex-col gap-4">
-          <CardSkeleton lines={2} />
-          {/* The next-7-days strip: four tiles above the booking list. */}
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i} className="gap-2 px-[15px] py-3.5">
-                <Skeleton className="h-3 w-24" />
-                <Skeleton className="h-7 w-16" />
-                <Skeleton className="h-3 w-20" />
-              </Card>
-            ))}
-          </div>
-          <ListCardSkeleton rows={5} />
-        </div>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
+        {[0, 1, 2].map((i) => (
+          <Card key={i} className="gap-3 p-4">
+            <div className="flex items-center gap-2.5">
+              <Skeleton className="size-[34px] shrink-0 rounded-[9px]" />
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+              <Skeleton className="h-4 w-12 shrink-0 rounded-full" />
+            </div>
+            {/* Widths are literal, not interpolated: Tailwind generates only
+                the classes it can see in the source. */}
+            <div className="flex items-end justify-between border-t border-border pt-2.5">
+              {["w-6", "w-8", "w-16"].map((w) => (
+                <div key={w} className="flex flex-col gap-1.5">
+                  <Skeleton className="h-2.5 w-14" />
+                  <Skeleton className={`h-4 ${w}`} />
+                </div>
+              ))}
+            </div>
+            <Skeleton className="h-1.5 w-full rounded-full" />
+          </Card>
+        ))}
       </div>
     </div>
   );

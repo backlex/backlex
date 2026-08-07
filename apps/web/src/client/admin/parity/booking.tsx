@@ -1,11 +1,12 @@
 // @ts-nocheck
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Badge } from "@backlex/ui/components/badge";
 import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { Label } from "@backlex/ui/components/label";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { Switch } from "@backlex/ui/components/switch";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { cn } from "@backlex/ui/lib/utils";
@@ -37,15 +38,24 @@ import { ACCENTS, type PublicAppearance } from "@/lib/public-theme";
 /**
  * Availability & booking — what is bookable, when it is open, and who is coming.
  *
- * Two panes rather than one list, because an operator has two unrelated
- * questions here: "is my calendar set up right" and "who is coming on
- * Thursday". The resource editor answers the first; the booking list the
- * second.
+ * The page is the forms page's shape, because it is the forms page's job: a
+ * list of published things, and one of them open. So it is a grid of resource
+ * cards, and opening one replaces the page with a toolbar and five tabs —
+ * Hours, Questions, Bookings, Share, Settings. An operator who has published a
+ * form already knows how to drive this.
  *
- * The public page link appears exactly once, right after a resource is created
- * or its token is rotated. Only the hash is stored, so this dialog is the only
- * chance to copy it — every later action mints a fresh link rather than showing
- * the old one.
+ * Two consequences of that shape are worth knowing before editing:
+ *
+ * - **Edits autosave**, as the form builder's do. There is no Save button and
+ *   no dialog to close, so the working copy is the page. A draft that cannot
+ *   legally be saved — a rule that ends before it starts, two questions
+ *   claiming one stored name — is not sent at all; the toolbar says why and
+ *   the answer stays on screen until it is fixed. Silently POSTing a broken
+ *   draft every 700ms would be worse than not saving.
+ * - **The public link is shown once.** Only its hash is stored, so the Share
+ *   tab can only show a link this browser minted this session (`tokenCache`);
+ *   otherwise all it can offer is a replacement. Same posture as the forms
+ *   page, and for the same reason.
  */
 
 const WEEKDAYS = [
@@ -182,6 +192,21 @@ type WindowKey = keyof typeof WINDOWS;
 /** Seven days out — far enough to read as a plan, near enough to be accurate. */
 const HORIZON_DAYS = 7;
 
+/** The five things a resource is managed through. Order is the order of the
+ *  work: publish hours, decide what to ask, watch who comes, hand out the
+ *  link, then the knobs you set once. */
+const TABS = ["hours", "questions", "bookings", "share", "settings"] as const;
+type Tab = (typeof TABS)[number];
+
+/**
+ * The public link, for as long as this tab is open.
+ *
+ * Module-level rather than state, and deliberately not persisted: only the
+ * hash reaches the server, so this is the single copy in existence and it dies
+ * with the page. Keyed by resource key. Mirrors the forms page's own cache.
+ */
+const tokenCache = new Map<string, string>();
+
 function StatTile({
   label,
   value,
@@ -255,6 +280,109 @@ function Detail({ label, children }: { label: ReactNode; children: ReactNode }) 
   );
 }
 
+/** Live / paused, in the shape the forms list uses for the same fact. */
+function LivePill({ active }: { active: boolean }) {
+  return active ? (
+    <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.08em] text-emerald-400">
+      <Trans>live</Trans>
+    </span>
+  ) : (
+    <span className="shrink-0 rounded-full border border-border bg-white/5 px-2 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.08em] text-muted-foreground">
+      <Trans>paused</Trans>
+    </span>
+  );
+}
+
+/**
+ * One resource, as the list draws it.
+ *
+ * The three numbers and the bar come from a second read that lands after the
+ * cards do, so `stats` is optional and the card shows its own skeleton in that
+ * gap rather than a zero — "0 upcoming" and "not counted yet" are different
+ * facts and a calendar owner acts differently on each.
+ */
+function ResourceCard({
+  resource,
+  stats,
+  onOpen,
+}: {
+  resource: ApiBookingResource;
+  stats: { booked: number; free: number; nextFree: string | null } | undefined;
+  onOpen: () => void;
+}) {
+  const { t } = useLingui();
+  const total = stats ? stats.booked + stats.free : 0;
+  const pct = stats && total > 0 ? Math.round((stats.booked / total) * 100) : 0;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex flex-col gap-3 rounded-surface border border-border bg-card p-4 text-left transition-colors hover:border-primary/50"
+    >
+      <div className="flex w-full items-center gap-2.5">
+        <span className="grid size-[34px] shrink-0 place-items-center rounded-[9px] bg-primary/10 text-primary">
+          <I.CalendarDays size={16} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[13.5px] font-semibold">{resource.name}</div>
+          <div className="truncate font-mono text-[11px] text-muted-foreground">
+            {resource.timeZone} · {resource.slotMinutes}m
+          </div>
+        </div>
+        <LivePill active={resource.active} />
+      </div>
+
+      <div className="flex w-full items-center justify-between border-t border-border pt-2.5 text-[13px]">
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <Trans>Rules</Trans>
+          </div>
+          <div className="font-semibold tabular-nums">{resource.rules.length}</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <Trans>Upcoming</Trans>
+          </div>
+          <div className="font-semibold tabular-nums">
+            {stats ? stats.booked : <Skeleton className="h-4 w-6" />}
+          </div>
+        </div>
+        <div className="min-w-0 text-right">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <Trans>Next free</Trans>
+          </div>
+          <div className="truncate font-semibold tabular-nums" title={t`Next free slot`}>
+            {stats ? (
+              stats.nextFree ? (
+                shortInZone(stats.nextFree, resource.timeZone)
+              ) : (
+                "—"
+              )
+            ) : (
+              <Skeleton className="ml-auto h-4 w-16" />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* How full the next week is. Drawn even at 0% so the row of cards keeps
+          one baseline — a bar that appears only on busy calendars makes the
+          quiet ones look like a different card. */}
+      <div className="flex w-full items-center gap-2">
+        <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary transition-[width]"
+            style={{ width: `${stats ? pct : 0}%` }}
+          />
+        </div>
+        <span className="shrink-0 font-mono text-[10px] tabular-nums text-muted-foreground">
+          {stats && total > 0 ? `${pct}%` : "—"}
+        </span>
+      </div>
+    </button>
+  );
+}
+
 const blankRule = (): ApiBookingRule => ({
   kind: "open",
   weekday: 1,
@@ -293,6 +421,30 @@ const questionKind = (q: ApiBookingQuestion): "text" | "textarea" | "select" | "
 const questionName = (s: string): string =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 60);
 
+/**
+ * The key suggested for a new resource, from its name.
+ *
+ * Accented letters are folded rather than dropped: a plain a–z filter turns
+ * "Kuaför Ayşe" into "kuaf-r-ay-e", which is not a name anybody would choose
+ * and is the first thing a Turkish operator sees this page do. NFD splits most
+ * of them into a letter plus a combining mark the strip then removes; the ones
+ * with no decomposition — Turkish dotless ı, German ß, Nordic ø/å/æ — have no
+ * mark to drop and are spelled out here.
+ */
+const FOLD: Record<string, string> = {
+  ı: "i", ß: "ss", ø: "o", å: "a", æ: "ae", œ: "oe", đ: "d", ħ: "h", ł: "l", ŧ: "t",
+};
+
+const slugKey = (s: string): string =>
+  s
+    .toLowerCase()
+    .replace(/[ıßøåæœđħłŧ]/g, (ch) => FOLD[ch] ?? ch)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+
 const DEFAULT_FORM = {
   key: "",
   name: "",
@@ -310,6 +462,96 @@ const DEFAULT_FORM = {
   active: true,
 };
 
+/** The draft as the API takes it. Pulled out of the component so the autosave
+ *  timer can build it from a ref rather than from a closed-over render. */
+const bodyOf = (d: {
+  form: typeof DEFAULT_FORM;
+  rules: ApiBookingRule[];
+  questions: ApiBookingQuestion[];
+  look: PublicAppearance;
+}) => ({
+  name: d.form.name.trim(),
+  description: d.form.description.trim() || null,
+  timeZone: d.form.timeZone.trim(),
+  slotMinutes: Number(d.form.slotMinutes) || 30,
+  capacity: Number(d.form.capacity) || 1,
+  bufferBeforeMinutes: Number(d.form.bufferBeforeMinutes) || 0,
+  bufferAfterMinutes: Number(d.form.bufferAfterMinutes) || 0,
+  leadMinutes: Number(d.form.leadMinutes) || 0,
+  horizonDays: Number(d.form.horizonDays) || 60,
+  holdMinutes: Number(d.form.holdMinutes) || 10,
+  confirmationMessage: d.form.confirmationMessage.trim() || null,
+  mirrorCollection: d.form.mirrorCollection.trim() || null,
+  active: d.form.active,
+  rules: d.rules.map((r) => ({
+    kind: r.kind,
+    weekday: r.weekday,
+    startMinute: r.startMinute,
+    endMinute: r.endMinute,
+    startsOn: r.startsOn,
+    endsOn: r.endsOn,
+    reason: r.reason,
+  })),
+  // Options only travel with a choice: a question that was a dropdown and is
+  // now free text would otherwise keep clamping its own answers server-side.
+  questions: d.questions.map((q) => ({
+    name: q.name,
+    label: q.label?.trim() || q.name,
+    type: q.type ?? "text",
+    required: q.required === true,
+    ...(q.type === "select" ? { options: (q.options ?? []).filter((o) => o.trim() !== "") } : {}),
+  })),
+  // An empty panel is stored as null rather than `{}` — "the defaults" is a
+  // state the reader already has, and two spellings of it would eventually
+  // disagree.
+  settings: Object.keys(d.look).length > 0 ? d.look : null,
+});
+
+/**
+ * Why this draft cannot be saved yet, or null.
+ *
+ * With a Save button these were toasts fired on a click. Autosave fires on a
+ * keystroke, so they are a state instead: the save is held back, the toolbar
+ * says which one, and nothing is lost while it is fixed. Half-typed work is
+ * the normal case here, not an error to shout about.
+ *
+ * A CODE, not a sentence — deliberately. The `t` macro only rewrites tagged
+ * templates it finds inside a component, so a message built out here would
+ * leave a raw call to whatever was passed in as `t` and quietly answer with
+ * something falsy, which is to say: it would never block anything. The wording
+ * lives at the one call site that has the real macro in scope.
+ */
+type Problem =
+  | { code: "name" }
+  | { code: "rule-order" }
+  | { code: "rule-dates" }
+  | { code: "question-label" }
+  | { code: "question-duplicate"; name: string }
+  | { code: "question-options"; label: string };
+
+const problemWith = (d: {
+  form: typeof DEFAULT_FORM;
+  rules: ApiBookingRule[];
+  questions: ApiBookingQuestion[];
+}): Problem | null => {
+  if (!d.form.name.trim()) return { code: "name" };
+  for (const r of d.rules) {
+    if (r.startMinute >= r.endMinute) return { code: "rule-order" };
+    if (r.weekday === null && !r.startsOn) return { code: "rule-dates" };
+  }
+  // The name is the key the answer is stored under, so two questions sharing
+  // one would silently overwrite each other on every booking.
+  const seen = new Set<string>();
+  for (const q of d.questions) {
+    if (!q.name) return { code: "question-label" };
+    if (seen.has(q.name)) return { code: "question-duplicate", name: q.name };
+    seen.add(q.name);
+    if (q.type === "select" && (q.options ?? []).filter((o) => o.trim() !== "").length === 0)
+      return { code: "question-options", label: q.label || q.name };
+  }
+  return null;
+};
+
 export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
   const { t } = useLingui();
   const [resources, setResources] = useState<ApiBookingResource[]>([]);
@@ -317,22 +559,26 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const [selected, setSelected] = useState<string>("");
+  /** Which resource is open, or null for the list. The whole page turns on it. */
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("hours");
+
   const [statusFilter, setStatusFilter] = useState("");
   const [windowKey, setWindowKey] = useState<WindowKey>("upcoming");
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
 
-  /** Next-7-days plan for the selected resource: what is taken, what is left. */
-  const [plan, setPlan] = useState<{ booked: number; free: number; nextFree: string | null } | null>(
-    null,
-  );
+  /** Next-7-days plan per resource: what is taken, what is left. One store for
+   *  both the list cards and the open resource's strip, so the number a card
+   *  shows and the number behind it agree after a cancellation. */
+  const [stats, setStats] = useState<
+    Record<string, { booked: number; free: number; nextFree: string | null }>
+  >({});
 
   const [detail, setDetail] = useState<ApiBooking | null>(null);
   const [moveAt, setMoveAt] = useState<string>("");
 
-  const [editOpen, setEditOpen] = useState(false);
-  const [editingKey, setEditingKey] = useState<string | null>(null);
+  /* ── the open resource's working copy — edits autosave ───────────────── */
   const [form, setForm] = useState({ ...DEFAULT_FORM });
   const [rules, setRules] = useState<ApiBookingRule[]>([blankRule()]);
   const [questions, setQuestions] = useState<ApiBookingQuestion[]>([]);
@@ -345,7 +591,12 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
    *  so far are keyed by it, and a mirror map may point a column at it. */
   const [storedNames, setStoredNames] = useState<Set<string>>(() => new Set());
   const [customZone, setCustomZone] = useState(false);
-  const [link, setLink] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"saved" | "saving" | "blocked" | "error">("saved");
+  const [saveNote, setSaveNote] = useState<string | null>(null);
+
+  /* ── creating one ────────────────────────────────────────────────────── */
+  const [newOpen, setNewOpen] = useState(false);
+  const [draft, setDraft] = useState({ key: "", name: "", timeZone: DEFAULT_FORM.timeZone, keyTouched: false });
 
   const [bookOpen, setBookOpen] = useState(false);
   const [bookForm, setBookForm] = useState({ start: "", name: "", email: "", phone: "", notes: "" });
@@ -362,9 +613,12 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
   } | null>(null);
 
   const current = useMemo(
-    () => resources.find((r) => r.key === selected) ?? resources[0] ?? null,
-    [resources, selected],
+    () => resources.find((r) => r.key === openKey) ?? null,
+    [resources, openKey],
   );
+  /** The strip and the booking rows read the WORKING copy, not the saved row:
+   *  a zone changed a second ago has to move the times on screen with it. */
+  const zone = form.timeZone || current?.timeZone || "UTC";
 
   /** Which side of "now" a booking sits on decides what can be done to it, so
    *  the clock is state rather than a read at render time — a slot that passes
@@ -402,15 +656,15 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
   };
 
   /**
-   * What the next week looks like: how much of the published grid is taken and
-   * how much is left. `slots` only returns what is still free, so "taken" comes
-   * from the bookings themselves rather than from subtracting one from the
-   * other — a booking made off-grid by an operator belongs in the count too.
+   * What the next week looks like for one resource: how much of the published
+   * grid is taken and how much is left. `slots` only returns what is still
+   * free, so "taken" comes from the bookings themselves rather than from
+   * subtracting one from the other — a booking made off-grid by an operator
+   * belongs in the count too.
    */
   const loadPlan = async (resourceKey: string) => {
     const from = new Date();
     const to = new Date(from.getTime() + HORIZON_DAYS * 86400_000);
-    setPlan(null);
     try {
       const [slots, live] = await Promise.all([
         bookingApi.slots(resourceKey, { from: from.toISOString(), to: to.toISOString() }),
@@ -426,17 +680,37 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
       const taken = ((live.data ?? []) as ApiBooking[]).filter(
         (b) => b.status === "confirmed" || b.status === "held",
       ).length;
-      setPlan({
-        booked: taken,
-        free: open.reduce((sum, s) => sum + s.remaining, 0),
-        nextFree: open[0]?.start ?? null,
-      });
+      setStats((m) => ({
+        ...m,
+        [resourceKey]: {
+          booked: taken,
+          free: open.reduce((sum, s) => sum + s.remaining, 0),
+          nextFree: open[0]?.start ?? null,
+        },
+      }));
     } catch {
       // A resource with no rules answers with an empty grid rather than an
       // error, so anything thrown here is worth staying quiet about — the
       // strip simply does not claim a number it does not have.
-      setPlan({ booked: 0, free: 0, nextFree: null });
+      setStats((m) => ({ ...m, [resourceKey]: { booked: 0, free: 0, nextFree: null } }));
     }
+  };
+
+  /**
+   * The three numbers under every card on the list.
+   *
+   * The same read the open resource's strip uses, once per card, rather than a
+   * second way of counting the same thing: one un-filtered list grouped by
+   * `resourceId` would save a request per card, but it would be a second
+   * implementation of "how full is the next week" to keep in step with this
+   * one — and the endpoint caps a page at 200 rows, so on a busy workspace it
+   * would quietly answer with a number that is merely most of the truth.
+   *
+   * Each card fills in as its own answer lands rather than the grid waiting on
+   * the slowest one.
+   */
+  const loadCardStats = async (rows: ApiBookingResource[]) => {
+    await Promise.all(rows.map((r) => loadPlan(r.key)));
   };
 
   useEffect(() => {
@@ -447,13 +721,9 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
         if (cancelled) return;
         const rows = (res.data ?? []) as ApiBookingResource[];
         setResources(rows);
-        if (rows[0]) {
-          setSelected(rows[0].key);
-          await loadBookings(rows[0].key);
-          void loadPlan(rows[0].key);
-        }
+        if (rows.length > 0) void loadCardStats(rows);
       } catch {
-        // Leave both panes empty; the page still offers "New resource".
+        // Leave the list empty; the page still offers "New resource".
       } finally {
         if (!cancelled) setLoaded(true);
       }
@@ -463,65 +733,120 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
     };
   }, []);
 
-  const onPickResource = async (key: string) => {
-    setSelected(key);
-    void loadPlan(key);
-    try {
-      await loadBookings(key, statusFilter || undefined, windowKey, 0);
-    } catch (e) {
-      pushToast((e as Error).message);
-    }
+  /* ── autosave ────────────────────────────────────────────────────────── */
+
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Assigned every render so the timer never fires against a stale draft.
+  const draftRef = useRef({ form, rules, questions, look });
+  draftRef.current = { form, rules, questions, look };
+  const openKeyRef = useRef<string | null>(openKey);
+  openKeyRef.current = openKey;
+
+  /** The one place a problem code becomes a sentence — inside the component,
+   *  where the `t` macro is the real one. */
+  const sayProblem = useCallback(
+    (p: Problem): string => {
+      switch (p.code) {
+        case "name":
+          return t`Give the resource a name.`;
+        case "rule-order":
+          return t`Each rule must start before it ends. A span crossing midnight is two rules.`;
+        case "rule-dates":
+          return t`A rule with no weekday needs a date range.`;
+        case "question-label":
+          return t`Give every question a label.`;
+        case "question-duplicate":
+          return t`Two questions share the stored name "${p.name}". Names have to be unique.`;
+        default:
+          return t`"${p.label}" is a choice with nothing to choose from.`;
+      }
+    },
+    [t],
+  );
+
+  const scheduleSave = useCallback(() => {
+    // Nothing is open — this is the create dialog's own state, which is saved
+    // by pressing a button rather than by typing.
+    if (!openKeyRef.current) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSaveState("saving");
+    saveTimer.current = setTimeout(async () => {
+      const key = openKeyRef.current;
+      if (!key) return;
+      const d = draftRef.current;
+      const problem = problemWith(d);
+      if (problem) {
+        setSaveNote(sayProblem(problem));
+        setSaveState("blocked");
+        return;
+      }
+      setSaveNote(null);
+      try {
+        const res = await bookingApi.updateResource(key, bodyOf(d));
+        setResources((arr) => arr.map((r) => (r.key === key ? res.data : r)));
+        setSaveState("saved");
+      } catch (e) {
+        setSaveState("error");
+        pushToast((e as Error).message);
+      }
+    }, 700);
+  }, [pushToast, sayProblem]);
+
+  /**
+   * Send whatever the timer was still holding, now.
+   *
+   * The 700ms that makes typing one save is also 700ms in which the work can
+   * be walked away from — back to the list, or off the page entirely — and a
+   * debounce that only ever cancels loses precisely the last thing anybody
+   * typed. Held in a ref so the unmount cleanup can call the current one
+   * without re-running on every render.
+   */
+  const flushSave = useCallback(() => {
+    if (!saveTimer.current) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    const key = openKeyRef.current;
+    const d = draftRef.current;
+    // A draft that could not be saved on the timer cannot be saved on the way
+    // out either; the reason was already on screen.
+    if (!key || problemWith(d)) return;
+    void bookingApi
+      .updateResource(key, bodyOf(d))
+      .then((res) => setResources((arr) => arr.map((r) => (r.key === key ? res.data : r))))
+      .catch((e) => pushToast((e as Error).message));
+  }, [pushToast]);
+
+  const flushRef = useRef(flushSave);
+  flushRef.current = flushSave;
+
+  // A page left mid-keystroke should still land the last edit.
+  useEffect(
+    () => () => {
+      flushRef.current();
+    },
+    [],
+  );
+
+  const patchForm = (patch: Partial<typeof DEFAULT_FORM>) => {
+    setForm((f) => ({ ...f, ...patch }));
+    scheduleSave();
+  };
+  const editRules = (fn: (arr: ApiBookingRule[]) => ApiBookingRule[]) => {
+    setRules(fn);
+    scheduleSave();
+  };
+  const editQuestions = (fn: (arr: ApiBookingQuestion[]) => ApiBookingQuestion[]) => {
+    setQuestions(fn);
+    scheduleSave();
+  };
+  const editLook = (fn: (l: PublicAppearance) => PublicAppearance) => {
+    setLook(fn);
+    scheduleSave();
   };
 
-  const onFilterStatus = async (next: string) => {
-    setStatusFilter(next);
-    try {
-      await loadBookings(current?.key, next || undefined, windowKey, 0);
-    } catch (e) {
-      pushToast((e as Error).message);
-    }
-  };
+  /* ── opening and closing a resource ──────────────────────────────────── */
 
-  const onFilterWindow = async (next: string) => {
-    const win = (next in WINDOWS ? next : "upcoming") as WindowKey;
-    setWindowKey(win);
-    try {
-      await loadBookings(current?.key, statusFilter || undefined, win, 0);
-    } catch (e) {
-      pushToast((e as Error).message);
-    }
-  };
-
-  const onPage = async (next: number) => {
-    try {
-      await loadBookings(current?.key, statusFilter || undefined, windowKey, next);
-    } catch (e) {
-      pushToast((e as Error).message);
-    }
-  };
-
-  /** Every mutation re-reads the same page it was fired from, so the counts in
-   *  the strip and the row itself never drift apart. */
-  const refreshAfterMutation = () => {
-    if (!current) return;
-    void loadPlan(current.key);
-    void loadBookings(current.key, statusFilter || undefined, windowKey, offset).catch(() => {});
-  };
-
-  const openNew = () => {
-    setEditingKey(null);
-    setForm({ ...DEFAULT_FORM });
-    setRules([blankRule()]);
-    setQuestions([]);
-    setStoredNames(new Set());
-    setLook({});
-    setCustomZone(!COMMON_ZONES.includes(DEFAULT_FORM.timeZone));
-    setLink(null);
-    setEditOpen(true);
-  };
-
-  const openEdit = (r: ApiBookingResource) => {
-    setEditingKey(r.key);
+  const openResource = (r: ApiBookingResource, at: Tab = "hours") => {
     setForm({
       key: r.key,
       name: r.name,
@@ -551,105 +876,99 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
     setStoredNames(new Set((r.questions ?? []).map((q) => String(q.name ?? ""))));
     setLook({ ...(r.settings ?? {}) });
     setCustomZone(!COMMON_ZONES.includes(r.timeZone));
-    setLink(null);
-    setEditOpen(true);
+    setSaveState("saved");
+    setSaveNote(null);
+    setStatusFilter("");
+    setWindowKey("upcoming");
+    setBookings([]);
+    setTotal(0);
+    setOffset(0);
+    setOpenKey(r.key);
+    setTab(at);
+    void loadPlan(r.key);
+    void loadBookings(r.key).catch(() => {});
   };
 
-  const body = () => ({
-    name: form.name.trim(),
-    description: form.description.trim() || null,
-    timeZone: form.timeZone.trim(),
-    slotMinutes: Number(form.slotMinutes) || 30,
-    capacity: Number(form.capacity) || 1,
-    bufferBeforeMinutes: Number(form.bufferBeforeMinutes) || 0,
-    bufferAfterMinutes: Number(form.bufferAfterMinutes) || 0,
-    leadMinutes: Number(form.leadMinutes) || 0,
-    horizonDays: Number(form.horizonDays) || 60,
-    holdMinutes: Number(form.holdMinutes) || 10,
-    confirmationMessage: form.confirmationMessage.trim() || null,
-    mirrorCollection: form.mirrorCollection.trim() || null,
-    active: form.active,
-    rules: rules.map((r) => ({
-      kind: r.kind,
-      weekday: r.weekday,
-      startMinute: r.startMinute,
-      endMinute: r.endMinute,
-      startsOn: r.startsOn,
-      endsOn: r.endsOn,
-      reason: r.reason,
-    })),
-    // Options only travel with a choice: a question that was a dropdown and is
-    // now free text would otherwise keep clamping its own answers server-side.
-    questions: questions.map((q) => ({
-      name: q.name,
-      label: q.label?.trim() || q.name,
-      type: q.type ?? "text",
-      required: q.required === true,
-      ...(q.type === "select" ? { options: (q.options ?? []).filter((o) => o.trim() !== "") } : {}),
-    })),
-    // An empty panel is stored as null rather than `{}` — "the defaults" is a
-    // state the reader already has, and two spellings of it would eventually
-    // disagree.
-    settings: Object.keys(look).length > 0 ? look : null,
-  });
+  const closeResource = () => {
+    // Whatever is pending goes now rather than on a timer nobody is watching.
+    flushSave();
+    setOpenKey(null);
+    setDetail(null);
+  };
 
-  const onSave = async () => {
-    if (!form.name.trim()) {
+  /* ── bookings list ───────────────────────────────────────────────────── */
+
+  const onFilterStatus = async (next: string) => {
+    setStatusFilter(next);
+    try {
+      await loadBookings(openKey ?? undefined, next || undefined, windowKey, 0);
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+  };
+
+  const onFilterWindow = async (next: string) => {
+    const win = (next in WINDOWS ? next : "upcoming") as WindowKey;
+    setWindowKey(win);
+    try {
+      await loadBookings(openKey ?? undefined, statusFilter || undefined, win, 0);
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+  };
+
+  const onPage = async (next: number) => {
+    try {
+      await loadBookings(openKey ?? undefined, statusFilter || undefined, windowKey, next);
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+  };
+
+  /** Every mutation re-reads the same page it was fired from, so the counts in
+   *  the strip and the row itself never drift apart. */
+  const refreshAfterMutation = () => {
+    if (!openKey) return;
+    void loadPlan(openKey);
+    void loadBookings(openKey, statusFilter || undefined, windowKey, offset).catch(() => {});
+  };
+
+  /* ── create / rotate / delete ────────────────────────────────────────── */
+
+  const onCreate = async () => {
+    if (!draft.name.trim()) {
       pushToast(t`Give the resource a name.`);
       return;
     }
-    if (!editingKey && !/^[a-z0-9][a-z0-9_-]*$/.test(form.key.trim())) {
+    if (!/^[a-z0-9][a-z0-9_-]*$/.test(draft.key.trim())) {
       pushToast(t`The key must be lowercase letters, digits, dash or underscore.`);
       return;
     }
-    for (const r of rules) {
-      if (r.startMinute >= r.endMinute) {
-        pushToast(t`Each rule must start before it ends. A span crossing midnight is two rules.`);
-        return;
-      }
-      if (r.weekday === null && !r.startsOn) {
-        pushToast(t`A rule with no weekday needs a date range.`);
-        return;
-      }
-    }
-    // The name is the key the answer is stored under, so two questions sharing
-    // one would silently overwrite each other on every booking.
-    const seen = new Set<string>();
-    for (const q of questions) {
-      if (!q.name) {
-        pushToast(t`Give every question a label.`);
-        return;
-      }
-      if (seen.has(q.name)) {
-        pushToast(t`Two questions share the stored name "${q.name}". Names have to be unique.`);
-        return;
-      }
-      seen.add(q.name);
-      if (q.type === "select" && (q.options ?? []).filter((o) => o.trim() !== "").length === 0) {
-        pushToast(t`"${q.label || q.name}" is a choice with nothing to choose from.`);
-        return;
-      }
-    }
-
     setBusy(true);
     try {
-      if (editingKey) {
-        const res = await bookingApi.updateResource(editingKey, body());
-        // Optimistic in the direction that matters: the row is updated before
-        // any refetch, so the page never looks like nothing happened.
-        setResources((arr) => arr.map((r) => (r.key === editingKey ? res.data : r)));
-        setEditOpen(false);
-        pushToast(t`Saved.`);
-      } else {
-        const res = await bookingApi.createResource({ key: form.key.trim(), ...body() });
-        setResources((arr) => [...arr, res.data.resource]);
-        setSelected(res.data.resource.key);
-        // Shown once — only the hash is stored, so the dialog stays open on
-        // the link rather than closing over it.
-        setLink(res.data.url);
-        setEditingKey(res.data.resource.key);
-        await loadBookings(res.data.resource.key).catch(() => {});
-      }
+      const res = await bookingApi.createResource({
+        key: draft.key.trim(),
+        ...bodyOf({
+          form: {
+            ...DEFAULT_FORM,
+            key: draft.key.trim(),
+            name: draft.name.trim(),
+            timeZone: draft.timeZone.trim(),
+          },
+          rules: [blankRule()],
+          questions: [],
+          look: {},
+        }),
+      });
+      const row = res.data.resource as ApiBookingResource;
+      setResources((arr) => [...arr, row]);
+      // Shown once — only the hash is stored, so it is held for as long as
+      // this tab lives and the Share tab is where it is read from.
+      tokenCache.set(row.key, res.data.url);
+      setNewOpen(false);
+      setDraft({ key: "", name: "", timeZone: DEFAULT_FORM.timeZone, keyTouched: false });
+      openResource(row);
+      pushToast(t`Created — the public link is on the Share tab.`);
     } catch (e) {
       pushToast((e as Error).message);
     } finally {
@@ -657,16 +976,13 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
     }
   };
 
-  const onRotate = async (r: ApiBookingResource) => {
+  const onRotate = async () => {
+    if (!current) return;
     setBusy(true);
     try {
-      const res = await bookingApi.rotateToken(r.key);
-      // Load the resource into the form BEFORE opening on it. The dialog is
-      // the resource editor, and it kept whatever was last edited otherwise —
-      // so "New link" offered a Save that would write another resource's
-      // hours over this one.
-      openEdit(r);
-      setLink(res.data.url);
+      const res = await bookingApi.rotateToken(current.key);
+      tokenCache.set(current.key, res.data.url);
+      setTab("share");
       pushToast(t`New link minted — the old one no longer works.`);
     } catch (e) {
       pushToast((e as Error).message);
@@ -678,15 +994,18 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
   const onDelete = async (r: ApiBookingResource) => {
     const snapshot = resources;
     setResources((arr) => arr.filter((x) => x.key !== r.key));
-    if (selected === r.key) setSelected(snapshot.find((x) => x.key !== r.key)?.key ?? "");
+    if (openKey === r.key) setOpenKey(null);
     try {
       await bookingApi.deleteResource(r.key);
+      tokenCache.delete(r.key);
       pushToast(t`Deleted.`);
     } catch (e) {
       setResources(snapshot);
       pushToast((e as Error).message);
     }
   };
+
+  /* ── bookings ────────────────────────────────────────────────────────── */
 
   const onBook = async () => {
     if (!current) return;
@@ -747,7 +1066,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
       pushToast(done);
       // A freed or spent slot changes what the week looks like, so the strip
       // is re-read rather than left claiming the old numbers.
-      if (current) void loadPlan(current.key);
+      if (openKey) void loadPlan(openKey);
     } catch (e) {
       setBookings(snapshot);
       setDetail((d) => (d && d.id === b.id ? b : d));
@@ -781,776 +1100,1012 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
 
   const shownFrom = offset + 1;
   const shownTo = Math.min(offset + bookings.length, total);
+  const plan = openKey ? stats[openKey] : undefined;
+  const link = current ? tokenCache.get(current.key) : undefined;
 
   if (!loaded) return <BookingSkeleton />;
 
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title={t`Booking`}
-        description={t`Publish a calendar people can pick a time from, and see who did.`}
-        actions={
-          <Button variant="primary" onClick={openNew} className="ml-auto">
-            <I.Plus className="size-4" />
-            <span className="max-sm:sr-only">
-              <Trans>New resource</Trans>
-            </span>
-          </Button>
-        }
-      />
+  /* ── the create dialog, shared by both views ─────────────────────────── */
 
-      {resources.length === 0 ? (
-        <EmptyState
-          icon={I.CalendarDays}
-          title={<Trans>Nothing is bookable yet</Trans>}
-          description={
+  const newDialog = (
+    <Dialog open={newOpen} onOpenChange={setNewOpen}>
+      <DialogContent className="[&>*]:min-w-0">
+        <DialogHeader className="shrink-0">
+          <DialogTitle>
+            <Trans>New bookable resource</Trans>
+          </DialogTitle>
+          <DialogDescription>
             <Trans>
-              A resource is the thing people book — a person, a room, a table — and it carries the
-              opening hours, how long one booking lasts and how many fit at once.
+              Enough to create it — the opening hours, the questions and the rest are set on the
+              resource itself.
             </Trans>
-          }
-          action={
-            <Button variant="primary" icon={I.Plus} onClick={openNew}>
-              <Trans>New resource</Trans>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <div className="grid gap-4 p-1">
+            <div className="grid gap-1.5">
+              <Label htmlFor="bk-new-name">
+                <Trans>Name</Trans>
+              </Label>
+              <Input
+                id="bk-new-name"
+                value={draft.name}
+                onChange={(e) =>
+                  setDraft((d) => ({
+                    ...d,
+                    name: e.target.value,
+                    // The key follows the name until it is typed into directly,
+                    // which is the only moment it can still be chosen.
+                    key: d.keyTouched ? d.key : slugKey(e.target.value),
+                  }))
+                }
+                placeholder={t`Dr Yılmaz`}
+              />
+              <p className="text-xs text-muted-foreground">
+                <Trans>Shown on the public page.</Trans>
+              </p>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="bk-new-key">
+                <Trans>Key</Trans>
+              </Label>
+              <Input
+                id="bk-new-key"
+                value={draft.key}
+                onChange={(e) => setDraft((d) => ({ ...d, key: e.target.value, keyTouched: true }))}
+                placeholder="clinic"
+              />
+              <p className="text-xs text-muted-foreground">
+                <Trans>How the API and CLI address it. Cannot be changed later.</Trans>
+              </p>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>
+                <Trans>Time zone</Trans>
+              </Label>
+              <Select
+                value={COMMON_ZONES.includes(draft.timeZone) ? draft.timeZone : "__custom"}
+                onChange={(v) =>
+                  setDraft((d) => ({ ...d, timeZone: v === "__custom" ? "" : v }))
+                }
+                className="min-w-0"
+                options={[
+                  ...COMMON_ZONES.map((z) => ({ value: z, label: z })),
+                  { value: "__custom", label: t`Custom…` },
+                ]}
+              />
+              {!COMMON_ZONES.includes(draft.timeZone) && (
+                <Input
+                  value={draft.timeZone}
+                  onChange={(e) => setDraft((d) => ({ ...d, timeZone: e.target.value }))}
+                  placeholder="Europe/Istanbul"
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                <Trans>The zone the opening hours are written in — not a display preference.</Trans>
+              </p>
+            </div>
+          </div>
+        </DialogBody>
+        <DialogFooter className="shrink-0">
+          <Button variant="outline" onClick={() => setNewOpen(false)}>
+            <Trans>Close</Trans>
+          </Button>
+          <Button onClick={() => void onCreate()} disabled={busy}>
+            {busy ? <Trans>Creating…</Trans> : <Trans>Create</Trans>}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  /* ── list ────────────────────────────────────────────────────────────── */
+
+  if (!openKey || !current) {
+    return (
+      <div className="space-y-4">
+        <PageHeader
+          title={t`Booking`}
+          description={t`Publish a calendar people can pick a time from, and see who did.`}
+          actions={
+            <Button
+              variant="primary"
+              onClick={() => {
+                setDraft({ key: "", name: "", timeZone: DEFAULT_FORM.timeZone, keyTouched: false });
+                setNewOpen(true);
+              }}
+              className="ml-auto"
+            >
+              <I.Plus className="size-4" />
+              <span className="max-sm:sr-only">
+                <Trans>New resource</Trans>
+              </span>
             </Button>
           }
         />
-      ) : (
-        <div className="grid items-start gap-4 lg:grid-cols-[320px_1fr]">
-          {/* `self-start` (via the grid's `items-start`) keeps the resource
-              list hugging its rows — a grid cell stretches to the tallest
-              column by default, which draws a mostly-empty card beside a busy
-              booking list. */}
-          <Card className="p-0">
-            <ScrollArea viewportClassName="max-h-[60vh]" className="w-full">
-              <div className="flex flex-col divide-y">
-                {resources.map((r) => (
-                  <button
-                    key={r.key}
-                    type="button"
-                    onClick={() => void onPickResource(r.key)}
-                    className={`flex flex-col items-start gap-1 p-3 text-left transition-colors hover:bg-accent ${
-                      current?.key === r.key ? "bg-accent" : ""
-                    }`}
-                  >
-                    <div className="flex w-full min-w-0 items-center gap-2">
-                      <span className="truncate font-medium">{r.name}</span>
-                      {!r.active && (
-                        <Badge variant="outline">
-                          <Trans>Paused</Trans>
-                        </Badge>
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {r.timeZone} · {r.slotMinutes}m ·{" "}
-                      <Trans>{r.rules.length} rules</Trans>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </ScrollArea>
-          </Card>
 
-          <div className="min-w-0 space-y-4">
-            {current && (
-              <Card className="p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="min-w-0">
-                    <div className="truncate font-medium">{current.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      <Trans>
-                        Times are written in {current.timeZone}. {current.capacity} at once,{" "}
-                        {current.slotMinutes} minutes each.
-                      </Trans>
-                    </div>
-                  </div>
-                  <div className="ml-auto flex flex-wrap items-center gap-2">
-                    <Button variant="outline" onClick={() => openEdit(current)}>
-                      <I.Settings className="size-4" />
-                      <span className="max-sm:sr-only">
-                        <Trans>Edit</Trans>
-                      </span>
-                    </Button>
-                    <Button variant="outline" onClick={() => void onRotate(current)} disabled={busy}>
-                      <I.Link className="size-4" />
-                      <span className="max-sm:sr-only">
-                        <Trans>New link</Trans>
-                      </span>
-                    </Button>
-                    <Button variant="outline" onClick={() => setBookOpen(true)}>
-                      <I.Plus className="size-4" />
-                      <span className="max-sm:sr-only">
-                        <Trans>Add booking</Trans>
-                      </span>
-                    </Button>
-                    <ConfirmAction
-                      title={t`Delete this resource?`}
-                      description={t`Its rules and its public link go with it. A resource with upcoming bookings is refused — cancel or move those first.`}
-                      actionLabel={t`Delete`}
-                      destructive
-                      onConfirm={() => onDelete(current)}
-                    >
-                      <Button variant="destructive">
-                        <I.Trash className="size-4" />
-                        <span className="sr-only">
-                          <Trans>Delete</Trans>
-                        </span>
-                      </Button>
-                    </ConfirmAction>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {/* ── the next week, in four numbers ─────────────────────────── */}
-            {current && (
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <StatTile
-                  label={t`Booked`}
-                  value={plan ? String(plan.booked) : "—"}
-                  sub={t`next ${HORIZON_DAYS} days`}
-                />
-                <StatTile
-                  label={t`Still free`}
-                  value={plan ? String(plan.free) : "—"}
-                  sub={t`places on the published grid`}
-                />
-                <StatTile
-                  label={t`Full`}
-                  value={
-                    plan && plan.booked + plan.free > 0
-                      ? `${Math.round((plan.booked / (plan.booked + plan.free)) * 100)}%`
-                      : "—"
-                  }
-                  sub={t`of what is open`}
-                />
-                <StatTile
-                  label={t`Next free`}
-                  size="sm"
-                  value={plan?.nextFree ? shortInZone(plan.nextFree, current.timeZone) : "—"}
-                  sub={plan?.nextFree ? current.timeZone : t`nothing open in the window`}
-                />
-              </div>
-            )}
-
-            <Card className="p-0">
-              <div className="flex flex-wrap items-center gap-2 border-b p-3">
-                <span className="text-sm font-medium">
-                  <Trans>Bookings</Trans>
-                </span>
-                <div className="ml-auto flex min-w-0 flex-wrap items-center gap-2">
-                  <div className="w-36 max-sm:w-32">
-                    <Select
-                      value={windowKey}
-                      onChange={(v) => void onFilterWindow(v)}
-                      className="min-w-0"
-                      options={[
-                        { value: "upcoming", label: t`Upcoming` },
-                        { value: "past", label: t`Past` },
-                        { value: "all", label: t`Everything` },
-                      ]}
-                    />
-                  </div>
-                  <div className="w-44 max-sm:w-36">
-                    <Select
-                      value={statusFilter}
-                      onChange={(v) => void onFilterStatus(v)}
-                      className="min-w-0"
-                      options={[
-                        { value: "", label: t`Every status` },
-                        { value: "confirmed", label: t`Confirmed` },
-                        { value: "held", label: t`Held` },
-                        { value: "completed", label: t`Completed` },
-                        { value: "cancelled", label: t`Cancelled` },
-                        { value: "no_show", label: t`No-show` },
-                        { value: "expired", label: t`Expired` },
-                      ]}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {bookings.length === 0 ? (
-                <div className="p-6 text-sm text-muted-foreground">
-                  {windowKey === "upcoming" ? (
-                    <Trans>Nothing is coming up in this view.</Trans>
-                  ) : (
-                    <Trans>No bookings match.</Trans>
-                  )}
-                </div>
-              ) : (
-                <ScrollArea viewportClassName="max-h-[55vh]" className="w-full">
-                  <div className="flex flex-col divide-y">
-                    {bookings.map((b) => (
-                      <div
-                        key={b.id}
-                        className="flex flex-wrap items-center gap-2 p-3 transition-colors hover:bg-accent/50"
-                      >
-                        {/* The row itself opens the record — the quick actions
-                            beside it are the two or three moves an operator
-                            makes without needing to read anything first. */}
-                        <button
-                          type="button"
-                          className="min-w-0 flex-1 text-left"
-                          onClick={() => {
-                            setMoveAt(b.start);
-                            setDetail(b);
-                          }}
-                        >
-                          <div className="flex min-w-0 items-center gap-2">
-                            <span className="truncate font-medium">
-                              {b.customerName || b.customerEmail || t`(no name)`}
-                            </span>
-                            <Badge variant={STATUS_TONE[b.status] ?? "secondary"}>{b.status}</Badge>
-                          </div>
-                          <div className="truncate text-xs text-muted-foreground">
-                            {inZone(b.start, current?.timeZone ?? "UTC")} · {b.source}
-                          </div>
-                        </button>
-                        <div className="flex flex-wrap items-center gap-1">
-                          {b.status === "held" && (
-                            <Button
-                              variant="outline"
-                              onClick={() =>
-                                void patchBooking(b, "confirmed", () => bookingApi.confirm(b.id), t`Confirmed.`)
-                              }
-                            >
-                              <Trans>Confirm</Trans>
-                            </Button>
-                          )}
-                          {/* Only once the slot has passed: before that nobody
-                              has failed to turn up yet. A booking that is over
-                              reads as `completed`, which is precisely the one
-                              that can still be corrected to a no-show. */}
-                          {b.storedStatus === "confirmed" && isOver(b, now) && (
-                            <Button
-                              variant="outline"
-                              title={t`They did not turn up.`}
-                              onClick={() =>
-                                void patchBooking(b, "no_show", () => bookingApi.noShow(b.id), t`Marked as a no-show.`)
-                              }
-                            >
-                              <Trans>No-show</Trans>
-                            </Button>
-                          )}
-                          {(b.status === "confirmed" || b.status === "held") && (
-                            <ConfirmAction
-                              title={t`Cancel this booking?`}
-                              description={t`The slot goes back on sale and the customer is emailed.`}
-                              actionLabel={t`Cancel the booking`}
-                              cancelLabel={t`Keep it`}
-                              destructive
-                              onConfirm={() =>
-                                patchBooking(
-                                  b,
-                                  "cancelled",
-                                  () => bookingApi.cancel(b.id),
-                                  t`Cancelled — the slot is free again.`,
-                                )
-                              }
-                            >
-                              <Button variant="destructive">
-                                <Trans>Cancel</Trans>
-                              </Button>
-                            </ConfirmAction>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              )}
-
-              {total > 0 && (
-                <div className="flex flex-wrap items-center gap-2 border-t p-3 text-xs text-muted-foreground">
-                  <span className="tabular-nums">
-                    <Trans>
-                      {shownFrom}–{shownTo} of {total}
-                    </Trans>
-                  </span>
-                  <div className="ml-auto flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      disabled={offset === 0}
-                      onClick={() => void onPage(Math.max(offset - PAGE_SIZE, 0))}
-                    >
-                      <Trans>Previous</Trans>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      disabled={offset + bookings.length >= total}
-                      onClick={() => void onPage(offset + PAGE_SIZE)}
-                    >
-                      <Trans>Next</Trans>
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </Card>
+        {resources.length === 0 ? (
+          <EmptyState
+            icon={I.CalendarDays}
+            title={<Trans>Nothing is bookable yet</Trans>}
+            description={
+              <Trans>
+                A resource is the thing people book — a person, a room, a table — and it carries the
+                opening hours, how long one booking lasts and how many fit at once.
+              </Trans>
+            }
+            action={
+              <Button
+                variant="primary"
+                icon={I.Plus}
+                onClick={() => {
+                  setDraft({ key: "", name: "", timeZone: DEFAULT_FORM.timeZone, keyTouched: false });
+                  setNewOpen(true);
+                }}
+              >
+                <Trans>New resource</Trans>
+              </Button>
+            }
+          />
+        ) : (
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">
+            {resources.map((r) => (
+              <ResourceCard
+                key={r.key}
+                resource={r}
+                stats={stats[r.key]}
+                onOpen={() => openResource(r)}
+              />
+            ))}
           </div>
+        )}
+
+        {newDialog}
+      </div>
+    );
+  }
+
+  /* ── one resource ────────────────────────────────────────────────────── */
+
+  const saveIndicator = (
+    <span
+      className={cn(
+        "flex items-center gap-1 text-[11.5px]",
+        saveState === "blocked" || saveState === "error"
+          ? "text-destructive"
+          : "text-muted-foreground",
+      )}
+      title={saveNote ?? undefined}
+    >
+      {saveState === "saving" ? (
+        <Trans>saving…</Trans>
+      ) : saveState === "error" ? (
+        <Trans>save failed</Trans>
+      ) : saveState === "blocked" ? (
+        <Trans>not saved</Trans>
+      ) : (
+        <>
+          <I.Check size={12} />
+          <Trans>saved</Trans>
+        </>
+      )}
+    </span>
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* toolbar */}
+      <div className="flex flex-wrap items-center gap-2.5">
+        <button
+          type="button"
+          title={t`Back to resources`}
+          onClick={closeResource}
+          className="grid size-[30px] shrink-0 place-items-center rounded-[8px] border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+        >
+          <I.ChevronLeft size={14} />
+        </button>
+        <div className="min-w-0 flex-1 sm:flex-none">
+          <div className="truncate text-[14.5px] font-semibold">{form.name || current.name}</div>
+          <div className="truncate font-mono text-[11px] text-muted-foreground">
+            {current.key} · {zone}
+          </div>
+        </div>
+        {/* Mobile: the save indicator rides the title row (right edge); the
+            fixed-width desktop copy below keeps the centered tabs stable. */}
+        <span className="shrink-0 sm:hidden">{saveIndicator}</span>
+        {/* Five tabs do not fit a phone with their labels on, so the label is
+            the thing that goes — an icon row still reads, a squeezed strip of
+            half-words does not. */}
+        <div className="flex w-full justify-center sm:mx-auto sm:w-auto">
+          <div className="flex items-center gap-0.5 rounded-[10px] border border-white/10 bg-white/5 p-[3px]">
+            {TABS.map((tb) => {
+              const Icon =
+                tb === "hours"
+                  ? I.Clock
+                  : tb === "questions"
+                    ? I.MessageSquare
+                    : tb === "bookings"
+                      ? I.CalendarDays
+                      : tb === "share"
+                        ? I.Share
+                        : I.Settings;
+              return (
+                <button
+                  key={tb}
+                  type="button"
+                  onClick={() => setTab(tb)}
+                  title={
+                    tb === "hours"
+                      ? t`Hours`
+                      : tb === "questions"
+                        ? t`Questions`
+                        : tb === "bookings"
+                          ? t`Bookings`
+                          : tb === "share"
+                            ? t`Share`
+                            : t`Settings`
+                  }
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[12.5px] font-semibold transition-colors sm:px-3.5",
+                    tab === tb
+                      ? "bg-primary/20 text-foreground ring-1 ring-inset ring-primary/40"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Icon size={14} className="shrink-0 sm:hidden" />
+                  <span className="max-sm:sr-only">
+                    {tb === "hours" ? (
+                      <Trans>Hours</Trans>
+                    ) : tb === "questions" ? (
+                      <Trans>Questions</Trans>
+                    ) : tb === "bookings" ? (
+                      <Trans>Bookings</Trans>
+                    ) : tb === "share" ? (
+                      <Trans>Share</Trans>
+                    ) : (
+                      <Trans>Settings</Trans>
+                    )}
+                  </span>
+                  {tb === "bookings" && total > 0 && (
+                    <span
+                      className={cn(
+                        "font-mono text-[10px] tabular-nums",
+                        tab === tb ? "text-primary" : "",
+                      )}
+                    >
+                      {total}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {/* fixed width so saved↔saving… can't shift the centered tab strip */}
+        <span className="hidden w-[76px] shrink-0 justify-end sm:flex">{saveIndicator}</span>
+        {/* Actions hug the right edge on mobile (own row via ml-auto). */}
+        <div className="ml-auto flex items-center gap-2.5 sm:ml-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11.5px] text-muted-foreground">
+              {form.active ? t`live` : t`paused`}
+            </span>
+            <Switch
+              checked={form.active}
+              onCheckedChange={(v) => patchForm({ active: v })}
+            />
+          </div>
+          <ConfirmAction
+            title={t`Delete this resource?`}
+            description={t`Its rules and its public link go with it. A resource with upcoming bookings is refused — cancel or move those first.`}
+            actionLabel={t`Delete`}
+            destructive
+            onConfirm={() => onDelete(current)}
+          >
+            <button
+              type="button"
+              title={t`Delete resource`}
+              className="grid size-[30px] shrink-0 place-items-center rounded-[8px] border border-white/10 bg-white/[0.03] text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+            >
+              <I.Trash size={14} />
+            </button>
+          </ConfirmAction>
+          <Button
+            variant="primary"
+            icon={I.ExternalLink}
+            onClick={() => {
+              if (link) window.open(link, "_blank");
+              else {
+                setTab("share");
+                pushToast(t`Mint a link first — the token is only shown once.`);
+              }
+            }}
+          >
+            <Trans>Open page</Trans>
+          </Button>
+        </div>
+      </div>
+
+      {/* Why nothing is being written. A tooltip on the word "not saved" is
+          not enough for this: the operator is typing into a page that has
+          quietly stopped saving, and the one thing they need is the sentence
+          that says which field to go back to. */}
+      {saveState === "blocked" && saveNote && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-surface border border-destructive/40 bg-destructive/10 px-3 py-2 text-[12.5px] text-destructive"
+        >
+          <I.AlertTriangle className="mt-px size-3.5 shrink-0" />
+          <span className="min-w-0">{saveNote}</span>
         </div>
       )}
 
-      {/* ── resource editor ─────────────────────────────────────────────── */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-2xl [&>*]:min-w-0">
-          <DialogHeader className="shrink-0">
-            <DialogTitle>
-              {editingKey ? <Trans>Edit resource</Trans> : <Trans>New bookable resource</Trans>}
-            </DialogTitle>
-            <DialogDescription>
-              <Trans>
-                The opening hours are written in the resource's own zone, so "Mondays 09:00" keeps
-                meaning nine in the morning there when the clocks change.
-              </Trans>
-            </DialogDescription>
-          </DialogHeader>
+      {/* ── hours ─────────────────────────────────────────────────────── */}
+      {tab === "hours" && (
+        <Card className="gap-3 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-0">
+              <div className="text-sm font-medium">
+                <Trans>Opening hours</Trans>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                <Trans>
+                  Written in {zone}, so "Mondays 09:00" keeps meaning nine in the morning there when
+                  the clocks change. An "open" rule adds bookable time and a "block" takes it away; a
+                  span crossing midnight is two rules.
+                </Trans>
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              className="ml-auto"
+              onClick={() => editRules((arr) => [...arr, blankRule()])}
+            >
+              <I.Plus className="size-4" />
+              <span className="max-sm:sr-only">
+                <Trans>Add rule</Trans>
+              </span>
+            </Button>
+          </div>
 
-          <DialogBody>
-            <div className="grid gap-4 p-1">
-              {link && (
-                <Card className="border-primary/40 bg-primary/5 p-3">
-                  <div className="text-sm font-medium">
-                    <Trans>The public booking link</Trans>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    <Trans>
-                      Copy it now. Only its hash is stored, so nothing can show it again — "New
-                      link" mints a replacement and kills this one.
-                    </Trans>
-                  </p>
-                  <CopyLink value={link} pushToast={pushToast} />
-                  <div className="mt-3 text-sm font-medium">
-                    <Trans>Or embed it</Trans>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    <Trans>
-                      The same link in an iframe. The page is framable on purpose — a booking
-                      widget belongs on your site — so there is no second URL to keep track of.
-                    </Trans>
-                  </p>
-                  <CopyLink
-                    value={`<iframe src="${link}" width="100%" height="720" frameborder="0" title="${form.name || t`Booking`}"></iframe>`}
-                    pushToast={pushToast}
-                  />
-                </Card>
-              )}
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                {!editingKey && (
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="bk-key">
-                      <Trans>Key</Trans>
-                    </Label>
+          {rules.length === 0 ? (
+            <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+              <Trans>No hours — the public page has nothing to offer.</Trans>
+            </p>
+          ) : (
+            rules.map((r, i) => (
+              <div
+                key={i}
+                className="grid gap-2 rounded-md border p-2 sm:grid-cols-[110px_140px_1fr_1fr_auto]"
+              >
+                <Select
+                  value={r.kind}
+                  onChange={(v) => editRules((arr) => arr.map((x, j) => (j === i ? { ...x, kind: v } : x)))}
+                  className="min-w-0"
+                  options={[
+                    { value: "open", label: t`Open` },
+                    { value: "block", label: t`Block` },
+                  ]}
+                />
+                <Select
+                  value={r.weekday === null ? "" : String(r.weekday)}
+                  onChange={(v) =>
+                    editRules((arr) =>
+                      arr.map((x, j) => (j === i ? { ...x, weekday: v === "" ? null : Number(v) } : x)),
+                    )
+                  }
+                  className="min-w-0"
+                  options={[...WEEKDAYS, { value: "", label: t`Specific dates` }]}
+                />
+                <Input
+                  value={minutesToClock(r.startMinute)}
+                  onChange={(e) => {
+                    const m = clockToMinutes(e.target.value);
+                    if (m !== null)
+                      editRules((arr) => arr.map((x, j) => (j === i ? { ...x, startMinute: m } : x)));
+                  }}
+                  placeholder="09:00"
+                />
+                <Input
+                  value={minutesToClock(r.endMinute)}
+                  onChange={(e) => {
+                    const m = clockToMinutes(e.target.value);
+                    if (m !== null)
+                      editRules((arr) => arr.map((x, j) => (j === i ? { ...x, endMinute: m } : x)));
+                  }}
+                  placeholder="17:00"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => editRules((arr) => arr.filter((_, j) => j !== i))}
+                >
+                  <I.Trash className="size-4" />
+                  <span className="sr-only">
+                    <Trans>Remove rule</Trans>
+                  </span>
+                </Button>
+                {r.weekday === null && (
+                  <div className="grid gap-2 sm:col-span-5 sm:grid-cols-2">
                     <Input
-                      id="bk-key"
-                      value={form.key}
-                      onChange={(e) => setForm({ ...form, key: e.target.value })}
-                      placeholder="clinic"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      <Trans>How the API and CLI address it. Cannot be changed later.</Trans>
-                    </p>
-                  </div>
-                )}
-                <div className="grid gap-1.5">
-                  <Label htmlFor="bk-name">
-                    <Trans>Name</Trans>
-                  </Label>
-                  <Input
-                    id="bk-name"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder={t`Dr Yılmaz`}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    <Trans>Shown on the public page.</Trans>
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-1.5">
-                <Label>
-                  <Trans>Time zone</Trans>
-                </Label>
-                {customZone ? (
-                  <Input
-                    value={form.timeZone}
-                    onChange={(e) => setForm({ ...form, timeZone: e.target.value })}
-                    placeholder="Europe/Istanbul"
-                  />
-                ) : (
-                  <Select
-                    value={form.timeZone}
-                    onChange={(v) =>
-                      v === "__custom" ? setCustomZone(true) : setForm({ ...form, timeZone: v })
-                    }
-                    className="min-w-0"
-                    options={[
-                      ...COMMON_ZONES.map((z) => ({ value: z, label: z })),
-                      { value: "__custom", label: t`Custom…` },
-                    ]}
-                  />
-                )}
-                <p className="text-xs text-muted-foreground">
-                  <Trans>
-                    The zone the opening hours are written in — not a display preference.
-                  </Trans>
-                </p>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                {(
-                  [
-                    ["slotMinutes", t`Slot length`, t`Minutes one booking lasts.`],
-                    ["capacity", t`Capacity`, t`How many fit at once.`],
-                    ["holdMinutes", t`Hold`, t`Minutes an unconfirmed hold survives.`],
-                    ["bufferBeforeMinutes", t`Buffer before`, t`Protected minutes before each booking.`],
-                    ["bufferAfterMinutes", t`Buffer after`, t`Both sides apply, so 15+15 is a 30-minute gap.`],
-                    ["leadMinutes", t`Notice`, t`Minimum minutes of warning.`],
-                    ["horizonDays", t`Horizon`, t`How many days ahead the calendar is open.`],
-                  ] as const
-                ).map(([field, label, hint]) => (
-                  <div key={field} className="grid gap-1.5">
-                    <Label htmlFor={`bk-${field}`}>{label}</Label>
-                    <Input
-                      id={`bk-${field}`}
-                      type="number"
-                      inputMode="numeric"
-                      value={form[field]}
-                      onChange={(e) => setForm({ ...form, [field]: e.target.value })}
-                    />
-                    <p className="text-xs text-muted-foreground">{hint}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid gap-2">
-                <div className="flex items-center gap-2">
-                  <Label>
-                    <Trans>Opening hours</Trans>
-                  </Label>
-                  <Button
-                    variant="outline"
-                    className="ml-auto"
-                    onClick={() => setRules((arr) => [...arr, blankRule()])}
-                  >
-                    <I.Plus className="size-4" />
-                    <Trans>Add rule</Trans>
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  <Trans>
-                    An "open" rule adds bookable time and a "block" takes it away. A span crossing
-                    midnight is two rules.
-                  </Trans>
-                </p>
-                {rules.map((r, i) => (
-                  <div key={i} className="grid gap-2 rounded-md border p-2 sm:grid-cols-[110px_140px_1fr_1fr_auto]">
-                    <Select
-                      value={r.kind}
-                      onChange={(v) =>
-                        setRules((arr) => arr.map((x, j) => (j === i ? { ...x, kind: v } : x)))
-                      }
-                      className="min-w-0"
-                      options={[
-                        { value: "open", label: t`Open` },
-                        { value: "block", label: t`Block` },
-                      ]}
-                    />
-                    <Select
-                      value={r.weekday === null ? "" : String(r.weekday)}
-                      onChange={(v) =>
-                        setRules((arr) =>
-                          arr.map((x, j) => (j === i ? { ...x, weekday: v === "" ? null : Number(v) } : x)),
+                      type="date"
+                      value={r.startsOn ?? ""}
+                      onChange={(e) =>
+                        editRules((arr) =>
+                          arr.map((x, j) => (j === i ? { ...x, startsOn: e.target.value || null } : x)),
                         )
                       }
-                      className="min-w-0"
-                      options={[...WEEKDAYS, { value: "", label: t`Specific dates` }]}
                     />
                     <Input
-                      value={minutesToClock(r.startMinute)}
-                      onChange={(e) => {
-                        const m = clockToMinutes(e.target.value);
-                        if (m !== null)
-                          setRules((arr) => arr.map((x, j) => (j === i ? { ...x, startMinute: m } : x)));
-                      }}
-                      placeholder="09:00"
+                      type="date"
+                      value={r.endsOn ?? ""}
+                      onChange={(e) =>
+                        editRules((arr) =>
+                          arr.map((x, j) => (j === i ? { ...x, endsOn: e.target.value || null } : x)),
+                        )
+                      }
                     />
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </Card>
+      )}
+
+      {/* ── questions ─────────────────────────────────────────────────── */}
+      {tab === "questions" && (
+        <Card className="gap-3 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-0">
+              <div className="text-sm font-medium">
+                <Trans>Intake questions</Trans>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                <Trans>
+                  What the booker is asked beyond name, email and phone. The answers ride along with
+                  the booking and can be mapped into the mirrored collection.
+                </Trans>
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              className="ml-auto"
+              disabled={questions.length >= MAX_QUESTIONS}
+              onClick={() => editQuestions((arr) => [...arr, blankQuestion()])}
+            >
+              <I.Plus className="size-4" />
+              <span className="max-sm:sr-only">
+                <Trans>Add question</Trans>
+              </span>
+            </Button>
+          </div>
+
+          {questions.length === 0 ? (
+            <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+              <Trans>No questions — the page asks only for name, email and phone.</Trans>
+            </p>
+          ) : (
+            questions.map((q, i) => {
+              const locked = storedNames.has(q.name);
+              const patch = (next: Partial<ApiBookingQuestion>) =>
+                editQuestions((arr) => arr.map((x, j) => (j === i ? { ...x, ...next } : x)));
+              return (
+                <div key={i} className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1fr_170px_auto]">
+                  <div className="grid min-w-0 gap-1">
                     <Input
-                      value={minutesToClock(r.endMinute)}
-                      onChange={(e) => {
-                        const m = clockToMinutes(e.target.value);
-                        if (m !== null)
-                          setRules((arr) => arr.map((x, j) => (j === i ? { ...x, endMinute: m } : x)));
-                      }}
-                      placeholder="17:00"
+                      value={q.label ?? ""}
+                      onChange={(e) =>
+                        patch({
+                          label: e.target.value,
+                          // A question nobody has answered yet still has its
+                          // name follow the label; once answers exist the name
+                          // is frozen.
+                          ...(locked ? {} : { name: questionName(e.target.value) }),
+                        })
+                      }
+                      placeholder={t`Reason for visit`}
                     />
+                    {q.name && (
+                      <p className="truncate font-mono text-[11px] text-muted-foreground">{q.name}</p>
+                    )}
+                  </div>
+                  <Select
+                    value={q.type ?? "text"}
+                    onChange={(v) => patch({ type: v })}
+                    className="min-w-0"
+                    options={[
+                      { value: "text", label: t`Short text` },
+                      { value: "textarea", label: t`Long text` },
+                      { value: "select", label: t`Choice` },
+                      { value: "boolean", label: t`Yes / no` },
+                    ]}
+                  />
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id={`bk-q-req-${i}`}
+                        checked={q.required === true}
+                        onCheckedChange={(v) => patch({ required: v })}
+                      />
+                      <Label htmlFor={`bk-q-req-${i}`} className="text-xs">
+                        <Trans>Required</Trans>
+                      </Label>
+                    </div>
                     <Button
                       variant="outline"
-                      onClick={() => setRules((arr) => arr.filter((_, j) => j !== i))}
+                      className="ml-auto"
+                      onClick={() => editQuestions((arr) => arr.filter((_, j) => j !== i))}
                     >
                       <I.Trash className="size-4" />
                       <span className="sr-only">
-                        <Trans>Remove rule</Trans>
+                        <Trans>Remove question</Trans>
                       </span>
                     </Button>
-                    {r.weekday === null && (
-                      <div className="grid gap-2 sm:col-span-5 sm:grid-cols-2">
-                        <Input
-                          type="date"
-                          value={r.startsOn ?? ""}
-                          onChange={(e) =>
-                            setRules((arr) =>
-                              arr.map((x, j) => (j === i ? { ...x, startsOn: e.target.value || null } : x)),
-                            )
-                          }
-                        />
-                        <Input
-                          type="date"
-                          value={r.endsOn ?? ""}
-                          onChange={(e) =>
-                            setRules((arr) =>
-                              arr.map((x, j) => (j === i ? { ...x, endsOn: e.target.value || null } : x)),
-                            )
-                          }
-                        />
-                      </div>
-                    )}
                   </div>
-                ))}
-              </div>
-
-              <div className="grid gap-2">
-                <div className="flex items-center gap-2">
-                  <Label>
-                    <Trans>Intake questions</Trans>
-                  </Label>
-                  <Button
-                    variant="outline"
-                    className="ml-auto"
-                    disabled={questions.length >= MAX_QUESTIONS}
-                    onClick={() => setQuestions((arr) => [...arr, blankQuestion()])}
-                  >
-                    <I.Plus className="size-4" />
-                    <Trans>Add question</Trans>
-                  </Button>
+                  {q.type === "select" && (
+                    <div className="grid gap-1 sm:col-span-3">
+                      <Input
+                        value={(q.options ?? []).join(", ")}
+                        onChange={(e) =>
+                          // Empty entries survive the keystroke on purpose —
+                          // dropping them here would eat the comma the operator
+                          // just typed. `bodyOf` filters them on the way out.
+                          patch({ options: e.target.value.split(",").map((o) => o.trim()) })
+                        }
+                        placeholder={t`Check-up, Follow-up, Emergency`}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        <Trans>Comma-separated. The page offers exactly these.</Trans>
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  <Trans>
-                    What the booker is asked beyond name, email and phone. The answers ride along
-                    with the booking and can be mapped into the mirrored collection below.
-                  </Trans>
-                </p>
-                {questions.length === 0 ? (
-                  <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-                    <Trans>No questions — the page asks only for name, email and phone.</Trans>
-                  </p>
-                ) : (
-                  questions.map((q, i) => {
-                    const locked = storedNames.has(q.name);
-                    const patch = (next: Partial<ApiBookingQuestion>) =>
-                      setQuestions((arr) => arr.map((x, j) => (j === i ? { ...x, ...next } : x)));
-                    return (
-                      <div key={i} className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1fr_170px_auto]">
-                        <div className="grid min-w-0 gap-1">
-                          <Input
-                            value={q.label ?? ""}
-                            onChange={(e) =>
-                              patch({
-                                label: e.target.value,
-                                // A question nobody has answered yet still has
-                                // its name follow the label; once answers exist
-                                // the name is frozen.
-                                ...(locked ? {} : { name: questionName(e.target.value) }),
-                              })
-                            }
-                            placeholder={t`Reason for visit`}
-                          />
-                          {q.name && (
-                            <p className="truncate font-mono text-[11px] text-muted-foreground">
-                              {q.name}
-                            </p>
-                          )}
-                        </div>
-                        <Select
-                          value={q.type ?? "text"}
-                          onChange={(v) => patch({ type: v })}
-                          className="min-w-0"
-                          options={[
-                            { value: "text", label: t`Short text` },
-                            { value: "textarea", label: t`Long text` },
-                            { value: "select", label: t`Choice` },
-                            { value: "boolean", label: t`Yes / no` },
-                          ]}
-                        />
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              id={`bk-q-req-${i}`}
-                              checked={q.required === true}
-                              onCheckedChange={(v) => patch({ required: v })}
-                            />
-                            <Label htmlFor={`bk-q-req-${i}`} className="text-xs">
-                              <Trans>Required</Trans>
-                            </Label>
-                          </div>
-                          <Button
-                            variant="outline"
-                            className="ml-auto"
-                            onClick={() => setQuestions((arr) => arr.filter((_, j) => j !== i))}
-                          >
-                            <I.Trash className="size-4" />
-                            <span className="sr-only">
-                              <Trans>Remove question</Trans>
-                            </span>
-                          </Button>
-                        </div>
-                        {q.type === "select" && (
-                          <div className="grid gap-1 sm:col-span-3">
-                            <Input
-                              value={(q.options ?? []).join(", ")}
-                              onChange={(e) =>
-                                // Empty entries survive the keystroke on
-                                // purpose — dropping them here would eat the
-                                // comma the operator just typed. `body()`
-                                // filters them on the way out instead.
-                                patch({ options: e.target.value.split(",").map((o) => o.trim()) })
-                              }
-                              placeholder={t`Check-up, Follow-up, Emergency`}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              <Trans>Comma-separated. The page offers exactly these.</Trans>
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+              );
+            })
+          )}
+        </Card>
+      )}
 
-              <div className="grid gap-1.5">
-                <Label htmlFor="bk-mirror">
-                  <Trans>Mirror into a collection</Trans>
-                </Label>
-                <Input
-                  id="bk-mirror"
-                  value={form.mirrorCollection}
-                  onChange={(e) => setForm({ ...form, mirrorCollection: e.target.value })}
-                  placeholder="appointments"
-                />
-                <p className="text-xs text-muted-foreground">
-                  <Trans>
-                    Optional. Each booking is also written as a row there, so permissions, flows and
-                    exports apply to it as usual.
-                  </Trans>
-                </p>
-              </div>
+      {/* ── bookings ──────────────────────────────────────────────────── */}
+      {tab === "bookings" && (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatTile
+              label={t`Booked`}
+              value={plan ? String(plan.booked) : "—"}
+              sub={t`next ${HORIZON_DAYS} days`}
+            />
+            <StatTile
+              label={t`Still free`}
+              value={plan ? String(plan.free) : "—"}
+              sub={t`places on the published grid`}
+            />
+            <StatTile
+              label={t`Full`}
+              value={
+                plan && plan.booked + plan.free > 0
+                  ? `${Math.round((plan.booked / (plan.booked + plan.free)) * 100)}%`
+                  : "—"
+              }
+              sub={t`of what is open`}
+            />
+            <StatTile
+              label={t`Next free`}
+              size="sm"
+              value={plan?.nextFree ? shortInZone(plan.nextFree, zone) : "—"}
+              sub={plan?.nextFree ? zone : t`nothing open in the window`}
+            />
+          </div>
 
-              <div className="grid gap-1.5">
-                <Label htmlFor="bk-confirm">
-                  <Trans>Confirmation message</Trans>
-                </Label>
-                <Textarea
-                  id="bk-confirm"
-                  rows={2}
-                  value={form.confirmationMessage}
-                  onChange={(e) => setForm({ ...form, confirmationMessage: e.target.value })}
-                  placeholder={t`Please arrive ten minutes early.`}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label>
-                  <Trans>Public page appearance</Trans>
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  <Trans>
-                    The booking page belongs on your site, so it takes your colours rather than
-                    ours. "Visitor's choice" follows each visitor's own light/dark setting — fine
-                    for a link you send, but pick a theme when you embed it, or a dark widget can
-                    land on a light page.
-                  </Trans>
-                </p>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="bk-theme" className="text-xs text-muted-foreground">
-                      <Trans>Theme</Trans>
-                    </Label>
-                    <Select
-                      value={look.theme ?? ""}
-                      onChange={(v) => setLook(({ theme, ...rest }) => (v ? { ...rest, theme: v } : rest))}
-                      className="min-w-0"
-                      options={[
-                        { value: "", label: t`Visitor's choice` },
-                        { value: "dark", label: t`Dark` },
-                        { value: "light", label: t`Light` },
-                      ]}
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="bk-font" className="text-xs text-muted-foreground">
-                      <Trans>Font</Trans>
-                    </Label>
-                    <Select
-                      // No "default" entry, and unset shows as Manrope: that
-                      // is what the page now draws, and it is what the form's
-                      // own picker offers. A choice the panel does not name is
-                      // a choice an operator cannot see is being made.
-                      value={look.font ?? "sans"}
-                      onChange={(v) => setLook(({ font, ...rest }) => (v ? { ...rest, font: v } : rest))}
-                      className="min-w-0"
-                      options={[
-                        { value: "sans", label: "Manrope" },
-                        { value: "lexend", label: "Lexend" },
-                        { value: "mono", label: t`Mono` },
-                        { value: "system", label: t`System` },
-                      ]}
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label className="text-xs text-muted-foreground">
-                    <Trans>Accent</Trans>
-                  </Label>
-                  <ColorSwatchPicker
+          <Card className="p-0">
+            <div className="flex flex-wrap items-center gap-2 border-b p-3">
+              <span className="text-sm font-medium">
+                <Trans>Bookings</Trans>
+              </span>
+              <div className="ml-auto flex min-w-0 flex-wrap items-center gap-2">
+                <Button variant="outline" onClick={() => setBookOpen(true)}>
+                  <I.Plus className="size-4" />
+                  <span className="max-sm:sr-only">
+                    <Trans>Add booking</Trans>
+                  </span>
+                </Button>
+                <div className="w-36 max-sm:w-32">
+                  <Select
+                    value={windowKey}
+                    onChange={(v) => void onFilterWindow(v)}
+                    className="min-w-0"
                     options={[
-                      { value: "", swatch: "var(--muted-foreground)", label: t`Default` },
-                      ...ACCENTS.map((c) => ({ value: c, swatch: c })),
+                      { value: "upcoming", label: t`Upcoming` },
+                      { value: "past", label: t`Past` },
+                      { value: "all", label: t`Everything` },
                     ]}
-                    value={look.accent ?? ""}
-                    onChange={(accent) =>
-                      setLook(({ accent: _drop, ...rest }) => (accent ? { ...rest, accent } : rest))
-                    }
-                    showValue
+                  />
+                </div>
+                <div className="w-44 max-sm:w-36">
+                  <Select
+                    value={statusFilter}
+                    onChange={(v) => void onFilterStatus(v)}
+                    className="min-w-0"
+                    options={[
+                      { value: "", label: t`Every status` },
+                      { value: "confirmed", label: t`Confirmed` },
+                      { value: "held", label: t`Held` },
+                      { value: "completed", label: t`Completed` },
+                      { value: "cancelled", label: t`Cancelled` },
+                      { value: "no_show", label: t`No-show` },
+                      { value: "expired", label: t`Expired` },
+                    ]}
                   />
                 </div>
               </div>
+            </div>
 
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="bk-active"
-                  checked={form.active}
-                  onCheckedChange={(v) => setForm({ ...form, active: v })}
+            {bookings.length === 0 ? (
+              <div className="p-6 text-sm text-muted-foreground">
+                {windowKey === "upcoming" ? (
+                  <Trans>Nothing is coming up in this view.</Trans>
+                ) : (
+                  <Trans>No bookings match.</Trans>
+                )}
+              </div>
+            ) : (
+              <ScrollArea viewportClassName="max-h-[55vh]" className="w-full">
+                <div className="flex flex-col divide-y">
+                  {bookings.map((b) => (
+                    <div
+                      key={b.id}
+                      className="flex flex-wrap items-center gap-2 p-3 transition-colors hover:bg-accent/50"
+                    >
+                      {/* The row itself opens the record — the quick actions
+                          beside it are the two or three moves an operator
+                          makes without needing to read anything first. */}
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 text-left"
+                        onClick={() => {
+                          setMoveAt(b.start);
+                          setDetail(b);
+                        }}
+                      >
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="truncate font-medium">
+                            {b.customerName || b.customerEmail || t`(no name)`}
+                          </span>
+                          <Badge variant={STATUS_TONE[b.status] ?? "secondary"}>{b.status}</Badge>
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {inZone(b.start, zone)} · {b.source}
+                        </div>
+                      </button>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {b.status === "held" && (
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              void patchBooking(b, "confirmed", () => bookingApi.confirm(b.id), t`Confirmed.`)
+                            }
+                          >
+                            <Trans>Confirm</Trans>
+                          </Button>
+                        )}
+                        {/* Only once the slot has passed: before that nobody
+                            has failed to turn up yet. A booking that is over
+                            reads as `completed`, which is precisely the one
+                            that can still be corrected to a no-show. */}
+                        {b.storedStatus === "confirmed" && isOver(b, now) && (
+                          <Button
+                            variant="outline"
+                            title={t`They did not turn up.`}
+                            onClick={() =>
+                              void patchBooking(b, "no_show", () => bookingApi.noShow(b.id), t`Marked as a no-show.`)
+                            }
+                          >
+                            <Trans>No-show</Trans>
+                          </Button>
+                        )}
+                        {(b.status === "confirmed" || b.status === "held") && (
+                          <ConfirmAction
+                            title={t`Cancel this booking?`}
+                            description={t`The slot goes back on sale and the customer is emailed.`}
+                            actionLabel={t`Cancel the booking`}
+                            cancelLabel={t`Keep it`}
+                            destructive
+                            onConfirm={() =>
+                              patchBooking(
+                                b,
+                                "cancelled",
+                                () => bookingApi.cancel(b.id),
+                                t`Cancelled — the slot is free again.`,
+                              )
+                            }
+                          >
+                            <Button variant="destructive">
+                              <Trans>Cancel</Trans>
+                            </Button>
+                          </ConfirmAction>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+
+            {total > 0 && (
+              <div className="flex flex-wrap items-center gap-2 border-t p-3 text-xs text-muted-foreground">
+                <span className="tabular-nums">
+                  <Trans>
+                    {shownFrom}–{shownTo} of {total}
+                  </Trans>
+                </span>
+                <div className="ml-auto flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    disabled={offset === 0}
+                    onClick={() => void onPage(Math.max(offset - PAGE_SIZE, 0))}
+                  >
+                    <Trans>Previous</Trans>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={offset + bookings.length >= total}
+                    onClick={() => void onPage(offset + PAGE_SIZE)}
+                  >
+                    <Trans>Next</Trans>
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
+        </>
+      )}
+
+      {/* ── share ─────────────────────────────────────────────────────── */}
+      {tab === "share" && (
+        <Card className="gap-3 p-4">
+          <div className="text-sm font-medium">
+            <Trans>The public booking link</Trans>
+          </div>
+          {link ? (
+            <>
+              <p className="text-xs text-muted-foreground">
+                <Trans>
+                  Copy it now. Only its hash is stored, so nothing can show it again once this tab
+                  is closed — "New link" mints a replacement and kills this one.
+                </Trans>
+              </p>
+              <CopyLink value={link} pushToast={pushToast} />
+              <div className="mt-3 text-sm font-medium">
+                <Trans>Or embed it</Trans>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                <Trans>
+                  The same link in an iframe. The page is framable on purpose — a booking widget
+                  belongs on your site — so there is no second URL to keep track of.
+                </Trans>
+              </p>
+              <CopyLink
+                value={`<iframe src="${link}" width="100%" height="720" frameborder="0" title="${form.name || t`Booking`}"></iframe>`}
+                pushToast={pushToast}
+              />
+            </>
+          ) : (
+            <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+              <Trans>
+                Only the hash of the link is stored, so the one handed out when this resource was
+                created cannot be shown again. Mint a replacement to see one — the old link stops
+                working the moment you do.
+              </Trans>
+            </p>
+          )}
+          <div className="mt-1">
+            <ConfirmAction
+              title={t`Mint a new link?`}
+              description={t`The link in circulation stops working immediately. Anyone holding it — an email, a QR code, your own website — has to be given the new one.`}
+              actionLabel={t`Mint it`}
+              destructive
+              onConfirm={onRotate}
+            >
+              <Button variant="outline" disabled={busy}>
+                <I.Link className="size-4" />
+                <Trans>New link</Trans>
+              </Button>
+            </ConfirmAction>
+          </div>
+        </Card>
+      )}
+
+      {/* ── settings ──────────────────────────────────────────────────── */}
+      {tab === "settings" && (
+        <div className="flex flex-col gap-4">
+          <Card className="gap-4 p-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="bk-name">
+                <Trans>Name</Trans>
+              </Label>
+              <Input
+                id="bk-name"
+                value={form.name}
+                onChange={(e) => patchForm({ name: e.target.value })}
+                placeholder={t`Dr Yılmaz`}
+              />
+              <p className="text-xs text-muted-foreground">
+                <Trans>Shown on the public page.</Trans>
+              </p>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="bk-desc">
+                <Trans>Description</Trans>
+              </Label>
+              <Textarea
+                id="bk-desc"
+                rows={2}
+                value={form.description}
+                onChange={(e) => patchForm({ description: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                <Trans>A line under the name, on the public page.</Trans>
+              </p>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label>
+                <Trans>Time zone</Trans>
+              </Label>
+              {customZone ? (
+                <Input
+                  value={form.timeZone}
+                  onChange={(e) => patchForm({ timeZone: e.target.value })}
+                  placeholder="Europe/Istanbul"
                 />
-                <Label htmlFor="bk-active">
-                  <Trans>Accepting bookings</Trans>
+              ) : (
+                <Select
+                  value={form.timeZone}
+                  onChange={(v) =>
+                    v === "__custom" ? setCustomZone(true) : patchForm({ timeZone: v })
+                  }
+                  className="min-w-0"
+                  options={[
+                    ...COMMON_ZONES.map((z) => ({ value: z, label: z })),
+                    { value: "__custom", label: t`Custom…` },
+                  ]}
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                <Trans>The zone the opening hours are written in — not a display preference.</Trans>
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {(
+                [
+                  ["slotMinutes", t`Slot length`, t`Minutes one booking lasts.`],
+                  ["capacity", t`Capacity`, t`How many fit at once.`],
+                  ["holdMinutes", t`Hold`, t`Minutes an unconfirmed hold survives.`],
+                  ["bufferBeforeMinutes", t`Buffer before`, t`Protected minutes before each booking.`],
+                  ["bufferAfterMinutes", t`Buffer after`, t`Both sides apply, so 15+15 is a 30-minute gap.`],
+                  ["leadMinutes", t`Notice`, t`Minimum minutes of warning.`],
+                  ["horizonDays", t`Horizon`, t`How many days ahead the calendar is open.`],
+                ] as const
+              ).map(([field, label, hint]) => (
+                <div key={field} className="grid gap-1.5">
+                  <Label htmlFor={`bk-${field}`}>{label}</Label>
+                  <Input
+                    id={`bk-${field}`}
+                    type="number"
+                    inputMode="numeric"
+                    value={form[field]}
+                    onChange={(e) => patchForm({ [field]: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">{hint}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="gap-4 p-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="bk-mirror">
+                <Trans>Mirror into a collection</Trans>
+              </Label>
+              <Input
+                id="bk-mirror"
+                value={form.mirrorCollection}
+                onChange={(e) => patchForm({ mirrorCollection: e.target.value })}
+                placeholder="appointments"
+              />
+              <p className="text-xs text-muted-foreground">
+                <Trans>
+                  Optional. Each booking is also written as a row there, so permissions, flows and
+                  exports apply to it as usual.
+                </Trans>
+              </p>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="bk-confirm">
+                <Trans>Confirmation message</Trans>
+              </Label>
+              <Textarea
+                id="bk-confirm"
+                rows={2}
+                value={form.confirmationMessage}
+                onChange={(e) => patchForm({ confirmationMessage: e.target.value })}
+                placeholder={t`Please arrive ten minutes early.`}
+              />
+            </div>
+          </Card>
+
+          <Card className="gap-2 p-4">
+            <Label>
+              <Trans>Public page appearance</Trans>
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              <Trans>
+                The booking page belongs on your site, so it takes your colours rather than ours.
+                "Visitor's choice" follows each visitor's own light/dark setting — fine for a link
+                you send, but pick a theme when you embed it, or a dark widget can land on a light
+                page.
+              </Trans>
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="bk-theme" className="text-xs text-muted-foreground">
+                  <Trans>Theme</Trans>
                 </Label>
+                <Select
+                  value={look.theme ?? ""}
+                  onChange={(v) =>
+                    editLook(({ theme, ...rest }) => (v ? { ...rest, theme: v } : rest))
+                  }
+                  className="min-w-0"
+                  options={[
+                    { value: "", label: t`Visitor's choice` },
+                    { value: "dark", label: t`Dark` },
+                    { value: "light", label: t`Light` },
+                  ]}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="bk-font" className="text-xs text-muted-foreground">
+                  <Trans>Font</Trans>
+                </Label>
+                <Select
+                  // No "default" entry, and unset shows as Manrope: that is
+                  // what the page now draws, and it is what the form's own
+                  // picker offers. A choice the panel does not name is a choice
+                  // an operator cannot see is being made.
+                  value={look.font ?? "sans"}
+                  onChange={(v) => editLook(({ font, ...rest }) => (v ? { ...rest, font: v } : rest))}
+                  className="min-w-0"
+                  options={[
+                    { value: "sans", label: "Manrope" },
+                    { value: "lexend", label: "Lexend" },
+                    { value: "mono", label: t`Mono` },
+                    { value: "system", label: t`System` },
+                  ]}
+                />
               </div>
             </div>
-          </DialogBody>
-
-          <DialogFooter className="shrink-0">
-            <Button variant="outline" onClick={() => setEditOpen(false)}>
-              <Trans>Close</Trans>
-            </Button>
-            <Button onClick={() => void onSave()} disabled={busy}>
-              {busy ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <div className="grid gap-1.5">
+              <Label className="text-xs text-muted-foreground">
+                <Trans>Accent</Trans>
+              </Label>
+              <ColorSwatchPicker
+                options={[
+                  { value: "", swatch: "var(--muted-foreground)", label: t`Default` },
+                  ...ACCENTS.map((c) => ({ value: c, swatch: c })),
+                ]}
+                value={look.accent ?? ""}
+                onChange={(accent) =>
+                  editLook(({ accent: _drop, ...rest }) => (accent ? { ...rest, accent } : rest))
+                }
+                showValue
+              />
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* ── one booking, in full ────────────────────────────────────────── */}
       <Dialog
@@ -1580,7 +2135,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                     <Badge variant={STATUS_TONE[detail.status] ?? "secondary"}>{detail.status}</Badge>
                   </Detail>
                   <Detail label={<Trans>When</Trans>}>
-                    {rangeInZone(detail.start, detail.end, current?.timeZone ?? "UTC")}
+                    {rangeInZone(detail.start, detail.end, zone)}
                   </Detail>
                   <Detail label={<Trans>Email</Trans>}>{detail.customerEmail || "—"}</Detail>
                   <Detail label={<Trans>Phone</Trans>}>{detail.customerPhone || "—"}</Detail>
@@ -1717,7 +2272,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                     {booked.booking.customerName || booked.booking.customerEmail || t`(no name)`}
                   </Detail>
                   <Detail label={<Trans>When</Trans>}>
-                    {rangeInZone(booked.booking.start, booked.booking.end, current?.timeZone ?? "UTC")}
+                    {rangeInZone(booked.booking.start, booked.booking.end, zone)}
                   </Detail>
                 </div>
               </div>

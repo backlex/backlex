@@ -125,7 +125,7 @@ msgstr "· isteğe bağlı"
 #~ msgid "· the field stays in the collection"
 #~ msgstr "· alan koleksiyonda kalır"
 
-#. placeholder {0}: q.label || q.name
+#. placeholder {0}: p.label
 #: src/client/admin/parity/booking.tsx
 msgid "\"{0}\" is a choice with nothing to choose from."
 msgstr "\"{0}\" seçenekleri olmayan bir seçim."
@@ -620,8 +620,8 @@ msgstr "{0} satır başarısız — ayrıntılar için API yanıtına bakın."
 
 #. placeholder {0}: r.rules.length
 #: src/client/admin/parity/booking.tsx
-msgid "{0} rules"
-msgstr "{0} kural"
+#~ msgid "{0} rules"
+#~ msgstr "{0} kural"
 
 #. placeholder {0}: draft.events.length
 #. placeholder {0}: selected.length
@@ -1147,6 +1147,10 @@ msgstr "Bu isimde bir anahtar zaten mevcut."
 msgid "A KPI needs a handle, a name and a collection."
 msgstr "Bir KPI'ın tanıtıcısı, adı ve koleksiyonu olmalı."
 
+#: src/client/admin/parity/booking.tsx
+msgid "A line under the name, on the public page."
+msgstr "Herkese açık sayfada, adın altındaki satır."
+
 #: src/client/admin/pages/payments.tsx
 msgid "A local stand-in that settles payments without charging anything. Demo and development instances only."
 msgstr "Hiçbir ücret çekmeden ödemeleri sonuçlandıran yerel bir taklit. Yalnızca demo ve geliştirme kurulumları için."
@@ -1338,8 +1342,8 @@ msgid "accepted, all time"
 msgstr "kabul edilen, tüm zamanlar"
 
 #: src/client/admin/parity/booking.tsx
-msgid "Accepting bookings"
-msgstr "Rezervasyon alıyor"
+#~ msgid "Accepting bookings"
+#~ msgstr "Rezervasyon alıyor"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Accepting submissions"
@@ -2138,8 +2142,8 @@ msgid "Amounts are stored to {exponent} decimal places — e.g. <0>{0}</0>."
 msgstr "Tutarlar {exponent} ondalık basamakla saklanır — örn. <0>{0}</0>."
 
 #: src/client/admin/parity/booking.tsx
-msgid "An \"open\" rule adds bookable time and a \"block\" takes it away. A span crossing midnight is two rules."
-msgstr "\"Açık\" kuralı rezerve edilebilir zaman ekler, \"kapalı\" ise çıkarır. Gece yarısını aşan aralık iki kuraldır."
+#~ msgid "An \"open\" rule adds bookable time and a \"block\" takes it away. A span crossing midnight is two rules."
+#~ msgstr "\"Açık\" kuralı rezerve edilebilir zaman ekler, \"kapalı\" ise çıkarır. Gece yarısını aşan aralık iki kuraldır."
 
 #: src/client/admin/item-collaboration.tsx
 msgid "An active share link exists for this record. For security the link URL is shown only once, at creation. Revoke it and create a new one if you need a fresh copyable URL."
@@ -2738,6 +2742,10 @@ msgstr "Geri"
 #: src/client/admin/pages/forms.tsx
 msgid "Back to forms"
 msgstr "Formlara dön"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Back to resources"
+msgstr "Kaynaklara dön"
 
 #: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx
@@ -4175,8 +4183,12 @@ msgid "Copy invite link"
 msgstr "Davet linkini kopyala"
 
 #: src/client/admin/parity/booking.tsx
-msgid "Copy it now. Only its hash is stored, so nothing can show it again — \"New link\" mints a replacement and kills this one."
-msgstr "Şimdi kopyalayın. Yalnızca özeti saklanır, bu yüzden bir daha gösterilemez — \"Yeni bağlantı\" yenisini üretir ve bunu geçersiz kılar."
+#~ msgid "Copy it now. Only its hash is stored, so nothing can show it again — \"New link\" mints a replacement and kills this one."
+#~ msgstr "Şimdi kopyalayın. Yalnızca özeti saklanır, bu yüzden bir daha gösterilemez — \"Yeni bağlantı\" yenisini üretir ve bunu geçersiz kılar."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Copy it now. Only its hash is stored, so nothing can show it again once this tab is closed — \"New link\" mints a replacement and kills this one."
+msgstr "Şimdi kopyalayın. Yalnızca özeti saklanıyor; bu sekme kapandığında hiçbir şey onu tekrar gösteremez — \"Yeni bağlantı\" bir yenisini üretir ve bunu geçersiz kılar."
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "Copy JSON"
@@ -4397,6 +4409,7 @@ msgstr "Üst yazı"
 
 #: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/parity/app-orgs.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Create"
@@ -4549,6 +4562,10 @@ msgstr "Admin hesabınızı oluşturun"
 msgid "Created"
 msgstr "Oluşturuldu"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Created — the public link is on the Share tab."
+msgstr "Oluşturuldu — herkese açık bağlantı Paylaş sekmesinde."
+
 #. placeholder {0}: new Date(k.createdAt).toLocaleString()
 #: src/client/pages/api-keys.tsx
 msgid "created {0}"
@@ -4589,6 +4606,7 @@ msgstr "Anahtar oluşturuluyor"
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-orgs.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/storage/index.tsx
@@ -5073,6 +5091,10 @@ msgstr "Organizasyonu sil"
 msgid "Delete panel"
 msgstr "Paneli sil"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Delete resource"
+msgstr "Kaynağı sil"
+
 #: src/client/admin/pages/chat.tsx
 msgid "Delete room"
 msgstr "Odayı sil"
@@ -5225,6 +5247,7 @@ msgstr "Azalan"
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
 #: src/client/admin/role-editor.tsx
@@ -5729,7 +5752,6 @@ msgstr "düzenle"
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/webhooks.tsx
-#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/kpis.tsx
 msgid "Edit"
 msgstr "Düzenle"
@@ -5810,8 +5832,8 @@ msgid "Edit raw DSL. Click Builder to round-trip back to visual."
 msgstr "Ham DSL'i düzenle. Görsel moduna dönmek için Oluşturucu'ya tıklayın."
 
 #: src/client/admin/parity/booking.tsx
-msgid "Edit resource"
-msgstr "Kaynağı düzenle"
+#~ msgid "Edit resource"
+#~ msgstr "Kaynağı düzenle"
 
 #: src/client/admin/permissions-matrix.tsx
 msgid "Edit rule"
@@ -6151,6 +6173,10 @@ msgstr "Uygulama"
 #: src/client/admin/pages/analytics.tsx
 msgid "engagement depth"
 msgstr "etkileşim derinliği"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Enough to create it — the opening hours, the questions and the rest are set on the resource itself."
+msgstr "Oluşturmaya yetecek kadarı — çalışma saatleri, sorular ve gerisi kaynağın kendi üzerinde ayarlanır."
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Enqueue"
@@ -7689,6 +7715,10 @@ msgstr "Saatlik"
 msgid "hours"
 msgstr "saat"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Hours"
+msgstr "Saatler"
+
 #: src/client/admin/pages/agents.tsx
 msgid "How hard the model thinks per step. Lower effort means fewer thinking tokens and fewer tool calls — cheaper and faster, less thorough. Ignored by models that don't support it."
 msgstr "Modelin her adımda ne kadar düşüneceği. Düşük efor daha az düşünme token'ı ve daha az araç çağrısı demek — daha ucuz ve hızlı, daha az kapsamlı. Desteklemeyen modellerde yok sayılır."
@@ -8967,6 +8997,7 @@ msgstr "Liste"
 
 #: src/client/admin/pages/chat.tsx
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/revisions.tsx
 #: src/client/admin/ui.tsx
 msgid "live"
@@ -9501,6 +9532,14 @@ msgstr "Alt birim — 1050, 10,50 demektir. İade edilebilir tutarın tamamı i�
 msgid "Minor units — 1050 is 10.50. Matches how payments are stored."
 msgstr "Alt birim — 1050, 10,50 demektir. Ödemelerin saklanma biçimiyle aynıdır."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Mint a link first — the token is only shown once."
+msgstr "Önce bir bağlantı üretin — jeton yalnızca bir kez gösterilir."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Mint a new link?"
+msgstr "Yeni bağlantı üretilsin mi?"
+
 #: src/client/admin/item-collaboration.tsx
 msgid "Mint a public link that shows this record read-only — no sign-in required to view it."
 msgstr "Bu kaydı salt okunur olarak gösteren bir genel bağlantı oluşturun — görüntülemek için giriş gerekmez."
@@ -9508,6 +9547,10 @@ msgstr "Bu kaydı salt okunur olarak gösteren bir genel bağlantı oluşturun �
 #: src/client/admin/pages/analytics.tsx
 msgid "Mint an ingest key, then call client.analytics.track(\"page_view\") from your app. Events show up here within seconds."
 msgstr "Bir veri alma anahtarı oluşturun, ardından uygulamanızdan client.analytics.track(\\\"page_view\\\") çağırın. Olaylar saniyeler içinde burada görünür."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Mint it"
+msgstr "Üret"
 
 #: src/client/admin/pages/analytics.tsx
 msgid "Mint key"
@@ -10112,6 +10155,10 @@ msgstr "İleri →"
 msgid "Next free"
 msgstr "İlk boş"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Next free slot"
+msgstr "Sıradaki boş yer"
+
 #: src/client/admin/item-views.tsx
 msgid "Next month"
 msgstr "Sonraki ay"
@@ -10515,6 +10562,10 @@ msgstr "Grupsuz"
 #: src/client/admin/parity/kpis.tsx
 msgid "No grouping"
 msgstr "Gruplama yok"
+
+#: src/client/admin/parity/booking.tsx
+msgid "No hours — the public page has nothing to offer."
+msgstr "Saat yok — herkese açık sayfanın sunacağı bir şey yok."
 
 #: src/client/admin/collection-settings.tsx
 msgid "No icon found."
@@ -11039,6 +11090,10 @@ msgstr "Sahip kapsamlı değil"
 msgid "Not pinned"
 msgstr "Pinlenmemiş"
 
+#: src/client/admin/parity/booking.tsx
+msgid "not saved"
+msgstr "kaydedilmedi"
+
 #: src/client/admin/pages/forms.tsx
 msgid "not sent"
 msgstr "gönderilmedi"
@@ -11468,6 +11523,10 @@ msgstr "Yalnızca mevcut durum var — henüz düzenleme kaydedilmedi."
 msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
 msgstr "Yalnızca değiştirdiğiniz alanlar <0>c_{slug}</0> içindeki seçili {count} satırın tümüne yazılır; geri kalan her şey olduğu gibi kalır."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Only the hash of the link is stored, so the one handed out when this resource was created cannot be shown again. Mint a replacement to see one — the old link stops working the moment you do."
+msgstr "Bağlantının yalnızca özeti saklanır; bu kaynak oluşturulurken verilen bağlantı bir daha gösterilemez. Görmek için yenisini üretin — ürettiğiniz anda eski bağlantı çalışmayı bırakır."
+
 #: src/client/admin/pages/forms.tsx
 msgid "Only the invite tokens are shown: generate a new form link above and the next batch comes back as full URLs."
 msgstr "Yalnızca davet anahtarları gösteriliyor: yukarıdan yeni bir form bağlantısı oluşturun, sonraki grup tam URL olarak gelsin."
@@ -11542,6 +11601,10 @@ msgstr "{0} içinde aç"
 #: src/client/admin/field-url-input.tsx
 msgid "Open in a new tab"
 msgstr "Yeni sekmede aç"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Open page"
+msgstr "Sayfayı aç"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Open resource"
@@ -11962,13 +12025,13 @@ msgstr "Duraklat"
 
 #: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "paused"
 msgstr "duraklatıldı"
 
 #: src/client/admin/pages/integration-syncs-card.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/sync-hooks-card.tsx
-#: src/client/admin/parity/booking.tsx
 msgid "Paused"
 msgstr "Duraklatıldı"
 
@@ -13048,6 +13111,7 @@ msgid "Query your backend in natural language, browse the MCP tool catalog, and 
 msgstr "Arka ucunuzu doğal dilde sorgulayın, MCP araç kataloğuna göz atın ve harici istemcileri OAuth veya API anahtarıyla bağlayın — her çağrı rolünüze ve anahtar bazlı izin listesine göre kapsanır."
 
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "Questions"
 msgstr "Soru"
 
@@ -14383,6 +14447,10 @@ msgstr "ikisinin RRF birleşimi"
 msgid "rules"
 msgstr "kurallar"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Rules"
+msgstr "Kurallar"
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/ask-ai/index.tsx
 #: src/client/admin/pages/extensions.tsx
@@ -14583,7 +14651,6 @@ msgstr "Cmt"
 #: src/client/admin/pages/sync-hooks-card.tsx
 #: src/client/admin/pages/usage.tsx
 #: src/client/admin/parity/auth-settings.tsx
-#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/email-templates.tsx
@@ -14630,6 +14697,7 @@ msgid "Save credentials"
 msgstr "Bilgileri kaydet"
 
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "save failed"
 msgstr "kayıt başarısız"
 
@@ -14702,6 +14770,7 @@ msgid "Save this secret now"
 msgstr "Bu gizli anahtarı şimdi kaydedin"
 
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "saved"
 msgstr "kaydedildi"
 
@@ -14731,7 +14800,6 @@ msgid "Saved as snippet."
 msgstr "Kod parçacığı olarak kaydedildi."
 
 #: src/client/admin/item-editor.tsx
-#: src/client/admin/parity/booking.tsx
 msgid "Saved."
 msgstr "Kaydedildi."
 
@@ -14740,6 +14808,7 @@ msgid "Saving MCP guards"
 msgstr "MCP korumaları kaydediliyor"
 
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/parity/booking.tsx
 msgid "saving…"
 msgstr "kaydediliyor…"
 
@@ -14754,7 +14823,6 @@ msgstr "kaydediliyor…"
 #: src/client/admin/pages/settings/messaging-cards.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
-#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/documents.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/kpis.tsx
@@ -15431,6 +15499,7 @@ msgstr "Passkey ayarlanıyor…"
 #: src/client/admin/add-field.tsx
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/settings/index.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/ui.tsx
 msgid "Settings"
 msgstr "Ayarlar"
@@ -15464,6 +15533,7 @@ msgid "Severity"
 msgstr "Önem düzeyi"
 
 #: src/client/admin/pages/forms.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Share"
 msgstr "Paylaş"
@@ -16931,6 +17001,10 @@ msgstr "\"{0}\" anahtarı hemen çalışmayı durduracak. Bu geri alınamaz."
 msgid "The key must be lowercase letters, digits, dash or underscore."
 msgstr "Anahtar küçük harf, rakam, tire veya alt çizgi olmalı."
 
+#: src/client/admin/parity/booking.tsx
+msgid "The link in circulation stops working immediately. Anyone holding it — an email, a QR code, your own website — has to be given the new one."
+msgstr "Dolaşımdaki bağlantı anında çalışmayı bırakır. Elinde bulunan herkese — bir e-posta, bir QR kod, kendi siteniz — yenisinin verilmesi gerekir."
+
 #: src/client/admin/flow-builder.tsx
 msgid "The link is returned into $last either way — writing it back is what puts it on the invoice."
 msgstr "Bağlantı her hâlükârda $last içine döner — faturaya yazılmasını sağlayan şey geri yazmadır."
@@ -16968,8 +17042,8 @@ msgid "The one-line text chat providers render."
 msgstr "Sohbet sağlayıcılarının gösterdiği tek satırlık metin."
 
 #: src/client/admin/parity/booking.tsx
-msgid "The opening hours are written in the resource's own zone, so \"Mondays 09:00\" keeps meaning nine in the morning there when the clocks change."
-msgstr "Çalışma saatleri kaynağın kendi saat diliminde yazılır; böylece saatler değiştiğinde \"Pazartesi 09:00\" orada hâlâ sabah dokuz demektir."
+#~ msgid "The opening hours are written in the resource's own zone, so \"Mondays 09:00\" keeps meaning nine in the morning there when the clocks change."
+#~ msgstr "Çalışma saatleri kaynağın kendi saat diliminde yazılır; böylece saatler değiştiğinde \"Pazartesi 09:00\" orada hâlâ sabah dokuz demektir."
 
 #: src/client/admin/app.tsx
 msgid "The physical table and all rows are dropped. This is irreversible."
@@ -17443,8 +17517,8 @@ msgstr "Zaman aşımı (ms)"
 #. placeholder {1}: current.capacity
 #. placeholder {2}: current.slotMinutes
 #: src/client/admin/parity/booking.tsx
-msgid "Times are written in {0}. {1} at once, {2} minutes each."
-msgstr "Saatler {0} diliminde yazılır. Aynı anda {1}, her biri {2} dakika."
+#~ msgid "Times are written in {0}. {1} at once, {2} minutes each."
+#~ msgstr "Saatler {0} diliminde yazılır. Aynı anda {1}, her biri {2} dakika."
 
 #: src/client/pages/book.tsx
 msgid "times in {zone}, not your {visitorZone}"
@@ -17826,7 +17900,7 @@ msgstr "turnstile + honeypot + hız limiti"
 msgid "Two consecutive half-width fields sit side by side on one row (stacked on mobile)."
 msgstr "Art arda gelen iki yarım genişlikli alan tek satırda yan yana durur (mobilde alt alta)."
 
-#. placeholder {0}: q.name
+#. placeholder {0}: p.name
 #: src/client/admin/parity/booking.tsx
 msgid "Two questions share the stored name \"{0}\". Names have to be unique."
 msgstr "İki soru aynı \"{0}\" adını kullanıyor. Adlar benzersiz olmalı."
@@ -18629,8 +18703,12 @@ msgid "What the approver is told they are deciding."
 msgstr "Onaylayana neye karar verdiğinin söylendiği metin."
 
 #: src/client/admin/parity/booking.tsx
-msgid "What the booker is asked beyond name, email and phone. The answers ride along with the booking and can be mapped into the mirrored collection below."
-msgstr "Rezervasyonu yapan kişiye ad, e-posta ve telefon dışında sorulanlar. Yanıtlar rezervasyonla birlikte taşınır ve aşağıdaki aynalanan koleksiyona eşlenebilir."
+#~ msgid "What the booker is asked beyond name, email and phone. The answers ride along with the booking and can be mapped into the mirrored collection below."
+#~ msgstr "Rezervasyonu yapan kişiye ad, e-posta ve telefon dışında sorulanlar. Yanıtlar rezervasyonla birlikte taşınır ve aşağıdaki aynalanan koleksiyona eşlenebilir."
+
+#: src/client/admin/parity/booking.tsx
+msgid "What the booker is asked beyond name, email and phone. The answers ride along with the booking and can be mapped into the mirrored collection."
+msgstr "Randevu alan kişiye ad, e-posta ve telefon dışında sorulanlar. Yanıtlar randevuyla birlikte taşınır ve aynalanan koleksiyona eşlenebilir."
 
 #: src/client/admin/flow-builder.tsx
 msgid "What the customer sees on the checkout line item."
@@ -18985,6 +19063,10 @@ msgstr "Yazma hedefi"
 #: src/client/admin/pages/forms.tsx
 msgid "Written answers are not shown here — read them in the collection"
 msgstr "Yazılı yanıtlar burada gösterilmez — koleksiyonda okuyun"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Written in {zone}, so \"Mondays 09:00\" keeps meaning nine in the morning there when the clocks change. An \"open\" rule adds bookable time and a \"block\" takes it away; a span crossing midnight is two rules."
+msgstr "{zone} saatiyle yazılır; böylece saatler değiştiğinde \"Pazartesi 09:00\" orada sabahın dokuzu olmayı sürdürür. \"Açık\" kuralı randevu alınabilir zaman ekler, \"kapalı\" kuralı çıkarır; gece yarısını aşan bir aralık iki kuraldır."
 
 #: src/client/admin/pages/ask-ai/index.tsx
 msgid "xAI · optimized for code agents · cheap"

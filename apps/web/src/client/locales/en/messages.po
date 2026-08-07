@@ -1114,6 +1114,10 @@ msgstr "a cookie, not an identity — another browser answers again"
 msgid "A dashboard with that name already exists."
 msgstr "A dashboard with that name already exists."
 
+#: src/client/admin/parity/booking.tsx
+msgid "A date range has to end on or after the day it starts."
+msgstr "A date range has to end on or after the day it starts."
+
 #: src/client/admin/parity/signatures.tsx
 msgid "A document template sent out to be signed. The copy is frozen when it goes — editing the template afterwards never changes what somebody already read."
 msgstr "A document template sent out to be signed. The copy is frozen when it goes — editing the template afterwards never changes what somebody already read."
@@ -2232,6 +2236,10 @@ msgstr "answered"
 msgid "Answered"
 msgstr "Answered"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Any day up to the end"
+msgstr "Any day up to the end"
+
 #: src/client/admin/pages/analytics.tsx
 msgid "any event"
 msgstr "any event"
@@ -2999,6 +3007,14 @@ msgstr "Branding saved."
 msgid "Breadcrumb"
 msgstr "Breadcrumb"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Break ends at"
+msgstr "Break ends at"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Break starts at"
+msgstr "Break starts at"
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Bring Contentful entries into a collection. One-way."
 msgstr "Bring Contentful entries into a collection. One-way."
@@ -3573,6 +3589,10 @@ msgstr "Closed message"
 #: src/client/admin/pages/forms.tsx
 msgid "Closes"
 msgstr "Closes"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Closes at"
+msgstr "Closes at"
 
 #: src/client/admin/pages/agents.tsx
 msgid "Cloudflare Workers AI · managed"
@@ -4751,6 +4771,7 @@ msgstr "custom rule"
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
+#: src/client/components/time-field.tsx
 msgid "Custom…"
 msgstr "Custom…"
 
@@ -7030,6 +7051,10 @@ msgstr "fires on matching pub-sub channel events"
 msgid "First connected provider"
 msgstr "First connected provider"
 
+#: src/client/admin/parity/booking.tsx
+msgid "First day"
+msgstr "First day"
+
 #: src/client/admin/collection-settings.tsx
 msgid "first dropdown"
 msgstr "first dropdown"
@@ -8674,6 +8699,10 @@ msgstr "Last 7 days"
 #: src/client/admin/members-panel.tsx
 msgid "Last active"
 msgstr "Last active"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Last day"
+msgstr "Last day"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Last error"
@@ -10453,6 +10482,10 @@ msgstr "No email service is configured, so nothing was sent to <0>{0}</0> — sh
 msgid "No embedding model selected and the deployment sets no<0> EMBEDDING_DEFAULT_MODEL</0> — pick one below."
 msgstr "No embedding model selected and the deployment sets no<0> EMBEDDING_DEFAULT_MODEL</0> — pick one below."
 
+#: src/client/admin/parity/booking.tsx
+msgid "No end"
+msgstr "No end"
+
 #: src/client/admin/relational-pickers.tsx
 msgid "No end-user selected"
 msgstr "No end-user selected"
@@ -11675,6 +11708,10 @@ msgstr "Opens"
 #: src/client/admin/pages/payments.tsx
 msgid "Opens a hosted checkout and gives you a link to send. To bill a row automatically, use the payment-link step in a flow."
 msgstr "Opens a hosted checkout and gives you a link to send. To bill a row automatically, use the payment-link step in a flow."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Opens at"
+msgstr "Opens at"
 
 #: src/client/admin/pages/traces.tsx
 msgid "Operation"

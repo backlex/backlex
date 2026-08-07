@@ -1114,6 +1114,10 @@ msgstr "kimlik değil çerez — başka bir tarayıcı yeniden yanıtlar"
 msgid "A dashboard with that name already exists."
 msgstr "Bu adda bir pano zaten var."
 
+#: src/client/admin/parity/booking.tsx
+msgid "A date range has to end on or after the day it starts."
+msgstr "Bir tarih aralığı, başladığı günde veya sonrasında bitmelidir."
+
 #: src/client/admin/parity/signatures.tsx
 msgid "A document template sent out to be signed. The copy is frozen when it goes — editing the template afterwards never changes what somebody already read."
 msgstr "İmzalanmak üzere gönderilen bir belge şablonu. Kopya gönderildiği anda dondurulur — şablonu sonradan düzenlemek, birinin okuduğu metni asla değiştirmez."
@@ -2232,6 +2236,10 @@ msgstr "yanıtladı"
 msgid "Answered"
 msgstr "Yanıtlayan"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Any day up to the end"
+msgstr "Bitişe kadar her gün"
+
 #: src/client/admin/pages/analytics.tsx
 msgid "any event"
 msgstr "herhangi bir olay"
@@ -2999,6 +3007,14 @@ msgstr "Marka ayarları kaydedildi."
 msgid "Breadcrumb"
 msgstr "Yer imi"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Break ends at"
+msgstr "Mola bitişi"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Break starts at"
+msgstr "Mola başlangıcı"
+
 #: src/client/admin/pages/integrations.tsx
 msgid "Bring Contentful entries into a collection. One-way."
 msgstr "Contentful içeriklerini bir koleksiyona getirir. Tek yönlü."
@@ -3573,6 +3589,10 @@ msgstr "Kapalı mesajı"
 #: src/client/admin/pages/forms.tsx
 msgid "Closes"
 msgstr "Kapanış"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Closes at"
+msgstr "Kapanış saati"
 
 #: src/client/admin/pages/agents.tsx
 msgid "Cloudflare Workers AI · managed"
@@ -4751,6 +4771,7 @@ msgstr "özel kural"
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/parity/booking.tsx
 #: src/client/admin/parity/oidc-provider-dialog.tsx
+#: src/client/components/time-field.tsx
 msgid "Custom…"
 msgstr "Özel…"
 
@@ -7030,6 +7051,10 @@ msgstr "eşleşen pub-sub kanal olaylarında tetiklenir"
 msgid "First connected provider"
 msgstr "İlk bağlı sağlayıcı"
 
+#: src/client/admin/parity/booking.tsx
+msgid "First day"
+msgstr "İlk gün"
+
 #: src/client/admin/collection-settings.tsx
 msgid "first dropdown"
 msgstr "ilk açılır liste"
@@ -8674,6 +8699,10 @@ msgstr "Son 7 gün"
 #: src/client/admin/members-panel.tsx
 msgid "Last active"
 msgstr "Son etkinlik"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Last day"
+msgstr "Son gün"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Last error"
@@ -10453,6 +10482,10 @@ msgstr "E-posta servisi yapılandırılmadığı için <0>{0}</0> adresine bir �
 msgid "No embedding model selected and the deployment sets no<0> EMBEDDING_DEFAULT_MODEL</0> — pick one below."
 msgstr "Seçili embedding modeli yok ve dağıtımda<0> EMBEDDING_DEFAULT_MODEL</0> tanımlı değil — aşağıdan bir model seçin."
 
+#: src/client/admin/parity/booking.tsx
+msgid "No end"
+msgstr "Bitiş yok"
+
 #: src/client/admin/relational-pickers.tsx
 msgid "No end-user selected"
 msgstr "Son kullanıcı seçilmedi"
@@ -11675,6 +11708,10 @@ msgstr "Açılış"
 #: src/client/admin/pages/payments.tsx
 msgid "Opens a hosted checkout and gives you a link to send. To bill a row automatically, use the payment-link step in a flow."
 msgstr "Barındırılan bir ödeme sayfası açar ve gönderebileceğiniz bir bağlantı verir. Bir satırı otomatik faturalandırmak için akıştaki ödeme bağlantısı adımını kullanın."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Opens at"
+msgstr "Açılış saati"
 
 #: src/client/admin/pages/traces.tsx
 msgid "Operation"

@@ -37,6 +37,7 @@ import {
 } from "../api";
 import { BookingSkeleton } from "../page-skeletons";
 import { DatePicker } from "@/components/date-picker";
+import { TimeField } from "@/components/time-field";
 import { ConfirmAction } from "@/components/confirm-action";
 import { ColorSwatchPicker } from "@/components/color-swatch-picker";
 import { ACCENTS, type PublicAppearance } from "@/lib/public-theme";
@@ -182,14 +183,26 @@ const COMMON_ZONES = [
   "Australia/Sydney",
 ];
 
-const minutesToClock = (m: number): string =>
-  `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-
-const clockToMinutes = (raw: string): number | null => {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(raw.trim());
-  if (!m) return null;
-  const value = Number(m[1]) * 60 + Number(m[2]);
-  return value >= 0 && value <= 1440 ? value : null;
+/** Today on the RESOURCE's wall calendar, as YYYY-MM-DD. A dated rule has to
+ *  start somewhere, and the operator's own browser can already be on tomorrow
+ *  — or still on yesterday — relative to the calendar being edited. */
+const todayIn = (timeZone: string): string => {
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+    const ymd = `${get("year")}-${get("month")}-${get("day")}`;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd;
+  } catch {
+    // An unknown zone falls through to the reader's own calendar below.
+  }
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 };
 
 /** Instants come back in UTC; an operator reads them in the RESOURCE's zone,
@@ -610,6 +623,7 @@ type Problem =
   | { code: "name" }
   | { code: "rule-order" }
   | { code: "rule-dates" }
+  | { code: "rule-range" }
   | { code: "question-label" }
   | { code: "question-duplicate"; name: string }
   | { code: "question-options"; label: string };
@@ -622,7 +636,11 @@ const problemWith = (d: {
   if (!d.form.name.trim()) return { code: "name" };
   for (const r of d.rules) {
     if (r.startMinute >= r.endMinute) return { code: "rule-order" };
-    if (r.weekday === null && !r.startsOn) return { code: "rule-dates" };
+    // Either bound alone is a range — "from the 7th onwards", "until the 7th"
+    // — which is what the server accepts too. Demanding a start here blocked
+    // a draft the API would have taken.
+    if (r.weekday === null && !r.startsOn && !r.endsOn) return { code: "rule-dates" };
+    if (r.startsOn && r.endsOn && r.startsOn > r.endsOn) return { code: "rule-range" };
   }
   // The name is the key the answer is stored under, so two questions sharing
   // one would silently overwrite each other on every booking.
@@ -849,6 +867,8 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
           return t`Each rule must start before it ends. A span crossing midnight is two rules.`;
         case "rule-dates":
           return t`A rule with no weekday needs a date range.`;
+        case "rule-range":
+          return t`A date range has to end on or after the day it starts.`;
         case "question-label":
           return t`Give every question a label.`;
         case "question-duplicate":
@@ -1675,24 +1695,18 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                     <Trans>Daily break</Trans>
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <Input
-                      className="w-[86px]"
-                      value={minutesToClock(brk.startMinute)}
-                      onChange={(e) => {
-                        const m = clockToMinutes(e.target.value);
-                        if (m !== null) setBreakTimes({ startMinute: m });
-                      }}
-                      placeholder="12:00"
+                    <TimeField
+                      aria-label={t`Break starts at`}
+                      className="w-[92px]"
+                      value={brk.startMinute}
+                      onChange={(m) => setBreakTimes({ startMinute: m })}
                     />
                     <span className="text-muted-foreground">–</span>
-                    <Input
-                      className="w-[86px]"
-                      value={minutesToClock(brk.endMinute)}
-                      onChange={(e) => {
-                        const m = clockToMinutes(e.target.value);
-                        if (m !== null) setBreakTimes({ endMinute: m });
-                      }}
-                      placeholder="13:00"
+                    <TimeField
+                      aria-label={t`Break ends at`}
+                      className="w-[92px]"
+                      value={brk.endMinute}
+                      onChange={(m) => setBreakTimes({ endMinute: m })}
                     />
                   </div>
                   <Button variant="outline" className="ml-auto" onClick={removeBreak}>
@@ -1779,29 +1793,36 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                   value={r.weekday === null ? "" : String(r.weekday)}
                   onChange={(v) =>
                     editRules((arr) =>
-                      arr.map((x, j) => (j === i ? { ...x, weekday: v === "" ? null : Number(v) } : x)),
+                      arr.map((x, j) => {
+                        if (j !== i) return x;
+                        if (v !== "") return { ...x, weekday: Number(v) };
+                        // Turning a rule on to dates asks a question nobody has
+                        // answered yet — an empty range here is not a mistake to
+                        // shout about, so the rule arrives already meaning
+                        // "today". Autosave stays unblocked and the operator
+                        // moves the day rather than being told off for the click
+                        // they just made.
+                        const from = x.startsOn ?? todayIn(zone);
+                        return { ...x, weekday: null, startsOn: from, endsOn: x.endsOn ?? from };
+                      }),
                     )
                   }
                   className="min-w-0"
                   options={[...WEEKDAYS, { value: "", label: t`Specific dates` }]}
                 />
-                <Input
-                  value={minutesToClock(r.startMinute)}
-                  onChange={(e) => {
-                    const m = clockToMinutes(e.target.value);
-                    if (m !== null)
-                      editRules((arr) => arr.map((x, j) => (j === i ? { ...x, startMinute: m } : x)));
-                  }}
-                  placeholder="09:00"
+                <TimeField
+                  aria-label={t`Opens at`}
+                  value={r.startMinute}
+                  onChange={(m) =>
+                    editRules((arr) => arr.map((x, j) => (j === i ? { ...x, startMinute: m } : x)))
+                  }
                 />
-                <Input
-                  value={minutesToClock(r.endMinute)}
-                  onChange={(e) => {
-                    const m = clockToMinutes(e.target.value);
-                    if (m !== null)
-                      editRules((arr) => arr.map((x, j) => (j === i ? { ...x, endMinute: m } : x)));
-                  }}
-                  placeholder="17:00"
+                <TimeField
+                  aria-label={t`Closes at`}
+                  value={r.endMinute}
+                  onChange={(m) =>
+                    editRules((arr) => arr.map((x, j) => (j === i ? { ...x, endMinute: m } : x)))
+                  }
                 />
                 <Button
                   variant="outline"
@@ -1814,24 +1835,38 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                 </Button>
                 {r.weekday === null && (
                   <div className="grid gap-2 sm:col-span-5 sm:grid-cols-2">
-                    <Input
-                      type="date"
-                      value={r.startsOn ?? ""}
-                      onChange={(e) =>
-                        editRules((arr) =>
-                          arr.map((x, j) => (j === i ? { ...x, startsOn: e.target.value || null } : x)),
-                        )
-                      }
-                    />
-                    <Input
-                      type="date"
-                      value={r.endsOn ?? ""}
-                      onChange={(e) =>
-                        editRules((arr) =>
-                          arr.map((x, j) => (j === i ? { ...x, endsOn: e.target.value || null } : x)),
-                        )
-                      }
-                    />
+                    {/* Two bare date boxes side by side never said which end was
+                        which. Either may stand alone — a start with no end runs
+                        on forever, an end with no start covers everything up to
+                        it — so both carry a label. */}
+                    <div className="grid gap-1">
+                      <Label className="text-[11px] font-normal text-muted-foreground">
+                        <Trans>First day</Trans>
+                      </Label>
+                      <DatePicker
+                        dateOnly
+                        value={r.startsOn}
+                        placeholder={t`Any day up to the end`}
+                        onChange={(d) =>
+                          editRules((arr) =>
+                            arr.map((x, j) => (j === i ? { ...x, startsOn: d } : x)),
+                          )
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="text-[11px] font-normal text-muted-foreground">
+                        <Trans>Last day</Trans>
+                      </Label>
+                      <DatePicker
+                        dateOnly
+                        value={r.endsOn}
+                        placeholder={t`No end`}
+                        onChange={(d) =>
+                          editRules((arr) => arr.map((x, j) => (j === i ? { ...x, endsOn: d } : x)))
+                        }
+                      />
+                    </div>
                   </div>
                 )}
               </div>

@@ -40,6 +40,35 @@ const PROVIDERS = [
   },
 ] as const;
 
+/**
+ * The LDAP configs share the same write but not the same reply shape (they have
+ * no `provider`), and the platform one is keyed on a fixed `id` rather than on
+ * `tenant_id` — the only member of the family that is not workspace-scoped.
+ *
+ * Honest limit on the concurrency case below: unlike the three above, it does
+ * NOT reproduce the race. Restoring the check-then-act and firing three
+ * concurrent saves at these two endpoints still returns `[200, 200, 200]` —
+ * their admin gate does enough awaiting that the harness runs each request's
+ * read-and-write to completion before the next begins. So that case guards the
+ * shared write path against regression rather than demonstrating the bug; the
+ * demonstration is the provider configs. What the LDAP cases DO pin is the
+ * attribute-map merge, which is the part of the always/onCreate split that a
+ * single `.values({...})` would silently get wrong.
+ */
+const LDAP = [
+  { name: "ldap-config", path: "/api/admin/ldap-config" },
+  { name: "platform-ldap-config", path: "/api/admin/platform-ldap-config" },
+] as const;
+
+const LDAP_BODY = {
+  enabled: true,
+  url: "ldaps://dc1.test.example:636",
+  bindDn: "cn=backlex,ou=service,dc=test,dc=example",
+  baseDn: "ou=users,dc=test,dc=example",
+  userFilter: "(&(objectClass=person)(uid={{username}}))",
+  secrets: { bindPassword: "service-password" },
+};
+
 describe("provider config: the first save is atomic", () => {
   let h: TestHarness;
   beforeEach(async () => {
@@ -65,6 +94,49 @@ describe("provider config: the first save is atomic", () => {
       const get = await h.fetch(p.path);
       const cfg = (await get.json()) as { data: { provider: string } };
       expect(cfg.data.provider).toBe(p.expect);
+    });
+  }
+
+  for (const l of LDAP) {
+    // Guard, not a reproduction — see the note on `LDAP` above.
+    test(`${l.name}: concurrent first saves all succeed`, async () => {
+      const save = () =>
+        h.fetch(l.path, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(LDAP_BODY),
+        });
+
+      const results = await Promise.all([save(), save(), save()]);
+      expect(results.map((r) => r.status)).toEqual([200, 200, 200]);
+
+      const cfg = (await (await h.fetch(l.path)).json()) as {
+        data: { url: string; attributeMap: Record<string, string> };
+      };
+      expect(cfg.data.url).toBe(LDAP_BODY.url);
+      // The create path must still have applied the stock attribute map — the
+      // `always`/`onCreate` split is what carries it through a single write.
+      expect(cfg.data.attributeMap.email).toBe("mail");
+    });
+
+    test(`${l.name}: a partial attributeMap update keeps the other mappings`, async () => {
+      const save = (body: unknown) =>
+        h.fetch(l.path, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+      expect((await save(LDAP_BODY)).status).toBe(200);
+      // The UI sends only the field the user edited.
+      expect((await save({ ...LDAP_BODY, attributeMap: { email: "userPrincipalName" } })).status).toBe(200);
+
+      const cfg = (await (await h.fetch(l.path)).json()) as {
+        data: { attributeMap: Record<string, string> };
+      };
+      expect(cfg.data.attributeMap.email).toBe("userPrincipalName");
+      expect(cfg.data.attributeMap.firstName).toBe("givenName");
+      expect(cfg.data.attributeMap.groups).toBe("memberOf");
     });
   }
 

@@ -18,6 +18,7 @@ import {
   mergeConfigSecrets,
   readOwnConfigRow,
   saveOwnConfigRow,
+  tenantKey,
 } from "../services/provider-config";
 import {
   AI_MODELS,
@@ -111,7 +112,7 @@ export const aiConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         config: Record<string, unknown> | null;
         secrets: Record<string, string> | null;
         updatedAt: unknown;
-      }>(ctx, tableFor(ctx.dialect), tenantId);
+      }>(ctx, tableFor(ctx.dialect), tenantKey(tableFor(ctx.dialect), tenantId));
       return c.json({
         data: {
           tenantId,
@@ -190,7 +191,7 @@ export const aiConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
 
       const existing = await readOwnConfigRow<{
         secrets: Record<string, string> | null;
-      }>(ctx, t, tenantId);
+      }>(ctx, t, tenantKey(t, tenantId));
 
       // Registry-gated rather than a fixed tuple: the AI provider set is a
       // registry, so the predicate form of `allowed` is what scopes it. An
@@ -209,7 +210,7 @@ export const aiConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const onCreate: Record<string, unknown> = { config: {} };
       if (body.config !== undefined) always.config = body.config;
 
-      await saveOwnConfigRow(ctx, t, tenantId, { always, onCreate });
+      await saveOwnConfigRow(ctx, t, tenantKey(t, tenantId), { always, onCreate });
       return c.json({ ok: true });
     },
   )

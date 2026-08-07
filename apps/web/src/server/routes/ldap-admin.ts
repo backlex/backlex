@@ -15,7 +15,6 @@
  * next `/api/t/<slug>/auth/*` request rebuilds its cached transport.
  */
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
@@ -23,18 +22,34 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
-import { encryptSecret } from "../lib/crypto";
 import {
   GLOBAL_LDAP_CONFIG_ID,
   resolveLdapAdapter,
   sanitizeForResponse,
   type LdapConfigRow,
 } from "../services/ldap-config";
+import {
+  mergeConfigSecrets,
+  readOwnConfigRow,
+  saveOwnConfigRow,
+  tenantKey,
+} from "../services/provider-config";
 import { invalidateTenantAuth } from "../services/tenant-auth";
 import { defaultHook } from "../lib/openapi-router";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.ldapConfigs : sqlite.schema.ldapConfigs;
+
+/** The attribute names a stock directory uses, applied when a workspace has no
+ *  row yet and used as the merge base for a partial update. Stated once: the
+ *  GET's "nothing configured" body and the PUT's create path have to agree, and
+ *  they were two copies of this literal. */
+const DEFAULT_ATTRIBUTE_MAP = {
+  email: "mail",
+  firstName: "givenName",
+  lastName: "sn",
+  groups: "memberOf",
+} as const;
 
 const requireAdminTenantGate: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
@@ -49,7 +64,6 @@ const requireAdminTenantGate: MiddlewareHandler<AppBindings> = async (c, next) =
 /** Secret keys recognised in `secrets`. Used to scope what the PUT body may
  *  set and what the GET response advertises as "configured". */
 const SECRET_KEYS = ["bindPassword", "caPem"] as const;
-type SecretKey = (typeof SECRET_KEYS)[number];
 
 const AttributeMapInput = z
   .object({
@@ -146,18 +160,11 @@ export const ldapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const tenantId = auth.tenantId ?? GLOBAL_LDAP_CONFIG_ID;
-      const t = tableFor(ctx.dialect);
-      let row: LdapConfigRow | undefined;
-      try {
-        const rows = (await (ctx.db as any)
-          .select()
-          .from(t)
-          .where(eq(t.tenantId, tenantId))
-          .limit(1)) as LdapConfigRow[];
-        row = rows[0];
-      } catch {
-        row = undefined; // table not migrated yet — show empty
-      }
+      const row = await readOwnConfigRow<LdapConfigRow>(
+        ctx,
+        tableFor(ctx.dialect),
+        tenantKey(tableFor(ctx.dialect), tenantId),
+      );
       if (!row) {
         return c.json({
           data: {
@@ -168,12 +175,7 @@ export const ldapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             baseDn: "",
             userFilter: "(&(objectClass=person)(uid={{username}}))",
             groupFilter: null,
-            attributeMap: {
-              email: "mail",
-              firstName: "givenName",
-              lastName: "sn",
-              groups: "memberOf",
-            },
+            attributeMap: DEFAULT_ATTRIBUTE_MAP,
             defaultRoleId: null,
             groupsToRoles: null,
             tlsOptions: null,
@@ -216,80 +218,65 @@ export const ldapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const tenantId = auth.tenantId ?? GLOBAL_LDAP_CONFIG_ID;
       const t = tableFor(ctx.dialect);
 
-      const existing = (await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(eq(t.tenantId, tenantId))
-        .limit(1)) as LdapConfigRow[];
-      const prior = existing[0];
+      const prior = await readOwnConfigRow<LdapConfigRow>(ctx, t, tenantKey(t, tenantId));
 
-      // Merge secrets: encrypt new values, drop cleared ones, keep the rest.
-      const secrets: Record<string, string> = { ...(prior?.secrets ?? {}) };
-      if (body.secrets) {
-        for (const k of SECRET_KEYS) {
-          if (!(k in body.secrets)) continue;
-          const v = (body.secrets as Record<SecretKey, string | null | undefined>)[k];
-          if (typeof v === "string" && v.trim()) {
-            secrets[k] = await encryptSecret(v.trim(), ctx.env.AUTH_SECRET);
-          } else {
-            delete secrets[k];
-          }
-        }
+      const secrets = await mergeConfigSecrets({
+        stored: prior?.secrets,
+        patch: body.secrets as Record<string, unknown> | undefined,
+        allowed: SECRET_KEYS,
+        authSecret: ctx.env.AUTH_SECRET,
+      });
+
+      // `always` is what the request decided; `onCreate` is what a column the
+      // request omitted should be on a NEW row (on an existing one, omitted
+      // means "leave it alone"). `always` is spread last into the INSERT, so a
+      // column present in both takes the request's value — which is exactly
+      // what the old `body.X ?? default` insert path did.
+      const always: Record<string, unknown> = { secrets };
+      const onCreate: Record<string, unknown> = {
+        enabled: false,
+        url: "",
+        bindDn: "",
+        baseDn: "",
+        userFilter: "(&(objectClass=person)(uid={{username}}))",
+        groupFilter: null,
+        defaultRoleId: null,
+        groupsToRoles: null,
+        tlsOptions: null,
+        domainMatch: null,
+        rateLimitPerMinute: 10,
+      };
+      if (body.enabled !== undefined) always.enabled = body.enabled;
+      if (body.url !== undefined) always.url = body.url;
+      if (body.bindDn !== undefined) always.bindDn = body.bindDn;
+      if (body.baseDn !== undefined) always.baseDn = body.baseDn;
+      if (body.userFilter !== undefined) always.userFilter = body.userFilter;
+      if (body.groupFilter !== undefined) {
+        always.groupFilter = body.groupFilter === "" ? null : body.groupFilter;
       }
-
-      if (prior) {
-        const set: Record<string, unknown> = {
-          updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
-          secrets,
+      if (body.defaultRoleId !== undefined) always.defaultRoleId = body.defaultRoleId;
+      if (body.groupsToRoles !== undefined) always.groupsToRoles = body.groupsToRoles;
+      if (body.tlsOptions !== undefined) always.tlsOptions = body.tlsOptions;
+      if (body.domainMatch !== undefined) always.domainMatch = body.domainMatch;
+      if (body.rateLimitPerMinute !== undefined) {
+        always.rateLimitPerMinute = body.rateLimitPerMinute;
+      }
+      // The one column the always/onCreate split cannot express on its own: the
+      // map is MERGED, and what it merges over differs by path — the prior row
+      // when there is one, the built-in defaults when there is not. The UI sends
+      // only the field the user edited, so merging is what stops a partial
+      // update clobbering the other mappings. Computed here, against the right
+      // base, so a single write can carry it.
+      if (body.attributeMap !== undefined) {
+        always.attributeMap = {
+          ...(prior?.attributeMap ?? DEFAULT_ATTRIBUTE_MAP),
+          ...body.attributeMap,
         };
-        if (body.enabled !== undefined) set.enabled = body.enabled;
-        if (body.url !== undefined) set.url = body.url;
-        if (body.bindDn !== undefined) set.bindDn = body.bindDn;
-        if (body.baseDn !== undefined) set.baseDn = body.baseDn;
-        if (body.userFilter !== undefined) set.userFilter = body.userFilter;
-        if (body.groupFilter !== undefined) {
-          set.groupFilter = body.groupFilter === "" ? null : body.groupFilter;
-        }
-        if (body.attributeMap !== undefined) {
-          // Merge over the prior map so a partial update doesn't clobber other
-          // attribute mappings (UI sends only the field the user edited).
-          set.attributeMap = { ...(prior.attributeMap ?? {}), ...body.attributeMap };
-        }
-        if (body.defaultRoleId !== undefined) set.defaultRoleId = body.defaultRoleId;
-        if (body.groupsToRoles !== undefined) set.groupsToRoles = body.groupsToRoles;
-        if (body.tlsOptions !== undefined) set.tlsOptions = body.tlsOptions;
-        if (body.domainMatch !== undefined) set.domainMatch = body.domainMatch;
-        if (body.rateLimitPerMinute !== undefined)
-          set.rateLimitPerMinute = body.rateLimitPerMinute;
-        await (ctx.db as any).update(t).set(set).where(eq(t.tenantId, tenantId));
       } else {
-        // Insert path — most fields are required by the schema, so default the
-        // omitted ones to sensible blanks so the row at least exists.
-        const values: Record<string, unknown> = {
-          tenantId,
-          enabled: body.enabled ?? false,
-          url: body.url ?? "",
-          bindDn: body.bindDn ?? "",
-          baseDn: body.baseDn ?? "",
-          userFilter:
-            body.userFilter ?? "(&(objectClass=person)(uid={{username}}))",
-          groupFilter: body.groupFilter === "" ? null : body.groupFilter ?? null,
-          attributeMap: {
-            email: "mail",
-            firstName: "givenName",
-            lastName: "sn",
-            groups: "memberOf",
-            ...(body.attributeMap ?? {}),
-          },
-          defaultRoleId: body.defaultRoleId ?? null,
-          groupsToRoles: body.groupsToRoles ?? null,
-          tlsOptions: body.tlsOptions ?? null,
-          secrets,
-          domainMatch: body.domainMatch ?? null,
-          rateLimitPerMinute: body.rateLimitPerMinute ?? 10,
-        };
-        await (ctx.db as any).insert(t).values(values);
+        onCreate.attributeMap = DEFAULT_ATTRIBUTE_MAP;
       }
+
+      await saveOwnConfigRow(ctx, t, tenantKey(t, tenantId), { always, onCreate });
 
       if (auth.tenantId) invalidateTenantAuth(auth.tenantId);
       return c.json({ ok: true });

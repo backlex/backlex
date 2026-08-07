@@ -13,6 +13,7 @@ import {
   mergeConfigSecrets,
   readOwnConfigRow,
   saveOwnConfigRow,
+  tenantKey,
 } from "../services/provider-config";
 import { sendPushToUsers } from "../services/push";
 import { invalidateAllPushCaches, invalidatePushCache } from "../context";
@@ -86,7 +87,7 @@ export const pushConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         config: Record<string, unknown> | null;
         secrets: Record<string, string> | null;
         updatedAt: unknown;
-      }>(ctx, tableFor(ctx.dialect), tenantId);
+      }>(ctx, tableFor(ctx.dialect), tenantKey(tableFor(ctx.dialect), tenantId));
       return c.json({
         data: {
           tenantId,
@@ -127,7 +128,7 @@ export const pushConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
 
       const existing = await readOwnConfigRow<{
         secrets: Record<string, string> | null;
-      }>(ctx, t, tenantId);
+      }>(ctx, t, tenantKey(t, tenantId));
 
       const secrets = await mergeConfigSecrets({
         stored: existing?.secrets,
@@ -143,7 +144,7 @@ export const pushConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const onCreate: Record<string, unknown> = { config: {} };
       if (body.config !== undefined) always.config = body.config;
 
-      await saveOwnConfigRow(ctx, t, tenantId, { always, onCreate });
+      await saveOwnConfigRow(ctx, t, tenantKey(t, tenantId), { always, onCreate });
 
       if (tenantId === GLOBAL_PUSH_CONFIG_ID) {
         invalidateAllPushCaches(ctx.env);

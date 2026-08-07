@@ -13,6 +13,7 @@ import {
   mergeConfigSecrets,
   readOwnConfigRow,
   saveOwnConfigRow,
+  tenantKey,
 } from "../services/provider-config";
 import { invalidateTenantAuth } from "../services/tenant-auth";
 import { invalidateAllEmailCaches, invalidateEmailCache } from "../context";
@@ -145,7 +146,7 @@ export const emailConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         config: Record<string, unknown> | null;
         secrets: Record<string, string> | null;
         updatedAt: unknown;
-      }>(ctx, tableFor(ctx.dialect), tenantId);
+      }>(ctx, tableFor(ctx.dialect), tenantKey(tableFor(ctx.dialect), tenantId));
       return c.json({
         data: {
           tenantId,
@@ -200,7 +201,7 @@ export const emailConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
 
       const existing = await readOwnConfigRow<{
         secrets: Record<string, string> | null;
-      }>(ctx, t, tenantId);
+      }>(ctx, t, tenantKey(t, tenantId));
 
       const secrets = await mergeConfigSecrets({
         stored: existing?.secrets,
@@ -217,7 +218,7 @@ export const emailConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       if (body.fromAddress !== undefined) always.fromAddress = body.fromAddress || null;
       if (body.config !== undefined) always.config = body.config;
 
-      await saveOwnConfigRow(ctx, t, tenantId, { always, onCreate });
+      await saveOwnConfigRow(ctx, t, tenantKey(t, tenantId), { always, onCreate });
 
       // The workspace's end-user better-auth instance caches its email
       // transport — drop it so the next request rebuilds from the new config.

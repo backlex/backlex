@@ -25,7 +25,32 @@ import { encryptSecret } from "../lib/crypto";
 export type ConfigDbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
 
 /**
- * A workspace's OWN config row, or `undefined` when it has none.
+ * Which single row a config table's endpoints are about.
+ *
+ * Almost all of them are keyed on `tenant_id` — one row per workspace — but the
+ * platform LDAP config is an instance-wide singleton keyed on a fixed `id`, and
+ * it is otherwise the same handler with the same race. Naming the key here is
+ * what lets it share this code instead of keeping a fifth copy of it.
+ *
+ * `column` is what the WHERE and the ON CONFLICT target use; `prop` and `value`
+ * are what the INSERT writes. They are stated separately rather than derived
+ * from each other because mapping a Drizzle column back to its JS property name
+ * means reaching into the table's internal symbols.
+ */
+export interface ConfigRowKey {
+  column: unknown;
+  prop: string;
+  value: string;
+}
+
+/** The usual key: one config row per workspace. */
+export const tenantKey = (
+  table: { tenantId: unknown },
+  tenantId: string,
+): ConfigRowKey => ({ column: table.tenantId, prop: "tenantId", value: tenantId });
+
+/**
+ * The row itself, or `undefined` when there is none.
  *
  * Not the same question as the `loadXConfigRow` each config service exports:
  * those walk the inheritance chain (this workspace, then the instance-wide
@@ -40,14 +65,14 @@ export type ConfigDbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
  */
 export const readOwnConfigRow = async <T>(
   ctx: ConfigDbCtx,
-  table: { tenantId: unknown },
-  tenantId: string,
+  table: unknown,
+  key: ConfigRowKey,
 ): Promise<T | undefined> => {
   try {
     const rows = (await (ctx.db as any)
       .select()
       .from(table)
-      .where(eq((table as any).tenantId, tenantId))
+      .where(eq(key.column as never, key.value))
       .limit(1)) as T[];
     return rows[0];
   } catch {
@@ -101,21 +126,31 @@ export const mergeConfigSecrets = async (opts: {
  */
 export const saveOwnConfigRow = async (
   ctx: ConfigDbCtx,
-  table: { tenantId: unknown },
-  tenantId: string,
+  table: unknown,
+  key: ConfigRowKey,
   values: {
     always: Record<string, unknown>;
     onCreate?: Record<string, unknown>;
   },
 ): Promise<void> => {
+  // The key is applied LAST, and removed from the update set, so that neither
+  // can be reached by what a caller put in `always`. Today every caller builds
+  // that object one named property at a time, so nothing can — but the day one
+  // of them writes `always: { ...body }`, a request naming `tenantId` would
+  // otherwise pick which workspace's row it wrote. The ordering costs nothing
+  // and makes that a non-event rather than a cross-tenant write.
+  const set: Record<string, unknown> = {
+    ...values.always,
+    updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
+  };
+  delete set[key.prop];
+
   await (ctx.db as any)
     .insert(table)
-    .values({ tenantId, ...(values.onCreate ?? {}), ...values.always })
-    .onConflictDoUpdate({
-      target: (table as any).tenantId,
-      set: {
-        ...values.always,
-        updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
-      },
-    });
+    .values({
+      ...(values.onCreate ?? {}),
+      ...values.always,
+      [key.prop]: key.value,
+    })
+    .onConflictDoUpdate({ target: key.column, set });
 };

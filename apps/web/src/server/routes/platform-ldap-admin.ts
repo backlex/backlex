@@ -11,7 +11,6 @@
  * so `/test` and sign-in surface a clear "not available" message.
  */
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
@@ -19,7 +18,6 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
-import { encryptSecret } from "../lib/crypto";
 import { isPlatformSsoEnabled } from "../lib/platform-sso";
 import { defaultHook } from "../lib/openapi-router";
 import {
@@ -28,6 +26,31 @@ import {
   sanitizeForResponse,
   type PlatformLdapConfigRow,
 } from "../services/platform-ldap-config";
+import {
+  type ConfigRowKey,
+  mergeConfigSecrets,
+  readOwnConfigRow,
+  saveOwnConfigRow,
+} from "../services/provider-config";
+
+/** This table is an INSTANCE-wide singleton keyed on a fixed `id`, not one row
+ *  per workspace — the one config in the family that is not tenant-scoped. It
+ *  is otherwise the same handler with the same check-then-act race, so it names
+ *  its key and shares services/provider-config.ts rather than keeping a copy. */
+const singletonKey = (table: { id: unknown }): ConfigRowKey => ({
+  column: table.id,
+  prop: "id",
+  value: PLATFORM_LDAP_ID,
+});
+
+/** The attribute names a stock directory uses — the merge base for a partial
+ *  update and what the "nothing configured" GET body reports. */
+const DEFAULT_ATTRIBUTE_MAP = {
+  email: "mail",
+  firstName: "givenName",
+  lastName: "sn",
+  groups: "memberOf",
+} as const;
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.platformLdapConfig : sqlite.schema.platformLdapConfig;
@@ -43,7 +66,6 @@ const gate: MiddlewareHandler<AppBindings> = async (c, next) => {
 };
 
 const SECRET_KEYS = ["bindPassword", "caPem"] as const;
-type SecretKey = (typeof SECRET_KEYS)[number];
 
 const AttributeMapInput = z
   .object({
@@ -109,17 +131,7 @@ export const platformLdapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHoo
     async (c) => {
       const ctx = c.get("ctx");
       const t = tableFor(ctx.dialect);
-      let row: PlatformLdapConfigRow | undefined;
-      try {
-        const rows = (await (ctx.db as any)
-          .select()
-          .from(t)
-          .where(eq(t.id, PLATFORM_LDAP_ID))
-          .limit(1)) as PlatformLdapConfigRow[];
-        row = rows[0];
-      } catch {
-        row = undefined;
-      }
+      const row = await readOwnConfigRow<PlatformLdapConfigRow>(ctx, t, singletonKey(t));
       if (!row) {
         return c.json({
           data: {
@@ -130,7 +142,7 @@ export const platformLdapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHoo
             baseDn: "",
             userFilter: "(&(objectClass=person)(uid={{username}}))",
             groupFilter: null,
-            attributeMap: { email: "mail", firstName: "givenName", lastName: "sn", groups: "memberOf" },
+            attributeMap: DEFAULT_ATTRIBUTE_MAP,
             defaultRoleId: null,
             groupsToRoles: null,
             tlsOptions: null,
@@ -165,71 +177,63 @@ export const platformLdapAdminRoutes = new OpenAPIHono<AppBindings>({ defaultHoo
       const body = PutInput.parse(await c.req.json());
       const t = tableFor(ctx.dialect);
 
-      const existing = (await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(eq(t.id, PLATFORM_LDAP_ID))
-        .limit(1)) as PlatformLdapConfigRow[];
-      const prior = existing[0];
+      const prior = await readOwnConfigRow<PlatformLdapConfigRow>(ctx, t, singletonKey(t));
 
-      const secrets: Record<string, string> = { ...(prior?.secrets ?? {}) };
-      if (body.secrets) {
-        for (const k of SECRET_KEYS) {
-          if (!(k in body.secrets)) continue;
-          const v = (body.secrets as Record<SecretKey, string | null | undefined>)[k];
-          if (typeof v === "string" && v.trim()) {
-            secrets[k] = await encryptSecret(v.trim(), ctx.env.AUTH_SECRET);
-          } else {
-            delete secrets[k];
-          }
-        }
+      const secrets = await mergeConfigSecrets({
+        stored: prior?.secrets,
+        patch: body.secrets as Record<string, unknown> | undefined,
+        allowed: SECRET_KEYS,
+        authSecret: ctx.env.AUTH_SECRET,
+      });
+
+      // `always` is what the request decided; `onCreate` is what a column the
+      // request omitted should be on a NEW row (on an existing one, omitted
+      // means "leave it alone"). `always` is spread last into the INSERT, so a
+      // column in both takes the request's value — what the old insert path's
+      // `body.X ?? default` did.
+      const always: Record<string, unknown> = { secrets };
+      const onCreate: Record<string, unknown> = {
+        enabled: false,
+        url: "",
+        bindDn: "",
+        baseDn: "",
+        userFilter: "(&(objectClass=person)(uid={{username}}))",
+        groupFilter: null,
+        defaultRoleId: null,
+        groupsToRoles: null,
+        tlsOptions: null,
+        domainMatch: null,
+        rateLimitPerMinute: 10,
+      };
+      if (body.enabled !== undefined) always.enabled = body.enabled;
+      if (body.url !== undefined) always.url = body.url;
+      if (body.bindDn !== undefined) always.bindDn = body.bindDn;
+      if (body.baseDn !== undefined) always.baseDn = body.baseDn;
+      if (body.userFilter !== undefined) always.userFilter = body.userFilter;
+      if (body.groupFilter !== undefined) {
+        always.groupFilter = body.groupFilter === "" ? null : body.groupFilter;
       }
-
-      if (prior) {
-        const set: Record<string, unknown> = {
-          updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
-          secrets,
+      if (body.defaultRoleId !== undefined) always.defaultRoleId = body.defaultRoleId;
+      if (body.groupsToRoles !== undefined) always.groupsToRoles = body.groupsToRoles;
+      if (body.tlsOptions !== undefined) always.tlsOptions = body.tlsOptions;
+      if (body.domainMatch !== undefined) always.domainMatch = body.domainMatch;
+      if (body.rateLimitPerMinute !== undefined) {
+        always.rateLimitPerMinute = body.rateLimitPerMinute;
+      }
+      // Merged, and what it merges over differs by path — the prior row when
+      // there is one, the built-in defaults when there is not. The UI sends only
+      // the field the user edited, so merging is what stops a partial update
+      // clobbering the other mappings.
+      if (body.attributeMap !== undefined) {
+        always.attributeMap = {
+          ...(prior?.attributeMap ?? DEFAULT_ATTRIBUTE_MAP),
+          ...body.attributeMap,
         };
-        if (body.enabled !== undefined) set.enabled = body.enabled;
-        if (body.url !== undefined) set.url = body.url;
-        if (body.bindDn !== undefined) set.bindDn = body.bindDn;
-        if (body.baseDn !== undefined) set.baseDn = body.baseDn;
-        if (body.userFilter !== undefined) set.userFilter = body.userFilter;
-        if (body.groupFilter !== undefined) set.groupFilter = body.groupFilter === "" ? null : body.groupFilter;
-        if (body.attributeMap !== undefined) {
-          set.attributeMap = { ...(prior.attributeMap ?? {}), ...body.attributeMap };
-        }
-        if (body.defaultRoleId !== undefined) set.defaultRoleId = body.defaultRoleId;
-        if (body.groupsToRoles !== undefined) set.groupsToRoles = body.groupsToRoles;
-        if (body.tlsOptions !== undefined) set.tlsOptions = body.tlsOptions;
-        if (body.domainMatch !== undefined) set.domainMatch = body.domainMatch;
-        if (body.rateLimitPerMinute !== undefined) set.rateLimitPerMinute = body.rateLimitPerMinute;
-        await (ctx.db as any).update(t).set(set).where(eq(t.id, PLATFORM_LDAP_ID));
       } else {
-        await (ctx.db as any).insert(t).values({
-          id: PLATFORM_LDAP_ID,
-          enabled: body.enabled ?? false,
-          url: body.url ?? "",
-          bindDn: body.bindDn ?? "",
-          baseDn: body.baseDn ?? "",
-          userFilter: body.userFilter ?? "(&(objectClass=person)(uid={{username}}))",
-          groupFilter: body.groupFilter === "" ? null : body.groupFilter ?? null,
-          attributeMap: {
-            email: "mail",
-            firstName: "givenName",
-            lastName: "sn",
-            groups: "memberOf",
-            ...(body.attributeMap ?? {}),
-          },
-          defaultRoleId: body.defaultRoleId ?? null,
-          groupsToRoles: body.groupsToRoles ?? null,
-          tlsOptions: body.tlsOptions ?? null,
-          secrets,
-          domainMatch: body.domainMatch ?? null,
-          rateLimitPerMinute: body.rateLimitPerMinute ?? 10,
-          updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
-        });
+        onCreate.attributeMap = DEFAULT_ATTRIBUTE_MAP;
       }
+
+      await saveOwnConfigRow(ctx, t, singletonKey(t), { always, onCreate });
 
       return c.json({ ok: true });
     },

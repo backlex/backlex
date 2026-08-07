@@ -1,5 +1,4 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
@@ -8,9 +7,13 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { enforceIpRateLimit } from "../lib/auth-rate-limit";
-import { encryptSecret } from "../lib/crypto";
 import { EMAIL_PROVIDER_IDS } from "../lib/email-select";
 import { GLOBAL_EMAIL_CONFIG_ID } from "../services/email-config";
+import {
+  mergeConfigSecrets,
+  readOwnConfigRow,
+  saveOwnConfigRow,
+} from "../services/provider-config";
 import { invalidateTenantAuth } from "../services/tenant-auth";
 import { invalidateAllEmailCaches, invalidateEmailCache } from "../context";
 import { defaultHook } from "../lib/openapi-router";
@@ -136,26 +139,13 @@ export const emailConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const tenantId = auth.tenantId ?? GLOBAL_EMAIL_CONFIG_ID;
-      const t = tableFor(ctx.dialect);
-      let row:
-        | {
-            provider: string;
-            fromAddress: string | null;
-            config: Record<string, unknown> | null;
-            secrets: Record<string, string> | null;
-            updatedAt: unknown;
-          }
-        | undefined;
-      try {
-        const rows = (await (ctx.db as any)
-          .select()
-          .from(t)
-          .where(eq(t.tenantId, tenantId))
-          .limit(1)) as typeof row[];
-        row = rows[0];
-      } catch {
-        row = undefined; // table not migrated yet — show env defaults
-      }
+      const row = await readOwnConfigRow<{
+        provider: string;
+        fromAddress: string | null;
+        config: Record<string, unknown> | null;
+        secrets: Record<string, string> | null;
+        updatedAt: unknown;
+      }>(ctx, tableFor(ctx.dialect), tenantId);
       return c.json({
         data: {
           tenantId,
@@ -208,52 +198,26 @@ export const emailConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const tenantId = auth.tenantId ?? GLOBAL_EMAIL_CONFIG_ID;
       const t = tableFor(ctx.dialect);
 
-      const existing = (await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(eq(t.tenantId, tenantId))
-        .limit(1)) as { secrets: Record<string, string> | null }[];
+      const existing = await readOwnConfigRow<{
+        secrets: Record<string, string> | null;
+      }>(ctx, t, tenantId);
 
-      // Merge secrets: encrypt new values, drop cleared ones, keep the rest.
-      const secrets: Record<string, string> = { ...(existing[0]?.secrets ?? {}) };
-      if (body.secrets) {
-        for (const k of SECRET_KEYS) {
-          if (!(k in body.secrets)) continue;
-          const v = body.secrets[k];
-          if (typeof v === "string" && v.trim()) {
-            secrets[k] = await encryptSecret(v.trim(), ctx.env.AUTH_SECRET);
-          } else {
-            delete secrets[k];
-          }
-        }
-      }
+      const secrets = await mergeConfigSecrets({
+        stored: existing?.secrets,
+        patch: body.secrets,
+        allowed: SECRET_KEYS,
+        authSecret: ctx.env.AUTH_SECRET,
+      });
 
-      const fromAddress =
-        body.fromAddress === undefined
-          ? existing[0]
-            ? undefined
-            : null
-          : body.fromAddress || null;
-      const config = body.config ?? (existing[0] ? undefined : {});
+      // An omitted column means "leave it alone" on an existing row and "use
+      // the empty default" on a new one, so it belongs to `onCreate` rather
+      // than `always`.
+      const always: Record<string, unknown> = { provider: body.provider, secrets };
+      const onCreate: Record<string, unknown> = { fromAddress: null, config: {} };
+      if (body.fromAddress !== undefined) always.fromAddress = body.fromAddress || null;
+      if (body.config !== undefined) always.config = body.config;
 
-      if (existing[0]) {
-        const set: Record<string, unknown> = {
-          provider: body.provider,
-          secrets,
-          updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
-        };
-        if (fromAddress !== undefined) set.fromAddress = fromAddress;
-        if (config !== undefined) set.config = config;
-        await (ctx.db as any).update(t).set(set).where(eq(t.tenantId, tenantId));
-      } else {
-        await (ctx.db as any).insert(t).values({
-          tenantId,
-          provider: body.provider,
-          fromAddress: fromAddress ?? null,
-          config: config ?? {},
-          secrets,
-        });
-      }
+      await saveOwnConfigRow(ctx, t, tenantId, { always, onCreate });
 
       // The workspace's end-user better-auth instance caches its email
       // transport — drop it so the next request rebuilds from the new config.

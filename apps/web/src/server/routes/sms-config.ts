@@ -1,5 +1,4 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
@@ -8,9 +7,13 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { enforceIpRateLimit } from "../lib/auth-rate-limit";
-import { encryptSecret } from "../lib/crypto";
 import { SMS_PROVIDER_IDS } from "../lib/sms-select";
 import { GLOBAL_SMS_CONFIG_ID, SMS_SECRET_KEYS } from "../services/sms-config";
+import {
+  mergeConfigSecrets,
+  readOwnConfigRow,
+  saveOwnConfigRow,
+} from "../services/provider-config";
 import { sendSmsToUsers } from "../services/sms";
 import { invalidateAllSmsCaches, invalidateSmsCache } from "../context";
 import { defaultHook } from "../lib/openapi-router";
@@ -93,25 +96,12 @@ export const smsConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const tenantId = auth.tenantId ?? GLOBAL_SMS_CONFIG_ID;
-      const t = tableFor(ctx.dialect);
-      let row:
-        | {
-            provider: string;
-            config: Record<string, unknown> | null;
-            secrets: Record<string, string> | null;
-            updatedAt: unknown;
-          }
-        | undefined;
-      try {
-        const rows = (await (ctx.db as any)
-          .select()
-          .from(t)
-          .where(eq(t.tenantId, tenantId))
-          .limit(1)) as typeof row[];
-        row = rows[0];
-      } catch {
-        row = undefined; // table not migrated yet — show defaults
-      }
+      const row = await readOwnConfigRow<{
+        provider: string;
+        config: Record<string, unknown> | null;
+        secrets: Record<string, string> | null;
+        updatedAt: unknown;
+      }>(ctx, tableFor(ctx.dialect), tenantId);
       return c.json({
         data: {
           tenantId,
@@ -150,42 +140,25 @@ export const smsConfigRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const tenantId = auth.tenantId ?? GLOBAL_SMS_CONFIG_ID;
       const t = tableFor(ctx.dialect);
 
-      const existing = (await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(eq(t.tenantId, tenantId))
-        .limit(1)) as { secrets: Record<string, string> | null }[];
+      const existing = await readOwnConfigRow<{
+        secrets: Record<string, string> | null;
+      }>(ctx, t, tenantId);
 
-      const secrets: Record<string, string> = { ...(existing[0]?.secrets ?? {}) };
-      if (body.secrets) {
-        for (const k of SMS_SECRET_KEYS) {
-          if (!(k in body.secrets)) continue;
-          const v = body.secrets[k];
-          if (typeof v === "string" && v.trim()) {
-            secrets[k] = await encryptSecret(v.trim(), ctx.env.AUTH_SECRET);
-          } else {
-            delete secrets[k];
-          }
-        }
-      }
-      const config = body.config ?? (existing[0] ? undefined : {});
+      const secrets = await mergeConfigSecrets({
+        stored: existing?.secrets,
+        patch: body.secrets,
+        allowed: SMS_SECRET_KEYS,
+        authSecret: ctx.env.AUTH_SECRET,
+      });
 
-      if (existing[0]) {
-        const set: Record<string, unknown> = {
-          provider: body.provider,
-          secrets,
-          updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
-        };
-        if (config !== undefined) set.config = config;
-        await (ctx.db as any).update(t).set(set).where(eq(t.tenantId, tenantId));
-      } else {
-        await (ctx.db as any).insert(t).values({
-          tenantId,
-          provider: body.provider,
-          config: config ?? {},
-          secrets,
-        });
-      }
+      // An omitted column means "leave it alone" on an existing row and "use
+      // the empty default" on a new one, so it belongs to `onCreate` rather
+      // than `always`.
+      const always: Record<string, unknown> = { provider: body.provider, secrets };
+      const onCreate: Record<string, unknown> = { config: {} };
+      if (body.config !== undefined) always.config = body.config;
+
+      await saveOwnConfigRow(ctx, t, tenantId, { always, onCreate });
 
       if (tenantId === GLOBAL_SMS_CONFIG_ID) {
         invalidateAllSmsCaches(ctx.env);

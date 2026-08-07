@@ -2532,6 +2532,44 @@ export const formInvites = pgTable(
   ],
 );
 
+/**
+ * A half-filled form, kept so the person can come back to it.
+ *
+ * Opt-in per form (`settings.saveProgress`) — a form that does not ask for this
+ * stores nothing. The row is found by `key_hash`: the SHA-256 of whatever the
+ * visitor holds, which is an opaque cookie value for an open link and the
+ * invite token for an invited one. Only the hash lands here, exactly as for
+ * `form_invites`, so the table is a pile of answers nobody can look up without
+ * the secret that wrote them.
+ *
+ * The submit that completes the form deletes its draft; the cron sweep deletes
+ * the ones that were abandoned.
+ */
+export const formDrafts = pgTable(
+  "form_drafts",
+  {
+    id: text("id").primaryKey(),
+    formId: text("form_id").notNull(),
+    tenantId: text("tenant_id"),
+    /** SHA-256 of the resume secret — never the secret itself. */
+    keyHash: text("key_hash").notNull(),
+    /** Answers so far, clamped to the form's currently-exposed fields. */
+    data: jsonb("data").$type<Record<string, unknown>>().notNull(),
+    /** Step page the visitor had reached, so they return to it and not to the
+     *  first question of a form they are two-thirds through. */
+    step: integer("step").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // One draft per (form, holder): the upsert targets this, so two tabs of the
+    // same visitor race into one row instead of forking the answers.
+    uniqueIndex("form_drafts_key_idx").on(t.formId, t.keyHash),
+    index("form_drafts_form_idx").on(t.formId),
+    index("form_drafts_updated_idx").on(t.updatedAt),
+  ],
+);
+
 export const authConfig = pgTable(
   "auth_config",
   {

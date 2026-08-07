@@ -26,6 +26,7 @@ import type { Ctx } from "../context";
 import { loadCollection } from "./items/collection-loader";
 import { runItemsAggregate } from "./items/aggregate";
 import { exposedBlocks, resolveScale, type FormRow } from "./forms";
+import { countFormDrafts } from "./form-drafts";
 
 /** How a block's answers are summarised. */
 export type FormResultKind =
@@ -92,6 +93,10 @@ export interface FormResults {
   submissionCount: number;
   /** Submissions this form refused (honeypot / Turnstile / rate limit). */
   blockedCount: number;
+  /** Half-filled forms saved but not yet submitted — only ever above zero on a
+   *  form with `settings.saveProgress`. The one figure a survey operator can't
+   *  get from the collection: people who started and stopped. */
+  inProgress: number;
   lastSubmissionAt: unknown;
   blocks: FormResultBlock[];
   /** Exposed questions past {@link RESULT_BLOCK_CAP} that were not summarised,
@@ -257,6 +262,7 @@ export const formResults = async (
     rows,
     submissionCount: form.submissionCount,
     blockedCount: form.blockedCount,
+    inProgress: form.settings?.saveProgress ? await countFormDrafts(ctx, form.id) : 0,
     lastSubmissionAt: form.lastSubmissionAt,
     blocks,
     truncated: Math.max(0, exposed.length - RESULT_BLOCK_CAP),

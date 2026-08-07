@@ -105,6 +105,7 @@ import m98 from "../../drizzle/sqlite/20260805170000_kpi_alerts/migration.sql" w
 import m99 from "../../drizzle/sqlite/20260806100000_kpi_pins/migration.sql" with { type: "text" };
 import m100 from "../../drizzle/sqlite/20260806180000_booking_settings/migration.sql" with { type: "text" };
 import m101 from "../../drizzle/sqlite/20260807120000_form_invites/migration.sql" with { type: "text" };
+import m102 from "../../drizzle/sqlite/20260807160000_form_drafts/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -214,4 +215,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260806100000_kpi_pins", sql: m99 },
   { name: "20260806180000_booking_settings", sql: m100 },
   { name: "20260807120000_form_invites", sql: m101 },
+  { name: "20260807160000_form_drafts", sql: m102 },
 ];

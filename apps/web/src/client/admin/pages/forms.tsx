@@ -2714,6 +2714,21 @@ function ShareTab({
               onChange={(v) => onPatchSettings({ onePerBrowser: v || undefined })}
             />
           </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[12.5px] font-medium"><Trans>Save progress</Trans></div>
+              <div className="text-[11px] text-muted-foreground">
+                <Trans>
+                  half-filled answers are kept so people can come back — invited
+                  people resume on any device, everyone else in the same browser
+                </Trans>
+              </div>
+            </div>
+            <Switch
+              checked={Boolean(form.settings?.saveProgress)}
+              onChange={(v) => onPatchSettings({ saveProgress: v || undefined })}
+            />
+          </div>
           <label className="flex flex-col gap-1 text-[12px] font-medium">
             <Trans>Closed message</Trans>
             <Input
@@ -3025,7 +3040,12 @@ function ResultsTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-3 gap-3 max-[860px]:grid-cols-1">
+      <div
+        className={cn(
+          "grid gap-3 max-[860px]:grid-cols-1",
+          data.inProgress > 0 ? "grid-cols-4" : "grid-cols-3",
+        )}
+      >
         {[
           { label: t`Rows`, value: String(data.rows), sub: data.collection },
           {
@@ -3033,6 +3053,17 @@ function ResultsTab({
             value: String(data.submissionCount),
             sub: t`accepted through this form`,
           },
+          // Only when there are any: a zero here on a form that saves progress
+          // reads as a problem, and on one that doesn't it is noise.
+          ...(data.inProgress > 0
+            ? [
+                {
+                  label: t`In progress`,
+                  value: String(data.inProgress),
+                  sub: t`started, not submitted`,
+                },
+              ]
+            : []),
           { label: t`Questions`, value: String(data.blocks.length), sub: t`summarised` },
         ].map((s, i) => (
           <Card key={i} className="gap-1 p-4">

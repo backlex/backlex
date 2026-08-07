@@ -184,6 +184,54 @@ deliver hundreds of messages is a request waiting to time out. Invites already
 minted are unaffected by a send that fails — they are in the response, and the
 list shows which ones went.
 
+## Coming back to a half-filled form
+
+A long survey loses people at the point where they have to finish it in one
+sitting. `saveProgress` keeps what has been filled in so far:
+
+```jsonc
+"settings": { "saveProgress": true }
+```
+
+The page posts its answers on a short debounce and on every step change
+(`PUT /api/public/forms/:token/draft`); the next definition read hands them back
+in `draft`, and the page renders the same questions, on the same step, already
+answered. The visitor sees one line — *"Saved — you can close this page and come
+back"* — and a **Start over** link that throws the draft away
+(`DELETE …/draft`).
+
+**What identifies "the same person" is whatever they already hold.** An invited
+person's key is their invite token, so the draft follows the link they were
+mailed: the phone that started the survey and the laptop that finishes it are
+the same person. Everyone else gets an opaque, HttpOnly cookie
+(`blx_fp_<hash of the form id>`, `SameSite=None; Secure` over https so it
+survives a cross-site iframe) — the same courtesy-not-a-count posture as
+`onePerBrowser`, and another browser starts fresh.
+
+Only the SHA-256 of that key is stored, exactly as for form and invite tokens.
+`form_drafts` is therefore a set of partial answers that nobody can attribute to
+a link without holding the link.
+
+What a draft does **not** carry:
+
+- **Files.** An upload's ticket expires in two hours, and handing back a dead
+  one would turn "welcome back" into a failed submit at the very end. The file
+  is the one answer that gets asked again.
+- **Anything not on the form.** The same exposed-field clamp the submit uses,
+  re-derived against today's schema — a question dropped from the form does not
+  come back through a draft written while it was still on it.
+- **More than 64 KB**, and no more than 60 saves/minute per (form, IP). A public
+  endpoint that writes rows on a timer needs a valve.
+
+Lifecycle: the submit that completes the form deletes its draft, deleting the
+form deletes all of them, and the cron tick sweeps whatever nobody came back to
+after **30 days**. A closed or paused form neither saves nor resumes — there is
+nothing to come back to.
+
+The admin's results panel shows `inProgress` beside the answers: how many people
+started and stopped, which is the one figure the target collection cannot tell
+you.
+
 ## Spam protection
 
 Three independent layers on submit:
@@ -225,7 +273,7 @@ Everything goes through one service (`services/forms.ts`):
 
 | Surface | Entry |
 |---|---|
-| REST | `/api/admin/forms` (+ `/eligible-fields/:collection`, `/:id/rotate-token`, `/:id/results`, `/:id/invites`), public `/api/public/forms/:token` |
+| REST | `/api/admin/forms` (+ `/eligible-fields/:collection`, `/:id/rotate-token`, `/:id/results`, `/:id/invites`), public `/api/public/forms/:token` (+ `/upload`, `/draft`, `/submit`) |
 | SDK | `client.forms.*` |
 | GraphQL | `publicForms` / `publicForm` / `publicFormResults` / `publicFormInvites`, `createPublicForm` / `updatePublicForm` / `deletePublicForm` / `rotatePublicFormToken` / `invitePublicForm` / `revokePublicFormInvite` |
 | MCP | `forms.*` (list, get, eligible_fields, create, update, rotate_token, results, invites, invite, revoke_invite, delete) |
@@ -236,7 +284,9 @@ Parity gate: `apps/web/tests/forms-surfaces.test.ts`; core behaviour:
 `apps/web/tests/forms-results.test.ts` (and `forms-results-pg.test.ts` for the
 Postgres spelling of the array explode); closing rules:
 `apps/web/tests/forms-availability.test.ts`; invites:
-`apps/web/tests/form-invites.test.ts`.
+`apps/web/tests/form-invites.test.ts`; saved progress:
+`apps/web/tests/form-drafts.test.ts` (and `form-drafts-pg.test.ts` for the
+Postgres spelling of the upsert and the sweep's timestamp bound).
 
 ## Not yet
 
@@ -245,4 +295,6 @@ Postgres spelling of the array explode); closing rules:
 - Multiple files per block (a `file` field stores one key).
 - Matrix / likert grids (ask each row as its own scale block for now).
 - Invite reminders (a second mail to whoever hasn't answered).
-- Partial answers — a half-filled form is not saved and cannot be resumed.
+- Resuming a draft on another browser without an invite — the cookie is the key
+  there, and minting a shareable resume link would be a second bearer secret to
+  lose.

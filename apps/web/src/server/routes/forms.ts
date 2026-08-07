@@ -114,6 +114,8 @@ const FormSettingsSchema = z
     onePerBrowser: z.boolean().optional(),
     /** Only a visitor holding an unspent invite may answer. */
     inviteOnly: z.boolean().optional(),
+    /** Keep half-filled answers so a visitor can come back to them. */
+    saveProgress: z.boolean().optional(),
     closedMessage: z.string().max(1000).optional(),
   })
   .openapi("FormSettings");
@@ -214,6 +216,8 @@ const FormResultsSchema = z
     rows: z.number(),
     submissionCount: z.number(),
     blockedCount: z.number(),
+    /** Half-filled forms saved but not submitted (0 unless `saveProgress`). */
+    inProgress: z.number(),
     lastSubmissionAt: z.unknown().nullable(),
     blocks: z.array(FormResultBlockSchema),
     truncated: z.number(),

@@ -2839,6 +2839,8 @@ export interface ApiFormSettings {
   onePerBrowser?: boolean;
   /** Only a visitor holding an unspent invite may answer. */
   inviteOnly?: boolean;
+  /** Keep half-filled answers so a visitor can come back to them. */
+  saveProgress?: boolean;
   closedMessage?: string;
 }
 
@@ -2912,6 +2914,8 @@ export interface ApiFormResults {
   rows: number;
   submissionCount: number;
   blockedCount: number;
+  /** Half-filled forms saved but not submitted (0 unless `saveProgress`). */
+  inProgress: number;
   lastSubmissionAt: unknown;
   blocks: ApiFormResultBlock[];
   truncated: number;
@@ -3013,9 +3017,13 @@ export interface ApiPublicForm {
   turnstileSiteKey: string | null;
   /** Non-null ⇒ the form is not taking answers right now. */
   closed: {
-    reason: "scheduled" | "ended" | "full" | "answered";
+    reason: "scheduled" | "ended" | "full" | "answered" | "invite" | "invite_used";
     message: string;
   } | null;
+  /** True ⇒ post what is filled in as it is filled in, and expect `draft`. */
+  saveProgress: boolean;
+  /** What this visitor left behind last time, or null for a fresh start. */
+  draft: { data: Record<string, unknown>; step: number; savedAt: number } | null;
 }
 
 export interface ApiPublicFormUpload {
@@ -3047,6 +3055,22 @@ export const formsPublicApi = {
       { method: "POST", body: fd },
     );
   },
+  /** Save what has been filled in so far. Only forms with `saveProgress` take
+   *  this; the resume key is the invite token or a cookie the server mints. */
+  saveDraft: (
+    token: string,
+    body: { data: Record<string, unknown>; step?: number; invite?: string },
+  ) =>
+    api<Envelope<{ savedAt: number }>>(
+      `/api/public/forms/${encodeURIComponent(token)}/draft`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+  /** Throw the saved answers away — the "start over" button. */
+  clearDraft: (token: string, invite?: string) =>
+    api<Envelope<{ cleared: boolean }>>(
+      `/api/public/forms/${encodeURIComponent(token)}/draft${invite ? `?i=${encodeURIComponent(invite)}` : ""}`,
+      { method: "DELETE" },
+    ),
   submit: (
     token: string,
     body: {

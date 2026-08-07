@@ -890,6 +890,10 @@ export interface PublicFormSettings {
   /** Only a visitor holding an unspent invite may answer (`/f/<token>?i=…`).
    *  Mint them with `forms.invite()`. */
   inviteOnly?: boolean;
+  /** Keep what someone has filled in so far, so they can come back to it. An
+   *  invited person resumes through their own link on any device; everyone else
+   *  through an opaque cookie, so another browser starts fresh. */
+  saveProgress?: boolean;
   /** What the public page says once the form is closed. */
   closedMessage?: string;
 }
@@ -2668,6 +2672,10 @@ export interface PublicFormResults {
   rows: number;
   submissionCount: number;
   blockedCount: number;
+  /** Half-filled forms saved but not yet submitted — above zero only on a form
+   *  with `saveProgress`. The figure the collection cannot tell you: people who
+   *  started and stopped. */
+  inProgress: number;
   lastSubmissionAt: unknown;
   blocks: PublicFormResultBlock[];
   /** Questions past the summary cap that were not computed. */

@@ -32,6 +32,7 @@ import { getChoices, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
 import type { CollectionRow } from "./items/collection-loader";
 import { loadCollection } from "./items/collection-loader";
+import { deleteFormDrafts } from "./form-drafts";
 import { hashToken } from "./shared-links";
 
 const formTable = (dialect: "pg" | "sqlite") =>
@@ -167,6 +168,9 @@ export interface FormSettings {
   onePerBrowser?: boolean;
   /** Only a visitor holding an unspent invite may answer (`/f/<token>?i=…`). */
   inviteOnly?: boolean;
+  /** Keep what someone has filled in so far, so they can come back to it.
+   *  See `services/form-drafts.ts` for what identifies "someone". */
+  saveProgress?: boolean;
   /** What the page says once the form is closed. Falls back to a default. */
   closedMessage?: string;
 }
@@ -440,6 +444,10 @@ export const deleteForm = async (
   if (!existing) throw new AppError("NOT_FOUND", "Form not found");
   const t = formTable(ctx.dialect);
   await (ctx.db as any).delete(t).where(eq(t.id, id));
+  // Submitted rows stay — they are the collection's, not the form's. Half-
+  // filled ones do not: they are personal data whose only reason to exist was
+  // a form that no longer does.
+  await deleteFormDrafts(ctx, id);
 };
 
 /** Replace the form's token. Returns the new one-time plaintext token. */
@@ -574,6 +582,11 @@ export interface PublicFormDefinition {
   /** Non-null ⇒ the form is not taking answers; render this in place of the
    *  questions. The blocks are still sent so the page keeps its shape. */
   closed: { reason: FormClosedReason; message: string } | null;
+  /** True ⇒ the page should post what has been filled in as it is filled in,
+   *  and this payload carries back whatever was saved before. */
+  saveProgress: boolean;
+  /** Answers this visitor left behind last time, or null for a fresh start. */
+  draft: { data: Record<string, unknown>; step: number; savedAt: number } | null;
 }
 
 /**
@@ -610,6 +623,30 @@ export const exposedFieldNames = (
       .filter((e) => e.def)
       .map((e) => e.def!.name),
   );
+
+/**
+ * What a draft is allowed to remember.
+ *
+ * The same exposed-field clamp the submit uses, so a form that saves progress
+ * cannot be turned into a key-value store by a POST that pads the payload. File
+ * blocks are dropped on purpose: an upload's ticket expires in two hours, and a
+ * draft that hands back a dead one turns "welcome back" into a failed submit at
+ * the very end. The file is the one answer we ask for again.
+ */
+export const draftableValues = (
+  form: FormRow,
+  collection: CollectionRow,
+  raw: Record<string, unknown>,
+): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  for (const { def } of exposedBlocks(form, collection)) {
+    if (!def || def.type === "file") continue;
+    const v = raw[def.name];
+    if (v === undefined) continue;
+    out[def.name] = v;
+  }
+  return out;
+};
 
 /* ── Availability ──────────────────────────────────────────────────── */
 
@@ -737,6 +774,7 @@ export const publicFormDefinition = (
   lang: string | null = null,
   uploadMaxBytes: number = FORM_UPLOAD_DEFAULT_MAX_BYTES,
   availability: FormAvailability = { open: true, reason: null, message: null },
+  draft: { data: Record<string, unknown>; step: number; savedAt: number } | null = null,
 ): PublicFormDefinition => {
   const settings = form.settings ?? {};
   const languages = settings.languages?.length ? settings.languages : ["en"];
@@ -829,6 +867,13 @@ export const publicFormDefinition = (
       availability.open || !availability.reason
         ? null
         : { reason: availability.reason, message: availability.message ?? "" },
+    saveProgress: Boolean(settings.saveProgress),
+    // Clamped against TODAY's blocks for the same reason the submit is: a
+    // question dropped from the form must not come back through a draft
+    // written while it was still on it.
+    draft: draft
+      ? { ...draft, data: draftableValues(form, collection, draft.data) }
+      : null,
   };
 };
 

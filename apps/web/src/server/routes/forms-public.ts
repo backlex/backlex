@@ -14,6 +14,7 @@ import {
 import {
   assertConsents,
   assertScales,
+  draftableValues,
   formAnsweredCookieName,
   formAvailability,
   exposedBlocks,
@@ -31,6 +32,15 @@ import {
   consumeFormInvite,
   releaseFormInvite,
 } from "../services/form-invites";
+import {
+  deleteFormDraft,
+  formDraftCookieName,
+  formDraftKeyHash,
+  loadFormDraft,
+  newFormDraftSecret,
+  saveFormDraft,
+  FORM_DRAFT_MAX_BYTES,
+} from "../services/form-drafts";
 import {
   consumeFormUploadTicket,
   formUploadPolicy,
@@ -115,6 +125,16 @@ const PublicFormSchema = z
     languages: z.array(z.string()),
     locale: z.string(),
     turnstileSiteKey: z.string().nullable(),
+    /** True ⇒ the page saves what is filled in as it is filled in. */
+    saveProgress: z.boolean(),
+    /** What this visitor left behind last time, or null for a fresh start. */
+    draft: z
+      .object({
+        data: z.record(z.string(), z.unknown()),
+        step: z.number(),
+        savedAt: z.number(),
+      })
+      .nullable(),
   })
   .openapi("PublicForm");
 
@@ -140,6 +160,11 @@ const SubmitResult = z
   })
   .openapi("PublicFormSubmitResult");
 
+/** Per-form, per-IP draft-save budget. The page saves on a debounce and on
+ *  every step change, so this sits well above the submit limit — it is a valve
+ *  against a script writing rows in a loop, not against someone answering. */
+export const DRAFT_MAX_PER_MINUTE = 60;
+
 const NOT_AVAILABLE = "This form is no longer available";
 const PAUSED = "This form is not accepting submissions right now";
 
@@ -150,6 +175,33 @@ const requireLiveForm = (form: FormRow | null): FormRow => {
   return form;
 };
 
+/** One cookie's value out of a request header, or null. */
+const readCookie = (header: string | undefined, name: string): string | null => {
+  if (!header) return null;
+  for (const part of header.split(";")) {
+    const trimmed = part.trim();
+    if (trimmed.startsWith(`${name}=`)) return trimmed.slice(name.length + 1);
+  }
+  return null;
+};
+
+/**
+ * Attributes every cookie these public endpoints set.
+ *
+ * `SameSite=None; Secure` when the page is served over https, because the form
+ * is embeddable and a Lax cookie is not sent from inside a cross-site iframe —
+ * which would make the guard silently do nothing on exactly the deployment
+ * that embeds it. Plain http (local dev) keeps Lax, since a browser drops a
+ * `Secure` cookie there and the guard would again do nothing.
+ */
+const cookieAttrs = (https: boolean, maxAgeSeconds: number): string[] => [
+  "Path=/",
+  `Max-Age=${maxAgeSeconds}`,
+  "HttpOnly",
+  https ? "SameSite=None" : "SameSite=Lax",
+  ...(https ? ["Secure"] : []),
+];
+
 /** Has THIS browser already answered THIS form? Only asked when the form opted
  *  in — reading the cookie otherwise would make a guard out of a setting the
  *  operator did not turn on. */
@@ -158,36 +210,60 @@ const hasAnsweredCookie = async (
   form: FormRow,
 ): Promise<boolean> => {
   if (!form.settings?.onePerBrowser) return false;
-  const header = c.req.header("cookie");
-  if (!header) return false;
   const name = await formAnsweredCookieName(form.id);
-  return header.split(";").some((part) => part.trim().startsWith(`${name}=`));
+  return readCookie(c.req.header("cookie"), name) !== null;
 };
 
-/**
- * Remember that this browser answered.
- *
- * `SameSite=None; Secure` when the page is served over https, because the form
- * is embeddable and a Lax cookie is not sent from inside a cross-site iframe —
- * which would make the guard silently do nothing on exactly the deployment
- * that embeds it. Plain http (local dev) keeps Lax, since a browser drops a
- * `Secure` cookie there and the guard would again do nothing.
- */
+/** Remember that this browser answered. */
 const setAnsweredCookie = async (
   c: { req: { url: string }; header: (name: string, value: string, opts?: { append?: boolean }) => void },
   form: FormRow,
 ): Promise<void> => {
   const name = await formAnsweredCookieName(form.id);
-  const https = c.req.url.startsWith("https://");
-  const attrs = [
-    `${name}=1`,
-    "Path=/",
-    "Max-Age=31536000",
-    "HttpOnly",
-    https ? "SameSite=None" : "SameSite=Lax",
-    ...(https ? ["Secure"] : []),
-  ];
+  const attrs = [`${name}=1`, ...cookieAttrs(c.req.url.startsWith("https://"), 31536000)];
   c.header("set-cookie", attrs.join("; "), { append: true });
+};
+
+/** A draft cookie lives as long as a draft does — a month. */
+const DRAFT_COOKIE_MAX_AGE = 30 * 24 * 60 * 60;
+
+/**
+ * Which draft this visitor is holding the key to.
+ *
+ * An invited person's key is their invite token: the draft then follows the
+ * link they were mailed, so the phone that started the survey and the laptop
+ * that finishes it are the same person. Everyone else gets an opaque cookie,
+ * which is the same courtesy-not-a-count posture as `onePerBrowser`.
+ *
+ * `mint` distinguishes the two callers. A save may create the key (that is what
+ * starting to answer means); a read may not — minting one on every definition
+ * fetch would set a cookie on people who never typed anything, for a draft that
+ * does not exist.
+ */
+const resolveDraftKey = async (
+  c: {
+    req: { url: string; header: (name: string) => string | undefined };
+    header: (name: string, value: string, opts?: { append?: boolean }) => void;
+  },
+  form: FormRow,
+  inviteToken: string | null | undefined,
+  opts: { mint: boolean },
+): Promise<string | null> => {
+  if (!form.settings?.saveProgress) return null;
+  if (form.settings.inviteOnly) {
+    return inviteToken ? await formDraftKeyHash(`i:${inviteToken}`) : null;
+  }
+  const name = await formDraftCookieName(form.id);
+  const existing = readCookie(c.req.header("cookie"), name);
+  if (existing) return await formDraftKeyHash(`b:${existing}`);
+  if (!opts.mint) return null;
+  const secret = newFormDraftSecret();
+  c.header(
+    "set-cookie",
+    [`${name}=${secret}`, ...cookieAttrs(c.req.url.startsWith("https://"), DRAFT_COOKIE_MAX_AGE)].join("; "),
+    { append: true },
+  );
+  return await formDraftKeyHash(`b:${secret}`);
 };
 
 /**
@@ -240,9 +316,31 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
 
       // Invite-only forms resolve the `?i=` token here so the page can say
       // "already used" before someone fills in six answers they can't submit.
+      const inviteToken = c.req.query("i") ?? null;
       const inviteProblem = form.settings?.inviteOnly
-        ? (await checkFormInvite(ctx, form.id, c.req.query("i") ?? null)).problem
+        ? (await checkFormInvite(ctx, form.id, inviteToken)).problem
         : null;
+
+      const availability = formAvailability(form, Date.now(), {
+        alreadyAnswered: await hasAnsweredCookie(c, form),
+        inviteProblem,
+      });
+
+      // Saved answers ride back with the definition, so a returning visitor
+      // gets one request and a filled-in form rather than a blank one that
+      // repopulates a moment later. A closed form skips the read: there is
+      // nothing to come back to.
+      const keyHash = availability.open
+        ? await resolveDraftKey(c, form, inviteToken, { mint: false })
+        : null;
+      const draft = keyHash ? await loadFormDraft(ctx, form.id, keyHash) : null;
+
+      // This response is per-visitor — it carries their own half-filled
+      // answers, and its "you already answered" state was already a function of
+      // their cookie. Said out loud so no intermediary caches one person's
+      // answers and hands them to the next.
+      c.header("cache-control", "private, no-store");
+      c.header("vary", "cookie", { append: true });
 
       return c.json({
         data: publicFormDefinition(
@@ -251,10 +349,8 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           ctx.env.TURNSTILE_SITE_KEY ?? null,
           c.req.query("lang") ?? null,
           formUploadPolicy(ctx.env).maxBytes,
-          formAvailability(form, Date.now(), {
-            alreadyAnswered: await hasAnsweredCookie(c, form),
-            inviteProblem,
-          }),
+          availability,
+          draft,
         ),
       });
     },
@@ -388,6 +484,160 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         file,
       );
       return c.json({ data: stored }, 201);
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "put",
+      path: "/{token}/draft",
+      tags: TAGS,
+      summary: "Save a half-filled form so it can be resumed",
+      description:
+        "PUBLIC — no auth. Stores the answers given so far against the visitor's resume key (their invite token on invite-only forms, otherwise an opaque HttpOnly cookie this endpoint mints). Only forms with `settings.saveProgress` accept this; answers are clamped to the exposed field set and file blocks are never stored. The saved answers come back on the next `GET /{token}`.",
+      security: PUBLIC_SECURITY,
+      request: {
+        params: z.object({ token: z.string() }),
+        body: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: z
+                .object({
+                  data: z.record(z.string(), z.unknown()),
+                  /** Step page reached, so the visitor returns to where they
+                   *  stopped rather than to question one. */
+                  step: z.number().int().min(0).max(500).optional(),
+                  /** Invite token — on invite-only forms this IS the key the
+                   *  draft is filed under, so it travels with every save. */
+                  invite: z.string().max(120).optional(),
+                })
+                .openapi("PublicFormDraftInput"),
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: "Saved",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z
+                  .object({ savedAt: z.number() })
+                  .openapi("PublicFormDraftResult"),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const { token } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const form = requireLiveForm(await resolveFormToken(ctx, token));
+      setMeterTenant(c, form.tenantId);
+
+      if (!form.settings?.saveProgress) {
+        throw new AppError("VALIDATION", "This form does not save progress");
+      }
+
+      // A form that is over has nothing to come back to, and a draft written
+      // against one is storage nobody will ever read.
+      const inviteToken = body.invite ?? c.req.query("i") ?? null;
+      const invite = form.settings.inviteOnly
+        ? await checkFormInvite(ctx, form.id, inviteToken)
+        : null;
+      const availability = formAvailability(form, Date.now(), {
+        alreadyAnswered: await hasAnsweredCookie(c, form),
+        inviteProblem: invite?.problem ?? null,
+      });
+      if (!availability.open) {
+        throw new AppError("GONE", availability.message ?? "This form is closed");
+      }
+
+      const ip = requestMeta(c.req.raw).ip ?? "unknown";
+      const allowed = await rateLimitOk(
+        ctx.env,
+        `form-draft:${form.id}:${ip}`,
+        DRAFT_MAX_PER_MINUTE,
+        SUBMIT_WINDOW_MS,
+      );
+      if (!allowed) {
+        throw new AppError("RATE_LIMITED", "Too many saves — please slow down");
+      }
+
+      let collection;
+      try {
+        collection = await loadCollection(ctx, form.tenantId, form.collection);
+      } catch {
+        throw new AppError("NOT_FOUND", NOT_AVAILABLE);
+      }
+
+      // Same exposed-field clamp the submit uses: a public endpoint that stores
+      // whatever it is handed is a key-value store, not a form.
+      const data = draftableValues(form, collection, body.data);
+      if (JSON.stringify(data).length > FORM_DRAFT_MAX_BYTES) {
+        throw new AppError(
+          "VALIDATION",
+          "These answers are too large to save — submit the form instead",
+        );
+      }
+
+      const keyHash = await resolveDraftKey(c, form, inviteToken, { mint: true });
+      if (!keyHash) {
+        // Invite-only and no usable invite: availability above already refuses
+        // that, so reaching here means the form changed under the request.
+        throw new AppError("VALIDATION", "This form cannot save progress for you");
+      }
+      const savedAt = await saveFormDraft(ctx, {
+        formId: form.id,
+        tenantId: form.tenantId,
+        keyHash,
+        data,
+        step: body.step ?? 0,
+      });
+      return c.json({ data: { savedAt } });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "delete",
+      path: "/{token}/draft",
+      tags: TAGS,
+      summary: "Throw away a saved half-filled form",
+      description:
+        "PUBLIC — no auth. Deletes the saved answers behind this visitor's resume key. What the 'start over' button on the form page calls, so someone is never stuck with answers they no longer want.",
+      security: PUBLIC_SECURITY,
+      request: {
+        params: z.object({ token: z.string() }),
+        query: z.object({ i: z.string().max(120).optional() }),
+      },
+      responses: {
+        200: {
+          description: "Cleared",
+          content: {
+            "application/json": {
+              schema: z.object({ data: z.object({ cleared: z.boolean() }) }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const { token } = c.req.valid("param");
+      const form = requireLiveForm(await resolveFormToken(ctx, token));
+      setMeterTenant(c, form.tenantId);
+      const keyHash = await resolveDraftKey(c, form, c.req.query("i") ?? null, {
+        mint: false,
+      });
+      if (keyHash) await deleteFormDraft(ctx, form.id, keyHash);
+      // `cleared: true` either way: whether a row existed is the caller's own
+      // business, and the outcome they asked for — nothing saved — is the same.
+      return c.json({ data: { cleared: true } });
     },
   )
   .openapi(
@@ -564,6 +814,17 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       // Set AFTER the write, so a submission that failed validation doesn't
       // spend the browser's one answer.
       if (settings.onePerBrowser) await setAnsweredCookie(c, form);
+      // The half-filled copy has served its purpose — and it is the same
+      // personal data as the row that just landed, kept where nothing reads it.
+      if (settings.saveProgress) {
+        const keyHash = await resolveDraftKey(
+          c,
+          form,
+          body.invite ?? c.req.query("i") ?? null,
+          { mint: false },
+        );
+        if (keyHash) await deleteFormDraft(ctx, form.id, keyHash);
+      }
 
       // The row id stays private — a public submitter has no read path to the
       // record, so leaking its id would only aid enumeration.

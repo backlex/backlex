@@ -7470,6 +7470,10 @@ msgstr "Konuklar"
 msgid "Half width"
 msgstr "Yarım genişlik"
 
+#: src/client/admin/pages/forms.tsx
+msgid "half-filled answers are kept so people can come back — invited people resume on any device, everyone else in the same browser"
+msgstr "yarım kalan cevaplar saklanır, kişiler geri dönebilir — davetliler her cihazdan, diğerleri aynı tarayıcıda devam eder"
+
 #: src/client/admin/parity/kpis.tsx
 msgid "Handle"
 msgstr "Tanıtıcı"
@@ -7836,6 +7840,10 @@ msgstr "sırayla"
 #: src/client/admin/flow-builder.tsx
 msgid "In order — each link waits for the one above"
 msgstr "Sırayla — her bağlantı bir üstündekini bekler"
+
+#: src/client/admin/pages/forms.tsx
+msgid "In progress"
+msgstr "Devam eden"
 
 #: src/client/admin/item-views.tsx
 msgid "In review"
@@ -12405,6 +12413,10 @@ msgstr "Seçin…"
 msgid "Picked from each agent's description, so give them one. Costs an extra model call per unaddressed message."
 msgstr "Her agent'ın açıklamasına bakılarak seçilir, o yüzden açıklama yazın. Etiketlenmemiş her mesaj için bir ek model çağrısı maliyeti getirir."
 
+#: src/client/pages/public-form.tsx
+msgid "Picked up where you left off."
+msgstr "Kaldığınız yerden devam ediyorsunuz."
+
 #: src/client/admin/parity/kpis.tsx
 msgid "Pin to"
 msgstr "Şuraya pinle"
@@ -14580,6 +14592,10 @@ msgstr "Limitleri kaydet"
 msgid "Save metadata"
 msgstr "Meta verileri kaydet"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Save progress"
+msgstr "İlerlemeyi kaydet"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Save sort"
 msgstr "Sıralamayı kaydet"
@@ -14607,6 +14623,10 @@ msgstr "Bu gizli anahtarı şimdi kaydedin"
 #: src/client/admin/pages/forms.tsx
 msgid "saved"
 msgstr "kaydedildi"
+
+#: src/client/pages/public-form.tsx
+msgid "Saved — you can close this page and come back."
+msgstr "Kaydedildi — bu sayfayı kapatıp geri dönebilirsiniz."
 
 #. placeholder {0}: urls.length
 #. placeholder {1}: urls.length === 1 ? "" : "s"
@@ -16085,6 +16105,10 @@ msgstr "Taşımayı başlat ({0} tablo)"
 msgid "Start one with “New migration” — pick tables, review the plan, and the server copies the rows in the background."
 msgstr "“Yeni taşıma” ile bir tane başlatın — tabloları seçin, planı gözden geçirin; sunucu satırları arka planda kopyalar."
 
+#: src/client/pages/public-form.tsx
+msgid "Start over"
+msgstr "Baştan başla"
+
 #: src/client/pages/oauth-consent.tsx
 msgid "Start the connection again from your MCP client (for example claude.ai → Connectors)."
 msgstr "Bağlantıyı MCP istemcinizden yeniden başlatın (örneğin claude.ai → Connectors)."
@@ -16092,6 +16116,10 @@ msgstr "Bağlantıyı MCP istemcinizden yeniden başlatın (örneğin claude.ai 
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Start with a template"
 msgstr "Bir şablonla başla"
+
+#: src/client/admin/pages/forms.tsx
+msgid "started, not submitted"
+msgstr "başlanmış, gönderilmemiş"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/database-import.tsx
@@ -18969,6 +18997,10 @@ msgstr "siz@ornek.com"
 #: src/client/pages/magic-link.tsx
 msgid "your address"
 msgstr "adresiniz"
+
+#: src/client/pages/public-form.tsx
+msgid "Your answers are saved as you go, so you can come back to them."
+msgstr "Cevaplarınız siz doldurdukça kaydedilir, sonra geri dönebilirsiniz."
 
 #: src/client/admin/pages/agents.tsx
 msgid "your API key"

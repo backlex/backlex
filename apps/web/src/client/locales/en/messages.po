@@ -7470,6 +7470,10 @@ msgstr "Guests"
 msgid "Half width"
 msgstr "Half width"
 
+#: src/client/admin/pages/forms.tsx
+msgid "half-filled answers are kept so people can come back — invited people resume on any device, everyone else in the same browser"
+msgstr "half-filled answers are kept so people can come back — invited people resume on any device, everyone else in the same browser"
+
 #: src/client/admin/parity/kpis.tsx
 msgid "Handle"
 msgstr "Handle"
@@ -7836,6 +7840,10 @@ msgstr "in order"
 #: src/client/admin/flow-builder.tsx
 msgid "In order — each link waits for the one above"
 msgstr "In order — each link waits for the one above"
+
+#: src/client/admin/pages/forms.tsx
+msgid "In progress"
+msgstr "In progress"
 
 #: src/client/admin/item-views.tsx
 msgid "In review"
@@ -12405,6 +12413,10 @@ msgstr "Pick…"
 msgid "Picked from each agent's description, so give them one. Costs an extra model call per unaddressed message."
 msgstr "Picked from each agent's description, so give them one. Costs an extra model call per unaddressed message."
 
+#: src/client/pages/public-form.tsx
+msgid "Picked up where you left off."
+msgstr "Picked up where you left off."
+
 #: src/client/admin/parity/kpis.tsx
 msgid "Pin to"
 msgstr "Pin to"
@@ -14580,6 +14592,10 @@ msgstr "Save limits"
 msgid "Save metadata"
 msgstr "Save metadata"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Save progress"
+msgstr "Save progress"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Save sort"
 msgstr "Save sort"
@@ -14607,6 +14623,10 @@ msgstr "Save this secret now"
 #: src/client/admin/pages/forms.tsx
 msgid "saved"
 msgstr "saved"
+
+#: src/client/pages/public-form.tsx
+msgid "Saved — you can close this page and come back."
+msgstr "Saved — you can close this page and come back."
 
 #. placeholder {0}: urls.length
 #. placeholder {1}: urls.length === 1 ? "" : "s"
@@ -16085,6 +16105,10 @@ msgstr "Start migration ({0} tables)"
 msgid "Start one with “New migration” — pick tables, review the plan, and the server copies the rows in the background."
 msgstr "Start one with “New migration” — pick tables, review the plan, and the server copies the rows in the background."
 
+#: src/client/pages/public-form.tsx
+msgid "Start over"
+msgstr "Start over"
+
 #: src/client/pages/oauth-consent.tsx
 msgid "Start the connection again from your MCP client (for example claude.ai → Connectors)."
 msgstr "Start the connection again from your MCP client (for example claude.ai → Connectors)."
@@ -16092,6 +16116,10 @@ msgstr "Start the connection again from your MCP client (for example claude.ai �
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Start with a template"
 msgstr "Start with a template"
+
+#: src/client/admin/pages/forms.tsx
+msgid "started, not submitted"
+msgstr "started, not submitted"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/database-import.tsx
@@ -18969,6 +18997,10 @@ msgstr "you@example.com"
 #: src/client/pages/magic-link.tsx
 msgid "your address"
 msgstr "your address"
+
+#: src/client/pages/public-form.tsx
+msgid "Your answers are saved as you go, so you can come back to them."
+msgstr "Your answers are saved as you go, so you can come back to them."
 
 #: src/client/admin/pages/agents.tsx
 msgid "your API key"

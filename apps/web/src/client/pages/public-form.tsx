@@ -572,6 +572,34 @@ function buildPayload(
   return data;
 }
 
+/**
+ * What a saved draft is allowed to carry.
+ *
+ * The server clamps this again — it has to, the endpoint is public — but the
+ * page sends the same shape so a save is not a round-trip of things that will
+ * be dropped. File blocks are left out: an upload's ticket expires in two
+ * hours, and handing back a dead one turns "welcome back" into a failed submit
+ * at the very end.
+ */
+function draftPayload(
+  blocks: ApiPublicFormBlock[],
+  values: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const b of blocks) {
+    if (b.kind !== "field" || !b.name || b.type === "file") continue;
+    const v = values[b.name];
+    if (v === undefined || v === null || v === "") continue;
+    out[b.name] = v;
+  }
+  return out;
+}
+
+/** How long the page waits after the last keystroke before saving. Long enough
+ *  that typing a paragraph is one write, short enough that closing the tab a
+ *  moment after answering doesn't lose the answer. */
+const DRAFT_SAVE_DEBOUNCE_MS = 1200;
+
 /** Does a show-condition pass for the current answers? */
 const condPasses = (
   cond: ApiPublicFormBlock["cond"],
@@ -651,6 +679,71 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
   const pageIdx = Math.min(page, Math.max(0, pages.length - 1));
   const current = pages[pageIdx];
   const isLast = pageIdx === pages.length - 1;
+
+  /* ── saved progress ──────────────────────────────────────────────── */
+
+  // Serialization of what is already stored server-side, so an unchanged form
+  // (including the moment right after resuming) doesn't write it back.
+  const savedSnapshot = useRef<string | null>(null);
+  const hydrated = useRef(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [resumed, setResumed] = useState(false);
+
+  // Fill in what this visitor left behind. Once only: a language switch
+  // refetches the definition, and re-applying an old draft over what they have
+  // since typed would undo their answers.
+  useEffect(() => {
+    if (!def || hydrated.current) return;
+    hydrated.current = true;
+    const draft = def.draft;
+    if (!draft || Object.keys(draft.data).length === 0) return;
+    setValues(draft.data);
+    setPage(draft.step);
+    setSavedAt(draft.savedAt);
+    setResumed(true);
+    savedSnapshot.current = JSON.stringify({ d: draft.data, s: draft.step });
+  }, [def]);
+
+  useEffect(() => {
+    if (!def?.saveProgress || !token || submitted || def.closed) return;
+    const data = draftPayload(def.blocks, values);
+    // Nothing answered yet: saving would mint a cookie and a row for a visitor
+    // who has done nothing but open the page.
+    if (Object.keys(data).length === 0) return;
+    const snapshot = JSON.stringify({ d: data, s: pageIdx });
+    if (snapshot === savedSnapshot.current) return;
+    const timer = setTimeout(() => {
+      savedSnapshot.current = snapshot;
+      formsPublicApi
+        .saveDraft(token, { data, step: pageIdx, ...(invite ? { invite } : {}) })
+        .then((res) => {
+          setSavedAt(res.data.savedAt);
+          // Past the first new answer, "picked up where you left off" is no
+          // longer what just happened.
+          setResumed(false);
+        })
+        // Saving is a convenience, never an interruption: a failed save leaves
+        // the answers on screen and lets the next change try again.
+        .catch(() => {
+          savedSnapshot.current = null;
+        });
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [def, values, pageIdx, submitted, token, invite]);
+
+  const startOver = () => {
+    if (!token) return;
+    setValues({});
+    setPage(0);
+    setSavedAt(null);
+    setResumed(false);
+    setError(null);
+    savedSnapshot.current = null;
+    void formsPublicApi.clearDraft(token, invite ?? undefined).catch(() => {
+      // The answers are gone from the screen either way; a draft the sweep will
+      // collect is not worth an error in front of someone starting again.
+    });
+  };
 
   const p = paletteFor(def?.theme);
   const accent = safeAccent(def?.accent);
@@ -940,6 +1033,52 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
           )}
           {current?.title && (
             <h2 style={{ fontSize: 16.5, fontWeight: 600, margin: "20px 0 0" }}>{current.title}</h2>
+          )}
+
+          {/* Said before anything is typed, not after: "we keep what you write"
+              is a thing to know while deciding to write it. */}
+          {def.saveProgress && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                flexWrap: "wrap",
+                marginTop: 16,
+                fontSize: 11.5,
+                color: p.faint,
+              }}
+            >
+              <span>
+                {resumed ? (
+                  <Trans>Picked up where you left off.</Trans>
+                ) : savedAt !== null ? (
+                  <Trans>Saved — you can close this page and come back.</Trans>
+                ) : (
+                  <Trans>Your answers are saved as you go, so you can come back to them.</Trans>
+                )}
+              </span>
+              {(resumed || savedAt !== null) && (
+                <button
+                  type="button"
+                  onClick={startOver}
+                  style={{
+                    background: "none",
+                    border: 0,
+                    padding: 0,
+                    color: p.muted,
+                    fontFamily: "inherit",
+                    fontSize: 11.5,
+                    textDecoration: "underline",
+                    textUnderlineOffset: 2,
+                    cursor: "pointer",
+                  }}
+                >
+                  <Trans>Start over</Trans>
+                </button>
+              )}
+            </div>
           )}
 
           <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 18, marginTop: 22 }}>

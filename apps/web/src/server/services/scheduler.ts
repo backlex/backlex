@@ -29,6 +29,7 @@ import { enqueueJob, processJobs } from "./jobs";
 import { enqueueDueSyncs } from "./integration-syncs";
 import { sweepExpiredUploads } from "./uploads";
 import { sweepStaleFormUploads } from "./form-uploads";
+import { sweepStaleFormDrafts } from "./form-drafts";
 import { publishDueItems, unpublishDueItems } from "./items/scheduled-publish";
 import { listConnectedProviders } from "./payments";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
@@ -371,6 +372,14 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     await sweepStaleFormUploads(ctx);
   } catch (e) {
     console.error("[form-uploads] sweep failed", e);
+  }
+
+  // Half-filled forms nobody came back to: delete them once they go stale, so
+  // an anonymous write path doesn't hold personal answers indefinitely.
+  try {
+    await sweepStaleFormDrafts(ctx);
+  } catch (e) {
+    console.error("[form-drafts] sweep failed", e);
   }
 
   // Scheduled publishing: flip versioned-collection drafts whose `_publish_at`

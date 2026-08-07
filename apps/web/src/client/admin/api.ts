@@ -285,7 +285,12 @@ export interface ApiBookingResource {
   questions: ApiBookingQuestion[];
   /** Public page appearance — `{ theme, accent, font }`, or null for ours. */
   settings: PublicAppearance | null;
+  /** Whether bookings are recorded into a collection at all. */
+  mirrorEnabled: boolean;
+  /** Null means the provisioned default. */
   mirrorCollection: string | null;
+  /** The slug bookings actually land in — null when recording is off. */
+  recordCollection: string | null;
   mirrorFieldMap: Record<string, string> | null;
   active: boolean;
   confirmationMessage: string | null;
@@ -312,6 +317,8 @@ export interface ApiBooking {
   notes: string | null;
   mirrorCollection: string | null;
   mirrorItemId: string | null;
+  /** Why this booking is not in its collection yet, when it isn't. */
+  mirrorError: string | null;
   source: string;
   cancelledAt: number | null;
   cancelReason: string | null;
@@ -1481,6 +1488,13 @@ export const bookingApi = {
     ),
   noShow: (id: string) =>
     api<Envelope<ApiBooking>>(`/api/admin/booking/bookings/${encodeURIComponent(id)}/no-show`, {
+      method: "POST",
+    }),
+  /** Record it into its collection again. Answers 422 with the reason when it
+   *  still cannot — the write path swallows that so a customer never meets an
+   *  error over a bookkeeping problem, which is why the retry must not. */
+  record: (id: string) =>
+    api<Envelope<ApiBooking>>(`/api/admin/booking/bookings/${encodeURIComponent(id)}/record`, {
       method: "POST",
     }),
 };

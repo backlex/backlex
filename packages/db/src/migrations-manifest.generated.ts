@@ -104,6 +104,10 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "ea7617ff65150f8626c51e92434b0d58e9fd0ba72b762ccbbd85d276886bef31": "20260805170000_kpi_alerts",
   "1dffd5495b371b1c28d2022ed8e6a555f82b6f18c67d2412ffec286f10f61e8a": "20260806100000_kpi_pins",
   "296b59a999d823b190d9d75769a175a633e75a406f0117b94055bf269d9e9dae": "20260806180000_booking_settings",
+  "b7a5344317aa6490375371f35d893addcfe91a1aaf80271ab71aae478b8a83ef": "20260807120000_form_invites",
+  "8d7d5c95fb5592ac4bac68fe4be5efd5b85afcfab180a3823cdd09c7bec47de0": "20260807160000_form_drafts",
+  "4d54071dfcc159d915b6899124cce9b6bd4344fbd1efcc4e58acdbb16df69547": "20260808090000_form_invite_reminders",
+  "7fe730bc2aac72afbdedcf50339a1ff4d676adfec813743ef0a7a79be7f121b4": "20260808120000_booking_records_collection",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -203,4 +207,8 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "342961c17df11e07d166eb928a3a7e3dacdc421dc99926f182e3e473776f2a07": "20260805170000_kpi_alerts",
   "babf5f81ab4554a9431713b0c567d1cb750cdbadaee073dcf22baadb7943defa": "20260806100000_kpi_pins",
   "40db41158213a716160645cb885daa16e2475c7cd362e092950a496039e00abd": "20260806180000_booking_settings",
+  "2393d03233b06035057638492b84232cca455c28db22193ba27efc9c040404f9": "20260807120000_form_invites",
+  "515249225af5633fc4894c417c174d16b12b6e75e4de92b6c5e44179d438cab1": "20260807160000_form_drafts",
+  "16e3076ba2c20bcbb2e7f2e97c79e72ba7cef7c0fe55c6eeaf4abcaefb28b235": "20260808090000_form_invite_reminders",
+  "fc5d3ca758efbead214871313a0525f9ec707c9eb94722dfc64b2ddac2f06654": "20260808120000_booking_records_collection",
 };

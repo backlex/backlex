@@ -2068,7 +2068,12 @@ export interface BookingResource {
   questions: Array<Record<string, unknown>>;
   /** Public page appearance: `{ theme, accent, font }`. Null is the default. */
   settings: Record<string, unknown> | null;
+  /** Whether bookings are recorded into a collection at all. On by default. */
+  mirrorEnabled: boolean;
+  /** Null means the provisioned default (`booking_records`). */
   mirrorCollection: string | null;
+  /** The slug bookings actually land in, resolved — null when recording is off. */
+  recordCollection: string | null;
   mirrorFieldMap: Record<string, string> | null;
   active: boolean;
   confirmationMessage: string | null;
@@ -2093,6 +2098,11 @@ export interface BookingResourceInput {
   questions?: Array<Record<string, unknown>>;
   /** `{ theme, accent, font }`. Replaced wholesale; `null` clears it. */
   settings?: Record<string, unknown> | null;
+  /** Defaults to true — every resource records its bookings somewhere. */
+  mirrorEnabled?: boolean;
+  /** Omit for the provisioned default; a value points at a collection of your
+   *  own, which then REQUIRES `mirrorFieldMap` (a target with no map records
+   *  nothing, so it is refused rather than accepted silently). */
   mirrorCollection?: string | null;
   mirrorFieldMap?: Record<string, string> | null;
   active?: boolean;
@@ -2120,6 +2130,9 @@ export interface Booking {
   notes: string | null;
   mirrorCollection: string | null;
   mirrorItemId: string | null;
+  /** Why this booking is not in its collection yet, when it isn't. Retry with
+   *  `booking.record(id)` once the cause is fixed. */
+  mirrorError: string | null;
   source: string;
   cancelledAt: number | null;
   cancelReason: string | null;
@@ -2205,6 +2218,10 @@ export interface BookingClient {
   reschedule(id: string, start: string | number): Promise<{ data: BookingResult }>;
   /** Distinct from a cancellation: the time was held and spent. */
   noShow(id: string): Promise<{ data: Booking }>;
+  /** Record this booking into its collection again after a failure. Answers
+   *  with the reason when it still cannot — unlike the write path, which
+   *  swallows it so a customer never meets a 500 over a bookkeeping problem. */
+  record(id: string): Promise<{ data: Booking }>;
 }
 
 /** Visual workflows (admin-scoped). Mirrors `/api/flows`. See `createClient`. */
@@ -4629,6 +4646,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     reschedule: (id, start) =>
       request<{ data: BookingResult }>("POST", `${bookOne(id)}/reschedule`, { start }),
     noShow: (id) => request<{ data: Booking }>("POST", `${bookOne(id)}/no-show`),
+    record: (id) => request<{ data: Booking }>("POST", `${bookOne(id)}/record`),
   };
 
   // Third-party integrations. Admin-scoped over `/api/admin/integrations`.

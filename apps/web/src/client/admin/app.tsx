@@ -1322,6 +1322,21 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                     {t`${total} rows · ${schemaState.fields.length} fields`}
                     {schemaState.ownerScoped ? ` · ${t`owner-scoped`}` : ""}
                   </p>
+                  {/* A note is what a collection says about itself, and the
+                      list is where somebody is about to edit a row — which for
+                      a collection something else writes (booking records,
+                      payment syncs) is exactly where "this is a record, not a
+                      control" has to be legible. It was only ever shown on the
+                      index card and in the Settings tab, neither of which is
+                      on the way here. */}
+                  {schemaState.note ? (
+                    <p
+                      className="m-0 max-w-prose text-[13px] text-muted-foreground/80"
+                      title={schemaState.note}
+                    >
+                      {schemaState.note}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
                   {/* Desktop: all secondary actions inline. */}

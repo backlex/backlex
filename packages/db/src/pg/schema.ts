@@ -2151,6 +2151,10 @@ export const bookingResources = pgTable(
     /** Public page appearance: `{ theme, accent, font }` — the same vocabulary
      *  `forms.settings` stores, so both pages are themed one way. */
     settings: jsonb("settings").$type<Record<string, unknown> | null>(),
+    /** Whether bookings are recorded in a collection at all — on by default. */
+    mirrorEnabled: boolean("mirror_enabled").notNull().default(true),
+    /** NULL means the provisioned default (`booking_records`); a value points at
+     *  a collection the workspace owns, and only then is `mirrorFieldMap` read. */
     mirrorCollection: text("mirror_collection"),
     mirrorFieldMap: jsonb("mirror_field_map").$type<Record<string, string> | null>(),
     /** SHA-256 of the public page token (`bkg_<hex>`), shown once on create. */
@@ -2228,6 +2232,9 @@ export const bookings = pgTable(
     tokenHash: text("token_hash").notNull(),
     mirrorCollection: text("mirror_collection"),
     mirrorItemId: text("mirror_item_id"),
+    /** Why the last recording attempt failed, when it did. Cleared by the next
+     *  success — recording is best-effort, so the failure has to be legible. */
+    mirrorError: text("mirror_error"),
     /** public | admin | api */
     source: text("source").notNull().default("public"),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),

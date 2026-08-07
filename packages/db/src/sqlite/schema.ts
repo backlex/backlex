@@ -1875,13 +1875,22 @@ export const bookingResources = sqliteTable(
      *  `forms.settings`, and read through the same client module, so the two
      *  public pages cannot drift into different ideas of what a theme is. */
     settings: text("settings", { mode: "json" }).$type<Record<string, unknown> | null>(),
-    /** Optional collection each booking is MIRRORED into, so the workspace owns
-     *  the row in its own shape and every collection surface (permissions,
-     *  flows, realtime, exports) applies to it. The ledger here stays the
-     *  source of truth for the slot — see the migration for why. */
+    /** Whether bookings are recorded in a collection at all. On by default:
+     *  every resource records, and the workspace-wide `booking_records`
+     *  collection is provisioned for it. Off is an escape hatch, not a
+     *  starting point — a resource that records nowhere leaves the ledger as
+     *  the only place its customers exist. */
+    mirrorEnabled: integer("mirror_enabled", { mode: "boolean" }).notNull().default(true),
+    /** Which collection to record into. NULL means the provisioned default
+     *  (`booking_records`), whose field map is DERIVED rather than stored so it
+     *  cannot drift from the shape we create. A value here points at a
+     *  collection the workspace owns instead, and only then does
+     *  `mirrorFieldMap` mean anything. The ledger stays the source of truth for
+     *  the slot either way — see the migration for why. */
     mirrorCollection: text("mirror_collection"),
     /** `{ start, end, name, email, phone, status, resource }` — booking field →
-     *  collection column. Absent keys are simply not written. */
+     *  collection column. Absent keys are simply not written. Only read for a
+     *  CUSTOM `mirrorCollection`; the default target derives its own. */
     mirrorFieldMap: text("mirror_field_map", { mode: "json" }).$type<Record<string, string> | null>(),
     /** SHA-256 of the public page token (`bkg_<hex>`), which is shown once.
      *  Mirrors `forms` / `dashboards` embed / `shared_links`. */
@@ -1987,9 +1996,15 @@ export const bookings = sqliteTable(
      *  reschedule, so a readable copy here would let anyone with database
      *  access cancel a stranger's appointment. */
     tokenHash: text("token_hash").notNull(),
-    /** Where the mirrored row landed, when the resource asked for one. */
+    /** Where the recorded row landed. */
     mirrorCollection: text("mirror_collection"),
     mirrorItemId: text("mirror_item_id"),
+    /** Why the last recording attempt failed, when it did. Recording is
+     *  best-effort — the slot is already held and a mis-shaped collection must
+     *  not turn a confirmed appointment into a 500 for the customer — so the
+     *  failure has to be legible SOMEWHERE, or a workspace discovers months
+     *  later that nothing was ever written. Cleared by the next success. */
+    mirrorError: text("mirror_error"),
     /** public | admin | api — who created it, for the admin list and for
      *  telling a self-service no-show from an operator's data entry. */
     source: text("source").notNull().default("public"),

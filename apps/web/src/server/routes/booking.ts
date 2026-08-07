@@ -21,6 +21,7 @@ import {
   listSlots,
   loadResource,
   markNoShow,
+  retryBookingRecord,
   rescheduleBooking,
   resolveBookingById,
   rotateResourceToken,
@@ -126,7 +127,11 @@ const ResourceView = z
     holdMinutes: z.number(),
     questions: z.array(z.record(z.string(), z.unknown())),
     settings: z.record(z.string(), z.unknown()).nullable(),
+    mirrorEnabled: z.boolean(),
     mirrorCollection: z.string().nullable(),
+    /** The slug bookings actually land in — the custom target when there is
+     *  one, the provisioned default otherwise, null when recording is off. */
+    recordCollection: z.string().nullable(),
     mirrorFieldMap: z.record(z.string(), z.string()).nullable(),
     active: z.boolean(),
     confirmationMessage: z.string().nullable(),
@@ -151,6 +156,7 @@ const ResourceBody = z.object({
   holdMinutes: z.number().int().optional(),
   questions: z.array(QuestionInput).max(MAX_QUESTIONS).optional(),
   settings: SettingsInput.nullish(),
+  mirrorEnabled: z.boolean().optional(),
   mirrorCollection: z.string().max(100).nullish(),
   mirrorFieldMap: z.record(z.string(), z.string()).nullish(),
   active: z.boolean().optional(),
@@ -182,6 +188,8 @@ const BookingView = z
     notes: z.string().nullable(),
     mirrorCollection: z.string().nullable(),
     mirrorItemId: z.string().nullable(),
+    /** Why this booking is not in its collection yet, when it isn't. */
+    mirrorError: z.string().nullable(),
     source: z.string(),
     cancelledAt: z.number().nullable(),
     cancelReason: z.string().nullable(),
@@ -650,5 +658,24 @@ export const bookingRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       },
     }),
     async (c) => c.json({ data: await markNoShow(c.get("ctx"), tenantOf(c), c.req.valid("param").id) }),
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/bookings/{id}/record",
+      tags,
+      summary: "Record this booking again",
+      description:
+        "Admin-only. Recording into a collection is best-effort — the slot is already held, so a renamed collection or a mis-mapped column must not turn a confirmed appointment into a 500 for the customer. The failure is kept on `mirrorError` instead; this retries it once the cause is fixed, and unlike the write path it answers with the reason when it still cannot.",
+      security: SECURITY,
+      middleware: adminGate,
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: { description: "OK", content: { "application/json": { schema: z.object({ data: BookingView }) } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) =>
+      c.json({ data: await retryBookingRecord(c.get("ctx"), tenantOf(c), c.req.valid("param").id) }),
   );
 

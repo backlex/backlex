@@ -30,6 +30,7 @@ import { Select } from "../select";
 import { Button, EmptyState, PageHeader } from "../ui";
 import {
   bookingApi,
+  collectionsApi,
   type ApiBooking,
   type ApiBookingQuestion,
   type ApiBookingResource,
@@ -556,9 +557,32 @@ const DEFAULT_FORM = {
   horizonDays: "60",
   holdMinutes: "10",
   confirmationMessage: "",
+  mirrorEnabled: true,
   mirrorCollection: "",
   active: true,
 };
+
+/** The ledger keys a custom field map may point a column at. The default
+ *  collection derives its own, so this list is only ever shown for a target the
+ *  workspace owns. Intake answers are reachable by question name too, but they
+ *  are per resource and so are offered next to the questions instead. */
+/** The slug the platform provisions. Mirrors `BOOKING_COLLECTION_SLUG` on the
+ *  server; the panel needs the name before any resource has been saved, which
+ *  is the one moment the server's own answer is not available yet. */
+const DEFAULT_RECORD_COLLECTION = "booking_records";
+
+const MIRROR_KEYS = [
+  "booking",
+  "start",
+  "end",
+  "name",
+  "email",
+  "phone",
+  "status",
+  "resource",
+  "source",
+  "notes",
+] as const;
 
 /** The draft as the API takes it. Pulled out of the component so the autosave
  *  timer can build it from a ref rather than from a closed-over render. */
@@ -567,6 +591,7 @@ const bodyOf = (d: {
   rules: ApiBookingRule[];
   questions: ApiBookingQuestion[];
   look: PublicAppearance;
+  mirrorMap: Record<string, string>;
 }) => ({
   name: d.form.name.trim(),
   description: d.form.description.trim() || null,
@@ -579,7 +604,11 @@ const bodyOf = (d: {
   horizonDays: Number(d.form.horizonDays) || 60,
   holdMinutes: Number(d.form.holdMinutes) || 10,
   confirmationMessage: d.form.confirmationMessage.trim() || null,
+  mirrorEnabled: d.form.mirrorEnabled,
   mirrorCollection: d.form.mirrorCollection.trim() || null,
+  // Only meaningful for a custom target; the default derives its map, and
+  // sending one for it would be storing an answer that can go stale.
+  mirrorFieldMap: d.form.mirrorCollection.trim() ? d.mirrorMap : null,
   active: d.form.active,
   rules: d.rules.map((r) => ({
     kind: r.kind,
@@ -626,12 +655,14 @@ type Problem =
   | { code: "rule-range" }
   | { code: "question-label" }
   | { code: "question-duplicate"; name: string }
-  | { code: "question-options"; label: string };
+  | { code: "question-options"; label: string }
+  | { code: "mirror-map"; collection: string };
 
 const problemWith = (d: {
   form: typeof DEFAULT_FORM;
   rules: ApiBookingRule[];
   questions: ApiBookingQuestion[];
+  mirrorMap: Record<string, string>;
 }): Problem | null => {
   if (!d.form.name.trim()) return { code: "name" };
   for (const r of d.rules) {
@@ -651,6 +682,18 @@ const problemWith = (d: {
     seen.add(q.name);
     if (q.type === "select" && (q.options ?? []).filter((o) => o.trim() !== "").length === 0)
       return { code: "question-options", label: q.label || q.name };
+  }
+  // The server refuses a custom target with no map, and it is right to — but
+  // picking the collection and typing its columns are two moves, and firing the
+  // refusal between them shows a failure for a state the operator is halfway
+  // through making. Held here as a half-finished draft, like every other one.
+  const target = d.form.mirrorCollection.trim();
+  if (
+    d.form.mirrorEnabled &&
+    target &&
+    Object.values(d.mirrorMap).filter((c) => c.trim()).length === 0
+  ) {
+    return { code: "mirror-map", collection: target };
   }
   return null;
 };
@@ -689,6 +732,17 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
    *  light/dark preference and our accent, which is what every calendar
    *  created before this panel existed still means. */
   const [look, setLook] = useState<PublicAppearance>({});
+  /** Only read when the resource points at a collection of its own — the
+   *  provisioned default derives its map, so there is nothing to edit. */
+  const [mirrorMap, setMirrorMap] = useState<Record<string, string>>({});
+  /** What the panel names as the destination. The server resolves the same
+   *  thing into `recordCollection`; this is the working copy's answer, so the
+   *  sentence updates as the operator changes the setting rather than after
+   *  the next save. */
+  const recordTarget = form.mirrorCollection.trim() || DEFAULT_RECORD_COLLECTION;
+  /** Slugs offered by the "my own collection" escape hatch. Fetched once and
+   *  only used there, so a failure leaves the default path untouched. */
+  const [collections, setCollections] = useState<string[]>([]);
   /** Names that already have answers stored against them. Retyping the label of
    *  such a question must NOT move its name: the answers on every booking taken
    *  so far are keyed by it, and a mirror map may point a column at it. */
@@ -730,6 +784,22 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(id);
+  }, []);
+
+  // The escape hatch's options. Deliberately not blocking anything: a workspace
+  // whose collections fail to load still records into the default, which is the
+  // path that needs no list at all.
+  useEffect(() => {
+    let alive = true;
+    collectionsApi
+      .list()
+      .then((res) => {
+        if (alive) setCollections((res.data ?? []).map((c) => c.slug).sort());
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const loadBookings = async (
@@ -840,8 +910,8 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Assigned every render so the timer never fires against a stale draft.
-  const draftRef = useRef({ form, rules, questions, look });
-  draftRef.current = { form, rules, questions, look };
+  const draftRef = useRef({ form, rules, questions, look, mirrorMap });
+  draftRef.current = { form, rules, questions, look, mirrorMap };
   const openKeyRef = useRef<string | null>(openKey);
   openKeyRef.current = openKey;
   /**
@@ -873,6 +943,8 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
           return t`Give every question a label.`;
         case "question-duplicate":
           return t`Two questions share the stored name "${p.name}". Names have to be unique.`;
+        case "mirror-map":
+          return t`Say which column of "${p.collection}" each booking field goes to — a target with no map records nothing.`;
         default:
           return t`"${p.label}" is a choice with nothing to choose from.`;
       }
@@ -957,6 +1029,10 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
   };
   const editLook = (fn: (l: PublicAppearance) => PublicAppearance) => {
     setLook(fn);
+    scheduleSave();
+  };
+  const editMirrorMap = (fn: (m: Record<string, string>) => Record<string, string>) => {
+    setMirrorMap(fn);
     scheduleSave();
   };
 
@@ -1048,9 +1124,11 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
       horizonDays: String(r.horizonDays),
       holdMinutes: String(r.holdMinutes),
       confirmationMessage: r.confirmationMessage ?? "",
+      mirrorEnabled: r.mirrorEnabled !== false,
       mirrorCollection: r.mirrorCollection ?? "",
       active: r.active,
     });
+    setMirrorMap({ ...(r.mirrorFieldMap ?? {}) });
     setRules(r.rules.length > 0 ? r.rules.map((x) => ({ ...x })) : [blankRule()]);
     setQuestions(
       (r.questions ?? []).map((q) => ({
@@ -1148,6 +1226,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
           rules: [blankRule()],
           questions: [],
           look: {},
+          mirrorMap: {},
         }),
       });
       const row = res.data.resource as ApiBookingResource;
@@ -1257,6 +1336,30 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
       // A freed or spent slot changes what the week looks like, so the strip
       // is re-read rather than left claiming the old numbers.
       if (openKey) void loadPlan(openKey);
+    } catch (e) {
+      setBookings(snapshot);
+      setDetail((d) => (d && d.id === b.id ? b : d));
+      pushToast((e as Error).message);
+    }
+  };
+
+  /**
+   * Record a booking again after a failure.
+   *
+   * Not routed through `patchBooking`: nothing about the booking's own status
+   * changes, so there is no optimistic next-state to show — the honest
+   * optimistic move is clearing the error, and putting it back if the retry
+   * fails for the same reason it failed the first time.
+   */
+  const onRecordAgain = async (b: ApiBooking) => {
+    const snapshot = bookings;
+    setBookings((arr) => arr.map((x) => (x.id === b.id ? { ...x, mirrorError: null } : x)));
+    setDetail((d) => (d && d.id === b.id ? { ...d, mirrorError: null } : d));
+    try {
+      const res = await bookingApi.record(b.id);
+      setBookings((arr) => arr.map((x) => (x.id === b.id ? res.data : x)));
+      setDetail((d) => (d && d.id === b.id ? res.data : d));
+      pushToast(t`Recorded.`);
     } catch (e) {
       setBookings(snapshot);
       setDetail((d) => (d && d.id === b.id ? b : d));
@@ -2100,8 +2203,25 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                         <div className="truncate text-xs text-muted-foreground">
                           {inZone(b.start, zone)} · {b.source}
                         </div>
+                        {/* Recording is best-effort, so a failure has to be
+                            visible somewhere or a workspace finds out months
+                            later that nothing was written. */}
+                        {b.mirrorError ? (
+                          <div className="truncate text-xs text-destructive" title={b.mirrorError}>
+                            <Trans>Not recorded — {b.mirrorError}</Trans>
+                          </div>
+                        ) : null}
                       </button>
                       <div className="flex flex-wrap items-center gap-1">
+                        {b.mirrorError ? (
+                          <Button
+                            variant="outline"
+                            title={t`Try recording it into the collection again.`}
+                            onClick={() => void onRecordAgain(b)}
+                          >
+                            <Trans>Record again</Trans>
+                          </Button>
+                        ) : null}
                         {b.status === "held" && (
                           <Button
                             variant="outline"
@@ -2330,22 +2450,87 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
 
           <Card className="gap-4 p-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="bk-mirror">
-                <Trans>Mirror into a collection</Trans>
+              <Label>
+                <Trans>Where bookings are recorded</Trans>
               </Label>
-              <Input
-                id="bk-mirror"
-                value={form.mirrorCollection}
-                onChange={(e) => patchForm({ mirrorCollection: e.target.value })}
-                placeholder="appointments"
-              />
-              <p className="text-xs text-muted-foreground">
-                <Trans>
-                  Optional. Each booking is also written as a row there, so permissions, flows and
-                  exports apply to it as usual.
-                </Trans>
-              </p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="min-w-0 text-sm">
+                  {form.mirrorEnabled ? (
+                    <Trans>
+                      Every booking is written as a row in{" "}
+                      <span className="font-medium">{recordTarget}</span>, where permissions, flows
+                      and exports apply to it as usual.
+                    </Trans>
+                  ) : (
+                    <Trans>
+                      Bookings are not recorded anywhere but here. The ledger stays the only place
+                      these customers exist.
+                    </Trans>
+                  )}
+                </p>
+                <Switch
+                  checked={form.mirrorEnabled}
+                  onCheckedChange={(v) => patchForm({ mirrorEnabled: v })}
+                  aria-label={t`Record bookings into a collection`}
+                />
+              </div>
+              {form.mirrorEnabled && !form.mirrorCollection.trim() ? (
+                <p className="text-xs text-muted-foreground">
+                  <Trans>
+                    The collection is created for you and kept in step — nothing to map. Editing a
+                    row there does not move or cancel an appointment.
+                  </Trans>
+                </p>
+              ) : null}
             </div>
+
+            {form.mirrorEnabled ? (
+              <details className="group">
+                <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                  <Trans>Record into a collection of my own instead</Trans>
+                </summary>
+                <div className="mt-3 grid gap-3">
+                  <Select
+                    value={form.mirrorCollection}
+                    onChange={(v) => patchForm({ mirrorCollection: v })}
+                    className="min-w-0"
+                    options={[
+                      { value: "", label: t`The default collection` },
+                      ...collections.map((c) => ({ value: c, label: c })),
+                    ]}
+                  />
+                  {form.mirrorCollection ? (
+                    <div className="grid gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        <Trans>
+                          Your collection, your column names — so each booking field needs one. A
+                          target with no map records nothing, so saving without one is refused.
+                        </Trans>
+                      </p>
+                      {MIRROR_KEYS.map((key) => (
+                        <div key={key} className="grid grid-cols-[7rem_1fr] items-center gap-2">
+                          <Label className="truncate text-xs text-muted-foreground">{key}</Label>
+                          <Input
+                            value={mirrorMap[key] ?? ""}
+                            onChange={(e) =>
+                              editMirrorMap((m) => {
+                                const next = { ...m };
+                                const column = e.target.value.trim();
+                                if (column) next[key] = column;
+                                else delete next[key];
+                                return next;
+                              })
+                            }
+                            placeholder={t`column name`}
+                            className="min-w-0"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </details>
+            ) : null}
 
             <div className="grid gap-1.5">
               <Label htmlFor="bk-confirm">
@@ -2469,6 +2654,14 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                   {detail.cancelReason && (
                     <Detail label={<Trans>Reason</Trans>}>{detail.cancelReason}</Detail>
                   )}
+                  {/* The row truncates it — a reason worth acting on has to be
+                      readable in full somewhere, and this is where there is
+                      room for it. */}
+                  {detail.mirrorError && (
+                    <Detail label={<Trans>Not recorded</Trans>}>
+                      <span className="text-destructive">{detail.mirrorError}</span>
+                    </Detail>
+                  )}
                   {/* Read back through the questions rather than raw: the stored
                       key is a column name, and a yes/no is a boolean nobody
                       wants to read as "true". A question deleted since the
@@ -2532,6 +2725,11 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                 }
               >
                 <Trans>Confirm</Trans>
+              </Button>
+            )}
+            {detail?.mirrorError && (
+              <Button variant="outline" onClick={() => void onRecordAgain(detail)}>
+                <Trans>Record again</Trans>
               </Button>
             )}
             <Button variant="outline" onClick={() => setDetail(null)}>

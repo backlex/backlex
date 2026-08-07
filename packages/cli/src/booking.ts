@@ -45,7 +45,7 @@ interface BookingRow {
   source: string;
 }
 
-const HELP = `backlex booking <resources|create|update|url|delete|slots|list|book|confirm|cancel|move|no-show>
+const HELP = `backlex booking <resources|create|update|url|delete|slots|list|book|confirm|cancel|move|no-show|record>
 
   resources
   create <key> --name <n> [--tz <IANA>] [--slot <min>] [--capacity <n>]
@@ -56,6 +56,7 @@ const HELP = `backlex booking <resources|create|update|url|delete|slots|list|boo
          [--ask <question>]                   (repeatable) [--no-ask]
          [--theme dark|light] [--accent #rrggbb] [--font <face>] [--plain]
          [--mirror <collection>] [--map <from>=<column>]  (repeatable)
+         [--no-record] [--record]             record into a collection or not
   update <key> [same flags as create]
   url <key>                                   rotate + print the page link
   delete <key> [--force]
@@ -70,6 +71,7 @@ const HELP = `backlex booking <resources|create|update|url|delete|slots|list|boo
   cancel <id> [--reason <r>] [--no-notify]
   move <id> --start <iso>
   no-show <id>
+  record <id>                                 record it again after a failure
 
   A RULE is <weekday>:<HH:MM>-<HH:MM>, e.g. --open mon:09:00-17:00. Weekdays
   are sun mon tue wed thu fri sat, or * for every day. Times are LOCAL to the
@@ -311,6 +313,10 @@ const resourceInput = (rest: string[]): Record<string, unknown> => {
   put("confirmationMessage", flag(rest, "--message"));
   put("mirrorCollection", flag(rest, "--mirror"));
   if (Object.keys(map).length > 0) patch.mirrorFieldMap = map;
+  // `--no-record` is how "record nowhere" is said; no number of absent flags
+  // can express it, same reasoning as `--no-ask`. `--record` puts it back.
+  if (has(rest, "--no-record")) patch.mirrorEnabled = false;
+  else if (has(rest, "--record")) patch.mirrorEnabled = true;
   if (rules.length > 0) patch.rules = rules;
   // Questions are edited as one set, like the opening pattern — and `--no-ask`
   // is how you say "none", which no number of absent --ask flags can express.
@@ -562,6 +568,21 @@ export const runBooking = async (args: string[]): Promise<void> => {
         const out = await client.booking.noShow(id);
         if (json) printJson(out.data);
         else printKeyValues({ id: out.data.id, status: out.data.status });
+        return;
+      }
+
+      case "record": {
+        const id = rest[0];
+        if (!id) throw new Error("record needs a booking id");
+        const out = await client.booking.record(id);
+        if (json) printJson(out.data);
+        else {
+          printKeyValues({
+            id: out.data.id,
+            collection: out.data.mirrorCollection ?? "—",
+            item: out.data.mirrorItemId ?? "—",
+          });
+        }
         return;
       }
 

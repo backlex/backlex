@@ -364,6 +364,68 @@ describe("one implementation, not five", () => {
     expect(((await res.json()) as any).data.resource.settings).toEqual(look);
   });
 
+  test("every surface agrees on where a booking is recorded, and can retry it", async () => {
+    const c = sdk();
+    const made = await c.booking.createResource({ key: "rec", ...RESOURCE } as never);
+    // Nobody configured this. The resolved answer is the same wherever it is
+    // asked, which is the whole point of the field being derived.
+    expect(made.data.resource.recordCollection).toBe("booking_records");
+    expect(made.data.resource.mirrorEnabled).toBe(true);
+
+    const viaGql = await gql(
+      `query { bookingResource(key:"rec") { mirrorEnabled recordCollection } }`,
+    );
+    expect(viaGql.data.bookingResource).toEqual({
+      mirrorEnabled: true,
+      recordCollection: "booking_records",
+    });
+
+    const viaMcp = await mcp("booking.get_resource").handler({ key: "rec" }, mcpCtx());
+    expect((viaMcp.structuredContent as any).data.recordCollection).toBe("booking_records");
+
+    const booked = await c.booking.book("rec", { start: MONDAY_0900 } as never);
+    expect(booked.data.booking.mirrorItemId).toBeTruthy();
+    expect(booked.data.booking.mirrorError).toBeNull();
+
+    // The retry is idempotent everywhere it is offered, so exercising it on
+    // three surfaces must still leave one record.
+    const id = booked.data.booking.id;
+    const item = booked.data.booking.mirrorItemId;
+    expect((await c.booking.record(id)).data.mirrorItemId).toBe(item);
+
+    const gqlRetry = await gql(`mutation { recordBooking(id:"${id}") { mirrorItemId } }`);
+    expect(gqlRetry.data.recordBooking.mirrorItemId).toBe(item);
+
+    const mcpRetry = await mcp("booking.record").handler({ id }, mcpCtx());
+    expect((mcpRetry.structuredContent as any).data.mirrorItemId).toBe(item);
+
+    const rows = await h.fetch("/api/items/booking_records?limit=100");
+    expect(((await rows.json()) as any).data).toHaveLength(1);
+  });
+
+  test("a custom target with no field map is refused on every surface", async () => {
+    // The failure this feature was rebuilt around was SILENT. It has to be
+    // refused wherever a resource can be saved, or one surface reintroduces it.
+    const rest = await h.fetch(
+      "/api/admin/booking/resources",
+      json("POST", { key: "r1", ...RESOURCE, mirrorCollection: "appointments" }),
+    );
+    expect(rest.status).toBe(422);
+
+    const viaGql = await gql(
+      `mutation { createBookingResource(key:"r2", name:"X", mirrorCollection:"appointments") { token } }`,
+    );
+    expect(viaGql.errors?.[0]?.message).toContain("field map");
+
+    await expect(
+      sdk().booking.createResource({
+        key: "r3",
+        ...RESOURCE,
+        mirrorCollection: "appointments",
+      } as never),
+    ).rejects.toThrow();
+  });
+
   test("a question set round-trips through the SDK", async () => {
     const c = sdk();
     const made = await c.booking.createResource({

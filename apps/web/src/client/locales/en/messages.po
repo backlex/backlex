@@ -2975,6 +2975,10 @@ msgstr "Booking…"
 msgid "Bookings"
 msgstr "Bookings"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Bookings are not recorded anywhere but here. The ledger stays the only place these customers exist."
+msgstr "Bookings are not recorded anywhere but here. The ledger stays the only place these customers exist."
+
 #: src/client/admin/pages/payments.tsx
 msgid "Both are on the row in the payment_transactions collection."
 msgstr "Both are on the row in the payment_transactions collection."
@@ -3763,6 +3767,10 @@ msgstr "Column <0>{0}</0> is mapped to <1>{1}</1> in the field list but also tog
 #: src/client/admin/field-money-editor.tsx
 msgid "Column holding the code"
 msgstr "Column holding the code"
+
+#: src/client/admin/parity/booking.tsx
+msgid "column name"
+msgstr "column name"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Column:"
@@ -6474,6 +6482,10 @@ msgstr "Every 3 hours"
 #: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Every 30 minutes"
 msgstr "Every 30 minutes"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Every booking is written as a row in <0>{recordTarget}</0>, where permissions, flows and exports apply to it as usual."
+msgstr "Every booking is written as a row in <0>{recordTarget}</0>, where permissions, flows and exports apply to it as usual."
 
 #: src/client/admin/parity/booking.tsx
 msgid "Every day"
@@ -9652,8 +9664,8 @@ msgid "Mirror customers, subscriptions, invoices and payments into your collecti
 msgstr "Mirror customers, subscriptions, invoices and payments into your collections — and open hosted checkouts to ask for payment. Deliveries are signature-verified; credentials are encrypted at rest."
 
 #: src/client/admin/parity/booking.tsx
-msgid "Mirror into a collection"
-msgstr "Mirror into a collection"
+#~ msgid "Mirror into a collection"
+#~ msgstr "Mirror into a collection"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Mirror QuickBooks customers, invoices and payments into a collection."
@@ -11140,6 +11152,15 @@ msgid "Not pinned"
 msgstr "Not pinned"
 
 #: src/client/admin/parity/booking.tsx
+msgid "Not recorded"
+msgstr "Not recorded"
+
+#. placeholder {0}: b.mirrorError
+#: src/client/admin/parity/booking.tsx
+msgid "Not recorded — {0}"
+msgstr "Not recorded — {0}"
+
+#: src/client/admin/parity/booking.tsx
 msgid "not saved"
 msgstr "not saved"
 
@@ -11753,8 +11774,8 @@ msgid "Optional — the key stops working after this time."
 msgstr "Optional — the key stops working after this time."
 
 #: src/client/admin/parity/booking.tsx
-msgid "Optional. Each booking is also written as a row there, so permissions, flows and exports apply to it as usual."
-msgstr "Optional. Each booking is also written as a row there, so permissions, flows and exports apply to it as usual."
+#~ msgid "Optional. Each booking is also written as a row there, so permissions, flows and exports apply to it as usual."
+#~ msgstr "Optional. Each booking is also written as a row there, so permissions, flows and exports apply to it as usual."
 
 #. placeholder {0}: value.from
 #: src/client/admin/field-rollup-editor.tsx
@@ -13438,13 +13459,29 @@ msgstr "recommended"
 msgid "Recommended"
 msgstr "Recommended"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Record again"
+msgstr "Record again"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Record bookings into a collection"
+msgstr "Record bookings into a collection"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Record every read of this collection (list + by-id) to the audit log under the <0>Access</0> lens — a \"who viewed this\" trail for sensitive data. Off by default; reads are otherwise not logged. Only request metadata is stored (who, when, query, item ids) — never row values."
 msgstr "Record every read of this collection (list + by-id) to the audit log under the <0>Access</0> lens — a \"who viewed this\" trail for sensitive data. Off by default; reads are otherwise not logged. Only request metadata is stored (who, when, query, item ids) — never row values."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Record into a collection of my own instead"
+msgstr "Record into a collection of my own instead"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Recorded in the delivery log. Defaults to <0>flow.run</0>."
 msgstr "Recorded in the delivery log. Defaults to <0>flow.run</0>."
+
+#: src/client/admin/parity/booking.tsx
+msgid "Recorded."
+msgstr "Recorded."
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Redelivered."
@@ -14892,6 +14929,11 @@ msgstr "saving…"
 #: src/client/pages/reset-password.tsx
 msgid "Saving…"
 msgstr "Saving…"
+
+#. placeholder {0}: p.collection
+#: src/client/admin/parity/booking.tsx
+msgid "Say which column of \"{0}\" each booking field goes to — a target with no map records nothing."
+msgstr "Say which column of \"{0}\" each booking field goes to — a target with no map records nothing."
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/item-editor.tsx
@@ -16977,6 +17019,10 @@ msgstr "The client below wants to call this workspace's MCP tools as you. Your r
 msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 msgstr "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 
+#: src/client/admin/parity/booking.tsx
+msgid "The collection is created for you and kept in step — nothing to map. Editing a row there does not move or cancel an appointment."
+msgstr "The collection is created for you and kept in step — nothing to map. Editing a row there does not move or cancel an appointment."
+
 #: src/client/admin/pages/forms.tsx
 msgid "The collection this form writes into may have been deleted or renamed."
 msgstr "The collection this form writes into may have been deleted or renamed."
@@ -16996,6 +17042,10 @@ msgstr "The current link stops working immediately and a new one is generated. A
 #: src/client/admin/parity/insights.tsx
 msgid "the default"
 msgstr "the default"
+
+#: src/client/admin/parity/booking.tsx
+msgid "The default collection"
+msgstr "The default collection"
 
 #: src/client/admin/parity/signatures.tsx
 msgid "The document is rendered and frozen now. A later edit to the template will not change it."
@@ -17908,6 +17958,10 @@ msgstr "Try again"
 #: src/client/pages/rest-explorer.tsx
 msgid "Try it"
 msgstr "Try it"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Try recording it into the collection again."
+msgstr "Try recording it into the collection again."
 
 #: src/client/admin/item-views.tsx
 msgid "Tue"
@@ -18880,6 +18934,10 @@ msgstr "When the rule matches the row, apply the effects. <0>Required</0> is enf
 msgid "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
 msgstr "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
 
+#: src/client/admin/parity/booking.tsx
+msgid "Where bookings are recorded"
+msgstr "Where bookings are recorded"
+
 #: src/client/admin/pages/forms.tsx
 #~ msgid "Where submissions are stored."
 #~ msgstr "Where submissions are stored."
@@ -19250,6 +19308,10 @@ msgstr "your app's thank-you page"
 #: src/client/pages/book.tsx
 msgid "Your appointment"
 msgstr "Your appointment"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Your collection, your column names — so each booking field needs one. A target with no map records nothing, so saving without one is refused."
+msgstr "Your collection, your column names — so each booking field needs one. A target with no map records nothing, so saving without one is refused."
 
 #: src/client/pages/approve-request.tsx
 msgid "Your decision has been recorded. You can close this page."

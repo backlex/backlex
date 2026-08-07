@@ -10,13 +10,15 @@
  *
  * The design turns on four decisions:
  *
- * 1. **The ledger is authoritative for the SLOT; the mirrored row is
+ * 1. **The ledger is authoritative for the SLOT; the recorded row is
  *    authoritative for everything else.** A collection holds a booking
- *    perfectly well and `mirrorCollection` exists so that it does — with
- *    permissions, flows, realtime and exports all applying to it as usual.
- *    What a collection cannot do is refuse the second write for one instant.
- *    That needs one table, one index and one ordering rule every writer agrees
- *    on, so the ledger keeps it.
+ *    perfectly well, and every booking is recorded in one — with permissions,
+ *    flows, realtime and exports all applying to it as usual. What a collection
+ *    cannot do is refuse the second write for one instant. That needs one
+ *    table, one index and one ordering rule every writer agrees on, so the
+ *    ledger keeps it. Recording is on by default and its target is provisioned
+ *    for the workspace (see ./booking-collection); a resource may point at a
+ *    collection of its own instead, and only then supplies a field map.
  * 2. **The guard is insert-then-verify, not check-then-insert.** There is no
  *    row lock to take on D1, and a check before an insert is a race with a
  *    window rather than a guard. So the row goes in, the overlap is counted,
@@ -50,12 +52,19 @@ import {
   type SlotPolicy,
   type Weekday,
 } from "@backlex/core";
+import { sql } from "drizzle-orm";
 import type { Ctx } from "../context";
 import { hashToken } from "./shared-links";
+import {
+  BOOKING_COLLECTION_SLUG,
+  DEFAULT_BOOKING_FIELD_MAP,
+  ensureBookingCollection,
+} from "./booking-collection";
 import { createItem, updateItem } from "./items-helpers";
 import { sendTemplatedEmail } from "./email";
 import { dispatchEventHandlers } from "./events";
-import { isUniqueViolation } from "./items/sql-helpers";
+import { loadCollection } from "./items/collection-loader";
+import { isUniqueViolation, queryAll } from "./items/sql-helpers";
 
 type AnyDb = any;
 
@@ -181,6 +190,7 @@ export interface BookingResourceRow {
   holdMinutes: number;
   questions: Array<Record<string, unknown>> | null;
   settings: BookingSettings | null;
+  mirrorEnabled: boolean;
   mirrorCollection: string | null;
   mirrorFieldMap: Record<string, string> | null;
   tokenHash: string;
@@ -222,6 +232,7 @@ export interface BookingRow {
   tokenHash: string;
   mirrorCollection: string | null;
   mirrorItemId: string | null;
+  mirrorError: string | null;
   source: string;
   cancelledAt: Date | number | null;
   cancelReason: string | null;
@@ -370,7 +381,13 @@ export const toPublicResource = (row: BookingResourceRow, rules: BookingRuleRow[
   holdMinutes: row.holdMinutes,
   questions: row.questions ?? [],
   settings: row.settings ?? null,
+  mirrorEnabled: row.mirrorEnabled,
+  /** Null means the provisioned default. `recordCollection` is the slug that
+   *  answer resolves to, so a caller never has to know which case it is in. */
   mirrorCollection: row.mirrorCollection,
+  recordCollection: row.mirrorEnabled
+    ? (row.mirrorCollection ?? BOOKING_COLLECTION_SLUG)
+    : null,
   mirrorFieldMap: row.mirrorFieldMap,
   active: row.active,
   confirmationMessage: row.confirmationMessage,
@@ -397,6 +414,10 @@ export const toPublicBooking = (row: BookingRow, now = Date.now()) => ({
   notes: row.notes,
   mirrorCollection: row.mirrorCollection,
   mirrorItemId: row.mirrorItemId,
+  /** Why this booking is not in the collection yet, when it isn't. Null on a
+   *  booking that recorded cleanly AND on one whose resource records nowhere —
+   *  the two are told apart by the resource, not by the booking. */
+  mirrorError: row.mirrorError,
   source: row.source,
   cancelledAt: asMsOrNull(row.cancelledAt),
   cancelReason: row.cancelReason,
@@ -726,75 +747,198 @@ const claimSlot = async (
   }
 };
 
-/* ────────────────────────────── mirroring ───────────────────────────────── */
+/* ─────────────────────────────── recording ──────────────────────────────── */
 
 /**
- * Copy a booking into the workspace's own collection, if it asked for one.
+ * Where this resource's bookings are recorded, and under which column names.
  *
- * Best-effort on purpose: the booking is already made and the slot already
- * held, so a mis-mapped column or a collection somebody renamed must not turn
- * a confirmed appointment into a 500 for the customer. The failure surfaces on
- * the admin row instead, as a booking with no `mirrorItemId`.
+ * Two shapes, and the difference is who owns the schema. NULL `mirrorCollection`
+ * means the collection WE provision, so the map is derived from the fields we
+ * created rather than stored — there is nothing to keep in sync and nothing to
+ * get wrong. A value means the workspace pointed us at its own collection, and
+ * only then is the hand-authored `mirrorFieldMap` the answer.
  */
-const mirrorBooking = async (
+const resolveTarget = async (
+  ctx: Ctx,
+  resource: BookingResourceRow,
+  tenantId: string | null,
+): Promise<{ slug: string; map: Record<string, string> } | { error: string } | null> => {
+  if (!tenantId || !resource.mirrorEnabled) return null;
+  if (resource.mirrorCollection) {
+    const map = resource.mirrorFieldMap ?? {};
+    // A custom target with no map records nothing. That used to be silent and
+    // was the whole reason this was rebuilt, so it is now said out loud.
+    if (Object.values(map).filter(Boolean).length === 0) {
+      return { error: `No field map for collection "${resource.mirrorCollection}"` };
+    }
+    return { slug: resource.mirrorCollection, map };
+  }
+  const ensured = await ensureBookingCollection(ctx, tenantId);
+  if (ensured.conflict) {
+    return {
+      error:
+        `Collection "${ensured.slug}" already exists but isn't a booking record target. ` +
+        `Rename it, or point this resource at a collection of your own.`,
+    };
+  }
+  return { slug: ensured.slug, map: DEFAULT_BOOKING_FIELD_MAP };
+};
+
+/**
+ * The ledger values a map may name.
+ *
+ * `status` is the STORED status, not the derived one. `completed` and `expired`
+ * are facts about the clock — writing one here would be a snapshot that is
+ * wrong an hour later with nothing scheduled to correct it, whereas `ends_at`
+ * lets any reader derive the same thing at the moment it asks.
+ *
+ * A key not listed here is looked up among the intake answers, which is what
+ * lets a custom map point a column at a question. The precedence matters for a
+ * question whose name collides with one of these: the ledger wins.
+ */
+const recordSource = (
+  resource: BookingResourceRow,
+  booking: BookingRow,
+): Record<string, unknown> => ({
+  booking: booking.id,
+  start: new Date(asMs(booking.startAt)).toISOString(),
+  end: new Date(asMs(booking.endAt)).toISOString(),
+  name: booking.customerName,
+  email: booking.customerEmail,
+  phone: booking.customerPhone,
+  status: booking.status,
+  resource: resource.key,
+  source: booking.source,
+  notes: booking.notes,
+  answers: booking.answers ?? {},
+});
+
+/** Find a record written for this booking when the pointer to it was lost —
+ *  the first attempt failed after the row landed, or an older mirror never
+ *  stored one. Only possible on a target carrying the `booking` column, which
+ *  is every collection we provision and any custom map that names one. */
+const findRecordId = async (
+  ctx: Ctx,
+  slug: string,
+  tenantId: string,
+  column: string,
+  bookingId: string,
+): Promise<string | null> => {
+  const collection = await loadCollection(ctx, tenantId, slug);
+  const rows = await queryAll<{ id: unknown }>(
+    ctx,
+    sql`SELECT ${sql.identifier(collection.pkColumn)} AS id
+        FROM ${sql.identifier(collection.physicalTable)}
+        WHERE ${sql.identifier(column)} = ${bookingId}
+        LIMIT 1`,
+  );
+  const found = rows[0]?.id;
+  return found == null ? null : String(found);
+};
+
+/**
+ * Record a booking, or bring its record up to date. Called after every state
+ * change — created, confirmed, cancelled, moved, marked absent.
+ *
+ * One function for both directions on purpose. The previous split (a create
+ * that wrote every column, and a status push that wrote exactly one) is why a
+ * reschedule left a record sitting at the old time still reading `confirmed`:
+ * the move is a new booking, and nothing carried the new instant back to the
+ * row the customer's own history is read from. Writing the whole row every time
+ * costs one statement and cannot drift.
+ *
+ * Best-effort, and that is a deliberate asymmetry: the slot is already claimed
+ * and the customer already has their confirmation, so a renamed collection must
+ * not turn a booking into a 500. What changed is that the failure is now
+ * WRITTEN — `mirrorError` on the ledger row — instead of being inferred from an
+ * absent `mirrorItemId`, which reads identically to "recording is switched off".
+ */
+const recordBooking = async (
   ctx: Ctx,
   resource: BookingResourceRow,
   tenantId: string | null,
   booking: BookingRow,
-): Promise<string | null> => {
-  if (!resource.mirrorCollection || !tenantId) return null;
-  const map = resource.mirrorFieldMap ?? {};
-  const source: Record<string, unknown> = {
-    start: new Date(asMs(booking.startAt)).toISOString(),
-    end: new Date(asMs(booking.endAt)).toISOString(),
-    name: booking.customerName,
-    email: booking.customerEmail,
-    phone: booking.customerPhone,
-    status: booking.status,
-    resource: resource.key,
-    notes: booking.notes,
-  };
+): Promise<void> => {
+  const target = await resolveTarget(ctx, resource, tenantId).catch((e: unknown) => ({
+    error: (e as Error).message,
+  }));
+  if (!target) return;
+
+  const t = bookingsTable(ctx.dialect);
+  const stamp = (patch: Record<string, unknown>) =>
+    (ctx.db as AnyDb).update(t).set(patch).where(eq(t.id, booking.id));
+
+  if ("error" in target) {
+    booking.mirrorError = target.error;
+    await stamp({ mirrorError: target.error }).catch(() => {});
+    return;
+  }
+
+  const values = recordSource(resource, booking);
   const data: Record<string, unknown> = {};
-  for (const [from, column] of Object.entries(map)) {
+  for (const [from, column] of Object.entries(target.map)) {
     if (!column) continue;
-    const value = from in source ? source[from] : (booking.answers ?? {})[from];
+    const value = from in values ? values[from] : (booking.answers ?? {})[from];
     if (value !== undefined) data[column] = value;
   }
-  if (Object.keys(data).length === 0) return null;
+  if (Object.keys(data).length === 0) return;
 
   try {
-    const created = await createItem(ctx, {
-      slug: resource.mirrorCollection,
-      tenantId,
-      data,
-    });
-    return created.id;
-  } catch {
-    return null;
+    let itemId = booking.mirrorItemId;
+    if (!itemId && target.map.booking && tenantId) {
+      itemId = await findRecordId(ctx, target.slug, tenantId, target.map.booking, booking.id);
+    }
+    if (itemId) {
+      await updateItem(ctx, { slug: target.slug, tenantId: tenantId as string, id: itemId, data });
+    } else {
+      const created = await createItem(ctx, {
+        slug: target.slug,
+        tenantId: tenantId as string,
+        data,
+      });
+      itemId = created.id;
+    }
+    booking.mirrorCollection = target.slug;
+    booking.mirrorItemId = itemId;
+    booking.mirrorError = null;
+    await stamp({ mirrorCollection: target.slug, mirrorItemId: itemId, mirrorError: null });
+  } catch (e) {
+    const message = (e as Error).message.slice(0, 300);
+    booking.mirrorError = message;
+    // The ledger is still right; a record that lagged is not worth a 500. But
+    // it IS worth saying, so the admin can retry it rather than find out later.
+    await stamp({ mirrorError: message }).catch(() => {});
   }
 };
 
-/** Push a status change onto the mirrored row, when there is one and the map
- *  says where status lives. Same best-effort contract as the create. */
-const mirrorStatus = async (
+/**
+ * Re-run the recording for one booking, on request.
+ *
+ * The counterpart to writing `mirrorError` down: a failure an operator can see
+ * and cannot act on is only half an improvement. Reloads the resource because
+ * the fix is usually there — a collection renamed back, a map corrected.
+ */
+export const retryBookingRecord = async (
   ctx: Ctx,
-  resource: BookingResourceRow,
   tenantId: string | null,
-  booking: BookingRow,
-  status: string,
-): Promise<void> => {
-  const column = (resource.mirrorFieldMap ?? {}).status;
-  if (!column || !booking.mirrorItemId || !booking.mirrorCollection || !tenantId) return;
-  try {
-    await updateItem(ctx, {
-      slug: booking.mirrorCollection,
-      tenantId,
-      id: booking.mirrorItemId,
-      data: { [column]: status },
-    });
-  } catch {
-    /* the ledger is still right; the mirror lagging is not worth a 500 */
-  }
+  bookingId: string,
+): Promise<PublicBooking> => {
+  const t = bookingsTable(ctx.dialect);
+  const rows = (await (ctx.db as AnyDb)
+    .select()
+    .from(t)
+    .where(and(eq(t.id, bookingId), tenantWhere(t, tenantId)))
+    .limit(1)) as BookingRow[];
+  const booking = rows[0];
+  if (!booking) throw new AppError("NOT_FOUND", "Booking not found");
+  const resource = await loadResourceById(ctx, tenantId, booking.resourceId);
+  if (!resource) throw new AppError("NOT_FOUND", "Booking not found");
+  await recordBooking(ctx, resource, booking.tenantId, booking);
+  // The retry is a request to fix something, so unlike the write path it is
+  // allowed to fail loudly — an operator pressing "try again" is owed the
+  // reason it did not work rather than a row that looks unchanged.
+  if (booking.mirrorError) throw new AppError("VALIDATION", booking.mirrorError);
+  return toPublicBooking(booking);
 };
 
 /* ──────────────────────────────── events ───────────────────────────────── */
@@ -948,6 +1092,10 @@ export interface ResourceInput {
   questions?: Array<Record<string, unknown>>;
   /** `{ theme, accent, font }`. Replaced wholesale; `null` clears it. */
   settings?: Record<string, unknown> | null;
+  /** Whether bookings are recorded in a collection at all. Defaults to true. */
+  mirrorEnabled?: boolean;
+  /** Null/absent records into the provisioned default (`booking_records`); a
+   *  value points at a collection of your own, which then needs a field map. */
   mirrorCollection?: string | null;
   mirrorFieldMap?: Record<string, string> | null;
   active?: boolean;
@@ -1116,6 +1264,20 @@ export const createResource = async (
   if ((input.questions?.length ?? 0) > MAX_QUESTIONS) {
     throw new AppError("VALIDATION", `A resource takes at most ${MAX_QUESTIONS} questions`);
   }
+  // Same rule as `updateResource`: a custom target with no map records nothing,
+  // and being told at the moment of saving beats finding out per booking.
+  const customTarget = trimmed(input.mirrorCollection, 100);
+  if (
+    (input.mirrorEnabled ?? true) &&
+    customTarget &&
+    Object.values(input.mirrorFieldMap ?? {}).filter(Boolean).length === 0
+  ) {
+    throw new AppError(
+      "VALIDATION",
+      `Collection "${customTarget}" needs a field map saying which column each booking field goes to — ` +
+        `or omit it to record into the default collection instead`,
+    );
+  }
 
   const token = `${RESOURCE_TOKEN_PREFIX}_${randomHex(TOKEN_BYTES)}`;
   const id = crypto.randomUUID();
@@ -1132,6 +1294,7 @@ export const createResource = async (
     ...normalizePolicy(input),
     questions: input.questions ?? [],
     settings: normalizeBookingSettings(input.settings),
+    mirrorEnabled: input.mirrorEnabled ?? true,
     mirrorCollection: trimmed(input.mirrorCollection, 100),
     mirrorFieldMap: input.mirrorFieldMap ?? null,
     tokenHash: await hashToken(token),
@@ -1144,6 +1307,18 @@ export const createResource = async (
   });
 
   if (input.rules) await writeRules(ctx, id, input.rules);
+
+  // Provision the collection now rather than on the first booking, so an
+  // operator setting a resource up sees where its bookings will land while they
+  // are still thinking about it. The write path ensures it too — this is the
+  // early call, not the only one — because a resource created before this
+  // existed never came through here.
+  if (tenantId && (input.mirrorEnabled ?? true) && !trimmed(input.mirrorCollection, 100)) {
+    await ensureBookingCollection(ctx, tenantId).catch(() => {
+      /* a resource that could not provision its collection is still a resource;
+         the write path reports the failure per booking. */
+    });
+  }
 
   const row = (await loadResourceById(ctx, tenantId, id))!;
   const rules = await loadRules(ctx, id);
@@ -1180,10 +1355,33 @@ export const updateResource = async (
   // panel it just rendered, and a merge would make "back to the default accent"
   // impossible to say. `null` clears it.
   if (input.settings !== undefined) patch.settings = normalizeBookingSettings(input.settings);
+  if (input.mirrorEnabled !== undefined) patch.mirrorEnabled = input.mirrorEnabled;
   if (input.mirrorCollection !== undefined) {
     patch.mirrorCollection = trimmed(input.mirrorCollection, 100);
   }
   if (input.mirrorFieldMap !== undefined) patch.mirrorFieldMap = input.mirrorFieldMap;
+  // Pointing a resource at your own collection means the map is yours to
+  // supply, and a target with no map records nothing. That silence is the bug
+  // this feature was rebuilt around, so it is refused at the point of saving
+  // rather than discovered one uncollected booking at a time.
+  {
+    const nextCollection =
+      patch.mirrorCollection !== undefined
+        ? (patch.mirrorCollection as string | null)
+        : row.mirrorCollection;
+    const nextMap = (
+      patch.mirrorFieldMap !== undefined ? patch.mirrorFieldMap : row.mirrorFieldMap
+    ) as Record<string, string> | null;
+    const enabled =
+      patch.mirrorEnabled !== undefined ? (patch.mirrorEnabled as boolean) : row.mirrorEnabled;
+    if (enabled && nextCollection && Object.values(nextMap ?? {}).filter(Boolean).length === 0) {
+      throw new AppError(
+        "VALIDATION",
+        `Collection "${nextCollection}" needs a field map saying which column each booking field goes to — ` +
+          `or clear it to record into the default collection instead`,
+      );
+    }
+  }
   if (input.active !== undefined) patch.active = input.active;
   if (input.confirmationMessage !== undefined) {
     patch.confirmationMessage = trimmed(input.confirmationMessage, 2000);
@@ -1536,11 +1734,7 @@ export const createBooking = async (
   const rows = (await (ctx.db as AnyDb).select().from(t).where(eq(t.id, id)).limit(1)) as BookingRow[];
   const booking = rows[0]!;
 
-  const mirrorItemId = await mirrorBooking(ctx, resource, tenantId, booking);
-  if (mirrorItemId) {
-    await (ctx.db as AnyDb).update(t).set({ mirrorItemId }).where(eq(t.id, id));
-    booking.mirrorItemId = mirrorItemId;
-  }
+  await recordBooking(ctx, resource, tenantId, booking);
 
   let emailed = false;
   if (email && status === "confirmed") {
@@ -1590,7 +1784,7 @@ export const confirmBooking = async (
   const resource = (await loadResourceById(ctx, tenantId, booking.resourceId))!;
   booking.status = "confirmed";
   booking.holdExpiresAt = null;
-  await mirrorStatus(ctx, resource, tenantId, booking, "confirmed");
+  await recordBooking(ctx, resource, tenantId, booking);
 
   const view = toPublicBooking(booking, now);
   announce(ctx, tenantId, "confirmed", view, resource);
@@ -1632,7 +1826,7 @@ export const cancelBooking = async (
   if (updated.length === 0) return toPublicBooking(booking, now);
 
   const row = updated[0]!;
-  await mirrorStatus(ctx, resource, booking.tenantId, row, "cancelled");
+  await recordBooking(ctx, resource, booking.tenantId, row);
   if (opts.notify !== false && row.customerEmail) {
     await sendBookingEmail(ctx, booking.tenantId, resource, row, "cancelled", null, 1);
   }
@@ -1696,7 +1890,11 @@ export const rescheduleBooking = async (
     })
     .where(eq(t.id, booking.id));
 
-  await mirrorStatus(ctx, resource, booking.tenantId, booking, "cancelled");
+  // The in-memory row still says `confirmed` — the UPDATE above went straight
+  // to the database. Recording reads this object, so the release has to be
+  // reflected here too or the record keeps the moved-from booking alive.
+  booking.status = "cancelled";
+  await recordBooking(ctx, resource, booking.tenantId, booking);
   announce(ctx, booking.tenantId, "rescheduled", next.booking, resource);
   return next;
 };
@@ -1724,7 +1922,7 @@ export const markNoShow = async (
   booking.status = "no_show";
 
   const resource = (await loadResourceById(ctx, tenantId, booking.resourceId))!;
-  await mirrorStatus(ctx, resource, tenantId, booking, "no_show");
+  await recordBooking(ctx, resource, tenantId, booking);
   const view = toPublicBooking(booking, now);
   announce(ctx, tenantId, "no_show", view, resource);
   return view;

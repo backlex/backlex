@@ -1,0 +1,44 @@
+-- Every booking is recorded in a collection, and it is no longer something an
+-- admin has to assemble correctly for that to happen.
+--
+-- Mirroring already existed, and it was the right split: the ledger owns the
+-- SLOT — it carries the partial unique index that makes "no more than capacity
+-- at one instant" a property the database enforces, which no dynamically
+-- created collection can hold — while everything else a booking is (a customer,
+-- a status, an intake answer) is ordinary business data that belongs where the
+-- permission DSL, flows, realtime, revisions and exports already work.
+--
+-- What was wrong was that it was OPT-IN, and opt-in through two settings that
+-- had to agree. `mirror_collection` named a target and `mirror_field_map` said
+-- which column each field went to; the admin exposed only the first. So an
+-- operator typed a slug, no map existed to go with it, and the writer — which
+-- returns early when the map yields no columns — recorded nothing, forever,
+-- without saying so. A feature whose failure is indistinguishable from success
+-- is worse than one that is missing.
+--
+-- Now: on by default, into a collection the platform provisions with a shape it
+-- knows (`booking_records`), whose field map is DERIVED in code rather than
+-- stored, so there is nothing left to half-configure. `mirror_collection` keeps
+-- its meaning for a workspace pointing at its own collection instead, and only
+-- then is `mirror_field_map` read.
+--
+-- Three columns, no backfill:
+--
+-- * `mirror_enabled` defaults TRUE, so every resource that predates this starts
+--   recording on its next booking. That is the intended reading of the default
+--   rather than an accident of the DDL: a resource created before today was not
+--   choosing not to record — the choice was not on offer. An operator who wants
+--   the old silence turns it off explicitly.
+-- * `mirror_error` makes a failed write legible. Recording is best-effort by
+--   design (the slot is already held; a renamed collection must not turn a
+--   confirmed appointment into a 500 for the customer), and "best-effort" with
+--   nowhere to report is how a workspace discovers months later that nothing
+--   was ever written. Cleared by the next success.
+-- * The collection itself is NOT created here. It is provisioned by
+--   `ensureBookingCollection` on the same additive, idempotent path payments
+--   uses for its four sync targets — a migration cannot create a collection
+--   anyway, since a collection is a metadata row plus DDL derived from it, per
+--   workspace, in a database this file has no per-tenant view of.
+ALTER TABLE "booking_resources" ADD COLUMN IF NOT EXISTS "mirror_enabled" boolean NOT NULL DEFAULT true;
+--> statement-breakpoint
+ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "mirror_error" text;

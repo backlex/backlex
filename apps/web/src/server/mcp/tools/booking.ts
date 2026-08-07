@@ -72,14 +72,20 @@ const RESOURCE_PROPERTIES = {
     description:
       "Public page appearance: { theme: dark|light, accent: #rrggbb, font: sans|lexend|mono|system }. Same vocabulary a form stores.",
   },
+  mirrorEnabled: {
+    type: "boolean",
+    description:
+      "Whether bookings are recorded into a collection at all. On by default — the workspace's `booking_records` collection is provisioned automatically and needs no configuring.",
+  },
   mirrorCollection: {
     type: "string",
-    description: "Collection each booking is mirrored into, so the workspace owns the row.",
+    description:
+      "Record into a collection of your own instead of the provisioned default. Requires mirrorFieldMap — a target with no map records nothing, so it is refused rather than accepted silently.",
   },
   mirrorFieldMap: {
     type: "object",
     description:
-      "Booking field → collection column. Keys: start, end, name, email, phone, status, resource, notes, or any question name.",
+      "Only for a custom mirrorCollection. Booking field → collection column. Keys: booking, start, end, name, email, phone, status, resource, source, notes, answers, or any question name.",
   },
   active: { type: "boolean" },
   confirmationMessage: { type: "string" },
@@ -379,6 +385,31 @@ export const markNoShowTool: McpTool = {
   },
 };
 
+export const recordBookingTool: McpTool = {
+  name: "booking.record",
+  description:
+    "Record a booking into its collection again after a failure. Recording is best-effort on the " +
+    "write path — the slot is already held, so a renamed collection must not turn a confirmed " +
+    "appointment into an error for the customer — and the reason is kept on the booking's " +
+    "`mirrorError`. This retries it and answers with that reason when it still cannot.",
+  inputSchema: {
+    type: "object",
+    properties: { id: { type: "string" } },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const { id } = args as { id: string };
+    return textResult(
+      await readJson<unknown>(
+        await ctx.fetchInternal(`${BASE}/bookings/${encodeURIComponent(id)}/record`, {
+          method: "POST",
+        }),
+      ),
+    );
+  },
+};
+
 export const bookingTools: McpTool[] = [
   listBookingResourcesTool,
   getBookingResourceTool,
@@ -391,4 +422,5 @@ export const bookingTools: McpTool[] = [
   cancelBookingTool,
   rescheduleBookingTool,
   markNoShowTool,
+  recordBookingTool,
 ];

@@ -26,6 +26,7 @@ import {
   listSlots,
   loadResource,
   markNoShow,
+  retryBookingRecord,
   rescheduleBooking,
   resolveBookingById,
   rotateResourceToken,
@@ -92,7 +93,9 @@ const ResourceType = new GraphQLObjectType({
     holdMinutes: { type: new GraphQLNonNull(GraphQLInt) },
     questions: { type: JSONScalar },
     settings: { type: JSONScalar },
+    mirrorEnabled: { type: GraphQLBoolean },
     mirrorCollection: { type: GraphQLString },
+    recordCollection: { type: GraphQLString },
     mirrorFieldMap: { type: JSONScalar },
     active: { type: new GraphQLNonNull(GraphQLBoolean) },
     confirmationMessage: { type: GraphQLString },
@@ -131,6 +134,7 @@ const BookingType = new GraphQLObjectType({
     notes: { type: GraphQLString },
     mirrorCollection: { type: GraphQLString },
     mirrorItemId: { type: GraphQLString },
+    mirrorError: { type: GraphQLString },
     source: { type: new GraphQLNonNull(GraphQLString) },
     cancelledAt: { type: JSONScalar },
     cancelReason: { type: GraphQLString },
@@ -211,6 +215,7 @@ const resourceArgs = {
   holdMinutes: { type: GraphQLInt },
   questions: { type: JSONScalar },
   settings: { type: JSONScalar },
+  mirrorEnabled: { type: GraphQLBoolean },
   mirrorCollection: { type: GraphQLString },
   mirrorFieldMap: { type: JSONScalar },
   active: { type: GraphQLBoolean },
@@ -453,5 +458,15 @@ export const bookingMutationFields: Record<string, GraphQLFieldConfig<unknown, G
     args: { id: { type: new GraphQLNonNull(GraphQLID) } },
     resolve: (_s, args, gqlCtx) =>
       surfacing(() => markNoShow(gqlCtx.ctx, requireFlowAdmin(gqlCtx), (args as { id: string }).id)),
+  },
+  recordBooking: {
+    type: new GraphQLNonNull(BookingType),
+    description:
+      "Record a booking into its collection again (admin-only). Recording is best-effort on the write path so a bookkeeping problem never reaches the customer as a 500; the reason is kept on `mirrorError` and this retries it, answering with that reason when it still cannot.",
+    args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+    resolve: (_s, args, gqlCtx) =>
+      surfacing(() =>
+        retryBookingRecord(gqlCtx.ctx, requireFlowAdmin(gqlCtx), (args as { id: string }).id),
+      ),
   },
 };

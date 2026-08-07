@@ -10,8 +10,9 @@ one goes as far as modelling `availability_rules` and `bookings` itself. What
 none of them could express is **when the thing behind the row is free**. That,
 rather than the storage of a booking, is what this adds.
 
-A collection was always able to hold a booking. What it cannot do is refuse the
-second write for the same instant.
+A collection was always able to hold a booking — and every booking backlex takes
+IS held in one, automatically. What a collection cannot do is refuse the second
+write for the same instant, and that is what the ledger behind it exists for.
 
 ## The shape
 
@@ -302,22 +303,75 @@ configuring:
   public booking has to land on a published slot, capacity is enforced by the
   database, and a `lead` of even an hour puts the whole of today out of reach.
 
-## Mirroring into your own collection
+## Where the bookings themselves live
 
-The ledger is authoritative for the **slot**. Set `mirrorCollection` and each
-booking is also written as a row in a collection you own, where permissions,
-flows, realtime, revisions and exports apply to it as usual:
+The ledger is authoritative for the **slot** — it is the only thing that can
+hold the capacity index. Everything else a booking is (a customer, a status, an
+intake answer) is ordinary business data, so every booking is also written as a
+row in a collection, where permissions, flows, realtime, revisions, exports and
+the BI panels apply to it as usual.
+
+That happens on its own. Creating a resource provisions **`booking_records`**
+for the workspace, with a shape backlex knows, and every resource records into
+it. There is nothing to configure and, more to the point, nothing to configure
+*wrongly*: the field map is derived from the collection we created rather than
+stored, so it cannot drift from it.
+
+One collection for the workspace, not one per resource — `resource` is a column
+on the row. A clinic with twenty practitioners has twenty rails on the booking
+page and one place to read the bookings.
+
+It is not called `bookings` because three of the schema templates already ship a
+collection under that slug, and a workspace that applied one of them would meet
+a conflict on its very first resource.
+
+**The row is a record, not a control.** Editing `starts_at` there does not move
+the appointment, and setting `status` to `cancelled` does not free the slot —
+those go through the booking endpoints, which is where the capacity guarantee
+is. The collection's own note says so, in the admin, next to the rows.
+
+A moved booking updates the record it already had rather than leaving one
+sitting at the old time: the whole row is written on every change — created,
+confirmed, cancelled, moved, marked absent — because a status pushed on its own
+is how a record ends up disagreeing with the ledger about when somebody is
+coming.
+
+### When it fails
+
+Recording is best-effort. The booking is already made and the slot already held,
+so a renamed collection must not turn a confirmed appointment into a 500 for the
+customer. What it is not is silent: the reason lands on the booking's
+`mirrorError`, the admin shows it on the row, and **Record again** retries it —
+answering with the reason when it still cannot, which is the one place being
+loud is right, because somebody is asking.
+
+```bash
+backlex booking record <booking-id>
+```
+
+Retrying is safe. A record is found again by its `booking_id` when the pointer
+to it was lost, so a retry updates the row rather than writing a second one.
+
+### Recording into a collection of your own
 
 ```bash
 backlex booking update clinic --mirror appointments \
   --map start=starts_at --map name=patient --map status=state
 ```
 
-`--map` keys are `start`, `end`, `name`, `email`, `phone`, `status`, `resource`,
-`notes`, or any question name. Mirroring is best-effort: the booking is already
-made and the slot already held, so a renamed collection or a mistyped column
-must not turn a confirmed appointment into a 500 for the customer. The failure
-shows up as a booking with no `mirrorItemId`.
+Then the schema is yours, so the map is too. `--map` keys are `booking`,
+`start`, `end`, `name`, `email`, `phone`, `status`, `resource`, `source`,
+`notes`, `answers`, or any question name.
+
+**A target with no map is refused when the resource is saved.** It used to be
+accepted, and recorded nothing, forever, without saying so — a feature whose
+failure is indistinguishable from success is worse than one that is missing.
+Include `--map booking=<column>` if you want a retry to be able to find the row
+again; without it, a lost pointer means a duplicate.
+
+`--no-record` turns recording off entirely, and `--record` puts it back. Off is
+an escape hatch rather than a starting point: a resource that records nowhere
+leaves the ledger as the only place its customers exist.
 
 ## Composing with what is already there
 
@@ -332,6 +386,7 @@ A booking announces itself on the `booking` channel, so a flow can trigger on
 | A deposit before you confirm it | `hold: true` + [`payment.checkout`](/payments/), then `confirm` |
 | A waiver signed before they arrive | [`document.sign`](/e-signature/) |
 | Intake questions | the resource's own [questions](#intake-questions) |
+| Bookings in a report, a dashboard or an export | the `booking_records` [collection](#where-the-bookings-themselves-live) |
 
 The channel is `booking`, singular, and not `bookings` — item events publish on
 `items:<slug>`, and three of the schema templates own a collection called
@@ -341,8 +396,8 @@ These events reach flows, webhooks, event functions and extension hooks — and
 nothing else. They are deliberately **not** on the realtime bus: a booking
 carries a customer's name, address and telephone number, and the realtime
 plane's per-subscriber permission filter only applies to row-shaped payloads.
-If you want bookings on a realtime channel, mirror them into a collection; a
-mirrored row is a row, so `items:<slug>` gates it like any other.
+If you want bookings on a realtime channel, read the recorded rows instead: a
+row is a row, so `items:booking_records` gates it like any other.
 
 ## Tokens
 
@@ -377,7 +432,7 @@ statuses and the grid check cannot drift between them.
 | SDK | `client.booking.*` |
 | GraphQL | `bookingResources`, `bookingSlots`, `bookings`, `createBooking`, … |
 | MCP | `booking.list_resources`, `booking.slots`, `booking.book`, … |
-| CLI | `backlex booking <resources\|create\|url\|slots\|list\|book\|cancel\|move>` (`--ask`, `--answer`, `--theme`/`--accent`/`--font`) |
+| CLI | `backlex booking <resources\|create\|url\|slots\|list\|book\|cancel\|move\|record>` (`--ask`, `--answer`, `--theme`/`--accent`/`--font`, `--mirror`/`--map`/`--no-record`) |
 
 The public pages are `/book/:token` (pick a time) and `/b/:token` (change or
 cancel one). Both sit under the framable CSP, because a booking widget belongs

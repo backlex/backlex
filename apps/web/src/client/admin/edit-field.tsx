@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Edit-field dialog: change a user-defined column's settings without
 // renaming or retyping it (those need DDL changes the backend doesn't yet
 // support). Directus-style tabbed editor (Schema · Relationship · Field ·
@@ -170,8 +169,22 @@ interface FieldDraft {
   geo?: Record<string, unknown>;
   /** Currency configuration — see the money editor. */
   money?: Record<string, unknown>;
+  /** Dialling-region configuration — see the phone editor. */
+  phone?: Record<string, unknown>;
+  /** Address-normalisation configuration — see the email editor. */
+  email?: Record<string, unknown>;
+  /** Scheme / host rules — see the URL editor. */
+  url?: Record<string, unknown>;
+  /** Companion end-column that turns this field into a period — see the range editor. */
+  range?: Record<string, unknown>;
+  /** Which status value may move to which — see the transitions editor. Sent as
+   *  `undefined` when the lifecycle is switched off, which REMOVES the stored
+   *  graph rather than leaving the old one in force. */
+  transitions?: Record<string, unknown>;
   /** Display formatting hint. */
   format?: Record<string, unknown>;
+  /** Per-field constraints compiled from the validation editor. */
+  validation?: Record<string, unknown>;
   /** Per-locale label overrides. */
   translations?: Record<string, string>;
   options?: { choices?: FieldChoice[]; values?: string[] };
@@ -191,7 +204,13 @@ export interface EditFieldDialogProps {
   ownerSlug?: string;
   /** Every collection with its field definitions, for the rollup editor's
    *  source / relation / value pickers. */
-  collections?: Array<{ slug: string; fieldDefs?: Array<{ name: string; type: string; to?: string; rollup?: unknown }> }>;
+  collections?: Array<{
+    slug: string;
+    fieldDefs?: Array<{ name: string; type: string; to?: string; rollup?: unknown }>;
+    /** Adopted tables own no DDL, so the money editor hides the "add a companion
+     *  currency column" affordance. Read off the owning collection. */
+    adopted?: boolean;
+  }>;
   /** Sibling field names, for the condition rule builder's field picker. */
   availableFields?: string[];
   /** Existing section names on this collection — offered as suggestions. */
@@ -410,27 +429,27 @@ export function EditFieldDialog({ open, field, ownerSlug = "", collections = [],
         : undefined,
       interface: draft.interface || undefined,
       conditions: conditions.length ? (conditions as never) : undefined,
-      validation: (validation ?? undefined) as never,
-      format: (cleanFormat(formatDraft, draft.type) ?? undefined) as never,
-      translations: (cleanTranslations(translations) ?? undefined) as never,
+      validation: validation ?? undefined,
+      format: cleanFormat(formatDraft, draft.type) ?? undefined,
+      translations: cleanTranslations(translations) ?? undefined,
       ...(isRollup
-        ? { rollup: cleanedRollup as never, type: rollupStorageType(rollupDraft.fn) }
+        ? { rollup: cleanedRollup, type: rollupStorageType(rollupDraft.fn) }
         : {}),
-      ...(isSequence ? { sequence: cleanedSequence as never } : {}),
-      ...(isGeo ? { geo: cleanGeo(geoDraft) as never } : {}),
-      ...(isMoney ? { money: cleanedMoney as never } : {}),
+      ...(isSequence ? { sequence: cleanedSequence } : {}),
+      ...(isGeo ? { geo: cleanGeo(geoDraft) } : {}),
+      ...(isMoney ? { money: cleanedMoney } : {}),
       // Sent even when undefined so that clearing every option actually REMOVES
       // the stored spec — omitting the key would leave the old region in place
       // and the dialog would keep re-showing a setting the operator just cleared.
-      ...(isPhone ? { phone: cleanedPhone as never } : {}),
-      ...(isEmail ? { email: cleanedEmail as never } : {}),
-      ...(isUrl ? { url: cleanedUrl as never } : {}),
+      ...(isPhone ? { phone: cleanedPhone } : {}),
+      ...(isEmail ? { email: cleanedEmail } : {}),
+      ...(isUrl ? { url: cleanedUrl } : {}),
       // Sent even when undefined so clearing the end column REMOVES the stored
       // period rather than leaving the old one in place.
-      ...(isRange ? { range: cleanedRange as never } : {}),
+      ...(isRange ? { range: cleanedRange } : {}),
       // Explicitly `undefined` when the lifecycle is switched off, so saving
       // removes the stored spec rather than leaving the old graph in force.
-      transitions: (hasLifecycle ? cleanTransitions(transDraft) : undefined) as never,
+      transitions: hasLifecycle ? cleanTransitions(transDraft) : undefined,
     };
     onSave(cleaned);
   };

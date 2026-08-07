@@ -1524,6 +1524,13 @@ export const signaturesApi = {
       `/api/admin/signatures/${encodeURIComponent(id)}/signers/${encodeURIComponent(signerId)}/resend`,
       { method: "POST" },
     ),
+  /** Produce the signed copy for a request whose signers have all signed but
+   *  whose artefact never rendered. Idempotent — see the route's own note. */
+  finalize: (id: string) =>
+    api<Envelope<ApiSignatureRequest>>(
+      `/api/admin/signatures/${encodeURIComponent(id)}/finalize`,
+      { method: "POST" },
+    ),
   /** The stored PDF — bytes, so it bypasses the JSON envelope helper (and the
    *  bookmark capture that rides on it, which is why it is done by hand). */
   document: async (id: string, which: "original" | "signed" = "signed"): Promise<Blob> => {

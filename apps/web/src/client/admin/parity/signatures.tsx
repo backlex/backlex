@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";

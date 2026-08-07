@@ -40,7 +40,27 @@ function linguiMacro(): Plugin {
             ? ["typescript", "jsx"]
             : ["typescript"],
         },
-        plugins: ["@lingui/babel-plugin-lingui-macro"],
+        // `descriptorFields: "message"` keeps the English source text next to
+        // the component that renders it. The default is `"auto"`, which means
+        // `"id-only"` in a production build — every `<Trans>Save</Trans>`
+        // becomes `<Trans id="gkzAEM"/>` and the readable text survives ONLY in
+        // the compiled `en` catalog. That made the catalog a runtime
+        // dependency, and a 92 KB gzip one: a single monolithic module holding
+        // every string in the admin, loaded before first paint by everybody —
+        // including a stranger opening a public booking link, who needs about
+        // four of them.
+        //
+        // A catalog cannot be code-split, because message ids are content
+        // hashes with no route to group them by; carving it up would mean
+        // hand-maintaining "which catalog does this file belong to", the same
+        // question `pages/` vs `parity/` was just deleted for asking. Keeping
+        // the message inline makes the strings split themselves — they travel
+        // in whichever chunk uses them, for free, forever. `en` therefore has
+        // no runtime catalog at all (see admin/i18n.ts); translated locales are
+        // unaffected and still load their `.po` on demand.
+        plugins: [
+          ["@lingui/babel-plugin-lingui-macro", { descriptorFields: "message" }],
+        ],
       });
       return result?.code != null
         ? { code: result.code, map: result.map }
@@ -96,6 +116,169 @@ const WORKER_REQUIRE_SHIM = [
   "  };",
   "}",
 ].join("\n");
+
+/**
+ * Chunking, decided per build environment.
+ *
+ * This used to be ONE `manualChunks` function shared by the browser SPA and the
+ * Worker, and the two want opposite things. Its default — pin every remaining
+ * `node_modules` module into a single eager `vendor` chunk — is a reasonable
+ * answer for a Worker, where there is one entry and no route graph to split
+ * along. On the client it is the wrong one by construction: a lazily-reached
+ * package gets nailed into a chunk something eager already pulls, silently
+ * undoing the `import()` that was supposed to defer it. Every leak was then
+ * fixed by hand-adding another `return undefined` branch — twelve of them, each
+ * written after the fact, each only as good as somebody noticing. `react-day-
+ * picker` + `date-fns` (~300 KB raw, reachable only from the date field editor)
+ * were the ones nobody had noticed yet, and `redux` had leaked past a branch
+ * that listed `@reduxjs/` and `react-redux/` but not the bare package.
+ *
+ * Split in two, each side states its own rule and the exception lists shrink to
+ * what is actually true of that build:
+ *
+ * - **client** — pin React and nothing else. Everything else is left to the
+ *   bundler, which places a module in the chunk of whatever actually reaches
+ *   it. That is the behaviour all twelve exceptions were approximating one
+ *   package at a time, so none of them are needed here and a thirteenth cannot
+ *   be owed.
+ * - **worker** — keep the `vendor` pin, and keep every server-side exception
+ *   exactly as it was. Each was added after a specific cold-start regression
+ *   (libsql, samlify, graphql, …) and none of them is a client concern. The
+ *   Worker output is byte-identical across this change.
+ */
+function chunkStrategy(): Plugin {
+  return {
+    name: "chunk-strategy",
+    configEnvironment(name) {
+      const manualChunks =
+        name === "client" ? clientManualChunks : workerManualChunks;
+      return { build: { rollupOptions: { output: { manualChunks } } } };
+    },
+  };
+}
+
+/**
+ * Browser SPA. React is pinned because it is large, changes rarely, and is
+ * reached from literally every route — a stable name for it is a cache win with
+ * no downside. Everything else returns `undefined`, which is not "no opinion"
+ * but the actual opinion: let the import graph decide, so a package behind a
+ * lazy route stays behind it.
+ *
+ * Radix used to be pinned here too, on the same reasoning, and it was wrong for
+ * a reason worth writing down: pinning it SPLIT REACT. Some react modules ended
+ * up assigned to `radix-vendor` (a module can only live in one chunk, and the
+ * two rules fought over the shared graph), which made a chunk named after a
+ * component library a hard dependency of everything that renders anything —
+ * eager, 45 KB gzip, in front of first paint for a visitor who will never open
+ * a dropdown. Unpinned, React is whole again and Radix loads with whichever
+ * lazy chunk actually uses it. Total bytes across the whole build are unchanged
+ * (1286 KB gzip either way); it is purely a question of when they arrive.
+ */
+const clientManualChunks = (id: string): string | undefined => {
+  if (!id.includes("node_modules")) return undefined;
+  if (
+    id.includes("/node_modules/react/") ||
+    id.includes("/node_modules/react-dom/") ||
+    id.includes("/node_modules/scheduler/")
+  ) {
+    return "react-vendor";
+  }
+  return undefined;
+};
+
+/**
+ * Cloudflare Worker. One entry, no routes to split along, so the remainder is
+ * pinned to a single deterministic `vendor` chunk rather than left to Rollup —
+ * which otherwise reshuffles the chunk graph on small source edits.
+ *
+ * Each `return undefined` below names a subsystem reached ONLY through a
+ * dynamic import. Without the branch the `return "vendor"` at the bottom pins
+ * its whole graph into the eager chunk and puts it back in the cold-start eval
+ * path, undoing the `import()`. Anything genuinely reached eagerly as well
+ * stays eager regardless — Rollup decides that from the import graph.
+ */
+const workerManualChunks = (id: string): string | undefined => {
+  if (!id.includes("node_modules")) return undefined;
+  // The GraphQL subsystem — reached only through the dynamically-imported
+  // `/api/graphql` handler.
+  if (
+    id.includes("/node_modules/graphql/") ||
+    id.includes("/node_modules/graphql-yoga/") ||
+    id.includes("/node_modules/@graphql-yoga/") ||
+    id.includes("/node_modules/@graphql-tools/") ||
+    id.includes("/node_modules/@envelop/")
+  ) {
+    return undefined;
+  }
+  // The postgres.js wire driver — reached ONLY through the dynamically-imported
+  // `#postgres-driver` (services/migrate.ts — server-side external-DB
+  // migration). D1-only instances never load it. (The static `postgres`
+  // specifier is stubbed separately via resolve.alias above.)
+  if (id.includes("/node_modules/postgres/")) {
+    return undefined;
+  }
+  // The SAML subsystem (samlify + its X.509/ASN.1/RSA graph) — reached only
+  // through the dynamically-imported samlify adapter (lib/auth-select →
+  // adapters/saml.samlify), used on-demand when a workspace resolves a SAML
+  // provider.
+  if (
+    id.includes("/node_modules/samlify/") ||
+    id.includes("/node_modules/@peculiar/") ||
+    id.includes("/node_modules/node-rsa/") ||
+    id.includes("/node_modules/xml-crypto/") ||
+    id.includes("/node_modules/xml-encryption/") ||
+    // samlify's actual XML graph uses the @authenio scope + these helpers;
+    // without the exact patterns they fell through to the eager `vendor` chunk
+    // (same class of bug as libsql) instead of the lazy samlify chunk.
+    id.includes("/node_modules/@authenio/") ||
+    id.includes("/node_modules/asn1/") ||
+    id.includes("/node_modules/xml-escape/") ||
+    id.includes("/node_modules/safer-buffer/") ||
+    id.includes("/node_modules/@xmldom/") ||
+    id.includes("/node_modules/xpath/") ||
+    id.includes("/node_modules/tsyringe/") ||
+    id.includes("/node_modules/reflect-metadata/")
+  ) {
+    return undefined;
+  }
+  // The WebAuthn/passkey plugin (@better-auth/passkey + @simplewebauthn + its
+  // CBOR/base64 graph) — dynamically imported by packages/auth only when the
+  // `passkey` auth plugin is enabled.
+  if (
+    id.includes("/node_modules/@better-auth/passkey/") ||
+    id.includes("/node_modules/@simplewebauthn/") ||
+    id.includes("/node_modules/@hexagon/") ||
+    id.includes("/node_modules/cbor-x/") ||
+    id.includes("/node_modules/cbor/")
+  ) {
+    return undefined;
+  }
+  // The libSQL/Turso driver — reached ONLY through the dynamically-imported
+  // `@backlex/db/sqlite/libsql` factory (context.ts, and only when LIBSQL_URL
+  // is set — never on the D1-backed Workers build).
+  if (
+    id.includes("/node_modules/@libsql/") ||
+    id.includes("/node_modules/libsql/") ||
+    id.includes("/node_modules/drizzle-orm/libsql/")
+  ) {
+    return undefined;
+  }
+  // The in-isolate QuickJS-WASM function sandbox — reached only through the
+  // dynamically-imported provider (services/sandbox), used when a stored
+  // function actually executes in-isolate. The WASM blob is large.
+  if (
+    id.includes("/node_modules/quickjs-emscripten") ||
+    id.includes("/node_modules/@jitl/quickjs") ||
+    id.includes("/node_modules/@cf-wasm/")
+  ) {
+    return undefined;
+  }
+  // `yaml` — used only by the on-demand `/api/openapi.yaml` handler.
+  if (id.includes("/node_modules/yaml/")) {
+    return undefined;
+  }
+  return "vendor";
+};
 
 /**
  * Configures the Worker (non-`client`) build for Cloudflare:
@@ -198,6 +381,7 @@ export default defineConfig({
     cloudflare(),
     // Must run after cloudflare() so it wins the merge for the Worker env.
     workerCloudflareCompat(),
+    chunkStrategy(),
   ],
   // Bake the worker-template version into the bundle so a running instance can
   // report it (GET /health → `version`). `scripts/build-worker-template.ts`
@@ -281,172 +465,6 @@ export default defineConfig({
    */
   optimizeDeps: {
     exclude: ["postgres"],
-  },
-  build: {
-    rollupOptions: {
-      output: {
-        /**
-         * Pull the long-lived vendor code into stable named chunks so it
-         * caches independently of admin changes and parallel-loads over HTTP/2.
-         *
-         * - `react-vendor` / `radix-vendor` — large, rarely-updated cores.
-         * - `vendor` — every other `node_modules` module, pinned to ONE
-         *   deterministic chunk. Letting Rollup auto-split this remainder
-         *   makes the chunk graph unstable across small source edits.
-         * - CodeMirror / xyflow are deliberately left unpinned (`undefined`):
-         *   they are reached only through lazy routes, and forcing them into a
-         *   named chunk either hoists them eager or — when grouped with eager
-         *   `vendor` — makes Rollup drop the dynamically-imported code
-         *   entirely. `undefined` keeps them in their own lazy chunk.
-         */
-        manualChunks: (id) => {
-          if (!id.includes("node_modules")) return undefined;
-          if (
-            id.includes("/node_modules/react/") ||
-            id.includes("/node_modules/react-dom/") ||
-            id.includes("/node_modules/scheduler/")
-          ) {
-            return "react-vendor";
-          }
-          if (
-            id.includes("/node_modules/@radix-ui/") ||
-            id.includes("/node_modules/radix-ui/")
-          ) {
-            return "radix-vendor";
-          }
-          if (
-            id.includes("/node_modules/@codemirror/") ||
-            id.includes("/node_modules/@lezer/") ||
-            id.includes("/node_modules/@uiw/") ||
-            id.includes("/node_modules/codemirror/") ||
-            id.includes("/node_modules/@xyflow/")
-          ) {
-            return undefined;
-          }
-          // Client: ably is reached only via the dynamically-imported collab
-          // pipe (admin/lib/collab.ts) — and only on deployments whose
-          // collab-config says "ably". Keep it unpinned so it stays a lazy
-          // chunk; native (Bun/Workers) deployments never download it.
-          if (id.includes("/node_modules/ably/")) {
-            return undefined;
-          }
-          // Client: recharts (+ its exclusive dep graph) is reached only via
-          // the dynamically-imported panel chart renderer
-          // (admin/pages/observability/panel-render.tsx → panel-charts.tsx). Keep it unpinned so
-          // it lands in its own lazy chunk — the sign-in page, admin shell and
-          // chart-less embeds never download it.
-          if (
-            id.includes("/node_modules/recharts/") ||
-            id.includes("/node_modules/victory-vendor/") ||
-            id.includes("/node_modules/d3-") ||
-            id.includes("/node_modules/decimal.js-light/") ||
-            id.includes("/node_modules/@reduxjs/") ||
-            id.includes("/node_modules/react-redux/") ||
-            id.includes("/node_modules/immer/") ||
-            id.includes("/node_modules/reselect/") ||
-            id.includes("/node_modules/eventemitter3/") ||
-            id.includes("/node_modules/internmap/")
-          ) {
-            return undefined;
-          }
-          // Worker: the GraphQL subsystem is reached only through the
-          // dynamically-imported `/api/graphql` handler. Leaving it unpinned
-          // (vs. the eager `vendor` chunk) lets Rollup keep it in its own lazy
-          // chunk, out of the cold-start eval path. Same rationale as the
-          // CodeMirror/xyflow client lazy routes above. Anything genuinely
-          // reached eagerly too stays eager — Rollup decides by import graph.
-          if (
-            id.includes("/node_modules/graphql/") ||
-            id.includes("/node_modules/graphql-yoga/") ||
-            id.includes("/node_modules/@graphql-yoga/") ||
-            id.includes("/node_modules/@graphql-tools/") ||
-            id.includes("/node_modules/@envelop/")
-          ) {
-            return undefined;
-          }
-          // Worker: the postgres.js wire driver is reached ONLY through the
-          // dynamically-imported `#postgres-driver` (services/migrate.ts —
-          // server-side external-DB migration). D1-only instances never load
-          // it; keep it unpinned so it lands in its own lazy chunk instead of
-          // the eager `vendor` chunk (the static `postgres` specifier is
-          // stubbed separately via resolve.alias above).
-          if (id.includes("/node_modules/postgres/")) {
-            return undefined;
-          }
-          // Worker: the SAML subsystem (samlify + its X.509/ASN.1/RSA graph) is
-          // reached only through the dynamically-imported samlify adapter
-          // (lib/auth-select → adapters/saml.samlify), used on-demand when a
-          // workspace resolves a SAML provider. Keep it unpinned so it lands in
-          // its own lazy chunk instead of the eager `vendor` chunk.
-          if (
-            id.includes("/node_modules/samlify/") ||
-            id.includes("/node_modules/@peculiar/") ||
-            id.includes("/node_modules/node-rsa/") ||
-            id.includes("/node_modules/xml-crypto/") ||
-            id.includes("/node_modules/xml-encryption/") ||
-            // samlify's actual XML graph uses the @authenio scope + these
-            // helpers; without the exact patterns they fell through to the eager
-            // `vendor` chunk (same class of bug as libsql) instead of the lazy
-            // samlify chunk. They're reachable ONLY via the dynamic samlify
-            // adapter, so `undefined` keeps them lazy (and stays correct even if
-            // some eager path needs one — Rollup then keeps it eager).
-            id.includes("/node_modules/@authenio/") ||
-            id.includes("/node_modules/asn1/") ||
-            id.includes("/node_modules/xml-escape/") ||
-            id.includes("/node_modules/safer-buffer/") ||
-            id.includes("/node_modules/@xmldom/") ||
-            id.includes("/node_modules/xpath/") ||
-            id.includes("/node_modules/tsyringe/") ||
-            id.includes("/node_modules/reflect-metadata/")
-          ) {
-            return undefined;
-          }
-          // Worker: the WebAuthn/passkey plugin (@better-auth/passkey +
-          // @simplewebauthn + its CBOR/base64 graph) is dynamically imported by
-          // packages/auth only when the `passkey` auth plugin is enabled. Keep
-          // it unpinned so it stays out of the eager chunk when passkeys are off.
-          if (
-            id.includes("/node_modules/@better-auth/passkey/") ||
-            id.includes("/node_modules/@simplewebauthn/") ||
-            id.includes("/node_modules/@hexagon/") ||
-            id.includes("/node_modules/cbor-x/") ||
-            id.includes("/node_modules/cbor/")
-          ) {
-            return undefined;
-          }
-          // Worker: the libSQL/Turso driver is reached ONLY through the
-          // dynamically-imported `@backlex/db/sqlite/libsql` factory (context.ts,
-          // and only when LIBSQL_URL is set — never on the D1-backed Workers
-          // build). Without this branch the default `return "vendor"` pins its
-          // whole graph (@libsql/* + hrana-client) into the eager chunk, undoing
-          // the dynamic import. Keep it unpinned → lazy chunk.
-          if (
-            id.includes("/node_modules/@libsql/") ||
-            id.includes("/node_modules/libsql/") ||
-            id.includes("/node_modules/drizzle-orm/libsql/")
-          ) {
-            return undefined;
-          }
-          // Worker: the in-isolate QuickJS-WASM function sandbox is reached only
-          // through the dynamically-imported provider (services/sandbox), used
-          // when a stored function actually executes in-isolate. The WASM blob is
-          // large; keep it out of cold-start eval by leaving it in a lazy chunk.
-          if (
-            id.includes("/node_modules/quickjs-emscripten") ||
-            id.includes("/node_modules/@jitl/quickjs") ||
-            id.includes("/node_modules/@cf-wasm/")
-          ) {
-            return undefined;
-          }
-          // Worker: `yaml` is used only by the on-demand `/api/openapi.yaml`
-          // handler (dynamic-imported there). Unpin so it doesn't sit eager.
-          if (id.includes("/node_modules/yaml/")) {
-            return undefined;
-          }
-          return "vendor";
-        },
-      },
-    },
   },
   server: {
     host: true,

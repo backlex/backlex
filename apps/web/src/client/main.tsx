@@ -2,7 +2,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { TooltipProvider } from "@backlex/ui/components/tooltip";
 import "@backlex/ui/globals.css";
 import "@backlex/auth-ui/auth-shell.css";
 import { App } from "./App";
@@ -147,9 +146,10 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme={branding?.defaultTheme ?? "system"}>
         <BrowserRouter>
-          <TooltipProvider delayDuration={0}>
-            <App />
-          </TooltipProvider>
+          {/* No <TooltipProvider> here on purpose — it lives inside the lazy
+              admin chunk (admin/app.tsx) so the public pages, which render no
+              tooltips, do not pull Radix before first paint. */}
+          <App />
         </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>

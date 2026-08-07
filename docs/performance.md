@@ -158,6 +158,69 @@ well invert that; the script is there to find out.
 `astro check`, which imports the compiler API, and 7.0 shipped without one.
 That returns in 7.1.
 
+### Admin first paint: 659 KB → 157 KB gzip
+
+The admin SPA used to ship 616 KB gzip of JavaScript (plus 44 KB of CSS) before
+it painted anything, and it shipped the same bytes to everybody. Four changes,
+each removing a different reason the bundle could not split:
+
+**The router had no lazy boundary.** Every route element in `App.tsx` was a
+static import — including `AdminApp`. So a stranger opening a public booking
+link or a form (`/book/<token>`, `/f/<token>`) downloaded the whole admin
+console to render a page deliberately built not to look like one. Every route
+is now `lazy()`. A public form's entire graph is 97 KB gzip and reaches no admin
+code at all.
+
+The admin itself is the case a naive split would have made *slower*:
+`<AuthGate>` spends a network round-trip deciding whether there is a session,
+and a chunk that starts downloading only after that answer is a second
+round-trip stacked on the first. The catch-all route therefore warms the admin
+chunk from render, before the gate has an answer, so the two overlap.
+
+**The English catalog was a runtime dependency.** Lingui's macro defaults to
+`descriptorFields: "id-only"` in production: `<Trans>Save</Trans>` compiles to
+`<Trans id="gkzAEM"/>` and the readable text survives only in the compiled `en`
+catalog — one 92 KB gzip module, loaded before first paint by everyone,
+including that booking-link visitor who needs four strings from it. A catalog
+cannot be code-split (message ids are content hashes with no route to group them
+by). Setting `descriptorFields: "message"` keeps the English beside the
+component instead, so the strings split themselves along the code, and `en` has
+no runtime catalog at all. Translated locales are unchanged — `tr` still loads
+its `.po` as a lazy chunk.
+
+**One `manualChunks` function served two builds that want opposite things.** Its
+default — pin every remaining `node_modules` module into a single eager `vendor`
+chunk — is reasonable for the Worker (one entry, no route graph) and wrong for
+the browser by construction: a lazily-reached package gets nailed into a chunk
+something eager already pulls, undoing the `import()`. Each leak had been fixed
+by hand-adding another exception, twelve of them. `react-day-picker` +
+`date-fns` (~300 KB raw, reachable only from the date field editor) were the
+ones nobody had caught yet. The function is now split per environment: the
+client pins React and leaves the rest to the import graph, which is what all
+twelve exceptions were approximating one package at a time; the Worker keeps its
+pin and every server-side exception, and its output is byte-identical.
+
+**Pinning Radix split React.** With `radix-vendor` pinned, some react modules
+were assigned to it — a module can only live in one chunk — which made a chunk
+named after a component library a hard dependency of anything that renders
+anything. Unpinned, React is whole and Radix travels with the lazy chunks that
+use it. Total bytes across the whole build are unchanged (1286 KB gzip either
+way); only the timing changed. The last thing holding Radix in the eager graph
+was a single `<TooltipProvider>` at the app root, now mounted inside the lazy
+admin chunk — nothing outside the admin renders a tooltip.
+
+Two rules in `tests/client/admin-ui-conventions.test.ts` keep it: the router may
+not import a page eagerly (and everything it renders must be `lazy()`), and the
+eager shell may not import admin-only UI. Both were verified to fire.
+
+| | before | after |
+|---|---|---|
+| first paint, total | 659 KB gz | **157 KB gz** |
+| first paint, JS only | 616 KB gz | **123 KB gz** |
+| eager chunks | 35 | 21 |
+| a public form's whole graph | 616 KB gz | **97 KB gz** |
+| whole build | 1286 KB gz | 1286 KB gz |
+
 ## Deferred (scoped, with rationale)
 
 These were evaluated and intentionally left for a follow-up — each needs an

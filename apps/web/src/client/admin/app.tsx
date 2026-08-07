@@ -87,6 +87,7 @@ import { useTheme } from "@/components/theme-provider";
 import { CosmosStars } from "@/components/cosmos-stars";
 import { DemoBanner } from "@/components/demo-banner";
 import { SidebarInset, SidebarProvider } from "@backlex/ui/components/sidebar";
+import { TooltipProvider } from "@backlex/ui/components/tooltip";
 import { StoragePage } from "./pages/data/storage";
 import { AppUsersPage } from "./pages/access/app-users";
 import { AppOrgsPage } from "./pages/access/app-orgs";
@@ -1091,6 +1092,14 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   };
 
   return (
+    // `TooltipProvider` is mounted HERE rather than around the whole app in
+    // main.tsx, and the reason is measurable: it is the only Radix component in
+    // the eager shell, and `radix-vendor` is one pinned chunk — so one provider
+    // put all 45 KB gzip of Radix in front of first paint for everybody,
+    // including the stranger opening a public booking link, who never sees a
+    // tooltip. Inside the lazy admin chunk it costs exactly the people who use
+    // one. Nothing outside the admin renders a `<Tooltip>`.
+    <TooltipProvider delayDuration={0}>
     <PreferencesProvider>
     <AdminLocaleSync />
     <CosmosStars />
@@ -1866,6 +1875,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       {toastNode}
     </SidebarProvider>
     </PreferencesProvider>
+    </TooltipProvider>
   );
 }
 

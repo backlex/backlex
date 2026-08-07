@@ -356,4 +356,67 @@ describe("admin UI conventions", () => {
     );
     expect(dirs.sort()).toEqual(["collections", "fields", "lib", "pages"]);
   });
+
+  /**
+   * The router is the boundary between two audiences, and a static import
+   * quietly erases it.
+   *
+   * The public pages — a form, a booking calendar, a signing page — are
+   * self-styled on purpose, so that somebody opening a link from an email gets
+   * a page and not an admin console. But every route element used to be a plain
+   * import, which meant opening `/f/<token>` downloaded the whole admin anyway:
+   * 616 KB gzip of JavaScript to render a contact form. Nothing failed, so
+   * nothing said so.
+   *
+   * One static import of a page is enough to put it back, and it will look
+   * perfectly ordinary in the diff. Hence a rule rather than a habit.
+   */
+  test("the router imports no page eagerly", () => {
+    const src = readFileSync(join(CLIENT, "App.tsx"), "utf8");
+
+    const eager = [...src.matchAll(/^import\s+[^;]*?from\s+"([^"]+)";/gm)]
+      .map((m) => m[1] as string)
+      .filter((spec) => spec.startsWith("@/pages/") || spec === "@/admin/app");
+    expect(eager).toEqual([]);
+
+    // And the flip side: everything the routes render is behind `lazy()`, so
+    // the check above cannot be satisfied by simply not rendering a page.
+    const lazyBound = new Set(
+      [...src.matchAll(/const\s+(\w+)\s*=\s*lazy\(/g)].map((m) => m[1] as string),
+    );
+    const rendered = new Set(
+      [...src.matchAll(/element=\{<(\w+)[\s/>]/g)].map((m) => m[1] as string),
+    );
+    // `AdminRoute` is declared in this file — it is the catch-all's wrapper, and
+    // the thing it renders (`AdminApp`) is itself lazy.
+    const notLazy = [...rendered].filter(
+      (name) => name !== "AdminRoute" && !lazyBound.has(name),
+    );
+    expect(notLazy).toEqual([]);
+  });
+
+  /**
+   * What the shell renders before it knows who is looking.
+   *
+   * `main.tsx` and `App.tsx` load for every visitor, admin or stranger, so
+   * anything they import is in front of first paint by definition. That is easy
+   * to forget for a *provider*, which reads as configuration rather than as
+   * weight: a single `<TooltipProvider>` at the root pulled Radix — one pinned
+   * chunk, 45 KB gzip — in front of a public booking page whose visitor will
+   * never open a dropdown. It now lives inside the lazy admin chunk.
+   *
+   * The allow-list is what the shell genuinely needs to paint a route: the
+   * toaster and the stylesheet. Adding to it should be a decision.
+   */
+  test("the eager shell pulls no admin-only UI", () => {
+    const SHELL_UI = ["@backlex/ui/components/sonner", "@backlex/ui/globals.css"];
+
+    for (const file of ["main.tsx", "App.tsx"]) {
+      const src = readFileSync(join(CLIENT, file), "utf8");
+      const ui = [...src.matchAll(/^import\s+[^;]*?"(@backlex\/ui\/[^"]+)";/gm)]
+        .map((m) => m[1] as string)
+        .filter((spec) => !SHELL_UI.includes(spec));
+      expect(`${file}: ${ui.join(", ")}`).toBe(`${file}: `);
+    }
+  });
 });

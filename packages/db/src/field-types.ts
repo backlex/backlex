@@ -256,7 +256,7 @@ export interface FieldValidation {
 /**
  * Optional UI hint that picks the editor for a field — purely cosmetic, the
  * storage type is what actually matters. The admin ships a conventional
- * catalog of these in `apps/web/src/client/admin/interfaces.ts` (`input`,
+ * catalog of these in `apps/web/src/client/admin/fields/interfaces.ts` (`input`,
  * `markdown`, `richtext`, `dropdown`, `toggle`, `datetime`, `color`,
  * `relation`, …); the server treats the value as an opaque string and only
  * special-cases `dropdown` (choice membership is enforced) and `user` (a

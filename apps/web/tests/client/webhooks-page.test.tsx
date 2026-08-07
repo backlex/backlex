@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, screen, waitFor } from "@testing-library/react";
-import { WebhooksPage } from "../../src/client/admin/pages/webhooks";
+import { WebhooksPage } from "../../src/client/admin/pages/automation/webhooks";
 import { renderWithProviders } from "./render";
 
 // Page-level render coverage for the webhooks list. The load path maps the

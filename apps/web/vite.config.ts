@@ -324,7 +324,7 @@ export default defineConfig({
             return undefined;
           }
           // Client: ably is reached only via the dynamically-imported collab
-          // pipe (admin/collab.ts) — and only on deployments whose
+          // pipe (admin/lib/collab.ts) — and only on deployments whose
           // collab-config says "ably". Keep it unpinned so it stays a lazy
           // chunk; native (Bun/Workers) deployments never download it.
           if (id.includes("/node_modules/ably/")) {
@@ -332,7 +332,7 @@ export default defineConfig({
           }
           // Client: recharts (+ its exclusive dep graph) is reached only via
           // the dynamically-imported panel chart renderer
-          // (admin/panel-render.tsx → panel-charts.tsx). Keep it unpinned so
+          // (admin/pages/observability/panel-render.tsx → panel-charts.tsx). Keep it unpinned so
           // it lands in its own lazy chunk — the sign-in page, admin shell and
           // chart-less embeds never download it.
           if (

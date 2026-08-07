@@ -14,7 +14,7 @@
  * use, and both are now named after what the COLUMN holds.
  */
 import { describe, expect, test } from "bun:test";
-import { formatFieldValue } from "../src/client/admin/format-value";
+import { formatFieldValue } from "../src/client/admin/lib/format-value";
 
 const num = (format: Record<string, unknown>) => ({ type: "number", format }) as never;
 

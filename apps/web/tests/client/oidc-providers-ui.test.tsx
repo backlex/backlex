@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { AuthSettingsPage } from "../../src/client/admin/parity/auth-settings";
-import { OidcProviderDialog } from "../../src/client/admin/parity/oidc-provider-dialog";
+import { AuthSettingsPage } from "../../src/client/admin/pages/settings/auth-settings";
+import { OidcProviderDialog } from "../../src/client/admin/pages/settings/oidc-provider-dialog";
 import { renderWithProviders } from "./render";
 
 /**

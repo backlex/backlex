@@ -35,8 +35,8 @@ import {
   AlertDialogTitle,
 } from "@backlex/ui/components/alert-dialog";
 import { cn } from "@backlex/ui/lib/utils";
-import { ItemCommentsPanel } from "./item-collaboration";
-import { ItemFields, useItemForm } from "./item-form";
+import { ItemCommentsPanel } from "./collections/item-collaboration";
+import { ItemFields, useItemForm } from "./collections/item-form";
 
 export interface ItemSheetProps {
   open: boolean;

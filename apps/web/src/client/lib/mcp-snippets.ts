@@ -4,7 +4,7 @@
  * Pure string builders for the clients we document in-product
  * (Claude Desktop, Cursor, Codex CLI, curl). Lives in `client/lib/` so both the
  * per-key modal (`components/mcp-key-modal.tsx`) and the Ask-AI Connect
- * tab (`admin/pages/ask-ai.tsx`) can render the same shapes without
+ * tab (`admin/pages/ask-ai/index.tsx`) can render the same shapes without
  * pulling React into either consumer.
  *
  * The shape stays in sync with `docs/mcp.md` — bump the docs when you

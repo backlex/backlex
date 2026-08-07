@@ -37,7 +37,7 @@ Panels are unchanged from Insights:
 
 Viz types: `counter`, `sparkline`, `line`, `area`, `bars`, `stacked-bars`,
 `donut`, `pie`, `radar`, `radial`, `table`. The renderer
-(`apps/web/src/client/admin/panel-render.tsx`) is shared by the admin grid and
+(`apps/web/src/client/admin/pages/observability/panel-render.tsx`) is shared by the admin grid and
 the public embed page so both agree on how each viz maps its rows. Chart
 vizzes draw through the shadcn chart primitives (`@backlex/ui/components/chart`,
 recharts) with hover tooltips, axes and legends; the recharts bundle is

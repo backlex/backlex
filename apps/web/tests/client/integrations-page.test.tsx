@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, screen, waitFor } from "@testing-library/react";
-import { IntegrationsPage } from "../../src/client/admin/pages/integrations";
+import { IntegrationsPage } from "../../src/client/admin/pages/automation/integrations";
 import { renderWithProviders } from "./render";
 
 // Page-level render coverage for the integrations list. Same seam the webhooks

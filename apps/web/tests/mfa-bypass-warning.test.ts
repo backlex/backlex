@@ -7,7 +7,7 @@ import { describe, expect, test } from "bun:test";
 import {
   shouldWarnTwoFactorBypass,
   TWO_FACTOR_BYPASS_PROVIDERS,
-} from "../src/client/admin/parity/mfa-bypass";
+} from "../src/client/admin/pages/settings/mfa-bypass";
 
 describe("shouldWarnTwoFactorBypass", () => {
   test("warns when ENABLING magic-link", () => {

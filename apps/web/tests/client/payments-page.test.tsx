@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { PaymentsPage } from "../../src/client/admin/pages/payments";
+import { PaymentsPage } from "../../src/client/admin/pages/automation/payments";
 import { renderWithProviders } from "./render";
 
 // Render coverage for the Payments page, pinning two things a server-side test

@@ -11,7 +11,7 @@
  * an "unknown step" warning — so these also pin its arrival.
  */
 import { describe, expect, test } from "bun:test";
-import { compileGraph, decompileGraph, type Graph } from "../../src/client/admin/flow-graph";
+import { compileGraph, decompileGraph, type Graph } from "../../src/client/admin/pages/automation/flow-graph";
 
 const graphWith = (type: string, config: Record<string, unknown>): Graph => ({
   nodes: [

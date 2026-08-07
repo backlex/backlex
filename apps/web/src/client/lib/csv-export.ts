@@ -1,7 +1,7 @@
 /**
  * Minimal client-side CSV exporter.
  *
- * Extracted from the Activity Log page (admin/pages/logs.tsx) so the Ask
+ * Extracted from the Activity Log page (admin/pages/observability/logs.tsx) so the Ask
  * AI Runs tab can share the exact escaping + Blob-download path. Both
  * call sites are admin-only and run in the browser; this helper assumes
  * `window`, `Blob`, and `URL.createObjectURL` exist.

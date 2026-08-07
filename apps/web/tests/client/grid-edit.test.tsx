@@ -14,8 +14,8 @@
  */
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { ItemsTable } from "../../src/client/admin/items";
-import { coerce, parseTsv, type GridColumn } from "../../src/client/admin/grid-edit";
+import { ItemsTable } from "../../src/client/admin/collections/items";
+import { coerce, parseTsv, type GridColumn } from "../../src/client/admin/collections/grid-edit";
 import { renderWithProviders } from "./render";
 
 const col = (over: Partial<GridColumn>): GridColumn => ({

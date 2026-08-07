@@ -298,4 +298,62 @@ describe("admin UI conventions", () => {
       .sort();
     expect(suppressed).toEqual([]);
   });
+
+  /**
+   * The admin's folder tree has to keep meaning something.
+   *
+   * It stopped meaning anything once: pages lived in two sibling folders,
+   * `pages/` and `parity/`, split by the month they were written rather than by
+   * what they did, bridged by a re-export barrel — and 76 further files sat
+   * flat in the admin root, pages and field editors and pure helpers all in one
+   * listing. Nothing enforced any of it, so every new file defaulted to the
+   * root and the root grew.
+   *
+   * So the root is an allow-list. A file that is genuinely shell — the app
+   * itself, its kernel modules, the design layer every page draws from — is
+   * named here on purpose. Everything else belongs to a folder that says what
+   * it is: `pages/<area>/` for a screen, `fields/` for the field model,
+   * `collections/` for the item workbench, `lib/` for logic with no chrome.
+   * Adding to this list is a decision; it should read as one in the diff.
+   */
+  test("the admin root holds the shell, and nothing else", () => {
+    const SHELL = [
+      // The app and its stylesheets.
+      "admin.css",
+      "app.tsx",
+      "flow-builder.css",
+      // Kernel — configuration, transport, shared types, i18n runtime.
+      "api.ts",
+      "config.ts",
+      "i18n.ts",
+      "queries.ts",
+      "types.ts",
+      // Design layer — what every page draws itself with.
+      "extras.tsx",
+      "icons.tsx",
+      "loading.tsx",
+      "page-skeletons.tsx",
+      "preferences.tsx",
+      "rule-builder.tsx",
+      "select.tsx",
+      "sheet.tsx",
+      "ui.tsx",
+      // Shared infrastructure with no single owning page.
+      "extension-frame.tsx",
+    ].sort();
+
+    const root = join(CLIENT, "admin");
+    const actual = readdirSync(root)
+      .filter((entry) => !statSync(join(root, entry)).isDirectory())
+      .sort();
+    expect(actual).toEqual(SHELL);
+  });
+
+  /** The split this replaced. Named so it cannot come back by habit. */
+  test("there is no second pages folder", () => {
+    const dirs = readdirSync(join(CLIENT, "admin")).filter((e) =>
+      statSync(join(CLIENT, "admin", e)).isDirectory(),
+    );
+    expect(dirs.sort()).toEqual(["collections", "fields", "lib", "pages"]);
+  });
 });

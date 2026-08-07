@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resolveKanbanGroupField, resolveStatusField } from "../../src/client/admin/items";
+import { resolveKanbanGroupField, resolveStatusField } from "../../src/client/admin/collections/items";
 
 // Pure-logic unit tests for the Kanban group-by resolvers. The bunfig preloads
 // (lingui-macro + happy-dom) let items.tsx import cleanly under bun test.

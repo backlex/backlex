@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { act, cleanup, screen, waitFor } from "@testing-library/react";
-import { IntegrationSyncsCard } from "../../src/client/admin/pages/integration-syncs-card";
+import { IntegrationSyncsCard } from "../../src/client/admin/pages/automation/integration-syncs-card";
 import { renderWithProviders } from "./render";
 
 // A sync writes into a real business collection on a timer, so the card has to

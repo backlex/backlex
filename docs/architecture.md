@@ -143,13 +143,36 @@ never clipped to the freshest 200 rows. (The former standalone
 "Activity log" page was merged into this; `/activity` redirects to
 `/logs`.)
 
-## Admin pages
+## Admin layout
 
-Every page under `apps/web/src/client/admin/pages/` is a lazy-imported
-chunk wired through `apps/web/src/client/admin/app.tsx`. The sidebar
-order lives in `config.ts::NAV_ITEMS`; the page-skeleton dispatcher in
-`page-skeletons.tsx` renders the per-page placeholder during the chunk
-load. Notable surfaces:
+`apps/web/src/client/admin/` is laid out by what a file *is*, and a
+source-scan gate (`tests/client/admin-ui-conventions.test.ts`) keeps it
+that way:
+
+```
+admin/
+  app.tsx  config.ts  types.ts  api.ts  queries.ts  i18n.ts   the shell:
+  ui.tsx  select.tsx  sheet.tsx  icons.tsx  extras.tsx        the app, its
+  loading.tsx  page-skeletons.tsx  rule-builder.tsx           kernel, and the
+  preferences.tsx  extension-frame.tsx  *.css                 design layer
+  lib/           logic with no chrome — formatting, row labels,
+                 the collab/signal transports, query-param builders
+  fields/        the field model: the interface catalog, the add/edit
+                 dialogs, and one editor or input per field type
+  collections/   the item workbench — list, form, editor, views,
+                 bulk edit, collection settings, the adopt wizard
+  pages/<area>/  one folder per sidebar group: data, automation,
+                 observability, access, settings, developers
+```
+
+The root is an allow-list — a new file there fails the gate, which is the
+point: it forces the question "what is this?" at the moment the file is
+created rather than 76 files later.
+
+Every page under `pages/` is a lazy-imported chunk wired through
+`app.tsx`. The sidebar order lives in `config.ts::NAV_ITEMS`; the
+page-skeleton dispatcher in `page-skeletons.tsx` renders the per-page
+placeholder during the chunk load. Notable surfaces:
 
 - **Overview** (`overview`) — adapter dashboard + live metrics.
 - **Ask AI** (`ask-ai`) — natural-language MCP-tool dispatch; the same
@@ -162,9 +185,10 @@ load. Notable surfaces:
 - **Access / Users / App users / API keys** — identity + permissions.
 - **REST Explorer / GraphQL / OpenAPI** — the developer-tools group.
 
-Adding a new page = `pages/<id>.tsx` export, `NAV_ITEMS` entry,
+Adding a new page = `pages/<area>/<id>.tsx` export, `NAV_ITEMS` entry,
 `NAV_LABELS` Lingui descriptor, lazy import + render branch in
-`app.tsx`, and a skeleton case in `page-skeletons.tsx`.
+`app.tsx`, a warmer in `lib/page-prefetch.ts`, and a skeleton case in
+`page-skeletons.tsx`.
 
 ## Auth pipeline
 

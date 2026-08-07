@@ -100,7 +100,7 @@ const FieldSchema = z
       .regex(/^[a-z][a-z0-9_]*$/, "snake_case")
       .optional(),
     // UI hint only — never affects storage or security, so any catalog id
-    // from the admin's interface picker (apps/web/src/client/admin/interfaces.ts)
+    // from the admin's interface picker (apps/web/src/client/admin/fields/interfaces.ts)
     // is accepted. `dropdown` still gets its choices enforced by validateFields.
     interface: z.string().min(1).max(64).optional(),
     options: z

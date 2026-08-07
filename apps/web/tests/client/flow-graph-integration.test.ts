@@ -7,7 +7,7 @@
  * that entry used to compile to nothing at all with a "phase 2" warning.
  */
 import { describe, expect, test } from "bun:test";
-import { compileGraph, decompileGraph, type Graph } from "../../src/client/admin/flow-graph";
+import { compileGraph, decompileGraph, type Graph } from "../../src/client/admin/pages/automation/flow-graph";
 
 const graphWith = (config: Record<string, unknown>): Graph => ({
   nodes: [

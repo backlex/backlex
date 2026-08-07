@@ -17,7 +17,7 @@ import {
   ItemFields,
   type SchemaField,
   useItemForm,
-} from "../../src/client/admin/item-form";
+} from "../../src/client/admin/collections/item-form";
 import { renderWithProviders } from "./render";
 
 function Editor({

@@ -61,14 +61,14 @@ import {
 } from "./api";
 import { reorderVisible } from "@backlex/db/order";
 import type { Post } from "./config";
-import { type ItemsQueryParams, reconcileBulkUpdate } from "./items-query-params";
-import { itemsTransport, openSignalPipe } from "./signal";
+import { type ItemsQueryParams, reconcileBulkUpdate } from "./lib/items-query-params";
+import { itemsTransport, openSignalPipe } from "./lib/signal";
 
 export {
   buildItemsParams,
   type ItemsQueryParams,
   reconcileBulkUpdate,
-} from "./items-query-params";
+} from "./lib/items-query-params";
 
 export const queryKeys = {
   tenants: () => ["tenants"] as const,

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
-import { SearchPlaygroundPage } from "../../src/client/admin/pages/search-playground";
+import { SearchPlaygroundPage } from "../../src/client/admin/pages/data/search-playground";
 import { renderWithProviders } from "./render";
 
 // Page-level render coverage for the search playground (Data → Search). The

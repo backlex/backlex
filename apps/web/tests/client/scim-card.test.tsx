@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { act, cleanup, screen, waitFor } from "@testing-library/react";
-import { ScimCard } from "../../src/client/admin/parity/scim-card";
+import { ScimCard } from "../../src/client/admin/pages/settings/scim-card";
 import { renderWithProviders } from "./render";
 
 // The card's whole reason to exist is that the bearer token is shown EXACTLY

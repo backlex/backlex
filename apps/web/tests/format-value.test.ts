@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { fieldLabel, formatFieldValue } from "../src/client/admin/format-value";
+import { fieldLabel, formatFieldValue } from "../src/client/admin/lib/format-value";
 
 const NOW = 1_700_000_000_000;
 

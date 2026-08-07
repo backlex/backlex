@@ -19,9 +19,9 @@ import {
   type ApiRuntime,
 } from "../api";
 import { OverviewSkeleton } from "../page-skeletons";
-import { TemplateOnboarding } from "./template-onboarding";
+import { TemplateOnboarding } from "./data/template-onboarding";
 // The one sparkline — shared with the KPI tiles so the two draw the same shape.
-import { Sparkline } from "../sparkline";
+import { Sparkline } from "./observability/sparkline";
 
 type Metric = { label: string; value: string; delta: string; up: boolean; series: number[]; color: string };
 

@@ -221,7 +221,7 @@ prefer them or want to swap on cost / context / latency.
 
 Adding more from the [Vercel AI Gateway
 catalog](https://vercel.com/ai-gateway/models) is a one-line edit to the
-`MODELS` array in `apps/web/src/client/admin/pages/ask-ai.tsx` — the
+`MODELS` array in `apps/web/src/client/admin/pages/ask-ai/index.tsx` — the
 picker groups by the `provider/` prefix automatically, so no UI code
 change is needed. **Meta/Llama is not in the gateway catalog as of this
 writing** and is not exposed in the picker.
@@ -251,7 +251,7 @@ existing popover behaviour is unchanged.
 | File | Role |
 |---|---|
 | `apps/web/src/server/routes/ai-ask.ts` | The two POST handlers + the read-leaning whitelist. |
-| `apps/web/src/client/admin/pages/ask-ai.tsx` | The page. Replaces the design's mock `planForPrompt` with the two real fetches. |
+| `apps/web/src/client/admin/pages/ask-ai/index.tsx` | The page. Replaces the design's mock `planForPrompt` with the two real fetches. |
 | `apps/web/tests/ai-ask.test.ts` | Contract tests — UNAVAILABLE branch, unknown tool, happy-path run + activity row, 401/403 gates. |
 
 See also: [MCP (Model Context Protocol)](/docs/mcp/) for the underlying

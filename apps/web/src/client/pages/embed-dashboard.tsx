@@ -11,7 +11,7 @@ import { Trans } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { dashboardsPublicApi } from "@/admin/api";
-import { PanelBody, panelSubtitle } from "@/admin/panel-render";
+import { PanelBody, panelSubtitle } from "@/admin/pages/observability/panel-render";
 
 export function EmbedDashboard() {
   const { token } = useParams<{ token: string }>();

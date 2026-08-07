@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { act, cleanup, screen, waitFor } from "@testing-library/react";
-import { SyncHooksCard } from "../../src/client/admin/pages/sync-hooks-card";
+import { SyncHooksCard } from "../../src/client/admin/pages/automation/sync-hooks-card";
 import { renderWithProviders } from "./render";
 
 // A sync hook blocks writes, so the UI has to make its two consequential

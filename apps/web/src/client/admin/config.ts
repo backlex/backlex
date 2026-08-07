@@ -6,7 +6,7 @@
 // runtime via /api/admin/settings/runtime; every collection / item / metric /
 // user / role surface in the admin reads from its real API endpoint.
 import type { IconKey } from "./icons";
-import type { StorageType } from "./interfaces";
+import type { StorageType } from "./fields/interfaces";
 
 export interface Author {
   id: string;

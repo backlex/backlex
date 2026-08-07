@@ -10,7 +10,7 @@ import { makeHarness, seedAdmin } from "./setup";
  * `notice` types) rather than left as a flat column of inputs.
  *
  * These assertions encode the renderer's actual behaviour (see
- * `client/admin/item-form.tsx`), so a layout that would silently render wrong —
+ * `client/admin/collections/item-form.tsx`), so a layout that would silently render wrong —
  * a stray "General" tab, a fold flag the tabs branch ignores, an unlabeled
  * divider showing its raw column name — fails here instead of in production.
  */

@@ -1,6 +1,6 @@
 /**
  * Unit tests for the admin item-list pure helpers
- * (`apps/web/src/client/admin/items-query-params.ts`).
+ * (`apps/web/src/client/admin/lib/items-query-params.ts`).
  *
  * These back the React Query migration of the admin item list: `buildItemsParams`
  * turns the filter UI state into the server query (the logic lifted out of the
@@ -13,7 +13,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildItemsParams,
   reconcileBulkUpdate,
-} from "../src/client/admin/items-query-params";
+} from "../src/client/admin/lib/items-query-params";
 import type { Post } from "../src/client/admin/config";
 
 describe("buildItemsParams", () => {

@@ -209,5 +209,5 @@ includes it, so an org admin can't replay somebody else's link.
 | Org-scoped role merge | `apps/web/src/server/services/permissions.ts` |
 | DSL variables | `packages/db/src/permission.ts` |
 | Schema (both dialects) | `packages/db/src/{pg,sqlite}/schema.ts` |
-| Admin UI | `apps/web/src/client/admin/parity/app-orgs.tsx` |
+| Admin UI | `apps/web/src/client/admin/pages/access/app-orgs.tsx` |
 | Tests | `apps/web/tests/app-orgs.test.ts`, `app-orgs-surfaces.test.ts` |

@@ -47,20 +47,20 @@ import {
   evaluateFilter,
   resolveKanbanGroupField,
   type FilterCondition,
-} from "./items";
+} from "./collections/items";
 import { ConfirmDialog, ItemSheet } from "./sheet";
-import { BulkEditDialog } from "./bulk-edit";
-import { ItemEditorPage } from "./item-editor";
-import { CalendarView, GalleryGrid, ItemsViewToggle, KanbanBoard, type ItemsViewMode } from "./item-views";
-import { ColumnPicker, useListColumns } from "./list-columns";
-import { needsDisplayTemplate } from "./row-label";
+import { BulkEditDialog } from "./collections/bulk-edit";
+import { ItemEditorPage } from "./collections/item-editor";
+import { CalendarView, GalleryGrid, ItemsViewToggle, KanbanBoard, type ItemsViewMode } from "./collections/item-views";
+import { ColumnPicker, useListColumns } from "./collections/list-columns";
+import { needsDisplayTemplate } from "./lib/row-label";
 import { EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
-import { AddFieldDialog } from "./add-field";
-import { loadAuthors } from "./authors-cache";
-import { CollectionsIndex, NewCollectionDialog } from "./collections-index";
-import { EditFieldDialog } from "./edit-field";
-import { CollectionKpisPanel } from "./collection-kpis";
-import { CollectionSettings } from "./collection-settings";
+import { AddFieldDialog } from "./fields/add-field";
+import { loadAuthors } from "./lib/authors-cache";
+import { CollectionsIndex, NewCollectionDialog } from "./collections/collections-index";
+import { EditFieldDialog } from "./fields/edit-field";
+import { CollectionKpisPanel } from "./collections/collection-kpis";
+import { CollectionSettings } from "./collections/collection-settings";
 import { type ApiExtension, collectionsApi, itemsApi, settingsApi } from "./api";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -87,61 +87,59 @@ import { useTheme } from "@/components/theme-provider";
 import { CosmosStars } from "@/components/cosmos-stars";
 import { DemoBanner } from "@/components/demo-banner";
 import { SidebarInset, SidebarProvider } from "@backlex/ui/components/sidebar";
-import { StoragePage } from "./storage";
-import {
-  AppUsersPage,
-  AppOrgsPage,
-  AuthSettingsPage,
-  PlatformSsoSettingsPage,
-  DatabasePage,
-  EmailTemplatesPage,
-  DocumentsPage,
-  ApprovalsPage,
-  SignaturesPage,
-  BookingPage,
-  InsightsPage,
-  KpisPage,
-  RevisionsPage,
-  TranslationsPage,
-} from "./parity-pages";
-import { RoleEditor, type RoleData } from "./role-editor";
-import { MembersPanel } from "./members-panel";
-import { PermissionsMatrix } from "./permissions-matrix";
-import { PermissionTesterPanel } from "./permission-tester";
+import { StoragePage } from "./pages/data/storage";
+import { AppUsersPage } from "./pages/access/app-users";
+import { AppOrgsPage } from "./pages/access/app-orgs";
+import { AuthSettingsPage } from "./pages/settings/auth-settings";
+import { PlatformSsoSettingsPage } from "./pages/settings/platform-auth-settings";
+import { EmailTemplatesPage } from "./pages/settings/email-templates";
+import { DocumentsPage } from "./pages/settings/documents";
+import { SignaturesPage } from "./pages/settings/signatures";
+import { DatabasePage } from "./pages/data/database";
+import { BookingPage } from "./pages/data/booking";
+import { ApprovalsPage } from "./pages/automation/approvals";
+import { InsightsPage } from "./pages/observability/insights";
+import { KpisPage } from "./pages/observability/kpis";
+import { RevisionsPage } from "./pages/observability/revisions";
+import { TranslationsPage } from "./pages/observability/translations";
+import { RoleEditor, type RoleData } from "./pages/access/role-editor";
+import { MembersPanel } from "./pages/access/members-panel";
+import { PermissionsMatrix } from "./pages/access/permissions-matrix";
+import { PermissionTesterPanel } from "./pages/access/permission-tester";
 // Each admin page is split into its own chunk so the initial admin bundle
 // stays small. The shared `<Suspense>` boundary inside the page switch below
 // renders the fallback while the page chunk streams in.
 const OverviewPage = lazy(() => import("./pages/overview").then((m) => ({ default: m.OverviewPage })));
 const AskAiPage = lazy(() => import("./pages/ask-ai").then((m) => ({ default: m.AskAiPage })));
-const FlowsPage = lazy(() => import("./pages/flows").then((m) => ({ default: m.FlowsPage })));
-const AgentsPage = lazy(() => import("./pages/agents").then((m) => ({ default: m.AgentsPage })));
-const ChatPage = lazy(() => import("./pages/chat").then((m) => ({ default: m.ChatPage })));
-const FunctionsPage = lazy(() => import("./pages/functions").then((m) => ({ default: m.FunctionsPage })));
-const JobsPage = lazy(() => import("./pages/jobs").then((m) => ({ default: m.JobsPage })));
-const FeatureFlagsPage = lazy(() => import("./pages/feature-flags").then((m) => ({ default: m.FeatureFlagsPage })));
-const FormsPage = lazy(() => import("./pages/forms").then((m) => ({ default: m.FormsPage })));
-const WebhooksPage = lazy(() => import("./pages/webhooks").then((m) => ({ default: m.WebhooksPage })));
-const IntegrationsPage = lazy(() => import("./pages/integrations").then((m) => ({ default: m.IntegrationsPage })));
-const PaymentsPage = lazy(() => import("./pages/payments").then((m) => ({ default: m.PaymentsPage })));
-const RealtimePage = lazy(() => import("./pages/realtime").then((m) => ({ default: m.RealtimePage })));
-const LogsPage = lazy(() => import("./pages/logs").then((m) => ({ default: m.LogsPage })));
-const TracesPage = lazy(() => import("./pages/traces").then((m) => ({ default: m.TracesPage })));
-const UsagePage = lazy(() => import("./pages/usage").then((m) => ({ default: m.UsagePage })));
-const AnalyticsPage = lazy(() => import("./pages/analytics").then((m) => ({ default: m.AnalyticsPage })));
-const AdvisorPage = lazy(() => import("./pages/advisor").then((m) => ({ default: m.AdvisorPage })));
-const SchemaGraphPage = lazy(() => import("./pages/schema-graph").then((m) => ({ default: m.SchemaGraphPage })));
-const SearchPlaygroundPage = lazy(() => import("./pages/search-playground").then((m) => ({ default: m.SearchPlaygroundPage })));
-const SchemaVersionsPage = lazy(() => import("./pages/schema-versions").then((m) => ({ default: m.SchemaVersionsPage })));
-const DatabaseImportPage = lazy(() => import("./pages/database-import").then((m) => ({ default: m.DatabaseImportPage })));
-const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
+const FlowsPage = lazy(() => import("./pages/automation/flows").then((m) => ({ default: m.FlowsPage })));
+const AgentsPage = lazy(() => import("./pages/automation/agents").then((m) => ({ default: m.AgentsPage })));
+const ChatPage = lazy(() => import("./pages/automation/chat").then((m) => ({ default: m.ChatPage })));
+const FunctionsPage = lazy(() => import("./pages/automation/functions").then((m) => ({ default: m.FunctionsPage })));
+const JobsPage = lazy(() => import("./pages/automation/jobs").then((m) => ({ default: m.JobsPage })));
+const FeatureFlagsPage = lazy(() => import("./pages/automation/feature-flags").then((m) => ({ default: m.FeatureFlagsPage })));
+const FormsPage = lazy(() => import("./pages/data/forms").then((m) => ({ default: m.FormsPage })));
+const WebhooksPage = lazy(() => import("./pages/automation/webhooks").then((m) => ({ default: m.WebhooksPage })));
+const IntegrationsPage = lazy(() => import("./pages/automation/integrations").then((m) => ({ default: m.IntegrationsPage })));
+const PaymentsPage = lazy(() => import("./pages/automation/payments").then((m) => ({ default: m.PaymentsPage })));
+const RealtimePage = lazy(() => import("./pages/automation/realtime").then((m) => ({ default: m.RealtimePage })));
+const LogsPage = lazy(() => import("./pages/observability/logs").then((m) => ({ default: m.LogsPage })));
+const TracesPage = lazy(() => import("./pages/observability/traces").then((m) => ({ default: m.TracesPage })));
+const UsagePage = lazy(() => import("./pages/observability/usage").then((m) => ({ default: m.UsagePage })));
+const AnalyticsPage = lazy(() => import("./pages/observability/analytics").then((m) => ({ default: m.AnalyticsPage })));
+const AdvisorPage = lazy(() => import("./pages/observability/advisor").then((m) => ({ default: m.AdvisorPage })));
+const SchemaGraphPage = lazy(() => import("./pages/data/schema-graph").then((m) => ({ default: m.SchemaGraphPage })));
+const SearchPlaygroundPage = lazy(() => import("./pages/data/search-playground").then((m) => ({ default: m.SearchPlaygroundPage })));
+const SchemaVersionsPage = lazy(() => import("./pages/data/schema-versions").then((m) => ({ default: m.SchemaVersionsPage })));
+const DatabaseImportPage = lazy(() => import("./pages/data/database-import").then((m) => ({ default: m.DatabaseImportPage })));
+const UsersPage = lazy(() => import("./pages/access/users").then((m) => ({ default: m.UsersPage })));
 const SettingsPage = lazy(() => import("./pages/settings").then((m) => ({ default: m.SettingsPage })));
-const ExtensionsPage = lazy(() => import("./pages/extensions").then((m) => ({ default: m.ExtensionsPage })));
+const ExtensionsPage = lazy(() => import("./pages/developers/extensions").then((m) => ({ default: m.ExtensionsPage })));
 
 import { PageSkeleton, CollectionItemsSkeleton } from "./page-skeletons";
 
 const TAB_COUNT_CLS =
   "rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground";
-import { AccountPage } from "./account-page";
+import { AccountPage } from "./pages/account-page";
 import { PreferencesProvider } from "./preferences";
 import { AdminLocaleSync } from "./i18n";
 import { Trans, useLingui } from "@lingui/react/macro";

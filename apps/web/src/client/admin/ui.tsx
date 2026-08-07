@@ -21,7 +21,7 @@ import { cn } from "@backlex/ui/lib/utils";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_PRIMARY, NAV_DATA, NAV_AUTOMATION, NAV_OBSERVABILITY, NAV_SETTINGS, NAV_DEVELOPERS, isNavVisible, type MeNav, type NavItem } from "./config";
 import { prefetchPage } from "./lib/page-prefetch";
-import { resolveCollectionColor } from "./collection-colors";
+import { resolveCollectionColor } from "./lib/collection-colors";
 import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
 import { orderCollections, useCollections, useNotifications, useNotificationsUnread, queryKeys } from "./queries";
 import { useWorkspaceBranding } from "@/lib/branding";

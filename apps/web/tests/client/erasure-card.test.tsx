@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { act, cleanup, screen, waitFor } from "@testing-library/react";
-import { ErasureCard } from "../../src/client/admin/pages/erasure-card";
+import { ErasureCard } from "../../src/client/admin/pages/access/erasure-card";
 import { renderWithProviders } from "./render";
 
 // Erasure is the one place in the admin where an optimistic update would be

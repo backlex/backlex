@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { cleanup, screen, waitFor } from "@testing-library/react";
-import { CollectionKpisPanel } from "../../src/client/admin/collection-kpis";
+import { CollectionKpisPanel } from "../../src/client/admin/collections/collection-kpis";
 import { renderWithProviders } from "./render";
 
 /**

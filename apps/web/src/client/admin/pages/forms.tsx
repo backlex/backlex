@@ -2685,6 +2685,48 @@ function InvitesCard({
   };
 
   const answered = (invites ?? []).filter((i) => i.usedAt).length;
+  const waiting = (invites ?? []).filter((i) => !i.usedAt);
+
+  /**
+   * Nudge everyone still outstanding.
+   *
+   * Optimistic like every other mutation here: the rows say "reminded" before
+   * the request lands and roll back if it doesn't. The fresh links join the
+   * shown-once box, because they are shown once — and the earlier ones keep
+   * working, so nothing the operator already handed out has to be chased.
+   */
+  const remind = async (send: boolean) => {
+    if (waiting.length === 0) return;
+    const snapshot = invites;
+    const stamp = Date.now();
+    setBusy(true);
+    setInvites((prev) =>
+      (prev ?? []).map((i) =>
+        i.usedAt ? i : { ...i, remindedAt: stamp, reminderCount: (i.reminderCount ?? 0) + 1 },
+      ),
+    );
+    try {
+      const res = await formsApi.remindInvites(form.id, {
+        ...(formToken ? { formToken } : {}),
+        ...(send ? { send: true } : {}),
+        force: true,
+      });
+      if (res.data.invites.length > 0) setMinted(res.data.invites);
+      // Reconcile: the server decides who was actually due.
+      const fresh = await formsApi.invites(form.id);
+      setInvites(fresh.data);
+      pushToast(
+        send
+          ? t`${res.data.invites.length} reminded, ${res.data.sent} emailed.`
+          : t`${res.data.invites.length} fresh link(s) — copy them now.`,
+      );
+    } catch (e) {
+      setInvites(snapshot);
+      pushToast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <PanelCard icon={I.Mail} title={<Trans>Invites</Trans>}>
@@ -2721,6 +2763,29 @@ function InvitesCard({
           <Trans>Create and email</Trans>
         </Button>
       </div>
+
+      {waiting.length > 0 && (
+        <div className="flex flex-col gap-1.5 border-t border-border pt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              icon={I.Refresh}
+              onClick={() => remind(false)}
+              disabled={busy}
+            >
+              <Trans>New links for {waiting.length} waiting</Trans>
+            </Button>
+            <Button variant="primary" icon={I.Mail} onClick={() => remind(true)} disabled={busy}>
+              <Trans>Remind by email</Trans>
+            </Button>
+          </div>
+          <span className="text-[11px] text-muted-foreground">
+            <Trans>
+              Each gets a fresh link. The ones already sent keep working — every link
+              into an invite opens the same turn, and answering spends it.
+            </Trans>
+          </span>
+        </div>
+      )}
 
       {minted && minted.length > 0 && (
         <div className="flex flex-col gap-1.5 rounded-control border border-primary/30 bg-primary/10 p-2.5">
@@ -2780,6 +2845,14 @@ function InvitesCard({
                   className="flex items-center gap-2 border-b border-border py-1.5 text-[12px] last:border-b-0"
                 >
                   <span className="min-w-0 flex-1 truncate">{i.email ?? t`no address`}</span>
+                  {!i.usedAt && (i.reminderCount ?? 0) > 0 && (
+                    <span
+                      className="shrink-0 font-mono text-[10px] uppercase text-muted-foreground"
+                      title={t`reminded ${relTime(i.remindedAt)}`}
+                    >
+                      <Trans>+{i.reminderCount}</Trans>
+                    </span>
+                  )}
                   <span
                     className={`shrink-0 font-mono text-[10px] uppercase ${i.usedAt ? "text-emerald-400" : "text-muted-foreground"}`}
                   >

@@ -272,6 +272,59 @@ describe("forms — SDK surface + public round-trip", () => {
     await client.forms.delete(id);
   });
 
+  test("reminders mint a fresh link identically on SDK, REST and GraphQL", async () => {
+    const client = createClient({ url: "", fetch: h.fetch as unknown as typeof fetch });
+    const created = await client.forms.create({
+      name: "remind-parity",
+      collection: slug,
+      fields: [{ name: "title" }],
+      settings: { inviteOnly: true },
+    });
+    const id = created.data.form.id;
+    const formToken = created.data.token;
+    await client.forms.invite(id, {
+      recipients: [{ email: "a@example.test" }, { email: "b@example.test" }],
+      formToken,
+    });
+
+    const sdk = await client.forms.remindInvites(id, { formToken, force: true });
+    expect(sdk.data.invites.length).toBe(2);
+    expect(sdk.data.skipped).toBe(0);
+    expect(sdk.data.invites[0]!.token.startsWith("inv_")).toBe(true);
+    expect(sdk.data.invites[0]!.url).toBe(`/f/${formToken}?i=${sdk.data.invites[0]!.token}`);
+    expect(sdk.data.invites[0]!.reminderCount).toBe(1);
+
+    const rest = (await (
+      await h.fetch(
+        `/api/admin/forms/${id}/invites/remind`,
+        json({ formToken, force: true }),
+      )
+    ).json()) as { data: { invites: { token: string }[]; sent: number; skipped: number } };
+    expect(rest.data.invites.length).toBe(2);
+    // A second reminder is a second link — the earlier ones are not replaced.
+    expect(rest.data.invites[0]!.token).not.toBe(sdk.data.invites[0]!.token);
+
+    const gql = (await (
+      await h.fetch("/api/graphql", json({
+        query: `mutation($id:ID!,$t:String!){ remindPublicFormInvites(id:$id, formToken:$t, force:true) }`,
+        variables: { id, t: formToken },
+      }))
+    ).json()) as {
+      data?: { remindPublicFormInvites: { invites: unknown[]; sent: number; skipped: number } };
+      errors?: unknown[];
+    };
+    expect(gql.errors).toBeUndefined();
+    expect(gql.data?.remindPublicFormInvites.invites.length).toBe(2);
+    expect(gql.data?.remindPublicFormInvites.sent).toBe(0);
+
+    // Reminders never show up in a read surface as tokens.
+    const list = await client.forms.invites(id);
+    expect(list.data.every((i) => i.reminderCount === 3)).toBe(true);
+    expect(JSON.stringify(list.data)).not.toContain(sdk.data.invites[0]!.token);
+
+    await client.forms.delete(id);
+  });
+
   test("non-admin sessions are rejected by the admin surface", async () => {
     // No session at all → 401 from requireUser.
     const anon = await h.app.fetch(new Request(`${h.env.APP_URL}/api/admin/forms`));

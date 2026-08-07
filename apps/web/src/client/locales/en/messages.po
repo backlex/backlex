@@ -426,6 +426,11 @@ msgstr "{0} files selected."
 msgid "{0} free"
 msgstr "{0} free"
 
+#. placeholder {0}: res.data.invites.length
+#: src/client/admin/pages/forms.tsx
+msgid "{0} fresh link(s) — copy them now."
+msgstr "{0} fresh link(s) — copy them now."
+
 #. placeholder {0}: value.from
 #: src/client/admin/field-rollup-editor.tsx
 msgid "{0} has no number column to aggregate."
@@ -569,6 +574,12 @@ msgstr "{0} published, {failed} failed."
 #: src/client/admin/app.tsx
 msgid "{0} published."
 msgstr "{0} published."
+
+#. placeholder {0}: res.data.invites.length
+#. placeholder {1}: res.data.sent
+#: src/client/admin/pages/forms.tsx
+msgid "{0} reminded, {1} emailed."
+msgstr "{0} reminded, {1} emailed."
 
 #. placeholder {0}: m.email
 #: src/client/admin/parity/app-orgs.tsx
@@ -943,6 +954,11 @@ msgstr "+ group"
 #: src/client/admin/condition-editor.tsx
 msgid "+ preset"
 msgstr "+ preset"
+
+#. placeholder {0}: i.reminderCount
+#: src/client/admin/pages/forms.tsx
+msgid "+{0}"
+msgstr "+{0}"
 
 #: src/client/admin/field-phone-input.tsx
 msgid "+90 532 111 22 33"
@@ -5668,6 +5684,10 @@ msgstr "Each code works once if you lose your authenticator. Store them somewher
 msgid "Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations."
 msgstr "Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Each gets a fresh link. The ones already sent keep working — every link into an invite opens the same turn, and answering spends it."
+msgstr "Each gets a fresh link. The ones already sent keep working — every link into an invite opens the same turn, and answering spends it."
+
 #: src/client/admin/parity/signatures.tsx
 msgid "Each link opens only once the one above it has signed."
 msgstr "Each link opens only once the one above it has signed."
@@ -9961,6 +9981,11 @@ msgstr "New link"
 msgid "New link minted — the old one no longer works."
 msgstr "New link minted — the old one no longer works."
 
+#. placeholder {0}: waiting.length
+#: src/client/admin/pages/forms.tsx
+msgid "New links for {0} waiting"
+msgstr "New links for {0} waiting"
+
 #: src/client/admin/pages/forms.tsx
 msgid "New matrix"
 msgstr "New matrix"
@@ -13521,6 +13546,15 @@ msgstr "Reload schema"
 #: src/client/admin/pages/agents.tsx
 msgid "Remembered facts apply to"
 msgstr "Remembered facts apply to"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Remind by email"
+msgstr "Remind by email"
+
+#. placeholder {0}: relTime(i.remindedAt)
+#: src/client/admin/pages/forms.tsx
+msgid "reminded {0}"
+msgstr "reminded {0}"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/collection-settings.tsx

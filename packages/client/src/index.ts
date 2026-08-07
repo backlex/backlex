@@ -2614,7 +2614,22 @@ export interface FormsClient {
     id: string,
     input: PublicFormInviteInput,
   ): Promise<{ data: { invites: MintedPublicFormInvite[]; sent: number } }>;
-  /** Revoke an invite; its link stops working immediately. */
+  /**
+   * Mint a fresh link for everyone who hasn't answered, and optionally mail it.
+   *
+   * Earlier links keep working: every link an invite has ever had opens the
+   * same turn, and spending any one spends it — the person being reminded is
+   * precisely the person whose first link must not break. Answered invites are
+   * never reminded, and nobody is reminded twice inside `minIntervalHours`
+   * (default 24) unless `force`.
+   */
+  remindInvites(
+    id: string,
+    input?: PublicFormRemindInput,
+  ): Promise<{
+    data: { invites: MintedPublicFormInvite[]; sent: number; skipped: number };
+  }>;
+  /** Revoke an invite; every link that opened it stops working immediately. */
   revokeInvite(id: string, inviteId: string): Promise<{ ok: boolean }>;
   /** Delete a form; its link stops working immediately. */
   delete(id: string): Promise<{ ok: boolean }>;
@@ -2629,8 +2644,11 @@ export interface PublicFormInvite {
   name: string | null;
   /** When the invite email went out, or null if it never did. */
   sentAt: unknown;
-  /** When it was spent. Non-null ⇒ the link no longer works. */
+  /** When it was spent. Non-null ⇒ every link into it stops working. */
   usedAt: unknown;
+  /** When a reminder last went out to this person, and how many have. */
+  remindedAt: unknown;
+  reminderCount: number;
   createdAt: unknown;
 }
 
@@ -2649,6 +2667,19 @@ export interface PublicFormInviteInput {
   /** Email each recipient their link. Recipients with no address are minted
    *  and simply not mailed. */
   send?: boolean;
+}
+
+export interface PublicFormRemindInput {
+  /** Narrow to specific invites. Absent ⇒ everyone still outstanding. */
+  inviteIds?: string[];
+  /** The form's own plaintext token, so the response carries ready-made links. */
+  formToken?: string;
+  /** Email the reminder. Without it the fresh links are only in the response. */
+  send?: boolean;
+  /** Hours to leave between two reminders to one person (default 24). */
+  minIntervalHours?: number;
+  /** Remind anyway, however recently the last one went out. */
+  force?: boolean;
 }
 
 /** How a question's answers are summarised. */
@@ -4962,6 +4993,10 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         `${formPath(id)}/invites`,
         input,
       ),
+    remindInvites: (id: string, input: PublicFormRemindInput = {}) =>
+      request<{
+        data: { invites: MintedPublicFormInvite[]; sent: number; skipped: number };
+      }>("POST", `${formPath(id)}/invites/remind`, input),
     revokeInvite: (id: string, inviteId: string) =>
       request<{ ok: boolean }>(
         "DELETE",

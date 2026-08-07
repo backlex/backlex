@@ -281,9 +281,55 @@ export const inviteToForm: McpTool = {
   },
 };
 
+export const remindFormInvites: McpTool = {
+  name: "forms.remind_invites",
+  description:
+    "Mint a fresh link for everyone who hasn't answered, and with `send: true` " +
+    "mail it. Earlier links keep working — every link an invite has ever had " +
+    "opens the same turn, and spending any one spends it. People who have " +
+    "answered are never reminded, and nobody is reminded twice inside " +
+    "`minIntervalHours` (default 24) unless `force`. Refused when the form is " +
+    "paused, closed or full. The plaintext tokens come back in THIS response " +
+    "and nowhere else.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      inviteIds: { type: "array", items: { type: "string" } },
+      formToken: { type: "string" },
+      send: { type: "boolean" },
+      minIntervalHours: { type: "number" },
+      force: { type: "boolean" },
+    },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.id ?? "");
+    if (!id) throw new Error("VALIDATION: id is required");
+    const res = await ctx.fetchInternal(
+      `/api/admin/forms/${encodeURIComponent(id)}/invites/remind`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...(Array.isArray(args.inviteIds) ? { inviteIds: args.inviteIds } : {}),
+          ...(args.formToken ? { formToken: args.formToken } : {}),
+          ...(args.send !== undefined ? { send: Boolean(args.send) } : {}),
+          ...(args.minIntervalHours !== undefined
+            ? { minIntervalHours: Number(args.minIntervalHours) }
+            : {}),
+          ...(args.force !== undefined ? { force: Boolean(args.force) } : {}),
+        }),
+      },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const revokeFormInvite: McpTool = {
   name: "forms.revoke_invite",
-  description: "Revoke one invite. Its link stops working immediately.",
+  description: "Revoke one invite. Every link that opened it stops working immediately.",
   inputSchema: {
     type: "object",
     properties: { id: { type: "string" }, inviteId: { type: "string" } },
@@ -312,6 +358,7 @@ export const formsTools: McpTool[] = [
   formResults,
   listFormInvites,
   inviteToForm,
+  remindFormInvites,
   revokeFormInvite,
   deleteForm,
 ];

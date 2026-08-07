@@ -2944,6 +2944,9 @@ export interface ApiFormInvite {
   name: string | null;
   sentAt: unknown;
   usedAt: unknown;
+  /** When a reminder last went out to this person, and how many have. */
+  remindedAt: unknown;
+  reminderCount: number;
   createdAt: unknown;
 }
 
@@ -2967,6 +2970,22 @@ export const formsApi = {
   ) =>
     api<Envelope<{ invites: ApiMintedFormInvite[]; sent: number }>>(
       `/api/admin/forms/${id}/invites`,
+      { method: "POST", body: JSON.stringify(input) },
+    ),
+  /** Mint a fresh link for whoever hasn't answered (earlier links keep
+   *  working — every link into an invite opens the same turn). */
+  remindInvites: (
+    id: string,
+    input: {
+      inviteIds?: string[];
+      formToken?: string;
+      send?: boolean;
+      minIntervalHours?: number;
+      force?: boolean;
+    } = {},
+  ) =>
+    api<Envelope<{ invites: ApiMintedFormInvite[]; sent: number; skipped: number }>>(
+      `/api/admin/forms/${id}/invites/remind`,
       { method: "POST", body: JSON.stringify(input) },
     ),
   revokeInvite: (id: string, inviteId: string) =>

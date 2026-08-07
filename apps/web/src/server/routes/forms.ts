@@ -19,6 +19,7 @@ import {
   type FormRow,
 } from "../services/forms";
 import { formResults } from "../services/forms-results";
+import { sendFormReminders } from "../services/form-reminders";
 import {
   createFormInvites,
   deleteFormInvite,
@@ -249,6 +250,9 @@ const InviteSchema = z
     name: z.string().nullable(),
     sentAt: z.unknown().nullable(),
     usedAt: z.unknown().nullable(),
+    /** When a reminder last went out to this person, and how many have. */
+    remindedAt: z.unknown().nullable(),
+    reminderCount: z.number(),
     createdAt: z.unknown().nullable(),
   })
   .openapi("FormInvite");
@@ -280,6 +284,23 @@ const InviteInput = z
     send: z.boolean().optional(),
   })
   .openapi("FormInviteInput");
+
+const RemindInput = z
+  .object({
+    /** Narrow to specific invites. Absent ⇒ everyone still outstanding. */
+    inviteIds: z.array(z.string()).max(MAX_INVITES_PER_CALL).optional(),
+    /** The form's own plaintext token, so the response carries ready-made
+     *  links. Held by the caller from create/rotate; never stored. */
+    formToken: z.string().max(120).optional(),
+    /** Email the reminder. Without it the fresh links are only in the
+     *  response — which is what a workshop reprinting them wants. */
+    send: z.boolean().optional(),
+    /** Hours to leave between two reminders to one person (default 24). */
+    minIntervalHours: z.number().int().min(0).max(24 * 365).optional(),
+    /** Remind anyway, however recently the last one went out. */
+    force: z.boolean().optional(),
+  })
+  .openapi("FormInviteRemindInput");
 
 const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
@@ -313,6 +334,8 @@ const serializeInvite = (row: FormInviteRow) => ({
   name: row.name,
   sentAt: row.sentAt,
   usedAt: row.usedAt,
+  remindedAt: row.remindedAt,
+  reminderCount: row.reminderCount,
   createdAt: row.createdAt,
 });
 
@@ -584,6 +607,62 @@ export const formsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       }
 
       return c.json({ data: { invites: minted.map(serializeMintedInvite), sent } }, 201);
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{id}/invites/remind",
+      tags: TAGS,
+      summary: "Remind whoever hasn't answered",
+      description:
+        "Mints a FRESH link for every outstanding invite and, with `send: true`, mails it. Earlier links keep working — every link an invite has ever had opens the same turn, and spending any one spends it. People who have answered are never reminded, and nobody is reminded twice inside `minIntervalHours` (default 24) unless `force`. The plaintext tokens are in THIS response and nowhere else.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdminMiddleware],
+      request: {
+        params: z.object({ id: z.string() }),
+        body: { required: true, content: { "application/json": { schema: RemindInput } } },
+      },
+      responses: {
+        200: {
+          description: "Reminded",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.object({
+                  invites: z.array(MintedInviteSchema),
+                  /** How many were emailed. */
+                  sent: z.number(),
+                  /** Outstanding invites left alone — answered already, or
+                   *  reminded too recently. */
+                  skipped: z.number(),
+                }),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const tenantId = auth.tenantId ?? null;
+      const input = c.req.valid("json");
+      const row = await getForm(ctx, tenantId, c.req.valid("param").id);
+      if (!row) throw new AppError("NOT_FOUND", "Form not found");
+
+      const { minted, sent, skipped } = await sendFormReminders(ctx, tenantId, row, {
+        ...(input.inviteIds ? { inviteIds: input.inviteIds } : {}),
+        formToken: input.formToken ?? null,
+        ...(input.send ? { send: true } : {}),
+        ...(input.minIntervalHours !== undefined
+          ? { minIntervalHours: input.minIntervalHours }
+          : {}),
+        ...(input.force ? { force: true } : {}),
+      });
+
+      return c.json({ data: { invites: minted.map(serializeMintedInvite), sent, skipped } });
     },
   )
   .openapi(

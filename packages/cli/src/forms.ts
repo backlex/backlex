@@ -36,6 +36,7 @@ const HELP = `backlex forms <list|get|fields|create|update|rotate-token|results|
                                   free-text answers are not quoted)
   invites <id>                    who was invited, and who has answered
   invite <id> --emails a@b,c@d    mint one single-use link per recipient
+  remind <id> [--send]            a fresh link for whoever hasn't answered
               [--form-token <t>]  …with ready-made links (token from create)
               [--send]            …and email them
   revoke-invite <id> <invite-id>  kill one link
@@ -201,7 +202,14 @@ export const runForms = async (args: string[]): Promise<void> => {
           process.exit(1);
         }
         const { data } = await client.request<{
-          data: Array<{ id: string; email: string | null; name: string | null; sentAt: unknown; usedAt: unknown }>;
+          data: Array<{
+            id: string;
+            email: string | null;
+            name: string | null;
+            sentAt: unknown;
+            usedAt: unknown;
+            reminderCount: number;
+          }>;
         }>("GET", `${BASE}/${encodeURIComponent(id)}/invites`);
         if (json) printJson(data);
         else
@@ -211,6 +219,7 @@ export const runForms = async (args: string[]): Promise<void> => {
               email: i.email ?? "—",
               name: i.name ?? "—",
               sent: i.sentAt ? "yes" : "no",
+              reminders: i.reminderCount ?? 0,
               answered: i.usedAt ? "yes" : "no",
             })),
           );
@@ -255,6 +264,53 @@ export const runForms = async (args: string[]): Promise<void> => {
         process.stderr.write(
           `\n${res.data.invites.length} invite(s) minted, ${res.data.sent} emailed.\n` +
             "These links are shown once — they cannot be listed again.\n",
+        );
+        return;
+      }
+      case "remind": {
+        const id = rest[0];
+        if (!id) {
+          process.stderr.write(
+            "forms remind <id> [--ids a,b] [--form-token <tok>] [--send] [--force] [--min-hours <n>]\n",
+          );
+          process.exit(1);
+        }
+        const ids = flag(rest, "--ids");
+        const minHours = flag(rest, "--min-hours");
+        const res = await client.request<{
+          data: {
+            invites: Array<{ email: string | null; token: string; url: string }>;
+            sent: number;
+            skipped: number;
+          };
+        }>("POST", `${BASE}/${encodeURIComponent(id)}/invites/remind`, {
+          ...(ids
+            ? {
+                inviteIds: ids
+                  .split(",")
+                  .map((x) => x.trim())
+                  .filter(Boolean),
+              }
+            : {}),
+          ...(flag(rest, "--form-token") ? { formToken: flag(rest, "--form-token") } : {}),
+          ...(has(rest, "--send") ? { send: true } : {}),
+          ...(has(rest, "--force") ? { force: true } : {}),
+          ...(minHours ? { minIntervalHours: Number(minHours) } : {}),
+        });
+        if (json) {
+          printJson(res.data);
+          return;
+        }
+        printTable(
+          res.data.invites.map((i) => ({
+            email: i.email ?? "—",
+            link: i.url || i.token,
+          })),
+        );
+        process.stderr.write(
+          `\n${res.data.invites.length} reminded, ${res.data.sent} emailed, ${res.data.skipped} left alone` +
+            " (answered already, or reminded too recently).\n" +
+            "These links are shown once — the earlier ones still work too.\n",
         );
         return;
       }

@@ -426,6 +426,11 @@ msgstr "{0} dosya seçildi."
 msgid "{0} free"
 msgstr "{0} boş"
 
+#. placeholder {0}: res.data.invites.length
+#: src/client/admin/pages/forms.tsx
+msgid "{0} fresh link(s) — copy them now."
+msgstr "{0} yeni bağlantı — şimdi kopyalayın."
+
 #. placeholder {0}: value.from
 #: src/client/admin/field-rollup-editor.tsx
 msgid "{0} has no number column to aggregate."
@@ -569,6 +574,12 @@ msgstr "{0} yayınlandı, {failed} başarısız."
 #: src/client/admin/app.tsx
 msgid "{0} published."
 msgstr "{0} yayınlandı."
+
+#. placeholder {0}: res.data.invites.length
+#. placeholder {1}: res.data.sent
+#: src/client/admin/pages/forms.tsx
+msgid "{0} reminded, {1} emailed."
+msgstr "{0} kişiye hatırlatıldı, {1} e-posta gönderildi."
 
 #. placeholder {0}: m.email
 #: src/client/admin/parity/app-orgs.tsx
@@ -943,6 +954,11 @@ msgstr "+ grup"
 #: src/client/admin/condition-editor.tsx
 msgid "+ preset"
 msgstr "+ ön ayar"
+
+#. placeholder {0}: i.reminderCount
+#: src/client/admin/pages/forms.tsx
+msgid "+{0}"
+msgstr "+{0}"
 
 #: src/client/admin/field-phone-input.tsx
 msgid "+90 532 111 22 33"
@@ -5668,6 +5684,10 @@ msgstr "Doğrulayıcınızı kaybederseniz her kod bir kez çalışır. Güvenli
 msgid "Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations."
 msgstr "Her koleksiyon, çalışma zamanında oluşturulan fiziksel bir tablodur. Alanları sürükleyin, izinleri ayarlayın veya REST/GraphQL olarak gösterin — tüm bunlar migrasyon yazmadan."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Each gets a fresh link. The ones already sent keep working — every link into an invite opens the same turn, and answering spends it."
+msgstr "Herkes yeni bir bağlantı alır. Daha önce gönderilenler de çalışmaya devam eder — bir davete giden her bağlantı aynı sırayı açar, yanıtlamak onu harcar."
+
 #: src/client/admin/parity/signatures.tsx
 msgid "Each link opens only once the one above it has signed."
 msgstr "Her bağlantı, yalnızca üstündeki kişi imzaladıktan sonra açılır."
@@ -9961,6 +9981,11 @@ msgstr "Yeni bağlantı"
 msgid "New link minted — the old one no longer works."
 msgstr "Yeni bağlantı üretildi — eskisi artık çalışmıyor."
 
+#. placeholder {0}: waiting.length
+#: src/client/admin/pages/forms.tsx
+msgid "New links for {0} waiting"
+msgstr "Bekleyen {0} kişi için yeni bağlantı"
+
 #: src/client/admin/pages/forms.tsx
 msgid "New matrix"
 msgstr "Yeni matris"
@@ -13521,6 +13546,15 @@ msgstr "Şemayı yeniden yükle"
 #: src/client/admin/pages/agents.tsx
 msgid "Remembered facts apply to"
 msgstr "Hatırlanan bilgilerin kapsamı"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Remind by email"
+msgstr "E-posta ile hatırlat"
+
+#. placeholder {0}: relTime(i.remindedAt)
+#: src/client/admin/pages/forms.tsx
+msgid "reminded {0}"
+msgstr "hatırlatıldı {0}"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/collection-settings.tsx

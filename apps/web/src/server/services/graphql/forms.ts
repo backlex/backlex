@@ -6,6 +6,7 @@ import {
   GraphQLError,
   GraphQLID,
   GraphQLInputObjectType,
+  GraphQLInt,
   GraphQLList,
   GraphQLNonNull,
   GraphQLObjectType,
@@ -24,6 +25,7 @@ import {
   type FormSettings,
 } from "../forms";
 import { formResults } from "../forms-results";
+import { sendFormReminders } from "../form-reminders";
 import {
   createFormInvites,
   deleteFormInvite,
@@ -40,6 +42,8 @@ const publicInvite = (r: FormInviteRow) => ({
   name: r.name,
   sentAt: r.sentAt,
   usedAt: r.usedAt,
+  remindedAt: r.remindedAt,
+  reminderCount: r.reminderCount,
   createdAt: r.createdAt,
 });
 
@@ -267,9 +271,56 @@ export const formMutationFields: Record<string, GraphQLFieldConfig<unknown, GqlC
       return minted.map((m) => ({ ...publicInvite(m), token: m.token, url: m.url }));
     },
   },
+  remindPublicFormInvites: {
+    type: new GraphQLNonNull(JSONScalar),
+    description:
+      "Mint a fresh link for everyone who hasn't answered, and with `send: true` mail it (admin-only). Earlier links keep working — every link an invite has ever had opens the same turn. Answered invites are never reminded, and nobody is reminded twice inside `minIntervalHours` (default 24) unless `force`. The plaintext tokens are in THIS response and nowhere else.",
+    args: {
+      id: { type: new GraphQLNonNull(GraphQLID) },
+      inviteIds: { type: new GraphQLList(new GraphQLNonNull(GraphQLID)) },
+      formToken: { type: GraphQLString },
+      send: { type: GraphQLBoolean },
+      minIntervalHours: { type: GraphQLInt },
+      force: { type: GraphQLBoolean },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireFormAdmin(gqlCtx);
+      const a = args as {
+        id: string;
+        inviteIds?: string[] | null;
+        formToken?: string | null;
+        send?: boolean | null;
+        minIntervalHours?: number | null;
+        force?: boolean | null;
+      };
+      const row = await getForm(gqlCtx.ctx, tenantId, a.id);
+      if (!row) throw new GraphQLError("Form not found", { extensions: { code: "NOT_FOUND" } });
+      const result = await surfaceAppError(() =>
+        sendFormReminders(gqlCtx.ctx, tenantId, row, {
+          ...(a.inviteIds?.length ? { inviteIds: a.inviteIds } : {}),
+          formToken: a.formToken ?? null,
+          ...(a.send ? { send: true } : {}),
+          ...(typeof a.minIntervalHours === "number"
+            ? { minIntervalHours: a.minIntervalHours }
+            : {}),
+          ...(a.force ? { force: true } : {}),
+        }),
+      );
+      return {
+        invites: result.minted.map((m) => ({
+          ...publicInvite(m),
+          token: m.token,
+          url: m.url,
+        })),
+        sent: result.sent,
+        skipped: result.skipped,
+      };
+    },
+  },
   revokePublicFormInvite: {
     type: new GraphQLNonNull(GraphQLBoolean),
-    description: "Revoke an invite; its link stops working immediately (admin-only).",
+    description:
+      "Revoke an invite; every link that opened it stops working immediately (admin-only).",
     args: {
       id: { type: new GraphQLNonNull(GraphQLID) },
       inviteId: { type: new GraphQLNonNull(GraphQLID) },

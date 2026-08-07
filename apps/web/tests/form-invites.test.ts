@@ -200,6 +200,196 @@ describe("form invites", () => {
     expect(res.status).toBe(404);
   });
 
+  /* ── reminders ───────────────────────────────────────────────────── */
+
+  const remind = async (
+    body: Record<string, unknown> = {},
+    id = formId,
+  ): Promise<{
+    status: number;
+    invites: { id: string; token: string; url: string; email: string | null }[];
+    sent: number;
+    skipped: number;
+    message: string;
+  }> => {
+    const res = await h.fetch(`/api/admin/forms/${id}/invites/remind`, json(body));
+    const text = await res.text();
+    if (res.status !== 200)
+      return { status: res.status, invites: [], sent: 0, skipped: 0, message: text };
+    const parsed = JSON.parse(text) as {
+      data: {
+        invites: { id: string; token: string; url: string; email: string | null }[];
+        sent: number;
+        skipped: number;
+      };
+    };
+    return { status: res.status, ...parsed.data, message: text };
+  };
+
+  test("a reminder adds a link without taking the first one away", async () => {
+    const one = await h.fetch(
+      "/api/admin/forms",
+      json({
+        name: "Reminded survey",
+        collection: slug,
+        fields: [{ name: "answer" }],
+        settings: { inviteOnly: true },
+      }),
+    );
+    const { form, token } = ((await one.json()) as {
+      data: { form: { id: string }; token: string };
+    }).data;
+    const first = await mint({ recipients: [{ email: "ada@example.test" }], formToken: token }, form.id);
+    const original = first.invites[0]!.token;
+
+    const nudged = await remind({ formToken: token, force: true }, form.id);
+    expect(nudged.status).toBe(200);
+    expect(nudged.invites.length).toBe(1);
+    const reminder = nudged.invites[0]!.token;
+    expect(reminder).not.toBe(original);
+    expect(nudged.invites[0]!.id).toBe(first.invites[0]!.id);
+
+    const answer = (invite: string, value: string) =>
+      publicFetch(
+        `/api/public/forms/${token}/submit`,
+        json({ data: { answer: value }, invite }),
+      );
+
+    // BOTH links open the form — the person being reminded is precisely the
+    // person whose first link must not break.
+    for (const t of [original, reminder]) {
+      const def = await publicFetch(`/api/public/forms/${token}?i=${t}`);
+      expect(((await def.json()) as { data: { closed: unknown } }).data.closed).toBeNull();
+    }
+
+    // …and they are one turn, not two: spending either spends it.
+    expect((await answer(original, "answered once")).status).toBe(201);
+    expect((await answer(reminder, "and again")).status).toBe(410);
+
+    const list = await h.fetch(`/api/admin/forms/${form.id}/invites`);
+    const rows = ((await list.json()) as {
+      data: { usedAt: unknown; remindedAt: unknown; reminderCount: number }[];
+    }).data;
+    expect(rows[0]!.usedAt).not.toBeNull();
+    expect(rows[0]!.reminderCount).toBe(1);
+    expect(rows[0]!.remindedAt).not.toBeNull();
+    // No token, ever, in a read response.
+    expect(JSON.stringify(rows)).not.toContain(reminder);
+  });
+
+  test("nobody who has answered is reminded, and nobody twice too soon", async () => {
+    const one = await h.fetch(
+      "/api/admin/forms",
+      json({
+        name: "Paced reminders",
+        collection: slug,
+        fields: [{ name: "answer" }],
+        settings: { inviteOnly: true },
+      }),
+    );
+    const { form, token } = ((await one.json()) as {
+      data: { form: { id: string }; token: string };
+    }).data;
+    const { invites } = await mint(
+      { recipients: [{ email: "a@example.test" }, { email: "b@example.test" }], formToken: token },
+      form.id,
+    );
+    // One of the two answers.
+    expect(
+      (
+        await publicFetch(
+          `/api/public/forms/${token}/submit`,
+          json({ data: { answer: "done" }, invite: invites[0]!.token }),
+        )
+      ).status,
+    ).toBe(201);
+
+    const first = await remind({ formToken: token }, form.id);
+    expect(first.invites.length).toBe(1);
+    expect(first.invites[0]!.email).toBe("b@example.test");
+    // The one who answered is counted as left alone, not as reminded.
+    expect(first.skipped).toBe(1);
+
+    // A second nudge a moment later reminds nobody: the default interval is a
+    // day, and a reminder that arrives every time an operator opens the panel
+    // is a reminder nobody reads.
+    const second = await remind({ formToken: token }, form.id);
+    expect(second.invites.length).toBe(0);
+    expect(second.skipped).toBe(2);
+
+    // Unless the operator says so.
+    expect((await remind({ formToken: token, force: true }, form.id)).invites.length).toBe(1);
+    // …or asks for a shorter gap.
+    expect(
+      (await remind({ formToken: token, minIntervalHours: 0 }, form.id)).invites.length,
+    ).toBe(1);
+  });
+
+  test("a form nobody can answer refuses to remind anyone", async () => {
+    const one = await h.fetch(
+      "/api/admin/forms",
+      json({
+        name: "Closed survey",
+        collection: slug,
+        fields: [{ name: "answer" }],
+        settings: { inviteOnly: true, closesAt: Date.now() - 60_000 },
+      }),
+    );
+    const { form, token } = ((await one.json()) as {
+      data: { form: { id: string }; token: string };
+    }).data;
+    await mint({ recipients: [{ email: "late@example.test" }], formToken: token }, form.id);
+
+    const res = await remind({ formToken: token, force: true }, form.id);
+    expect(res.status).toBe(422);
+    expect(res.message).toContain("not taking answers");
+
+    // A paused form is refused too, and says which thing is wrong.
+    const paused = await h.fetch(`/api/admin/forms/${form.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active: false, settings: { inviteOnly: true } }),
+    });
+    expect(paused.status).toBe(200);
+    const res2 = await remind({ formToken: token, force: true }, form.id);
+    expect(res2.status).toBe(422);
+    expect(res2.message).toContain("paused");
+  });
+
+  test("revoking an invite kills every link into it", async () => {
+    const one = await h.fetch(
+      "/api/admin/forms",
+      json({
+        name: "Revoked after reminding",
+        collection: slug,
+        fields: [{ name: "answer" }],
+        settings: { inviteOnly: true },
+      }),
+    );
+    const { form, token } = ((await one.json()) as {
+      data: { form: { id: string }; token: string };
+    }).data;
+    const { invites } = await mint(
+      { recipients: [{ email: "gone@example.test" }], formToken: token },
+      form.id,
+    );
+    const nudged = await remind({ formToken: token, force: true }, form.id);
+    const reminder = nudged.invites[0]!.token;
+
+    const del = await h.fetch(`/api/admin/forms/${form.id}/invites/${invites[0]!.id}`, {
+      method: "DELETE",
+    });
+    expect(del.status).toBe(200);
+
+    for (const t of [invites[0]!.token, reminder]) {
+      const res = await publicFetch(
+        `/api/public/forms/${token}/submit`,
+        json({ data: { answer: "too late" }, invite: t }),
+      );
+      expect(res.status).toBe(410);
+    }
+  });
+
   test("the batch has a ceiling, said out loud", async () => {
     const res = await h.fetch(
       `/api/admin/forms/${formId}/invites`,

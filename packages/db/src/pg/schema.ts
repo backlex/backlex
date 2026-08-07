@@ -2517,9 +2517,16 @@ export const formInvites = pgTable(
      *  operator hands out themselves. */
     email: text("email"),
     name: text("name"),
+    /** The link it was minted with. Reminders mint more, and those live in
+     *  `form_invite_tokens` — all of them open this one turn. */
     tokenHash: text("token_hash").notNull(),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     usedAt: timestamp("used_at", { withTimezone: true }),
+    /** When a reminder last went out, and how many have. Both are about the
+     *  invite and not about a link: a reminder mints another way in to the
+     *  same turn. */
+    remindedAt: timestamp("reminded_at", { withTimezone: true }),
+    reminderCount: integer("reminder_count").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -2529,6 +2536,41 @@ export const formInvites = pgTable(
     uniqueIndex("form_invites_token_idx").on(t.tokenHash),
     index("form_invites_form_idx").on(t.formId),
     index("form_invites_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
+ * A LATER link into an invite — the ones a reminder mints.
+ *
+ * An invite is a turn, not a link. It gets more than one because the plaintext
+ * token is never stored, only its SHA-256, so a reminder cannot re-send the
+ * link that was mailed and has to mint another. Rotating the invite's own token
+ * instead would kill the link in the first mail, in front of exactly the person
+ * the reminder is trying to reach.
+ *
+ * The first link stays on the invite (`form_invites.token_hash`) and every one
+ * after it lands here. All of them open the same turn; spending any one spends
+ * it (`form_invites.used_at`) and the rest stop working with it. Uniqueness is
+ * still global — two links resolving to two different turns would let either
+ * answer as the other.
+ */
+export const formInviteTokens = pgTable(
+  "form_invite_tokens",
+  {
+    id: text("id").primaryKey(),
+    inviteId: text("invite_id").notNull(),
+    /** Denormalised from the invite so the lookup can be scoped to one form
+     *  without a join — an invite to the staff survey must not open the
+     *  customer one. */
+    formId: text("form_id").notNull(),
+    tenantId: text("tenant_id"),
+    tokenHash: text("token_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("form_invite_tokens_hash_idx").on(t.tokenHash),
+    index("form_invite_tokens_invite_idx").on(t.inviteId),
+    index("form_invite_tokens_form_idx").on(t.formId),
   ],
 );
 

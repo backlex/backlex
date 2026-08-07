@@ -227,6 +227,33 @@ ordering in which a double-click cannot leave two answers behind one link. A
 submission that then fails validation hands it back: a missed required field is
 a mistake to correct, not a door that locks behind you.
 
+### Reminding whoever hasn't answered
+
+```bash
+backlex forms remind <form-id> --form-token frm_… --send
+backlex forms remind <form-id> --ids inv1,inv2 --min-hours 48
+```
+
+**An invite is a turn, not a link.** A reminder cannot re-send the link that was
+mailed — only the SHA-256 is stored — so it mints a fresh one, and the earlier
+ones keep working: every link an invite has ever had opens the same turn, and
+spending any one spends it. The alternative, rotating the invite's own token,
+would kill the link in the first mail in front of exactly the person the
+reminder is trying to reach. The first link lives on the invite,
+every later one in `form_invite_tokens`, and revoking the invite kills all of
+them at once.
+
+Who is left alone: anyone who has answered, and anyone reminded within
+`minIntervalHours` (default 24) unless you pass `force`. `skipped` says how
+many. Reminding is refused outright when the form is paused, not open yet,
+closed or full — a reminder that sends someone to a form which turns them away
+is a support ticket with an apology attached.
+
+Mail is optional (`send: true`), uses the `form_reminder` template when the
+workspace defines one, and marks `sentAt`; the invite list carries `remindedAt`
+and `reminderCount` either way. As with minting, the plaintext links are in the
+response and nowhere else.
+
 Emailing is optional (`send: true`) and uses the `form_invite` template when the
 workspace defines one, else a built-in fallback. A recipient with no address is
 allowed on purpose — a workshop hands links out on paper.
@@ -326,19 +353,20 @@ Everything goes through one service (`services/forms.ts`):
 
 | Surface | Entry |
 |---|---|
-| REST | `/api/admin/forms` (+ `/eligible-fields/:collection`, `/:id/rotate-token`, `/:id/results`, `/:id/invites`), public `/api/public/forms/:token` (+ `/upload`, `/draft`, `/submit`) |
+| REST | `/api/admin/forms` (+ `/eligible-fields/:collection`, `/:id/rotate-token`, `/:id/results`, `/:id/invites`, `/:id/invites/remind`), public `/api/public/forms/:token` (+ `/upload`, `/draft`, `/submit`) |
 | SDK | `client.forms.*` |
-| GraphQL | `publicForms` / `publicForm` / `publicFormResults` / `publicFormInvites`, `createPublicForm` / `updatePublicForm` / `deletePublicForm` / `rotatePublicFormToken` / `invitePublicForm` / `revokePublicFormInvite` |
-| MCP | `forms.*` (list, get, eligible_fields, create, update, rotate_token, results, invites, invite, revoke_invite, delete) |
-| CLI | `backlex forms <list\|get\|fields\|create\|update\|rotate-token\|results\|invites\|invite\|revoke-invite\|delete>` |
+| GraphQL | `publicForms` / `publicForm` / `publicFormResults` / `publicFormInvites`, `createPublicForm` / `updatePublicForm` / `deletePublicForm` / `rotatePublicFormToken` / `invitePublicForm` / `remindPublicFormInvites` / `revokePublicFormInvite` |
+| MCP | `forms.*` (list, get, eligible_fields, create, update, rotate_token, results, invites, invite, remind_invites, revoke_invite, delete) |
+| CLI | `backlex forms <list\|get\|fields\|create\|update\|rotate-token\|results\|invites\|invite\|remind\|revoke-invite\|delete>` |
 
 Parity gate: `apps/web/tests/forms-surfaces.test.ts`; core behaviour:
 `apps/web/tests/forms.test.ts`; matrix grids:
 `apps/web/tests/forms-matrix.test.ts`; survey shapes + results arithmetic:
 `apps/web/tests/forms-results.test.ts` (and `forms-results-pg.test.ts` for the
 Postgres spelling of the array explode); closing rules:
-`apps/web/tests/forms-availability.test.ts`; invites:
-`apps/web/tests/form-invites.test.ts`; saved progress:
+`apps/web/tests/forms-availability.test.ts`; invites + reminders:
+`apps/web/tests/form-invites.test.ts` (and `form-invites-pg.test.ts` for the
+Postgres spelling of the reminder join and its batch stamp); saved progress:
 `apps/web/tests/form-drafts.test.ts` (and `form-drafts-pg.test.ts` for the
 Postgres spelling of the upsert and the sweep's timestamp bound).
 
@@ -347,7 +375,6 @@ Postgres spelling of the upsert and the sweep's timestamp bound).
 - Relation fields.
 - Localized fields.
 - Multiple files per block (a `file` field stores one key).
-- Invite reminders (a second mail to whoever hasn't answered).
 - Resuming a draft on another browser without an invite — the cookie is the key
   there, and minting a shareable resume link would be a second bearer secret to
   lose.

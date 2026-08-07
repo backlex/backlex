@@ -36,6 +36,7 @@ import type { Ctx } from "../context";
 import type { CollectionRow } from "./items/collection-loader";
 import { loadCollection } from "./items/collection-loader";
 import { deleteFormDrafts } from "./form-drafts";
+import { deleteFormInvites } from "./form-invites";
 import { hashToken } from "./shared-links";
 
 const formTable = (dialect: "pg" | "sqlite") =>
@@ -613,8 +614,10 @@ export const deleteForm = async (
   await (ctx.db as any).delete(t).where(eq(t.id, id));
   // Submitted rows stay — they are the collection's, not the form's. Half-
   // filled ones do not: they are personal data whose only reason to exist was
-  // a form that no longer does.
+  // a form that no longer does. Nor do the invites, which are a list of names
+  // and addresses held for a form that is gone.
   await deleteFormDrafts(ctx, id);
+  await deleteFormInvites(ctx, id);
 };
 
 /** Replace the form's token. Returns the new one-time plaintext token. */

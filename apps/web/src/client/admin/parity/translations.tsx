@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { PushToast } from "../types";
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -26,10 +25,16 @@ import { TranslationsSkeleton } from "../page-skeletons";
 const TR_TABLE_CLS =
   "[&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 
+/** One row of the translation matrix: the string key, plus one column per
+ *  configured locale. Held as a bare `Record<string, string>` before, which
+ *  made `r.key` — the one column that is always there — read as possibly
+ *  undefined at every use. */
+type TranslationRow = { key: string } & Record<string, string>;
+
 export function TranslationsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [locales, setLocales] = useState<string[]>(["en"]);
-  const [data, setData] = useState<Record<string, string>[]>([]);
+  const [data, setData] = useState<TranslationRow[]>([]);
   // First-load gate — drives the page skeleton until the matrix lands.
   const [loaded, setLoaded] = useState(false);
   const [base, setBase] = useState("en");
@@ -51,7 +56,7 @@ export function TranslationsPage({ pushToast }: { pushToast: PushToast }) {
         const keys = Object.keys(res.data || {});
         if (keys.length > 0) {
           const rows = keys.map((k) => {
-            const row: Record<string, string> = { key: k };
+            const row: TranslationRow = { key: k };
             for (const l of cols) row[l] = res.data[k]?.[l] ?? "";
             return row;
           });
@@ -135,7 +140,7 @@ export function TranslationsPage({ pushToast }: { pushToast: PushToast }) {
           existingKeys={data.map((r) => r.key)}
           onClose={() => setAddOpen(false)}
           onCreate={async ({ key, value }) => {
-            const seed: Record<string, string> = { key };
+            const seed: TranslationRow = { key };
             for (const l of locales) seed[l] = "";
             if (value) seed[base] = value;
             setData((arr) => [...arr, seed]);
@@ -186,7 +191,7 @@ export function TranslationsPage({ pushToast }: { pushToast: PushToast }) {
               setLocales(next);
               setBase(defaultLocale);
               setData((arr) => arr.map((r) => {
-                const row: Record<string, string> = { key: r.key };
+                const row: TranslationRow = { key: r.key };
                 for (const l of next) row[l] = r[l] ?? "";
                 return row;
               }));

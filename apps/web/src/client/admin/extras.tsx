@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Cmd+K palette + Realtime event tail + Schema view + Empty states
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -53,16 +52,19 @@ export function Palette({ open, onClose, onNavigate, items, collections, isAdmin
 
   const groups = useMemo(() => {
     const ql = q.toLowerCase().trim();
-    const nav: PaletteSelection[] = NAV_ITEMS.concat(NAV_DEVELOPERS, NAV_SETTINGS).filter((n) => isNavVisible(n.id, isAdmin, navGrants)).map((n) => ({ kind: "page", id: n.id, label: i18n._(navLabel(n.id)), icon: String(n.icon), meta: t`goto` })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
-    const cols: PaletteSelection[] = collections.map((c) => ({ kind: "collection", id: c.slug, label: c.slug, icon: "Database", meta: t`${c.count} items` })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
+    // The `: PaletteSelection` return annotations are what pin `kind` to its
+    // literal — without them the mapper widens it to `string` and the array no
+    // longer matches the discriminated union.
+    const nav: PaletteSelection[] = NAV_ITEMS.concat(NAV_DEVELOPERS, NAV_SETTINGS).filter((n) => isNavVisible(n.id, isAdmin, navGrants)).map((n): PaletteSelection => ({ kind: "page", id: n.id, label: i18n._(navLabel(n.id)), icon: String(n.icon), meta: t`goto` })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
+    const cols: PaletteSelection[] = collections.map((c): PaletteSelection => ({ kind: "collection", id: c.slug, label: c.slug, icon: "Database", meta: t`${c.count} items` })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
     const its: PaletteSelection[] = ql
-      ? items.filter((i) => i.title.toLowerCase().includes(ql) || i.slug.toLowerCase().includes(ql)).slice(0, 8).map((i) => ({ kind: "item", id: i.id, label: i.title, sub: i.slug, icon: "Inbox", meta: i.status }))
+      ? items.filter((i) => i.title.toLowerCase().includes(ql) || i.slug.toLowerCase().includes(ql)).slice(0, 8).map((i): PaletteSelection => ({ kind: "item", id: i.id, label: i.title, sub: i.slug, icon: "Inbox", meta: i.status }))
       : [];
-    const actions: PaletteSelection[] = [
+    const actions: PaletteSelection[] = ([
       { kind: "action", id: "new-post", label: t`New post`, icon: "Plus", meta: "C" },
       { kind: "action", id: "refresh", label: t`Refresh`, icon: "Refresh", meta: "R" },
       { kind: "action", id: "toggle-theme", label: t`Toggle theme`, icon: "Moon", meta: "D" },
-    ].filter((x) => !ql || x.label.toLowerCase().includes(ql));
+    ] satisfies PaletteSelection[]).filter((x) => !ql || x.label.toLowerCase().includes(ql));
     return [
       { name: t`Items`, list: its },
       { name: t`Collections`, list: cols },

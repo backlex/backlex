@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { PushToast } from "../types";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -42,7 +41,21 @@ import { DatePicker } from "@/components/date-picker";
 import { TimeField } from "@/components/time-field";
 import { ConfirmAction } from "@/components/confirm-action";
 import { ColorSwatchPicker } from "@/components/color-swatch-picker";
-import { ACCENTS, type PublicAppearance } from "@/lib/public-theme";
+import {
+  ACCENTS,
+  type PublicAppearance,
+  type PublicFont,
+  type PublicTheme,
+} from "@/lib/public-theme";
+import { asOneOf } from "../types";
+
+// The value sets the pickers below may emit. `Select` hands its handler a bare
+// `string`, so each of these is the list that string is narrowed back against
+// before it is written into a typed field.
+const RULE_KINDS = ["open", "block"] as const;
+const QUESTION_TYPES = ["text", "textarea", "select", "boolean"] as const;
+const PUBLIC_THEMES: readonly PublicTheme[] = ["dark", "light"];
+const PUBLIC_FONTS: readonly PublicFont[] = ["sans", "lexend", "mono", "system"];
 
 /**
  * Availability & booking — what is bookable, when it is open, and who is coming.
@@ -1886,7 +1899,11 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
               >
                 <Select
                   value={r.kind}
-                  onChange={(v) => editRules((arr) => arr.map((x, j) => (j === i ? { ...x, kind: v } : x)))}
+                  onChange={(v) =>
+                    editRules((arr) =>
+                      arr.map((x, j) => (j === i ? { ...x, kind: asOneOf(RULE_KINDS, v, "open") } : x)),
+                    )
+                  }
                   className="min-w-0"
                   options={[
                     { value: "open", label: t`Open` },
@@ -2039,7 +2056,7 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
                   </div>
                   <Select
                     value={q.type ?? "text"}
-                    onChange={(v) => patch({ type: v })}
+                    onChange={(v) => patch({ type: asOneOf(QUESTION_TYPES, v, "text") })}
                     className="min-w-0"
                     options={[
                       { value: "text", label: t`Short text` },
@@ -2567,7 +2584,7 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
                 <Select
                   value={look.theme ?? ""}
                   onChange={(v) =>
-                    editLook(({ theme, ...rest }) => (v ? { ...rest, theme: v } : rest))
+                    editLook(({ theme, ...rest }) => (v ? { ...rest, theme: asOneOf(PUBLIC_THEMES, v, "light") } : rest))
                   }
                   className="min-w-0"
                   options={[
@@ -2587,7 +2604,9 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
                   // picker offers. A choice the panel does not name is a choice
                   // an operator cannot see is being made.
                   value={look.font ?? "sans"}
-                  onChange={(v) => editLook(({ font, ...rest }) => (v ? { ...rest, font: v } : rest))}
+                  onChange={(v) =>
+                    editLook(({ font, ...rest }) => (v ? { ...rest, font: asOneOf(PUBLIC_FONTS, v, "sans") } : rest))
+                  }
                   className="min-w-0"
                   options={[
                     { value: "sans", label: "Manrope" },

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Token/chip editor for a collection's "display template" — the mustache string
 // (`{{ title }} — {{ status }}`) used for row labels in relation pickers and
 // references. Field placeholders render as removable shadcn Badges; literal text
@@ -80,7 +79,7 @@ function normalize(segs: Segment[]): Segment[] {
     }
   }
   const out: Segment[] = [];
-  if (merged.length === 0 || merged[0].kind !== "text") {
+  if (merged.length === 0 || merged[0]?.kind !== "text") {
     out.push({ kind: "text", value: "" });
   }
   for (const seg of merged) {
@@ -138,7 +137,7 @@ export function DisplayTemplateEditor({
     // Keep edits local without re-normalizing every keystroke (which would
     // collapse the array and steal focus); just patch the one segment.
     setSegments((prev) => {
-      const next = prev.map((s, i) =>
+      const next = prev.map((s, i): Segment =>
         i === idx && s.kind === "text" ? { kind: "text", value: text } : s,
       );
       onChange(serializeSegments(next));
@@ -208,14 +207,18 @@ export function DisplayTemplateEditor({
     const sample: Record<string, unknown> = {};
     for (const seg of segments) {
       if (seg.kind !== "field") continue;
-      const parts = seg.path.split(".");
+      // `split` always yields at least one element, but its element type is
+      // `string | undefined` under `noUncheckedIndexedAccess` — skip the empty
+      // segments instead of indexing blind.
+      const parts = seg.path.split(".").filter((p) => p.length > 0);
+      const leaf = parts[parts.length - 1];
+      if (!leaf) continue;
       let cur = sample;
-      for (let i = 0; i < parts.length - 1; i++) {
-        const p = parts[i];
+      for (const p of parts.slice(0, -1)) {
         if (typeof cur[p] !== "object" || cur[p] == null) cur[p] = {};
         cur = cur[p] as Record<string, unknown>;
       }
-      cur[parts[parts.length - 1]] = parts[parts.length - 1];
+      cur[leaf] = leaf;
     }
     return renderTemplate(tpl, sample);
   }, [segments]);

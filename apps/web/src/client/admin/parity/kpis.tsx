@@ -1,5 +1,4 @@
-// @ts-nocheck
-import type { PushToast } from "../types";
+import { asOneOf, type PushToast } from "../types";
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
@@ -51,14 +50,14 @@ const AGG_OPTIONS = [
   { value: "avg", label: "avg", hint: "Mean of a numeric column" },
   { value: "min", label: "min", hint: "Smallest value" },
   { value: "max", label: "max", hint: "Largest value" },
-];
+] as const;
 
 const FORMAT_OPTIONS = [
   { value: "number", label: "Number", hint: "Plain count or quantity" },
   { value: "money", label: "Money", hint: "Currency comes from the column" },
   { value: "percent", label: "Percent", hint: "Stored as a ratio: 0.043 → 4.3%" },
   { value: "duration", label: "Duration", hint: "Milliseconds, printed as h/m/s" },
-];
+] as const;
 
 const ALERT_OPTIONS = [
   { value: "", label: "No alert", hint: "Nobody is notified about this figure" },
@@ -72,7 +71,14 @@ const DIRECTION_OPTIONS = [
   { value: "up", label: "Up is good", hint: "Rising is green — revenue, orders" },
   { value: "down", label: "Down is good", hint: "Rising is red — refunds, cancellations" },
   { value: "neutral", label: "Neutral", hint: "No judgement on the direction" },
-];
+] as const;
+
+// The value sets each Select above may emit, derived from the option lists so
+// adding an option and forgetting the union is not possible.
+const AGG_VALUES = AGG_OPTIONS.map((o) => o.value);
+const FORMAT_VALUES = FORMAT_OPTIONS.map((o) => o.value);
+const DIRECTION_VALUES = DIRECTION_OPTIONS.map((o) => o.value);
+const ALERT_VALUES = ["above", "below", "change_above", "change_below"] as const;
 
 /** Columns a sum/avg/min/max can target. Mirrors NUMERIC_FIELD_TYPES server-side. */
 const NUMERIC_TYPES = new Set(["integer", "number", "money"]);
@@ -267,6 +273,10 @@ export function KpisPage({ pushToast }: { pushToast: PushToast }) {
       id: editing.id ?? `pending-${crypto.randomUUID()}`,
       tenantId: "",
       createdBy: null,
+      // Server-evaluated, so the optimistic row cannot know it — carry the
+      // last known state for an edit rather than clearing a firing badge that
+      // is still true, and default to "not firing" for a brand-new KPI.
+      alertFiring: kpis.find((k) => k.id === editing.id)?.alertFiring ?? false,
       ...body,
     };
     setKpis((prev) =>
@@ -420,9 +430,10 @@ export function KpisPage({ pushToast }: { pushToast: PushToast }) {
                 <Field label={t`Aggregate`}>
                   <Select
                     value={editing.agg}
-                    onChange={(v) =>
-                      setEditing({ ...editing, agg: v, field: v === "count" ? null : editing.field })
-                    }
+                    onChange={(raw) => {
+                      const v = asOneOf(AGG_VALUES, raw, "count");
+                      setEditing({ ...editing, agg: v, field: v === "count" ? null : editing.field });
+                    }}
                     options={AGG_OPTIONS}
                     className="w-full min-w-0"
                   />
@@ -462,7 +473,7 @@ export function KpisPage({ pushToast }: { pushToast: PushToast }) {
                 <Field label={t`Format`}>
                   <Select
                     value={editing.format}
-                    onChange={(v) => setEditing({ ...editing, format: v })}
+                    onChange={(v) => setEditing({ ...editing, format: asOneOf(FORMAT_VALUES, v, "number") })}
                     options={FORMAT_OPTIONS}
                     className="w-full min-w-0"
                   />
@@ -470,7 +481,7 @@ export function KpisPage({ pushToast }: { pushToast: PushToast }) {
                 <Field label={t`Good direction`} hint={t`Which way the delta is green`}>
                   <Select
                     value={editing.direction}
-                    onChange={(v) => setEditing({ ...editing, direction: v })}
+                    onChange={(v) => setEditing({ ...editing, direction: asOneOf(DIRECTION_VALUES, v, "up") })}
                     options={DIRECTION_OPTIONS}
                     className="w-full min-w-0"
                   />
@@ -538,7 +549,9 @@ export function KpisPage({ pushToast }: { pushToast: PushToast }) {
                     onChange={(v) =>
                       setEditing({
                         ...editing,
-                        alertOperator: v || null,
+                        // "" is the deliberate "No alert" option, so it maps to
+                        // null rather than through the narrowing fallback.
+                        alertOperator: v ? asOneOf(ALERT_VALUES, v, "above") : null,
                         // An operator with no threshold can never decide, so the
                         // two are cleared and required together.
                         alertValue: v ? (editing.alertValue ?? 0) : null,

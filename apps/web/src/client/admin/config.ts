@@ -6,6 +6,7 @@
 // runtime via /api/admin/settings/runtime; every collection / item / metric /
 // user / role surface in the admin reads from its real API endpoint.
 import type { IconKey } from "./icons";
+import type { StorageType } from "./interfaces";
 
 export interface Author {
   id: string;
@@ -29,7 +30,16 @@ export interface Post {
 
 export interface SchemaField {
   name: string;
-  type: "text" | "longtext" | "integer" | "number" | "boolean" | "json" | "timestamp" | "uuid" | "enum" | "relation";
+  /** The one storage-type union, shared with the interface catalog.
+   *
+   *  This used to spell out its own list of ten, which had fallen behind the
+   *  catalog by eight: money / phone / email / url / hash / geo /
+   *  relation_many, plus the presentational divider + notice. Fields of those
+   *  types are created and rendered all over the admin, but were
+   *  unrepresentable here — so a check like `f.type === "divider"` compared
+   *  against a union that could not hold it. The dropped `"enum"` was the
+   *  reverse: no interface maps to it and the backend has no such type. */
+  type: StorageType;
   system?: boolean;
   nullable: boolean;
   default: string | null;

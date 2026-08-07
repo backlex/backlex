@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Per-collection settings tab — edit metadata (singular/plural/note/display
 // template), toggle owner-scope, and a destructive zone to drop the whole
 // collection. Mounted as the 4th tab next to Items / Schema / Permissions.
@@ -21,7 +20,7 @@ import {
   CommandList,
 } from "@backlex/ui/components/command";
 import { vectorApi, type VectorCapabilities } from "./api";
-import { I, type IconKey } from "./icons";
+import { I, type IconComponent, type IconKey } from "./icons";
 import { Select } from "./select";
 import { Button, Switch } from "./ui";
 import { DisplayTemplateEditor } from "./display-template-editor";
@@ -94,6 +93,19 @@ interface SchemaLike {
 }
 
 type SortClause = { field: string; dir: "asc" | "desc" };
+
+/** Swap two entries, returning the array untouched if either index is out of
+ *  range. The destructuring swap it replaces (`[a[i], a[j]] = [a[j], a[i]]`)
+ *  reads both slots as possibly-undefined and writes them straight back in. */
+const swapAt = <T,>(arr: T[], a: number, b: number): T[] => {
+  const x = arr[a];
+  const y = arr[b];
+  if (x === undefined || y === undefined) return arr;
+  const next = [...arr];
+  next[a] = y;
+  next[b] = x;
+  return next;
+};
 
 const parseDefaultSort = (raw?: string | null): SortClause[] => {
   if (!raw) return [];
@@ -281,9 +293,7 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
 
   const accent = resolveCollectionColor(schema.color);
   const CurrentIcon =
-    (I as Record<string, (p: { size?: number }) => JSX.Element>)[
-      schema.icon as IconKey
-    ] ?? I.Database;
+    (I as Record<string, IconComponent>)[schema.icon as IconKey] ?? I.Database;
   const iconKeys = Object.keys(I).sort() as IconKey[];
 
   return (
@@ -733,11 +743,7 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
                   title={t`Move up`}
                   disabled={i === 0}
                   onClick={() =>
-                    setSortClauses((cs) => {
-                      const next = [...cs];
-                      [next[i - 1], next[i]] = [next[i], next[i - 1]];
-                      return next;
-                    })
+                    setSortClauses((cs) => swapAt(cs, i - 1, i))
                   }
                 >
                   <I.ChevronUp size={12} />
@@ -748,11 +754,7 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
                   title={t`Move down`}
                   disabled={i === sortClauses.length - 1}
                   onClick={() =>
-                    setSortClauses((cs) => {
-                      const next = [...cs];
-                      [next[i], next[i + 1]] = [next[i + 1], next[i]];
-                      return next;
-                    })
+                    setSortClauses((cs) => swapAt(cs, i, i + 1))
                   }
                 >
                   <I.ChevronDown size={12} />

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Shared sequence editor — the Numbering tab of the Add / Edit field dialogs,
 // shown for the `sequence` interface. A sequence column is a document number
 // the server issues on insert (INV-2026-0001), so nothing here is free text the
@@ -92,15 +91,18 @@ export const sequenceToDraft = (v: unknown, defaultTimezone = "UTC"): SequenceDr
   const m =
     /^(.*)\{(#+)\}$/.exec(pattern) ??
     null;
+  // Both groups are non-optional in the pattern above, so a match always has
+  // them — the `?? ""` only supplies the `string` the compiler cannot infer
+  // from `RegExpExecArray`'s `(string | undefined)[]` element type.
   if (m) {
-    const head = m[1];
-    const digits = m[2].length;
+    const head = m[1] ?? "";
+    const digits = (m[2] ?? "").length;
     let shape: SequenceShape | null = null;
     let prefix = "";
     const ym = /^(.*)\{YYYY\}\{MM\}-$/.exec(head);
     const y = /^(.*)\{YYYY\}-$/.exec(head);
-    if (ym) { shape = "year_month"; prefix = ym[1]; }
-    else if (y) { shape = "year"; prefix = y[1]; }
+    if (ym) { shape = "year_month"; prefix = ym[1] ?? ""; }
+    else if (y) { shape = "year"; prefix = y[1] ?? ""; }
     else if (!/[{}]/.test(head)) { shape = "plain"; prefix = head; }
     if (shape) {
       return { shape, prefix, digits, start, restart: reset !== "never", pattern, timezone };

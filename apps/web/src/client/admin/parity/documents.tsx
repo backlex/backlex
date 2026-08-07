@@ -354,7 +354,7 @@ export function DocumentsPage({ pushToast }: { pushToast: PushToast }) {
                 <label className="text-[12.5px] font-medium text-foreground">
                   <Trans>Page size</Trans>
                 </label>
-                <Select value={format} onChange={setFormat} options={[...FORMATS]} className="min-w-0" />
+                <Select value={format} onChange={setFormat} options={FORMATS} className="min-w-0" />
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <label className="text-[12.5px] font-medium text-foreground">

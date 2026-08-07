@@ -27,7 +27,11 @@ export interface SelectOption {
   icon?: IconComponent | ReactNode;
 }
 
-export type SelectOptions = (string | SelectOption)[];
+/** `readonly` on purpose: Select only ever maps over the list, and callers
+ *  routinely declare their options `as const` so a value union can be derived
+ *  from them. A mutable type forced every one of those to spread into a fresh
+ *  array at the callsite for no benefit. */
+export type SelectOptions = readonly (string | SelectOption)[];
 
 export interface SelectProps {
   value: string | undefined;

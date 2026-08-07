@@ -1,5 +1,6 @@
 // @ts-nocheck
 // Shared UI primitives + layout for the backlex admin design.
+import type { PushToast } from "./types";
 import {
   Fragment,
   useCallback,
@@ -337,7 +338,7 @@ const fromApiTenant = (t: ApiTenant): Tenant => ({
 export interface SidebarProps {
   activeNav: string;
   setActiveNav: (id: string) => void;
-  pushToast: (msg: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
   collectionsCount?: number;
   /** Slug of the collection whose items page is open — highlights the
    *  matching row in the sidebar collections tree. */
@@ -1228,7 +1229,7 @@ interface Toast {
   type: "success" | "error";
 }
 
-export function useToasts(): [ReactNode, (msg: string, type?: "success" | "error") => void] {
+export function useToasts(): [ReactNode, PushToast] {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const push = useCallback((msg: string, type: "success" | "error" = "success") => {
     const id = Math.random().toString(36).slice(2);

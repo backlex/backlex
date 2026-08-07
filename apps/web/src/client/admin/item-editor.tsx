@@ -5,6 +5,7 @@
 // right rail carries status/publish, system fields, collaboration, revision
 // history, and record actions. Supports prev/next record navigation, an
 // unsaved-changes guard, optional autosave for drafts, and best-effort presence.
+import type { PushToast } from "./types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
@@ -45,7 +46,7 @@ export interface ItemEditorPageProps {
   siblingIds?: string[];
   versioned?: boolean;
   canPublish?: boolean;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
   onSaved: (item: Post) => void;
   onCreated: (item: Post) => void;
   onDeleted: (id: string) => void;
@@ -1015,7 +1016,7 @@ function RevisionHistory({
   current: Record<string, unknown>;
   /** Changes whenever the parent writes the row, forcing a reload. */
   refreshKey: number;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
   onReverted: () => void | Promise<void>;
 }) {
   // Revert is gated server-side by `update` permission; if the caller lacks it

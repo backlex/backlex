@@ -4,6 +4,7 @@
 // Talking to one lives on the Chat page: an agent is configured rarely and
 // used constantly, and rooms host several agents at once, so a conversation
 // can no longer be one agent's detail panel.
+import type { PushToast } from "../types";
 import { useCallback, useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -64,7 +65,7 @@ export function AgentsPage({
   pushToast,
   setActiveNav,
 }: {
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
   /** Jumping straight into a conversation with the agent you just configured. */
   setActiveNav?: (id: string) => void;
 }) {

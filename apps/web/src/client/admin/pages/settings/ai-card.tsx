@@ -5,6 +5,7 @@
 // `modelsByProvider`), so adding a provider or a model on the server shows up
 // here without a client change. The model field used to be free text, which
 // meant a typo'd id only surfaced as a provider 404 at generation time.
+import type { PushToast } from "../../types";
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../../icons";
@@ -51,7 +52,7 @@ function AiCardSkeleton() {
  *  default for AI generation — and on managed cloud lets a workspace opt out of
  *  the metered platform gateway and bill its own provider. Mirrors the
  *  SMS/Push/Email config cards. */
-export function AiSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
+export function AiSettingsCard({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [cfg, setCfg] = useState<ApiAiConfig | null>(null);
   const [provider, setProvider] = useState("inherit");

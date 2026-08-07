@@ -17,6 +17,7 @@
  * element here is a `Button` / `Switch` / `Select` / `Badge` from
  * `@/admin/ui` (the local re-export of @backlex/ui).
  */
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
@@ -52,7 +53,7 @@ interface SamlProviderDialogProps {
   availableRoles: AvailableRole[];
   onClose: () => void;
   onSaved: (saved: ApiSamlProvider) => void;
-  pushToast?: (msg: string) => void;
+  pushToast?: PushToast;
 }
 
 type Mode = "template" | "import" | "manual" | "test";

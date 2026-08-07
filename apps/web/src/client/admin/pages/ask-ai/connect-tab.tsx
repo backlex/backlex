@@ -14,6 +14,7 @@
 // glowing OAuth hero card with an endpoint pill + numbered connect steps, and
 // a quieter API-key card below. All colors resolve from theme tokens so the
 // surface tracks light + dark.
+import type { PushToast } from "../../types";
 import { useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../../icons";
@@ -54,7 +55,7 @@ export function ConnectTab({
   selectedKeyId,
   setSelectedKeyId,
 }: {
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
   keys: ApiKeyRow[];
   keysLoading: boolean;
   selectedKeyId: string | null;

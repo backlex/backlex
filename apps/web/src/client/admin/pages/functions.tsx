@@ -1,4 +1,5 @@
 // Functions page — sandboxed JS editor + invocation logs + new-function wizard
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -22,7 +23,7 @@ import { Card } from "@backlex/ui/components/card";
 import { fetchSafely } from "./_shared";
 import { FunctionsSkeleton } from "../page-skeletons";
 
-export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function FunctionsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   type FnRow = { name: string; kind: string; trigger: string; lang: string; invocations: number; p95: number };
   const [funcs, setFuncs] = useState<FnRow[]>([]);

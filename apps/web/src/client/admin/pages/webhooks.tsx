@@ -1,4 +1,5 @@
 // Webhooks page — outgoing HTTP on collection events + delivery log + editor
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -59,7 +60,7 @@ function formatHeaderLines(headers: Record<string, string> | null | undefined): 
   return headers ? Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join("\n") : "";
 }
 
-export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function WebhooksPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   type HookRow = { id: string; name: string; url: string; events: string[]; method: string; secret: string; headers: Record<string, string> | null; active: boolean; consecutiveFailures: number; disabledReason: string | null; deliveries: number; ok: boolean; successRate: number; lastDelivery: string };
   const [hooks, setHooks] = useState<HookRow[]>([]);
@@ -315,7 +316,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
   );
 }
 
-function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode: "create" | "edit"; hook: any; onClose: () => void; onSave: (data: any) => void; pushToast: (m: string) => void }) {
+function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode: "create" | "edit"; hook: any; onClose: () => void; onSave: (data: any) => void; pushToast: PushToast }) {
   const { t } = useLingui();
   const blank = { name: "", url: "", method: "POST", events: [], secret: "whsec_" + Math.random().toString(16).slice(2, 14), active: true, headers: "" };
   const [draft, setDraft] = useState<any>(hook ? { ...hook, headers: formatHeaderLines(hook.headers) } : blank);

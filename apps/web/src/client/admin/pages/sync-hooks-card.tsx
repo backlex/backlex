@@ -6,6 +6,7 @@
 // refuses to submit until it is chosen rather than pre-selecting one for the
 // operator. And the signing secret is write-only, so edit mode offers "leave
 // blank to keep" instead of an empty required field.
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -29,7 +30,7 @@ import { fetchSafely } from "./_shared";
 
 const PHASES = ["beforeCreate", "beforeUpdate", "beforeDelete"] as const;
 
-export function SyncHooksCard({ pushToast }: { pushToast: (m: string) => void }) {
+export function SyncHooksCard({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [hooks, setHooks] = useState<ApiSyncHook[]>([]);
   const [loaded, setLoaded] = useState(false);

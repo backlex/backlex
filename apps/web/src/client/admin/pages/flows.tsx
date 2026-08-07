@@ -1,4 +1,5 @@
 // Flows page — trigger → operations list + preview canvas + builder modal
+import type { PushToast } from "../types";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "../icons";
@@ -11,7 +12,7 @@ import { api } from "@/lib/api";
 import { fetchSafely } from "./_shared";
 import { FlowsSkeleton } from "../page-skeletons";
 
-export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast: (m: string) => void; activeFlow?: string | null; setActiveFlow?: (id: string | null) => void }) {
+export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast: PushToast; activeFlow?: string | null; setActiveFlow?: (id: string | null) => void }) {
   const { t } = useLingui();
   // Flows load from /api/flows on mount. No mock seed — empty workspace
   // hits the empty-state render path on the right pane.

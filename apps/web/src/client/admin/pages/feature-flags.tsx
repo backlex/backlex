@@ -1,6 +1,7 @@
 // Feature flags page — toggle flags, set a remote-config value, and target a
 // rollout % or a permission-DSL condition. Global defaults + per-workspace
 // overrides; evaluated for callers at /api/flags.
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -51,7 +52,7 @@ const blank = (): EditState => ({
   isNew: true,
 });
 
-export function FeatureFlagsPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function FeatureFlagsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [flags, setFlags] = useState<ApiFlag[]>([]);
   const [loaded, setLoaded] = useState(false);

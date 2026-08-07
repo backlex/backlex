@@ -1,4 +1,5 @@
 // Realtime page — collection-derived channels + permission-filtered SSE tail
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -11,7 +12,7 @@ import { RealtimeSkeleton } from "../page-skeletons";
  *  map read); on Workers it's one DO fetch per channel — keep it loose. */
 const STATS_REFRESH_MS = 5_000;
 
-export function RealtimePage({ events, active, onActiveChange, pushToast }: { events: RealtimeEvent[]; active: string; onActiveChange: (name: string) => void; pushToast: (m: string) => void }) {
+export function RealtimePage({ events, active, onActiveChange, pushToast }: { events: RealtimeEvent[]; active: string; onActiveChange: (name: string) => void; pushToast: PushToast }) {
   const { t } = useLingui();
   // Channels are derived from real collections — `items:<slug>` per
   // collection plus the system `collections` channel. Subscriber counts

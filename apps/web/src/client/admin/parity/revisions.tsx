@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { PushToast } from "../types";
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -46,7 +47,7 @@ const fmtRevTs = (v: string | number): string => {
   return Number.isNaN(d.getTime()) ? String(v) : d.toISOString().slice(0, 16).replace("T", " ");
 };
 
-export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "success" | "error") => void } = {}) {
+export function RevisionsPage({ pushToast }: { pushToast?: PushToast } = {}) {
   const toast = pushToast ?? (() => {});
   const { t } = useLingui();
 

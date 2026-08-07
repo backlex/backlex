@@ -3,6 +3,7 @@
 // itself lives in ordinary collections (payment_customers, …), so this page is
 // only about the connection: credentials, the receive URL, the delivery log,
 // and a manual reconcile.
+import type { PushToast } from "../types";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -129,7 +130,7 @@ const STATUS_VARIANT: Record<string, BadgeVariant> = {
   failed: "destructive",
 };
 
-export function PaymentsPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function PaymentsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [catalog, setCatalog] = useState<Catalog>({ providers: [], recordKinds: [] });
   const [connected, setConnected] = useState<Connection[]>([]);

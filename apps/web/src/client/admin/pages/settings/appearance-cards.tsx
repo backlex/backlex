@@ -1,5 +1,6 @@
 // Settings cards: admin appearance theme + sign-in branding.
 // Settings page — general/appearance/email/bindings/env/about tabs
+import type { PushToast } from "../../types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, } from "../../icons";
@@ -48,7 +49,7 @@ const PRIMARY_PRESETS: { label: string; value: string }[] = [
  * and favicon upload via the existing storage route with fixed logical keys
  * (`branding/logo` / `branding/favicon`) — re-uploading replaces.
  */
-export function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
+export function AppearanceSettingsCard({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const { theme: userTheme, setTheme: setUserTheme } = useTheme();
   const [workspaceName, setWorkspaceName] = useState("");
@@ -394,7 +395,7 @@ export function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) =
  * built-in default copy. Surfaced to the (unauthenticated) sign-in page
  * through `/api/auth/providers`.
  */
-export function SignInBrandingCard({ pushToast }: { pushToast: (m: string) => void }) {
+export function SignInBrandingCard({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [headline, setHeadline] = useState("");
   const [tagline, setTagline] = useState("");

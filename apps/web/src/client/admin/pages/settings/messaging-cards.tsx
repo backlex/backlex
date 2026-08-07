@@ -1,6 +1,7 @@
 // Settings cards: email / push / SMS provider configuration.
 // Split out of the former 1686-line pages/settings.tsx god-file.
 // Settings page — general/appearance/email/bindings/env/about tabs
+import type { PushToast } from "../../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, } from "../../icons";
@@ -39,7 +40,7 @@ const EMAIL_PROVIDER_FIELDS: Record<string, { hint: string; config: [string, str
   smtp: { hint: "nodemailer — NOT supported on Cloudflare Workers (no raw TCP). Use an HTTP-API provider there.", config: [["host", "Host", "smtp.example.com", "text"], ["port", "Port", "587", "number"], ["user", "Username", "", "text"], ["secure", "Implicit TLS (port 465)", "", "checkbox"]], secrets: [["pass", "Password"]] },
 };
 
-export function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
+export function EmailSettingsCard({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [cfg, setCfg] = useState<any>(null);
   const [provider, setProvider] = useState("inherit");
@@ -206,7 +207,7 @@ const generateVapidKeypair = async (): Promise<{ publicKey: string; privateKey: 
 /** Push transport config — mirrors {@link EmailSettingsCard}, minus the From
  *  address, plus a viewer of the admin's own registered devices so "Send test"
  *  has somewhere to land. */
-export function PushSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
+export function PushSettingsCard({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [cfg, setCfg] = useState<any>(null);
   const [provider, setProvider] = useState("inherit");
@@ -407,7 +408,7 @@ export const SMS_PROVIDER_FIELDS: Record<
 /** SMS transport config — mirrors {@link PushSettingsCard}, minus the device
  *  viewer (SMS targets phone numbers); "Send test" takes an optional E.164 number
  *  so an admin without a registered number can still verify delivery. */
-export function SmsSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
+export function SmsSettingsCard({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [cfg, setCfg] = useState<any>(null);
   const [provider, setProvider] = useState("inherit");

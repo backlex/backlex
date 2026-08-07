@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { PushToast } from "../types";
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -16,7 +17,7 @@ import { dbAdminApi, type BackupConfig } from "../api";
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 
-export function DatabasePage({ pushToast, adapter }: { pushToast: (m: string) => void; adapter: AdapterId }) {
+export function DatabasePage({ pushToast, adapter }: { pushToast: PushToast; adapter: AdapterId }) {
   const { t } = useLingui();
   const [tab, setTab] = useState("sql");
   const [migCount, setMigCount] = useState<number | null>(null);
@@ -82,7 +83,7 @@ const SNIPPET_SQL: Record<string, string> = {
 const quoteIdent = (n: string) => `"${n.replace(/"/g, '""')}"`;
 const browseSql = (table: string) => `SELECT *\nFROM ${quoteIdent(table)}\nLIMIT 50;`;
 
-function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
+function SqlEditor({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [sql, setSql] = useState("SELECT 1;");
   const [result, setResult] = useState<{ rows: Record<string, unknown>[]; ms: number; count: number }>({
@@ -261,7 +262,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
   );
 }
 
-function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
+function Migrations({ pushToast }: { pushToast: PushToast }) {
   type Mig = { hash: string; tag: string | null; applied: boolean; t: string };
   const [migs, setMigs] = useState<Mig[]>([]);
   const [active, setActive] = useState<Mig | null>(null);
@@ -342,7 +343,7 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
   );
 }
 
-function Backups({ pushToast }: { pushToast: (m: string) => void }) {
+function Backups({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   type Backup = { id: string; t: string; size: string; kind: string; tables: number; label: string | undefined };
   const [backups, setBackups] = useState<Backup[]>([]);

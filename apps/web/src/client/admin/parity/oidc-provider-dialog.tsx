@@ -19,6 +19,7 @@
  *     here, so the list can apply the change optimistically and roll back on
  *     error instead of blocking the dialog on a round-trip.
  */
+import type { PushToast } from "../types";
 import { useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
@@ -45,7 +46,7 @@ export interface OidcProviderDialogProps {
   onClose: () => void;
   /** Fire-and-forget — the parent applies the change optimistically. */
   onSave: (body: OidcProviderCreate, existing: ApiOidcProvider | null) => void;
-  pushToast?: (msg: string) => void;
+  pushToast?: PushToast;
 }
 
 const DEFAULT_SCOPES = "openid profile email";

@@ -1,4 +1,5 @@
 // Flow builder — detailed editor opened from Flows page
+import type { PushToast } from "./types";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -82,7 +83,7 @@ export interface FlowBuilderProps {
   initial?: any;
   onClose: () => void;
   onSave: (data: any) => void;
-  pushToast: (msg: string) => void;
+  pushToast: PushToast;
 }
 
 export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilderProps) {

@@ -14,6 +14,7 @@
 //
 // Recent runs fetch /api/activity?action=mcp.&limit=10 — same wire we log
 // into from the /run handler.
+import type { PushToast } from "../../types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { activityApi, } from "../../api";
@@ -40,7 +41,7 @@ type RunFilter = "all" | "ok" | "review" | "denied";
 export function RunsTab({
   pushToast,
 }: {
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [rows, setRows] = useState<RunRow[]>([]);

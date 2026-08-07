@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Badge } from "@backlex/ui/components/badge";
@@ -67,7 +68,7 @@ const policyLabel = (row: ApiApprovalRequest): string =>
       ? "any one"
       : "everyone";
 
-export function ApprovalsPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function ApprovalsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [rows, setRows] = useState<ApiApprovalRequest[]>([]);
   const [loaded, setLoaded] = useState(false);

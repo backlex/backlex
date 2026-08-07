@@ -9,6 +9,7 @@
 // useful values are a short list and "0" needs explaining. And "run now" is
 // offered right after creating, because a schedule that silently never fires
 // looks identical to one that has not come round yet.
+import type { PushToast } from "../types";
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -84,7 +85,7 @@ export function IntegrationSyncsCard({
   settingFields: Record<string, SettingField[]>;
   /** Destinations with a closed column set, keyed by kind. Absent = free text. */
   destinationColumns: Record<string, DestinationColumn[]>;
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [syncs, setSyncs] = useState<ApiSync[]>([]);

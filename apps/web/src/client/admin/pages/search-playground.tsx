@@ -2,6 +2,7 @@
 // vector / hybrid) against any collection without leaving the admin. The
 // server resolves the effective mode from the collection's capabilities and
 // returns whole rows best-first with every read filter enforced.
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
@@ -33,7 +34,7 @@ const ftsReady = (c: SearchCollection): boolean =>
 
 type SearchMode = "auto" | "fts" | "vector" | "hybrid";
 
-export function SearchPlaygroundPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function SearchPlaygroundPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [cols, setCols] = useState<SearchCollection[] | null>(null);
   const [slug, setSlug] = useState<string | undefined>(undefined);

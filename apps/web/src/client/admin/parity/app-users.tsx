@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
@@ -41,7 +42,7 @@ const initials = (s: string): string =>
     .join("")
     .toUpperCase() || "?";
 
-export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function AppUsersPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [rows, setRows] = useState<ApiAppUser[]>([]);
   const [roles, setRoles] = useState<ApiRole[]>([]);
@@ -209,7 +210,7 @@ function AppUserDrawer({
   onPatched: (patch: Partial<ApiAppUser>) => void;
   onSetStatus: (status: "active" | "suspended") => void;
   onDelete: () => void;
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [name, setName] = useState(user.name ?? "");

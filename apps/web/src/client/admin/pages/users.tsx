@@ -1,4 +1,5 @@
 // Users page — workspace user table + role/provider filters + invite + drawer
+import type { PushToast } from "../types";
 import { useCallback, useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -91,7 +92,7 @@ const toUserRow = (u: ApiUser & { lastSeenAt?: number | null }): UserRow => {
   };
 };
 
-export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function UsersPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [users, setUsers] = useState<UserRow[]>([]);
   // First-load gate — drives the page skeleton until the user list lands.
@@ -444,7 +445,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
   );
 }
 
-function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any; allRoles: ApiRole[]; onClose: () => void; onSaved: (id: string, patch: { name?: string; roles?: string[] }) => void; pushToast: (m: string) => void }) {
+function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any; allRoles: ApiRole[]; onClose: () => void; onSaved: (id: string, patch: { name?: string; roles?: string[] }) => void; pushToast: PushToast }) {
   const { t } = useLingui();
   const [name, setName] = useState<string>(user.name ?? "");
   const [roles, setRoles] = useState<string[]>(user.roles as string[]);
@@ -686,7 +687,7 @@ const ROLE_HINTS: Record<string, string> = {
   admin: "full access — bypasses permission checks",
   authenticated: "standard signed-in user",
 };
-function InviteUserDialog({ roles, onClose, onCreated, pushToast }: { roles: string[]; onClose: () => void; onCreated: (inv: { id: string; email: string; role: string; url: string }) => void; pushToast: (m: string) => void }) {
+function InviteUserDialog({ roles, onClose, onCreated, pushToast }: { roles: string[]; onClose: () => void; onCreated: (inv: { id: string; email: string; role: string; url: string }) => void; pushToast: PushToast }) {
   const { t } = useLingui();
   const roleOptions = (roles.length ? roles : ["authenticated"]).map((name) => ({
     value: name,

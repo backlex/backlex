@@ -8,6 +8,7 @@
 // setting. Inline schema editing — add / edit / drop a field, and draw a new
 // relation by dragging between two nodes — round-trips through the same
 // collection endpoints the Schema tab uses.
+import type { PushToast } from "../types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useNavigate } from "react-router";
@@ -384,7 +385,7 @@ function ErdCanvas({
 }: {
   collections: ApiCollection[];
   layout: ErdLayout;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
   onMutated: (next: ApiCollection[]) => void;
 }) {
   const { t } = useLingui();
@@ -680,7 +681,7 @@ function ErdCanvas({
 // ---------------------------------------------------------------------------
 // Page shell — load + relations summary table + canvas.
 // ---------------------------------------------------------------------------
-export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "success" | "error") => void }) {
+export function SchemaGraphPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [collections, setCollections] = useState<ApiCollection[]>([]);
   const [layout, setLayout] = useState<ErdLayout>({});

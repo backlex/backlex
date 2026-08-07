@@ -1,5 +1,6 @@
 // @ts-nocheck
 // Collections index — grid of all collections + new-collection wizard
+import type { PushToast } from "./types";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
@@ -59,7 +60,7 @@ export interface CollectionsIndexProps {
    *  restore (all backed by admin-gated DDL endpoints). Default true so the
    *  UI doesn't flash while `/api/me` loads. Cosmetic — the API stays gated. */
   canManage?: boolean;
-  pushToast: (msg: string) => void;
+  pushToast: PushToast;
 }
 
 export function CollectionsIndex({ collections, collectionGroups, onOpen, onNew, onDelete, showArchived, onToggleArchived, onRestore, onOpenApi, onOpenSchema, canManage = true, pushToast }: CollectionsIndexProps) {

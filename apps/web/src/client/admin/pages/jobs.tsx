@@ -1,5 +1,6 @@
 // Jobs page — durable job queue: status-filtered list, retry/cancel/delete, and
 // an enqueue dialog. Jobs are drained by the cross-runtime cron tick.
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -50,7 +51,7 @@ const STATUS_FILTERS: (ApiJobStatus | "all")[] = [
   "cancelled",
 ];
 
-export function JobsPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function JobsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [jobs, setJobs] = useState<ApiJob[]>([]);
   const [loaded, setLoaded] = useState(false);

@@ -2,6 +2,7 @@
 //
 // Both halves are real: the comment thread reads/writes /api/comments and
 // the share card mints/revokes public read-only links via /api/shared-links.
+import type { PushToast } from "./types";
 import { useState, type KeyboardEvent } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -42,7 +43,7 @@ function ShareLinkCard({
 }: {
   collection: string;
   itemId: string;
-  pushToast?: (m: string, type?: "success" | "error") => void;
+  pushToast?: PushToast;
 }) {
   const { t } = useLingui();
   const qc = useQueryClient();
@@ -210,7 +211,7 @@ export function ItemCommentsPanel({
 }: {
   collection: string;
   itemId: string;
-  pushToast?: (m: string, type?: "success" | "error") => void;
+  pushToast?: PushToast;
 }) {
   const { t } = useLingui();
   const qc = useQueryClient();

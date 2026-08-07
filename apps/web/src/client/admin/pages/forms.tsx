@@ -5,6 +5,7 @@
 // collection). Changes autosave (debounced PATCH) with a saved indicator; the
 // one-time token is cached per-session so Share can show the link right after
 // create/rotate and stays honest ("hidden — rotate") otherwise.
+import type { PushToast } from "../types";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ColorSwatchPicker } from "@/components/color-swatch-picker";
@@ -691,7 +692,7 @@ export function FormsPage({
   pushToast,
   setActiveNav,
 }: {
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
   setActiveNav?: (nav: string) => void;
 }) {
   const { t } = useLingui();
@@ -1647,7 +1648,7 @@ function NewFormDialog({
   open: boolean;
   onClose: () => void;
   collections: { slug: string }[];
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
   onCreated: (form: ApiForm, urls: { url: string; embedUrl: string }) => void;
 }) {
   const { t } = useLingui();
@@ -2623,7 +2624,7 @@ function InvitesCard({
    *  what turns a minted invite into a ready-made link. */
   formToken: string | null;
   onPatchSettings: (p: Partial<ApiFormSettings>) => void;
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [invites, setInvites] = useState<ApiFormInvite[] | null>(null);
@@ -2888,7 +2889,7 @@ function ShareTab({
   onToggleActive: (v: boolean) => void;
   onToggleTurnstile: (v: boolean) => void;
   onPatchSettings: (p: Partial<ApiFormSettings>) => void;
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -3215,7 +3216,7 @@ function SubmissionDrawer({
   onClose: () => void;
   onDeleted: (id: string) => void;
   onOpenCollection: () => void;
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -3658,7 +3659,7 @@ function SubmissionsTab({
   form: ApiForm;
   fieldBlocks: ApiFormBlock[];
   efByName: Map<string, ApiFormEligibleField>;
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
   onOpenCollection: () => void;
 }) {
   const { t } = useLingui();

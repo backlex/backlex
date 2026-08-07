@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { PushToast } from "../types";
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
@@ -25,7 +26,7 @@ import { TranslationsSkeleton } from "../page-skeletons";
 const TR_TABLE_CLS =
   "[&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 
-export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function TranslationsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [locales, setLocales] = useState<string[]>(["en"]);
   const [data, setData] = useState<Record<string, string>[]>([]);

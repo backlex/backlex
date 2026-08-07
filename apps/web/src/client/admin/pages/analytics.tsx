@@ -5,6 +5,7 @@
 // time-window control: Overview (counters + daily series + top-N), Funnel (an
 // ordered conversion builder), Retention (a cohort grid), and Errors (crash
 // groups + triage). The window select in the header applies to all four.
+import type { PushToast } from "../types";
 import { useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -176,7 +177,7 @@ function BreakdownCard({
 export function AnalyticsPage({
   pushToast,
 }: {
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const qc = useQueryClient();
@@ -620,7 +621,7 @@ const statusVariant = (status: string): "secondary" | "outline" =>
 function ErrorsTab({
   pushToast,
 }: {
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [status, setStatus] = useState("open");
@@ -817,7 +818,7 @@ function ErrorDetailDialog({
 }: {
   id: string | null;
   onClose: () => void;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const { data } = useErrorGroup(id);
@@ -975,7 +976,7 @@ function IngestKeyDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const qc = useQueryClient();

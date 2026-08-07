@@ -14,6 +14,7 @@
 //
 // Recent runs fetch /api/activity?action=mcp.&limit=10 — same wire we log
 // into from the /run handler.
+import type { PushToast } from "../../types";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { api } from "@/lib/api";
@@ -67,7 +68,7 @@ export function ToolsTab({
   setSelectedKeyId,
   refreshKeys,
 }: {
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
   keys: ApiKeyRow[];
   keysLoading: boolean;
   selectedKeyId: string | null;

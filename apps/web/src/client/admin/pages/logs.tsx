@@ -13,6 +13,7 @@
 // The time range and the action-category filter are pushed to the *server*
 // (`from` + `action` query params) and the data layer paginates via
 // `useInfiniteQuery`, so the view is never clipped to the freshest 200 rows.
+import type { PushToast } from "../types";
 import { useMemo, useState, type CSSProperties } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "../icons";
@@ -271,7 +272,7 @@ const formatDuration = (ms: number | null): string => {
 export function LogsPage({
   pushToast,
 }: {
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   // View switch + shared controls.
@@ -505,7 +506,7 @@ function StreamView({
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   onLoadMore: () => void;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   // Per-source row counts (within the loaded window) — feeds the tab badges.
@@ -981,7 +982,7 @@ function TableView({
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   onLoadMore: () => void;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   // The action category is enforced server-side, so `rows` is already scoped.

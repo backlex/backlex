@@ -1,4 +1,5 @@
 // Overview page — adapter dashboard, runtime stats, recent activity + errors
+import type { PushToast } from "../types";
 import { useEffect, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -104,7 +105,7 @@ function MetricsSlider({ metrics }: { metrics: Metric[] }) {
   );
 }
 
-export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: AdapterId; pushToast: (m: string) => void; setActiveNav: (id: string) => void }) {
+export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: AdapterId; pushToast: PushToast; setActiveNav: (id: string) => void }) {
   const { t } = useLingui();
   const profile = ADAPTER_PROFILES[adapter];
   const [range, setRange] = useState("1h");

@@ -4,6 +4,7 @@
 //   - AddFromTemplateDialog — "From a schema template" on the Collections
 //     page; apply is additive + idempotent, so it also works on a non-empty
 //     workspace (existing collections are skipped).
+import type { PushToast } from "../types";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -237,7 +238,7 @@ export function TemplateOnboarding({
   pushToast,
   onApplied,
 }: {
-  pushToast: (msg: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
   onApplied: () => void;
 }) {
   const qc = useQueryClient();
@@ -349,7 +350,7 @@ export function AddFromTemplateDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  pushToast: (msg: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const qc = useQueryClient();
   const { t } = useLingui();

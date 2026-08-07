@@ -1,4 +1,5 @@
 // No-code permission editor.
+import type { PushToast } from "./types";
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
@@ -55,7 +56,7 @@ export interface ConditionEditorProps {
   action: string;
   collection: string;
   roles: RoleData[];
-  pushToast: (msg: string) => void;
+  pushToast: PushToast;
   availableFields: string[];
 }
 

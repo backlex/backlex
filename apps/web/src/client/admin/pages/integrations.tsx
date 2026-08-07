@@ -3,6 +3,7 @@
 // at rest and shown masked. UI mirrors the cloud control plane: brand-marked
 // cards with a last-event timestamp, and a connect dialog that also lets the
 // admin scope which collection events the integration receives.
+import type { PushToast } from "../types";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -161,7 +162,7 @@ const BRANDS: Record<string, Brand> = {
 };
 const brandFor = (kind: string): Brand => BRANDS[kind] ?? { name: kind, mark: kind.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };
 
-export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function IntegrationsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [catalog, setCatalog] = useState<Catalog>({ kinds: [], fields: {} });
   const [connected, setConnected] = useState<Integration[]>([]);

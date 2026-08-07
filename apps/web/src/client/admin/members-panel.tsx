@@ -1,5 +1,6 @@
 // @ts-nocheck
 // Members panel — workspace member management for multi-tenant.
+import type { PushToast } from "./types";
 import { useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQueryClient } from "@tanstack/react-query";
@@ -75,7 +76,7 @@ const sniffActiveTenantId = (): string | null => {
 
 export interface MembersPanelProps {
   roles: RoleData[];
-  pushToast: (msg: string) => void;
+  pushToast: PushToast;
 }
 
 export function MembersPanel({ pushToast }: MembersPanelProps) {

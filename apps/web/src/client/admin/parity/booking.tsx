@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { PushToast } from "../types";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Badge } from "@backlex/ui/components/badge";
@@ -339,7 +340,7 @@ function StatTile({
 
 /** A link that is shown once. Selecting 60 characters of URL by hand is not a
  *  copy mechanism, so the button is part of the field rather than beside it. */
-function CopyLink({ value, pushToast }: { value: string; pushToast: (m: string) => void }) {
+function CopyLink({ value, pushToast }: { value: string; pushToast: PushToast }) {
   const { t } = useLingui();
   const [copied, setCopied] = useState(false);
   const copy = () => {
@@ -698,7 +699,7 @@ const problemWith = (d: {
   return null;
 };
 
-export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function BookingPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [resources, setResources] = useState<ApiBookingResource[]>([]);
   const [bookings, setBookings] = useState<ApiBooking[]>([]);

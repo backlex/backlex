@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { PushToast } from "../types";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useIsMobile } from "@backlex/ui/hooks/use-mobile";
@@ -285,7 +286,7 @@ function DashboardGrid({
   );
 }
 
-export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } = {}) {
+export function InsightsPage({ pushToast }: { pushToast?: PushToast } = {}) {
   const { t } = useLingui();
   const [panels, setPanels] = useState<ApiPanel[]>([]);
   // First-load gate — drives the page skeleton until panels land.
@@ -1552,7 +1553,7 @@ function ReportDashboardDialog({
 }: {
   dashboard: ApiDashboard;
   onClose: () => void;
-  pushToast?: (m: string) => void;
+  pushToast?: PushToast;
 }) {
   const { t } = useLingui();
   const [to, setTo] = useState("");
@@ -1696,7 +1697,7 @@ function ShareDashboardDialog({
   dashboard: ApiDashboard;
   onClose: () => void;
   onChanged: () => void | Promise<void>;
-  pushToast?: (m: string) => void;
+  pushToast?: PushToast;
 }) {
   const { t } = useLingui();
   const [roles, setRoles] = useState<ApiRole[]>([]);

@@ -12,6 +12,7 @@
 // are spans actually recorded — never extrapolated — so when sampling is on or
 // the window outran span retention, the tab says so instead of implying the
 // numbers are the whole story.
+import type { PushToast } from "../types";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -112,7 +113,7 @@ function formatGeneratedAt(iso: string): string {
   return `${hh}:${mm} · ${date}`;
 }
 
-export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "success" | "error") => void }) {
+export function AdvisorPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [tab, setTab] = useState<TabKey>("security");
   const [days, setDays] = useState<number>(7);

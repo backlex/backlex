@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Badge } from "@backlex/ui/components/badge";
@@ -66,7 +67,7 @@ const parseSigners = (raw: string): Array<{ email: string; name?: string; role?:
       };
     });
 
-export function SignaturesPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function SignaturesPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [rows, setRows] = useState<ApiSignatureRequest[]>([]);
   const [loaded, setLoaded] = useState(false);

@@ -1,5 +1,6 @@
 // Settings card: workspace locale + timezone + i18n locales.
 // Settings page — general/appearance/email/bindings/env/about tabs
+import type { PushToast } from "../../types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, } from "../../icons";
@@ -18,7 +19,7 @@ import {
 } from "../../preferences";
 
 
-export function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) {
+export function WorkspaceLocaleCard({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [locales, setLocales] = useState<string[]>(["en"]);
   const [defaultLocale, setDefaultLocale] = useState("en");

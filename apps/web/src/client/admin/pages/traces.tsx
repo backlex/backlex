@@ -5,6 +5,7 @@
 // records a span per request, and functions re-emit the header — so a request
 // that calls back into the API shows up as a multi-span trace. Click a row to
 // open the waterfall (GET /api/admin/traces/:traceId).
+import type { PushToast } from "../types";
 import { useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -51,7 +52,7 @@ const statusVariant = (
 export function TracesPage({
   pushToast,
 }: {
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [path, setPath] = useState("");

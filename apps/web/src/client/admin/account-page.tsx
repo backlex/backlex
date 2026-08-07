@@ -3,6 +3,7 @@
 // and manage their own profile, password, sessions, and connected
 // credentials. Everything talks to better-auth's self-service endpoints
 // at /api/auth/* so there's no extra server route involved.
+import type { PushToast } from "./types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIcon,
@@ -93,7 +94,7 @@ type AccountTab =
   | "sessions"
   | "connected";
 
-export function AccountPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function AccountPage({ pushToast }: { pushToast: PushToast }) {
   const session = auth.useSession();
   const sessionUser =
     (session.data as { user?: { id?: string; name?: string | null; email?: string; image?: string | null } } | null)
@@ -148,7 +149,7 @@ function ProfileCard({
   refetch,
 }: {
   user: { id?: string; name?: string | null; email?: string; image?: string | null } | null;
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
   refetch: () => void;
 }) {
   const { t } = useLingui();
@@ -339,7 +340,7 @@ function ProfileCard({
 // Security
 // --------------------------------------------------------------------------
 
-function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
+function SecurityCard({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [hasPassword, setHasPassword] = useState<boolean | null>(null);
   const [oldPw, setOldPw] = useState("");
@@ -547,7 +548,7 @@ function TwoFactorCard({
   pushToast,
   refetch,
 }: {
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
   refetch: () => void;
 }) {
   const { t } = useLingui();
@@ -865,7 +866,7 @@ function SessionsCard({
   pushToast,
 }: {
   currentToken: string | null;
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const { formatDateTime, formatRelative } = usePreferences();
@@ -986,7 +987,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   kick: "Kick",
 };
 
-function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
+function ConnectedCard({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const { formatRelative } = usePreferences();
   const [providers, setProviders] = useState<string[]>([]);
@@ -1240,7 +1241,7 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
 // Preferences (language + time zone)
 // --------------------------------------------------------------------------
 
-function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
+function PreferencesCard({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const { prefs, loading, refresh } = usePreferences();
   // "" = inherit the workspace default; a code = a personal override.

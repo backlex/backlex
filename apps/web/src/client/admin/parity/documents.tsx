@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
@@ -39,7 +40,7 @@ const BLANK_BODY = `<html>
   </body>
 </html>`;
 
-export function DocumentsPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function DocumentsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [templates, setTemplates] = useState<Tpl[]>([]);
   const [loaded, setLoaded] = useState(false);

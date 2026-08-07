@@ -6,6 +6,7 @@
 // showing a result before it is true would be wrong, because the action cannot
 // be taken back. So: preview renders the counts, the confirm step restates the
 // subject, and nothing changes on screen until the server says it happened.
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -51,7 +52,7 @@ const countLine = (counts: Record<string, number> | undefined) => {
   return hits.map(([k, n]) => `${n} ${k}`).join(" · ");
 };
 
-export function ErasureCard({ pushToast }: { pushToast: (m: string) => void }) {
+export function ErasureCard({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [rows, setRows] = useState<ErasureRequest[]>([]);
   const [loaded, setLoaded] = useState(false);

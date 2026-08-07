@@ -1,6 +1,7 @@
 // Settings page shell — the cards live in sibling modules. The directory
 // preserves the historical ./pages/settings import path.
 // Settings page — general/appearance/email/bindings/env/about tabs
+import type { PushToast } from "../../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "../../icons";
@@ -20,7 +21,7 @@ import { AiSettingsCard } from "./ai-card";
 import { AppearanceSettingsCard, SignInBrandingCard } from "./appearance-cards";
 import { WorkspaceLocaleCard } from "./locale-card";
 
-export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushToast: (m: string) => void }) {
+export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushToast: PushToast }) {
   const { t } = useLingui();
   const [tab, setTab] = useState("general");
   const [appUrl, setAppUrl] = useState("http://localhost:8787");

@@ -1,5 +1,6 @@
 // @ts-nocheck
 // No-code permission matrix
+import type { PushToast } from "./types";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
@@ -155,7 +156,7 @@ function CellGlyph({ state }: { state: CellState }) {
 
 export interface PermissionsMatrixProps {
   roles: RoleData[];
-  pushToast: (msg: string) => void;
+  pushToast: PushToast;
 }
 
 export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) {

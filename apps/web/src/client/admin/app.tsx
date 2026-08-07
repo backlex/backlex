@@ -1,5 +1,6 @@
 // @ts-nocheck
 // backlex admin — main app
+import type { PushToast } from "./types";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { withViewTransition, supportsViewTransitions, prefersReducedMotion, savePaneScroll, restorePaneScroll, useLinkViewTransitions } from "./lib/nav-transition";
@@ -1863,7 +1864,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   );
 }
 
-function RolesPageWithMembers({ pushToast }: { pushToast: (m: string) => void }) {
+function RolesPageWithMembers({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [tab, setTab] = useState<"members" | "roles" | "tester">("members");
   return (
@@ -1888,7 +1889,7 @@ function RolesPageWithMembers({ pushToast }: { pushToast: (m: string) => void })
   );
 }
 
-function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
+function PermissionsPanel({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [roles, setRoles] = useState<RoleData[]>([]);
   useEffect(() => {

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { PushToast } from "../types";
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
@@ -161,7 +162,7 @@ const TONE_CLASS: Record<string, string> = {
   flat: "text-muted-foreground",
 };
 
-export function KpisPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function KpisPage({ pushToast }: { pushToast: PushToast }) {
   const { t, i18n } = useLingui();
   const [kpis, setKpis] = useState<ApiKpi[]>([]);
   const [results, setResults] = useState<Record<string, ApiKpiResult | { error: string }>>({});

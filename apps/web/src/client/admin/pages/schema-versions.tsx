@@ -6,6 +6,7 @@
 // which categorizes every change additive / destructive / metadata and applies
 // it — destructive changes (drop column/table, type change) behind an explicit
 // confirm. A safety snapshot is always captured before an apply.
+import type { PushToast } from "../types";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useState } from "react";
 import { Badge as ShadcnBadge } from "@backlex/ui/components/badge";
@@ -67,7 +68,7 @@ const SEVERITY_STYLE: Record<ApiSchemaChange["severity"], { dot: string; badge: 
 export function SchemaVersionsPage({
   pushToast,
 }: {
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [tab, setTab] = useState<Tab>("snapshots");
@@ -469,7 +470,7 @@ function CaptureDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onDone: (snap: ApiSchemaSnapshot) => void;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [name, setName] = useState("");
@@ -533,7 +534,7 @@ function ImportDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onDone: (snap: ApiSchemaSnapshot) => void;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [name, setName] = useState("");
@@ -626,7 +627,7 @@ function NewBranchDialog({
   onOpenChange: (o: boolean) => void;
   snapshots: ApiSchemaSnapshot[];
   onDone: (branch: ApiSchemaBranch) => void;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [name, setName] = useState("");
@@ -693,7 +694,7 @@ function DiffApplyDialog({
   target: RefTarget | null;
   onOpenChange: (o: boolean) => void;
   onApplied: (res: ApiSchemaApplyResult) => void;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [diff, setDiff] = useState<ApiSchemaDiff | null>(null);

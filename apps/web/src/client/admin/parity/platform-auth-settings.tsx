@@ -4,6 +4,7 @@
  * Distinct from the workspace-scoped "Authentication" page (which configures
  * end-user auth). Talks to /api/admin/platform-saml + /api/admin/platform-ldap-config.
  */
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
@@ -28,7 +29,7 @@ import {
 import { apiOrigin, copyText } from "./_shared";
 import { useAuthSurface } from "@/lib/auth";
 
-export function PlatformSsoSettingsPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function PlatformSsoSettingsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const { surface } = useAuthSurface();
   const [providers, setProviders] = useState<ApiPlatformSamlProvider[]>([]);
@@ -178,7 +179,7 @@ function AddSamlDialog({
 }: {
   onClose: () => void;
   onSaved: () => void;
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [name, setName] = useState("");
@@ -310,7 +311,7 @@ function PlatformLdapCard({
 }: {
   config: ApiPlatformLdapConfig | null;
   onSaved: () => void;
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [cfg, setCfg] = useState<ApiPlatformLdapConfig | null>(config);

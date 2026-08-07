@@ -5,6 +5,7 @@
 // (with inline limit editing), and the workspace limits editor. Limits saved
 // here are the `usageLimits` app-setting; fields pinned by `USAGE_LIMIT_*`
 // env vars render read-only — the platform plan wins at enforcement time.
+import type { PushToast } from "../types";
 import { useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQueryClient } from "@tanstack/react-query";
@@ -96,7 +97,7 @@ const WINDOWS = ["7", "30", "90"] as const;
 export function UsagePage({
   pushToast,
 }: {
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [days, setDays] = useState(30);
@@ -467,7 +468,7 @@ function LimitsDialog({
   onClose: () => void;
   overview: ApiUsageOverview;
   days: number;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const qc = useQueryClient();
@@ -600,7 +601,7 @@ function KeyLimitsDialog({
   keyRow: ApiUsageOverview["byKey"][number] | null;
   days: number;
   onClose: () => void;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const qc = useQueryClient();

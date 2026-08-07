@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { PushToast } from "../types";
 import { useEffect, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
@@ -101,7 +102,7 @@ const mapAuthProviders = (map: Record<string, any> | undefined): AuthProviderRow
   return rows;
 };
 
-export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function AuthSettingsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [providers, setProviders] = useState<AuthProviderRow[]>([]);
   const [policy, setPolicy] = useState<Record<string, boolean>>({});

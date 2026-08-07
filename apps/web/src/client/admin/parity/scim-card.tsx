@@ -5,6 +5,7 @@
 // and a lost token must be rotated. That shapes the UI: the token appears in a
 // dismissable panel with a copy button and an explicit warning, and everything
 // else in the card only ever sees `tokenPrefix`.
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -20,7 +21,7 @@ export function ScimCard({
   pushToast,
 }: {
   availableRoles: { id: string; name: string }[];
-  pushToast: (msg: string) => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [config, setConfig] = useState<ApiScimConfig | null>(null);

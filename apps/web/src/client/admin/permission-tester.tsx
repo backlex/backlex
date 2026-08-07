@@ -3,6 +3,7 @@
 // full allow/deny trace: matched roles + rules, the resolved DSL variables, the
 // compiled WHERE clause, and the field allow-list. Mirrors the REST/SDK/CLI/MCP
 // `permissions.simulate` surface. Read-only — it never mutates state.
+import type { PushToast } from "./types";
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
@@ -28,7 +29,7 @@ type SubjectMode = "user" | "adhoc";
 export function PermissionTesterPanel({
   pushToast,
 }: {
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
 

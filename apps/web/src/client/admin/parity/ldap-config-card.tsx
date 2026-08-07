@@ -13,6 +13,7 @@
  * the input is treated as additive: leaving it blank keeps the stored
  * ciphertext intact. A "Clear" action removes the key entirely.
  */
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
@@ -43,7 +44,7 @@ interface Role {
 
 interface Props {
   availableRoles: Role[];
-  pushToast?: (msg: string) => void;
+  pushToast?: PushToast;
 }
 
 const DEFAULT_USER_FILTER = "(&(objectClass=person)(uid={{username}}))";
@@ -380,7 +381,7 @@ function LdapTestDialog({
 }: {
   attributeMap: { email: string; firstName: string; lastName: string; groups: string };
   onClose: () => void;
-  pushToast?: (m: string) => void;
+  pushToast?: PushToast;
 }) {
   const { t } = useLingui();
   const [username, setUsername] = useState("");

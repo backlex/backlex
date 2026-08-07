@@ -8,6 +8,7 @@
 // Turns run in the background (`async: true`) and stream back over
 // `agent:thread:<id>`, which is also how a teammate's question and its steps
 // reach your screen. Presence + typing ride the same channel.
+import type { PushToast } from "../types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -101,7 +102,7 @@ export function ChatPage({
   pushToast,
   setActiveNav,
 }: {
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
   setActiveNav?: (id: string) => void;
 }) {
   const { t } = useLingui();
@@ -458,7 +459,7 @@ function RoomView({
   room: Room;
   agents: Agent[];
   meId: string | null;
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
   onPatch: (patch: Partial<Room>) => void;
   onDelete: () => void;
   onActivity: () => void;

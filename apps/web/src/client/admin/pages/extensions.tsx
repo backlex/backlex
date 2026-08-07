@@ -2,6 +2,7 @@
 // Extensions are npm packages (or direct uploads) shipping a
 // `backlex-extension.json` manifest that contributes admin panels, item-form
 // field editors, and server-side hooks.
+import type { PushToast } from "../types";
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -38,7 +39,7 @@ const ADMIN_TABLE_CLS =
 
 const LIST_KEY = ["extensions", "list"] as const;
 
-export function ExtensionsPage({ pushToast }: { pushToast: (m: string, type?: "success" | "error") => void }) {
+export function ExtensionsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const qc = useQueryClient();
   const listQuery = useQuery({ queryKey: LIST_KEY, queryFn: () => extensionsApi.list() });

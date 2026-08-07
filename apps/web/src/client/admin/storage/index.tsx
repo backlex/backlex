@@ -2,6 +2,7 @@
 // components live in ./widgets; the directory preserves the ./storage path.
 // @ts-nocheck
 // Storage page — preview, batch upload progress, ACL, file detail modal
+import type { PushToast } from "../types";
 import { useEffect, useMemo, useRef, useState, } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -43,7 +44,7 @@ import {
   PaginationFooter,
 } from "./widgets";
 
-export function StoragePage({ pushToast }: { pushToast: (msg: string) => void }) {
+export function StoragePage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [folders, setFolders] = useState<StoredFolder[]>([]);
   const [files, setFiles] = useState<StoredFile[]>([]);

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Card } from "@backlex/ui/components/card";
@@ -11,7 +12,7 @@ import { EmailTemplatesSkeleton } from "../page-skeletons";
 
 const userEmailExample = "{{ user.email }}";
 
-export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function EmailTemplatesPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   type Tpl = { id: string; key: string; name: string; subject: string; vars: string[]; bodyHtml?: string; fromAddress?: string | null; isNew?: boolean };
   const [templates, setTemplates] = useState<Tpl[]>([]);

@@ -15,6 +15,7 @@
 //
 // Recent runs fetch /api/activity?action=mcp.&limit=10 — same wire we log
 // into from the /run handler.
+import type { PushToast } from "../../types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { api } from "@/lib/api";
@@ -64,7 +65,7 @@ const PRIMARY_GRADIENT =
 export function AskAiPage({
   pushToast,
 }: {
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   // Defined inside the component so the `t` macro picks them up at extract time.

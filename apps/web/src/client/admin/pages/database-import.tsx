@@ -3,6 +3,7 @@
 // and the runs list with live per-table progress (poll while active). The
 // heavy lifting happens in services/migrate.ts on the scheduler tick; this
 // page only starts/cancels/resumes runs and watches state.
+import type { PushToast } from "../types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
@@ -47,7 +48,7 @@ const STATUS_VARIANT: Record<ApiMigrateRunStatus, BadgeVariant> = {
 };
 
 interface PageProps {
-  pushToast: (m: string, type?: "success" | "error") => void;
+  pushToast: PushToast;
 }
 
 export function DatabaseImportPage({ pushToast }: PageProps) {

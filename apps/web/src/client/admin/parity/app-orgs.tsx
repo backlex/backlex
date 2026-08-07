@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
@@ -62,7 +63,7 @@ const ROW_ITEM = "basis-full sm:basis-0 sm:flex-1";
 const fmtDate = (v: number | null): string =>
   v == null ? "—" : new Date(v).toISOString().slice(0, 10);
 
-export function AppOrgsPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function AppOrgsPage({ pushToast }: { pushToast: PushToast }) {
   const { t } = useLingui();
   const [rows, setRows] = useState<ApiOrg[]>([]);
   const [roles, setRoles] = useState<ApiRole[]>([]);
@@ -230,7 +231,7 @@ function CreateOrgDialog({
   appUsers: ApiAppUser[];
   onClose: () => void;
   onCreated: (org: ApiOrg) => void;
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [name, setName] = useState("");
@@ -324,7 +325,7 @@ function OrgDrawer({
   onClose: () => void;
   onPatched: (patch: Partial<ApiOrg>) => void;
   onDelete: () => void;
-  pushToast: (m: string) => void;
+  pushToast: PushToast;
 }) {
   const { t } = useLingui();
   const [name, setName] = useState(org.name);

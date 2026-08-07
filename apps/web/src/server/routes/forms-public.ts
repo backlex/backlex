@@ -12,6 +12,7 @@ import {
   type WriteEnv,
 } from "../services/items/write";
 import {
+  assertChoices,
   assertConsents,
   assertScales,
   draftableValues,
@@ -91,6 +92,11 @@ const PublicFormBlockSchema = z
     validation: z.record(z.string(), z.unknown()).nullable(),
     cond: z
       .object({ field: z.string(), op: z.string(), value: z.string() })
+      .nullable(),
+    /** Non-null ⇒ one row of a matrix; blocks sharing an `id` are drawn as one
+     *  grid. The row is still an ordinary field block and renders alone. */
+    matrix: z
+      .object({ id: z.string(), label: z.string(), help: z.string().nullable() })
       .nullable(),
   })
   .openapi("PublicFormBlock");
@@ -756,6 +762,7 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
 
       assertConsents(form, collection, data);
       assertScales(form, collection, data);
+      assertChoices(form, collection, data);
 
       // File blocks: the payload carries the signed ticket minted by the
       // upload endpoint — NEVER a raw storage key. Swap each ticket for its

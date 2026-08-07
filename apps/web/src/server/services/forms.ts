@@ -12,8 +12,11 @@
  * A form is a list of BLOCKS. `kind: "field"` blocks expose one collection
  * field (label/placeholder/help overrides, optional show-condition, per-locale
  * strings); `kind: "step"` blocks are presentation-only page breaks that turn
- * the public form into a multi-step flow. Legacy configs (plain
- * `{ name, label?, help? }` rows) parse as field blocks unchanged.
+ * the public form into a multi-step flow; `kind: "matrix"` blocks ask several
+ * fields on one shared set of columns (see {@link resolveMatrixColumns}) and
+ * are expanded back into one ordinary field entry per row before anything
+ * downstream sees them. Legacy configs (plain `{ name, label?, help? }` rows)
+ * parse as field blocks unchanged.
  *
  * Scope fence: scalar field types (text/longtext/integer/number/boolean/
  * timestamp — dropdowns are `text` + choices) plus single `file` fields can be
@@ -100,22 +103,43 @@ export interface FormBlockScale {
   maxLabel?: string;
 }
 
+/**
+ * One line of a matrix — a statement asked on the columns the matrix defines,
+ * answered into its own collection field.
+ *
+ * A row is not a kind of storage: it names an ordinary field, and the answer
+ * lands in that field's own column exactly as if the question had been asked on
+ * its own line. The grid is how it is drawn, not where it goes.
+ */
+export interface FormBlockMatrixRow {
+  /** Collection field this row's answer is written into. */
+  name: string;
+  /** Row caption. Falls back to the field's own label, then its name. */
+  label?: string;
+  i18n?: Record<string, FormBlockI18n>;
+}
+
 export interface FormBlock {
   /** Stable client id for canvas selection/reorder. Optional; preserved. */
   id?: string;
-  /** "field" (default — legacy rows omit it) or the "step" page break. */
-  kind?: "field" | "step";
+  /** "field" (default — legacy rows omit it), the "step" page break, or the
+   *  "matrix" grid of rows sharing one set of columns. */
+  kind?: "field" | "step" | "matrix";
   /** Collection field name — required for field blocks. */
   name?: string;
-  /** Display label override; step blocks use it as the step title. */
+  /** Display label override; step blocks use it as the step title, matrix
+   *  blocks as the question above the grid. */
   label?: string;
   placeholder?: string;
   help?: string;
   /** @deprecated Integer fields only: 1–5 star rating. Superseded by
    *  {@link scale}; still read so existing forms render unchanged. */
   rating?: boolean;
-  /** Integer fields only: answer by picking a point on a row. */
+  /** Integer fields only: answer by picking a point on a row. On a matrix
+   *  block it is the shared scale every row is answered on. */
   scale?: FormBlockScale;
+  /** Matrix blocks only: the statements the grid asks, top to bottom. */
+  rows?: FormBlockMatrixRow[];
   /** Boolean fields only: consent checkbox (privacy policy / terms). The
    *  submit is rejected server-side unless the value is exactly `true`. */
   consent?: boolean;
@@ -252,6 +276,75 @@ export const resolveScale = (
   return null;
 };
 
+/** Most statements one matrix may ask. Past this it is a questionnaire drawn
+ *  as a wall, and the person answering it stops halfway down. */
+export const MATRIX_MAX_ROWS = 20;
+
+/**
+ * The columns a matrix offers — the one thing every row of it shares.
+ *
+ * Two shapes, and which one it is follows from the fields the rows name rather
+ * than from a mode the operator has to keep in sync with them:
+ *
+ * - **scale** — every row is an `integer` field, so the columns are the points
+ *   of the block's own scale (1–5, 0–10 NPS, a star row).
+ * - **choice** — every row is a field whose choices are IDENTICAL, so the
+ *   columns are those choices. This is the likert grid: the same
+ *   agree/neutral/disagree offered to every statement.
+ *
+ * Identical means same values in the same order. A grid whose third column
+ * means "Neutral" on one line and "Disagree" on the next is not a grid, and
+ * the columns are drawn once — from the first row — for every row under them.
+ *
+ * Null when the rows cannot share a set of columns at all; callers say why
+ * ({@link assertMatrixShape}) or drop the block (the public read path).
+ */
+export interface MatrixColumns {
+  mode: "scale" | "choice";
+  scale: FormBlockScale | null;
+  choices: Array<{ value: string; label?: string }> | null;
+}
+
+export const resolveMatrixColumns = (
+  block: FormBlock,
+  defs: Array<FieldDef | null | undefined>,
+): MatrixColumns | null => {
+  if (defs.length === 0 || defs.some((d) => !d)) return null;
+  const known = defs as FieldDef[];
+  if (block.scale) {
+    if (known.some((d) => d.type !== "integer")) return null;
+    const scale = resolveScale(block, known[0]);
+    return scale ? { mode: "scale", scale, choices: null } : null;
+  }
+  const first = getChoices(known[0]!);
+  if (first.length === 0) return null;
+  const shape = first.map((c) => c.value).join(" ");
+  for (const d of known) {
+    const own = getChoices(d);
+    if (own.map((c) => c.value).join(" ") !== shape) return null;
+  }
+  return { mode: "choice", scale: null, choices: first };
+};
+
+/**
+ * One row of a matrix, as the ordinary field block it is answered as.
+ *
+ * Everything downstream of {@link exposedBlocks} — the submit clamp, the draft
+ * clamp, the scale bound check, the results panel — walks a flat list of field
+ * blocks. Handing it that list, with the shared scale and show-condition copied
+ * onto each row, is what keeps a matrix from being a second code path through
+ * all of them.
+ */
+const matrixRowBlock = (matrix: FormBlock, row: FormBlockMatrixRow): FormBlock => ({
+  id: `${matrix.id ?? "matrix"}:${row.name}`,
+  kind: "field",
+  name: row.name,
+  ...(row.label ? { label: row.label } : {}),
+  ...(matrix.scale ? { scale: matrix.scale } : {}),
+  ...(matrix.cond ? { cond: matrix.cond } : {}),
+  ...(row.i18n ? { i18n: row.i18n } : {}),
+});
+
 /** Reject a scale a block could not render — said at design time, where the
  *  operator can fix it, rather than silently dropping it at submit time. */
 const assertScaleShape = (block: FormBlock, def: FieldDef): void => {
@@ -289,14 +382,67 @@ const assertSettingsSane = (settings: FormSettings | null | undefined): void => 
   }
 };
 
+/**
+ * Reject a matrix its own rows cannot be drawn under, and say which row is the
+ * problem.
+ *
+ * All of this is decidable when the form is saved, in front of the operator who
+ * chose the rows. The alternative is a grid that silently loses a line at read
+ * time, which looks like a bug in the form page.
+ */
+const assertMatrixShape = (
+  block: FormBlock,
+  eligible: Map<string, FieldDef>,
+): void => {
+  const title = block.label || "Matrix";
+  const rows = block.rows ?? [];
+  if (rows.length === 0) {
+    throw new AppError("VALIDATION", `"${title}" needs at least one row`);
+  }
+  if (rows.length > MATRIX_MAX_ROWS) {
+    throw new AppError(
+      "VALIDATION",
+      `"${title}" asks ${rows.length} rows — a matrix offers at most ${MATRIX_MAX_ROWS}`,
+    );
+  }
+  const defs: FieldDef[] = [];
+  for (const row of rows) {
+    const def = row.name ? eligible.get(row.name) : undefined;
+    if (!def) {
+      throw new AppError(
+        "VALIDATION",
+        `"${title}": row "${row.name ?? "?"}" cannot be exposed on a public form (only scalar, non-private, non-computed fields are allowed)`,
+      );
+    }
+    defs.push(def);
+  }
+  if (block.scale) {
+    // Per row, so the message names the column that can't hold the answer.
+    for (const def of defs) assertScaleShape(block, def);
+  }
+  if (resolveMatrixColumns(block, defs)) return;
+  // Everything decidable per row has passed, so what is left is the rows not
+  // agreeing on a set of columns.
+  const offender = defs.find((d) => getChoices(d).length === 0);
+  if (offender) {
+    throw new AppError(
+      "VALIDATION",
+      `"${title}": row "${offender.label || offender.name}" offers no choices — a matrix asks its rows either on one shared scale or on one shared set of choices`,
+    );
+  }
+  throw new AppError(
+    "VALIDATION",
+    `"${title}": its rows do not offer the same choices in the same order, so there is no one set of columns to draw them under`,
+  );
+};
+
 /** Throws VALIDATION unless every field block references an eligible field. */
 const assertFieldsEligible = (
   collection: CollectionRow,
   blocks: FormBlock[],
 ): void => {
   const fieldBlocks = blocks.filter((b) => (b.kind ?? "field") === "field");
-  if (fieldBlocks.length === 0)
-    throw new AppError("VALIDATION", "A form needs at least one field");
+  const matrixBlocks = blocks.filter((b) => b.kind === "matrix");
   const eligibleFields = formEligibleFields(collection);
   const eligible = new Map(eligibleFields.map((f) => [f.name, f]));
   for (const b of fieldBlocks) {
@@ -309,9 +455,30 @@ const assertFieldsEligible = (
     }
     assertScaleShape(b, def);
   }
+  for (const b of matrixBlocks) assertMatrixShape(b, eligible);
+
+  // One question per column. Asking the same field twice writes one of the two
+  // answers over the other, and which one survives is the order of the blocks —
+  // a coin toss dressed as a form.
+  const present = new Set<string>();
+  for (const name of [
+    ...fieldBlocks.map((b) => b.name),
+    ...matrixBlocks.flatMap((b) => (b.rows ?? []).map((r) => r.name)),
+  ]) {
+    if (!name) continue;
+    if (present.has(name)) {
+      throw new AppError(
+        "VALIDATION",
+        `Field "${name}" is on the form twice — one field holds one answer`,
+      );
+    }
+    present.add(name);
+  }
+  if (present.size === 0)
+    throw new AppError("VALIDATION", "A form needs at least one field");
+
   // Schema-required fields can't be left off: the write path would reject
   // every submission anyway, so fail loudly at design time instead.
-  const present = new Set(fieldBlocks.map((b) => b.name));
   for (const f of eligibleFields) {
     if (f.required && !present.has(f.name)) {
       throw new AppError(
@@ -561,6 +728,16 @@ export interface PublicFormBlock {
     maxSelect?: number;
   } | null;
   cond: FormBlockCond | null;
+  /**
+   * Non-null ⇒ this block is one row of a matrix, and the page draws it in the
+   * grid identified by `id` rather than on a line of its own.
+   *
+   * The row is still an ORDINARY field block: it carries its own scale or
+   * choices, so a page bundle cached from before matrices existed renders it as
+   * the plain scale row or dropdown it also is. The grid is an improvement on
+   * that rendering, never a precondition for it.
+   */
+  matrix: { id: string; label: string; help: string | null } | null;
 }
 
 export interface PublicFormDefinition {
@@ -589,22 +766,49 @@ export interface PublicFormDefinition {
   draft: { data: Record<string, unknown>; step: number; savedAt: number } | null;
 }
 
+/** One entry of the exposed set: a step, an exposed field, or one row of a
+ *  matrix — which is an exposed field that also knows the grid it belongs to. */
+export interface ExposedBlock {
+  block: FormBlock;
+  def: FieldDef | null;
+  /** The matrix block this entry is a row of, for the callers that draw the
+   *  grid. Everything that only reads answers can ignore it. */
+  matrix?: FormBlock;
+}
+
 /**
  * The exposed field-block set, re-derived against the CURRENT collection
  * schema — the stored config is intersected with today's eligible fields, so
  * a field that was dropped or became ineligible silently disappears from the
  * form. Used by both the public GET (render) and the submit clamp.
+ *
+ * A matrix is expanded here into one field entry per row, carrying the shared
+ * scale and show-condition. That is deliberate: a matrix is a way of drawing
+ * questions, and past this function nothing else in the system has to know it
+ * exists — the clamp, the draft, the bound checks and the results panel all see
+ * the ordinary fields they always saw. A matrix whose rows can no longer agree
+ * on a set of columns (a choice list edited out from under it) drops out whole,
+ * because half a grid is not a question anyone can answer.
  */
 export const exposedBlocks = (
   form: FormRow,
   collection: CollectionRow,
-): Array<{ block: FormBlock; def: FieldDef | null }> => {
+): ExposedBlock[] => {
   const byName = new Map(formEligibleFields(collection).map((f) => [f.name, f]));
-  const out: Array<{ block: FormBlock; def: FieldDef | null }> = [];
+  const out: ExposedBlock[] = [];
   for (const block of form.fields) {
     const kind = block.kind ?? "field";
     if (kind === "step") {
       out.push({ block, def: null });
+      continue;
+    }
+    if (kind === "matrix") {
+      const rows = (block.rows ?? []).filter((r) => byName.has(r.name));
+      const defs = rows.map((r) => byName.get(r.name)!);
+      if (rows.length === 0 || !resolveMatrixColumns(block, defs)) continue;
+      rows.forEach((row, i) =>
+        out.push({ block: matrixRowBlock(block, row), def: defs[i]!, matrix: block }),
+      );
       continue;
     }
     const def = block.name ? byName.get(block.name) : undefined;
@@ -783,7 +987,7 @@ export const publicFormDefinition = (
   const formI18n = locale !== base ? (settings.i18n?.[locale] ?? {}) : {};
 
   const blocks = exposedBlocks(form, collection).map(
-    ({ block, def }): PublicFormBlock => {
+    ({ block, def, matrix }): PublicFormBlock => {
       const blockI18n = locale !== base ? (block.i18n?.[locale] ?? {}) : {};
       if (!def) {
         return {
@@ -801,6 +1005,7 @@ export const publicFormDefinition = (
           maxBytes: null,
           validation: null,
           cond: block.cond ?? null,
+          matrix: null,
         };
       }
       const v = def.validation;
@@ -842,6 +1047,21 @@ export const publicFormDefinition = (
         validation:
           validation && Object.keys(validation).length > 0 ? validation : null,
         cond: block.cond ?? null,
+        matrix: matrix
+          ? {
+              id: matrix.id ?? `matrix:${matrix.rows?.[0]?.name ?? def.name}`,
+              // The matrix's own strings, in this locale — the grid's heading
+              // is asked once, above rows that each carry only their caption.
+              label:
+                (locale !== base ? matrix.i18n?.[locale]?.label : "") ||
+                matrix.label ||
+                "",
+              help:
+                (locale !== base ? matrix.i18n?.[locale]?.help : "") ||
+                matrix.help ||
+                null,
+            }
+          : null,
       };
     },
   );
@@ -924,6 +1144,47 @@ export const assertScales = (
         "VALIDATION",
         `"${block.label || def.label || def.name}" must be a whole number between ${scale.min} and ${scale.max}`,
       );
+    }
+  }
+};
+
+/**
+ * Hold an answer to the choices it was offered.
+ *
+ * The same reasoning as {@link assertScales}, for the other kind of question
+ * with a fixed set of answers: the page renders a dropdown, a chip row or a
+ * matrix column, and none of those is a guard — the endpoint is public and a
+ * hand-written POST is not the page. It matters most for a matrix, whose whole
+ * premise is that every row is answered on the SAME columns; a row quietly
+ * holding a value that is in no column makes the grid a lie.
+ *
+ * Values no longer offered are refused rather than migrated: an answer given
+ * before the choices changed already happened and is in the column, but a NEW
+ * one arriving against a choice the schema has dropped is a stale page.
+ */
+export const assertChoices = (
+  form: FormRow,
+  collection: CollectionRow,
+  data: Record<string, unknown>,
+): void => {
+  for (const { block, def } of exposedBlocks(form, collection)) {
+    if (!def) continue;
+    // A scale is a range, not a choice list, and owns its own bound check.
+    if (resolveScale(block, def)) continue;
+    const allowed = getChoices(def);
+    if (allowed.length === 0) continue;
+    const raw = data[def.name];
+    if (raw === undefined || raw === null || raw === "") continue;
+    const values = new Set(allowed.map((c) => c.value));
+    // A multi-select stores the picks as an array; a dropdown stores the one.
+    const picked = Array.isArray(raw) ? raw : [raw];
+    for (const v of picked) {
+      if (!values.has(String(v))) {
+        throw new AppError(
+          "VALIDATION",
+          `"${block.label || def.label || def.name}" does not offer "${String(v)}"`,
+        );
+      }
     }
   }
 };

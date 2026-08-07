@@ -1139,6 +1139,10 @@ msgstr "A local stand-in that settles payments without charging anything. Demo a
 msgid "A loop runs inline, so its body cannot wait for an approval or a long delay."
 msgstr "A loop runs inline, so its body cannot wait for an approval or a long delay."
 
+#: src/client/admin/pages/forms.tsx
+msgid "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
+msgstr "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
+
 #: src/client/admin/parity/kpis.tsx
 msgid "A named figure and the formula behind it. Panels, Ask AI and reports all read from these definitions, so one edit changes the number everywhere it appears."
 msgstr "A named figure and the formula behind it. Panels, Ask AI and reports all read from these definitions, so one edit changes the number everywhere it appears."
@@ -1564,6 +1568,10 @@ msgstr "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Add a remote MCP connector"
 msgstr "Add a remote MCP connector"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Add a row…"
+msgstr "Add a row…"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Add a step after the loop"
@@ -3716,6 +3724,10 @@ msgstr "column: <0>{0}</0>"
 #: src/client/admin/list-columns.tsx
 msgid "Columns"
 msgstr "Columns"
+
+#: src/client/admin/pages/forms.tsx
+msgid "columns · from schema enum"
+msgstr "columns · from schema enum"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Comma or newline separated. Each gets its own single-use link."
@@ -6383,6 +6395,10 @@ msgstr "Every 3 hours"
 msgid "Every 30 minutes"
 msgstr "Every 30 minutes"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Every free number field on <0>{collection}</0> is already on the form."
+msgstr "Every free number field on <0>{collection}</0> is already on the form."
+
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 msgstr "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
@@ -6398,6 +6414,10 @@ msgstr "Every occurrence of this bug, with the latest stack trace and how many v
 #: src/client/admin/flow-builder.tsx
 msgid "Every panel runs with this flow's identity, then prints to a PDF."
 msgstr "Every panel runs with this flow's identity, then prints to a PDF."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Every row is answered on these — edit them on the field in <0>{collection}</0>."
+msgstr "Every row is answered on these — edit them on the field in <0>{collection}</0>."
 
 #: src/client/admin/field-money-editor.tsx
 msgid "Every row needs a code in this column before an amount can be saved, and totals over this field have to be grouped by it — adding amounts in different currencies together is refused rather than answered."
@@ -9233,6 +9253,10 @@ msgstr "match {0} of the following"
 msgid "Matched rules"
 msgstr "Matched rules"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Matrix"
+msgstr "Matrix"
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "Max"
 msgstr "Max"
@@ -9937,6 +9961,10 @@ msgstr "New link"
 msgid "New link minted — the old one no longer works."
 msgstr "New link minted — the old one no longer works."
 
+#: src/client/admin/pages/forms.tsx
+msgid "New matrix"
+msgstr "New matrix"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "New migration"
 msgstr "New migration"
@@ -10623,6 +10651,10 @@ msgstr "No open times in the next two weeks."
 msgid "No organizations yet — create one here, or let end-users start their own from your app."
 msgstr "No organizations yet — create one here, or let end-users start their own from your app."
 
+#: src/client/admin/pages/forms.tsx
+msgid "No other field on <0>{collection}</0> offers these same choices."
+msgstr "No other field on <0>{collection}</0> offers these same choices."
+
 #: src/client/admin/field-transitions-editor.tsx
 msgid "No other fields on this collection yet."
 msgstr "No other fields on this collection yet."
@@ -10964,6 +10996,10 @@ msgstr "Not needed for count"
 #: src/client/admin/add-field.tsx
 msgid "NOT NULL — adding to a table that already has rows needs a default."
 msgstr "NOT NULL — adding to a table that already has rows needs a default."
+
+#: src/client/admin/pages/forms.tsx
+msgid "not on this collection"
+msgstr "not on this collection"
 
 #: src/client/admin/field-phone-input.tsx
 msgid "Not one of the countries this field allows."
@@ -13571,6 +13607,10 @@ msgstr "Remove one person from collections, revision history, activity, comments
 msgid "Remove question"
 msgstr "Remove question"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Remove row"
+msgstr "Remove row"
+
 #: src/client/admin/parity/booking.tsx
 msgid "Remove rule"
 msgstr "Remove rule"
@@ -14256,6 +14296,11 @@ msgstr "rows"
 #: src/client/admin/pages/usage.tsx
 msgid "Rows"
 msgstr "Rows"
+
+#. placeholder {0}: rows.length
+#: src/client/admin/pages/forms.tsx
+msgid "rows · {0}"
+msgstr "rows · {0}"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Rows carry a <0>tenant_id</0>. Adopted tables usually don't — leave off unless you know the source already partitions by tenant."
@@ -15373,6 +15418,10 @@ msgstr "settled"
 #: src/client/admin/pages/forms.tsx
 msgid "Several answers allowed, so the shares can add up to more than 100%."
 msgstr "Several answers allowed, so the shares can add up to more than 100%."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Several questions on one shared set of columns"
+msgstr "Several questions on one shared set of columns"
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Severity"

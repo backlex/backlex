@@ -62,6 +62,56 @@ The answer is an ordinary integer in an ordinary integer column, which is what
 lets the results panel, dashboards, KPIs and CSV exports all read it without
 knowing the question was drawn as stars.
 
+## Matrix questions
+
+Several questions asked on one shared set of columns — the agreement grid, the
+"rate each of these" table:
+
+```jsonc
+{ "kind": "matrix", "label": "How was our support?",
+  "scale": { "min": 1, "max": 5, "style": "number",
+             "minLabel": "Poor", "maxLabel": "Great" },
+  "rows": [{ "name": "speed", "label": "Speed" }, { "name": "friendliness" }] }
+```
+
+**A matrix is how questions are drawn, not how they are stored.** Every row
+names an ordinary collection field and its answer lands in that field's own
+column, which is what lets the results panel, dashboards, KPIs and CSV exports
+read a grid without knowing one was drawn. Everything past the point where the
+form is read sees the rows as the ordinary questions they are.
+
+The rows have to agree on their columns, and which kind of columns follows from
+the fields rather than from a mode to keep in sync with them:
+
+- **scale** — every row is an `integer` field, so the columns are the points of
+  the block's own `scale` (the same shape scale blocks use, same 11-point cap).
+- **choice** — every row offers the *same choices in the same order*, so the
+  columns are those choices. This is the likert grid. Same values, same order:
+  a third column meaning "Neutral" on one line and "Disagree" on the next is
+  not a grid, and the header is drawn once for every row under it.
+
+At most 20 rows, and a field may be on the form once — asking one field twice
+writes one answer over the other, and which survives is block order.
+
+Refusals are said when the form is **saved**, naming the row that is the
+problem, because the alternative is a grid that quietly loses a line at read
+time and looks like a bug in the form page. Refused later, too: a matrix whose
+rows lose their shared columns — a choice list edited out from under it — drops
+out **whole** on the next read, because half a grid is not a question anyone can
+answer.
+
+The public page draws the grid wide and stacks it narrow: five columns at a
+phone's width are 60px each, so below ~640px (and above 7 columns at any width)
+each row becomes its own question with its answers spelled out. Nothing about
+the answers changes between the two. Rows travel to the page as ordinary field
+blocks carrying a `matrix` marker, so a page bundle cached from before matrices
+existed renders them as the plain scale rows and dropdowns they also are.
+
+Answers are held to their columns on submit — a value in no column is refused,
+the same way a scale answer off its row is. That check covers every dropdown and
+multi-select on a form, not only matrix rows: the page renders the choices, and
+the page is not the guard.
+
 ## Results
 
 `GET /api/admin/forms/:id/results` summarises the answers — one distribution
@@ -73,6 +123,9 @@ per exposed question, built on the same aggregate engine dashboard panels use:
   the shares can add up to past 100%. `answered` counts people, not picks.
 - **scale** — every point of the row (including the empty ones) plus the mean;
   `style: "nps"` also returns `{ promoters, passives, detractors, score }`.
+- **matrix rows** — nothing special: each is summarised as the scale or choice
+  question it is, carrying `matrix: { id, label }` so the panel puts the grid's
+  rows back under the heading they were asked under.
 - **number** — the mean.
 - **text / longtext / timestamp / file** — how many answered, and nothing else.
 
@@ -280,7 +333,8 @@ Everything goes through one service (`services/forms.ts`):
 | CLI | `backlex forms <list\|get\|fields\|create\|update\|rotate-token\|results\|invites\|invite\|revoke-invite\|delete>` |
 
 Parity gate: `apps/web/tests/forms-surfaces.test.ts`; core behaviour:
-`apps/web/tests/forms.test.ts`; survey shapes + results arithmetic:
+`apps/web/tests/forms.test.ts`; matrix grids:
+`apps/web/tests/forms-matrix.test.ts`; survey shapes + results arithmetic:
 `apps/web/tests/forms-results.test.ts` (and `forms-results-pg.test.ts` for the
 Postgres spelling of the array explode); closing rules:
 `apps/web/tests/forms-availability.test.ts`; invites:
@@ -293,7 +347,6 @@ Postgres spelling of the upsert and the sweep's timestamp bound).
 - Relation fields.
 - Localized fields.
 - Multiple files per block (a `file` field stores one key).
-- Matrix / likert grids (ask each row as its own scale block for now).
 - Invite reminders (a second mail to whoever hasn't answered).
 - Resuming a draft on another browser without an invite — the cookie is the key
   there, and minting a shareable resume link would be a second bearer secret to

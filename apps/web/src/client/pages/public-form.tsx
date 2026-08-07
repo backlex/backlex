@@ -11,7 +11,7 @@
 // becomes multi-step) and per-block show-conditions evaluated as the visitor
 // types. `?lang=xx` (or the browser language) picks one of the form's offered
 // locales; strings resolve server-side.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -199,6 +199,251 @@ function ScaleInput({
             </button>
           );
         })}
+      </div>
+      {anchors}
+    </div>
+  );
+}
+
+/* ── matrix ────────────────────────────────────────────────────────── */
+
+/**
+ * The one place this page needs a stylesheet: a media query.
+ *
+ * A grid and a stack cannot both be inline styles, and which of the two a
+ * matrix is drawn as depends on the width of the screen and nothing the page
+ * knows at render time. Measuring in JS instead would mean the first paint is
+ * always the wrong one. Same `<style>`-block posture as the booking and signing
+ * pages next door.
+ */
+const MATRIX_CSS = `
+.bxm-grid{display:grid}
+.bxm-stack{display:none;flex-direction:column}
+@media (max-width:640px){.bxm-grid{display:none}.bxm-stack{display:flex}}
+`;
+
+/** Columns a grid can be drawn under before the cells are too narrow to hit.
+ *  Past this the matrix is stacked at every width — an eleven-point NPS row per
+ *  statement is a table nobody's card is wide enough for. */
+const MATRIX_GRID_MAX_COLUMNS = 7;
+
+interface MatrixColumn {
+  /** What the answer is when this column is picked. */
+  value: string | number;
+  label: string;
+}
+
+/** The columns every row of a matrix is answered on, read off the first row —
+ *  the server has already refused a matrix whose rows disagree. */
+const matrixColumns = (first: ApiPublicFormBlock | undefined): MatrixColumn[] => {
+  if (!first) return [];
+  if (first.scale) return scalePoints(first.scale).map((n) => ({ value: n, label: String(n) }));
+  return (first.choices ?? []).map((c) => ({ value: c.value, label: c.label ?? c.value }));
+};
+
+/**
+ * Several statements asked on one shared set of columns.
+ *
+ * Wide, the rows are a table: the columns are named once at the top and every
+ * statement is answered along the same line, which is the whole reason to ask
+ * them together. Narrow, that table cannot exist — five columns at a phone's
+ * width are 60px each — so it becomes what it always was underneath: one
+ * question per statement, each with its answers spelled out. Nothing about the
+ * answers changes between the two.
+ */
+function MatrixInput({
+  label,
+  help,
+  rows,
+  values,
+  onChange,
+  accent,
+  p,
+}: {
+  label: string;
+  help: string | null;
+  rows: ApiPublicFormBlock[];
+  values: Record<string, unknown>;
+  onChange: (name: string, v: unknown) => void;
+  accent: string;
+  p: Palette;
+}) {
+  const cells = useRef(new Map<string, HTMLButtonElement>());
+  const columns = matrixColumns(rows[0]);
+  const scale = rows[0]?.scale ?? null;
+  const wide = columns.length > MATRIX_GRID_MAX_COLUMNS;
+  if (columns.length === 0) return null;
+
+  const answerOf = (row: ApiPublicFormBlock): string | number | null => {
+    const v = row.name ? values[row.name] : undefined;
+    if (v === undefined || v === null || v === "") return null;
+    return typeof v === "number" ? v : String(v);
+  };
+
+  /** Arrow keys walk a row and answer as they go, so a matrix is one stop per
+   *  statement rather than one per cell.
+   *
+   *  Keyed by variant as well as by cell: the grid and the stack render the
+   *  same rows, and one key for both would hand back whichever drew last —
+   *  which at a desktop width is the hidden one, and focusing that moves the
+   *  focus nowhere. */
+  const onKeyDown = (
+    e: React.KeyboardEvent,
+    row: ApiPublicFormBlock,
+    index: number,
+    variant: "grid" | "stack",
+  ) => {
+    const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (step === 0 || !row.name) return;
+    e.preventDefault();
+    const next = columns[(index + step + columns.length) % columns.length];
+    if (!next) return;
+    onChange(row.name, next.value);
+    cells.current.get(`${variant}:${row.name}:${next.value}`)?.focus();
+  };
+
+  const cell = (
+    row: ApiPublicFormBlock,
+    col: MatrixColumn,
+    index: number,
+    variant: "grid" | "stack",
+  ) => {
+    const picked = answerOf(row) === col.value;
+    const only = answerOf(row) === null ? index === 0 : picked;
+    return (
+      <button
+        key={String(col.value)}
+        ref={(el) => {
+          if (el) cells.current.set(`${variant}:${row.name}:${col.value}`, el);
+        }}
+        type="button"
+        role="radio"
+        aria-checked={picked}
+        aria-label={col.label}
+        // Roving: one stop per row, landing on the answer given (or the first
+        // column when there isn't one yet).
+        tabIndex={only ? 0 : -1}
+        onKeyDown={(e) => onKeyDown(e, row, index, variant)}
+        onClick={() => row.name && onChange(row.name, col.value)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          // A stacked cell is round, not pinched: with padding alone a single
+          // digit is narrower than it is tall, and a row of ovals reads as a
+          // rendering mistake. Longer captions ("Disagree") still stretch it.
+          minWidth: variant === "grid" ? 0 : 34,
+          height: variant === "grid" ? 38 : 34,
+          padding: variant === "grid" ? 0 : "0 11px",
+          borderRadius: variant === "grid" ? 9 : 999,
+          border: `1px solid ${picked ? accent : p.border}`,
+          background: picked ? accent : p.inputBg,
+          color: picked ? "#fff" : p.text,
+          fontFamily: "inherit",
+          fontSize: 13,
+          fontWeight: picked ? 600 : 400,
+          cursor: "pointer",
+        }}
+      >
+        {variant === "grid" ? (
+          <span
+            aria-hidden="true"
+            style={{
+              width: 11,
+              height: 11,
+              borderRadius: 999,
+              border: `1.5px solid ${picked ? "#fff" : p.faint}`,
+              background: picked ? "#fff" : "transparent",
+            }}
+          />
+        ) : (
+          col.label
+        )}
+      </button>
+    );
+  };
+
+  const rowLabel = (row: ApiPublicFormBlock) =>
+    row.label === row.name ? humanizeLabel(row.name ?? "") : row.label;
+
+  const anchors =
+    scale?.minLabel || scale?.maxLabel ? (
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 11, color: p.faint }}>
+        <span>{scale?.minLabel ?? ""}</span>
+        <span style={{ textAlign: "right" }}>{scale?.maxLabel ?? ""}</span>
+      </div>
+    ) : null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+      <div style={{ fontSize: 13.5, fontWeight: 500 }}>{label}</div>
+      {help && <p style={{ fontSize: 11.5, color: p.faint, margin: 0 }}>{help}</p>}
+
+      {!wide && (
+        <div
+          className="bxm-grid"
+          // `display` belongs to the stylesheet, not here: an inline one wins
+          // over the media query and the page would draw both layouts at once.
+          style={{
+            gridTemplateColumns: `minmax(0, 1.4fr) repeat(${columns.length}, minmax(0, 1fr))`,
+            gap: 6,
+            alignItems: "center",
+            minWidth: 0,
+          }}
+        >
+          <span />
+          {columns.map((c) => (
+            <span
+              key={String(c.value)}
+              style={{ fontSize: 11, color: p.muted, textAlign: "center", lineHeight: 1.3, minWidth: 0 }}
+            >
+              {c.label}
+            </span>
+          ))}
+          {rows.map((row) => (
+            <Fragment key={row.name}>
+              <span style={{ fontSize: 13, lineHeight: 1.4, minWidth: 0, paddingRight: 6 }}>
+                {rowLabel(row)}
+                {row.required && <span style={{ color: accent }}> *</span>}
+              </span>
+              <span
+                role="radiogroup"
+                aria-label={rowLabel(row) ?? row.name}
+                style={{ display: "contents" }}
+              >
+                {columns.map((c, i) => cell(row, c, i, "grid"))}
+              </span>
+            </Fragment>
+          ))}
+        </div>
+      )}
+
+      <div
+        // A grid too wide to draw at any width is only ever the stack, so it
+        // is not the media query's to hide.
+        className={wide ? undefined : "bxm-stack"}
+        style={{
+          ...(wide ? { display: "flex", flexDirection: "column" as const } : {}),
+          gap: 12,
+          minWidth: 0,
+        }}
+      >
+        {rows.map((row) => (
+          <div key={row.name} style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+            <span style={{ fontSize: 13, lineHeight: 1.4 }}>
+              {rowLabel(row)}
+              {row.required && <span style={{ color: accent }}> *</span>}
+            </span>
+            <div
+              role="radiogroup"
+              aria-label={rowLabel(row) ?? row.name}
+              style={{ display: "flex", flexWrap: "wrap", gap: 6, minWidth: 0 }}
+            >
+              {columns.map((c, i) => cell(row, c, i, "stack"))}
+            </div>
+          </div>
+        ))}
       </div>
       {anchors}
     </div>
@@ -600,6 +845,46 @@ function draftPayload(
  *  moment after answering doesn't lose the answer. */
 const DRAFT_SAVE_DEBOUNCE_MS = 1200;
 
+/** What the page draws: a block on its own line, or a run of matrix rows drawn
+ *  together as one grid. */
+type RenderGroup =
+  | { kind: "one"; block: ApiPublicFormBlock }
+  | {
+      kind: "matrix";
+      id: string;
+      label: string;
+      help: string | null;
+      rows: ApiPublicFormBlock[];
+    };
+
+/**
+ * Fold consecutive rows of the same matrix back into the grid they were asked
+ * as.
+ *
+ * The definition sends them flat, as ordinary field blocks — which is what lets
+ * every other part of this page (the payload, the draft, the required gate)
+ * treat a matrix row as the field it is, and what lets a page bundle cached
+ * from before matrices existed render them as plain rows. Grouping is the last
+ * thing that happens, and only for drawing.
+ */
+const groupBlocks = (blocks: ApiPublicFormBlock[]): RenderGroup[] => {
+  const out: RenderGroup[] = [];
+  for (const block of blocks) {
+    const m = block.matrix;
+    if (!m || block.kind !== "field") {
+      out.push({ kind: "one", block });
+      continue;
+    }
+    const last = out[out.length - 1];
+    if (last?.kind === "matrix" && last.id === m.id) {
+      last.rows.push(block);
+      continue;
+    }
+    out.push({ kind: "matrix", id: m.id, label: m.label, help: m.help, rows: [block] });
+  }
+  return out;
+};
+
 /** Does a show-condition pass for the current answers? */
 const condPasses = (
   cond: ApiPublicFormBlock["cond"],
@@ -980,6 +1265,7 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
 
   return (
     <div style={shellStyle}>
+      <style>{MATRIX_CSS}</style>
       <div style={{ width: "100%", maxWidth: 620 }}>
         {def.languages.length > 1 && (
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginBottom: 10 }}>
@@ -1082,7 +1368,20 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
           )}
 
           <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 18, marginTop: 22 }}>
-            {(current?.blocks ?? []).map((b) =>
+            {groupBlocks(current?.blocks ?? []).map((group) =>
+              group.kind === "matrix" ? (
+                <MatrixInput
+                  key={group.id}
+                  label={group.label}
+                  help={group.help}
+                  rows={group.rows}
+                  values={values}
+                  onChange={setValue}
+                  accent={accent}
+                  p={p}
+                />
+              ) : (
+                ((b) =>
               b.consent ? (
                 <label
                   key={b.name}
@@ -1173,6 +1472,7 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
                 />
                 {b.help && <p style={{ fontSize: 11.5, color: p.faint, margin: 0 }}>{b.help}</p>}
               </div>
+              ))(group.block)
               ),
             )}
 

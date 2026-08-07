@@ -2781,18 +2781,30 @@ export interface ApiFormBlockI18n {
   help?: string;
 }
 
-/** One form block: a collection field or a "step" page break. */
+/** One statement of a matrix, answered into its own collection field. */
+export interface ApiFormBlockMatrixRow {
+  name: string;
+  label?: string;
+  i18n?: Record<string, ApiFormBlockI18n>;
+}
+
+/** One form block: a collection field, a "step" page break, or a "matrix"
+ *  grid of rows sharing one set of columns. */
 export interface ApiFormBlock {
   id?: string;
-  kind?: "field" | "step";
+  kind?: "field" | "step" | "matrix";
   name?: string;
   label?: string;
   placeholder?: string;
   help?: string;
   /** @deprecated Superseded by `scale` — still accepted and still renders. */
   rating?: boolean;
-  /** Integer fields only: answer by picking a point on a row. */
+  /** Integer fields only: answer by picking a point on a row. On a matrix, the
+   *  shared scale every row is answered on. */
   scale?: ApiFormBlockScale;
+  /** Matrix blocks: the statements the grid asks, top to bottom. Their fields
+   *  are all integer (answered on `scale`) or all offer the same choices. */
+  rows?: ApiFormBlockMatrixRow[];
   consent?: boolean;
   policyUrl?: string;
   /** File blocks: MIME allow-list + per-upload byte cap. */
@@ -2905,6 +2917,9 @@ export interface ApiFormResultBlock {
   buckets: { value: string; label: string; count: number }[] | null;
   average: number | null;
   nps: { promoters: number; passives: number; detractors: number; score: number } | null;
+  /** Set when the question is one row of a matrix — blocks sharing an `id`
+   *  were asked under one heading and are shown under it again. */
+  matrix: { id: string; label: string } | null;
 }
 
 export interface ApiFormResults {
@@ -2999,6 +3014,10 @@ export interface ApiPublicFormBlock {
   maxBytes: number | null;
   validation: Record<string, unknown> | null;
   cond: { field: string; op: string; value: string } | null;
+  /** Non-null ⇒ one row of a matrix. Consecutive blocks sharing an `id` are
+   *  drawn as one grid; each is still an ordinary field block, so a bundle
+   *  that predates matrices renders them as plain rows instead. */
+  matrix?: { id: string; label: string; help: string | null } | null;
 }
 
 export interface ApiPublicForm {

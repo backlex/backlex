@@ -80,6 +80,15 @@ export interface FormResultBlock {
     detractors: number;
     score: number;
   } | null;
+  /**
+   * Set when the question was asked as one row of a matrix, so the panel can
+   * put the grid's rows back under the heading they were asked under.
+   *
+   * The summary itself is unchanged by it: a matrix row is the scale or choice
+   * question it always was, counted the same way, comparable to the same
+   * question asked on a line of its own.
+   */
+  matrix: { id: string; label: string } | null;
 }
 
 export interface FormResults {
@@ -179,7 +188,7 @@ export const formResults = async (
 
   const exposed = exposedBlocks(form, collection).filter((e) => e.def);
   const blocks: FormResultBlock[] = [];
-  for (const { block, def } of exposed.slice(0, RESULT_BLOCK_CAP)) {
+  for (const { block, def, matrix } of exposed.slice(0, RESULT_BLOCK_CAP)) {
     if (!def) continue;
     const scale = resolveScale(block, def);
     const kind = resultKind(def, Boolean(scale));
@@ -193,6 +202,9 @@ export const formResults = async (
       buckets: null,
       average: null,
       nps: null,
+      matrix: matrix
+        ? { id: matrix.id ?? `matrix:${def.name}`, label: matrix.label || "" }
+        : null,
     };
 
     if (kind === "choice" || kind === "boolean" || kind === "scale") {

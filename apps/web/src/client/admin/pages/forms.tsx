@@ -5,7 +5,7 @@
 // collection). Changes autosave (debounced PATCH) with a saved indicator; the
 // one-time token is cached per-session so Share can show the link right after
 // create/rotate and stays honest ("hidden — rotate") otherwise.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ColorSwatchPicker } from "@/components/color-swatch-picker";
 import { ACCENTS, accentInk, fontStack, safeAccent, useFonts } from "@/lib/public-theme";
@@ -58,9 +58,11 @@ import {
   itemsApi,
   type ApiForm,
   type ApiFormBlock,
+  type ApiFormBlockMatrixRow,
   type ApiFormBlockScale,
   type ApiFormEligibleField,
   type ApiFormInvite,
+  type ApiFormResultBlock,
   type ApiFormResults,
   type ApiFormSettings,
   type ApiMintedFormInvite,
@@ -148,7 +150,57 @@ const fromLocalInput = (value: string): number | undefined => {
 const scalePoints = (scale: ApiFormBlockScale): number[] =>
   Array.from({ length: Math.max(0, scale.max - scale.min + 1) }, (_, i) => scale.min + i);
 
+/** The signature two fields must share to be rows of the same choice matrix —
+ *  same choices, same order, because the columns are drawn once for all rows. */
+const choiceSignature = (f: ApiFormEligibleField): string | null =>
+  f.choices?.length ? f.choices.join("␟") : null;
+
+/**
+ * A matrix that is already valid the moment it is added.
+ *
+ * The builder saves as you type, so a block that has to be finished before it
+ * can be saved is a block that fails to save. Two rows that already agree on
+ * their columns — two number fields on a 1–5 scale, or two dropdowns offering
+ * the same choices — is the smallest thing worth calling a grid.
+ */
+const seedMatrix = (eligible: ApiFormEligibleField[]): Partial<ApiFormBlock> | null => {
+  const numbers = eligible.filter((f) => f.type === "integer" && !f.choices);
+  if (numbers.length >= 2) {
+    return {
+      kind: "matrix",
+      scale: { min: 1, max: 5, style: "number" },
+      rows: numbers.slice(0, 2).map((f) => ({ name: f.name })),
+    };
+  }
+  const groups = new Map<string, ApiFormEligibleField[]>();
+  for (const f of eligible) {
+    const sig = choiceSignature(f);
+    if (!sig) continue;
+    groups.set(sig, [...(groups.get(sig) ?? []), f]);
+  }
+  const shared = [...groups.values()].find((g) => g.length >= 2);
+  if (!shared) return null;
+  return { kind: "matrix", rows: shared.slice(0, 2).map((f) => ({ name: f.name })) };
+};
+
+/** The fields a matrix may still take as rows: eligible, unused, and able to
+ *  share the columns the rows it already has are answered on. */
+const matrixRowCandidates = (
+  block: ApiFormBlock,
+  eligible: ApiFormEligibleField[],
+  used: Set<string | undefined>,
+  efByName: Map<string, ApiFormEligibleField>,
+): ApiFormEligibleField[] => {
+  const first = (block.rows ?? []).map((r) => efByName.get(r.name)).find(Boolean);
+  const free = eligible.filter((f) => !used.has(f.name));
+  if (!first) return free.filter((f) => f.type === "integer" || f.choices);
+  if (block.scale) return free.filter((f) => f.type === "integer");
+  const sig = choiceSignature(first);
+  return sig ? free.filter((f) => choiceSignature(f) === sig) : [];
+};
+
 const blockIcon = (ef: ApiFormEligibleField | null | undefined, block: ApiFormBlock) => {
+  if (block.kind === "matrix") return I.Grid3;
   if ((block.kind ?? "field") === "step") return I.Layers;
   if (!ef) return I.Type;
   if (ef.choices && ef.type === "json") return I.CheckCircle;
@@ -541,6 +593,75 @@ function CanvasFieldPreview({
   );
 }
 
+/** The columns a matrix draws, as the builder sees them: the block's own scale,
+ *  or the choices its rows agree on. Mirrors `resolveMatrixColumns` on the
+ *  server so the canvas and the live form never disagree. */
+function matrixColumnLabels(
+  block: ApiFormBlock,
+  efByName: Map<string, ApiFormEligibleField>,
+): string[] {
+  if (block.scale) return scalePoints(block.scale).map(String);
+  const first = (block.rows ?? []).map((r) => efByName.get(r.name)).find(Boolean);
+  return first?.choices ?? [];
+}
+
+/** The grid, in miniature — same columns, same rows, no answers. */
+function CanvasMatrixPreview({
+  block,
+  efByName,
+  locale,
+  base,
+  accent,
+  p,
+}: {
+  block: ApiFormBlock;
+  efByName: Map<string, ApiFormEligibleField>;
+  locale: string;
+  base: string;
+  accent: string;
+  p: CanvasPalette;
+}) {
+  const columns = matrixColumnLabels(block, efByName);
+  const rows = (block.rows ?? []).filter((r) => efByName.has(r.name));
+  if (columns.length === 0 || rows.length === 0) return null;
+  return (
+    <div
+      className="grid items-center gap-1.5 text-[12px]"
+      style={{
+        gridTemplateColumns: `minmax(0,1.4fr) repeat(${columns.length}, minmax(0,1fr))`,
+        color: p.muted,
+      }}
+    >
+      <span />
+      {columns.map((c) => (
+        <span key={c} className="truncate text-center text-[10.5px] leading-tight">
+          {c}
+        </span>
+      ))}
+      {rows.map((r) => {
+        const ef = efByName.get(r.name);
+        const loc = locale !== base ? r.i18n?.[locale] : undefined;
+        return (
+          <Fragment key={r.name}>
+            <span className="min-w-0 truncate pr-1.5" style={{ color: p.text }}>
+              {loc?.label || r.label || ef?.label || humanize(r.name)}
+              {ef?.required && <span style={{ color: accent }}> *</span>}
+            </span>
+            {columns.map((c) => (
+              <span key={c} className="flex h-7 items-center justify-center">
+                <span
+                  className="size-[11px] rounded-full border-[1.5px]"
+                  style={{ borderColor: p.border, background: p.inputBg }}
+                />
+              </span>
+            ))}
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
 function InsertDot({ onClick, bg }: { onClick: () => void; bg: string }) {
   const { t } = useLingui();
   // Editor chrome — always the admin primary, never the form's accent (this
@@ -922,7 +1043,14 @@ export function FormsPage({
   }
 
   const fieldBlocks = form.fields.filter((b) => (b.kind ?? "field") === "field");
-  const usedNames = new Set(fieldBlocks.map((b) => b.name));
+  // Matrix rows hold their fields as surely as a field block does — a name the
+  // picker still offers is a duplicate the server refuses on the next save.
+  const usedNames = new Set([
+    ...fieldBlocks.map((b) => b.name),
+    ...form.fields.flatMap((b) =>
+      b.kind === "matrix" ? (b.rows ?? []).map((r) => r.name) : [],
+    ),
+  ]);
   const selBlock =
     sel?.kind === "block" ? form.fields.find((b) => b.id === sel.id) ?? null : null;
 
@@ -1112,7 +1240,13 @@ export function FormsPage({
                 {form.fields.map((b, i) => {
                   const kind = b.kind ?? "field";
                   const ef = kind === "field" ? efByName.get(b.name ?? "") ?? null : null;
-                  const missing = kind === "field" && !ef;
+                  // A block whose field is gone from the schema isn't drawn —
+                  // and a matrix is gone once none of its rows survive.
+                  const missing =
+                    kind === "field"
+                      ? !ef
+                      : kind === "matrix" &&
+                        !(b.rows ?? []).some((r) => efByName.has(r.name));
                   const selected = sel?.kind === "block" && sel.id === b.id;
                   const loc = locale !== base ? b.i18n?.[locale] : undefined;
                   const label =
@@ -1219,6 +1353,30 @@ export function FormsPage({
                               <Trans>step {stepNo}</Trans>
                             </span>
                             <span className="text-[14px] font-semibold">{label}</span>
+                          </div>
+                        ) : kind === "matrix" ? (
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-1.5 text-[13.5px] font-medium">
+                              <span>{label}</span>
+                              {locale !== base && (
+                                <span className="ml-1 font-mono text-[9.5px] uppercase opacity-50">
+                                  {loc?.label ? locale : base}
+                                </span>
+                              )}
+                            </div>
+                            <CanvasMatrixPreview
+                              block={b}
+                              efByName={efByName}
+                              locale={locale}
+                              base={base}
+                              accent={accent}
+                              p={cp}
+                            />
+                            {(loc?.help || b.help) && (
+                              <span className="text-[12px]" style={{ color: cp.muted }}>
+                                {loc?.help || b.help}
+                              </span>
+                            )}
                           </div>
                         ) : ef?.type === "boolean" && !b.consent ? (
                           <div className="flex items-center gap-2.5 py-0.5 text-[13.5px]">
@@ -1363,6 +1521,8 @@ export function FormsPage({
                 ef={efByName.get(selBlock.name ?? "") ?? null}
                 fieldBlocks={fieldBlocks}
                 efByName={efByName}
+                eligible={eligible}
+                usedNames={usedNames}
                 locale={locale}
                 base={base}
                 collection={form.collection}
@@ -1436,6 +1596,18 @@ export function FormsPage({
         onPick={(item) => {
           if (item === "step") {
             insertBlock({ id: newBlockId(), kind: "step", label: t`New step` }, insertAt);
+          } else if (item === "matrix") {
+            // Seeded with two rows that already agree on their columns: the
+            // builder saves as you type, and an empty matrix is a block the
+            // server is right to refuse.
+            const seeded = seedMatrix(eligible.filter((f) => !usedNames.has(f.name)));
+            if (!seeded) {
+              pushToast(
+                t`A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices.`,
+              );
+              return;
+            }
+            insertBlock({ id: newBlockId(), label: t`New matrix`, ...seeded }, insertAt);
           } else {
             insertBlock({ id: newBlockId(), kind: "field", name: item.name }, insertAt);
           }
@@ -1636,10 +1808,14 @@ function ScaleEditor({
   block,
   ef,
   onPatch,
+  allowPlain = true,
 }: {
   block: ApiFormBlock;
   ef: ApiFormEligibleField;
   onPatch: (id: string, patch: Partial<ApiFormBlock>) => void;
+  /** False on a matrix, where the shared scale IS the columns: dropping it
+   *  would leave rows with nothing to be answered on. */
+  allowPlain?: boolean;
 }) {
   const { t } = useLingui();
   const scale = blockScale(block, ef);
@@ -1671,7 +1847,7 @@ function ScaleEditor({
             return set({ min: scale?.min ?? 1, max: scale?.max ?? 5, style: "number" });
           }}
           options={[
-            { value: "input", label: t`Number input` },
+            ...(allowPlain ? [{ value: "input", label: t`Number input` }] : []),
             { value: "stars", label: t`Star rating` },
             { value: "number", label: t`Numbered scale` },
             { value: "nps", label: t`NPS — how likely to recommend (0–10)` },
@@ -1730,6 +1906,167 @@ function ScaleEditor({
             Results score this as promoters (9–10) minus detractors (0–6).
           </Trans>
         </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The rows of a matrix, and the columns they are all answered on.
+ *
+ * The columns are not chosen here — they follow from the fields the rows name,
+ * which is why the row picker only offers fields that can be answered on the
+ * columns the matrix already has. An operator cannot assemble a grid the server
+ * would refuse, because the ingredients for one are never on the menu.
+ */
+function MatrixEditor({
+  block,
+  firstRowEf,
+  efByName,
+  eligible,
+  usedNames,
+  locale,
+  base,
+  collection,
+  onPatch,
+}: {
+  block: ApiFormBlock;
+  firstRowEf: ApiFormEligibleField | null;
+  efByName: Map<string, ApiFormEligibleField>;
+  eligible: ApiFormEligibleField[];
+  usedNames: Set<string | undefined>;
+  locale: string;
+  base: string;
+  collection: string;
+  onPatch: (id: string, patch: Partial<ApiFormBlock>) => void;
+}) {
+  const { t } = useLingui();
+  const rows = block.rows ?? [];
+  const onScale = Boolean(block.scale) || (firstRowEf?.type === "integer" && !firstRowEf.choices);
+  const candidates = matrixRowCandidates(block, eligible, usedNames, efByName);
+  const setRows = (next: ApiFormBlockMatrixRow[]) => onPatch(block.id!, { rows: next });
+
+  const patchRow = (index: number, patch: Partial<ApiFormBlockMatrixRow>) =>
+    setRows(rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+
+  const moveRow = (index: number, delta: number) => {
+    const to = index + delta;
+    if (to < 0 || to >= rows.length) return;
+    const next = [...rows];
+    const [moved] = next.splice(index, 1);
+    next.splice(to, 0, moved!);
+    setRows(next);
+  };
+
+  /** A row's caption in the locale being edited; empty falls back down the
+   *  same chain the public page uses. */
+  const rowLabel = (row: ApiFormBlockMatrixRow) =>
+    locale === base ? row.label ?? "" : row.i18n?.[locale]?.label ?? "";
+  const setRowLabel = (index: number, value: string) =>
+    locale === base
+      ? patchRow(index, { label: value || undefined })
+      : patchRow(index, {
+          i18n: {
+            ...rows[index]?.i18n,
+            [locale]: { ...rows[index]?.i18n?.[locale], label: value || undefined },
+          },
+        });
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-border pt-3">
+      <div className="flex flex-col gap-1.5">
+        <PanelLabel>
+          <span className="flex items-center gap-1">
+            <I.Grid3 size={11} />
+            <Trans>rows · {rows.length}</Trans>
+          </span>
+        </PanelLabel>
+        {rows.map((row, i) => {
+          const rowEf = efByName.get(row.name);
+          return (
+            <div key={row.name} className="flex items-center gap-1.5">
+              <div className="flex shrink-0 flex-col">
+                <button
+                  type="button"
+                  title={t`Move up`}
+                  onClick={() => moveRow(i, -1)}
+                  className="grid size-4 place-items-center rounded text-muted-foreground hover:text-foreground"
+                >
+                  <I.ChevronUp size={10} />
+                </button>
+                <button
+                  type="button"
+                  title={t`Move down`}
+                  onClick={() => moveRow(i, 1)}
+                  className="grid size-4 place-items-center rounded text-muted-foreground hover:text-foreground"
+                >
+                  <I.ChevronDown size={10} />
+                </button>
+              </div>
+              <div className="min-w-0 flex-1">
+                <Input
+                  value={rowLabel(row)}
+                  placeholder={
+                    locale === base
+                      ? rowEf?.label ?? humanize(row.name)
+                      : row.label || rowEf?.label || humanize(row.name)
+                  }
+                  onChange={(e) => setRowLabel(i, e.target.value)}
+                />
+                <span className="mt-0.5 block truncate font-mono text-[10px] text-muted-foreground">
+                  {row.name}
+                  {!rowEf && <span className="text-destructive"> · <Trans>not on this collection</Trans></span>}
+                </span>
+              </div>
+              {rows.length > 1 && !rowEf?.required && (
+                <IconButton
+                  icon={I.X}
+                  title={t`Remove row`}
+                  onClick={() => setRows(rows.filter((_, x) => x !== i))}
+                />
+              )}
+            </div>
+          );
+        })}
+        {candidates.length > 0 ? (
+          <Select
+            value=""
+            onChange={(v) => v && setRows([...rows, { name: v }])}
+            options={[
+              { value: "", label: t`Add a row…` },
+              ...candidates.map((f) => ({
+                value: f.name,
+                label: f.label ?? humanize(f.name),
+              })),
+            ]}
+          />
+        ) : (
+          <span className="text-[11px] leading-relaxed text-muted-foreground">
+            {onScale ? (
+              <Trans>Every free number field on <span className="font-mono">{collection}</span> is already on the form.</Trans>
+            ) : (
+              <Trans>No other field on <span className="font-mono">{collection}</span> offers these same choices.</Trans>
+            )}
+          </span>
+        )}
+      </div>
+
+      {onScale && firstRowEf ? (
+        <ScaleEditor block={block} ef={firstRowEf} onPatch={onPatch} allowPlain={false} />
+      ) : (
+        <div className="flex flex-col gap-1.5 border-t border-border pt-3">
+          <PanelLabel><Trans>columns · from schema enum</Trans></PanelLabel>
+          <div className="flex flex-wrap gap-1">
+            {(firstRowEf?.choices ?? []).map((c) => (
+              <span key={c} className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                {c}
+              </span>
+            ))}
+          </div>
+          <span className="text-[10.5px] leading-relaxed text-muted-foreground">
+            <Trans>Every row is answered on these — edit them on the field in <span className="font-mono">{collection}</span>.</Trans>
+          </span>
+        </div>
       )}
     </div>
   );
@@ -1853,6 +2190,8 @@ function BlockPanel({
   ef,
   fieldBlocks,
   efByName,
+  eligible,
+  usedNames,
   locale,
   base,
   collection,
@@ -1865,6 +2204,8 @@ function BlockPanel({
   ef: ApiFormEligibleField | null;
   fieldBlocks: ApiFormBlock[];
   efByName: Map<string, ApiFormEligibleField>;
+  eligible: ApiFormEligibleField[];
+  usedNames: Set<string | undefined>;
   locale: string;
   base: string;
   collection: string;
@@ -1875,6 +2216,17 @@ function BlockPanel({
 }) {
   const { t } = useLingui();
   const isStep = (block.kind ?? "field") === "step";
+  const isMatrix = block.kind === "matrix";
+  // The first row decides what the rest can be — it is the field whose type
+  // (or choices) the columns are drawn from.
+  const firstRowEf = isMatrix
+    ? (block.rows ?? []).map((r) => efByName.get(r.name)).find(Boolean) ?? null
+    : null;
+  // A matrix holding a schema-required field can't be removed for the same
+  // reason a required field block can't: the form would stop validating.
+  const holdsRequired = isMatrix
+    ? (block.rows ?? []).some((r) => efByName.get(r.name)?.required)
+    : Boolean(ef?.required);
   const loc = locale !== base ? block.i18n?.[locale] : undefined;
   const val = (key: "label" | "placeholder" | "help") =>
     locale === base ? (block[key] ?? "") : (loc?.[key] ?? "");
@@ -1899,7 +2251,7 @@ function BlockPanel({
       title={
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate font-mono text-[12px]">
-            {isStep ? t`Step break` : block.name}
+            {isStep ? t`Step break` : isMatrix ? t`Matrix` : block.name}
           </span>
           {ef && <span className="text-[10px] font-normal text-muted-foreground">{ef.type}</span>}
         </span>
@@ -1966,8 +2318,22 @@ function BlockPanel({
         </div>
       )}
 
-      {!isStep && ef?.type === "integer" && (
+      {!isStep && !isMatrix && ef?.type === "integer" && (
         <ScaleEditor block={block} ef={ef} onPatch={onPatch} />
+      )}
+
+      {isMatrix && (
+        <MatrixEditor
+          block={block}
+          firstRowEf={firstRowEf}
+          efByName={efByName}
+          eligible={eligible}
+          usedNames={usedNames}
+          locale={locale}
+          base={base}
+          collection={collection}
+          onPatch={onPatch}
+        />
       )}
 
       {!isStep && ef?.type === "file" && (
@@ -2152,7 +2518,7 @@ function BlockPanel({
         </p>
       )}
 
-      {!isStep && ef?.required ? (
+      {!isStep && holdsRequired ? (
         <div className="flex items-center justify-center gap-1.5 rounded-control border border-dashed border-border px-3 py-2.5 text-[11.5px] text-muted-foreground">
           <I.Lock size={11} />
           <Trans>required by the schema — can't be removed from the form</Trans>
@@ -2953,6 +3319,34 @@ function ResultBar({
   );
 }
 
+/** Results, folded back into the questions they were asked as: a run of blocks
+ *  sharing a matrix id is one grid, everything else is one card. */
+const groupResultBlocks = (
+  blocks: ApiFormResultBlock[],
+): Array<
+  | { kind: "one"; block: ApiFormResultBlock }
+  | { kind: "matrix"; id: string; label: string; blocks: ApiFormResultBlock[] }
+> => {
+  const out: Array<
+    | { kind: "one"; block: ApiFormResultBlock }
+    | { kind: "matrix"; id: string; label: string; blocks: ApiFormResultBlock[] }
+  > = [];
+  for (const block of blocks) {
+    const m = block.matrix;
+    if (!m) {
+      out.push({ kind: "one", block });
+      continue;
+    }
+    const last = out[out.length - 1];
+    if (last?.kind === "matrix" && last.id === m.id) {
+      last.blocks.push(block);
+      continue;
+    }
+    out.push({ kind: "matrix", id: m.id, label: m.label, blocks: [block] });
+  }
+  return out;
+};
+
 /**
  * What the answers add up to.
  *
@@ -3084,9 +3478,36 @@ function ResultsTab({
         </Trans>
       </p>
 
-      {data.blocks.map((b) => {
-        const max = b.buckets?.reduce((m, k) => Math.max(m, k.count), 0) ?? 0;
-        return (
+      {groupResultBlocks(data.blocks).map((g) =>
+        g.kind === "matrix" ? (
+          // A matrix was asked as one question, so its rows are read back
+          // under it — the same grouping the form drew, not a scattering of
+          // near-identical cards the operator has to reassemble by eye.
+          <div key={g.id} className="flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 px-0.5 font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground">
+              <I.Grid3 size={11} />
+              <span className="min-w-0 truncate">{g.label}</span>
+            </div>
+            <div className="flex flex-col gap-2 border-l border-border pl-3">
+              {g.blocks.map((b) => resultCard(b))}
+            </div>
+          </div>
+        ) : (
+          resultCard(g.block)
+        ),
+      )}
+
+      {data.truncated > 0 && (
+        <p className="text-[11.5px] text-muted-foreground">
+          <Trans>{data.truncated} more questions are not summarised — this form has more than the panel computes.</Trans>
+        </p>
+      )}
+    </div>
+  );
+
+  function resultCard(b: ApiFormResultBlock) {
+    const max = b.buckets?.reduce((m, k) => Math.max(m, k.count), 0) ?? 0;
+    return (
           <Card key={b.name} className="gap-3 p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="min-w-0 truncate text-[13.5px] font-semibold">{b.label}</span>
@@ -3150,16 +3571,8 @@ function ResultsTab({
               </button>
             )}
           </Card>
-        );
-      })}
-
-      {data.truncated > 0 && (
-        <p className="text-[11.5px] text-muted-foreground">
-          <Trans>{data.truncated} more questions are not summarised — this form has more than the panel computes.</Trans>
-        </p>
-      )}
-    </div>
-  );
+    );
+  }
 }
 
 function SubmissionsTab({
@@ -3325,7 +3738,7 @@ function InsertPalette({
   open: boolean;
   onClose: () => void;
   eligible: ApiFormEligibleField[];
-  onPick: (item: ApiFormEligibleField | "step") => void;
+  onPick: (item: ApiFormEligibleField | "step" | "matrix") => void;
 }) {
   const { t } = useLingui();
   const [q, setQ] = useState("");
@@ -3337,6 +3750,11 @@ function InsertPalette({
     (f) => !ql || f.name.toLowerCase().includes(ql) || (f.label ?? "").toLowerCase().includes(ql),
   );
   const showStep = !ql || "step".includes(ql) || t`Step break`.toLowerCase().includes(ql);
+  // A matrix has nothing to ask until two fields can share one set of columns.
+  const matrixCandidates = eligible.filter((f) => f.type === "integer" || f.choices);
+  const showMatrix =
+    matrixCandidates.length >= 2 &&
+    (!ql || "matrix".includes(ql) || t`Matrix`.toLowerCase().includes(ql));
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
@@ -3375,27 +3793,44 @@ function InsertPalette({
                 </button>
               );
             })}
-            {showStep && (
-              <>
-                <div className="mt-1 border-t border-border px-2.5 pb-1 pt-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground">
-                  <Trans>layout</Trans>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onPick("step")}
-                  className="flex items-center gap-2.5 rounded-control px-2.5 py-2 text-left hover:bg-accent/50"
-                >
-                  <span className="grid size-7 shrink-0 place-items-center rounded-control bg-primary/10 text-primary">
-                    <I.Layers size={13} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium"><Trans>Step break</Trans></span>
-                    <span className="block text-[10.5px] text-muted-foreground"><Trans>Splits the form into pages</Trans></span>
-                  </span>
-                </button>
-              </>
+            {(showStep || showMatrix) && (
+              <div className="mt-1 border-t border-border px-2.5 pb-1 pt-2 font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground">
+                <Trans>layout</Trans>
+              </div>
             )}
-            {fields.length === 0 && !showStep && (
+            {showStep && (
+              <button
+                type="button"
+                onClick={() => onPick("step")}
+                className="flex items-center gap-2.5 rounded-control px-2.5 py-2 text-left hover:bg-accent/50"
+              >
+                <span className="grid size-7 shrink-0 place-items-center rounded-control bg-primary/10 text-primary">
+                  <I.Layers size={13} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-medium"><Trans>Step break</Trans></span>
+                  <span className="block text-[10.5px] text-muted-foreground"><Trans>Splits the form into pages</Trans></span>
+                </span>
+              </button>
+            )}
+            {showMatrix && (
+              <button
+                type="button"
+                onClick={() => onPick("matrix")}
+                className="flex items-center gap-2.5 rounded-control px-2.5 py-2 text-left hover:bg-accent/50"
+              >
+                <span className="grid size-7 shrink-0 place-items-center rounded-control bg-primary/10 text-primary">
+                  <I.Grid3 size={13} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-medium"><Trans>Matrix</Trans></span>
+                  <span className="block text-[10.5px] text-muted-foreground">
+                    <Trans>Several questions on one shared set of columns</Trans>
+                  </span>
+                </span>
+              </button>
+            )}
+            {fields.length === 0 && !showStep && !showMatrix && (
               <p className="px-2.5 py-4 text-center text-[12px] text-muted-foreground">
                 <Trans>No blocks match "{q}"</Trans>
               </p>

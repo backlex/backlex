@@ -816,12 +816,13 @@ export interface DashboardShareResult {
 }
 
 /** One block on a public form (order = render order). `kind: "field"` exposes
- *  a collection field; `kind: "step"` is a presentation-only page break. */
+ *  a collection field; `kind: "step"` is a presentation-only page break;
+ *  `kind: "matrix"` asks several fields on one shared set of columns. */
 export interface PublicFormBlockConfig {
   /** Stable client id for builder selection/reorder. Optional; preserved. */
   id?: string;
   /** Defaults to "field" when omitted (legacy configs). */
-  kind?: "field" | "step";
+  kind?: "field" | "step" | "matrix";
   /** Collection field name — required for field blocks. */
   name?: string;
   /** Display label override; step blocks use it as the step title. */
@@ -845,6 +846,23 @@ export interface PublicFormBlockConfig {
     minLabel?: string;
     maxLabel?: string;
   };
+  /**
+   * Matrix blocks only: the statements the grid asks, top to bottom.
+   *
+   * Each row names an ordinary collection field and its answer lands in that
+   * field's own column — the grid is how the question is drawn, not where it
+   * goes, so the results panel, dashboards and exports read the rows as the
+   * questions they are. The rows must agree on their columns: either every row
+   * is an `integer` field answered on the block's shared {@link scale}, or
+   * every row offers the same choices in the same order (the likert grid).
+   */
+  rows?: Array<{
+    /** Collection field this row's answer is written into. */
+    name: string;
+    /** Row caption; falls back to the field's own label. */
+    label?: string;
+    i18n?: Record<string, { label?: string; placeholder?: string; help?: string }>;
+  }>;
   /** Boolean fields only: consent checkbox — submits must carry `true`. */
   consent?: boolean;
   /** Optional "read the full text" URL shown next to a consent block. */
@@ -2661,6 +2679,10 @@ export interface PublicFormResultBlock {
   average: number | null;
   /** `style: "nps"` scales only: promoters (9–10) minus detractors (0–6). */
   nps: { promoters: number; passives: number; detractors: number; score: number } | null;
+  /** Set when the question was asked as one row of a matrix — blocks sharing
+   *  an `id` were asked under one heading. The summary itself is unchanged:
+   *  a matrix row is the scale or choice question it always was. */
+  matrix: { id: string; label: string } | null;
 }
 
 /** A form's answers, summarised. Mirrors `GET /api/admin/forms/:id/results`. */

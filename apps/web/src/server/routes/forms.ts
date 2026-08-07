@@ -13,6 +13,7 @@ import {
   formEligibleFields,
   getForm,
   listForms,
+  MATRIX_MAX_ROWS,
   rotateFormToken,
   updateForm,
   type FormRow,
@@ -41,8 +42,8 @@ const FormBlockI18nSchema = z.object({
 const FormBlockSchema = z
   .object({
     id: z.string().max(40).optional(),
-    /** "field" (default) or the "step" page break. */
-    kind: z.enum(["field", "step"]).optional(),
+    /** "field" (default), the "step" page break, or the "matrix" grid. */
+    kind: z.enum(["field", "step", "matrix"]).optional(),
     name: z.string().min(1).optional(),
     label: z.string().max(300).optional(),
     placeholder: z.string().max(300).optional(),
@@ -59,6 +60,19 @@ const FormBlockSchema = z
         minLabel: z.string().max(80).optional(),
         maxLabel: z.string().max(80).optional(),
       })
+      .optional(),
+    /** Matrix blocks: the statements the grid asks. Their fields must all be
+     *  integer (answered on the block's shared `scale`) or all offer the same
+     *  choices in the same order — re-checked when the form is saved. */
+    rows: z
+      .array(
+        z.object({
+          name: z.string().min(1),
+          label: z.string().max(300).optional(),
+          i18n: z.record(z.string(), FormBlockI18nSchema).optional(),
+        }),
+      )
+      .max(MATRIX_MAX_ROWS)
       .optional(),
     consent: z.boolean().optional(),
     policyUrl: z.string().url().max(2000).optional(),
@@ -206,6 +220,9 @@ const FormResultBlockSchema = z
         score: z.number(),
       })
       .nullable(),
+    /** Set when the question is one row of a matrix — blocks sharing an `id`
+     *  were asked under one heading. */
+    matrix: z.object({ id: z.string(), label: z.string() }).nullable(),
   })
   .openapi("FormResultBlock");
 

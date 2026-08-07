@@ -1139,6 +1139,10 @@ msgstr "Hiçbir ücret çekmeden ödemeleri sonuçlandıran yerel bir taklit. Ya
 msgid "A loop runs inline, so its body cannot wait for an approval or a long delay."
 msgstr "Döngü satır içinde çalışır; gövdesi bir onayı ya da uzun bir beklemeyi bekleyemez."
 
+#: src/client/admin/pages/forms.tsx
+msgid "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
+msgstr "Bir matris, aynı sütunları paylaşabilecek iki alana ihtiyaç duyar — iki sayı alanı ya da aynı seçenekleri sunan iki açılır liste."
+
 #: src/client/admin/parity/kpis.tsx
 msgid "A named figure and the formula behind it. Panels, Ask AI and reports all read from these definitions, so one edit changes the number everywhere it appears."
 msgstr "Adlandırılmış bir gösterge ve arkasındaki formül. Paneller, Ask AI ve raporlar bu tanımlardan okur; tek bir düzenleme sayıyı göründüğü her yerde değiştirir."
@@ -1564,6 +1568,10 @@ msgstr "<0>c_{from}</0> koleksiyonuna <1>c_{to}</1> öğesini gösteren bir ili�
 #: src/client/admin/pages/ask-ai/connect-tab.tsx
 msgid "Add a remote MCP connector"
 msgstr "Uzak bir MCP bağlayıcısı ekleyin"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Add a row…"
+msgstr "Satır ekle…"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Add a step after the loop"
@@ -3716,6 +3724,10 @@ msgstr "sütun: <0>{0}</0>"
 #: src/client/admin/list-columns.tsx
 msgid "Columns"
 msgstr "Kolonlar"
+
+#: src/client/admin/pages/forms.tsx
+msgid "columns · from schema enum"
+msgstr "sütunlar · şema seçeneklerinden"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Comma or newline separated. Each gets its own single-use link."
@@ -6383,6 +6395,10 @@ msgstr "3 saatte bir"
 msgid "Every 30 minutes"
 msgstr "30 dakikada bir"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Every free number field on <0>{collection}</0> is already on the form."
+msgstr "<0>{collection}</0> içindeki boştaki tüm sayı alanları zaten formda."
+
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
 msgstr "İzinlere bağlı olarak her MCP aracı çağrılabilir. Bu anahtarı bir izin listesiyle daraltmak için aşağıdan bir araç işaretleyin."
@@ -6398,6 +6414,10 @@ msgstr "Bu hatanın tüm görülmeleri; en son yığın izi ve kaç ziyaretçiye
 #: src/client/admin/flow-builder.tsx
 msgid "Every panel runs with this flow's identity, then prints to a PDF."
 msgstr "Her panel bu akışın kimliğiyle çalışır, sonra PDF'e basılır."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Every row is answered on these — edit them on the field in <0>{collection}</0>."
+msgstr "Her satır bunlarla yanıtlanır — düzenlemek için <0>{collection}</0> içindeki alana gidin."
 
 #: src/client/admin/field-money-editor.tsx
 msgid "Every row needs a code in this column before an amount can be saved, and totals over this field have to be grouped by it — adding amounts in different currencies together is refused rather than answered."
@@ -9233,6 +9253,10 @@ msgstr "aşağıdakilerin {0} ile eşleş"
 msgid "Matched rules"
 msgstr "Eşleşen kurallar"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Matrix"
+msgstr "Matris"
+
 #: src/client/admin/field-validation-editor.tsx
 msgid "Max"
 msgstr "Maks"
@@ -9937,6 +9961,10 @@ msgstr "Yeni bağlantı"
 msgid "New link minted — the old one no longer works."
 msgstr "Yeni bağlantı üretildi — eskisi artık çalışmıyor."
 
+#: src/client/admin/pages/forms.tsx
+msgid "New matrix"
+msgstr "Yeni matris"
+
 #: src/client/admin/pages/database-import.tsx
 msgid "New migration"
 msgstr "Yeni taşıma"
@@ -10623,6 +10651,10 @@ msgstr "Önümüzdeki iki hafta içinde açık saat yok."
 msgid "No organizations yet — create one here, or let end-users start their own from your app."
 msgstr "Henüz organizasyon yok — buradan oluşturun ya da son kullanıcılar uygulamanızdan kendileri açsın."
 
+#: src/client/admin/pages/forms.tsx
+msgid "No other field on <0>{collection}</0> offers these same choices."
+msgstr "<0>{collection}</0> içinde aynı seçenekleri sunan başka alan yok."
+
 #: src/client/admin/field-transitions-editor.tsx
 msgid "No other fields on this collection yet."
 msgstr "Bu koleksiyonda henüz başka alan yok."
@@ -10964,6 +10996,10 @@ msgstr "Sayım için gerekli değil"
 #: src/client/admin/add-field.tsx
 msgid "NOT NULL — adding to a table that already has rows needs a default."
 msgstr "NOT NULL — satırları olan bir tabloya eklemek varsayılan değer gerektirir."
+
+#: src/client/admin/pages/forms.tsx
+msgid "not on this collection"
+msgstr "bu koleksiyonda yok"
 
 #: src/client/admin/field-phone-input.tsx
 msgid "Not one of the countries this field allows."
@@ -13571,6 +13607,10 @@ msgstr "Bir kişiyi koleksiyonlardan, revizyon geçmişinden, etkinlik kaydında
 msgid "Remove question"
 msgstr "Soruyu kaldır"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Remove row"
+msgstr "Satırı kaldır"
+
 #: src/client/admin/parity/booking.tsx
 msgid "Remove rule"
 msgstr "Kuralı kaldır"
@@ -14256,6 +14296,11 @@ msgstr "satır"
 #: src/client/admin/pages/usage.tsx
 msgid "Rows"
 msgstr "Satırlar"
+
+#. placeholder {0}: rows.length
+#: src/client/admin/pages/forms.tsx
+msgid "rows · {0}"
+msgstr "satır · {0}"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Rows carry a <0>tenant_id</0>. Adopted tables usually don't — leave off unless you know the source already partitions by tenant."
@@ -15373,6 +15418,10 @@ msgstr "sonuçlandı"
 #: src/client/admin/pages/forms.tsx
 msgid "Several answers allowed, so the shares can add up to more than 100%."
 msgstr "Birden fazla yanıt seçilebildiği için oranların toplamı %100'ü aşabilir."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Several questions on one shared set of columns"
+msgstr "Birkaç soru, ortak bir sütun kümesi üzerinde"
 
 #: src/client/admin/field-validation-editor.tsx
 msgid "Severity"

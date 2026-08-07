@@ -79,6 +79,22 @@ const MANAGE_TOKEN_PREFIX = "bkm";
 const TOKEN_BYTES = 24;
 
 export const MAX_RULES_PER_RESOURCE = 200;
+
+/**
+ * How many rules one INSERT statement carries.
+ *
+ * SQLite binds one parameter per column per row and refuses past 100 of them
+ * ("too many SQL variables"); a rule row is eleven columns wide, so a tenth
+ * rule is where a single statement crosses the line. Eight leaves room for a
+ * column to be added without this becoming a bug again.
+ */
+export const RULES_PER_INSERT = 8;
+
+/** What SQLite will bind in one statement. D1 ships the stock 100; bun:sqlite
+ *  is compiled far higher, which is exactly why the local suite cannot catch a
+ *  breach by running one — `booking.test.ts` checks the budget arithmetic
+ *  instead of hoping the driver complains. */
+export const SQLITE_MAX_VARIABLES = 100;
 export const MAX_QUESTIONS = 20;
 export const MAX_ANSWER_LENGTH = 2000;
 export const MAX_NOTES = 2000;
@@ -1054,15 +1070,23 @@ const writeRules = async (
   await (ctx.db as AnyDb).delete(t).where(eq(t.resourceId, resourceId));
   if (normalized.length === 0) return;
   const now = stampAt(ctx.dialect, Date.now());
-  await (ctx.db as AnyDb).insert(t).values(
-    normalized.map((r) => ({
-      id: crypto.randomUUID(),
-      resourceId,
-      ...r,
-      createdAt: now,
-      updatedAt: now,
-    })),
-  );
+  const rows = normalized.map((r) => ({
+    id: crypto.randomUUID(),
+    resourceId,
+    ...r,
+    createdAt: now,
+    updatedAt: now,
+  }));
+  // One statement per batch, because a multi-row insert binds a parameter per
+  // COLUMN per row and SQLite stops at 100 of them: eleven columns made ten
+  // rules the point where "save my opening hours" answered 500. The rules are
+  // already deleted by now, so that 500 did not leave the old hours in place —
+  // it left the resource with none, which is a calendar that silently stopped
+  // taking bookings. The cap is deliberately well under the ceiling; the win
+  // from packing rows tighter is not worth being one column away from it again.
+  for (let i = 0; i < rows.length; i += RULES_PER_INSERT) {
+    await (ctx.db as AnyDb).insert(t).values(rows.slice(i, i + RULES_PER_INSERT));
+  }
 };
 
 export interface CreatedResource {

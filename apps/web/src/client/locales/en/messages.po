@@ -1159,6 +1159,10 @@ msgstr "A local stand-in that settles payments without charging anything. Demo a
 msgid "A loop runs inline, so its body cannot wait for an approval or a long delay."
 msgstr "A loop runs inline, so its body cannot wait for an approval or a long delay."
 
+#: src/client/admin/parity/booking.tsx
+msgid "A lunch hour, say — closed on every day you are otherwise open, without splitting each opening in two."
+msgstr "A lunch hour, say — closed on every day you are otherwise open, without splitting each opening in two."
+
 #: src/client/admin/pages/forms.tsx
 msgid "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
 msgstr "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
@@ -1539,6 +1543,10 @@ msgstr "Add a <0>status</0> dropdown with <1>draft / review / published / archiv
 #: src/client/admin/parity/booking.tsx
 msgid "Add a booking"
 msgstr "Add a booking"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Add a break"
+msgstr "Add a break"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Add a Client ID and secret below first."
@@ -4761,6 +4769,10 @@ msgstr "Customize…"
 msgid "Daily"
 msgstr "Daily"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Daily break"
+msgstr "Daily break"
+
 #: src/client/admin/collection-settings.tsx
 msgid "danger zone"
 msgstr "danger zone"
@@ -6441,6 +6453,10 @@ msgstr "Every 3 hours"
 #: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Every 30 minutes"
 msgstr "Every 30 minutes"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Every day"
+msgstr "Every day"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Every free number field on <0>{collection}</0> is already on the form."
@@ -11438,6 +11454,10 @@ msgstr "Once you leave this page, the secret can’t be retrieved — only revok
 msgid "One answer per browser"
 msgstr "One answer per browser"
 
+#: src/client/admin/parity/booking.tsx
+msgid "One day"
+msgstr "One day"
+
 #: src/client/admin/pages/_agents-shared.tsx
 msgid "one extra model call per message"
 msgstr "one extra model call per message"
@@ -13630,6 +13650,7 @@ msgstr "reminded {0}"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/parity/app-orgs.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/rule-builder.tsx
 msgid "Remove"
 msgstr "Remove"
@@ -16702,6 +16723,10 @@ msgid "Tags"
 msgstr "Tags"
 
 #: src/client/admin/parity/booking.tsx
+msgid "Taken out of every opening on the days above. Stored as one closed rule per day — edit it here and they all move together."
+msgstr "Taken out of every opening on the days above. Stored as one closed rule per day — edit it here and they all move together."
+
+#: src/client/admin/parity/booking.tsx
 msgid "Taken over the phone, so it is not limited to the published times — but a slot that is already full is still refused."
 msgstr "Taken over the phone, so it is not limited to the published times — but a slot that is already full is still refused."
 
@@ -18648,6 +18673,14 @@ msgstr "Webhooks"
 #: src/client/admin/item-views.tsx
 msgid "Wed"
 msgstr "Wed"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Weekdays"
+msgstr "Weekdays"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Weekend"
+msgstr "Weekend"
 
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/parity/database.tsx

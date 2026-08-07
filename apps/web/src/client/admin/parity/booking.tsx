@@ -19,6 +19,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@backlex/ui/components/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@backlex/ui/components/dropdown-menu";
 import { I } from "../icons";
 import { Select } from "../select";
 import { Button, EmptyState, PageHeader } from "../ui";
@@ -67,6 +73,85 @@ const WEEKDAYS = [
   { value: "5", label: "Friday" },
   { value: "6", label: "Saturday" },
 ];
+
+/**
+ * The weekday's own short name, in the reader's language.
+ *
+ * 2024-01-07 was a Sunday, so adding the weekday number lands on that weekday —
+ * any week would do, this one just makes the arithmetic obvious. Intl rather
+ * than a table because these are read at a glance on a row of chips, and a
+ * Turkish operator reading "Mon" is being made to translate.
+ */
+const shortWeekday = (weekday: number): string => {
+  try {
+    return new Intl.DateTimeFormat(undefined, { weekday: "short", timeZone: "UTC" }).format(
+      new Date(Date.UTC(2024, 0, 7 + weekday)),
+    );
+  } catch {
+    return String(weekday);
+  }
+};
+
+/** The day sets "add rule" offers. A calendar is almost never one weekday, and
+ *  adding Monday-to-Friday one row at a time is five times the work for the
+ *  most ordinary answer there is. */
+const DAY_SETS = {
+  one: [1],
+  weekdays: [1, 2, 3, 4, 5],
+  weekend: [6, 0],
+  all: [0, 1, 2, 3, 4, 5, 6],
+} as const;
+type DaySet = keyof typeof DAY_SETS;
+
+/** Where a fresh opening starts and ends, and where a fresh break does. */
+const DEFAULT_OPEN = { startMinute: 9 * 60, endMinute: 17 * 60 };
+const DEFAULT_BREAK = { startMinute: 12 * 60, endMinute: 13 * 60 };
+
+/**
+ * A recurring daily break, read back off the rules that store it.
+ *
+ * There is no "break" in the schema — a break IS a set of block rules, and this
+ * page must not invent a second place for one to live. So the card is a VIEW:
+ * it recognises the shape (weekday-scoped, undated blocks that all agree on
+ * their hours) and edits exactly those rows. Anything that does not fit the
+ * shape — a block on a date range, two blocks at different hours — is not a
+ * "break" this can speak for, and stays in the list below where it can be read
+ * for what it is.
+ */
+interface DailyBreak {
+  startMinute: number;
+  endMinute: number;
+  weekdays: number[];
+}
+
+const readBreak = (rules: ApiBookingRule[]): DailyBreak | null => {
+  const blocks = rules.filter(
+    (r) => r.kind === "block" && r.weekday !== null && !r.startsOn && !r.endsOn,
+  );
+  const first = blocks[0];
+  if (!first) return null;
+  // Blocks that disagree about their hours are several different closures, not
+  // one break with a typo in it. Claiming otherwise would rewrite hours the
+  // operator never pointed the card at.
+  if (blocks.some((b) => b.startMinute !== first.startMinute || b.endMinute !== first.endMinute))
+    return null;
+  return {
+    startMinute: first.startMinute,
+    endMinute: first.endMinute,
+    weekdays: [...new Set(blocks.map((b) => Number(b.weekday)))].sort((a, b) => a - b),
+  };
+};
+
+/** Is this row one of the ones the break card is speaking for? Must agree with
+ *  `readBreak` exactly, or a rule is drawn twice or not at all. */
+const isBreakRule = (r: ApiBookingRule, brk: DailyBreak | null): boolean =>
+  brk !== null &&
+  r.kind === "block" &&
+  r.weekday !== null &&
+  !r.startsOn &&
+  !r.endsOn &&
+  r.startMinute === brk.startMinute &&
+  r.endMinute === brk.endMinute;
 
 const STATUS_TONE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   confirmed: "default",
@@ -741,6 +826,17 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
   draftRef.current = { form, rules, questions, look };
   const openKeyRef = useRef<string | null>(openKey);
   openKeyRef.current = openKey;
+  /**
+   * Which resource the working copy was actually loaded FOR.
+   *
+   * Every write here replaces a resource's rules wholesale, so a save that
+   * fires against a draft belonging to some other resource — or to no resource,
+   * the initial `[blankRule()]` — does not edit a calendar, it flattens one.
+   * `openKey` alone cannot rule that out: it is set by the click, while the
+   * draft is filled by the render that follows. Both the timer and the flush
+   * refuse unless the two agree.
+   */
+  const hydratedKey = useRef<string | null>(null);
 
   /** The one place a problem code becomes a sentence — inside the component,
    *  where the `t` macro is the real one. */
@@ -772,7 +868,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
     setSaveState("saving");
     saveTimer.current = setTimeout(async () => {
       const key = openKeyRef.current;
-      if (!key) return;
+      if (!key || hydratedKey.current !== key) return;
       const d = draftRef.current;
       const problem = problemWith(d);
       if (problem) {
@@ -809,7 +905,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
     const d = draftRef.current;
     // A draft that could not be saved on the timer cannot be saved on the way
     // out either; the reason was already on screen.
-    if (!key || problemWith(d)) return;
+    if (!key || hydratedKey.current !== key || problemWith(d)) return;
     void bookingApi
       .updateResource(key, bodyOf(d))
       .then((res) => setResources((arr) => arr.map((r) => (r.key === key ? res.data : r))))
@@ -843,6 +939,78 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
     setLook(fn);
     scheduleSave();
   };
+
+  /* ── hours: bulk add, and the break ──────────────────────────────────── */
+
+  const brk = readBreak(rules);
+
+  /** Add one opening per day in the set, skipping a day that already has that
+   *  exact opening — "add weekdays" twice should not leave five duplicates. */
+  const addOpenings = (set: DaySet) => {
+    editRules((arr) => {
+      const next = [...arr];
+      for (const weekday of DAY_SETS[set]) {
+        const dupe = next.some(
+          (r) =>
+            r.kind === "open" &&
+            r.weekday === weekday &&
+            r.startMinute === DEFAULT_OPEN.startMinute &&
+            r.endMinute === DEFAULT_OPEN.endMinute,
+        );
+        if (dupe) continue;
+        next.push({ ...blankRule(), weekday, ...DEFAULT_OPEN });
+      }
+      return next;
+    });
+  };
+
+  /** The days a new break should cover: the ones actually open, because a
+   *  closure on a day nothing is offered on is a row that does nothing. */
+  const openWeekdays = (): number[] => {
+    const days = [...new Set(rules.filter((r) => r.kind === "open" && r.weekday !== null).map((r) => Number(r.weekday)))];
+    return days.length > 0 ? days.sort((a, b) => a - b) : [...DAY_SETS.weekdays];
+  };
+
+  const addBreak = () => {
+    editRules((arr) => [
+      ...arr,
+      ...openWeekdays().map((weekday) => ({
+        kind: "block" as const,
+        weekday,
+        ...DEFAULT_BREAK,
+        startsOn: null,
+        endsOn: null,
+        reason: null,
+      })),
+    ]);
+  };
+
+  /** Move every row the card speaks for to new hours at once. */
+  const setBreakTimes = (patch: { startMinute?: number; endMinute?: number }) => {
+    editRules((arr) => arr.map((r) => (isBreakRule(r, brk) ? { ...r, ...patch } : r)));
+  };
+
+  const toggleBreakDay = (weekday: number) => {
+    if (!brk) return;
+    editRules((arr) =>
+      brk.weekdays.includes(weekday)
+        ? arr.filter((r) => !(isBreakRule(r, brk) && r.weekday === weekday))
+        : [
+            ...arr,
+            {
+              kind: "block" as const,
+              weekday,
+              startMinute: brk.startMinute,
+              endMinute: brk.endMinute,
+              startsOn: null,
+              endsOn: null,
+              reason: null,
+            },
+          ],
+    );
+  };
+
+  const removeBreak = () => editRules((arr) => arr.filter((r) => !isBreakRule(r, brk)));
 
   /* ── opening and closing a resource ──────────────────────────────────── */
 
@@ -883,6 +1051,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
     setBookings([]);
     setTotal(0);
     setOffset(0);
+    hydratedKey.current = r.key;
     setOpenKey(r.key);
     setTab(at);
     void loadPlan(r.key);
@@ -892,6 +1061,7 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
   const closeResource = () => {
     // Whatever is pending goes now rather than on a timer nobody is watching.
     flushSave();
+    hydratedKey.current = null;
     setOpenKey(null);
     setDetail(null);
   };
@@ -1455,16 +1625,132 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                 </Trans>
               </p>
             </div>
-            <Button
-              variant="outline"
-              className="ml-auto"
-              onClick={() => editRules((arr) => [...arr, blankRule()])}
-            >
-              <I.Plus className="size-4" />
-              <span className="max-sm:sr-only">
-                <Trans>Add rule</Trans>
-              </span>
-            </Button>
+            {/* A calendar is almost never one weekday, and adding Monday to
+                Friday a row at a time is five times the work for the most
+                ordinary answer there is. */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="ml-auto">
+                  <I.Plus className="size-4" />
+                  <span className="max-sm:sr-only">
+                    <Trans>Add rule</Trans>
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[200px]">
+                <DropdownMenuItem onClick={() => addOpenings("weekdays")}>
+                  <Trans>Weekdays</Trans>
+                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground">
+                    09:00–17:00
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addOpenings("weekend")}>
+                  <Trans>Weekend</Trans>
+                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground">
+                    09:00–17:00
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => addOpenings("all")}>
+                  <Trans>Every day</Trans>
+                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground">
+                    09:00–17:00
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => editRules((arr) => [...arr, blankRule()])}>
+                  <Trans>One day</Trans>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* The break, as one thing rather than as one row per day. It is not
+              a field of its own — it IS these block rules — so the card says
+              where they are kept and hands them back to the list the moment it
+              stops being able to speak for them. */}
+          <div className="rounded-md border border-dashed p-3">
+            {brk ? (
+              <div className="flex flex-col gap-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium">
+                    <Trans>Daily break</Trans>
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      className="w-[86px]"
+                      value={minutesToClock(brk.startMinute)}
+                      onChange={(e) => {
+                        const m = clockToMinutes(e.target.value);
+                        if (m !== null) setBreakTimes({ startMinute: m });
+                      }}
+                      placeholder="12:00"
+                    />
+                    <span className="text-muted-foreground">–</span>
+                    <Input
+                      className="w-[86px]"
+                      value={minutesToClock(brk.endMinute)}
+                      onChange={(e) => {
+                        const m = clockToMinutes(e.target.value);
+                        if (m !== null) setBreakTimes({ endMinute: m });
+                      }}
+                      placeholder="13:00"
+                    />
+                  </div>
+                  <Button variant="outline" className="ml-auto" onClick={removeBreak}>
+                    <I.Trash className="size-4" />
+                    <span className="max-sm:sr-only">
+                      <Trans>Remove</Trans>
+                    </span>
+                  </Button>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[1, 2, 3, 4, 5, 6, 0].map((wd) => {
+                    const on = brk.weekdays.includes(wd);
+                    return (
+                      <button
+                        key={wd}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => toggleBreakDay(wd)}
+                        className={cn(
+                          "rounded-full border px-2.5 py-0.5 text-[11.5px] transition-colors",
+                          on
+                            ? "border-primary/40 bg-primary/20 text-foreground"
+                            : "border-border text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {shortWeekday(wd)}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <Trans>
+                    Taken out of every opening on the days above. Stored as one closed rule per day
+                    — edit it here and they all move together.
+                  </Trans>
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">
+                    <Trans>Daily break</Trans>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    <Trans>
+                      A lunch hour, say — closed on every day you are otherwise open, without
+                      splitting each opening in two.
+                    </Trans>
+                  </p>
+                </div>
+                <Button variant="outline" className="ml-auto" onClick={addBreak}>
+                  <I.Plus className="size-4" />
+                  <span className="max-sm:sr-only">
+                    <Trans>Add a break</Trans>
+                  </span>
+                </Button>
+              </div>
+            )}
           </div>
 
           {rules.length === 0 ? (
@@ -1472,7 +1758,10 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
               <Trans>No hours — the public page has nothing to offer.</Trans>
             </p>
           ) : (
-            rules.map((r, i) => (
+            rules.map((r, i) =>
+              // Drawn on the card above instead; drawing it twice would offer
+              // two places to change one thing.
+              isBreakRule(r, brk) ? null : (
               <div
                 key={i}
                 className="grid gap-2 rounded-md border p-2 sm:grid-cols-[110px_140px_1fr_1fr_auto]"
@@ -1546,7 +1835,8 @@ export function BookingPage({ pushToast }: { pushToast: (m: string) => void }) {
                   </div>
                 )}
               </div>
-            ))
+              ),
+            )
           )}
         </Card>
       )}

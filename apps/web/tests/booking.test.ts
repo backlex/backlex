@@ -18,7 +18,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { getTableColumns } from "drizzle-orm";
+import * as sqliteSchema from "@backlex/db/sqlite/schema";
 import {
+  RULES_PER_INSERT,
+  SQLITE_MAX_VARIABLES,
   createBooking,
   effectiveBookingStatus,
   isUniqueViolation,
@@ -208,6 +212,60 @@ describe("resources", () => {
     });
     expect(out.data.rules).toHaveLength(1);
     expect(out.data.rules[0].weekday).toBe(2);
+  });
+
+  /**
+   * A week of openings with a lunch break is fourteen rules, and every rule
+   * binds eleven parameters. D1's SQLite stops at 100 of them, so a single
+   * INSERT broke at the tenth rule — and since the replace deletes first, the
+   * failure did not leave the old hours in place, it left the resource with
+   * NONE: a calendar that answered 500 and then quietly stopped taking
+   * bookings.
+   *
+   * This test pins the round trip — fourteen rules go in and fourteen come
+   * back out of a fresh read — but it CANNOT reproduce the refusal, because
+   * bun:sqlite is compiled with a variable ceiling in the tens of thousands
+   * and would happily bind all 154. The ceiling itself is guarded by the
+   * budget test below, which is the one that fails if a column is added.
+   */
+  test("a resource takes more rules than one INSERT can bind", async () => {
+    await makeResource();
+    const rules = [
+      ...[1, 2, 3, 4, 5, 6, 0].map((weekday) => ({
+        kind: "open" as const,
+        weekday,
+        startMinute: 540,
+        endMinute: 1020,
+      })),
+      ...[1, 2, 3, 4, 5, 6, 0].map((weekday) => ({
+        kind: "block" as const,
+        weekday,
+        startMinute: 720,
+        endMinute: 780,
+      })),
+    ];
+    const out = await ok("PATCH", `${BASE}/resources/clinic`, { rules });
+    expect(out.data.rules).toHaveLength(14);
+
+    // And the read path agrees — the rows are really there, not just echoed
+    // back out of the request that wrote them.
+    const read = await ok("GET", `${BASE}/resources/clinic`);
+    expect(read.data.rules).toHaveLength(14);
+    expect(read.data.rules.filter((r: { kind: string }) => r.kind === "block")).toHaveLength(7);
+  });
+
+  /**
+   * The guard the local driver cannot give us.
+   *
+   * A multi-row INSERT binds one parameter per column per row, so the batch
+   * size and the row's width multiply. Reading the width off the schema rather
+   * than writing 11 here is the whole point: adding a column to `booking_rules`
+   * is what silently re-breaks this, and it should fail in the suite rather
+   * than on D1 the first time somebody saves a full week.
+   */
+  test("a batched rule insert stays inside SQLite's variable budget", () => {
+    const columns = Object.keys(getTableColumns(sqliteSchema.bookingRules)).length;
+    expect(RULES_PER_INSERT * columns).toBeLessThanOrEqual(SQLITE_MAX_VARIABLES);
   });
 
   test("rotating the token invalidates the old page link", async () => {

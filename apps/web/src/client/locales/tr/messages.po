@@ -1159,6 +1159,10 @@ msgstr "Hiçbir ücret çekmeden ödemeleri sonuçlandıran yerel bir taklit. Ya
 msgid "A loop runs inline, so its body cannot wait for an approval or a long delay."
 msgstr "Döngü satır içinde çalışır; gövdesi bir onayı ya da uzun bir beklemeyi bekleyemez."
 
+#: src/client/admin/parity/booking.tsx
+msgid "A lunch hour, say — closed on every day you are otherwise open, without splitting each opening in two."
+msgstr "Örneğin öğle arası — açık olduğunuz her günde kapalı, hem de her açık aralığı ikiye bölmeden."
+
 #: src/client/admin/pages/forms.tsx
 msgid "A matrix needs two fields that can share one set of columns — two number fields, or two dropdowns offering the same choices."
 msgstr "Bir matris, aynı sütunları paylaşabilecek iki alana ihtiyaç duyar — iki sayı alanı ya da aynı seçenekleri sunan iki açılır liste."
@@ -1539,6 +1543,10 @@ msgstr "<0>status</0> açılır listesini <1>taslak / inceleme / yayınlandı / 
 #: src/client/admin/parity/booking.tsx
 msgid "Add a booking"
 msgstr "Rezervasyon ekle"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Add a break"
+msgstr "Ara ekle"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Add a Client ID and secret below first."
@@ -4761,6 +4769,10 @@ msgstr "Özelleştir…"
 msgid "Daily"
 msgstr "Günlük"
 
+#: src/client/admin/parity/booking.tsx
+msgid "Daily break"
+msgstr "Günlük ara"
+
 #: src/client/admin/collection-settings.tsx
 msgid "danger zone"
 msgstr "tehlike bölgesi"
@@ -6441,6 +6453,10 @@ msgstr "3 saatte bir"
 #: src/client/admin/pages/integration-syncs-card.tsx
 msgid "Every 30 minutes"
 msgstr "30 dakikada bir"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Every day"
+msgstr "Her gün"
 
 #: src/client/admin/pages/forms.tsx
 msgid "Every free number field on <0>{collection}</0> is already on the form."
@@ -11438,6 +11454,10 @@ msgstr "Bu sayfadan ayrıldığınızda gizli anahtar bir daha alınamaz — yal
 msgid "One answer per browser"
 msgstr "Tarayıcı başına tek yanıt"
 
+#: src/client/admin/parity/booking.tsx
+msgid "One day"
+msgstr "Tek gün"
+
 #: src/client/admin/pages/_agents-shared.tsx
 msgid "one extra model call per message"
 msgstr "mesaj başına bir ek model çağrısı"
@@ -13630,6 +13650,7 @@ msgstr "hatırlatıldı {0}"
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/parity/app-orgs.tsx
+#: src/client/admin/parity/booking.tsx
 #: src/client/admin/rule-builder.tsx
 msgid "Remove"
 msgstr "Kaldır"
@@ -16702,6 +16723,10 @@ msgid "Tags"
 msgstr "Etiketler"
 
 #: src/client/admin/parity/booking.tsx
+msgid "Taken out of every opening on the days above. Stored as one closed rule per day — edit it here and they all move together."
+msgstr "Yukarıdaki günlerdeki her açık aralıktan düşülür. Gün başına bir kapalı kural olarak saklanır — buradan düzenlersiniz, hepsi birlikte kayar."
+
+#: src/client/admin/parity/booking.tsx
 msgid "Taken over the phone, so it is not limited to the published times — but a slot that is already full is still refused."
 msgstr "Telefonla alındığı için yayınlanan saatlerle sınırlı değil — ama dolu bir saat yine de reddedilir."
 
@@ -18648,6 +18673,14 @@ msgstr "Webhook'lar"
 #: src/client/admin/item-views.tsx
 msgid "Wed"
 msgstr "Çar"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Weekdays"
+msgstr "Hafta içi"
+
+#: src/client/admin/parity/booking.tsx
+msgid "Weekend"
+msgstr "Hafta sonu"
 
 #: src/client/admin/pages/schema-versions.tsx
 #: src/client/admin/parity/database.tsx

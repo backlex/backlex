@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Modal pickers for the "Relational" interface group in the item edit sheet.
 //
 //   • RelationPicker  — pick a row from c_<target> for `relation` fields.

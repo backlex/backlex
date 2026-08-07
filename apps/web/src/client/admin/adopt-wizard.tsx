@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Collection adoption wizard — turn an existing physical table into a
 // backlex collection. 3 steps:
 //   1) pick a table (GET /api/admin/adopt/tables)

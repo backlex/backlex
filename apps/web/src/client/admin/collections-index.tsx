@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Collections index — grid of all collections + new-collection wizard
 import type { PushToast } from "./types";
 import { useEffect, useMemo, useState, type ReactNode } from "react";

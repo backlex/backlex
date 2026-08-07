@@ -1,4 +1,3 @@
-// @ts-nocheck
 // The value editor for a `geo` field — where a row actually IS.
 //
 // Three ways to fill it in, in the order an operator reaches for them:

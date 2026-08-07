@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Shared per-field validation editor — rendered in the "Settings" step of both
 // the Add-field and Edit-field dialogs. Surfaces the type-appropriate subset of
 // `FieldValidation` (length / bounds / format / date bounds / cardinality),

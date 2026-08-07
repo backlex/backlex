@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * SAML provider create/edit dialog. Three top tabs:
  *

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // The item-form editor for a `money` field.
 //
 // An amount box with the currency next to it. The currency is not editable

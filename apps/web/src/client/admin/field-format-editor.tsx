@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Shared per-field display-format editor — rendered in the Interface tab of the
 // Add / Edit field dialogs for number / timestamp fields. Display-only: it
 // changes how the value RENDERS in lists + detail, never storage/API/sort. The

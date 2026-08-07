@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Shared per-field label-translations editor — rendered in the Field tab of the
 // Add / Edit field dialogs. One row per workspace locale (from the `i18nLocales`
 // setting, the same source the localized field editor uses). Empty rows are

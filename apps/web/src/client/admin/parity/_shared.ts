@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Shared utilities used across the the no-code parity pages.
 
 /** Origin the API is served from — same-origin on CF deploys; falls back to

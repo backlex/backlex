@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * LDAP / Active Directory config card. One-row-per-workspace config, edited
  * inline (no multi-provider list — directories are usually consolidated and

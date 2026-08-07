@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Shared location editor — the Location tab of the Add / Edit field dialogs,
 // shown for the `map` interface.
 //

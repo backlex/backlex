@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Shared currency editor — the Money tab of the Add / Edit field dialogs, shown
 // for the `money` interface.
 //

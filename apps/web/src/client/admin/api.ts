@@ -404,7 +404,11 @@ export interface ApiPanel {
   id: string;
   name: string;
   description: string | null;
-  kind: "sql" | "items-aggregate" | "static";
+  /** Mirrors the server's `PANEL_KINDS` (routes/panels.ts). It previously
+   *  listed only three of the five, so `analytics` and `kpi` panels — which
+   *  the API does return — were unrepresentable, and the Insights page's
+   *  filter for them read as a comparison with no overlap. */
+  kind: "sql" | "items-aggregate" | "analytics" | "kpi" | "static";
   sql: string | null;
   viz: string;
   config: Record<string, unknown> | null;

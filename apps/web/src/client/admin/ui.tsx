@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Shared UI primitives + layout for the backlex admin design.
 import type { PushToast } from "./types";
 import {
@@ -461,7 +460,7 @@ function CollectionsTree({ activeCollection, onOpen }: { activeCollection?: stri
 
   const renderRow = (c: { slug: string; icon?: string | null; color?: string | null; hidden?: boolean; status?: string }, keyPrefix = "") => {
     const isPinned = pinned.includes(c.slug);
-    const Ic = (I as Record<string, (p: { size?: number }) => JSX.Element>)[c.icon ?? ""] ?? I.Database;
+    const Ic = (I as Record<string, IconComponent>)[c.icon ?? ""] ?? I.Database;
     const accent = resolveCollectionColor(c.color);
     const dimmed = c.hidden || c.status === "inactive";
     return (

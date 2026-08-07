@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Shared lifecycle editor — the Lifecycle tab of the Add / Edit field dialogs,
 // shown for selection interfaces that store one value (`dropdown`, `radio`).
 //
@@ -93,7 +92,10 @@ export const cleanTransitions = (d: TransitionsDraft): Record<string, unknown> |
   if (keys.length === 0) return undefined;
   const buckets = new Map<string, { from: string[]; to: string; extras: TransitionsDraft["edges"][string] }>();
   for (const key of keys) {
-    const [from, to] = key.split(">");
+    // Keys are built as `${from}>${to}`, so both halves are always present —
+    // the defaults exist only to give the compiler the `string` it can't infer
+    // from `split`.
+    const [from = "", to = ""] = key.split(">");
     const extras = d.edges[key]!;
     const sig = JSON.stringify([to, [...extras.roles].sort(), [...extras.requires].sort(), extras.label]);
     const bucket = buckets.get(sig);

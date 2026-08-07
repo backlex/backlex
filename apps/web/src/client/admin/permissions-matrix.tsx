@@ -1,4 +1,3 @@
-// @ts-nocheck
 // No-code permission matrix
 import type { PushToast } from "./types";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -109,8 +108,11 @@ function defaultRow(roleName: string): Record<string, CellState> {
 function emptyMatrix(roles: RoleData[], collections: string[]): Matrix {
   const out: Matrix = {};
   for (const r of roles) {
-    out[r.name] = {};
-    for (const c of collections) out[r.name][c] = defaultRow(r.name);
+    // Build the row first, then attach it. Writing through `out[r.name][c]`
+    // re-reads an index the compiler must treat as possibly-absent.
+    const row: Record<string, Record<string, CellState>> = {};
+    for (const c of collections) row[c] = defaultRow(r.name);
+    out[r.name] = row;
   }
   return out;
 }
@@ -227,13 +229,16 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
   const isAdmin = activeRole === "admin";
 
   const setCell = (collection: string, action: string, val: CellState) => {
-    setMatrix((m) => ({
-      ...m,
-      [activeRole]: {
-        ...m[activeRole],
-        [collection]: { ...m[activeRole][collection], [action]: val },
-      },
-    }));
+    setMatrix((m) => {
+      const roleRows = m[activeRole] ?? {};
+      return {
+        ...m,
+        [activeRole]: {
+          ...roleRows,
+          [collection]: { ...(roleRows[collection] ?? {}), [action]: val },
+        },
+      };
+    });
   };
 
   const pickState = async (collection: string, action: string, val: CellState) => {

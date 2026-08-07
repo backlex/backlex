@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Thin wrapper over @backlex/ui/components/select. Keeps the legacy
 // admin-side API (value/onChange + options[]) so existing callsites don't
 // need to change, but delegates rendering + keyboard nav to the shadcn
@@ -78,7 +77,7 @@ export function Select({
 }: SelectProps) {
   const { t } = useLingui();
   const emit = onChange ?? onValueChange;
-  if (!emit && process.env.NODE_ENV !== "production") {
+  if (!emit && import.meta.env.DEV) {
     // Loud in dev rather than a dropdown that opens, highlights, and does
     // nothing — the failure mode that shipped.
     console.error("[admin/Select] neither onChange nor onValueChange was passed; the control is inert");

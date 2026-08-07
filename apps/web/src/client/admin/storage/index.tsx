@@ -1,6 +1,5 @@
 // Storage page shell (browser, uploads incl. TUS, bulk actions). Leaf
 // components live in ./widgets; the directory preserves the ./storage path.
-// @ts-nocheck
 // Storage page — preview, batch upload progress, ACL, file detail modal
 import type { PushToast } from "../types";
 import { useEffect, useMemo, useRef, useState, } from "react";
@@ -1011,7 +1010,9 @@ export function StoragePage({ pushToast }: { pushToast: PushToast }) {
           fit={fit} setFit={setFit}
           focal={focal} setFocal={setFocal}
           folders={folders}
-          onPatch={(next) => patchFile(selected.key, next)}
+          onPatch={(next: { folderId?: string | null; metadata?: FileMetadata | null }) =>
+            patchFile(selected.key, next)
+          }
           onToggleACL={() => toggleACL(selected.key)}
           onDelete={() => deleteFile(selected.key)}
           onCopy={(text: string) => { navigator.clipboard?.writeText(text); pushToast(t`Copied to clipboard.`); }}

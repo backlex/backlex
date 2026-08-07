@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Platform SSO settings — instance-global SAML + LDAP for dashboard operators.
  * Distinct from the workspace-scoped "Authentication" page (which configures
@@ -257,11 +256,11 @@ function AddSamlDialog({
           <div className="rounded-control border border-border p-2 text-[11.5px] text-muted-foreground">
             <div className="flex items-center justify-between gap-2">
               <span className="font-mono">ACS: {acsUrl}</span>
-              <Button size="xs" variant="ghost" onClick={() => copyText(acsUrl)}><Trans>Copy</Trans></Button>
+              <Button size="xs" variant="ghost" onClick={() => void copyText(acsUrl, () => pushToast(t`Copied.`))}><Trans>Copy</Trans></Button>
             </div>
             <div className="flex items-center justify-between gap-2">
               <span className="font-mono">Metadata: {metadataUrl}</span>
-              <Button size="xs" variant="ghost" onClick={() => copyText(metadataUrl)}><Trans>Copy</Trans></Button>
+              <Button size="xs" variant="ghost" onClick={() => void copyText(metadataUrl, () => pushToast(t`Copied.`))}><Trans>Copy</Trans></Button>
             </div>
           </div>
           <Field label={t`Paste IdP metadata XML (optional — prefills the fields below)`}>

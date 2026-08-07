@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { PushToast } from "../types";
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -249,7 +248,7 @@ export function RevisionsPage({ pushToast }: { pushToast?: PushToast } = {}) {
             {!revsLoading && entries.length === 0 && (
               <EmptyState size="sm" title={activeId ? <Trans>No revisions yet for this item.</Trans> : <Trans>Select an item to see its history.</Trans>} />
             )}
-            {!revsLoading && entries.length === 1 && entries[0].kind === "live" && (
+            {!revsLoading && entries.length === 1 && entries[0]?.kind === "live" && (
               <div className="border-t border-border px-3 py-2.5 text-[11.5px] text-muted-foreground"><Trans>Only the current state exists — no edits recorded yet.</Trans></div>
             )}
             {entries.map((e, i) => {

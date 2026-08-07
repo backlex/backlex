@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Members panel — workspace member management for multi-tenant.
 import type { PushToast } from "./types";
 import { useMemo, useState } from "react";
@@ -27,7 +26,11 @@ interface Member {
   color: string;
 }
 
-const PALETTE = [
+// Typed as a non-empty tuple so `PALETTE[0]` is a usable fallback for the
+// modulo lookup below — under `noUncheckedIndexedAccess` a plain `string[]`
+// makes every index read `string | undefined`, including the one the modulo
+// already proves is in range.
+const PALETTE: [string, ...string[]] = [
   "oklch(0.72 0.18 145)",
   "oklch(0.78 0.16 95)",
   "oklch(0.7 0.16 28)",
@@ -49,7 +52,8 @@ const initialsFor = (s: string): string =>
   s.split(/[._@-]/).slice(0, 2).map((p) => p[0]?.toUpperCase() || "").join("") || "??";
 
 const colorFor = (key: string): string =>
-  PALETTE[Math.abs([...key].reduce((a, c) => a + c.charCodeAt(0), 0)) % PALETTE.length];
+  PALETTE[Math.abs([...key].reduce((a, c) => a + c.charCodeAt(0), 0)) % PALETTE.length] ??
+  PALETTE[0];
 
 const fromApiMember = (m: ApiTenantMember): Member => {
   // Prefer last_seen_at (touched on every authenticated request) — falls
@@ -58,7 +62,7 @@ const fromApiMember = (m: ApiTenantMember): Member => {
   const last = (m as any).lastSeenAt || m.joinedAt || m.invitedAt || m.createdAt || null;
   return {
     id: m.id,
-    name: m.email.split("@")[0],
+    name: m.email.split("@")[0] ?? m.email,
     email: m.email,
     role: m.role,
     last: m.status === "invited" ? "—" : fmtRelative(last),
@@ -71,7 +75,7 @@ const fromApiMember = (m: ApiTenantMember): Member => {
 const sniffActiveTenantId = (): string | null => {
   if (typeof document === "undefined") return null;
   const m = /backlex-tenant=([^;]+)/.exec(document.cookie);
-  return m ? decodeURIComponent(m[1]) : null;
+  return m?.[1] ? decodeURIComponent(m[1]) : null;
 };
 
 export interface MembersPanelProps {

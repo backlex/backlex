@@ -1,6 +1,5 @@
 // Storage leaf components: tiles, glyphs, the file-detail panel/modal,
 // folder picker, pagination footer. Split out of admin/storage.tsx.
-// @ts-nocheck
 // Storage page — preview, batch upload progress, ACL, file detail modal
 import { Fragment, useEffect, useState, type CSSProperties } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -285,7 +284,11 @@ export function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt
     if (!isImage) { setTransformedSize(null); setTransformError(null); return; }
     setTransformedLoading(true);
     const ctrl = new AbortController();
-    const t = setTimeout(async () => {
+    // NOT `t` — that is the lingui translate function this callback uses on
+    // the 422 branch, and shadowing it turned the fallback message into a call
+    // on the timer handle (`TypeError: t is not a function`) exactly when a
+    // runtime could not transform the file.
+    const timer = setTimeout(async () => {
       try {
         const res = await fetch(transformedUrl, { method: "HEAD", credentials: "include", cache: "no-store", signal: ctrl.signal });
         if (res.status === 422) {
@@ -309,7 +312,7 @@ export function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt
         setTransformedLoading(false);
       }
     }, 300);
-    return () => { ctrl.abort(); clearTimeout(t); };
+    return () => { ctrl.abort(); clearTimeout(timer); };
   }, [transformedUrl, isImage]);
   // When the runtime can't transform, the preview falls back to the raw
   // object so the user still sees their image.

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Role editor dialog
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -37,7 +36,13 @@ export interface RoleData {
 }
 
 export function defaultRoleRule(): RoleMatrix {
-  return { read: "all", create: "auth", update: "owner", delete: "owner" };
+  // `publish` was missing even though `RoleMatrix` is keyed off ACTIONS, so
+  // `compileRule` matched none of its arms and emitted no publish entry at all
+  // — and the server denies an action with no permission row. `"none"` is the
+  // value that preserves that exactly (it compiles to an explicit `_deny`).
+  // Anything else here would silently hand every newly-created role a publish
+  // grant it never had.
+  return { read: "all", create: "auth", update: "owner", delete: "owner", publish: "none" };
 }
 
 export function ruleSummary(rule: RoleMatrix) {

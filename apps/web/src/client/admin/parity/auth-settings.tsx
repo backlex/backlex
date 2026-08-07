@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { PushToast } from "../types";
 import { useEffect, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -83,7 +82,10 @@ const isHttpUrl = (s: string) => {
   }
 };
 
-const providerKind = (p: AuthProviderRow): "oauth" | "builtin" | "custom" | "saml" =>
+// No `"saml"` arm: SAML providers are managed on their own page and never
+// reach this dialog, so declaring it here only widened the return type past
+// what the function can produce — and past what `ProviderConfigDialog` accepts.
+const providerKind = (p: AuthProviderRow): "oauth" | "builtin" | "custom" =>
   p.system ? (AUTH_OAUTH_IDS.has(p.id) ? "oauth" : "builtin") : "custom";
 
 const mapAuthProviders = (map: Record<string, any> | undefined): AuthProviderRow[] => {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { PushToast } from "../types";
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -29,7 +28,13 @@ const FORMATS = [
   { value: "Legal", label: "Legal" },
   { value: "A3", label: "A3" },
   { value: "A5", label: "A5" },
-];
+] as const;
+
+/** The page sizes `ApiDocumentTemplate["pageOptions"]["format"]` accepts. Kept
+ *  in step with FORMATS above so the picker and the payload can't disagree. */
+type PageFormat = (typeof FORMATS)[number]["value"];
+const isPageFormat = (v: string): v is PageFormat =>
+  FORMATS.some((f) => f.value === v);
 
 type Tpl = ApiDocumentTemplate & { isNew?: boolean };
 
@@ -121,7 +126,10 @@ export function DocumentsPage({ pushToast }: { pushToast: PushToast }) {
       bodyHtml: body,
       footerHtml: footer.trim() || null,
       filename: filename.trim() || null,
-      pageOptions: { format, landscape },
+      // `format` is held as a plain string because the Select emits one; the
+      // API accepts only the five page sizes, so narrow here rather than fight
+      // the setter's contravariance at the callsite.
+      pageOptions: { format: isPageFormat(format) ? format : "A4", landscape },
       // Saving an inherited default creates this workspace's override, so the
       // badge has to flip immediately or the row lies until the next reload.
       inherited: false,
@@ -346,7 +354,7 @@ export function DocumentsPage({ pushToast }: { pushToast: PushToast }) {
                 <label className="text-[12.5px] font-medium text-foreground">
                   <Trans>Page size</Trans>
                 </label>
-                <Select value={format} onChange={setFormat} options={FORMATS} className="min-w-0" />
+                <Select value={format} onChange={setFormat} options={[...FORMATS]} className="min-w-0" />
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <label className="text-[12.5px] font-medium text-foreground">

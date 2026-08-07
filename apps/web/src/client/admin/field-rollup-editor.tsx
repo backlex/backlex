@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Shared rollup editor — the Rollup tab of the Add / Edit field dialogs, shown
 // for the `rollup` interface. A rollup column is an aggregate over ANOTHER
 // collection's rows, so every part of it names something that must actually
@@ -135,7 +134,7 @@ export function FieldRollupEditor({
   const pickSource = (slug: string) => {
     const c = (collections ?? []).find((x) => x.slug === slug);
     const backs = (c?.fieldDefs ?? []).filter((f) => f.type === "relation" && f.to === ownerSlug);
-    set({ from: slug, via: backs.length === 1 ? backs[0].name : "", field: "", filter: newGroup() });
+    set({ from: slug, via: backs.length === 1 ? (backs[0]?.name ?? "") : "", field: "", filter: newGroup() });
   };
 
   return (

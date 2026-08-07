@@ -106,9 +106,27 @@ export const INTERFACE_GROUPS: InterfaceGroup[] = [
   "Extensions",
 ];
 
+/** The interface every fallback resolves to: a plain single-line text column.
+ *
+ *  Declared standalone rather than read back as `FIELD_INTERFACES[0]` so it
+ *  carries a non-optional type. Under `noUncheckedIndexedAccess` an indexed
+ *  read is `FieldInterfaceDef | undefined` even on a literal non-empty array,
+ *  which made every downstream `def.type` / `def.icon` a possibly-undefined
+ *  access — 91 of them in the Add Field dialog alone, all invisible while that
+ *  file carried `@ts-nocheck`. One named constant answers "what is the default
+ *  interface" once, and answers it in a way the compiler can use. */
+export const DEFAULT_FIELD_INTERFACE: FieldInterfaceDef = {
+  id: "input",
+  label: "Input",
+  sub: "Single-line text",
+  group: "Text & Numbers",
+  icon: "Type",
+  type: "text",
+};
+
 export const FIELD_INTERFACES: FieldInterfaceDef[] = [
   // ── Text & Numbers ───────────────────────────────────────────────
-  { id: "input", label: "Input", sub: "Single-line text", group: "Text & Numbers", icon: "Type", type: "text" },
+  DEFAULT_FIELD_INTERFACE,
   { id: "autocomplete", label: "Autocomplete", sub: "Text with suggestions", group: "Text & Numbers", icon: "Search", type: "text", keywords: ["suggest", "typeahead"] },
   { id: "slug", label: "Slug", sub: "URL-safe key, kebab-case", group: "Text & Numbers", icon: "Hash", type: "text", keywords: ["permalink", "url"] },
   { id: "sequence", label: "Sequence", sub: "A document number backlex issues for you — INV-2026-0001", group: "Text & Numbers", icon: "Hash", type: "text", hasSequence: true, keywords: ["number", "invoice", "order", "counter", "serial", "autonumber", "auto number", "increment", "document number", "reference"] },
@@ -174,7 +192,7 @@ export const getInterface = (id: string | undefined | null): FieldInterfaceDef |
  *  `interface` — falls back to the plain editor for its storage type. */
 export const defaultInterfaceFor = (type: string): FieldInterfaceDef => {
   const exact = FIELD_INTERFACES.find((i) => i.type === type);
-  return exact ?? BY_ID.get("input")!;
+  return exact ?? DEFAULT_FIELD_INTERFACE;
 };
 
 /** Interfaces whose storage type matches `type` — used by the Edit Field

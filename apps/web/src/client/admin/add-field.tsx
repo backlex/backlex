@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Add Field dialog — schema editor for a new column.
 // Step 1 picks a UI *interface* from a categorized catalog (interfaces.ts);
 // each interface maps to one of the physical storage types the backend
@@ -25,6 +24,7 @@ import { Select } from "./select";
 import { AlterPreview } from "./extras";
 import { FieldTabLayout, type FieldTabItem } from "./field-editor-tabs";
 import {
+  DEFAULT_FIELD_INTERFACE,
   FIELD_INTERFACES,
   INTERFACE_GROUPS,
   extensionFieldInterfaces,
@@ -282,7 +282,9 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   );
 
   const def =
-    getInterface(interfaceId) ?? extDefs.find((d) => d.id === interfaceId) ?? FIELD_INTERFACES[0];
+    getInterface(interfaceId) ??
+    extDefs.find((d) => d.id === interfaceId) ??
+    DEFAULT_FIELD_INTERFACE;
   const Icon = (I as Record<string, IconComponent>)[def.icon as IconKey] || I.Code;
   // A rollup column takes no client write, so the write-side controls (DEFAULT,
   // NOT NULL, UNIQUE) are not just inert — offering them implies the column is

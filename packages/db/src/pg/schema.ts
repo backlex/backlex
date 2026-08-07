@@ -2494,6 +2494,44 @@ export const forms = pgTable(
   ],
 );
 
+/**
+ * One invitation to answer a form — the shape that makes "one response per
+ * person" mean a person.
+ *
+ * The form's own token is a door anyone with the link walks through, which is
+ * why the cookie guard beside it is a courtesy and not a count. An invite is
+ * per-recipient and single-use: `used_at` is written by the submit that spends
+ * it, in an UPDATE conditional on the column still being null, so two tabs
+ * racing the same link produce one answer.
+ *
+ * Same token discipline as `approval_approvers` and `signature_requests`: only
+ * the SHA-256 lands here, the plaintext is returned once at mint time.
+ */
+export const formInvites = pgTable(
+  "form_invites",
+  {
+    id: text("id").primaryKey(),
+    formId: text("form_id").notNull(),
+    tenantId: text("tenant_id"),
+    /** Who it was minted for. Null for a batch of unaddressed links an
+     *  operator hands out themselves. */
+    email: text("email"),
+    name: text("name"),
+    tokenHash: text("token_hash").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // The token IS the grant, so its lookup must be unique — two invites
+    // sharing one would let either answer as the other.
+    uniqueIndex("form_invites_token_idx").on(t.tokenHash),
+    index("form_invites_form_idx").on(t.formId),
+    index("form_invites_tenant_idx").on(t.tenantId),
+  ],
+);
+
 export const authConfig = pgTable(
   "auth_config",
   {

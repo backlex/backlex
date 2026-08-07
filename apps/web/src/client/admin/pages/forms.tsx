@@ -60,8 +60,10 @@ import {
   type ApiFormBlock,
   type ApiFormBlockScale,
   type ApiFormEligibleField,
+  type ApiFormInvite,
   type ApiFormResults,
   type ApiFormSettings,
+  type ApiMintedFormInvite,
 } from "../api";
 
 /* ── helpers ───────────────────────────────────────────────────────── */
@@ -123,6 +125,23 @@ const blockScale = (
   if (block.scale) return block.scale;
   if (block.rating) return { min: 1, max: 5, style: "stars" };
   return null;
+};
+
+/** Epoch ms → the `datetime-local` spelling, in the operator's OWN zone.
+ *  An opening time is set by a person looking at a clock on a wall; storing it
+ *  as an instant is right, showing it in UTC is not. */
+const toLocalInput = (ms: number | undefined): string => {
+  if (typeof ms !== "number" || !Number.isFinite(ms)) return "";
+  const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60_000);
+  return d.toISOString().slice(0, 16);
+};
+
+/** …and back. An empty input clears the setting rather than storing epoch 0,
+ *  which would close every form ever opened. */
+const fromLocalInput = (value: string): number | undefined => {
+  if (!value) return undefined;
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : undefined;
 };
 
 /** The points a scale offers, low to high. */
@@ -1388,6 +1407,7 @@ export function FormsPage({
           }}
           onToggleActive={(v) => patchForm({ active: v })}
           onToggleTurnstile={(v) => patchSettings({ turnstile: v })}
+          onPatchSettings={patchSettings}
           pushToast={pushToast}
         />
       )}
@@ -2218,6 +2238,198 @@ function EndingPanel({
 
 /* ── share tab ─────────────────────────────────────────────────────── */
 
+/**
+ * Invite-only mode, and the links that make it mean something.
+ *
+ * The links are shown ONCE — in the mint response — so they stay on screen
+ * until the operator navigates away, with a copy button each. The list below
+ * is the durable half: who was invited and who has answered. It never carries
+ * a token, and the panel says so rather than letting someone hunt for one.
+ */
+function InvitesCard({
+  form,
+  formToken,
+  onPatchSettings,
+  pushToast,
+}: {
+  form: ApiForm;
+  /** The form's own plaintext token, when this session still holds it — it is
+   *  what turns a minted invite into a ready-made link. */
+  formToken: string | null;
+  onPatchSettings: (p: Partial<ApiFormSettings>) => void;
+  pushToast: (m: string) => void;
+}) {
+  const { t } = useLingui();
+  const [invites, setInvites] = useState<ApiFormInvite[] | null>(null);
+  const [minted, setMinted] = useState<ApiMintedFormInvite[] | null>(null);
+  const [emails, setEmails] = useState("");
+  const [busy, setBusy] = useState(false);
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+  useEffect(() => {
+    let cancelled = false;
+    formsApi
+      .invites(form.id)
+      .then((r) => !cancelled && setInvites(r.data))
+      .catch(() => !cancelled && setInvites([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [form.id]);
+
+  const parsed = emails
+    .split(/[,\n;]/)
+    .map((e) => e.trim())
+    .filter(Boolean);
+
+  const mint = async (send: boolean) => {
+    if (parsed.length === 0) return;
+    setBusy(true);
+    try {
+      const res = await formsApi.invite(form.id, {
+        recipients: parsed.map((email) => ({ email })),
+        ...(formToken ? { formToken } : {}),
+        ...(send ? { send: true } : {}),
+      });
+      setMinted(res.data.invites);
+      setEmails("");
+      setInvites((prev) => [...(prev ?? []), ...res.data.invites]);
+      pushToast(
+        send
+          ? t`${res.data.invites.length} invited, ${res.data.sent} emailed.`
+          : t`${res.data.invites.length} link(s) minted — copy them now.`,
+      );
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const revoke = async (invite: ApiFormInvite) => {
+    const snapshot = invites;
+    setInvites((prev) => (prev ?? []).filter((i) => i.id !== invite.id));
+    setMinted((prev) => prev?.filter((i) => i.id !== invite.id) ?? null);
+    try {
+      await formsApi.revokeInvite(form.id, invite.id);
+    } catch (e) {
+      setInvites(snapshot);
+      pushToast((e as Error).message);
+    }
+  };
+
+  const answered = (invites ?? []).filter((i) => i.usedAt).length;
+
+  return (
+    <PanelCard icon={I.Mail} title={<Trans>Invites</Trans>}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[12.5px] font-medium"><Trans>Invite only</Trans></div>
+          <div className="text-[11px] text-muted-foreground">
+            <Trans>only a visitor holding an unspent link may answer</Trans>
+          </div>
+        </div>
+        <Switch
+          checked={Boolean(form.settings?.inviteOnly)}
+          onChange={(v) => onPatchSettings({ inviteOnly: v || undefined })}
+        />
+      </div>
+
+      <label className="flex flex-col gap-1 text-[12px] font-medium">
+        <Trans>Email addresses</Trans>
+        <Textarea
+          rows={2}
+          placeholder="ada@example.com, grace@example.com"
+          value={emails}
+          onChange={(e) => setEmails(e.target.value)}
+        />
+        <span className="text-[11px] font-normal text-muted-foreground">
+          <Trans>Comma or newline separated. Each gets its own single-use link.</Trans>
+        </span>
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={() => mint(false)} disabled={busy || parsed.length === 0}>
+          {busy ? <Trans>Working…</Trans> : <Trans>Create links</Trans>}
+        </Button>
+        <Button variant="primary" icon={I.Mail} onClick={() => mint(true)} disabled={busy || parsed.length === 0}>
+          <Trans>Create and email</Trans>
+        </Button>
+      </div>
+
+      {minted && minted.length > 0 && (
+        <div className="flex flex-col gap-1.5 rounded-control border border-primary/30 bg-primary/10 p-2.5">
+          <span className="text-[11px] text-primary">
+            <Trans>Shown once — these links cannot be listed again.</Trans>
+          </span>
+          {minted.map((i) => (
+            <div key={i.id} className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 truncate font-mono text-[11px]">
+                {i.url ? `${origin}${i.url}` : i.token}
+              </span>
+              <IconButton
+                icon={I.Copy}
+                title={t`Copy link`}
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(i.url ? `${origin}${i.url}` : i.token);
+                    pushToast(t`Copied.`);
+                  } catch {
+                    pushToast(t`Copy failed — select and copy manually.`);
+                  }
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      {minted && minted.length > 0 && !formToken && (
+        <span className="text-[11px] text-muted-foreground">
+          <Trans>
+            Only the invite tokens are shown: generate a new form link above and the
+            next batch comes back as full URLs.
+          </Trans>
+        </span>
+      )}
+
+      {invites === null ? (
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+      ) : invites.length === 0 ? (
+        <span className="text-[11.5px] text-muted-foreground">
+          <Trans>Nobody invited yet.</Trans>
+        </span>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <div className="flex justify-between font-mono text-[10.5px] uppercase tracking-wide text-muted-foreground">
+            <span><Trans>Invited</Trans> {invites.length}</span>
+            <span><Trans>Answered</Trans> {answered}</span>
+          </div>
+          <ScrollArea viewportClassName="max-h-[220px]" className="w-full">
+            <div className="flex flex-col">
+              {invites.map((i) => (
+                <div
+                  key={i.id}
+                  className="flex items-center gap-2 border-b border-border py-1.5 text-[12px] last:border-b-0"
+                >
+                  <span className="min-w-0 flex-1 truncate">{i.email ?? t`no address`}</span>
+                  <span
+                    className={`shrink-0 font-mono text-[10px] uppercase ${i.usedAt ? "text-emerald-400" : "text-muted-foreground"}`}
+                  >
+                    {i.usedAt ? <Trans>answered</Trans> : i.sentAt ? <Trans>sent</Trans> : <Trans>not sent</Trans>}
+                  </span>
+                  <IconButton icon={I.Trash} title={t`Revoke`} onClick={() => revoke(i)} />
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+    </PanelCard>
+  );
+}
+
 function ShareTab({
   form,
   urls,
@@ -2226,6 +2438,7 @@ function ShareTab({
   onHideLink,
   onToggleActive,
   onToggleTurnstile,
+  onPatchSettings,
   pushToast,
 }: {
   form: ApiForm;
@@ -2235,6 +2448,7 @@ function ShareTab({
   onHideLink: () => void;
   onToggleActive: (v: boolean) => void;
   onToggleTurnstile: (v: boolean) => void;
+  onPatchSettings: (p: Partial<ApiFormSettings>) => void;
   pushToast: (m: string) => void;
 }) {
   const { t } = useLingui();
@@ -2448,6 +2662,72 @@ function ShareTab({
             <div className="flex justify-between"><span className="text-muted-foreground"><Trans>Blocked so far</Trans></span><span className="tabular-nums">{form.blockedCount}</span></div>
           </div>
         </PanelCard>
+        <PanelCard icon={I.Clock} title={<Trans>Who can answer, and until when</Trans>}>
+          <div className="grid grid-cols-2 gap-2 max-[520px]:grid-cols-1">
+            <label className="flex min-w-0 flex-col gap-1 text-[12px] font-medium">
+              <Trans>Opens</Trans>
+              <Input
+                type="datetime-local"
+                value={toLocalInput(form.settings?.opensAt)}
+                onChange={(e) => onPatchSettings({ opensAt: fromLocalInput(e.target.value) })}
+              />
+            </label>
+            <label className="flex min-w-0 flex-col gap-1 text-[12px] font-medium">
+              <Trans>Closes</Trans>
+              <Input
+                type="datetime-local"
+                value={toLocalInput(form.settings?.closesAt)}
+                onChange={(e) => onPatchSettings({ closesAt: fromLocalInput(e.target.value) })}
+              />
+            </label>
+          </div>
+          <label className="flex flex-col gap-1 text-[12px] font-medium">
+            <Trans>Response limit</Trans>
+            <Input
+              type="number"
+              min={1}
+              placeholder={t`No limit`}
+              value={form.settings?.maxResponses ?? ""}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                onPatchSettings({
+                  maxResponses: e.target.value === "" || !Number.isFinite(n) || n < 1 ? undefined : Math.floor(n),
+                });
+              }}
+            />
+            <span className="text-[11px] font-normal text-muted-foreground">
+              <Trans>
+                Accepted so far: {form.submissionCount}. Checked before the row is
+                written, so a simultaneous burst can land a couple over.
+              </Trans>
+            </span>
+          </label>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-[12.5px] font-medium"><Trans>One answer per browser</Trans></div>
+              <div className="text-[11px] text-muted-foreground">
+                <Trans>a cookie, not an identity — another browser answers again</Trans>
+              </div>
+            </div>
+            <Switch
+              checked={Boolean(form.settings?.onePerBrowser)}
+              onChange={(v) => onPatchSettings({ onePerBrowser: v || undefined })}
+            />
+          </div>
+          <label className="flex flex-col gap-1 text-[12px] font-medium">
+            <Trans>Closed message</Trans>
+            <Input
+              placeholder={t`This form is closed.`}
+              value={form.settings?.closedMessage ?? ""}
+              onChange={(e) => onPatchSettings({ closedMessage: e.target.value || undefined })}
+            />
+            <span className="text-[11px] font-normal text-muted-foreground">
+              <Trans>Shown in place of the questions. The form keeps its title, so the
+              link still says what it was.</Trans>
+            </span>
+          </label>
+        </PanelCard>
+        <InvitesCard form={form} formToken={token} onPatchSettings={onPatchSettings} pushToast={pushToast} />
         <PanelCard icon={I.Zap} title={<Trans>On submit</Trans>}>
           <p className="text-[11.5px] leading-relaxed text-muted-foreground">
             <Trans>Submissions go through the standard items write path — validation,

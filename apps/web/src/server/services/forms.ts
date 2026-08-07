@@ -157,6 +157,18 @@ export interface FormSettings {
    *  their browser language when offered; `?lang=xx` forces one. */
   languages?: string[];
   i18n?: Record<string, FormI18n>;
+  /** Epoch ms before which the form does not take answers yet. */
+  opensAt?: number;
+  /** Epoch ms after which it stops taking them. */
+  closesAt?: number;
+  /** Stop accepting once this many submissions have been accepted. */
+  maxResponses?: number;
+  /** One answer per browser — see {@link FORM_ANSWERED_COOKIE_PREFIX}. */
+  onePerBrowser?: boolean;
+  /** Only a visitor holding an unspent invite may answer (`/f/<token>?i=…`). */
+  inviteOnly?: boolean;
+  /** What the page says once the form is closed. Falls back to a default. */
+  closedMessage?: string;
 }
 
 export interface FormRow {
@@ -259,6 +271,20 @@ const assertScaleShape = (block: FormBlock, def: FieldDef): void => {
   }
 };
 
+/** Throws VALIDATION on a schedule that can never be open. Said at design
+ *  time, because the symptom otherwise is a link nobody can use and no error
+ *  anywhere that explains why. */
+const assertSettingsSane = (settings: FormSettings | null | undefined): void => {
+  if (!settings) return;
+  const { opensAt, closesAt } = settings;
+  if (typeof opensAt === "number" && typeof closesAt === "number" && closesAt <= opensAt) {
+    throw new AppError(
+      "VALIDATION",
+      "The form would close before it opens — set a closing time after the opening one",
+    );
+  }
+};
+
 /** Throws VALIDATION unless every field block references an eligible field. */
 const assertFieldsEligible = (
   collection: CollectionRow,
@@ -349,6 +375,7 @@ export const createForm = async (
 ): Promise<{ row: FormRow; token: string }> => {
   const collection = await loadCollection(ctx, input.tenantId, input.collection);
   assertFieldsEligible(collection, input.fields);
+  assertSettingsSane(input.settings);
 
   const token = `${TOKEN_PREFIX}_${randomHex(TOKEN_BYTES)}`;
   const tokenHash = await hashToken(token);
@@ -389,6 +416,7 @@ export const updateForm = async (
     const collection = await loadCollection(ctx, tenantId, collectionSlug);
     assertFieldsEligible(collection, fields);
   }
+  if (patch.settings !== undefined) assertSettingsSane(patch.settings);
 
   const now = ctx.dialect === "pg" ? new Date() : Date.now();
   const next: Record<string, unknown> = { updatedAt: now };
@@ -543,6 +571,9 @@ export interface PublicFormDefinition {
   locale: string;
   /** Non-null ⇒ the page must render the Turnstile widget with this site key. */
   turnstileSiteKey: string | null;
+  /** Non-null ⇒ the form is not taking answers; render this in place of the
+   *  questions. The blocks are still sent so the page keeps its shape. */
+  closed: { reason: FormClosedReason; message: string } | null;
 }
 
 /**
@@ -580,6 +611,111 @@ export const exposedFieldNames = (
       .map((e) => e.def!.name),
   );
 
+/* ── Availability ──────────────────────────────────────────────────── */
+
+/** Why a form is not taking answers right now. `open` is the only state that
+ *  accepts a submit. */
+export type FormClosedReason =
+  | "scheduled"
+  | "ended"
+  | "full"
+  | "answered"
+  /** Invite-only, and this visitor arrived without a usable one. */
+  | "invite"
+  /** The invite they arrived with has already been spent. */
+  | "invite_used";
+
+export interface FormAvailability {
+  open: boolean;
+  reason: FormClosedReason | null;
+  /** The line the page shows in place of the questions. */
+  message: string | null;
+}
+
+/** Default wording per reason, when the operator hasn't written their own. */
+const CLOSED_MESSAGES: Record<FormClosedReason, string> = {
+  scheduled: "This form isn't open yet.",
+  ended: "This form is closed.",
+  full: "This form has reached its response limit.",
+  answered: "You've already answered this form.",
+  invite: "This form is open to invited people only — use the link you were sent.",
+  invite_used: "This invitation has already been used.",
+};
+
+/**
+ * Whether a form is taking answers, and if not, why.
+ *
+ * Deliberately NOT the same thing as `active`. A paused form answers 410
+ * everywhere and says nothing else — it is switched off, and the visitor is
+ * not supposed to have a link to it. A form that has closed on its own terms
+ * still renders: it has a title, and "this closed on Friday" is the answer the
+ * person following the link came for. A 404 in its place reads as a broken
+ * link and produces a support ticket.
+ *
+ * The cap is checked against the accepted-submission counter, so it is enforced
+ * BEFORE the row is written. A burst of simultaneous submits can therefore land
+ * a couple over the limit; the alternative — reserving a slot in the same
+ * statement that increments the counter — would count every submission that
+ * then failed validation against the cap, which is the worse mistake for a
+ * survey nobody can re-open.
+ */
+export const formAvailability = (
+  form: FormRow,
+  now: number,
+  opts: {
+    alreadyAnswered?: boolean;
+    /** What is wrong with the invite this visitor arrived with, if the form is
+     *  invite-only. `null`/absent means a usable one (or an open form). */
+    inviteProblem?: "missing" | "unknown" | "used" | null;
+  } = {},
+): FormAvailability => {
+  const s = form.settings ?? {};
+  const closed = (reason: FormClosedReason): FormAvailability => ({
+    open: false,
+    reason,
+    // The operator's own wording covers the form being over. It does NOT cover
+    // an invite problem: "voting closed on Friday" in front of someone whose
+    // colleague already used their link is a wrong answer, not a polite one.
+    message:
+      reason === "invite" || reason === "invite_used"
+        ? CLOSED_MESSAGES[reason]
+        : s.closedMessage || CLOSED_MESSAGES[reason],
+  });
+  if (typeof s.opensAt === "number" && now < s.opensAt) return closed("scheduled");
+  if (typeof s.closesAt === "number" && now >= s.closesAt) return closed("ended");
+  if (typeof s.maxResponses === "number" && form.submissionCount >= s.maxResponses)
+    return closed("full");
+  if (s.inviteOnly && opts.inviteProblem) {
+    return closed(opts.inviteProblem === "used" ? "invite_used" : "invite");
+  }
+  // "Already answered" is last: a form that is closed anyway should say so
+  // rather than tell someone they answered a form nobody can answer.
+  if (opts.alreadyAnswered && s.onePerBrowser) return closed("answered");
+  return { open: true, reason: null, message: null };
+};
+
+/**
+ * Name of the cookie that remembers a browser answered this form.
+ *
+ * Keyed by a hash of the form ID, not the ID itself: the ID is not public and a
+ * cookie is the one place a page hands its own storage to whoever is looking.
+ * Hashing the ID rather than the TOKEN also means rotating the public link does
+ * not hand everyone a second answer.
+ *
+ * What it is NOT is identity. Clearing cookies, another browser or a private
+ * window all get a second answer, and the admin toggle says so — for a survey
+ * that must count people once, use invite links.
+ */
+export const FORM_ANSWERED_COOKIE_PREFIX = "blx_fa_";
+
+export const formAnsweredCookieName = async (formId: string): Promise<string> => {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(formId));
+  const hex = Array.from(new Uint8Array(digest).slice(0, 6), (b) =>
+    b.toString(16).padStart(2, "0"),
+  ).join("");
+  return `${FORM_ANSWERED_COOKIE_PREFIX}${hex}`;
+};
+
 /** Resolve the payload locale: `?lang=` wins when offered, else the base. */
 export const resolveFormLocale = (form: FormRow, lang: string | null): string => {
   const languages = form.settings?.languages?.length ? form.settings.languages : ["en"];
@@ -600,6 +736,7 @@ export const publicFormDefinition = (
   turnstileSiteKey: string | null,
   lang: string | null = null,
   uploadMaxBytes: number = FORM_UPLOAD_DEFAULT_MAX_BYTES,
+  availability: FormAvailability = { open: true, reason: null, message: null },
 ): PublicFormDefinition => {
   const settings = form.settings ?? {};
   const languages = settings.languages?.length ? settings.languages : ["en"];
@@ -688,6 +825,10 @@ export const publicFormDefinition = (
     languages,
     locale,
     turnstileSiteKey: settings.turnstile ? turnstileSiteKey : null,
+    closed:
+      availability.open || !availability.reason
+        ? null
+        : { reason: availability.reason, message: availability.message ?? "" },
   };
 };
 

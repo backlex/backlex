@@ -611,9 +611,14 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
   const requestedLang =
     params.get("lang") ?? (typeof navigator !== "undefined" ? navigator.language.split("-")[0] : null);
 
+  // Invite-only forms are entered through `/f/<token>?i=<invite>`; the token
+  // travels with both the definition read and the submit.
+  const invite = params.get("i");
+
   const query = useQuery({
-    queryKey: ["public-form", token, requestedLang],
-    queryFn: () => formsPublicApi.get(token ?? "", requestedLang ?? undefined),
+    queryKey: ["public-form", token, requestedLang, invite],
+    queryFn: () =>
+      formsPublicApi.get(token ?? "", requestedLang ?? undefined, invite ?? undefined),
     enabled: !!token,
     retry: false,
   });
@@ -714,6 +719,7 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
           data: buildPayload(allVisible, values),
           ...(turnstileToken ? { turnstileToken } : {}),
           ...(honeypot ? { website: honeypot } : {}),
+          ...(invite ? { invite } : {}),
         },
         def.locale,
       );
@@ -829,6 +835,46 @@ export function PublicForm({ embed = false }: { embed?: boolean }) {
             <p style={{ fontSize: 13.5, color: p.muted, margin: 0 }}>
               {def.successMessage ?? t`Your submission has been received.`}
             </p>
+          </div>
+          {footer}
+        </div>
+      </div>
+    );
+  }
+
+  // Closed on its own terms — a schedule, a response cap, or this browser
+  // having answered. The title stays: someone following the link came to a
+  // named thing, and "Customer survey — closed on Friday" is an answer where a
+  // bare error page is a support ticket.
+  if (def.closed) {
+    return (
+      <div style={shellStyle}>
+        <div style={{ width: "100%", maxWidth: 620 }}>
+          <div style={cardStyle}>
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: `${accent}22`,
+                display: "grid",
+                placeItems: "center",
+                marginBottom: 14,
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="1.8">
+                {def.closed.reason === "answered" ? (
+                  <path d="M20 6L9 17l-5-5" />
+                ) : (
+                  <>
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                  </>
+                )}
+              </svg>
+            </div>
+            <h1 style={{ fontSize: 19, margin: "0 0 8px", fontWeight: 600 }}>{def.name}</h1>
+            <p style={{ fontSize: 13.5, color: p.muted, margin: 0 }}>{def.closed.message}</p>
           </div>
           {footer}
         </div>

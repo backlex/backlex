@@ -14,6 +14,8 @@ import {
 import {
   assertConsents,
   assertScales,
+  formAnsweredCookieName,
+  formAvailability,
   exposedBlocks,
   exposedFieldNames,
   publicFormDefinition,
@@ -24,6 +26,11 @@ import {
   verifyTurnstile,
   type FormRow,
 } from "../services/forms";
+import {
+  checkFormInvite,
+  consumeFormInvite,
+  releaseFormInvite,
+} from "../services/form-invites";
 import {
   consumeFormUploadTicket,
   formUploadPolicy,
@@ -84,6 +91,21 @@ const PublicFormSchema = z
     description: z.string().nullable(),
     collection: z.string(),
     blocks: z.array(PublicFormBlockSchema),
+    /** Non-null ⇒ not taking answers; the page shows `message` instead of the
+     *  questions. Blocks are still sent so the page keeps its shape. */
+    closed: z
+      .object({
+        reason: z.enum([
+          "scheduled",
+          "ended",
+          "full",
+          "answered",
+          "invite",
+          "invite_used",
+        ]),
+        message: z.string(),
+      })
+      .nullable(),
     submitLabel: z.string().nullable(),
     successMessage: z.string().nullable(),
     redirectUrl: z.string().nullable(),
@@ -104,6 +126,9 @@ const SubmitBody = z
     /** Honeypot — rendered invisibly by the form page; any non-empty value
      *  marks the submission as bot traffic and it is silently dropped. */
     website: z.string().optional(),
+    /** Single-use invite token (`inv_…`), required by invite-only forms. The
+     *  page carries it over from `?i=` in its own URL. */
+    invite: z.string().max(120).optional(),
   })
   .openapi("PublicFormSubmission");
 
@@ -123,6 +148,46 @@ const requireLiveForm = (form: FormRow | null): FormRow => {
   if (!form) throw new AppError("NOT_FOUND", NOT_AVAILABLE);
   if (!form.active) throw new AppError("GONE", PAUSED);
   return form;
+};
+
+/** Has THIS browser already answered THIS form? Only asked when the form opted
+ *  in — reading the cookie otherwise would make a guard out of a setting the
+ *  operator did not turn on. */
+const hasAnsweredCookie = async (
+  c: { req: { header: (name: string) => string | undefined } },
+  form: FormRow,
+): Promise<boolean> => {
+  if (!form.settings?.onePerBrowser) return false;
+  const header = c.req.header("cookie");
+  if (!header) return false;
+  const name = await formAnsweredCookieName(form.id);
+  return header.split(";").some((part) => part.trim().startsWith(`${name}=`));
+};
+
+/**
+ * Remember that this browser answered.
+ *
+ * `SameSite=None; Secure` when the page is served over https, because the form
+ * is embeddable and a Lax cookie is not sent from inside a cross-site iframe —
+ * which would make the guard silently do nothing on exactly the deployment
+ * that embeds it. Plain http (local dev) keeps Lax, since a browser drops a
+ * `Secure` cookie there and the guard would again do nothing.
+ */
+const setAnsweredCookie = async (
+  c: { req: { url: string }; header: (name: string, value: string, opts?: { append?: boolean }) => void },
+  form: FormRow,
+): Promise<void> => {
+  const name = await formAnsweredCookieName(form.id);
+  const https = c.req.url.startsWith("https://");
+  const attrs = [
+    `${name}=1`,
+    "Path=/",
+    "Max-Age=31536000",
+    "HttpOnly",
+    https ? "SameSite=None" : "SameSite=Lax",
+    ...(https ? ["Secure"] : []),
+  ];
+  c.header("set-cookie", attrs.join("; "), { append: true });
 };
 
 /**
@@ -173,6 +238,12 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         throw new AppError("NOT_FOUND", NOT_AVAILABLE);
       }
 
+      // Invite-only forms resolve the `?i=` token here so the page can say
+      // "already used" before someone fills in six answers they can't submit.
+      const inviteProblem = form.settings?.inviteOnly
+        ? (await checkFormInvite(ctx, form.id, c.req.query("i") ?? null)).problem
+        : null;
+
       return c.json({
         data: publicFormDefinition(
           form,
@@ -180,6 +251,10 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           ctx.env.TURNSTILE_SITE_KEY ?? null,
           c.req.query("lang") ?? null,
           formUploadPolicy(ctx.env).maxBytes,
+          formAvailability(form, Date.now(), {
+            alreadyAnswered: await hasAnsweredCookie(c, form),
+            inviteProblem,
+          }),
         ),
       });
     },
@@ -366,6 +441,23 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         return c.json({ data: { id: null, ...success } }, 201);
       }
 
+      // Closed on its own terms — a schedule, a response cap, or this browser
+      // having answered already. GONE rather than a 4xx that reads like the
+      // answer was malformed: the form was reachable, it is simply over. The
+      // page shows the same sentence the definition endpoint gave it, so a
+      // visitor who kept a tab open across the closing time is told the same
+      // thing as one arriving after it.
+      const invite = settings.inviteOnly
+        ? await checkFormInvite(ctx, form.id, body.invite ?? c.req.query("i"))
+        : null;
+      const availability = formAvailability(form, Date.now(), {
+        alreadyAnswered: await hasAnsweredCookie(c, form),
+        inviteProblem: invite?.problem ?? null,
+      });
+      if (!availability.open) {
+        throw new AppError("GONE", availability.message ?? "This form is closed");
+      }
+
       const meta = requestMeta(c.req.raw);
       const ip = meta.ip ?? "unknown";
       const allowed = await rateLimitOk(
@@ -446,12 +538,32 @@ export const formsPublicRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         durationMs: () => elapsedMs(c),
         locale: null,
       };
-      const res = await performCreate(env, data, {
-        whereSql: null,
-        fields: exposed,
-      });
+      // Spend the invite BEFORE the write: that is the only ordering in which
+      // a double-click cannot leave two answers behind one link. The cost is
+      // that a submission which then fails validation would take the person's
+      // one link with it, so the catch below hands it back.
+      if (invite?.invite) {
+        const spent = await consumeFormInvite(ctx, invite.invite.id);
+        if (!spent) {
+          throw new AppError("GONE", "This invitation has already been used.");
+        }
+      }
+
+      let res: Awaited<ReturnType<typeof performCreate>>;
+      try {
+        res = await performCreate(env, data, {
+          whereSql: null,
+          fields: exposed,
+        });
+      } catch (e) {
+        if (invite?.invite) await releaseFormInvite(ctx, invite.invite.id);
+        throw e;
+      }
       for (const fx of res.sideEffects) await fx();
       await recordFormSubmission(ctx, form.id);
+      // Set AFTER the write, so a submission that failed validation doesn't
+      // spend the browser's one answer.
+      if (settings.onePerBrowser) await setAnsweredCookie(c, form);
 
       // The row id stays private — a public submitter has no read path to the
       // record, so leaking its id would only aid enumeration.

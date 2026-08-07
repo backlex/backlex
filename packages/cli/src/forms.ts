@@ -34,6 +34,11 @@ const HELP = `backlex forms <list|get|fields|create|update|rotate-token|results|
   rotate-token <id>               replace the public link (old one dies)
   results <id>                    answer counts per question (counts only —
                                   free-text answers are not quoted)
+  invites <id>                    who was invited, and who has answered
+  invite <id> --emails a@b,c@d    mint one single-use link per recipient
+              [--form-token <t>]  …with ready-made links (token from create)
+              [--send]            …and email them
+  revoke-invite <id> <invite-id>  kill one link
   delete <id>
 `;
 
@@ -187,6 +192,84 @@ export const runForms = async (args: string[]): Promise<void> => {
                     : "—",
           })),
         );
+        return;
+      }
+      case "invites": {
+        const id = rest[0];
+        if (!id) {
+          process.stderr.write("forms invites <id>\n");
+          process.exit(1);
+        }
+        const { data } = await client.request<{
+          data: Array<{ id: string; email: string | null; name: string | null; sentAt: unknown; usedAt: unknown }>;
+        }>("GET", `${BASE}/${encodeURIComponent(id)}/invites`);
+        if (json) printJson(data);
+        else
+          printTable(
+            data.map((i) => ({
+              id: i.id,
+              email: i.email ?? "—",
+              name: i.name ?? "—",
+              sent: i.sentAt ? "yes" : "no",
+              answered: i.usedAt ? "yes" : "no",
+            })),
+          );
+        return;
+      }
+      case "invite": {
+        const id = rest[0];
+        if (!id) {
+          process.stderr.write(
+            "forms invite <id> --emails a@b.com,c@d.com [--form-token <tok>] [--send]\n" +
+              "forms invite <id> --data <json|@file|->\n",
+          );
+          process.exit(1);
+        }
+        const emails = flag(rest, "--emails");
+        const payload = emails
+          ? {
+              recipients: emails
+                .split(",")
+                .map((e) => e.trim())
+                .filter(Boolean)
+                .map((email) => ({ email })),
+              ...(flag(rest, "--form-token") ? { formToken: flag(rest, "--form-token") } : {}),
+              ...(has(rest, "--send") ? { send: true } : {}),
+            }
+          : (JSON.parse(await resolvePayload(flag(rest, "--data"))) as Record<string, unknown>);
+        const res = await client.request<{
+          data: { invites: Array<{ email: string | null; token: string; url: string }>; sent: number };
+        }>("POST", `${BASE}/${encodeURIComponent(id)}/invites`, payload);
+        if (json) {
+          printJson(res.data);
+          return;
+        }
+        // The tokens are in this response and nowhere else — print them where
+        // the operator can copy them, and say so.
+        printTable(
+          res.data.invites.map((i) => ({
+            email: i.email ?? "—",
+            link: i.url || i.token,
+          })),
+        );
+        process.stderr.write(
+          `\n${res.data.invites.length} invite(s) minted, ${res.data.sent} emailed.\n` +
+            "These links are shown once — they cannot be listed again.\n",
+        );
+        return;
+      }
+      case "revoke-invite": {
+        const id = rest[0];
+        const inviteId = rest[1];
+        if (!id || !inviteId) {
+          process.stderr.write("forms revoke-invite <id> <invite-id>\n");
+          process.exit(1);
+        }
+        await client.request(
+          "DELETE",
+          `${BASE}/${encodeURIComponent(id)}/invites/${encodeURIComponent(inviteId)}`,
+        );
+        process.stderr.write(`Revoked invite ${inviteId}.\n`);
         return;
       }
       case "delete": {

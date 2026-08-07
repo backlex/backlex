@@ -214,6 +214,94 @@ export const formResults: McpTool = {
   },
 };
 
+export const listFormInvites: McpTool = {
+  name: "forms.invites",
+  description:
+    "List a form's invites: who was invited, whether their mail went out, and " +
+    "whether they have answered. Tokens are never listed — a lost link is " +
+    "re-minted with `forms.invite`, not recovered.",
+  inputSchema: {
+    type: "object",
+    properties: { id: { type: "string" } },
+    required: ["id"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.id ?? "");
+    if (!id) throw new Error("VALIDATION: id is required");
+    const res = await ctx.fetchInternal(
+      `/api/admin/forms/${encodeURIComponent(id)}/invites`,
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const inviteToForm: McpTool = {
+  name: "forms.invite",
+  description:
+    "Mint one single-use invite link per recipient. The plaintext tokens come " +
+    "back in THIS response and nowhere else. Pass `formToken` (held from " +
+    "`forms.create` / `forms.rotate_token`) to get ready-made links, and " +
+    "`send: true` to email them. Only meaningful once the form's settings " +
+    "carry `inviteOnly: true`.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      recipients: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: { email: { type: "string" }, name: { type: "string" } },
+          additionalProperties: false,
+        },
+      },
+      formToken: { type: "string" },
+      send: { type: "boolean" },
+    },
+    required: ["id", "recipients"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.id ?? "");
+    if (!id) throw new Error("VALIDATION: id is required");
+    const res = await ctx.fetchInternal(
+      `/api/admin/forms/${encodeURIComponent(id)}/invites`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          recipients: args.recipients,
+          ...(args.formToken ? { formToken: args.formToken } : {}),
+          ...(args.send !== undefined ? { send: Boolean(args.send) } : {}),
+        }),
+      },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
+export const revokeFormInvite: McpTool = {
+  name: "forms.revoke_invite",
+  description: "Revoke one invite. Its link stops working immediately.",
+  inputSchema: {
+    type: "object",
+    properties: { id: { type: "string" }, inviteId: { type: "string" } },
+    required: ["id", "inviteId"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const id = String(args.id ?? "");
+    const inviteId = String(args.inviteId ?? "");
+    if (!id || !inviteId) throw new Error("VALIDATION: id and inviteId are required");
+    const res = await ctx.fetchInternal(
+      `/api/admin/forms/${encodeURIComponent(id)}/invites/${encodeURIComponent(inviteId)}`,
+      { method: "DELETE" },
+    );
+    return textResult(await readJson<unknown>(res));
+  },
+};
+
 export const formsTools: McpTool[] = [
   listForms,
   getForm,
@@ -222,5 +310,8 @@ export const formsTools: McpTool[] = [
   updateForm,
   rotateFormToken,
   formResults,
+  listFormInvites,
+  inviteToForm,
+  revokeFormInvite,
   deleteForm,
 ];

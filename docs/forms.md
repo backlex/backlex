@@ -111,6 +111,79 @@ are swept by the cron tick after 24h; tickets expire after 2h. Demo-mode
 instances refuse public uploads entirely. Turnstile (when enabled) still
 gates the submit — uploads are protected by the valves above instead.
 
+## When it closes, and who may answer
+
+A form is `active` or paused — paused answers **410** everywhere and says
+nothing else, because its link was not supposed to be in circulation. Closing
+is a different thing, and it renders: the page keeps its title and shows one
+sentence, because "this closed on Friday" is what the person following the link
+came for and a 404 in its place is a support ticket.
+
+```jsonc
+"settings": {
+  "opensAt": 1786060800000,      // epoch ms — before this: "isn't open yet"
+  "closesAt": 1786665600000,     // …and from this on: "closed"
+  "maxResponses": 200,           // stop once this many were accepted
+  "onePerBrowser": true,         // a cookie, see below
+  "inviteOnly": true,            // only an unspent invite gets in
+  "closedMessage": "Voting closed on Friday. Thanks to everyone who took part."
+}
+```
+
+Submits against a closed form answer `410` with that same sentence, so a tab
+left open across the closing time is told what a fresh arrival is told. A
+schedule that closes before it opens is refused when the form is saved.
+
+The response cap is checked **before** the row is written, so a simultaneous
+burst can land a couple over it. The alternative — reserving a slot in the
+statement that increments the counter — would spend the cap on submissions that
+then failed validation, which is the worse mistake for a survey nobody can
+re-open.
+
+### One answer per browser
+
+`onePerBrowser` sets an opaque, HttpOnly cookie after a successful submit
+(`blx_fa_<hash of the form id>`), and both the definition and the submit honour
+it. It is `SameSite=None; Secure` over https so the guard survives being
+embedded in a cross-site iframe.
+
+It is a **courtesy, not a count**: another browser, a private window or a
+cleared cookie jar all answer again, and the admin toggle says so. When the
+number has to be right, invite.
+
+### Invite links
+
+`inviteOnly` closes the form to everyone but a visitor holding an unspent
+invite. Each invite is minted per recipient, is single-use, and is entered
+through `/f/<form-token>?i=<invite-token>` — the form's own token is still
+required, because an invite grants a turn and not access.
+
+```bash
+backlex forms invite <form-id> --emails ada@example.com,grace@example.com \
+  --form-token frm_… --send
+backlex forms invites <form-id>          # who answered
+backlex forms revoke-invite <form-id> <invite-id>
+```
+
+The plaintext tokens are in the mint response and **nowhere else** — only their
+SHA-256 is stored, exactly as for the form token itself. A lost link is
+re-minted, not recovered.
+
+The invite is spent *before* the row is written, because that is the only
+ordering in which a double-click cannot leave two answers behind one link. A
+submission that then fails validation hands it back: a missed required field is
+a mistake to correct, not a door that locks behind you.
+
+Emailing is optional (`send: true`) and uses the `form_invite` template when the
+workspace defines one, else a built-in fallback. A recipient with no address is
+allowed on purpose — a workshop hands links out on paper.
+
+One call mints at most 500 invites. When you are also emailing them, mint in
+batches of ~100: the sends run inside the request, and a single call that has to
+deliver hundreds of messages is a request waiting to time out. Invites already
+minted are unaffected by a send that fails — they are in the response, and the
+list shows which ones went.
+
 ## Spam protection
 
 Three independent layers on submit:
@@ -152,16 +225,18 @@ Everything goes through one service (`services/forms.ts`):
 
 | Surface | Entry |
 |---|---|
-| REST | `/api/admin/forms` (+ `/eligible-fields/:collection`, `/:id/rotate-token`, `/:id/results`), public `/api/public/forms/:token` |
+| REST | `/api/admin/forms` (+ `/eligible-fields/:collection`, `/:id/rotate-token`, `/:id/results`, `/:id/invites`), public `/api/public/forms/:token` |
 | SDK | `client.forms.*` |
-| GraphQL | `publicForms` / `publicForm` / `publicFormResults`, `createPublicForm` / `updatePublicForm` / `deletePublicForm` / `rotatePublicFormToken` |
-| MCP | `forms.*` (list, get, eligible_fields, create, update, rotate_token, results, delete) |
-| CLI | `backlex forms <list\|get\|fields\|create\|update\|rotate-token\|results\|delete>` |
+| GraphQL | `publicForms` / `publicForm` / `publicFormResults` / `publicFormInvites`, `createPublicForm` / `updatePublicForm` / `deletePublicForm` / `rotatePublicFormToken` / `invitePublicForm` / `revokePublicFormInvite` |
+| MCP | `forms.*` (list, get, eligible_fields, create, update, rotate_token, results, invites, invite, revoke_invite, delete) |
+| CLI | `backlex forms <list\|get\|fields\|create\|update\|rotate-token\|results\|invites\|invite\|revoke-invite\|delete>` |
 
 Parity gate: `apps/web/tests/forms-surfaces.test.ts`; core behaviour:
 `apps/web/tests/forms.test.ts`; survey shapes + results arithmetic:
 `apps/web/tests/forms-results.test.ts` (and `forms-results-pg.test.ts` for the
-Postgres spelling of the array explode).
+Postgres spelling of the array explode); closing rules:
+`apps/web/tests/forms-availability.test.ts`; invites:
+`apps/web/tests/form-invites.test.ts`.
 
 ## Not yet
 
@@ -169,4 +244,5 @@ Postgres spelling of the array explode).
 - Localized fields.
 - Multiple files per block (a `file` field stores one key).
 - Matrix / likert grids (ask each row as its own scale block for now).
-- A response cap, a closing date, or one-response-per-person.
+- Invite reminders (a second mail to whoever hasn't answered).
+- Partial answers — a half-filled form is not saved and cannot be resumed.

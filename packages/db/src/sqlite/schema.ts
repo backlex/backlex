@@ -2251,6 +2251,38 @@ export const forms = sqliteTable(
   ],
 );
 
+/**
+ * One invitation to answer a form — the shape that makes "one response per
+ * person" mean a person. SQLite twin of the pg table.
+ *
+ * The form's own token is a door anyone with the link walks through, which is
+ * why the cookie guard beside it is a courtesy and not a count. An invite is
+ * per-recipient and single-use: `used_at` is written by the submit that spends
+ * it, in an UPDATE conditional on the column still being null, so two tabs
+ * racing the same link produce one answer.
+ */
+export const formInvites = sqliteTable(
+  "form_invites",
+  {
+    id: text("id").primaryKey(),
+    formId: text("form_id").notNull(),
+    tenantId: text("tenant_id"),
+    /** Who it was minted for. Null for a batch of unaddressed links. */
+    email: text("email"),
+    name: text("name"),
+    tokenHash: text("token_hash").notNull(),
+    sentAt: integer("sent_at", { mode: "timestamp_ms" }),
+    usedAt: integer("used_at", { mode: "timestamp_ms" }),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("form_invites_token_idx").on(t.tokenHash),
+    index("form_invites_form_idx").on(t.formId),
+    index("form_invites_tenant_idx").on(t.tenantId),
+  ],
+);
+
 export const authConfig = sqliteTable(
   "auth_config",
   {

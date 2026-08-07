@@ -24,6 +24,24 @@ import {
   type FormSettings,
 } from "../forms";
 import { formResults } from "../forms-results";
+import {
+  createFormInvites,
+  deleteFormInvite,
+  listFormInvites,
+  type FormInviteRow,
+} from "../form-invites";
+
+/** The invite shape a read surface hands out — no token, no hash. Mirrors
+ *  `serializeInvite` in the REST route so the two agree. */
+const publicInvite = (r: FormInviteRow) => ({
+  id: r.id,
+  formId: r.formId,
+  email: r.email,
+  name: r.name,
+  sentAt: r.sentAt,
+  usedAt: r.usedAt,
+  createdAt: r.createdAt,
+});
 
 // ── Public form builder ──────────────────────────────────────────────────────
 // Static, admin-scoped surface mirroring REST `/api/admin/forms` + MCP
@@ -134,6 +152,19 @@ export const formQueryFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>
       return row ? normalizeFormRow(row) : null;
     },
   },
+  publicFormInvites: {
+    type: JSONScalar,
+    description:
+      "Who was invited to answer a form, whether their mail went out and whether they have answered (admin-only). Tokens are never listed — mint replacements with `invitePublicForm`.",
+    args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireFormAdmin(gqlCtx);
+      const row = await getForm(gqlCtx.ctx, tenantId, (args as { id: string }).id);
+      if (!row) throw new GraphQLError("Form not found", { extensions: { code: "NOT_FOUND" } });
+      const invites = await listFormInvites(gqlCtx.ctx, tenantId, row.id);
+      return invites.map(publicInvite);
+    },
+  },
   publicFormResults: {
     type: JSONScalar,
     description:
@@ -198,6 +229,59 @@ export const formMutationFields: Record<string, GraphQLFieldConfig<unknown, GqlC
     resolve: async (_src, args, gqlCtx) => {
       const tenantId = requireFormAdmin(gqlCtx);
       await surfaceAppError(() => deleteForm(gqlCtx.ctx, tenantId, (args as { id: string }).id));
+      return true;
+    },
+  },
+  invitePublicForm: {
+    type: new GraphQLNonNull(JSONScalar),
+    description:
+      "Mint one single-use invite link per recipient (admin-only). The plaintext tokens are in THIS response and nowhere else. Pass `formToken` to get ready-made links back.",
+    args: {
+      id: { type: new GraphQLNonNull(GraphQLID) },
+      recipients: { type: new GraphQLNonNull(JSONScalar) },
+      formToken: { type: GraphQLString },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireFormAdmin(gqlCtx);
+      const a = args as {
+        id: string;
+        recipients: unknown;
+        formToken?: string | null;
+      };
+      const row = await getForm(gqlCtx.ctx, tenantId, a.id);
+      if (!row) throw new GraphQLError("Form not found", { extensions: { code: "NOT_FOUND" } });
+      if (!Array.isArray(a.recipients)) {
+        throw new GraphQLError("recipients must be a list", {
+          extensions: { code: "VALIDATION" },
+        });
+      }
+      const minted = await surfaceAppError(() =>
+        createFormInvites(
+          gqlCtx.ctx,
+          tenantId,
+          row,
+          a.formToken ?? null,
+          a.recipients as { email?: string; name?: string }[],
+        ),
+      );
+      return minted.map((m) => ({ ...publicInvite(m), token: m.token, url: m.url }));
+    },
+  },
+  revokePublicFormInvite: {
+    type: new GraphQLNonNull(GraphQLBoolean),
+    description: "Revoke an invite; its link stops working immediately (admin-only).",
+    args: {
+      id: { type: new GraphQLNonNull(GraphQLID) },
+      inviteId: { type: new GraphQLNonNull(GraphQLID) },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireFormAdmin(gqlCtx);
+      const a = args as { id: string; inviteId: string };
+      const row = await getForm(gqlCtx.ctx, tenantId, a.id);
+      if (!row) throw new GraphQLError("Form not found", { extensions: { code: "NOT_FOUND" } });
+      await surfaceAppError(() =>
+        deleteFormInvite(gqlCtx.ctx, tenantId, row.id, a.inviteId),
+      );
       return true;
     },
   },

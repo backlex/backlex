@@ -18,6 +18,17 @@ import {
   type FormRow,
 } from "../services/forms";
 import { formResults } from "../services/forms-results";
+import {
+  createFormInvites,
+  deleteFormInvite,
+  listFormInvites,
+  markInviteSent,
+  MAX_INVITES_PER_CALL,
+  type FormInviteRow,
+  type MintedInvite,
+} from "../services/form-invites";
+import { sendTemplatedEmail } from "../services/email";
+import { escapeHtml } from "../services/signatures";
 
 const TAGS = ["forms"];
 
@@ -93,6 +104,17 @@ const FormSettingsSchema = z
     font: z.enum(["sans", "lexend", "mono", "system"]).optional(),
     languages: z.array(z.string().min(2).max(8)).max(12).optional(),
     i18n: z.record(z.string(), FormI18nSchema).optional(),
+    /** Epoch ms. Before `opensAt` and from `closesAt` on, the public page
+     *  renders `closedMessage` instead of the questions and submits are 410. */
+    opensAt: z.number().int().nonnegative().optional(),
+    closesAt: z.number().int().nonnegative().optional(),
+    /** Stop accepting once this many submissions have been accepted. */
+    maxResponses: z.number().int().positive().max(10_000_000).optional(),
+    /** One answer per browser (a cookie, not an identity — see docs). */
+    onePerBrowser: z.boolean().optional(),
+    /** Only a visitor holding an unspent invite may answer. */
+    inviteOnly: z.boolean().optional(),
+    closedMessage: z.string().max(1000).optional(),
   })
   .openapi("FormSettings");
 
@@ -198,6 +220,46 @@ const FormResultsSchema = z
   })
   .openapi("FormResults");
 
+const InviteSchema = z
+  .object({
+    id: z.string(),
+    formId: z.string(),
+    email: z.string().nullable(),
+    name: z.string().nullable(),
+    sentAt: z.unknown().nullable(),
+    usedAt: z.unknown().nullable(),
+    createdAt: z.unknown().nullable(),
+  })
+  .openapi("FormInvite");
+
+const MintedInviteSchema = InviteSchema.extend({
+  /** One-time plaintext token — never returned again. */
+  token: z.string(),
+  /** Relative link, empty when the caller didn't supply the form's own token
+   *  (which is itself only held for a moment after create/rotate). */
+  url: z.string(),
+}).openapi("MintedFormInvite");
+
+const InviteInput = z
+  .object({
+    recipients: z
+      .array(
+        z.object({
+          email: z.string().email().max(320).optional(),
+          name: z.string().max(200).optional(),
+        }),
+      )
+      .min(1)
+      .max(MAX_INVITES_PER_CALL),
+    /** The form's own plaintext token, so the response can carry ready-made
+     *  links. Held by the caller from create/rotate; never stored. */
+    formToken: z.string().max(120).optional(),
+    /** Email each recipient their link. Needs an address and a configured
+     *  transport; recipients without one are minted and simply not mailed. */
+    send: z.boolean().optional(),
+  })
+  .openapi("FormInviteInput");
+
 const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
   if (!auth.roles.includes(SYSTEM_ROLES.admin))
@@ -220,6 +282,24 @@ const serializeForm = (row: FormRow) => ({
   createdBy: row.createdBy,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
+});
+
+/** The invite shape every read surface hands out — no token, no hash. */
+const serializeInvite = (row: FormInviteRow) => ({
+  id: row.id,
+  formId: row.formId,
+  email: row.email,
+  name: row.name,
+  sentAt: row.sentAt,
+  usedAt: row.usedAt,
+  createdAt: row.createdAt,
+});
+
+/** …plus the one-time token, which only the mint response carries. */
+const serializeMintedInvite = (row: MintedInvite) => ({
+  ...serializeInvite(row),
+  token: row.token,
+  url: row.url,
 });
 
 const publicUrls = (token: string) => ({
@@ -364,6 +444,154 @@ export const formsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const row = await getForm(ctx, auth.tenantId ?? null, c.req.valid("param").id);
       if (!row) throw new AppError("NOT_FOUND", "Form not found");
       return c.json({ data: serializeForm(row) });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{id}/invites",
+      tags: TAGS,
+      summary: "List a form's invites",
+      description:
+        "Who was invited, whether their mail went out, and whether they have answered. Tokens are never listed — a lost link is re-minted, not recovered.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdminMiddleware],
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: z.object({ data: z.array(InviteSchema) }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const tenantId = auth.tenantId ?? null;
+      const row = await getForm(ctx, tenantId, c.req.valid("param").id);
+      if (!row) throw new AppError("NOT_FOUND", "Form not found");
+      const data = await listFormInvites(ctx, tenantId, row.id);
+      return c.json({ data: data.map(serializeInvite) });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{id}/invites",
+      tags: TAGS,
+      summary: "Invite people to answer a form",
+      description:
+        "Mints one single-use link per recipient. The plaintext tokens are in THIS response and nowhere else. Pass `formToken` (held from create/rotate) to get ready-made links back, and `send: true` to email them.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdminMiddleware],
+      request: {
+        params: z.object({ id: z.string() }),
+        body: { required: true, content: { "application/json": { schema: InviteInput } } },
+      },
+      responses: {
+        201: {
+          description: "Created",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.object({
+                  invites: z.array(MintedInviteSchema),
+                  /** How many were emailed — less than the count when a
+                   *  recipient had no address or the transport refused. */
+                  sent: z.number(),
+                }),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const tenantId = auth.tenantId ?? null;
+      const input = c.req.valid("json");
+      const row = await getForm(ctx, tenantId, c.req.valid("param").id);
+      if (!row) throw new AppError("NOT_FOUND", "Form not found");
+
+      const minted = await createFormInvites(
+        ctx,
+        tenantId,
+        row,
+        input.formToken ?? null,
+        input.recipients,
+      );
+
+      let sent = 0;
+      if (input.send) {
+        const origin = ctx.env.APP_URL?.replace(/\/$/, "") ?? "";
+        for (const invite of minted) {
+          if (!invite.email || !invite.url) continue;
+          try {
+            await sendTemplatedEmail(ctx, {
+              to: invite.email,
+              templateKey: "form_invite",
+              tenantId,
+              vars: {
+                form: row.name,
+                url: `${origin}${invite.url}`,
+                recipient: { email: invite.email, name: invite.name ?? "" },
+              },
+              fallback: {
+                subject: `You're invited: ${row.name}`,
+                // Escaped: the form name and the recipient name are operator
+                // input, and this body is delivered to a third party. Same
+                // discipline as the approval mailer.
+                html:
+                  `<p>${escapeHtml(invite.name || invite.email)},</p>` +
+                  `<p>You've been invited to answer <strong>${escapeHtml(row.name)}</strong>.</p>` +
+                  `<p><a href="${escapeHtml(`${origin}${invite.url}`)}">Answer the form</a></p>` +
+                  `<p>This link works once and is yours alone.</p>`,
+              },
+            });
+            await markInviteSent(ctx, invite.id);
+            sent++;
+          } catch {
+            // A transport that refuses one address must not lose the other
+            // links — they were already minted and are in this response.
+          }
+        }
+      }
+
+      return c.json({ data: { invites: minted.map(serializeMintedInvite), sent } }, 201);
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "delete",
+      path: "/{id}/invites/{inviteId}",
+      tags: TAGS,
+      summary: "Revoke an invite",
+      description: "The link stops working immediately, answered or not.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdminMiddleware],
+      request: { params: z.object({ id: z.string(), inviteId: z.string() }) },
+      responses: {
+        200: {
+          description: "Revoked",
+          content: { "application/json": { schema: OkSchema } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const tenantId = auth.tenantId ?? null;
+      const { id, inviteId } = c.req.valid("param");
+      const row = await getForm(ctx, tenantId, id);
+      if (!row) throw new AppError("NOT_FOUND", "Form not found");
+      await deleteFormInvite(ctx, tenantId, row.id, inviteId);
+      return c.json({ ok: true });
     },
   )
   .openapi(

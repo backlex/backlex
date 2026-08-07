@@ -876,6 +876,22 @@ export interface PublicFormSettings {
     string,
     { title?: string; description?: string; submitLabel?: string; successMessage?: string }
   >;
+  /** Epoch ms before which the form does not take answers yet. */
+  opensAt?: number;
+  /** Epoch ms from which it stops taking them. */
+  closesAt?: number;
+  /** Stop accepting once this many submissions have been accepted. Checked
+   *  before the row is written, so a simultaneous burst can land a couple
+   *  over it. */
+  maxResponses?: number;
+  /** One answer per browser — a cookie, not an identity: another browser or a
+   *  cleared one answers again. Use invite links when it must be one person. */
+  onePerBrowser?: boolean;
+  /** Only a visitor holding an unspent invite may answer (`/f/<token>?i=…`).
+   *  Mint them with `forms.invite()`. */
+  inviteOnly?: boolean;
+  /** What the public page says once the form is closed. */
+  closedMessage?: string;
 }
 
 /** A public form definition. Mirrors `/api/admin/forms`. The public token is
@@ -2567,8 +2583,50 @@ export interface FormsClient {
   /** One distribution per exposed question. Counts only — free-text answers
    *  are never quoted here; read those through `items.list()`. */
   results(id: string): Promise<{ data: PublicFormResults }>;
+  /** Who was invited, whether their mail went out, whether they answered.
+   *  Tokens are never listed — a lost link is re-minted, not recovered. */
+  invites(id: string): Promise<{ data: PublicFormInvite[] }>;
+  /** Mint one single-use link per recipient. The plaintext tokens are in THIS
+   *  response and nowhere else. */
+  invite(
+    id: string,
+    input: PublicFormInviteInput,
+  ): Promise<{ data: { invites: MintedPublicFormInvite[]; sent: number } }>;
+  /** Revoke an invite; its link stops working immediately. */
+  revokeInvite(id: string, inviteId: string): Promise<{ ok: boolean }>;
   /** Delete a form; its link stops working immediately. */
   delete(id: string): Promise<{ ok: boolean }>;
+}
+
+/** One invitation to answer a form. The token is never in a read response. */
+export interface PublicFormInvite {
+  id: string;
+  formId: string;
+  /** Null for an unaddressed link the operator hands out themselves. */
+  email: string | null;
+  name: string | null;
+  /** When the invite email went out, or null if it never did. */
+  sentAt: unknown;
+  /** When it was spent. Non-null ⇒ the link no longer works. */
+  usedAt: unknown;
+  createdAt: unknown;
+}
+
+/** A freshly minted invite — `token` and `url` appear only here. */
+export interface MintedPublicFormInvite extends PublicFormInvite {
+  token: string;
+  /** Relative link, or "" when no `formToken` was supplied to build it with. */
+  url: string;
+}
+
+export interface PublicFormInviteInput {
+  recipients: { email?: string; name?: string }[];
+  /** The form's own plaintext token (held from create/rotate), so the response
+   *  can carry ready-made links. Never stored. */
+  formToken?: string;
+  /** Email each recipient their link. Recipients with no address are minted
+   *  and simply not mailed. */
+  send?: boolean;
 }
 
 /** How a question's answers are summarised. */
@@ -4866,6 +4924,19 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<{ data: PublicFormToken }>("POST", `${formPath(id)}/rotate-token`),
     results: (id: string) =>
       request<{ data: PublicFormResults }>("GET", `${formPath(id)}/results`),
+    invites: (id: string) =>
+      request<{ data: PublicFormInvite[] }>("GET", `${formPath(id)}/invites`),
+    invite: (id: string, input: PublicFormInviteInput) =>
+      request<{ data: { invites: MintedPublicFormInvite[]; sent: number } }>(
+        "POST",
+        `${formPath(id)}/invites`,
+        input,
+      ),
+    revokeInvite: (id: string, inviteId: string) =>
+      request<{ ok: boolean }>(
+        "DELETE",
+        `${formPath(id)}/invites/${encodeURIComponent(inviteId)}`,
+      ),
     delete: (id: string) => request<{ ok: boolean }>("DELETE", formPath(id)),
   };
 

@@ -431,6 +431,12 @@ msgstr "{0} boş"
 msgid "{0} has no number column to aggregate."
 msgstr "{0} koleksiyonunda toplanacak sayı sütunu yok."
 
+#. placeholder {0}: res.data.invites.length
+#. placeholder {1}: res.data.sent
+#: src/client/admin/pages/forms.tsx
+msgid "{0} invited, {1} emailed."
+msgstr "{0} kişi davet edildi, {1} kişiye e-posta gitti."
+
 #. placeholder {0}: collabHandle(p)
 #: src/client/admin/items.tsx
 msgid "{0} is editing"
@@ -470,6 +476,11 @@ msgstr "{0} öğe"
 #: src/client/pages/book.tsx
 msgid "{0} left"
 msgstr "{0} yer kaldı"
+
+#. placeholder {0}: res.data.invites.length
+#: src/client/admin/pages/forms.tsx
+msgid "{0} link(s) minted — copy them now."
+msgstr "{0} bağlantı oluşturuldu — şimdi kopyalayın."
 
 #. placeholder {0}: rows.length
 #: src/client/admin/pages/logs.tsx
@@ -1079,6 +1090,10 @@ msgstr "Seçilen bir agent cevaplar"
 msgid "A confirmation is on its way, with a calendar invite attached."
 msgstr "Takvim daveti ekli bir onay e-postası yolda."
 
+#: src/client/admin/pages/forms.tsx
+msgid "a cookie, not an identity — another browser answers again"
+msgstr "kimlik değil çerez — başka bir tarayıcı yeniden yanıtlar"
+
 #: src/client/admin/parity/insights.tsx
 msgid "A dashboard with that name already exists."
 msgstr "Bu adda bir pano zaten var."
@@ -1284,6 +1299,11 @@ msgstr "Gezinti ve listelerdeki ikonun vurgu rengi."
 #: src/client/pages/invite.tsx
 msgid "Accept invite"
 msgstr "Daveti kabul et"
+
+#. placeholder {0}: form.submissionCount
+#: src/client/admin/pages/forms.tsx
+msgid "Accepted so far: {0}. Checked before the row is written, so a simultaneous burst can land a couple over."
+msgstr "Şu ana kadar kabul edilen: {0}. Kayıt yazılmadan önce kontrol edilir; aynı anda gelen yoğunlukta birkaç fazla yanıt geçebilir."
 
 #: src/client/admin/pages/forms.tsx
 msgid "accepted through this form"
@@ -2171,6 +2191,7 @@ msgstr "Yanıt biçimi"
 msgid "answered"
 msgstr "yanıtladı"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/approvals.tsx
 msgid "Answered"
 msgstr "Yanıtlayan"
@@ -3504,6 +3525,14 @@ msgstr "Kapat"
 msgid "Closed instance."
 msgstr "Kapalı örnek."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Closed message"
+msgstr "Kapalı mesajı"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Closes"
+msgstr "Kapanış"
+
 #: src/client/admin/pages/agents.tsx
 msgid "Cloudflare Workers AI · managed"
 msgstr "Cloudflare Workers AI · yönetilen"
@@ -3687,6 +3716,10 @@ msgstr "sütun: <0>{0}</0>"
 #: src/client/admin/list-columns.tsx
 msgid "Columns"
 msgstr "Kolonlar"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Comma or newline separated. Each gets its own single-use link."
+msgstr "Virgül veya satır sonuyla ayırın. Her biri kendi tek kullanımlık bağlantısını alır."
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
@@ -4373,6 +4406,10 @@ msgstr "Hesap oluştur"
 msgid "Create an account"
 msgstr "Hesap oluşturun"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Create and email"
+msgstr "Oluştur ve gönder"
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Create branch"
 msgstr "Dal oluştur"
@@ -4411,6 +4448,10 @@ msgstr "Veri olaylarından Linear kayıtları (issue) oluştur."
 
 #: src/client/admin/pages/payments.tsx
 msgid "Create link"
+msgstr "Bağlantı oluştur"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Create links"
 msgstr "Bağlantı oluştur"
 
 #: src/client/admin/item-collaboration.tsx
@@ -5826,6 +5867,10 @@ msgstr "E-posta + parola her zaman kullanılabilir — giriş ekranındaki formu
 #: src/client/admin/pages/erasure-card.tsx
 msgid "Email address"
 msgstr "E-posta adresi"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Email addresses"
+msgstr "E-posta adresleri"
 
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
@@ -8040,6 +8085,10 @@ msgstr "Davet linki kopyalandı."
 msgid "Invite not found"
 msgstr "Davet bulunamadı"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Invite only"
+msgstr "Yalnızca davetli"
+
 #. placeholder {0}: payload.email
 #: src/client/admin/pages/users.tsx
 #~ msgid "Invite sent to {0}."
@@ -8062,6 +8111,14 @@ msgstr "Kullanıcı davet et"
 #: src/client/admin/pages/users.tsx
 msgid "invited"
 msgstr "davet edildi"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Invited"
+msgstr "Davet edilen"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Invites"
+msgstr "Davetler"
 
 #: src/client/pages/invite.tsx
 msgid "Invites are valid for 7 days. Ask an admin to send a new one."
@@ -10051,6 +10108,10 @@ msgstr "Bu pencerede etkinlik yok"
 msgid "No activity recorded."
 msgstr "Etkinlik kaydedilmedi."
 
+#: src/client/admin/pages/forms.tsx
+msgid "no address"
+msgstr "adres yok"
+
 #: src/client/admin/pages/agents.tsx
 msgid "No agent selected"
 msgstr "Ajan seçilmedi"
@@ -10474,6 +10535,10 @@ msgstr "Dil bulunamadı."
 msgid "no limit"
 msgstr "limit yok"
 
+#: src/client/admin/pages/forms.tsx
+msgid "No limit"
+msgstr "Sınırsız"
+
 #: src/client/admin/pages/ask-ai/shared.tsx
 msgid "No live keys — create one on the <0>API Keys</0> page first."
 msgstr "Canlı anahtar yok — önce <0>API Anahtarları</0> sayfasından bir tane oluşturun."
@@ -10819,6 +10884,10 @@ msgstr "Gelmedi"
 msgid "Nobody answers"
 msgstr "Kimse cevaplamaz"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Nobody invited yet."
+msgstr "Henüz kimse davet edilmedi."
+
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "none"
@@ -10899,6 +10968,10 @@ msgstr "Sahip kapsamlı değil"
 #: src/client/admin/parity/kpis.tsx
 msgid "Not pinned"
 msgstr "Pinlenmemiş"
+
+#: src/client/admin/pages/forms.tsx
+msgid "not sent"
+msgstr "gönderilmedi"
 
 #: src/client/admin/collection-settings.tsx
 msgid "not set"
@@ -11236,6 +11309,10 @@ msgstr "Bir sağlayıcı yukarıdaki webhook URL'sine gönderim yaptığında, h
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 msgstr "Bu sayfadan ayrıldığınızda gizli anahtar bir daha alınamaz — yalnızca iptal edilebilir. MCP erişimini istediğiniz zaman anahtarın Connect MCP panelinden ayarlayabilirsiniz."
 
+#: src/client/admin/pages/forms.tsx
+msgid "One answer per browser"
+msgstr "Tarayıcı başına tek yanıt"
+
 #: src/client/admin/pages/_agents-shared.tsx
 msgid "one extra model call per message"
 msgstr "mesaj başına bir ek model çağrısı"
@@ -11281,6 +11358,10 @@ msgstr "Satır başına bir URL — tıklayıp uzaklaştığınızda kaydedilir.
 msgid "One-time link, no <0>password</0>."
 msgstr "Tek kullanımlık bağlantı, <0>parola</0> gerektirmez."
 
+#: src/client/admin/pages/forms.tsx
+msgid "only a visitor holding an unspent link may answer"
+msgstr "yalnızca kullanılmamış bağlantısı olan biri yanıtlayabilir"
+
 #: src/client/admin/field-email-editor.tsx
 msgid "Only accept addresses at these domains"
 msgstr "Yalnızca bu alan adlarındaki adresleri kabul et"
@@ -11316,6 +11397,10 @@ msgstr "Yalnızca mevcut durum var — henüz düzenleme kaydedilmedi."
 #: src/client/admin/bulk-edit.tsx
 msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
 msgstr "Yalnızca değiştirdiğiniz alanlar <0>c_{slug}</0> içindeki seçili {count} satırın tümüne yazılır; geri kalan her şey olduğu gibi kalır."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Only the invite tokens are shown: generate a new form link above and the next batch comes back as full URLs."
+msgstr "Yalnızca davet anahtarları gösteriliyor: yukarıdan yeni bir form bağlantısı oluşturun, sonraki grup tam URL olarak gelsin."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Only the most recent spans in the window were aggregated."
@@ -11429,6 +11514,10 @@ msgstr "Çalışma saatleri"
 #: src/client/admin/pages/payments.tsx
 msgid "Opening…"
 msgstr "Açılıyor…"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Opens"
+msgstr "Açılış"
 
 #: src/client/admin/pages/payments.tsx
 msgid "Opens a hosted checkout and gives you a link to send. To bill a row automatically, use the payment-link step in a flow."
@@ -13777,6 +13866,10 @@ msgstr "yanıt"
 msgid "Response"
 msgstr "Yanıt"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Response limit"
+msgstr "Yanıt sınırı"
+
 #: src/client/admin/ui.tsx
 #: src/client/pages/rest-explorer.tsx
 msgid "REST Explorer"
@@ -13970,6 +14063,7 @@ msgstr "istediğiniz zaman iptal edilebilir"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/analytics.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -15042,6 +15136,10 @@ msgstr "E-posta ile tek kullanımlık giriş bağlantısı gönderir — yapıla
 #~ msgid "Sends the visitor here after submitting, instead of the message."
 #~ msgstr "Gönderimden sonra ziyaretçiyi mesaj yerine buraya yönlendirir."
 
+#: src/client/admin/pages/forms.tsx
+msgid "sent"
+msgstr "gönderildi"
+
 #: src/client/admin/parity/signatures.tsx
 msgid "Sent"
 msgstr "Gönderildi"
@@ -15465,6 +15563,10 @@ msgstr "Yazar satırlarında ve üst bilgi açılır menüsünde gösterilir."
 msgid "Shown in lists as"
 msgstr "Listelerde şöyle gösterilir"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Shown in place of the questions. The form keeps its title, so the link still says what it was."
+msgstr "Soruların yerine gösterilir. Form başlığını korur, böylece bağlantı neyin bağlantısı olduğunu söylemeye devam eder."
+
 #: src/client/admin/collection-settings.tsx
 msgid "Shown in the sidebar and on the Collections page."
 msgstr "Kenar çubuğunda ve Koleksiyonlar sayfasında gösterilir."
@@ -15496,6 +15598,10 @@ msgstr "bir kez gösterilir — şimdi kopyalayın, tekrar görünmeyecek"
 #: src/client/admin/pages/analytics.tsx
 msgid "Shown once — store it now."
 msgstr "Yalnızca bir kez gösterilir — şimdi kaydedin."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Shown once — these links cannot be listed again."
+msgstr "Bir kez gösterilir — bu bağlantılar tekrar listelenemez."
 
 #: src/client/admin/parity/booking.tsx
 msgid "Shown once. It also went out with the confirmation email."
@@ -17030,6 +17136,10 @@ msgstr "Bu belge artık imzaya açık değil"
 msgid "This does not reach"
 msgstr "Bunun ulaşamadıkları"
 
+#: src/client/admin/pages/forms.tsx
+msgid "This form is closed."
+msgstr "Bu form kapalı."
+
 #: src/client/pages/public-form.tsx
 msgid "This form is no longer available"
 msgstr "Bu form artık kullanılamıyor"
@@ -18553,6 +18663,10 @@ msgstr "En uygun agent"
 msgid "Who"
 msgstr "Kim"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Who can answer, and until when"
+msgstr "Kim, ne zamana kadar yanıtlayabilir"
+
 #: src/client/admin/parity/approvals.tsx
 msgid "Who was asked, who answered, and why."
 msgstr "Kime soruldu, kim yanıtladı ve neden."
@@ -18637,6 +18751,7 @@ msgstr "worker bağlamaları"
 msgid "worker thread + RPC"
 msgstr "worker thread + RPC"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/parity/scim-card.tsx
 #: src/client/components/confirm-action.tsx

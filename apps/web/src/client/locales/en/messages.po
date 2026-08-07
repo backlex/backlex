@@ -431,6 +431,12 @@ msgstr "{0} free"
 msgid "{0} has no number column to aggregate."
 msgstr "{0} has no number column to aggregate."
 
+#. placeholder {0}: res.data.invites.length
+#. placeholder {1}: res.data.sent
+#: src/client/admin/pages/forms.tsx
+msgid "{0} invited, {1} emailed."
+msgstr "{0} invited, {1} emailed."
+
 #. placeholder {0}: collabHandle(p)
 #: src/client/admin/items.tsx
 msgid "{0} is editing"
@@ -470,6 +476,11 @@ msgstr "{0} items"
 #: src/client/pages/book.tsx
 msgid "{0} left"
 msgstr "{0} left"
+
+#. placeholder {0}: res.data.invites.length
+#: src/client/admin/pages/forms.tsx
+msgid "{0} link(s) minted — copy them now."
+msgstr "{0} link(s) minted — copy them now."
 
 #. placeholder {0}: rows.length
 #: src/client/admin/pages/logs.tsx
@@ -1079,6 +1090,10 @@ msgstr "A chosen agent answers"
 msgid "A confirmation is on its way, with a calendar invite attached."
 msgstr "A confirmation is on its way, with a calendar invite attached."
 
+#: src/client/admin/pages/forms.tsx
+msgid "a cookie, not an identity — another browser answers again"
+msgstr "a cookie, not an identity — another browser answers again"
+
 #: src/client/admin/parity/insights.tsx
 msgid "A dashboard with that name already exists."
 msgstr "A dashboard with that name already exists."
@@ -1284,6 +1299,11 @@ msgstr "Accent for the icon in nav and lists."
 #: src/client/pages/invite.tsx
 msgid "Accept invite"
 msgstr "Accept invite"
+
+#. placeholder {0}: form.submissionCount
+#: src/client/admin/pages/forms.tsx
+msgid "Accepted so far: {0}. Checked before the row is written, so a simultaneous burst can land a couple over."
+msgstr "Accepted so far: {0}. Checked before the row is written, so a simultaneous burst can land a couple over."
 
 #: src/client/admin/pages/forms.tsx
 msgid "accepted through this form"
@@ -2171,6 +2191,7 @@ msgstr "Answer style"
 msgid "answered"
 msgstr "answered"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/parity/approvals.tsx
 msgid "Answered"
 msgstr "Answered"
@@ -3504,6 +3525,14 @@ msgstr "Close"
 msgid "Closed instance."
 msgstr "Closed instance."
 
+#: src/client/admin/pages/forms.tsx
+msgid "Closed message"
+msgstr "Closed message"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Closes"
+msgstr "Closes"
+
 #: src/client/admin/pages/agents.tsx
 msgid "Cloudflare Workers AI · managed"
 msgstr "Cloudflare Workers AI · managed"
@@ -3687,6 +3716,10 @@ msgstr "column: <0>{0}</0>"
 #: src/client/admin/list-columns.tsx
 msgid "Columns"
 msgstr "Columns"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Comma or newline separated. Each gets its own single-use link."
+msgstr "Comma or newline separated. Each gets its own single-use link."
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
@@ -4373,6 +4406,10 @@ msgstr "Create account"
 msgid "Create an account"
 msgstr "Create an account"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Create and email"
+msgstr "Create and email"
+
 #: src/client/admin/pages/schema-versions.tsx
 msgid "Create branch"
 msgstr "Create branch"
@@ -4412,6 +4449,10 @@ msgstr "Create Linear issues from data events."
 #: src/client/admin/pages/payments.tsx
 msgid "Create link"
 msgstr "Create link"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Create links"
+msgstr "Create links"
 
 #: src/client/admin/item-collaboration.tsx
 msgid "Create new link"
@@ -5826,6 +5867,10 @@ msgstr "Email + password is always available — toggle it off to hide the form 
 #: src/client/admin/pages/erasure-card.tsx
 msgid "Email address"
 msgstr "Email address"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Email addresses"
+msgstr "Email addresses"
 
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
@@ -8040,6 +8085,10 @@ msgstr "Invite link copied."
 msgid "Invite not found"
 msgstr "Invite not found"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Invite only"
+msgstr "Invite only"
+
 #. placeholder {0}: payload.email
 #: src/client/admin/pages/users.tsx
 #~ msgid "Invite sent to {0}."
@@ -8062,6 +8111,14 @@ msgstr "Invite user"
 #: src/client/admin/pages/users.tsx
 msgid "invited"
 msgstr "invited"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Invited"
+msgstr "Invited"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Invites"
+msgstr "Invites"
 
 #: src/client/pages/invite.tsx
 msgid "Invites are valid for 7 days. Ask an admin to send a new one."
@@ -10051,6 +10108,10 @@ msgstr "No activity in this window"
 msgid "No activity recorded."
 msgstr "No activity recorded."
 
+#: src/client/admin/pages/forms.tsx
+msgid "no address"
+msgstr "no address"
+
 #: src/client/admin/pages/agents.tsx
 msgid "No agent selected"
 msgstr "No agent selected"
@@ -10474,6 +10535,10 @@ msgstr "No language found."
 msgid "no limit"
 msgstr "no limit"
 
+#: src/client/admin/pages/forms.tsx
+msgid "No limit"
+msgstr "No limit"
+
 #: src/client/admin/pages/ask-ai/shared.tsx
 msgid "No live keys — create one on the <0>API Keys</0> page first."
 msgstr "No live keys — create one on the <0>API Keys</0> page first."
@@ -10819,6 +10884,10 @@ msgstr "No-show"
 msgid "Nobody answers"
 msgstr "Nobody answers"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Nobody invited yet."
+msgstr "Nobody invited yet."
+
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/permission-tester.tsx
 msgid "none"
@@ -10899,6 +10968,10 @@ msgstr "Not owner-scoped"
 #: src/client/admin/parity/kpis.tsx
 msgid "Not pinned"
 msgstr "Not pinned"
+
+#: src/client/admin/pages/forms.tsx
+msgid "not sent"
+msgstr "not sent"
 
 #: src/client/admin/collection-settings.tsx
 msgid "not set"
@@ -11236,6 +11309,10 @@ msgstr "Once a provider posts to the webhook URL above, every delivery shows up 
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 msgstr "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 
+#: src/client/admin/pages/forms.tsx
+msgid "One answer per browser"
+msgstr "One answer per browser"
+
 #: src/client/admin/pages/_agents-shared.tsx
 msgid "one extra model call per message"
 msgstr "one extra model call per message"
@@ -11281,6 +11358,10 @@ msgstr "One URL per line — saved when you click away."
 msgid "One-time link, no <0>password</0>."
 msgstr "One-time link, no <0>password</0>."
 
+#: src/client/admin/pages/forms.tsx
+msgid "only a visitor holding an unspent link may answer"
+msgstr "only a visitor holding an unspent link may answer"
+
 #: src/client/admin/field-email-editor.tsx
 msgid "Only accept addresses at these domains"
 msgstr "Only accept addresses at these domains"
@@ -11316,6 +11397,10 @@ msgstr "Only the current state exists — no edits recorded yet."
 #: src/client/admin/bulk-edit.tsx
 msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
 msgstr "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Only the invite tokens are shown: generate a new form link above and the next batch comes back as full URLs."
+msgstr "Only the invite tokens are shown: generate a new form link above and the next batch comes back as full URLs."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Only the most recent spans in the window were aggregated."
@@ -11429,6 +11514,10 @@ msgstr "Opening hours"
 #: src/client/admin/pages/payments.tsx
 msgid "Opening…"
 msgstr "Opening…"
+
+#: src/client/admin/pages/forms.tsx
+msgid "Opens"
+msgstr "Opens"
 
 #: src/client/admin/pages/payments.tsx
 msgid "Opens a hosted checkout and gives you a link to send. To bill a row automatically, use the payment-link step in a flow."
@@ -13777,6 +13866,10 @@ msgstr "response"
 msgid "Response"
 msgstr "Response"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Response limit"
+msgstr "Response limit"
+
 #: src/client/admin/ui.tsx
 #: src/client/pages/rest-explorer.tsx
 msgid "REST Explorer"
@@ -13970,6 +14063,7 @@ msgstr "revocable anytime"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/analytics.tsx
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-orgs.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -15042,6 +15136,10 @@ msgstr "Sends a one-time sign-in link by email — requires a configured email a
 #~ msgid "Sends the visitor here after submitting, instead of the message."
 #~ msgstr "Sends the visitor here after submitting, instead of the message."
 
+#: src/client/admin/pages/forms.tsx
+msgid "sent"
+msgstr "sent"
+
 #: src/client/admin/parity/signatures.tsx
 msgid "Sent"
 msgstr "Sent"
@@ -15465,6 +15563,10 @@ msgstr "Shown in author bylines and the header dropdown."
 msgid "Shown in lists as"
 msgstr "Shown in lists as"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Shown in place of the questions. The form keeps its title, so the link still says what it was."
+msgstr "Shown in place of the questions. The form keeps its title, so the link still says what it was."
+
 #: src/client/admin/collection-settings.tsx
 msgid "Shown in the sidebar and on the Collections page."
 msgstr "Shown in the sidebar and on the Collections page."
@@ -15496,6 +15598,10 @@ msgstr "shown once — copy it now, it won't appear again"
 #: src/client/admin/pages/analytics.tsx
 msgid "Shown once — store it now."
 msgstr "Shown once — store it now."
+
+#: src/client/admin/pages/forms.tsx
+msgid "Shown once — these links cannot be listed again."
+msgstr "Shown once — these links cannot be listed again."
 
 #: src/client/admin/parity/booking.tsx
 msgid "Shown once. It also went out with the confirmation email."
@@ -17030,6 +17136,10 @@ msgstr "This document is no longer open for signature"
 msgid "This does not reach"
 msgstr "This does not reach"
 
+#: src/client/admin/pages/forms.tsx
+msgid "This form is closed."
+msgstr "This form is closed."
+
 #: src/client/pages/public-form.tsx
 msgid "This form is no longer available"
 msgstr "This form is no longer available"
@@ -18553,6 +18663,10 @@ msgstr "Whichever agent fits best"
 msgid "Who"
 msgstr "Who"
 
+#: src/client/admin/pages/forms.tsx
+msgid "Who can answer, and until when"
+msgstr "Who can answer, and until when"
+
 #: src/client/admin/parity/approvals.tsx
 msgid "Who was asked, who answered, and why."
 msgstr "Who was asked, who answered, and why."
@@ -18637,6 +18751,7 @@ msgstr "worker bindings"
 msgid "worker thread + RPC"
 msgstr "worker thread + RPC"
 
+#: src/client/admin/pages/forms.tsx
 #: src/client/admin/pages/payments.tsx
 #: src/client/admin/parity/scim-card.tsx
 #: src/client/components/confirm-action.tsx

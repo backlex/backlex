@@ -2830,6 +2830,16 @@ export interface ApiFormSettings {
   font?: "sans" | "lexend" | "mono" | "system";
   languages?: string[];
   i18n?: Record<string, ApiFormI18n>;
+  /** Epoch ms. Outside [opensAt, closesAt) the public page shows
+   *  `closedMessage` instead of the questions. */
+  opensAt?: number;
+  closesAt?: number;
+  maxResponses?: number;
+  /** One answer per browser (a cookie, not an identity). */
+  onePerBrowser?: boolean;
+  /** Only a visitor holding an unspent invite may answer. */
+  inviteOnly?: boolean;
+  closedMessage?: string;
 }
 
 export interface ApiForm {
@@ -2907,9 +2917,41 @@ export interface ApiFormResults {
   truncated: number;
 }
 
+/** One invitation to answer a form. Read responses never carry the token. */
+export interface ApiFormInvite {
+  id: string;
+  formId: string;
+  email: string | null;
+  name: string | null;
+  sentAt: unknown;
+  usedAt: unknown;
+  createdAt: unknown;
+}
+
+/** A freshly minted invite — `token`/`url` appear only in the mint response. */
+export interface ApiMintedFormInvite extends ApiFormInvite {
+  token: string;
+  url: string;
+}
+
 export const formsApi = {
   list: () => api<Envelope<ApiForm[]>>(`/api/admin/forms`),
   results: (id: string) => api<Envelope<ApiFormResults>>(`/api/admin/forms/${id}/results`),
+  invites: (id: string) => api<Envelope<ApiFormInvite[]>>(`/api/admin/forms/${id}/invites`),
+  invite: (
+    id: string,
+    input: {
+      recipients: { email?: string; name?: string }[];
+      formToken?: string;
+      send?: boolean;
+    },
+  ) =>
+    api<Envelope<{ invites: ApiMintedFormInvite[]; sent: number }>>(
+      `/api/admin/forms/${id}/invites`,
+      { method: "POST", body: JSON.stringify(input) },
+    ),
+  revokeInvite: (id: string, inviteId: string) =>
+    api<{ ok: true }>(`/api/admin/forms/${id}/invites/${inviteId}`, { method: "DELETE" }),
   eligibleFields: (collection: string) =>
     api<Envelope<ApiFormEligibleField[]>>(
       `/api/admin/forms/eligible-fields/${encodeURIComponent(collection)}`,
@@ -2969,6 +3011,11 @@ export interface ApiPublicForm {
   languages: string[];
   locale: string;
   turnstileSiteKey: string | null;
+  /** Non-null ⇒ the form is not taking answers right now. */
+  closed: {
+    reason: "scheduled" | "ended" | "full" | "answered";
+    message: string;
+  } | null;
 }
 
 export interface ApiPublicFormUpload {
@@ -2980,10 +3027,17 @@ export interface ApiPublicFormUpload {
 }
 
 export const formsPublicApi = {
-  get: (token: string, lang?: string) =>
-    api<Envelope<ApiPublicForm>>(
-      `/api/public/forms/${encodeURIComponent(token)}${lang ? `?lang=${encodeURIComponent(lang)}` : ""}`,
-    ),
+  get: (token: string, lang?: string, invite?: string) => {
+    const qs = new URLSearchParams();
+    if (lang) qs.set("lang", lang);
+    // The invite rides on the definition read too, so an already-spent link
+    // says so before anyone answers six questions they can't submit.
+    if (invite) qs.set("i", invite);
+    const q = qs.toString();
+    return api<Envelope<ApiPublicForm>>(
+      `/api/public/forms/${encodeURIComponent(token)}${q ? `?${q}` : ""}`,
+    );
+  },
   upload: (token: string, field: string, file: File) => {
     const fd = new FormData();
     fd.append("field", field);
@@ -2995,7 +3049,13 @@ export const formsPublicApi = {
   },
   submit: (
     token: string,
-    body: { data: Record<string, unknown>; turnstileToken?: string; website?: string },
+    body: {
+      data: Record<string, unknown>;
+      turnstileToken?: string;
+      website?: string;
+      /** Single-use invite token, carried over from `?i=` on the page URL. */
+      invite?: string;
+    },
     lang?: string,
   ) =>
     api<Envelope<{ id: string | null; successMessage: string | null; redirectUrl: string | null }>>(

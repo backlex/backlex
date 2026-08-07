@@ -212,6 +212,66 @@ describe("forms — SDK surface + public round-trip", () => {
     await client.forms.delete(id);
   });
 
+  test("invites mint, list and revoke identically on SDK, REST and GraphQL", async () => {
+    const client = createClient({ url: "", fetch: h.fetch as unknown as typeof fetch });
+    const created = await client.forms.create({
+      name: "invite-parity",
+      collection: slug,
+      fields: [{ name: "title" }],
+      settings: { inviteOnly: true },
+    });
+    const id = created.data.form.id;
+
+    const sdk = await client.forms.invite(id, {
+      recipients: [{ email: "sdk@example.test" }],
+      formToken: created.data.token,
+    });
+    expect(sdk.data.invites[0]!.token.startsWith("inv_")).toBe(true);
+    expect(sdk.data.invites[0]!.url).toBe(`/f/${created.data.token}?i=${sdk.data.invites[0]!.token}`);
+
+    const gqlMint = (await (
+      await h.fetch("/api/graphql", json({
+        query: `mutation($id:ID!,$r:JSON!){ invitePublicForm(id:$id, recipients:$r) }`,
+        variables: { id, r: [{ email: "gql@example.test" }] },
+      }))
+    ).json()) as { data?: { invitePublicForm: { token: string; email: string }[] }; errors?: unknown[] };
+    expect(gqlMint.errors).toBeUndefined();
+    expect(gqlMint.data?.invitePublicForm[0]?.email).toBe("gql@example.test");
+
+    // Every read surface agrees on the list, and NONE of them carries a token.
+    const viaSdk = await client.forms.invites(id);
+    const viaRest = ((await (await h.fetch(`/api/admin/forms/${id}/invites`)).json()) as {
+      data: unknown[];
+    }).data;
+    const viaGql = (await (
+      await h.fetch("/api/graphql", json({
+        query: `query($id:ID!){ publicFormInvites(id:$id) }`,
+        variables: { id },
+      }))
+    ).json()) as { data?: { publicFormInvites: unknown[] } };
+    expect(viaSdk.data.length).toBe(2);
+    expect(viaRest).toEqual(viaSdk.data as never);
+    expect(viaGql.data?.publicFormInvites).toEqual(viaSdk.data as never);
+    expect(JSON.stringify(viaSdk.data)).not.toContain(sdk.data.invites[0]!.token);
+    expect(JSON.stringify(viaSdk.data)).not.toContain("tokenHash");
+
+    const revoked = await client.forms.revokeInvite(id, viaSdk.data[0]!.id);
+    expect(revoked.ok).toBe(true);
+    expect((await client.forms.invites(id)).data.length).toBe(1);
+
+    const gqlRevoke = (await (
+      await h.fetch("/api/graphql", json({
+        query: `mutation($id:ID!,$i:ID!){ revokePublicFormInvite(id:$id, inviteId:$i) }`,
+        variables: { id, i: (await client.forms.invites(id)).data[0]!.id },
+      }))
+    ).json()) as { data?: { revokePublicFormInvite: boolean }; errors?: unknown[] };
+    expect(gqlRevoke.errors).toBeUndefined();
+    expect(gqlRevoke.data?.revokePublicFormInvite).toBe(true);
+    expect((await client.forms.invites(id)).data.length).toBe(0);
+
+    await client.forms.delete(id);
+  });
+
   test("non-admin sessions are rejected by the admin surface", async () => {
     // No session at all → 401 from requireUser.
     const anon = await h.app.fetch(new Request(`${h.env.APP_URL}/api/admin/forms`));

@@ -14,9 +14,9 @@
 // accepted at all.
 import { useMemo } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-// `Select` is in ./select and `Checkbox` in ./ui — two modules, and getting it
-// wrong is not a typecheck error in these dialogs (they carry `@ts-nocheck`),
-// it is a blank admin at run time. Verified against the real screen.
+// `Select` is in ./select and `Checkbox` in ./ui — two modules. Mixing them up
+// used to be a blank admin at run time rather than a typecheck error, because
+// these dialogs were suppressed with `@ts-nocheck`; they no longer are.
 import { Select } from "./select";
 import { Checkbox } from "./ui";
 import { CALLING_CODES, callingCodeFor, parsePhone } from "@backlex/db/phone";

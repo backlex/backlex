@@ -1,4 +1,3 @@
-// @ts-nocheck
 // backlex admin — main app
 import type { PushToast } from "./types";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -170,13 +169,13 @@ function ageBump(t: string) {
   if (t === "just now") return "5s ago";
   const m = t.match(/^(\d+)s ago$/);
   if (m) {
-    const n = parseInt(m[1], 10) + 5;
+    const n = parseInt(m[1] ?? "0", 10) + 5;
     if (n >= 60) return Math.floor(n / 60) + "m ago";
     return n + "s ago";
   }
   const m2 = t.match(/^(\d+)m ago$/);
   if (m2) {
-    const n = parseInt(m2[1], 10);
+    const n = parseInt(m2[1] ?? "0", 10);
     if (n >= 60) return Math.floor(n / 60) + "h ago";
     return n + "m ago";
   }
@@ -957,7 +956,11 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           draft: draft as Record<string, unknown>,
           tempId: `tmp_${crypto.randomUUID()}`,
         });
-        nu = {
+        // Defaults first as their own object, so the two spreads that follow
+        // are plainly the ones that win. Written inline, every default read as
+        // "specified more than once, so this usage will be overwritten" —
+        // correct, but indistinguishable from the case where that is a mistake.
+        const blank: Post = {
           id: "",
           updated_at: new Date().toISOString(),
           view_count: 0,
@@ -967,9 +970,8 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           slug: "",
           status: "draft",
           author: "u_1",
-          ...(draft as Post),
-          ...(res.data as unknown as Post),
         };
+        nu = { ...blank, ...(draft as Post), ...(res.data as unknown as Post) };
       } catch (e) {
         pushToast((e as Error).message, "error");
         return false;
@@ -1350,7 +1352,12 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                   <Button
                     variant="primary"
                     icon={I.Plus}
-                    onClick={openCreate}
+                    // `onClick={openCreate}` would hand the click event to the
+                    // `status` parameter. `openCreate` guards against that
+                    // internally (see its comment — it shipped once as a
+                    // "[object Object]" preset), but the guard existed because
+                    // this callsite was wrong and the compiler could not say so.
+                    onClick={() => openCreate()}
                     className="btn-cta h-[34px] gap-1.5 px-3.5 text-[13px] font-semibold"
                   >
                     <Trans>New post</Trans>

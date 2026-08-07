@@ -263,4 +263,39 @@ describe("admin UI conventions", () => {
       expect(defs).toEqual([home]);
     }
   });
+
+  /**
+   * `@ts-nocheck` turns a file off for the compiler entirely — not one
+   * diagnostic, all of them. Forty-five admin files carried it, hiding 202 real
+   * errors: an API method that did not exist, a translate function shadowed by
+   * a timer handle, a click handler fed a MouseEvent as its string argument, a
+   * union that could not hold values the server actually returns. `bun run
+   * typecheck` reported zero the whole time.
+   *
+   * It is banned rather than budgeted because a budget is what let it spread:
+   * each file was individually reasonable and the total was invisible. If a
+   * single expression genuinely cannot be typed, `@ts-expect-error` on that
+   * line leaves the rest of the file checked — and fails if the error stops
+   * happening.
+   */
+  test("no source file disables typechecking wholesale", () => {
+    const sources: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir)) {
+        const p = join(dir, entry);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (p.endsWith(".ts") || p.endsWith(".tsx")) sources.push(p);
+      }
+    };
+    walk(CLIENT);
+
+    // Anchored: prose *about* the directive is fine and several files carry it
+    // as a note on why a bug was invisible. Only a real directive — the first
+    // thing on its line — turns the compiler off.
+    const suppressed = sources
+      .filter((p) => /^\s*(?:\/\/|\/\*)\s*@ts-nocheck\b/m.test(readFileSync(p, "utf8")))
+      .map((p) => relative(CLIENT, p))
+      .sort();
+    expect(suppressed).toEqual([]);
+  });
 });

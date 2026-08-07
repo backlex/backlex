@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Filter DSL builder + Items DataTable for the backlex admin design.
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useItemPatch, useItemReorder, useItemsGridWrite } from "./queries";
@@ -281,12 +280,14 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
   // For nested filters that's the sub-field on the target collection.
   const targetFields = needsTargetDrill && fieldDef?.to ? targetFieldsCache[fieldDef.to] : null;
   const subDef = nestedSub && targetFields ? targetFields.find((f) => f.name === nestedSub) : null;
-  const leafType = subDef?.type ?? fieldDef?.type;
+  const leafType = subDef?.type ?? fieldDef?.type ?? "";
+  // `_eq` is both the universal fallback operator list and the fallback member:
+  // FIELD_OPS is keyed by storage type, and an unknown type still needs one op.
   const ops = (leafType ? FIELD_OPS[leafType] : undefined) || ["_eq"];
-  const [op, setOp] = useState(ops[0]);
+  const [op, setOp] = useState(ops[0] ?? "_eq");
   const [val, setVal] = useState("");
 
-  useEffect(() => { setOp(ops[0]); }, [field, nestedSub]);
+  useEffect(() => { setOp(ops[0] ?? "_eq"); }, [field, nestedSub]);
 
   const canSubmit = !!fieldDef && (!needsTargetDrill || !!nestedSub);
 
@@ -393,9 +394,12 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
   // Status tabs live on their own top row (design), above the search + filter
   // row. Rendered only for collections that declare a status field.
   const statusCfg = resolveStatusField(schema as any);
-  const statusTabs = statusCfg
+  // Annotated on the array, not the first element: with the `as` inline, the
+  // mapped entries stayed `{id, label}` and `tb.count` was an error on that
+  // arm of the union.
+  const statusTabs: { id: string; label: string; count?: number }[] | null = statusCfg
     ? [
-        { id: "all", label: "All", count: total } as { id: string; label: string; count?: number },
+        { id: "all", label: "All", count: total },
         ...statusCfg.choices.map((c) => ({ id: c.value, label: c.label ?? c.value })),
       ]
     : null;
@@ -528,7 +532,7 @@ function SortHead({ id, label, num, sort, setSort, dragCtx, className }: {
   const d = dragCtx;
   const isDragging = d ? d.dragCol === id : false;
   const isOver = d ? d.overCol === id && d.dragCol !== null && d.dragCol !== id : false;
-  const overFromRight = d && isOver ? d.order.indexOf(d.dragCol) > d.order.indexOf(id) : false;
+  const overFromRight = d?.dragCol && isOver ? d.order.indexOf(d.dragCol) > d.order.indexOf(id) : false;
   return (
     <TableHead
       onClick={() => setSort(isActive ? (dir === "asc" ? "-" + id : id) : id)}
@@ -1010,7 +1014,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
       const tf = (target?.fields ?? []).find((f) => (f as { name?: string }).name === sub);
       if (!tf) return null;
       return {
-        ...(tf as object),
+        ...(tf as { type: string }),
         name: n,
         dot: { head, sub },
         dotLabel: `${fieldLabel(rel, i18n.locale)} › ${fieldLabel(tf, i18n.locale)}`,
@@ -1019,7 +1023,10 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
     .filter(Boolean) as Array<{
       name: string;
       label?: string;
-      type?: string;
+      // Required, not optional: both branches produce a real schema field, and
+      // the value formatter needs a `type` to decide how to render a cell.
+      // Declared optional, every column fell short of `FormattableField`.
+      type: string;
       to?: string;
       interface?: string;
       translations?: Record<string, string>;

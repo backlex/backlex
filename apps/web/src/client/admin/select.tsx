@@ -39,7 +39,7 @@ export interface SelectProps {
   /**
    * Alias for `onChange`. This wraps a Radix Select, whose own handler is
    * called `onValueChange`, so that is the name callers reach for — and four
-   * of them did. This file carries `@ts-nocheck`, so the prop was accepted,
+   * of them did. This file used to carry `@ts-nocheck`, so the prop was accepted,
    * dropped, and the dropdown silently refused to select anything on the
    * booking page for as long as it shipped. Accepting both names is cheaper
    * than policing one.

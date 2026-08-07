@@ -13,9 +13,10 @@
 // the local part, and whether the column is restricted to a set of domains.
 import { useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-// `Select` is in ./select and `Checkbox` in ./ui — two modules, and on the
-// dialogs that carry `@ts-nocheck` getting it wrong is a blank admin at run time
-// rather than a typecheck error. These two files deliberately do NOT carry it.
+// `Select` is in ./select and `Checkbox` in ./ui — two modules, and mixing
+// them up used to be a blank admin at run time rather than a typecheck error,
+// because the field dialogs were suppressed with `@ts-nocheck`. They no longer
+// are, so the compiler catches it now.
 import { Checkbox } from "./ui";
 import { Input } from "@backlex/ui/components/input";
 import { Button } from "@backlex/ui/components/button";

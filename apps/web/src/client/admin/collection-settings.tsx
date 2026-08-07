@@ -134,7 +134,12 @@ export interface CollectionSettingsProps {
   // All workspace collections (slug + fields) — powers the display-template
   // editor's relation drill-down (`{{ author.name }}`).
   collections: { slug: string; fields?: FieldLike[] }[];
-  onPatch: (patch: Partial<SchemaLike>) => void | Promise<void>;
+  /** Metadata only — `fields` is read by this tab (the display-template picker
+   *  needs the column list) but never patched by it; column changes go through
+   *  the Fields tab. Excluding it here is what lets the caller merge a patch
+   *  straight into its schema state: `Partial<SchemaLike>` allowed an
+   *  `undefined` `fields`, which is not a valid `CollectionSchema`. */
+  onPatch: (patch: Partial<Omit<SchemaLike, "fields">>) => void | Promise<void>;
   onRename: (nextSlug: string) => void | Promise<void>;
   onDelete: () => void;
   /** Rebuild the full-text index for existing rows (manual recovery — the

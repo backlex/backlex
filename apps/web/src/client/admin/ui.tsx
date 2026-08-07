@@ -269,12 +269,15 @@ export interface BadgeProps {
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
+  /** Native tooltip. Callers were already passing it — the "Live" badge on the
+   *  items header explains itself this way — and it was being dropped. */
+  title?: string;
 }
 
-export function Badge({ variant = "default", mono, children, className, style }: BadgeProps) {
+export function Badge({ variant = "default", mono, children, className, style, title }: BadgeProps) {
   const cls = [mono ? "font-mono" : null, className].filter(Boolean).join(" ") || undefined;
   return (
-    <ShadcnBadge variant={variant} className={cls} style={style}>
+    <ShadcnBadge variant={variant} className={cls} style={style} title={title}>
       {children}
     </ShadcnBadge>
   );

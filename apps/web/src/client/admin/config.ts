@@ -26,6 +26,13 @@ export interface Post {
   view_count: number;
   body?: string;
   tags?: unknown;
+  /** An item row is whatever columns its collection defines — the named
+   *  members above are only the ones every surface expects to find. The item
+   *  list, grid and Kanban all read user-defined columns off these rows by
+   *  name, which is why the row type has to admit them; without this the code
+   *  reached for `as Record<string, unknown>` at a dozen sites and TypeScript
+   *  rejected the conversion outright, so the file was suppressed instead. */
+  [column: string]: unknown;
 }
 
 export interface SchemaField {
@@ -47,6 +54,16 @@ export interface SchemaField {
   values?: string[];
   relation?: string;
   indexed?: boolean;
+  /** Target collection slug for a relation / relation_many column. Read all
+   *  over the item list to resolve the row label of a linked record; it was
+   *  simply never declared. */
+  to?: string;
+  /** Display name shown instead of the column name. */
+  label?: string;
+  /** The UI interface the field is edited with — an id from the catalog. */
+  interface?: string;
+  /** Per-locale label overrides. */
+  translations?: Record<string, string>;
 }
 
 export interface CollectionSchema {
@@ -78,6 +95,25 @@ export interface CollectionSchema {
   previewUrl?: string | null;
   /** Lifecycle: `active` | `inactive` (admin-visible, item API blocked). */
   status?: string;
+  // ── Settings-tab keys ──────────────────────────────────────────────────
+  // The Settings tab patches these through `onPatch`, and app.tsx merges the
+  // patch straight into `schemaState`. They were declared only on that tab's
+  // local `SchemaLike`, so the merge widened the state object past its own
+  // type and every read of one of them here was untyped. Adding a key to
+  // `SchemaLike` means adding it here too — otherwise the toggle round-trips
+  // through state the compiler cannot see.
+  /** Record reads of this collection into the activity log. */
+  auditReads?: boolean;
+  /** Maintain the keyword full-text index from `searchable` fields. */
+  fts?: boolean;
+  /** Embed `vectorize`-flagged fields on write. */
+  vectorize?: boolean;
+  /** Embedding model key. Null → the deployment default. */
+  vectorizeModel?: string | null;
+  /** Field the Kanban board groups columns by. */
+  kanbanGroupBy?: string | null;
+  /** Group value → lifecycle action fired when a card lands in that column. */
+  kanbanActionMap?: Record<string, "publish" | "unpublish" | "archive"> | null;
 }
 
 export interface CollectionListItem {

@@ -349,12 +349,26 @@ describe("admin UI conventions", () => {
     expect(actual).toEqual(SHELL);
   });
 
-  /** The split this replaced. Named so it cannot come back by habit. */
+  /**
+   * The split this replaced. Named so it cannot come back by habit.
+   *
+   * `api/` is the exception, and it is one on purpose: it holds the parts of
+   * `api.ts` — the typed client — one module per admin domain, and `api.ts`
+   * itself stays at the root as their barrel. It is not a second page tree; no
+   * file in it renders anything.
+   */
   test("there is no second pages folder", () => {
     const dirs = readdirSync(join(CLIENT, "admin")).filter((e) =>
       statSync(join(CLIENT, "admin", e)).isDirectory(),
     );
-    expect(dirs.sort()).toEqual(["collections", "fields", "lib", "pages"]);
+    expect(dirs.sort()).toEqual(["api", "collections", "fields", "lib", "pages"]);
+  });
+
+  test("`api/` holds no component", () => {
+    const dir = join(CLIENT, "admin", "api");
+    // A .tsx here would mean a page's markup followed its data call into the
+    // client, which is how the root grew a second page tree the last time.
+    expect(readdirSync(dir).filter((f) => f.endsWith(".tsx"))).toEqual([]);
   });
 
   /**

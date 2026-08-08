@@ -36,7 +36,7 @@ describe("sdk — one module per domain", () => {
   });
 
   test("every client on `BacklexClient` is built by a domain module", () => {
-    const fields = [...index.matchAll(/^  (\w+): (\w+Client);$/gm)].map((m) => ({
+    const fields = [...index.matchAll(/^ {2}(\w+): (\w+Client);$/gm)].map((m) => ({
       field: m[1]!,
       type: m[2]!,
     }));
@@ -67,7 +67,7 @@ describe("sdk — one module per domain", () => {
       // bare `fetch(` here means the module built its own request and skipped
       // the auth, tenant, org and trace headers with it.
       expect(src).not.toMatch(/(?<![.\w])fetch\(/);
-      expect(src).toMatch(new RegExp(`^export const make\\w+ = \\(core: ClientCore\\)`, "m"));
+      expect(src).toMatch(/^export const make\w+ = \(core: ClientCore\)/m);
     });
   }
 });

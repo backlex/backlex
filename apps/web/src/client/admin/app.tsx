@@ -1911,7 +1911,7 @@ function PermissionsPanel({ pushToast }: { pushToast: PushToast }) {
     let cancelled = false;
     void (async () => {
       try {
-        const r = await api<{ data: { id: string; name: string; description: string | null; admin: boolean; mcpTools: string[] | null; mcpReadOnly: boolean }[] }>(`/api/roles`);
+        const r = await api<{ data: { id: string; name: string; description: string | null; admin: boolean; mcpTools: string[] | null; mcpReadOnly: boolean; orgAssignable: boolean }[] }>(`/api/roles`);
         if (!cancelled && Array.isArray(r.data)) {
           setRoles(
             r.data.map((row) => ({
@@ -1924,12 +1924,16 @@ function PermissionsPanel({ pushToast }: { pushToast: PushToast }) {
                 // roles an agent is constrained by without opening each editor.
                 ...(row.mcpReadOnly ? ["mcp read-only"] : []),
                 ...(row.mcpTools ? ["mcp scoped"] : []),
+                // Which roles have left the workspace matters at a glance: it's
+                // the set a customer's org admin can hand out on their own.
+                ...(row.orgAssignable ? ["org-assignable"] : []),
               ],
               description: row.description ?? "",
               matrix: { read: "all", create: "all", update: "all", delete: "all" } as any,
               rule: row.description ?? "",
               mcpTools: row.mcpTools ?? null,
               mcpReadOnly: Boolean(row.mcpReadOnly),
+              orgAssignable: Boolean(row.orgAssignable),
             })),
           );
         }
@@ -1951,6 +1955,7 @@ function PermissionsPanel({ pushToast }: { pushToast: PushToast }) {
     ...((data.badges ?? []).includes("bypass") ? ["bypass"] : []),
     ...(data.mcpReadOnly ? ["mcp read-only"] : []),
     ...(data.mcpTools ? ["mcp scoped"] : []),
+    ...(data.orgAssignable ? ["org-assignable"] : []),
   ];
 
   const save = async (data: RoleData) => {
@@ -1959,6 +1964,7 @@ function PermissionsPanel({ pushToast }: { pushToast: PushToast }) {
       description: data.description,
       mcpTools: data.mcpTools ?? null,
       mcpReadOnly: data.mcpReadOnly ?? false,
+      orgAssignable: data.orgAssignable ?? false,
     };
     const snapshot = roles;
     setEditing(null);

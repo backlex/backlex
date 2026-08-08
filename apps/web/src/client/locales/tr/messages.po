@@ -11460,6 +11460,10 @@ msgstr "Kapalı"
 msgid "Off by default, and almost always the right answer: folding is what makes one mailbox one row, so `unique`, portal auto-link and marketing-list dedup all work. Turn it on only for a mail server that genuinely treats Ada@ and ada@ as two people — and note that `unique` then stops catching the pair."
 msgstr "Varsayılan olarak kapalı ve neredeyse her zaman doğru seçim: bir posta kutusunun tek satır olmasını sağlayan şey bu katlama; `unique`, portal otomatik eşleme ve pazarlama listesi yinelenen kaydı ayıklama bu sayede çalışır. Yalnızca Ada@ ile ada@ adreslerini gerçekten iki ayrı kişi sayan bir posta sunucusu için açın — bu durumda `unique` ikilinin farkına varamaz."
 
+#: src/client/admin/pages/access/role-editor.tsx
+msgid "Off by default. When on, an admin of one of your customers' organizations can bind this role to members of that organization — so keep it off for roles written for your own staff."
+msgstr "Varsayılan olarak kapalı. Açıkken, müşterilerinizden birinin organizasyon yöneticisi bu rolü o organizasyonun üyelerine verebilir — bu yüzden kendi ekibiniz için yazılmış rollerde kapalı bırakın."
+
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "Off for a hook that only validates — otherwise returning `data` would let it rewrite rows. A patch is re-validated against the schema."
 msgstr "Yalnızca doğrulama yapan bir hook için kapalı olmalı — aksi halde `data` döndürerek satırları yeniden yazabilir. Yama şemaya karşı yeniden doğrulanır."
@@ -11839,7 +11843,12 @@ msgstr "sipariş"
 msgid "Organiser email"
 msgstr "Organizatör e-postası"
 
+#: src/client/admin/pages/access/role-editor.tsx
+msgid "Organization admins may grant this role"
+msgstr "Organizasyon yöneticileri bu rolü verebilir"
+
 #: src/client/admin/pages/access/app-orgs.tsx
+#: src/client/admin/pages/access/role-editor.tsx
 #: src/client/admin/ui.tsx
 msgid "Organizations"
 msgstr "Organizasyonlar"

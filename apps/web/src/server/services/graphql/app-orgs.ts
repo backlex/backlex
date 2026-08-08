@@ -298,11 +298,18 @@ export const appOrgMutationFields: Record<string, GraphQLFieldConfig<unknown, Gq
       };
       try {
         const org = await requireOrg(db(gqlCtx), tenantId, a.orgId);
-        return await addMember(db(gqlCtx), tenantId, org.id, {
-          appUserId: a.appUserId,
-          ...(asRole(a.role) ? { role: asRole(a.role)! } : {}),
-          ...(a.roleIds ? { roleIds: a.roleIds } : {}),
-        });
+        return await addMember(
+          db(gqlCtx),
+          tenantId,
+          org.id,
+          {
+            appUserId: a.appUserId,
+            ...(asRole(a.role) ? { role: asRole(a.role)! } : {}),
+            ...(a.roleIds ? { roleIds: a.roleIds } : {}),
+          },
+          // `requireOrgAdmin` above — control plane, outside the org's rules.
+          null,
+        );
       } catch (e) {
         return rethrow(e);
       }
@@ -386,11 +393,18 @@ export const appOrgMutationFields: Record<string, GraphQLFieldConfig<unknown, Gq
       };
       try {
         const org = await requireOrg(db(gqlCtx), tenantId, a.orgId);
-        const invite = await createOrgInvite(gqlCtx.ctx, tenantId, org.id, {
-          email: a.email,
-          ...(asRole(a.role) ? { role: asRole(a.role)! } : {}),
-          ...(a.roleIds ? { roleIds: a.roleIds } : {}),
-        });
+        const invite = await createOrgInvite(
+          gqlCtx.ctx,
+          tenantId,
+          org.id,
+          {
+            email: a.email,
+            ...(asRole(a.role) ? { role: asRole(a.role)! } : {}),
+            ...(a.roleIds ? { roleIds: a.roleIds } : {}),
+          },
+          // `requireOrgAdmin` above — control plane, outside the org's rules.
+          null,
+        );
         return { ...invite, expiresAt: invite.expiresAt.getTime() };
       } catch (e) {
         return rethrow(e);

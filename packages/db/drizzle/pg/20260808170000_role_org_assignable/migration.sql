@@ -1,0 +1,31 @@
+-- Which roles a customer's own org admin may hand out.
+--
+-- Org-scoped role grants (`app_org_member_roles`) are bound from the APP plane:
+-- an end-user who runs an organization picks workspace roles for the colleagues
+-- in it. The only role that path refused was `admin`, so everything else an
+-- operator had ever defined was fair game — including roles written for their
+-- own staff. A "Support" role with read on every collection was, in effect,
+-- self-grantable by anyone who created an organization.
+--
+-- So a role now says whether it is meant to leave the workspace, and every role
+-- starts closed. There is deliberately NO backfill, for two reasons.
+--
+-- It isn't needed. `loadRolesForUser` folds `app_org_member_roles` into the
+-- effective role set without consulting this column, so bindings that already
+-- exist keep resolving exactly as before. Nobody loses access on this deploy;
+-- the flag only gates making a NEW grant from the app plane.
+--
+-- And the obvious backfill would be wrong. "Already bound inside some org" is
+-- per-ORG evidence, while this column is per-WORKSPACE: opening a role because
+-- of one binding in org A would hand it to the admins of orgs B and C too. It
+-- also cannot tell an operator's own deliberate control-plane binding — the one
+-- action this flag exists to keep out of customers' hands — from an org admin
+-- exploiting the gap being closed here. Reading either as consent would leave
+-- the hole open in precisely the workspaces that already have the sensitive
+-- role in circulation.
+--
+-- An operator opens a role up in Access → Roles → Organizations.
+--
+-- Re-runnable: the boot runner replays a file whose ledger row it never wrote,
+-- and tolerates "column already exists".
+ALTER TABLE "roles" ADD COLUMN "org_assignable" boolean DEFAULT false NOT NULL;

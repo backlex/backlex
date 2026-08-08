@@ -11460,6 +11460,10 @@ msgstr "Off"
 msgid "Off by default, and almost always the right answer: folding is what makes one mailbox one row, so `unique`, portal auto-link and marketing-list dedup all work. Turn it on only for a mail server that genuinely treats Ada@ and ada@ as two people — and note that `unique` then stops catching the pair."
 msgstr "Off by default, and almost always the right answer: folding is what makes one mailbox one row, so `unique`, portal auto-link and marketing-list dedup all work. Turn it on only for a mail server that genuinely treats Ada@ and ada@ as two people — and note that `unique` then stops catching the pair."
 
+#: src/client/admin/pages/access/role-editor.tsx
+msgid "Off by default. When on, an admin of one of your customers' organizations can bind this role to members of that organization — so keep it off for roles written for your own staff."
+msgstr "Off by default. When on, an admin of one of your customers' organizations can bind this role to members of that organization — so keep it off for roles written for your own staff."
+
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 msgid "Off for a hook that only validates — otherwise returning `data` would let it rewrite rows. A patch is re-validated against the schema."
 msgstr "Off for a hook that only validates — otherwise returning `data` would let it rewrite rows. A patch is re-validated against the schema."
@@ -11839,7 +11843,12 @@ msgstr "orders"
 msgid "Organiser email"
 msgstr "Organiser email"
 
+#: src/client/admin/pages/access/role-editor.tsx
+msgid "Organization admins may grant this role"
+msgstr "Organization admins may grant this role"
+
 #: src/client/admin/pages/access/app-orgs.tsx
+#: src/client/admin/pages/access/role-editor.tsx
 #: src/client/admin/ui.tsx
 msgid "Organizations"
 msgstr "Organizations"

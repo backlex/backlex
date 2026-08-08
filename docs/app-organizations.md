@@ -21,7 +21,7 @@ straight is the whole model:
 | | Membership role | Org-scoped workspace role |
 |---|---|---|
 | Stored in | `app_org_members.role` | `app_org_member_roles` → `roles` |
-| Vocabulary | `owner` / `admin` / `member` (fixed) | any workspace role you've defined |
+| Vocabulary | `owner` / `admin` / `member` (fixed) | any workspace role marked `orgAssignable` |
 | Governs | who may rename the org, invite, promote, remove | what data the member can read/write |
 | Enforced by | `services/app-orgs.ts` | the permission resolver |
 
@@ -29,8 +29,34 @@ So a person can be an org `admin` (may invite colleagues) while holding only a
 read-only workspace role inside that org — or the reverse. The membership role
 never widens data access, and a workspace role never grants org administration.
 
-The workspace `admin` role can **never** be bound as an org-scoped role. An org
-owner administers their own org; they can't mint themselves a workspace admin.
+### Which roles an org may hand out
+
+An org admin binding roles is a *customer's end-user* handing out data access,
+not you. So a role has to be opened up before it can leave the workspace:
+**Access → Roles → Organizations → "Organization admins may grant this role"**
+(`orgAssignable` on the API). Off by default — a role written for your own
+staff, say a Support role reading every collection, is not something an org
+admin should be able to grant themselves.
+
+The workspace `admin` role can **never** be bound as an org-scoped role, flag or
+no flag. An org owner administers their own org; they can't mint themselves a
+workspace admin.
+
+The flag applies to the **app plane** only. From the control plane
+(`/api/app-orgs`, GraphQL, MCP) you may bind any non-admin role to any member,
+and you may stage one on an invitation the org couldn't have minted itself —
+you're the author of the role, so there's nobody to protect you from.
+
+**Upgrading.** Every role starts closed, and nothing loses access: role
+resolution folds `app_org_member_roles` in without consulting the flag, so
+grants that already exist keep working. What changes is that an org admin
+re-granting one of those roles gets a `VALIDATION` error until you open it.
+
+There is no backfill on purpose. "Already bound in some org" is per-org evidence
+for a per-workspace flag — it would open the role for every *other* org too, and
+it can't tell your own deliberate control-plane binding from an org admin
+exploiting the gap this closes. So the roles in circulation are exactly the ones
+you should look at, rather than the ones that quietly stay open.
 
 ## Which org is a request acting in?
 

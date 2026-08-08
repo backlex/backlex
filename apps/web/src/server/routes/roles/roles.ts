@@ -99,6 +99,7 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         admin: body.admin ?? false,
         mcpTools: body.mcpTools ?? null,
         mcpReadOnly: body.mcpReadOnly ?? false,
+        orgAssignable: body.orgAssignable ?? false,
       });
       return c.json(
         {
@@ -109,6 +110,7 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
             admin: body.admin ?? false,
             mcpTools: body.mcpTools ?? null,
             mcpReadOnly: body.mcpReadOnly ?? false,
+            orgAssignable: body.orgAssignable ?? false,
           },
         },
         201,
@@ -158,6 +160,9 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
           ...(body.mcpTools !== undefined ? { mcpTools: body.mcpTools } : {}),
           ...(body.mcpReadOnly !== undefined
             ? { mcpReadOnly: body.mcpReadOnly }
+            : {}),
+          ...(body.orgAssignable !== undefined
+            ? { orgAssignable: body.orgAssignable }
             : {}),
           updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
         })

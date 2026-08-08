@@ -26,7 +26,8 @@ export const createRole: McpTool = {
     "Create a role in the active workspace. `name` is a free-form label; " +
     "`admin: true` grants DSL bypass — be careful with that flag. " +
     "`mcpTools` / `mcpReadOnly` restrict which MCP tools members of this role " +
-    "may call (omit both to leave MCP unrestricted).",
+    "may call (omit both to leave MCP unrestricted). `orgAssignable` opens the " +
+    "role up to organization admins on the app plane.",
   inputSchema: {
     type: "object",
     properties: {
@@ -46,6 +47,13 @@ export const createRole: McpTool = {
         description:
           "When true, members of this role cannot call any MCP write or " +
           "destructive tool.",
+      },
+      orgAssignable: {
+        type: "boolean",
+        description:
+          "When true, an organization admin may bind this role to members of " +
+          "their own org from the app plane. Defaults to false: a role is the " +
+          "workspace's unless it is opened up deliberately.",
       },
     },
     required: ["name"],

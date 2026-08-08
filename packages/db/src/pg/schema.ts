@@ -446,6 +446,19 @@ export const roles = pgTable(
      *  Sticky: holding a second role does not lift it, and a read-only key
      *  applies on top. Mirrors `api_keys.mcp_read_only`. */
     mcpReadOnly: boolean("mcp_read_only").notNull().default(false),
+    /** May an **organization** admin bind this role to their own members?
+     *
+     *  Org-scoped grants (`app_org_member_roles`) are handed out from the app
+     *  plane by a customer's own org admin, not by the operator. Without this
+     *  flag the only role they couldn't grant was `admin`, so a role written
+     *  for internal staff — "Support", reading every collection — was
+     *  self-grantable by anyone who ran an org.
+     *
+     *  Defaults to false: a role is for the workspace unless its author says
+     *  otherwise. The control plane (`/api/app-orgs`, GraphQL, MCP) ignores it
+     *  entirely — an operator administering a customer's org may bind anything
+     *  except `admin`, which stays barred everywhere. */
+    orgAssignable: boolean("org_assignable").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

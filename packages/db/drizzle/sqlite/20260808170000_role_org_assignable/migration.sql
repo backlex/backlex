@@ -1,0 +1,15 @@
+-- Which roles a customer's own org admin may hand out. SQLite/D1 twin of the
+-- pg migration, where the reasoning is written out in full.
+--
+-- The short version: org-scoped grants are bound from the app plane by an
+-- end-user who runs an organization, and the only role that path refused was
+-- `admin` — so a role written for the operator's own staff was self-grantable
+-- by any org admin. A role now says whether it is meant to leave the workspace,
+-- and every role starts closed.
+--
+-- No backfill, deliberately. Bindings that already exist keep resolving —
+-- `loadRolesForUser` never reads this column — so nothing loses access here;
+-- the flag gates only NEW app-plane grants. And "already bound in some org" is
+-- per-org evidence for a per-workspace column, which cannot distinguish an
+-- operator's own control-plane binding from an org admin exploiting the gap.
+ALTER TABLE `roles` ADD COLUMN `org_assignable` integer DEFAULT 0 NOT NULL;

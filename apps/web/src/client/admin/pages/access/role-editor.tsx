@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Switch } from "@backlex/ui/components/switch";
 import { RoleMcpGuards } from "./role-mcp-guards";
 
 const ACTIONS = ["read", "create", "update", "delete", "publish"] as const;
@@ -33,6 +34,8 @@ export interface RoleData {
   mcpTools?: string[] | null;
   /** Role-scoped MCP read-only lock. */
   mcpReadOnly?: boolean;
+  /** May an organization admin bind this role to their own members? */
+  orgAssignable?: boolean;
 }
 
 export function defaultRoleRule(): RoleMatrix {
@@ -77,6 +80,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
   const [rule, setRule] = useState<RoleMatrix>(defaultRoleRule());
   const [mcpTools, setMcpTools] = useState<string[] | null>(null);
   const [mcpReadOnly, setMcpReadOnly] = useState(false);
+  const [orgAssignable, setOrgAssignable] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -85,6 +89,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
     setRule(role?.matrix || defaultRoleRule());
     setMcpTools(role?.mcpTools ?? null);
     setMcpReadOnly(role?.mcpReadOnly ?? false);
+    setOrgAssignable(role?.orgAssignable ?? false);
   }, [open, role]);
 
   const compiled = useMemo(() => compileRule(rule), [rule]);
@@ -163,6 +168,26 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
               setMcpReadOnly(next.mcpReadOnly);
             }}
           />
+
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+              <Trans>Organizations</Trans>
+            </label>
+            <div className="flex items-center justify-between gap-3 rounded-control border border-border px-3 py-2.5">
+              <label className="min-w-0 text-[12.5px] text-foreground">
+                <Trans>Organization admins may grant this role</Trans>
+              </label>
+              <Switch checked={orgAssignable} onCheckedChange={setOrgAssignable} />
+            </div>
+            <span className="text-[11.5px] text-muted-foreground">
+              <Trans>
+                Off by default. When on, an admin of one of your customers'
+                organizations can bind this role to members of that
+                organization — so keep it off for roles written for your own
+                staff.
+              </Trans>
+            </span>
+          </div>
         </div>
         </DialogBody>
 
@@ -180,6 +205,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
               rule: ruleSummary(rule),
               mcpTools,
               mcpReadOnly,
+              orgAssignable,
             })}
           >
             {isNew ? <Trans>Create role</Trans> : <Trans>Save changes</Trans>}

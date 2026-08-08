@@ -286,12 +286,18 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
     const roleIds = asStringArray(input.roleIds);
     if (input.roleIds !== undefined && !roleIds)
       throw new AppError("VALIDATION", "roleIds must be an array of role ids");
-    const invite = await createOrgInvite(ctx, tenantId, org.id, {
-      email: input.email,
-      ...(role ? { role } : {}),
-      ...(roleIds ? { roleIds } : {}),
-      invitedBy: appUserId,
-    });
+    const invite = await createOrgInvite(
+      ctx,
+      tenantId,
+      org.id,
+      {
+        email: input.email,
+        ...(role ? { role } : {}),
+        ...(roleIds ? { roleIds } : {}),
+        invitedBy: appUserId,
+      },
+      { appUserId, role: actorRole },
+    );
     return c.json(
       {
         data: {

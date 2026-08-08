@@ -147,6 +147,15 @@ afterward.
 
 System roles cannot be deleted from the admin UI.
 
+### `orgAssignable` — may this role leave the workspace?
+
+A role you define is yours by default. Set `orgAssignable` on it and an **org**
+admin — one of your customers' end-users, not you — may bind it to members of
+their own organization from the app plane. Leave it off for anything written for
+your own staff: `admin` is barred everywhere, but a "Support" role reading every
+collection is not, and without the flag any org admin could grant it to
+themselves. Full model in [Organizations](/docs/app-organizations/).
+
 ### `admin` is workspace-scoped — the instance operator is separate
 
 `admin` is resolved **per workspace**: `tenantMiddleware` recomputes

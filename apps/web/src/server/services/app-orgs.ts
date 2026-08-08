@@ -335,18 +335,25 @@ const requireAppUser = async (
 // Org-scoped workspace roles
 // ---------------------------------------------------------------------------
 
-/** Replace a member's org-scoped workspace roles. Validation is shared with
- *  the workspace-wide path (`resolveAssignableRoles`), so the admin role stays
- *  unassignable here too — an org owner must never be able to mint themselves
- *  a workspace admin bypass. */
+/** Replace a member's org-scoped workspace roles. Validation is shared with the
+ *  workspace-wide path (`resolveAssignableRoles`), so the admin role stays
+ *  unassignable here too — an org owner must never be able to mint themselves a
+ *  workspace admin bypass.
+ *
+ *  An app-plane `actor` narrows it further: they may only bind roles their
+ *  operator marked `org_assignable`. The control plane (`null`) is not held to
+ *  that — it IS the operator. */
 const replaceMemberRoles = async (
   ctx: DbCtx,
   tenantId: string,
   orgId: string,
   appUserId: string,
   roleIds: string[],
+  actor: OrgActor,
 ): Promise<Array<{ id: string; name: string }>> => {
-  const valid = await resolveAssignableRoles(ctx, tenantId, roleIds);
+  const valid = await resolveAssignableRoles(ctx, tenantId, roleIds, {
+    orgScoped: actor !== null,
+  });
   const t = tablesFor(ctx.dialect);
   await (ctx.db as any)
     .delete(t.memberRoles)
@@ -675,6 +682,7 @@ export const addMember = async (
   tenantId: string,
   orgId: string,
   input: AddMemberInput,
+  actor: OrgActor,
 ): Promise<OrgMemberRow> => {
   const org = await requireOrg(ctx, tenantId, orgId);
   const user = await requireAppUser(ctx, tenantId, input.appUserId);
@@ -696,7 +704,7 @@ export const addMember = async (
     updatedAt: now,
   });
   const roles = input.roleIds?.length
-    ? await replaceMemberRoles(ctx, tenantId, org.id, user.id, input.roleIds)
+    ? await replaceMemberRoles(ctx, tenantId, org.id, user.id, input.roleIds, actor)
     : [];
   invalidateOrgMemberships(tenantId, user.id);
   invalidateUserRoles(tenantId, user.id);
@@ -747,7 +755,7 @@ export const updateMember = async (
     invalidateOrgMemberships(tenantId, appUserId);
   }
   if (patch.roleIds !== undefined) {
-    await replaceMemberRoles(ctx, tenantId, org.id, appUserId, patch.roleIds);
+    await replaceMemberRoles(ctx, tenantId, org.id, appUserId, patch.roleIds, actor);
   }
 
   const members = await listMembers(ctx, tenantId, org.id);
@@ -857,6 +865,7 @@ export const createOrgInvite = async (
   tenantId: string,
   orgId: string,
   input: CreateOrgInviteInput,
+  actor: OrgActor,
 ): Promise<CreateOrgInviteResult> => {
   const dbCtx: DbCtx = { db: ctx.db, dialect: ctx.dialect };
   const org = await requireOrg(dbCtx, tenantId, orgId);
@@ -866,9 +875,12 @@ export const createOrgInvite = async (
   const t = tablesFor(ctx.dialect);
 
   // Validate the org-scoped roles up front so a bad request leaves no invite
-  // behind that would fail at accept time.
+  // behind that would fail at accept time. Checked against the INVITER's plane:
+  // an operator may stage a role the org admin couldn't have picked themselves.
   if (input.roleIds?.length) {
-    await resolveAssignableRoles(dbCtx, tenantId, input.roleIds);
+    await resolveAssignableRoles(dbCtx, tenantId, input.roleIds, {
+      orgScoped: actor !== null,
+    });
   }
 
   // Already a member? Inviting them again is a no-op the caller should know
@@ -1006,7 +1018,14 @@ export const acceptOrgInvite = async (
     });
   }
   if (invite.roleIds.length) {
-    await replaceMemberRoles(ctx, tenantId, org.id, appUserId, invite.roleIds);
+    // `null` actor on purpose. The authority for these roles came from whoever
+    // minted the invitation, and it was checked against THEIR plane then — so
+    // an operator may stage a role an org admin could not have picked, and the
+    // invitee redeeming it isn't the one being authorised. (An org admin still
+    // can't stage a barred role: mint-time rejects it.) The residual window is
+    // an invitation minted before the flag was turned off, which stays valid
+    // for its 7 days; the binding is revocable either way.
+    await replaceMemberRoles(ctx, tenantId, org.id, appUserId, invite.roleIds, null);
   }
   await (ctx.db as any)
     .update(t.invites)

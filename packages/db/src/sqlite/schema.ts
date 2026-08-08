@@ -388,6 +388,13 @@ export const roles = sqliteTable(
     mcpReadOnly: integer("mcp_read_only", { mode: "boolean" })
       .notNull()
       .default(false),
+    /** May an organization admin bind this role to their own members? See the
+     *  pg/schema.ts twin for the full contract. Defaults to false — the app
+     *  plane may only hand out roles whose author marked them org-assignable;
+     *  the control plane ignores the flag. */
+    orgAssignable: integer("org_assignable", { mode: "boolean" })
+      .notNull()
+      .default(false),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },

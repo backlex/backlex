@@ -108,27 +108,53 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
         tenants: sqlite.schema.tenants,
       };
 
+export interface AssignableRoleOptions {
+  /**
+   * The grant is being made from the **app plane** — a customer's own org admin
+   * binding roles to members of their organization, rather than the operator
+   * binding roles in the workspace.
+   *
+   * Those two callers have never been the same trust level, but until the
+   * `roles.org_assignable` flag existed they shared one rule ("anything but
+   * admin"), so a role written for internal staff was self-grantable by anyone
+   * who ran an org. When this is set, a role must additionally be marked
+   * org-assignable by its author.
+   */
+  orgScoped?: boolean;
+}
+
 /**
  * Validate a set of role ids for assignment to a workspace end-user: every id
  * must belong to the active workspace and the admin role is rejected — an
  * app-user can never hold the workspace admin bypass. Shared by
  * `PUT /api/app-users/{id}/roles` and every invite surface.
+ *
+ * `opts.orgScoped` adds the app-plane rule on top; see
+ * {@link AssignableRoleOptions}. It is the ONE place both rules live, so a new
+ * surface that binds roles cannot end up with a different idea of either.
  */
 export const resolveAssignableRoles = async (
   ctx: DbCtx,
   tenantId: string,
   roleIds: string[],
+  opts: AssignableRoleOptions = {},
 ): Promise<Array<{ id: string; name: string }>> => {
   const wanted = Array.from(new Set(roleIds));
   if (wanted.length === 0) return [];
   const t = tablesFor(ctx.dialect);
   const valid = (await (ctx.db as any)
-    .select({ id: t.roles.id, name: t.roles.name, admin: t.roles.admin })
+    .select({
+      id: t.roles.id,
+      name: t.roles.name,
+      admin: t.roles.admin,
+      orgAssignable: t.roles.orgAssignable,
+    })
     .from(t.roles)
     .where(and(eq(t.roles.tenantId, tenantId), inArray(t.roles.id, wanted)))) as Array<{
       id: string;
       name: string;
       admin: boolean;
+      orgAssignable: boolean;
     }>;
   const validIds = new Set(valid.map((r) => r.id));
   const unknown = wanted.filter((id) => !validIds.has(id));
@@ -136,6 +162,17 @@ export const resolveAssignableRoles = async (
     throw new AppError("VALIDATION", `Unknown role(s) for this workspace: ${unknown.join(", ")}`);
   if (valid.some((r) => r.admin || r.name === SYSTEM_ROLES.admin))
     throw new AppError("VALIDATION", "The admin role cannot be assigned to a workspace end-user");
+  if (opts.orgScoped) {
+    // Named rather than counted: the org admin has to know WHICH role their
+    // operator hasn't opened up, otherwise the only way forward is guessing.
+    const barred = valid.filter((r) => !r.orgAssignable).map((r) => r.name);
+    if (barred.length)
+      throw new AppError(
+        "VALIDATION",
+        `Not assignable inside an organization: ${barred.join(", ")}. ` +
+          "A workspace admin has to mark a role org-assignable first.",
+      );
+  }
   return valid.map((r) => ({ id: r.id, name: r.name }));
 };
 

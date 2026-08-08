@@ -30,6 +30,10 @@ export const RoleInput = z
     mcpTools: z.array(McpToolPattern).nullable().optional(),
     /** Role-scoped MCP read-only lock. */
     mcpReadOnly: z.boolean().optional(),
+    /** May an organization admin bind this role to their own members from the
+     *  app plane? Defaults to false — a role stays the operator's unless its
+     *  author says otherwise. */
+    orgAssignable: z.boolean().optional(),
   })
   .openapi("RoleInput");
 
@@ -42,6 +46,7 @@ export const RoleRowSchema = z
     admin: z.boolean(),
     mcpTools: z.array(z.string()).nullable(),
     mcpReadOnly: z.boolean(),
+    orgAssignable: z.boolean(),
   })
   .openapi("Role");
 

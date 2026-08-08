@@ -433,6 +433,195 @@ describe("app-orgs — deleting an end-user takes their seat with them", () => {
   });
 });
 
+describe("app-orgs — which roles may leave the workspace", () => {
+  let h: TestHarness;
+  let orgId: string;
+  let owner: { id: string; token: string; email: string };
+  let member: { id: string; token: string; email: string };
+  let ownerFetch: Bearer;
+  /** Marked org-assignable by the operator. */
+  let openRoleId: string;
+  /** A role written for the operator's own staff — never opened up. */
+  let staffRoleId: string;
+
+  const createRole = async (name: string, orgAssignable: boolean): Promise<string> => {
+    const res = await h.fetch(
+      "/api/roles",
+      json("POST", { name, description: name, orgAssignable }),
+    );
+    expect(res.status).toBe(201);
+    return ((await res.json()) as { data: { id: string } }).data.id;
+  };
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    owner = await makeEndUser(h, "owner@grant.test");
+    member = await makeEndUser(h, "member@grant.test");
+    ownerFetch = bearerFor(h, owner.token);
+    openRoleId = await createRole("org_editor", true);
+    staffRoleId = await createRole("support_staff", false);
+
+    const created = await h.fetch(
+      "/api/app-orgs",
+      json("POST", { name: "Grant Co", ownerAppUserId: owner.id }),
+    );
+    orgId = ((await created.json()) as { data: { id: string } }).data.id;
+    expect(
+      (
+        await h.fetch(
+          `/api/app-orgs/${orgId}/members`,
+          json("POST", { appUserId: member.id }),
+        )
+      ).status,
+    ).toBe(201);
+  });
+  afterAll(() => h.cleanup());
+
+  /**
+   * The org owner is a customer's end-user, not the operator. Before the flag,
+   * the only role they couldn't bind was `admin` — so a role written for
+   * internal staff was theirs to hand out, to their members and to themselves.
+   */
+  test("an org owner can't bind a role the operator kept for themselves", async () => {
+    const res = await ownerFetch(
+      `/api/t/default/orgs/${orgId}/members/${member.id}`,
+      json("PATCH", { roleIds: [staffRoleId] }),
+    );
+    expect(res.status).toBe(422);
+    // Named, not counted — otherwise the only way forward is guessing.
+    expect(await res.text()).toContain("support_staff");
+  });
+
+  test("…and can bind one the operator opened up", async () => {
+    const res = await ownerFetch(
+      `/api/t/default/orgs/${orgId}/members/${member.id}`,
+      json("PATCH", { roleIds: [openRoleId] }),
+    );
+    expect(res.status).toBe(200);
+    const { data } = (await res.json()) as { data: { roles: { id: string }[] } };
+    expect(data.roles.map((r) => r.id)).toEqual([openRoleId]);
+  });
+
+  test("a mixed set is refused whole — no partial grant", async () => {
+    const res = await ownerFetch(
+      `/api/t/default/orgs/${orgId}/members/${member.id}`,
+      json("PATCH", { roleIds: [openRoleId, staffRoleId] }),
+    );
+    expect(res.status).toBe(422);
+    // The earlier grant is untouched: validation runs before the delete.
+    const members = (await (await h.fetch(`/api/app-orgs/${orgId}/members`)).json()) as {
+      data: { appUserId: string; roles: { id: string }[] }[];
+    };
+    const row = members.data.find((m) => m.appUserId === member.id);
+    expect(row!.roles.map((r) => r.id)).toEqual([openRoleId]);
+  });
+
+  test("the same bar applies to an org admin's invitation", async () => {
+    const res = await ownerFetch(
+      `/api/t/default/orgs/${orgId}/invites`,
+      json("POST", { email: "newcomer@grant.test", roleIds: [staffRoleId] }),
+    );
+    expect(res.status).toBe(422);
+  });
+
+  test("the control plane is not held to it — the operator IS the author", async () => {
+    const bind = await h.fetch(
+      `/api/app-orgs/${orgId}/members/${member.id}`,
+      json("PATCH", { roleIds: [staffRoleId] }),
+    );
+    expect(bind.status).toBe(200);
+
+    // And may stage one on an invitation the org couldn't have minted itself.
+    const invite = await h.fetch(
+      `/api/app-orgs/${orgId}/invites`,
+      json("POST", { email: "staffer@grant.test", roleIds: [staffRoleId] }),
+    );
+    expect(invite.status).toBe(201);
+  });
+
+  test("an operator-staged role survives being accepted", async () => {
+    const staffer = await makeEndUser(h, "staffer@grant.test");
+    const pending = (await (
+      await h.fetch(`/api/app-orgs/${orgId}/invites?pending=true`)
+    ).json()) as { data: { email: string }[] };
+    expect(pending.data.map((i) => i.email)).toContain("staffer@grant.test");
+
+    // The token is write-only, so mint a fresh invitation to redeem: authority
+    // came from whoever minted it, and accepting must not re-judge it against
+    // the accepting user's plane.
+    const minted = await h.fetch(
+      `/api/app-orgs/${orgId}/invites`,
+      json("POST", { email: "staffer2@grant.test", roleIds: [staffRoleId] }),
+    );
+    expect(minted.status).toBe(201);
+    const token = ((await minted.json()) as { data: { token: string } }).data.token;
+    const staffer2 = await makeEndUser(h, "staffer2@grant.test");
+    const accepted = await bearerFor(h, staffer2.token)(
+      "/api/t/default/orgs/invites/accept",
+      json("POST", { token }),
+    );
+    expect(accepted.status).toBe(200);
+
+    const members = (await (await h.fetch(`/api/app-orgs/${orgId}/members`)).json()) as {
+      data: { appUserId: string; roles: { id: string }[] }[];
+    };
+    const row = members.data.find((m) => m.appUserId === staffer2.id);
+    expect(row!.roles.map((r) => r.id)).toEqual([staffRoleId]);
+    expect(staffer.id).toBeDefined();
+  });
+
+  /**
+   * The reason the migration can ship every role closed without a backfill: the
+   * flag gates MAKING a grant, never honouring one. A binding an operator made
+   * before the flag existed keeps resolving, so nobody loses access on deploy —
+   * only the org admin's ability to re-grant it changes.
+   */
+  test("a binding to a closed role keeps resolving — the flag gates granting, not holding", async () => {
+    // Operator binds the closed role (the pre-upgrade state, reproduced).
+    expect(
+      (
+        await h.fetch(
+          `/api/app-orgs/${orgId}/members/${member.id}`,
+          json("PATCH", { roleIds: [staffRoleId] }),
+        )
+      ).status,
+    ).toBe(200);
+
+    // It shows up in the member's effective roles for this org…
+    const sim = await h.fetch(
+      "/api/permissions/simulate",
+      json("POST", {
+        plane: "app",
+        userId: member.id,
+        orgId,
+        collection: "posts",
+        action: "read",
+      }),
+    );
+    expect(sim.status).toBe(200);
+    const { data } = (await sim.json()) as { data: { roles?: { name: string }[] } };
+    expect((data.roles ?? []).map((r) => r.name)).toContain("support_staff");
+
+    // …while the org owner still can't hand that same role out themselves.
+    const regrant = await ownerFetch(
+      `/api/t/default/orgs/${orgId}/members/${member.id}`,
+      json("PATCH", { roleIds: [staffRoleId] }),
+    );
+    expect(regrant.status).toBe(422);
+  });
+
+  test("workspace-wide role assignment is unaffected by the flag", async () => {
+    // `PUT /api/app-users/{id}/roles` is the operator's own path — a role that
+    // is closed to organizations is still perfectly assignable there.
+    const res = await h.fetch(
+      `/api/app-users/${member.id}/roles`,
+      json("PUT", { roleIds: [staffRoleId] }),
+    );
+    expect(res.status).toBe(200);
+  });
+});
+
 describe("app-orgs — the rank order inside an org", () => {
   let h: TestHarness;
   let orgId: string;

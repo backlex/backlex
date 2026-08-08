@@ -295,6 +295,9 @@ export const appOrgsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         tenantId,
         org.id,
         c.req.valid("json"),
+        // Control plane: the operator may bind any non-admin role, whether or
+        // not it is marked org-assignable.
+        null,
       );
       return c.json({ data: member }, 201);
     },
@@ -426,7 +429,9 @@ export const appOrgsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const tenantId = activeTenant(c);
       const { id } = c.req.valid("param");
       const org = await requireOrg({ db: ctx.db, dialect: ctx.dialect }, tenantId, id);
-      const invite = await createOrgInvite(ctx, tenantId, org.id, c.req.valid("json"));
+      // `null` actor — an operator may stage a role the org's own admin
+      // couldn't have picked; the invitee redeems it as minted.
+      const invite = await createOrgInvite(ctx, tenantId, org.id, c.req.valid("json"), null);
       return c.json(
         {
           data: {

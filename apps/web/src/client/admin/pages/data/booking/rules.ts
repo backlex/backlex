@@ -24,7 +24,7 @@ export const DEFAULT_BREAK = { startMinute: 12 * 60, endMinute: 13 * 60 };
  * "break" this can speak for, and stays in the list below where it can be read
  * for what it is.
  */
-interface DailyBreak {
+export interface DailyBreak {
   startMinute: number;
   endMinute: number;
   weekdays: number[];

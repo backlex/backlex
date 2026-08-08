@@ -18,12 +18,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@backlex/ui/components/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@backlex/ui/components/dropdown-menu";
 import { I } from "../../../icons";
 import { Select } from "../../../select";
 import { Button, EmptyState, PageHeader } from "../../../ui";
@@ -37,19 +31,18 @@ import {
 } from "../../../api";
 import { BookingSkeleton } from "../../../page-skeletons";
 import { DatePicker } from "@/components/date-picker";
-import { TimeField } from "@/components/time-field";
 import { ConfirmAction } from "@/components/confirm-action";
-import { ColorSwatchPicker } from "@/components/color-swatch-picker";
 import {
-  ACCENTS,
   type PublicAppearance,
 } from "@/lib/public-theme";
-import { asOneOf } from "../../../types";
-import { CopyLink, Detail, PAGE_SIZE, PUBLIC_FONTS, PUBLIC_THEMES, ResourceCard, STATUS_TONE, StatTile, TABS, Tab, tokenCache } from "./parts";
-import { MAX_QUESTIONS, QUESTION_TYPES, blankQuestion, questionKind, questionName, slugKey } from "./questions";
-import { DEFAULT_FORM, DEFAULT_RECORD_COLLECTION, MIRROR_KEYS, Problem, bodyOf, problemWith } from "./records";
-import { DEFAULT_BREAK, DEFAULT_OPEN, RULE_KINDS, blankRule, isBreakRule, readBreak } from "./rules";
-import { COMMON_ZONES, DAY_SETS, WEEKDAYS, DaySet, HORIZON_DAYS, WINDOWS, WindowKey, inZone, isOver, rangeInZone, shortInZone, shortWeekday, todayIn } from "./time";
+import { HoursTab } from "./hours-tab";
+import { QuestionsTab } from "./questions-tab";
+import { SettingsTab } from "./settings-tab";
+import { CopyLink, Detail, PAGE_SIZE, ResourceCard, STATUS_TONE, StatTile, TABS, Tab, tokenCache } from "./parts";
+import { questionKind, slugKey } from "./questions";
+import { DEFAULT_FORM, DEFAULT_RECORD_COLLECTION, Problem, bodyOf, problemWith } from "./records";
+import { DEFAULT_BREAK, DEFAULT_OPEN, blankRule, isBreakRule, readBreak } from "./rules";
+import { COMMON_ZONES, DAY_SETS, DaySet, HORIZON_DAYS, WINDOWS, WindowKey, inZone, isOver, rangeInZone, shortInZone, } from "./time";
 
 /**
  * Availability & booking — what is bookable, when it is open, and who is coming.
@@ -1110,367 +1103,26 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
 
       {/* ── hours ─────────────────────────────────────────────────────── */}
       {tab === "hours" && (
-        <Card className="gap-3 p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="min-w-0">
-              <div className="text-sm font-medium">
-                <Trans>Opening hours</Trans>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                <Trans>
-                  Written in {zone}, so "Mondays 09:00" keeps meaning nine in the morning there when
-                  the clocks change. An "open" rule adds bookable time and a "block" takes it away; a
-                  span crossing midnight is two rules.
-                </Trans>
-              </p>
-            </div>
-            {/* A calendar is almost never one weekday, and adding Monday to
-                Friday a row at a time is five times the work for the most
-                ordinary answer there is. */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="ml-auto">
-                  <I.Plus className="size-4" />
-                  <span className="max-sm:sr-only">
-                    <Trans>Add rule</Trans>
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[200px]">
-                <DropdownMenuItem onClick={() => addOpenings("weekdays")}>
-                  <Trans>Weekdays</Trans>
-                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground">
-                    09:00–17:00
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => addOpenings("weekend")}>
-                  <Trans>Weekend</Trans>
-                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground">
-                    09:00–17:00
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => addOpenings("all")}>
-                  <Trans>Every day</Trans>
-                  <span className="ml-auto font-mono text-[10.5px] text-muted-foreground">
-                    09:00–17:00
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => editRules((arr) => [...arr, blankRule()])}>
-                  <Trans>One day</Trans>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* The break, as one thing rather than as one row per day. It is not
-              a field of its own — it IS these block rules — so the card says
-              where they are kept and hands them back to the list the moment it
-              stops being able to speak for them. */}
-          <div className="rounded-md border border-dashed p-3">
-            {brk ? (
-              <div className="flex flex-col gap-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium">
-                    <Trans>Daily break</Trans>
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <TimeField
-                      aria-label={t`Break starts at`}
-                      className="w-[92px]"
-                      value={brk.startMinute}
-                      onChange={(m) => setBreakTimes({ startMinute: m })}
-                    />
-                    <span className="text-muted-foreground">–</span>
-                    <TimeField
-                      aria-label={t`Break ends at`}
-                      className="w-[92px]"
-                      value={brk.endMinute}
-                      onChange={(m) => setBreakTimes({ endMinute: m })}
-                    />
-                  </div>
-                  <Button variant="outline" className="ml-auto" onClick={removeBreak}>
-                    <I.Trash className="size-4" />
-                    <span className="max-sm:sr-only">
-                      <Trans>Remove</Trans>
-                    </span>
-                  </Button>
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {[1, 2, 3, 4, 5, 6, 0].map((wd) => {
-                    const on = brk.weekdays.includes(wd);
-                    return (
-                      <button
-                        key={wd}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() => toggleBreakDay(wd)}
-                        className={cn(
-                          "rounded-full border px-2.5 py-0.5 text-[11.5px] transition-colors",
-                          on
-                            ? "border-primary/40 bg-primary/20 text-foreground"
-                            : "border-border text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        {shortWeekday(wd)}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  <Trans>
-                    Taken out of every opening on the days above. Stored as one closed rule per day
-                    — edit it here and they all move together.
-                  </Trans>
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium">
-                    <Trans>Daily break</Trans>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    <Trans>
-                      A lunch hour, say — closed on every day you are otherwise open, without
-                      splitting each opening in two.
-                    </Trans>
-                  </p>
-                </div>
-                <Button variant="outline" className="ml-auto" onClick={addBreak}>
-                  <I.Plus className="size-4" />
-                  <span className="max-sm:sr-only">
-                    <Trans>Add a break</Trans>
-                  </span>
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {rules.length === 0 ? (
-            <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-              <Trans>No hours — the public page has nothing to offer.</Trans>
-            </p>
-          ) : (
-            rules.map((r, i) =>
-              // Drawn on the card above instead; drawing it twice would offer
-              // two places to change one thing.
-              isBreakRule(r, brk) ? null : (
-              <div
-                key={i}
-                className="grid gap-2 rounded-md border p-2 sm:grid-cols-[110px_140px_1fr_1fr_auto]"
-              >
-                <Select
-                  value={r.kind}
-                  onChange={(v) =>
-                    editRules((arr) =>
-                      arr.map((x, j) => (j === i ? { ...x, kind: asOneOf(RULE_KINDS, v, "open") } : x)),
-                    )
-                  }
-                  className="min-w-0"
-                  options={[
-                    { value: "open", label: t`Open` },
-                    { value: "block", label: t`Block` },
-                  ]}
-                />
-                <Select
-                  value={r.weekday === null ? "" : String(r.weekday)}
-                  onChange={(v) =>
-                    editRules((arr) =>
-                      arr.map((x, j) => {
-                        if (j !== i) return x;
-                        if (v !== "") return { ...x, weekday: Number(v) };
-                        // Turning a rule on to dates asks a question nobody has
-                        // answered yet — an empty range here is not a mistake to
-                        // shout about, so the rule arrives already meaning
-                        // "today". Autosave stays unblocked and the operator
-                        // moves the day rather than being told off for the click
-                        // they just made.
-                        const from = x.startsOn ?? todayIn(zone);
-                        return { ...x, weekday: null, startsOn: from, endsOn: x.endsOn ?? from };
-                      }),
-                    )
-                  }
-                  className="min-w-0"
-                  options={[...WEEKDAYS, { value: "", label: t`Specific dates` }]}
-                />
-                <TimeField
-                  aria-label={t`Opens at`}
-                  value={r.startMinute}
-                  onChange={(m) =>
-                    editRules((arr) => arr.map((x, j) => (j === i ? { ...x, startMinute: m } : x)))
-                  }
-                />
-                <TimeField
-                  aria-label={t`Closes at`}
-                  value={r.endMinute}
-                  onChange={(m) =>
-                    editRules((arr) => arr.map((x, j) => (j === i ? { ...x, endMinute: m } : x)))
-                  }
-                />
-                <Button
-                  variant="outline"
-                  onClick={() => editRules((arr) => arr.filter((_, j) => j !== i))}
-                >
-                  <I.Trash className="size-4" />
-                  <span className="sr-only">
-                    <Trans>Remove rule</Trans>
-                  </span>
-                </Button>
-                {r.weekday === null && (
-                  <div className="grid gap-2 sm:col-span-5 sm:grid-cols-2">
-                    {/* Two bare date boxes side by side never said which end was
-                        which. Either may stand alone — a start with no end runs
-                        on forever, an end with no start covers everything up to
-                        it — so both carry a label. */}
-                    <div className="grid gap-1">
-                      <Label className="text-[11px] font-normal text-muted-foreground">
-                        <Trans>First day</Trans>
-                      </Label>
-                      <DatePicker
-                        dateOnly
-                        value={r.startsOn}
-                        placeholder={t`Any day up to the end`}
-                        onChange={(d) =>
-                          editRules((arr) =>
-                            arr.map((x, j) => (j === i ? { ...x, startsOn: d } : x)),
-                          )
-                        }
-                      />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="text-[11px] font-normal text-muted-foreground">
-                        <Trans>Last day</Trans>
-                      </Label>
-                      <DatePicker
-                        dateOnly
-                        value={r.endsOn}
-                        placeholder={t`No end`}
-                        onChange={(d) =>
-                          editRules((arr) => arr.map((x, j) => (j === i ? { ...x, endsOn: d } : x)))
-                        }
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-              ),
-            )
-          )}
-        </Card>
+        <HoursTab
+          rules={rules}
+          zone={zone}
+          editRules={editRules}
+          brk={brk}
+          addOpenings={addOpenings}
+          addBreak={addBreak}
+          setBreakTimes={setBreakTimes}
+          toggleBreakDay={toggleBreakDay}
+          removeBreak={removeBreak}
+        />
       )}
 
       {/* ── questions ─────────────────────────────────────────────────── */}
       {tab === "questions" && (
-        <Card className="gap-3 p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="min-w-0">
-              <div className="text-sm font-medium">
-                <Trans>Intake questions</Trans>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                <Trans>
-                  What the booker is asked beyond name, email and phone. The answers ride along with
-                  the booking and can be mapped into the mirrored collection.
-                </Trans>
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              className="ml-auto"
-              disabled={questions.length >= MAX_QUESTIONS}
-              onClick={() => editQuestions((arr) => [...arr, blankQuestion()])}
-            >
-              <I.Plus className="size-4" />
-              <span className="max-sm:sr-only">
-                <Trans>Add question</Trans>
-              </span>
-            </Button>
-          </div>
-
-          {questions.length === 0 ? (
-            <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
-              <Trans>No questions — the page asks only for name, email and phone.</Trans>
-            </p>
-          ) : (
-            questions.map((q, i) => {
-              const locked = storedNames.has(q.name);
-              const patch = (next: Partial<ApiBookingQuestion>) =>
-                editQuestions((arr) => arr.map((x, j) => (j === i ? { ...x, ...next } : x)));
-              return (
-                <div key={i} className="grid gap-2 rounded-md border p-2 sm:grid-cols-[1fr_170px_auto]">
-                  <div className="grid min-w-0 gap-1">
-                    <Input
-                      value={q.label ?? ""}
-                      onChange={(e) =>
-                        patch({
-                          label: e.target.value,
-                          // A question nobody has answered yet still has its
-                          // name follow the label; once answers exist the name
-                          // is frozen.
-                          ...(locked ? {} : { name: questionName(e.target.value) }),
-                        })
-                      }
-                      placeholder={t`Reason for visit`}
-                    />
-                    {q.name && (
-                      <p className="truncate font-mono text-[11px] text-muted-foreground">{q.name}</p>
-                    )}
-                  </div>
-                  <Select
-                    value={q.type ?? "text"}
-                    onChange={(v) => patch({ type: asOneOf(QUESTION_TYPES, v, "text") })}
-                    className="min-w-0"
-                    options={[
-                      { value: "text", label: t`Short text` },
-                      { value: "textarea", label: t`Long text` },
-                      { value: "select", label: t`Choice` },
-                      { value: "boolean", label: t`Yes / no` },
-                    ]}
-                  />
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id={`bk-q-req-${i}`}
-                        checked={q.required === true}
-                        onCheckedChange={(v) => patch({ required: v })}
-                      />
-                      <Label htmlFor={`bk-q-req-${i}`} className="text-xs">
-                        <Trans>Required</Trans>
-                      </Label>
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="ml-auto"
-                      onClick={() => editQuestions((arr) => arr.filter((_, j) => j !== i))}
-                    >
-                      <I.Trash className="size-4" />
-                      <span className="sr-only">
-                        <Trans>Remove question</Trans>
-                      </span>
-                    </Button>
-                  </div>
-                  {q.type === "select" && (
-                    <div className="grid gap-1 sm:col-span-3">
-                      <Input
-                        value={(q.options ?? []).join(", ")}
-                        onChange={(e) =>
-                          // Empty entries survive the keystroke on purpose —
-                          // dropping them here would eat the comma the operator
-                          // just typed. `bodyOf` filters them on the way out.
-                          patch({ options: e.target.value.split(",").map((o) => o.trim()) })
-                        }
-                        placeholder={t`Check-up, Follow-up, Emergency`}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        <Trans>Comma-separated. The page offers exactly these.</Trans>
-                      </p>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </Card>
+        <QuestionsTab
+          questions={questions}
+          storedNames={storedNames}
+          editQuestions={editQuestions}
+        />
       )}
 
       {/* ── bookings ──────────────────────────────────────────────────── */}
@@ -1741,262 +1393,18 @@ export function BookingPage({ pushToast }: { pushToast: PushToast }) {
 
       {/* ── settings ──────────────────────────────────────────────────── */}
       {tab === "settings" && (
-        <div className="flex flex-col gap-4">
-          <Card className="gap-4 p-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="bk-name">
-                <Trans>Name</Trans>
-              </Label>
-              <Input
-                id="bk-name"
-                value={form.name}
-                onChange={(e) => patchForm({ name: e.target.value })}
-                placeholder={t`Dr Yılmaz`}
-              />
-              <p className="text-xs text-muted-foreground">
-                <Trans>Shown on the public page.</Trans>
-              </p>
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label htmlFor="bk-desc">
-                <Trans>Description</Trans>
-              </Label>
-              <Textarea
-                id="bk-desc"
-                rows={2}
-                value={form.description}
-                onChange={(e) => patchForm({ description: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground">
-                <Trans>A line under the name, on the public page.</Trans>
-              </p>
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label>
-                <Trans>Time zone</Trans>
-              </Label>
-              {customZone ? (
-                <Input
-                  value={form.timeZone}
-                  onChange={(e) => patchForm({ timeZone: e.target.value })}
-                  placeholder="Europe/Istanbul"
-                />
-              ) : (
-                <Select
-                  value={form.timeZone}
-                  onChange={(v) =>
-                    v === "__custom" ? setCustomZone(true) : patchForm({ timeZone: v })
-                  }
-                  className="min-w-0"
-                  options={[
-                    ...COMMON_ZONES.map((z) => ({ value: z, label: z })),
-                    { value: "__custom", label: t`Custom…` },
-                  ]}
-                />
-              )}
-              <p className="text-xs text-muted-foreground">
-                <Trans>The zone the opening hours are written in — not a display preference.</Trans>
-              </p>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              {(
-                [
-                  ["slotMinutes", t`Slot length`, t`Minutes one booking lasts.`],
-                  ["capacity", t`Capacity`, t`How many fit at once.`],
-                  ["holdMinutes", t`Hold`, t`Minutes an unconfirmed hold survives.`],
-                  ["bufferBeforeMinutes", t`Buffer before`, t`Protected minutes before each booking.`],
-                  ["bufferAfterMinutes", t`Buffer after`, t`Both sides apply, so 15+15 is a 30-minute gap.`],
-                  ["leadMinutes", t`Notice`, t`Minimum minutes of warning.`],
-                  ["horizonDays", t`Horizon`, t`How many days ahead the calendar is open.`],
-                ] as const
-              ).map(([field, label, hint]) => (
-                <div key={field} className="grid gap-1.5">
-                  <Label htmlFor={`bk-${field}`}>{label}</Label>
-                  <Input
-                    id={`bk-${field}`}
-                    type="number"
-                    inputMode="numeric"
-                    value={form[field]}
-                    onChange={(e) => patchForm({ [field]: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">{hint}</p>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card className="gap-4 p-4">
-            <div className="grid gap-1.5">
-              <Label>
-                <Trans>Where bookings are recorded</Trans>
-              </Label>
-              <div className="flex items-center justify-between gap-3">
-                <p className="min-w-0 text-sm">
-                  {form.mirrorEnabled ? (
-                    <Trans>
-                      Every booking is written as a row in{" "}
-                      <span className="font-medium">{recordTarget}</span>, where permissions, flows
-                      and exports apply to it as usual.
-                    </Trans>
-                  ) : (
-                    <Trans>
-                      Bookings are not recorded anywhere but here. The ledger stays the only place
-                      these customers exist.
-                    </Trans>
-                  )}
-                </p>
-                <Switch
-                  checked={form.mirrorEnabled}
-                  onCheckedChange={(v) => patchForm({ mirrorEnabled: v })}
-                  aria-label={t`Record bookings into a collection`}
-                />
-              </div>
-              {form.mirrorEnabled && !form.mirrorCollection.trim() ? (
-                <p className="text-xs text-muted-foreground">
-                  <Trans>
-                    The collection is created for you and kept in step — nothing to map. Editing a
-                    row there does not move or cancel an appointment.
-                  </Trans>
-                </p>
-              ) : null}
-            </div>
-
-            {form.mirrorEnabled ? (
-              <details className="group">
-                <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-                  <Trans>Record into a collection of my own instead</Trans>
-                </summary>
-                <div className="mt-3 grid gap-3">
-                  <Select
-                    value={form.mirrorCollection}
-                    onChange={(v) => patchForm({ mirrorCollection: v })}
-                    className="min-w-0"
-                    options={[
-                      { value: "", label: t`The default collection` },
-                      ...collections.map((c) => ({ value: c, label: c })),
-                    ]}
-                  />
-                  {form.mirrorCollection ? (
-                    <div className="grid gap-2">
-                      <p className="text-xs text-muted-foreground">
-                        <Trans>
-                          Your collection, your column names — so each booking field needs one. A
-                          target with no map records nothing, so saving without one is refused.
-                        </Trans>
-                      </p>
-                      {MIRROR_KEYS.map((key) => (
-                        <div key={key} className="grid grid-cols-[7rem_1fr] items-center gap-2">
-                          <Label className="truncate text-xs text-muted-foreground">{key}</Label>
-                          <Input
-                            value={mirrorMap[key] ?? ""}
-                            onChange={(e) =>
-                              editMirrorMap((m) => {
-                                const next = { ...m };
-                                const column = e.target.value.trim();
-                                if (column) next[key] = column;
-                                else delete next[key];
-                                return next;
-                              })
-                            }
-                            placeholder={t`column name`}
-                            className="min-w-0"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </details>
-            ) : null}
-
-            <div className="grid gap-1.5">
-              <Label htmlFor="bk-confirm">
-                <Trans>Confirmation message</Trans>
-              </Label>
-              <Textarea
-                id="bk-confirm"
-                rows={2}
-                value={form.confirmationMessage}
-                onChange={(e) => patchForm({ confirmationMessage: e.target.value })}
-                placeholder={t`Please arrive ten minutes early.`}
-              />
-            </div>
-          </Card>
-
-          <Card className="gap-2 p-4">
-            <Label>
-              <Trans>Public page appearance</Trans>
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              <Trans>
-                The booking page belongs on your site, so it takes your colours rather than ours.
-                "Visitor's choice" follows each visitor's own light/dark setting — fine for a link
-                you send, but pick a theme when you embed it, or a dark widget can land on a light
-                page.
-              </Trans>
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-1.5">
-                <Label htmlFor="bk-theme" className="text-xs text-muted-foreground">
-                  <Trans>Theme</Trans>
-                </Label>
-                <Select
-                  value={look.theme ?? ""}
-                  onChange={(v) =>
-                    editLook(({ theme, ...rest }) => (v ? { ...rest, theme: asOneOf(PUBLIC_THEMES, v, "light") } : rest))
-                  }
-                  className="min-w-0"
-                  options={[
-                    { value: "", label: t`Visitor's choice` },
-                    { value: "dark", label: t`Dark` },
-                    { value: "light", label: t`Light` },
-                  ]}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="bk-font" className="text-xs text-muted-foreground">
-                  <Trans>Font</Trans>
-                </Label>
-                <Select
-                  // No "default" entry, and unset shows as Manrope: that is
-                  // what the page now draws, and it is what the form's own
-                  // picker offers. A choice the panel does not name is a choice
-                  // an operator cannot see is being made.
-                  value={look.font ?? "sans"}
-                  onChange={(v) =>
-                    editLook(({ font, ...rest }) => (v ? { ...rest, font: asOneOf(PUBLIC_FONTS, v, "sans") } : rest))
-                  }
-                  className="min-w-0"
-                  options={[
-                    { value: "sans", label: "Manrope" },
-                    { value: "lexend", label: "Lexend" },
-                    { value: "mono", label: t`Mono` },
-                    { value: "system", label: t`System` },
-                  ]}
-                />
-              </div>
-            </div>
-            <div className="grid gap-1.5">
-              <Label className="text-xs text-muted-foreground">
-                <Trans>Accent</Trans>
-              </Label>
-              <ColorSwatchPicker
-                options={[
-                  { value: "", swatch: "var(--muted-foreground)", label: t`Default` },
-                  ...ACCENTS.map((c) => ({ value: c, swatch: c })),
-                ]}
-                value={look.accent ?? ""}
-                onChange={(accent) =>
-                  editLook(({ accent: _drop, ...rest }) => (accent ? { ...rest, accent } : rest))
-                }
-                showValue
-              />
-            </div>
-          </Card>
-        </div>
+        <SettingsTab
+          form={form}
+          look={look}
+          mirrorMap={mirrorMap}
+          recordTarget={recordTarget}
+          customZone={customZone}
+          setCustomZone={setCustomZone}
+          patchForm={patchForm}
+          editLook={editLook}
+          editMirrorMap={editMirrorMap}
+          collections={collections}
+        />
       )}
 
       {/* ── one booking, in full ────────────────────────────────────────── */}

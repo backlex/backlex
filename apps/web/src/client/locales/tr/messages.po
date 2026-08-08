@@ -1151,7 +1151,7 @@ msgstr "Bu isimde bir anahtar zaten mevcut."
 msgid "A KPI needs a handle, a name and a collection."
 msgstr "Bir KPI'ın tanıtıcısı, adı ve koleksiyonu olmalı."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "A line under the name, on the public page."
 msgstr "Herkese açık sayfada, adın altındaki satır."
 
@@ -1163,7 +1163,7 @@ msgstr "Hiçbir ücret çekmeden ödemeleri sonuçlandıran yerel bir taklit. Ya
 msgid "A loop runs inline, so its body cannot wait for an approval or a long delay."
 msgstr "Döngü satır içinde çalışır; gövdesi bir onayı ya da uzun bir beklemeyi bekleyemez."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "A lunch hour, say — closed on every day you are otherwise open, without splitting each opening in two."
 msgstr "Örneğin öğle arası — açık olduğunuz her günde kapalı, hem de her açık aralığı ikiye bölmeden."
 
@@ -1320,7 +1320,7 @@ msgstr "Hakkında"
 msgid "accent"
 msgstr "vurgu rengi"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Accent"
 msgstr "Vurgu rengi"
 
@@ -1548,7 +1548,7 @@ msgstr "<0>status</0> açılır listesini <1>taslak / inceleme / yayınlandı / 
 msgid "Add a booking"
 msgstr "Rezervasyon ekle"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Add a break"
 msgstr "Ara ekle"
 
@@ -1717,7 +1717,7 @@ msgstr "Geçiş anahtarı ekle"
 msgid "Add provider"
 msgstr "Sağlayıcı ekle"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Add question"
 msgstr "Soru ekle"
 
@@ -1725,7 +1725,7 @@ msgstr "Soru ekle"
 msgid "Add role"
 msgstr "Rol ekle"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Add rule"
 msgstr "Kural ekle"
 
@@ -2238,7 +2238,7 @@ msgstr "yanıtladı"
 msgid "Answered"
 msgstr "Yanıtlayan"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Any day up to the end"
 msgstr "Bitişe kadar her gün"
 
@@ -2898,7 +2898,7 @@ msgstr "Boş"
 msgid "Blank = automatic"
 msgstr "Boş = otomatik"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Block"
 msgstr "Kapalı"
 
@@ -2977,7 +2977,7 @@ msgstr "Rezerve ediliyor…"
 msgid "Bookings"
 msgstr "Rezervasyonlar"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Bookings are not recorded anywhere but here. The ledger stays the only place these customers exist."
 msgstr "Rezervasyonlar burası dışında hiçbir yere kaydedilmiyor. Bu müşterilerin var olduğu tek yer defterin kendisi."
 
@@ -2985,7 +2985,7 @@ msgstr "Rezervasyonlar burası dışında hiçbir yere kaydedilmiyor. Bu müşte
 msgid "Both are on the row in the payment_transactions collection."
 msgstr "İkisi de payment_transactions koleksiyonundaki satırda yer alır."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Both sides apply, so 15+15 is a 30-minute gap."
 msgstr "İki taraf da uygulanır; 15+15 otuz dakikalık boşluk demektir."
 
@@ -3013,11 +3013,11 @@ msgstr "Marka ayarları kaydedildi."
 msgid "Breadcrumb"
 msgstr "Yer imi"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Break ends at"
 msgstr "Mola bitişi"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Break starts at"
 msgstr "Mola başlangıcı"
 
@@ -3025,11 +3025,11 @@ msgstr "Mola başlangıcı"
 msgid "Bring Contentful entries into a collection. One-way."
 msgstr "Contentful içeriklerini bir koleksiyona getirir. Tek yönlü."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Buffer after"
 msgstr "Sonrasında tampon"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Buffer before"
 msgstr "Öncesinde tampon"
 
@@ -3237,7 +3237,7 @@ msgstr "Kaydedilemedi: {0}"
 msgid "canvas · what visitors see"
 msgstr "tuval · ziyaretçinin gördüğü"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Capacity"
 msgstr "Kapasite"
 
@@ -3341,7 +3341,7 @@ msgstr "Sohbet"
 msgid "Check your inbox"
 msgstr "Gelen kutunuzu kontrol edin"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Check-up, Follow-up, Emergency"
 msgstr "Kontrol, Kontrol sonrası, Acil"
 
@@ -3366,7 +3366,7 @@ msgstr "Ödeme referansı"
 msgid "Checks"
 msgstr "Kontroller"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Choice"
 msgstr "Seçim"
 
@@ -3596,7 +3596,7 @@ msgstr "Kapalı mesajı"
 msgid "Closes"
 msgstr "Kapanış"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Closes at"
 msgstr "Kapanış saati"
 
@@ -3771,7 +3771,7 @@ msgstr "<0>{0}</0> sütunu alan listesinde <1>{1}</1> olarak eşlenmiş ancak ay
 msgid "Column holding the code"
 msgstr "Kodu tutan sütun"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "column name"
 msgstr "kolon adı"
 
@@ -3821,7 +3821,7 @@ msgstr "Virgülle ayırın. Yalnızca saklamak için boş bırakın — sonraki 
 msgid "Comma-separated. Only needed to send it — downloading works without one."
 msgstr "Virgülle ayırın. Yalnızca göndermek için gerekli — indirmek için gerekmez."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Comma-separated. The page offers exactly these."
 msgstr "Virgülle ayırın. Sayfa tam olarak bunları sunar."
 
@@ -3978,7 +3978,7 @@ msgstr "Şifrenizi onaylayın"
 msgid "Confirm your password to begin"
 msgstr "Başlamak için şifrenizi onaylayın"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Confirmation message"
 msgstr "Onay mesajı"
 
@@ -4781,6 +4781,7 @@ msgstr "özel kural"
 #: src/client/admin/fields/field-money-editor.tsx
 #: src/client/admin/pages/automation/agents.tsx
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/components/time-field.tsx
@@ -4802,7 +4803,7 @@ msgstr "Özelleştir…"
 msgid "Daily"
 msgstr "Günlük"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Daily break"
 msgstr "Günlük ara"
 
@@ -4816,7 +4817,7 @@ msgstr "tehlike bölgesi"
 msgid "Danger zone"
 msgstr "Tehlike bölgesi"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Dark"
@@ -4924,7 +4925,7 @@ msgstr "Reddedildi"
 msgid "default"
 msgstr "varsayılan"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "Default"
 msgstr "Varsayılan"
@@ -5292,7 +5293,7 @@ msgstr "Azalan"
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/payments.tsx
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
@@ -5572,6 +5573,7 @@ msgid "Downloading…"
 msgstr "İndiriliyor…"
 
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Dr Yılmaz"
 msgstr "Dr. Yılmaz"
 
@@ -6488,11 +6490,11 @@ msgstr "3 saatte bir"
 msgid "Every 30 minutes"
 msgstr "30 dakikada bir"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Every booking is written as a row in <0>{recordTarget}</0>, where permissions, flows and exports apply to it as usual."
 msgstr "Her rezervasyon <0>{recordTarget}</0> içine bir satır olarak yazılır; izinler, akışlar ve dışa aktarmalar orada her zamanki gibi geçerlidir."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Every day"
 msgstr "Her gün"
 
@@ -7068,7 +7070,7 @@ msgstr "eşleşen pub-sub kanal olaylarında tetiklenir"
 msgid "First connected provider"
 msgstr "İlk bağlı sağlayıcı"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "First day"
 msgstr "İlk gün"
 
@@ -7196,7 +7198,7 @@ msgstr "Klasörler"
 msgid "font"
 msgstr "yazı tipi"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Font"
 msgstr "Yazı tipi"
 
@@ -7723,7 +7725,7 @@ msgstr "en yüksek akıl yürütme · daha yavaş · ~3x maliyet"
 msgid "History"
 msgstr "Geçmiş"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Hold"
 msgstr "Tutma"
 
@@ -7757,7 +7759,7 @@ msgstr "Hook güncellendi."
 msgid "hooks"
 msgstr "kanca"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Horizon"
 msgstr "Ufuk"
 
@@ -7789,11 +7791,11 @@ msgstr "Ne kadar"
 msgid "How long a write may block on this hook. Max 10000."
 msgstr "Bir yazmanın bu hook üzerinde ne kadar bloklanabileceği. En fazla 10000."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "How many days ahead the calendar is open."
 msgstr "Takvimin kaç gün ilerisi açık."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "How many fit at once."
 msgstr "Aynı anda kaç kişi sığar."
 
@@ -8118,7 +8120,7 @@ msgstr "Kurulabilir eklentiler — npm paketlerinden korumalı paneller, alan ed
 msgid "Installing…"
 msgstr "Kuruluyor…"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Intake questions"
 msgstr "Ön bilgi soruları"
 
@@ -8717,7 +8719,7 @@ msgstr "Son 7 gün"
 msgid "Last active"
 msgstr "Son etkinlik"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Last day"
 msgstr "Son gün"
 
@@ -8972,7 +8974,7 @@ msgstr "Yaşam döngüsü"
 msgid "lifetime"
 msgstr "toplam"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Light"
@@ -9201,7 +9203,7 @@ msgstr "stdout'a günlük yazar"
 msgid "long context · multimodal"
 msgstr "uzun bağlam · çok modlu"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Long text"
 msgstr "Uzun metin"
 
@@ -9586,7 +9588,7 @@ msgstr "Min seçili"
 msgid "Minimum"
 msgstr "En küçük"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Minimum minutes of warning."
 msgstr "En az kaç dakika önceden haber."
 
@@ -9634,11 +9636,11 @@ msgstr "Yeni bir token üretir; mevcut bağlantı çalışmayı durdurur"
 msgid "minutes"
 msgstr "dakika"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Minutes an unconfirmed hold survives."
 msgstr "Onaylanmamış tutmanın kaç dakika yaşayacağı."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Minutes one booking lasts."
 msgstr "Bir rezervasyonun kaç dakika sürdüğü."
 
@@ -9702,7 +9704,7 @@ msgstr "Model"
 msgid "Mon"
 msgstr "Pzt"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Mono"
 msgstr "Eşaralıklı"
 
@@ -9888,6 +9890,7 @@ msgstr "yazi-adresim"
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/database-import.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
@@ -10506,7 +10509,7 @@ msgstr "E-posta servisi yapılandırılmadığı için <0>{0}</0> adresine bir �
 msgid "No embedding model selected and the deployment sets no<0> EMBEDDING_DEFAULT_MODEL</0> — pick one below."
 msgstr "Seçili embedding modeli yok ve dağıtımda<0> EMBEDDING_DEFAULT_MODEL</0> tanımlı değil — aşağıdan bir model seçin."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "No end"
 msgstr "Bitiş yok"
 
@@ -10636,7 +10639,7 @@ msgstr "Grupsuz"
 msgid "No grouping"
 msgstr "Gruplama yok"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "No hours — the public page has nothing to offer."
 msgstr "Saat yok — herkese açık sayfanın sunacağı bir şey yok."
 
@@ -10845,7 +10848,7 @@ msgstr "Karşılaştırılacak önceki dönem yok"
 msgid "No queries."
 msgstr "Sorgu yok."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "No questions — the page asks only for name, email and phone."
 msgstr "Soru yok — sayfa yalnızca ad, e-posta ve telefon ister."
 
@@ -11326,7 +11329,7 @@ msgstr "Son {days} günde hiçbir şey kaydedilmedi. API trafik almaya başladı
 msgid "Nothing yet. Facts are distilled from conversations once a few turns have gone by — and need an embedding provider to be recalled."
 msgstr "Henüz bir şey yok. Bilgiler, birkaç tur geçtikten sonra konuşmalardan damıtılır — hatırlanabilmesi için bir gömme sağlayıcısı gerekir."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Notice"
 msgstr "Ön bildirim"
 
@@ -11520,7 +11523,7 @@ msgstr "Bu sayfadan ayrıldığınızda gizli anahtar bir daha alınamaz — yal
 msgid "One answer per browser"
 msgstr "Tarayıcı başına tek yanıt"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "One day"
 msgstr "Tek gün"
 
@@ -11650,7 +11653,7 @@ msgid "open"
 msgstr "aç"
 
 #: src/client/admin/collections/collections-index.tsx
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Open"
@@ -11726,7 +11729,7 @@ msgstr "OpenAPI spec yenilendi."
 msgid "OpenID Connect / OAuth2 sign-in for this workspace's end-users."
 msgstr "Bu çalışma alanının son kullanıcıları için OpenID Connect / OAuth2 girişi."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Opening hours"
 msgstr "Çalışma saatleri"
 
@@ -11743,7 +11746,7 @@ msgstr "Açılış"
 msgid "Opens a hosted checkout and gives you a link to send. To bill a row automatically, use the payment-link step in a flow."
 msgstr "Barındırılan bir ödeme sayfası açar ve gönderebileceğiniz bir bağlantı verir. Bir satırı otomatik faturalandırmak için akıştaki ödeme bağlantısı adımını kullanın."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Opens at"
 msgstr "Açılış saati"
 
@@ -12722,7 +12725,7 @@ msgstr "Lütfen \"{0}\" onayını işaretleyin"
 msgid "Please answer \"{0}\"."
 msgstr "Lütfen \"{0}\" alanını doldurun."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Please arrive ten minutes early."
 msgstr "Lütfen on dakika erken gelin."
 
@@ -12969,7 +12972,7 @@ msgstr "Profil kaydedildi."
 msgid "promoters {0} · passives {1} · detractors {2}"
 msgstr "destekleyici {0} · nötr {1} · eleştiren {2}"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Protected minutes before each booking."
 msgstr "Her rezervasyondan önce korunan dakika."
 
@@ -13063,7 +13066,7 @@ msgstr "Herkese açık bağlantı"
 msgid "Public origin of this Worker — set via <0>wrangler.toml [vars]</0> (or <1>.env</1> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here."
 msgstr "Bu Worker'ın genel origin'i — <0>wrangler.toml [vars]</0> (veya öz barındırmada <1>.env</1>) üzerinden ayarlanır. CORS, OAuth geri çağrıları ve mutlak bağlantılar için kullanılır. Burada salt okunur."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Public page appearance"
 msgstr "Herkese açık sayfanın görünümü"
 
@@ -13405,7 +13408,7 @@ msgstr "Gerekçe — ret için zorunlu, onay için isteğe bağlı"
 msgid "Reason for declining"
 msgstr "Reddetme nedeni"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Reason for visit"
 msgstr "Geliş nedeni"
 
@@ -13478,7 +13481,7 @@ msgstr "Önerilen"
 msgid "Record again"
 msgstr "Yeniden kaydet"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Record bookings into a collection"
 msgstr "Rezervasyonları bir koleksiyona kaydet"
 
@@ -13486,7 +13489,7 @@ msgstr "Rezervasyonları bir koleksiyona kaydet"
 msgid "Record every read of this collection (list + by-id) to the audit log under the <0>Access</0> lens — a \"who viewed this\" trail for sensitive data. Off by default; reads are otherwise not logged. Only request metadata is stored (who, when, query, item ids) — never row values."
 msgstr "Bu koleksiyonun her okumasını (liste + tekil) <0>Access</0> merceği altında denetim günlüğüne kaydet — hassas veriler için bir \"kim görüntüledi\" izi. Varsayılan kapalı; okumalar aksi halde loglanmaz. Yalnızca istek meta verisi saklanır (kim, ne zaman, sorgu, kayıt id'leri) — asla satır değerleri."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Record into a collection of my own instead"
 msgstr "Bunun yerine kendi koleksiyonuma kaydet"
 
@@ -13737,7 +13740,7 @@ msgstr "hatırlatıldı {0}"
 #: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/pages/access/members-panel.tsx
 #: src/client/admin/pages/account-page.tsx
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/rule-builder.tsx
@@ -13813,7 +13816,7 @@ msgstr "Dili kaldır"
 msgid "Remove one person from collections, revision history, activity, comments, notifications, analytics, crash reports, devices and files. Preview first — a run cannot be undone."
 msgstr "Bir kişiyi koleksiyonlardan, revizyon geçmişinden, etkinlik kaydından, yorumlardan, bildirimlerden, analitikten, hata raporlarından, cihazlardan ve dosyalardan kaldırır. Önce önizleyin — uygulama geri alınamaz."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Remove question"
 msgstr "Soruyu kaldır"
 
@@ -13821,7 +13824,7 @@ msgstr "Soruyu kaldır"
 msgid "Remove row"
 msgstr "Satırı kaldır"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Remove rule"
 msgstr "Kuralı kaldır"
 
@@ -13993,7 +13996,7 @@ msgstr "zorunlu"
 #: src/client/admin/collections/adopt-wizard.tsx
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Required"
 msgstr "Zorunlu"
@@ -15710,7 +15713,7 @@ msgstr "Başlığın altında gösterilen kısa cümle."
 msgid "Short tagline for the workspace."
 msgstr "Çalışma alanı için kısa slogan."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Short text"
 msgstr "Kısa metin"
 
@@ -15874,6 +15877,7 @@ msgid "Shown instead of the label when the admin UI is in that language."
 msgstr "Admin arayüzü o dildeyken etiket yerine gösterilir."
 
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Shown on the public page."
 msgstr "Herkese açık sayfada görünür."
 
@@ -16125,7 +16129,7 @@ msgstr "Slack #content"
 msgid "SLO URL"
 msgstr "SLO URL"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Slot length"
 msgstr "Dilim süresi"
 
@@ -16297,7 +16301,7 @@ msgstr "Span'ler %{0} oranında örnekleniyor, dolayısıyla sayılar bir örnek
 msgid "Spec unavailable. Try Refresh."
 msgstr "Belirtim kullanılamıyor. Yenilemeyi deneyin."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Specific dates"
 msgstr "Belirli tarihler"
 
@@ -16761,7 +16765,7 @@ msgid "system"
 msgstr "sistem"
 
 #: src/client/admin/fields/display-template-editor.tsx
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "System"
@@ -16819,7 +16823,7 @@ msgstr "Slogan"
 msgid "Tags"
 msgstr "Etiketler"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Taken out of every opening on the days above. Stored as one closed rule per day — edit it here and they all move together."
 msgstr "Yukarıdaki günlerdeki her açık aralıktan düşülür. Gün başına bir kapalı kural olarak saklanır — buradan düzenlersiniz, hepsi birlikte kayar."
 
@@ -17019,7 +17023,7 @@ msgstr "Analitik uç noktası hata döndürdü. Yenileyip tekrar deneyin."
 msgid "The authorization flow returned no redirect — start over from the client."
 msgstr "Yetkilendirme akışı yönlendirme döndürmedi — istemciden baştan başlayın."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The booking page belongs on your site, so it takes your colours rather than ours. \"Visitor's choice\" follows each visitor's own light/dark setting — fine for a link you send, but pick a theme when you embed it, or a dark widget can land on a light page."
 msgstr "Rezervasyon sayfası sizin sitenize aittir, bu yüzden bizim renklerimizi değil sizinkileri alır. \"Ziyaretçinin tercihi\" her ziyaretçinin kendi açık/koyu ayarını izler — göndereceğiniz bir bağlantı için uygun, ama gömerken bir tema seçin; yoksa açık renkli bir sayfaya koyu bir widget oturabilir."
 
@@ -17037,7 +17041,7 @@ msgstr "Aşağıdaki istemci bu çalışma alanının MCP araçlarını sizin ad
 msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 msgstr "İstemci gizli anahtarı bekleme sırasında şifrelenir. Her iki alanı da boş bırakırsanız giriş, <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> ortam değişkenlerine döner. Sağlayıcıda yönlendirme URI'si olarak <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> adresini kaydedin."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The collection is created for you and kept in step — nothing to map. Editing a row there does not move or cancel an appointment."
 msgstr "Koleksiyon sizin için oluşturulur ve güncel tutulur — eşlenecek bir şey yok. Oradaki bir satırı düzenlemek randevuyu taşımaz ya da iptal etmez."
 
@@ -17061,7 +17065,7 @@ msgstr "Mevcut bağlantı anında devre dışı kalır ve yenisi oluşturulur. E
 msgid "the default"
 msgstr "varsayılan"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The default collection"
 msgstr "Varsayılan koleksiyon"
 
@@ -17310,6 +17314,7 @@ msgid "The workspace's end-user pool (<0>app_users</0>). Search by email or name
 msgstr "Çalışma alanının son kullanıcı havuzu (<0>app_users</0>). E-posta veya ada göre arayın."
 
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The zone the opening hours are written in — not a display preference."
 msgstr "Çalışma saatlerinin yazıldığı saat dilimi — bir görüntüleme tercihi değil."
 
@@ -17321,7 +17326,7 @@ msgstr "Değiştirme veya iptal bağlantısı"
 msgid "theme"
 msgstr "tema"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Theme"
 msgstr "Tema"
 
@@ -17630,6 +17635,7 @@ msgstr "Sadece saat"
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Time zone"
 msgstr "Saat dilimi"
 
@@ -18702,7 +18708,7 @@ msgstr "Görünümler"
 msgid "visitor's browser language"
 msgstr "ziyaretçinin tarayıcı dili"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Visitor's choice"
 msgstr "Ziyaretçinin tercihi"
 
@@ -18788,11 +18794,11 @@ msgstr "Webhook'lar"
 msgid "Wed"
 msgstr "Çar"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Weekdays"
 msgstr "Hafta içi"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Weekend"
 msgstr "Hafta sonu"
 
@@ -18853,7 +18859,7 @@ msgstr "Onaylayana neye karar verdiğinin söylendiği metin."
 #~ msgid "What the booker is asked beyond name, email and phone. The answers ride along with the booking and can be mapped into the mirrored collection below."
 #~ msgstr "Rezervasyonu yapan kişiye ad, e-posta ve telefon dışında sorulanlar. Yanıtlar rezervasyonla birlikte taşınır ve aşağıdaki aynalanan koleksiyona eşlenebilir."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "What the booker is asked beyond name, email and phone. The answers ride along with the booking and can be mapped into the mirrored collection."
 msgstr "Randevu alan kişiye ad, e-posta ve telefon dışında sorulanlar. Yanıtlar randevuyla birlikte taşınır ve aynalanan koleksiyona eşlenebilir."
 
@@ -18957,7 +18963,7 @@ msgstr "Kural satırla eşleştiğinde efektler uygulanır. <0>Zorunlu</0> kayı
 msgid "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
 msgstr "“Test SMS gönder” işleminin nereye iletileceği. Hesabınızın kayıtlı numaralarını kullanmak için boş bırakın."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Where bookings are recorded"
 msgstr "Rezervasyonların kaydedildiği yer"
 
@@ -19215,7 +19221,7 @@ msgstr "Yazma hedefi"
 msgid "Written answers are not shown here — read them in the collection"
 msgstr "Yazılı yanıtlar burada gösterilmez — koleksiyonda okuyun"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Written in {zone}, so \"Mondays 09:00\" keeps meaning nine in the morning there when the clocks change. An \"open\" rule adds bookable time and a \"block\" takes it away; a span crossing midnight is two rules."
 msgstr "{zone} saatiyle yazılır; böylece saatler değiştiğinde \"Pazartesi 09:00\" orada sabahın dokuzu olmayı sürdürür. \"Açık\" kuralı randevu alınabilir zaman ekler, \"kapalı\" kuralı çıkarır; gece yarısını aşan bir aralık iki kuraldır."
 
@@ -19242,7 +19248,7 @@ msgstr "evet"
 msgid "Yes"
 msgstr "Evet"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Yes / no"
 msgstr "Evet / hayır"
 
@@ -19332,7 +19338,7 @@ msgstr "uygulamanızın teşekkür sayfası"
 msgid "Your appointment"
 msgstr "Randevunuz"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Your collection, your column names — so each booking field needs one. A target with no map records nothing, so saving without one is refused."
 msgstr "Koleksiyon sizin, kolon adları da öyle — bu yüzden her rezervasyon alanının bir karşılığı gerekir. Eşlemesi olmayan bir hedef hiçbir şey kaydetmez, o yüzden eşlemesiz kayıt reddedilir."
 

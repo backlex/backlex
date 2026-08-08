@@ -1151,7 +1151,7 @@ msgstr "A key with this name already exists."
 msgid "A KPI needs a handle, a name and a collection."
 msgstr "A KPI needs a handle, a name and a collection."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "A line under the name, on the public page."
 msgstr "A line under the name, on the public page."
 
@@ -1163,7 +1163,7 @@ msgstr "A local stand-in that settles payments without charging anything. Demo a
 msgid "A loop runs inline, so its body cannot wait for an approval or a long delay."
 msgstr "A loop runs inline, so its body cannot wait for an approval or a long delay."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "A lunch hour, say — closed on every day you are otherwise open, without splitting each opening in two."
 msgstr "A lunch hour, say — closed on every day you are otherwise open, without splitting each opening in two."
 
@@ -1320,7 +1320,7 @@ msgstr "About"
 msgid "accent"
 msgstr "accent"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Accent"
 msgstr "Accent"
 
@@ -1548,7 +1548,7 @@ msgstr "Add a <0>status</0> dropdown with <1>draft / review / published / archiv
 msgid "Add a booking"
 msgstr "Add a booking"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Add a break"
 msgstr "Add a break"
 
@@ -1717,7 +1717,7 @@ msgstr "Add passkey"
 msgid "Add provider"
 msgstr "Add provider"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Add question"
 msgstr "Add question"
 
@@ -1725,7 +1725,7 @@ msgstr "Add question"
 msgid "Add role"
 msgstr "Add role"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Add rule"
 msgstr "Add rule"
 
@@ -2238,7 +2238,7 @@ msgstr "answered"
 msgid "Answered"
 msgstr "Answered"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Any day up to the end"
 msgstr "Any day up to the end"
 
@@ -2898,7 +2898,7 @@ msgstr "Blank"
 msgid "Blank = automatic"
 msgstr "Blank = automatic"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Block"
 msgstr "Block"
 
@@ -2977,7 +2977,7 @@ msgstr "Booking…"
 msgid "Bookings"
 msgstr "Bookings"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Bookings are not recorded anywhere but here. The ledger stays the only place these customers exist."
 msgstr "Bookings are not recorded anywhere but here. The ledger stays the only place these customers exist."
 
@@ -2985,7 +2985,7 @@ msgstr "Bookings are not recorded anywhere but here. The ledger stays the only p
 msgid "Both are on the row in the payment_transactions collection."
 msgstr "Both are on the row in the payment_transactions collection."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Both sides apply, so 15+15 is a 30-minute gap."
 msgstr "Both sides apply, so 15+15 is a 30-minute gap."
 
@@ -3013,11 +3013,11 @@ msgstr "Branding saved."
 msgid "Breadcrumb"
 msgstr "Breadcrumb"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Break ends at"
 msgstr "Break ends at"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Break starts at"
 msgstr "Break starts at"
 
@@ -3025,11 +3025,11 @@ msgstr "Break starts at"
 msgid "Bring Contentful entries into a collection. One-way."
 msgstr "Bring Contentful entries into a collection. One-way."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Buffer after"
 msgstr "Buffer after"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Buffer before"
 msgstr "Buffer before"
 
@@ -3237,7 +3237,7 @@ msgstr "Cannot save: {0}"
 msgid "canvas · what visitors see"
 msgstr "canvas · what visitors see"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Capacity"
 msgstr "Capacity"
 
@@ -3341,7 +3341,7 @@ msgstr "Chat"
 msgid "Check your inbox"
 msgstr "Check your inbox"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Check-up, Follow-up, Emergency"
 msgstr "Check-up, Follow-up, Emergency"
 
@@ -3366,7 +3366,7 @@ msgstr "Checkout reference"
 msgid "Checks"
 msgstr "Checks"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Choice"
 msgstr "Choice"
 
@@ -3596,7 +3596,7 @@ msgstr "Closed message"
 msgid "Closes"
 msgstr "Closes"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Closes at"
 msgstr "Closes at"
 
@@ -3771,7 +3771,7 @@ msgstr "Column <0>{0}</0> is mapped to <1>{1}</1> in the field list but also tog
 msgid "Column holding the code"
 msgstr "Column holding the code"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "column name"
 msgstr "column name"
 
@@ -3821,7 +3821,7 @@ msgstr "Comma-separated. Leave blank to only store it — the next step can atta
 msgid "Comma-separated. Only needed to send it — downloading works without one."
 msgstr "Comma-separated. Only needed to send it — downloading works without one."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Comma-separated. The page offers exactly these."
 msgstr "Comma-separated. The page offers exactly these."
 
@@ -3978,7 +3978,7 @@ msgstr "Confirm your password"
 msgid "Confirm your password to begin"
 msgstr "Confirm your password to begin"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Confirmation message"
 msgstr "Confirmation message"
 
@@ -4781,6 +4781,7 @@ msgstr "custom rule"
 #: src/client/admin/fields/field-money-editor.tsx
 #: src/client/admin/pages/automation/agents.tsx
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 #: src/client/admin/pages/settings/oidc-provider-dialog.tsx
 #: src/client/components/time-field.tsx
@@ -4802,7 +4803,7 @@ msgstr "Customize…"
 msgid "Daily"
 msgstr "Daily"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Daily break"
 msgstr "Daily break"
 
@@ -4816,7 +4817,7 @@ msgstr "danger zone"
 msgid "Danger zone"
 msgstr "Danger zone"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Dark"
@@ -4924,7 +4925,7 @@ msgstr "Declined"
 msgid "default"
 msgstr "default"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/settings/ai-card.tsx
 msgid "Default"
 msgstr "Default"
@@ -5292,7 +5293,7 @@ msgstr "Descending"
 #: src/client/admin/pages/automation/feature-flags.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/automation/payments.tsx
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/storage/widgets.tsx
 #: src/client/admin/pages/observability/insights.tsx
 #: src/client/admin/pages/observability/kpis.tsx
@@ -5572,6 +5573,7 @@ msgid "Downloading…"
 msgstr "Downloading…"
 
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Dr Yılmaz"
 msgstr "Dr Yılmaz"
 
@@ -6488,11 +6490,11 @@ msgstr "Every 3 hours"
 msgid "Every 30 minutes"
 msgstr "Every 30 minutes"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Every booking is written as a row in <0>{recordTarget}</0>, where permissions, flows and exports apply to it as usual."
 msgstr "Every booking is written as a row in <0>{recordTarget}</0>, where permissions, flows and exports apply to it as usual."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Every day"
 msgstr "Every day"
 
@@ -7068,7 +7070,7 @@ msgstr "fires on matching pub-sub channel events"
 msgid "First connected provider"
 msgstr "First connected provider"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "First day"
 msgstr "First day"
 
@@ -7196,7 +7198,7 @@ msgstr "Folders"
 msgid "font"
 msgstr "font"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Font"
 msgstr "Font"
 
@@ -7723,7 +7725,7 @@ msgstr "highest reasoning · slower · ~3x cost"
 msgid "History"
 msgstr "History"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Hold"
 msgstr "Hold"
 
@@ -7757,7 +7759,7 @@ msgstr "Hook updated."
 msgid "hooks"
 msgstr "hooks"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Horizon"
 msgstr "Horizon"
 
@@ -7789,11 +7791,11 @@ msgstr "How long"
 msgid "How long a write may block on this hook. Max 10000."
 msgstr "How long a write may block on this hook. Max 10000."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "How many days ahead the calendar is open."
 msgstr "How many days ahead the calendar is open."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "How many fit at once."
 msgstr "How many fit at once."
 
@@ -8118,7 +8120,7 @@ msgstr "Installable add-ons — sandboxed panels, field editors, and hooks from 
 msgid "Installing…"
 msgstr "Installing…"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Intake questions"
 msgstr "Intake questions"
 
@@ -8717,7 +8719,7 @@ msgstr "Last 7 days"
 msgid "Last active"
 msgstr "Last active"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Last day"
 msgstr "Last day"
 
@@ -8972,7 +8974,7 @@ msgstr "Lifecycle"
 msgid "lifetime"
 msgstr "lifetime"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "Light"
@@ -9201,7 +9203,7 @@ msgstr "logs to stdout"
 msgid "long context · multimodal"
 msgstr "long context · multimodal"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Long text"
 msgstr "Long text"
 
@@ -9586,7 +9588,7 @@ msgstr "Min selected"
 msgid "Minimum"
 msgstr "Minimum"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Minimum minutes of warning."
 msgstr "Minimum minutes of warning."
 
@@ -9634,11 +9636,11 @@ msgstr "Mints a new token; the current link stops working"
 msgid "minutes"
 msgstr "minutes"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Minutes an unconfirmed hold survives."
 msgstr "Minutes an unconfirmed hold survives."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Minutes one booking lasts."
 msgstr "Minutes one booking lasts."
 
@@ -9702,7 +9704,7 @@ msgstr "Model"
 msgid "Mon"
 msgstr "Mon"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Mono"
 msgstr "Mono"
 
@@ -9888,6 +9890,7 @@ msgstr "my-post-slug"
 #: src/client/admin/pages/automation/sync-hooks-card.tsx
 #: src/client/admin/pages/automation/webhooks.tsx
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/database-import.tsx
 #: src/client/admin/pages/data/forms/index.tsx
 #: src/client/admin/pages/data/schema-versions.tsx
@@ -10506,7 +10509,7 @@ msgstr "No email service is configured, so nothing was sent to <0>{0}</0> — sh
 msgid "No embedding model selected and the deployment sets no<0> EMBEDDING_DEFAULT_MODEL</0> — pick one below."
 msgstr "No embedding model selected and the deployment sets no<0> EMBEDDING_DEFAULT_MODEL</0> — pick one below."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "No end"
 msgstr "No end"
 
@@ -10636,7 +10639,7 @@ msgstr "No group"
 msgid "No grouping"
 msgstr "No grouping"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "No hours — the public page has nothing to offer."
 msgstr "No hours — the public page has nothing to offer."
 
@@ -10845,7 +10848,7 @@ msgstr "No prior period to compare"
 msgid "No queries."
 msgstr "No queries."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "No questions — the page asks only for name, email and phone."
 msgstr "No questions — the page asks only for name, email and phone."
 
@@ -11326,7 +11329,7 @@ msgstr "Nothing was recorded in the last {days} day(s). Request spans appear her
 msgid "Nothing yet. Facts are distilled from conversations once a few turns have gone by — and need an embedding provider to be recalled."
 msgstr "Nothing yet. Facts are distilled from conversations once a few turns have gone by — and need an embedding provider to be recalled."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Notice"
 msgstr "Notice"
 
@@ -11520,7 +11523,7 @@ msgstr "Once you leave this page, the secret can’t be retrieved — only revok
 msgid "One answer per browser"
 msgstr "One answer per browser"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "One day"
 msgstr "One day"
 
@@ -11650,7 +11653,7 @@ msgid "open"
 msgstr "open"
 
 #: src/client/admin/collections/collections-index.tsx
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 #: src/client/admin/pages/observability/analytics.tsx
 #: src/client/admin/pages/observability/insights.tsx
 msgid "Open"
@@ -11726,7 +11729,7 @@ msgstr "OpenAPI spec refreshed."
 msgid "OpenID Connect / OAuth2 sign-in for this workspace's end-users."
 msgstr "OpenID Connect / OAuth2 sign-in for this workspace's end-users."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Opening hours"
 msgstr "Opening hours"
 
@@ -11743,7 +11746,7 @@ msgstr "Opens"
 msgid "Opens a hosted checkout and gives you a link to send. To bill a row automatically, use the payment-link step in a flow."
 msgstr "Opens a hosted checkout and gives you a link to send. To bill a row automatically, use the payment-link step in a flow."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Opens at"
 msgstr "Opens at"
 
@@ -12722,7 +12725,7 @@ msgstr "Please accept \"{0}\""
 msgid "Please answer \"{0}\"."
 msgstr "Please answer \"{0}\"."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Please arrive ten minutes early."
 msgstr "Please arrive ten minutes early."
 
@@ -12969,7 +12972,7 @@ msgstr "Profile saved."
 msgid "promoters {0} · passives {1} · detractors {2}"
 msgstr "promoters {0} · passives {1} · detractors {2}"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Protected minutes before each booking."
 msgstr "Protected minutes before each booking."
 
@@ -13063,7 +13066,7 @@ msgstr "Public link"
 msgid "Public origin of this Worker — set via <0>wrangler.toml [vars]</0> (or <1>.env</1> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here."
 msgstr "Public origin of this Worker — set via <0>wrangler.toml [vars]</0> (or <1>.env</1> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Public page appearance"
 msgstr "Public page appearance"
 
@@ -13405,7 +13408,7 @@ msgstr "Reason — required to reject, optional to approve"
 msgid "Reason for declining"
 msgstr "Reason for declining"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Reason for visit"
 msgstr "Reason for visit"
 
@@ -13478,7 +13481,7 @@ msgstr "Recommended"
 msgid "Record again"
 msgstr "Record again"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Record bookings into a collection"
 msgstr "Record bookings into a collection"
 
@@ -13486,7 +13489,7 @@ msgstr "Record bookings into a collection"
 msgid "Record every read of this collection (list + by-id) to the audit log under the <0>Access</0> lens — a \"who viewed this\" trail for sensitive data. Off by default; reads are otherwise not logged. Only request metadata is stored (who, when, query, item ids) — never row values."
 msgstr "Record every read of this collection (list + by-id) to the audit log under the <0>Access</0> lens — a \"who viewed this\" trail for sensitive data. Off by default; reads are otherwise not logged. Only request metadata is stored (who, when, query, item ids) — never row values."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Record into a collection of my own instead"
 msgstr "Record into a collection of my own instead"
 
@@ -13737,7 +13740,7 @@ msgstr "reminded {0}"
 #: src/client/admin/pages/access/condition-editor.tsx
 #: src/client/admin/pages/access/members-panel.tsx
 #: src/client/admin/pages/account-page.tsx
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 #: src/client/admin/pages/settings/locale-card.tsx
 #: src/client/admin/rule-builder.tsx
@@ -13813,7 +13816,7 @@ msgstr "Remove language"
 msgid "Remove one person from collections, revision history, activity, comments, notifications, analytics, crash reports, devices and files. Preview first — a run cannot be undone."
 msgstr "Remove one person from collections, revision history, activity, comments, notifications, analytics, crash reports, devices and files. Preview first — a run cannot be undone."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Remove question"
 msgstr "Remove question"
 
@@ -13821,7 +13824,7 @@ msgstr "Remove question"
 msgid "Remove row"
 msgstr "Remove row"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Remove rule"
 msgstr "Remove rule"
 
@@ -13993,7 +13996,7 @@ msgstr "required"
 #: src/client/admin/collections/adopt-wizard.tsx
 #: src/client/admin/fields/add-field.tsx
 #: src/client/admin/fields/edit-field.tsx
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 #: src/client/admin/pages/data/forms/block-panel.tsx
 msgid "Required"
 msgstr "Required"
@@ -15710,7 +15713,7 @@ msgstr "Short sentence shown under the headline."
 msgid "Short tagline for the workspace."
 msgstr "Short tagline for the workspace."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Short text"
 msgstr "Short text"
 
@@ -15874,6 +15877,7 @@ msgid "Shown instead of the label when the admin UI is in that language."
 msgstr "Shown instead of the label when the admin UI is in that language."
 
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Shown on the public page."
 msgstr "Shown on the public page."
 
@@ -16125,7 +16129,7 @@ msgstr "Slack #content"
 msgid "SLO URL"
 msgstr "SLO URL"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Slot length"
 msgstr "Slot length"
 
@@ -16297,7 +16301,7 @@ msgstr "Spans are sampled at {0}, so counts describe a sample."
 msgid "Spec unavailable. Try Refresh."
 msgstr "Spec unavailable. Try Refresh."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Specific dates"
 msgstr "Specific dates"
 
@@ -16761,7 +16765,7 @@ msgid "system"
 msgstr "system"
 
 #: src/client/admin/fields/display-template-editor.tsx
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 #: src/client/admin/pages/data/forms/panels.tsx
 #: src/client/admin/pages/settings/appearance-cards.tsx
 msgid "System"
@@ -16819,7 +16823,7 @@ msgstr "Tagline"
 msgid "Tags"
 msgstr "Tags"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Taken out of every opening on the days above. Stored as one closed rule per day — edit it here and they all move together."
 msgstr "Taken out of every opening on the days above. Stored as one closed rule per day — edit it here and they all move together."
 
@@ -17019,7 +17023,7 @@ msgstr "The analytics endpoint returned an error. Refresh to try again."
 msgid "The authorization flow returned no redirect — start over from the client."
 msgstr "The authorization flow returned no redirect — start over from the client."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The booking page belongs on your site, so it takes your colours rather than ours. \"Visitor's choice\" follows each visitor's own light/dark setting — fine for a link you send, but pick a theme when you embed it, or a dark widget can land on a light page."
 msgstr "The booking page belongs on your site, so it takes your colours rather than ours. \"Visitor's choice\" follows each visitor's own light/dark setting — fine for a link you send, but pick a theme when you embed it, or a dark widget can land on a light page."
 
@@ -17037,7 +17041,7 @@ msgstr "The client below wants to call this workspace's MCP tools as you. Your r
 msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 msgstr "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The collection is created for you and kept in step — nothing to map. Editing a row there does not move or cancel an appointment."
 msgstr "The collection is created for you and kept in step — nothing to map. Editing a row there does not move or cancel an appointment."
 
@@ -17061,7 +17065,7 @@ msgstr "The current link stops working immediately and a new one is generated. A
 msgid "the default"
 msgstr "the default"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The default collection"
 msgstr "The default collection"
 
@@ -17310,6 +17314,7 @@ msgid "The workspace's end-user pool (<0>app_users</0>). Search by email or name
 msgstr "The workspace's end-user pool (<0>app_users</0>). Search by email or name."
 
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "The zone the opening hours are written in — not a display preference."
 msgstr "The zone the opening hours are written in — not a display preference."
 
@@ -17321,7 +17326,7 @@ msgstr "Their link to change or cancel"
 msgid "theme"
 msgstr "theme"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Theme"
 msgstr "Theme"
 
@@ -17630,6 +17635,7 @@ msgstr "Time only"
 #: src/client/admin/pages/account-page.tsx
 #: src/client/admin/pages/automation/flow-builder.tsx
 #: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Time zone"
 msgstr "Time zone"
 
@@ -18702,7 +18708,7 @@ msgstr "Views"
 msgid "visitor's browser language"
 msgstr "visitor's browser language"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Visitor's choice"
 msgstr "Visitor's choice"
 
@@ -18788,11 +18794,11 @@ msgstr "Webhooks"
 msgid "Wed"
 msgstr "Wed"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Weekdays"
 msgstr "Weekdays"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Weekend"
 msgstr "Weekend"
 
@@ -18853,7 +18859,7 @@ msgstr "What the approver is told they are deciding."
 #~ msgid "What the booker is asked beyond name, email and phone. The answers ride along with the booking and can be mapped into the mirrored collection below."
 #~ msgstr "What the booker is asked beyond name, email and phone. The answers ride along with the booking and can be mapped into the mirrored collection below."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "What the booker is asked beyond name, email and phone. The answers ride along with the booking and can be mapped into the mirrored collection."
 msgstr "What the booker is asked beyond name, email and phone. The answers ride along with the booking and can be mapped into the mirrored collection."
 
@@ -18957,7 +18963,7 @@ msgstr "When the rule matches the row, apply the effects. <0>Required</0> is enf
 msgid "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
 msgstr "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Where bookings are recorded"
 msgstr "Where bookings are recorded"
 
@@ -19215,7 +19221,7 @@ msgstr "Writes to"
 msgid "Written answers are not shown here — read them in the collection"
 msgstr "Written answers are not shown here — read them in the collection"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/hours-tab.tsx
 msgid "Written in {zone}, so \"Mondays 09:00\" keeps meaning nine in the morning there when the clocks change. An \"open\" rule adds bookable time and a \"block\" takes it away; a span crossing midnight is two rules."
 msgstr "Written in {zone}, so \"Mondays 09:00\" keeps meaning nine in the morning there when the clocks change. An \"open\" rule adds bookable time and a \"block\" takes it away; a span crossing midnight is two rules."
 
@@ -19242,7 +19248,7 @@ msgstr "yes"
 msgid "Yes"
 msgstr "Yes"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/questions-tab.tsx
 msgid "Yes / no"
 msgstr "Yes / no"
 
@@ -19332,7 +19338,7 @@ msgstr "your app's thank-you page"
 msgid "Your appointment"
 msgstr "Your appointment"
 
-#: src/client/admin/pages/data/booking/index.tsx
+#: src/client/admin/pages/data/booking/settings-tab.tsx
 msgid "Your collection, your column names — so each booking field needs one. A target with no map records nothing, so saving without one is refused."
 msgstr "Your collection, your column names — so each booking field needs one. A target with no map records nothing, so saving without one is refused."
 

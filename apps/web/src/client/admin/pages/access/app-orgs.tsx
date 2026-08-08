@@ -59,6 +59,11 @@ const ORG_ROLE_OPTIONS: { value: OrgRole; label: string }[] = [
  *  tracks the viewport, which is what drives the sheet's own width. */
 const ROW_ITEM = "basis-full sm:basis-0 sm:flex-1";
 
+/** Mirrors `ORG_INVITE_TTL_MS` on the server. Only used to date the optimistic
+ *  row between the click and the response, which then supplies the real value —
+ *  so a drift here is visible for one round-trip and never persisted. */
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 const fmtDate = (v: number | null): string =>
   v == null ? "—" : new Date(v).toISOString().slice(0, 10);
 
@@ -453,13 +458,36 @@ function OrgDrawer({
   const sendInvite = async () => {
     const email = inviteEmail.trim();
     if (!email) return;
+    const snapshot = invites;
+    // The row appears the moment it's asked for. Only the id and the exact
+    // expiry are the server's to say, and the response fills both in below;
+    // the listing is newest-first, so it goes on top.
+    const optimistic: ApiOrgInvite = {
+      id: `pending:${email}`,
+      orgId: org.id,
+      email,
+      role: inviteRole,
+      roleIds: [],
+      invitedBy: null,
+      expiresAt: Date.now() + INVITE_TTL_MS,
+      acceptedAt: null,
+      createdAt: Date.now(),
+      pending: true,
+    };
+    setInvites((arr) => [optimistic, ...arr]);
     setInviteEmail("");
     try {
       const { data } = await appOrgsApi.invite(org.id, { email, role: inviteRole });
-      const { data: fresh } = await appOrgsApi.invites(org.id);
-      setInvites(fresh ?? []);
+      setInvites((arr) =>
+        arr.map((i) =>
+          i.id === optimistic.id
+            ? { ...i, id: data.id, email: data.email, role: data.role, expiresAt: data.expiresAt }
+            : i,
+        ),
+      );
       pushToast(t`Invitation sent to ${data.email}.`);
     } catch (e) {
+      setInvites(snapshot);
       setInviteEmail(email);
       pushToast((e as Error).message);
     }

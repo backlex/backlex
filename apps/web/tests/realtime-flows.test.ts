@@ -203,6 +203,82 @@ describe("realtime SSE", () => {
     }
   });
 
+  /**
+   * REST and GraphQL publish to the SAME channel, so a subscriber has to be
+   * able to read both without knowing which surface wrote the row.
+   *
+   * They could not. GraphQL's create resolver hand-built its own INSERT and its
+   * own response, and it keyed that response — and therefore the event — in
+   * camelCase, while the REST write core keys it by column name. On a field
+   * called `author_name` the two surfaces put a different key on the same
+   * channel, and a subscriber written against one silently read `undefined`
+   * from the other. Single-word field names hid it: `title` is spelled the same
+   * either way, which is why the test above never caught it.
+   *
+   * Both mutations now go through `performCreate`, so this asserts the thing
+   * that actually matters — not that the key is snake_case, but that there is
+   * only one answer.
+   */
+  test("REST and GraphQL publish the same key shape on one channel", async () => {
+    const parity = "parity_events";
+    const res = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        slug: parity,
+        fields: [{ name: "author_name", type: "text" }],
+      }),
+    });
+    expect(res.status).toBe(201);
+
+    const eventFor = async (write: () => Promise<string>): Promise<Record<string, unknown>> => {
+      const sub = await openSubscription(h, `items:${parity}`);
+      try {
+        const id = await write();
+        const frame = await nextMatch(
+          sub.iter,
+          (f) => f.event === "message" && f.data.includes(id),
+          4000,
+        );
+        expect(frame).not.toBeNull();
+        return (JSON.parse(frame!.data) as { data: Record<string, unknown> }).data;
+      } finally {
+        sub.abort();
+      }
+    };
+
+    const viaRest = await eventFor(async () => {
+      const r = await h.fetch(`/api/items/${parity}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ author_name: "Ada" }),
+      });
+      expect(r.status).toBe(201);
+      return ((await r.json()) as { data: { id: string } }).data.id;
+    });
+
+    const viaGql = await eventFor(async () => {
+      const r = await h.fetch("/api/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: `mutation { createParityEvents(data: { authorName: "Grace" }) { id } }`,
+        }),
+      });
+      const j = (await r.json()) as { errors?: unknown[]; data?: Record<string, { id: string }> };
+      expect(j.errors).toBeUndefined();
+      return Object.values(j.data ?? {})[0]!.id;
+    });
+
+    // The assertion is on the KEY SET, not on a spelling: whatever the payload
+    // is called, both surfaces have to call it that.
+    expect(Object.keys(viaGql).sort()).toEqual(Object.keys(viaRest).sort());
+    const key = Object.keys(viaRest).find((k) => k.toLowerCase().includes("author"));
+    expect(key).toBeTruthy();
+    expect(viaRest[key!]).toBe("Ada");
+    expect(viaGql[key!]).toBe("Grace");
+  });
+
   test("two subscribers on same channel both receive the event", async () => {
     const subA = await openSubscription(h, channel);
     const subB = await openSubscription(h, channel);

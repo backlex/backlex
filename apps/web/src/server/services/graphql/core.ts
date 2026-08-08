@@ -29,7 +29,6 @@ import {
 import {
   loadSidecarForRows,
   sidecarDeleteRow,
-  sidecarInsert,
   sidecarUpsert,
   splitLocalized,
 } from "../items/i18n-sidecar";
@@ -50,25 +49,22 @@ import { searchCollectionItems } from "../items/search";
 import { runBatch, type BatchOp } from "../items/batch";
 import { runChangefeed } from "../items/changefeed";
 import { runBulkUpdate } from "../items/bulk";
-import { hashIncomingFields, scrubHashFields } from "../items/hash-fields";
+import { hashIncomingFields, } from "../items/hash-fields";
 import { getStagedRow, stagedDeleteSql, stagedUpsertSql, stagedViewOf } from "../items/staged";
 import { enforceOnDeleteTriggers } from "../items/on-delete";
+import { performCreate, type WriteEnv } from "../items/write";
 import {
   rollupRefreshAllStatements,
   rollupRefreshStatements,
 } from "../items/rollup";
 import {
   appendPositionSql,
-  type OrderField,
   orderFieldsOf,
-  readBackPositions,
   sameScope,
 } from "../items/order";
-import { nextSequenceValues, sequenceFieldsOf } from "../items/sequence";
 import { resolveSlugsForWrite, slugFieldsOf } from "../items/slug";
 import { validateAndNormalizeGeo } from "../items/geo-fields";
 import {
-  assertInitialStates,
   assertTransitions,
   describeTransitions,
   transitionEventName,
@@ -414,7 +410,7 @@ export const buildInputType = (collection: CollectionRow): GraphQLInputObjectTyp
  * changing what they bind is not a change this feature gets to make. Kept
  * explicit and narrow rather than by re-forking the whole function.
  */
-const serialize = (
+const _serialize = (
   value: unknown,
   type: FieldType,
   dialect: "pg" | "sqlite",
@@ -1066,6 +1062,105 @@ const gqlRollupRefresh = async (
   for (const stmt of stmts) await execute(ctx, stmt);
 };
 
+
+/**
+ * The camelCase↔snake_case boundary, in one place.
+ *
+ * GraphQL names every field in camelCase; a `FieldDef` — and therefore every
+ * column, every `slug.from`, every rollup spec and every permission field
+ * allow-list — is snake_case. This file has produced that bug before (a slug
+ * resolver handed camel keys found `undefined` at every source column and
+ * silently generated nothing), and it produced it because the translation was
+ * done ad hoc at each site that needed it. Now the input is translated once on
+ * the way in and the result once on the way out, and everything between speaks
+ * the one language the write core speaks.
+ */
+const toSnakeInput = (
+  data: Record<string, unknown>,
+  collection: CollectionRow,
+): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  for (const f of collection.fields) {
+    const v = data[camel(f.name)];
+    if (v !== undefined) out[f.name] = v;
+  }
+  // The primary key of an adopted / integer-keyed collection is not in `fields`
+  // but the write core requires it in the body.
+  const pk = data[camel(collection.pkColumn)];
+  if (pk !== undefined && !(collection.pkColumn in out)) out[collection.pkColumn] = pk;
+  return out;
+};
+
+/**
+ * The write core's projected row, in the shape the GraphQL type declares.
+ *
+ * `WriteResult.data` is already permission-projected and already carries the
+ * system columns in camelCase (`createdAt`/`updatedAt`/`ownerId`); only the
+ * user fields need renaming. Absent fields are filled with `null` rather than
+ * omitted, which is what the hand-built response did and what a non-null-by-
+ * default GraphQL client expects to read back.
+ */
+const toCamelOutput = (
+  data: Record<string, unknown> | undefined,
+  collection: CollectionRow,
+): Record<string, unknown> => {
+  const src = data ?? {};
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(src)) {
+    if (collection.fields.some((f) => f.name === k)) continue;
+    out[k] = v;
+  }
+  for (const f of collection.fields) {
+    if (f.private) continue;
+    out[camel(f.name)] = src[f.name] ?? null;
+  }
+  return out;
+};
+
+/**
+ * A `WriteEnv` for the write core, built from the GraphQL request context.
+ *
+ * The collection is the one `loadCollection` returns, not this file's narrower
+ * `CollectionRow`. GraphQL keeps its own structural subset because its schema
+ * builder only needs a handful of columns, and it already reloads the full row
+ * wherever it hands work to a shared service (batch, bulk update, changefeed).
+ * The write core is another of those places.
+ */
+const writeEnvOf = (
+  gqlCtx: GqlCtx,
+  collection: WriteEnv["collection"],
+): WriteEnv => {
+  const started = Date.now();
+  return {
+    ctx: gqlCtx.ctx,
+    collection,
+    userId: gqlCtx.auth.userId,
+    tenantId: gqlCtx.auth.tenantId,
+    roles: gqlCtx.auth.roles,
+    email: gqlCtx.auth.email ?? null,
+    // GraphQL has one HTTP request behind a whole document, so per-mutation
+    // request metadata would be a guess. The activity row records the surface
+    // instead of inventing an IP for it.
+    meta: { surface: "graphql" },
+    durationMs: () => Date.now() - started,
+    // `?locale=` is a REST query parameter; a GraphQL mutation always writes the
+    // full `{locale: value}` map form, which is what `null` selects.
+    locale: null,
+  };
+};
+
+/** Run an async write through the core, mapping its AppError to a GraphQLError. */
+const asGqlErrorAsync = async <T>(fn: () => Promise<T>): Promise<T> => {
+  try {
+    return await fn();
+  } catch (e) {
+    if (e instanceof AppError) {
+      throw new GraphQLError(e.message, { extensions: { code: e.code } });
+    }
+    throw e;
+  }
+};
+
 export const createResolver = async (
   gqlCtx: GqlCtx,
   collection: CollectionRow,
@@ -1079,219 +1174,21 @@ export const createResolver = async (
       { extensions: { code: auth.userId ? "FORBIDDEN" : "UNAUTHORIZED" } },
     );
   }
-  validateInput(args.data, collection, perm, false);
-  canonicalizeMoneyForGql(args.data, collection, null);
-  // Hash `hash`-typed fields (keyed by the camelCase GraphQL input name) before
-  // they hit the INSERT — same shared transform the REST write path uses.
-  await hashIncomingFields(args.data, collection.fields, (f) => camel(f.name));
-  // Pull `localized` fields out of the (camelCase) input into a snake-keyed
-  // patch of `{locale: value}` maps; the base INSERT below then skips them.
-  const localizedPatch = takeLocalizedInput(args.data, collection.fields);
-  // Snapshot the maps for the response echo — `splitLocalized` mutates
-  // `localizedPatch` (deletes its keys) when building the sidecar writes.
-  const localizedEcho = { ...localizedPatch };
-
-  const table = collection.physicalTable;
-
-  // Singleton: reject when a live row already exists (scoped by tenant + the
-  // caller's read permission, ignoring soft-deleted rows).
-  if (collection.singleton) {
-    const guardWheres = [
-      gqlTenantWhere(collection, auth),
-      perm.whereSql,
-      collection.softDelete ? sql`${sql.identifier("deleted_at")} IS NULL` : null,
-    ].filter((x): x is SQL => x != null);
-    const guardClause = guardWheres.length
-      ? sql`WHERE ${sql.join(guardWheres, sql` AND `)}`
-      : sql``;
-    const existingOne = await queryAll<{ one: number }>(
-      ctx,
-      sql`SELECT 1 AS one FROM ${sql.identifier(table)} ${guardClause} LIMIT 1`,
-    );
-    if (existingOne[0]) {
-      throw new GraphQLError(
-        "This collection is a singleton and already has a row",
-        { extensions: { code: "VALIDATION" } },
-      );
-    }
+  // A tenant-scoped collection has no row to write without a workspace. The
+  // write core stamps `tenant_id` from `env.tenantId`; refusing here keeps the
+  // error a FORBIDDEN about context rather than a constraint violation.
+  if (collection.tenantScoped && !auth.tenantId) {
+    throw new GraphQLError("No tenant context for a tenant-scoped collection", {
+      extensions: { code: "FORBIDDEN" },
+    });
   }
 
-  // A lifecycle field's `initial` list — the one question a create can ask of
-  // it. Repeated here because this resolver hand-builds its INSERT rather than
-  // calling `performCreate`; `transition-surfaces.test.ts` is the gate.
-  asGqlError(() => assertInitialStates(collection.fields, args.data, (f) => camel(f.name)));
-
-  const id = crypto.randomUUID();
-  const now = ctx.dialect === "pg" ? new Date() : Date.now();
-
-  const cols: string[] = ["id"];
-  const vals: unknown[] = [id];
-  if (collection.hasCreatedAt) {
-    cols.push("created_at");
-    vals.push(now);
-  }
-  if (collection.hasUpdatedAt) {
-    cols.push("updated_at");
-    vals.push(now);
-  }
-  if (collection.ownerScoped) {
-    cols.push("owner_id");
-    vals.push(auth.userId);
-  }
-  // Stamp tenant_id on tenant-scoped (incl. adopted shared) tables so the row
-  // is owned by the caller's workspace — mirrors the REST write path. Without
-  // this a GraphQL-created row would be tenant-less and invisible/leaky.
-  if (collection.tenantScoped) {
-    if (!auth.tenantId) {
-      throw new GraphQLError("No tenant context for a tenant-scoped collection", {
-        extensions: { code: "FORBIDDEN" },
-      });
-    }
-    cols.push("tenant_id");
-    vals.push(auth.tenantId);
-  }
-  // Derive a point from the address columns before the INSERT is built —
-  // another thing the REST write core does that this hand-built resolver has to
-  // repeat or the feature only ships on one surface. `geo-surfaces.test.ts` is
-  // the gate.
-  await gqlAutoGeocode(ctx, collection, args.data);
-  // Order columns — where this row lands in its hand-arranged list. Repeated
-  // here for the same reason the sequence and rollup blocks below are: this
-  // resolver hand-builds its INSERT instead of calling `performCreate`, so a
-  // GraphQL-created row would otherwise land on the column default (0, tied
-  // with everything else) while the identical REST create appended correctly.
-  // `order-surfaces.test.ts` is the gate.
-  const appendedOrder: OrderField[] = [];
-  for (const f of orderFieldsOf(collection.fields)) {
-    const stated = args.data[camel(f.name)];
-    if (stated !== undefined && stated !== null && stated !== "") continue;
-    const scopeDef = f.spec.scope
-      ? collection.fields.find((x) => x.name === f.spec.scope)
-      : undefined;
-    const scopeValue = scopeDef
-      ? serializeField(args.data[camel(scopeDef.name)], scopeDef, ctx.dialect)
-      : null;
-    cols.push(f.name);
-    vals.push(appendPositionSql(collection, auth.tenantId, f, scopeValue));
-    appendedOrder.push(f);
-    delete args.data[camel(f.name)];
-  }
-  for (const f of collection.fields) {
-    if (f.onCreate || f.sequence || f.slug) continue; // system-managed, injected below
-    if (appendedOrder.some((o) => o.name === f.name)) continue;
-    const v = args.data[camel(f.name)];
-    if (v === undefined) continue;
-    cols.push(f.name);
-    vals.push(serializeField(v, f, ctx.dialect));
-  }
-  // Auto-filled columns are computed + written server-side (client input was
-  // rejected by validateInput) — mirrors the REST write path.
-  for (const f of collection.fields) {
-    if (!f.onCreate) continue;
-    const v = resolveAutoFill(f.onCreate, { now, userId: auth.userId, tenantId: auth.tenantId });
-    if (v === undefined) continue;
-    const stored = serialize(v, f.type, ctx.dialect);
-    cols.push(f.name);
-    vals.push(stored);
-    args.data[camel(f.name)] = deserialize(stored, f.type, ctx.dialect);
-  }
-  // Sequence columns. Repeated here for the same reason the rollup refresh is:
-  // this resolver hand-builds its INSERT instead of calling `performCreate`, so
-  // anything the REST write core does on the way in has to be done twice or it
-  // only ships on one surface. `sequence-surfaces.test.ts` is the gate.
-  const seqFields = sequenceFieldsOf(collection.fields);
-  if (seqFields.length > 0) {
-    const issued = await nextSequenceValues(
-      ctx,
-      auth.tenantId,
-      collection.slug,
-      seqFields,
-      new Date(),
-    );
-    for (const [name, value] of Object.entries(issued)) {
-      cols.push(name);
-      vals.push(value);
-      args.data[camel(name)] = value;
-    }
-  }
-  // Slug columns. Repeated here for the same reason the sequence block above is
-  // — this resolver hand-builds its INSERT instead of calling `performCreate` —
-  // and placed AFTER sequence for the same reason REST places it there: a slug
-  // is allowed to fold from a freshly-issued document number.
-  // `slug-surfaces.test.ts` is the gate.
-  //
-  // The resolver keys `args.data` by camelCase while a FieldDef (and therefore
-  // every `slug.from` entry) is snake_case, so the shared resolver is handed a
-  // snake-keyed VIEW of the input and its answer is written back under both
-  // spellings. Passing `args.data` straight in would find `undefined` at every
-  // source column and silently generate nothing — the exact snake-vs-camel
-  // class this file has produced before.
-  const slugFields = slugFieldsOf(collection.fields);
-  if (slugFields.length > 0) {
-    const snakeView: Record<string, unknown> = {};
-    for (const f of collection.fields) snakeView[f.name] = args.data[camel(f.name)];
-    const outcomes = await resolveSlugsForWrite(ctx, collection, snakeView);
-    for (const o of outcomes) {
-      if (o.value === null) continue;
-      cols.push(o.field);
-      vals.push(o.value);
-      // Feed the mutation's own response the value that was stored, so a client
-      // that just created a post can link to it without re-reading.
-      args.data[camel(o.field)] = o.value;
-    }
-  }
-  const colSql = sql.join(cols.map((n) => sql.identifier(n)), sql`, `);
-  const valSql = sql.join(vals.map((v) => sql`${v}`), sql`, `);
-  await execute(
-    ctx,
-    sql`INSERT INTO ${sql.identifier(table)} (${colSql}) VALUES (${valSql})`,
+  const full = await loadCollection(ctx, auth.tenantId ?? undefined, collection.slug);
+  const res = await asGqlErrorAsync(() =>
+    performCreate(writeEnvOf(gqlCtx, full), toSnakeInput(args.data, collection), perm),
   );
-  // Translations sidecar: one INSERT per locale (no conflict on a fresh row).
-  const createSplit = splitLocalized(localizedPatch, collection.fields, null);
-  if (createSplit.localePatches.size > 0) {
-    const byName = new Map(collection.fields.map((f) => [f.name, f]));
-    for (const [loc, fieldMap] of createSplit.localePatches) {
-      await execute(ctx, sidecarInsert(table, id, loc, fieldMap, byName, ctx.dialect));
-    }
-  }
-  // The appended position is the database's answer, so it has to be read back
-  // before the response and the realtime event are built out of `args.data` —
-  // otherwise a GraphQL create returns `position: null` for a column that holds
-  // a number. Same read-back the REST path does, for the same reason.
-  if (appendedOrder.length > 0) {
-    const placed = await readBackPositions(ctx, collection, id, appendedOrder);
-    for (const [name, value] of Object.entries(placed)) args.data[camel(name)] = value;
-  }
-  await gqlRollupRefresh(ctx, collection, auth.tenantId, { after: args.data, always: true });
-  // Digest persisted — scrub it from the input before it feeds the hand-built
-  // response `out` and the realtime event.
-  scrubHashFields(args.data, collection.fields, (f) => camel(f.name));
-
-  const nowIso =
-    ctx.dialect === "pg"
-      ? (now as Date).toISOString()
-      : new Date(now as number).toISOString();
-  const out: Record<string, unknown> = { id };
-  if (collection.hasCreatedAt) out.createdAt = nowIso;
-  if (collection.hasUpdatedAt) out.updatedAt = nowIso;
-  if (collection.ownerScoped) out.ownerId = auth.userId;
-  for (const f of collection.fields) {
-    if (f.private) continue;
-    // Localized fields: echo the input maps (snapshot taken before the split).
-    if (isLocalized(f)) {
-      out[camel(f.name)] = localizedEcho[f.name] ?? {};
-      continue;
-    }
-    const v = args.data[camel(f.name)];
-    out[camel(f.name)] = v ?? null;
-  }
-  await publishEvent(
-    ctx.env,
-    `items:${collection.slug}`,
-    { event: "created", data: out },
-    { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
-  );
-  return out;
+  for (const fx of res.sideEffects) await fx();
+  return toCamelOutput(res.data, collection);
 };
 
 export const updateResolver = async (

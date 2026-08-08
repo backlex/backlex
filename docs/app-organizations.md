@@ -132,8 +132,17 @@ cookie). A control-plane admin session is deliberately not accepted here.
 | `DELETE …/orgs/{id}/invites/{inviteId}` | org admin | Revoke |
 | `POST …/orgs/invites/accept` | any end-user | Redeem `{ token }` |
 
-Only an **owner** can grant ownership — an org admin can't promote themselves
-past their own ceiling.
+Two rules bound what a member may do to another:
+
+- Only an **owner** can grant ownership — an org admin can't promote themselves
+  past their own ceiling.
+- Nobody can act on a member who **outranks** them. An admin manages members and
+  fellow admins; owners are above them and stay there. Acting on yourself is
+  always allowed, which is how stepping down and leaving work.
+
+Both live in the service, so no surface can route around them. A control-plane
+admin holds no membership row and sits outside the order entirely — that's the
+recovery path when an org has painted itself into a corner.
 
 ### SDK
 
@@ -194,6 +203,14 @@ includes it, so an org admin can't replay somebody else's link.
   invitations, and clears `active_org_id` on any session pinned to it. Done with
   explicit deletes rather than FK cascade so it behaves identically on
   SQLite/D1, which don't enforce foreign keys by default.
+- **Deleting an end-user takes their seats with them.** Both account-removal
+  paths — `DELETE /api/app-users/{id}` and [erasure](/docs/erasure/) — call
+  `removeAppUserFromAllOrgs` first. A membership row orphaned by an account
+  delete would be invisible *and* counted: every listing inner-joins
+  `app_users`, so it vanishes from the UI while the owner count still sees it —
+  a ghost owner satisfying the last-owner guard, letting the org's only real
+  owner be removed. Pending invitations are left alone on purpose: they're
+  addressed to an email, so someone who signs up again can still accept.
 - **Cross-workspace isolation.** Every lookup is tenant-scoped, and an
   `app_users` row already belongs to exactly one workspace, so a slug or id from
   another workspace resolves to nothing.

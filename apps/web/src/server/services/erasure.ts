@@ -29,6 +29,7 @@ import { AppError } from "@backlex/core";
 import type { Ctx } from "../context";
 import { loadCollection } from "./items/collection-loader";
 import { execute, queryAll } from "./items/sql-helpers";
+import { removeAppUserFromAllOrgs } from "./app-orgs";
 
 type AnyDb = any;
 
@@ -622,7 +623,10 @@ async function eraseEverywhere(
   await db.delete(s.appSessions).where(eq(s.appSessions.userId, uid));
   await db.delete(s.appAccounts).where(eq(s.appAccounts.userId, uid));
   await db.delete(s.appUserRoles).where(eq(s.appUserRoles.appUserId, uid));
-  await db.delete(s.appOrgMembers).where(eq(s.appOrgMembers.appUserId, uid));
+  // Memberships, org-scoped role bindings and any session pin, in one place —
+  // dropping only `app_org_members` leaves role bindings orphaned and the
+  // per-isolate membership cache still serving the erased subject.
+  await removeAppUserFromAllOrgs({ db, dialect: ctx.dialect }, tenantId, uid);
   await db.delete(s.externalIdentities).where(eq(s.externalIdentities.userId, uid));
   await db.delete(s.phoneNumbers).where(eq(s.phoneNumbers.userId, uid));
 

@@ -328,10 +328,19 @@ export const appOrgMutationFields: Record<string, GraphQLFieldConfig<unknown, Gq
       };
       try {
         const org = await requireOrg(db(gqlCtx), tenantId, a.orgId);
-        return await updateMember(db(gqlCtx), tenantId, org.id, a.appUserId, {
-          ...(asRole(a.role) ? { role: asRole(a.role)! } : {}),
-          ...(a.roleIds ? { roleIds: a.roleIds } : {}),
-        });
+        return await updateMember(
+          db(gqlCtx),
+          tenantId,
+          org.id,
+          a.appUserId,
+          {
+            ...(asRole(a.role) ? { role: asRole(a.role)! } : {}),
+            ...(a.roleIds ? { roleIds: a.roleIds } : {}),
+          },
+          // `requireOrgAdmin` above means this is the control plane, which is
+          // outside the org's own rank order.
+          null,
+        );
       } catch (e) {
         return rethrow(e);
       }
@@ -349,7 +358,8 @@ export const appOrgMutationFields: Record<string, GraphQLFieldConfig<unknown, Gq
       const a = args as { orgId: string; appUserId: string };
       try {
         const org = await requireOrg(db(gqlCtx), tenantId, a.orgId);
-        await removeMember(db(gqlCtx), tenantId, org.id, a.appUserId);
+        // `null` actor — control plane, outside the org's rank order.
+        await removeMember(db(gqlCtx), tenantId, org.id, a.appUserId, null);
         return { ok: true };
       } catch (e) {
         return rethrow(e);

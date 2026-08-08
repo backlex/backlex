@@ -351,6 +351,197 @@ describe("app-orgs — end-user self-service", () => {
   });
 });
 
+describe("app-orgs — deleting an end-user takes their seat with them", () => {
+  let h: TestHarness;
+  let orgId: string;
+  let alice: { id: string; token: string; email: string };
+  let bob: { id: string; token: string; email: string };
+
+  /** Count rows in a system table with the admin SQL runner — the only way to
+   *  see a membership row that every API listing has already inner-joined away. */
+  const countRows = async (sql: string): Promise<number> => {
+    const res = await h.fetch("/api/admin/db/sql/run", json("POST", { sql }));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { rows?: Record<string, unknown>[] }[] };
+    const row = body.data[0]?.rows?.[0] ?? {};
+    return Number(Object.values(row)[0] ?? 0);
+  };
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    alice = await makeEndUser(h, "alice@ghost.test");
+    bob = await makeEndUser(h, "bob@ghost.test");
+    const created = await h.fetch(
+      "/api/app-orgs",
+      json("POST", { name: "Ghost Co", ownerAppUserId: alice.id }),
+    );
+    orgId = ((await created.json()) as { data: { id: string } }).data.id;
+    // Two owners, so the last-owner guard is not what's under test here.
+    expect(
+      (
+        await h.fetch(
+          `/api/app-orgs/${orgId}/members`,
+          json("POST", { appUserId: bob.id, role: "owner" }),
+        )
+      ).status,
+    ).toBe(201);
+    // …and an org-scoped grant on the doomed account, to prove the binding goes too.
+    const grantedRoleId = await roleIdByName(h, "authenticated");
+    expect(
+      (
+        await h.fetch(
+          `/api/app-orgs/${orgId}/members/${alice.id}`,
+          json("PATCH", { roleIds: [grantedRoleId] }),
+        )
+      ).status,
+    ).toBe(200);
+  });
+  afterAll(() => h.cleanup());
+
+  /**
+   * An `app_org_members` row orphaned by an account deletion is invisible AND
+   * counted: every listing inner-joins `app_users` so it vanishes from the UI,
+   * while `ownerCount` still sees it. That ghost owner satisfies the
+   * last-owner guard, so the org's only REAL owner could then be removed and
+   * the org left with nobody able to administer it.
+   */
+  test("the deleted owner leaves no ghost behind", async () => {
+    expect((await h.fetch(`/api/app-users/${alice.id}`, json("DELETE"))).status).toBe(200);
+
+    expect(await countRows(`SELECT COUNT(*) FROM app_org_members WHERE org_id = '${orgId}'`)).toBe(1);
+    expect(
+      await countRows(`SELECT COUNT(*) FROM app_org_member_roles WHERE org_id = '${orgId}'`),
+    ).toBe(0);
+
+    const list = (await (await h.fetch("/api/app-orgs?q=ghost")).json()) as {
+      data: { memberCount: number }[];
+    };
+    expect(list.data[0]!.memberCount).toBe(1);
+  });
+
+  test("the surviving owner is protected again, because nothing fakes a second one", async () => {
+    const remove = await h.fetch(`/api/app-orgs/${orgId}/members/${bob.id}`, json("DELETE"));
+    expect(remove.status).toBe(422);
+
+    const members = (await (await h.fetch(`/api/app-orgs/${orgId}/members`)).json()) as {
+      data: { appUserId: string; role: string }[];
+    };
+    expect(members.data).toEqual([
+      expect.objectContaining({ appUserId: bob.id, role: "owner" }),
+    ]);
+  });
+});
+
+describe("app-orgs — the rank order inside an org", () => {
+  let h: TestHarness;
+  let orgId: string;
+  let owner: { id: string; token: string; email: string };
+  let coOwner: { id: string; token: string; email: string };
+  let orgAdmin: { id: string; token: string; email: string };
+  let plain: { id: string; token: string; email: string };
+  let adminFetch: Bearer;
+  let ownerFetch: Bearer;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    owner = await makeEndUser(h, "owner@rank.test");
+    coOwner = await makeEndUser(h, "co-owner@rank.test");
+    orgAdmin = await makeEndUser(h, "admin@rank.test");
+    plain = await makeEndUser(h, "plain@rank.test");
+    ownerFetch = bearerFor(h, owner.token);
+    adminFetch = bearerFor(h, orgAdmin.token);
+
+    const created = await h.fetch(
+      "/api/app-orgs",
+      json("POST", { name: "Rank Co", ownerAppUserId: owner.id }),
+    );
+    orgId = ((await created.json()) as { data: { id: string } }).data.id;
+    for (const [user, role] of [
+      [coOwner, "owner"],
+      [orgAdmin, "admin"],
+      [plain, "member"],
+    ] as const) {
+      const res = await h.fetch(
+        `/api/app-orgs/${orgId}/members`,
+        json("POST", { appUserId: user.id, role }),
+      );
+      expect(res.status).toBe(201);
+    }
+  });
+  afterAll(() => h.cleanup());
+
+  /**
+   * "Only an owner can grant ownership" bounded what an org admin could hand
+   * out. It said nothing about what they could take away — so with a second
+   * owner present (the last-owner guard satisfied) an admin could demote and
+   * then remove the founder.
+   */
+  test("an org admin can neither demote nor remove an owner", async () => {
+    const demote = await adminFetch(
+      `/api/t/default/orgs/${orgId}/members/${owner.id}`,
+      json("PATCH", { role: "member" }),
+    );
+    expect(demote.status).toBe(403);
+
+    const remove = await adminFetch(
+      `/api/t/default/orgs/${orgId}/members/${owner.id}`,
+      json("DELETE"),
+    );
+    expect(remove.status).toBe(403);
+
+    // Nor may they re-badge an owner's org-scoped workspace roles.
+    const regrant = await adminFetch(
+      `/api/t/default/orgs/${orgId}/members/${owner.id}`,
+      json("PATCH", { roleIds: [] }),
+    );
+    expect(regrant.status).toBe(403);
+  });
+
+  test("an org admin still manages everyone at or below their own rank", async () => {
+    // A peer admin is not above them, so this stays allowed.
+    const promotePlain = await adminFetch(
+      `/api/t/default/orgs/${orgId}/members/${plain.id}`,
+      json("PATCH", { role: "admin" }),
+    );
+    expect(promotePlain.status).toBe(200);
+
+    const removePeer = await adminFetch(
+      `/api/t/default/orgs/${orgId}/members/${plain.id}`,
+      json("DELETE"),
+    );
+    expect(removePeer.status).toBe(200);
+
+    // And they can always step down themselves.
+    const stepDown = await adminFetch(
+      `/api/t/default/orgs/${orgId}/members/${orgAdmin.id}`,
+      json("PATCH", { role: "member" }),
+    );
+    expect(stepDown.status).toBe(200);
+  });
+
+  test("an owner may act on a fellow owner", async () => {
+    const demote = await ownerFetch(
+      `/api/t/default/orgs/${orgId}/members/${coOwner.id}`,
+      json("PATCH", { role: "member" }),
+    );
+    expect(demote.status).toBe(200);
+  });
+
+  test("the control plane is outside the rank order entirely", async () => {
+    // A workspace admin administers their customer's org from /api/app-orgs and
+    // holds no membership row, so neither guard applies to them: minting an
+    // owner from a plain member is exactly what an app-plane admin cannot do.
+    const res = await h.fetch(
+      `/api/app-orgs/${orgId}/members/${orgAdmin.id}`,
+      json("PATCH", { role: "owner" }),
+    );
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { data: { role: string } }).data.role).toBe("owner");
+  });
+});
+
 describe("app-orgs — permission scoping via $org.id", () => {
   let h: TestHarness;
   let alice: { id: string; token: string; email: string };

@@ -195,8 +195,8 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
   .post("/:slug/orgs/:orgId/leave", async (c) => {
     const { tenantId, appUserId } = await requireAppUser(c);
     const org = await requireOrg(dbCtx(c), tenantId, c.req.param("orgId"));
-    await requireOrgRole(dbCtx(c), org.id, appUserId, "member");
-    await leaveOrg(dbCtx(c), tenantId, org.id, appUserId);
+    const role = await requireOrgRole(dbCtx(c), org.id, appUserId, "member");
+    await leaveOrg(dbCtx(c), tenantId, org.id, appUserId, role);
     return c.json({ ok: true });
   })
 
@@ -212,7 +212,8 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
   /**
    * Change someone's membership role, or replace their org-scoped workspace
    * roles. Org admins may do both — but only an owner can mint another owner,
-   * so an admin can't quietly promote themselves past their own ceiling.
+   * and nobody can act on a member who outranks them, so an admin can neither
+   * promote themselves past their own ceiling nor depose the owner above it.
    */
   .patch("/:slug/orgs/:orgId/members/:appUserId", async (c) => {
     const { tenantId, appUserId: actorId } = await requireAppUser(c);
@@ -222,11 +223,11 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
     const role = asRole(patch.role);
     if (patch.role !== undefined && !role)
       throw new AppError("VALIDATION", "role must be one of: owner, admin, member");
-    if (role === "owner" && actorRole !== "owner")
-      throw new AppError("FORBIDDEN", "Only an owner can grant ownership");
     const roleIds = asStringArray(patch.roleIds);
     if (patch.roleIds !== undefined && !roleIds)
       throw new AppError("VALIDATION", "roleIds must be an array of role ids");
+    // The rank guards (can't mint an owner unless you are one, can't act on
+    // someone above you) live in the service so every surface inherits them.
     const member = await updateMember(
       dbCtx(c),
       tenantId,
@@ -236,16 +237,21 @@ export const appOrgsPublicRoutes = new Hono<AppBindings>()
         ...(role ? { role } : {}),
         ...(roleIds ? { roleIds } : {}),
       },
+      { appUserId: actorId, role: actorRole },
     );
     return c.json({ data: member });
   })
 
-  /** Remove someone. Org admins may; the last owner can't be removed. */
+  /** Remove someone. Org admins may — but never someone who outranks them, and
+   *  the last owner can't be removed at all. */
   .delete("/:slug/orgs/:orgId/members/:appUserId", async (c) => {
     const { tenantId, appUserId: actorId } = await requireAppUser(c);
     const org = await requireOrg(dbCtx(c), tenantId, c.req.param("orgId"));
-    await requireOrgRole(dbCtx(c), org.id, actorId, "admin");
-    await removeMember(dbCtx(c), tenantId, org.id, c.req.param("appUserId"));
+    const actorRole = await requireOrgRole(dbCtx(c), org.id, actorId, "admin");
+    await removeMember(dbCtx(c), tenantId, org.id, c.req.param("appUserId"), {
+      appUserId: actorId,
+      role: actorRole,
+    });
     return c.json({ ok: true });
   })
 

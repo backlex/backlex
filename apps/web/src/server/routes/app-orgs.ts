@@ -326,6 +326,9 @@ export const appOrgsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         org.id,
         appUserId,
         c.req.valid("json"),
+        // Control plane: an operator administering a customer's org holds no
+        // membership row and is outside the org's rank order.
+        null,
       );
       return c.json({ data: member });
     },
@@ -348,7 +351,8 @@ export const appOrgsRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       const tenantId = activeTenant(c);
       const { id, appUserId } = c.req.valid("param");
       const org = await requireOrg({ db: ctx.db, dialect: ctx.dialect }, tenantId, id);
-      await removeMember({ db: ctx.db, dialect: ctx.dialect }, tenantId, org.id, appUserId);
+      // `null` actor — the control plane sits outside the org's rank order.
+      await removeMember({ db: ctx.db, dialect: ctx.dialect }, tenantId, org.id, appUserId, null);
       return c.json({ ok: true });
     },
   )

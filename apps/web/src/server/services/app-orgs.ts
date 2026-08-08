@@ -246,6 +246,45 @@ export const requireOrgRole = async (
   return role;
 };
 
+/**
+ * Who is performing a membership change, when the change comes from inside the
+ * org. `null` means the **control plane** — a workspace admin administering one
+ * of their customers' orgs, who sits outside the rank order entirely and is
+ * already gated by `requireAdmin`.
+ *
+ * Spelled as a required parameter rather than an optional one on purpose: the
+ * guards below are skipped for `null`, so a new surface must say which plane it
+ * speaks for instead of inheriting control-plane authority by omission.
+ */
+export type OrgActor = { appUserId: string; role: OrgRole } | null;
+
+/**
+ * Hold an app-plane actor to the org's rank order: you may act on your peers
+ * and on anyone below you, never on someone above you.
+ *
+ * Without this an org `admin` could demote or remove an `owner` outright — the
+ * last-owner guard only kept the *final* owner, so with two owners an admin
+ * could depose the founder. "Only an owner can grant ownership" bounded what an
+ * admin could hand out; it said nothing about what they could take away.
+ *
+ * Acting on yourself is always allowed — that's how demoting yourself and
+ * `leaveOrg` work, and the last-owner guard is what stops the org being
+ * stranded.
+ */
+const assertMayActOn = (
+  actor: OrgActor,
+  targetAppUserId: string,
+  targetRole: OrgRole,
+): void => {
+  if (!actor) return;
+  if (actor.appUserId === targetAppUserId) return;
+  if (ORG_ROLE_RANK[targetRole] > ORG_ROLE_RANK[actor.role])
+    throw new AppError(
+      "FORBIDDEN",
+      `An organization "${actor.role}" can't act on an "${targetRole}"`,
+    );
+};
+
 /** How many owners the org has. Guards the "an org can never be ownerless"
  *  invariant on demote / remove / leave. */
 const ownerCount = async (ctx: DbCtx, orgId: string): Promise<number> => {
@@ -685,10 +724,16 @@ export const updateMember = async (
   orgId: string,
   appUserId: string,
   patch: UpdateMemberInput,
+  actor: OrgActor,
 ): Promise<OrgMemberRow> => {
   const org = await requireOrg(ctx, tenantId, orgId);
   const current = await memberRole(ctx, org.id, appUserId);
   if (!current) throw new AppError("NOT_FOUND", "Not a member of this organization");
+  assertMayActOn(actor, appUserId, current);
+  // An admin must not be able to mint an owner — not even themselves. Enforced
+  // here rather than per-surface so GraphQL/MCP/CLI can't route around it.
+  if (actor && patch.role === "owner" && actor.role !== "owner")
+    throw new AppError("FORBIDDEN", "Only an owner can grant ownership");
   const t = tablesFor(ctx.dialect);
 
   if (patch.role !== undefined && patch.role !== current) {
@@ -716,10 +761,12 @@ export const removeMember = async (
   tenantId: string,
   orgId: string,
   appUserId: string,
+  actor: OrgActor,
 ): Promise<void> => {
   const org = await requireOrg(ctx, tenantId, orgId);
   const current = await memberRole(ctx, org.id, appUserId);
   if (!current) throw new AppError("NOT_FOUND", "Not a member of this organization");
+  assertMayActOn(actor, appUserId, current);
   await assertNotLastOwner(ctx, org.id, appUserId);
   const t = tablesFor(ctx.dialect);
   await (ctx.db as any)
@@ -971,14 +1018,52 @@ export const acceptOrgInvite = async (
   return { org, role: existing ?? invite.role };
 };
 
-/** Leave an org under your own steam. Same last-owner guard as removal. */
+/** Leave an org under your own steam. Same last-owner guard as removal; the
+ *  rank guard is a no-op because the actor and the target are the same person. */
 export const leaveOrg = async (
   ctx: DbCtx,
   tenantId: string,
   orgId: string,
   appUserId: string,
+  role: OrgRole,
 ): Promise<void> => {
-  await removeMember(ctx, tenantId, orgId, appUserId);
+  await removeMember(ctx, tenantId, orgId, appUserId, { appUserId, role });
+};
+
+/**
+ * Detach an end-user from every organization in a workspace: memberships,
+ * org-scoped role bindings, and any session pin naming one of those orgs.
+ *
+ * Deleting the `app_users` row on its own is not enough, and the failure is
+ * silent in the worst way: `listMembers` inner-joins `app_users`, so an
+ * orphaned `app_org_members` row DISAPPEARS from every listing while
+ * {@link ownerCount} and the member count still see it. A ghost owner satisfies
+ * the last-owner guard, so the org's only real owner can then be removed and
+ * the org is left with no members at all — unadministerable from the app plane.
+ *
+ * Pending invitations are deliberately left alone: they are addressed to an
+ * email, not to this row, so a person who signs up again can still accept.
+ */
+export const removeAppUserFromAllOrgs = async (
+  ctx: DbCtx,
+  tenantId: string,
+  appUserId: string,
+): Promise<void> => {
+  const t = tablesFor(ctx.dialect);
+  await (ctx.db as any)
+    .delete(t.memberRoles)
+    .where(eq(t.memberRoles.appUserId, appUserId));
+  await (ctx.db as any)
+    .delete(t.members)
+    .where(
+      and(eq(t.members.appUserId, appUserId), eq(t.members.tenantId, tenantId)),
+    );
+  await (ctx.db as any)
+    .update(t.appSessions)
+    .set({ activeOrgId: null })
+    .where(eq(t.appSessions.userId, appUserId));
+  invalidateOrgMemberships(tenantId, appUserId);
+  invalidateUserRoles(tenantId, appUserId);
 };
 
 // ---------------------------------------------------------------------------

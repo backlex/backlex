@@ -9,6 +9,7 @@ import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { invalidateUserRoles } from "../services/permissions-cache";
 import { inviteAppUser, resolveAssignableRoles } from "../services/app-user-invites";
+import { removeAppUserFromAllOrgs } from "../services/app-orgs";
 import { defaultHook } from "../lib/openapi-router";
 
 /**
@@ -437,7 +438,7 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       tags: [TAG],
       summary: "Delete end-user",
       description:
-        "Drops the `app_users` row plus sessions, OAuth accounts, and role assignments in this workspace.",
+        "Drops the `app_users` row plus sessions, OAuth accounts, role assignments, and every organization membership in this workspace.",
       security: SECURITY,
       middleware: [requireUser, requireAdmin],
       request: { params: z.object({ id: z.string() }) },
@@ -449,9 +450,10 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
         ...errorResponses,
       },
     }),
-    /** Delete an end-user along with their sessions, OAuth accounts, and role
-     *  assignments. Done explicitly (not via FK ON DELETE CASCADE) so it works
-     *  the same on SQLite/D1, which don't enforce foreign keys by default. */
+    /** Delete an end-user along with their sessions, OAuth accounts, role
+     *  assignments and organization memberships. Done explicitly (not via FK
+     *  ON DELETE CASCADE) so it works the same on SQLite/D1, which don't
+     *  enforce foreign keys by default. */
     async (c) => {
       const ctx = c.get("ctx");
       const tenantId = c.get("auth").tenantId;
@@ -461,6 +463,14 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>({ defaultHook })
       await requireAppUser(ctx.db, ctx.dialect, tenantId, appUserId);
       const accounts =
         ctx.dialect === "pg" ? pg.schema.appAccounts : sqlite.schema.appAccounts;
+      // Org rows first. An `app_org_members` row left behind is invisible
+      // (every listing inner-joins `app_users`) but still counted, so a ghost
+      // owner would satisfy the last-owner guard and let the org be emptied.
+      await removeAppUserFromAllOrgs(
+        { db: ctx.db, dialect: ctx.dialect },
+        tenantId,
+        appUserId,
+      );
       await (ctx.db as any).delete(t.appUserRoles).where(eq(t.appUserRoles.appUserId, appUserId));
       invalidateUserRoles(tenantId, appUserId);
       await (ctx.db as any).delete(t.appSessions).where(eq(t.appSessions.userId, appUserId));
